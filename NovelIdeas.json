@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "library": {
+    "id": "demo",
+    "name": "",
+    "type": "public"
+  },
+  "branding": {
+    "libraryId": "demo",
+    "libraryName": "",
+    "logoUrl": ""
+  },
+  "theme": {
+    "mainThemeKey": "dark_blue",
+    "highlightKey": "classic_blue"
+  },
+  "decks": {
+    "enabled": {
+      "k2": true,
+      "36": true,
+      "ms_hs": true,
+      "adult": true
+    }
+  },
+  "recommendations": {
+    "source": "open_library"
+  },
+  "swipe": {
+    "categoriesEnabled": {
+      "books": true,
+      "movies": true,
+      "tv": true,
+      "games": true,
+      "albums": true
+    }
+  }
+}

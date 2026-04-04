@@ -1,0 +1,352 @@
+{
+  "deckKey": "adult",
+  "deckLabel": "Adults",
+  "version": 2,
+  "style": {
+    "lean": "speculative_lit_scifi_fantasy_plus",
+    "notes": "Mature themes, complex ideas, still accessible. Copyright-safe."
+  },
+  "rules": {
+    "targetSwipesBeforeRecommend": 12,
+    "allowUpToSwipesBeforeRecommend": 15,
+    "shuffle": "true_random_each_session"
+  },
+  "cards": [
+    {
+      "id": "ad_genre_scifi",
+      "type": "genre",
+      "prompt": "Science fiction 🚀",
+      "tags": [
+        "genre:science_fiction",
+        "world:near_future",
+        "topic:technology"
+      ]
+    },
+    {
+      "id": "ad_genre_fantasy",
+      "type": "genre",
+      "prompt": "Fantasy 🐉",
+      "tags": [
+        "genre:fantasy",
+        "world:mythic",
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "ad_genre_speculative",
+      "type": "genre",
+      "prompt": "Speculative / what-if 🤔",
+      "tags": [
+        "genre:speculative"
+      ]
+    },
+    {
+      "id": "ad_genre_dystopian",
+      "type": "genre",
+      "prompt": "Dystopian futures 🌆",
+      "tags": [
+        "genre:dystopian",
+        "world:dystopian",
+        "theme:survival"
+      ]
+    },
+    {
+      "id": "ad_genre_mystery",
+      "type": "genre",
+      "prompt": "Mystery / crime 🕵️",
+      "tags": [
+        "genre:mystery",
+        "genre:crime",
+        "genre:suspense",
+        "pace:fast"
+      ]
+    },
+    {
+      "id": "ad_genre_thriller",
+      "type": "genre",
+      "prompt": "Thriller ⚠️",
+      "tags": [
+        "genre:thriller",
+        "genre:suspense",
+        "pace:fast",
+        "vibe:dark"
+      ]
+    },
+    {
+      "id": "ad_genre_horror",
+      "type": "genre",
+      "prompt": "Horror 😱",
+      "tags": [
+        "genre:horror",
+        "genre:paranormal",
+        "vibe:dark"
+      ]
+    },
+    {
+      "id": "ad_genre_literary",
+      "type": "genre",
+      "prompt": "Literary fiction ✍️",
+      "tags": [
+        "genre:literary",
+        "genre:realistic_fiction"
+      ]
+    },
+    {
+      "id": "ad_genre_drama",
+      "type": "genre",
+      "prompt": "Drama / character-driven 🎭",
+      "tags": [
+        "genre:drama",
+        "genre:realistic_fiction",
+        "vibe:emotional"
+      ]
+    },
+    {
+      "id": "ad_genre_romance",
+      "type": "genre",
+      "prompt": "Romance / relationships ❤️",
+      "tags": [
+        "genre:romance",
+        "theme:relationships",
+        "vibe:emotional"
+      ]
+    },
+    {
+      "id": "ad_genre_historical",
+      "type": "genre",
+      "prompt": "Historical fiction 🏛️",
+      "tags": [
+        "genre:historical_fiction",
+        "vibe:serious"
+      ]
+    },
+    {
+      "id": "ad_topic_ai",
+      "type": "topic",
+      "prompt": "Artificial intelligence 🤖",
+      "tags": [
+        "topic:ai",
+        "genre:science_fiction",
+        "topic:technology",
+        "world:near_future"
+      ]
+    },
+    {
+      "id": "ad_topic_space",
+      "type": "topic",
+      "prompt": "Space exploration 👽",
+      "tags": [
+        "topic:space",
+        "genre:science_fiction",
+        "world:space",
+        "world:near_future",
+        "topic:technology"
+      ]
+    },
+    {
+      "id": "ad_topic_time",
+      "type": "topic",
+      "prompt": "Time travel ⏳",
+      "tags": [
+        "topic:time_travel",
+        "genre:science_fiction"
+      ]
+    },
+    {
+      "id": "ad_topic_cyberpunk",
+      "type": "topic",
+      "prompt": "Cyberpunk / high-tech noir 🌐",
+      "tags": [
+        "topic:cyberpunk",
+        "genre:science_fiction",
+        "vibe:dark"
+      ]
+    },
+    {
+      "id": "ad_topic_magic_real",
+      "type": "topic",
+      "prompt": "Magic in the real world ✨🏙️",
+      "tags": [
+        "genre:fantasy",
+        "genre:paranormal",
+        "world:real_world"
+      ]
+    },
+    {
+      "id": "ad_topic_mythology",
+      "type": "topic",
+      "prompt": "Mythology / retellings 🏛️",
+      "tags": [
+        "topic:mythology",
+        "world:mythic",
+        "genre:fantasy"
+      ]
+    },
+    {
+      "id": "ad_topic_politics",
+      "type": "topic",
+      "prompt": "Politics / power ⚖️",
+      "tags": [
+        "topic:politics",
+        "theme:power"
+      ]
+    },
+    {
+      "id": "ad_topic_survival",
+      "type": "topic",
+      "prompt": "Survival / apocalypse 🧊",
+      "tags": [
+        "topic:survival",
+        "theme:survival",
+        "genre:dystopian"
+      ]
+    },
+    {
+      "id": "ad_vibe_dark",
+      "type": "vibe",
+      "prompt": "Dark themes 🖤",
+      "tags": [
+        "vibe:dark",
+        "theme:survival"
+      ]
+    },
+    {
+      "id": "ad_vibe_twisty",
+      "type": "vibe",
+      "prompt": "Twists + mind-bending 🧠",
+      "tags": [
+        "vibe:twisty",
+        "genre:mystery"
+      ]
+    },
+    {
+      "id": "ad_vibe_epic",
+      "type": "vibe",
+      "prompt": "Epic scope 🌍",
+      "tags": [
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "ad_vibe_cozy",
+      "type": "vibe",
+      "prompt": "Cozy / character-driven ☕",
+      "tags": [
+        "vibe:cozy",
+        "theme:community",
+        "theme:relationships"
+      ]
+    },
+    {
+      "id": "ad_vibe_weird",
+      "type": "vibe",
+      "prompt": "Weird & experimental 🌀",
+      "tags": [
+        "vibe:weird"
+      ]
+    },
+    {
+      "id": "ad_vibe_emotional",
+      "type": "vibe",
+      "prompt": "Emotional / reflective 💭",
+      "tags": [
+        "vibe:emotional"
+      ]
+    },
+    {
+      "id": "ad_vibe_fast",
+      "type": "vibe",
+      "prompt": "High energy / fast 🔥",
+      "tags": [
+        "vibe:fast",
+        "pace:fast"
+      ]
+    },
+    {
+      "id": "ad_pace_fast",
+      "type": "pace",
+      "prompt": "Fast-paced ⚡",
+      "tags": [
+        "pace:fast",
+        "genre:adventure",
+        "vibe:fast"
+      ]
+    },
+    {
+      "id": "ad_pace_slow",
+      "type": "pace",
+      "prompt": "Slow burn 🐢",
+      "tags": [
+        "pace:slow",
+        "vibe:thoughtful"
+      ]
+    },
+    {
+      "id": "ad_pace_short",
+      "type": "pace",
+      "prompt": "Shorter reads 📘",
+      "tags": [
+        "pace:not_too_long"
+      ]
+    },
+    {
+      "id": "ad_char_antihero",
+      "type": "character",
+      "prompt": "Antihero main character 😈",
+      "tags": [
+        "character:antihero"
+      ]
+    },
+    {
+      "id": "ad_char_complex",
+      "type": "character",
+      "prompt": "Complex characters 🧩",
+      "tags": [
+        "character:complex"
+      ]
+    },
+    {
+      "id": "ad_char_found_family",
+      "type": "character",
+      "prompt": "Found family 🫶",
+      "tags": [
+        "theme:found_family",
+        "theme:family"
+      ]
+    },
+    {
+      "id": "ad_format_series",
+      "type": "format",
+      "prompt": "Series 📚",
+      "tags": [
+        "format:series"
+      ]
+    },
+    {
+      "id": "ad_format_standalone",
+      "type": "format",
+      "prompt": "Standalone novel 📖",
+      "tags": [
+        "format:standalone"
+      ]
+    },
+    {
+      "id": "ad_format_short_stories",
+      "type": "format",
+      "prompt": "Short stories 🍱",
+      "tags": [
+        "format:short_stories",
+        "pace:fast",
+        "format:anthology"
+      ]
+    },
+    {
+      "id": "ad_format_audio",
+      "type": "format",
+      "prompt": "Audiobook-friendly 🎧",
+      "tags": [
+        "format:audiobook_friendly"
+      ]
+    }
+  ]
+}

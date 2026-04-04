@@ -1,0 +1,485 @@
+{
+  "deckKey": "36",
+  "deckLabel": "Pre-Teens",
+  "version": 2,
+  "style": {
+    "lean": "fantasy_scifi_gaming_middle_grade",
+    "notes": "Simple but not babyish. Game-adjacent choices. Copyright-safe."
+  },
+  "rules": {
+    "targetSwipesBeforeRecommend": 12,
+    "allowUpToSwipesBeforeRecommend": 15,
+    "shuffle": "true_random_each_session"
+  },
+  "cards": [
+    {
+      "id": "36_genre_fantasy",
+      "type": "genre",
+      "prompt": "Fantasy worlds 🐉",
+      "tags": [
+        "genre:fantasy",
+        "vibe:whimsical",
+        "vibe:epic",
+        "theme:adventure"
+      ]
+    },
+    {
+      "id": "36_genre_scifi",
+      "type": "genre",
+      "prompt": "Sci-fi / future tech 🚀",
+      "tags": [
+        "genre:science_fiction",
+        "topic:ai",
+        "vibe:epic",
+        "theme:adventure"
+      ]
+    },
+    {
+      "id": "36_genre_adventure",
+      "type": "genre",
+      "prompt": "Adventure / quest 🗺️",
+      "tags": [
+        "genre:adventure",
+        "vibe:epic",
+        "pacing:fast_paced",
+        "theme:high_stakes"
+      ]
+    },
+    {
+      "id": "36_genre_mystery",
+      "type": "genre",
+      "prompt": "Mystery / clues 🔍",
+      "tags": [
+        "genre:mystery",
+        "vibe:quirky",
+        "theme:high_stakes"
+      ]
+    },
+    {
+      "id": "36_genre_humor",
+      "type": "genre",
+      "prompt": "Funny 😂",
+      "tags": [
+        "genre:comedy",
+        "vibe:playful",
+        "vibe:uplifting"
+      ]
+    },
+    {
+      "id": "36_genre_graphic",
+      "type": "format",
+      "prompt": "Graphic novels / comics 🖼️",
+      "tags": [
+        "format:graphic_novel",
+        "vibe:playful",
+        "genre:adventure"
+      ]
+    },
+    {
+      "id": "36_genre_superheroes",
+      "type": "genre",
+      "prompt": "Superheroes ⚡",
+      "tags": [
+        "genre:superheroes",
+        "vibe:heroic",
+        "vibe:epic",
+        "theme:high_stakes"
+      ]
+    },
+    {
+      "id": "36_genre_spooky_light",
+      "type": "genre",
+      "prompt": "Spooky (not too scary) 👻",
+      "tags": [
+        "genre:horror",
+        "vibe:spooky",
+        "vibe:uplifting",
+        "theme:courage"
+      ]
+    },
+    {
+      "id": "36_topic_gaming",
+      "type": "topic",
+      "prompt": "Gaming 🎮",
+      "tags": [
+        "vibe:energetic",
+        "theme:adventure",
+        "vibe:quirky"
+      ]
+    },
+    {
+      "id": "36_topic_trapped_in_game",
+      "type": "topic",
+      "prompt": "Trapped in a game 🕹️",
+      "tags": [
+        "genre:science_fiction",
+        "topic:ai",
+        "theme:survival",
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "36_topic_robots",
+      "type": "topic",
+      "prompt": "Robots 🤖",
+      "tags": [
+        "genre:science_fiction",
+        "topic:robots",
+        "vibe:quirky",
+        "theme:friendship"
+      ]
+    },
+    {
+      "id": "36_topic_dragons",
+      "type": "topic",
+      "prompt": "Dragons 🐲",
+      "tags": [
+        "genre:fantasy",
+        "vibe:epic",
+        "theme:adventure"
+      ]
+    },
+    {
+      "id": "36_topic_magic",
+      "type": "topic",
+      "prompt": "Magic ✨",
+      "tags": [
+        "genre:fantasy",
+        "vibe:whimsical",
+        "theme:adventure"
+      ]
+    },
+    {
+      "id": "36_topic_space",
+      "type": "topic",
+      "prompt": "Space / aliens 👽",
+      "tags": [
+        "genre:science_fiction",
+        "topic:space",
+        "vibe:epic",
+        "theme:adventure"
+      ]
+    },
+    {
+      "id": "36_topic_time_travel",
+      "type": "topic",
+      "prompt": "Time travel ⏳",
+      "tags": [
+        "genre:science_fiction",
+        "topic:time_travel",
+        "vibe:quirky",
+        "theme:adventure"
+      ]
+    },
+    {
+      "id": "36_topic_animals",
+      "type": "topic",
+      "prompt": "Animals 🐾",
+      "tags": [
+        "topic:animals",
+        "vibe:warm",
+        "theme:friendship"
+      ]
+    },
+    {
+      "id": "36_topic_dinosaurs",
+      "type": "topic",
+      "prompt": "Dinosaurs 🦖",
+      "tags": [
+        "topic:dinosaurs",
+        "genre:adventure",
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "36_topic_myths",
+      "type": "topic",
+      "prompt": "Myths / legends 🏛️",
+      "tags": [
+        "genre:mythology",
+        "genre:fantasy",
+        "vibe:epic",
+        "theme:adventure"
+      ]
+    },
+    {
+      "id": "36_topic_school",
+      "type": "topic",
+      "prompt": "School stories 🏫",
+      "tags": [
+        "topic:school",
+        "theme:friendship",
+        "vibe:warm"
+      ]
+    },
+    {
+      "id": "36_topic_friend_group",
+      "type": "topic",
+      "prompt": "Friend group / squad 🤝",
+      "tags": [
+        "theme:friendship",
+        "theme:community",
+        "vibe:cozy"
+      ]
+    },
+    {
+      "id": "36_topic_underwater",
+      "type": "topic",
+      "prompt": "Underwater / ocean 🌊",
+      "tags": [
+        "topic:ocean",
+        "genre:adventure",
+        "vibe:atmospheric"
+      ]
+    },
+    {
+      "id": "36_topic_survival",
+      "type": "topic",
+      "prompt": "Survival / tough situations 🧊",
+      "tags": [
+        "theme:survival",
+        "theme:high_stakes",
+        "vibe:epic",
+        "pacing:fast_paced"
+      ]
+    },
+    {
+      "id": "36_vibe_cozy",
+      "type": "vibe",
+      "prompt": "Cozy ☕",
+      "tags": [
+        "vibe:cozy",
+        "vibe:warm",
+        "theme:family"
+      ]
+    },
+    {
+      "id": "36_vibe_epic",
+      "type": "vibe",
+      "prompt": "Epic stakes 🌍",
+      "tags": [
+        "vibe:epic",
+        "theme:high_stakes",
+        "genre:adventure"
+      ]
+    },
+    {
+      "id": "36_vibe_weird",
+      "type": "vibe",
+      "prompt": "Weird (in a fun way) 🌀",
+      "tags": [
+        "vibe:weird",
+        "vibe:quirky",
+        "genre:fantasy"
+      ]
+    },
+    {
+      "id": "36_vibe_twisty",
+      "type": "vibe",
+      "prompt": "Twists + surprises 😮",
+      "tags": [
+        "vibe:quirky",
+        "genre:mystery",
+        "theme:high_stakes"
+      ]
+    },
+    {
+      "id": "36_vibe_brave",
+      "type": "vibe",
+      "prompt": "Brave heroes 💪",
+      "tags": [
+        "vibe:heroic",
+        "theme:courage",
+        "genre:adventure"
+      ]
+    },
+    {
+      "id": "36_vibe_chill",
+      "type": "vibe",
+      "prompt": "Chill (not stressful) 😌",
+      "tags": [
+        "vibe:calm",
+        "vibe:cozy",
+        "theme:community"
+      ]
+    },
+    {
+      "id": "36_pace_fast",
+      "type": "pace",
+      "prompt": "Fast-paced ⚡",
+      "tags": [
+        "pacing:fast_paced",
+        "vibe:energetic",
+        "theme:high_stakes"
+      ]
+    },
+    {
+      "id": "36_pace_short_chapters",
+      "type": "pace",
+      "prompt": "Short chapters ✅",
+      "tags": [
+        "pacing:short_chapters",
+        "pacing:concise"
+      ]
+    },
+    {
+      "id": "36_pace_not_too_long",
+      "type": "pace",
+      "prompt": "Not too long 📘",
+      "tags": [
+        "pacing:concise",
+        "pacing:short_chapters"
+      ]
+    },
+    {
+      "id": "36_format_series",
+      "type": "format",
+      "prompt": "Series please 📚",
+      "tags": [
+        "format:series",
+        "theme:friendship"
+      ]
+    },
+    {
+      "id": "36_format_short_stories",
+      "type": "format",
+      "prompt": "Short stories 🍱",
+      "tags": [
+        "format:short_stories",
+        "pacing:concise"
+      ]
+    },
+    {
+      "id": "36_format_audio",
+      "type": "format",
+      "prompt": "Audiobook-friendly 🎧",
+      "tags": [
+        "format:audiobook_friendly",
+        "pacing:concise"
+      ]
+    },
+    {
+      "id": "36_world_realistic",
+      "type": "world",
+      "prompt": "Real world 🌎",
+      "tags": [
+        "genre:realistic",
+        "vibe:warm",
+        "theme:community"
+      ]
+    },
+    {
+      "id": "36_world_fantasy",
+      "type": "world",
+      "prompt": "Make-believe world 🌈",
+      "tags": [
+        "genre:fantasy",
+        "vibe:whimsical",
+        "theme:adventure"
+      ]
+    },
+    {
+      "id": "36_genre_sports",
+      "type": "genre",
+      "prompt": "Sports stories 🏅",
+      "tags": [
+        "genre:sports",
+        "vibe:energetic",
+        "theme:courage",
+        "theme:friendship"
+      ]
+    },
+    {
+      "id": "36_genre_realistic_fun",
+      "type": "genre",
+      "prompt": "Real-life adventures 🚲",
+      "tags": [
+        "genre:realistic",
+        "genre:adventure",
+        "vibe:warm",
+        "theme:friendship"
+      ]
+    },
+    {
+      "id": "36_topic_detectives",
+      "type": "topic",
+      "prompt": "Kid detectives 🕵️",
+      "tags": [
+        "genre:mystery",
+        "theme:friendship",
+        "vibe:quirky",
+        "pacing:fast_paced"
+      ]
+    },
+    {
+      "id": "36_topic_cooking",
+      "type": "topic",
+      "prompt": "Cooking / baking 🍪",
+      "tags": [
+        "theme:community",
+        "theme:family",
+        "vibe:cozy",
+        "vibe:warm"
+      ]
+    },
+    {
+      "id": "36_topic_competitions",
+      "type": "topic",
+      "prompt": "Contests / competitions 🏆",
+      "tags": [
+        "theme:high_stakes",
+        "vibe:energetic",
+        "theme:courage"
+      ]
+    },
+    {
+      "id": "36_vibe_goofy",
+      "type": "vibe",
+      "prompt": "Goofy + silly 🤪",
+      "tags": [
+        "genre:comedy",
+        "vibe:playful",
+        "vibe:quirky"
+      ]
+    },
+    {
+      "id": "36_vibe_heartfelt",
+      "type": "vibe",
+      "prompt": "Heartfelt 💛",
+      "tags": [
+        "vibe:warm",
+        "theme:friendship",
+        "theme:family"
+      ]
+    },
+    {
+      "id": "36_format_standalone",
+      "type": "format",
+      "prompt": "One-and-done story 📗",
+      "tags": [
+        "format:standalone",
+        "pacing:concise"
+      ]
+    },
+    {
+      "id": "36_world_historical",
+      "type": "world",
+      "prompt": "Past times / history 🕰️",
+      "tags": [
+        "genre:historical_fiction",
+        "theme:adventure",
+        "vibe:atmospheric"
+      ]
+    },
+    {
+      "id": "36_pace_page_turner",
+      "type": "pace",
+      "prompt": "Page-turner 🔥",
+      "tags": [
+        "pacing:fast_paced",
+        "theme:high_stakes",
+        "vibe:epic"
+      ]
+    }
+  ]
+}

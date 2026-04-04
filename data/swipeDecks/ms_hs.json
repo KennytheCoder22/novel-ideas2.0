@@ -1,0 +1,408 @@
+{
+  "deckKey": "ms_hs",
+  "deckLabel": "Teens",
+  "version": 2,
+  "style": {
+    "lean": "fantasy_scifi_gaming",
+    "notes": "Text-first, copyright-safe. Built to feel modern, game-adjacent, and fast."
+  },
+  "cards": [
+    {
+      "id": "ms_genre_fantasy",
+      "type": "genre",
+      "prompt": "Fantasy worlds 🐉",
+      "tags": [
+        "genre:fantasy",
+        "world:mythic",
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "ms_genre_scifi",
+      "type": "genre",
+      "prompt": "Sci-fi / future tech 🚀",
+      "tags": [
+        "genre:science_fiction",
+        "world:near_future",
+        "topic:technology"
+      ]
+    },
+    {
+      "id": "ms_genre_dystopian",
+      "type": "genre",
+      "prompt": "Dystopian / broken future 🌆",
+      "tags": [
+        "genre:dystopian",
+        "world:dystopian",
+        "theme:survival"
+      ]
+    },
+    {
+      "id": "ms_genre_adventure",
+      "type": "genre",
+      "prompt": "Adventure / quest 🗺️",
+      "tags": [
+        "genre:adventure",
+        "vibe:exciting",
+        "pace:fast"
+      ]
+    },
+    {
+      "id": "ms_genre_mystery",
+      "type": "genre",
+      "prompt": "Mystery / secrets 🕵️",
+      "tags": [
+        "genre:mystery",
+        "genre:suspense",
+        "pace:fast"
+      ]
+    },
+    {
+      "id": "ms_genre_horror_light",
+      "type": "genre",
+      "prompt": "Spooky (not too scary) 👻",
+      "tags": [
+        "genre:horror",
+        "tone:light",
+        "vibe:spooky",
+        "vibe:dark"
+      ]
+    },
+    {
+      "id": "ms_genre_horror",
+      "type": "genre",
+      "prompt": "Actually scary 😱",
+      "tags": [
+        "genre:horror",
+        "tone:dark",
+        "vibe:spooky",
+        "vibe:dark"
+      ]
+    },
+    {
+      "id": "ms_genre_urban_fantasy",
+      "type": "genre",
+      "prompt": "Magic in the real world ✨🏙️",
+      "tags": [
+        "genre:fantasy"
+      ]
+    },
+    {
+      "id": "ms_genre_superpowers",
+      "type": "genre",
+      "prompt": "Superpowers / heroes ⚡",
+      "tags": [
+        "genre:superheroes",
+        "topic:justice",
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "ms_genre_realistic_gamers",
+      "type": "genre",
+      "prompt": "Realistic stories… but gamer-coded 🎮",
+      "tags": [
+        "genre:realistic_fiction",
+        "topic:gaming",
+        "genre:adventure",
+        "format:series"
+      ]
+    },
+    {
+      "id": "ms_vibe_funny",
+      "type": "vibe",
+      "prompt": "Make me laugh 😂",
+      "tags": [
+        "vibe:funny",
+        "genre:humor",
+        "theme:friendship"
+      ]
+    },
+    {
+      "id": "ms_vibe_dark",
+      "type": "vibe",
+      "prompt": "Darker vibe 🖤",
+      "tags": [
+        "vibe:dark",
+        "vibe:gritty",
+        "theme:survival"
+      ]
+    },
+    {
+      "id": "ms_vibe_cozy",
+      "type": "vibe",
+      "prompt": "Cozy + comforting ☕",
+      "tags": [
+        "vibe:cozy",
+        "vibe:heartwarming",
+        "theme:community"
+      ]
+    },
+    {
+      "id": "ms_vibe_epic",
+      "type": "vibe",
+      "prompt": "Epic stakes (save the world) 🌍",
+      "tags": [
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "ms_vibe_weird",
+      "type": "vibe",
+      "prompt": "Weird in a good way 🌀",
+      "tags": [
+        "vibe:weird"
+      ]
+    },
+    {
+      "id": "ms_vibe_twisty",
+      "type": "vibe",
+      "prompt": "Plot twists!! 🧠",
+      "tags": [
+        "vibe:twisty"
+      ]
+    },
+    {
+      "id": "ms_vibe_chill",
+      "type": "vibe",
+      "prompt": "Chill, not stressful 😌",
+      "tags": [
+        "vibe:chill"
+      ]
+    },
+    {
+      "id": "ms_vibe_hype",
+      "type": "vibe",
+      "prompt": "High energy / hype 🔥",
+      "tags": [
+        "vibe:fast"
+      ]
+    },
+    {
+      "id": "ms_pace_fast",
+      "type": "pace",
+      "prompt": "Fast-paced (no slow starts) ⚡",
+      "tags": [
+        "pace:fast",
+        "vibe:fast",
+        "genre:adventure"
+      ]
+    },
+    {
+      "id": "ms_pace_short_chapters",
+      "type": "pace",
+      "prompt": "Short chapters pls 🙏",
+      "tags": [
+        "pace:short_chapters"
+      ]
+    },
+    {
+      "id": "ms_pace_not_too_long",
+      "type": "pace",
+      "prompt": "Not super long 📘",
+      "tags": [
+        "pace:not_too_long"
+      ]
+    },
+    {
+      "id": "ms_pace_series",
+      "type": "pace",
+      "prompt": "Give me a series 📚",
+      "tags": [
+        "format:series"
+      ]
+    },
+    {
+      "id": "ms_access_easy",
+      "type": "access",
+      "prompt": "Easy to get into (low effort) ✅",
+      "tags": [
+        "access:easy"
+      ]
+    },
+    {
+      "id": "ms_access_high_readability",
+      "type": "access",
+      "prompt": "Simple language, strong story 🧩",
+      "tags": [
+        "access:readable"
+      ]
+    },
+    {
+      "id": "ms_topic_gaming",
+      "type": "topic",
+      "prompt": "Gaming / esports 🎮",
+      "tags": [
+        "topic:gaming",
+        "genre:adventure",
+        "format:series"
+      ]
+    },
+    {
+      "id": "ms_topic_vr",
+      "type": "topic",
+      "prompt": "VR / trapped in a game 🕶️",
+      "tags": [
+        "topic:virtual_reality",
+        "topic:gaming",
+        "genre:science_fiction",
+        "world:near_future",
+        "genre:adventure",
+        "format:series"
+      ]
+    },
+    {
+      "id": "ms_topic_ai",
+      "type": "topic",
+      "prompt": "AI gone weird 🤖",
+      "tags": [
+        "topic:ai",
+        "genre:science_fiction",
+        "topic:technology",
+        "world:near_future"
+      ]
+    },
+    {
+      "id": "ms_topic_space",
+      "type": "topic",
+      "prompt": "Space / aliens / planets 👽",
+      "tags": [
+        "topic:space",
+        "genre:science_fiction",
+        "world:space",
+        "world:near_future",
+        "topic:technology"
+      ]
+    },
+    {
+      "id": "ms_topic_time",
+      "type": "topic",
+      "prompt": "Time travel ⏳",
+      "tags": [
+        "topic:time_travel",
+        "genre:science_fiction",
+        "world:near_future",
+        "topic:technology"
+      ]
+    },
+    {
+      "id": "ms_topic_dragons",
+      "type": "topic",
+      "prompt": "Dragons 🐲",
+      "tags": [
+        "topic:dragons",
+        "genre:fantasy",
+        "world:mythic",
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "ms_topic_magic_school",
+      "type": "topic",
+      "prompt": "Training / magic school / leveling up 🧙",
+      "tags": [
+        "topic:training",
+        "topic:magic_school",
+        "vibe:progression"
+      ]
+    },
+    {
+      "id": "ms_topic_heist",
+      "type": "topic",
+      "prompt": "Heists / crew missions 💼",
+      "tags": [
+        "topic:heist",
+        "genre:adventure",
+        "vibe:exciting",
+        "pace:fast"
+      ]
+    },
+    {
+      "id": "ms_topic_survival",
+      "type": "topic",
+      "prompt": "Survival / outsmart the world 🧊",
+      "tags": [
+        "topic:survival"
+      ]
+    },
+    {
+      "id": "ms_topic_monsters",
+      "type": "topic",
+      "prompt": "Monsters + creature fights 🐺",
+      "tags": [
+        "topic:monsters",
+        "genre:fantasy",
+        "world:mythic",
+        "vibe:epic"
+      ]
+    },
+    {
+      "id": "ms_char_found_family",
+      "type": "character",
+      "prompt": "Found-family / squad goals 🫶",
+      "tags": [
+        "theme:found_family"
+      ]
+    },
+    {
+      "id": "ms_char_antihero",
+      "type": "character",
+      "prompt": "Antihero main character 😈",
+      "tags": [
+        "character:antihero"
+      ]
+    },
+    {
+      "id": "ms_char_strong_lead",
+      "type": "character",
+      "prompt": "Strong main character 💪",
+      "tags": [
+        "character:strong_lead"
+      ]
+    },
+    {
+      "id": "ms_char_duo",
+      "type": "character",
+      "prompt": "Best friend duo 🤝",
+      "tags": [
+        "character:friend_duo"
+      ]
+    },
+    {
+      "id": "ms_format_graphic_novel",
+      "type": "format",
+      "prompt": "Graphic novels / manga vibes 🖼️",
+      "tags": [
+        "format:graphic_novel",
+        "genre:comics",
+        "vibe:visual"
+      ]
+    },
+    {
+      "id": "ms_format_short_stories",
+      "type": "format",
+      "prompt": "Short stories (variety pack) 🍱",
+      "tags": [
+        "format:short_stories",
+        "pace:fast",
+        "format:anthology"
+      ]
+    },
+    {
+      "id": "ms_format_audio",
+      "type": "format",
+      "prompt": "Audiobook-friendly 🎧",
+      "tags": [
+        "format:audiobook_friendly"
+      ]
+    },
+    {
+      "id": "ms_format_verse",
+      "type": "format",
+      "prompt": "Verse novel (fast pages) 📝",
+      "tags": [
+        "format:verse_novel"
+      ]
+    }
+  ]
+}

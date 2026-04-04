@@ -1,0 +1,1899 @@
+// screens/SwipeDeckScreen.tsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Image,
+  PanResponder,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Platform,
+  Pressable,
+} from "react-native";
+import * as Clipboard from "expo-clipboard";
+import { useRouter } from "expo-router";
+import { getDeckLabel } from "../constants/deckLabels";
+import type { SwipeDeck, SwipeDeckCard } from "../data/swipeDecks/types";
+import * as k2DeckMod from "../data/swipeDecks/k2";
+import * as deck36Mod from "../data/swipeDecks/36";
+import msHsDeck from "../data/swipeDecks/ms_hs";
+import adultDeck from "../data/swipeDecks/adult";
+import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
+import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
+import { getRecommendations } from "./recommenders/recommenderRouter";
+import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
+import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
+import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
+import { buildTasteProfile } from "./recommenders/taste/tasteProfileBuilder";
+import type { TasteFeedbackEvent } from "./recommenders/taste/types";
+import { RecommendationPipeline } from "./recommenders/taste/recommendationPipeline";
+import type { PersonalityProfile, TasteVector } from "./recommenders/taste/personalityProfile";
+import { initializePersonality } from "./recommenders/taste/personalityProfile";
+import type { MoodProfile, SwipeSignal } from "./recommenders/taste/sessionMood";
+import type { RecommenderInput } from "./recommenders/types";
+import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/sophisticationModel";
+import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
+
+const DEFAULT_SWIPE_CATEGORIES = {
+  books: true,
+  movies: true,
+  tv: true,
+  games: true,
+  albums: true,
+  youtube: true,
+  anime: true,
+  podcasts: true,
+};
+
+const DEFAULT_ADULT_CARDS: any[] = [];
+
+type DeckKey = SwipeDeck["deckKey"];
+
+type OLDoc = {
+  key?: string;
+  title?: string;
+  author_name?: string[];
+  first_publish_year?: number;
+  cover_i?: number | string;
+};
+
+type FallbackBook = {
+  title: string;
+  author: string;
+  year?: number;
+};
+
+type RecItem =
+  | { kind: "open_library"; doc: OLDoc }
+  | { kind: "fallback"; book: FallbackBook };
+
+type FeedbackKind = "already_read" | "not_interested" | "next";
+type RecFeedback = { itemId: string; kind: FeedbackKind; rating?: 1 | 2 | 3 | 4 | 5 };
+
+type RecommendationHistoryBucket = {
+  recommendedIds: Set<string>;
+  recommendedKeys: Set<string>;
+  authors: Set<string>;
+  seriesKeys: Set<string>;
+  rejectedIds: Set<string>;
+  rejectedKeys: Set<string>;
+};
+
+type Props = {
+  onOpenSearch?: () => void;
+  enabledDecks?: Partial<Record<DeckKey, boolean>>;
+  swipeCategories?: {
+    books: boolean;
+    movies: boolean;
+    tv: boolean;
+    games: boolean;
+    albums?: boolean;
+    youtube?: boolean;
+    anime?: boolean;
+    podcasts?: boolean;
+  };
+};
+
+function resolveDeckFromModule(mod: any, expectedKey: DeckKey, fallbackLabel: string): SwipeDeck {
+  const candidates: any[] = [];
+  if (mod && typeof mod === "object") {
+    if (mod.default) candidates.push(mod.default);
+    for (const v of Object.values(mod)) candidates.push(v);
+    candidates.push(mod);
+  } else if (mod) {
+    candidates.push(mod);
+  }
+
+  for (const c of candidates) {
+    if (!c || typeof c !== "object") continue;
+    const dk = (c as any).deckKey;
+    const cards = (c as any).cards;
+    if (dk === expectedKey && Array.isArray(cards)) {
+      const rules = (c as any).rules;
+      if (rules && typeof rules === "object") return c as SwipeDeck;
+
+      const target = (c as any).targetSwipesBeforeRecommend;
+      const allow = (c as any).allowUpToSwipesBeforeRecommend;
+      if (typeof target === "number" && typeof allow === "number") {
+        return {
+          ...(c as any),
+          rules: { targetSwipesBeforeRecommend: target, allowUpToSwipesBeforeRecommend: allow },
+        } as SwipeDeck;
+      }
+
+      return {
+        ...(c as any),
+        rules: { targetSwipesBeforeRecommend: 6, allowUpToSwipesBeforeRecommend: 10 },
+      } as SwipeDeck;
+    }
+  }
+
+  const maybeArr = (mod as any)?.default ?? mod;
+  if (Array.isArray(maybeArr)) {
+    return {
+      deckKey: expectedKey,
+      deckLabel: fallbackLabel,
+      rules: { targetSwipesBeforeRecommend: 6, allowUpToSwipesBeforeRecommend: 10 },
+      cards: maybeArr as any,
+    } as SwipeDeck;
+  }
+
+  return ((mod as any)?.default ?? mod) as SwipeDeck;
+}
+
+async function lookupOpenLibraryCover(
+  title: string,
+  author?: string
+): Promise<{ coverUrl?: string; olWorkId?: string }> {
+  const qParts: string[] = [];
+  const safeTitle = String(title || "").trim();
+  if (safeTitle) qParts.push(`intitle:${safeTitle}`);
+  const safeAuthor = String(author || "").trim();
+  if (safeAuthor) qParts.push(`inauthor:${safeAuthor}`);
+  if (qParts.length === 0) return {};
+
+  const params = new URLSearchParams();
+  params.set("q", qParts.join(" "));
+  params.set("printType", "books");
+  params.set("orderBy", "relevance");
+  params.set("maxResults", "1");
+  params.set("langRestrict", "en");
+
+  const apiKey = (process as any)?.env?.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY;
+  if (typeof apiKey === "string" && apiKey.trim()) params.set("key", apiKey.trim());
+
+  const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    console.warn("[NovelIdeas][coverLookup] Google Books lookup failed", { status: res.status, url });
+    return {};
+  }
+
+  const json = await res.json();
+  const item = json?.items?.[0];
+  const vi = item?.volumeInfo || {};
+  const imageLinks = vi?.imageLinks || {};
+  const thumb: string | undefined =
+    (typeof imageLinks?.thumbnail === "string" ? imageLinks.thumbnail : undefined) ||
+    (typeof imageLinks?.smallThumbnail === "string" ? imageLinks.smallThumbnail : undefined);
+  if (!thumb) return {};
+  const coverUrl = thumb.replace(/^http:\/\//, "https://");
+  return { coverUrl };
+}
+
+async function lookupWikipediaThumbnail(wikiTitle: string): Promise<{ imageUrl?: string }> {
+  try {
+    const safeTitle = encodeURIComponent(wikiTitle.replace(/\s+/g, " ").trim());
+    const url = `https://en.wikipedia.org/api/rest_v1/page/summary/${safeTitle}`;
+    const res = await fetch(url);
+    if (!res.ok) return {};
+    const data: any = await res.json();
+    const thumb = data?.thumbnail?.source as string | undefined;
+    if (thumb && typeof thumb === "string" && thumb.startsWith("http")) return { imageUrl: thumb };
+    return {};
+  } catch {
+    return {};
+  }
+}
+
+const DEFAULT_K2_CARDS: any[] = [];
+
+const k2DeckResolved: SwipeDeck = resolveDeckFromModule(k2DeckMod as any, "k2", "K–2");
+const k2Deck: SwipeDeck =
+  k2DeckResolved && Array.isArray((k2DeckResolved as any).cards) && (k2DeckResolved as any).cards.length > 0
+    ? k2DeckResolved
+    : ({
+        deckKey: "k2",
+        deckLabel: "K–2",
+        rules: { targetSwipesBeforeRecommend: 6, allowUpToSwipesBeforeRecommend: 10 },
+        cards: DEFAULT_K2_CARDS as any,
+      } as SwipeDeck);
+
+const DEFAULT_36_CARDS: any[] = [];
+
+const deck36Resolved: SwipeDeck = ((deck36Mod as any)?.default ?? (deck36Mod as any)?.deck ?? (deck36Mod as any)?.deck36 ?? (deck36Mod as any)) as SwipeDeck;
+
+const deck36: SwipeDeck = (() => {
+  const candidate: any = deck36Resolved && typeof deck36Resolved === "object" ? deck36Resolved : null;
+  const cardsFromCandidate = candidate?.cards;
+  const looksLikeBookCards =
+    Array.isArray(cardsFromCandidate) &&
+    cardsFromCandidate.length > 0 &&
+    typeof cardsFromCandidate[0] === "object" &&
+    (typeof cardsFromCandidate[0]?.title === "string" ||
+      typeof cardsFromCandidate[0]?.author === "string" ||
+      typeof cardsFromCandidate[0]?.genre === "string");
+
+  const cards: any[] = looksLikeBookCards ? cardsFromCandidate : DEFAULT_36_CARDS;
+  const deckKey = candidate?.deckKey ?? "36";
+  const deckLabel = candidate?.deckLabel ?? "Grades 3–6";
+  const rules = candidate?.rules ?? { targetSwipesBeforeRecommend: 8, allowUpToSwipesBeforeRecommend: 12 };
+  return { deckKey, deckLabel, rules, cards } as SwipeDeck;
+})();
+
+const DEFAULT_MSHS_CARDS: any[] = [];
+
+const msHsDeckResolved: SwipeDeck = resolveDeckFromModule(({ default: msHsDeck } as any), "ms_hs", "Middle / High School");
+
+const msHsDeckFinal: SwipeDeck = (() => {
+  const candidate: any = msHsDeckResolved && typeof msHsDeckResolved === "object" ? msHsDeckResolved : null;
+  const cardsFromCandidate = candidate?.cards;
+
+  const cards: any[] =
+    Array.isArray(cardsFromCandidate) && cardsFromCandidate.length > 0
+      ? cardsFromCandidate
+      : DEFAULT_MSHS_CARDS;
+
+  const deckKey = candidate?.deckKey ?? "ms_hs";
+  const deckLabel = candidate?.deckLabel ?? "Middle / High School";
+  const rules = candidate?.rules ?? { targetSwipesBeforeRecommend: 10, allowUpToSwipesBeforeRecommend: 15 };
+
+  return { deckKey, deckLabel, rules, cards } as SwipeDeck;
+})();
+
+const adultDeckResolved: SwipeDeck = resolveDeckFromModule(({ default: adultDeck } as any), "adult", "Advanced / Adult Readers");
+
+const adultDeckFinal: SwipeDeck = (() => {
+  const candidate: any = adultDeckResolved && typeof adultDeckResolved === "object" ? adultDeckResolved : null;
+  const cardsFromCandidate = candidate?.cards;
+
+  const cards: any[] =
+    Array.isArray(cardsFromCandidate) && cardsFromCandidate.length > 0
+      ? cardsFromCandidate
+      : DEFAULT_ADULT_CARDS;
+
+  const deckKey = candidate?.deckKey ?? "adult";
+  const deckLabel = candidate?.deckLabel ?? "Advanced / Adult Readers";
+  const rules = candidate?.rules ?? { targetSwipesBeforeRecommend: 10, allowUpToSwipesBeforeRecommend: 16 };
+
+  return { deckKey, deckLabel, rules, cards } as SwipeDeck;
+})();
+
+function randomIntInclusive(min: number, max: number) {
+  const lo = Math.ceil(min);
+  const hi = Math.floor(max);
+  return Math.floor(Math.random() * (hi - lo + 1)) + lo;
+}
+
+function shuffleArray<T>(arr: T[]) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = a[i];
+    a[i] = a[j];
+    a[j] = tmp;
+  }
+  return a;
+}
+
+function cardCategoryFromTags(card: any): "books" | "movies" | "tv" | "games" | "albums" | "youtube" | "anime" | "podcasts" {
+  const tags = Array.isArray(card?.tags) ? card.tags : [];
+  const mediaTag = tags.find((t: any) => typeof t === "string" && t.startsWith("media:"));
+  if (!mediaTag) return "books";
+  const v = String(mediaTag).slice("media:".length).toLowerCase();
+  if (v === "tv" || v === "show" || v === "shows") return "tv";
+  if (v === "movie" || v === "movies") return "movies";
+  if (v === "game" || v === "games") return "games";
+  if (v === "album" || v === "albums") return "albums";
+  if (v === "youtube" || v === "video") return "youtube";
+  if (v === "anime") return "anime";
+  if (v === "podcast" || v === "podcasts") return "podcasts";
+  return "books";
+}
+
+function filterDeckCardsByCategory(deck: SwipeDeck, enabled?: any): SwipeDeck {
+  const cats = { ...DEFAULT_SWIPE_CATEGORIES, ...(enabled || {}) };
+  const cards = Array.isArray((deck as any).cards) ? ((deck as any).cards as any[]) : [];
+  const filtered = cards.filter((c) => {
+    const cat = cardCategoryFromTags(c);
+    if (cat === "books") return !!cats.books;
+    if (cat === "movies") return !!cats.movies;
+    if (cat === "tv") return !!cats.tv;
+    if (cat === "games") return !!cats.games;
+    if (cat === "albums") return !!cats.albums;
+    if (cat === "youtube") return !!cats.youtube;
+    if (cat === "anime") return !!cats.anime;
+    if (cat === "podcasts") return !!cats.podcasts;
+    return true;
+  });
+  return { ...(deck as any), cards: filtered } as SwipeDeck;
+}
+
+function getDeckByKey(key: DeckKey): SwipeDeck {
+  if (key === "k2") return k2Deck;
+  if (key === "36") return deck36;
+  if (key === "ms_hs") return msHsDeckFinal;
+  return adultDeckFinal;
+}
+
+function deckLabel(key: DeckKey, compact = false) {
+  return getDeckLabel(key as any, { compact });
+}
+
+function addTags(counts: TagCounts, tags: string[], delta: number) {
+  const next: TagCounts = { ...counts };
+  for (const t of tags) {
+    if (!t) continue;
+    const val = (next[t] || 0) + delta;
+    if (val === 0) delete next[t];
+    else next[t] = val;
+  }
+  return next;
+}
+
+function expandTeenCompanionTags(deckKey: DeckKey, tags: string[]): string[] {
+  const base = Array.isArray(tags) ? tags.filter(Boolean) : [];
+  if (deckKey !== "ms_hs") return base;
+
+  const out = [...base];
+  const hasAnime = base.includes("media:anime");
+  const hasGraphicNovel = base.includes("format:graphic_novel");
+  const hasComicLike =
+    hasAnime ||
+    hasGraphicNovel ||
+    base.includes("genre:animation");
+
+  if (hasAnime) {
+    out.push("format:graphic_novel");
+    out.push("topic:manga");
+    out.push("vibe:fast");
+  }
+
+  if (hasComicLike) {
+    out.push("format:graphic_novel");
+  }
+
+  return Array.from(new Set(out));
+}
+
+function docId(d: OLDoc): string {
+  return String(d.key || `${d.title || "untitled"}::${d.author_name?.[0] || "unknown"}`);
+}
+function fallbackId(b: FallbackBook): string {
+  return `fallback::${b.title}::${b.author}`;
+}
+
+function normalizeMemoryToken(value: unknown): string {
+  return String(value || "").trim().toLowerCase();
+}
+
+function deriveSeriesKeyFromTitle(title: unknown): string {
+  const normalized = normalizeMemoryToken(title)
+    .replace(/\s*\([^)]*\)\s*/g, " ")
+    .replace(/\s*\[[^\]]*\]\s*/g, " ")
+    .split(":")[0]
+    .replace(/,?\s+(book|bk|vol(?:ume)?|part|#)\s*\d+.*$/i, "")
+    .replace(/\s+\d+\s*$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return normalized;
+}
+
+function createRecommendationHistoryBucket(): RecommendationHistoryBucket {
+  return {
+    recommendedIds: new Set<string>(),
+    recommendedKeys: new Set<string>(),
+    authors: new Set<string>(),
+    seriesKeys: new Set<string>(),
+    rejectedIds: new Set<string>(),
+    rejectedKeys: new Set<string>(),
+  };
+}
+
+function uniqueMemoryValues(...groups: Array<Array<string | undefined> | undefined>): string[] {
+  const out = new Set<string>();
+  for (const group of groups) {
+    if (!Array.isArray(group)) continue;
+    for (const value of group) {
+      const normalized = normalizeMemoryToken(value);
+      if (normalized) out.add(normalized);
+    }
+  }
+  return Array.from(out);
+}
+
+function historyIdentityFromDoc(doc: OLDoc | undefined): { id?: string; key?: string; authors: string[]; seriesKey?: string } {
+  if (!doc) return { authors: [] };
+
+  const normalizedKey = normalizeMemoryToken(doc.key);
+  const normalizedId = normalizeMemoryToken(docId(doc));
+  const authors = Array.isArray(doc.author_name)
+    ? doc.author_name.map((name) => normalizeMemoryToken(name)).filter(Boolean)
+    : [];
+  const seriesKey = deriveSeriesKeyFromTitle(doc.title);
+
+  return {
+    id: normalizedId || undefined,
+    key: normalizedKey || undefined,
+    authors,
+    seriesKey: seriesKey || undefined,
+  };
+}
+
+function ratingLabel(r: 1 | 2 | 3 | 4 | 5) {
+  if (r === 5) return "Loved it";
+  if (r === 4) return "Liked it";
+  if (r === 3) return "It was ok";
+  if (r === 2) return "Didn't like it";
+  return "Hated it";
+}
+
+function numberOrZero(value: unknown): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function tasteVectorFromAxes(axes: Record<string, number> | undefined): TasteVector {
+  const safeAxes = axes ?? {};
+  return {
+    ideaDensity: numberOrZero(safeAxes.ideaDensity ?? (safeAxes as any).idea_density),
+    darkness: numberOrZero(safeAxes.darkness),
+    warmth: numberOrZero(safeAxes.warmth),
+    realism: numberOrZero(safeAxes.realism),
+    characterFocus: numberOrZero(safeAxes.characterFocus ?? (safeAxes as any).character_focus),
+    pacing: numberOrZero(safeAxes.pacing),
+  };
+}
+
+function cardTagCounts(card: any): TagCounts {
+  const tags = Array.isArray(card?.tags) ? card.tags.filter((t: any) => typeof t === "string" && t.trim()) : [];
+  if (tags.length > 0) {
+    return tags.reduce((acc: TagCounts, tag: string) => {
+      acc[tag] = (acc[tag] || 0) + 1;
+      return acc;
+    }, {});
+  }
+
+  if (typeof card?.genre === "string" && card.genre.trim()) {
+    return { [`genre:${card.genre.trim()}`]: 1 };
+  }
+
+  return {};
+}
+
+function swipeSignalFromCard(card: SwipeDeckCard, direction: SwipeSignal["direction"]): SwipeSignal {
+  const counts = cardTagCounts(card as any);
+  const singleCardTaste = buildTasteProfile({
+    tagCounts: counts,
+    feedback: [] as TasteFeedbackEvent[],
+    itemTraitsById: {},
+  });
+
+  return {
+    bookId:
+      String((card as any)?.id || "") ||
+      `${String((card as any)?.title || "untitled")}::${String((card as any)?.author || "unknown")}`,
+    direction,
+    vector: tasteVectorFromAxes((singleCardTaste as any)?.axes),
+    timestamp: new Date().toISOString(),
+  };
+}
+
+function mergeActiveTasteIntoProfile(baseProfile: any, activeVector: TasteVector | null) {
+  if (!activeVector) return baseProfile;
+
+  return {
+    ...baseProfile,
+    axes: {
+      ...(baseProfile?.axes || {}),
+      ideaDensity: activeVector.ideaDensity,
+      darkness: activeVector.darkness,
+      warmth: activeVector.warmth,
+      realism: activeVector.realism,
+      characterFocus: activeVector.characterFocus,
+      pacing: activeVector.pacing,
+    },
+    confidence: Math.max(numberOrZero(baseProfile?.confidence), 0.25),
+  };
+}
+
+function formatTasteVectorPreview(vector: TasteVector | null | undefined) {
+  if (!vector) return "(flat)";
+  const entries = Object.entries(vector)
+    .filter(([, value]) => Math.abs(value) >= 0.15)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 8)
+    .map(([axis, value]) => `${axis}:${value > 0 ? "+" : ""}${value.toFixed(2)}`);
+
+  return entries.length > 0 ? entries.join(", ") : "(flat)";
+}
+
+export default function SwipeDeckScreen(props: Props) {
+  const router = useRouter();
+  const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
+  const isSmallScreen = windowWidth < 420 || windowHeight < 750;
+  const needsCardOffset = isSmallScreen || (Platform.OS === "web" && windowWidth < 600);
+
+  const [cardStageHeight, setCardStageHeight] = useState<number>(0);
+  const [deckKey, setDeckKey] = useState<DeckKey>("ms_hs");
+
+  const enabledDecks = props.enabledDecks ?? {};
+  const enabledDeckList = useMemo(
+    () => (["k2", "36", "ms_hs", "adult"] as DeckKey[]).filter((k) => enabledDecks[k] !== false),
+    [enabledDecks]
+  );
+
+  useEffect(() => {
+    if (enabledDecks[deckKey] === false) {
+      const next = enabledDeckList[0];
+      if (next && next !== deckKey) setDeckKey(next);
+    }
+  }, [deckKey, enabledDecks, enabledDeckList]);
+
+  const [sessionNonce, setSessionNonce] = useState(0);
+
+  const deck = useMemo(
+    () => filterDeckCardsByCategory(getDeckByKey(deckKey), props.swipeCategories),
+    [deckKey, props.swipeCategories]
+  );
+
+  const requiredSwipes = useMemo(() => {
+    const min = deck.rules.targetSwipesBeforeRecommend;
+    const max = deck.rules.allowUpToSwipesBeforeRecommend;
+    return randomIntInclusive(min, max);
+  }, [deckKey, sessionNonce, deck.rules.allowUpToSwipesBeforeRecommend, deck.rules.targetSwipesBeforeRecommend]);
+
+  const cards = useMemo(() => shuffleArray(deck.cards), [deckKey, sessionNonce, deck.cards]);
+
+  const [seenCardKeys, setSeenCardKeys] = useState<string[]>([]);
+  const [recentCardKeys, setRecentCardKeys] = useState<string[]>([]);
+  const [rightSwipes, setRightSwipes] = useState(0);
+  const [leftSwipes, setLeftSwipes] = useState(0);
+  const [downSwipes, setDownSwipes] = useState(0);
+
+  const [tagCounts, setTagCounts] = useState<TagCounts>({});
+
+  const [recQuery, setRecQuery] = useState<string>("");
+  const [recEngineLabel, setRecEngineLabel] = useState<string>("");
+  const [recLoading, setRecLoading] = useState(false);
+  const [recError, setRecError] = useState<string | null>(null);
+  const [recItems, setRecItems] = useState<RecItem[]>([]);
+  const [recIndex, setRecIndex] = useState(0);
+  const [recCoverCache, setRecCoverCache] = useState<Record<string, string>>({});
+  const [autoSearched, setAutoSearched] = useState(false);
+
+  const [showRating, setShowRating] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [showEqualizer, setShowEqualizer] = useState(false);
+  const [profileOverridesByLane, setProfileOverridesByLane] = useState<Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>>({});
+  const [ratingPreview, setRatingPreview] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
+  const [feedback, setFeedback] = useState<RecFeedback[]>([]);
+
+  const [lastRecommendationInput, setLastRecommendationInput] = useState<RecommenderInput | null>(null);
+  const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
+  const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
+
+  const tasteProfile = useMemo(() => {
+    return buildTasteProfile({
+      tagCounts,
+      feedback: feedback as TasteFeedbackEvent[],
+      itemTraitsById: {},
+    });
+  }, [tagCounts, feedback]);
+
+  const [sessionMoodProfile, setSessionMoodProfile] = useState<MoodProfile | null>(null);
+  const [personalityProfileState, setPersonalityProfileState] = useState<PersonalityProfile | null>(null);
+  const [activeTasteVector, setActiveTasteVector] = useState<TasteVector | null>(null);
+  const [activeTasteWeights, setActiveTasteWeights] = useState<{ personalityWeight: number; moodWeight: number } | null>(null);
+
+  const pipelineUserId = useMemo(() => `novelideas:${deckKey}`, [deckKey]);
+  const pipelineSessionId = useMemo(() => `swipe-session:${deckKey}:${sessionNonce}`, [deckKey, sessionNonce]);
+
+  const personalityStoreRef = useRef<Record<string, PersonalityProfile>>({});
+  const sessionSwipeStoreRef = useRef<Record<string, SwipeSignal[]>>({});
+  const moodStoreRef = useRef<Record<string, MoodProfile>>({});
+  const recommendationHistoryRef = useRef<Record<DeckKey, RecommendationHistoryBucket>>({
+    k2: createRecommendationHistoryBucket(),
+    "36": createRecommendationHistoryBucket(),
+    ms_hs: createRecommendationHistoryBucket(),
+    adult: createRecommendationHistoryBucket(),
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      const loaded = await loadProfileOverrides();
+      if (!cancelled) setProfileOverridesByLane(loaded as Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const recommendationPipeline = useMemo(() => {
+    return new RecommendationPipeline({
+      getPersonalityForUser: async (userId: string) => personalityStoreRef.current[userId] ?? null,
+      savePersonalityForUser: async (profile: PersonalityProfile) => {
+        personalityStoreRef.current[profile.userId] = profile;
+      },
+      getSessionSwipes: async (sessionId: string) => sessionSwipeStoreRef.current[sessionId] ?? [],
+      saveSessionSwipes: async (sessionId: string, swipes: SwipeSignal[]) => {
+        sessionSwipeStoreRef.current[sessionId] = swipes;
+      },
+      getMoodProfileForSession: async (sessionId: string) => moodStoreRef.current[sessionId] ?? null,
+      saveMoodProfileForSession: async (profile: MoodProfile) => {
+        moodStoreRef.current[profile.sessionId] = profile;
+      },
+      getCandidateBooks: async () => [],
+    });
+  }, []);
+
+  const tasteProfileWithMood = useMemo(() => {
+    return mergeActiveTasteIntoProfile(tasteProfile, activeTasteVector);
+  }, [tasteProfile, activeTasteVector]);
+
+  const sophisticationPreview = useMemo(() => {
+    const lane = laneFromDeckKey(deckKey);
+    const sophistication = estimateReaderSophisticationFromTaste(tasteProfileWithMood, lane);
+    return `${sophistication.score.toFixed(2)} (${sophistication.confidence.toFixed(2)})`;
+  }, [deckKey, tasteProfileWithMood]);
+
+  const tasteProfilePreview = useMemo(() => {
+    return Object.entries(tasteProfileWithMood.axes)
+      .filter(([, value]) => Math.abs(value as number) >= 0.15)
+      .sort((a, b) => Math.abs((b[1] as number)) - Math.abs((a[1] as number)))
+      .slice(0, 8)
+      .map(([axis, value]) => `${axis}:${(value as number) > 0 ? "+" : ""}${(value as number).toFixed(2)}`)
+      .join(", ");
+  }, [tasteProfileWithMood]);
+
+  const currentLaneOverride = useMemo(() => {
+    return profileOverridesByLane[laneFromDeckKey(deckKey)] || undefined;
+  }, [deckKey, profileOverridesByLane]);
+
+  const { width, height } = Dimensions.get("window");
+  const swipeThresholdX = Math.min(140, width * 0.25);
+  const swipeThresholdDown = Math.min(170, height * 0.22);
+
+  const position = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const swipeAxisLock = useRef<"x" | "y" | null>(null);
+
+  async function refreshPipelinePreview() {
+    const personality =
+      personalityStoreRef.current[pipelineUserId] ?? initializePersonality(pipelineUserId);
+    setPersonalityProfileState(personality);
+
+    const mood = moodStoreRef.current[pipelineSessionId] ?? null;
+    setSessionMoodProfile(mood);
+
+    try {
+      const activeTaste = await recommendationPipeline.previewActiveTaste(pipelineUserId, pipelineSessionId);
+      setActiveTasteVector(activeTaste.vector);
+      setActiveTasteWeights({
+        personalityWeight: activeTaste.personalityWeight,
+        moodWeight: activeTaste.moodWeight,
+      });
+    } catch {
+      setActiveTasteVector(null);
+      setActiveTasteWeights(null);
+    }
+  }
+
+  async function recordPipelineSwipe(card: SwipeDeckCard | null, direction: SwipeSignal["direction"]) {
+    if (!card) return;
+    try {
+      await recommendationPipeline.recordSwipe(
+        pipelineUserId,
+        pipelineSessionId,
+        swipeSignalFromCard(card, direction)
+      );
+      await refreshPipelinePreview();
+    } catch {
+    }
+  }
+
+  function getRecommendationHistoryBucket(targetDeckKey: DeckKey): RecommendationHistoryBucket {
+    const existing = recommendationHistoryRef.current[targetDeckKey];
+    if (existing) return existing;
+    const created = createRecommendationHistoryBucket();
+    recommendationHistoryRef.current[targetDeckKey] = created;
+    return created;
+  }
+
+  function buildRecommendationInputWithHistory(baseInput: RecommenderInput): RecommenderInput {
+    const targetDeckKey = baseInput.deckKey || deckKey;
+    const history = getRecommendationHistoryBucket(targetDeckKey);
+
+    return {
+      ...baseInput,
+      priorRecommendedIds: uniqueMemoryValues(baseInput.priorRecommendedIds, Array.from(history.recommendedIds)),
+      priorRecommendedKeys: uniqueMemoryValues(baseInput.priorRecommendedKeys, Array.from(history.recommendedKeys)),
+      priorAuthors: uniqueMemoryValues(baseInput.priorAuthors, Array.from(history.authors)),
+      priorSeriesKeys: uniqueMemoryValues(baseInput.priorSeriesKeys, Array.from(history.seriesKeys)),
+      priorRejectedIds: uniqueMemoryValues(baseInput.priorRejectedIds, Array.from(history.rejectedIds)),
+      priorRejectedKeys: uniqueMemoryValues(baseInput.priorRejectedKeys, Array.from(history.rejectedKeys)),
+    };
+  }
+
+  function rememberRecommendations(targetDeckKey: DeckKey, items: RecItem[]) {
+    if (!Array.isArray(items) || items.length <= 0) return;
+    const history = getRecommendationHistoryBucket(targetDeckKey);
+
+    for (const item of items) {
+      if (item.kind === "open_library") {
+        const identity = historyIdentityFromDoc(item.doc);
+        if (identity.id) history.recommendedIds.add(identity.id);
+        if (identity.key) history.recommendedKeys.add(identity.key);
+        for (const author of identity.authors) history.authors.add(author);
+        if (identity.seriesKey) history.seriesKeys.add(identity.seriesKey);
+        continue;
+      }
+
+      const itemId = normalizeMemoryToken(fallbackId(item.book));
+      if (itemId) history.recommendedIds.add(itemId);
+      const author = normalizeMemoryToken(item.book?.author);
+      if (author) history.authors.add(author);
+      const seriesKey = deriveSeriesKeyFromTitle(item.book?.title);
+      if (seriesKey) history.seriesKeys.add(seriesKey);
+    }
+  }
+
+  function rememberRecommendationFeedback(item: RecItem | null, kind: FeedbackKind) {
+    if (!item || kind !== "not_interested") return;
+    const history = getRecommendationHistoryBucket(deckKey);
+
+    if (item.kind === "open_library") {
+      const identity = historyIdentityFromDoc(item.doc);
+      if (identity.id) history.rejectedIds.add(identity.id);
+      if (identity.key) history.rejectedKeys.add(identity.key);
+      return;
+    }
+
+    const itemId = normalizeMemoryToken(fallbackId(item.book));
+    if (itemId) history.rejectedIds.add(itemId);
+  }
+
+  React.useEffect(() => {
+    setSeenCardKeys([]);
+    setRecentCardKeys([]);
+    setRightSwipes(0);
+    setLeftSwipes(0);
+    setDownSwipes(0);
+    setTagCounts({});
+    setRecQuery("");
+    setRecEngineLabel("");
+    setRecLoading(false);
+    setRecError(null);
+    setRecItems([]);
+    setRecIndex(0);
+    setAutoSearched(false);
+    setShowRating(false);
+    setShowDebug(false);
+    setFeedback([]);
+    setSessionMoodProfile(null);
+    setActiveTasteVector(null);
+    setActiveTasteWeights(null);
+    setPersonalityProfileState(personalityStoreRef.current[pipelineUserId] ?? initializePersonality(pipelineUserId));
+    setLastRecommendationInput(null);
+    setLastRecommendationTimestamp("");
+    setLastRecommendationSwipeSummary("");
+    sessionSwipeStoreRef.current[pipelineSessionId] = [];
+    delete moodStoreRef.current[pipelineSessionId];
+    position.setValue({ x: 0, y: 0 });
+  }, [deckKey, sessionNonce, pipelineSessionId, pipelineUserId]);
+
+  const decisionSwipes = rightSwipes + leftSwipes;
+  const totalSeenCards = seenCardKeys.length;
+  const remainingCards = useMemo(() => cards.filter((card) => !seenCardKeys.includes(cardIdentityKey(card))), [cards, seenCardKeys]);
+  const isDone = decisionSwipes >= requiredSwipes || totalSeenCards >= cards.length;
+  const currentCard: SwipeDeckCard | null = !isDone
+    ? selectAdaptiveCard({ deckKey, cards: remainingCards, tagCounts, recentCardKeys })
+    : null;
+
+  const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
+
+  const currentCardKey = useMemo(() => {
+    const t = (currentCard as any)?.title ?? "";
+    const a = (currentCard as any)?.author ?? "";
+    return `${t}::${a}`.toLowerCase();
+  }, [currentCard]);
+
+  const currentSwipeCoverUri = useMemo(() => {
+    if (!currentCard) return undefined;
+    const explicitImage = (currentCard as any)?.imageUri as string | undefined;
+    if (explicitImage && explicitImage.trim().length > 0) return explicitImage;
+    return swipeCoverCache[currentCardKey];
+  }, [currentCard, currentCardKey, swipeCoverCache]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!currentCard) return;
+
+      const title = (currentCard as any)?.title as string | undefined;
+      const author = (currentCard as any)?.author as string | undefined;
+      if (!title || title.trim().length === 0) return;
+
+      const wikiTitle = (currentCard as any)?.wikiTitle as string | undefined;
+      const explicitImage = (currentCard as any)?.imageUri as string | undefined;
+      if (!explicitImage && wikiTitle && wikiTitle.trim().length > 0) {
+        if (!swipeCoverCache[currentCardKey]) {
+          try {
+            const foundWiki = await lookupWikipediaThumbnail(wikiTitle);
+            if (cancelled) return;
+            if (foundWiki?.imageUrl) {
+              setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: foundWiki.imageUrl! }));
+              return;
+            }
+          } catch {
+          }
+        } else {
+          return;
+        }
+      }
+
+      if (swipeCoverCache[currentCardKey]) return;
+
+      try {
+        const found = await lookupOpenLibraryCover(title, author);
+        if (cancelled) return;
+        if (found?.coverUrl) setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: found.coverUrl! }));
+      } catch {
+      }
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentCard, currentCardKey, swipeCoverCache]);
+
+  function animateOffscreen(dir: "left" | "right" | "down", onDone: () => void) {
+    let toX = 0;
+    let toY = 0;
+    if (dir === "right") toX = width + 120;
+    if (dir === "left") toX = -(width + 120);
+    if (dir === "down") toY = height + 220;
+
+    Animated.timing(position, {
+      toValue: { x: toX, y: toY },
+      duration: 180,
+      useNativeDriver: false,
+    }).start(() => {
+      position.setValue({ x: 0, y: 0 });
+      onDone();
+    });
+  }
+
+  function nextCard(card?: SwipeDeckCard | null) {
+    if (!card) return;
+    const key = cardIdentityKey(card);
+    setSeenCardKeys((prev) => (prev.includes(key) ? prev : [...prev, key]));
+    setRecentCardKeys((prev) => [...prev, key].slice(-4));
+  }
+function handleRight(card: SwipeDeckCard) {
+  setRightSwipes((n) => n + 1);
+  const anyCard: any = card as any;
+  if (Array.isArray(anyCard.tags)) {
+    const expandedTags = expandTeenCompanionTags(deckKey, anyCard.tags);
+    setTagCounts((prev) => addTags(prev, expandedTags, +1));
+  } else if (typeof anyCard.genre === "string" && anyCard.genre.trim()) {
+    setTagCounts((prev) => addTags(prev, [`genre:${anyCard.genre.trim()}`], +1));
+  }
+  void recordPipelineSwipe(card, "like");
+  nextCard(card);
+}
+function handleLeft() {
+  setLeftSwipes((n) => n + 1);
+  const card = currentCard;
+  const anyCard: any = card as any;
+  if (Array.isArray(anyCard?.tags)) {
+    const expandedTags = expandTeenCompanionTags(deckKey, anyCard.tags);
+    setTagCounts((prev) => addTags(prev, expandedTags, -1));
+  } else if (typeof anyCard?.genre === "string" && anyCard.genre.trim()) {
+    setTagCounts((prev) => addTags(prev, [`genre:${anyCard.genre.trim()}`], -1));
+  }
+  void recordPipelineSwipe(card, "dislike");
+  nextCard(card);
+}
+
+  function handleDownNotSure() {
+    setDownSwipes((n) => n + 1);
+    void recordPipelineSwipe(currentCard, "skip");
+    nextCard(currentCard);
+  }
+
+  const panResponder = useMemo(() => {
+    return PanResponder.create({
+      onMoveShouldSetPanResponder: () => !!currentCard,
+      onPanResponderGrant: () => {
+        swipeAxisLock.current = null;
+      },
+      onPanResponderMove: (_, gesture) => {
+        if (!currentCard) return;
+        const dx = gesture.dx;
+        const dyRaw = gesture.dy;
+
+        if (!swipeAxisLock.current) {
+          const ax = Math.abs(dx);
+          const ay = Math.abs(dyRaw);
+          if (ax > ay * 1.1) swipeAxisLock.current = "x";
+          else if (ay > ax * 1.1) swipeAxisLock.current = "y";
+        }
+
+        if (swipeAxisLock.current === "y") {
+          const dy = Math.max(0, dyRaw);
+          position.setValue({ x: 0, y: dy });
+          return;
+        }
+
+        position.setValue({ x: dx, y: 0 });
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (!currentCard) return;
+        const lock = swipeAxisLock.current;
+        const dx = gesture.dx;
+        const dy = Math.max(0, gesture.dy);
+
+        if (lock === "y") {
+          if (dy > swipeThresholdDown) {
+            animateOffscreen("down", handleDownNotSure);
+            return;
+          }
+          Animated.spring(position, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: false,
+            friction: 6,
+            tension: 80,
+          }).start();
+          return;
+        }
+
+        if (dx > swipeThresholdX) {
+          animateOffscreen("right", () => handleRight(currentCard));
+          return;
+        }
+        if (dx < -swipeThresholdX) {
+          animateOffscreen("left", () => handleLeft());
+          return;
+        }
+
+        Animated.spring(position, {
+          toValue: { x: 0, y: 0 },
+          useNativeDriver: false,
+          friction: 6,
+          tension: 80,
+        }).start();
+      },
+    });
+  }, [currentCard, swipeThresholdX, swipeThresholdDown, position]);
+
+  function tryAgain() {
+    setSessionNonce((n) => n + 1);
+  }
+
+  function normalizeRecommendationItems(rawItems: any[]): RecItem[] {
+    const docsInOrder: OLDoc[] = Array.isArray(rawItems)
+      ? rawItems
+          .map((it: any) => it?.doc)
+          .filter((doc: any) => doc && typeof doc === "object" && doc?.title)
+      : [];
+
+    return docsInOrder.map((doc) => ({ kind: "open_library", doc }));
+  }
+
+  async function performRecommendationRun(input: RecommenderInput) {
+    setRecLoading(true);
+    setRecError(null);
+    setRecItems([]);
+    setRecIndex(0);
+    setShowRating(false);
+
+    const inputWithHistory = buildRecommendationInputWithHistory(input);
+
+    try {
+      const result = await getRecommendations(
+        {
+          ...inputWithHistory,
+          profileOverride: currentLaneOverride,
+        },
+        "auto"
+      );
+
+      console.log("[NovelIdeas] Recommendation source", {
+        engineId: (result as any)?.engineId,
+        engineLabel: (result as any)?.engineLabel,
+        domainMode: (result as any)?.domainMode,
+        query: (result as any)?.builtFromQuery,
+        itemCount: Array.isArray((result as any)?.items) ? (result as any).items.length : 0,
+        priorRecommendedIds: inputWithHistory.priorRecommendedIds?.length || 0,
+        priorRecommendedKeys: inputWithHistory.priorRecommendedKeys?.length || 0,
+        priorAuthors: inputWithHistory.priorAuthors?.length || 0,
+        priorSeriesKeys: inputWithHistory.priorSeriesKeys?.length || 0,
+        priorRejectedIds: inputWithHistory.priorRejectedIds?.length || 0,
+        priorRejectedKeys: inputWithHistory.priorRejectedKeys?.length || 0,
+        tasteProfile: input.tasteProfile,
+        sessionMood: sessionMoodProfile,
+        activeTasteVector,
+        activeTasteWeights,
+        profileOverride: currentLaneOverride,
+      });
+
+      setRecQuery(result.builtFromQuery || "");
+      setRecEngineLabel(result.engineLabel || "");
+      setLastRecommendationInput(input);
+      setLastRecommendationTimestamp(new Date().toISOString());
+      setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes}`);
+
+      const normalizedItems = normalizeRecommendationItems(result.items);
+      if (normalizedItems.length > 0) {
+        rememberRecommendations(input.deckKey, normalizedItems);
+        setRecItems(normalizedItems);
+        setRecError(null);
+      } else {
+        setRecItems([]);
+        setRecError(
+          "No matches found for this swipe. Try swiping a few different cards, or tap Next to try again."
+        );
+      }
+    } catch (err: any) {
+      console.log("[NovelIdeas][REC] router_error", { message: err?.message });
+      setRecItems([]);
+      setRecError(err?.message || "Recommendation engine could not be reached (network blocked).");
+    } finally {
+      setRecLoading(false);
+    }
+  }
+
+  async function runAutoRecommendations() {
+    const tagCountsForQuery: any = { ...(tagCounts as any) };
+
+    Object.keys(tagCountsForQuery).forEach((k) => {
+      if (k.startsWith("age:") || k.startsWith("audience:")) delete tagCountsForQuery[k];
+    });
+
+    if (deckKey === "k2") {
+      tagCountsForQuery["audience:kids"] = 1000;
+      tagCountsForQuery["age:k2"] = 1000;
+    } else if (deckKey === "36") {
+      tagCountsForQuery["audience:kids"] = 1000;
+      tagCountsForQuery["age:36"] = 1000;
+    } else if (deckKey === "ms_hs") {
+      tagCountsForQuery["audience:teen"] = 1000;
+      tagCountsForQuery["age:mshs"] = 1000;
+    } else if (deckKey === "adult") {
+      tagCountsForQuery["audience:adult"] = 1000;
+      tagCountsForQuery["age:adult"] = 1;
+    }
+
+    try {
+      await refreshPipelinePreview();
+
+      const input: RecommenderInput = {
+        deckKey,
+        tagCounts: tagCountsForQuery,
+        tasteProfile: tasteProfileWithMood,
+        limit: 10,
+        timeoutMs: 15000,
+      };
+
+      await performRecommendationRun(input);
+
+      const finalized = await recommendationPipeline.finalizeSession(pipelineUserId, pipelineSessionId);
+      setPersonalityProfileState(finalized.nextPersonality);
+      setSessionMoodProfile(finalized.mood);
+      await refreshPipelinePreview();
+    } catch (err: any) {
+      console.log("[NovelIdeas][REC] auto_run_error", { message: err?.message });
+    }
+  }
+
+  async function handleRerunExactQuery() {
+    if (!lastRecommendationInput) {
+      Alert.alert("Nothing to re-run yet", "Finish a swipe session first so the original query can be saved.");
+      return;
+    }
+    await performRecommendationRun(lastRecommendationInput);
+  }
+
+  async function handleCopySessionReport() {
+    const recommendationLines = recItems.length
+      ? recItems.map((item, i) => {
+          if (item.kind === "open_library") {
+            const title = item.doc?.title ?? "Untitled";
+            const author =
+              Array.isArray(item.doc?.author_name) && item.doc.author_name.length > 0
+                ? item.doc.author_name[0]
+                : "Unknown author";
+            const year = item.doc?.first_publish_year ? ` (${item.doc.first_publish_year})` : "";
+            return `${i + 1}. ${title} — ${author}${year}`;
+          }
+          const title = item.book?.title ?? "Untitled";
+          const author = item.book?.author ?? "Unknown author";
+          const year = item.book?.year ? ` (${item.book.year})` : "";
+          return `${i + 1}. ${title} — ${author}${year}`;
+        }).join("\n")
+      : "(none)";
+
+    const sortedTagCounts = Object.keys(tagCounts).length
+      ? Object.entries(tagCounts)
+          .sort((a, b) => b[1] - a[1])
+          .map(([k, v]) => `${k}:${v}`)
+          .join(", ")
+      : "(none)";
+
+    const report = [
+      "SESSION REPORT",
+      `Deck: ${deck.deckLabel}`,
+      `Deck Key: ${deckKey}`,
+      `Engine: ${recEngineLabel || "—"}`,
+      `Saved Query Time: ${lastRecommendationTimestamp || "—"}`,
+      `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
+      `Built Query: ${recQuery || "(none)"}`,
+      "",
+      "ACTIVE TUNER OVERRIDE",
+      currentLaneOverride && Object.keys(currentLaneOverride).length > 0
+        ? Object.entries(currentLaneOverride)
+            .map(([k, v]) => `${k}:${v}`)
+            .join(", ")
+        : "(none)",
+      "",
+      "TOP RECOMMENDATIONS",
+      recommendationLines,
+      "",
+      "RUNNING TAG COUNTS",
+      sortedTagCounts,
+      "",
+      "TASTE PROFILE",
+      tasteProfilePreview || "(flat)",
+      `confidence:${tasteProfileWithMood.confidence.toFixed(2)} • swipes:${tasteProfileWithMood.evidence.swipes} • feedback:${tasteProfileWithMood.evidence.feedbackEvents}`,
+      "",
+      "SESSION MOOD",
+      formatTasteVectorPreview(sessionMoodProfile?.vector),
+      `confidence:${sessionMoodProfile?.confidence?.toFixed(2) ?? "0.00"} • swipes:${sessionMoodProfile?.swipeCount ?? 0}`,
+      "",
+      "PERSONALITY PROFILE",
+      formatTasteVectorPreview(personalityProfileState?.vector),
+      `confidence:${personalityProfileState?.confidence?.toFixed(2) ?? "0.00"} • sessions:${personalityProfileState?.sessionCount ?? 0}`,
+      "",
+      "ACTIVE TASTE",
+      formatTasteVectorPreview(activeTasteVector),
+      `personality:${activeTasteWeights?.personalityWeight?.toFixed(2) ?? "0.00"} • mood:${activeTasteWeights?.moodWeight?.toFixed(2) ?? "0.00"}`,
+      "",
+      "RECOMMENDATION MEMORY",
+      (() => {
+        const history = getRecommendationHistoryBucket(deckKey);
+        return `shownIds:${history.recommendedIds.size} • shownKeys:${history.recommendedKeys.size} • authors:${history.authors.size} • series:${history.seriesKeys.size} • rejected:${history.rejectedIds.size}`;
+      })(),
+    ].join("\n");
+
+    await Clipboard.setStringAsync(report);
+    Alert.alert("Copied", "Session report copied to clipboard.");
+  }
+
+  React.useEffect(() => {
+    if (!isDone) return;
+    if (autoSearched) return;
+    setAutoSearched(true);
+    runAutoRecommendations();
+  }, [isDone, autoSearched, tasteProfileWithMood, currentLaneOverride]);
+
+  const recDone = recItems.length > 0 && recIndex === recItems.length;
+
+  const currentRec: RecItem | null =
+    recItems.length > 0 && recIndex >= 0 && recIndex < recItems.length ? recItems[recIndex] : null;
+
+  const currentRecKey = useMemo(() => {
+    if (!currentRec) return "";
+    if (currentRec.kind === "open_library") {
+      const t = currentRec.doc?.title ?? "";
+      const a = currentRec.doc?.author_name?.[0] ?? "";
+      return `ol::${t}::${a}`.toLowerCase();
+    }
+    const t = currentRec.book?.title ?? "";
+    const a = currentRec.book?.author ?? "";
+    return `fb::${t}::${a}`.toLowerCase();
+  }, [currentRec]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      if (!currentRec || currentRec.kind !== "fallback") return;
+      const key = currentRecKey;
+      if (!key || recCoverCache[key]) return;
+      const title = currentRec.book?.title;
+      const author = currentRec.book?.author;
+      if (!title) return;
+      try {
+        const found = await lookupOpenLibraryCover(title, author);
+        if (cancelled) return;
+        if (found?.coverUrl) setRecCoverCache((prev) => ({ ...prev, [key]: found.coverUrl! }));
+      } catch {}
+    }
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRec, currentRecKey, recCoverCache]);
+
+  function advanceRec() {
+    setShowRating(false);
+    setRecIndex((i) => Math.min(i + 1, recItems.length));
+  }
+
+  function goBackRec() {
+    setShowRating(false);
+    setRecIndex((i) => Math.max(i - 1, 0));
+  }
+
+  function recordFeedback(item: RecItem, kind: FeedbackKind, rating?: 1 | 2 | 3 | 4 | 5) {
+    const itemId = item.kind === "open_library" ? docId(item.doc) : fallbackId(item.book);
+    rememberRecommendationFeedback(item, kind);
+    setFeedback((prev) => prev.concat({ itemId, kind, rating }));
+  }
+
+  function handleAlreadyRead() {
+    if (!currentRec) return;
+    setRatingPreview(0);
+    setShowRating(true);
+    recordFeedback(currentRec, "already_read");
+  }
+
+  function handleBack() {
+    if (recIndex <= 0) return;
+    goBackRec();
+  }
+
+  function handleNext() {
+    if (!currentRec) return;
+    recordFeedback(currentRec, "next");
+    advanceRec();
+  }
+
+  function handleRate(r: 1 | 2 | 3 | 4 | 5) {
+    if (!currentRec) return;
+    const itemId = currentRec.kind === "open_library" ? docId(currentRec.doc) : fallbackId(currentRec.book);
+    setFeedback((prev) => {
+      const copy = prev.slice();
+      for (let i = copy.length - 1; i >= 0; i--) {
+        if (copy[i].itemId === itemId && copy[i].kind === "already_read") {
+          copy[i] = { ...copy[i], rating: r };
+          return copy;
+        }
+      }
+      copy.push({ itemId, kind: "already_read", rating: r });
+      return copy;
+    });
+    advanceRec();
+  }
+
+  const cardFitStyle = useMemo(() => {
+    const h = Math.max(0, cardStageHeight || 0);
+    if (h <= 0) return {};
+    const w = h * (2 / 3);
+    return { height: h, width: w };
+  }, [cardStageHeight]);
+
+  const isFirstRec = recItems.length > 0 && recIndex === 0;
+
+  return (
+    <SafeAreaView style={[styles.safe, { backgroundColor: "#071526" }]}>
+      <View style={styles.container}>
+        <View style={styles.topRow}>
+          {enabledDeckList.map((k) => {
+            const selected = deckKey === k;
+            return (
+              <TouchableOpacity
+                key={k}
+                onPress={() => setDeckKey(k)}
+                style={[styles.deckChip, selected && styles.deckChipSelected]}
+              >
+                <Text style={[styles.deckChipText, selected && styles.deckChipTextSelected]}>
+                  {deckLabel(k, isSmallScreen)}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        <View style={styles.statusRow}>
+          <Text style={styles.statusText}>
+            Swipes: {decisionSwipes}/{requiredSwipes}
+          </Text>
+          <Text style={styles.statusText}>
+            Right: {rightSwipes} • Left: {leftSwipes} • Skip: {downSwipes}
+          </Text>
+        </View>
+
+        <View style={styles.statusDivider} />
+
+        <View style={[styles.stage, needsCardOffset && styles.stageTop]}>
+          {isDone ? (
+            <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 30 }}>
+              <View style={styles.doneCard}>
+                <Text style={styles.doneTitle}>Recommendations</Text>
+                <Text style={styles.doneSub}>
+                  Deck: {deck.deckLabel} • Engine: {recEngineLabel || "—"} • Built from {rightSwipes} right-swipes
+                </Text>
+
+                {recQuery ? (
+                  <Text style={styles.smallNote}>
+                    Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
+                  </Text>
+                ) : (
+                  <Text style={styles.smallNote}>Building your recommendations…</Text>
+                )}
+
+                {lastRecommendationTimestamp ? (
+                  <Text style={styles.smallNote}>Saved query time: {lastRecommendationTimestamp}</Text>
+                ) : null}
+
+                {recLoading ? (
+                  <View style={{ marginTop: 14, alignItems: "center" }}>
+                    <ActivityIndicator />
+                    <Text style={styles.smallNote}>Finding a good match…</Text>
+                  </View>
+                ) : null}
+
+                {!!recError && !recLoading ? (
+                  <View style={{ marginTop: 12 }}>
+                    <Text style={styles.smallNote}>{recError}</Text>
+                    <TouchableOpacity style={[styles.btn, styles.btnOutlineGold, { marginTop: 10, alignSelf: "center" }]} onPress={tryAgain}>
+                      <Text style={styles.btnText}>Try again</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : null}
+
+                {recItems.length > 0 && !recLoading && currentRec ? (
+                  <View style={styles.recCard}>
+                    <View style={styles.bigCoverWrap}>
+                      {currentRec.kind === "open_library" ? (
+                        (() => {
+                          const cover = coverUrlFromCoverId(currentRec.doc.cover_i, "L");
+                          return cover ? (
+                            <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
+                          ) : (
+                            <View style={styles.bigCoverPlaceholder}>
+                              <Text style={styles.bigCoverPlaceholderText}>No cover</Text>
+                            </View>
+                          );
+                        })()
+                      ) : recCoverCache[currentRecKey] ? (
+                        <Image source={{ uri: recCoverCache[currentRecKey] }} style={styles.bigCover} resizeMode="contain" />
+                      ) : (
+                        <View style={styles.bigCoverPlaceholder}>
+                          <Text style={styles.bigCoverPlaceholderText}>No cover</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    <View style={styles.recMeta}>
+                      <Text style={styles.recBookTitle} numberOfLines={2}>
+                        {currentRec.kind === "open_library" ? currentRec.doc.title ?? "Untitled" : currentRec.book.title ?? "Untitled"}
+                      </Text>
+                      <Text style={styles.recBookAuthor} numberOfLines={1}>
+                        {currentRec.kind === "open_library"
+                          ? Array.isArray(currentRec.doc.author_name) && currentRec.doc.author_name.length > 0
+                            ? currentRec.doc.author_name[0]
+                            : "Unknown author"
+                          : currentRec.book.author ?? "Unknown author"}
+                      </Text>
+                      <Text style={styles.recCounter}>
+                        {recItems.length > 0 ? `${recIndex + 1} of ${recItems.length}` : "0 of 0"}
+                      </Text>
+                    </View>
+
+                    <View style={styles.recActions}>
+                      <TouchableOpacity
+                        style={[styles.btn, styles.btnOutlineGold]}
+                        onPress={isFirstRec ? tryAgain : handleBack}
+                      >
+                        <Text style={styles.btnText}>{isFirstRec ? "Try Again" : "Back"}</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.btn, styles.btnOutlineGold]} onPress={handleAlreadyRead}>
+                        <Text style={styles.btnText}>Already Read It</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.btn, styles.btnOutlineGold]}
+                        onPress={handleNext}
+                      >
+                        <Text style={styles.btnText}>Next</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {showRating ? (
+                      <View style={{ marginTop: 12 }}>
+                        <Text style={styles.smallNote}>Did you like it?</Text>
+                        <View style={styles.ratingRow}>
+                          {([1, 2, 3, 4, 5] as const).map((r) => {
+                            const filled = ratingPreview >= r;
+                            return (
+                              <TouchableOpacity
+                                key={r}
+                                style={styles.ratingStarBtn}
+                                onPress={() => {
+                                  setRatingPreview(r);
+                                  setTimeout(() => handleRate(r), 80);
+                                }}
+                              >
+                                <Text style={styles.ratingStar}>{filled ? "★" : "☆"}</Text>
+                                <Text style={styles.ratingLabel} numberOfLines={1}>
+                                  {ratingLabel(r)}
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          })}
+                        </View>
+                      </View>
+                    ) : null}
+                  </View>
+                ) : null}
+
+                {recItems.length > 0 && !recLoading && recDone ? (
+                  <View style={styles.recCard}>
+                    <View style={styles.recMeta}>
+                      <Text style={styles.recBookTitle}>You’ve reached the end of your recommendations.</Text>
+                      <Text style={styles.recCounter}>{recItems.length} of {recItems.length}</Text>
+                    </View>
+
+                    <View style={styles.recActions}>
+                      <TouchableOpacity
+                        style={[styles.btn, styles.btnOutlineGold]}
+                        onPress={handleBack}
+                      >
+                        <Text style={styles.btnText}>Back</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.btn, styles.btnOutlineGold]}
+                        onPress={tryAgain}
+                      >
+                        <Text style={styles.btnText}>Try Again</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : null}
+
+                <TouchableOpacity
+                  style={[styles.btn, styles.btnOutlineGold, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
+                  onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
+                >
+                  <Text style={styles.btnText}>Search on my own</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          ) : currentCard ? (
+            <View style={[styles.cardArea, isSmallScreen && styles.cardAreaTight]}>
+              <View style={styles.cardStage} onLayout={(e) => setCardStageHeight(e.nativeEvent.layout.height)}>
+                <View style={styles.cardWrap}>
+                  <Animated.View
+                    {...panResponder.panHandlers}
+                    style={[
+                      styles.card,
+                      needsCardOffset && styles.cardOffset,
+                      cardFitStyle,
+                      { transform: [{ translateX: position.x }, { translateY: position.y }] },
+                    ]}
+                  >
+                    {currentSwipeCoverUri ? (
+                      <Image source={{ uri: currentSwipeCoverUri }} style={styles.swipeCover} resizeMode="contain" />
+                    ) : null}
+
+                    {((currentCard as any)?.title || (currentCard as any)?.author || (currentCard as any)?.genre) ? (
+                      <View style={styles.swipeMetaBox}>
+                        <Text style={styles.swipeTitle} numberOfLines={2}>
+                          {(currentCard as any)?.title ?? ""}
+                        </Text>
+                        <Text style={styles.swipeAuthor} numberOfLines={1}>
+                          {(currentCard as any)?.author ?? ""}
+                        </Text>
+                        <Text style={styles.swipeGenre} numberOfLines={1}>
+                          {(currentCard as any)?.genre ?? ""}
+                        </Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.cardPrompt}>{(currentCard as any)?.prompt ?? (currentCard as any)?.title ?? ""}</Text>
+                    )}
+                  </Animated.View>
+                </View>
+              </View>
+
+              {isSmallScreen ? (
+                <View style={styles.bottomPanel}>
+                  <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 12 }} showsVerticalScrollIndicator={false}>
+                    <View style={[styles.divider, isSmallScreen && styles.dividerTight]} />
+                    <View style={styles.clueRow}>
+                      <Text style={styles.clueText}>← Dislike</Text>
+                      <Text style={styles.clueText}>↓ Skip</Text>
+                      <Text style={styles.clueText}>Like →</Text>
+                    </View>
+                    <Pressable
+                      style={({ pressed }) => [
+                        styles.btn,
+                        styles.btnOutlineGold,
+                        pressed && styles.btnPressedBlue,
+                        { marginTop: 12, minWidth: 220 },
+                      ]}
+                      onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
+                    >
+                      {({ pressed }) => (
+                        <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Search on my own</Text>
+                      )}
+                    </Pressable>
+                  </ScrollView>
+                </View>
+              ) : (
+                <>
+                  <View style={styles.actionRow}>
+                    <Pressable
+                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, pressed && styles.btnPressedBlue]}
+                      onPress={() => animateOffscreen("left", handleLeft)}
+                    >
+                      {({ pressed }) => <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Dislike</Text>}
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, pressed && styles.btnPressedBlue]}
+                      onPress={() => animateOffscreen("down", handleDownNotSure)}
+                    >
+                      {({ pressed }) => <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Skip</Text>}
+                    </Pressable>
+                    <Pressable
+                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, pressed && styles.btnPressedBlue]}
+                      onPress={() =>
+                        animateOffscreen("right", () => {
+                          if (currentCard) handleRight(currentCard);
+                        })
+                      }
+                    >
+                      {({ pressed }) => <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Like</Text>}
+                    </Pressable>
+                  </View>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.btn,
+                      styles.btnOutlineGold,
+                      pressed && styles.btnPressedBlue,
+                      { marginTop: 12, minWidth: 220 },
+                    ]}
+                    onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
+                  >
+                    {({ pressed }) => (
+                      <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Search on my own</Text>
+                    )}
+                  </Pressable>
+                </>
+              )}
+            </View>
+          ) : (
+            <View style={styles.doneCard}>
+              <Text style={styles.doneTitle}>No cards found</Text>
+              <Text style={styles.doneSub}>This deck is empty.</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      <TouchableOpacity style={styles.copyToggle} onPress={handleCopySessionReport}>
+        <Text style={styles.debugToggleText}>Copy</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.rerunToggle} onPress={handleRerunExactQuery}>
+        <Text style={styles.debugToggleText}>Re-run</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.tuneToggle} onPress={() => setShowEqualizer(true)}>
+        <Text style={styles.debugToggleText}>Tune</Text>
+      </TouchableOpacity>
+      <RecommenderEqualizerPanel
+        deckKey={deckKey}
+        visible={showEqualizer}
+        onClose={() => setShowEqualizer(false)}
+        onProfileOverrideChange={(lane, profileOverride) => {
+          setProfileOverridesByLane((prev) => ({ ...prev, [lane]: profileOverride }));
+        }}
+      />
+
+      <TouchableOpacity style={styles.debugToggle} onPress={() => setShowDebug((v) => !v)}>
+        <Text style={styles.debugToggleText}>Debug</Text>
+      </TouchableOpacity>
+      {showDebug && (
+        <View style={styles.debugPanel}>
+          <View style={styles.debugCard}>
+            <View style={styles.debugHeader}>
+              <Text style={styles.debugTitle}>Debug</Text>
+              <TouchableOpacity onPress={() => setShowDebug(false)} style={styles.debugCloseBtn}>
+                <Text style={styles.debugCloseText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
+              <Text style={styles.debugLabel}>Current deck</Text>
+              <Text style={styles.debugValue}>{deckKey}</Text>
+              <Text style={styles.debugValueMuted}>{deckLabel(deckKey)}</Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Current card</Text>
+              <Text style={styles.debugValue}>{currentCard?.title ?? "(none)"}</Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Card tags (raw)</Text>
+              <Text style={styles.debugValueMuted}>
+                {Array.isArray((currentCard as any)?.tags) && (currentCard as any).tags.length
+                  ? (currentCard as any).tags.join(", ")
+                  : "(none)"}
+              </Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Running TagCounts (top)</Text>
+              <Text style={styles.debugValueMuted}>
+                {Object.keys(tagCounts).length
+                  ? Object.entries(tagCounts)
+                      .sort((a, b) => b[1] - a[1])
+                      .slice(0, 14)
+                      .map(([k, v]) => `${k}:${v}`)
+                      .join(", ")
+                  : "(none)"}
+              </Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Taste profile</Text>
+              <Text style={styles.debugValueMuted}>{tasteProfilePreview || "(flat)"}</Text>
+              <Text style={styles.debugValueMuted}>
+                confidence:{tasteProfileWithMood.confidence.toFixed(2)} • swipes:{tasteProfileWithMood.evidence.swipes} • feedback:{tasteProfileWithMood.evidence.feedbackEvents}
+              </Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Session mood</Text>
+              <Text style={styles.debugValueMuted}>{formatTasteVectorPreview(sessionMoodProfile?.vector)}</Text>
+              <Text style={styles.debugValueMuted}>
+                confidence:{sessionMoodProfile?.confidence?.toFixed(2) ?? "0.00"} • swipes:{sessionMoodProfile?.swipeCount ?? 0}
+              </Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Personality profile</Text>
+              <Text style={styles.debugValueMuted}>{formatTasteVectorPreview(personalityProfileState?.vector)}</Text>
+              <Text style={styles.debugValueMuted}>
+                confidence:{personalityProfileState?.confidence?.toFixed(2) ?? "0.00"} • sessions:{personalityProfileState?.sessionCount ?? 0}
+              </Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Active taste</Text>
+              <Text style={styles.debugValueMuted}>{formatTasteVectorPreview(activeTasteVector)}</Text>
+              <Text style={styles.debugValueMuted}>
+                personality:{activeTasteWeights?.personalityWeight?.toFixed(2) ?? "0.00"} • mood:{activeTasteWeights?.moodWeight?.toFixed(2) ?? "0.00"}
+              </Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Active profile override</Text>
+              <Text style={styles.debugValueMuted}>
+                {currentLaneOverride && Object.keys(currentLaneOverride).length > 0
+                  ? Object.entries(currentLaneOverride)
+                      .map(([k, v]) => `${k}:${v}`)
+                      .join(", ")
+                  : "(none)"}
+              </Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Final query preview</Text>
+              <Text style={styles.debugValueMuted}>{recQuery?.trim() ? recQuery : "(none)"}</Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Saved query time</Text>
+              <Text style={styles.debugValueMuted}>{lastRecommendationTimestamp || "(none)"}</Text>
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Recommendation memory</Text>
+              <Text style={styles.debugValueMuted}>
+                {(() => {
+                  const history = getRecommendationHistoryBucket(deckKey);
+                  return `shownIds:${history.recommendedIds.size} • shownKeys:${history.recommendedKeys.size} • authors:${history.authors.size} • series:${history.seriesKeys.size} • rejected:${history.rejectedIds.size}`;
+                })()}
+              </Text>
+            </ScrollView>
+          </View>
+        </View>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: "#071526" },
+  container: { flex: 1, minHeight: "100%", position: "relative", padding: 16, gap: 12 },
+  divider: { width: "100%", height: 1, backgroundColor: "#223b6b", opacity: 0.9 },
+  dividerTight: { marginTop: 6 },
+
+  cardArea: { flex: 1, width: "100%", alignItems: "center", justifyContent: "flex-start", minHeight: 0 },
+  cardAreaTight: { paddingTop: 0, paddingBottom: 0 },
+
+  topRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  deckChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#e0b84b",
+    backgroundColor: "#0b1e33",
+  },
+  deckChipSelected: { backgroundColor: "#2563eb", borderColor: "#e0b84b" },
+  deckChipText: { color: "#e5efff", fontWeight: "800", fontSize: 12 },
+  deckChipTextSelected: { color: "#f9fafb" },
+
+  statusRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  statusText: { color: "#cbd5f5", fontWeight: "800", fontSize: 12 },
+
+  stage: { flex: 1, justifyContent: "center", alignItems: "center" },
+  stageTop: { justifyContent: "flex-start", paddingTop: 10 },
+
+  statusDivider: { width: "100%", height: 1, backgroundColor: "rgba(255,255,255,0.10)", marginTop: 8, marginBottom: 8 },
+
+  cardWrap: { width: "100%", maxWidth: 560, alignItems: "center", overflow: "hidden" },
+  cardStage: { flex: 1, width: "100%", alignItems: "center", justifyContent: "flex-start", minHeight: 0, overflow: "hidden" },
+
+  card: {
+    width: "100%",
+    alignSelf: "center",
+    marginTop: 0,
+    aspectRatio: 2 / 3,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#e0b84b",
+    backgroundColor: "#0b1e33",
+    overflow: "hidden",
+  },
+
+  swipeCover: { backgroundColor: "#000", position: "absolute", top: 0, left: 0, right: 0, bottom: 0, borderRadius: 18 },
+
+  swipeMetaBox: {
+    position: "absolute",
+    left: 14,
+    bottom: 14,
+    width: "66%",
+    minHeight: "20%",
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: "rgba(0,0,0,0.65)",
+    justifyContent: "flex-end",
+  },
+  swipeTitle: { fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 3 },
+  swipeAuthor: { fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.9)", marginBottom: 4 },
+  swipeGenre: { fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.75)" },
+
+  cardPrompt: { color: "#e5efff", fontSize: 26, fontWeight: "900", lineHeight: 32 },
+
+  cardOffset: { marginTop: 0 },
+
+  actionRow: { marginTop: 12, flexDirection: "row", gap: 12, flexWrap: "wrap", justifyContent: "center" },
+  bottomPanel: { width: "100%", marginTop: 0 },
+  clueRow: { marginTop: 6, flexDirection: "row", gap: 14, justifyContent: "center", alignItems: "center", flexWrap: "wrap" },
+  clueText: { color: "#cfe0ff", fontSize: 14, fontWeight: "800" },
+
+  btn: {
+    minWidth: 140,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  btnGhost: { backgroundColor: "#0b1e33", borderColor: "#223b6b" },
+  btnPrimary: { backgroundColor: "#2563eb", borderColor: "#1d4ed8" },
+  btnOutlineGold: { backgroundColor: "#0b1e33", borderColor: "#e0b84b" },
+  btnPressedBlue: { backgroundColor: "#2563eb", borderColor: "#e0b84b" },
+  btnDisabled: { opacity: 0.45 },
+  btnText: { color: "#e5efff", fontWeight: "900", fontSize: 14 },
+  btnTextOnPrimary: { color: "#f9fafb" },
+
+  doneCard: {
+    width: "100%",
+    maxWidth: 760,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: "#e0b84b",
+    backgroundColor: "#0b1e33",
+    padding: 18,
+  },
+  doneTitle: { color: "#e5efff", fontSize: 20, fontWeight: "900" },
+  doneSub: { color: "#cbd5f5", fontSize: 12, fontWeight: "800", marginTop: 8 },
+
+  recCard: { marginTop: 16 },
+  bigCoverWrap: { width: "100%", alignItems: "center" },
+  bigCover: { aspectRatio: 2 / 3, backgroundColor: "#000", width: 220, height: 320, borderRadius: 10 },
+  bigCoverPlaceholder: { width: 220, height: 320, borderRadius: 10, borderWidth: 1, borderColor: "#223b6b", alignItems: "center", justifyContent: "center" },
+  bigCoverPlaceholderText: { color: "#cbd5f5", fontWeight: "800" },
+
+  recActions: { marginTop: 12, flexDirection: "row", gap: 12, justifyContent: "center" },
+  smallNote: { color: "#cbd5f5", fontWeight: "800", fontSize: 12, marginTop: 8 },
+
+  ratingRow: {
+    marginTop: 8,
+    width: "100%",
+    maxWidth: 360,
+    alignSelf: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  ratingStarBtn: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 6, paddingHorizontal: 0, borderWidth: 0 },
+  ratingStar: { fontSize: 26, fontWeight: "900", color: "#e5efff", lineHeight: 28 },
+  ratingLabel: { marginTop: 4, color: "#e5efff", fontSize: 11, fontWeight: "800", textAlign: "center", width: "100%", lineHeight: 12, includeFontPadding: false },
+
+  recBookTitle: { color: "#fff" },
+  recBookAuthor: { color: "#fff" },
+  recCounter: { color: "#cbd5f5", fontWeight: "800", fontSize: 12, marginTop: 6 },
+
+  recMeta: { marginTop: 10, alignItems: "center" },
+
+  copyToggle: {
+    position: "absolute",
+    right: 252,
+    bottom: 16,
+    backgroundColor: "#7c3aed",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    zIndex: 40,
+  },
+  rerunToggle: {
+    position: "absolute",
+    right: 164,
+    bottom: 16,
+    backgroundColor: "#b45309",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    zIndex: 40,
+  },
+  tuneToggle: {
+    position: "absolute",
+    right: 92,
+    bottom: 16,
+    backgroundColor: "#0f766e",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    zIndex: 40,
+  },
+  debugToggle: {
+    position: "absolute",
+    right: 16,
+    bottom: 16,
+    backgroundColor: "#2b6cff",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    zIndex: 40,
+  },
+  debugToggleText: { color: "#fff", fontWeight: "900" },
+  debugPanel: { position: "absolute", right: 16, bottom: 56, width: 320, maxWidth: "90%", zIndex: 50 },
+  debugCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(10, 20, 35, 0.95)",
+    overflow: "hidden",
+  },
+  debugHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.12)",
+  },
+  debugTitle: { color: "#fff", fontWeight: "900" },
+  debugCloseBtn: { paddingHorizontal: 8, paddingVertical: 2 },
+  debugCloseText: { color: "#fff", fontSize: 18, fontWeight: "900" },
+  debugScroll: { maxHeight: 340 },
+  debugScrollContent: { paddingHorizontal: 12, paddingVertical: 10 },
+  debugLabel: { color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "800" },
+  debugValue: { color: "#fff", fontSize: 13, fontWeight: "900", marginTop: 2 },
+  debugValueMuted: { color: "rgba(255,255,255,0.88)", fontSize: 12, marginTop: 2, lineHeight: 16 },
+});
