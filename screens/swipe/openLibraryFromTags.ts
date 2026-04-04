@@ -678,11 +678,7 @@ export async function openLibraryHttpSearch(
   const timeoutMs = opts?.timeoutMs ?? 15000;
 
   const url =
-    `https://openlibrary.org/search.json` +
-    `?q=${encodeURIComponent(q)}` +
-    `&has_fulltext=true` +
-    `&language=${encodeURIComponent(lang)}` +
-    `&limit=${maxResults}`;
+    `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${maxResults}`;
 
   const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
   const timer =

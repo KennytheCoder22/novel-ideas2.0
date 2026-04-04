@@ -265,19 +265,6 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
   console.log("[OL BUCKETS]", queriesToTry);
   let builtFromQuery = queriesToTry[0] || "";
 
-  const fields = [
-    "key",
-    "title",
-    "author_name",
-    "first_publish_year",
-    "subject",
-    "cover_i",
-    "edition_count",
-    "publisher",
-    "language",
-    "ebook_access",
-  ].join(",");
-
   const minCandidateFloor = Math.max(
     0,
     Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0)
@@ -294,11 +281,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = queriesToTry[queryIndex];
     const url =
-      `https://openlibrary.org/search.json` +
-      `?q=${encodeURIComponent(q)}` +
-      `&limit=${encodeURIComponent(String(fetchLimit))}` +
-      `&fields=${encodeURIComponent(fields)}` +
-      `&language=${encodeURIComponent("eng")}`;
+      `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(fetchLimit))}`;
 
     try {
       const data = await fetchJsonWithTimeout(url, timeoutMs);

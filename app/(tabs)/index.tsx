@@ -1751,7 +1751,7 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     setErrorMsg(null);
 
     try {
-      const url = `https://openlibrary.org/search.json?q=${encodeURIComponent(q)}&limit=${maxResults}`;
+      const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${maxResults}`;
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`Open Library error: ${resp.status}`);
       const data = await resp.json();
