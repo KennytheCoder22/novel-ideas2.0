@@ -107,7 +107,10 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   const timeoutMs = Math.max(1000, Math.min(30000, input.timeoutMs ?? 15000));
   const domainMode = deckKeyToDomainMode(deckKey);
 
-  const queriesToTry = getBucketQueries(deckKey, input);
+  const explicitBucketPlan = (input as any)?.bucketPlan as { queries?: string[]; bucketId?: string } | undefined;
+  const queriesToTry = Array.isArray(explicitBucketPlan?.queries) && explicitBucketPlan?.queries.length
+    ? explicitBucketPlan.queries
+    : getBucketQueries(deckKey, input);
   const builtFromQuery = queriesToTry[0] || "";
 
   const minCandidateFloor = Math.max(

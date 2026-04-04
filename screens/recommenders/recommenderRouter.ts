@@ -12,6 +12,7 @@ import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
 import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
+import { chooseBucketPlan } from "./bucketSelector";
 
 export type EngineOverride = EngineId | "auto";
 
@@ -157,11 +158,13 @@ export async function getRecommendations(
   override?: EngineOverride
 ): Promise<RecommendationResult> {
   const preferredEngine = chooseEngine(input, override);
+  const bucketPlan = chooseBucketPlan(input);
+  const routedInput = { ...(input as any), bucketPlan } as RecommenderInput;
 
-  const includeKitsu = shouldUseKitsu(input);
-  const includeGcd = shouldUseGcd(input);
+  const includeKitsu = shouldUseKitsu(routedInput);
+  const includeGcd = shouldUseGcd(routedInput);
 
-  const { google, openLibrary, kitsu, gcd, mergedDocs } = await fetchBothEngines(input);
+  const { google, openLibrary, kitsu, gcd, mergedDocs } = await fetchBothEngines(routedInput);
 
   const googleDocs = mergedDocs.filter((doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks");
   const openLibraryDocs = mergedDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary");
@@ -219,6 +222,7 @@ export async function getRecommendations(
     builtFromQuery:
       (openLibrary as any)?.builtFromQuery ||
       (google as any)?.builtFromQuery ||
+      bucketPlan.queries?.[0] ||
       "",
     items: rankedDocs.map((doc) => ({ kind: "open_library", doc })),
   };

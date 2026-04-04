@@ -256,9 +256,12 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
   const fetchLimit = Math.max(40, Math.min(160, Math.max(finalLimit * 6, (input.limit ?? 12) * 4)));
   const timeoutMs = Math.max(2500, Math.min(20000, input.timeoutMs ?? 12000));
 
-  const bucketPlan = getBucketQueries(deckKey, input);
-  const queriesToTry = bucketPlan.queries;
-  const domainMode = bucketPlan.domainMode;
+  const explicitBucketPlan = (input as any)?.bucketPlan as { queries?: string[]; domainMode?: RecommendationResult["domainMode"]; bucketId?: string } | undefined;
+  const fallbackBucketPlan = getBucketQueries(deckKey, input);
+  const queriesToTry = Array.isArray(explicitBucketPlan?.queries) && explicitBucketPlan?.queries.length
+    ? explicitBucketPlan.queries
+    : fallbackBucketPlan.queries;
+  const domainMode = explicitBucketPlan?.domainMode || fallbackBucketPlan.domainMode;
   console.log("[OL BUCKETS]", queriesToTry);
   let builtFromQuery = queriesToTry[0] || "";
 
