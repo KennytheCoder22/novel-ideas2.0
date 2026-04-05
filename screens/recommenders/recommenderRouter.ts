@@ -12,7 +12,7 @@ import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
 import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
-import { chooseBucketPlan } from "./bucketSelector";
+import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 
 export type EngineOverride = EngineId | "auto";
 
@@ -200,7 +200,7 @@ export async function getRecommendations(
   override?: EngineOverride
 ): Promise<RecommendationResult> {
   const preferredEngine = chooseEngine(input, override);
-  const bucketPlan = chooseBucketPlan(input);
+  const bucketPlan = buildBucketPlanFromTaste(input);
   const routedInput = { ...(input as any), bucketPlan } as RecommenderInput;
 
   const includeKitsu = shouldUseKitsu(routedInput);

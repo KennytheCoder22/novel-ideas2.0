@@ -1,0 +1,32 @@
+export const QUERY_TRANSLATIONS = {
+  genre: {
+    fantasy: ["fantasy novel"],
+    thriller: ["thriller novel"],
+    mystery: ["mystery novel"],
+    horror: ["horror novel"],
+    "science fiction": ["science fiction novel"],
+    romance: ["romance novel"],
+    "historical fiction": ["historical fiction novel"],
+  },
+  tone: {
+    dark: ["dark"],
+    cozy: ["cozy"],
+    hopeful: ["hopeful"],
+    humorous: ["funny"],
+    spooky: ["gothic", "haunting"],
+    epic: ["epic"],
+    atmospheric: ["atmospheric"],
+    realistic: ["grounded"],
+  },
+  scenario: {
+    politics: ["kingdom intrigue", "political struggle", "court intrigue"],
+    betrayal: ["betrayal", "family secrets"],
+    quest: ["quest", "journey"],
+    war: ["war", "kingdom war"],
+    investigation: ["investigation", "murder mystery"],
+    survival: ["survival"],
+    family: ["family saga"],
+    mythic: ["mythic", "prophecy"],
+    crime: ["crime"],
+  },
+} as const;
