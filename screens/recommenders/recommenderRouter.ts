@@ -38,19 +38,48 @@ function shouldUseGcd(input: RecommenderInput): boolean {
   return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= 1;
 }
 
-function extractDocs(result: RecommendationResult | null | undefined): RecommendationDoc[] {
+function extractDocs(
+  result: RecommendationResult | null | undefined,
+  fallbackSource: CandidateSource
+): RecommendationDoc[] {
   if (!result) return [];
 
   const itemDocs = Array.isArray((result as any).items)
-    ? (result as any).items.map((item: any) => item?.doc).filter(Boolean)
+    ? (result as any).items
+        .map((item: any) => {
+          if (!item?.doc) return null;
+          return {
+            ...item.doc,
+            source: item.doc?.source || fallbackSource,
+          };
+        })
+        .filter(Boolean)
     : [];
 
   const recommendations = Array.isArray((result as any).recommendations)
-    ? (result as any).recommendations.filter(Boolean)
+    ? (result as any).recommendations
+        .map((doc: any) =>
+          doc
+            ? {
+                ...doc,
+                source: doc?.source || fallbackSource,
+              }
+            : null
+        )
+        .filter(Boolean)
     : [];
 
   const docs = Array.isArray((result as any).docs)
-    ? (result as any).docs.filter(Boolean)
+    ? (result as any).docs
+        .map((doc: any) =>
+          doc
+            ? {
+                ...doc,
+                source: doc?.source || fallbackSource,
+              }
+            : null
+        )
+        .filter(Boolean)
     : [];
 
   return [...itemDocs, ...recommendations, ...docs].filter(
@@ -138,10 +167,10 @@ async function fetchBothEngines(
     ? results[gcdIndex].value
     : null;
 
-  const googleDocs = dedupeDocs(extractDocs(google));
-  const openLibraryDocs = dedupeDocs(extractDocs(openLibrary));
-  const kitsuDocs = dedupeDocs(extractDocs(kitsu));
-  const gcdDocs = dedupeDocs(extractDocs(gcd));
+  const googleDocs = dedupeDocs(extractDocs(google, "googleBooks"));
+  const openLibraryDocs = dedupeDocs(extractDocs(openLibrary, "openLibrary"));
+  const kitsuDocs = dedupeDocs(extractDocs(kitsu, "kitsu"));
+  const gcdDocs = dedupeDocs(extractDocs(gcd, "gcd"));
 
   const mergedDocs = dedupeDocs([
     ...googleDocs,
