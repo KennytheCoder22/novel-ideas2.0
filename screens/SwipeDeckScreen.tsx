@@ -589,7 +589,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRecommendationInput, setLastRecommendationInput] = useState<RecommenderInput | null>(null);
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
-  const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; survivedFilters: number }> | null>(null);
+  const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -1088,7 +1088,7 @@ function handleLeft() {
 
       setRecQuery(result.builtFromQuery || "");
       setRecEngineLabel(result.engineLabel || "");
-      setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; survivedFilters: number }>) || null);
+      setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }>) || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes}`);
@@ -1348,10 +1348,7 @@ function handleLeft() {
     { key: "openLibrary", label: "Open Library" },
     { key: "kitsu", label: "Kitsu" },
     { key: "gcd", label: "GCD" },
-  ].filter(({ key }) => {
-    const stats = lastSourceCounts?.[key];
-    return !!stats && (stats.rawFetched > 0 || stats.survivedFilters > 0);
-  });
+  ];
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: "#071526" }]}>
@@ -1689,7 +1686,7 @@ function handleLeft() {
                     <View key={key} style={styles.countsRow}>
                       <Text style={styles.debugValue}>{label}</Text>
                       <Text style={styles.debugValueMuted}>
-                        raw: {stats?.rawFetched ?? 0} • survived: {stats?.survivedFilters ?? 0}
+                        raw fetched: {stats?.rawFetched ?? 0} • post-filter: {stats?.postFilterCandidates ?? 0} • final selected: {stats?.finalSelected ?? 0}
                       </Text>
                     </View>
                   );

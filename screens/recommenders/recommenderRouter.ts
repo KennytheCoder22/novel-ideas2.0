@@ -118,7 +118,8 @@ function dedupeDocs(docs: RecommendationDoc[]): RecommendationDoc[] {
 
 type RecommenderDebugSourceStats = {
   rawFetched: number;
-  survivedFilters: number;
+  postFilterCandidates: number;
+  finalSelected: number;
 };
 
 function countResultItems(result: RecommendationResult | null | undefined): number {
@@ -243,6 +244,18 @@ export async function getRecommendations(
     priorRejectedKeys: input.priorRejectedKeys,
   });
 
+  const rankedCountsBySource: Record<CandidateSource, number> = {
+    googleBooks: 0,
+    openLibrary: 0,
+    kitsu: 0,
+    gcd: 0,
+  };
+
+  for (const doc of rankedDocs) {
+    const source = sourceForDoc(doc, "openLibrary");
+    rankedCountsBySource[source] = (rankedCountsBySource[source] || 0) + 1;
+  }
+
   const engineLabel =
     includeKitsu && includeGcd
       ? "Google Books + Open Library + Kitsu + GCD"
@@ -255,19 +268,23 @@ export async function getRecommendations(
   const debugSourceStats: Record<string, RecommenderDebugSourceStats> = {
     googleBooks: {
       rawFetched: countResultItems(google),
-      survivedFilters: googleCandidates.length,
+      postFilterCandidates: googleCandidates.length,
+      finalSelected: rankedCountsBySource.googleBooks,
     },
     openLibrary: {
       rawFetched: countResultItems(openLibrary),
-      survivedFilters: openLibraryCandidates.length,
+      postFilterCandidates: openLibraryCandidates.length,
+      finalSelected: rankedCountsBySource.openLibrary,
     },
     kitsu: {
       rawFetched: includeKitsu ? countResultItems(kitsu) : 0,
-      survivedFilters: includeKitsu ? kitsuCandidates.length : 0,
+      postFilterCandidates: includeKitsu ? kitsuCandidates.length : 0,
+      finalSelected: rankedCountsBySource.kitsu,
     },
     gcd: {
       rawFetched: includeGcd ? countResultItems(gcd) : 0,
-      survivedFilters: includeGcd ? gcdCandidates.length : 0,
+      postFilterCandidates: includeGcd ? gcdCandidates.length : 0,
+      finalSelected: rankedCountsBySource.gcd,
     },
   };
 
