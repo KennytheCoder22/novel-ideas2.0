@@ -202,12 +202,11 @@ type GoogleBooksSearchOptions = {
 };
 
 function getGoogleBooksApiKey(): string {
-  const env = (globalThis as any)?.process?.env ?? {};
   return (
-    env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ||
-    env.GOOGLE_BOOKS_API_KEY ||
-    env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY ||
-    env.VITE_GOOGLE_BOOKS_API_KEY ||
+    process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ||
+    process.env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY ||
+    process.env.VITE_GOOGLE_BOOKS_API_KEY ||
+    process.env.GOOGLE_BOOKS_API_KEY ||
     ""
   );
 }
