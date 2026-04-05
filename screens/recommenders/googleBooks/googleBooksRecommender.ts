@@ -5,9 +5,6 @@
 // Ranking, normalization, dedupe, novelty, and final selection belong downstream.
 
 import type { RecommenderInput, RecommendationResult, RecommendationDoc, DeckKey } from "../types";
-import {
-  openLibrarySearch as googleBooksSearch,
-} from "../../swipe/openLibraryFromTags";
 
 function normalizePublisherText(value: any): string {
   return String(value || "")
@@ -196,6 +193,140 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): string[] {
     `subject:"award winning fiction"`,
     `subject:"contemporary fiction"`,
   ]);
+}
+
+type GoogleBooksSearchOptions = {
+  orderBy?: "relevance" | "newest";
+  langRestrict?: string;
+  timeoutMs?: number;
+};
+
+function getGoogleBooksApiKey(): string {
+  const env = (globalThis as any)?.process?.env ?? {};
+  return (
+    env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY ||
+    env.GOOGLE_BOOKS_API_KEY ||
+    env.NEXT_PUBLIC_GOOGLE_BOOKS_API_KEY ||
+    env.VITE_GOOGLE_BOOKS_API_KEY ||
+    ""
+  );
+}
+
+function toGoogleBooksQuery(query: string): string {
+  const q = String(query || "").trim();
+  if (!q) return "";
+
+  if (q.toLowerCase().startsWith("subject:")) {
+    const subject = q.slice("subject:".length).trim().replace(/^"+|"+$/g, "");
+    return `subject:${subject}`;
+  }
+
+  return q;
+}
+
+async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const resp = await fetch(url, {
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+      },
+    });
+
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      const message = body ? `Google Books error: ${resp.status} ${body}` : `Google Books error: ${resp.status}`;
+      throw new Error(message);
+    }
+
+    return await resp.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function googleBooksSearch(
+  query: string,
+  limit: number,
+  options: GoogleBooksSearchOptions = {}
+): Promise<any[]> {
+  const q = toGoogleBooksQuery(query);
+  if (!q) return [];
+
+  const maxResults = Math.max(1, Math.min(40, Number(limit) || 10));
+  const timeoutMs = Math.max(1000, Math.min(30000, options.timeoutMs ?? 15000));
+  const orderBy = options.orderBy ?? "relevance";
+  const langRestrict = options.langRestrict || "en";
+  const apiKey = getGoogleBooksApiKey();
+
+  const params = new URLSearchParams({
+    q,
+    maxResults: String(maxResults),
+    orderBy,
+    printType: "books",
+    projection: "full",
+    langRestrict,
+  });
+
+  if (apiKey) {
+    params.set("key", apiKey);
+  }
+
+  const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
+  const json = await fetchJsonWithTimeout(url, timeoutMs);
+  const items = Array.isArray(json?.items) ? json.items : [];
+
+  return items
+    .map((item: any) => {
+      const volumeInfo = item?.volumeInfo ?? {};
+      const accessInfo = item?.accessInfo ?? {};
+      const saleInfo = item?.saleInfo ?? {};
+      const searchInfo = item?.searchInfo ?? {};
+      const authors = Array.isArray(volumeInfo.authors) ? volumeInfo.authors : [];
+      const categories = Array.isArray(volumeInfo.categories) ? volumeInfo.categories : [];
+      const imageLinks = volumeInfo.imageLinks ?? {};
+
+      return {
+        id: item?.id,
+        key: item?.id,
+        title: volumeInfo.title,
+        subtitle: volumeInfo.subtitle,
+        author_name: authors.length ? authors : undefined,
+        first_publish_year:
+          typeof volumeInfo.publishedDate === "string" && /^\d{4}/.test(volumeInfo.publishedDate)
+            ? Number(volumeInfo.publishedDate.slice(0, 4))
+            : undefined,
+        publisher: volumeInfo.publisher,
+        description:
+          typeof volumeInfo.description === "string"
+            ? volumeInfo.description
+            : typeof searchInfo?.textSnippet === "string"
+              ? searchInfo.textSnippet
+              : undefined,
+        averageRating: typeof volumeInfo.averageRating === "number" ? volumeInfo.averageRating : undefined,
+        ratingsCount: typeof volumeInfo.ratingsCount === "number" ? volumeInfo.ratingsCount : undefined,
+        pageCount: typeof volumeInfo.pageCount === "number" ? volumeInfo.pageCount : undefined,
+        edition_count: 1,
+        cover_i: imageLinks.thumbnail || imageLinks.smallThumbnail,
+        subject: categories.length ? categories : undefined,
+        subjects: categories.length ? categories : undefined,
+        categories,
+        language: typeof volumeInfo.language === "string" ? [volumeInfo.language] : undefined,
+        ebook_access:
+          accessInfo?.epub?.isAvailable
+            ? "epub"
+            : accessInfo?.pdf?.isAvailable
+              ? "pdf"
+              : saleInfo?.isEbook
+                ? "ebook"
+                : "no_ebook",
+        volumeInfo,
+      };
+    })
+    .filter((doc: any) => doc && doc.title);
 }
 
 export async function getGoogleBooksRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
