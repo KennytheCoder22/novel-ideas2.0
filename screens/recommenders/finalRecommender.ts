@@ -283,6 +283,57 @@ function niHasAny(subjects: string[], needles: string[]): boolean {
   return needles.some((needle) => subjects.some((s) => s.includes(needle)));
 }
 
+
+const NONFICTION_BLEED_PATTERNS = [
+  /how to/i,
+  /guide/i,
+  /guides/i,
+  /writer'?s/i,
+  /writing/i,
+  /market/i,
+  /criticism/i,
+  /analysis/i,
+  /reference/i,
+  /encyclopedia/i,
+  /companion/i,
+  /handbook/i,
+  /manual/i,
+  /textbook/i,
+  /study guide/i,
+  /workbook/i,
+];
+
+const NONFICTION_BLEED_SUBJECT_PATTERNS = [
+  /literary criticism/i,
+  /authorship/i,
+  /reference/i,
+  /study aids/i,
+  /language arts/i,
+  /writing/i,
+  /authors?/i,
+  /criticism/i,
+];
+
+function isNonFictionBleed(candidate: Candidate): boolean {
+  const text = [
+    candidate.title,
+    candidate.subtitle || '',
+    candidate.description || '',
+    candidate.publisher || '',
+    ...candidate.subjects,
+    ...candidate.genres,
+  ].join(' | ');
+
+  if (NONFICTION_BLEED_PATTERNS.some((pattern) => pattern.test(text))) {
+    return true;
+  }
+
+  const subjects = niSubjectsFromCandidate(candidate);
+  return NONFICTION_BLEED_SUBJECT_PATTERNS.some((pattern) =>
+    subjects.some((subject) => pattern.test(subject))
+  );
+}
+
 function applyMinimalYaFilter(candidates: Candidate[], deckKey: DeckKey): Candidate[] {
   if (deckKey !== 'ms_hs') return candidates;
 
@@ -390,7 +441,12 @@ export function finalRecommenderForDeck(
     ...(options.profileOverride || {}),
   };
 
-  const unique = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
+  const unique = applyMinimalYaFilter(
+    dedupeCandidates(candidates)
+      .filter((candidate) => !!candidate.title)
+      .filter((candidate) => !isNonFictionBleed(candidate)),
+    deckKey
+  );
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
