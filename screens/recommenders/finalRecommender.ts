@@ -350,6 +350,23 @@ function isLowQuality(candidate: Candidate): boolean {
   return LOW_QUALITY_TITLE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+function passesQualityFloor(candidate: Candidate): boolean {
+  const hasCoreMetadata =
+    !!candidate.title &&
+    !!candidate.author &&
+    !!candidate.description;
+
+  const hasEngagement =
+    candidate.ratingCount >= 10 ||
+    candidate.editionCount >= 2;
+
+  const hasPublisherSignal =
+    !!candidate.publisher ||
+    candidate.ratingCount >= 25;
+
+  return hasCoreMetadata && hasEngagement && hasPublisherSignal;
+}
+
 function applyMinimalYaFilter(candidates: Candidate[], deckKey: DeckKey): Candidate[] {
   if (deckKey !== 'ms_hs') return candidates;
 
@@ -457,7 +474,8 @@ export function finalRecommenderForDeck(
     dedupeCandidates(candidates)
       .filter((candidate) => !!candidate.title)
       .filter((candidate) => !isNonFictionBleed(candidate))
-      .filter((candidate) => !isLowQuality(candidate)),
+      .filter((candidate) => !isLowQuality(candidate))
+      .filter((candidate) => passesQualityFloor(candidate)),
     deckKey
   );
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
