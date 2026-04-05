@@ -285,22 +285,22 @@ function niHasAny(subjects: string[], needles: string[]): boolean {
 
 
 const NONFICTION_BLEED_PATTERNS = [
-  /how to/i,
-  /guide/i,
-  /guides/i,
-  /writer'?s/i,
-  /writing/i,
-  /market/i,
-  /criticism/i,
-  /analysis/i,
-  /reference/i,
-  /encyclopedia/i,
-  /companion/i,
-  /handbook/i,
-  /manual/i,
-  /textbook/i,
-  /study guide/i,
-  /workbook/i,
+  /\bhow to\b/i,
+  /\bguide\b/i,
+  /\bguides\b/i,
+  /\bwriter'?s\b/i,
+  /\bwriting\b/i,
+  /\bmarket\b/i,
+  /\bcriticism\b/i,
+  /\banalysis\b/i,
+  /\breference\b/i,
+  /\bencyclopedia\b/i,
+  /\bcompanion\b/i,
+  /\bhandbook\b/i,
+  /\bmanual\b/i,
+  /\btextbook\b/i,
+  /\bstudy guide\b/i,
+  /\bworkbook\b/i,
 ];
 
 const NONFICTION_BLEED_SUBJECT_PATTERNS = [
@@ -332,6 +332,22 @@ function isNonFictionBleed(candidate: Candidate): boolean {
   return NONFICTION_BLEED_SUBJECT_PATTERNS.some((pattern) =>
     subjects.some((subject) => pattern.test(subject))
   );
+}
+
+const LOW_QUALITY_TITLE_PATTERNS = [
+  /\bshort reads?\b/i,
+  /\bnovella\b/i,
+  /\bbook\s*1\b/i,
+  /\bbook\s*one\b/i,
+  /\bepisode\b/i,
+  /\bpart\s+\d+\b/i,
+  /\bcheating wife\b/i,
+];
+
+function isLowQuality(candidate: Candidate): boolean {
+  const text = `${candidate.title} ${candidate.subtitle || ''}`.toLowerCase();
+  if (text.length > 140) return true;
+  return LOW_QUALITY_TITLE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 function applyMinimalYaFilter(candidates: Candidate[], deckKey: DeckKey): Candidate[] {
@@ -389,32 +405,28 @@ function scoreCandidate(
   readerSoph: ReturnType<typeof estimateReaderSophisticationFromTaste>,
 ): number {
   let score = 0;
-// Keep metadata modest
-score += metadataSignals(candidate) * 0.16;
 
-// ↓ Reduce popularity dominance
-score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
+  score += metadataSignals(candidate) * 0.45;
+  score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
+  score += scorePublisherBoost(candidate) * 1.2;
+  score += scoreRecency(candidate) * (profile.recencyWeight * 0.4);
+  score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
 
-// Keep publisher light
-score += scorePublisherBoost(candidate) * 0.8;
+  if (candidate.ratingCount >= 50) score += 1.2;
+  if (candidate.ratingCount >= 200) score += 2.0;
 
-// Slightly reduce recency influence
-score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
+  if (candidate.ratingCount < 5) score -= 1.5;
+  if (candidate.editionCount && candidate.editionCount < 2) score -= 0.8;
+  if (!candidate.publisher) score -= 0.6;
 
-// ↑ Make taste dominant
-score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
+  if (candidate.hasCover) score += 0.12;
 
-// Cover stays minor
-if (candidate.hasCover) score += 0.12;
+  if (candidate.formatCategory === 'manga' || candidate.formatCategory === 'comic') {
+    score += lane === 'teen' ? 0.18 : -0.08;
+  }
 
-// Keep visual lane behavior
-if (candidate.formatCategory === 'manga' || candidate.formatCategory === 'comic') {
-  score += lane === 'teen' ? 0.18 : -0.08;
-}
-
-// ↑ Boost sophistication alignment
-const candSoph = estimateCandidateSophistication(candidate, lane);
-score += scoreSophisticationAlignment(readerSoph, candSoph) * 2.6;
+  const candSoph = estimateCandidateSophistication(candidate, lane);
+  score += scoreSophisticationAlignment(readerSoph, candSoph) * 2.6;
 
   const titleKey = identityKey(candidate);
   const authorKey = normalizeKey(candidate.author);
@@ -444,7 +456,8 @@ export function finalRecommenderForDeck(
   const unique = applyMinimalYaFilter(
     dedupeCandidates(candidates)
       .filter((candidate) => !!candidate.title)
-      .filter((candidate) => !isNonFictionBleed(candidate)),
+      .filter((candidate) => !isNonFictionBleed(candidate))
+      .filter((candidate) => !isLowQuality(candidate)),
     deckKey
   );
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
