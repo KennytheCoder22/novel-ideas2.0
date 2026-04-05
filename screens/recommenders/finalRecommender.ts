@@ -285,22 +285,22 @@ function niHasAny(subjects: string[], needles: string[]): boolean {
 
 
 const NONFICTION_BLEED_PATTERNS = [
-  /\bhow to\b/i,
-  /\bguide\b/i,
-  /\bguides\b/i,
-  /\bwriter'?s\b/i,
-  /\bwriting\b/i,
-  /\bmarket\b/i,
-  /\bcriticism\b/i,
-  /\banalysis\b/i,
-  /\breference\b/i,
-  /\bencyclopedia\b/i,
-  /\bcompanion\b/i,
-  /\bhandbook\b/i,
-  /\bmanual\b/i,
-  /\btextbook\b/i,
-  /\bstudy guide\b/i,
-  /\bworkbook\b/i,
+  /how to/i,
+  /guide/i,
+  /guides/i,
+  /writer'?s/i,
+  /writing/i,
+  /market/i,
+  /criticism/i,
+  /analysis/i,
+  /reference/i,
+  /encyclopedia/i,
+  /companion/i,
+  /handbook/i,
+  /manual/i,
+  /textbook/i,
+  /study guide/i,
+  /workbook/i,
 ];
 
 const NONFICTION_BLEED_SUBJECT_PATTERNS = [
@@ -332,39 +332,6 @@ function isNonFictionBleed(candidate: Candidate): boolean {
   return NONFICTION_BLEED_SUBJECT_PATTERNS.some((pattern) =>
     subjects.some((subject) => pattern.test(subject))
   );
-}
-
-const LOW_QUALITY_TITLE_PATTERNS = [
-  /\bshort reads?\b/i,
-  /\bnovella\b/i,
-  /\bbook\s*1\b/i,
-  /\bbook\s*one\b/i,
-  /\bepisode\b/i,
-  /\bpart\s+\d+\b/i,
-  /\bcheating wife\b/i,
-];
-
-function isLowQuality(candidate: Candidate): boolean {
-  const text = `${candidate.title} ${candidate.subtitle || ''}`.toLowerCase();
-  if (text.length > 140) return true;
-  return LOW_QUALITY_TITLE_PATTERNS.some((pattern) => pattern.test(text));
-}
-
-function passesQualityFloor(candidate: Candidate): boolean {
-  const hasCoreMetadata =
-    !!candidate.title &&
-    !!candidate.author &&
-    !!candidate.description;
-
-  const hasEngagement =
-    candidate.ratingCount >= 10 ||
-    candidate.editionCount >= 2;
-
-  const hasPublisherSignal =
-    !!candidate.publisher ||
-    candidate.ratingCount >= 25;
-
-  return hasCoreMetadata && hasEngagement && hasPublisherSignal;
 }
 
 function applyMinimalYaFilter(candidates: Candidate[], deckKey: DeckKey): Candidate[] {
@@ -422,28 +389,32 @@ function scoreCandidate(
   readerSoph: ReturnType<typeof estimateReaderSophisticationFromTaste>,
 ): number {
   let score = 0;
+// Keep metadata modest
+score += metadataSignals(candidate) * 0.16;
 
-  score += metadataSignals(candidate) * 0.45;
-  score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
-  score += scorePublisherBoost(candidate) * 1.2;
-  score += scoreRecency(candidate) * (profile.recencyWeight * 0.4);
-  score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
+// ↓ Reduce popularity dominance
+score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
 
-  if (candidate.ratingCount >= 50) score += 1.2;
-  if (candidate.ratingCount >= 200) score += 2.0;
+// Keep publisher light
+score += scorePublisherBoost(candidate) * 0.8;
 
-  if (candidate.ratingCount < 5) score -= 1.5;
-  if (candidate.editionCount && candidate.editionCount < 2) score -= 0.8;
-  if (!candidate.publisher) score -= 0.6;
+// Slightly reduce recency influence
+score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
 
-  if (candidate.hasCover) score += 0.12;
+// ↑ Make taste dominant
+score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
 
-  if (candidate.formatCategory === 'manga' || candidate.formatCategory === 'comic') {
-    score += lane === 'teen' ? 0.18 : -0.08;
-  }
+// Cover stays minor
+if (candidate.hasCover) score += 0.12;
 
-  const candSoph = estimateCandidateSophistication(candidate, lane);
-  score += scoreSophisticationAlignment(readerSoph, candSoph) * 2.6;
+// Keep visual lane behavior
+if (candidate.formatCategory === 'manga' || candidate.formatCategory === 'comic') {
+  score += lane === 'teen' ? 0.18 : -0.08;
+}
+
+// ↑ Boost sophistication alignment
+const candSoph = estimateCandidateSophistication(candidate, lane);
+score += scoreSophisticationAlignment(readerSoph, candSoph) * 2.6;
 
   const titleKey = identityKey(candidate);
   const authorKey = normalizeKey(candidate.author);
@@ -457,6 +428,25 @@ function scoreCandidate(
   if (lane === 'adult' && /\b(juvenile fiction|young readers|beginning reader|chapter book)\b/i.test(haystack(candidate))) score -= 3;
   if (/\b(study guide|workbook|analysis|criticism|manual|textbook)\b/i.test(haystack(candidate))) score -= 4;
   return score;
+}
+
+
+// --- QUALITY FLOOR (RELAXED) ---
+function passesQualityFloor(candidate: Candidate): boolean {
+  const hasCoreMetadata =
+    !!candidate.title &&
+    !!candidate.author &&
+    (!!candidate.description || (candidate.subjects && candidate.subjects.length >= 2));
+
+  const hasEngagement =
+    (candidate.ratingCount || 0) >= 5 ||
+    (candidate.editionCount || 0) >= 2;
+
+  const hasPublisherSignal =
+    !!candidate.publisher ||
+    (candidate.ratingCount || 0) >= 10;
+
+  return hasCoreMetadata && hasEngagement && hasPublisherSignal;
 }
 
 export function finalRecommenderForDeck(
@@ -474,7 +464,6 @@ export function finalRecommenderForDeck(
     dedupeCandidates(candidates)
       .filter((candidate) => !!candidate.title)
       .filter((candidate) => !isNonFictionBleed(candidate))
-      .filter((candidate) => !isLowQuality(candidate))
       .filter((candidate) => passesQualityFloor(candidate)),
     deckKey
   );
@@ -497,6 +486,17 @@ export function finalRecommenderForDeck(
     kept.push(entry.candidate);
     if (authorKey) authorCounts.set(authorKey, currentCount + 1);
     if (kept.length >= Math.max(profile.minKeep, 10)) break;
+  }
+
+  
+  if (kept.length === 0) {
+    const relaxed = applyMinimalYaFilter(
+      dedupeCandidates(candidates)
+        .filter((candidate) => !!candidate.title)
+        .filter((candidate) => !isNonFictionBleed(candidate)),
+      deckKey
+    );
+    return relaxed.slice(0, 10).map((c) => c.rawDoc);
   }
 
   return kept.map((candidate) => candidate.rawDoc);
