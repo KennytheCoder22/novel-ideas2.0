@@ -53,6 +53,104 @@ function dedupeQueries(queries: string[]): string[] {
   return out;
 }
 
+const ADULT_BUCKET_QUERY_PACKS: Record<string, string[]> = {
+  sci_fi: [
+    "subject:science_fiction",
+    "space opera science fiction",
+    "dystopian science fiction",
+    "science fiction novel",
+  ],
+  fantasy: [
+    "subject:fantasy",
+    "epic fantasy novel",
+    "dark fantasy novel",
+    "magic fantasy novel",
+  ],
+  mystery_detective: [
+    "murder investigation novel",
+    "crime detective fiction",
+  ],
+  thriller: [
+    "psychological thriller novel",
+    "spy thriller novel",
+    "crime thriller novel",
+    "thriller novel",
+  ],
+  romance: [
+    "romance novel",
+    "contemporary romance novel",
+    "historical romance novel",
+    "romantic fiction",
+  ],
+  horror: [
+    "horror novel",
+    "haunted house horror novel",
+    "survival horror novel",
+    "supernatural horror novel",
+  ],
+  historical_fiction: [
+    "historical fiction novel",
+    "war historical fiction novel",
+    "19th century historical fiction novel",
+    "historical drama novel",
+  ],
+  literary_fiction: [
+    "literary fiction novel",
+    "contemporary literary fiction",
+    "character-driven literary novel",
+    "family drama literary novel",
+  ],
+  general_contemporary: [
+    "contemporary fiction novel",
+    "general fiction novel",
+    "family life novel",
+    "modern life novel",
+  ],
+};
+
+function normalizeBucketId(value: any): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[\/]+/g, " ")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, "_");
+}
+
+function getBucketQueriesFromPlan(bucketId: any): string[] | undefined {
+  const normalized = normalizeBucketId(bucketId);
+
+  if (!normalized) return undefined;
+
+  const aliases: Record<string, string> = {
+    sci_fi: "sci_fi",
+    scifi: "sci_fi",
+    science_fiction: "sci_fi",
+    fantasy: "fantasy",
+    mystery: "mystery_detective",
+    detective: "mystery_detective",
+    mystery_detective: "mystery_detective",
+    mystery_and_detective: "mystery_detective",
+    thriller: "thriller",
+    romance: "romance",
+    horror: "horror",
+    historical_fiction: "historical_fiction",
+    historical: "historical_fiction",
+    literary_fiction: "literary_fiction",
+    literary: "literary_fiction",
+    general_contemporary: "general_contemporary",
+    general_fiction: "general_contemporary",
+    contemporary: "general_contemporary",
+    contemporary_fiction: "general_contemporary",
+  };
+
+  const canonicalKey = aliases[normalized] || normalized;
+  const queries = ADULT_BUCKET_QUERY_PACKS[canonicalKey];
+
+  return queries ? dedupeQueries(queries) : undefined;
+}
+
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): string[] {
   const isVisualDominant = visualSignalWeight(input.tagCounts) >= 4;
 
@@ -108,9 +206,10 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   const domainMode = deckKeyToDomainMode(deckKey);
 
   const explicitBucketPlan = (input as any)?.bucketPlan as { queries?: string[]; bucketId?: string } | undefined;
-  const queriesToTry = Array.isArray(explicitBucketPlan?.queries) && explicitBucketPlan?.queries.length
-    ? explicitBucketPlan.queries
-    : getBucketQueries(deckKey, input);
+  const planQueries = Array.isArray(explicitBucketPlan?.queries) && explicitBucketPlan?.queries.length
+    ? dedupeQueries(explicitBucketPlan.queries)
+    : getBucketQueriesFromPlan(explicitBucketPlan?.bucketId);
+  const queriesToTry = planQueries?.length ? planQueries : getBucketQueries(deckKey, input);
   const builtFromQuery = queriesToTry[0] || "";
 
   const minCandidateFloor = Math.max(
