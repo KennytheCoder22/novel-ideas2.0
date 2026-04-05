@@ -642,9 +642,55 @@ export default function SwipeDeckScreen(props: Props) {
       saveMoodProfileForSession: async (profile: MoodProfile) => {
         moodStoreRef.current[profile.sessionId] = profile;
       },
-      getCandidateBooks: async () => [],
+      getCandidateBooks: async () => {
+        const activeDeck = filterDeckCardsByCategory(getDeckByKey(deckKey), props.swipeCategories);
+        const rawCards = Array.isArray(activeDeck?.cards) ? activeDeck.cards : [];
+        const proseLike = rawCards.filter((card: any) => cardCategoryFromTags(card) === "books");
+        const sourceCards = (proseLike.length > 0 ? proseLike : rawCards).slice(0, 40);
+
+        return sourceCards
+          .map((card: any, index: number) => {
+            const title = String(card?.title || card?.prompt || "").trim();
+            if (!title) return null;
+
+            const author = String(card?.author || "Unknown").trim() || "Unknown";
+            const genre = String(card?.genre || "").trim();
+            const tags = Array.isArray(card?.tags)
+              ? card.tags.filter((tag: any) => typeof tag === "string" && tag.trim())
+              : [];
+
+            const semantic = card?.semantic || {};
+
+            return {
+              id:
+                String(card?.id || "").trim() ||
+                `${deckKey}:${index}:${title}:${author}`.toLowerCase(),
+              title,
+              author,
+              authors: [author],
+              description: typeof card?.description === "string" ? card.description : undefined,
+              genres: genre ? [genre] : [],
+              tags,
+              subjects: [
+                ...tags,
+                ...(Array.isArray(semantic?.contentTraits) ? semantic.contentTraits : []),
+                ...(Array.isArray(semantic?.toneTraits) ? semantic.toneTraits : []),
+                ...(Array.isArray(semantic?.characterTraits) ? semantic.characterTraits : []),
+                ...(Array.isArray(semantic?.storyTraits) ? semantic.storyTraits : []),
+              ],
+              publicationYear: 0,
+              averageRating: 0,
+              ratingCount: 0,
+              pageCount: 0,
+              popularity: 0,
+              source: "swipeDeck",
+              raw: card,
+            };
+          })
+          .filter(Boolean) as any[];
+      },
     });
-  }, []);
+  }, [deckKey, props.swipeCategories]);
 
   const tasteProfileWithMood = useMemo(() => {
     return mergeActiveTasteIntoProfile(tasteProfile, activeTasteVector);
