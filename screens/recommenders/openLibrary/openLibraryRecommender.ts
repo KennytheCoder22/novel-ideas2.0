@@ -251,6 +251,8 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
 }
 
 export async function getOpenLibraryRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
+  console.log("🔥 OPEN LIBRARY EXECUTING 🔥");
+
   const deckKey = input.deckKey;
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
   const fetchLimit = Math.max(40, Math.min(160, Math.max(finalLimit * 6, (input.limit ?? 12) * 4)));
