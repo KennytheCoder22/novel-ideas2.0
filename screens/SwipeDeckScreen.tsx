@@ -580,6 +580,7 @@ export default function SwipeDeckScreen(props: Props) {
 
   const [showRating, setShowRating] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
+  const [showSourceCounts, setShowSourceCounts] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
   const [profileOverridesByLane, setProfileOverridesByLane] = useState<Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>>({});
   const [ratingPreview, setRatingPreview] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
@@ -588,6 +589,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRecommendationInput, setLastRecommendationInput] = useState<RecommenderInput | null>(null);
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
+  const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; survivedFilters: number }> | null>(null);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -833,6 +835,8 @@ export default function SwipeDeckScreen(props: Props) {
     setAutoSearched(false);
     setShowRating(false);
     setShowDebug(false);
+    setShowSourceCounts(false);
+    setLastSourceCounts(null);
     setFeedback([]);
     setSessionMoodProfile(null);
     setActiveTasteVector(null);
@@ -1084,6 +1088,7 @@ function handleLeft() {
 
       setRecQuery(result.builtFromQuery || "");
       setRecEngineLabel(result.engineLabel || "");
+      setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; survivedFilters: number }>) || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes}`);
@@ -1338,6 +1343,15 @@ function handleLeft() {
   }, [cardStageHeight]);
 
   const isFirstRec = recItems.length > 0 && recIndex === 0;
+  const sourceCountRows = [
+    { key: "googleBooks", label: "Google Books" },
+    { key: "openLibrary", label: "Open Library" },
+    { key: "kitsu", label: "Kitsu" },
+    { key: "gcd", label: "GCD" },
+  ].filter(({ key }) => {
+    const stats = lastSourceCounts?.[key];
+    return !!stats && (stats.rawFetched > 0 || stats.survivedFilters > 0);
+  });
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: "#071526" }]}>
@@ -1655,6 +1669,39 @@ function handleLeft() {
         }}
       />
 
+      <TouchableOpacity style={styles.countsToggle} onPress={() => setShowSourceCounts((v) => !v)}>
+        <Text style={styles.debugToggleText}>Counts</Text>
+      </TouchableOpacity>
+      {showSourceCounts && (
+        <View style={styles.countsPanel}>
+          <View style={styles.debugCard}>
+            <View style={styles.debugHeader}>
+              <Text style={styles.debugTitle}>Fetcher counts</Text>
+              <TouchableOpacity onPress={() => setShowSourceCounts(false)} style={styles.debugCloseBtn}>
+                <Text style={styles.debugCloseText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
+              {sourceCountRows.length > 0 ? (
+                sourceCountRows.map(({ key, label }) => {
+                  const stats = lastSourceCounts?.[key];
+                  return (
+                    <View key={key} style={styles.countsRow}>
+                      <Text style={styles.debugValue}>{label}</Text>
+                      <Text style={styles.debugValueMuted}>
+                        raw: {stats?.rawFetched ?? 0} • survived: {stats?.survivedFilters ?? 0}
+                      </Text>
+                    </View>
+                  );
+                })
+              ) : (
+                <Text style={styles.debugValueMuted}>Run recommendations to populate source counts.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
       <TouchableOpacity style={styles.debugToggle} onPress={() => setShowDebug((v) => !v)}>
         <Text style={styles.debugToggleText}>Debug</Text>
       </TouchableOpacity>
@@ -1898,9 +1945,19 @@ const styles = StyleSheet.create({
   },
   tuneToggle: {
     position: "absolute",
-    right: 92,
+    right: 172,
     bottom: 16,
     backgroundColor: "#0f766e",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    zIndex: 40,
+  },
+  countsToggle: {
+    position: "absolute",
+    right: 92,
+    bottom: 16,
+    backgroundColor: "#0369a1",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
@@ -1917,6 +1974,7 @@ const styles = StyleSheet.create({
     zIndex: 40,
   },
   debugToggleText: { color: "#fff", fontWeight: "900" },
+  countsPanel: { position: "absolute", right: 16, bottom: 56, width: 320, maxWidth: "90%", zIndex: 50 },
   debugPanel: { position: "absolute", right: 16, bottom: 56, width: 320, maxWidth: "90%", zIndex: 50 },
   debugCard: {
     borderRadius: 14,
@@ -1942,4 +2000,5 @@ const styles = StyleSheet.create({
   debugLabel: { color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "800" },
   debugValue: { color: "#fff", fontSize: 13, fontWeight: "900", marginTop: 2 },
   debugValueMuted: { color: "rgba(255,255,255,0.88)", fontSize: 12, marginTop: 2, lineHeight: 16 },
+  countsRow: { marginTop: 10 },
 });

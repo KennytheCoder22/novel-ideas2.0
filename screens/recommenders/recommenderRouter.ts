@@ -116,6 +116,18 @@ function dedupeDocs(docs: RecommendationDoc[]): RecommendationDoc[] {
   return out;
 }
 
+type RecommenderDebugSourceStats = {
+  rawFetched: number;
+  survivedFilters: number;
+};
+
+function countResultItems(result: RecommendationResult | null | undefined): number {
+  if (!result) return 0;
+  if (Array.isArray((result as any).items)) return (result as any).items.length;
+  if (Array.isArray((result as any).recommendations)) return (result as any).recommendations.length;
+  if (Array.isArray((result as any).docs)) return (result as any).docs.length;
+  return 0;
+}
 
 async function runEngine(engine: EngineId, input: RecommenderInput): Promise<RecommendationResult> {
   if (engine === "googleBooks") return getGoogleBooksRecommendations(input);
@@ -240,6 +252,25 @@ export async function getRecommendations(
       ? "Google Books + Open Library + GCD"
       : "Google Books + Open Library";
 
+  const debugSourceStats: Record<string, RecommenderDebugSourceStats> = {
+    googleBooks: {
+      rawFetched: countResultItems(google),
+      survivedFilters: googleCandidates.length,
+    },
+    openLibrary: {
+      rawFetched: countResultItems(openLibrary),
+      survivedFilters: openLibraryCandidates.length,
+    },
+    kitsu: {
+      rawFetched: includeKitsu ? countResultItems(kitsu) : 0,
+      survivedFilters: includeKitsu ? kitsuCandidates.length : 0,
+    },
+    gcd: {
+      rawFetched: includeGcd ? countResultItems(gcd) : 0,
+      survivedFilters: includeGcd ? gcdCandidates.length : 0,
+    },
+  };
+
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -254,5 +285,6 @@ export async function getRecommendations(
       bucketPlan.queries?.[0] ||
       "",
     items: rankedDocs.map((doc) => ({ kind: "open_library", doc })),
-  };
+    debugSourceStats,
+  } as RecommendationResult;
 }
