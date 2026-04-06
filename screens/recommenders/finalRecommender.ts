@@ -16,6 +16,20 @@ export type FinalRecommenderOptions = {
   priorRejectedKeys?: string[];
 };
 
+type CandidateDiagnostics = {
+  source: string;
+  preFilterScore?: number;
+  postFilterScore?: number;
+};
+
+type CandidateWithDiagnostics = Candidate & {
+  diagnostics?: CandidateDiagnostics;
+};
+
+type RecommendationDocWithDiagnostics = RecommendationDoc & {
+  diagnostics?: CandidateDiagnostics;
+};
+
 const DOC_TASTE_SIGNAL_PATTERNS = {
   humorous: /\b(humor|humorous|funny|comic|comedic|satire|satirical|witty|laugh[-\s]?out[-\s]?loud)\b/i,
   warm: /\b(warm|heartwarming|hopeful|uplifting|tender|empathetic|gentle|kindness|life[-\s]?affirming)\b/i,
@@ -394,19 +408,31 @@ export function finalRecommenderForDeck(
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
-    .map((candidate) => ({
-      candidate,
-      score: scoreCandidate(candidate, lane, profile, options, readerSoph),
-    }))
+    .map((candidate) => {
+      const preFilterScore = scoreCandidate(candidate, lane, profile, options, readerSoph);
+      const candidateWithDiagnostics: CandidateWithDiagnostics = {
+        ...candidate,
+        diagnostics: {
+          ...(candidate as CandidateWithDiagnostics).diagnostics,
+          source: candidate.source || 'unknown',
+          preFilterScore,
+        },
+      };
+
+      return {
+        candidate: candidateWithDiagnostics,
+        score: preFilterScore,
+      };
+    })
     .sort((a, b) => b.score - a.score);
 
   const targetMax = Math.max(profile.minKeep, 10);
-  const kept: Candidate[] = [];
+  const kept: CandidateWithDiagnostics[] = [];
   const selected = kept;
   const seen = new Set<string>();
   const sourceCounts: Record<string, number> = {};
 
-  const addCandidateIfAllowed = (candidate: Candidate): boolean => {
+  const addCandidateIfAllowed = (candidate: CandidateWithDiagnostics): boolean => {
     const key = identityKey(candidate);
     if (seen.has(key)) return false;
 
@@ -422,7 +448,7 @@ export function finalRecommenderForDeck(
     return true;
   };
 
-  const countSelectedBy = (getKey: (candidate: Candidate) => string): Map<string, number> => {
+  const countSelectedBy = (getKey: (candidate: CandidateWithDiagnostics) => string): Map<string, number> => {
     const counts = new Map<string, number>();
     for (const candidate of selected) {
       const key = getKey(candidate);
@@ -466,7 +492,7 @@ export function finalRecommenderForDeck(
   const hasSeriesSignals = (candidate: Candidate): boolean =>
     /\bseries\b/i.test(haystack(candidate)) || /\bbook\s*\d+\b/i.test(candidate.title);
 
-  const dynamicSelectionPenalty = (candidate: Candidate): number => {
+  const dynamicSelectionPenalty = (candidate: CandidateWithDiagnostics): number => {
     let penalty = 0;
 
     const authorCounts = countSelectedBy((item) => normalizeKey(item.author));
@@ -513,8 +539,8 @@ export function finalRecommenderForDeck(
     return penalty;
   };
 
-  const addRanked = (pool: Array<{ candidate: Candidate; score: number }>) => {
-    const remaining = new Map<string, { candidate: Candidate; baseScore: number }>();
+  const addRanked = (pool: Array<{ candidate: CandidateWithDiagnostics; score: number }>) => {
+    const remaining = new Map<string, { candidate: CandidateWithDiagnostics; baseScore: number }>();
     for (const entry of pool) {
       remaining.set(identityKey(entry.candidate), { candidate: entry.candidate, baseScore: entry.score });
     }
@@ -522,14 +548,22 @@ export function finalRecommenderForDeck(
     while (selected.length < targetMax && remaining.size > 0) {
       let bestKey = "";
       let bestAdjustedScore = Number.NEGATIVE_INFINITY;
-      let bestCandidate: Candidate | null = null;
+      let bestCandidate: CandidateWithDiagnostics | null = null;
 
       for (const [key, entry] of remaining.entries()) {
         const { candidate, baseScore } = entry;
 
         if (seen.has(key)) continue;
 
-        let adjustedScore = baseScore - dynamicSelectionPenalty(candidate);
+        const penalty = dynamicSelectionPenalty(candidate);
+        const adjustedScore = baseScore - penalty;
+
+        candidate.diagnostics = {
+          ...candidate.diagnostics,
+          source: candidate.diagnostics?.source || candidate.source || 'unknown',
+          preFilterScore: candidate.diagnostics?.preFilterScore ?? baseScore,
+          postFilterScore: adjustedScore,
+        };
 
         if (adjustedScore > bestAdjustedScore) {
           bestAdjustedScore = adjustedScore;
@@ -551,5 +585,8 @@ export function finalRecommenderForDeck(
 
   addRanked(scored);
 
-  return kept.map((candidate) => candidate.rawDoc);
+  return kept.map((candidate) => ({
+    ...(candidate.rawDoc as RecommendationDoc),
+    diagnostics: candidate.diagnostics,
+  } as RecommendationDocWithDiagnostics));
 }

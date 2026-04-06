@@ -244,6 +244,18 @@ export async function getRecommendations(
     priorRejectedKeys: input.priorRejectedKeys,
   });
 
+  const rankedDocsWithDiagnostics = rankedDocs.map((doc: any) => ({
+    ...doc,
+    source: sourceForDoc(doc, "openLibrary"),
+    diagnostics: doc?.diagnostics
+      ? {
+          source: doc.diagnostics.source || sourceForDoc(doc, "openLibrary"),
+          preFilterScore: doc.diagnostics.preFilterScore,
+          postFilterScore: doc.diagnostics.postFilterScore,
+        }
+      : undefined,
+  }));
+
   const rankedCountsBySource: Record<CandidateSource, number> = {
     googleBooks: 0,
     openLibrary: 0,
@@ -251,7 +263,7 @@ export async function getRecommendations(
     gcd: 0,
   };
 
-  for (const doc of rankedDocs) {
+  for (const doc of rankedDocsWithDiagnostics) {
     const source = sourceForDoc(doc, "openLibrary");
     rankedCountsBySource[source] = (rankedCountsBySource[source] || 0) + 1;
   }
@@ -301,7 +313,7 @@ export async function getRecommendations(
       (google as any)?.builtFromQuery ||
       bucketPlan.queries?.[0] ||
       "",
-    items: rankedDocs.map((doc) => ({ kind: "open_library", doc })),
+    items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
     debugSourceStats,
   } as RecommendationResult;
 }
