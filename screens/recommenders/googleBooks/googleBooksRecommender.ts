@@ -274,10 +274,19 @@ function getGoogleBooksApiKey(): string {
 }
 
 function toGoogleBooksQuery(query: string): string {
-  const q = String(query || "").trim();
+  let q = String(query || "").toLowerCase().trim();
   if (!q) return "";
 
-  if (q.toLowerCase().startsWith("subject:")) {
+  // Remove weak / misleading adjectives that cause title matching bias
+  q = q
+    .replace(/\bdark\b/g, "")
+    .replace(/\bgritty\b/g, "")
+    .replace(/\bgrounded\b/g, "")
+    .replace(/\bintense\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (q.startsWith("subject:")) {
     const subject = q.slice("subject:".length).trim().replace(/^"+|"+$/g, "");
     return `subject:${subject}`;
   }
