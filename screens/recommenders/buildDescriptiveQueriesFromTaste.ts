@@ -1,12 +1,38 @@
 import type { RecommenderInput } from "./types";
 
 type SignalBucket = Record<string, number>;
+
 type QuerySignals = {
   genre: SignalBucket;
   tone: SignalBucket;
   texture: SignalBucket;
   scenario: SignalBucket;
 };
+
+const NEGATIVE_TERMS = [
+  "-analysis",
+  "-guide",
+  "-summary",
+  "-criticism",
+  "-literature",
+  "-magazine",
+  "-journal",
+  "-catalog",
+  "-catalogue",
+  "-reference",
+  "-companion",
+  "-study",
+  "-workbook",
+  "-textbook",
+  "-manual",
+  "-encyclopedia",
+  "-anthology",
+  "-collection",
+  "-essays",
+  "-nonfiction",
+  "-biography",
+  "-memoir",
+].join(" ");
 
 const GENRE_RULES: Array<[RegExp, string]> = [
   [/(^|:|\b)fantasy(\b|:|$)/i, "fantasy"],
@@ -17,6 +43,7 @@ const GENRE_RULES: Array<[RegExp, string]> = [
   [/(^|:|\b)science fiction(\b|:|$)|(^|:|\b)sci[-\s]?fi(\b|:|$)/i, "science fiction"],
   [/(^|:|\b)romance(\b|:|$)/i, "romance"],
   [/(^|:|\b)historical(\b|:|$)/i, "historical"],
+  [/(^|:|\b)dystopian(\b|:|$)/i, "dystopian"],
 ];
 
 const TONE_RULES: Array<[RegExp, string]> = [
@@ -25,6 +52,7 @@ const TONE_RULES: Array<[RegExp, string]> = [
   [/(^|:|\b)cozy(\b|:|$)|(^|:|\b)comfort(\b|:|$)/i, "cozy"],
   [/(^|:|\b)spooky(\b|:|$)|(^|:|\b)haunting(\b|:|$)|(^|:|\b)gothic(\b|:|$)/i, "spooky"],
   [/(^|:|\b)funny(\b|:|$)|(^|:|\b)humor(\b|:|$)|(^|:|\b)comedy(\b|:|$)/i, "funny"],
+  [/(^|:|\b)gritty(\b|:|$)/i, "gritty"],
 ];
 
 const TEXTURE_RULES: Array<[RegExp, string]> = [
@@ -33,6 +61,8 @@ const TEXTURE_RULES: Array<[RegExp, string]> = [
   [/(^|:|\b)epic(\b|:|$)/i, "epic"],
   [/(^|:|\b)character(\b|:|$)|(^|:|\b)character driven(\b|:|$)/i, "character-driven"],
   [/(^|:|\b)psychological(\b|:|$)/i, "psychological"],
+  [/(^|:|\b)fast[-\s]?paced(\b|:|$)|(^|:|\b)propulsive(\b|:|$)/i, "fast-paced"],
+  [/(^|:|\b)slow[-\s]?burn(\b|:|$)/i, "slow-burn"],
 ];
 
 const SCENARIO_RULES: Array<[RegExp, string]> = [
@@ -44,6 +74,8 @@ const SCENARIO_RULES: Array<[RegExp, string]> = [
   [/(^|:|\b)survival(\b|:|$)/i, "survival"],
   [/(^|:|\b)family(\b|:|$)/i, "family conflict"],
   [/(^|:|\b)mythology(\b|:|$)|(^|:|\b)mythic(\b|:|$)/i, "mythic conflict"],
+  [/(^|:|\b)dystopian(\b|:|$)/i, "societal collapse"],
+  [/(^|:|\b)crime(\b|:|$)/i, "crime investigation"],
 ];
 
 function addSignal(bucket: SignalBucket, key: string, value: number) {
@@ -66,13 +98,15 @@ function addTasteAxisHints(input: RecommenderInput, tone: SignalBucket, texture:
   const axes = input.tasteProfile?.axes;
   if (!axes) return;
 
-  if ((axes.darkness || 0) > 0.15) addSignal(tone, "dark", axes.darkness);
-  if ((axes.warmth || 0) > 0.15) addSignal(tone, "hopeful", axes.warmth);
-  if ((axes.humor || 0) > 0.15) addSignal(tone, "funny", axes.humor);
-  if ((axes.realism || 0) > 0.15) addSignal(texture, "realistic", axes.realism);
-  if ((axes.realism || 0) < -0.15) addSignal(texture, "epic", Math.abs(axes.realism));
-  if ((axes.characterFocus || 0) > 0.15) addSignal(texture, "character-driven", axes.characterFocus);
-  if ((axes.ideaDensity || 0) > 0.15) addSignal(texture, "psychological", axes.ideaDensity);
+  if ((axes.darkness || 0) > 0.12) addSignal(tone, "dark", axes.darkness);
+  if ((axes.warmth || 0) > 0.12) addSignal(tone, "hopeful", axes.warmth);
+  if ((axes.humor || 0) > 0.12) addSignal(tone, "funny", axes.humor);
+  if ((axes.realism || 0) > 0.12) addSignal(texture, "realistic", axes.realism);
+  if ((axes.realism || 0) < -0.12) addSignal(texture, "epic", Math.abs(axes.realism));
+  if ((axes.characterFocus || 0) > 0.12) addSignal(texture, "character-driven", axes.characterFocus);
+  if ((axes.ideaDensity || 0) > 0.12) addSignal(texture, "psychological", axes.ideaDensity);
+  if ((axes.pacing || 0) > 0.12) addSignal(texture, "fast-paced", axes.pacing);
+  if ((axes.pacing || 0) < -0.12) addSignal(texture, "slow-burn", Math.abs(axes.pacing));
 }
 
 function extractSignals(input: RecommenderInput): QuerySignals {
@@ -95,7 +129,7 @@ function extractSignals(input: RecommenderInput): QuerySignals {
   return { genre, tone, texture, scenario };
 }
 
-function topKeys(bucket: SignalBucket, limit: number, threshold = 0.05): string[] {
+function topKeys(bucket: SignalBucket, limit: number, threshold = 0.04): string[] {
   return Object.entries(bucket)
     .filter(([, score]) => score > threshold)
     .sort((a, b) => b[1] - a[1])
@@ -103,61 +137,76 @@ function topKeys(bucket: SignalBucket, limit: number, threshold = 0.05): string[
     .map(([key]) => key);
 }
 
+function audiencePhrase(deckKey: RecommenderInput["deckKey"]): string {
+  if (deckKey === "adult") return "adult fiction";
+  if (deckKey === "ms_hs") return "young adult fiction";
+  if (deckKey === "3_6") return "middle grade fiction";
+  return "fiction";
+}
+
 function fallbackQueriesForDeck(deckKey: RecommenderInput["deckKey"]): string[] {
-  if (deckKey === "adult") {
-    return [
-      "character-driven novel with emotional tension",
-      "high-stakes story with strong atmosphere",
-      "psychological fiction with narrative momentum",
-      "adult fiction focused on conflict and suspense",
-    ];
-  }
-  if (deckKey === "ms_hs") {
-    return [
-      "young adult novel with emotional tension",
-      "character-driven YA fiction with high stakes",
-      "page-turning YA fiction with strong atmosphere",
-      "teen fiction focused on conflict and suspense",
-    ];
-  }
+  const audience = audiencePhrase(deckKey);
   return [
-    "fiction with emotional tension and strong characters",
-    "story with adventure and high stakes",
-    "page-turning fiction with vivid atmosphere",
-    "character-driven fiction with narrative momentum",
+    `character-driven ${audience} with emotional tension ${NEGATIVE_TERMS}`,
+    `high-stakes ${audience} with strong atmosphere ${NEGATIVE_TERMS}`,
+    `psychological ${audience} with narrative momentum ${NEGATIVE_TERMS}`,
+    `${audience} focused on conflict and suspense ${NEGATIVE_TERMS}`,
   ];
 }
 
 function genreCore(genres: string[]): string {
-  if (genres.includes("crime") && genres.includes("thriller")) return "crime thriller novel";
-  if (genres.includes("mystery") && genres.includes("thriller")) return "mystery thriller novel";
-  if (genres.includes("fantasy")) return "fantasy novel";
-  if (genres.includes("thriller")) return "thriller novel";
-  if (genres.includes("mystery")) return "mystery novel";
-  if (genres.includes("crime")) return "crime novel";
-  if (genres.includes("horror")) return "horror novel";
+  if (genres.includes("crime") && genres.includes("thriller")) return "crime thriller fiction novel";
+  if (genres.includes("mystery") && genres.includes("thriller")) return "mystery thriller fiction novel";
+  if (genres.includes("crime") && genres.includes("mystery")) return "crime mystery fiction novel";
+  if (genres.includes("dystopian") && genres.includes("thriller")) return "dystopian thriller fiction novel";
+  if (genres.includes("fantasy")) return "fantasy fiction novel";
+  if (genres.includes("thriller")) return "thriller fiction novel";
+  if (genres.includes("mystery")) return "mystery fiction novel";
+  if (genres.includes("crime")) return "crime fiction novel";
+  if (genres.includes("horror")) return "horror fiction novel";
   if (genres.includes("science fiction")) return "science fiction novel";
-  if (genres.includes("romance")) return "romance novel";
+  if (genres.includes("romance")) return "romance fiction novel";
   if (genres.includes("historical")) return "historical fiction novel";
+  if (genres.includes("dystopian")) return "dystopian fiction novel";
   return "";
+}
+
+function dedupeWords(value: string): string {
+  const words = value.split(/\s+/);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const word of words) {
+    const normalized = word.toLowerCase();
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+    out.push(word);
+  }
+  return out.join(" ").trim();
 }
 
 function buildPrimaryPhrase(
   tones: string[],
   textures: string[],
   genres: string[],
-  scenarios: string[]
+  scenarios: string[],
+  deckKey: RecommenderInput["deckKey"]
 ): string | null {
   const core = genreCore(genres);
   if (!core) return null;
 
   const parts: string[] = [];
+  if (scenarios[0]) parts.push(scenarios[0]);
   if (tones[0]) parts.push(tones[0]);
   if (textures[0] && textures[0] !== tones[0]) parts.push(textures[0]);
   parts.push(core);
-  if (scenarios[0]) parts.push(`about ${scenarios[0]}`);
+  parts.push(audiencePhrase(deckKey));
 
-  return parts.join(" ").replace(/\s+/g, " ").trim();
+  return dedupeWords(parts.join(" ").replace(/\s+/g, " ").trim());
+}
+
+function pushQuery(set: Set<string>, query: string) {
+  const cleaned = dedupeWords(query.replace(/\s+/g, " ").trim());
+  if (cleaned) set.add(`${cleaned} ${NEGATIVE_TERMS}`.trim());
 }
 
 function buildVariantPhrases(
@@ -169,42 +218,57 @@ function buildVariantPhrases(
 ): string[] {
   const queries = new Set<string>();
   const core = genreCore(genres);
+  const audience = audiencePhrase(deckKey);
 
   if (!core) {
     for (const fallback of fallbackQueriesForDeck(deckKey)) queries.add(fallback);
     return Array.from(queries);
   }
 
-  const primary = buildPrimaryPhrase(tones, textures, genres, scenarios);
-  if (primary) queries.add(primary);
-  if (tones[0] && scenarios[0]) queries.add(`${tones[0]} ${core} with ${scenarios[0]}`);
-  if (textures[0] && scenarios[0]) queries.add(`${textures[0]} ${core} focused on ${scenarios[0]}`);
-  if (tones[0] && textures[0]) queries.add(`${tones[0]} ${textures[0]} ${core}`);
-  if (scenarios[1]) queries.add(`${core} about ${scenarios[1]}`);
-  if (tones[1]) queries.add(`${tones[1]} ${core}`);
-  if (textures[1]) queries.add(`${textures[1]} ${core}`);
+  const primary = buildPrimaryPhrase(tones, textures, genres, scenarios, deckKey);
+  if (primary) pushQuery(queries, primary);
 
-  return Array.from(queries)
-    .map((q) => q.replace(/\s+/g, " ").trim())
-    .filter(Boolean);
+  if (scenarios[0] && tones[0] && textures[0]) {
+    pushQuery(queries, `${scenarios[0]} ${tones[0]} ${textures[0]} ${core} ${audience}`);
+  }
+  if (scenarios[0] && tones[0]) {
+    pushQuery(queries, `${scenarios[0]} ${tones[0]} ${core} ${audience}`);
+  }
+  if (scenarios[0] && textures[0]) {
+    pushQuery(queries, `${scenarios[0]} ${textures[0]} ${core} ${audience}`);
+  }
+  if (tones[0] && textures[0]) {
+    pushQuery(queries, `${tones[0]} ${textures[0]} ${core} ${audience}`);
+  }
+  if (scenarios[1]) {
+    pushQuery(queries, `${scenarios[1]} ${core} ${audience}`);
+  }
+  if (tones[1]) {
+    pushQuery(queries, `${tones[1]} ${core} ${audience}`);
+  }
+  if (textures[1]) {
+    pushQuery(queries, `${textures[1]} ${core} ${audience}`);
+  }
+
+  return Array.from(queries);
 }
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const signals = extractSignals(input);
 
-  const genres = topKeys(signals.genre, 3);
-  const tones = topKeys(signals.tone, 2);
-  const textures = topKeys(signals.texture, 2);
-  const scenarios = topKeys(signals.scenario, 3);
+  const genres = topKeys(signals.genre, 4);
+  const tones = topKeys(signals.tone, 3);
+  const textures = topKeys(signals.texture, 3);
+  const scenarios = topKeys(signals.scenario, 4);
 
   const queries = buildVariantPhrases(tones, textures, genres, scenarios, input.deckKey).slice(0, 6);
   const preview =
-    buildPrimaryPhrase(tones, textures, genres, scenarios) ||
+    buildPrimaryPhrase(tones, textures, genres, scenarios, input.deckKey) ||
     fallbackQueriesForDeck(input.deckKey)[0];
 
   return {
     queries,
-    strategy: "20q-descriptive-query-builder",
+    strategy: "20q-descriptive-query-builder-v2",
     preview,
     signals: { genres, tones, textures, scenarios },
   };
