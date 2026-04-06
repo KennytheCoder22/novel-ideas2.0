@@ -66,6 +66,38 @@ function sanitizeOpenLibraryQuery(query: string): string {
   return q;
 }
 
+function toOpenLibraryQuery(query: string): string {
+  let q = String(query || "").toLowerCase();
+
+  // strip negative filters
+  q = q.replace(/-\w+/g, " ");
+
+  // remove weak adjectives
+  q = q
+    .replace(/\bdark\b/g, "")
+    .replace(/\bfunny\b/g, "")
+    .replace(/\bgritty\b/g, "")
+    .replace(/\bgrounded\b/g, "")
+    .replace(/\bintense\b/g, "")
+    .replace(/\bsocietal\b/g, "")
+    .replace(/\bsurvival\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // compress to stronger OL-friendly quoted phrases
+  if (q.includes("dystopian")) return '"dystopian science fiction novel"';
+  if (q.includes("science fiction")) return '"science fiction novel"';
+  if (q.includes("thriller") && q.includes("crime")) return '"crime thriller novel"';
+  if (q.includes("thriller")) return '"psychological thriller novel"';
+  if (q.includes("romance")) return '"romance novel"';
+  if (q.includes("fantasy")) return '"epic fantasy novel"';
+  if (q.includes("horror")) return '"horror novel"';
+  if (q.includes("mystery")) return '"detective novel"';
+  if (q.includes("historical")) return '"historical fiction novel"';
+
+  return q;
+}
+
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
   queries: string[];
   domainMode: RecommendationResult["domainMode"];
@@ -296,7 +328,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const rawQ = queriesToTry[queryIndex];
-    const q = sanitizeOpenLibraryQuery(rawQ);
+    const q = toOpenLibraryQuery(rawQ);
     const url =
       `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(fetchLimit))}`;
 
