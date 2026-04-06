@@ -20,6 +20,7 @@ type CandidateDiagnostics = {
   source: string;
   preFilterScore?: number;
   postFilterScore?: number;
+  rejectionReason?: string;
 };
 
 type CandidateWithDiagnostics = Candidate & {
@@ -65,6 +66,25 @@ const TASTE_KEY_ALIASES = {
 } as const;
 
 type TasteSignalKey = keyof typeof DOC_TASTE_SIGNAL_PATTERNS;
+
+type CompactHypothesis = {
+  label: string;
+  requiredPatterns: RegExp[];
+  optionalPatterns: RegExp[];
+};
+
+const NONFICTION_PATTERNS = [
+  /\b(philosophy|philosophical essays|history|biography|autobiography|memoir|self[-\s]?help|psychology|religion|spirituality|criticism|literary criticism|essays|reference|study guide|workbook|manual|textbook|companion|encyclopedia)\b/i,
+  /\b(nonfiction|non-fiction)\b/i,
+];
+
+const SUMMARY_GUIDE_PATTERNS = [
+  /\b(summary|analysis|student edition|teacher guide|study guide|workbook|lesson plan|book club kit|companion|critical essays)\b/i,
+];
+
+const WEAK_METADATA_PATTERNS = [
+  /\b(annotated|complete works|selected works|collection|anthology|omnibus|box set)\b/i,
+];
 
 function normalizeKey(value: any): string {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -208,38 +228,38 @@ function inList(value: string | undefined, items?: string[]): boolean {
 }
 
 const YA_POSITIVE_SUBJECTS = [
-  "young adult",
-  "young adult fiction",
-  "teen fiction",
-  "adolescent fiction",
-  "juvenile fiction",
+  'young adult',
+  'young adult fiction',
+  'teen fiction',
+  'adolescent fiction',
+  'juvenile fiction',
 ];
 
 const YA_NEGATIVE_SUBJECTS = [
-  "history",
-  "biography",
-  "autobiography",
-  "memoir",
-  "criticism",
-  "literary criticism",
-  "essays",
-  "philosophy",
-  "religion",
-  "anthology",
-  "collection",
-  "short stories",
-  "omnibus",
-  "box set",
+  'history',
+  'biography',
+  'autobiography',
+  'memoir',
+  'criticism',
+  'literary criticism',
+  'essays',
+  'philosophy',
+  'religion',
+  'anthology',
+  'collection',
+  'short stories',
+  'omnibus',
+  'box set',
 ];
 
 const CHILD_ONLY_SUBJECTS = [
-  "children",
+  'children',
   "children's books",
-  "picture books",
-  "early reader",
-  "early readers",
-  "middle grade",
-  "chapter books",
+  'picture books',
+  'early reader',
+  'early readers',
+  'middle grade',
+  'chapter books',
 ];
 
 const CLASSIC_TITLE_PAT = /\b(huckleberry finn|catcher in the rye|great expectations|wuthering heights|les miserables|moby dick|scarlet letter)\b/i;
@@ -344,40 +364,159 @@ function applyMinimalYaFilter(candidates: Candidate[], deckKey: DeckKey): Candid
   });
 }
 
+function compactHypothesisFromTaste(taste: TasteProfile | undefined): CompactHypothesis | null {
+  if (!taste) return null;
+
+  const mysterious = getTastePreferenceForKey(taste, 'mysterious');
+  const tense = getTastePreferenceForKey(taste, 'tense');
+  const dark = getTastePreferenceForKey(taste, 'dark');
+  const cozy = getTastePreferenceForKey(taste, 'cozy');
+  const adventurous = getTastePreferenceForKey(taste, 'adventurous');
+  const romantic = getTastePreferenceForKey(taste, 'romantic');
+  const warm = getTastePreferenceForKey(taste, 'warm');
+  const literary = getTastePreferenceForKey(taste, 'literary');
+  const idea = getTastePreferenceForKey(taste, 'idea');
+  const character = getTastePreferenceForKey(taste, 'character');
+
+  if (mysterious > 0.2 && tense > 0.2) {
+    return {
+      label: dark > 0.18 ? 'dark thriller/mystery' : 'thriller/mystery',
+      requiredPatterns: [/\b(thriller|mystery|crime|detective|investigation|suspense|psychological thriller)\b/i],
+      optionalPatterns: [
+        /\b(psychological|serial killer|murder|police procedural|noir|gripping|tense)\b/i,
+        /\b(dark|gritty|bleak)\b/i,
+      ],
+    };
+  }
+
+  if (cozy > 0.22 && mysterious > 0.12) {
+    return {
+      label: 'cozy mystery',
+      requiredPatterns: [/\b(mystery|detective|whodunit|investigation)\b/i],
+      optionalPatterns: [/\b(cozy|small town|gentle|comfort read|found family)\b/i],
+    };
+  }
+
+  if (adventurous > 0.22 && character > 0.12) {
+    return {
+      label: 'adventurous character fiction',
+      requiredPatterns: [/\b(adventure|quest|journey|survival|expedition|epic|fantasy|science fiction)\b/i],
+      optionalPatterns: [/\b(character[-\s]?driven|relationship|found family)\b/i],
+    };
+  }
+
+  if (romantic > 0.22) {
+    return {
+      label: 'romantic fiction',
+      requiredPatterns: [/\b(romance|romantic|love story|relationship fiction)\b/i],
+      optionalPatterns: [/\b(character[-\s]?driven|heartwarming|hopeful|emotional)\b/i],
+    };
+  }
+
+  if (literary > 0.18 || idea > 0.18) {
+    return {
+      label: 'literary / idea-driven fiction',
+      requiredPatterns: [/\b(fiction|novel|literary|speculative)\b/i],
+      optionalPatterns: [/\b(layered|nuanced|complex|philosophical|thought[-\s]?provoking)\b/i],
+    };
+  }
+
+  if (warm > 0.2 || character > 0.2) {
+    return {
+      label: 'character-driven fiction',
+      requiredPatterns: [/\b(fiction|novel|character[-\s]?driven|relationship[-\s]?driven|family saga)\b/i],
+      optionalPatterns: [/\b(warm|hopeful|tender|gentle|uplifting)\b/i],
+    };
+  }
+
+  return null;
+}
+
+function isUnknownAuthor(candidate: Candidate): boolean {
+  const author = normalizeKey(candidate.author);
+  return !author || author === 'unknown' || author === 'various' || author === 'anonymous';
+}
+
+function isSummaryOrGuide(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+  return SUMMARY_GUIDE_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function isNonFictionBleed(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+  return NONFICTION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function isWeakMetadataObject(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+  const metadataScore = metadataSignals(candidate);
+  if (WEAK_METADATA_PATTERNS.some((pattern) => pattern.test(text))) return true;
+  return metadataScore <= 4 && !candidate.description && candidate.subjects.length === 0 && candidate.genres.length === 0;
+}
+
+function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boolean {
+  const year = niYearFromCandidate(candidate);
+  if (!year) return false;
+  const text = haystack(candidate);
+  const hasGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative)\b/i.test(text);
+  if (lane === 'teen' && year < 1950 && !hasGenreSignal) return true;
+  if (year < 1925 && candidate.ratingCount < 200 && !hasGenreSignal) return true;
+  return false;
+}
+
+function candidateMatchesHypothesis(candidate: Candidate, hypothesis: CompactHypothesis | null): boolean {
+  if (!hypothesis) return true;
+  const text = haystack(candidate);
+  return hypothesis.requiredPatterns.some((pattern) => pattern.test(text));
+}
+
+function scoreHypothesisAlignment(candidate: Candidate, hypothesis: CompactHypothesis | null): number {
+  if (!hypothesis) return 0;
+  const text = haystack(candidate);
+  let score = 0;
+  if (hypothesis.requiredPatterns.some((pattern) => pattern.test(text))) score += 2.8;
+  for (const pattern of hypothesis.optionalPatterns) {
+    if (pattern.test(text)) score += 0.8;
+  }
+  return score;
+}
+
+function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis: CompactHypothesis | null): string | null {
+  if (!candidate.title) return 'missing title';
+  if (isUnknownAuthor(candidate)) return 'unknown author';
+  if (isSummaryOrGuide(candidate)) return 'summary-or-guide';
+  if (isNonFictionBleed(candidate)) return 'nonfiction-bleed';
+  if (isWeakMetadataObject(candidate)) return 'weak metadata';
+  if (isPublicDomainNoise(candidate, lane)) return 'public-domain-noise';
+  if (!candidateMatchesHypothesis(candidate, hypothesis)) return 'weak hypothesis match';
+  return null;
+}
+
 function scoreCandidate(
   candidate: Candidate,
   lane: RecommenderLane,
   profile: RecommenderProfile,
   options: FinalRecommenderOptions,
   readerSoph: ReturnType<typeof estimateReaderSophisticationFromTaste>,
+  hypothesis: CompactHypothesis | null,
 ): number {
   let score = 0;
-// Keep metadata modest
-score += metadataSignals(candidate) * 0.16;
 
-// ↓ Reduce popularity dominance
-score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
+  score += metadataSignals(candidate) * 0.16;
+  score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
+  score += scorePublisherBoost(candidate) * 0.8;
+  score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
+  score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
+  score += scoreHypothesisAlignment(candidate, hypothesis);
 
-// Keep publisher light
-score += scorePublisherBoost(candidate) * 0.8;
+  if (candidate.hasCover) score += 0.12;
 
-// Slightly reduce recency influence
-score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
+  if (candidate.formatCategory === 'manga' || candidate.formatCategory === 'comic') {
+    score += lane === 'teen' ? 0.18 : -0.08;
+  }
 
-// ↑ Make taste dominant
-score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
-
-// Cover stays minor
-if (candidate.hasCover) score += 0.12;
-
-// Keep visual lane behavior
-if (candidate.formatCategory === 'manga' || candidate.formatCategory === 'comic') {
-  score += lane === 'teen' ? 0.18 : -0.08;
-}
-
-// ↑ Boost sophistication alignment
-const candSoph = estimateCandidateSophistication(candidate, lane);
-score += scoreSophisticationAlignment(readerSoph, candSoph) * 2.6;
+  const candSoph = estimateCandidateSophistication(candidate, lane);
+  score += scoreSophisticationAlignment(readerSoph, candSoph) * 2.6;
 
   const titleKey = identityKey(candidate);
   const authorKey = normalizeKey(candidate.author);
@@ -390,6 +529,8 @@ score += scoreSophisticationAlignment(readerSoph, candSoph) * 2.6;
 
   if (lane === 'adult' && /\b(juvenile fiction|young readers|beginning reader|chapter book)\b/i.test(haystack(candidate))) score -= 3;
   if (/\b(study guide|workbook|analysis|criticism|manual|textbook)\b/i.test(haystack(candidate))) score -= 4;
+  if (!candidate.description && candidate.subjects.length === 0 && candidate.genres.length === 0) score -= 2.5;
+
   return score;
 }
 
@@ -404,18 +545,23 @@ export function finalRecommenderForDeck(
     ...(options.profileOverride || {}),
   };
 
-  const unique = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
+  const hypothesis = compactHypothesisFromTaste(options.tasteProfile);
+  const basePool = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
+  const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
+  const unique = filtered.length >= Math.max(profile.minKeep, 6) ? filtered : basePool;
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
     .map((candidate) => {
-      const preFilterScore = scoreCandidate(candidate, lane, profile, options, readerSoph);
+      const reject = rejectionReason(candidate, lane, hypothesis);
+      const preFilterScore = reject ? Number.NEGATIVE_INFINITY : scoreCandidate(candidate, lane, profile, options, readerSoph, hypothesis);
       const candidateWithDiagnostics: CandidateWithDiagnostics = {
         ...candidate,
         diagnostics: {
           ...(candidate as CandidateWithDiagnostics).diagnostics,
           source: candidate.source || 'unknown',
           preFilterScore,
+          rejectionReason: reject || undefined,
         },
       };
 
@@ -424,6 +570,7 @@ export function finalRecommenderForDeck(
         score: preFilterScore,
       };
     })
+    .filter((entry) => Number.isFinite(entry.score))
     .sort((a, b) => b.score - a.score);
 
   const targetMax = Math.max(profile.minKeep, 10);
@@ -443,7 +590,7 @@ export function finalRecommenderForDeck(
     kept.push(candidate);
     seen.add(key);
 
-    const source = candidate.source || "unknown";
+    const source = candidate.source || 'unknown';
     sourceCounts[source] = (sourceCounts[source] || 0) + 1;
     return true;
   };
@@ -462,18 +609,18 @@ export function finalRecommenderForDeck(
 
   const titleFamilyKey = (candidate: Candidate): string =>
     normalizeKey(candidate.title)
-      .replace(/\b(book|volume|vol|part|episode|season)\b\s*(?:#|no\.?|number)?\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi, " ")
-      .replace(/\b(girl|dark|murder|death|blood|shadow|secret|wife|daughter|house|heart)\b/gi, " ")
-      .replace(/\s+/g, " ")
+      .replace(/\b(book|volume|vol|part|episode|season)\b\s*(?:#|no\.?|number)?\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi, ' ')
+      .replace(/\b(girl|dark|murder|death|blood|shadow|secret|wife|daughter|house|heart)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
       .trim();
 
   const tokenSetForCandidate = (candidate: Candidate): Set<string> => {
     const tokens = normalizeKey([
       candidate.title,
-      candidate.subtitle || "",
+      candidate.subtitle || '',
       ...(candidate.subjects || []),
       ...(candidate.genres || []),
-    ].join(" "))
+    ].join(' '))
       .split(/\s+/)
       .map((token) => token.trim())
       .filter((token) => token.length >= 4);
@@ -515,11 +662,11 @@ export function finalRecommenderForDeck(
     penalty += familyCount * 1.6;
     penalty += publisherCount * 0.85;
 
-    const currentSourceCount = sourceCounts[candidate.source || "unknown"] || 0;
-    if (candidate.source === "googleBooks" && currentSourceCount >= 4) {
+    const currentSourceCount = sourceCounts[candidate.source || 'unknown'] || 0;
+    if (candidate.source === 'googleBooks' && currentSourceCount >= 4) {
       penalty += (currentSourceCount - 3) * 0.45;
     }
-    if (candidate.source === "openLibrary" && currentSourceCount >= 4) {
+    if (candidate.source === 'openLibrary' && currentSourceCount >= 4) {
       penalty += (currentSourceCount - 3) * 0.2;
     }
 
@@ -546,7 +693,7 @@ export function finalRecommenderForDeck(
     }
 
     while (selected.length < targetMax && remaining.size > 0) {
-      let bestKey = "";
+      let bestKey = '';
       let bestAdjustedScore = Number.NEGATIVE_INFINITY;
       let bestCandidate: CandidateWithDiagnostics | null = null;
 
