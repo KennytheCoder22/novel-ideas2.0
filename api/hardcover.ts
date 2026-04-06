@@ -66,7 +66,7 @@ export default async function handler(req: any, res: any) {
       ok: true,
       title,
       author,
-      data: json?.data?.search?.results?.[0] ?? null,
+      data: json?.data?.search?.results?.hits?.[0]?.document ?? null,
       raw: json,
     });
   } catch (error: any) {
