@@ -1046,7 +1046,17 @@ function handleLeft() {
           .filter((doc: any) => doc && typeof doc === "object" && doc?.title)
       : [];
 
-    return docsInOrder.map((doc) => ({ kind: "open_library", doc }));
+    return docsInOrder.map((doc: any) => ({
+      kind: "open_library",
+      doc: {
+        ...doc,
+        diagnostics: doc?.diagnostics || {
+          source: doc?.source,
+          queryText: doc?.queryText,
+          queryRung: doc?.queryRung,
+        },
+      },
+    }));
   }
 
   async function performRecommendationRun(input: RecommenderInput) {
@@ -1168,13 +1178,23 @@ function handleLeft() {
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
           if (item.kind === "open_library") {
-            const title = item.doc?.title ?? "Untitled";
+            const doc: any = item.doc;
+            const title = doc?.title ?? "Untitled";
             const author =
-              Array.isArray(item.doc?.author_name) && item.doc.author_name.length > 0
-                ? item.doc.author_name[0]
+              Array.isArray(doc?.author_name) && doc.author_name.length > 0
+                ? doc.author_name[0]
                 : "Unknown author";
-            const year = item.doc?.first_publish_year ? ` (${item.doc.first_publish_year})` : "";
-            return `${i + 1}. ${title} — ${author}${year}`;
+            const year = doc?.first_publish_year ? ` (${doc.first_publish_year})` : "";
+            const diagnostics = doc?.diagnostics || {};
+
+            return [
+              `${i + 1}. ${title} — ${author}${year}`,
+              `   source: ${diagnostics.source ?? doc?.source ?? "(unknown)"}`,
+              `   preFilterScore: ${diagnostics.preFilterScore ?? "(missing)"}`,
+              `   postFilterScore: ${diagnostics.postFilterScore ?? "(missing)"}`,
+              `   queryText: ${diagnostics.queryText ?? doc?.queryText ?? "(missing)"}`,
+              `   queryRung: ${diagnostics.queryRung ?? doc?.queryRung ?? "(missing)"}`,
+            ].join("\n");
           }
           const title = item.book?.title ?? "Untitled";
           const author = item.book?.author ?? "Unknown author";
