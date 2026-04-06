@@ -86,6 +86,10 @@ const WEAK_METADATA_PATTERNS = [
   /\b(annotated|complete works|selected works|collection|anthology|omnibus|box set)\b/i,
 ];
 
+const ANTHOLOGY_COLLECTION_PATTERNS = [
+  /\b(short stories|short story collection|collection|anthology|omnibus|box set|selected stories|complete stories)\b/i,
+];
+
 function normalizeKey(value: any): string {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -437,6 +441,11 @@ function isUnknownAuthor(candidate: Candidate): boolean {
   return !author || author === 'unknown' || author === 'various' || author === 'anonymous';
 }
 
+function isAnthologyOrCollection(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+  return ANTHOLOGY_COLLECTION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 function isSummaryOrGuide(candidate: Candidate): boolean {
   const text = haystack(candidate);
   return SUMMARY_GUIDE_PATTERNS.some((pattern) => pattern.test(text));
@@ -458,9 +467,11 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
   const year = niYearFromCandidate(candidate);
   if (!year) return false;
   const text = haystack(candidate);
-  const hasGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative)\b/i.test(text);
+  const hasGenreSignal = /(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative)/i.test(text);
+
+  if (lane === 'adult' && year < 1950) return true;
   if (lane === 'teen' && year < 1950 && !hasGenreSignal) return true;
-  if (year < 1925 && candidate.ratingCount < 200 && !hasGenreSignal) return true;
+  if (year < 1950 && candidate.ratingCount < 500) return true;
   return false;
 }
 
@@ -481,9 +492,23 @@ function scoreHypothesisAlignment(candidate: Candidate, hypothesis: CompactHypot
   return score;
 }
 
+function strongSignalBoost(candidate: Candidate, hypothesis: CompactHypothesis | null): number {
+  const text = haystack(candidate);
+  let score = 0;
+
+  if (hypothesis?.label.includes('thriller') || hypothesis?.label.includes('mystery')) {
+    if (/\b(psychological|serial killer)\b/i.test(text)) score += 1.2;
+    if (/\b(detective|investigation|murder|police procedural|noir)\b/i.test(text)) score += 0.8;
+    if (/\b(dark|gritty|bleak|tense|gripping)\b/i.test(text)) score += 0.6;
+  }
+
+  return score;
+}
+
 function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis: CompactHypothesis | null): string | null {
   if (!candidate.title) return 'missing title';
   if (isUnknownAuthor(candidate)) return 'unknown author';
+  if (isAnthologyOrCollection(candidate)) return 'anthology-or-collection';
   if (isSummaryOrGuide(candidate)) return 'summary-or-guide';
   if (isNonFictionBleed(candidate)) return 'nonfiction-bleed';
   if (isWeakMetadataObject(candidate)) return 'weak metadata';
@@ -503,11 +528,12 @@ function scoreCandidate(
   let score = 0;
 
   score += metadataSignals(candidate) * 0.16;
-  score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
+  score += scorePopularity(candidate) * 0.12 * profile.popularityWeight;
   score += scorePublisherBoost(candidate) * 0.8;
   score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
-  score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
+  score += scoreTasteMatch(candidate, options.tasteProfile) * 5.5;
   score += scoreHypothesisAlignment(candidate, hypothesis);
+  score += strongSignalBoost(candidate, hypothesis);
 
   if (candidate.hasCover) score += 0.12;
 
@@ -548,7 +574,7 @@ export function finalRecommenderForDeck(
   const hypothesis = compactHypothesisFromTaste(options.tasteProfile);
   const basePool = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
   const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
-  const unique = filtered.length >= Math.max(profile.minKeep, 6) ? filtered : basePool;
+  const unique = filtered;
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
