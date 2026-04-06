@@ -21,13 +21,9 @@ export default async function handler(req: any, res: any) {
     const query = `
       query SearchBooks($query: String!) {
         search(query: $query) {
-          books {
-            title
-            rating
-            ratings_count
-            slug
-          }
-        }
+  ids
+  results
+}
       }
     `;
 
@@ -70,7 +66,7 @@ export default async function handler(req: any, res: any) {
       ok: true,
       title,
       author,
-      data: json?.data?.search?.books?.[0] ?? null,
+      data: json?.data?.search?.results?.[0] ?? null,
       raw: json,
     });
   } catch (error: any) {
