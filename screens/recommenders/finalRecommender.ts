@@ -283,57 +283,6 @@ function niHasAny(subjects: string[], needles: string[]): boolean {
   return needles.some((needle) => subjects.some((s) => s.includes(needle)));
 }
 
-
-const NONFICTION_BLEED_PATTERNS = [
-  /how to/i,
-  /guide/i,
-  /guides/i,
-  /writer'?s/i,
-  /writing/i,
-  /market/i,
-  /criticism/i,
-  /analysis/i,
-  /reference/i,
-  /encyclopedia/i,
-  /companion/i,
-  /handbook/i,
-  /manual/i,
-  /textbook/i,
-  /study guide/i,
-  /workbook/i,
-];
-
-const NONFICTION_BLEED_SUBJECT_PATTERNS = [
-  /literary criticism/i,
-  /authorship/i,
-  /reference/i,
-  /study aids/i,
-  /language arts/i,
-  /writing/i,
-  /authors?/i,
-  /criticism/i,
-];
-
-function isNonFictionBleed(candidate: Candidate): boolean {
-  const text = [
-    candidate.title,
-    candidate.subtitle || '',
-    candidate.description || '',
-    candidate.publisher || '',
-    ...candidate.subjects,
-    ...candidate.genres,
-  ].join(' | ');
-
-  if (NONFICTION_BLEED_PATTERNS.some((pattern) => pattern.test(text))) {
-    return true;
-  }
-
-  const subjects = niSubjectsFromCandidate(candidate);
-  return NONFICTION_BLEED_SUBJECT_PATTERNS.some((pattern) =>
-    subjects.some((subject) => pattern.test(subject))
-  );
-}
-
 function applyMinimalYaFilter(candidates: Candidate[], deckKey: DeckKey): Candidate[] {
   if (deckKey !== 'ms_hs') return candidates;
 
@@ -430,25 +379,6 @@ score += scoreSophisticationAlignment(readerSoph, candSoph) * 2.6;
   return score;
 }
 
-
-// --- QUALITY FLOOR (RELAXED) ---
-function passesQualityFloor(candidate: Candidate): boolean {
-  const hasCoreMetadata =
-    !!candidate.title &&
-    !!candidate.author &&
-    (!!candidate.description || (candidate.subjects && candidate.subjects.length >= 2));
-
-  const hasEngagement =
-    (candidate.ratingCount || 0) >= 5 ||
-    (candidate.editionCount || 0) >= 2;
-
-  const hasPublisherSignal =
-    !!candidate.publisher ||
-    (candidate.ratingCount || 0) >= 10;
-
-  return hasCoreMetadata && hasEngagement && hasPublisherSignal;
-}
-
 export function finalRecommenderForDeck(
   candidates: Candidate[],
   deckKey: DeckKey,
@@ -460,13 +390,7 @@ export function finalRecommenderForDeck(
     ...(options.profileOverride || {}),
   };
 
-  const unique = applyMinimalYaFilter(
-    dedupeCandidates(candidates)
-      .filter((candidate) => !!candidate.title)
-      .filter((candidate) => !isNonFictionBleed(candidate))
-      .filter((candidate) => passesQualityFloor(candidate)),
-    deckKey
-  );
+  const unique = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
@@ -476,28 +400,156 @@ export function finalRecommenderForDeck(
     }))
     .sort((a, b) => b.score - a.score);
 
+  const targetMax = Math.max(profile.minKeep, 10);
   const kept: Candidate[] = [];
-  const authorCounts = new Map<string, number>();
+  const selected = kept;
+  const seen = new Set<string>();
+  const sourceCounts: Record<string, number> = {};
 
-  for (const entry of scored) {
-    const authorKey = normalizeKey(entry.candidate.author);
-    const currentCount = authorCounts.get(authorKey) || 0;
-    if (authorKey && currentCount >= profile.authorRepeatLimit) continue;
-    kept.push(entry.candidate);
-    if (authorKey) authorCounts.set(authorKey, currentCount + 1);
-    if (kept.length >= Math.max(profile.minKeep, 10)) break;
-  }
+  const addCandidateIfAllowed = (candidate: Candidate): boolean => {
+    const key = identityKey(candidate);
+    if (seen.has(key)) return false;
 
-  
-  if (kept.length === 0) {
-    const relaxed = applyMinimalYaFilter(
-      dedupeCandidates(candidates)
-        .filter((candidate) => !!candidate.title)
-        .filter((candidate) => !isNonFictionBleed(candidate)),
-      deckKey
-    );
-    return relaxed.slice(0, 10).map((c) => c.rawDoc);
-  }
+    const authorKey = normalizeKey(candidate.author);
+    const currentAuthorCount = kept.filter((item) => normalizeKey(item.author) === authorKey).length;
+    if (authorKey && currentAuthorCount >= profile.authorRepeatLimit) return false;
+
+    kept.push(candidate);
+    seen.add(key);
+
+    const source = candidate.source || "unknown";
+    sourceCounts[source] = (sourceCounts[source] || 0) + 1;
+    return true;
+  };
+
+  const countSelectedBy = (getKey: (candidate: Candidate) => string): Map<string, number> => {
+    const counts = new Map<string, number>();
+    for (const candidate of selected) {
+      const key = getKey(candidate);
+      if (!key) continue;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  };
+
+  const publisherKey = (candidate: Candidate): string => normalizeKey(candidate.publisher);
+
+  const titleFamilyKey = (candidate: Candidate): string =>
+    normalizeKey(candidate.title)
+      .replace(/\b(book|volume|vol|part|episode|season)\b\s*(?:#|no\.?|number)?\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)\b/gi, " ")
+      .replace(/\b(girl|dark|murder|death|blood|shadow|secret|wife|daughter|house|heart)\b/gi, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const tokenSetForCandidate = (candidate: Candidate): Set<string> => {
+    const tokens = normalizeKey([
+      candidate.title,
+      candidate.subtitle || "",
+      ...(candidate.subjects || []),
+      ...(candidate.genres || []),
+    ].join(" "))
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 4);
+
+    return new Set(tokens);
+  };
+
+  const tokenOverlap = (left: Set<string>, right: Set<string>): number => {
+    let overlap = 0;
+    for (const token of left) {
+      if (right.has(token)) overlap += 1;
+    }
+    return overlap;
+  };
+
+  const hasSeriesSignals = (candidate: Candidate): boolean =>
+    /\bseries\b/i.test(haystack(candidate)) || /\bbook\s*\d+\b/i.test(candidate.title);
+
+  const dynamicSelectionPenalty = (candidate: Candidate): number => {
+    let penalty = 0;
+
+    const authorCounts = countSelectedBy((item) => normalizeKey(item.author));
+    const seriesCounts = countSelectedBy((item) => deriveSeriesKey(item.title));
+    const publisherCounts = countSelectedBy((item) => publisherKey(item));
+    const titleFamilyCounts = countSelectedBy((item) => titleFamilyKey(item));
+
+    const authorKey = normalizeKey(candidate.author);
+    const seriesKey = deriveSeriesKey(candidate.title);
+    const pubKey = publisherKey(candidate);
+    const familyKey = titleFamilyKey(candidate);
+
+    const authorCount = authorKey ? (authorCounts.get(authorKey) || 0) : 0;
+    const seriesCount = seriesKey ? (seriesCounts.get(seriesKey) || 0) : 0;
+    const publisherCount = pubKey ? (publisherCounts.get(pubKey) || 0) : 0;
+    const familyCount = familyKey ? (titleFamilyCounts.get(familyKey) || 0) : 0;
+
+    penalty += authorCount * (2.25 * profile.authorPenaltyStrength);
+    penalty += seriesCount * 3.5;
+    penalty += familyCount * 1.6;
+    penalty += publisherCount * 0.85;
+
+    const currentSourceCount = sourceCounts[candidate.source || "unknown"] || 0;
+    if (candidate.source === "googleBooks" && currentSourceCount >= 4) {
+      penalty += (currentSourceCount - 3) * 0.45;
+    }
+    if (candidate.source === "openLibrary" && currentSourceCount >= 4) {
+      penalty += (currentSourceCount - 3) * 0.2;
+    }
+
+    const candidateTokens = tokenSetForCandidate(candidate);
+    for (const existing of selected) {
+      const overlap = tokenOverlap(candidateTokens, tokenSetForCandidate(existing));
+      if (overlap >= 5) penalty += 2.6;
+      else if (overlap >= 3) penalty += 1.35;
+      else if (overlap >= 2) penalty += 0.6;
+    }
+
+    if (hasSeriesSignals(candidate)) {
+      const existingSeriesLike = selected.filter((item) => hasSeriesSignals(item)).length;
+      if (existingSeriesLike >= 3) penalty += (existingSeriesLike - 2) * 0.4;
+    }
+
+    return penalty;
+  };
+
+  const addRanked = (pool: Array<{ candidate: Candidate; score: number }>) => {
+    const remaining = new Map<string, { candidate: Candidate; baseScore: number }>();
+    for (const entry of pool) {
+      remaining.set(identityKey(entry.candidate), { candidate: entry.candidate, baseScore: entry.score });
+    }
+
+    while (selected.length < targetMax && remaining.size > 0) {
+      let bestKey = "";
+      let bestAdjustedScore = Number.NEGATIVE_INFINITY;
+      let bestCandidate: Candidate | null = null;
+
+      for (const [key, entry] of remaining.entries()) {
+        const { candidate, baseScore } = entry;
+
+        if (seen.has(key)) continue;
+
+        let adjustedScore = baseScore - dynamicSelectionPenalty(candidate);
+
+        if (adjustedScore > bestAdjustedScore) {
+          bestAdjustedScore = adjustedScore;
+          bestKey = key;
+          bestCandidate = candidate;
+        }
+      }
+
+      if (!bestCandidate || !bestKey) break;
+
+      if (!addCandidateIfAllowed(bestCandidate)) {
+        remaining.delete(bestKey);
+        continue;
+      }
+
+      remaining.delete(bestKey);
+    }
+  };
+
+  addRanked(scored);
 
   return kept.map((candidate) => candidate.rawDoc);
 }
