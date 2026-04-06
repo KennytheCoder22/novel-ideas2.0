@@ -21,6 +21,68 @@ function isHardSelfPublished(publisher: any): boolean {
   return HARD_SELF_PUBLISH_PAT.test(p);
 }
 
+function normalizeText(value: any): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const GOOGLE_BOOKS_REFERENCE_TITLE_PAT =
+  /\b(guide|writer'?s market|studies in|literature|review|digest|catalog|catalogue|bibliography|anthology|encyclopedia|handbook|manual|journal|periodical|proceedings|transactions)\b/i;
+
+const GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT =
+  /\b(literary criticism|criticism|bibliography|reference|study aids|language arts|language and literature|periodicals|essays|authorship|creative writing)\b/i;
+
+const GOOGLE_BOOKS_REFERENCE_AUTHOR_PAT =
+  /\b(university|press|society|association|department of|review|journal)\b/i;
+
+function looksLikeGoogleBooksReference(doc: any): boolean {
+  const title = normalizeText(doc?.title);
+  const subtitle = normalizeText(doc?.subtitle);
+  const description = normalizeText(doc?.description);
+  const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
+
+  const authors = Array.isArray(doc?.author_name)
+    ? doc.author_name.map((a: any) => normalizeText(a)).join(" | ")
+    : "";
+
+  const categories = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+    ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
+  ]
+    .map((v: any) => normalizeText(v))
+    .join(" | ");
+
+  const text = [title, subtitle, description, publisher, authors, categories]
+    .filter(Boolean)
+    .join(" | ");
+
+  if (!text) return false;
+
+  if (GOOGLE_BOOKS_REFERENCE_TITLE_PAT.test(title)) return true;
+  if (GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT.test(categories)) return true;
+
+  if (
+    /\b(best fiction|short story writer'?s market|writer'?s market|studies in language and literature|publishers weekly|living age)\b/i.test(
+      text
+    )
+  ) {
+    return true;
+  }
+
+  if (
+    GOOGLE_BOOKS_REFERENCE_AUTHOR_PAT.test(authors) &&
+    GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT.test(categories)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function deckKeyToDomainMode(deckKey: DeckKey): RecommendationResult["domainMode"] {
   if (deckKey === "k2") return "chapterMiddle";
   return "default";
@@ -361,7 +423,11 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
     const admittedDocsRaw = (Array.isArray(rawDocs) ? rawDocs : []).filter((doc: any) => {
       const publisher = doc?.publisher ?? doc?.volumeInfo?.publisher;
-      return !isHardSelfPublished(publisher);
+
+      if (isHardSelfPublished(publisher)) return false;
+      if (looksLikeGoogleBooksReference(doc)) return false;
+
+      return true;
     });
 
     if (queryIndex === 0) {
