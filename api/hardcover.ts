@@ -20,7 +20,7 @@ export default async function handler(req: any, res: any) {
 
     const query = `
       query SearchBooks($query: String!) {
-        search(query: $query, limit: 3) {
+        search(query: $query) {
           books {
             title
             rating
