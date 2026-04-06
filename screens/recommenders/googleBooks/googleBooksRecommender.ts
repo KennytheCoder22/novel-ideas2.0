@@ -274,15 +274,21 @@ function getGoogleBooksApiKey(): string {
 }
 
 function toGoogleBooksQuery(query: string): string {
-  let q = String(query || "").toLowerCase().trim();
-  if (!q) return "";
+  let q = String(query || "").toLowerCase();
+  if (!q.trim()) return "";
 
-  // Remove weak / misleading adjectives that cause title matching bias
+  // Strip negative filter syntax and other unsupported query operators
+  q = q.replace(/-\w+/g, " ");
+
+  // Remove weak / misleading adjectives and scenario terms that create noisy lexical matches
   q = q
     .replace(/\bdark\b/g, "")
+    .replace(/\bfunny\b/g, "")
     .replace(/\bgritty\b/g, "")
     .replace(/\bgrounded\b/g, "")
     .replace(/\bintense\b/g, "")
+    .replace(/\bsocietal\b/g, "")
+    .replace(/\bsurvival\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -290,6 +296,17 @@ function toGoogleBooksQuery(query: string): string {
     const subject = q.slice("subject:".length).trim().replace(/^"+|"+$/g, "");
     return `subject:${subject}`;
   }
+
+  // Compress rich descriptive queries into a few engine-friendly genre anchors
+  if (q.includes("dystopian")) return "dystopian science fiction novel";
+  if (q.includes("science fiction")) return "science fiction novel";
+  if (q.includes("thriller")) return "thriller novel";
+  if (q.includes("romance")) return "romance novel";
+  if (q.includes("fantasy")) return "fantasy novel";
+  if (q.includes("horror")) return "horror novel";
+  if (q.includes("mystery")) return "mystery novel";
+  if (q.includes("crime")) return "crime thriller novel";
+  if (q.includes("historical")) return "historical fiction novel";
 
   return q;
 }
