@@ -19,19 +19,14 @@ export default async function handler(req: any, res: any) {
     }
 
     const query = `
-      query SearchBooks($title: String!, $author: String!) {
-        books(
-          where: {
-            _and: [
-              { title: { _ilike: $title } }
-              { contributions: { author: { name: { _ilike: $author } } } }
-            ]
+      query SearchBooks($query: String!) {
+        search(query: $query, limit: 3) {
+          books {
+            title
+            rating
+            ratings_count
+            slug
           }
-          limit: 1
-        ) {
-          title
-          rating
-          ratings_count
         }
       }
     `;
@@ -45,8 +40,7 @@ export default async function handler(req: any, res: any) {
       body: JSON.stringify({
         query,
         variables: {
-          title: `%${title}%`,
-          author: `%${author || title}%`,
+          query: author ? `${title} ${author}` : title,
         },
       }),
     });
@@ -76,7 +70,7 @@ export default async function handler(req: any, res: any) {
       ok: true,
       title,
       author,
-      data: json?.data?.books?.[0] ?? null,
+      data: json?.data?.search?.books?.[0] ?? null,
       raw: json,
     });
   } catch (error: any) {
