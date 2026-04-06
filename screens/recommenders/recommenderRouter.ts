@@ -12,6 +12,7 @@ import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
 import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
+import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 
@@ -134,6 +135,33 @@ function sourceForDoc(doc: any, fallbackSource: CandidateSource): CandidateSourc
     : fallbackSource;
 }
 
+
+async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<RecommendationDoc[]> {
+  const enriched = await Promise.all(
+    docs.map(async (doc) => {
+      try {
+        const title = doc.title;
+        const author = Array.isArray(doc.author_name) ? doc.author_name[0] : undefined;
+        if (!title) return doc;
+
+        const data = await getHardcoverRatings(title, author);
+        if (!data) return doc;
+
+        return {
+          ...doc,
+          hardcover: {
+            rating: data.rating,
+            ratings_count: data.ratings_count,
+          },
+        } as any;
+      } catch {
+        return doc;
+      }
+    })
+  );
+  return enriched;
+}
+
 function dedupeDocs(docs: RecommendationDoc[]): RecommendationDoc[] {
   const seen = new Set<string>();
   const out: RecommendationDoc[] = [];
@@ -254,7 +282,14 @@ export async function getRecommendations(
   const kitsuDocs = mergedDocs.filter((doc: any) => sourceForDoc(doc, "kitsu") === "kitsu");
   const gcdDocs = mergedDocs.filter((doc: any) => sourceForDoc(doc, "gcd") === "gcd");
 
-  const googleCandidates = normalizeCandidates(googleDocs, "googleBooks");
+  const enrichedDocs = await enrichWithHardcover(mergedDocs);
+
+  const googleDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks");
+  const openLibraryDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary");
+  const kitsuDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "kitsu") === "kitsu");
+  const gcdDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "gcd") === "gcd");
+
+  const googleCandidates = normalizeCandidates(googleDocsEnriched, "googleBooks");
   const openLibraryCandidates = normalizeCandidates(openLibraryDocs, "openLibrary");
   const kitsuCandidatesRaw = normalizeCandidates(kitsuDocs, "kitsu");
   const gcdCandidates = normalizeCandidates(gcdDocs, "gcd");
