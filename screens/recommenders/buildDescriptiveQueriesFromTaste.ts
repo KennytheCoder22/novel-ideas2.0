@@ -309,7 +309,13 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const scenarios = topKeys(signals.scenario, 4);
 
   const dominantIntent = buildDominantIntent(tones, textures, genres, scenarios, input.deckKey);
-  const queries = dominantIntent?.variants.slice(0, 3) || fallbackQueriesForDeck(input.deckKey).slice(0, 2);
+  let queries = dominantIntent?.variants.slice(0, 3) || fallbackQueriesForDeck(input.deckKey).slice(0, 2);
+  if (queries.length < 2 && dominantIntent?.core) {
+    queries = Array.from(new Set([
+      ...queries,
+      `${dominantIntent.core} ${NEGATIVE_TERMS}`
+    ])).slice(0, 2);
+  }
   const preview = dominantIntent?.preview || fallbackQueriesForDeck(input.deckKey)[0];
 
   return {
