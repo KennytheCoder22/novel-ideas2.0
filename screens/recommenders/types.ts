@@ -58,6 +58,20 @@ export type RecommendationResult = {
 
 export type RecommenderProfileOverride = Record<string, number | undefined>;
 
+export type BucketPlan = {
+  queries?: string[];
+  bucketId?: string;
+  domainMode?: DomainMode;
+  preview?: string;
+  strategy?: string;
+  signals?: {
+    genres?: string[];
+    tones?: string[];
+    textures?: string[];
+    scenarios?: string[];
+  };
+};
+
 export type RecommenderInput = {
   deckKey: DeckKey;
   tagCounts: TagCounts;
@@ -65,6 +79,7 @@ export type RecommenderInput = {
   limit?: number;
   timeoutMs?: number;
   minCandidateFloor?: number;
+  bucketPlan?: BucketPlan;
   // Optional overrides (debug/testing)
   domainModeOverride?: DomainMode;
   profileOverride?: RecommenderProfileOverride;

@@ -13,8 +13,49 @@ import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommen
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
+import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 
 export type EngineOverride = EngineId | "auto";
+
+function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+
+  for (const value of values) {
+    const cleaned = String(value || "").replace(/\s+/g, " ").trim();
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+  }
+
+  return out;
+}
+
+function buildRouterBucketPlan(input: RecommenderInput) {
+  const descriptivePlan = buildDescriptiveQueriesFromTaste(input);
+  const translatedBucketPlan = buildBucketPlanFromTaste(input);
+
+  const queries = dedupeNonEmptyQueries([
+    ...(Array.isArray(descriptivePlan?.queries) ? descriptivePlan.queries : []),
+    ...(Array.isArray(translatedBucketPlan?.queries) ? translatedBucketPlan.queries : []),
+  ]);
+
+  return {
+    queries,
+    preview:
+      descriptivePlan?.preview ||
+      translatedBucketPlan?.queries?.[0] ||
+      queries[0] ||
+      "",
+    strategy:
+      descriptivePlan?.strategy && translatedBucketPlan?.strategy
+        ? `${descriptivePlan.strategy}+${translatedBucketPlan.strategy}`
+        : descriptivePlan?.strategy || translatedBucketPlan?.strategy || "router-bucket-plan",
+    signals: descriptivePlan?.signals,
+  };
+}
 
 function chooseEngine(input: RecommenderInput, override?: EngineOverride): EngineId {
   if (override && override !== "auto") return override;
@@ -200,8 +241,8 @@ export async function getRecommendations(
   override?: EngineOverride
 ): Promise<RecommendationResult> {
   const preferredEngine = chooseEngine(input, override);
-  const bucketPlan = buildBucketPlanFromTaste(input);
-  const routedInput = { ...(input as any), bucketPlan } as RecommenderInput;
+  const bucketPlan = buildRouterBucketPlan(input);
+  const routedInput: RecommenderInput = { ...input, bucketPlan };
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
@@ -311,6 +352,7 @@ export async function getRecommendations(
     builtFromQuery:
       (openLibrary as any)?.builtFromQuery ||
       (google as any)?.builtFromQuery ||
+      bucketPlan.preview ||
       bucketPlan.queries?.[0] ||
       "",
     items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
