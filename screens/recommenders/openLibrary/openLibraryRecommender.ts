@@ -52,6 +52,20 @@ function dedupeQueries(queries: string[]): string[] {
   return out;
 }
 
+function sanitizeOpenLibraryQuery(query: string): string {
+  let q = String(query || "").toLowerCase().trim();
+
+  q = q
+    .replace(/\bdark\b/g, "")
+    .replace(/\bgritty\b/g, "")
+    .replace(/\bgrounded\b/g, "")
+    .replace(/\bintense\b/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return q;
+}
+
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
   queries: string[];
   domainMode: RecommendationResult["domainMode"];
@@ -281,7 +295,8 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
   let lastError: Error | null = null;
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
-    const q = queriesToTry[queryIndex];
+    const rawQ = queriesToTry[queryIndex];
+    const q = sanitizeOpenLibraryQuery(rawQ);
     const url =
       `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(fetchLimit))}`;
 
