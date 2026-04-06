@@ -29,10 +29,10 @@ function normalizeText(value: any): string {
 }
 
 const GOOGLE_BOOKS_REFERENCE_TITLE_PAT =
-  /\b(guide|writer'?s market|studies in|literature|review|digest|catalog|catalogue|bibliography|anthology|encyclopedia|handbook|manual|journal|periodical|proceedings|transactions)\b/i;
+  /\b(guide|writer'?s market|studies in|literature|review|digest|catalog|catalogue|bibliography|anthology|encyclopedia|handbook|manual|journal|periodical|proceedings|transactions|magazine|bulletin|report|annual report|yearbook)\b/i;
 
 const GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT =
-  /\b(literary criticism|criticism|bibliography|reference|study aids|language arts|language and literature|periodicals|essays|authorship|creative writing)\b/i;
+  /\b(literary criticism|criticism|bibliography|reference|study aids|language arts|language and literature|periodicals|essays|authorship|creative writing|journals|magazines|reports|proceedings|transactions)\b/i;
 
 const GOOGLE_BOOKS_REFERENCE_AUTHOR_PAT =
   /\b(university|press|society|association|department of|review|journal)\b/i;
