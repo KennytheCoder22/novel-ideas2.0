@@ -4,9 +4,9 @@ import { QUERY_TRANSLATIONS } from "./queryTranslations";
 
 function topKeys(obj: Record<string, number>, limit: number): string[] {
   return Object.entries(obj)
-    .filter(([, score]) => score > 0.15)
+    .filter(([, score]) => score > 0.05)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
+    .slice(0, limit || 3)
     .map(([key]) => key);
 }
 
@@ -27,7 +27,7 @@ function fallbackGenreForDeck(deckKey: RecommenderInput["deckKey"]): string {
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
 
-  const genreKeys = topKeys(signals.genre, 2);
+  const genreKeys = topKeys(signals.genre, 3);
   const toneKeys = topKeys(signals.tone, 2);
   const scenarioKeys = topKeys(signals.scenario, 3);
 
@@ -37,9 +37,20 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
 
   const queries = new Set<string>();
 
-  const baseGenre = genreFragments[0] || fallbackGenreForDeck(input.deckKey);
-  queries.add(baseGenre);
+const baseGenre = genreFragments[0];
 
+if (!baseGenre) {
+  // HARD FAIL SAFE: do NOT allow generic fallback
+  return {
+    queries: [
+      "character driven novel",
+      "emotionally intense novel",
+      "high stakes story novel",
+      "psychological fiction novel",
+    ],
+    strategy: "fallback-non-generic",
+  };
+}
   for (const tone of toneFragments.slice(0, 3)) {
     queries.add(`${tone} ${baseGenre}`);
   }
