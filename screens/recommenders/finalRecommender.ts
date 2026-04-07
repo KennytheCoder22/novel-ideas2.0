@@ -86,6 +86,10 @@ const WEAK_METADATA_PATTERNS = [
   /\b(annotated|complete works|selected works|collection|anthology|omnibus|box set)\b/i,
 ];
 
+const ANTHOLOGY_COLLECTION_PATTERNS = [
+  /\b(short stories|short story collection|collection|anthology|omnibus|box set|selected stories|complete stories)\b/i,
+];
+
 function normalizeKey(value: any): string {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -487,6 +491,73 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
   if (lane === 'teen' && year < 1950 && !hasGenreSignal) return true;
   if (year < 1925 && candidate.ratingCount < 200 && !hasGenreSignal) return true;
   return false;
+}
+
+
+function isAnthologyOrCollection(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+  return ANTHOLOGY_COLLECTION_PATTERNS.some((pattern) => pattern.test(text));
+}
+
+function normalizedCandidateText(candidate: Candidate): string {
+  return haystack(candidate).toLowerCase();
+}
+
+function hasStrongThrillerSignal(candidate: Candidate): boolean {
+  const text = normalizedCandidateText(candidate);
+  return (
+    /\b(thriller|crime|mystery|detective|suspense)\b/i.test(text) ||
+    /\b(murder|investigation|investigat|serial killer|police procedural|police|case)\b/i.test(text)
+  );
+}
+
+function hasStrongRomanceSignal(candidate: Candidate): boolean {
+  const text = normalizedCandidateText(candidate);
+  return (
+    /\b(romance|romantic|love story|relationship fiction)\b/i.test(text) ||
+    /\b(friends to lovers|fake dating|marriage of convenience)\b/i.test(text)
+  );
+}
+
+function hasStrongSpeculativeSignal(candidate: Candidate): boolean {
+  const text = normalizedCandidateText(candidate);
+  return (
+    /\b(science fiction|sci fi|fantasy|horror|dystopian|speculative)\b/i.test(text) ||
+    /\b(space opera|time travel|magic|haunted|ghost|monster)\b/i.test(text)
+  );
+}
+
+function hasStrongHistoricalSignal(candidate: Candidate): boolean {
+  const text = normalizedCandidateText(candidate);
+  return /\b(historical fiction|world war|ancient rome|ancient greece|19th century|war of the roses|crusades)\b/i.test(text);
+}
+
+function candidateEligibleForHypothesis(candidate: Candidate, hypothesis: CompactHypothesis | null): boolean {
+  if (!hypothesis) return true;
+
+  const label = hypothesis.label.toLowerCase();
+
+  if (label.includes('thriller') || label.includes('mystery')) {
+    return hasStrongThrillerSignal(candidate);
+  }
+
+  if (label.includes('romantic')) {
+    return hasStrongRomanceSignal(candidate);
+  }
+
+  if (label.includes('adventurous')) {
+    return hasStrongSpeculativeSignal(candidate);
+  }
+
+  if (label.includes('historical')) {
+    return hasStrongHistoricalSignal(candidate);
+  }
+
+  if (label.includes('literary') || label.includes('character-driven')) {
+    return true;
+  }
+
+  return true;
 }
 
 function candidateMatchesHypothesis(candidate: Candidate, hypothesis: CompactHypothesis | null): boolean {
