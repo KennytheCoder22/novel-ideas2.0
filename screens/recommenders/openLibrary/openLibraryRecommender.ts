@@ -21,6 +21,33 @@ function isHardSelfPublished(publisher: any): boolean {
   return HARD_SELF_PUBLISH_PAT.test(p);
 }
 
+function normalizeText(value: any): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function looksLikeCatalogOrCollectionRecord(doc: any): boolean {
+  const title = normalizeText(doc?.title);
+  const publishers = Array.isArray(doc?.publisher) ? doc.publisher.map((p: any) => normalizeText(p)).join(" | ") : "";
+  const subjects = Array.isArray(doc?.subject) ? doc.subject.map((s: any) => normalizeText(s)).join(" | ") : "";
+  const authors = Array.isArray(doc?.author_name) ? doc.author_name.map((a: any) => normalizeText(a)).join(" | ") : "";
+  const text = [title, publishers, subjects, authors].filter(Boolean).join(" | ");
+
+  if (!text) return false;
+
+  if (/\b(library|catalog|catalogue|bulletin|encyclopedia|handbook|manual|reference|companion|report|yearbook|anthology|collection|collected works|selected works|short stories|great short stories|stories of|books for all|among our books|essential information)\b/i.test(title)) {
+    return true;
+  }
+
+  if (/\b(public library|carnegie library|lincoln library|society|association|department|committee|commission|bureau|institute|review|journal)\b/i.test(text) && !/\b(fiction|novel|thriller|mystery|crime|detective|suspense|murder)\b/i.test(text)) {
+    return true;
+  }
+
+  return false;
+}
+
 function deckKeyToBand(deckKey: DeckKey): "kids" | "preteen" | "teens" | "adult" {
   if (deckKey === "k2") return "kids";
   if (deckKey === "36") return "preteen";
@@ -69,8 +96,10 @@ function sanitizeOpenLibraryQuery(query: string): string {
 function toOpenLibraryQuery(query: string): string {
   let q = String(query || "").toLowerCase();
 
+  // strip negative filters
   q = q.replace(/-\w+/g, " ");
 
+  // remove weak adjectives
   q = q
     .replace(/\bdark\b/g, "")
     .replace(/\bfunny\b/g, "")
@@ -82,6 +111,7 @@ function toOpenLibraryQuery(query: string): string {
     .replace(/\s+/g, " ")
     .trim();
 
+  // compress to stronger OL-friendly quoted phrases
   if (q.includes("dystopian")) return '"dystopian science fiction novel"';
   if (q.includes("science fiction")) return '"science fiction novel"';
   if (q.includes("thriller") && q.includes("crime")) return '"crime thriller novel"';
@@ -168,15 +198,34 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
     return {
       domainMode: "default",
       queries: dedupeQueries([
+        // ---------------------
+        // TEEN BASELINE
+        // ---------------------
         '"young adult fiction"',
+
+        // ---------------------
+        // TEEN ROMANCE / SOCIAL
+        // ---------------------
         '"teen romance novel"',
         '"friends to lovers romance novel"',
         '"fake dating romance novel"',
+
+        // ---------------------
+        // TEEN DYSTOPIAN / FANTASY
+        // ---------------------
         '"dystopian young adult novel"',
         '"epic fantasy novel"',
         '"dark fantasy novel"',
         '"magic fantasy novel"',
+
+        // ---------------------
+        // TEEN REALISM / GROWTH
+        // ---------------------
         '"coming of age novel"',
+
+        // ---------------------
+        // TEEN MYSTERY / THRILLER
+        // ---------------------
         '"murder investigation novel"',
         '"psychological thriller novel"',
         '"crime thriller novel"',
@@ -187,27 +236,62 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
   return {
     domainMode: "default",
     queries: dedupeQueries([
+      // ---------------------
+      // GENERAL / BASELINE
+      // ---------------------
       '"contemporary fiction novel"',
       '"general fiction novel"',
+
+      // ---------------------
+      // LITERARY (signal layer)
+      // ---------------------
       '"literary fiction novel"',
       '"award winning novel"',
+
+      // ---------------------
+      // MYSTERY / DETECTIVE
+      // ---------------------
       '"murder investigation novel"',
       '"detective novel"',
+
+      // ---------------------
+      // THRILLER
+      // ---------------------
       '"psychological thriller novel"',
       '"spy thriller novel"',
       '"crime thriller novel"',
+
+      // ---------------------
+      // ROMANCE (tropes)
+      // ---------------------
       '"fake dating romance novel"',
       '"marriage of convenience romance novel"',
       '"friends to lovers romance novel"',
+
+      // ---------------------
+      // SCI-FI
+      // ---------------------
       '"space opera science fiction"',
       '"dystopian science fiction novel"',
       '"time travel science fiction novel"',
+
+      // ---------------------
+      // FANTASY
+      // ---------------------
       '"epic fantasy novel"',
       '"dark fantasy novel"',
       '"magic fantasy novel"',
+
+      // ---------------------
+      // HORROR (FINALIZED)
+      // ---------------------
       '"horror novel"',
       '"haunted house horror novel"',
       '"survival horror novel"',
+
+      // ---------------------
+      // HISTORICAL FICTION
+      // ---------------------
       '"world war 2 fiction"',
       '"world war 1 fiction"',
       '"ancient rome novel"',
@@ -244,7 +328,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
 
   const deckKey = input.deckKey;
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
-  const fetchLimit = Math.max(40, Math.min(160, Math.max(finalLimit * 6, (input.limit ?? 12) * 4)));
+  const fetchLimit = Math.max(60, Math.min(200, finalLimit * 6));
   const timeoutMs = Math.max(2500, Math.min(20000, input.timeoutMs ?? 12000));
 
   const explicitBucketPlan = (input as any)?.bucketPlan as { queries?: string[]; domainMode?: RecommendationResult["domainMode"]; bucketId?: string } | undefined;
@@ -261,7 +345,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
     Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0)
   );
 
-  const minQueryPassesBeforeEarlyExit = deckKey === "ms_hs" ? 4 : 1;
+  const minQueryPassesBeforeEarlyExit = Math.min(4, queriesToTry.length || 4);
 
   let bestDocsRaw: any[] = [];
   let bestQuery = builtFromQuery;
@@ -278,36 +362,24 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
     try {
       const data = await fetchJsonWithTimeout(url, timeoutMs);
       const docsRaw = Array.isArray(data?.docs) ? data.docs : [];
-
       const admittedDocsRaw = docsRaw.filter((d: any) => {
         const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
-        if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
-        return true;
+        return !publishers.some((p: any) => isHardSelfPublished(p));
       });
 
-      let finalDocsForQuery = admittedDocsRaw;
-      const withYear1980 = admittedDocsRaw.filter((d: any) => {
-        const year = typeof d?.first_publish_year === "number" ? d.first_publish_year : undefined;
-        return !year || year >= 1980;
-      });
-
-      if (withYear1980.length >= 8) {
-        finalDocsForQuery = withYear1980;
-      }
-
-      if (finalDocsForQuery.length > bestDocsRaw.length) {
-        bestDocsRaw = finalDocsForQuery;
+      if (admittedDocsRaw.length > bestDocsRaw.length) {
+        bestDocsRaw = admittedDocsRaw;
         bestQuery = q;
       }
 
-      const minTeenBackfillPasses = deckKey === "ms_hs" ? 4 : 1;
+      const minTeenBackfillPasses = Math.min(4, queriesToTry.length || 4);
 
       const shouldBackfillFromThisQuery =
         queryIndex < minTeenBackfillPasses ||
         collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
 
       if (shouldBackfillFromThisQuery) {
-        for (const d of finalDocsForQuery) {
+        for (const d of admittedDocsRaw) {
           const key = String(d?.key || `${d?.title || "unknown"}|${queryIndex}`);
           if (seenKeys.has(key)) continue;
           seenKeys.add(key);
@@ -320,7 +392,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
         }
       }
 
-      if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && finalDocsForQuery.length >= Math.max(finalLimit, minCandidateFloor)) {
+      if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && admittedDocsRaw.length >= Math.max(finalLimit, minCandidateFloor)) {
         break;
       }
 

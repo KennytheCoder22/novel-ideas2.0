@@ -83,6 +83,73 @@ function looksLikeGoogleBooksReference(doc: any): boolean {
   return false;
 }
 
+function looksLikeCatalogOrCollectionTitle(title: any): boolean {
+  const t = normalizeText(title);
+  if (!t) return false;
+
+  return /\b(library|catalog|catalogue|bulletin|handbook|manual|encyclopedia|reference|companion|report|yearbook|anthology|collection|collected works|selected works|short stories|great short stories|stories of|books for all|among our books|essential information)\b/i.test(t);
+}
+
+function hasExplicitFictionSignal(doc: any): boolean {
+  const categories = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+    ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
+  ]
+    .map((v: any) => normalizeText(v))
+    .join(" | ");
+
+  const title = normalizeText(doc?.title);
+  const subtitle = normalizeText(doc?.subtitle);
+  const description = normalizeText(doc?.description);
+  const text = [title, subtitle, description, categories].filter(Boolean).join(" | ");
+
+  return /\b(fiction|novel|thriller|mystery|crime|detective|suspense|psychological thriller|murder)\b/i.test(text);
+}
+
+async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 3): Promise<any> {
+  let attempt = 0;
+
+  while (attempt <= retries) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const resp = await fetch(url, {
+        signal: controller.signal,
+        headers: { Accept: "application/json" },
+      });
+
+      if (resp.status === 429) {
+        if (attempt === retries) {
+          const body = await resp.text().catch(() => "");
+          throw new Error(body ? `Google Books 429 ${body}` : "Google Books 429");
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+        attempt += 1;
+        continue;
+      }
+
+      if (!resp.ok) {
+        const body = await resp.text().catch(() => "");
+        const message = body ? `Google Books error: ${resp.status} ${body}` : `Google Books error: ${resp.status}`;
+        throw new Error(message);
+      }
+
+      return await resp.json();
+    } catch (err) {
+      if (attempt === retries) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+      attempt += 1;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  throw new Error("Google Books retry loop exhausted");
+}
+
 function deckKeyToDomainMode(deckKey: DeckKey): RecommendationResult["domainMode"] {
   if (deckKey === "k2") return "chapterMiddle";
   return "default";
@@ -130,9 +197,13 @@ const ADULT_BUCKET_QUERY_PACKS: Record<string, string[]> = {
     "crime detective fiction",
   ],
   thriller: [
-    "psychological thriller novel",
-    "spy thriller novel",
     "crime thriller novel",
+    "psychological thriller novel",
+    "serial killer thriller novel",
+    "legal thriller novel",
+    "detective thriller novel",
+    "murder mystery novel",
+    "spy thriller novel",
     "thriller novel",
   ],
   romance: [
@@ -277,8 +348,10 @@ function toGoogleBooksQuery(query: string): string {
   let q = String(query || "").toLowerCase();
   if (!q.trim()) return "";
 
+  // Strip negative filter syntax and other unsupported query operators
   q = q.replace(/-\w+/g, " ");
 
+  // Remove weak / misleading adjectives and scenario terms that create noisy lexical matches
   q = q
     .replace(/\bdark\b/g, "")
     .replace(/\bfunny\b/g, "")
@@ -295,6 +368,7 @@ function toGoogleBooksQuery(query: string): string {
     return `subject:${subject}`;
   }
 
+  // Compress rich descriptive queries into a few engine-friendly genre anchors
   if (q.includes("dystopian")) return "dystopian science fiction novel";
   if (q.includes("science fiction")) return "science fiction novel";
   if (q.includes("thriller")) return "thriller novel";
@@ -306,30 +380,6 @@ function toGoogleBooksQuery(query: string): string {
   if (q.includes("historical")) return "historical fiction novel";
 
   return q;
-}
-
-async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  try {
-    const resp = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        Accept: "application/json",
-      },
-    });
-
-    if (!resp.ok) {
-      const body = await resp.text().catch(() => "");
-      const message = body ? `Google Books error: ${resp.status} ${body}` : `Google Books error: ${resp.status}`;
-      throw new Error(message);
-    }
-
-    return await resp.json();
-  } finally {
-    clearTimeout(timer);
-  }
 }
 
 async function googleBooksSearch(
@@ -360,7 +410,7 @@ async function googleBooksSearch(
   }
 
   const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
-  const json = await fetchJsonWithTimeout(url, timeoutMs);
+  const json = await fetchJsonWithRetry(url, timeoutMs);
   const items = Array.isArray(json?.items) ? json.items : [];
 
   return items
@@ -416,7 +466,7 @@ async function googleBooksSearch(
 export async function getGoogleBooksRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
-  const fetchLimit = Math.max(20, Math.min(120, Math.max(finalLimit * 4, input.limit ?? 12)));
+  const fetchLimit = Math.max(60, Math.min(200, finalLimit * 6));
   const timeoutMs = Math.max(1000, Math.min(30000, input.timeoutMs ?? 15000));
   const domainMode = deckKeyToDomainMode(deckKey);
 
@@ -435,10 +485,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   const collectedDocsRaw: any[] = [];
   const seenKeys = new Set<string>();
   let primaryDocsRaw: any[] = [];
-  const minQueryPassesBeforeEarlyExit = Math.min(
-    Math.max(2, Math.min(3, queriesToTry.length)),
-    queriesToTry.length
-  );
+  const minQueryPassesBeforeEarlyExit = Math.min(4, queriesToTry.length);
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = queriesToTry[queryIndex];
@@ -457,31 +504,15 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       return true;
     });
 
-    let finalDocsForQuery = admittedDocsRaw;
-    const withYear1980 = admittedDocsRaw.filter((doc: any) => {
-      const year =
-        typeof doc?.first_publish_year === "number"
-          ? doc.first_publish_year
-          : typeof doc?.volumeInfo?.publishedDate === "string" && /^\d{4}/.test(doc.volumeInfo.publishedDate)
-            ? Number(doc.volumeInfo.publishedDate.slice(0, 4))
-            : undefined;
-
-      return !year || year >= 1980;
-    });
-
-    if (withYear1980.length >= 8) {
-      finalDocsForQuery = withYear1980;
-    }
-
     if (queryIndex === 0) {
-      primaryDocsRaw = finalDocsForQuery;
+      primaryDocsRaw = admittedDocsRaw;
     }
 
     const shouldBackfillFromThisQuery =
       queryIndex === 0 || collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
 
     if (shouldBackfillFromThisQuery) {
-      for (const doc of finalDocsForQuery) {
+      for (const doc of admittedDocsRaw) {
         const key = String(doc?.key || doc?.id || `${doc?.title || "unknown"}|${queryIndex}`);
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
