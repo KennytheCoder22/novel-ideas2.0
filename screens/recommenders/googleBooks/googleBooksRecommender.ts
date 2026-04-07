@@ -438,10 +438,6 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   const collectedDocsRaw: any[] = [];
   const seenKeys = new Set<string>();
   let primaryDocsRaw: any[] = [];
-  const minQueryPassesBeforeEarlyExit = Math.min(
-    Math.max(2, Math.min(3, queriesToTry.length)),
-    queriesToTry.length
-  );
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = queriesToTry[queryIndex];
@@ -456,6 +452,16 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
       if (isHardSelfPublished(publisher)) return false;
       if (looksLikeGoogleBooksReference(doc)) return false;
+
+      const year =
+        typeof doc?.first_publish_year === "number"
+          ? doc.first_publish_year
+          : typeof doc?.volumeInfo?.publishedDate === "string" && /^\d{4}/.test(doc.volumeInfo.publishedDate)
+            ? Number(doc.volumeInfo.publishedDate.slice(0, 4))
+            : undefined;
+
+      // Hard cutoff: eliminate pre-1980 records before they reach downstream ranking.
+      if (year && year < 1980) return false;
 
       return true;
     });
@@ -481,20 +487,26 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       }
     }
 
-    const enoughCandidates =
-      collectedDocsRaw.length >= Math.max(fetchLimit, minCandidateFloor);
-
-    if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && enoughCandidates) break;
+    if (queryIndex === 0 && primaryDocsRaw.length >= Math.max(1, minCandidateFloor)) break;
+    if (collectedDocsRaw.length >= Math.max(fetchLimit, minCandidateFloor)) break;
   }
 
-  const docsRaw = collectedDocsRaw.length
-    ? collectedDocsRaw
-    : primaryDocsRaw.map((doc: any) => ({
-        ...doc,
-        queryRung: 0,
-        queryText: builtFromQuery,
-        source: "googleBooks",
-      }));
+  const docsRaw =
+    primaryDocsRaw.length >= Math.max(1, minCandidateFloor)
+      ? primaryDocsRaw.map((doc: any) => ({
+          ...doc,
+          queryRung: 0,
+          queryText: builtFromQuery,
+          source: "googleBooks",
+        }))
+      : collectedDocsRaw.length
+        ? collectedDocsRaw
+        : primaryDocsRaw.map((doc: any) => ({
+            ...doc,
+            queryRung: 0,
+            queryText: builtFromQuery,
+            source: "googleBooks",
+          }));
 
   const docs: RecommendationDoc[] = docsRaw
     .filter((doc: any) => doc && doc.title)

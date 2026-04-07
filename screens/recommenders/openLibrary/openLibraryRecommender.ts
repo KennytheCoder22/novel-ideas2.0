@@ -337,7 +337,14 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
       const docsRaw = Array.isArray(data?.docs) ? data.docs : [];
       const admittedDocsRaw = docsRaw.filter((d: any) => {
         const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
-        return !publishers.some((p: any) => isHardSelfPublished(p));
+        if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
+
+        const year = typeof d?.first_publish_year === "number" ? d.first_publish_year : undefined;
+
+        // Hard cutoff: eliminate pre-1980 records before they reach downstream ranking.
+        if (year && year < 1980) return false;
+
+        return true;
       });
 
       if (admittedDocsRaw.length > bestDocsRaw.length) {
