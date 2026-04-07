@@ -277,10 +277,8 @@ function toGoogleBooksQuery(query: string): string {
   let q = String(query || "").toLowerCase();
   if (!q.trim()) return "";
 
-  // Strip negative filter syntax and other unsupported query operators
   q = q.replace(/-\w+/g, " ");
 
-  // Remove weak / misleading adjectives and scenario terms that create noisy lexical matches
   q = q
     .replace(/\bdark\b/g, "")
     .replace(/\bfunny\b/g, "")
@@ -297,7 +295,6 @@ function toGoogleBooksQuery(query: string): string {
     return `subject:${subject}`;
   }
 
-  // Compress rich descriptive queries into a few engine-friendly genre anchors
   if (q.includes("dystopian")) return "dystopian science fiction novel";
   if (q.includes("science fiction")) return "science fiction novel";
   if (q.includes("thriller")) return "thriller novel";
@@ -438,6 +435,10 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   const collectedDocsRaw: any[] = [];
   const seenKeys = new Set<string>();
   let primaryDocsRaw: any[] = [];
+  const minQueryPassesBeforeEarlyExit = Math.min(
+    Math.max(2, Math.min(3, queriesToTry.length)),
+    queriesToTry.length
+  );
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = queriesToTry[queryIndex];
@@ -453,6 +454,11 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       if (isHardSelfPublished(publisher)) return false;
       if (looksLikeGoogleBooksReference(doc)) return false;
 
+      return true;
+    });
+
+    let finalDocsForQuery = admittedDocsRaw;
+    const withYear1980 = admittedDocsRaw.filter((doc: any) => {
       const year =
         typeof doc?.first_publish_year === "number"
           ? doc.first_publish_year
@@ -460,21 +466,22 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
             ? Number(doc.volumeInfo.publishedDate.slice(0, 4))
             : undefined;
 
-      // Hard cutoff: eliminate pre-1980 records before they reach downstream ranking.
-      if (year && year < 1980) return false;
-
-      return true;
+      return !year || year >= 1980;
     });
 
+    if (withYear1980.length >= 8) {
+      finalDocsForQuery = withYear1980;
+    }
+
     if (queryIndex === 0) {
-      primaryDocsRaw = admittedDocsRaw;
+      primaryDocsRaw = finalDocsForQuery;
     }
 
     const shouldBackfillFromThisQuery =
       queryIndex === 0 || collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
 
     if (shouldBackfillFromThisQuery) {
-      for (const doc of admittedDocsRaw) {
+      for (const doc of finalDocsForQuery) {
         const key = String(doc?.key || doc?.id || `${doc?.title || "unknown"}|${queryIndex}`);
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
@@ -487,26 +494,20 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       }
     }
 
-    if (queryIndex === 0 && primaryDocsRaw.length >= Math.max(1, minCandidateFloor)) break;
-    if (collectedDocsRaw.length >= Math.max(fetchLimit, minCandidateFloor)) break;
+    const enoughCandidates =
+      collectedDocsRaw.length >= Math.max(fetchLimit, minCandidateFloor);
+
+    if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && enoughCandidates) break;
   }
 
-  const docsRaw =
-    primaryDocsRaw.length >= Math.max(1, minCandidateFloor)
-      ? primaryDocsRaw.map((doc: any) => ({
-          ...doc,
-          queryRung: 0,
-          queryText: builtFromQuery,
-          source: "googleBooks",
-        }))
-      : collectedDocsRaw.length
-        ? collectedDocsRaw
-        : primaryDocsRaw.map((doc: any) => ({
-            ...doc,
-            queryRung: 0,
-            queryText: builtFromQuery,
-            source: "googleBooks",
-          }));
+  const docsRaw = collectedDocsRaw.length
+    ? collectedDocsRaw
+    : primaryDocsRaw.map((doc: any) => ({
+        ...doc,
+        queryRung: 0,
+        queryText: builtFromQuery,
+        source: "googleBooks",
+      }));
 
   const docs: RecommendationDoc[] = docsRaw
     .filter((doc: any) => doc && doc.title)

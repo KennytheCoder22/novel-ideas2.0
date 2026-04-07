@@ -69,10 +69,8 @@ function sanitizeOpenLibraryQuery(query: string): string {
 function toOpenLibraryQuery(query: string): string {
   let q = String(query || "").toLowerCase();
 
-  // strip negative filters
   q = q.replace(/-\w+/g, " ");
 
-  // remove weak adjectives
   q = q
     .replace(/\bdark\b/g, "")
     .replace(/\bfunny\b/g, "")
@@ -84,7 +82,6 @@ function toOpenLibraryQuery(query: string): string {
     .replace(/\s+/g, " ")
     .trim();
 
-  // compress to stronger OL-friendly quoted phrases
   if (q.includes("dystopian")) return '"dystopian science fiction novel"';
   if (q.includes("science fiction")) return '"science fiction novel"';
   if (q.includes("thriller") && q.includes("crime")) return '"crime thriller novel"';
@@ -171,34 +168,15 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
     return {
       domainMode: "default",
       queries: dedupeQueries([
-        // ---------------------
-        // TEEN BASELINE
-        // ---------------------
         '"young adult fiction"',
-
-        // ---------------------
-        // TEEN ROMANCE / SOCIAL
-        // ---------------------
         '"teen romance novel"',
         '"friends to lovers romance novel"',
         '"fake dating romance novel"',
-
-        // ---------------------
-        // TEEN DYSTOPIAN / FANTASY
-        // ---------------------
         '"dystopian young adult novel"',
         '"epic fantasy novel"',
         '"dark fantasy novel"',
         '"magic fantasy novel"',
-
-        // ---------------------
-        // TEEN REALISM / GROWTH
-        // ---------------------
         '"coming of age novel"',
-
-        // ---------------------
-        // TEEN MYSTERY / THRILLER
-        // ---------------------
         '"murder investigation novel"',
         '"psychological thriller novel"',
         '"crime thriller novel"',
@@ -209,62 +187,27 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
   return {
     domainMode: "default",
     queries: dedupeQueries([
-      // ---------------------
-      // GENERAL / BASELINE
-      // ---------------------
       '"contemporary fiction novel"',
       '"general fiction novel"',
-
-      // ---------------------
-      // LITERARY (signal layer)
-      // ---------------------
       '"literary fiction novel"',
       '"award winning novel"',
-
-      // ---------------------
-      // MYSTERY / DETECTIVE
-      // ---------------------
       '"murder investigation novel"',
       '"detective novel"',
-
-      // ---------------------
-      // THRILLER
-      // ---------------------
       '"psychological thriller novel"',
       '"spy thriller novel"',
       '"crime thriller novel"',
-
-      // ---------------------
-      // ROMANCE (tropes)
-      // ---------------------
       '"fake dating romance novel"',
       '"marriage of convenience romance novel"',
       '"friends to lovers romance novel"',
-
-      // ---------------------
-      // SCI-FI
-      // ---------------------
       '"space opera science fiction"',
       '"dystopian science fiction novel"',
       '"time travel science fiction novel"',
-
-      // ---------------------
-      // FANTASY
-      // ---------------------
       '"epic fantasy novel"',
       '"dark fantasy novel"',
       '"magic fantasy novel"',
-
-      // ---------------------
-      // HORROR (FINALIZED)
-      // ---------------------
       '"horror novel"',
       '"haunted house horror novel"',
       '"survival horror novel"',
-
-      // ---------------------
-      // HISTORICAL FICTION
-      // ---------------------
       '"world war 2 fiction"',
       '"world war 1 fiction"',
       '"ancient rome novel"',
@@ -335,20 +278,25 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
     try {
       const data = await fetchJsonWithTimeout(url, timeoutMs);
       const docsRaw = Array.isArray(data?.docs) ? data.docs : [];
+
       const admittedDocsRaw = docsRaw.filter((d: any) => {
         const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
         if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
-
-        const year = typeof d?.first_publish_year === "number" ? d.first_publish_year : undefined;
-
-        // Hard cutoff: eliminate pre-1980 records before they reach downstream ranking.
-        if (year && year < 1980) return false;
-
         return true;
       });
 
-      if (admittedDocsRaw.length > bestDocsRaw.length) {
-        bestDocsRaw = admittedDocsRaw;
+      let finalDocsForQuery = admittedDocsRaw;
+      const withYear1980 = admittedDocsRaw.filter((d: any) => {
+        const year = typeof d?.first_publish_year === "number" ? d.first_publish_year : undefined;
+        return !year || year >= 1980;
+      });
+
+      if (withYear1980.length >= 8) {
+        finalDocsForQuery = withYear1980;
+      }
+
+      if (finalDocsForQuery.length > bestDocsRaw.length) {
+        bestDocsRaw = finalDocsForQuery;
         bestQuery = q;
       }
 
@@ -359,7 +307,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
         collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
 
       if (shouldBackfillFromThisQuery) {
-        for (const d of admittedDocsRaw) {
+        for (const d of finalDocsForQuery) {
           const key = String(d?.key || `${d?.title || "unknown"}|${queryIndex}`);
           if (seenKeys.has(key)) continue;
           seenKeys.add(key);
@@ -372,7 +320,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
         }
       }
 
-      if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && admittedDocsRaw.length >= Math.max(finalLimit, minCandidateFloor)) {
+      if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && finalDocsForQuery.length >= Math.max(finalLimit, minCandidateFloor)) {
         break;
       }
 
