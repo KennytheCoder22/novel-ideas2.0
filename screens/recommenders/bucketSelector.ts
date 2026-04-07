@@ -28,6 +28,17 @@ export type BucketPlan = {
   rationale: string[];
 };
 
+type BucketFamily =
+  | "visual"
+  | "thriller_family"
+  | "romance_family"
+  | "speculative_family"
+  | "historical_family"
+  | "literary_family"
+  | "general_family"
+  | "kids_family"
+  | "preteen_family";
+
 type BucketRule = {
   bucketId: SearchBucketId;
   queries: string[];
@@ -85,9 +96,27 @@ function dedupeQueries(queries: string[]): string[] {
 function scoreFromSignals(input: RecommenderInput, tags: Record<string, number>, keys: string[], axisBoosts?: Array<[string, number]>): number {
   let score = totalForAliases(tags, keys);
   for (const [axis, weight] of axisBoosts || []) {
-    score += clampNonNegative(tasteAxis(input, axis)) * weight;
+    const axisValue = tasteAxis(input, axis);
+    if (weight >= 0) score += clampNonNegative(axisValue) * weight;
+    else score += clampNonNegative(-axisValue) * Math.abs(weight);
   }
   return score;
+}
+
+function bucketFamily(bucketId: SearchBucketId): BucketFamily {
+  if (bucketId === "visual_comics") return "visual";
+  if (bucketId === "adult_thriller" || bucketId === "adult_mystery" || bucketId === "adult_dystopian" || bucketId === "teen_thriller") {
+    return "thriller_family";
+  }
+  if (bucketId === "adult_romance" || bucketId === "teen_romance") return "romance_family";
+  if (bucketId === "adult_scifi" || bucketId === "adult_fantasy" || bucketId === "adult_horror" || bucketId === "teen_fantasy") {
+    return "speculative_family";
+  }
+  if (bucketId === "adult_historical") return "historical_family";
+  if (bucketId === "adult_literary" || bucketId === "teen_realism") return "literary_family";
+  if (bucketId === "preteen_general") return "preteen_family";
+  if (bucketId === "kids_picture" || bucketId === "kids_early_reader" || bucketId === "kids_chapter_middle") return "kids_family";
+  return "general_family";
 }
 
 const ADULT_RULES: BucketRule[] = [
@@ -95,20 +124,28 @@ const ADULT_RULES: BucketRule[] = [
     bucketId: "adult_thriller",
     queries: [
       '"psychological thriller novel"',
-      '"spy thriller novel"',
       '"crime thriller novel"',
+      '"detective mystery novel"',
     ],
-    score: (input, tags) => scoreFromSignals(input, tags, ["thriller", "genre:thriller", "dark", "fast-paced", "mystery"], [["pacing", 1.2], ["darkness", 0.9]]),
-    rationale: (_input, tags) => ["thriller", "dark", "fast-paced", "mystery"].filter((k) => asCount(tags, k) > 0),
+    score: (input, tags) =>
+      scoreFromSignals(
+        input,
+        tags,
+        ["thriller", "genre:thriller", "crime", "genre:crime", "mystery", "genre:mystery", "dark", "fast-paced"],
+        [["pacing", 1.2], ["darkness", 0.9]]
+      ),
+    rationale: (_input, tags) => ["thriller", "crime", "mystery", "dark", "fast-paced"].filter((k) => asCount(tags, k) > 0),
   },
   {
     bucketId: "adult_mystery",
     queries: [
       '"murder investigation novel"',
-      '"detective novel"',
+      '"detective mystery novel"',
+      '"crime mystery novel"',
     ],
-    score: (input, tags) => scoreFromSignals(input, tags, ["mystery", "genre:mystery", "crime", "genre:crime"], [["complexity", 0.5]]),
-    rationale: (_input, tags) => ["mystery", "crime"].filter((k) => asCount(tags, k) > 0),
+    score: (input, tags) =>
+      scoreFromSignals(input, tags, ["mystery", "genre:mystery", "crime", "genre:crime", "investigation"], [["complexity", 0.5]]),
+    rationale: (_input, tags) => ["mystery", "crime", "investigation"].filter((k) => asCount(tags, k) > 0),
   },
   {
     bucketId: "adult_romance",
@@ -127,7 +164,8 @@ const ADULT_RULES: BucketRule[] = [
       '"dystopian science fiction novel"',
       '"time travel science fiction novel"',
     ],
-    score: (input, tags) => scoreFromSignals(input, tags, ["science fiction", "genre:science fiction", "ai", "time travel", "space", "rebellion"], [["ideaDensity", 1.0], ["realism", -0.2]]),
+    score: (input, tags) =>
+      scoreFromSignals(input, tags, ["science fiction", "genre:science fiction", "ai", "time travel", "space", "rebellion"], [["ideaDensity", 0.6], ["realism", -0.2]]),
     rationale: (_input, tags) => ["science fiction", "ai", "time travel", "space"].filter((k) => asCount(tags, k) > 0),
   },
   {
@@ -147,41 +185,35 @@ const ADULT_RULES: BucketRule[] = [
       '"haunted house horror novel"',
       '"survival horror novel"',
     ],
-    score: (input, tags) => scoreFromSignals(input, tags, ["horror", "genre:horror", "spooky", "dark", "survival", "weird"], [["darkness", 1.3]]),
+    score: (input, tags) => scoreFromSignals(input, tags, ["horror", "genre:horror", "spooky", "dark", "survival", "weird"], [["darkness", 1.0]]),
     rationale: (_input, tags) => ["horror", "spooky", "dark", "weird"].filter((k) => asCount(tags, k) > 0),
   },
   {
     bucketId: "adult_historical",
     queries: [
       '"world war 2 fiction"',
-      '"world war 1 fiction"',
-      '"ancient rome novel"',
-      '"ancient greece novel"',
-      '"war of the roses novel"',
-      '"crusades historical fiction"',
-      '"norman conquest novel"',
-      '"19th century american novel"',
-      '"american society novel 19th century"',
+      '"19th century historical fiction novel"',
+      '"historical drama novel"',
     ],
-    score: (input, tags) => scoreFromSignals(input, tags, ["historical", "genre:historical", "war & society", "authority", "political"], [["realism", 0.7], ["ideaDensity", 0.5]]),
+    score: (input, tags) => scoreFromSignals(input, tags, ["historical", "genre:historical", "war & society", "authority", "political"], [["realism", 0.7], ["ideaDensity", 0.3]]),
     rationale: (_input, tags) => ["historical", "war & society", "authority"].filter((k) => asCount(tags, k) > 0),
   },
   {
     bucketId: "adult_dystopian",
     queries: [
+      '"dystopian thriller novel"',
       '"dystopian science fiction novel"',
-      '"survival horror novel"',
-      '"world war 2 fiction"',
+      '"survival dystopian novel"',
     ],
-    score: (input, tags) => scoreFromSignals(input, tags, ["dystopian", "genre:dystopian", "survival", "rebellion", "authority"], [["darkness", 0.8], ["ideaDensity", 0.5]]),
+    score: (input, tags) => scoreFromSignals(input, tags, ["dystopian", "genre:dystopian", "survival", "rebellion", "authority"], [["darkness", 0.8], ["ideaDensity", 0.4]]),
     rationale: (_input, tags) => ["dystopian", "survival", "rebellion", "authority"].filter((k) => asCount(tags, k) > 0),
   },
   {
     bucketId: "adult_literary",
     queries: [
       '"literary fiction novel"',
-      '"award winning novel"',
-      '"contemporary fiction novel"',
+      '"contemporary literary fiction"',
+      '"character-driven literary novel"',
     ],
     score: (input, tags) => scoreFromSignals(input, tags, ["identity", "regret", "melancholic", "realistic", "human connection", "drama"], [["complexity", 1.0], ["characterFocus", 0.9], ["realism", 0.8]]),
     rationale: (_input, tags) => ["identity", "regret", "realistic", "human connection", "drama"].filter((k) => asCount(tags, k) > 0),
@@ -192,7 +224,6 @@ const ADULT_RULES: BucketRule[] = [
       '"contemporary fiction novel"',
       '"general fiction novel"',
       '"literary fiction novel"',
-      '"award winning novel"',
     ],
     score: () => 0.1,
     rationale: () => ["fallback"],
@@ -314,20 +345,26 @@ export function chooseBucketPlan(input: RecommenderInput): BucketPlan {
     .map((rule) => ({
       rule,
       score: rule.score(input, tags),
+      family: bucketFamily(rule.bucketId),
     }))
     .sort((a, b) => b.score - a.score);
 
   const winner = scored.find(({ rule, score }) => score >= (rule.minScore ?? 0)) || scored[0];
-  const backup = scored.find(({ rule }) => rule.bucketId !== winner.rule.bucketId);
+  const backup = scored.find(({ rule, family, score }) =>
+    rule.bucketId !== winner.rule.bucketId &&
+    family === winner.family &&
+    score > 0.75
+  );
 
   const mergedQueries = dedupeQueries([
     ...winner.rule.queries,
-    ...(backup && backup.score > 0.75 ? backup.rule.queries.slice(0, 1) : []),
-  ]);
+    ...(backup ? backup.rule.queries.slice(0, 1) : []),
+  ]).slice(0, 4);
 
   const rationale = [
     ...winner.rule.rationale(input, tags),
-    ...(backup && backup.score > 0.75 ? [`secondary:${backup.rule.bucketId}`] : []),
+    `family:${winner.family}`,
+    ...(backup ? [`secondary:${backup.rule.bucketId}`] : []),
   ];
 
   return {

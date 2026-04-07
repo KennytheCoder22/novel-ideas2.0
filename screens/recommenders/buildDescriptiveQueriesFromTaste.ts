@@ -147,8 +147,8 @@ function audiencePhrase(deckKey: RecommenderInput["deckKey"]): string {
 function fallbackQueriesForDeck(deckKey: RecommenderInput["deckKey"]): string[] {
   const audience = audiencePhrase(deckKey);
   return [
-    `character-driven ${audience} ${NEGATIVE_TERMS}`,
-    `atmospheric ${audience} ${NEGATIVE_TERMS}`,
+    `psychological thriller novel ${audience} ${NEGATIVE_TERMS}`,
+    `crime thriller novel ${audience} ${NEGATIVE_TERMS}`,
   ];
 }
 
@@ -174,15 +174,15 @@ type DominantIntent = {
   core: string;
   preview: string;
   variants: string[];
+  family: string;
 };
 
-function dominantGenre(genres: string[]): string | null {
-  if (genres.includes("crime") && genres.includes("thriller")) return "crime-thriller";
-  if (genres.includes("mystery") && genres.includes("thriller")) return "mystery-thriller";
-  if (genres.includes("crime") && genres.includes("mystery")) return "crime-mystery";
-  if (genres.includes("dystopian") && genres.includes("thriller")) return "dystopian-thriller";
-  if (genres[0]) return genres[0];
-  return null;
+function dominantGenreFamily(genres: string[]): "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "other" {
+  if (genres.some((genre) => ["crime", "thriller", "mystery", "dystopian"].includes(genre))) return "thriller_family";
+  if (genres.some((genre) => ["science fiction", "fantasy", "horror"].includes(genre))) return "speculative_family";
+  if (genres.includes("romance")) return "romance_family";
+  if (genres.includes("historical")) return "historical_family";
+  return "other";
 }
 
 function buildDominantIntent(
@@ -192,112 +192,69 @@ function buildDominantIntent(
   scenarios: string[],
   deckKey: RecommenderInput["deckKey"]
 ): DominantIntent | null {
-  const genre = dominantGenre(genres);
+  const family = dominantGenreFamily(genres);
   const audience = audiencePhrase(deckKey);
-  if (!genre) return null;
 
-  if (genre === "crime-thriller") {
-    const psychological = textures.includes("psychological");
-    const realistic = textures.includes("realistic") || tones.includes("gritty");
-    const dark = tones.includes("dark");
+  if (family === "thriller_family") {
     const variants = new Set<string>();
+    const psychological = textures.includes("psychological");
+    const dark = tones.includes("dark");
+    const investigative = scenarios.includes("investigation") || genres.includes("mystery") || genres.includes("crime");
 
     if (psychological) pushQuery(variants, `psychological thriller novel ${audience}`);
-    if (realistic) pushQuery(variants, `crime thriller novel ${audience}`);
-    if (scenarios.includes("investigation") || genres.includes("mystery")) {
-      pushQuery(variants, `detective mystery novel ${audience}`);
-    }
-    if (dark) pushQuery(variants, `dark crime thriller novel ${audience}`);
-    if (variants.size === 0) pushQuery(variants, `crime thriller novel ${audience}`);
+    pushQuery(variants, `crime thriller novel ${audience}`);
+    if (investigative) pushQuery(variants, `detective mystery novel ${audience}`);
+    if (dark) pushQuery(variants, `dark thriller novel ${audience}`);
 
     return {
-      core: "crime thriller novel",
+      core: psychological ? "psychological thriller novel" : "crime thriller novel",
       preview: psychological ? "psychological thriller novel" : "crime thriller novel",
-      variants: Array.from(variants),
+      variants: Array.from(variants).slice(0, 3),
+      family,
     };
   }
 
-  if (genre === "mystery-thriller") {
+  if (family === "speculative_family") {
     const variants = new Set<string>();
-    pushQuery(variants, `psychological thriller novel ${audience}`);
-    pushQuery(variants, `detective mystery novel ${audience}`);
-    if (tones.includes("dark")) pushQuery(variants, `dark mystery thriller novel ${audience}`);
+    if (genres.includes("science fiction")) pushQuery(variants, `science fiction novel ${audience}`);
+    if (genres.includes("fantasy")) pushQuery(variants, `fantasy novel ${audience}`);
+    if (genres.includes("horror")) pushQuery(variants, `horror novel ${audience}`);
+    if (!variants.size) pushQuery(variants, `science fiction novel ${audience}`);
+    const preview = Array.from(variants)[0]?.replace(NEGATIVE_TERMS, "").trim() || "science fiction novel";
     return {
-      core: "mystery thriller novel",
-      preview: "psychological thriller novel",
-      variants: Array.from(variants),
+      core: preview,
+      preview,
+      variants: Array.from(variants).slice(0, 3),
+      family,
     };
   }
 
-  if (genre === "crime-mystery") {
+  if (family === "romance_family") {
     const variants = new Set<string>();
-    pushQuery(variants, `detective mystery novel ${audience}`);
-    pushQuery(variants, `crime mystery novel ${audience}`);
-    if (textures.includes("psychological")) pushQuery(variants, `psychological mystery novel ${audience}`);
-    return {
-      core: "crime mystery novel",
-      preview: "detective mystery novel",
-      variants: Array.from(variants),
-    };
-  }
-
-  if (genre === "fantasy") {
-    const variants = new Set<string>();
-    if (textures.includes("character-driven")) pushQuery(variants, `character-driven fantasy novel ${audience}`);
-    if (textures.includes("epic")) pushQuery(variants, `epic fantasy novel ${audience}`);
-    if (tones.includes("dark")) pushQuery(variants, `dark fantasy novel ${audience}`);
-    if (scenarios.includes("quest")) pushQuery(variants, `quest fantasy novel ${audience}`);
-    if (variants.size === 0) pushQuery(variants, `fantasy novel ${audience}`);
-    return {
-      core: "fantasy novel",
-      preview: Array.from(variants)[0]?.replace(NEGATIVE_TERMS, "").trim() || "fantasy novel",
-      variants: Array.from(variants),
-    };
-  }
-
-  if (genre === "science fiction") {
-    const variants = new Set<string>();
-    if (genres.includes("dystopian") || scenarios.includes("societal collapse")) {
-      pushQuery(variants, `dystopian science fiction novel ${audience}`);
-    }
-    pushQuery(variants, `science fiction novel ${audience}`);
-    return {
-      core: "science fiction novel",
-      preview: Array.from(variants)[0]?.replace(NEGATIVE_TERMS, "").trim() || "science fiction novel",
-      variants: Array.from(variants),
-    };
-  }
-
-  if (genre === "horror") {
-    const variants = new Set<string>();
-    if (tones.includes("spooky")) pushQuery(variants, `gothic horror novel ${audience}`);
-    if (scenarios.includes("survival")) pushQuery(variants, `survival horror novel ${audience}`);
-    if (variants.size === 0) pushQuery(variants, `horror novel ${audience}`);
-    return {
-      core: "horror novel",
-      preview: Array.from(variants)[0]?.replace(NEGATIVE_TERMS, "").trim() || "horror novel",
-      variants: Array.from(variants),
-    };
-  }
-
-  if (genre === "romance") {
-    const variants = new Set<string>();
-    if (tones.includes("hopeful") || tones.includes("cozy")) pushQuery(variants, `romantic fiction novel ${audience}`);
+    pushQuery(variants, `romance novel ${audience}`);
     if (textures.includes("character-driven")) pushQuery(variants, `character-driven romance novel ${audience}`);
-    if (variants.size === 0) pushQuery(variants, `romance novel ${audience}`);
+    if (tones.includes("hopeful") || tones.includes("cozy")) pushQuery(variants, `romantic fiction novel ${audience}`);
     return {
       core: "romance novel",
-      preview: Array.from(variants)[0]?.replace(NEGATIVE_TERMS, "").trim() || "romance novel",
-      variants: Array.from(variants),
+      preview: "romance novel",
+      variants: Array.from(variants).slice(0, 3),
+      family,
     };
   }
 
-  const generic = `${genre} novel ${audience}`;
-  return {
-    core: generic,
-    preview: generic,
-    variants: [`${generic} ${NEGATIVE_TERMS}`],
-  };
+  if (family === "historical_family") {
+    const variants = new Set<string>();
+    pushQuery(variants, `historical fiction novel ${audience}`);
+    if (scenarios.includes("war")) pushQuery(variants, `war historical fiction novel ${audience}`);
+    return {
+      core: "historical fiction novel",
+      preview: "historical fiction novel",
+      variants: Array.from(variants).slice(0, 3),
+      family,
+    };
+  }
+
+  return null;
 }
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
@@ -309,20 +266,24 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const scenarios = topKeys(signals.scenario, 4);
 
   const dominantIntent = buildDominantIntent(tones, textures, genres, scenarios, input.deckKey);
-  let queries = dominantIntent?.variants.slice(0, 3) || fallbackQueriesForDeck(input.deckKey).slice(0, 2);
+  let queries = dominantIntent?.variants || fallbackQueriesForDeck(input.deckKey).slice(0, 2);
   if (queries.length < 2 && dominantIntent?.core) {
-    queries = Array.from(new Set([
-      ...queries,
-      `${dominantIntent.core} ${NEGATIVE_TERMS}`
-    ])).slice(0, 2);
+    queries = Array.from(new Set([...queries, `${dominantIntent.core} ${NEGATIVE_TERMS}`])).slice(0, 2);
   }
   const preview = dominantIntent?.preview || fallbackQueriesForDeck(input.deckKey)[0];
 
   return {
     queries,
-    strategy: "20q-intent-compression-v3",
+    strategy: "20q-intent-compression-v4-family-locked",
     preview,
-    signals: { genres, tones, textures, scenarios, dominantIntent: dominantIntent?.core || null },
+    signals: {
+      genres,
+      tones,
+      textures,
+      scenarios,
+      dominantIntent: dominantIntent?.core || null,
+      dominantFamily: dominantIntent?.family || null,
+    },
   };
 }
 

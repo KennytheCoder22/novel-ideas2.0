@@ -17,70 +17,72 @@ function expand(
   return keys.flatMap((key) => dictionary[key] || []);
 }
 
-function fallbackGenreForDeck(deckKey: RecommenderInput["deckKey"]): string {
-  if (deckKey === "adult") return "fiction novel";
-  if (deckKey === "ms_hs") return "young adult novel";
-  if (deckKey === "3_6") return "middle grade novel";
-  return "children's book";
+function dedupeQueries(queries: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const query of queries) {
+    const cleaned = String(query || "").replace(/\s+/g, " ").trim();
+    if (!cleaned || seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    out.push(cleaned);
+  }
+  return out;
+}
+
+function primaryGenreFamily(genreKeys: string[]): "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "literary_family" | "general_family" {
+  if (genreKeys.some((key) => ["thriller", "mystery", "crime", "dystopian"].includes(key))) return "thriller_family";
+  if (genreKeys.some((key) => ["science fiction", "fantasy", "horror"].includes(key))) return "speculative_family";
+  if (genreKeys.includes("romance")) return "romance_family";
+  if (genreKeys.includes("historical")) return "historical_family";
+  return "literary_family";
+}
+
+function inFamilyGenres(genreKeys: string[], family: ReturnType<typeof primaryGenreFamily>): string[] {
+  if (family === "thriller_family") return genreKeys.filter((key) => ["thriller", "mystery", "crime", "dystopian"].includes(key));
+  if (family === "speculative_family") return genreKeys.filter((key) => ["science fiction", "fantasy", "horror"].includes(key));
+  if (family === "romance_family") return genreKeys.filter((key) => key === "romance");
+  if (family === "historical_family") return genreKeys.filter((key) => key === "historical");
+  return genreKeys;
 }
 
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
 
-  const genreKeys = topKeys(signals.genre, 3);
+  const genreKeys = topKeys(signals.genre, 4);
   const toneKeys = topKeys(signals.tone, 2);
-  const scenarioKeys = topKeys(signals.scenario, 3);
+  const scenarioKeys = topKeys(signals.scenario, 2);
 
-  const genreFragments = expand(genreKeys, QUERY_TRANSLATIONS.genre as Record<string, string[]>);
+  const family = primaryGenreFamily(genreKeys);
+  const lockedGenres = inFamilyGenres(genreKeys, family);
+  const genreFragments = expand(lockedGenres.slice(0, 2), QUERY_TRANSLATIONS.genre as Record<string, string[]>);
   const toneFragments = expand(toneKeys, QUERY_TRANSLATIONS.tone as Record<string, string[]>);
   const scenarioFragments = expand(scenarioKeys, QUERY_TRANSLATIONS.scenario as Record<string, string[]>);
 
+  const baseGenre = genreFragments[0];
+  if (!baseGenre) {
+    return {
+      queries: [
+        "psychological thriller novel",
+        "crime thriller novel",
+      ],
+      strategy: "family-locked-fallback",
+    };
+  }
+
   const queries = new Set<string>();
+  queries.add(baseGenre);
 
-const baseGenre = genreFragments[0];
-
-if (!baseGenre) {
-  // HARD FAIL SAFE: do NOT allow generic fallback
-  return {
-    queries: [
-      "character driven novel",
-      "emotionally intense novel",
-      "high stakes story novel",
-      "psychological fiction novel",
-    ],
-    strategy: "fallback-non-generic",
-  };
-}
-  for (const tone of toneFragments.slice(0, 3)) {
-    queries.add(`${tone} ${baseGenre}`);
+  if (family === "thriller_family") {
+    if (toneFragments[0]) queries.add(`${toneFragments[0]} ${baseGenre}`);
+    if (scenarioFragments[0]) queries.add(`${scenarioFragments[0]} ${baseGenre}`);
+    if (genreFragments[1]) queries.add(genreFragments[1]);
+  } else {
+    if (toneFragments[0]) queries.add(`${toneFragments[0]} ${baseGenre}`);
+    if (genreFragments[1]) queries.add(genreFragments[1]);
   }
-
-  for (const scenario of scenarioFragments.slice(0, 3)) {
-    queries.add(`${scenario} ${baseGenre}`);
-  }
-
-  if (toneFragments[0] && scenarioFragments[0]) {
-    queries.add(`${toneFragments[0]} ${scenarioFragments[0]} ${baseGenre}`);
-  }
-
-  if (toneFragments[1] && scenarioFragments[0]) {
-    queries.add(`${toneFragments[1]} ${scenarioFragments[0]} ${baseGenre}`);
-  }
-
-  if (genreFragments[1]) {
-    queries.add(genreFragments[1]);
-    if (scenarioFragments[0]) {
-      queries.add(`${scenarioFragments[0]} ${genreFragments[1]}`);
-    }
-  }
-
-  const finalQueries = Array.from(queries)
-    .map((query) => query.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .slice(0, 8);
 
   return {
-    queries: finalQueries,
-    strategy: "taste-driven-multi-query",
+    queries: dedupeQueries(Array.from(queries)).slice(0, 3),
+    strategy: "taste-driven-family-locked",
   };
 }
