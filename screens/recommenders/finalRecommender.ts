@@ -475,10 +475,99 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
   return false;
 }
 
+
+function normalizedCandidateText(candidate: Candidate): string {
+  return haystack(candidate).toLowerCase();
+}
+
+function hasStrongThrillerSignal(candidate: Candidate): boolean {
+  const text = normalizedCandidateText(candidate);
+
+  return (
+    /\b(thriller|crime|mystery|detective|suspense)\b/i.test(text) ||
+    /\b(murder|investigation|investigat|serial killer|police procedural|police|case)\b/i.test(text)
+  );
+}
+
+function hasStrongRomanceSignal(candidate: Candidate): boolean {
+  const text = normalizedCandidateText(candidate);
+
+  return (
+    /\b(romance|romantic|love story|relationship fiction)\b/i.test(text) ||
+    /\b(friends to lovers|fake dating|marriage of convenience)\b/i.test(text)
+  );
+}
+
+function hasStrongSpeculativeSignal(candidate: Candidate): boolean {
+  const text = normalizedCandidateText(candidate);
+
+  return (
+    /\b(science fiction|sci fi|fantasy|horror|dystopian|speculative)\b/i.test(text) ||
+    /\b(space opera|time travel|magic|haunted|ghost|monster)\b/i.test(text)
+  );
+}
+
+function hasStrongHistoricalSignal(candidate: Candidate): boolean {
+  const text = normalizedCandidateText(candidate);
+
+  return /\b(historical fiction|world war|ancient rome|ancient greece|19th century|war of the roses|crusades)\b/i.test(text);
+}
+
+function candidateEligibleForHypothesis(candidate: Candidate, hypothesis: CompactHypothesis | null): boolean {
+  if (!hypothesis) return true;
+
+  const label = hypothesis.label.toLowerCase();
+
+  if (label.includes('thriller') || label.includes('mystery')) {
+    return hasStrongThrillerSignal(candidate);
+  }
+
+  if (label.includes('romantic')) {
+    return hasStrongRomanceSignal(candidate);
+  }
+
+  if (label.includes('adventurous')) {
+    return hasStrongSpeculativeSignal(candidate);
+  }
+
+  if (label.includes('historical')) {
+    return hasStrongHistoricalSignal(candidate);
+  }
+
+  if (label.includes('literary') || label.includes('character-driven')) {
+    return true;
+  }
+
+  return true;
+}
+
 function candidateMatchesHypothesis(candidate: Candidate, hypothesis: CompactHypothesis | null): boolean {
   if (!hypothesis) return true;
+
   const text = haystack(candidate);
-  return hypothesis.requiredPatterns.some((pattern) => pattern.test(text));
+  const requiredMatch = hypothesis.requiredPatterns.some((pattern) => pattern.test(text));
+
+  if (!requiredMatch) return false;
+
+  const label = hypothesis.label.toLowerCase();
+
+  if (label.includes('thriller') || label.includes('mystery')) {
+    return hasStrongThrillerSignal(candidate);
+  }
+
+  if (label.includes('romantic')) {
+    return hasStrongRomanceSignal(candidate);
+  }
+
+  if (label.includes('adventurous')) {
+    return hasStrongSpeculativeSignal(candidate);
+  }
+
+  if (label.includes('historical')) {
+    return hasStrongHistoricalSignal(candidate);
+  }
+
+  return true;
 }
 
 function scoreHypothesisAlignment(candidate: Candidate, hypothesis: CompactHypothesis | null): number {
@@ -513,6 +602,7 @@ function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis
   if (isNonFictionBleed(candidate)) return 'nonfiction-bleed';
   if (isWeakMetadataObject(candidate)) return 'weak metadata';
   if (isPublicDomainNoise(candidate, lane)) return 'public-domain-noise';
+  if (!candidateEligibleForHypothesis(candidate, hypothesis)) return 'ineligible-for-shelf';
   if (!candidateMatchesHypothesis(candidate, hypothesis)) return 'weak hypothesis match';
   return null;
 }
@@ -573,7 +663,15 @@ export function finalRecommenderForDeck(
 
   const hypothesis = compactHypothesisFromTaste(options.tasteProfile);
   const basePool = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
-  const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
+  const filtered = basePool.filter((candidate) => {
+    const reject = rejectionReason(candidate, lane, hypothesis);
+    if (reject) return false;
+
+    const metadataScore = metadataSignals(candidate);
+    if (metadataScore < 5 && !candidate.description) return false;
+
+    return true;
+  });
   const unique = filtered;
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
