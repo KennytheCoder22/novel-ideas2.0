@@ -90,6 +90,22 @@ const ANTHOLOGY_COLLECTION_PATTERNS = [
   /\b(short stories|short story collection|collection|anthology|omnibus|box set|selected stories|complete stories)\b/i,
 ];
 
+const INSTITUTIONAL_AUTHOR_PATTERNS = [
+  /\b(public library|library|university|college|society|association|committee|department|press bureau|bulletin|museum|archive|archives|institute)\b/i,
+];
+
+const CATALOG_LIKE_TITLE_PATTERNS = [
+  /^books?\s+for\b/i,
+  /^among\s+our\s+books\b/i,
+  /\bcatalog(?:ue)?\b/i,
+  /\bbulletin\b/i,
+  /\breport\b/i,
+  /\bnews(letter|sheet)?\b/i,
+  /\bbookseller\b/i,
+  /\bnewsdealer\b/i,
+  /\bstationer\b/i,
+];
+
 function normalizeKey(value: any): string {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -436,6 +452,48 @@ function compactHypothesisFromTaste(taste: TasteProfile | undefined): CompactHyp
   return null;
 }
 
+
+function isInstitutionalOrCatalogCandidate(candidate: Candidate): boolean {
+  const title = String(candidate.title || '');
+  const author = String(candidate.author || '');
+  const publisher = String(candidate.publisher || '');
+  const text = haystack(candidate);
+
+  if (!author || /^(unknown|anonymous|various)$/i.test(author.trim())) return false;
+
+  if (INSTITUTIONAL_AUTHOR_PATTERNS.some((pattern) => pattern.test(author))) return true;
+  if (INSTITUTIONAL_AUTHOR_PATTERNS.some((pattern) => pattern.test(publisher))) return true;
+  if (CATALOG_LIKE_TITLE_PATTERNS.some((pattern) => pattern.test(title))) return true;
+
+  // Catch generic library/catalog language in metadata-poor records
+  if (
+    /\b(library|catalog(?:ue)?|bulletin|report|pamphlet|circular)\b/i.test(text) &&
+    !/\b(thriller|mystery|crime|detective|suspense|novel|fiction)\b/i.test(text)
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+function looksLikeActualFictionBook(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+
+  if (/\b(novel|fiction|thriller|mystery|crime|detective|suspense|psychological thriller|police procedural|murder)\b/i.test(text)) {
+    return true;
+  }
+
+  // Allow strong genre-subject metadata even when "novel" is omitted
+  if (candidate.subjects.some((s) => /\b(thriller|mystery|crime|detective|suspense)\b/i.test(String(s)))) {
+    return true;
+  }
+  if (candidate.genres.some((s) => /\b(thriller|mystery|crime|detective|suspense)\b/i.test(String(s)))) {
+    return true;
+  }
+
+  return false;
+}
+
 function isUnknownAuthor(candidate: Candidate): boolean {
   const author = normalizeKey(candidate.author);
   return !author || author === 'unknown' || author === 'various' || author === 'anonymous';
@@ -488,12 +546,14 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
   if (!year) return false;
 
   const text = haystack(candidate);
-  const hasStrongThrillerLikeSignal = /\b(thriller|mystery|crime|detective|investigation|suspense|psychological thriller|serial killer|police procedural|murder)\b/i.test(text);
-  const hasAnyGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative)\b/i.test(text);
+  const hasStrongThrillerLikeSignal = /(thriller|mystery|crime|detective|investigation|suspense|psychological thriller|serial killer|police procedural|murder|novel|fiction)/i.test(text);
+  const hasAnyGenreSignal = /(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative|novel|fiction)/i.test(text);
 
-  if (lane === 'adult' && year < 1970 && !hasStrongThrillerLikeSignal) return true;
+  if (isInstitutionalOrCatalogCandidate(candidate)) return true;
+  if (lane === 'adult' && year < 1980 && !hasStrongThrillerLikeSignal) return true;
   if (lane === 'teen' && year < 1950 && !hasAnyGenreSignal) return true;
-  if (year < 1925 && candidate.ratingCount < 200 && !hasAnyGenreSignal) return true;
+  if (year < 1935 && candidate.ratingCount < 500) return true;
+
   return false;
 }
 
@@ -542,7 +602,7 @@ function candidateEligibleForHypothesis(candidate: Candidate, hypothesis: Compac
   const label = hypothesis.label.toLowerCase();
 
   if (label.includes('thriller') || label.includes('mystery')) {
-    return hasStrongThrillerSignal(candidate);
+    return hasStrongThrillerSignal(candidate) && looksLikeActualFictionBook(candidate) && !isInstitutionalOrCatalogCandidate(candidate);
   }
 
   if (label.includes('romantic')) {
@@ -607,6 +667,7 @@ function scoreHypothesisAlignment(candidate: Candidate, hypothesis: CompactHypot
 function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis: CompactHypothesis | null): string | null {
   if (!candidate.title) return 'missing title';
   if (isUnknownAuthor(candidate)) return 'unknown author';
+  if (isInstitutionalOrCatalogCandidate(candidate)) return 'institutional-or-catalog';
   if (isAnthologyOrCollection(candidate)) return 'anthology-or-collection';
   if (isSummaryOrGuide(candidate)) return 'summary-or-guide';
   if (isHardNonFiction(candidate)) return 'hard-nonfiction';
@@ -614,6 +675,7 @@ function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis
   if (isWeakMetadataObject(candidate)) return 'weak metadata';
   if (isLowConfidenceCandidate(candidate)) return 'low-confidence';
   if (isPublicDomainNoise(candidate, lane)) return 'public-domain-noise';
+  if (!looksLikeActualFictionBook(candidate)) return 'not-actual-fiction-book';
   if (!candidateEligibleForHypothesis(candidate, hypothesis)) return 'ineligible-for-shelf';
   if (!candidateMatchesHypothesis(candidate, hypothesis)) return 'weak hypothesis match';
   return null;
@@ -675,7 +737,7 @@ export function finalRecommenderForDeck(
   const hypothesis = compactHypothesisFromTaste(options.tasteProfile);
   const basePool = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
   const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
-  const unique = filtered;
+  const unique = filtered.length >= Math.max(profile.minKeep, 6) ? filtered : basePool;
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
