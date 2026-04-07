@@ -486,10 +486,14 @@ function isLowConfidenceCandidate(candidate: Candidate): boolean {
 function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boolean {
   const year = niYearFromCandidate(candidate);
   if (!year) return false;
+
   const text = haystack(candidate);
-  const hasGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative)\b/i.test(text);
-  if (lane === 'teen' && year < 1950 && !hasGenreSignal) return true;
-  if (year < 1925 && candidate.ratingCount < 200 && !hasGenreSignal) return true;
+  const hasStrongThrillerLikeSignal = /\b(thriller|mystery|crime|detective|investigation|suspense|psychological thriller|serial killer|police procedural|murder)\b/i.test(text);
+  const hasAnyGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative)\b/i.test(text);
+
+  if (lane === 'adult' && year < 1970 && !hasStrongThrillerLikeSignal) return true;
+  if (lane === 'teen' && year < 1950 && !hasAnyGenreSignal) return true;
+  if (year < 1925 && candidate.ratingCount < 200 && !hasAnyGenreSignal) return true;
   return false;
 }
 
@@ -671,7 +675,7 @@ export function finalRecommenderForDeck(
   const hypothesis = compactHypothesisFromTaste(options.tasteProfile);
   const basePool = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
   const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
-  const unique = filtered.length >= Math.max(profile.minKeep, 6) ? filtered : basePool;
+  const unique = filtered;
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
