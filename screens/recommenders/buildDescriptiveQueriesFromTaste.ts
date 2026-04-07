@@ -137,6 +137,10 @@ function topKeys(bucket: SignalBucket, limit: number, threshold = 0.04): string[
     .map(([key]) => key);
 }
 
+function bucketScore(bucket: SignalBucket, keys: string[]): number {
+  return keys.reduce((sum, key) => sum + Number(bucket[key] || 0), 0);
+}
+
 function audiencePhrase(deckKey: RecommenderInput["deckKey"]): string {
   if (deckKey === "adult") return "adult fiction";
   if (deckKey === "ms_hs") return "young adult fiction";
@@ -149,6 +153,7 @@ function fallbackQueriesForDeck(deckKey: RecommenderInput["deckKey"]): string[] 
   return [
     `psychological thriller novel ${audience} ${NEGATIVE_TERMS}`,
     `crime thriller novel ${audience} ${NEGATIVE_TERMS}`,
+    `detective mystery novel ${audience} ${NEGATIVE_TERMS}`,
   ];
 }
 
@@ -177,41 +182,93 @@ type DominantIntent = {
   family: string;
 };
 
-function dominantGenreFamily(genres: string[]): "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "other" {
-  if (genres.some((genre) => ["crime", "thriller", "mystery", "dystopian"].includes(genre))) return "thriller_family";
-  if (genres.some((genre) => ["science fiction", "fantasy", "horror"].includes(genre))) return "speculative_family";
-  if (genres.includes("romance")) return "romance_family";
-  if (genres.includes("historical")) return "historical_family";
+function dominantGenreFamily(signals: QuerySignals): "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "other" {
+  const thrillerScore =
+    bucketScore(signals.genre, ["crime", "thriller", "mystery"]) +
+    bucketScore(signals.scenario, ["investigation", "crime investigation"]);
+  const speculativeScore =
+    bucketScore(signals.genre, ["science fiction", "fantasy", "horror", "dystopian"]);
+  const romanceScore = bucketScore(signals.genre, ["romance"]);
+  const historicalScore = bucketScore(signals.genre, ["historical"]);
+
+  if (thrillerScore >= Math.max(0.25, speculativeScore + 0.35, romanceScore + 0.35, historicalScore + 0.35)) {
+    return "thriller_family";
+  }
+  if (speculativeScore >= Math.max(0.25, romanceScore, historicalScore)) return "speculative_family";
+  if (romanceScore >= Math.max(0.2, historicalScore)) return "romance_family";
+  if (historicalScore >= 0.2) return "historical_family";
   return "other";
 }
 
-function buildDominantIntent(
+function buildThrillerIntent(
+  signals: QuerySignals,
+  genres: string[],
   tones: string[],
   textures: string[],
+  scenarios: string[],
+  deckKey: RecommenderInput["deckKey"]
+): DominantIntent {
+  const audience = audiencePhrase(deckKey);
+  const variants = new Set<string>();
+  const thrillerStrength = bucketScore(signals.genre, ["thriller", "crime", "mystery"]);
+  const darkStrength = Number(signals.tone["dark"] || 0);
+  const psychologicalStrength = Number(signals.texture["psychological"] || 0);
+  const investigationStrength = bucketScore(signals.scenario, ["investigation", "crime investigation"]);
+
+  const shouldForcePsychological =
+    psychologicalStrength > 0.08 ||
+    darkStrength > 0.18 ||
+    thrillerStrength > 0.55;
+
+  const shouldForceDetective =
+    investigationStrength > 0.05 || genres.includes("mystery") || genres.includes("crime");
+
+  pushQuery(variants, `crime thriller novel ${audience}`);
+
+  if (shouldForcePsychological) {
+    pushQuery(variants, `psychological thriller novel ${audience}`);
+  }
+
+  if (shouldForceDetective) {
+    pushQuery(variants, `detective mystery novel ${audience}`);
+  }
+
+  if (variants.size < 3 && darkStrength > 0.08) {
+    pushQuery(variants, `dark thriller novel ${audience}`);
+  }
+
+  if (variants.size < 3 && tones.includes("gritty")) {
+    pushQuery(variants, `gritty crime thriller novel ${audience}`);
+  }
+
+  if (variants.size < 3 && textures.includes("realistic")) {
+    pushQuery(variants, `crime investigation thriller novel ${audience}`);
+  }
+
+  const ordered = Array.from(variants).slice(0, 3);
+  const preview = shouldForcePsychological ? "psychological thriller novel" : "crime thriller novel";
+
+  return {
+    core: preview,
+    preview,
+    variants: ordered,
+    family: "thriller_family",
+  };
+}
+
+function buildDominantIntent(
+  signals: QuerySignals,
   genres: string[],
+  tones: string[],
+  textures: string[],
   scenarios: string[],
   deckKey: RecommenderInput["deckKey"]
 ): DominantIntent | null {
-  const family = dominantGenreFamily(genres);
+  const family = dominantGenreFamily(signals);
   const audience = audiencePhrase(deckKey);
 
   if (family === "thriller_family") {
-    const variants = new Set<string>();
-    const psychological = textures.includes("psychological");
-    const dark = tones.includes("dark");
-    const investigative = scenarios.includes("investigation") || genres.includes("mystery") || genres.includes("crime");
-
-    if (psychological) pushQuery(variants, `psychological thriller novel ${audience}`);
-    pushQuery(variants, `crime thriller novel ${audience}`);
-    if (investigative) pushQuery(variants, `detective mystery novel ${audience}`);
-    if (dark) pushQuery(variants, `dark thriller novel ${audience}`);
-
-    return {
-      core: psychological ? "psychological thriller novel" : "crime thriller novel",
-      preview: psychological ? "psychological thriller novel" : "crime thriller novel",
-      variants: Array.from(variants).slice(0, 3),
-      family,
-    };
+    return buildThrillerIntent(signals, genres, tones, textures, scenarios, deckKey);
   }
 
   if (family === "speculative_family") {
@@ -219,6 +276,7 @@ function buildDominantIntent(
     if (genres.includes("science fiction")) pushQuery(variants, `science fiction novel ${audience}`);
     if (genres.includes("fantasy")) pushQuery(variants, `fantasy novel ${audience}`);
     if (genres.includes("horror")) pushQuery(variants, `horror novel ${audience}`);
+    if (genres.includes("dystopian")) pushQuery(variants, `dystopian science fiction novel ${audience}`);
     if (!variants.size) pushQuery(variants, `science fiction novel ${audience}`);
     const preview = Array.from(variants)[0]?.replace(NEGATIVE_TERMS, "").trim() || "science fiction novel";
     return {
@@ -265,16 +323,27 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const textures = topKeys(signals.texture, 3);
   const scenarios = topKeys(signals.scenario, 4);
 
-  const dominantIntent = buildDominantIntent(tones, textures, genres, scenarios, input.deckKey);
-  let queries = dominantIntent?.variants || fallbackQueriesForDeck(input.deckKey).slice(0, 2);
+  const dominantIntent = buildDominantIntent(signals, genres, tones, textures, scenarios, input.deckKey);
+  let queries = dominantIntent?.variants || fallbackQueriesForDeck(input.deckKey).slice(0, 3);
+
+  if (queries.length < 3 && dominantIntent?.family === "thriller_family") {
+    queries = Array.from(new Set([
+      ...queries,
+      `psychological thriller novel ${audiencePhrase(input.deckKey)} ${NEGATIVE_TERMS}`,
+      `crime thriller novel ${audiencePhrase(input.deckKey)} ${NEGATIVE_TERMS}`,
+      `detective mystery novel ${audiencePhrase(input.deckKey)} ${NEGATIVE_TERMS}`,
+    ])).slice(0, 3);
+  }
+
   if (queries.length < 2 && dominantIntent?.core) {
     queries = Array.from(new Set([...queries, `${dominantIntent.core} ${NEGATIVE_TERMS}`])).slice(0, 2);
   }
+
   const preview = dominantIntent?.preview || fallbackQueriesForDeck(input.deckKey)[0];
 
   return {
     queries,
-    strategy: "20q-intent-compression-v4-family-locked",
+    strategy: "20q-intent-compression-v5-tight-thriller-hypothesis",
     preview,
     signals: {
       genres,
