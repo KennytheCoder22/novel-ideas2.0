@@ -86,10 +86,6 @@ const WEAK_METADATA_PATTERNS = [
   /\b(annotated|complete works|selected works|collection|anthology|omnibus|box set)\b/i,
 ];
 
-const ANTHOLOGY_COLLECTION_PATTERNS = [
-  /\b(short stories|short story collection|collection|anthology|omnibus|box set|selected stories|complete stories)\b/i,
-];
-
 function normalizeKey(value: any): string {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -441,11 +437,6 @@ function isUnknownAuthor(candidate: Candidate): boolean {
   return !author || author === 'unknown' || author === 'various' || author === 'anonymous';
 }
 
-function isAnthologyOrCollection(candidate: Candidate): boolean {
-  const text = haystack(candidate);
-  return ANTHOLOGY_COLLECTION_PATTERNS.some((pattern) => pattern.test(text));
-}
-
 function isSummaryOrGuide(candidate: Candidate): boolean {
   const text = haystack(candidate);
   return SUMMARY_GUIDE_PATTERNS.some((pattern) => pattern.test(text));
@@ -456,6 +447,20 @@ function isNonFictionBleed(candidate: Candidate): boolean {
   return NONFICTION_PATTERNS.some((pattern) => pattern.test(text));
 }
 
+function isHardNonFiction(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+
+  if (/\b(nonfiction|non-fiction|biography|memoir|history|philosophy|criticism|literary criticism|essays|analysis)\b/i.test(text)) {
+    return true;
+  }
+
+  if (!candidate.genres?.length && /\b(study|guide|analysis|criticism|theory)\b/i.test(text)) {
+    return true;
+  }
+
+  return false;
+}
+
 function isWeakMetadataObject(candidate: Candidate): boolean {
   const text = haystack(candidate);
   const metadataScore = metadataSignals(candidate);
@@ -463,82 +468,25 @@ function isWeakMetadataObject(candidate: Candidate): boolean {
   return metadataScore <= 4 && !candidate.description && candidate.subjects.length === 0 && candidate.genres.length === 0;
 }
 
+function isLowConfidenceCandidate(candidate: Candidate): boolean {
+  const score = metadataSignals(candidate);
+  const text = haystack(candidate);
+
+  if (score < 5) return true;
+  if (!candidate.description && candidate.subjects.length === 0) return true;
+  if (text.length < 40) return true;
+
+  return false;
+}
+
 function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boolean {
   const year = niYearFromCandidate(candidate);
   if (!year) return false;
   const text = haystack(candidate);
-  const hasGenreSignal = /(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative)/i.test(text);
-
-  if (lane === 'adult' && year < 1950) return true;
+  const hasGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative)\b/i.test(text);
   if (lane === 'teen' && year < 1950 && !hasGenreSignal) return true;
-  if (year < 1950 && candidate.ratingCount < 500) return true;
+  if (year < 1925 && candidate.ratingCount < 200 && !hasGenreSignal) return true;
   return false;
-}
-
-
-function normalizedCandidateText(candidate: Candidate): string {
-  return haystack(candidate).toLowerCase();
-}
-
-function hasStrongThrillerSignal(candidate: Candidate): boolean {
-  const text = normalizedCandidateText(candidate);
-
-  return (
-    /\b(thriller|crime|mystery|detective|suspense)\b/i.test(text) ||
-    /\b(murder|investigation|investigat|serial killer|police procedural|police|case)\b/i.test(text)
-  );
-}
-
-function hasStrongRomanceSignal(candidate: Candidate): boolean {
-  const text = normalizedCandidateText(candidate);
-
-  return (
-    /\b(romance|romantic|love story|relationship fiction)\b/i.test(text) ||
-    /\b(friends to lovers|fake dating|marriage of convenience)\b/i.test(text)
-  );
-}
-
-function hasStrongSpeculativeSignal(candidate: Candidate): boolean {
-  const text = normalizedCandidateText(candidate);
-
-  return (
-    /\b(science fiction|sci fi|fantasy|horror|dystopian|speculative)\b/i.test(text) ||
-    /\b(space opera|time travel|magic|haunted|ghost|monster)\b/i.test(text)
-  );
-}
-
-function hasStrongHistoricalSignal(candidate: Candidate): boolean {
-  const text = normalizedCandidateText(candidate);
-
-  return /\b(historical fiction|world war|ancient rome|ancient greece|19th century|war of the roses|crusades)\b/i.test(text);
-}
-
-function candidateEligibleForHypothesis(candidate: Candidate, hypothesis: CompactHypothesis | null): boolean {
-  if (!hypothesis) return true;
-
-  const label = hypothesis.label.toLowerCase();
-
-  if (label.includes('thriller') || label.includes('mystery')) {
-    return hasStrongThrillerSignal(candidate);
-  }
-
-  if (label.includes('romantic')) {
-    return hasStrongRomanceSignal(candidate);
-  }
-
-  if (label.includes('adventurous')) {
-    return hasStrongSpeculativeSignal(candidate);
-  }
-
-  if (label.includes('historical')) {
-    return hasStrongHistoricalSignal(candidate);
-  }
-
-  if (label.includes('literary') || label.includes('character-driven')) {
-    return true;
-  }
-
-  return true;
 }
 
 function candidateMatchesHypothesis(candidate: Candidate, hypothesis: CompactHypothesis | null): boolean {
@@ -546,13 +494,13 @@ function candidateMatchesHypothesis(candidate: Candidate, hypothesis: CompactHyp
 
   const text = haystack(candidate);
   const requiredMatch = hypothesis.requiredPatterns.some((pattern) => pattern.test(text));
-
   if (!requiredMatch) return false;
 
+  const optionalHits = hypothesis.optionalPatterns.filter((pattern) => pattern.test(text)).length;
   const label = hypothesis.label.toLowerCase();
 
   if (label.includes('thriller') || label.includes('mystery')) {
-    return hasStrongThrillerSignal(candidate);
+    return hasStrongThrillerSignal(candidate) && optionalHits >= 1;
   }
 
   if (label.includes('romantic')) {
@@ -581,26 +529,15 @@ function scoreHypothesisAlignment(candidate: Candidate, hypothesis: CompactHypot
   return score;
 }
 
-function strongSignalBoost(candidate: Candidate, hypothesis: CompactHypothesis | null): number {
-  const text = haystack(candidate);
-  let score = 0;
-
-  if (hypothesis?.label.includes('thriller') || hypothesis?.label.includes('mystery')) {
-    if (/\b(psychological|serial killer)\b/i.test(text)) score += 1.2;
-    if (/\b(detective|investigation|murder|police procedural|noir)\b/i.test(text)) score += 0.8;
-    if (/\b(dark|gritty|bleak|tense|gripping)\b/i.test(text)) score += 0.6;
-  }
-
-  return score;
-}
-
 function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis: CompactHypothesis | null): string | null {
   if (!candidate.title) return 'missing title';
   if (isUnknownAuthor(candidate)) return 'unknown author';
   if (isAnthologyOrCollection(candidate)) return 'anthology-or-collection';
   if (isSummaryOrGuide(candidate)) return 'summary-or-guide';
+  if (isHardNonFiction(candidate)) return 'hard-nonfiction';
   if (isNonFictionBleed(candidate)) return 'nonfiction-bleed';
   if (isWeakMetadataObject(candidate)) return 'weak metadata';
+  if (isLowConfidenceCandidate(candidate)) return 'low-confidence';
   if (isPublicDomainNoise(candidate, lane)) return 'public-domain-noise';
   if (!candidateEligibleForHypothesis(candidate, hypothesis)) return 'ineligible-for-shelf';
   if (!candidateMatchesHypothesis(candidate, hypothesis)) return 'weak hypothesis match';
@@ -618,12 +555,11 @@ function scoreCandidate(
   let score = 0;
 
   score += metadataSignals(candidate) * 0.16;
-  score += scorePopularity(candidate) * 0.12 * profile.popularityWeight;
+  score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
   score += scorePublisherBoost(candidate) * 0.8;
   score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
-  score += scoreTasteMatch(candidate, options.tasteProfile) * 5.5;
+  score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
   score += scoreHypothesisAlignment(candidate, hypothesis);
-  score += strongSignalBoost(candidate, hypothesis);
 
   if (candidate.hasCover) score += 0.12;
 
@@ -663,16 +599,8 @@ export function finalRecommenderForDeck(
 
   const hypothesis = compactHypothesisFromTaste(options.tasteProfile);
   const basePool = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
-  const filtered = basePool.filter((candidate) => {
-    const reject = rejectionReason(candidate, lane, hypothesis);
-    if (reject) return false;
-
-    const metadataScore = metadataSignals(candidate);
-    if (metadataScore < 5 && !candidate.description) return false;
-
-    return true;
-  });
-  const unique = filtered;
+  const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
+  const unique = filtered.length >= Math.max(profile.minKeep, 6) ? filtered : basePool;
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
