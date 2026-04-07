@@ -541,6 +541,70 @@ function isLowConfidenceCandidate(candidate: Candidate): boolean {
   return false;
 }
 
+
+function hasAnyHardcover429(candidate: Candidate): boolean {
+  const raw = (candidate as any)?.rawDoc;
+  const blobs = [
+    raw,
+    raw?.raw,
+    raw?.diagnostics,
+    raw?.hardcover,
+    raw?.doc,
+  ];
+
+  const joined = blobs
+    .map((v) => {
+      try {
+        return typeof v === 'string' ? v : JSON.stringify(v || {});
+      } catch {
+        return '';
+      }
+    })
+    .join(' ')
+    .toLowerCase();
+
+  return joined.includes('hardcover api request failed') || joined.includes('status":429') || joined.includes('status:429');
+}
+
+function hasFallbackFictionMetadata(candidate: Candidate): boolean {
+  return Boolean(
+    candidate.hasCover ||
+    candidate.publicationYear ||
+    (candidate.subjects?.length || 0) > 0 ||
+    (candidate.genres?.length || 0) > 0 ||
+    ((candidate.description || '').length >= 60)
+  );
+}
+
+function isMetadataFragileButViable(candidate: Candidate): boolean {
+  return looksLikeActualFictionBook(candidate) && !isInstitutionalOrCatalogCandidate(candidate) && hasFallbackFictionMetadata(candidate);
+}
+
+function isHardRejectReason(reason: string | null | undefined): boolean {
+  if (!reason) return false;
+  return [
+    'missing title',
+    'unknown author',
+    'institutional-or-catalog',
+    'anthology-or-collection',
+    'summary-or-guide',
+    'hard-nonfiction',
+    'nonfiction-bleed',
+    'public-domain-noise',
+    'not-actual-fiction-book',
+    'ineligible-for-shelf',
+  ].includes(reason);
+}
+
+function softMetadataPenalty(candidate: Candidate): number {
+  let penalty = 0;
+  if (isWeakMetadataObject(candidate)) penalty += 1.15;
+  if (isLowConfidenceCandidate(candidate)) penalty += 1.35;
+  if (hasAnyHardcover429(candidate)) penalty -= 0.4;
+  if (isMetadataFragileButViable(candidate)) penalty -= 0.35;
+  return Math.max(0, penalty);
+}
+
 function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boolean {
   const year = niYearFromCandidate(candidate);
   if (!year) return false;
@@ -672,12 +736,15 @@ function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis
   if (isSummaryOrGuide(candidate)) return 'summary-or-guide';
   if (isHardNonFiction(candidate)) return 'hard-nonfiction';
   if (isNonFictionBleed(candidate)) return 'nonfiction-bleed';
-  if (isWeakMetadataObject(candidate)) return 'weak metadata';
-  if (isLowConfidenceCandidate(candidate)) return 'low-confidence';
   if (isPublicDomainNoise(candidate, lane)) return 'public-domain-noise';
   if (!looksLikeActualFictionBook(candidate)) return 'not-actual-fiction-book';
   if (!candidateEligibleForHypothesis(candidate, hypothesis)) return 'ineligible-for-shelf';
   if (!candidateMatchesHypothesis(candidate, hypothesis)) return 'weak hypothesis match';
+
+  if ((isWeakMetadataObject(candidate) || isLowConfidenceCandidate(candidate)) && !isMetadataFragileButViable(candidate)) {
+    return isWeakMetadataObject(candidate) ? 'weak metadata' : 'low-confidence';
+  }
+
   return null;
 }
 
@@ -697,8 +764,11 @@ function scoreCandidate(
   score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
   score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
   score += scoreHypothesisAlignment(candidate, hypothesis);
+  score -= softMetadataPenalty(candidate);
 
   if (candidate.hasCover) score += 0.12;
+  if (hasAnyHardcover429(candidate)) score += 0.3;
+  if (isMetadataFragileButViable(candidate)) score += 0.2;
 
   if (candidate.formatCategory === 'manga' || candidate.formatCategory === 'comic') {
     score += lane === 'teen' ? 0.18 : -0.08;
@@ -737,7 +807,7 @@ export function finalRecommenderForDeck(
   const hypothesis = compactHypothesisFromTaste(options.tasteProfile);
   const basePool = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
   const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
-  const unique = filtered.length >= Math.max(profile.minKeep, 6) ? filtered : basePool;
+  const unique = filtered.length >= Math.max(profile.minKeep, 6) ? filtered : basePool.filter((candidate) => !isHardRejectReason(rejectionReason(candidate, lane, hypothesis)));
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
