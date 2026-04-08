@@ -21,13 +21,6 @@ function isHardSelfPublished(publisher: any): boolean {
   return HARD_SELF_PUBLISH_PAT.test(p);
 }
 
-function normalizeText(value: any): string {
-  return String(value || "")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
 function deckKeyToBand(deckKey: DeckKey): "kids" | "preteen" | "teens" | "adult" {
   if (deckKey === "k2") return "kids";
   if (deckKey === "36") return "preteen";
@@ -79,24 +72,25 @@ function sanitizeOpenLibraryQuery(query: string): string {
 }
 
 function explicitBucketToOpenLibraryQuery(query: string): string {
-  const cleaned = sanitizeOpenLibraryQuery(query);
+  const q = sanitizeOpenLibraryQuery(query);
 
-  if (!cleaned) return '"fiction"';
+  if (!q) return '"fiction"';
 
-  if (cleaned.includes("crime thriller")) return '"crime thriller"';
-  if (cleaned.includes("psychological thriller")) return '"psychological thriller"';
-  if (cleaned.includes("murder mystery")) return '"murder mystery"';
-  if (cleaned.includes("detective mystery")) return '"detective mystery"';
-  if (cleaned.includes("science fiction")) return '"science fiction"';
-  if (cleaned.includes("space opera")) return '"space opera"';
-  if (cleaned.includes("dystopian")) return '"dystopian science fiction"';
-  if (cleaned.includes("epic fantasy")) return '"epic fantasy"';
-  if (cleaned.includes("dark fantasy")) return '"dark fantasy"';
-  if (cleaned.includes("horror")) return '"horror"';
-  if (cleaned.includes("romance")) return '"romance"';
-  if (cleaned.includes("historical fiction")) return '"historical fiction"';
+  if (q.includes("crime") && q.includes("thriller")) return '"crime thriller novel"';
+  if (q.includes("mystery") && q.includes("thriller")) return '"mystery thriller novel"';
+  if (q.includes("detective")) return '"detective novel"';
+  if (q.includes("psychological thriller")) return '"psychological thriller novel"';
+  if (q.includes("murder mystery")) return '"murder mystery novel"';
+  if (q.includes("science fiction")) return '"science fiction novel"';
+  if (q.includes("space opera")) return '"space opera science fiction"';
+  if (q.includes("dystopian")) return '"dystopian science fiction novel"';
+  if (q.includes("epic fantasy")) return '"epic fantasy novel"';
+  if (q.includes("dark fantasy")) return '"dark fantasy novel"';
+  if (q.includes("horror")) return '"horror novel"';
+  if (q.includes("romance")) return '"romance novel"';
+  if (q.includes("historical fiction")) return '"historical fiction novel"';
 
-  const tokens = cleaned.split(/\s+/).filter(Boolean).slice(0, 3);
+  const tokens = q.split(/\s+/).filter(Boolean).slice(0, 3);
   return tokens.length ? `"${tokens.join(" ")}"` : '"fiction"';
 }
 

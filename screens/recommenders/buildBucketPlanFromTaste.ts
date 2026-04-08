@@ -93,7 +93,6 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
 
   const genreKeys = topKeys(signals.genre, 4);
-  const toneKeys = topKeys(signals.tone, 2);
   const scenarioKeys = topKeys(signals.scenario, 2);
 
   const family = familyForGenres(genreKeys);
@@ -104,14 +103,13 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     lockedGenreKeys.slice(0, 2),
     QUERY_TRANSLATIONS.genre as Record<string, string[]>
   );
-  const toneFragments = expand(
-    toneKeys,
-    QUERY_TRANSLATIONS.tone as Record<string, string[]>
-  );
   const scenarioFragments = expand(
     lockedThemeKeys,
     QUERY_TRANSLATIONS.scenario as Record<string, string[]>
   );
+
+  // Tone is valuable for ranking, but it should not shape retrieval queries.
+  const toneFragments: string[] = [];
 
   const baseGenre = genreFragments[0] || "novel";
 

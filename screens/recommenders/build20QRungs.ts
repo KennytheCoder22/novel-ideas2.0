@@ -72,20 +72,12 @@ function safeGenrePhrase(baseGenre?: string | null): string {
 }
 
 function buildCoreIdentity(intent: QueryIntent): string[] {
-  const topSubgenres = pickTop(intent.subgenres, 2);
-  const topThemes = pickTop(intent.themes, 2);
-  const topTones = pickTop(intent.tones, 2);
-  const topPacing = pickTop(intent.pacing, 1);
-  const topStructures = pickTop(intent.structures, 1);
-  const topSettings = pickTop(intent.settings, 1);
+  const topSubgenres = pickTop(intent.subgenres, 1);
+  const topThemes = pickTop(intent.themes, 1);
 
   return uniqOrdered([
     ...topSubgenres,
     ...topThemes,
-    ...topTones,
-    ...topPacing,
-    ...topStructures,
-    ...topSettings,
     audiencePhrase(intent.ageBand),
     "novel",
   ]);
@@ -111,15 +103,14 @@ function compressForRung(identity: string[], rung: number, baseGenre?: string | 
   }
 
   if (rung === 1) {
-    add(learnedAnchors[0]);
-    add(learnedAnchors[1]);
+    add(learnedAnchors[0] || genrePhrase);
     add(audience);
     add("novel");
     return uniqOrdered(kept);
   }
 
   if (rung === 2) {
-    add(learnedAnchors[0] || genrePhrase);
+    add(genrePhrase);
     add(audience);
     add("novel");
     return uniqOrdered(kept);
@@ -131,12 +122,26 @@ function compressForRung(identity: string[], rung: number, baseGenre?: string | 
   return uniqOrdered(kept);
 }
 
-function finalizePhrase(tokens: string[], baseGenre?: string | null): string {
+function finalizePhrase(tokens: string[], baseGenre?: string | null, ageBand?: string | null): string {
   const phrase = uniqOrdered(tokens)
     .filter(Boolean)
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
+
+  const joined = phrase.toLowerCase();
+
+  if (joined.includes("crime") && joined.includes("thriller")) {
+    return `crime thriller novel ${audiencePhrase(ageBand)}`.trim();
+  }
+
+  if (joined.includes("mystery") && joined.includes("detective")) {
+    return `detective mystery novel ${audiencePhrase(ageBand)}`.trim();
+  }
+
+  if (joined.includes("mystery") && joined.includes("thriller")) {
+    return `mystery thriller novel ${audiencePhrase(ageBand)}`.trim();
+  }
 
   const normalized = normalizePhrase(phrase);
   const collapsed = GENERIC_COLLAPSE_PATTERNS.some((rx) => rx.test(normalized));
@@ -145,7 +150,7 @@ function finalizePhrase(tokens: string[], baseGenre?: string | null): string {
 
   return uniqOrdered([
     safeGenrePhrase(baseGenre),
-    "adult fiction",
+    audiencePhrase(ageBand),
     "novel",
   ]).join(" ").trim();
 }
@@ -158,7 +163,7 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4): BuiltRung[] {
 
   for (let rung = 0; rung < maxRungs; rung += 1) {
     const tokens = compressForRung(identity, rung, intent.baseGenre);
-    const query = finalizePhrase(tokens, intent.baseGenre);
+    const query = finalizePhrase(tokens, intent.baseGenre, intent.ageBand);
 
     if (!query || seen.has(query)) continue;
     seen.add(query);
@@ -166,7 +171,14 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4): BuiltRung[] {
   }
 
   if (!rungs.length) {
-    rungs.push({ rung: 0, query: finalizePhrase([safeGenrePhrase(intent.baseGenre), audiencePhrase(intent.ageBand), "novel"], intent.baseGenre) });
+    rungs.push({
+      rung: 0,
+      query: finalizePhrase(
+        [safeGenrePhrase(intent.baseGenre), audiencePhrase(intent.ageBand), "novel"],
+        intent.baseGenre,
+        intent.ageBand
+      ),
+    });
   }
 
   return rungs;
