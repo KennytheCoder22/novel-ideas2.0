@@ -23,11 +23,20 @@ function dedupeQueries(queries: string[]): string[] {
   const out: string[] = [];
   for (const query of queries) {
     const cleaned = String(query || "").replace(/\s+/g, " ").trim();
-    if (!cleaned || seen.has(cleaned)) continue;
-    seen.add(cleaned);
+    if (!cleaned) continue;
+    const key = cleaned.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(cleaned);
   }
   return out;
+}
+
+function ageBandForDeck(deckKey: RecommenderInput["deckKey"]): string {
+  if (deckKey === "adult") return "adult";
+  if (deckKey === "ms_hs") return "teen";
+  if (deckKey === "36") return "pre-teen";
+  return "kids";
 }
 
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
@@ -44,8 +53,8 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const baseGenre = genreFragments[0];
 
   const intent = {
-    ageBand: input.ageBand ?? "adult",
-    baseGenre: baseGenre,
+    ageBand: ageBandForDeck(input.deckKey),
+    baseGenre,
     subgenres: genreFragments,
     themes: scenarioFragments,
     tones: toneFragments,
@@ -56,9 +65,11 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   };
 
   const rungs = build20QRungs(intent, 4);
+  const queries = dedupeQueries(rungs.map((r) => r.query));
 
   return {
-    queries: dedupeQueries(rungs.map(r => r.query)),
+    queries,
+    preview: queries[0] || "",
     strategy: "20q-rung-builder",
   };
 }
