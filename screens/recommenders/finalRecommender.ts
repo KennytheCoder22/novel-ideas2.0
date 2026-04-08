@@ -232,8 +232,17 @@ function scorePublisherBoost(candidate: Candidate): number {
 
 function scoreRecency(candidate: Candidate): number {
   if (!candidate.publicationYear) return 0;
+
   const currentYear = new Date().getFullYear();
   const age = currentYear - candidate.publicationYear;
+  const firstYear = niFirstPublishYear(candidate);
+  const isModernReprint =
+    Boolean(firstYear) &&
+    Boolean(candidate.publicationYear) &&
+    firstYear < 1980 &&
+    candidate.publicationYear >= 2000;
+
+  if (isModernReprint) return 0.03;
   if (age <= 5) return 0.2;
   if (age <= 15) return 0.1;
   if (age <= 40) return 0;
@@ -341,6 +350,44 @@ function niYearFromCandidate(candidate: Candidate): number | null {
 
   const match = String(raw || '').match(/\b(18|19|20)\d{2}\b/);
   return match ? Number(match[0]) : null;
+}
+
+function niFirstPublishYear(candidate: Candidate): number | null {
+  const raw =
+    (candidate.rawDoc as any)?.first_publish_year ??
+    (candidate.rawDoc as any)?.doc?.first_publish_year ??
+    null;
+
+  if (typeof raw === 'number' && Number.isFinite(raw)) return raw;
+
+  const match = String(raw || '').match(/\b(18|19|20)\d{2}\b/);
+  return match ? Number(match[0]) : null;
+}
+
+function niEditionCountFromCandidate(candidate: Candidate): number {
+  const raw =
+    (candidate.rawDoc as any)?.edition_count ??
+    (candidate.rawDoc as any)?.doc?.edition_count ??
+    (candidate as any)?.editionCount ??
+    0;
+
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : 0;
+}
+
+function isStillActivelyPublished(candidate: Candidate): boolean {
+  const firstYear = niFirstPublishYear(candidate);
+  const currentEditionYear = candidate.publicationYear ?? null;
+  const editionCount = niEditionCountFromCandidate(candidate);
+  const hasPublisher = Boolean(String(candidate.publisher || '').trim());
+  const hasCover = Boolean(candidate.hasCover);
+
+  if (currentEditionYear && currentEditionYear >= 2000) return true;
+  if (editionCount >= 8) return true;
+  if (hasPublisher && firstYear && currentEditionYear && currentEditionYear - firstYear >= 20) return true;
+  if (hasCover && editionCount >= 4) return true;
+
+  return false;
 }
 
 function niHasAny(subjects: string[], needles: string[]): boolean {
@@ -609,11 +656,12 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
   const text = haystack(candidate);
   const hasStrongThrillerLikeSignal = /\b(thriller|mystery|crime|detective|investigation|suspense|psychological thriller|serial killer|police procedural|murder|novel|fiction)\b/i.test(text);
   const hasAnyGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative|novel|fiction)\b/i.test(text);
+  const activelyPublished = isStillActivelyPublished(candidate);
 
   if (isInstitutionalOrCatalogCandidate(candidate)) return true;
-  if (lane === 'adult' && year < 1980 && !hasStrongThrillerLikeSignal) return true;
-  if (lane === 'teen' && year < 1950 && !hasAnyGenreSignal) return true;
-  if (year < 1935 && candidate.ratingCount < 500) return true;
+  if (lane === 'adult' && year < 1980 && !hasStrongThrillerLikeSignal && !activelyPublished) return true;
+  if (lane === 'teen' && year < 1950 && !hasAnyGenreSignal && !activelyPublished) return true;
+  if (year < 1935 && candidate.ratingCount < 500 && !activelyPublished) return true;
 
   return false;
 }
