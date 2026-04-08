@@ -28,26 +28,6 @@ function normalizeText(value: any): string {
     .trim();
 }
 
-function looksLikeCatalogOrCollectionRecord(doc: any): boolean {
-  const title = normalizeText(doc?.title);
-  const publishers = Array.isArray(doc?.publisher) ? doc.publisher.map((p: any) => normalizeText(p)).join(" | ") : "";
-  const subjects = Array.isArray(doc?.subject) ? doc.subject.map((s: any) => normalizeText(s)).join(" | ") : "";
-  const authors = Array.isArray(doc?.author_name) ? doc.author_name.map((a: any) => normalizeText(a)).join(" | ") : "";
-  const text = [title, publishers, subjects, authors].filter(Boolean).join(" | ");
-
-  if (!text) return false;
-
-  if (/\b(library|catalog|catalogue|bulletin|encyclopedia|handbook|manual|reference|companion|report|yearbook|anthology|collection|collected works|selected works|short stories|great short stories|stories of|books for all|among our books|essential information)\b/i.test(title)) {
-    return true;
-  }
-
-  if (/\b(public library|carnegie library|lincoln library|society|association|department|committee|commission|bureau|institute|review|journal)\b/i.test(text) && !/\b(fiction|novel|thriller|mystery|crime|detective|suspense|murder)\b/i.test(text)) {
-    return true;
-  }
-
-  return false;
-}
-
 function deckKeyToBand(deckKey: DeckKey): "kids" | "preteen" | "teens" | "adult" {
   if (deckKey === "k2") return "kids";
   if (deckKey === "36") return "preteen";
@@ -71,8 +51,10 @@ function dedupeQueries(queries: string[]): string[] {
 
   for (const query of queries) {
     const trimmed = String(query || "").trim();
-    if (!trimmed || seen.has(trimmed)) continue;
-    seen.add(trimmed);
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     out.push(trimmed);
   }
 
@@ -80,49 +62,59 @@ function dedupeQueries(queries: string[]): string[] {
 }
 
 function sanitizeOpenLibraryQuery(query: string): string {
-  let q = String(query || "").toLowerCase().trim();
-
-  q = q
+  return String(query || "")
+    .toLowerCase()
+    .replace(/[“”"]/g, "")
+    .replace(/\badult fiction\b/g, "")
+    .replace(/\byoung adult fiction\b/g, "")
+    .replace(/\bmiddle grade fiction\b/g, "")
+    .replace(/\bjuvenile fiction\b/g, "")
+    .replace(/\bnovel\b/g, "")
     .replace(/\bdark\b/g, "")
     .replace(/\bgritty\b/g, "")
     .replace(/\bgrounded\b/g, "")
     .replace(/\bintense\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
-
-  return q;
 }
 
-function toOpenLibraryQuery(query: string): string {
-  let q = String(query || "").toLowerCase();
+function explicitBucketToOpenLibraryQuery(query: string): string {
+  const cleaned = sanitizeOpenLibraryQuery(query);
 
-  // strip negative filters
-  q = q.replace(/-\w+/g, " ");
+  if (!cleaned) return '"fiction"';
 
-  // remove weak adjectives
-  q = q
-    .replace(/\bdark\b/g, "")
-    .replace(/\bfunny\b/g, "")
-    .replace(/\bgritty\b/g, "")
-    .replace(/\bgrounded\b/g, "")
-    .replace(/\bintense\b/g, "")
-    .replace(/\bsocietal\b/g, "")
-    .replace(/\bsurvival\b/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  if (cleaned.includes("crime thriller")) return '"crime thriller"';
+  if (cleaned.includes("psychological thriller")) return '"psychological thriller"';
+  if (cleaned.includes("murder mystery")) return '"murder mystery"';
+  if (cleaned.includes("detective mystery")) return '"detective mystery"';
+  if (cleaned.includes("science fiction")) return '"science fiction"';
+  if (cleaned.includes("space opera")) return '"space opera"';
+  if (cleaned.includes("dystopian")) return '"dystopian science fiction"';
+  if (cleaned.includes("epic fantasy")) return '"epic fantasy"';
+  if (cleaned.includes("dark fantasy")) return '"dark fantasy"';
+  if (cleaned.includes("horror")) return '"horror"';
+  if (cleaned.includes("romance")) return '"romance"';
+  if (cleaned.includes("historical fiction")) return '"historical fiction"';
 
-  // compress to stronger OL-friendly quoted phrases
-  if (q.includes("dystopian")) return '"dystopian science fiction novel"';
-  if (q.includes("science fiction")) return '"science fiction novel"';
-  if (q.includes("thriller") && q.includes("crime")) return '"crime thriller novel"';
-  if (q.includes("thriller")) return '"psychological thriller novel"';
-  if (q.includes("romance")) return '"romance novel"';
-  if (q.includes("fantasy")) return '"epic fantasy novel"';
-  if (q.includes("horror")) return '"horror novel"';
-  if (q.includes("mystery")) return '"detective novel"';
-  if (q.includes("historical")) return '"historical fiction novel"';
+  const tokens = cleaned.split(/\s+/).filter(Boolean).slice(0, 3);
+  return tokens.length ? `"${tokens.join(" ")}"` : '"fiction"';
+}
 
-  return q;
+function fallbackToOpenLibraryQuery(query: string): string {
+  const cleaned = sanitizeOpenLibraryQuery(query);
+
+  if (!cleaned) return '"fiction"';
+  if (cleaned.includes("dystopian")) return '"dystopian science fiction novel"';
+  if (cleaned.includes("science fiction")) return '"science fiction novel"';
+  if (cleaned.includes("thriller") && cleaned.includes("crime")) return '"crime thriller novel"';
+  if (cleaned.includes("thriller")) return '"psychological thriller novel"';
+  if (cleaned.includes("romance")) return '"romance novel"';
+  if (cleaned.includes("fantasy")) return '"epic fantasy novel"';
+  if (cleaned.includes("horror")) return '"horror novel"';
+  if (cleaned.includes("mystery")) return '"detective novel"';
+  if (cleaned.includes("historical")) return '"historical fiction novel"';
+
+  return `"${cleaned}"`;
 }
 
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
@@ -198,34 +190,15 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
     return {
       domainMode: "default",
       queries: dedupeQueries([
-        // ---------------------
-        // TEEN BASELINE
-        // ---------------------
         '"young adult fiction"',
-
-        // ---------------------
-        // TEEN ROMANCE / SOCIAL
-        // ---------------------
         '"teen romance novel"',
         '"friends to lovers romance novel"',
         '"fake dating romance novel"',
-
-        // ---------------------
-        // TEEN DYSTOPIAN / FANTASY
-        // ---------------------
         '"dystopian young adult novel"',
         '"epic fantasy novel"',
         '"dark fantasy novel"',
         '"magic fantasy novel"',
-
-        // ---------------------
-        // TEEN REALISM / GROWTH
-        // ---------------------
         '"coming of age novel"',
-
-        // ---------------------
-        // TEEN MYSTERY / THRILLER
-        // ---------------------
         '"murder investigation novel"',
         '"psychological thriller novel"',
         '"crime thriller novel"',
@@ -236,62 +209,27 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): {
   return {
     domainMode: "default",
     queries: dedupeQueries([
-      // ---------------------
-      // GENERAL / BASELINE
-      // ---------------------
       '"contemporary fiction novel"',
       '"general fiction novel"',
-
-      // ---------------------
-      // LITERARY (signal layer)
-      // ---------------------
       '"literary fiction novel"',
       '"award winning novel"',
-
-      // ---------------------
-      // MYSTERY / DETECTIVE
-      // ---------------------
       '"murder investigation novel"',
       '"detective novel"',
-
-      // ---------------------
-      // THRILLER
-      // ---------------------
       '"psychological thriller novel"',
       '"spy thriller novel"',
       '"crime thriller novel"',
-
-      // ---------------------
-      // ROMANCE (tropes)
-      // ---------------------
       '"fake dating romance novel"',
       '"marriage of convenience romance novel"',
       '"friends to lovers romance novel"',
-
-      // ---------------------
-      // SCI-FI
-      // ---------------------
       '"space opera science fiction"',
       '"dystopian science fiction novel"',
       '"time travel science fiction novel"',
-
-      // ---------------------
-      // FANTASY
-      // ---------------------
       '"epic fantasy novel"',
       '"dark fantasy novel"',
       '"magic fantasy novel"',
-
-      // ---------------------
-      // HORROR (FINALIZED)
-      // ---------------------
       '"horror novel"',
       '"haunted house horror novel"',
       '"survival horror novel"',
-
-      // ---------------------
-      // HISTORICAL FICTION
-      // ---------------------
       '"world war 2 fiction"',
       '"world war 1 fiction"',
       '"ancient rome novel"',
@@ -333,11 +271,15 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
 
   const explicitBucketPlan = (input as any)?.bucketPlan as { queries?: string[]; domainMode?: RecommendationResult["domainMode"]; bucketId?: string } | undefined;
   const fallbackBucketPlan = getBucketQueries(deckKey, input);
-  const queriesToTry = Array.isArray(explicitBucketPlan?.queries) && explicitBucketPlan?.queries.length
-    ? explicitBucketPlan.queries
+  const hasExplicitQueries = Array.isArray(explicitBucketPlan?.queries) && explicitBucketPlan!.queries!.length > 0;
+
+  const queriesToTry = hasExplicitQueries
+    ? explicitBucketPlan!.queries!
     : fallbackBucketPlan.queries;
+
   const domainMode = explicitBucketPlan?.domainMode || fallbackBucketPlan.domainMode;
   console.log("[OL BUCKETS]", queriesToTry);
+
   let builtFromQuery = queriesToTry[0] || "";
 
   const minCandidateFloor = Math.max(
@@ -355,7 +297,10 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const rawQ = queriesToTry[queryIndex];
-    const q = toOpenLibraryQuery(rawQ);
+    const q = hasExplicitQueries
+      ? explicitBucketToOpenLibraryQuery(rawQ)
+      : fallbackToOpenLibraryQuery(rawQ);
+
     const url =
       `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(fetchLimit))}`;
 
@@ -372,10 +317,8 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
         bestQuery = q;
       }
 
-      const minTeenBackfillPasses = Math.min(4, queriesToTry.length || 4);
-
       const shouldBackfillFromThisQuery =
-        queryIndex < minTeenBackfillPasses ||
+        queryIndex < minQueryPassesBeforeEarlyExit ||
         collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
 
       if (shouldBackfillFromThisQuery) {
