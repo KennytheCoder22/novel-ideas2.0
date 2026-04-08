@@ -4,20 +4,27 @@ import { QUERY_TRANSLATIONS } from "./queryTranslations";
 import { build20QRungs, rungToPreviewQuery } from "./build20QRungs";
 
 type Family = "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
+
 function topKeys(obj: Record<string, number>, limit: number): string[] {
-  return Object.entries(obj).filter(([, score]) => score > 0.05).sort((a, b) => b[1] - a[1]).slice(0, limit || 3).map(([key]) => key);
+  return Object.entries(obj)
+    .filter(([, score]) => score > 0.05)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, limit || 3)
+    .map(([key]) => key);
 }
 function expand(keys: string[], dictionary: Record<string, readonly string[] | string[]>): string[] {
   return keys.flatMap((key) => dictionary[key] || []);
 }
 function dedupeQueries(queries: string[]): string[] {
-  const seen = new Set<string>(); const out: string[] = [];
+  const seen = new Set<string>();
+  const out: string[] = [];
   for (const query of queries) {
     const cleaned = String(query || "").replace(/\s+/g, " ").trim();
     if (!cleaned) continue;
     const key = cleaned.toLowerCase();
     if (seen.has(key)) continue;
-    seen.add(key); out.push(cleaned);
+    seen.add(key);
+    out.push(cleaned);
   }
   return out;
 }
@@ -34,30 +41,60 @@ function familyForGenres(genreKeys: string[]): Family {
   if (genreKeys.includes("historical fiction") || genreKeys.includes("historical")) return "historical_family";
   return "general_family";
 }
-function lockGenresToFamily(genreKeys: string[], family: Family): string[] {
-  if (family === "thriller_family") return ["crime", "mystery", "thriller", "dystopian"].filter((key) => genreKeys.includes(key));
-  if (family === "speculative_family") return ["science fiction", "fantasy", "horror"].filter((key) => genreKeys.includes(key));
-  if (family === "romance_family") return genreKeys.filter((key) => key === "romance");
-  if (family === "historical_family") return genreKeys.filter((key) => key === "historical fiction" || key === "historical");
-  return genreKeys;
+function familyDefaults(family: Family): string[] {
+  if (family === "thriller_family") return ["crime thriller novel", "detective mystery novel", "mystery thriller novel"];
+  if (family === "speculative_family") return ["science fiction novel", "fantasy novel", "horror novel"];
+  if (family === "romance_family") return ["romance novel"];
+  if (family === "historical_family") return ["historical fiction novel"];
+  return ["fiction novel"];
 }
-function themesForFamily(scenarioKeys: string[], family: Family): string[] {
-  if (family === "thriller_family") return scenarioKeys.filter((key) => ["investigation", "crime", "survival", "betrayal"].includes(key));
-  if (family === "speculative_family") return scenarioKeys.filter((key) => ["survival", "quest", "war", "mythic"].includes(key));
-  if (family === "historical_family") return scenarioKeys.filter((key) => ["war", "family", "betrayal"].includes(key));
-  return scenarioKeys;
+function softFamilyGenres(genreKeys: string[], family: Family): string[] {
+  const primaryOrder = family === "thriller_family"
+    ? ["crime", "mystery", "thriller", "dystopian"]
+    : family === "speculative_family"
+    ? ["science fiction", "fantasy", "horror"]
+    : family === "romance_family"
+    ? ["romance"]
+    : family === "historical_family"
+    ? ["historical fiction", "historical"]
+    : [];
+
+  const prioritized = primaryOrder.filter((key) => genreKeys.includes(key));
+  const adjacent = genreKeys.filter((key) => !prioritized.includes(key));
+  return [...prioritized, ...adjacent].slice(0, 4);
 }
+
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
-  const genreKeys = topKeys(signals.genre, 4);
-  const scenarioKeys = topKeys(signals.scenario, 2);
+  const genreKeys = topKeys(signals.genre, 5);
+  const toneKeys = topKeys(signals.tone, 4);
+  const scenarioKeys = topKeys(signals.scenario, 3);
+  const pacingKeys = topKeys(signals.pacing || {}, 2);
+
   const family = familyForGenres(genreKeys);
-  const lockedGenreKeys = lockGenresToFamily(genreKeys, family);
-  const lockedThemeKeys = themesForFamily(scenarioKeys, family);
-  const genreFragments = expand(lockedGenreKeys.slice(0, 2), QUERY_TRANSLATIONS.genre as Record<string, string[]>);
-  const scenarioFragments = expand(lockedThemeKeys, QUERY_TRANSLATIONS.scenario as Record<string, string[]>);
-  const baseGenre = genreFragments[0] || "novel";
-  const rungs = build20QRungs({ ageBand: ageBandForDeck(input.deckKey), family, baseGenre, subgenres: genreFragments, themes: scenarioFragments, tones: [], pacing: [], structures: [], settings: [], exclusions: [] }, 4);
+  const softGenreKeys = softFamilyGenres(genreKeys, family);
+
+  const translatedGenres = expand(softGenreKeys, QUERY_TRANSLATIONS.genre as Record<string, string[]>);
+  const translatedTones = expand(toneKeys, QUERY_TRANSLATIONS.tone as Record<string, string[]>);
+  const translatedScenarios = expand(scenarioKeys, QUERY_TRANSLATIONS.scenario as Record<string, string[]>);
+  const translatedPacing = expand(pacingKeys, (QUERY_TRANSLATIONS as any).pacing || {});
+
+  const genreFragments = dedupeQueries([...translatedGenres, ...familyDefaults(family)]);
+  const baseGenre = genreFragments[0] || "fiction novel";
+
+  const rungs = build20QRungs({
+    ageBand: ageBandForDeck(input.deckKey),
+    family,
+    baseGenre,
+    subgenres: genreFragments,
+    themes: translatedScenarios,
+    tones: translatedTones,
+    pacing: translatedPacing,
+    structures: [],
+    settings: [],
+    exclusions: [],
+  }, 4);
+
   const queries = dedupeQueries(rungs.map((r) => rungToPreviewQuery(r)));
-  return { rungs, queries, preview: queries[0] || "", strategy: `20q-structured-fetch:${family}` };
+  return { rungs, queries, preview: queries[0] || "", strategy: `20q-mature-fetch:${family}` };
 }
