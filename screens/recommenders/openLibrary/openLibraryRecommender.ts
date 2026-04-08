@@ -362,10 +362,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
     try {
       const data = await fetchJsonWithTimeout(url, timeoutMs);
       const docsRaw = Array.isArray(data?.docs) ? data.docs : [];
-      const admittedDocsRaw = docsRaw.filter((d: any) => {
-        const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
-        return !publishers.some((p: any) => isHardSelfPublished(p));
-      });
+      const admittedDocsRaw = docsRaw.filter((d: any) => shouldKeepOpenLibraryDoc(d));
 
       if (admittedDocsRaw.length > bestDocsRaw.length) {
         bestDocsRaw = admittedDocsRaw;
