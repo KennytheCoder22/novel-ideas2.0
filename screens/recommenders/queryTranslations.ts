@@ -2,7 +2,8 @@ export const QUERY_TRANSLATIONS = {
   genre: {
     fantasy: ["fantasy novel"],
     thriller: ["thriller novel"],
-    mystery: ["mystery novel"],
+    mystery: ["detective mystery novel"],
+    crime: ["crime thriller novel"],
     horror: ["horror novel"],
     "science fiction": ["science fiction novel"],
     romance: ["romance novel"],
@@ -27,6 +28,6 @@ export const QUERY_TRANSLATIONS = {
     survival: ["survival"],
     family: ["family saga"],
     mythic: ["mythic", "prophecy"],
-    crime: ["crime"],
+    // removed crime from here (now handled as a primary genre)
   },
 } as const;
