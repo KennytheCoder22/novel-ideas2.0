@@ -1,5 +1,8 @@
+import type { StructuredFetchRung } from "./types";
+
 type QueryIntent = {
   ageBand?: string | null;
+  family?: string | null;
   baseGenre?: string | null;
   subgenres?: string[];
   themes?: string[];
@@ -10,36 +13,12 @@ type QueryIntent = {
   exclusions?: string[];
 };
 
-type BuiltRung = {
-  rung: number;
-  query: string;
-};
-
-const GENERIC_COLLAPSE_PATTERNS = [
-  /^detective novel$/i,
-  /^mystery novel$/i,
-  /^thriller novel$/i,
-  /^crime novel$/i,
-  /^fantasy novel$/i,
-  /^science fiction novel$/i,
-  /^horror novel$/i,
-  /^romance novel$/i,
-  /^historical fiction novel$/i,
-  /^novel$/i,
-];
-
 function normalizePhrase(value: string): string {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[“”"]/g, "")
-    .replace(/\s+/g, " ");
+  return value.trim().toLowerCase().replace(/[“”"]/g, "").replace(/\s+/g, " ");
 }
-
 function uniqOrdered(values: Array<string | null | undefined>): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
-
   for (const raw of values) {
     if (!raw) continue;
     const cleaned = normalizePhrase(raw);
@@ -47,15 +26,12 @@ function uniqOrdered(values: Array<string | null | undefined>): string[] {
     seen.add(cleaned);
     out.push(cleaned);
   }
-
   return out;
 }
-
 function pickTop(values: string[] | undefined, count: number): string[] {
   if (!values?.length || count <= 0) return [];
   return uniqOrdered(values).slice(0, count);
 }
-
 function audiencePhrase(ageBand?: string | null): string {
   const band = normalizePhrase(ageBand || "");
   if (band === "adult") return "adult fiction";
@@ -64,122 +40,52 @@ function audiencePhrase(ageBand?: string | null): string {
   if (band === "kids") return "juvenile fiction";
   return "adult fiction";
 }
-
-function safeGenrePhrase(baseGenre?: string | null): string {
-  const genre = normalizePhrase(baseGenre ?? "");
-  if (!genre) return "novel";
-  return genre.endsWith("novel") ? genre : `${genre} novel`;
+function canonicalPrimary(intent: QueryIntent): string | null {
+  const subs = pickTop(intent.subgenres, 2);
+  const joined = subs.join(" ");
+  if (/crime/.test(joined) && /thriller/.test(joined)) return "crime thriller";
+  if (/mystery/.test(joined) && /thriller/.test(joined)) return "mystery thriller";
+  if (/detective/.test(joined) && /mystery/.test(joined)) return "detective mystery";
+  if (/science fiction/.test(joined)) return "science fiction";
+  if (/fantasy/.test(joined)) return "fantasy";
+  if (/horror/.test(joined)) return "horror";
+  if (/romance/.test(joined)) return "romance";
+  if (/historical fiction/.test(joined)) return "historical fiction";
+  return subs[0] || (intent.baseGenre ? normalizePhrase(intent.baseGenre) : null);
 }
-
-function buildCoreIdentity(intent: QueryIntent): string[] {
-  const topSubgenres = pickTop(intent.subgenres, 1);
-  const topThemes = pickTop(intent.themes, 1);
-
-  return uniqOrdered([
-    ...topSubgenres,
-    ...topThemes,
-    audiencePhrase(intent.ageBand),
-    "novel",
-  ]);
+function canonicalSecondary(intent: QueryIntent, primary: string | null): string | null {
+  const subs = pickTop(intent.subgenres, 3).filter((v) => v !== primary);
+  const themes = pickTop(intent.themes, 2);
+  if (subs.length) return subs[0];
+  if (themes.length) return themes[0];
+  return null;
 }
-
-function compressForRung(identity: string[], rung: number, baseGenre?: string | null): string[] {
-  const genrePhrase = safeGenrePhrase(baseGenre);
-  const audience = identity.find((x) =>
-    x === "adult fiction" || x === "young adult fiction" || x === "middle grade fiction" || x === "juvenile fiction"
-  ) || "adult fiction";
-
-  const learnedAnchors = identity.filter((x) => x !== audience && x !== "novel");
-
-  const kept: string[] = [];
-  const add = (value?: string) => {
-    const cleaned = normalizePhrase(value || "");
-    if (!cleaned) return;
-    if (!kept.includes(cleaned)) kept.push(cleaned);
-  };
-
-  if (rung <= 0) {
-    return uniqOrdered([...identity]);
-  }
-
-  if (rung === 1) {
-    add(learnedAnchors[0] || genrePhrase);
-    add(audience);
-    add("novel");
-    return uniqOrdered(kept);
-  }
-
-  if (rung === 2) {
-    add(genrePhrase);
-    add(audience);
-    add("novel");
-    return uniqOrdered(kept);
-  }
-
-  add(genrePhrase);
-  add(audience);
-  add("novel");
-  return uniqOrdered(kept);
+export function rungToPreviewQuery(rung: StructuredFetchRung): string {
+  return uniqOrdered([rung.primary, rung.secondary, ...rung.themes.slice(0, 1), rung.audience, "novel"]).join(" ").trim();
 }
+export function build20QRungs(intent: QueryIntent, maxRungs = 4): StructuredFetchRung[] {
+  const audience = audiencePhrase(intent.ageBand);
+  const primary = canonicalPrimary(intent);
+  const secondary = canonicalSecondary(intent, primary);
+  const topThemes = pickTop(intent.themes, 2);
 
-function finalizePhrase(tokens: string[], baseGenre?: string | null, ageBand?: string | null): string {
-  const phrase = uniqOrdered(tokens)
-    .filter(Boolean)
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
+  const candidates: StructuredFetchRung[] = [
+    { rung: 0, family: intent.family || undefined, primary, secondary, themes: topThemes.slice(0, 1), audience, query: "" },
+    { rung: 1, family: intent.family || undefined, primary, secondary: secondary && secondary !== primary ? secondary : null, themes: [], audience, query: "" },
+    { rung: 2, family: intent.family || undefined, primary, secondary: null, themes: [], audience, query: "" },
+    { rung: 3, family: intent.family || undefined, primary: intent.baseGenre ? normalizePhrase(intent.baseGenre) : primary, secondary: null, themes: [], audience, query: "" },
+  ].slice(0, Math.max(1, maxRungs));
 
-  const joined = phrase.toLowerCase();
-
-  if (joined.includes("crime") && joined.includes("thriller")) {
-    return `crime thriller novel ${audiencePhrase(ageBand)}`.trim();
-  }
-
-  if (joined.includes("mystery") && joined.includes("detective")) {
-    return `detective mystery novel ${audiencePhrase(ageBand)}`.trim();
-  }
-
-  if (joined.includes("mystery") && joined.includes("thriller")) {
-    return `mystery thriller novel ${audiencePhrase(ageBand)}`.trim();
-  }
-
-  const normalized = normalizePhrase(phrase);
-  const collapsed = GENERIC_COLLAPSE_PATTERNS.some((rx) => rx.test(normalized));
-
-  if (!collapsed) return phrase;
-
-  return uniqOrdered([
-    safeGenrePhrase(baseGenre),
-    audiencePhrase(ageBand),
-    "novel",
-  ]).join(" ").trim();
-}
-
-export function build20QRungs(intent: QueryIntent, maxRungs = 4): BuiltRung[] {
-  const identity = buildCoreIdentity(intent);
-
-  const rungs: BuiltRung[] = [];
   const seen = new Set<string>();
-
-  for (let rung = 0; rung < maxRungs; rung += 1) {
-    const tokens = compressForRung(identity, rung, intent.baseGenre);
-    const query = finalizePhrase(tokens, intent.baseGenre, intent.ageBand);
-
+  const out: StructuredFetchRung[] = [];
+  for (const rung of candidates) {
+    const query = rungToPreviewQuery(rung);
     if (!query || seen.has(query)) continue;
     seen.add(query);
-    rungs.push({ rung, query });
+    out.push({ ...rung, query });
   }
-
-  if (!rungs.length) {
-    rungs.push({
-      rung: 0,
-      query: finalizePhrase(
-        [safeGenrePhrase(intent.baseGenre), audiencePhrase(intent.ageBand), "novel"],
-        intent.baseGenre,
-        intent.ageBand
-      ),
-    });
+  if (!out.length) {
+    out.push({ rung: 0, family: intent.family || undefined, primary: intent.baseGenre ? normalizePhrase(intent.baseGenre) : "fiction", secondary: null, themes: [], audience, query: `${intent.baseGenre ? normalizePhrase(intent.baseGenre) : "fiction"} ${audience} novel` });
   }
-
-  return rungs;
+  return out;
 }
