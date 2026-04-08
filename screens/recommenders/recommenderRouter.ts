@@ -18,6 +18,12 @@ import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromT
 
 export type EngineOverride = EngineId | "auto";
 
+type RecommenderDebugSourceStats = {
+  rawFetched: number;
+  postFilterCandidates: number;
+  finalSelected: number;
+};
+
 function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -38,15 +44,22 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   const descriptivePlan = buildDescriptiveQueriesFromTaste(input);
   const translatedBucketPlan = buildBucketPlanFromTaste(input);
 
+  // Gold-standard router rule:
+  // prefer the descriptive query hypothesis as primary; use translated buckets
+  // only as expansion, never as a replacement.
+  const primaryQueries = Array.isArray(descriptivePlan?.queries) ? descriptivePlan.queries : [];
+  const secondaryQueries = Array.isArray(translatedBucketPlan?.queries) ? translatedBucketPlan.queries : [];
+
   const queries = dedupeNonEmptyQueries([
-    ...(Array.isArray(descriptivePlan?.queries) ? descriptivePlan.queries : []),
-    ...(Array.isArray(translatedBucketPlan?.queries) ? translatedBucketPlan.queries : []),
+    ...primaryQueries,
+    ...secondaryQueries,
   ]);
 
   return {
     queries,
     preview:
       descriptivePlan?.preview ||
+      primaryQueries[0] ||
       translatedBucketPlan?.queries?.[0] ||
       queries[0] ||
       "",
@@ -130,36 +143,12 @@ function extractDocs(
 }
 
 function sourceForDoc(doc: any, fallbackSource: CandidateSource): CandidateSource {
-  return doc?.source === "googleBooks" || doc?.source === "openLibrary" || doc?.source === "kitsu" || doc?.source === "gcd"
+  return doc?.source === "googleBooks" ||
+    doc?.source === "openLibrary" ||
+    doc?.source === "kitsu" ||
+    doc?.source === "gcd"
     ? doc.source
     : fallbackSource;
-}
-
-
-async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<RecommendationDoc[]> {
-  const enriched = await Promise.all(
-    docs.map(async (doc) => {
-      try {
-        const title = doc.title;
-        const author = Array.isArray(doc.author_name) ? doc.author_name[0] : undefined;
-        if (!title) return doc;
-
-        const data = await getHardcoverRatings(title, author);
-        if (!data) return doc;
-
-        return {
-          ...doc,
-          hardcover: {
-            rating: data.rating,
-            ratings_count: data.ratings_count,
-          },
-        } as any;
-      } catch {
-        return doc;
-      }
-    })
-  );
-  return enriched;
 }
 
 function dedupeDocs(docs: RecommendationDoc[]): RecommendationDoc[] {
@@ -185,18 +174,61 @@ function dedupeDocs(docs: RecommendationDoc[]): RecommendationDoc[] {
   return out;
 }
 
-type RecommenderDebugSourceStats = {
-  rawFetched: number;
-  postFilterCandidates: number;
-  finalSelected: number;
-};
-
 function countResultItems(result: RecommendationResult | null | undefined): number {
   if (!result) return 0;
   if (Array.isArray((result as any).items)) return (result as any).items.length;
   if (Array.isArray((result as any).recommendations)) return (result as any).recommendations.length;
   if (Array.isArray((result as any).docs)) return (result as any).docs.length;
   return 0;
+}
+
+function hasHardcoverFailureShape(value: unknown): boolean {
+  try {
+    const text = typeof value === "string" ? value : JSON.stringify(value || {});
+    const lower = text.toLowerCase();
+    return lower.includes("hardcover api request failed") || lower.includes('"status":429') || lower.includes("status:429");
+  } catch {
+    return false;
+  }
+}
+
+function attachHardcoverFailureMarker(doc: RecommendationDoc): RecommendationDoc {
+  return {
+    ...doc,
+    hardcover: {
+      ...(doc as any)?.hardcover,
+      failed: true,
+    },
+  } as any;
+}
+
+async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<RecommendationDoc[]> {
+  // Gold-standard router rule:
+  // Hardcover is enrichment only. Never block, never drop, never downgrade shelf eligibility.
+  const enriched = await Promise.all(
+    docs.map(async (doc) => {
+      try {
+        const title = doc.title;
+        const author = Array.isArray(doc.author_name) ? doc.author_name[0] : undefined;
+        if (!title) return doc;
+
+        const data = await getHardcoverRatings(title, author);
+        if (!data) return doc;
+
+        return {
+          ...doc,
+          hardcover: {
+            rating: data.rating,
+            ratings_count: data.ratings_count,
+          },
+        } as any;
+      } catch {
+        return attachHardcoverFailureMarker(doc);
+      }
+    })
+  );
+
+  return enriched;
 }
 
 async function runEngine(engine: EngineId, input: RecommenderInput): Promise<RecommendationResult> {
@@ -254,6 +286,8 @@ async function fetchBothEngines(
   const kitsuDocs = dedupeDocs(extractDocs(kitsu, "kitsu"));
   const gcdDocs = dedupeDocs(extractDocs(gcd, "gcd"));
 
+  // Gold-standard router rule:
+  // merge first, dedupe once, do not let one engine overwrite another’s shelf.
   const mergedDocs = dedupeDocs([
     ...googleDocs,
     ...openLibraryDocs,
@@ -270,6 +304,9 @@ export async function getRecommendations(
 ): Promise<RecommendationResult> {
   const preferredEngine = chooseEngine(input, override);
   const bucketPlan = buildRouterBucketPlan(input);
+
+  // Gold-standard 20Q router:
+  // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...input, bucketPlan };
 
   const includeKitsu = shouldUseKitsu(routedInput);
@@ -277,23 +314,24 @@ export async function getRecommendations(
 
   const { google, openLibrary, kitsu, gcd, mergedDocs } = await fetchBothEngines(routedInput);
 
-  const googleDocs = mergedDocs.filter((doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks");
-  const openLibraryDocs = mergedDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary");
-  const kitsuDocs = mergedDocs.filter((doc: any) => sourceForDoc(doc, "kitsu") === "kitsu");
-  const gcdDocs = mergedDocs.filter((doc: any) => sourceForDoc(doc, "gcd") === "gcd");
-
+  // Hardcover enrichment is non-blocking and runs AFTER merging.
   const enrichedDocs = await enrichWithHardcover(mergedDocs);
 
+  // Preserve source slices after enrichment.
   const googleDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks");
   const openLibraryDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary");
   const kitsuDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "kitsu") === "kitsu");
   const gcdDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "gcd") === "gcd");
 
+  // Normalize all sources the same way.
+  // IMPORTANT: Open Library should normalize from enriched docs too, so Hardcover failure markers
+  // survive into candidate.rawDoc and finalRecommender can treat 429s as soft/non-blocking.
   const googleCandidates = normalizeCandidates(googleDocsEnriched, "googleBooks");
-  const openLibraryCandidates = normalizeCandidates(openLibraryDocs, "openLibrary");
-  const kitsuCandidatesRaw = normalizeCandidates(kitsuDocs, "kitsu");
-  const gcdCandidates = normalizeCandidates(gcdDocs, "gcd");
+  const openLibraryCandidates = normalizeCandidates(openLibraryDocsEnriched, "openLibrary");
+  const kitsuCandidatesRaw = normalizeCandidates(kitsuDocsEnriched, "kitsu");
+  const gcdCandidates = normalizeCandidates(gcdDocsEnriched, "gcd");
 
+  // Light dedupe for visual shelves.
   const seenTitles = new Set<string>();
   const kitsuCandidates = kitsuCandidatesRaw.filter((c) => {
     const title = (c.title || "").toLowerCase().trim();
@@ -309,6 +347,9 @@ export async function getRecommendations(
     ...(includeGcd ? gcdCandidates : []),
   ];
 
+  // 20Q philosophy:
+  // router gathers a broad but sane shelf;
+  // finalRecommender performs the actual preference-aware magic.
   const rankedDocs = finalRecommenderForDeck(normalizedCandidates, input.deckKey, {
     tasteProfile: input.tasteProfile,
     profileOverride: input.profileOverride,
@@ -328,6 +369,7 @@ export async function getRecommendations(
           source: doc.diagnostics.source || sourceForDoc(doc, "openLibrary"),
           preFilterScore: doc.diagnostics.preFilterScore,
           postFilterScore: doc.diagnostics.postFilterScore,
+          rejectionReason: doc.diagnostics.rejectionReason,
         }
       : undefined,
   }));
@@ -385,8 +427,8 @@ export async function getRecommendations(
         ? (input.domainModeOverride ?? "chapterMiddle")
         : (input.domainModeOverride ?? "default"),
     builtFromQuery:
-      (openLibrary as any)?.builtFromQuery ||
       (google as any)?.builtFromQuery ||
+      (openLibrary as any)?.builtFromQuery ||
       bucketPlan.preview ||
       bucketPlan.queries?.[0] ||
       "",

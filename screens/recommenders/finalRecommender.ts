@@ -106,7 +106,7 @@ const CATALOG_LIKE_TITLE_PATTERNS = [
   /\bstationer\b/i,
 ];
 
-function normalizeKey(value: any): string {
+function normalizeKey(value: unknown): string {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
@@ -153,18 +153,26 @@ function dedupeCandidates(candidates: Candidate[]): Candidate[] {
   return Array.from(byKey.values());
 }
 
-function collectNumericTasteSignals(value: any, path = '', out: Array<{ path: string; value: number }> = []): Array<{ path: string; value: number }> {
+function collectNumericTasteSignals(
+  value: unknown,
+  path = '',
+  out: Array<{ path: string; value: number }> = [],
+): Array<{ path: string; value: number }> {
   if (value == null) return out;
   if (typeof value === 'number' && Number.isFinite(value)) {
     out.push({ path, value });
     return out;
   }
   if (Array.isArray(value)) {
-    for (let i = 0; i < value.length; i += 1) collectNumericTasteSignals(value[i], `${path}[${i}]`, out);
+    for (let i = 0; i < value.length; i += 1) {
+      collectNumericTasteSignals(value[i], `${path}[${i}]`, out);
+    }
     return out;
   }
   if (typeof value === 'object') {
-    for (const [key, nested] of Object.entries(value)) collectNumericTasteSignals(nested, path ? `${path}.${key}` : key, out);
+    for (const [key, nested] of Object.entries(value as Record<string, unknown>)) {
+      collectNumericTasteSignals(nested, path ? `${path}.${key}` : key, out);
+    }
   }
   return out;
 }
@@ -178,7 +186,7 @@ function normalizeTastePreference(raw: number): number {
 
 function getTastePreferenceForKey(taste: TasteProfile | undefined, key: TasteSignalKey): number {
   if (!taste) return 0;
-  const signals = collectNumericTasteSignals(taste as any);
+  const signals = collectNumericTasteSignals(taste as unknown);
   let total = 0;
   let matched = 0;
   for (const signal of signals) {
@@ -216,7 +224,9 @@ function scorePopularity(candidate: Candidate): number {
 
 function scorePublisherBoost(candidate: Candidate): number {
   if (!candidate.publisher) return 0;
-  if (/(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|scholastic)/i.test(candidate.publisher)) return 0.7;
+  if (/(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|scholastic)/i.test(candidate.publisher)) {
+    return 0.7;
+  }
   return 0;
 }
 
@@ -357,10 +367,7 @@ function applyMinimalYaFilter(candidates: Candidate[], deckKey: DeckKey): Candid
       null;
 
     const effectiveYear = originalYear ?? year;
-
-    const isOldClassic =
-      typeof effectiveYear === 'number' && effectiveYear > 0 && effectiveYear < 1950;
-
+    const isOldClassic = typeof effectiveYear === 'number' && effectiveYear > 0 && effectiveYear < 1950;
     const isModern = typeof year === 'number' && year >= 2000;
 
     if (hasNegativeSubject) return false;
@@ -452,7 +459,6 @@ function compactHypothesisFromTaste(taste: TasteProfile | undefined): CompactHyp
   return null;
 }
 
-
 function isInstitutionalOrCatalogCandidate(candidate: Candidate): boolean {
   const title = String(candidate.title || '');
   const author = String(candidate.author || '');
@@ -465,7 +471,6 @@ function isInstitutionalOrCatalogCandidate(candidate: Candidate): boolean {
   if (INSTITUTIONAL_AUTHOR_PATTERNS.some((pattern) => pattern.test(publisher))) return true;
   if (CATALOG_LIKE_TITLE_PATTERNS.some((pattern) => pattern.test(title))) return true;
 
-  // Catch generic library/catalog language in metadata-poor records
   if (
     /\b(library|catalog(?:ue)?|bulletin|report|pamphlet|circular)\b/i.test(text) &&
     !/\b(thriller|mystery|crime|detective|suspense|novel|fiction)\b/i.test(text)
@@ -483,7 +488,6 @@ function looksLikeActualFictionBook(candidate: Candidate): boolean {
     return true;
   }
 
-  // Allow strong genre-subject metadata even when "novel" is omitted
   if (candidate.subjects.some((s) => /\b(thriller|mystery|crime|detective|suspense)\b/i.test(String(s)))) {
     return true;
   }
@@ -541,16 +545,9 @@ function isLowConfidenceCandidate(candidate: Candidate): boolean {
   return false;
 }
 
-
 function hasAnyHardcover429(candidate: Candidate): boolean {
   const raw = (candidate as any)?.rawDoc;
-  const blobs = [
-    raw,
-    raw?.raw,
-    raw?.diagnostics,
-    raw?.hardcover,
-    raw?.doc,
-  ];
+  const blobs = [raw, raw?.raw, raw?.diagnostics, raw?.hardcover, raw?.doc];
 
   const joined = blobs
     .map((v) => {
@@ -610,8 +607,8 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
   if (!year) return false;
 
   const text = haystack(candidate);
-  const hasStrongThrillerLikeSignal = /(thriller|mystery|crime|detective|investigation|suspense|psychological thriller|serial killer|police procedural|murder|novel|fiction)/i.test(text);
-  const hasAnyGenreSignal = /(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative|novel|fiction)/i.test(text);
+  const hasStrongThrillerLikeSignal = /\b(thriller|mystery|crime|detective|investigation|suspense|psychological thriller|serial killer|police procedural|murder|novel|fiction)\b/i.test(text);
+  const hasAnyGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative|novel|fiction)\b/i.test(text);
 
   if (isInstitutionalOrCatalogCandidate(candidate)) return true;
   if (lane === 'adult' && year < 1980 && !hasStrongThrillerLikeSignal) return true;
@@ -620,7 +617,6 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
 
   return false;
 }
-
 
 function isAnthologyOrCollection(candidate: Candidate): boolean {
   const text = haystack(candidate);
@@ -669,21 +665,10 @@ function candidateEligibleForHypothesis(candidate: Candidate, hypothesis: Compac
     return hasStrongThrillerSignal(candidate) && looksLikeActualFictionBook(candidate) && !isInstitutionalOrCatalogCandidate(candidate);
   }
 
-  if (label.includes('romantic')) {
-    return hasStrongRomanceSignal(candidate);
-  }
-
-  if (label.includes('adventurous')) {
-    return hasStrongSpeculativeSignal(candidate);
-  }
-
-  if (label.includes('historical')) {
-    return hasStrongHistoricalSignal(candidate);
-  }
-
-  if (label.includes('literary') || label.includes('character-driven')) {
-    return true;
-  }
+  if (label.includes('romantic')) return hasStrongRomanceSignal(candidate);
+  if (label.includes('adventurous')) return hasStrongSpeculativeSignal(candidate);
+  if (label.includes('historical')) return hasStrongHistoricalSignal(candidate);
+  if (label.includes('literary') || label.includes('character-driven')) return true;
 
   return true;
 }
@@ -701,18 +686,9 @@ function candidateMatchesHypothesis(candidate: Candidate, hypothesis: CompactHyp
   if (label.includes('thriller') || label.includes('mystery')) {
     return hasStrongThrillerSignal(candidate) && optionalHits >= 1;
   }
-
-  if (label.includes('romantic')) {
-    return hasStrongRomanceSignal(candidate);
-  }
-
-  if (label.includes('adventurous')) {
-    return hasStrongSpeculativeSignal(candidate);
-  }
-
-  if (label.includes('historical')) {
-    return hasStrongHistoricalSignal(candidate);
-  }
+  if (label.includes('romantic')) return hasStrongRomanceSignal(candidate);
+  if (label.includes('adventurous')) return hasStrongSpeculativeSignal(candidate);
+  if (label.includes('historical')) return hasStrongHistoricalSignal(candidate);
 
   return true;
 }
@@ -741,10 +717,10 @@ function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis
   if (!candidateEligibleForHypothesis(candidate, hypothesis)) return 'ineligible-for-shelf';
   if (!candidateMatchesHypothesis(candidate, hypothesis)) return 'weak hypothesis match';
 
-  if ((isWeakMetadataObject(candidate) || isLowConfidenceCandidate(candidate)) && !isMetadataFragileButViable(candidate)) {
-    return isWeakMetadataObject(candidate) ? 'weak metadata' : 'low-confidence';
-  }
-
+  // IMPORTANT:
+  // Weak metadata / low confidence are NOT hard rejects in the 20Q model
+  // if the book still looks like viable fiction. They should be penalized,
+  // not removed from the shelf.
   return null;
 }
 
@@ -781,14 +757,28 @@ function scoreCandidate(
   const authorKey = normalizeKey(candidate.author);
   const seriesKey = deriveSeriesKey(candidate.title);
 
-  if (inList(candidate.id, options.priorRejectedIds) || inList(titleKey, options.priorRejectedKeys)) score -= 5 * profile.negativeSignalPenalty;
-  if (inList(candidate.id, options.priorRecommendedIds) || inList(titleKey, options.priorRecommendedKeys)) score -= 3.2;
-  if (inList(authorKey, options.priorAuthors)) score -= 0.9 * profile.authorPenaltyStrength;
-  if (seriesKey && inList(seriesKey, options.priorSeriesKeys)) score -= 1.1;
+  if (inList(candidate.id, options.priorRejectedIds) || inList(titleKey, options.priorRejectedKeys)) {
+    score -= 5 * profile.negativeSignalPenalty;
+  }
+  if (inList(candidate.id, options.priorRecommendedIds) || inList(titleKey, options.priorRecommendedKeys)) {
+    score -= 3.2;
+  }
+  if (inList(authorKey, options.priorAuthors)) {
+    score -= 0.9 * profile.authorPenaltyStrength;
+  }
+  if (seriesKey && inList(seriesKey, options.priorSeriesKeys)) {
+    score -= 1.1;
+  }
 
-  if (lane === 'adult' && /\b(juvenile fiction|young readers|beginning reader|chapter book)\b/i.test(haystack(candidate))) score -= 3;
-  if (/\b(study guide|workbook|analysis|criticism|manual|textbook)\b/i.test(haystack(candidate))) score -= 4;
-  if (!candidate.description && candidate.subjects.length === 0 && candidate.genres.length === 0) score -= 2.5;
+  if (lane === 'adult' && /\b(juvenile fiction|young readers|beginning reader|chapter book)\b/i.test(haystack(candidate))) {
+    score -= 3;
+  }
+  if (/\b(study guide|workbook|analysis|criticism|manual|textbook)\b/i.test(haystack(candidate))) {
+    score -= 4;
+  }
+  if (!candidate.description && candidate.subjects.length === 0 && candidate.genres.length === 0) {
+    score -= 2.5;
+  }
 
   return score;
 }
@@ -805,15 +795,28 @@ export function finalRecommenderForDeck(
   };
 
   const hypothesis = compactHypothesisFromTaste(options.tasteProfile);
-  const basePool = applyMinimalYaFilter(dedupeCandidates(candidates).filter((candidate) => !!candidate.title), deckKey);
+  const basePool = applyMinimalYaFilter(
+    dedupeCandidates(candidates).filter((candidate) => !!candidate.title),
+    deckKey
+  );
+
+  // 20Q shelf rule:
+  // hard rejects only for clearly wrong-shelf books.
   const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
-  const unique = filtered.length >= Math.max(profile.minKeep, 6) ? filtered : basePool.filter((candidate) => !isHardRejectReason(rejectionReason(candidate, lane, hypothesis)));
+
+  // Safety fallback only if the hard shelf over-tightens.
+  const unique =
+    filtered.length >= Math.max(profile.minKeep, 6)
+      ? filtered
+      : basePool.filter((candidate) => !isHardRejectReason(rejectionReason(candidate, lane, hypothesis)));
+
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
   const scored = unique
     .map((candidate) => {
       const reject = rejectionReason(candidate, lane, hypothesis);
       const preFilterScore = reject ? Number.NEGATIVE_INFINITY : scoreCandidate(candidate, lane, profile, options, readerSoph, hypothesis);
+
       const candidateWithDiagnostics: CandidateWithDiagnostics = {
         ...candidate,
         diagnostics: {
@@ -832,7 +835,9 @@ export function finalRecommenderForDeck(
     .filter((entry) => Number.isFinite(entry.score))
     .sort((a, b) => b.score - a.score);
 
+  const targetMin = Math.max(profile.minKeep, 6);
   const targetMax = Math.max(profile.minKeep, 10);
+
   const kept: CandidateWithDiagnostics[] = [];
   const selected = kept;
   const seen = new Set<string>();
@@ -948,7 +953,10 @@ export function finalRecommenderForDeck(
   const addRanked = (pool: Array<{ candidate: CandidateWithDiagnostics; score: number }>) => {
     const remaining = new Map<string, { candidate: CandidateWithDiagnostics; baseScore: number }>();
     for (const entry of pool) {
-      remaining.set(identityKey(entry.candidate), { candidate: entry.candidate, baseScore: entry.score });
+      remaining.set(identityKey(entry.candidate), {
+        candidate: entry.candidate,
+        baseScore: entry.score,
+      });
     }
 
     while (selected.length < targetMax && remaining.size > 0) {
@@ -958,7 +966,6 @@ export function finalRecommenderForDeck(
 
       for (const [key, entry] of remaining.entries()) {
         const { candidate, baseScore } = entry;
-
         if (seen.has(key)) continue;
 
         const penalty = dynamicSelectionPenalty(candidate);
@@ -990,6 +997,16 @@ export function finalRecommenderForDeck(
   };
 
   addRanked(scored);
+
+  // Safety valve:
+  // if we somehow still collapse too far, backfill from the best remaining scored pool
+  // even if metadata is weak, as long as shelf eligibility is not hard-rejected.
+  if (kept.length < targetMin) {
+    for (const entry of scored) {
+      if (kept.length >= targetMin) break;
+      addCandidateIfAllowed(entry.candidate);
+    }
+  }
 
   return kept.map((candidate) => ({
     ...(candidate.rawDoc as RecommendationDoc),
