@@ -13,6 +13,13 @@ type QueryIntent = {
   exclusions?: string[];
 };
 
+type Family =
+  | "thriller_family"
+  | "speculative_family"
+  | "romance_family"
+  | "historical_family"
+  | "general_family";
+
 function normalizePhrase(value: string): string {
   return value.trim().toLowerCase().replace(/[“”"]/g, "").replace(/\s+/g, " ");
 }
@@ -49,31 +56,70 @@ function audiencePhrase(ageBand?: string | null): string {
   return "adult fiction";
 }
 
-function broadFamilyPrimary(intent: QueryIntent): string {
+function canonicalFamily(intent: QueryIntent): Family {
+  const explicit = normalizePhrase(intent.family || "");
+  if (
+    explicit === "thriller_family" ||
+    explicit === "speculative_family" ||
+    explicit === "romance_family" ||
+    explicit === "historical_family" ||
+    explicit === "general_family"
+  ) {
+    return explicit as Family;
+  }
+
   const subs = pickTop(intent.subgenres, 8).join(" ");
-  if (/science fiction/.test(subs)) return "science fiction";
-  if (/fantasy/.test(subs)) return "fantasy";
-  if (/horror/.test(subs)) return "horror";
-  if (/romance/.test(subs)) return "romance";
-  if (/historical fiction/.test(subs)) return "historical fiction";
-  if (/crime|mystery|thriller|detective/.test(subs)) return "thriller";
+  if (/crime|mystery|thriller|detective|dystopian/.test(subs)) return "thriller_family";
+  if (/science fiction|fantasy|horror/.test(subs)) return "speculative_family";
+  if (/romance/.test(subs)) return "romance_family";
+  if (/historical fiction|historical/.test(subs)) return "historical_family";
+  return "general_family";
+}
+
+function familyLockedFallback(family: Family): string {
+  if (family === "thriller_family") return "mystery thriller";
+  if (family === "speculative_family") return "science fiction";
+  if (family === "romance_family") return "romance";
+  if (family === "historical_family") return "historical fiction";
+  return "fiction";
+}
+
+function broadFamilyPrimary(intent: QueryIntent): string {
+  const family = canonicalFamily(intent);
+  const subs = pickTop(intent.subgenres, 8).join(" ");
+
+  if (family === "thriller_family") {
+    if (/detective|mystery/.test(subs)) return "detective mystery";
+    if (/crime/.test(subs)) return "crime thriller";
+    return "mystery thriller";
+  }
+  if (family === "speculative_family") {
+    if (/science fiction/.test(subs)) return "science fiction";
+    if (/fantasy/.test(subs)) return "fantasy";
+    if (/horror/.test(subs)) return "horror";
+    return "science fiction";
+  }
+  if (family === "romance_family") return "romance";
+  if (family === "historical_family") return "historical fiction";
   return normalizePhrase(intent.baseGenre || "fiction");
 }
 
 function deriveHypothesisPrimaries(intent: QueryIntent): string[] {
+  const family = canonicalFamily(intent);
   const subgenres = pickTop(intent.subgenres, 8);
   const tones = pickTop(intent.tones, 6);
   const pacing = pickTop(intent.pacing, 4);
   const themes = pickTop(intent.themes, 6);
 
-  const hasMystery = hasAny(subgenres, [/\bmystery\b/, /\bdetective\b/]);
-  const hasThriller = hasAny(subgenres, [/\bthriller\b/]);
-  const hasCrime = hasAny(subgenres, [/\bcrime\b/]);
-  const hasSciFi = hasAny(subgenres, [/\bscience fiction\b/]);
-  const hasFantasy = hasAny(subgenres, [/\bfantasy\b/]);
-  const hasHorror = hasAny(subgenres, [/\bhorror\b/]);
-  const hasRomance = hasAny(subgenres, [/\bromance\b/]);
-  const hasHistorical = hasAny(subgenres, [/\bhistorical fiction\b/]);
+  const joinedSubs = subgenres.join(" ");
+  const hasMystery = /\bmystery\b|\bdetective\b/.test(joinedSubs);
+  const hasThriller = /\bthriller\b/.test(joinedSubs);
+  const hasCrime = /\bcrime\b/.test(joinedSubs);
+  const hasSciFi = /\bscience fiction\b/.test(joinedSubs);
+  const hasFantasy = /\bfantasy\b/.test(joinedSubs);
+  const hasHorror = /\bhorror\b/.test(joinedSubs);
+  const hasRomance = /\bromance\b/.test(joinedSubs);
+  const hasHistorical = /\bhistorical fiction\b/.test(joinedSubs);
 
   const dark = hasAny(tones, [/\bdark\b/, /\bbleak\b/, /\bgrim\b/, /\bpsychological\b/, /\bnoir\b/]);
   const procedural = hasAny(tones, [/\bprocedural\b/, /\brealistic\b/, /\bgrounded\b/]);
@@ -88,40 +134,49 @@ function deriveHypothesisPrimaries(intent: QueryIntent): string[] {
     if (!out.includes(cleaned)) out.push(cleaned);
   };
 
-  if ((hasMystery || investigation) && hasThriller) {
-    if (dark) add("mystery thriller");
-    if (investigation || procedural) add("detective mystery");
-    if (hasCrime || investigation || betrayal) add("crime thriller");
-    if (survival) add("survival thriller");
-    add("mystery thriller");
-    add("detective mystery");
-  } else if (hasMystery || investigation) {
-    if (procedural) add("detective mystery");
-    add("detective mystery");
-    add("mystery thriller");
-  } else if (hasCrime && hasThriller) {
-    if (dark) add("crime thriller");
-    if (survival) add("survival thriller");
-    add("crime thriller");
-    add("mystery thriller");
-  } else if (hasThriller) {
-    if (dark) add("mystery thriller");
-    if (survival) add("survival thriller");
-    add("crime thriller");
-    add("mystery thriller");
+  if (family === "thriller_family") {
+    if ((hasMystery || investigation) && hasThriller) {
+      if (dark) add("mystery thriller");
+      if (investigation || procedural) add("detective mystery");
+      if (hasCrime || investigation || betrayal) add("crime thriller");
+      if (survival) add("survival thriller");
+      add("mystery thriller");
+      add("detective mystery");
+    } else if (hasMystery || investigation) {
+      if (procedural) add("detective mystery");
+      add("detective mystery");
+      add("mystery thriller");
+    } else if (hasCrime && hasThriller) {
+      if (dark) add("crime thriller");
+      if (survival) add("survival thriller");
+      add("crime thriller");
+      add("mystery thriller");
+    } else if (hasThriller) {
+      if (dark) add("mystery thriller");
+      if (survival) add("survival thriller");
+      add("crime thriller");
+      add("mystery thriller");
+    } else {
+      add("mystery thriller");
+      add("detective mystery");
+    }
+  } else if (family === "speculative_family") {
+    if (hasSciFi) {
+      if (survival) add("survival science fiction");
+      add("science fiction");
+    }
+    if (hasFantasy) add("fantasy");
+    if (hasHorror) add("horror");
+  } else if (family === "romance_family") {
+    if (hasRomance) add("romance");
+    add("romance");
+  } else if (family === "historical_family") {
+    if (hasHistorical) add("historical fiction");
+    add("historical fiction");
   }
 
-  if (hasSciFi) {
-    if (survival) add("survival science fiction");
-    add("science fiction");
-  }
-  if (hasFantasy) add("fantasy");
-  if (hasHorror) add("horror");
-  if (hasRomance) add("romance");
-  if (hasHistorical) add("historical fiction");
-
-  if (!out.length) add(broadFamilyPrimary(intent));
-  add(broadFamilyPrimary(intent));
+  if (!out.length) add(familyLockedFallback(family));
+  add(familyLockedFallback(family));
   return uniqOrdered(out);
 }
 
@@ -193,7 +248,14 @@ function deriveThemeHints(primary: string | null, intent: QueryIntent): string[]
   return out.slice(0, 3);
 }
 
-function buildRung(rung: number, family: string | undefined, primary: string | null, secondary: string | null, themes: string[], audience: string): StructuredFetchRung {
+function buildRung(
+  rung: number,
+  family: string | undefined,
+  primary: string | null,
+  secondary: string | null,
+  themes: string[],
+  audience: string
+): StructuredFetchRung {
   return { rung, family, primary, secondary, themes: uniqOrdered(themes), audience, query: "" };
 }
 
@@ -203,18 +265,27 @@ export function rungToPreviewQuery(rung: StructuredFetchRung): string {
 
 export function build20QRungs(intent: QueryIntent, maxRungs = 4): StructuredFetchRung[] {
   const audience = audiencePhrase(intent.ageBand);
-  const family = intent.family || undefined;
-  const primaries = deriveHypothesisPrimaries(intent);
+  const family = intent.family || canonicalFamily(intent);
+  const primaries = deriveHypothesisPrimaries({ ...intent, family });
 
   const candidates: StructuredFetchRung[] = primaries.slice(0, Math.max(1, maxRungs)).map((primary, index) => {
-    const secondary = deriveSecondary(primary, intent);
-    const themes = deriveThemeHints(primary, intent);
+    const secondary = deriveSecondary(primary, { ...intent, family });
+    const themes = deriveThemeHints(primary, { ...intent, family });
     return buildRung(index, family, primary, secondary, themes, audience);
   });
 
   if (candidates.length < Math.max(1, maxRungs)) {
-    const fallbackPrimary = broadFamilyPrimary(intent);
-    candidates.push(buildRung(candidates.length, family, fallbackPrimary, null, deriveThemeHints(fallbackPrimary, intent).slice(0, 1), audience));
+    const fallbackPrimary = familyLockedFallback(canonicalFamily({ ...intent, family }));
+    candidates.push(
+      buildRung(
+        candidates.length,
+        family,
+        fallbackPrimary,
+        null,
+        deriveThemeHints(fallbackPrimary, { ...intent, family }).slice(0, 1),
+        audience
+      )
+    );
   }
 
   const seen = new Set<string>();
@@ -227,7 +298,7 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4): StructuredFetc
   }
 
   if (!out.length) {
-    const primary = broadFamilyPrimary(intent);
+    const primary = familyLockedFallback(canonicalFamily({ ...intent, family }));
     out.push({ rung: 0, family, primary, secondary: null, themes: [], audience, query: `${primary} ${audience} novel` });
   }
   return out;

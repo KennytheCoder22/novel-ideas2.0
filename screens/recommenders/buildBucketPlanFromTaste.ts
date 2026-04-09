@@ -63,6 +63,25 @@ function softFamilyGenres(genreKeys: string[], family: Family): string[] {
   const adjacent = genreKeys.filter((key) => !prioritized.includes(key));
   return [...prioritized, ...adjacent].slice(0, 4);
 }
+function isFamilyCompatibleQuery(query: string, family: Family): boolean {
+  const q = String(query || "").toLowerCase();
+  if (!q) return false;
+
+  if (family === "thriller_family") {
+    if (/\bscience fiction\b|\bfantasy\b|\bhorror\b|\bromance\b|\bhistorical fiction\b/.test(q)) return false;
+    return /\bcrime\b|\bmystery\b|\bthriller\b|\bdetective\b|\bsuspense\b/.test(q);
+  }
+  if (family === "speculative_family") {
+    if (/\bcrime thriller\b|\bdetective mystery\b|\bmystery thriller\b/.test(q)) return false;
+    return /\bscience fiction\b|\bfantasy\b|\bhorror\b/.test(q);
+  }
+  if (family === "romance_family") return /\bromance\b/.test(q);
+  if (family === "historical_family") return /\bhistorical\b/.test(q);
+  return true;
+}
+function filterGenresToFamily(queries: string[], family: Family): string[] {
+  return queries.filter((query) => isFamilyCompatibleQuery(query, family));
+}
 
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
@@ -74,13 +93,18 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const family = familyForGenres(genreKeys);
   const softGenreKeys = softFamilyGenres(genreKeys, family);
 
-  const translatedGenres = expand(softGenreKeys, QUERY_TRANSLATIONS.genre as Record<string, string[]>);
+  const translatedGenresRaw = expand(softGenreKeys, QUERY_TRANSLATIONS.genre as Record<string, string[]>);
+  const translatedGenres = filterGenresToFamily(translatedGenresRaw, family);
   const translatedTones = expand(toneKeys, QUERY_TRANSLATIONS.tone as Record<string, string[]>);
   const translatedScenarios = expand(scenarioKeys, QUERY_TRANSLATIONS.scenario as Record<string, string[]>);
   const translatedPacing = expand(pacingKeys, (QUERY_TRANSLATIONS as any).pacing || {});
 
-  const genreFragments = dedupeQueries([...translatedGenres, ...familyDefaults(family)]);
-  const baseGenre = genreFragments[0] || "fiction novel";
+  const genreFragments = dedupeQueries([
+    ...translatedGenres,
+    ...familyDefaults(family),
+  ]).filter((query) => isFamilyCompatibleQuery(query, family));
+
+  const baseGenre = genreFragments[0] || familyDefaults(family)[0] || "fiction novel";
 
   const rungs = build20QRungs({
     ageBand: ageBandForDeck(input.deckKey),
