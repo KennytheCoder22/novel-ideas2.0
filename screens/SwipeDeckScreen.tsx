@@ -582,6 +582,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [showDebug, setShowDebug] = useState(false);
   const [showSourceCounts, setShowSourceCounts] = useState(false);
   const [showCandidatePool, setShowCandidatePool] = useState(false);
+  const [showRungs, setShowRungs] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
   const [profileOverridesByLane, setProfileOverridesByLane] = useState<Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>>({});
   const [ratingPreview, setRatingPreview] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
@@ -591,8 +592,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
-  const [lastCandidatePool, setLastCandidatePool]
-  const [lastRungStats, setLastRungStats] = useState<any | null>(null); = useState<any[]>([]);
+  const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
+  const [lastRungStats, setLastRungStats] = useState<any | null>(null);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -840,8 +841,10 @@ export default function SwipeDeckScreen(props: Props) {
     setShowDebug(false);
     setShowSourceCounts(false);
     setShowCandidatePool(false);
+    setShowRungs(false);
     setLastSourceCounts(null);
     setLastCandidatePool([]);
+    setLastRungStats(null);
     setFeedback([]);
     setSessionMoodProfile(null);
     setActiveTasteVector(null);
@@ -1105,6 +1108,7 @@ function handleLeft() {
       setRecEngineLabel(result.engineLabel || "");
       setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }>) || null);
       setLastCandidatePool(Array.isArray((result as any)?.debugCandidatePool) ? (result as any).debugCandidatePool : []);
+      setLastRungStats((result as any)?.debugRungStats || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes}`);
@@ -1718,6 +1722,10 @@ function handleLeft() {
         </View>
 
         <View style={styles.tempButtonsRowSecondary}>
+          <TouchableOpacity style={styles.rungsToggle} onPress={() => setShowRungs((v) => !v)}>
+            <Text style={styles.debugToggleText}>Rungs</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.copyPoolToggle} onPress={handleCopyCandidatePool}>
             <Text style={styles.debugToggleText}>Copy Pool</Text>
           </TouchableOpacity>
@@ -1789,6 +1797,47 @@ function handleLeft() {
                 ))
               ) : (
                 <Text style={styles.debugValueMuted}>No candidate pool captured.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
+
+      {showRungs && (
+        <View style={styles.rungsPanel}>
+          <View style={styles.debugCard}>
+            <View style={styles.debugHeader}>
+              <Text style={styles.debugTitle}>Rung distribution</Text>
+              <TouchableOpacity onPress={() => setShowRungs(false)} style={styles.debugCloseBtn}>
+                <Text style={styles.debugCloseText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
+              {lastRungStats ? (
+                <>
+                  <Text style={styles.debugLabel}>Totals by rung</Text>
+                  {Object.entries(lastRungStats.byRung || {}).map(([rung, count]) => (
+                    <View key={`rung-${rung}`} style={styles.countsRow}>
+                      <Text style={styles.debugValue}>Rung {rung}</Text>
+                      <Text style={styles.debugValueMuted}>{String(count)} candidates</Text>
+                    </View>
+                  ))}
+
+                  <Text style={[styles.debugLabel, { marginTop: 12 }]}>By source</Text>
+                  {Object.entries(lastRungStats.byRungSource || {}).map(([rung, sources]: any) => (
+                    <View key={`rung-source-${rung}`} style={styles.countsRow}>
+                      <Text style={styles.debugValue}>Rung {rung}</Text>
+                      {Object.entries(sources || {}).map(([source, count]) => (
+                        <Text key={`${rung}-${source}`} style={styles.debugValueMuted}>
+                          {String(source)}: {String(count)}
+                        </Text>
+                      ))}
+                    </View>
+                  ))}
+                </>
+              ) : (
+                <Text style={styles.debugValueMuted}>Run recommendations to populate rung diagnostics.</Text>
               )}
             </ScrollView>
           </View>
@@ -2071,6 +2120,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
+  rungsToggle: {
+    backgroundColor: "#1d4ed8",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
   poolToggle: {
     backgroundColor: "#4f46e5",
     paddingHorizontal: 12,
@@ -2080,6 +2135,7 @@ const styles = StyleSheet.create({
   debugToggleText: { color: "#fff", fontWeight: "900" },
   countsPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
   poolPanel: { position: "absolute", right: 16, bottom: 104, width: 360, maxWidth: "92%", zIndex: 50 },
+  rungsPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
   debugPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
   debugCard: {
     borderRadius: 14,
@@ -2108,13 +2164,3 @@ const styles = StyleSheet.create({
   countsRow: { marginTop: 10 },
 });
 
-
-{/* RUNG DEBUG */}
-{lastRungStats ? (
-  <View style={{ padding: 10 }}>
-    <Text>RUNG DISTRIBUTION</Text>
-    {Object.entries(lastRungStats.byRung).map(([r, c]) => (
-      <Text key={r}>Rung {r}: {c}</Text>
-    ))}
-  </View>
-) : null}
