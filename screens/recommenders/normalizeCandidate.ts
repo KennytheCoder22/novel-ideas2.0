@@ -149,6 +149,171 @@ function extractQueryTerms(queryText: any): string[] {
   return Array.from(new Set([...subjectMatches, ...freeTextTerms]));
 }
 
+function normalizeText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(normalizeText).join(' ').toLowerCase();
+  if (value == null) return '';
+  return String(value).toLowerCase();
+}
+
+function collectCategoryText(doc: any): string {
+  return [
+    normalizeText(doc?.categories),
+    normalizeText(doc?.subjects),
+    normalizeText(doc?.subject),
+    normalizeText(doc?.genre),
+    normalizeText(doc?.genres),
+    normalizeText(doc?.volumeInfo?.categories),
+    normalizeText(doc?.volumeInfo?.subjects),
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+function collectDescriptionText(doc: any): string {
+  return [
+    normalizeText(doc?.description),
+    normalizeText(doc?.volumeInfo?.description),
+    normalizeText(doc?.subtitle),
+    normalizeText(doc?.volumeInfo?.subtitle),
+    normalizeText(doc?.notes),
+    normalizeText(doc?.first_sentence),
+    normalizeText(doc?.excerpt),
+  ]
+    .filter(Boolean)
+    .join(' ');
+}
+
+export function looksLikeFictionCandidate(doc: any): boolean {
+  const title = normalizeText(doc?.title || doc?.volumeInfo?.title);
+  const categories = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const author = normalizeText(doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.volumeInfo?.authors);
+  const combined = [title, categories, description, author].filter(Boolean).join(' ');
+
+  const hardRejectTitlePatterns = [
+    /\bguide\b/,
+    /\bcompanion\b/,
+    /\banalysis\b/,
+    /\bcritic(?:ism|al)\b/,
+    /\bintroduction to\b/,
+    /\bsource\s*book\b/,
+    /\bhandbook\b/,
+    /\bmanual\b/,
+    /\breference\b/,
+    /\bcatalog(?:ue)?\b/,
+    /\bencyclopedia\b/,
+    /\banthology\b/,
+    /\bcollection\b/,
+    /\bessays?\b/,
+    /\babout the author\b/,
+    /\bpublishers?\s+weekly\b/,
+    /\bjournal\b/,
+    /\bmagazine\b/,
+    /\bnewsweek\b/,
+    /\bvoice of youth advocates\b/,
+    /\btalking books?\b/,
+    /\bbook dealers?\b/,
+    /\bcontemporary authors\b/,
+    /\bright book,\s*right time\b/,
+    /\bvideo source book\b/,
+    /\btopics\b/,
+    /\byoung adult fiction index\b/,
+    /\bbooks for tired eyes\b/,
+    /\bkindle cash machine\b/,
+    /\bcareers? for\b/,
+    /\bpresenting young adult\b/,
+    /\bsourcebook\b/,
+    /\bbibliograph(?:y|ies)\b/,
+    /\brevision series\b/,
+  ];
+
+  const hardRejectCategoryPatterns = [
+    /\bliterary criticism\b/,
+    /\bstudy aids?\b/,
+    /\breference\b/,
+    /\blanguage arts\b/,
+    /\bbibliograph(?:y|ies)\b/,
+    /\beducation\b/,
+    /\bbooks and reading\b/,
+    /\bauthors?\b/,
+    /\bpublishing\b/,
+    /\blibraries\b/,
+    /\bbooksellers?\b/,
+    /\bperiodicals?\b/,
+    /\bessays?\b/,
+    /\bcriticism\b/,
+    /\bnonfiction\b/,
+    /\bbiography\b/,
+    /\bmemoir\b/,
+  ];
+
+  const hardRejectDescriptionPatterns = [
+    /\bexplores?\b/,
+    /\bexamines?\b/,
+    /\banalyzes?\b/,
+    /\bguide to\b/,
+    /\bintroduction to\b/,
+    /\breference for\b/,
+    /\bresource for\b/,
+    /\bhow to\b/,
+    /\blearn how to\b/,
+    /\bwritten for students\b/,
+    /\btextbook\b/,
+    /\bworkbook\b/,
+    /\bstudy guide\b/,
+    /\bcritical\b/,
+    /\bessays?\b/,
+    /\bresearch\b/,
+  ];
+
+  const fictionPositivePatterns = [
+    /\bfiction\b/,
+    /\bnovel\b/,
+    /\bthriller\b/,
+    /\bmystery\b/,
+    /\bcrime\b/,
+    /\bdetective\b/,
+    /\bsuspense\b/,
+    /\bpsychological\b/,
+    /\bmurder\b/,
+    /\bserial killer\b/,
+    /\binvestigation\b/,
+    /\bpolice\b/,
+    /\binspector\b/,
+    /\bprivate investigator\b/,
+    /\bfollows\b/,
+    /\btells the story\b/,
+    /\bstory of\b/,
+    /\bwhen\b.*\bdiscovers?\b/,
+  ];
+
+  const obviousReferenceSeriesPatterns = [
+    /\bpublishers?\s+weekly\b/,
+    /\bnewsweek\b/,
+    /\bcontemporary authors\b/,
+    /\babout the author\b/,
+    /\bsource book\b/,
+    /\btalking book\b/,
+    /\btopics\b/,
+    /\bguide\b/,
+    /\bhandbook\b/,
+    /\bcatalog(?:ue)?\b/,
+  ];
+
+  if (!title) return false;
+
+  if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
+  if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
+  if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
+  if (obviousReferenceSeriesPatterns.some((rx) => rx.test(combined))) return false;
+
+  const hasPositiveFictionSignal = fictionPositivePatterns.some(
+    (rx) => rx.test(title) || rx.test(categories) || rx.test(description)
+  );
+
+  return hasPositiveFictionSignal;
+}
+
 function hasCover(rawDoc: any): boolean {
   if (rawDoc?.cover_i) return true;
   const imageLinks = rawDoc?.imageLinks ?? rawDoc?.volumeInfo?.imageLinks;
@@ -218,21 +383,21 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
       const v = s.toLowerCase();
 
       return (
-        v.includes("fiction") ||
-        v.includes("mystery") ||
-        v.includes("thriller") ||
-        v.includes("suspense") ||
-        v.includes("fantasy") ||
-        v.includes("science fiction") ||
-        v.includes("horror") ||
-        v.includes("romance") ||
-        v.includes("drama") ||
-        v.includes("dystopian") ||
-        v.includes("manga") ||
-        v.includes("graphic novel") ||
-        v.includes("graphic novels") ||
-        v.includes("comics") ||
-        v.includes("comic")
+        v.includes('fiction') ||
+        v.includes('mystery') ||
+        v.includes('thriller') ||
+        v.includes('suspense') ||
+        v.includes('fantasy') ||
+        v.includes('science fiction') ||
+        v.includes('horror') ||
+        v.includes('romance') ||
+        v.includes('drama') ||
+        v.includes('dystopian') ||
+        v.includes('manga') ||
+        v.includes('graphic novel') ||
+        v.includes('graphic novels') ||
+        v.includes('comics') ||
+        v.includes('comic')
       );
     }),
     publicationYear: getPublicationYear(rawDoc),
@@ -254,5 +419,7 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
 }
 
 export function normalizeCandidates(rawDocs: RecommendationDoc[], source: CandidateSource): Candidate[] {
-  return (Array.isArray(rawDocs) ? rawDocs : []).map((rawDoc) => normalizeCandidate(rawDoc, source));
+  return (Array.isArray(rawDocs) ? rawDocs : [])
+    .filter((rawDoc) => looksLikeFictionCandidate(rawDoc))
+    .map((rawDoc) => normalizeCandidate(rawDoc, source));
 }
