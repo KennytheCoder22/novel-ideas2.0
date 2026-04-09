@@ -44,6 +44,9 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   const descriptivePlan = buildDescriptiveQueriesFromTaste(input);
   const translatedBucketPlan = buildBucketPlanFromTaste(input);
 
+  // Gold-standard router rule:
+  // prefer the descriptive query hypothesis as primary; use translated buckets
+  // only as expansion, never as a replacement.
   const primaryQueries = Array.isArray(descriptivePlan?.queries) ? descriptivePlan.queries : [];
   const secondaryQueries = Array.isArray(translatedBucketPlan?.queries) ? translatedBucketPlan.queries : [];
 
@@ -53,7 +56,6 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   ]);
 
   return {
-    ...translatedBucketPlan,
     queries,
     preview:
       descriptivePlan?.preview ||
@@ -234,12 +236,6 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bfour .*novels\b/,
     /\bbest .*novels\b/,
     /\bgreat .*novels\b/,
-    /\barmchair detective\b/,
-    /\bmovie maker\b/,
-    /\bclassic detective novels?\b/,
-    /\bmystery and detective novels?\b/,
-    /\bdetective novels?\b/,
-    /\birish detective novel\b/,
   ];
 
   const hardRejectCategoryPatterns = [
@@ -376,6 +372,16 @@ function countResultItems(result: RecommendationResult | null | undefined): numb
   return 0;
 }
 
+function hasHardcoverFailureShape(value: unknown): boolean {
+  try {
+    const text = typeof value === "string" ? value : JSON.stringify(value || {});
+    const lower = text.toLowerCase();
+    return lower.includes("hardcover api request failed") || lower.includes('"status":429') || lower.includes("status:429");
+  } catch {
+    return false;
+  }
+}
+
 function attachHardcoverFailureMarker(doc: RecommendationDoc): RecommendationDoc {
   return {
     ...doc,
@@ -387,6 +393,8 @@ function attachHardcoverFailureMarker(doc: RecommendationDoc): RecommendationDoc
 }
 
 async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<RecommendationDoc[]> {
+  // Gold-standard router rule:
+  // Hardcover is enrichment only. Never block, never drop, never downgrade shelf eligibility.
   const enriched = await Promise.all(
     docs.map(async (doc) => {
       try {
@@ -423,8 +431,8 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
     domainModeOverride === input.domainModeOverride ? input : { ...input, domainModeOverride };
 
   if (engine === "openLibrary") return getOpenLibraryRecommendations(routedInput);
-  if (engine === "kitsu") return getKitsuMangaRecommendations(input);
-  return getGcdGraphicNovelRecommendations(input);
+  if (engine === "kitsu") return getKitsuMangaRecommendations(routedInput);
+  return getGcdGraphicNovelRecommendations(routedInput);
 }
 
 async function fetchBothEngines(
@@ -457,19 +465,19 @@ async function fetchBothEngines(
 
   const kitsu = kitsuIndex >= 0 && results[kitsuIndex]?.status === "fulfilled"
     ? results[kitsuIndex].value
-    :
-    null;
+    : null;
 
   const gcd = gcdIndex >= 0 && results[gcdIndex]?.status === "fulfilled"
     ? results[gcdIndex].value
-    :
-    null;
+    : null;
 
   const googleDocs = dedupeDocs(extractDocs(google, "googleBooks"));
   const openLibraryDocs = dedupeDocs(extractDocs(openLibrary, "openLibrary"));
   const kitsuDocs = dedupeDocs(extractDocs(kitsu, "kitsu"));
   const gcdDocs = dedupeDocs(extractDocs(gcd, "gcd"));
 
+  // Gold-standard router rule:
+  // merge first, dedupe once, do not let one engine overwrite another’s shelf.
   const mergedDocs = dedupeDocs([
     ...googleDocs,
     ...openLibraryDocs,
@@ -487,6 +495,8 @@ export async function getRecommendations(
   const preferredEngine = chooseEngine(input, override);
   const bucketPlan = buildRouterBucketPlan(input);
 
+  // Gold-standard 20Q router:
+  // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...input, bucketPlan };
 
   const includeKitsu = shouldUseKitsu(routedInput);
@@ -494,36 +504,42 @@ export async function getRecommendations(
 
   const { google, openLibrary, kitsu, gcd, mergedDocs } = await fetchBothEngines(routedInput);
 
+  // Hardcover enrichment is non-blocking and runs AFTER merging.
   const enrichedDocs = await enrichWithHardcover(mergedDocs);
 
-  const googleDocsEnriched = enrichedDocs.filter(
-    (doc: any) =>
-      sourceForDoc(doc, "googleBooks") === "googleBooks" &&
-      looksLikeFictionCandidate(doc)
-  );
+  // Preserve source slices after enrichment.
+const googleDocsEnriched = enrichedDocs.filter(
+  (doc: any) =>
+    sourceForDoc(doc, "googleBooks") === "googleBooks" &&
+    looksLikeFictionCandidate(doc)
+);
 
-  const openLibraryDocsEnriched = enrichedDocs.filter(
-    (doc: any) =>
-      sourceForDoc(doc, "openLibrary") === "openLibrary" &&
-      looksLikeFictionCandidate(doc)
-  );
-  const kitsuDocsEnriched = enrichedDocs.filter(
-    (doc: any) =>
-      sourceForDoc(doc, "kitsu") === "kitsu" &&
-      looksLikeFictionCandidate(doc)
-  );
+const openLibraryDocsEnriched = enrichedDocs.filter(
+  (doc: any) =>
+    sourceForDoc(doc, "openLibrary") === "openLibrary" &&
+    looksLikeFictionCandidate(doc)
+);
+const kitsuDocsEnriched = enrichedDocs.filter(
+  (doc: any) =>
+    sourceForDoc(doc, "kitsu") === "kitsu" &&
+    looksLikeFictionCandidate(doc)
+);
 
-  const gcdDocsEnriched = enrichedDocs.filter(
-    (doc: any) =>
-      sourceForDoc(doc, "gcd") === "gcd" &&
-      looksLikeFictionCandidate(doc)
-  );
+const gcdDocsEnriched = enrichedDocs.filter(
+  (doc: any) =>
+    sourceForDoc(doc, "gcd") === "gcd" &&
+    looksLikeFictionCandidate(doc)
+);
 
+  // Normalize all sources the same way.
+  // IMPORTANT: Open Library should normalize from enriched docs too, so Hardcover failure markers
+  // survive into candidate.rawDoc and finalRecommender can treat 429s as soft/non-blocking.
   const googleCandidates = normalizeCandidates(googleDocsEnriched, "googleBooks");
   const openLibraryCandidates = normalizeCandidates(openLibraryDocsEnriched, "openLibrary");
   const kitsuCandidatesRaw = normalizeCandidates(kitsuDocsEnriched, "kitsu");
   const gcdCandidates = normalizeCandidates(gcdDocsEnriched, "gcd");
 
+  // Light dedupe for visual shelves.
   const seenTitles = new Set<string>();
   const kitsuCandidates = kitsuCandidatesRaw.filter((c) => {
     const title = (c.title || "").toLowerCase().trim();
@@ -546,6 +562,9 @@ export async function getRecommendations(
     score: c.score,
   }));
 
+  // 20Q philosophy:
+  // router gathers a broad but sane shelf;
+  // finalRecommender performs the actual preference-aware magic.
   const rankedDocs = finalRecommenderForDeck(normalizedCandidates, input.deckKey, {
     tasteProfile: input.tasteProfile,
     profileOverride: input.profileOverride,

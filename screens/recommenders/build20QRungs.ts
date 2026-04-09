@@ -163,23 +163,10 @@ function deriveHypothesisPrimaries(intent: QueryIntent): string[] {
   } else if (family === "speculative_family") {
     if (hasSciFi) {
       if (survival) add("survival science fiction");
-
-      // Force multiple competing hypotheses instead of collapsing to one broad sci-fi shelf
-      if (dark) add("dark science fiction");
-      if (procedural) add("grounded science fiction");
-
-      // Baseline + adjacent fallback hypotheses
       add("science fiction");
-      add("speculative science fiction");
     }
-    if (hasFantasy) {
-      add("fantasy");
-      add("epic fantasy");
-    }
-    if (hasHorror) {
-      add("horror");
-      add("dark horror");
-    }
+    if (hasFantasy) add("fantasy");
+    if (hasHorror) add("horror");
   } else if (family === "romance_family") {
     if (hasRomance) add("romance");
     add("romance");

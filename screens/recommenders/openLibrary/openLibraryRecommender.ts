@@ -7,25 +7,22 @@ function deckKeyToBand(deckKey: DeckKey): "kids" | "preteen" | "teens" | "adult"
 function visualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undefined): number { return Number((tagCounts as any)?.["topic:manga"] || 0) + Number((tagCounts as any)?.["format:graphic_novel"] || 0) + Number((tagCounts as any)?.["format:graphic novel"] || 0) + Number((tagCounts as any)?.["media:anime"] || 0) + Number((tagCounts as any)?.["genre:superheroes"] || 0); }
 function dedupeQueries(queries: string[]): string[] { const seen = new Set<string>(); const out: string[] = []; for (const query of queries) { const trimmed = String(query || "").trim(); if (!trimmed) continue; const key = trimmed.toLowerCase(); if (seen.has(key)) continue; seen.add(key); out.push(trimmed); } return out; }
 function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
-  const parts: string[] = [];
-
-  if (Array.isArray(rung.themes)) {
-    parts.push(...rung.themes.slice(0, 2));
-  }
-
-  if (rung.primary) parts.push(rung.primary);
-  if (rung.secondary) parts.push(rung.secondary);
-  if (rung.audience) parts.push(rung.audience);
-
-  parts.push("novel");
-
-  const query = parts
-    .join(" ")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim();
-
-  return `"${query}"`;
+  const primary = String(rung.primary || "").toLowerCase();
+  const secondary = String(rung.secondary || "").toLowerCase();
+  const themes = rung.themes.join(" ").toLowerCase();
+  if (primary.includes("crime thriller")) return '"crime thriller novel"';
+  if (primary.includes("mystery thriller")) return '"mystery thriller novel"';
+  if (primary.includes("detective mystery")) return '"detective mystery novel"';
+  if (primary.includes("science fiction")) return themes.includes("survival") ? '"survival science fiction novel"' : '"science fiction novel"';
+  if (primary.includes("fantasy")) return '"epic fantasy novel"';
+  if (primary.includes("horror")) return '"horror novel"';
+  if (primary.includes("romance")) return '"romance novel"';
+  if (primary.includes("historical")) return '"historical fiction novel"';
+  if (primary.includes("thriller") && secondary.includes("mystery")) return '"mystery thriller novel"';
+  if (primary.includes("thriller") && secondary.includes("crime")) return '"crime thriller novel"';
+  if (primary.includes("thriller")) return '"psychological thriller novel"';
+  if (primary.includes("mystery")) return '"detective novel"';
+  return `"${(primary || "fiction").trim()}"`;
 }
 function fallbackToOpenLibraryQuery(query: string): string {
   const cleaned = String(query || "").toLowerCase().trim();
