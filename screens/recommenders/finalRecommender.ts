@@ -942,6 +942,49 @@ function scoreCandidate(
     score -= 2.5;
   }
 
+  // --- MAINSTREAM / QUALITY SIGNAL LAYER (NEW) ---
+
+  const title = String(candidate.title || '').toLowerCase();
+
+  // 1. Penalize over-serialized / KU-style titles
+  if (/\b(book|volume|series)\s*\d+\b/i.test(title)) {
+    score -= 1.25;
+  }
+
+  // 2. Penalize generic KU naming patterns
+  if (
+    /\b(fbi|detective|crime thriller|suspense thriller)\b/i.test(title) &&
+    title.length < 45
+  ) {
+    score -= 0.9;
+  }
+
+  // 3. Penalize excessive series clustering (already partially handled later, this reinforces early)
+  if (/\b(series|book\s*\d+)\b/i.test(title)) {
+    score -= 0.6;
+  }
+
+  // 4. Boost cleaner standalone titles
+  if (!/\b(book\s*\d+|series|volume)\b/i.test(title)) {
+    score += 0.45;
+  }
+
+  // 5. Slight boost for established (older but not ancient) works
+  if (candidate.publicationYear && candidate.publicationYear < 2015) {
+    score += 0.3;
+  }
+
+  // 6. Strong boost for actual popularity (you already compute ratingCount — use it more)
+  if (candidate.ratingCount > 5000) {
+    score += 1.2;
+  } else if (candidate.ratingCount > 1000) {
+    score += 0.7;
+  } else if (candidate.ratingCount > 200) {
+    score += 0.3;
+  }
+
+  // --- END PATCH ---
+
   return score;
 }
 
