@@ -236,6 +236,12 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bfour .*novels\b/,
     /\bbest .*novels\b/,
     /\bgreat .*novels\b/,
+    /\barmchair detective\b/,
+    /\bmovie maker\b/,
+    /\bclassic detective novels?\b/,
+    /\bmystery and detective novels?\b/,
+    /\bdetective novels?\b/,
+    /\birish detective novel\b/,
   ];
 
   const hardRejectCategoryPatterns = [
