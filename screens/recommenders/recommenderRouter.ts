@@ -141,7 +141,51 @@ function extractDocs(
     (doc: any) => doc && typeof doc === "object" && typeof doc.title === "string" && doc.title.trim()
   );
 }
+// --- NEW BLOCK (paste here) ---
+const metaBookPatterns = [
+  /\bthe .*novels of\b/,
+  /\bdevelopment of the .*novel\b/,
+  /\bhistory of\b/,
+  /\bstudy of\b/,
+  /\bguide to writing\b/,
+  /\bhow to write\b/,
+  /\bwriting .*novels\b/,
+  /\bintroduction to\b/,
+  /\bcritical\b/,
+  /\banalysis\b/,
+  /\babout\b.*\bnovels\b/,
+  /\bnovels?\b.*\bof\b/,
+];
 
+const anthologyPatterns = [
+  /\bcollected\b/,
+  /\bcollection\b/,
+  /\banthology\b/,
+  /\bselected\b/,
+  /\bcomplete works\b/,
+  /\bthree .*novels\b/,
+  /\bfour .*novels\b/,
+  /\bbest .*novels\b/,
+  /\bgreat .*novels\b/,
+];
+
+const periodicalPatterns = [
+  /\bmagazine\b/,
+  /\bjournal\b/,
+  /\breview\b/,
+  /\bweekly\b/,
+];
+
+if (
+  metaBookPatterns.some((rx) => rx.test(title)) ||
+  anthologyPatterns.some((rx) => rx.test(title)) ||
+  periodicalPatterns.some((rx) => rx.test(title))
+) {
+  return false;
+}
+// --- END NEW BLOCK ---
+
+return hasPositiveFictionSignal;
 function sourceForDoc(doc: any, fallbackSource: CandidateSource): CandidateSource {
   return doc?.source === "googleBooks" ||
     doc?.source === "openLibrary" ||
@@ -318,10 +362,28 @@ export async function getRecommendations(
   const enrichedDocs = await enrichWithHardcover(mergedDocs);
 
   // Preserve source slices after enrichment.
-  const googleDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks");
-  const openLibraryDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary");
-  const kitsuDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "kitsu") === "kitsu");
-  const gcdDocsEnriched = enrichedDocs.filter((doc: any) => sourceForDoc(doc, "gcd") === "gcd");
+const googleDocsEnriched = enrichedDocs.filter(
+  (doc: any) =>
+    sourceForDoc(doc, "googleBooks") === "googleBooks" &&
+    looksLikeFictionCandidate(doc)
+);
+
+const openLibraryDocsEnriched = enrichedDocs.filter(
+  (doc: any) =>
+    sourceForDoc(doc, "openLibrary") === "openLibrary" &&
+    looksLikeFictionCandidate(doc)
+);
+const kitsuDocsEnriched = enrichedDocs.filter(
+  (doc: any) =>
+    sourceForDoc(doc, "kitsu") === "kitsu" &&
+    looksLikeFictionCandidate(doc)
+);
+
+const gcdDocsEnriched = enrichedDocs.filter(
+  (doc: any) =>
+    sourceForDoc(doc, "gcd") === "gcd" &&
+    looksLikeFictionCandidate(doc)
+);
 
   // Normalize all sources the same way.
   // IMPORTANT: Open Library should normalize from enriched docs too, so Hardcover failure markers
