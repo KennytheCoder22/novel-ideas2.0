@@ -673,5 +673,6 @@ const normalizedCandidates = [
     items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
+    debugRungStats: buildRungDiagnostics(normalizedCandidates),
   } as RecommendationResult;
 }
