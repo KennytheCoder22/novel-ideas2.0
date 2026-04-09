@@ -21,6 +21,9 @@ type CandidateDiagnostics = {
   preFilterScore?: number;
   postFilterScore?: number;
   rejectionReason?: string;
+  tasteAlignment?: number;
+  queryAlignment?: number;
+  rungBoost?: number;
 };
 
 type CandidateWithDiagnostics = Candidate & {
@@ -216,6 +219,51 @@ function scoreTasteMatch(candidate: Candidate, taste?: TasteProfile): number {
   }
   if (!matched) return 0;
   return Math.max(-1.1, Math.min(1.1, (total / matched) * 1.1));
+}
+
+function tokenSetFromText(value: string): Set<string> {
+  return new Set(
+    normalizeKey(value)
+      .split(/\s+/)
+      .map((token) => token.trim())
+      .filter((token) => token.length >= 4)
+  );
+}
+
+function scoreQueryAlignment(candidate: Candidate): number {
+  const queryTerms = Array.isArray(candidate.queryTerms)
+    ? candidate.queryTerms.filter((term) => String(term || '').trim().length >= 3)
+    : [];
+
+  if (!queryTerms.length && !candidate.queryText) return 0;
+
+  const docTokens = tokenSetFromText(haystack(candidate));
+  const queryTokens = new Set<string>();
+
+  for (const term of queryTerms) {
+    for (const token of tokenSetFromText(term)) queryTokens.add(token);
+  }
+
+  let overlap = 0;
+  for (const token of queryTokens) {
+    if (docTokens.has(token)) overlap += 1;
+  }
+
+  const overlapRatio = queryTokens.size ? overlap / queryTokens.size : 0;
+  const rawQueryText = String(candidate.queryText || '').toLowerCase().trim();
+  const phraseBonus = rawQueryText && haystack(candidate).toLowerCase().includes(rawQueryText) ? 0.35 : 0;
+
+  return Math.max(0, Math.min(1.35, overlapRatio + phraseBonus));
+}
+
+function scoreRungBoost(candidate: Candidate): number {
+  const rung = Number(candidate.queryRung);
+  if (!Number.isFinite(rung)) return 0;
+  if (rung <= 0) return 1.4;
+  if (rung === 1) return 1.05;
+  if (rung === 2) return 0.7;
+  if (rung === 3) return 0.35;
+  return 0.1;
 }
 
 function scorePopularity(candidate: Candidate): number {
@@ -786,8 +834,15 @@ function scoreCandidate(
   score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
   score += scorePublisherBoost(candidate) * 0.8;
   score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
-  score += scoreTasteMatch(candidate, options.tasteProfile) * 3.6;
-  score += scoreHypothesisAlignment(candidate, hypothesis);
+
+  const tasteAlignment = scoreTasteMatch(candidate, options.tasteProfile);
+  const queryAlignment = scoreQueryAlignment(candidate);
+  const rungBoost = scoreRungBoost(candidate);
+
+  score += tasteAlignment * 3.9;
+  score += scoreHypothesisAlignment(candidate, hypothesis) * 1.1;
+  score += queryAlignment * 2.6;
+  score += rungBoost * 1.75;
   score -= softMetadataPenalty(candidate);
 
   if (candidate.hasCover) score += 0.12;
@@ -872,6 +927,9 @@ export function finalRecommenderForDeck(
           source: candidate.source || 'unknown',
           preFilterScore,
           rejectionReason: reject || undefined,
+          tasteAlignment: scoreTasteMatch(candidate, options.tasteProfile),
+          queryAlignment: scoreQueryAlignment(candidate),
+          rungBoost: scoreRungBoost(candidate),
         },
       };
 
@@ -980,6 +1038,18 @@ export function finalRecommenderForDeck(
     }
     if (candidate.source === 'openLibrary' && currentSourceCount >= 4) {
       penalty += (currentSourceCount - 3) * 0.2;
+    }
+
+    const currentRung = Number(candidate.queryRung);
+    if (Number.isFinite(currentRung)) {
+      const selectedSameOrWorseRung = selected.filter((item) => {
+        const itemRung = Number(item.queryRung);
+        return Number.isFinite(itemRung) && itemRung >= currentRung;
+      }).length;
+
+      if (currentRung >= 2 && selectedSameOrWorseRung >= 3) {
+        penalty += (selectedSameOrWorseRung - 2) * 0.35;
+      }
     }
 
     const candidateTokens = tokenSetForCandidate(candidate);

@@ -691,6 +691,9 @@ const normalizedCandidates = [
           preFilterScore: doc.diagnostics.preFilterScore,
           postFilterScore: doc.diagnostics.postFilterScore,
           rejectionReason: doc.diagnostics.rejectionReason,
+          tasteAlignment: doc.diagnostics.tasteAlignment,
+          queryAlignment: doc.diagnostics.queryAlignment,
+          rungBoost: doc.diagnostics.rungBoost,
         }
       : undefined,
   }));
