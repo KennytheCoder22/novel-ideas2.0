@@ -141,51 +141,197 @@ function extractDocs(
     (doc: any) => doc && typeof doc === "object" && typeof doc.title === "string" && doc.title.trim()
   );
 }
-// --- NEW BLOCK (paste here) ---
-const metaBookPatterns = [
-  /\bthe .*novels of\b/,
-  /\bdevelopment of the .*novel\b/,
-  /\bhistory of\b/,
-  /\bstudy of\b/,
-  /\bguide to writing\b/,
-  /\bhow to write\b/,
-  /\bwriting .*novels\b/,
-  /\bintroduction to\b/,
-  /\bcritical\b/,
-  /\banalysis\b/,
-  /\babout\b.*\bnovels\b/,
-  /\bnovels?\b.*\bof\b/,
-];
 
-const anthologyPatterns = [
-  /\bcollected\b/,
-  /\bcollection\b/,
-  /\banthology\b/,
-  /\bselected\b/,
-  /\bcomplete works\b/,
-  /\bthree .*novels\b/,
-  /\bfour .*novels\b/,
-  /\bbest .*novels\b/,
-  /\bgreat .*novels\b/,
-];
-
-const periodicalPatterns = [
-  /\bmagazine\b/,
-  /\bjournal\b/,
-  /\breview\b/,
-  /\bweekly\b/,
-];
-
-if (
-  metaBookPatterns.some((rx) => rx.test(title)) ||
-  anthologyPatterns.some((rx) => rx.test(title)) ||
-  periodicalPatterns.some((rx) => rx.test(title))
-) {
-  return false;
+function normalizeText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(normalizeText).join(" ").toLowerCase();
+  if (value == null) return "";
+  return String(value).toLowerCase();
 }
-// --- END NEW BLOCK ---
 
-return hasPositiveFictionSignal;
+function collectCategoryText(doc: any): string {
+  return [
+    normalizeText(doc?.categories),
+    normalizeText(doc?.subjects),
+    normalizeText(doc?.subject),
+    normalizeText(doc?.genre),
+    normalizeText(doc?.genres),
+    normalizeText(doc?.volumeInfo?.categories),
+    normalizeText(doc?.volumeInfo?.subjects),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function collectDescriptionText(doc: any): string {
+  return [
+    normalizeText(doc?.description),
+    normalizeText(doc?.subtitle),
+    normalizeText(doc?.notes),
+    normalizeText(doc?.first_sentence),
+    normalizeText(doc?.excerpt),
+    normalizeText(doc?.volumeInfo?.description),
+    normalizeText(doc?.volumeInfo?.subtitle),
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function looksLikeFictionCandidate(doc: any): boolean {
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const categories = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const author = normalizeText(
+    doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
+  );
+  const combined = [title, categories, description, author].filter(Boolean).join(" ");
+
+  const hardRejectTitlePatterns = [
+    /\bguide\b/,
+    /\bcompanion\b/,
+    /\banalysis\b/,
+    /\bcritic(?:ism|al)\b/,
+    /\bintroduction to\b/,
+    /\bsource\s*book\b/,
+    /\bhandbook\b/,
+    /\bmanual\b/,
+    /\breference\b/,
+    /\bcatalog(?:ue)?\b/,
+    /\bencyclopedia\b/,
+    /\banthology\b/,
+    /\bcollection\b/,
+    /\bessays?\b/,
+    /\babout the author\b/,
+    /\bpublishers?\s+weekly\b/,
+    /\bjournal\b/,
+    /\bmagazine\b/,
+    /\bnewsweek\b/,
+    /\bvoice of youth advocates\b/,
+    /\btalking books?\b/,
+    /\bbook dealers?\b/,
+    /\bcontemporary authors\b/,
+    /\bright book,\s*right time\b/,
+    /\bvideo source book\b/,
+    /\btopics\b/,
+    /\byoung adult fiction index\b/,
+    /\bbooks for tired eyes\b/,
+    /\bkindle cash machine\b/,
+    /\bcareers? for\b/,
+    /\bpresenting young adult\b/,
+    /\bsourcebook\b/,
+    /\bbibliograph(?:y|ies)\b/,
+    /\brevision series\b/,
+    /\bthe .*novels of\b/,
+    /\bdevelopment of the .*novel\b/,
+    /\bhistory of\b/,
+    /\bstudy of\b/,
+    /\bguide to writing\b/,
+    /\bhow to write\b/,
+    /\bwriting .*novels\b/,
+    /\babout\b.*\bnovels\b/,
+    /\bnovels?\b.*\bof\b/,
+    /\bcollected\b/,
+    /\bselected\b/,
+    /\bcomplete works\b/,
+    /\bthree .*novels\b/,
+    /\bfour .*novels\b/,
+    /\bbest .*novels\b/,
+    /\bgreat .*novels\b/,
+  ];
+
+  const hardRejectCategoryPatterns = [
+    /\bliterary criticism\b/,
+    /\bstudy aids?\b/,
+    /\breference\b/,
+    /\blanguage arts\b/,
+    /\bbibliograph(?:y|ies)\b/,
+    /\beducation\b/,
+    /\bbooks and reading\b/,
+    /\bauthors?\b/,
+    /\bpublishing\b/,
+    /\blibraries\b/,
+    /\bbooksellers?\b/,
+    /\bperiodicals?\b/,
+    /\bessays?\b/,
+    /\bcriticism\b/,
+    /\bnonfiction\b/,
+    /\bbiography\b/,
+    /\bmemoir\b/,
+  ];
+
+  const hardRejectDescriptionPatterns = [
+    /\bexplores?\b/,
+    /\bexamines?\b/,
+    /\banalyzes?\b/,
+    /\bguide to\b/,
+    /\bintroduction to\b/,
+    /\breference for\b/,
+    /\bresource for\b/,
+    /\bhow to\b/,
+    /\blearn how to\b/,
+    /\bwritten for students\b/,
+    /\btextbook\b/,
+    /\bworkbook\b/,
+    /\bstudy guide\b/,
+    /\bcritical\b/,
+    /\bessays?\b/,
+    /\bresearch\b/,
+  ];
+
+  const fictionPositivePatterns = [
+    /\bfiction\b/,
+    /\bnovel\b/,
+    /\bthriller\b/,
+    /\bmystery\b/,
+    /\bcrime\b/,
+    /\bdetective\b/,
+    /\bsuspense\b/,
+    /\bpsychological\b/,
+    /\bmurder\b/,
+    /\bserial killer\b/,
+    /\binvestigation\b/,
+    /\bpolice\b/,
+    /\binspector\b/,
+    /\bprivate investigator\b/,
+    /\bfollows\b/,
+    /\btells the story\b/,
+    /\bstory of\b/,
+    /\bwhen\b.*\bdiscovers?\b/,
+    /\bmanga\b/,
+    /\bgraphic novel\b/,
+    /\bcomic\b/,
+  ];
+
+  const obviousReferenceSeriesPatterns = [
+    /\bpublishers?\s+weekly\b/,
+    /\bnewsweek\b/,
+    /\bcontemporary authors\b/,
+    /\babout the author\b/,
+    /\bsource book\b/,
+    /\btalking book\b/,
+    /\btopics\b/,
+    /\bguide\b/,
+    /\bhandbook\b/,
+    /\bcatalog(?:ue)?\b/,
+    /\bmagazine\b/,
+    /\bjournal\b/,
+    /\breview\b/,
+    /\bweekly\b/,
+  ];
+
+  if (!title) return false;
+
+  if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
+  if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
+  if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
+  if (obviousReferenceSeriesPatterns.some((rx) => rx.test(combined))) return false;
+
+  const hasPositiveFictionSignal = fictionPositivePatterns.some(
+    (rx) => rx.test(title) || rx.test(categories) || rx.test(description)
+  );
+
+  return hasPositiveFictionSignal;
+}
+
 function sourceForDoc(doc: any, fallbackSource: CandidateSource): CandidateSource {
   return doc?.source === "googleBooks" ||
     doc?.source === "openLibrary" ||
