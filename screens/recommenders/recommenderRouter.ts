@@ -237,7 +237,7 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\barmchair detective\b/,
     /\bmovie maker\b/,
     /\bclassic detective novels?\b/,
-    /\bmystery && detective novels?\b/,
+    /\bmystery and detective novels?\b/,
     /\bdetective novels?\b/,
     /\birish detective novel\b/,
   ];
@@ -249,7 +249,7 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\blanguage arts\b/,
     /\bbibliograph(?:y|ies)\b/,
     /\beducation\b/,
-    /\bbooks && reading\b/,
+    /\bbooks and reading\b/,
     /\bauthors?\b/,
     /\bpublishing\b/,
     /\blibraries\b/,
@@ -465,7 +465,7 @@ async function fetchBothEngines(
     :
     null;
 
-  const googleDocs = = dedupeDocs(extractDocs(google, "googleBooks"));
+  const googleDocs = dedupeDocs(extractDocs(google, "googleBooks"));
   const openLibraryDocs = dedupeDocs(extractDocs(openLibrary, "openLibrary"));
   const kitsuDocs = dedupeDocs(extractDocs(kitsu, "kitsu"));
   const gcdDocs = dedupeDocs(extractDocs(gcd, "gcd"));
