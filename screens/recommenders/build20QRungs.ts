@@ -49,11 +49,11 @@ function hasAny(values: string[] | undefined, patterns: RegExp[]): boolean {
 
 function audiencePhrase(ageBand?: string | null): string {
   const band = normalizePhrase(ageBand || "");
-  if (band === "adult") return "adult fiction";
-  if (band === "teen") return "young adult fiction";
-  if (band === "pre-teen") return "middle grade fiction";
-  if (band === "kids") return "juvenile fiction";
-  return "adult fiction";
+  if (band === "adult") return "";
+  if (band === "teen") return "young adult";
+  if (band === "pre-teen") return "middle grade";
+  if (band === "kids") return "juvenile";
+  return "";
 }
 
 function canonicalFamily(intent: QueryIntent): Family {
@@ -256,29 +256,29 @@ function deriveSecondaryForRung(primary: string | null, family: Family, rungInde
   if (!p) return null;
 
   if (family === "thriller_family") {
-    if (rungIndex === 0) return "adult crime fiction";
-    if (rungIndex === 1) return "adult suspense fiction";
-    if (rungIndex === 2) return "murder investigation";
-    if (rungIndex === 3) return "adult mystery fiction";
+    if (rungIndex === 0) return "novel";
+    if (rungIndex === 1) return "murder investigation";
+    if (rungIndex === 2) return "novel";
+    if (rungIndex === 3) return "suspense";
   }
 
   if (family === "speculative_family") {
     if (rungIndex === 0) return "novel";
-    if (rungIndex === 1) return "adult speculative fiction";
+    if (rungIndex === 1) return "speculative fiction";
     if (rungIndex === 2) return "novel";
     if (rungIndex === 3) return "fiction";
   }
 
   if (family === "romance_family") {
-    if (rungIndex === 0) return "adult romance novel";
-    if (rungIndex === 1) return "relationship fiction";
+    if (rungIndex === 0) return "novel";
+    if (rungIndex === 1) return "romance";
     if (rungIndex === 2) return "love story";
-    if (rungIndex === 3) return "adult fiction";
+    if (rungIndex === 3) return "fiction";
   }
 
   if (family === "historical_family") {
     if (rungIndex === 0) return "novel";
-    if (rungIndex === 1) return "adult fiction";
+    if (rungIndex === 1) return "fiction";
     if (rungIndex === 2) return "historical mystery";
     if (rungIndex === 3) return "period fiction";
   }
@@ -286,14 +286,35 @@ function deriveSecondaryForRung(primary: string | null, family: Family, rungInde
   return rungIndex === 0 ? "novel" : "fiction";
 }
 
-export function rungToPreviewQuery(rung: StructuredFetchRung): string {
-  return uniqOrdered([
-    ...rung.themes.slice(0, 2),
+function ensureNovelAnchor(parts: string[]): string[] {
+  const joined = parts.join(" ");
+  if (/\b(novel|fiction|thriller|mystery|detective|romance|fantasy|horror|science fiction)\b/i.test(joined)) {
+    return parts;
+  }
+  return [...parts, "novel"];
+}
+
+function marketFacingRungParts(rung: StructuredFetchRung): string[] {
+  if (rung.family === "thriller_family") {
+    const thrillerParts = uniqOrdered([
+      rung.primary,
+      rung.secondary,
+      rung.audience,
+    ]).filter(Boolean);
+
+    return ensureNovelAnchor(thrillerParts);
+  }
+
+  return ensureNovelAnchor(uniqOrdered([
+    ...rung.themes.slice(0, 1),
     rung.primary,
     rung.secondary,
     rung.audience,
-    "novel",
-  ]).join(" ").trim();
+  ]).filter(Boolean));
+}
+
+export function rungToPreviewQuery(rung: StructuredFetchRung): string {
+  return marketFacingRungParts(rung).join(" ").trim();
 }
 
 export function build20QRungs(intent: QueryIntent, maxRungs = 4): StructuredFetchRung[] {

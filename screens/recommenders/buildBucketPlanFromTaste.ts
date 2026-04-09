@@ -83,6 +83,38 @@ function filterGenresToFamily(queries: string[], family: Family): string[] {
   return queries.filter((query) => isFamilyCompatibleQuery(query, family));
 }
 
+function mainstreamHarvestQueries(family: Family, deckKey: RecommenderInput["deckKey"], genreFragments: string[]): string[] {
+  const ageBand = ageBandForDeck(deckKey);
+
+  if (family === "thriller_family") {
+    const queries = [
+      "psychological thriller novel",
+      "crime thriller novel",
+      "detective mystery novel",
+    ];
+
+    if (genreFragments.some((q) => /\bdystopian\b/i.test(q))) {
+      queries.unshift("dystopian thriller novel");
+    }
+
+    if (ageBand === "teen") {
+      return dedupeQueries(queries.map((q) => `young adult ${q}`)).slice(0, 4);
+    }
+
+    return dedupeQueries(queries).slice(0, 4);
+  }
+
+  if (family === "speculative_family") {
+    if (ageBand === "teen") {
+      return ["young adult science fiction novel", "young adult fantasy novel"];
+    }
+    return ["science fiction novel", "fantasy novel"];
+  }
+
+  return [];
+}
+
+
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
   const genreKeys = topKeys(signals.genre, 5);
@@ -119,6 +151,12 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     exclusions: [],
   }, 4);
 
-  const queries = dedupeQueries(rungs.map((r) => rungToPreviewQuery(r)));
-  return { rungs, queries, preview: queries[0] || "", strategy: `20q-mature-fetch:${family}` };
+  const rungQueries = dedupeQueries(rungs.map((r) => rungToPreviewQuery(r)));
+  const harvestQueries = mainstreamHarvestQueries(family, input.deckKey, genreFragments);
+  const queries = dedupeQueries([
+    ...harvestQueries,
+    ...rungQueries,
+  ]).slice(0, 6);
+
+  return { rungs, queries, preview: queries[0] || "", strategy: `20q-mature-fetch:${family}:mainstream-harvest` };
 }
