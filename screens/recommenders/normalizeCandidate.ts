@@ -314,6 +314,65 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   return hasPositiveFictionSignal;
 }
 
+
+function isClearlyNotABookCandidate(candidate: Candidate): boolean {
+  const title = String(candidate?.title || "").toLowerCase().trim();
+  const publisher = String(candidate?.publisher || "").toLowerCase().trim();
+  const subjects = Array.isArray(candidate?.subjects)
+    ? candidate.subjects.join(" ").toLowerCase()
+    : "";
+  const description = String(candidate?.description || "").toLowerCase();
+
+  if (!title || title.length < 3) return true;
+
+  const hardRejectTitlePatterns = [
+    /\bencyclop(a|e)dia\b/,
+    /\bbooklist\b/,
+    /\bliterary supplement\b/,
+    /\bnew statesman\b/,
+    /\bamerican book publishing record\b/,
+    /\bquill\s*&\s*quire\b/,
+    /\bbookmen\b/,
+    /\bmagazine\b/,
+    /\bjournal\b/,
+    /\brecord\b/,
+    /\bperiodical\b/,
+    /\breview\b/,
+    /\btimes literary supplement\b/,
+    /\ba\.l\.a\. booklist\b/,
+    /\bbook dealers\b/,
+    /\bpublishers? weekly\b/,
+  ];
+
+  const hardRejectPublisherPatterns = [
+    /\bencyclop(a|e)dia britannica\b/,
+    /\bnew statesman\b/,
+    /\btimes literary supplement\b/,
+    /\bbooklist\b/,
+  ];
+
+  const genericPublicationTitle =
+    /^[a-z\s&.\-]{1,25}$/.test(title) &&
+    !/\b(novel|story|mystery|thriller|crime|fiction|detective|romance|fantasy|horror|manga|comic)\b/.test(title);
+
+  const metadataLooksReference =
+    /\bperiodicals?\b/.test(subjects) ||
+    /\bliterary criticism\b/.test(subjects) ||
+    /\breference\b/.test(subjects) ||
+    /\bmagazines?\b/.test(subjects) ||
+    /\bjournal\b/.test(subjects) ||
+    /\breview\b/.test(subjects) ||
+    /\bencyclop(a|e)dia\b/.test(description);
+
+  if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return true;
+  if (hardRejectPublisherPatterns.some((rx) => rx.test(publisher))) return true;
+  if (genericPublicationTitle) return true;
+  if (metadataLooksReference) return true;
+
+  return false;
+}
+
+
 function hasCover(rawDoc: any): boolean {
   if (rawDoc?.cover_i) return true;
   const imageLinks = rawDoc?.imageLinks ?? rawDoc?.volumeInfo?.imageLinks;
@@ -421,5 +480,6 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
 export function normalizeCandidates(rawDocs: RecommendationDoc[], source: CandidateSource): Candidate[] {
   return (Array.isArray(rawDocs) ? rawDocs : [])
     .filter((rawDoc) => looksLikeFictionCandidate(rawDoc))
-    .map((rawDoc) => normalizeCandidate(rawDoc, source));
+    .map((rawDoc) => normalizeCandidate(rawDoc, source))
+    .filter((candidate) => !isClearlyNotABookCandidate(candidate));
 }
