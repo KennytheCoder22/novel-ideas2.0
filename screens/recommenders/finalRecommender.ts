@@ -120,6 +120,12 @@ const PLOT_SIGNAL_PATTERNS = [
 ];
 
 const REFERENCE_OR_CRITICISM_TITLE_PATTERNS = [
+  /\bwhat do i read next\b/i,
+  /\bwhodunit\b/i,
+  /\barmchair detective\b/i,
+  /\bfiction index\b/i,
+  /\bbest new horror\b/i,
+  /\bscience fiction[, ]+fantasy[, ]+&?\s*horror\b/i,
   /\bindex\b/i,
   /\bbibliograph(y|ies)\b/i,
   /\bencyclopedia\b/i,
@@ -1095,6 +1101,17 @@ export function finalRecommenderForDeck(
 
     const currentRung = Number(candidate.queryRung);
     if (Number.isFinite(currentRung)) {
+      const betterRungExists = selected.some((item) => {
+        const itemRung = Number(item.queryRung);
+        return Number.isFinite(itemRung) && itemRung < currentRung;
+      });
+
+      if (betterRungExists && currentRung >= 3) {
+        penalty += 1.25;
+      }
+      if (betterRungExists && currentRung === 2) {
+        penalty += 0.35;
+      }
       const selectedSameOrWorseRung = selected.filter((item) => {
         const itemRung = Number(item.queryRung);
         return Number.isFinite(itemRung) && itemRung >= currentRung;
