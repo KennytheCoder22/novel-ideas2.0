@@ -56,7 +56,6 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   ]);
 
   return {
-    debugRungStats: buildRungDiagnostics(normalizedCandidates),
     queries,
     preview:
       descriptivePlan?.preview ||
@@ -105,7 +104,6 @@ function extractDocs(
         .map((item: any) => {
           if (!item?.doc) return null;
           return {
-    debugRungStats: buildRungDiagnostics(normalizedCandidates),
             ...item.doc,
             source: item.doc?.source || fallbackSource,
           };
@@ -386,7 +384,6 @@ function hasHardcoverFailureShape(value: unknown): boolean {
 
 function attachHardcoverFailureMarker(doc: RecommendationDoc): RecommendationDoc {
   return {
-    debugRungStats: buildRungDiagnostics(normalizedCandidates),
     ...doc,
     hardcover: {
       ...(doc as any)?.hardcover,
@@ -409,7 +406,6 @@ async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<Recommend
         if (!data) return doc;
 
         return {
-    debugRungStats: buildRungDiagnostics(normalizedCandidates),
           ...doc,
           hardcover: {
             rating: data.rating,
@@ -489,8 +485,7 @@ async function fetchBothEngines(
     ...gcdDocs,
   ]);
 
-  return {
-    debugRungStats: buildRungDiagnostics(normalizedCandidates), google, openLibrary, kitsu, gcd, mergedDocs };
+  return { google, openLibrary, kitsu, gcd, mergedDocs };
 }
 
 export async function getRecommendations(
@@ -554,12 +549,13 @@ const gcdDocsEnriched = enrichedDocs.filter(
   });
 
   
+
 function buildRungDiagnostics(candidates: any[]) {
   const byRung: Record<string, number> = {};
   const byRungSource: Record<string, Record<string, number>> = {};
 
   for (const c of candidates) {
-    const rung = String(c?.rawDoc?.queryRung ?? "unknown");
+    const rung = String(c?.rawDoc?.queryRung ?? c?.queryRung ?? "unknown");
     const source = c?.source ?? "unknown";
 
     byRung[rung] = (byRung[rung] || 0) + 1;
@@ -569,7 +565,6 @@ function buildRungDiagnostics(candidates: any[]) {
   }
 
   return {
-    debugRungStats: buildRungDiagnostics(normalizedCandidates),
     byRung,
     byRungSource,
     total: candidates.length,
@@ -662,7 +657,6 @@ const normalizedCandidates = [
   };
 
   return {
-    debugRungStats: buildRungDiagnostics(normalizedCandidates),
     engineId: preferredEngine,
     engineLabel,
     deckKey: input.deckKey,
