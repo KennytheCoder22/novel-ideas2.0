@@ -581,6 +581,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [showRating, setShowRating] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [showSourceCounts, setShowSourceCounts] = useState(false);
+  const [showCandidatePool, setShowCandidatePool] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
   const [profileOverridesByLane, setProfileOverridesByLane] = useState<Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>>({});
   const [ratingPreview, setRatingPreview] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
@@ -590,6 +591,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
+  const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -836,7 +838,9 @@ export default function SwipeDeckScreen(props: Props) {
     setShowRating(false);
     setShowDebug(false);
     setShowSourceCounts(false);
+    setShowCandidatePool(false);
     setLastSourceCounts(null);
+    setLastCandidatePool([]);
     setFeedback([]);
     setSessionMoodProfile(null);
     setActiveTasteVector(null);
@@ -1099,6 +1103,7 @@ function handleLeft() {
       setRecQuery(result.builtFromQuery || "");
       setRecEngineLabel(result.engineLabel || "");
       setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }>) || null);
+      setLastCandidatePool(Array.isArray((result as any)?.debugCandidatePool) ? (result as any).debugCandidatePool : []);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes}`);
@@ -1363,6 +1368,7 @@ function handleLeft() {
   }, [cardStageHeight]);
 
   const isFirstRec = recItems.length > 0 && recIndex === 0;
+  const candidatePoolRows = Array.isArray(lastCandidatePool) ? lastCandidatePool : [];
   const sourceCountRows = [
     { key: "googleBooks", label: "Google Books" },
     { key: "openLibrary", label: "Open Library" },
@@ -1666,17 +1672,36 @@ function handleLeft() {
         </View>
       </View>
 
-      <TouchableOpacity style={styles.copyToggle} onPress={handleCopySessionReport}>
-        <Text style={styles.debugToggleText}>Copy</Text>
-      </TouchableOpacity>
+      <View style={styles.tempButtonsWrap}>
+        <View style={styles.tempButtonsRow}>
+          <TouchableOpacity style={styles.copyToggle} onPress={handleCopySessionReport}>
+            <Text style={styles.debugToggleText}>Copy</Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity style={styles.rerunToggle} onPress={handleRerunExactQuery}>
-        <Text style={styles.debugToggleText}>Re-run</Text>
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.rerunToggle} onPress={handleRerunExactQuery}>
+            <Text style={styles.debugToggleText}>Re-run</Text>
+          </TouchableOpacity>
 
-      <TouchableOpacity style={styles.tuneToggle} onPress={() => setShowEqualizer(true)}>
-        <Text style={styles.debugToggleText}>Tune</Text>
-      </TouchableOpacity>
+          <TouchableOpacity style={styles.tuneToggle} onPress={() => setShowEqualizer(true)}>
+            <Text style={styles.debugToggleText}>Tune</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.countsToggle} onPress={() => setShowSourceCounts((v) => !v)}>
+            <Text style={styles.debugToggleText}>Counts</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.debugToggle} onPress={() => setShowDebug((v) => !v)}>
+            <Text style={styles.debugToggleText}>Debug</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.tempButtonsRowSecondary}>
+          <TouchableOpacity style={styles.poolToggle} onPress={() => setShowCandidatePool((v) => !v)}>
+            <Text style={styles.debugToggleText}>Pool</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
       <RecommenderEqualizerPanel
         deckKey={deckKey}
         visible={showEqualizer}
@@ -1686,9 +1711,6 @@ function handleLeft() {
         }}
       />
 
-      <TouchableOpacity style={styles.countsToggle} onPress={() => setShowSourceCounts((v) => !v)}>
-        <Text style={styles.debugToggleText}>Counts</Text>
-      </TouchableOpacity>
       {showSourceCounts && (
         <View style={styles.countsPanel}>
           <View style={styles.debugCard}>
@@ -1719,9 +1741,34 @@ function handleLeft() {
         </View>
       )}
 
-      <TouchableOpacity style={styles.debugToggle} onPress={() => setShowDebug((v) => !v)}>
-        <Text style={styles.debugToggleText}>Debug</Text>
-      </TouchableOpacity>
+      {showCandidatePool && (
+        <View style={styles.poolPanel}>
+          <View style={styles.debugCard}>
+            <View style={styles.debugHeader}>
+              <Text style={styles.debugTitle}>Candidate pool</Text>
+              <TouchableOpacity onPress={() => setShowCandidatePool(false)} style={styles.debugCloseBtn}>
+                <Text style={styles.debugCloseText}>×</Text>
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
+              {candidatePoolRows.length > 0 ? (
+                candidatePoolRows.map((item: any, index: number) => (
+                  <View key={`${item?.source || 'unknown'}-${item?.title || 'untitled'}-${index}`} style={styles.countsRow}>
+                    <Text style={styles.debugValue}>{index + 1}. {item?.title || '(untitled)'}</Text>
+                    <Text style={styles.debugValueMuted}>{item?.author || 'Unknown author'}</Text>
+                    <Text style={styles.debugValueMuted}>
+                      {item?.source || 'unknown'}{typeof item?.score === 'number' ? ` • ${item.score.toFixed(3)}` : ''}
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.debugValueMuted}>No candidate pool captured.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      )}
+
       {showDebug && (
         <View style={styles.debugPanel}>
           <View style={styles.debugCard}>
@@ -1940,59 +1987,68 @@ const styles = StyleSheet.create({
 
   recMeta: { marginTop: 10, alignItems: "center" },
 
-  copyToggle: {
+  tempButtonsWrap: {
     position: "absolute",
-    right: 252,
+    right: 16,
     bottom: 16,
+    alignItems: "flex-end",
+    gap: 8,
+    zIndex: 40,
+  },
+  tempButtonsRow: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+  },
+  tempButtonsRowSecondary: {
+    flexDirection: "row",
+    gap: 8,
+    alignItems: "center",
+    justifyContent: "flex-end",
+  },
+
+  copyToggle: {
     backgroundColor: "#7c3aed",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    zIndex: 40,
   },
   rerunToggle: {
-    position: "absolute",
-    right: 164,
-    bottom: 16,
     backgroundColor: "#b45309",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    zIndex: 40,
   },
   tuneToggle: {
-    position: "absolute",
-    right: 172,
-    bottom: 16,
     backgroundColor: "#0f766e",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    zIndex: 40,
   },
   countsToggle: {
-    position: "absolute",
-    right: 92,
-    bottom: 16,
     backgroundColor: "#0369a1",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    zIndex: 40,
   },
   debugToggle: {
-    position: "absolute",
-    right: 16,
-    bottom: 16,
     backgroundColor: "#2b6cff",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
-    zIndex: 40,
+  },
+  poolToggle: {
+    backgroundColor: "#4f46e5",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
   debugToggleText: { color: "#fff", fontWeight: "900" },
-  countsPanel: { position: "absolute", right: 16, bottom: 56, width: 320, maxWidth: "90%", zIndex: 50 },
-  debugPanel: { position: "absolute", right: 16, bottom: 56, width: 320, maxWidth: "90%", zIndex: 50 },
+  countsPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
+  poolPanel: { position: "absolute", right: 16, bottom: 104, width: 360, maxWidth: "92%", zIndex: 50 },
+  debugPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
   debugCard: {
     borderRadius: 14,
     borderWidth: 1,
