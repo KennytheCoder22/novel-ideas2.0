@@ -37,19 +37,16 @@ function deckKeyToDomainMode(deckKey: DeckKey): RecommendationResult["domainMode
 function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
   const parts: string[] = [];
 
-  // Themes (top differentiators)
-  if (Array.isArray(rung.themes)) {
-    parts.push(...rung.themes.slice(0, 2));
+  // Google Books prefers short, canonical queries over expressive multi-signal strings.
+  if (rung.primary) parts.push(rung.primary);
+
+  // Add one differentiator, not the whole hypothesis payload.
+  if (Array.isArray(rung.themes) && rung.themes.length > 0) {
+    parts.unshift(rung.themes[0]);
+  } else if (rung.secondary) {
+    parts.push(rung.secondary);
   }
 
-  // Core hypothesis
-  if (rung.primary) parts.push(rung.primary);
-  if (rung.secondary) parts.push(rung.secondary);
-
-  // Audience signal
-  if (rung.audience) parts.push(rung.audience);
-
-  // Anchor
   parts.push("novel");
 
   return parts
