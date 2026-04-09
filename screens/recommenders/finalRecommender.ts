@@ -109,6 +109,43 @@ const CATALOG_LIKE_TITLE_PATTERNS = [
   /\bstationer\b/i,
 ];
 
+const FICTION_SHELF_POSITIVE_PATTERNS = [
+  /\b(thriller|mystery|crime|detective|suspense|psychological thriller|police procedural|murder|serial killer|whodunit|investigation)\b/i,
+  /\b(novel|fiction)\b/i,
+];
+
+const PLOT_SIGNAL_PATTERNS = [
+  /\b(murder|investigation|detective|killer|police|case|missing|disappearance|conspiracy|survival|escape|pursuit|suspect|whodunit|crime|thriller|suspense)\b/i,
+  /\b(protagonist|hero|heroine|journalist|inspector|sleuth|woman|man|family|couple|girl|boy)\b/i,
+];
+
+const REFERENCE_OR_CRITICISM_TITLE_PATTERNS = [
+  /\bindex\b/i,
+  /\bbibliograph(y|ies)\b/i,
+  /\bencyclopedia\b/i,
+  /\bhandbook\b/i,
+  /\bcompanion\b/i,
+  /\bguide\b/i,
+  /\bstudy\b/i,
+  /\bcriticism\b/i,
+  /\bcritical\b/i,
+  /\banalysis\b/i,
+  /\bhistory and criticism\b/i,
+  /\bliterary criticism\b/i,
+  /\breader'?s guide\b/i,
+  /\bteacher'?s guide\b/i,
+  /\bstudent edition\b/i,
+  /\bsummary\b/i,
+  /\bmanual\b/i,
+  /\btextbook\b/i,
+  /\bessays?\b/i,
+  /\breference\b/i,
+  /\bthe contemporary [a-z ]*novel\b/i,
+  /\b[a-z ]+mystery and detective novels\b/i,
+  /\b[a-z ]+detective novels?\b/i,
+  /\b[a-z ]+fiction index\b/i,
+];
+
 function normalizeKey(value: unknown): string {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -576,17 +613,33 @@ function isInstitutionalOrCatalogCandidate(candidate: Candidate): boolean {
   return false;
 }
 
+function hasReferenceOrCriticismTitle(candidate: Candidate): boolean {
+  const title = String(candidate.title || '');
+  const subtitle = String(candidate.subtitle || '');
+  const combined = `${title} ${subtitle}`.trim();
+  return REFERENCE_OR_CRITICISM_TITLE_PATTERNS.some((pattern) => pattern.test(combined));
+}
+
+function hasPlotLikeSignal(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+  return PLOT_SIGNAL_PATTERNS.some((pattern) => pattern.test(text));
+}
+
 function looksLikeActualFictionBook(candidate: Candidate): boolean {
   const text = haystack(candidate);
+  const hasShelfSignal = FICTION_SHELF_POSITIVE_PATTERNS.some((pattern) => pattern.test(text));
+  const hasSubjectGenreSignal =
+    candidate.subjects.some((s) => /\b(thriller|mystery|crime|detective|suspense|fiction|novel)\b/i.test(String(s))) ||
+    candidate.genres.some((s) => /\b(thriller|mystery|crime|detective|suspense|fiction|novel)\b/i.test(String(s)));
 
-  if (/\b(novel|fiction|thriller|mystery|crime|detective|suspense|psychological thriller|police procedural|murder)\b/i.test(text)) {
-    return true;
-  }
+  if (!hasShelfSignal && !hasSubjectGenreSignal) return false;
+  if (hasReferenceOrCriticismTitle(candidate)) return false;
 
-  if (candidate.subjects.some((s) => /\b(thriller|mystery|crime|detective|suspense)\b/i.test(String(s)))) {
-    return true;
-  }
-  if (candidate.genres.some((s) => /\b(thriller|mystery|crime|detective|suspense)\b/i.test(String(s)))) {
+  const hasNarrativeSignal = hasPlotLikeSignal(candidate);
+  const hasDescription = String(candidate.description || '').trim().length >= 80;
+
+  if (hasNarrativeSignal) return true;
+  if (hasDescription && /\b(novel|fiction)\b/i.test(text) && !/\b(criticism|analysis|guide|index|bibliograph|history and criticism|reference)\b/i.test(text)) {
     return true;
   }
 
@@ -600,12 +653,12 @@ function isUnknownAuthor(candidate: Candidate): boolean {
 
 function isSummaryOrGuide(candidate: Candidate): boolean {
   const text = haystack(candidate);
-  return SUMMARY_GUIDE_PATTERNS.some((pattern) => pattern.test(text));
+  return hasReferenceOrCriticismTitle(candidate) || SUMMARY_GUIDE_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 function isNonFictionBleed(candidate: Candidate): boolean {
   const text = haystack(candidate);
-  return NONFICTION_PATTERNS.some((pattern) => pattern.test(text));
+  return hasReferenceOrCriticismTitle(candidate) || NONFICTION_PATTERNS.some((pattern) => pattern.test(text));
 }
 
 function isHardNonFiction(candidate: Candidate): boolean {
