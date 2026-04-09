@@ -15,7 +15,6 @@ import { finalRecommenderForDeck } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
-import { build20QRungs } from "./build20QRungs";
 
 export type EngineOverride = EngineId | "auto";
 
@@ -383,6 +382,24 @@ function hasHardcoverFailureShape(value: unknown): boolean {
   }
 }
 
+
+function hardcoverLookupPriority(doc: RecommendationDoc): number {
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const categories = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const combined = [title, categories, description].filter(Boolean).join(" ");
+
+  let score = 0;
+  if (/\bnovel\b|\bfiction\b|\bthriller\b|\bmystery\b|\bcrime\b|\bdetective\b|\bsuspense\b/.test(combined)) score += 4;
+  if (/\bguide\b|\bindex\b|\breference\b|\bcriticism\b|\bencyclopedia\b|\bmagazine\b|\bjournal\b|\bbooklist\b/.test(combined)) score -= 6;
+  if (doc?.hardcover && !hasHardcoverFailureShape(doc?.hardcover)) score += 2;
+  if (Array.isArray((doc as any)?.author_name) && (doc as any).author_name.length > 0) score += 1;
+  if (typeof (doc as any)?.author === "string" && (doc as any)?.author.trim()) score += 1;
+  if ((doc as any)?.queryRung === 0) score += 2;
+  if ((doc as any)?.queryRung === 1) score += 1;
+  return score;
+}
+
 function attachHardcoverFailureMarker(doc: RecommendationDoc): RecommendationDoc {
   return {
     ...doc,
@@ -396,8 +413,17 @@ function attachHardcoverFailureMarker(doc: RecommendationDoc): RecommendationDoc
 async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<RecommendationDoc[]> {
   // Gold-standard router rule:
   // Hardcover is enrichment only. Never block, never drop, never downgrade shelf eligibility.
+  // Cap lookups to avoid 429 rate limits now that fetch runs per rung.
+  const HARDCOVER_LOOKUP_LIMIT = 12;
+
+  const indexedDocs = docs.map((doc, index) => ({ doc, index }));
+  const prioritized = [...indexedDocs].sort((a, b) => hardcoverLookupPriority(b.doc) - hardcoverLookupPriority(a.doc));
+  const selectedIndexes = new Set(prioritized.slice(0, HARDCOVER_LOOKUP_LIMIT).map((entry) => entry.index));
+
   const enriched = await Promise.all(
-    docs.map(async (doc) => {
+    indexedDocs.map(async ({ doc, index }) => {
+      if (!selectedIndexes.has(index)) return doc;
+
       try {
         const title = doc.title;
         const author = Array.isArray(doc.author_name) ? doc.author_name[0] : undefined;
@@ -503,58 +529,7 @@ export async function getRecommendations(
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
 
-  const rungs = build20QRungs({
-    ageBand:
-      input.deckKey === "adult"
-        ? "adult"
-        : input.deckKey === "ms_hs"
-        ? "teen"
-        : input.deckKey === "36"
-        ? "pre-teen"
-        : "kids",
-    subgenres: bucketPlan?.signals?.genres || [],
-    tones: bucketPlan?.signals?.tones || [],
-    themes: bucketPlan?.signals?.scenarios || [],
-  });
-
-  let google: RecommendationResult | null = null;
-  let openLibrary: RecommendationResult | null = null;
-  let kitsu: RecommendationResult | null = null;
-  let gcd: RecommendationResult | null = null;
-  const allMergedDocs: RecommendationDoc[] = [];
-
-  for (const rung of rungs) {
-    const rungInput: RecommenderInput = {
-      ...routedInput,
-      bucketPlan: {
-        ...bucketPlan,
-        queries: [rung.query],
-        preview: rung.query,
-      },
-    };
-
-    const rungResults = await fetchBothEngines(rungInput);
-
-    if (!google && rungResults.google) google = rungResults.google;
-    if (!openLibrary && rungResults.openLibrary) openLibrary = rungResults.openLibrary;
-    if (!kitsu && rungResults.kitsu) kitsu = rungResults.kitsu;
-    if (!gcd && rungResults.gcd) gcd = rungResults.gcd;
-
-    const taggedDocs = rungResults.mergedDocs.map((doc: any) => ({
-      ...doc,
-      queryRung: rung.rung,
-      queryText: rung.query,
-      diagnostics: {
-        ...(doc?.diagnostics || {}),
-        queryRung: rung.rung,
-        queryText: rung.query,
-      },
-    }));
-
-    allMergedDocs.push(...taggedDocs);
-  }
-
-  const mergedDocs = dedupeDocs(allMergedDocs);
+  const { google, openLibrary, kitsu, gcd, mergedDocs } = await fetchBothEngines(routedInput);
 
   // Hardcover enrichment is non-blocking and runs AFTER merging.
   const enrichedDocs = await enrichWithHardcover(mergedDocs);
