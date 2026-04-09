@@ -15,6 +15,7 @@ import { finalRecommenderForDeck } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
+import { build20QRungs } from "./build20QRungs";
 
 export type EngineOverride = EngineId | "auto";
 
@@ -413,12 +414,16 @@ function attachHardcoverFailureMarker(doc: RecommendationDoc): RecommendationDoc
 async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<RecommendationDoc[]> {
   // Gold-standard router rule:
   // Hardcover is enrichment only. Never block, never drop, never downgrade shelf eligibility.
-  // Cap lookups to avoid 429 rate limits now that fetch runs per rung.
+  // Cap lookups now that fetch runs per rung.
   const HARDCOVER_LOOKUP_LIMIT = 12;
 
   const indexedDocs = docs.map((doc, index) => ({ doc, index }));
-  const prioritized = [...indexedDocs].sort((a, b) => hardcoverLookupPriority(b.doc) - hardcoverLookupPriority(a.doc));
-  const selectedIndexes = new Set(prioritized.slice(0, HARDCOVER_LOOKUP_LIMIT).map((entry) => entry.index));
+  const prioritized = [...indexedDocs].sort(
+    (a, b) => hardcoverLookupPriority(b.doc) - hardcoverLookupPriority(a.doc)
+  );
+  const selectedIndexes = new Set(
+    prioritized.slice(0, HARDCOVER_LOOKUP_LIMIT).map((entry) => entry.index)
+  );
 
   const enriched = await Promise.all(
     indexedDocs.map(async ({ doc, index }) => {
@@ -529,7 +534,58 @@ export async function getRecommendations(
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
 
-  const { google, openLibrary, kitsu, gcd, mergedDocs } = await fetchBothEngines(routedInput);
+  const rungs = build20QRungs({
+    ageBand:
+      input.deckKey === "adult"
+        ? "adult"
+        : input.deckKey === "ms_hs"
+        ? "teen"
+        : input.deckKey === "36"
+        ? "pre-teen"
+        : "kids",
+    subgenres: bucketPlan?.signals?.genres || [],
+    tones: bucketPlan?.signals?.tones || [],
+    themes: bucketPlan?.signals?.scenarios || [],
+  });
+
+  let google: RecommendationResult | null = null;
+  let openLibrary: RecommendationResult | null = null;
+  let kitsu: RecommendationResult | null = null;
+  let gcd: RecommendationResult | null = null;
+  const allMergedDocs: RecommendationDoc[] = [];
+
+  for (const rung of rungs) {
+    const rungInput: RecommenderInput = {
+      ...routedInput,
+      bucketPlan: {
+        ...bucketPlan,
+        queries: [rung.query],
+        preview: rung.query,
+      },
+    };
+
+    const rungResults = await fetchBothEngines(rungInput);
+
+    if (!google && rungResults.google) google = rungResults.google;
+    if (!openLibrary && rungResults.openLibrary) openLibrary = rungResults.openLibrary;
+    if (!kitsu && rungResults.kitsu) kitsu = rungResults.kitsu;
+    if (!gcd && rungResults.gcd) gcd = rungResults.gcd;
+
+    const taggedDocs = rungResults.mergedDocs.map((doc: any) => ({
+      ...doc,
+      queryRung: rung.rung,
+      queryText: rung.query,
+      diagnostics: {
+        ...(doc?.diagnostics || {}),
+        queryRung: rung.rung,
+        queryText: rung.query,
+      },
+    }));
+
+    allMergedDocs.push(...taggedDocs);
+  }
+
+  const mergedDocs = dedupeDocs(allMergedDocs);
 
   // Hardcover enrichment is non-blocking and runs AFTER merging.
   const enrichedDocs = await enrichWithHardcover(mergedDocs);
