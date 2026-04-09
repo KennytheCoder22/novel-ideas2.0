@@ -1264,6 +1264,27 @@ function handleLeft() {
     Alert.alert("Copied", "Session report copied to clipboard.");
   }
 
+  async function handleCopyCandidatePool() {
+    if (!candidatePoolRows.length) {
+      Alert.alert("Nothing to copy", "Run recommendations first so the candidate pool can be captured.");
+      return;
+    }
+
+    const poolText = [
+      "CANDIDATE POOL",
+      ...candidatePoolRows.map((item: any, index: number) => {
+        const title = item?.title || "(untitled)";
+        const author = item?.author || "Unknown author";
+        const source = item?.source || "unknown";
+        const scorePart = typeof item?.score === "number" ? ` — score:${item.score.toFixed(3)}` : "";
+        return `${index + 1}. ${title} — ${author} — ${source}${scorePart}`;
+      }),
+    ].join("\n");
+
+    await Clipboard.setStringAsync(poolText);
+    Alert.alert("Copied", "Candidate pool copied to clipboard.");
+  }
+
   React.useEffect(() => {
     if (!isDone) return;
     if (autoSearched) return;
@@ -1696,6 +1717,10 @@ function handleLeft() {
         </View>
 
         <View style={styles.tempButtonsRowSecondary}>
+          <TouchableOpacity style={styles.copyPoolToggle} onPress={handleCopyCandidatePool}>
+            <Text style={styles.debugToggleText}>Copy Pool</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.poolToggle} onPress={() => setShowCandidatePool((v) => !v)}>
             <Text style={styles.debugToggleText}>Pool</Text>
           </TouchableOpacity>
@@ -2035,6 +2060,12 @@ const styles = StyleSheet.create({
   },
   debugToggle: {
     backgroundColor: "#2b6cff",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  copyPoolToggle: {
+    backgroundColor: "#6d28d9",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
