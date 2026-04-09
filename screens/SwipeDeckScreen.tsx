@@ -591,7 +591,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
-  const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
+  const [lastCandidatePool, setLastCandidatePool]
+  const [lastRungStats, setLastRungStats] = useState<any | null>(null); = useState<any[]>([]);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -2106,3 +2107,14 @@ const styles = StyleSheet.create({
   debugValueMuted: { color: "rgba(255,255,255,0.88)", fontSize: 12, marginTop: 2, lineHeight: 16 },
   countsRow: { marginTop: 10 },
 });
+
+
+{/* RUNG DEBUG */}
+{lastRungStats ? (
+  <View style={{ padding: 10 }}>
+    <Text>RUNG DISTRIBUTION</Text>
+    {Object.entries(lastRungStats.byRung).map(([r, c]) => (
+      <Text key={r}>Rung {r}: {c}</Text>
+    ))}
+  </View>
+) : null}
