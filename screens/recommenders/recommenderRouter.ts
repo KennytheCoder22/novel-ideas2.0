@@ -185,7 +185,7 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
     output.push(doc);
   };
 
-  # place strongest anchor early to establish trust
+ // place strongest anchor early to establish trust
   if (selectedAnchors[0]) pushUnique(selectedAnchors[0]);
 
   for (const doc of docs) {
