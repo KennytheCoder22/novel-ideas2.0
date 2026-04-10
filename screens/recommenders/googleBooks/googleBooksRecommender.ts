@@ -33,10 +33,22 @@ function isGarbageGoogleBooksCandidate(doc: any): boolean {
   if (/\b(abstracts|theses|dissertations|index|journal|proceedings|transactions|bulletin|report|yearbook|catalog|catalogue)\b/i.test(title)) return true;
   if (/\b(abstracts|theses|dissertations|proceedings|transactions|bulletin|report|catalog|catalogue)\b/i.test(text)) return true;
 
+  if (/\b(film|films|cinema|movie|movies|screen|hollywood|hitchcock)\b/i.test(text)) return true;
+  if (/\b(criticism|critical|history of|studies in|analysis)\b/i.test(text)) return true;
+  if (/\b(contemporary .* novel)\b/i.test(title)) return true;
+
   if (title.length > 140) return true;
 
   const tropeRepeats = (title.match(/thriller|romance|fantasy|mystery|suspense/gi) || []).length;
   if (tropeRepeats > 3) return true;
+
+  const seriesMatch = title.match(/\bbook\s*(\d+)\b/i);
+  if (seriesMatch) {
+    const n = parseInt(seriesMatch[1], 10);
+    if (n >= 3 && /\b(fbi|detective|crime|thriller|suspense)\b/i.test(text)) {
+      return true;
+    }
+  }
 
   if (/\b(paranormal romance|fantasy romance|urban romance|office romance)\b/i.test(text) && /\bcrime thriller|mystery thriller|psychological thriller|detective\b/i.test(text)) {
     return true;

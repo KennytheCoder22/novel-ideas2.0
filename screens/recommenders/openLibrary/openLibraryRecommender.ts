@@ -56,6 +56,11 @@ function isGarbageOpenLibraryCandidate(d: any): boolean {
   if (/\b(test|ebook|sample|preview|canary)\b/i.test(title)) return true;
   if (/\b(index|bibliography|abstracts|theses|dissertations|journal|bulletin|catalog|catalogue|report|yearbook)\b/i.test(text)) return true;
 
+  if (/\b(film|films|cinema|movie|movies|hitchcock)\b/i.test(text)) return true;
+  if (/\b(criticism|critical|history of|studies in|analysis)\b/i.test(text)) return true;
+  if (/\b(mystery and detective novels|contemporary .* detective novel|contemporary .* novel)\b/i.test(title)) return true;
+  if (/\b(detective novels?|crime fiction)\b/i.test(title) && !/\b(murder|case|detective|mystery|thriller)\b/i.test(subjects)) return true;
+
   return false;
 }
 
