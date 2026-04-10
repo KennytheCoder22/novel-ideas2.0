@@ -186,6 +186,32 @@ function supplementalAnchorQueries(query: string): string[] {
   return dedupeQueries([q, "popular fiction novel", "award winning fiction novel"]);
 }
 
+
+function isAnchorLaneGarbage(doc: any): boolean {
+  const categories = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+    ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
+  ]
+    .map((value: any) => normalizeText(value))
+    .filter(Boolean)
+    .join(" ");
+
+  const text = [
+    normalizeText(doc?.title),
+    normalizeText(doc?.subtitle),
+    normalizeText(doc?.description),
+    normalizeText(doc?.publisher),
+    normalizeText(doc?.volumeInfo?.publisher),
+    categories,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  return /\b(guide|handbook|yearbook|encyclopedia|companion|digest|review|catalog|catalogue|bibliography|writers'? market|publishing|authors?|literature|criticism|essays?|reference|popular culture|book review|new york times book review|seo|writer'?s market|masterclass)\b/i.test(text);
+}
+
 function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
   const primary = String(rung.primary || "").toLowerCase();
   const secondary = String(rung.secondary || "").toLowerCase();
@@ -332,6 +358,34 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       if (isHardSelfPublished(publisher)) return false;
       if (looksLikeGoogleBooksReference(doc)) return false;
       if (isGarbageGoogleBooksCandidate(doc)) return false;
+
+      if (laneKind === "anchor") {
+        if (isAnchorLaneGarbage(doc)) return false;
+
+        const categoryText = [
+          ...(Array.isArray(doc?.subject) ? doc.subject : []),
+          ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+          ...(Array.isArray(doc?.categories) ? doc.categories : []),
+          ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
+        ]
+          .map((value: any) => normalizeText(value))
+          .filter(Boolean)
+          .join(" ");
+
+        const anchorText = [
+          normalizeText(doc?.title),
+          normalizeText(doc?.subtitle),
+          normalizeText(doc?.description),
+          categoryText,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        if (!/\b(novel|thriller|mystery|crime|fiction|suspense)\b/.test(anchorText)) {
+          return false;
+        }
+      }
+
       return true;
     });
 

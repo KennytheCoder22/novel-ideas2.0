@@ -100,7 +100,7 @@ function buildAnchorLaneQuery(bucketPlan: any): string {
     if (queryText.includes("psychological")) return "bestselling psychological thriller novel";
     if (queryText.includes("crime")) return "bestselling crime thriller novel";
     if (queryText.includes("mystery")) return "bestselling mystery thriller novel";
-    if (queryText.includes("detective")) return "bestselling detective thriller novel";
+    if (queryText.includes("detective")) return "bestselling detective novel";
     return "bestselling thriller novel";
   }
 
