@@ -97,25 +97,24 @@ function buildAnchorLaneQuery(bucketPlan: any): string {
   const queryText = String(bucketPlan?.preview || bucketPlan?.queries?.[0] || "").toLowerCase();
 
   // Lane 90 = commercial anchor lane:
-  // titles a general reader could plausibly encounter on a front table,
-  // airport shelf, grocery spinner, or mass-market bestseller rack.
+  // keep the phrasing shelf-facing and reader-facing, not award/reference-facing.
   if (family === "thriller") {
-    if (queryText.includes("psychological")) return "bestselling psychological suspense novel";
-    if (queryText.includes("crime")) return "bestselling crime thriller novel";
-    if (queryText.includes("mystery")) return "bestselling mystery suspense novel";
-    if (queryText.includes("detective")) return "bestselling detective novel";
-    return "bestselling suspense thriller novel";
+    if (queryText.includes("psychological")) return "popular psychological suspense paperback novel";
+    if (queryText.includes("crime")) return "popular crime thriller paperback novel";
+    if (queryText.includes("mystery")) return "popular mystery suspense paperback novel";
+    if (queryText.includes("detective")) return "popular detective suspense novel";
+    return "popular suspense thriller paperback novel";
   }
 
   if (family === "speculative") {
-    if (queryText.includes("fantasy")) return "bestselling fantasy novel";
-    if (queryText.includes("horror")) return "bestselling horror novel";
-    return "bestselling science fiction novel";
+    if (queryText.includes("fantasy")) return "popular fantasy paperback novel";
+    if (queryText.includes("horror")) return "popular horror paperback novel";
+    return "popular science fiction paperback novel";
   }
 
-  if (family === "romance") return "bestselling romance novel";
-  if (family === "historical") return "bestselling historical fiction novel";
-  return "bestselling commercial fiction novel";
+  if (family === "romance") return "popular romance paperback novel";
+  if (family === "historical") return "popular historical fiction paperback novel";
+  return "popular commercial fiction paperback novel";
 }
 
 function withAnchorLane(rungs: any[], bucketPlan: any) {

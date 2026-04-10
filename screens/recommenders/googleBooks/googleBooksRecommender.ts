@@ -90,6 +90,7 @@ function isGarbageGoogleBooksCandidate(doc: any): boolean {
   if (/\b(contemporary .* novel)\b/i.test(title)) return true;
 
   if (GOOGLE_BOOKS_LIGHT_HARD_REJECT_TITLE_PAT.test(title) || GOOGLE_BOOKS_LIGHT_HARD_REJECT_TITLE_PAT.test(subtitle)) return true;
+  if (/\b(best american|year'?s best|boxed set|box set|bundle|bundles|omnibus|complete novels?|collected works|guide to writing|how to write|write a bestseller|writer'?s handbook|writers'? market|readers'? advisory|advisory guide|pocket guide|review digest)\b/i.test(title) || /\b(best american|year'?s best|boxed set|box set|bundle|bundles|omnibus|guide to writing|how to write|write a bestseller)\b/i.test(subtitle)) return true;
   if (GOOGLE_BOOKS_GENERIC_BUCKET_TITLE_PAT.test(title)) return true;
 
   if (title.length > 140) return true;
@@ -178,41 +179,41 @@ function supplementalAnchorQueries(query: string): string[] {
   const q = normalizeStoredQueryText(query);
   if (!isAnchorLaneQuery(q)) return [q];
 
-  // Lane 90 targets broad commercial shelf visibility, not awards discourse.
+  // Lane 90 should sound reader-facing and shelf-facing, not like awards/reference discourse.
   if (/psychological/.test(q) || /suspense/.test(q)) {
     return dedupeQueries([
       q,
-      "popular psychological suspense novel",
-      "bestselling suspense thriller paperback",
+      "popular psychological suspense paperback novel",
+      "popular domestic suspense novel",
       "popular suspense thriller novel",
     ]);
   }
   if (/crime/.test(q)) {
     return dedupeQueries([
       q,
-      "popular crime thriller novel",
-      "bestselling crime thriller paperback",
+      "popular crime thriller paperback novel",
       "popular crime suspense novel",
+      "popular detective thriller novel",
     ]);
   }
   if (/mystery/.test(q)) {
     return dedupeQueries([
       q,
-      "popular mystery suspense novel",
-      "bestselling mystery paperback",
+      "popular mystery suspense paperback novel",
       "popular detective novel",
+      "popular murder mystery novel",
     ]);
   }
   if (/thriller/.test(q)) {
     return dedupeQueries([
       q,
-      "popular suspense thriller novel",
-      "bestselling thriller paperback",
+      "popular suspense thriller paperback novel",
+      "popular airport thriller novel",
     ]);
   }
-  if (/fantasy/.test(q)) return dedupeQueries([q, "popular fantasy novel"]);
-  if (/science fiction/.test(q)) return dedupeQueries([q, "popular science fiction novel"]);
-  return dedupeQueries([q, "popular commercial fiction novel"]);
+  if (/fantasy/.test(q)) return dedupeQueries([q, "popular fantasy novel", "popular fantasy paperback novel"]);
+  if (/science fiction/.test(q)) return dedupeQueries([q, "popular science fiction novel", "popular science fiction paperback novel"]);
+  return dedupeQueries([q, "popular commercial fiction novel", "popular paperback novel"]);
 }
 
 

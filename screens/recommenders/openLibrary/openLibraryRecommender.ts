@@ -74,7 +74,7 @@ function looksLikeCommercialOpenLibraryAnchor(d: any): boolean {
   const year = Number(d?.first_publish_year || 0);
   const text = [title, subjects].filter(Boolean).join(" | ");
 
-  if (/\b(anthology|collection|stories of the year|stories of the century|essays|criticism|bibliography|index|yearbook|catalog|review)\b/i.test(text)) return false;
+  if (/\b(best american|year'?s best|anthology|collection|stories of the year|stories of the century|boxed set|box set|bundle|omnibus|guide|handbook|writers?|authors?|market|essays|criticism|bibliography|index|yearbook|catalog|review)\b/i.test(text)) return false;
   if (year && year < 1975) return false;
   return /\b(novel|thriller|mystery|crime|suspense|fiction|detective)\b/i.test(text);
 }
