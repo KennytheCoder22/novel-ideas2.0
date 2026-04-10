@@ -177,13 +177,13 @@ function isAnchorLaneQuery(query: string): boolean {
 function supplementalAnchorQueries(query: string): string[] {
   const q = normalizeStoredQueryText(query);
   if (!isAnchorLaneQuery(q)) return [q];
-  if (/psychological/.test(q)) return dedupeQueries([q, "popular psychological thriller novel", "award winning psychological thriller novel"]);
-  if (/crime/.test(q)) return dedupeQueries([q, "popular crime thriller novel", "award winning crime thriller novel"]);
-  if (/mystery/.test(q)) return dedupeQueries([q, "popular mystery thriller novel", "award winning mystery thriller novel"]);
-  if (/thriller/.test(q)) return dedupeQueries([q, "popular thriller novel", "award winning thriller novel"]);
-  if (/fantasy/.test(q)) return dedupeQueries([q, "popular fantasy novel", "award winning fantasy novel"]);
-  if (/science fiction/.test(q)) return dedupeQueries([q, "popular science fiction novel", "award winning science fiction novel"]);
-  return dedupeQueries([q, "popular fiction novel", "award winning fiction novel"]);
+  if (/psychological/.test(q)) return dedupeQueries([q, "popular psychological thriller novel"]);
+  if (/crime/.test(q)) return dedupeQueries([q, "popular crime thriller novel"]);
+  if (/mystery/.test(q)) return dedupeQueries([q, "popular mystery thriller novel"]);
+  if (/thriller/.test(q)) return dedupeQueries([q, "popular thriller novel"]);
+  if (/fantasy/.test(q)) return dedupeQueries([q, "popular fantasy novel"]);
+  if (/science fiction/.test(q)) return dedupeQueries([q, "popular science fiction novel"]);
+  return dedupeQueries([q, "popular fiction novel"]);
 }
 
 
@@ -209,7 +209,10 @@ function isAnchorLaneGarbage(doc: any): boolean {
     .filter(Boolean)
     .join(" ");
 
-  return /\b(guide|handbook|yearbook|encyclopedia|companion|digest|review|catalog|catalogue|bibliography|writers'? market|publishing|authors?|literature|criticism|essays?|reference|popular culture|book review|new york times book review|seo|writer'?s market|masterclass)\b/i.test(text);
+  const title = normalizeText(doc?.title);
+  if (/\b(guide|handbook|yearbook|encyclopedia|digest|review|catalog|bibliography|writers?|authors?|market|masterclass|best books|best fiction|year in review)\b/i.test(title)) return true;
+
+  return /\b(publishing|literature|criticism|essays?|reference|popular culture|book review|seo)\b/i.test(text);
 }
 
 function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
