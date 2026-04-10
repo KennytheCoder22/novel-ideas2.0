@@ -5,6 +5,9 @@ import { build20QRungs, rungToPreviewQuery } from "./build20QRungs";
 
 type Family = "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
 
+const THRILLER_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance)\b/i;
+const THRILLER_CORE_TERMS = /\b(crime|mystery|thriller|detective|psychological thriller|investigation|noir|procedural|serial killer|domestic thriller)\b/i;
+
 function topKeys(obj: Record<string, number>, limit: number): string[] {
   return Object.entries(obj)
     .filter(([, score]) => score > 0.05)
@@ -42,7 +45,7 @@ function familyForGenres(genreKeys: string[]): Family {
   return "general_family";
 }
 function familyDefaults(family: Family): string[] {
-  if (family === "thriller_family") return ["crime thriller novel", "detective mystery novel", "mystery thriller novel"];
+  if (family === "thriller_family") return ["dark crime thriller novel", "dark psychological thriller novel", "dark mystery thriller novel"];
   if (family === "speculative_family") return ["science fiction novel", "fantasy novel", "horror novel"];
   if (family === "romance_family") return ["romance novel"];
   if (family === "historical_family") return ["historical fiction novel"];
@@ -69,7 +72,8 @@ function isFamilyCompatibleQuery(query: string, family: Family): boolean {
 
   if (family === "thriller_family") {
     if (/\bscience fiction\b|\bfantasy\b|\bhorror\b|\bromance\b|\bhistorical fiction\b/.test(q)) return false;
-    return /\bcrime\b|\bmystery\b|\bthriller\b|\bdetective\b|\bsuspense\b/.test(q);
+    if (THRILLER_DRIFT_TERMS.test(q)) return false;
+    return THRILLER_CORE_TERMS.test(q);
   }
   if (family === "speculative_family") {
     if (/\bcrime thriller\b|\bdetective mystery\b|\bmystery thriller\b/.test(q)) return false;
@@ -81,6 +85,31 @@ function isFamilyCompatibleQuery(query: string, family: Family): boolean {
 }
 function filterGenresToFamily(queries: string[], family: Family): string[] {
   return queries.filter((query) => isFamilyCompatibleQuery(query, family));
+}
+
+function tightenThrillerGenreFragments(queries: string[]): string[] {
+  const tightened = queries
+    .map((query) => String(query || "").replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .filter((query) => !THRILLER_DRIFT_TERMS.test(query))
+    .map((query) => {
+      const lower = query.toLowerCase();
+      const withoutSuspense = lower.replace(/\bsuspense\b/g, "").trim();
+      if (/\bsuspense\b/.test(lower) && !THRILLER_CORE_TERMS.test(withoutSuspense)) {
+        return "dark mystery thriller novel";
+      }
+      if (/\bsurvival thriller\b/.test(lower)) {
+        return "dark mystery thriller novel";
+      }
+      return query;
+    });
+
+  return dedupeQueries([
+    ...tightened,
+    "dark crime thriller novel",
+    "dark psychological thriller novel",
+    "dark mystery thriller novel",
+  ]);
 }
 
 function mainstreamHarvestQueries(
@@ -96,7 +125,7 @@ function mainstreamHarvestQueries(
   const dominant = (genreFragments[0] || "").toLowerCase().trim();
 
   if (family === "thriller_family") {
-    const subtype = dominant || "psychological thriller novel";
+    const subtype = dominant || "dark psychological thriller novel";
     return dedupeQueries([
       withAudience(`bestselling ${subtype}`),
       withAudience(`popular ${subtype}`),
@@ -149,16 +178,20 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const family = familyForGenres(genreKeys);
   const softGenreKeys = softFamilyGenres(genreKeys, family);
 
-  const translatedGenresRaw = expand(softGenreKeys, QUERY_TRANSLATIONS.genre as Record<string, string[]>);
+  const translatedGenresRaw = expand(softGenreKeys, QUERY_TRANSLATIONS.genre as unknown as Record<string, readonly string[] | string[]>);
   const translatedGenres = filterGenresToFamily(translatedGenresRaw, family);
-  const translatedTones = expand(toneKeys, QUERY_TRANSLATIONS.tone as Record<string, string[]>);
-  const translatedScenarios = expand(scenarioKeys, QUERY_TRANSLATIONS.scenario as Record<string, string[]>);
+  const translatedTones = expand(toneKeys, QUERY_TRANSLATIONS.tone as unknown as Record<string, readonly string[] | string[]>);
+  const translatedScenarios = expand(scenarioKeys, QUERY_TRANSLATIONS.scenario as unknown as Record<string, readonly string[] | string[]>);
   const translatedPacing = expand(pacingKeys, (QUERY_TRANSLATIONS as any).pacing || {});
 
-  const genreFragments = dedupeQueries([
+  const rawGenreFragments = dedupeQueries([
     ...translatedGenres,
     ...familyDefaults(family),
   ]).filter((query) => isFamilyCompatibleQuery(query, family));
+
+  const genreFragments = family === "thriller_family"
+    ? tightenThrillerGenreFragments(rawGenreFragments)
+    : rawGenreFragments;
 
   const baseGenre = genreFragments[0] || familyDefaults(family)[0] || "fiction novel";
 

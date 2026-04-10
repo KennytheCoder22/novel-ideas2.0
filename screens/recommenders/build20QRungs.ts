@@ -77,7 +77,7 @@ function canonicalFamily(intent: QueryIntent): Family {
 }
 
 function familyLockedFallback(family: Family): string {
-  if (family === "thriller_family") return "mystery thriller";
+  if (family === "thriller_family") return "dark mystery thriller";
   if (family === "speculative_family") return "science fiction";
   if (family === "romance_family") return "romance";
   if (family === "historical_family") return "historical fiction";
@@ -148,22 +148,22 @@ function thrillerPrimaries(intent: QueryIntent): string[] {
     if (!out.includes(cleaned)) out.push(cleaned);
   };
 
-  if (/crime/.test(joinedSubs)) add("crime thriller");
-  else if (/detective|mystery/.test(joinedSubs)) add("detective novel");
-  else if (/thriller/.test(joinedSubs)) add("thriller novel");
-  else add("crime thriller");
+  if (/psychological/.test(joinedSubs) || dark) add("dark psychological thriller");
+  else if (/crime/.test(joinedSubs)) add("dark crime thriller");
+  else if (/detective|mystery/.test(joinedSubs)) add("dark mystery thriller");
+  else if (/thriller/.test(joinedSubs)) add("dark thriller novel");
+  else add("dark crime thriller");
 
-  if (dark) add("psychological thriller");
-  else if (procedural || investigation) add("detective novel");
-  else add("mystery thriller");
+  if (procedural || investigation) add("detective mystery thriller");
+  else if (betrayal) add("domestic thriller novel");
+  else add("psychological thriller novel");
 
-  if (procedural || investigation) add("detective mystery");
-  else add("crime fiction");
+  if (/crime/.test(joinedSubs)) add("crime thriller novel");
+  else if (/detective|mystery/.test(joinedSubs)) add("mystery thriller novel");
+  else if (survival) add("survival thriller novel");
+  else add("mystery thriller novel");
 
-  if (survival) add("survival thriller");
-  else if (betrayal) add("domestic thriller");
-  else if (dark) add("noir thriller");
-  else add("suspense novel");
+  add(dark ? "dark mystery thriller" : "dark crime thriller");
 
   return uniqOrdered(out);
 }
@@ -259,7 +259,7 @@ function deriveSecondaryForRung(primary: string | null, family: Family, rungInde
     if (rungIndex === 0) return "novel";
     if (rungIndex === 1) return "murder investigation";
     if (rungIndex === 2) return "novel";
-    if (rungIndex === 3) return "suspense";
+    if (rungIndex === 3) return "novel";
   }
 
   if (family === "speculative_family") {
