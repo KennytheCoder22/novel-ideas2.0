@@ -97,6 +97,18 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
     const q = queriesToTry[queryIndex]; const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(fetchLimit))}`;
     try {
       const data = await fetchJsonWithTimeout(url, timeoutMs); const docsRaw = Array.isArray(data?.docs) ? data.docs : [];
+      const laneKind = isAnchorLaneQuery(q) ? "anchor" : "precision";
+      totalRawFetched += docsRaw.length;
+      for (const rawDoc of docsRaw) {
+        rawPoolRows.push({
+          title: rawDoc?.title,
+          author: Array.isArray(rawDoc?.author_name) ? rawDoc.author_name[0] : undefined,
+          source: "openLibrary",
+          queryText: q,
+          queryRung: queryIndex,
+          laneKind,
+        });
+      }
       const admittedDocsRaw = docsRaw.filter((d: any) => {
         const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
         if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
@@ -117,7 +129,16 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
   }
   const docsRaw = collectedDocsRaw.length ? collectedDocsRaw : bestDocsRaw; builtFromQuery = bestQuery; if (!docsRaw.length && lastError) throw lastError;
   const docs: RecommendationDoc[] = docsRaw.filter((d: any) => d && d.title).map((d: any) => ({ key: d.key, title: d.title, author_name: Array.isArray(d.author_name) ? d.author_name : undefined, first_publish_year: typeof d.first_publish_year === "number" ? d.first_publish_year : undefined, cover_i: d.cover_i, subject: Array.isArray(d.subject) ? d.subject : undefined, edition_count: typeof d.edition_count === "number" ? d.edition_count : undefined, publisher: Array.isArray(d.publisher) ? d.publisher : undefined, language: Array.isArray(d.language) ? d.language : undefined, ebook_access: typeof d.ebook_access === "string" ? d.ebook_access : undefined, source: "openLibrary", queryRung: Number.isFinite(Number(d.queryRung)) ? Number(d.queryRung) : undefined, queryText: typeof d.queryText === "string" ? d.queryText : undefined, laneKind: typeof d.laneKind === "string" ? d.laneKind : undefined }));
-  return { engineId: "openLibrary", engineLabel: "Open Library", deckKey, domainMode, builtFromQuery, items: docs.map((doc) => ({ kind: "open_library", doc })), debugRawFetchedCount: totalRawFetched, debugRawPool: rawPoolRows };
+  return {
+    engineId: "openLibrary",
+    engineLabel: "Open Library",
+    deckKey,
+    domainMode,
+    builtFromQuery,
+    items: docs.map((doc) => ({ kind: "open_library", doc })),
+    debugRawFetchedCount: totalRawFetched,
+    debugRawPool: rawPoolRows,
+  };
 }
 
 // PATCH APPLIED: film/criticism filters added

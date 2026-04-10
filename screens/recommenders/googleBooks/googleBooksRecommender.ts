@@ -169,6 +169,7 @@ function dedupeQueries(queries: string[]): string[] {
   return out;
 }
 
+
 function isAnchorLaneQuery(query: string): boolean {
   return /\b(bestselling|bestseller|popular|well known|famous|award winning|award-winning)\b/i.test(String(query || ""));
 }
@@ -296,8 +297,37 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
-    const rawDocs = await googleBooksSearch(q, fetchLimit, timeoutMs);
-    const admittedDocsRaw = (Array.isArray(rawDocs) ? rawDocs : []).filter((doc: any) => {
+    const laneKind = isAnchorLaneQuery(q) ? "anchor" : "precision";
+    const engineQueries = supplementalAnchorQueries(q);
+    const queryRawDocs: any[] = [];
+
+    for (const engineQuery of engineQueries) {
+      const rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs);
+      totalRawFetched += Array.isArray(rawDocs) ? rawDocs.length : 0;
+      for (const rawDoc of Array.isArray(rawDocs) ? rawDocs : []) {
+        rawPoolRows.push({
+          title: rawDoc?.title,
+          author: Array.isArray(rawDoc?.author_name) ? rawDoc.author_name[0] : undefined,
+          source: "googleBooks",
+          queryText: q,
+          engineQueryText: engineQuery,
+          queryRung: queryIndex,
+          laneKind,
+        });
+      }
+      queryRawDocs.push(...(Array.isArray(rawDocs) ? rawDocs : []));
+    }
+
+    const dedupedQueryRawDocs: any[] = [];
+    const seenQueryKeys = new Set<string>();
+    for (const rawDoc of queryRawDocs) {
+      const key = String(rawDoc?.key || rawDoc?.id || rawDoc?.title || "");
+      if (!key || seenQueryKeys.has(key)) continue;
+      seenQueryKeys.add(key);
+      dedupedQueryRawDocs.push(rawDoc);
+    }
+
+    const admittedDocsRaw = dedupedQueryRawDocs.filter((doc: any) => {
       const publisher = doc?.publisher ?? doc?.volumeInfo?.publisher;
       if (isHardSelfPublished(publisher)) return false;
       if (looksLikeGoogleBooksReference(doc)) return false;
@@ -323,7 +353,13 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
   const docsRaw = collectedDocsRaw.length
     ? collectedDocsRaw
-    : primaryDocsRaw.map((doc: any) => ({ ...doc, queryRung: 0, queryText: builtFromQuery, source: "googleBooks" }));
+    : primaryDocsRaw.map((doc: any) => ({
+        ...doc,
+        queryRung: 0,
+        queryText: builtFromQuery,
+        source: "googleBooks",
+        laneKind: isAnchorLaneQuery(builtFromQuery) ? "anchor" : "precision",
+      }));
 
   const docs: RecommendationDoc[] = docsRaw.filter((doc: any) => doc && doc.title).map((doc: any) => ({
     key: doc.key ?? doc.id,

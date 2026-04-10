@@ -104,7 +104,7 @@ function buildAnchorLaneQuery(bucketPlan: any): string {
     return "bestselling thriller novel";
   }
 
-  if (family == "speculative") {
+  if (family === "speculative") {
     if (queryText.includes("fantasy")) return "bestselling fantasy novel";
     if (queryText.includes("horror")) return "bestselling horror novel";
     return "bestselling science fiction novel";
@@ -174,7 +174,11 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
   const output: any[] = [];
 
   const keyFor = (doc: any) =>
-    String(doc?.key || doc?.id || `${doc?.title || ""}|${Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author || ""}`)
+    String(
+      doc?.key ||
+      doc?.id ||
+      `${doc?.title || ""}|${Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author || ""}`
+    )
       .trim()
       .toLowerCase();
 
@@ -185,7 +189,7 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
     output.push(doc);
   };
 
- // place strongest anchor early to establish trust
+  // Place strongest anchor early to establish trust.
   if (selectedAnchors[0]) pushUnique(selectedAnchors[0]);
 
   for (const doc of docs) {
@@ -194,14 +198,11 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
   }
 
   if (selectedAnchors[1] && output.length < finalLimit) {
-    if (output.length >= 3) {
-      const key = keyFor(selectedAnchors[1]);
-      if (key && !used.has(key)) {
-        output.splice(Math.min(3, output.length), 0, selectedAnchors[1]);
-        used.add(key);
-      }
-    } else {
-      pushUnique(selectedAnchors[1]);
+    const key = keyFor(selectedAnchors[1]);
+    if (key && !used.has(key)) {
+      if (output.length >= 3) output.splice(3, 0, selectedAnchors[1]);
+      else output.push(selectedAnchors[1]);
+      used.add(key);
     }
   }
 
@@ -833,8 +834,8 @@ const normalizedCandidates = [
     author: Array.isArray(c.author_name) ? c.author_name[0] : c.author,
     source: c.source,
     score: c.score,
-    queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
     queryText: c?.rawDoc?.queryText ?? c?.queryText,
+    queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
     laneKind: c?.rawDoc?.laneKind ?? c?.laneKind ?? c?.diagnostics?.laneKind,
   }));
 
@@ -932,7 +933,7 @@ const normalizedCandidates = [
     items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
-    debugRawPool: debugRawPool.slice(0, 200),
+    debugRawPool,
     debugRungStats: buildRungDiagnostics(normalizedCandidates),
   } as RecommendationResult;
 }
