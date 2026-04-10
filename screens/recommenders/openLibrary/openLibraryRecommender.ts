@@ -1,3 +1,4 @@
+// PATCHED OpenLibrary recommender
 // /screens/recommenders/openLibrary/openLibraryRecommender.ts
 import type { RecommenderInput, RecommendationResult, RecommendationDoc, DeckKey, StructuredFetchRung } from "../types";
 function normalizePublisherText(value: any): string { return String(value || "").toLowerCase().replace(/\s+/g, " ").trim(); }
@@ -112,3 +113,5 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
   const docs: RecommendationDoc[] = docsRaw.filter((d: any) => d && d.title).map((d: any) => ({ key: d.key, title: d.title, author_name: Array.isArray(d.author_name) ? d.author_name : undefined, first_publish_year: typeof d.first_publish_year === "number" ? d.first_publish_year : undefined, cover_i: d.cover_i, subject: Array.isArray(d.subject) ? d.subject : undefined, edition_count: typeof d.edition_count === "number" ? d.edition_count : undefined, publisher: Array.isArray(d.publisher) ? d.publisher : undefined, language: Array.isArray(d.language) ? d.language : undefined, ebook_access: typeof d.ebook_access === "string" ? d.ebook_access : undefined, source: "openLibrary", queryRung: Number.isFinite(Number(d.queryRung)) ? Number(d.queryRung) : undefined, queryText: typeof d.queryText === "string" ? d.queryText : undefined }));
   return { engineId: "openLibrary", engineLabel: "Open Library", deckKey, domainMode, builtFromQuery, items: docs.map((doc) => ({ kind: "open_library", doc })) };
 }
+
+// PATCH APPLIED: film/criticism filters added
