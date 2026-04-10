@@ -1195,17 +1195,54 @@ function handleLeft() {
   }
 
 
-  function handleResetPersonality() {
+  function handleFreshUserReset() {
     const fresh = initializePersonality(pipelineUserId);
 
     personalityStoreRef.current[pipelineUserId] = fresh;
     sessionSwipeStoreRef.current[pipelineSessionId] = [];
     delete moodStoreRef.current[pipelineSessionId];
+    recommendationHistoryRef.current[deckKey] = createRecommendationHistoryBucket();
 
-    setPersonalityProfileState(fresh);
+    setProfileOverridesByLane((prev) => {
+      const lane = laneFromDeckKey(deckKey);
+      const next = { ...prev };
+      delete next[lane];
+      return next;
+    });
+
+    setSeenCardKeys([]);
+    setRecentCardKeys([]);
+    setRightSwipes(0);
+    setLeftSwipes(0);
+    setDownSwipes(0);
+    setTagCounts({});
+    setFeedback([]);
+    setRecQuery("");
+    setRecEngineLabel("");
+    setRecLoading(false);
+    setRecError(null);
+    setRecItems([]);
+    setRecIndex(0);
+    setRecCoverCache({});
+    setAutoSearched(false);
+    setShowRating(false);
+    setLastRecommendationInput(null);
+    setLastRecommendationTimestamp("");
+    setLastRecommendationSwipeSummary("");
+    setLastSourceCounts(null);
+    setLastCandidatePool([]);
+    setLastRungStats(null);
     setSessionMoodProfile(null);
+    setPersonalityProfileState(fresh);
     setActiveTasteVector(null);
     setActiveTasteWeights(null);
+    setSuppressPersonalityLearningForNextRun(true);
+    position.setValue({ x: 0, y: 0 });
+    setSessionNonce((n) => n + 1);
+  }
+
+  function handleResetPersonality() {
+    handleFreshUserReset();
   }
 
   function handleRandomizePersonalitySlightly() {
@@ -1783,6 +1820,20 @@ function handleLeft() {
 
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
             <Text style={styles.debugToggleText}>Fresh User</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.clearOverrideToggle}
+            onPress={() =>
+              setProfileOverridesByLane((prev) => {
+                const lane = laneFromDeckKey(deckKey);
+                const next = { ...prev };
+                delete next[lane];
+                return next;
+              })
+            }
+          >
+            <Text style={styles.debugToggleText}>Clear Override</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.randomizeToggle} onPress={handleRandomizePersonalitySlightly}>
