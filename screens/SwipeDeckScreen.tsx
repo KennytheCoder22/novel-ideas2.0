@@ -1185,17 +1185,58 @@ function handleLeft() {
   }
 
 
-  function handleResetPersonality() {
+  function handleFreshUserReset() {
     const fresh = initializePersonality(pipelineUserId);
 
     personalityStoreRef.current[pipelineUserId] = fresh;
     sessionSwipeStoreRef.current[pipelineSessionId] = [];
     delete moodStoreRef.current[pipelineSessionId];
+    recommendationHistoryRef.current[deckKey] = createRecommendationHistoryBucket();
 
-    setPersonalityProfileState(fresh);
+    setProfileOverridesByLane((prev) => {
+      const lane = laneFromDeckKey(deckKey);
+      const next = { ...prev };
+      delete next[lane];
+      return next;
+    });
+
+    setSeenCardKeys([]);
+    setRecentCardKeys([]);
+    setRightSwipes(0);
+    setLeftSwipes(0);
+    setDownSwipes(0);
+    setTagCounts({});
+    setFeedback([]);
+    setRecQuery("");
+    setRecEngineLabel("");
+    setRecLoading(false);
+    setRecError(null);
+    setRecItems([]);
+    setRecIndex(0);
+    setRecCoverCache({});
+    setAutoSearched(false);
+    setShowRating(false);
+    setLastRecommendationInput(null);
+    setLastRecommendationTimestamp("");
+    setLastRecommendationSwipeSummary("");
+    setLastSourceCounts(null);
+    setLastCandidatePool([]);
+    setLastRungStats(null);
     setSessionMoodProfile(null);
+    setPersonalityProfileState(fresh);
     setActiveTasteVector(null);
     setActiveTasteWeights(null);
+    position.setValue({ x: 0, y: 0 });
+    setSessionNonce((n) => n + 1);
+  }
+
+  function handleClearActiveOverride() {
+    setProfileOverridesByLane((prev) => {
+      const lane = laneFromDeckKey(deckKey);
+      const next = { ...prev };
+      delete next[lane];
+      return next;
+    });
   }
 
   function handleRandomizePersonalitySlightly() {
@@ -1770,8 +1811,12 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>Pool</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.resetToggle} onPress={handleResetPersonality}>
-            <Text style={styles.debugToggleText}>Reset</Text>
+          <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
+            <Text style={styles.debugToggleText}>Fresh User</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.clearOverrideToggle} onPress={handleClearActiveOverride}>
+            <Text style={styles.debugToggleText}>Clear Override</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.randomizeToggle} onPress={handleRandomizePersonalitySlightly}>
@@ -2155,10 +2200,18 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
-  resetToggle: {
+  freshUserToggle: {
     minWidth: 112,
     alignItems: "center",
     backgroundColor: "#dc2626",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  clearOverrideToggle: {
+    minWidth: 112,
+    alignItems: "center",
+    backgroundColor: "#7c2d12",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
