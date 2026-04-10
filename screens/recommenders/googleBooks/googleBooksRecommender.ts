@@ -272,13 +272,25 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   const builtFromQuery = normalizeStoredQueryText(queriesToTry[0] || "");
   const minCandidateFloor = Math.max(0, Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0));
   const collectedDocsRaw: any[] = [];
+  const rawPoolRows: any[] = [];
   const seenKeys = new Set<string>();
   let primaryDocsRaw: any[] = [];
+  let totalRawFetched = 0;
   const minQueryPassesBeforeEarlyExit = Math.min(4, queriesToTry.length);
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
     const rawDocs = await googleBooksSearch(q, fetchLimit, timeoutMs);
+    totalRawFetched += Array.isArray(rawDocs) ? rawDocs.length : 0;
+    for (const rawDoc of Array.isArray(rawDocs) ? rawDocs : []) {
+      rawPoolRows.push({
+        title: rawDoc?.title,
+        author: Array.isArray(rawDoc?.author_name) ? rawDoc.author_name[0] : undefined,
+        source: "googleBooks",
+        queryText: q,
+        queryRung: queryIndex,
+      });
+    }
     const admittedDocsRaw = (Array.isArray(rawDocs) ? rawDocs : []).filter((doc: any) => {
       const publisher = doc?.publisher ?? doc?.volumeInfo?.publisher;
       if (isHardSelfPublished(publisher)) return false;
@@ -343,6 +355,8 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     domainMode,
     builtFromQuery,
     items: docs.map((doc) => ({ kind: "open_library", doc })),
+    debugRawFetchedCount: totalRawFetched,
+    debugRawPool: rawPoolRows,
   };
 }
 

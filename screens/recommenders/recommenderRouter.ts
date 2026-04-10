@@ -666,7 +666,16 @@ const normalizedCandidates = [
     author: Array.isArray(c.author_name) ? c.author_name[0] : c.author,
     source: c.source,
     score: c.score,
+    queryText: c?.rawDoc?.queryText ?? c?.queryText,
+    queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
   }));
+
+  const debugRawPool = [
+    ...(((google as any)?.debugRawPool as any[]) || []),
+    ...(((openLibrary as any)?.debugRawPool as any[]) || []),
+    ...(((kitsu as any)?.debugRawPool as any[]) || []),
+    ...(((gcd as any)?.debugRawPool as any[]) || []),
+  ].slice(0, 200);
 
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
@@ -721,22 +730,22 @@ const normalizedCandidates = [
 
   const debugSourceStats: Record<string, RecommenderDebugSourceStats> = {
     googleBooks: {
-      rawFetched: countResultItems(google),
+      rawFetched: Number((google as any)?.debugRawFetchedCount ?? countResultItems(google)),
       postFilterCandidates: googleCandidates.length,
       finalSelected: rankedCountsBySource.googleBooks,
     },
     openLibrary: {
-      rawFetched: countResultItems(openLibrary),
+      rawFetched: Number((openLibrary as any)?.debugRawFetchedCount ?? countResultItems(openLibrary)),
       postFilterCandidates: openLibraryCandidates.length,
       finalSelected: rankedCountsBySource.openLibrary,
     },
     kitsu: {
-      rawFetched: includeKitsu ? countResultItems(kitsu) : 0,
+      rawFetched: includeKitsu ? Number((kitsu as any)?.debugRawFetchedCount ?? countResultItems(kitsu)) : 0,
       postFilterCandidates: includeKitsu ? kitsuCandidates.length : 0,
       finalSelected: rankedCountsBySource.kitsu,
     },
     gcd: {
-      rawFetched: includeGcd ? countResultItems(gcd) : 0,
+      rawFetched: includeGcd ? Number((gcd as any)?.debugRawFetchedCount ?? countResultItems(gcd)) : 0,
       postFilterCandidates: includeGcd ? gcdCandidates.length : 0,
       finalSelected: rankedCountsBySource.gcd,
     },
@@ -759,6 +768,7 @@ const normalizedCandidates = [
     items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
+    debugRawPool,
     debugRungStats: buildRungDiagnostics(normalizedCandidates),
   } as RecommendationResult;
 }
