@@ -1741,7 +1741,7 @@ function handleLeft() {
       </View>
 
       <View style={styles.tempButtonsWrap}>
-        <View style={styles.tempButtonsRow}>
+        <View style={styles.tempButtonsColumn}>
           <TouchableOpacity style={styles.copyToggle} onPress={handleCopySessionReport}>
             <Text style={styles.debugToggleText}>Copy</Text>
           </TouchableOpacity>
@@ -1758,20 +1758,6 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>Counts</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.resetToggle} onPress={handleResetPersonality}>
-            <Text style={styles.debugToggleText}>Reset</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.randomizeToggle} onPress={handleRandomizePersonalitySlightly}>
-            <Text style={styles.debugToggleText}>Randomize</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.debugToggle} onPress={() => setShowDebug((v) => !v)}>
-            <Text style={styles.debugToggleText}>Debug</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.tempButtonsRowSecondary}>
           <TouchableOpacity style={styles.rungsToggle} onPress={() => setShowRungs((v) => !v)}>
             <Text style={styles.debugToggleText}>Rungs</Text>
           </TouchableOpacity>
@@ -1782,6 +1768,18 @@ function handleLeft() {
 
           <TouchableOpacity style={styles.poolToggle} onPress={() => setShowCandidatePool((v) => !v)}>
             <Text style={styles.debugToggleText}>Pool</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.resetToggle} onPress={handleResetPersonality}>
+            <Text style={styles.debugToggleText}>Reset</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.randomizeToggle} onPress={handleRandomizePersonalitySlightly}>
+            <Text style={styles.debugToggleText}>Randomize</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.debugToggle} onPress={() => setShowDebug((v) => !v)}>
+            <Text style={styles.debugToggleText}>Debug</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -2117,78 +2115,89 @@ const styles = StyleSheet.create({
     right: 16,
     bottom: 16,
     alignItems: "flex-end",
-    gap: 8,
     zIndex: 40,
   },
-  tempButtonsRow: {
-    flexDirection: "row",
+  tempButtonsColumn: {
     gap: 8,
-    alignItems: "center",
-    justifyContent: "flex-end",
-    flexWrap: "wrap",
-  },
-  tempButtonsRowSecondary: {
-    flexDirection: "row",
-    gap: 8,
-    alignItems: "center",
+    alignItems: "stretch",
     justifyContent: "flex-end",
   },
 
   copyToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#7c3aed",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   rerunToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#b45309",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   tuneToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#0f766e",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   countsToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#0369a1",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   resetToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#dc2626",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   randomizeToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#9333ea",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   debugToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#2b6cff",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   copyPoolToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#6d28d9",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   rungsToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#1d4ed8",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
   },
   poolToggle: {
+    minWidth: 112,
+    alignItems: "center",
     backgroundColor: "#4f46e5",
     paddingHorizontal: 12,
     paddingVertical: 8,
