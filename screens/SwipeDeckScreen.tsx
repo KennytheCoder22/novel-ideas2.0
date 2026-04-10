@@ -1184,6 +1184,48 @@ function handleLeft() {
     await performRecommendationRun(lastRecommendationInput);
   }
 
+
+  function handleResetPersonality() {
+    const fresh = initializePersonality(pipelineUserId);
+
+    personalityStoreRef.current[pipelineUserId] = fresh;
+    sessionSwipeStoreRef.current[pipelineSessionId] = [];
+    delete moodStoreRef.current[pipelineSessionId];
+
+    setPersonalityProfileState(fresh);
+    setSessionMoodProfile(null);
+    setActiveTasteVector(null);
+    setActiveTasteWeights(null);
+  }
+
+  function handleRandomizePersonalitySlightly() {
+    const randomBetween = (min: number, max: number) => Math.random() * (max - min) + min;
+
+    const randomized: PersonalityProfile = {
+      ...initializePersonality(pipelineUserId),
+      vector: {
+        ideaDensity: randomBetween(-0.18, 0.18),
+        darkness: randomBetween(-0.18, 0.18),
+        warmth: randomBetween(-0.18, 0.18),
+        realism: randomBetween(-0.18, 0.18),
+        characterFocus: randomBetween(-0.18, 0.18),
+        pacing: randomBetween(-0.18, 0.18),
+      },
+      confidence: 0.2,
+      sessionCount: 1,
+      lastUpdatedAt: new Date().toISOString(),
+    };
+
+    personalityStoreRef.current[pipelineUserId] = randomized;
+    sessionSwipeStoreRef.current[pipelineSessionId] = [];
+    delete moodStoreRef.current[pipelineSessionId];
+
+    setPersonalityProfileState(randomized);
+    setSessionMoodProfile(null);
+    setActiveTasteVector(null);
+    setActiveTasteWeights(null);
+  }
+
   async function handleCopySessionReport() {
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
@@ -1716,6 +1758,14 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>Counts</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.resetToggle} onPress={handleResetPersonality}>
+            <Text style={styles.debugToggleText}>Reset</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.randomizeToggle} onPress={handleRandomizePersonalitySlightly}>
+            <Text style={styles.debugToggleText}>Randomize</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.debugToggle} onPress={() => setShowDebug((v) => !v)}>
             <Text style={styles.debugToggleText}>Debug</Text>
           </TouchableOpacity>
@@ -2104,6 +2154,18 @@ const styles = StyleSheet.create({
   },
   countsToggle: {
     backgroundColor: "#0369a1",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  resetToggle: {
+    backgroundColor: "#dc2626",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  randomizeToggle: {
+    backgroundColor: "#9333ea",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
