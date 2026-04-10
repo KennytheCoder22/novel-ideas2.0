@@ -184,6 +184,7 @@ function supplementalAnchorQueries(query: string): string[] {
       q,
       "popular psychological suspense novel",
       "bestselling suspense thriller paperback",
+      "popular suspense thriller novel",
     ]);
   }
   if (/crime/.test(q)) {
@@ -191,6 +192,7 @@ function supplementalAnchorQueries(query: string): string[] {
       q,
       "popular crime thriller novel",
       "bestselling crime thriller paperback",
+      "popular crime suspense novel",
     ]);
   }
   if (/mystery/.test(q)) {
@@ -198,6 +200,7 @@ function supplementalAnchorQueries(query: string): string[] {
       q,
       "popular mystery suspense novel",
       "bestselling mystery paperback",
+      "popular detective novel",
     ]);
   }
   if (/thriller/.test(q)) {
@@ -267,12 +270,12 @@ function looksLikeCommercialAnchor(doc: any): boolean {
     .filter(Boolean)
     .join(" ");
 
-  const commercialSignals = /\b(suspense|thriller|psychological|crime|mystery|domestic suspense|novel|fiction|bestseller|international bestseller|new york times bestseller)\b/i.test(text);
-  const modernEnough = !year || year >= 1995;
-  const shelfLengthOkay = !pageCount || pageCount >= 180;
-  const audienceSignal = ratingsCount >= 20 || averageRating >= 3.7 || /\bpaperback\b/i.test(text);
+  const fictionSignal = /\b(suspense|thriller|psychological|crime|mystery|domestic suspense|novel|fiction|detective)\b/i.test(text);
+  const modernEnough = !year || year >= 1985;
+  const shelfLengthOkay = !pageCount || pageCount >= 150;
+  const audienceSignal = ratingsCount >= 3 || averageRating >= 3.2 || /\bpaperback\b/i.test(text);
 
-  return commercialSignals && modernEnough && shelfLengthOkay && audienceSignal;
+  return fictionSignal && modernEnough && shelfLengthOkay && audienceSignal;
 }
 
 function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
@@ -448,8 +451,25 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
           return false;
         }
 
+        // Keep Lane 90 alive: prefer commercial-feeling books, but do not choke the lane.
+        // Only reject when the item clearly fails even a relaxed commercial fiction sanity check.
         if (!looksLikeCommercialAnchor(doc)) {
-          return false;
+          const fallbackAnchorText = [
+            normalizeText(doc?.title),
+            normalizeText(doc?.subtitle),
+            normalizeText(doc?.description),
+            categoryText,
+          ]
+            .filter(Boolean)
+            .join(" ");
+
+          const fallbackYear = Number(doc?.first_publish_year || 0);
+          if (
+            !/\b(thriller|suspense|mystery|crime|detective|psychological|novel|fiction)\b/i.test(fallbackAnchorText) ||
+            (fallbackYear && fallbackYear < 1975)
+          ) {
+            return false;
+          }
         }
       }
 

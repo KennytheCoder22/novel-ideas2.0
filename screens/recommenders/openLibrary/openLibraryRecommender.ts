@@ -75,7 +75,7 @@ function looksLikeCommercialOpenLibraryAnchor(d: any): boolean {
   const text = [title, subjects].filter(Boolean).join(" | ");
 
   if (/\b(anthology|collection|stories of the year|stories of the century|essays|criticism|bibliography|index|yearbook|catalog|review)\b/i.test(text)) return false;
-  if (year && year < 1995) return false;
+  if (year && year < 1975) return false;
   return /\b(novel|thriller|mystery|crime|suspense|fiction|detective)\b/i.test(text);
 }
 
@@ -127,7 +127,12 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
         const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
         if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
         if (isGarbageOpenLibraryCandidate(d)) return false;
-        if (laneKind === "anchor" && !looksLikeCommercialOpenLibraryAnchor(d)) return false;
+        if (laneKind === "anchor" && !looksLikeCommercialOpenLibraryAnchor(d)) {
+          const title = String(d?.title || "").toLowerCase().replace(/\s+/g, " ").trim();
+          const subjects = Array.isArray(d?.subject) ? d.subject.map((v: any) => String(v || "").toLowerCase()).join(" | ") : "";
+          const text = [title, subjects].filter(Boolean).join(" | ");
+          if (!/\b(thriller|mystery|crime|suspense|detective|novel|fiction)\b/i.test(text)) return false;
+        }
         return true;
       });
       if (admittedDocsRaw.length > bestDocsRaw.length) { bestDocsRaw = admittedDocsRaw; bestQuery = q; }
