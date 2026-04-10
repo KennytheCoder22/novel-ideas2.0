@@ -4,6 +4,7 @@ import type {
   RecommendationResult,
   DomainMode,
   RecommendationDoc,
+  CommercialSignals,
 } from "./types";
 
 import { getGoogleBooksRecommendations } from "./googleBooks/googleBooksRecommender";
@@ -148,6 +149,7 @@ function recognizabilityScore(doc: any): number {
   const hardcoverRatings = Number((doc as any)?.hardcover?.ratings_count || 0);
   const avgRating = Number((doc as any)?.averageRating || (doc as any)?.hardcover?.rating || 0);
   const year = Number((doc as any)?.first_publish_year || 0);
+  const commercialSignals = (doc as any)?.commercialSignals;
 
   let score = 0;
   score += Math.min(googleRatings, 5000) / 250;
@@ -155,6 +157,12 @@ function recognizabilityScore(doc: any): number {
   if (avgRating >= 4) score += 1.5;
   if (year >= 1990) score += 0.5;
   if (/bestselling|award[- ]winning|international bestseller|new york times bestseller/.test(`${title} ${description} ${categories}`)) score += 3;
+  if (commercialSignals) {
+    if (commercialSignals.bestseller) score += 4;
+    if (Number(commercialSignals.awards || 0) > 0) score += Math.min(Number(commercialSignals.awards || 0), 2) * 2;
+    score += Math.min(Number(commercialSignals.popularityTier || 0), 3);
+    score += Math.min(Number(commercialSignals.sourceCount || 0), 2) * 0.5;
+  }
   return score;
 }
 
@@ -592,6 +600,59 @@ async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<Recommend
   return enriched;
 }
 
+function inferCommercialSignals(doc: RecommendationDoc): CommercialSignals {
+  const title = normalizeText(doc?.title ?? (doc as any)?.volumeInfo?.title);
+  const description = collectDescriptionText(doc);
+  const categories = collectCategoryText(doc);
+  const publisher = normalizeText((doc as any)?.publisher ?? (doc as any)?.volumeInfo?.publisher);
+  const combined = [title, description, categories, publisher].filter(Boolean).join(" ");
+
+  const googleRatings = Number((doc as any)?.ratingsCount || (doc as any)?.volumeInfo?.ratingsCount || 0);
+  const hardcoverRatings = Number((doc as any)?.hardcover?.ratings_count || 0);
+  const avgRating = Number((doc as any)?.averageRating || (doc as any)?.volumeInfo?.averageRating || (doc as any)?.hardcover?.rating || 0);
+
+  let bestseller = false;
+  let awards = 0;
+  let popularityTier = 0;
+  let sourceCount = 0;
+
+  if (/\b(new york times bestseller|nyt bestseller|international bestseller|usa today bestseller|publishers weekly bestseller|indiebound bestseller|national bestseller)\b/.test(combined)) {
+    bestseller = true;
+    sourceCount += 1;
+  }
+
+  const awardMatches = combined.match(/\b(award[- ]winning|booker|pulitzer|national book award|edgar award|hugo award|nebula award|goodreads choice award|carnegie medal|newbery medal|printz award)\b/g);
+  if (awardMatches?.length) {
+    awards = Math.min(3, awardMatches.length);
+    sourceCount += 1;
+  }
+
+  if (googleRatings >= 5000 || hardcoverRatings >= 5000) popularityTier = 3;
+  else if (googleRatings >= 1000 || hardcoverRatings >= 1000) popularityTier = 2;
+  else if (googleRatings >= 200 || hardcoverRatings >= 200 || avgRating >= 4.2) popularityTier = 1;
+
+  if (/\b(penguin random house|harpercollins|macmillan|hachette|simon\s*&?\s*schuster|knopf|doubleday|viking|ballantine|st\. martin'?s|tor)\b/.test(combined)) {
+    sourceCount += 1;
+  }
+
+  return {
+    bestseller,
+    awards,
+    popularityTier,
+    sourceCount,
+  };
+}
+
+function enrichWithCommercialSignals(docs: RecommendationDoc[]): RecommendationDoc[] {
+  return docs.map((doc) => ({
+    ...doc,
+    commercialSignals: {
+      ...(doc as any)?.commercialSignals,
+      ...inferCommercialSignals(doc),
+    },
+  }));
+}
+
 async function runEngine(engine: EngineId, input: RecommenderInput): Promise<RecommendationResult> {
   if (engine === "googleBooks") return getGoogleBooksRecommendations(input);
 
@@ -758,7 +819,8 @@ export async function getRecommendations(
   const mergedDocs = dedupeDocs(allMergedDocs);
 
   // Hardcover enrichment is non-blocking and runs AFTER merging.
-  const enrichedDocs = await enrichWithHardcover(mergedDocs);
+  const hardcoverEnrichedDocs = await enrichWithHardcover(mergedDocs);
+  const enrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
 
   // Preserve source slices after enrichment.
 const googleDocsEnriched = enrichedDocs.filter(
@@ -839,6 +901,7 @@ const normalizedCandidates = [
     queryText: c?.rawDoc?.queryText ?? c?.queryText,
     queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
     laneKind: c?.rawDoc?.laneKind ?? c?.laneKind ?? c?.diagnostics?.laneKind,
+    commercialSignals: c?.commercialSignals ?? c?.rawDoc?.commercialSignals,
   }));
 
   // 20Q philosophy:
@@ -869,6 +932,7 @@ const normalizedCandidates = [
           tasteAlignment: doc.diagnostics.tasteAlignment,
           queryAlignment: doc.diagnostics.queryAlignment,
           rungBoost: doc.diagnostics.rungBoost,
+          commercialBoost: (doc.diagnostics as any).commercialBoost,
           laneKind: doc.diagnostics.laneKind ?? doc.laneKind ?? doc.rawDoc?.laneKind,
         }
       : undefined,

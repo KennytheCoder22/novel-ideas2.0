@@ -5,7 +5,13 @@ export type DeckKey = "k2" | "36" | "ms_hs" | "adult";
 export type TagCounts = Record<string, number>;
 export type TasteAxis = "warmth" | "darkness" | "humor" | "complexity" | "characterFocus" | "pacing" | "ideaDensity" | "realism";
 export type TasteProfile = { axes: Partial<Record<TasteAxis, number>>; confidence?: number; };
-export type RecommendationDoc = { key?: string; id?: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number | string; subject?: string[]; subtitle?: string; description?: string; edition_count?: number; language?: string[]; ebook_access?: string; };
+export type CommercialSignals = {
+  bestseller?: boolean;
+  awards?: number;
+  popularityTier?: number;
+  sourceCount?: number;
+};
+export type RecommendationDoc = { key?: string; id?: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number | string; subject?: string[]; subtitle?: string; description?: string; edition_count?: number; language?: string[]; ebook_access?: string; commercialSignals?: CommercialSignals; };
 export type RecommendationItem = { kind: "open_library"; doc: RecommendationDoc; };
 export type RecommendationResult = {
   debugRungStats?: RungDiagnostics; engineId: EngineId; engineLabel: string; deckKey: DeckKey; domainMode?: DomainMode; builtFromQuery: string; items: RecommendationItem[]; };

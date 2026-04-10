@@ -1,4 +1,4 @@
-import type { RecommendationDoc } from './types';
+import type { CommercialSignals, RecommendationDoc } from './types';
 
 export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'gcd';
 
@@ -28,6 +28,7 @@ export type Candidate = {
   source: CandidateSource;
   formatCategory: FormatCategory;
   hardcover?: any;
+  commercialSignals?: CommercialSignals;
 };
 
 function asArray(value: any): string[] {
@@ -471,6 +472,7 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
     source,
     formatCategory,
     hardcover: (rawDoc as any)?.hardcover,
+    commercialSignals: (rawDoc as any)?.commercialSignals,
     queryRung: Number.isFinite(Number((rawDoc as any)?.queryRung)) ? Number((rawDoc as any)?.queryRung) : undefined,
     queryText: typeof (rawDoc as any)?.queryText === 'string' ? (rawDoc as any).queryText : undefined,
     queryTerms: extractQueryTerms((rawDoc as any)?.queryText),

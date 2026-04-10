@@ -24,6 +24,7 @@ type CandidateDiagnostics = {
   tasteAlignment?: number;
   queryAlignment?: number;
   rungBoost?: number;
+  commercialBoost?: number;
 };
 
 type CandidateWithDiagnostics = Candidate & {
@@ -331,6 +332,19 @@ function scorePublisherBoost(candidate: Candidate): number {
     return 0.7;
   }
   return 0;
+}
+
+function scoreCommercialSignalBoost(candidate: Candidate): number {
+  const cs = candidate.commercialSignals ?? (candidate.rawDoc as any)?.commercialSignals;
+  if (!cs) return 0;
+
+  let bonus = 0;
+  if (cs.bestseller) bonus += 1.5;
+  if (Number(cs.awards || 0) > 0) bonus += Math.min(Number(cs.awards || 0), 2) * 0.8;
+  if (Number(cs.popularityTier || 0) > 0) bonus += Math.min(Number(cs.popularityTier || 0), 3) * 0.4;
+  if (Number(cs.sourceCount || 0) > 1) bonus += Math.min(Number(cs.sourceCount || 0) - 1, 2) * 0.3;
+
+  return Math.min(bonus, 2.5);
 }
 
 function scoreRecency(candidate: Candidate): number {
@@ -931,11 +945,13 @@ function scoreCandidate(
   const tasteAlignment = scoreTasteMatch(candidate, options.tasteProfile);
   const queryAlignment = scoreQueryAlignment(candidate);
   const rungBoost = scoreRungBoost(candidate);
+  const commercialBoost = scoreCommercialSignalBoost(candidate);
 
   score += tasteAlignment * 3.9;
   score += scoreHypothesisAlignment(candidate, hypothesis) * 1.1;
   score += queryAlignment * 2.6;
   score += rungBoost * 1.75;
+  score += commercialBoost;
   score -= softMetadataPenalty(candidate);
 
   if (candidate.hasCover) score += 0.12;
@@ -1066,6 +1082,7 @@ export function finalRecommenderForDeck(
           tasteAlignment: scoreTasteMatch(candidate, options.tasteProfile),
           queryAlignment: scoreQueryAlignment(candidate),
           rungBoost: scoreRungBoost(candidate),
+          commercialBoost: scoreCommercialSignalBoost(candidate),
         },
       };
 
