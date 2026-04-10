@@ -83,35 +83,48 @@ function filterGenresToFamily(queries: string[], family: Family): string[] {
   return queries.filter((query) => isFamilyCompatibleQuery(query, family));
 }
 
-function mainstreamHarvestQueries(family: Family, deckKey: RecommenderInput["deckKey"], genreFragments: string[]): string[] {
+function mainstreamHarvestQueries(
+  family: Family,
+  deckKey: RecommenderInput["deckKey"],
+  genreFragments: string[]
+): string[] {
   const ageBand = ageBandForDeck(deckKey);
 
+  const withAudience = (q: string) =>
+    ageBand === "teen" ? `young adult ${q}` : q;
+
   if (family === "thriller_family") {
-    const queries = [
-      "psychological thriller novel",
-      "crime thriller novel",
-      "detective mystery novel",
-    ];
-
-    if (genreFragments.some((q) => /\bdystopian\b/i.test(q))) {
-      queries.unshift("dystopian thriller novel");
-    }
-
-    if (ageBand === "teen") {
-      return dedupeQueries(queries.map((q) => `young adult ${q}`)).slice(0, 4);
-    }
-
-    return dedupeQueries(queries).slice(0, 4);
+    return dedupeQueries([
+      withAudience("bestselling psychological thriller novel"),
+      withAudience("popular crime thriller novel"),
+      withAudience("top rated mystery thriller novel"),
+    ]);
   }
 
   if (family === "speculative_family") {
-    if (ageBand === "teen") {
-      return ["young adult science fiction novel", "young adult fantasy novel"];
-    }
-    return ["science fiction novel", "fantasy novel"];
+    return dedupeQueries([
+      withAudience("bestselling science fiction novel"),
+      withAudience("popular fantasy novel"),
+    ]);
   }
 
-  return [];
+  if (family === "romance_family") {
+    return dedupeQueries([
+      withAudience("bestselling romance novel"),
+      withAudience("popular contemporary romance novel"),
+    ]);
+  }
+
+  if (family === "historical_family") {
+    return dedupeQueries([
+      withAudience("bestselling historical fiction novel"),
+      withAudience("popular historical fiction novel"),
+    ]);
+  }
+
+  return dedupeQueries([
+    withAudience("bestselling fiction novel"),
+  ]);
 }
 
 

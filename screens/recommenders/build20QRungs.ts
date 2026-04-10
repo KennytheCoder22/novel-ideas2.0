@@ -295,22 +295,32 @@ function ensureNovelAnchor(parts: string[]): string[] {
 }
 
 function marketFacingRungParts(rung: StructuredFetchRung): string[] {
-  if (rung.family === "thriller_family") {
-    const thrillerParts = uniqOrdered([
-      rung.primary,
-      rung.secondary,
-      rung.audience,
-    ]).filter(Boolean);
+  const baseParts = uniqOrdered([
+    rung.primary,
+    rung.secondary,
+    rung.audience,
+  ]).filter(Boolean);
 
-    return ensureNovelAnchor(thrillerParts);
+  if (rung.rung === 2) {
+    const recognizableBoost = [
+      "popular",
+      "bestselling",
+    ];
+
+    return ensureNovelAnchor([
+      ...recognizableBoost,
+      ...baseParts,
+    ]);
+  }
+
+  if (rung.family === "thriller_family") {
+    return ensureNovelAnchor(baseParts);
   }
 
   return ensureNovelAnchor(uniqOrdered([
     ...rung.themes.slice(0, 1),
-    rung.primary,
-    rung.secondary,
-    rung.audience,
-  ]).filter(Boolean));
+    ...baseParts,
+  ]));
 }
 
 export function rungToPreviewQuery(rung: StructuredFetchRung): string {
