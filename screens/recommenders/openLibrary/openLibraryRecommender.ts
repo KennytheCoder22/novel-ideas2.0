@@ -7,6 +7,7 @@ function isHardSelfPublished(publisher: any): boolean { const p = normalizePubli
 function deckKeyToBand(deckKey: DeckKey): "kids" | "preteen" | "teens" | "adult" { if (deckKey === "k2") return "kids"; if (deckKey === "36") return "preteen"; if (deckKey === "ms_hs") return "teens"; return "adult"; }
 function visualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undefined): number { return Number((tagCounts as any)?.["topic:manga"] || 0) + Number((tagCounts as any)?.["format:graphic_novel"] || 0) + Number((tagCounts as any)?.["format:graphic novel"] || 0) + Number((tagCounts as any)?.["media:anime"] || 0) + Number((tagCounts as any)?.["genre:superheroes"] || 0); }
 function dedupeQueries(queries: string[]): string[] { const seen = new Set<string>(); const out: string[] = []; for (const query of queries) { const trimmed = String(query || "").trim(); if (!trimmed) continue; const key = trimmed.toLowerCase(); if (seen.has(key)) continue; seen.add(key); out.push(trimmed); } return out; }
+function isAnchorLaneQuery(query: string): boolean { return /\b(bestselling|bestseller|popular|well known|famous|award winning|award-winning)\b/i.test(String(query || "")); }
 function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
   const primary = String(rung.primary || "").toLowerCase();
   const secondary = String(rung.secondary || "").toLowerCase();
@@ -96,16 +97,6 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
     const q = queriesToTry[queryIndex]; const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(fetchLimit))}`;
     try {
       const data = await fetchJsonWithTimeout(url, timeoutMs); const docsRaw = Array.isArray(data?.docs) ? data.docs : [];
-      totalRawFetched += docsRaw.length;
-      for (const rawDoc of docsRaw) {
-        rawPoolRows.push({
-          title: rawDoc?.title,
-          author: Array.isArray(rawDoc?.author_name) ? rawDoc.author_name[0] : undefined,
-          source: "openLibrary",
-          queryText: q,
-          queryRung: queryIndex,
-        });
-      }
       const admittedDocsRaw = docsRaw.filter((d: any) => {
         const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
         if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
@@ -117,7 +108,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
       if (shouldBackfillFromThisQuery) {
         for (const d of admittedDocsRaw) {
           const key = String(d?.key || `${d?.title || "unknown"}|${queryIndex}`); if (seenKeys.has(key)) continue; seenKeys.add(key);
-          collectedDocsRaw.push({ ...d, queryRung: queryIndex, queryText: q, source: "openLibrary" });
+          collectedDocsRaw.push({ ...d, queryRung: queryIndex, queryText: q, source: "openLibrary", laneKind });
         }
       }
       if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && admittedDocsRaw.length >= Math.max(finalLimit, minCandidateFloor)) break;
@@ -125,17 +116,8 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
     } catch (err: any) { lastError = err instanceof Error ? err : new Error(String(err?.message || err || "Unknown Open Library error")); continue; }
   }
   const docsRaw = collectedDocsRaw.length ? collectedDocsRaw : bestDocsRaw; builtFromQuery = bestQuery; if (!docsRaw.length && lastError) throw lastError;
-  const docs: RecommendationDoc[] = docsRaw.filter((d: any) => d && d.title).map((d: any) => ({ key: d.key, title: d.title, author_name: Array.isArray(d.author_name) ? d.author_name : undefined, first_publish_year: typeof d.first_publish_year === "number" ? d.first_publish_year : undefined, cover_i: d.cover_i, subject: Array.isArray(d.subject) ? d.subject : undefined, edition_count: typeof d.edition_count === "number" ? d.edition_count : undefined, publisher: Array.isArray(d.publisher) ? d.publisher : undefined, language: Array.isArray(d.language) ? d.language : undefined, ebook_access: typeof d.ebook_access === "string" ? d.ebook_access : undefined, source: "openLibrary", queryRung: Number.isFinite(Number(d.queryRung)) ? Number(d.queryRung) : undefined, queryText: typeof d.queryText === "string" ? d.queryText : undefined }));
-  return {
-    engineId: "openLibrary",
-    engineLabel: "Open Library",
-    deckKey,
-    domainMode,
-    builtFromQuery,
-    items: docs.map((doc) => ({ kind: "open_library", doc })),
-    debugRawFetchedCount: totalRawFetched,
-    debugRawPool: rawPoolRows,
-  };
+  const docs: RecommendationDoc[] = docsRaw.filter((d: any) => d && d.title).map((d: any) => ({ key: d.key, title: d.title, author_name: Array.isArray(d.author_name) ? d.author_name : undefined, first_publish_year: typeof d.first_publish_year === "number" ? d.first_publish_year : undefined, cover_i: d.cover_i, subject: Array.isArray(d.subject) ? d.subject : undefined, edition_count: typeof d.edition_count === "number" ? d.edition_count : undefined, publisher: Array.isArray(d.publisher) ? d.publisher : undefined, language: Array.isArray(d.language) ? d.language : undefined, ebook_access: typeof d.ebook_access === "string" ? d.ebook_access : undefined, source: "openLibrary", queryRung: Number.isFinite(Number(d.queryRung)) ? Number(d.queryRung) : undefined, queryText: typeof d.queryText === "string" ? d.queryText : undefined, laneKind: typeof d.laneKind === "string" ? d.laneKind : undefined }));
+  return { engineId: "openLibrary", engineLabel: "Open Library", deckKey, domainMode, builtFromQuery, items: docs.map((doc) => ({ kind: "open_library", doc })), debugRawFetchedCount: totalRawFetched, debugRawPool: rawPoolRows };
 }
 
 // PATCH APPLIED: film/criticism filters added

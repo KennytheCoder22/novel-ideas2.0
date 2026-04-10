@@ -169,6 +169,22 @@ function dedupeQueries(queries: string[]): string[] {
   return out;
 }
 
+function isAnchorLaneQuery(query: string): boolean {
+  return /\b(bestselling|bestseller|popular|well known|famous|award winning|award-winning)\b/i.test(String(query || ""));
+}
+
+function supplementalAnchorQueries(query: string): string[] {
+  const q = normalizeStoredQueryText(query);
+  if (!isAnchorLaneQuery(q)) return [q];
+  if (/psychological/.test(q)) return dedupeQueries([q, "popular psychological thriller novel", "award winning psychological thriller novel"]);
+  if (/crime/.test(q)) return dedupeQueries([q, "popular crime thriller novel", "award winning crime thriller novel"]);
+  if (/mystery/.test(q)) return dedupeQueries([q, "popular mystery thriller novel", "award winning mystery thriller novel"]);
+  if (/thriller/.test(q)) return dedupeQueries([q, "popular thriller novel", "award winning thriller novel"]);
+  if (/fantasy/.test(q)) return dedupeQueries([q, "popular fantasy novel", "award winning fantasy novel"]);
+  if (/science fiction/.test(q)) return dedupeQueries([q, "popular science fiction novel", "award winning science fiction novel"]);
+  return dedupeQueries([q, "popular fiction novel", "award winning fiction novel"]);
+}
+
 function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
   const primary = String(rung.primary || "").toLowerCase();
   const secondary = String(rung.secondary || "").toLowerCase();
@@ -281,16 +297,6 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
     const rawDocs = await googleBooksSearch(q, fetchLimit, timeoutMs);
-    totalRawFetched += Array.isArray(rawDocs) ? rawDocs.length : 0;
-    for (const rawDoc of Array.isArray(rawDocs) ? rawDocs : []) {
-      rawPoolRows.push({
-        title: rawDoc?.title,
-        author: Array.isArray(rawDoc?.author_name) ? rawDoc.author_name[0] : undefined,
-        source: "googleBooks",
-        queryText: q,
-        queryRung: queryIndex,
-      });
-    }
     const admittedDocsRaw = (Array.isArray(rawDocs) ? rawDocs : []).filter((doc: any) => {
       const publisher = doc?.publisher ?? doc?.volumeInfo?.publisher;
       if (isHardSelfPublished(publisher)) return false;
@@ -307,7 +313,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
         const key = String(doc?.key || doc?.id || `${doc?.title || "unknown"}|${queryIndex}`);
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
-        collectedDocsRaw.push({ ...doc, queryRung: queryIndex, queryText: q, source: "googleBooks" });
+        collectedDocsRaw.push({ ...doc, queryRung: queryIndex, queryText: q, source: "googleBooks", laneKind });
       }
     }
 
@@ -341,6 +347,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     source: "googleBooks",
     queryRung: Number.isFinite(Number(doc.queryRung)) ? Number(doc.queryRung) : undefined,
     queryText: typeof doc.queryText === "string" ? normalizeStoredQueryText(doc.queryText) : undefined,
+    laneKind: typeof doc.laneKind === "string" ? doc.laneKind : undefined,
     subtitle: typeof doc.subtitle === "string" ? doc.subtitle : undefined,
     description: typeof doc.description === "string" ? doc.description : undefined,
     averageRating: typeof doc.averageRating === "number" ? doc.averageRating : undefined,

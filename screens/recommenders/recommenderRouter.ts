@@ -72,6 +72,142 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   };
 }
 
+
+function inferRouterFamily(bucketPlan: any): "thriller" | "speculative" | "romance" | "historical" | "general" {
+  const text = [
+    bucketPlan?.preview,
+    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+    ...(Array.isArray(bucketPlan?.signals?.genres) ? bucketPlan.signals.genres : []),
+    ...(Array.isArray(bucketPlan?.signals?.tones) ? bucketPlan.signals.tones : []),
+    ...(Array.isArray(bucketPlan?.signals?.scenarios) ? bucketPlan.signals.scenarios : []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
+  if (/(science fiction|sci-fi|fantasy|speculative|dystopian|space opera|haunted|horror)/.test(text)) return "speculative";
+  if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
+  if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
+  return "general";
+}
+
+function buildAnchorLaneQuery(bucketPlan: any): string {
+  const family = inferRouterFamily(bucketPlan);
+  const queryText = String(bucketPlan?.preview || bucketPlan?.queries?.[0] || "").toLowerCase();
+
+  if (family === "thriller") {
+    if (queryText.includes("psychological")) return "bestselling psychological thriller novel";
+    if (queryText.includes("crime")) return "bestselling crime thriller novel";
+    if (queryText.includes("mystery")) return "bestselling mystery thriller novel";
+    if (queryText.includes("detective")) return "bestselling detective thriller novel";
+    return "bestselling thriller novel";
+  }
+
+  if (family == "speculative") {
+    if (queryText.includes("fantasy")) return "bestselling fantasy novel";
+    if (queryText.includes("horror")) return "bestselling horror novel";
+    return "bestselling science fiction novel";
+  }
+
+  if (family === "romance") return "bestselling romance novel";
+  if (family === "historical") return "bestselling historical fiction novel";
+  return "bestselling fiction novel";
+}
+
+function withAnchorLane(rungs: any[], bucketPlan: any) {
+  const anchorQuery = buildAnchorLaneQuery(bucketPlan);
+  const seen = new Set(
+    (Array.isArray(rungs) ? rungs : [])
+      .map((r: any) => String(r?.query || "").trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+  const base = (Array.isArray(rungs) ? rungs : []).map((r: any) => ({ ...r, laneKind: "precision" }));
+  if (!anchorQuery || seen.has(anchorQuery.toLowerCase())) return base;
+
+  return [
+    ...base,
+    {
+      rung: 90,
+      query: anchorQuery,
+      laneKind: "anchor",
+      anchorLane: true,
+    },
+  ];
+}
+
+function recognizabilityScore(doc: any): number {
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const description = collectDescriptionText(doc);
+  const categories = collectCategoryText(doc);
+
+  const googleRatings = Number((doc as any)?.ratingsCount || (doc as any)?.volumeInfo?.ratingsCount || 0);
+  const hardcoverRatings = Number((doc as any)?.hardcover?.ratings_count || 0);
+  const avgRating = Number((doc as any)?.averageRating || (doc as any)?.hardcover?.rating || 0);
+  const year = Number((doc as any)?.first_publish_year || 0);
+
+  let score = 0;
+  score += Math.min(googleRatings, 5000) / 250;
+  score += Math.min(hardcoverRatings, 5000) / 250;
+  if (avgRating >= 4) score += 1.5;
+  if (year >= 1990) score += 0.5;
+  if (/bestselling|award[- ]winning|international bestseller|new york times bestseller/.test(`${title} ${description} ${categories}`)) score += 3;
+  return score;
+}
+
+function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
+  const docs = Array.isArray(rankedDocs) ? rankedDocs : [];
+  if (!docs.length) return docs;
+
+  const anchorDocs = docs.filter((doc: any) => {
+    const laneKind = doc?.diagnostics?.laneKind ?? doc?.laneKind ?? doc?.rawDoc?.laneKind;
+    return laneKind === "anchor";
+  });
+
+  if (!anchorDocs.length) return docs.slice(0, finalLimit);
+
+  const sortedAnchors = [...anchorDocs].sort((a: any, b: any) => recognizabilityScore(b) - recognizabilityScore(a));
+  const selectedAnchors = sortedAnchors.slice(0, 2);
+
+  const used = new Set<string>();
+  const output: any[] = [];
+
+  const keyFor = (doc: any) =>
+    String(doc?.key || doc?.id || `${doc?.title || ""}|${Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author || ""}`)
+      .trim()
+      .toLowerCase();
+
+  const pushUnique = (doc: any) => {
+    const key = keyFor(doc);
+    if (!key || used.has(key)) return;
+    used.add(key);
+    output.push(doc);
+  };
+
+  # place strongest anchor early to establish trust
+  if (selectedAnchors[0]) pushUnique(selectedAnchors[0]);
+
+  for (const doc of docs) {
+    if (output.length >= finalLimit) break;
+    pushUnique(doc);
+  }
+
+  if (selectedAnchors[1] && output.length < finalLimit) {
+    if (output.length >= 3) {
+      const key = keyFor(selectedAnchors[1]);
+      if (key && !used.has(key)) {
+        output.splice(Math.min(3, output.length), 0, selectedAnchors[1]);
+        used.add(key);
+      }
+    } else {
+      pushUnique(selectedAnchors[1]);
+    }
+  }
+
+  return output.slice(0, finalLimit);
+}
+
 function chooseEngine(input: RecommenderInput, override?: EngineOverride): EngineId {
   if (override && override !== "auto") return override;
   if (input.deckKey === "k2") return "openLibrary";
@@ -534,25 +670,35 @@ export async function getRecommendations(
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
 
-  const rungs = build20QRungs({
-    ageBand:
-      input.deckKey === "adult"
-        ? "adult"
-        : input.deckKey === "ms_hs"
-        ? "teen"
-        : input.deckKey === "36"
-        ? "pre-teen"
-        : "kids",
-    subgenres: bucketPlan?.signals?.genres || [],
-    tones: bucketPlan?.signals?.tones || [],
-    themes: bucketPlan?.signals?.scenarios || [],
-  });
+  const rungs = withAnchorLane(
+    build20QRungs({
+      ageBand:
+        input.deckKey === "adult"
+          ? "adult"
+          : input.deckKey === "ms_hs"
+          ? "teen"
+          : input.deckKey === "36"
+          ? "pre-teen"
+          : "kids",
+      subgenres: bucketPlan?.signals?.genres || [],
+      tones: bucketPlan?.signals?.tones || [],
+      themes: bucketPlan?.signals?.scenarios || [],
+    }),
+    bucketPlan
+  );
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
   let kitsu: RecommendationResult | null = null;
   let gcd: RecommendationResult | null = null;
   const allMergedDocs: RecommendationDoc[] = [];
+  const debugRawPool: any[] = [];
+  const aggregatedRawFetched = {
+    googleBooks: 0,
+    openLibrary: 0,
+    kitsu: 0,
+    gcd: 0,
+  };
 
   for (const rung of rungs) {
     const rungInput: RecommenderInput = {
@@ -571,14 +717,35 @@ export async function getRecommendations(
     if (!kitsu && rungResults.kitsu) kitsu = rungResults.kitsu;
     if (!gcd && rungResults.gcd) gcd = rungResults.gcd;
 
+    aggregatedRawFetched.googleBooks += Number((rungResults.google as any)?.debugRawFetchedCount ?? countResultItems(rungResults.google));
+    aggregatedRawFetched.openLibrary += Number((rungResults.openLibrary as any)?.debugRawFetchedCount ?? countResultItems(rungResults.openLibrary));
+    aggregatedRawFetched.kitsu += Number((rungResults.kitsu as any)?.debugRawFetchedCount ?? countResultItems(rungResults.kitsu));
+    aggregatedRawFetched.gcd += Number((rungResults.gcd as any)?.debugRawFetchedCount ?? countResultItems(rungResults.gcd));
+
+    const rungRawPool = [
+      ...(((rungResults.google as any)?.debugRawPool as any[]) || []),
+      ...(((rungResults.openLibrary as any)?.debugRawPool as any[]) || []),
+      ...(((rungResults.kitsu as any)?.debugRawPool as any[]) || []),
+      ...(((rungResults.gcd as any)?.debugRawPool as any[]) || []),
+    ].map((row: any) => ({
+      ...row,
+      queryRung: row?.queryRung ?? rung.rung,
+      queryText: row?.queryText ?? rung.query,
+      laneKind: row?.laneKind ?? rung.laneKind ?? "precision",
+    }));
+
+    debugRawPool.push(...rungRawPool);
+
     const taggedDocs = rungResults.mergedDocs.map((doc: any) => ({
       ...doc,
       queryRung: rung.rung,
       queryText: rung.query,
+      laneKind: rung.laneKind ?? "precision",
       diagnostics: {
         ...(doc?.diagnostics || {}),
         queryRung: rung.rung,
         queryText: rung.query,
+        laneKind: rung.laneKind ?? "precision",
       },
     }));
 
@@ -666,16 +833,10 @@ const normalizedCandidates = [
     author: Array.isArray(c.author_name) ? c.author_name[0] : c.author,
     source: c.source,
     score: c.score,
-    queryText: c?.rawDoc?.queryText ?? c?.queryText,
     queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
+    queryText: c?.rawDoc?.queryText ?? c?.queryText,
+    laneKind: c?.rawDoc?.laneKind ?? c?.laneKind ?? c?.diagnostics?.laneKind,
   }));
-
-  const debugRawPool = [
-    ...(((google as any)?.debugRawPool as any[]) || []),
-    ...(((openLibrary as any)?.debugRawPool as any[]) || []),
-    ...(((kitsu as any)?.debugRawPool as any[]) || []),
-    ...(((gcd as any)?.debugRawPool as any[]) || []),
-  ].slice(0, 200);
 
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
@@ -691,7 +852,9 @@ const normalizedCandidates = [
     priorRejectedKeys: input.priorRejectedKeys,
   });
 
-  const rankedDocsWithDiagnostics = rankedDocs.map((doc: any) => ({
+  const blendedRankedDocs = blendAnchorLane(rankedDocs, Math.max(1, Math.min(10, input.limit ?? 10)));
+
+  const rankedDocsWithDiagnostics = blendedRankedDocs.map((doc: any) => ({
     ...doc,
     source: sourceForDoc(doc, "openLibrary"),
     diagnostics: doc?.diagnostics
@@ -703,6 +866,7 @@ const normalizedCandidates = [
           tasteAlignment: doc.diagnostics.tasteAlignment,
           queryAlignment: doc.diagnostics.queryAlignment,
           rungBoost: doc.diagnostics.rungBoost,
+          laneKind: doc.diagnostics.laneKind ?? doc.laneKind ?? doc.rawDoc?.laneKind,
         }
       : undefined,
   }));
@@ -730,22 +894,22 @@ const normalizedCandidates = [
 
   const debugSourceStats: Record<string, RecommenderDebugSourceStats> = {
     googleBooks: {
-      rawFetched: Number((google as any)?.debugRawFetchedCount ?? countResultItems(google)),
+      rawFetched: aggregatedRawFetched.googleBooks,
       postFilterCandidates: googleCandidates.length,
       finalSelected: rankedCountsBySource.googleBooks,
     },
     openLibrary: {
-      rawFetched: Number((openLibrary as any)?.debugRawFetchedCount ?? countResultItems(openLibrary)),
+      rawFetched: aggregatedRawFetched.openLibrary,
       postFilterCandidates: openLibraryCandidates.length,
       finalSelected: rankedCountsBySource.openLibrary,
     },
     kitsu: {
-      rawFetched: includeKitsu ? Number((kitsu as any)?.debugRawFetchedCount ?? countResultItems(kitsu)) : 0,
+      rawFetched: includeKitsu ? aggregatedRawFetched.kitsu : 0,
       postFilterCandidates: includeKitsu ? kitsuCandidates.length : 0,
       finalSelected: rankedCountsBySource.kitsu,
     },
     gcd: {
-      rawFetched: includeGcd ? Number((gcd as any)?.debugRawFetchedCount ?? countResultItems(gcd)) : 0,
+      rawFetched: includeGcd ? aggregatedRawFetched.gcd : 0,
       postFilterCandidates: includeGcd ? gcdCandidates.length : 0,
       finalSelected: rankedCountsBySource.gcd,
     },
@@ -768,7 +932,7 @@ const normalizedCandidates = [
     items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
-    debugRawPool,
+    debugRawPool: debugRawPool.slice(0, 200),
     debugRungStats: buildRungDiagnostics(normalizedCandidates),
   } as RecommendationResult;
 }

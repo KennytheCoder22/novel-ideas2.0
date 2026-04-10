@@ -582,7 +582,6 @@ export default function SwipeDeckScreen(props: Props) {
   const [showDebug, setShowDebug] = useState(false);
   const [showSourceCounts, setShowSourceCounts] = useState(false);
   const [showCandidatePool, setShowCandidatePool] = useState(false);
-  const [showRawPool, setShowRawPool] = useState(false);
   const [showRungs, setShowRungs] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
   const [profileOverridesByLane, setProfileOverridesByLane] = useState<Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>>({});
@@ -594,7 +593,6 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
   const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
-  const [lastRawPool, setLastRawPool] = useState<any[]>([]);
   const [lastRungStats, setLastRungStats] = useState<any | null>(null);
 
   const tasteProfile = useMemo(() => {
@@ -844,11 +842,9 @@ export default function SwipeDeckScreen(props: Props) {
     setShowDebug(false);
     setShowSourceCounts(false);
     setShowCandidatePool(false);
-    setShowRawPool(false);
     setShowRungs(false);
     setLastSourceCounts(null);
     setLastCandidatePool([]);
-    setLastRawPool([]);
     setLastRungStats(null);
     setFeedback([]);
     setSessionMoodProfile(null);
@@ -1113,7 +1109,6 @@ function handleLeft() {
       setRecEngineLabel(result.engineLabel || "");
       setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }>) || null);
       setLastCandidatePool(Array.isArray((result as any)?.debugCandidatePool) ? (result as any).debugCandidatePool : []);
-      setLastRawPool(Array.isArray((result as any)?.debugRawPool) ? (result as any).debugRawPool : []);
       setLastRungStats((result as any)?.debugRungStats || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
@@ -1236,7 +1231,6 @@ function handleLeft() {
     setLastRecommendationSwipeSummary("");
     setLastSourceCounts(null);
     setLastCandidatePool([]);
-    setLastRawPool([]);
     setLastRungStats(null);
     setSessionMoodProfile(null);
     setPersonalityProfileState(fresh);
@@ -1378,34 +1372,14 @@ function handleLeft() {
         const author = item?.author || "Unknown author";
         const source = item?.source || "unknown";
         const scorePart = typeof item?.score === "number" ? ` — score:${item.score.toFixed(3)}` : "";
-        return `${index + 1}. ${title} — ${author} — ${source}${scorePart}`;
+        const lanePart = item?.laneKind ? ` — lane:${item.laneKind}` : "";
+        const rungPart = item?.queryRung != null ? ` — rung:${item.queryRung}` : "";
+        return `${index + 1}. ${title} — ${author} — ${source}${lanePart}${rungPart}${scorePart}`;
       }),
     ].join("\n");
 
     await Clipboard.setStringAsync(poolText);
     Alert.alert("Copied", "Candidate pool copied to clipboard.");
-  }
-
-  async function handleCopyRawPool() {
-    if (!rawPoolRows.length) {
-      Alert.alert("Nothing to copy", "Run recommendations first so the raw pool can be captured.");
-      return;
-    }
-
-    const poolText = [
-      "RAW POOL",
-      ...rawPoolRows.map((item: any, index: number) => {
-        const title = item?.title || "(untitled)";
-        const author = item?.author || "Unknown author";
-        const source = item?.source || "unknown";
-        const rungPart = item?.queryRung != null ? ` — rung:${item.queryRung}` : "";
-        const queryPart = item?.queryText ? ` — query:${item.queryText}` : "";
-        return `${index + 1}. ${title} — ${author} — ${source}${rungPart}${queryPart}`;
-      }),
-    ].join("\n");
-
-    await Clipboard.setStringAsync(poolText);
-    Alert.alert("Copied", "Raw pool copied to clipboard.");
   }
 
   React.useEffect(() => {
@@ -1513,7 +1487,6 @@ function handleLeft() {
 
   const isFirstRec = recItems.length > 0 && recIndex === 0;
   const candidatePoolRows = Array.isArray(lastCandidatePool) ? lastCandidatePool : [];
-  const rawPoolRows = Array.isArray(lastRawPool) ? lastRawPool : [];
   const sourceCountRows = [
     { key: "googleBooks", label: "Google Books" },
     { key: "openLibrary", label: "Open Library" },
@@ -1839,14 +1812,6 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>Rungs</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.copyRawPoolToggle} onPress={handleCopyRawPool}>
-            <Text style={styles.debugToggleText}>Copy Raw</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.rawPoolToggle} onPress={() => setShowRawPool((v) => !v)}>
-            <Text style={styles.debugToggleText}>Raw Pool</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity style={styles.copyPoolToggle} onPress={handleCopyCandidatePool}>
             <Text style={styles.debugToggleText}>Copy Pool</Text>
           </TouchableOpacity>
@@ -1922,34 +1887,6 @@ function handleLeft() {
         </View>
       )}
 
-      {showRawPool && (
-        <View style={styles.rawPoolPanel}>
-          <View style={styles.debugCard}>
-            <View style={styles.debugHeader}>
-              <Text style={styles.debugTitle}>Raw pool</Text>
-              <TouchableOpacity onPress={() => setShowRawPool(false)} style={styles.debugCloseBtn}>
-                <Text style={styles.debugCloseText}>×</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
-              {rawPoolRows.length > 0 ? (
-                rawPoolRows.map((item: any, index: number) => (
-                  <View key={`${item?.source || 'unknown'}-${item?.title || 'untitled'}-${index}`} style={styles.countsRow}>
-                    <Text style={styles.debugValue}>{index + 1}. {item?.title || '(untitled)'}</Text>
-                    <Text style={styles.debugValueMuted}>{item?.author || 'Unknown author'}</Text>
-                    <Text style={styles.debugValueMuted}>
-                      {item?.source || 'unknown'}{item?.queryRung != null ? ` • rung ${item.queryRung}` : ''}{item?.queryText ? ` • ${item.queryText}` : ''}
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.debugValueMuted}>No raw pool captured.</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      )}
-
       {showCandidatePool && (
         <View style={styles.poolPanel}>
           <View style={styles.debugCard}>
@@ -1966,7 +1903,7 @@ function handleLeft() {
                     <Text style={styles.debugValue}>{index + 1}. {item?.title || '(untitled)'}</Text>
                     <Text style={styles.debugValueMuted}>{item?.author || 'Unknown author'}</Text>
                     <Text style={styles.debugValueMuted}>
-                      {item?.source || 'unknown'}{typeof item?.score === 'number' ? ` • ${item.score.toFixed(3)}` : ''}
+                      {item?.source || 'unknown'}{item?.laneKind ? ` • ${item.laneKind}` : ''}{item?.queryRung != null ? ` • rung ${item.queryRung}` : ''}{typeof item?.score === 'number' ? ` • ${item.score.toFixed(3)}` : ''}
                     </Text>
                   </View>
                 ))
@@ -2306,22 +2243,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
-  copyRawPoolToggle: {
-    minWidth: 112,
-    alignItems: "center",
-    backgroundColor: "#7e22ce",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
-  rawPoolToggle: {
-    minWidth: 112,
-    alignItems: "center",
-    backgroundColor: "#5b21b6",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 999,
-  },
   copyPoolToggle: {
     minWidth: 112,
     alignItems: "center",
@@ -2348,7 +2269,6 @@ const styles = StyleSheet.create({
   },
   debugToggleText: { color: "#fff", fontWeight: "900" },
   countsPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
-  rawPoolPanel: { position: "absolute", right: 16, bottom: 104, width: 380, maxWidth: "94%", zIndex: 50 },
   poolPanel: { position: "absolute", right: 16, bottom: 104, width: 360, maxWidth: "92%", zIndex: 50 },
   rungsPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
   debugPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
