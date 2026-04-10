@@ -788,7 +788,7 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
 
 function isAnthologyOrCollection(candidate: Candidate): boolean {
   const text = haystack(candidate);
-  const title = String(candidate.title || "");
+  const title = String(candidate.title || '');
   if (GENERIC_CATEGORY_TITLE_PATTERNS.some((pattern) => pattern.test(title))) return true;
   return ANTHOLOGY_COLLECTION_PATTERNS.some((pattern) => pattern.test(text));
 }
@@ -826,13 +826,29 @@ function hasStrongHistoricalSignal(candidate: Candidate): boolean {
   return /\b(historical fiction|world war|ancient rome|ancient greece|19th century|war of the roses|crusades)\b/i.test(text);
 }
 
+function hasStrongTitleCaseNarrativeSignal(candidate: Candidate): boolean {
+  const title = String(candidate.title || '');
+  const subtitle = String(candidate.subtitle || '');
+  const combined = `${title} ${subtitle}`.trim();
+  return /(thriller|mystery|crime|detective|suspense|novel|missing|murder|killer|investigation|dark|girl|wife|secret|house|wood)/i.test(combined);
+}
+
+function looksLikeLooseLiteraryOrPoetryTitle(candidate: Candidate): boolean {
+  const title = String(candidate.title || '').trim();
+  if (!title) return false;
+  if (/[:?]/.test(title)) return false;
+  if (/(thriller|mystery|crime|detective|suspense|novel|murder|killer|investigation)/i.test(title)) return false;
+  if (/(words|heart|peace|war|song|poems?|verse|prayer|dreams?)/i.test(title)) return true;
+  return false;
+}
+
 function candidateEligibleForHypothesis(candidate: Candidate, hypothesis: CompactHypothesis | null): boolean {
   if (!hypothesis) return true;
 
   const label = hypothesis.label.toLowerCase();
 
   if (label.includes('thriller') || label.includes('mystery')) {
-    return hasStrongThrillerSignal(candidate) && looksLikeActualFictionBook(candidate) && !isInstitutionalOrCatalogCandidate(candidate);
+    return hasStrongThrillerSignal(candidate) && looksLikeActualFictionBook(candidate) && !isInstitutionalOrCatalogCandidate(candidate) && !looksLikeLooseLiteraryOrPoetryTitle(candidate);
   }
 
   if (label.includes('romantic')) return hasStrongRomanceSignal(candidate);
@@ -854,7 +870,7 @@ function candidateMatchesHypothesis(candidate: Candidate, hypothesis: CompactHyp
   const label = hypothesis.label.toLowerCase();
 
   if (label.includes('thriller') || label.includes('mystery')) {
-    return hasStrongThrillerSignal(candidate) && optionalHits >= 1;
+    return hasStrongThrillerSignal(candidate) && (optionalHits >= 1 || hasStrongTitleCaseNarrativeSignal(candidate));
   }
   if (label.includes('romantic')) return hasStrongRomanceSignal(candidate);
   if (label.includes('adventurous')) return hasStrongSpeculativeSignal(candidate);
