@@ -1781,8 +1781,8 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>Pool</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.resetToggle} onPress={handleResetPersonality}>
-            <Text style={styles.debugToggleText}>Reset</Text>
+          <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
+            <Text style={styles.debugToggleText}>Fresh User</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.randomizeToggle} onPress={handleRandomizePersonalitySlightly}>
@@ -2166,7 +2166,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
-  resetToggle: {
+  freshUserToggle: {
     minWidth: 112,
     alignItems: "center",
     backgroundColor: "#dc2626",
