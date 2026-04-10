@@ -14,6 +14,36 @@ function looksLikeGoogleBooksReference(doc: any): boolean {
   const text = [title, subtitle, description, publisher, authors, categories].filter(Boolean).join(" | ");
   if (!text) return false; if (GOOGLE_BOOKS_REFERENCE_TITLE_PAT.test(title)) return true; if (GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT.test(categories)) return true; if (GOOGLE_BOOKS_REFERENCE_AUTHOR_PAT.test(authors) && GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT.test(categories)) return true; return false;
 }
+function isGarbageGoogleBooksCandidate(doc: any): boolean {
+  const title = normalizeText(doc?.title);
+  const subtitle = normalizeText(doc?.subtitle);
+  const author = Array.isArray(doc?.author_name)
+    ? normalizeText(doc.author_name[0])
+    : normalizeText(doc?.volumeInfo?.authors?.[0]);
+  const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
+  const description = normalizeText(doc?.description);
+  const categories = [...(Array.isArray(doc?.subject) ? doc.subject : []), ...(Array.isArray(doc?.subjects) ? doc.subjects : []), ...(Array.isArray(doc?.categories) ? doc.categories : []), ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : [])].map((v: any) => normalizeText(v)).join(" | ");
+  const text = [title, subtitle, author, publisher, description, categories].filter(Boolean).join(" | ");
+
+  if (!title || !author) return true;
+  if (author === "unknown" || author.length < 3) return true;
+
+  if (/\b(test|ebook|sample|preview|canary)\b/i.test(title)) return true;
+  if (/\b(abstracts|theses|dissertations|index|journal|proceedings|transactions|bulletin|report|yearbook|catalog|catalogue)\b/i.test(title)) return true;
+  if (/\b(abstracts|theses|dissertations|proceedings|transactions|bulletin|report|catalog|catalogue)\b/i.test(text)) return true;
+
+  if (title.length > 140) return true;
+
+  const tropeRepeats = (title.match(/thriller|romance|fantasy|mystery|suspense/gi) || []).length;
+  if (tropeRepeats > 3) return true;
+
+  if (/\b(paranormal romance|fantasy romance|urban romance|office romance)\b/i.test(text) && /\bcrime thriller|mystery thriller|psychological thriller|detective\b/i.test(text)) {
+    return true;
+  }
+
+  return false;
+}
+
 async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 3): Promise<any> {
   let attempt = 0;
   while (attempt <= retries) {
@@ -87,7 +117,13 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = queriesToTry[queryIndex];
     const rawDocs = await googleBooksSearch(q, fetchLimit, timeoutMs);
-    const admittedDocsRaw = (Array.isArray(rawDocs) ? rawDocs : []).filter((doc: any) => { const publisher = doc?.publisher ?? doc?.volumeInfo?.publisher; if (isHardSelfPublished(publisher)) return false; if (looksLikeGoogleBooksReference(doc)) return false; return true; });
+    const admittedDocsRaw = (Array.isArray(rawDocs) ? rawDocs : []).filter((doc: any) => {
+      const publisher = doc?.publisher ?? doc?.volumeInfo?.publisher;
+      if (isHardSelfPublished(publisher)) return false;
+      if (looksLikeGoogleBooksReference(doc)) return false;
+      if (isGarbageGoogleBooksCandidate(doc)) return false;
+      return true;
+    });
     if (queryIndex === 0) primaryDocsRaw = admittedDocsRaw;
     const shouldBackfillFromThisQuery = queryIndex === 0 || collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
     if (shouldBackfillFromThisQuery) {

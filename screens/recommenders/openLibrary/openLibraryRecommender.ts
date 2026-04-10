@@ -38,6 +38,26 @@ function fallbackToOpenLibraryQuery(query: string): string {
   if (cleaned.includes("thriller")) return '"psychological thriller novel"';
   return `"${cleaned}"`;
 }
+function normalizeOpenLibraryAuthor(d: any): string {
+  const value = Array.isArray(d?.author_name) ? d.author_name[0] : d?.author_name;
+  return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+function isGarbageOpenLibraryCandidate(d: any): boolean {
+  const title = String(d?.title || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const author = normalizeOpenLibraryAuthor(d);
+  const subjects = Array.isArray(d?.subject) ? d.subject.map((v: any) => String(v || "").toLowerCase()).join(" | ") : "";
+  const publishers = Array.isArray(d?.publisher) ? d.publisher.map((v: any) => String(v || "").toLowerCase()).join(" | ") : "";
+  const text = [title, author, subjects, publishers].filter(Boolean).join(" | ");
+
+  if (!title || !author) return true;
+  if (author === "unknown" || author.length < 3) return true;
+
+  if (/\b(test|ebook|sample|preview|canary)\b/i.test(title)) return true;
+  if (/\b(index|bibliography|abstracts|theses|dissertations|journal|bulletin|catalog|catalogue|report|yearbook)\b/i.test(text)) return true;
+
+  return false;
+}
+
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): { queries: string[]; domainMode: RecommendationResult["domainMode"]; } {
   const band = deckKeyToBand(deckKey); const isVisualDominant = visualSignalWeight(input.tagCounts) >= 4;
   if (isVisualDominant && band !== "kids") return { domainMode: "default", queries: dedupeQueries(['subject:"manga"', 'subject:"graphic novels"', 'subject:"comics"', 'subject:"fiction"']) };
@@ -70,7 +90,12 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
     const q = queriesToTry[queryIndex]; const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(String(fetchLimit))}`;
     try {
       const data = await fetchJsonWithTimeout(url, timeoutMs); const docsRaw = Array.isArray(data?.docs) ? data.docs : [];
-      const admittedDocsRaw = docsRaw.filter((d: any) => { const publishers = Array.isArray(d?.publisher) ? d.publisher : []; return !publishers.some((p: any) => isHardSelfPublished(p)); });
+      const admittedDocsRaw = docsRaw.filter((d: any) => {
+        const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
+        if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
+        if (isGarbageOpenLibraryCandidate(d)) return false;
+        return true;
+      });
       if (admittedDocsRaw.length > bestDocsRaw.length) { bestDocsRaw = admittedDocsRaw; bestQuery = q; }
       const shouldBackfillFromThisQuery = queryIndex < minQueryPassesBeforeEarlyExit || collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
       if (shouldBackfillFromThisQuery) {
