@@ -93,40 +93,51 @@ function mainstreamHarvestQueries(
   const withAudience = (q: string) =>
     ageBand === "teen" ? `young adult ${q}` : q;
 
+  const dominant = (genreFragments[0] || "").toLowerCase().trim();
+
   if (family === "thriller_family") {
+    const subtype = dominant || "psychological thriller novel";
     return dedupeQueries([
-      withAudience("bestselling psychological thriller novel"),
-      withAudience("popular crime thriller novel"),
-      withAudience("top rated mystery thriller novel"),
+      withAudience(`bestselling ${subtype}`),
+      withAudience(`popular ${subtype}`),
+      withAudience(`top rated ${subtype}`),
+      withAudience(`famous ${subtype} books`),
     ]);
   }
 
   if (family === "speculative_family") {
+    const subtype = dominant || "science fiction novel";
     return dedupeQueries([
-      withAudience("bestselling science fiction novel"),
-      withAudience("popular fantasy novel"),
+      withAudience(`bestselling ${subtype}`),
+      withAudience(`popular ${subtype}`),
+      withAudience(`famous ${subtype} books`),
     ]);
   }
 
   if (family === "romance_family") {
+    const subtype = dominant || "romance novel";
     return dedupeQueries([
-      withAudience("bestselling romance novel"),
-      withAudience("popular contemporary romance novel"),
+      withAudience(`bestselling ${subtype}`),
+      withAudience(`popular ${subtype}`),
+      withAudience(`famous ${subtype} books`),
     ]);
   }
 
   if (family === "historical_family") {
+    const subtype = dominant || "historical fiction novel";
     return dedupeQueries([
-      withAudience("bestselling historical fiction novel"),
-      withAudience("popular historical fiction novel"),
+      withAudience(`bestselling ${subtype}`),
+      withAudience(`popular ${subtype}`),
+      withAudience(`famous ${subtype} books`),
     ]);
   }
 
+  const subtype = dominant || "fiction novel";
   return dedupeQueries([
-    withAudience("bestselling fiction novel"),
+    withAudience(`bestselling ${subtype}`),
+    withAudience(`famous ${subtype} books`),
   ]);
 }
-
 
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);

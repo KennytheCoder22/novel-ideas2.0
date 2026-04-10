@@ -305,6 +305,8 @@ function marketFacingRungParts(rung: StructuredFetchRung): string[] {
     const recognizableBoost = [
       "popular",
       "bestselling",
+      "famous",
+      "well known",
     ];
 
     return ensureNovelAnchor([
@@ -314,6 +316,13 @@ function marketFacingRungParts(rung: StructuredFetchRung): string[] {
   }
 
   if (rung.family === "thriller_family") {
+    if (rung.rung === 0) {
+      return ensureNovelAnchor(uniqOrdered([
+        ...rung.themes.slice(0, 1),
+        ...baseParts,
+      ]));
+    }
+
     return ensureNovelAnchor(baseParts);
   }
 
