@@ -96,12 +96,15 @@ function buildAnchorLaneQuery(bucketPlan: any): string {
   const family = inferRouterFamily(bucketPlan);
   const queryText = String(bucketPlan?.preview || bucketPlan?.queries?.[0] || "").toLowerCase();
 
+  // Lane 90 = commercial anchor lane:
+  // titles a general reader could plausibly encounter on a front table,
+  // airport shelf, grocery spinner, or mass-market bestseller rack.
   if (family === "thriller") {
-    if (queryText.includes("psychological")) return "bestselling psychological thriller novel";
+    if (queryText.includes("psychological")) return "bestselling psychological suspense novel";
     if (queryText.includes("crime")) return "bestselling crime thriller novel";
-    if (queryText.includes("mystery")) return "bestselling mystery thriller novel";
+    if (queryText.includes("mystery")) return "bestselling mystery suspense novel";
     if (queryText.includes("detective")) return "bestselling detective novel";
-    return "bestselling thriller novel";
+    return "bestselling suspense thriller novel";
   }
 
   if (family === "speculative") {
@@ -112,7 +115,7 @@ function buildAnchorLaneQuery(bucketPlan: any): string {
 
   if (family === "romance") return "bestselling romance novel";
   if (family === "historical") return "bestselling historical fiction novel";
-  return "bestselling fiction novel";
+  return "bestselling commercial fiction novel";
 }
 
 function withAnchorLane(rungs: any[], bucketPlan: any) {

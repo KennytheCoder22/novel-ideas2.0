@@ -177,13 +177,39 @@ function isAnchorLaneQuery(query: string): boolean {
 function supplementalAnchorQueries(query: string): string[] {
   const q = normalizeStoredQueryText(query);
   if (!isAnchorLaneQuery(q)) return [q];
-  if (/psychological/.test(q)) return dedupeQueries([q, "popular psychological thriller novel"]);
-  if (/crime/.test(q)) return dedupeQueries([q, "popular crime thriller novel"]);
-  if (/mystery/.test(q)) return dedupeQueries([q, "popular mystery thriller novel"]);
-  if (/thriller/.test(q)) return dedupeQueries([q, "popular thriller novel"]);
+
+  // Lane 90 targets broad commercial shelf visibility, not awards discourse.
+  if (/psychological/.test(q) || /suspense/.test(q)) {
+    return dedupeQueries([
+      q,
+      "popular psychological suspense novel",
+      "bestselling suspense thriller paperback",
+    ]);
+  }
+  if (/crime/.test(q)) {
+    return dedupeQueries([
+      q,
+      "popular crime thriller novel",
+      "bestselling crime thriller paperback",
+    ]);
+  }
+  if (/mystery/.test(q)) {
+    return dedupeQueries([
+      q,
+      "popular mystery suspense novel",
+      "bestselling mystery paperback",
+    ]);
+  }
+  if (/thriller/.test(q)) {
+    return dedupeQueries([
+      q,
+      "popular suspense thriller novel",
+      "bestselling thriller paperback",
+    ]);
+  }
   if (/fantasy/.test(q)) return dedupeQueries([q, "popular fantasy novel"]);
   if (/science fiction/.test(q)) return dedupeQueries([q, "popular science fiction novel"]);
-  return dedupeQueries([q, "popular fiction novel"]);
+  return dedupeQueries([q, "popular commercial fiction novel"]);
 }
 
 
@@ -210,9 +236,43 @@ function isAnchorLaneGarbage(doc: any): boolean {
     .join(" ");
 
   const title = normalizeText(doc?.title);
-  if (/\b(guide|handbook|yearbook|encyclopedia|digest|review|catalog|bibliography|writers?|authors?|market|masterclass|best books|best fiction|year in review)\b/i.test(title)) return true;
+  if (/\b(guide|handbook|yearbook|encyclopedia|digest|review|catalog|bibliography|writers?|authors?|market|masterclass|best books|best fiction|year in review|anthology|collection|stories of the century|stories of the year|boxed set|box set|omnibus|complete works|selected works|edition|study guide|companion)\b/i.test(title)) return true;
 
-  return /\b(publishing|literature|criticism|essays?|reference|popular culture|book review|seo)\b/i.test(text);
+  return /\b(publishing|literature|criticism|essays?|reference|popular culture|book review|seo|authorship|creative writing|language arts|bibliography|study aids|journals?|magazines?|reports?|proceedings|transactions)\b/i.test(text);
+}
+
+
+function looksLikeCommercialAnchor(doc: any): boolean {
+  const year = Number(doc?.first_publish_year || 0);
+  const pageCount = Number(doc?.pageCount || doc?.volumeInfo?.pageCount || 0);
+  const ratingsCount = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || 0);
+  const averageRating = Number(doc?.averageRating || doc?.volumeInfo?.averageRating || 0);
+
+  const categories = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+    ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
+  ]
+    .map((value: any) => normalizeText(value))
+    .filter(Boolean)
+    .join(" ");
+
+  const text = [
+    normalizeText(doc?.title),
+    normalizeText(doc?.subtitle),
+    normalizeText(doc?.description),
+    categories,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const commercialSignals = /\b(suspense|thriller|psychological|crime|mystery|domestic suspense|novel|fiction|bestseller|international bestseller|new york times bestseller)\b/i.test(text);
+  const modernEnough = !year || year >= 1995;
+  const shelfLengthOkay = !pageCount || pageCount >= 180;
+  const audienceSignal = ratingsCount >= 20 || averageRating >= 3.7 || /\bpaperback\b/i.test(text);
+
+  return commercialSignals && modernEnough && shelfLengthOkay && audienceSignal;
 }
 
 function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
@@ -385,6 +445,10 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
           .join(" ");
 
         if (!/\b(novel|thriller|mystery|crime|fiction|suspense)\b/.test(anchorText)) {
+          return false;
+        }
+
+        if (!looksLikeCommercialAnchor(doc)) {
           return false;
         }
       }

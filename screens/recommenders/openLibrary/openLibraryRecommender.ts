@@ -29,6 +29,8 @@ function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
 function fallbackToOpenLibraryQuery(query: string): string {
   const cleaned = String(query || "").toLowerCase().trim();
   if (!cleaned) return '"fiction"';
+  if (cleaned.includes("psychological") && cleaned.includes("suspense")) return '"psychological thriller novel"';
+  if (cleaned.includes("mystery") && cleaned.includes("suspense")) return '"mystery thriller novel"';
   if (cleaned.includes("crime") && cleaned.includes("thriller")) return '"crime thriller novel"';
   if (cleaned.includes("mystery") && cleaned.includes("thriller")) return '"mystery thriller novel"';
   if (cleaned.includes("detective")) return '"detective novel"';
@@ -37,7 +39,7 @@ function fallbackToOpenLibraryQuery(query: string): string {
   if (cleaned.includes("horror")) return '"horror novel"';
   if (cleaned.includes("romance")) return '"romance novel"';
   if (cleaned.includes("historical")) return '"historical fiction novel"';
-  if (cleaned.includes("thriller")) return '"psychological thriller novel"';
+  if (cleaned.includes("thriller") || cleaned.includes("suspense")) return '"psychological thriller novel"';
   return `"${cleaned}"`;
 }
 function normalizeOpenLibraryAuthor(d: any): string {
@@ -63,6 +65,18 @@ function isGarbageOpenLibraryCandidate(d: any): boolean {
   if (/\b(detective novels?|crime fiction)\b/i.test(title) && !/\b(murder|case|detective|mystery|thriller)\b/i.test(subjects)) return true;
 
   return false;
+}
+
+
+function looksLikeCommercialOpenLibraryAnchor(d: any): boolean {
+  const title = String(d?.title || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const subjects = Array.isArray(d?.subject) ? d.subject.map((v: any) => String(v || "").toLowerCase()).join(" | ") : "";
+  const year = Number(d?.first_publish_year || 0);
+  const text = [title, subjects].filter(Boolean).join(" | ");
+
+  if (/\b(anthology|collection|stories of the year|stories of the century|essays|criticism|bibliography|index|yearbook|catalog|review)\b/i.test(text)) return false;
+  if (year && year < 1995) return false;
+  return /\b(novel|thriller|mystery|crime|suspense|fiction|detective)\b/i.test(text);
 }
 
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): { queries: string[]; domainMode: RecommendationResult["domainMode"]; } {
@@ -113,6 +127,7 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
         const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
         if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
         if (isGarbageOpenLibraryCandidate(d)) return false;
+        if (laneKind === "anchor" && !looksLikeCommercialOpenLibraryAnchor(d)) return false;
         return true;
       });
       if (admittedDocsRaw.length > bestDocsRaw.length) { bestDocsRaw = admittedDocsRaw; bestQuery = q; }
