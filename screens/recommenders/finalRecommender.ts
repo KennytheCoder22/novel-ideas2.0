@@ -82,15 +82,15 @@ const NONFICTION_PATTERNS = [
 ];
 
 const SUMMARY_GUIDE_PATTERNS = [
-  /\b(summary|analysis|student edition|teacher guide|study guide|workbook|lesson plan|book club kit|companion|critical essays)\b/i,
+  /\b(summary|analysis|student edition|teacher guide|study guide|workbook|lesson plan|book club kit|companion|critical essays|history and criticism|literary criticism|encyclopedia|handbook)\b/i,
 ];
 
 const WEAK_METADATA_PATTERNS = [
-  /\b(annotated|complete works|selected works|collection|anthology|omnibus|box set)\b/i,
+  /\b(annotated|complete works|selected works|collection|anthology|omnibus|box set|boxed set|illustrated edition|stories of the year)\b/i,
 ];
 
 const ANTHOLOGY_COLLECTION_PATTERNS = [
-  /\b(short stories|short story collection|collection|anthology|omnibus|box set|selected stories|complete stories)\b/i,
+  /\b(short stories|short story collection|collection|anthology|omnibus|box set|boxed set|selected stories|complete stories|stories of the year|complete novels|illustrated edition)\b/i,
 ];
 
 const INSTITUTIONAL_AUTHOR_PATTERNS = [
@@ -119,6 +119,13 @@ const PLOT_SIGNAL_PATTERNS = [
   /\b(protagonist|hero|heroine|journalist|inspector|sleuth|woman|man|family|couple|girl|boy)\b/i,
 ];
 
+const GENERIC_CATEGORY_TITLE_PATTERNS = [
+  /^(real\s+)?mystery\s+and\s+thrillers?$/i,
+  /^mystery\s+and\s+thrillers?$/i,
+  /^crime\s+and\s+mystery$/i,
+  /^thrillers?\s*&\s*mysteries?$/i,
+];
+
 const REFERENCE_OR_CRITICISM_TITLE_PATTERNS = [
   /\bwhat do i read next\b/i,
   /\bwhodunit\b/i,
@@ -145,6 +152,11 @@ const REFERENCE_OR_CRITICISM_TITLE_PATTERNS = [
   /\bmanual\b/i,
   /\btextbook\b/i,
   /\bessays?\b/i,
+  /\bdrama\b/i,
+  /\bstories of the year\b/i,
+  /\bboxed set\b/i,
+  /\billustrated edition\b/i,
+  /\brise of\b/i,
   /\breference\b/i,
   /\bthe contemporary [a-z ]*novel\b/i,
   /\b[a-z ]+mystery and detective novels\b/i,
@@ -623,6 +635,7 @@ function hasReferenceOrCriticismTitle(candidate: Candidate): boolean {
   const title = String(candidate.title || '');
   const subtitle = String(candidate.subtitle || '');
   const combined = `${title} ${subtitle}`.trim();
+  if (GENERIC_CATEGORY_TITLE_PATTERNS.some((pattern) => pattern.test(combined))) return true;
   return REFERENCE_OR_CRITICISM_TITLE_PATTERNS.some((pattern) => pattern.test(combined));
 }
 
@@ -775,6 +788,8 @@ function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boole
 
 function isAnthologyOrCollection(candidate: Candidate): boolean {
   const text = haystack(candidate);
+  const title = String(candidate.title || "");
+  if (GENERIC_CATEGORY_TITLE_PATTERNS.some((pattern) => pattern.test(title))) return true;
   return ANTHOLOGY_COLLECTION_PATTERNS.some((pattern) => pattern.test(text));
 }
 
