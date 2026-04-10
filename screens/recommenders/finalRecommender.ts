@@ -770,18 +770,21 @@ function softMetadataPenalty(candidate: Candidate): number {
 }
 
 function isPublicDomainNoise(candidate: Candidate, lane: RecommenderLane): boolean {
-  const year = niYearFromCandidate(candidate);
-  if (!year) return false;
+  const editionYear = niYearFromCandidate(candidate);
+  const firstYear = niFirstPublishYear(candidate) ?? editionYear;
+  if (!firstYear && !editionYear) return false;
 
   const text = haystack(candidate);
   const hasStrongThrillerLikeSignal = /\b(thriller|mystery|crime|detective|investigation|suspense|psychological thriller|serial killer|police procedural|murder|novel|fiction)\b/i.test(text);
   const hasAnyGenreSignal = /\b(thriller|mystery|crime|detective|fantasy|horror|science fiction|romance|dystopian|speculative|novel|fiction)\b/i.test(text);
   const activelyPublished = isStillActivelyPublished(candidate);
+  const effectiveYear = firstYear || editionYear || 0;
 
   if (isInstitutionalOrCatalogCandidate(candidate)) return true;
-  if (lane === 'adult' && year < 1980 && !hasStrongThrillerLikeSignal && !activelyPublished) return true;
-  if (lane === 'teen' && year < 1950 && !hasAnyGenreSignal && !activelyPublished) return true;
-  if (year < 1935 && candidate.ratingCount < 500 && !activelyPublished) return true;
+  if (lane === 'adult' && effectiveYear < 1960 && !activelyPublished) return true;
+  if (lane === 'adult' && effectiveYear < 1980 && !hasStrongThrillerLikeSignal && !activelyPublished) return true;
+  if (lane === 'teen' && effectiveYear < 1950 && !hasAnyGenreSignal && !activelyPublished) return true;
+  if (effectiveYear < 1935 && candidate.ratingCount < 500 && !activelyPublished) return true;
 
   return false;
 }

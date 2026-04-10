@@ -14,6 +14,8 @@ const GOOGLE_BOOKS_ACADEMIC_PAT = /\b(history and criticism|literary criticism|c
 const GOOGLE_BOOKS_GENERIC_BUCKET_TITLE_PAT = /^(real )?(mystery|mysteries|thriller|thrillers|crime|detective)( and |\s*&\s*|\/)(mystery|mysteries|thriller|thrillers|crime|detective)s?$/i;
 const THRILLER_FAMILY_QUERY_PAT = /\b(thriller|mystery|crime|detective|psychological)\b/i;
 const THRILLER_FAMILY_DOC_SIGNAL_PAT = /\b(thriller|mystery|crime|detective|suspense|psychological|police procedural|serial killer|murder|investigation|missing|killer|noir|whodunit)\b/i;
+const GENERIC_FICTION_SIGNAL_PAT = /\b(novel|fiction|literature|adult fiction|fiction \/ suspense|fiction \/ mystery)\b/i;
+const LOOSE_LITERARY_TITLE_PAT = /\b(words? from the heart|peace and war|songs? of|poems?|verse|letters? to|essays? of|meditations? on|reflections? on)\b/i;
 function looksLikeGoogleBooksReference(doc: any): boolean {
   const title = normalizeText(doc?.title); const subtitle = normalizeText(doc?.subtitle); const description = normalizeText(doc?.description); const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
   const authors = Array.isArray(doc?.author_name) ? doc.author_name.map((a: any) => normalizeText(a)).join(" | ") : "";
@@ -34,7 +36,8 @@ function isGarbageGoogleBooksCandidate(doc: any, activeQuery = ""): boolean {
   const normalizedQuery = collapseRepeatedTerms(activeQuery);
   const thrillerFamilyQuery = THRILLER_FAMILY_QUERY_PAT.test(normalizedQuery);
   const hasThrillerFamilySignal = THRILLER_FAMILY_DOC_SIGNAL_PAT.test(text);
-  const fictionSignals = /(novel|fiction|thriller|mystery|crime|detective|suspense|psychological thriller|police procedural|serial killer|investigation|murder)/i;
+  const hasGenericFictionSignal = GENERIC_FICTION_SIGNAL_PAT.test(text);
+  const hasNarrativeSupport = hasThrillerFamilySignal || hasGenericFictionSignal;
 
   if (!title || !author) return true;
   if (author === "unknown" || author.length < 3) return true;
@@ -151,21 +154,36 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = toGoogleBooksQuery(queriesToTry[queryIndex]);
     const rawDocs = await googleBooksSearch(q, fetchLimit, timeoutMs);
-    const admittedDocsRaw = (Array.isArray(rawDocs) ? rawDocs : []).filter((doc: any) => {
+    const baseDocs = Array.isArray(rawDocs) ? rawDocs : [];
+    const admittedDocsRaw = baseDocs.filter((doc: any) => {
       const publisher = doc?.publisher ?? doc?.volumeInfo?.publisher;
       if (isHardSelfPublished(publisher)) return false;
       if (looksLikeGoogleBooksReference(doc)) return false;
       if (isGarbageGoogleBooksCandidate(doc, q)) return false;
       return true;
     });
-    if (queryIndex === 0) primaryDocsRaw = admittedDocsRaw;
+    const rescueDocsRaw = admittedDocsRaw.length ? admittedDocsRaw : baseDocs.filter((doc: any) => {
+      const publisher = doc?.publisher ?? doc?.volumeInfo?.publisher;
+      if (isHardSelfPublished(publisher)) return false;
+      if (looksLikeGoogleBooksReference(doc)) return false;
+      const title = normalizeText(doc?.title);
+      const subtitle = normalizeText(doc?.subtitle);
+      const description = normalizeText(doc?.description);
+      const categories = [...(Array.isArray(doc?.subject) ? doc.subject : []), ...(Array.isArray(doc?.subjects) ? doc.subjects : []), ...(Array.isArray(doc?.categories) ? doc.categories : []), ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : [])].map((v: any) => normalizeText(v)).join(" | ");
+      const text = [title, subtitle, description, categories].filter(Boolean).join(" | ");
+      if (GOOGLE_BOOKS_COLLECTION_PAT.test(`${title} ${subtitle}`)) return false;
+      if (GOOGLE_BOOKS_GENERIC_BUCKET_TITLE_PAT.test(title)) return false;
+      if (GOOGLE_BOOKS_ACADEMIC_PAT.test(text) && !THRILLER_FAMILY_DOC_SIGNAL_PAT.test(text) && !GENERIC_FICTION_SIGNAL_PAT.test(text)) return false;
+      return true;
+    });
+    if (queryIndex === 0) primaryDocsRaw = rescueDocsRaw;
     const shouldBackfillFromThisQuery = queryIndex === 0 || collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
     if (shouldBackfillFromThisQuery) {
-      for (const doc of admittedDocsRaw) {
+      for (const doc of rescueDocsRaw) {
         const key = String(doc?.key || doc?.id || `${doc?.title || "unknown"}|${queryIndex}`);
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
-        collectedDocsRaw.push({ ...doc, queryRung: queryIndex, queryText: q, source: "googleBooks" });
+        collectedDocsRaw.push({ ...doc, queryRung: queryIndex, queryText: collapseRepeatedTerms(q), source: "googleBooks" });
       }
     }
     const enoughCandidates = collectedDocsRaw.length >= Math.max(fetchLimit, minCandidateFloor);
