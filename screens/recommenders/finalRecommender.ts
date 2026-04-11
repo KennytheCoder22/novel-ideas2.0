@@ -320,7 +320,7 @@ function scoreRungBoost(candidate: Candidate): number {
   if (rung === 1) return 1.4;
   if (rung === 2) return 0.75;
   if (rung === 3) return 0.35;
-  if (rung === 90) return 0.6;
+  if (rung === 90) return 1.35;
   return 0.1;
 }
 
@@ -958,10 +958,17 @@ if (isAnchorLane) {
   const hasStrongSignal =
     cs?.bestseller ||
     (cs?.awards ?? 0) > 0 ||
-    (cs?.popularityTier ?? 0) >= 2;
+    (cs?.popularityTier ?? 0) >= 2 ||
+    candidate.ratingCount >= 1000;
 
   if (hasStrongSignal) {
-    score += 0.6;
+    score += 1.4;
+  } else if ((cs?.popularityTier ?? 0) >= 1 || candidate.ratingCount >= 200) {
+    score += 0.7;
+  }
+
+  if (/\b(page[-\s]?turner|bestseller|thriller|suspense|crime|mystery)\b/i.test(haystack(candidate))) {
+    score += 0.35;
   }
 }
 // --- END PATCH ---
@@ -1235,7 +1242,7 @@ export function finalRecommenderForDeck(
         return Number.isFinite(itemRung) && itemRung < currentRung;
       });
 
-      if (betterRungExists && currentRung >= 3) {
+      if (betterRungExists && currentRung >= 3 && currentRung !== 90) {
         penalty += 1.25;
       }
       if (betterRungExists && currentRung === 2) {
@@ -1246,7 +1253,7 @@ export function finalRecommenderForDeck(
         return Number.isFinite(itemRung) && itemRung >= currentRung;
       }).length;
 
-      if (currentRung >= 2 && selectedSameOrWorseRung >= 3) {
+      if (currentRung >= 2 && currentRung !== 90 && selectedSameOrWorseRung >= 3) {
         penalty += (selectedSameOrWorseRung - 2) * 0.35;
       }
     }
@@ -1314,6 +1321,12 @@ export function finalRecommenderForDeck(
   };
 
   addRanked(scored);
+
+  const hasAnchorLaneSelection = kept.some((candidate) => Number(candidate.queryRung) === 90);
+  if (!hasAnchorLaneSelection) {
+    const anchorCandidate = scored.find((entry) => Number(entry.candidate.queryRung) === 90);
+    if (anchorCandidate) addCandidateIfAllowed(anchorCandidate.candidate);
+  }
 
   // Safety valve:
   // if we somehow still collapse too far, backfill from the best remaining scored pool

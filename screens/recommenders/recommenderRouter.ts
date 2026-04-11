@@ -219,6 +219,59 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
   return output.slice(0, finalLimit);
 }
 
+
+function quoteIfNeeded(value: string): string {
+  const cleaned = String(value || "").trim();
+  if (!cleaned) return "";
+  return /^".*"$/.test(cleaned) ? cleaned : `"${cleaned}"`;
+}
+
+function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
+  const family = inferRouterFamily(bucketPlan);
+  const base = String(rung?.query || "").trim().toLowerCase();
+  const preview = String(bucketPlan?.preview || "").trim().toLowerCase();
+
+  if (family === "thriller") {
+    if (rung?.rung === 0) return quoteIfNeeded("psychological suspense fiction");
+
+    if (rung?.rung === 1) {
+      if (base.includes("crime")) return quoteIfNeeded("crime fiction");
+      return quoteIfNeeded("psychological thriller");
+    }
+
+    if (rung?.rung === 2) {
+      if (base.includes("murder") || base.includes("investigation")) {
+        return quoteIfNeeded("mystery fiction");
+      }
+      return quoteIfNeeded("crime fiction");
+    }
+
+    if (rung?.rung === 3) return quoteIfNeeded("suspense fiction");
+
+    // Rung 90 is the commercial / airport-paperback lane.
+    if (rung?.rung === 90) {
+      if (base.includes("crime")) return quoteIfNeeded("crime bestsellers");
+      if (base.includes("mystery")) return quoteIfNeeded("bestselling mystery fiction");
+      if (base.includes("psychological")) return quoteIfNeeded("bestselling psychological thrillers");
+      return quoteIfNeeded("bestselling thriller fiction");
+    }
+
+    return quoteIfNeeded("suspense fiction");
+  }
+
+  if (family === "speculative") {
+    if (base.includes("science fiction")) return quoteIfNeeded("science fiction");
+    if (base.includes("fantasy")) return quoteIfNeeded("fantasy fiction");
+    if (base.includes("horror")) return quoteIfNeeded("horror fiction");
+  }
+
+  if (family === "romance") return quoteIfNeeded("romance fiction");
+  if (family === "historical") return quoteIfNeeded("historical fiction");
+
+  return quoteIfNeeded(base || preview || "fiction");
+}
+
+
 function chooseEngine(input: RecommenderInput, override?: EngineOverride): EngineId {
   if (override && override !== "auto") return override;
   if (input.deckKey === "k2") return "openLibrary";
@@ -802,7 +855,9 @@ export async function getRecommendations(
   };
 
   for (const rung of rungs) {
-    const rungInput: RecommenderInput = {
+    const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
+
+    const googleInput: RecommenderInput = {
       ...routedInput,
       bucketPlan: {
         ...bucketPlan,
@@ -811,7 +866,47 @@ export async function getRecommendations(
       },
     };
 
-    const rungResults = await fetchBothEngines(rungInput);
+    const openLibraryInput: RecommenderInput = {
+      ...routedInput,
+      bucketPlan: {
+        ...bucketPlan,
+        queries: [openLibraryQuery],
+        preview: openLibraryQuery,
+      },
+    };
+
+    const [googleResult, openLibraryResult, kitsuResult, gcdResult] = await Promise.allSettled([
+      runEngine("googleBooks", googleInput),
+      runEngine("openLibrary", openLibraryInput),
+      ...(includeKitsu ? [getKitsuMangaRecommendations(googleInput)] : []),
+      ...(includeGcd ? [getGcdGraphicNovelRecommendations(googleInput)] : []),
+    ]);
+
+    const rungResults = {
+      google: googleResult.status === "fulfilled" ? googleResult.value : null,
+      openLibrary: openLibraryResult.status === "fulfilled" ? openLibraryResult.value : null,
+      kitsu: includeKitsu
+        ? ((kitsuResult.status === "fulfilled" ? kitsuResult.value : null) as RecommendationResult | null)
+        : null,
+      gcd: includeGcd
+        ? (((includeKitsu ? gcdResult : kitsuResult).status === "fulfilled"
+            ? (includeKitsu ? gcdResult : kitsuResult).value
+            : null) as RecommendationResult | null)
+        : null,
+      mergedDocs: dedupeDocs([
+        ...dedupeDocs(extractDocs(googleResult.status === "fulfilled" ? googleResult.value : null, "googleBooks")),
+        ...dedupeDocs(extractDocs(openLibraryResult.status === "fulfilled" ? openLibraryResult.value : null, "openLibrary")),
+        ...(includeKitsu
+          ? dedupeDocs(extractDocs(kitsuResult.status === "fulfilled" ? kitsuResult.value : null, "kitsu"))
+          : []),
+        ...(includeGcd
+          ? dedupeDocs(extractDocs(((includeKitsu ? gcdResult : kitsuResult).status === "fulfilled"
+              ? (includeKitsu ? gcdResult : kitsuResult).value
+              : null), "gcd"))
+          : []),
+      ]),
+    };
+
 
     if (!google && rungResults.google) google = rungResults.google;
     if (!openLibrary && rungResults.openLibrary) openLibrary = rungResults.openLibrary;
@@ -830,25 +925,28 @@ export async function getRecommendations(
       ...(((rungResults.gcd as any)?.debugRawPool as any[]) || []),
     ].map((row: any) => ({
       ...row,
-      queryRung: row?.queryRung ?? rung.rung,
-      queryText: row?.queryText ?? rung.query,
+      queryRung: rung.rung,
+      queryText: row?.source === "openLibrary" ? openLibraryQuery : (row?.queryText ?? rung.query),
       laneKind: row?.laneKind ?? rung.laneKind ?? "precision",
     }));
 
     debugRawPool.push(...rungRawPool);
 
-    const taggedDocs = rungResults.mergedDocs.map((doc: any) => ({
-      ...doc,
-      queryRung: rung.rung,
-      queryText: rung.query,
-      laneKind: rung.laneKind ?? "precision",
-      diagnostics: {
-        ...(doc?.diagnostics || {}),
+    const taggedDocs = rungResults.mergedDocs.map((doc: any) => {
+      const routedQueryText = sourceForDoc(doc, "openLibrary") === "openLibrary" ? openLibraryQuery : rung.query;
+      return {
+        ...doc,
         queryRung: rung.rung,
-        queryText: rung.query,
+        queryText: routedQueryText,
         laneKind: rung.laneKind ?? "precision",
-      },
-    }));
+        diagnostics: {
+          ...(doc?.diagnostics || {}),
+          queryRung: rung.rung,
+          queryText: routedQueryText,
+          laneKind: rung.laneKind ?? "precision",
+        },
+      };
+    });
 
     allMergedDocs.push(...taggedDocs);
   }
