@@ -100,22 +100,22 @@ function buildAnchorLaneQuery(bucketPlan: any): string {
   // Lane 90 = commercial anchor lane:
   // keep the phrasing shelf-facing and reader-facing, not award/reference-facing.
   if (family === "thriller") {
-    if (queryText.includes("psychological")) return "popular psychological suspense paperback novel";
-    if (queryText.includes("crime")) return "popular crime thriller paperback novel";
-    if (queryText.includes("mystery")) return "popular mystery suspense paperback novel";
-    if (queryText.includes("detective")) return "popular detective suspense novel";
-    return "popular suspense thriller paperback novel";
+    if (queryText.includes("psychological")) return "psychological suspense novel";
+    if (queryText.includes("crime")) return "crime thriller novel";
+    if (queryText.includes("mystery")) return "mystery suspense novel";
+    if (queryText.includes("detective")) return "detective thriller novel";
+    return "suspense thriller novel";
   }
 
   if (family === "speculative") {
-    if (queryText.includes("fantasy")) return "popular fantasy paperback novel";
-    if (queryText.includes("horror")) return "popular horror paperback novel";
-    return "popular science fiction paperback novel";
+    if (queryText.includes("fantasy")) return "fantasy novel";
+    if (queryText.includes("horror")) return "horror novel";
+    return "science fiction novel";
   }
 
-  if (family === "romance") return "popular romance paperback novel";
-  if (family === "historical") return "popular historical fiction paperback novel";
-  return "popular commercial fiction paperback novel";
+  if (family === "romance") return "romance novel";
+  if (family === "historical") return "historical fiction novel";
+  return "commercial fiction novel";
 }
 
 function withAnchorLane(rungs: any[], bucketPlan: any) {

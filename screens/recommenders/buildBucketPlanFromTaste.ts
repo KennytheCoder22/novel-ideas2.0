@@ -215,5 +215,5 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     ...rungQueries,
   ]).slice(0, 6);
 
-  return { rungs, queries, preview: queries[0] || "", strategy: `20q-mature-fetch:${family}:mainstream-harvest` };
+  return { rungs, queries, preview: rungQueries[0] || queries[0] || "", strategy: `20q-mature-fetch:${family}:shelf-phrasing` };
 }

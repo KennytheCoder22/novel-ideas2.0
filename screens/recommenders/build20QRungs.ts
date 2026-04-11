@@ -302,12 +302,10 @@ function marketFacingRungParts(rung: StructuredFetchRung): string[] {
   ]).filter(Boolean);
 
   if (rung.rung === 2) {
-    const recognizableBoost = [
-      "popular",
-      "bestselling",
-      "famous",
-      "well known",
-    ];
+    const recognizableBoost =
+      rung.family === "thriller_family"
+        ? ["bestselling"]
+        : ["bestselling"];
 
     return ensureNovelAnchor([
       ...recognizableBoost,
