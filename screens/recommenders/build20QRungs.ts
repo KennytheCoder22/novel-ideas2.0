@@ -256,21 +256,32 @@ function deriveSecondaryForRung(primary: string | null, family: Family, rungInde
 
 function ensureNovelAnchor(parts: string[]): string[] {
   const joined = parts.join(" ");
+
   if (/\b(novel|fiction|thriller|mystery|detective|romance|fantasy|horror|science fiction)\b/i.test(joined)) {
     return parts;
   }
+
   return [...parts, "novel"];
 }
 
 function marketFacingRungParts(rung: StructuredFetchRung): string[] {
-  const baseParts = uniqOrdered([
+  let baseParts = uniqOrdered([
     rung.primary,
     rung.secondary,
     rung.audience,
   ]).filter(Boolean);
 
+  const joined = baseParts.join(" ");
+
+  if (/\bnovel\b/.test(joined)) {
+    baseParts = baseParts.filter((p) => p !== "novel");
+  }
+  if (/\bfiction\b/.test(joined)) {
+    baseParts = baseParts.filter((p) => p !== "fiction");
+  }
+
   if (rung.rung === 2) {
-    return ensureNovelAnchor(baseParts);
+    return baseParts;
   }
 
   if (rung.family === "thriller_family") {

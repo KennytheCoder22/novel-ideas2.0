@@ -481,7 +481,13 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
 
 export function normalizeCandidates(rawDocs: RecommendationDoc[], source: CandidateSource): Candidate[] {
   return (Array.isArray(rawDocs) ? rawDocs : [])
-    .filter((rawDoc) => looksLikeFictionCandidate(rawDoc))
+    .filter((rawDoc) => {
+      if (source === 'openLibrary') {
+        return !isClearlyNotABookCandidate(normalizeCandidate(rawDoc, source));
+      }
+
+      return looksLikeFictionCandidate(rawDoc);
+    })
     .map((rawDoc) => normalizeCandidate(rawDoc, source))
     .filter((candidate) => !isClearlyNotABookCandidate(candidate));
 }
