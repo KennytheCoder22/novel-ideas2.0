@@ -73,11 +73,26 @@ function isGarbageOpenLibraryCandidate(d: any): boolean {
   if (/\b(film|films|cinema|movie|movies|hitchcock)\b/i.test(text)) return true;
   if (/\b(criticism|critical|history of|studies in|analysis)\b/i.test(text)) return true;
   if (/\b(mystery and detective novels|contemporary .* detective novel|contemporary .* novel)\b/i.test(title)) return true;
-  if (/\b(detective novels?|crime fiction)\b/i.test(title) && !/\b(murder|case|detective|mystery|thriller)\b/i.test(subjects)) return true;
+  if (/\b(detective novels?|crime fiction)\b/i.test(title) && !/\b(murder|case|detective|mystery|thriller|suspense|fiction)\b/i.test(subjects)) return true;
 
   return false;
 }
+function looksLikeUsableOpenLibraryFiction(d: any): boolean {
+  const title = String(d?.title || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const author = normalizeOpenLibraryAuthor(d);
+  const subjects = Array.isArray(d?.subject) ? d.subject.map((v: any) => String(v || "").toLowerCase()).join(" | ") : "";
+  const publishers = Array.isArray(d?.publisher) ? d.publisher.map((v: any) => String(v || "").toLowerCase()).join(" | ") : "";
+  const year = Number(d?.first_publish_year || 0);
+  const editionCount = Number(d?.edition_count || 0);
+  const text = [title, subjects, publishers].filter(Boolean).join(" | ");
 
+  if (!title || !author) return false;
+  if (isGarbageOpenLibraryCandidate(d)) return false;
+  if (year && year < 1980 && editionCount < 8) return false;
+  if (/\b(anthology|collection|essays|criticism|guide|handbook|bibliography|companion|screenplay|plays?)\b/i.test(text)) return false;
+  if (/\b(novel|fiction|thriller|mystery|crime|detective|suspense|psychological|young adult)\b/i.test(text)) return true;
+  return editionCount >= 12;
+}
 
 function looksLikeCommercialOpenLibraryAnchor(d: any): boolean {
   const title = String(d?.title || "").toLowerCase().replace(/\s+/g, " ").trim();
@@ -100,8 +115,8 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): { queries:
     return { domainMode: "chapterMiddle", queries: dedupeQueries(['"juvenile fiction" "chapter books"', '"juvenile fiction" "middle grade fiction"', '"juvenile fiction"']) };
   }
   if (band === "preteen") return { domainMode: "default", queries: dedupeQueries(['"middle grade fiction"', '"juvenile fiction"', '"chapter books"', 'subject:"fiction"']) };
-  if (band === "teens") return { domainMode: "default", queries: dedupeQueries(['"young adult fiction"', '"crime thriller novel"', '"psychological thriller novel"', '"epic fantasy novel"']) };
-  return { domainMode: "default", queries: dedupeQueries(['"domestic suspense novel"', '"missing person thriller"', '"psychological suspense fiction"', '"murder investigation novel"', '"crime investigation novel"']) };
+  if (band === "teens") return { domainMode: "default", queries: dedupeQueries(['"young adult fiction"', '"young adult mystery fiction"', '"young adult thriller fiction"', '"murder investigation novel"', '"epic fantasy novel"']) };
+  return { domainMode: "default", queries: dedupeQueries(['"domestic suspense novel"', '"missing person thriller"', '"psychological suspense fiction"', '"murder investigation novel"', '"crime investigation novel"', '"suspense fiction"', '"detective fiction"']) };
 }
 async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any> {
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -146,15 +161,29 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
         }
         return true;
       });
-      if (admittedDocsRaw.length > bestDocsRaw.length) { bestDocsRaw = admittedDocsRaw; bestQuery = q; }
+      const rescueDocsRaw = admittedDocsRaw.length >= Math.max(2, Math.ceil(finalLimit / 3))
+        ? []
+        : docsRaw.filter((d: any) => {
+            const publishers = Array.isArray(d?.publisher) ? d.publisher : [];
+            if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
+            return looksLikeUsableOpenLibraryFiction(d);
+          });
+      const mergedDocsRaw = admittedDocsRaw.slice();
+      for (const rescued of rescueDocsRaw) {
+        const rescueKey = String(rescued?.key || rescued?.cover_edition_key || rescued?.title || "").trim();
+        if (!rescueKey) continue;
+        if (mergedDocsRaw.some((existing: any) => String(existing?.key || existing?.cover_edition_key || existing?.title || "").trim() === rescueKey)) continue;
+        mergedDocsRaw.push(rescued);
+      }
+      if (mergedDocsRaw.length > bestDocsRaw.length) { bestDocsRaw = mergedDocsRaw; bestQuery = q; }
       const shouldBackfillFromThisQuery = queryIndex < minQueryPassesBeforeEarlyExit || collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
       if (shouldBackfillFromThisQuery) {
-        for (const d of admittedDocsRaw) {
+        for (const d of mergedDocsRaw) {
           const key = String(d?.key || `${d?.title || "unknown"}|${queryIndex}`); if (seenKeys.has(key)) continue; seenKeys.add(key);
           collectedDocsRaw.push({ ...d, queryRung: queryIndex, queryText: q, source: "openLibrary", laneKind });
         }
       }
-      if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && admittedDocsRaw.length >= Math.max(finalLimit, minCandidateFloor)) break;
+      if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && mergedDocsRaw.length >= Math.max(finalLimit, minCandidateFloor)) break;
       if (collectedDocsRaw.length >= Math.max(fetchLimit, minCandidateFloor)) break;
     } catch (err: any) { lastError = err instanceof Error ? err : new Error(String(err?.message || err || "Unknown Open Library error")); continue; }
   }
