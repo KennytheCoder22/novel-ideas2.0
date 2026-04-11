@@ -344,7 +344,7 @@ function scoreCommercialSignalBoost(candidate: Candidate): number {
   if (Number(cs.popularityTier || 0) > 0) bonus += Math.min(Number(cs.popularityTier || 0), 3) * 0.4;
   if (Number(cs.sourceCount || 0) > 1) bonus += Math.min(Number(cs.sourceCount || 0) - 1, 2) * 0.3;
 
-  return Math.min(bonus, 2.5);
+  return Math.min(bonus, 3.5);
 }
 
 function scoreRecency(candidate: Candidate): number {
@@ -946,6 +946,23 @@ function scoreCandidate(
   const queryAlignment = scoreQueryAlignment(candidate);
   const rungBoost = scoreRungBoost(candidate);
   const commercialBoost = scoreCommercialSignalBoost(candidate);
+
+// --- LANE 90 ANCHOR QUALITY ENFORCEMENT ---
+const isAnchorLane = candidate.queryRung === 90;
+
+if (isAnchorLane) {
+  const cs = candidate.commercialSignals ?? (candidate.rawDoc as any)?.commercialSignals;
+
+  const hasStrongSignal =
+    cs?.bestseller ||
+    (cs?.awards ?? 0) > 0 ||
+    (cs?.popularityTier ?? 0) >= 2;
+
+  if (!hasStrongSignal) {
+    score -= 2.5;
+  }
+}
+// --- END PATCH ---
 
   score += tasteAlignment * 3.9;
   score += scoreHypothesisAlignment(candidate, hypothesis) * 1.1;
