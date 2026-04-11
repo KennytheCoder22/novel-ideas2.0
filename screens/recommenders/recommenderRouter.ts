@@ -140,43 +140,6 @@ function withAnchorLane(rungs: any[], bucketPlan: any) {
   ];
 }
 
-
-function quoteIfNeeded(value: string): string {
-  const cleaned = String(value || "").trim().replace(/^"+|"+$/g, "");
-  return cleaned ? `"${cleaned}"` : "";
-}
-
-function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
-  const family = inferRouterFamily(bucketPlan);
-  const base = String(rung?.query || "").trim().toLowerCase();
-  const preview = String(bucketPlan?.preview || "").trim().toLowerCase();
-
-  if (family === "thriller") {
-    if (rung?.rung === 90) return quoteIfNeeded("suspense fiction");
-    if (base.includes("psychological suspense")) return quoteIfNeeded("psychological suspense fiction");
-    if (base.includes("domestic suspense")) return quoteIfNeeded("domestic suspense");
-    if (base.includes("murder investigation")) return quoteIfNeeded("mystery fiction");
-    if (base.includes("crime investigation")) return quoteIfNeeded("crime fiction");
-    if (preview.includes("psychological")) return quoteIfNeeded("psychological suspense fiction");
-    return quoteIfNeeded("suspense fiction");
-  }
-
-  if (family === "speculative") {
-    if (base.includes("science fiction")) return quoteIfNeeded("science fiction");
-    if (base.includes("fantasy")) return quoteIfNeeded("fantasy fiction");
-    if (base.includes("horror")) return quoteIfNeeded("horror fiction");
-  }
-
-  if (family === "romance") return quoteIfNeeded("romance fiction");
-  if (family === "historical") return quoteIfNeeded("historical fiction");
-
-  return quoteIfNeeded(base || preview || "fiction");
-}
-
-function googleBooksQueryForRung(rung: any): string {
-  return String(rung?.query || "").trim();
-}
-
 function recognizabilityScore(doc: any): number {
   const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
   const description = collectDescriptionText(doc);
@@ -236,26 +199,8 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
     output.push(doc);
   };
 
-  const TOP_SCORE_THRESHOLD = 0.85;
-
-  if (selectedAnchors[0]) {
-    const topDoc = docs[0];
-    const anchor = selectedAnchors[0];
-
-    const anchorScore =
-      anchor?.diagnostics?.postFilterScore ??
-      anchor?.diagnostics?.preFilterScore ??
-      0;
-
-    const topScore =
-      topDoc?.diagnostics?.postFilterScore ??
-      topDoc?.diagnostics?.preFilterScore ??
-      0;
-
-    if (anchorScore >= topScore * TOP_SCORE_THRESHOLD) {
-      pushUnique(anchor);
-    }
-  }
+  // Place strongest anchor early to establish trust.
+  if (selectedAnchors[0]) pushUnique(selectedAnchors[0]);
 
   for (const doc of docs) {
     if (output.length >= finalLimit) break;
@@ -744,11 +689,7 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
 }
 
 async function fetchBothEngines(
-  input: RecommenderInput,
-  sourceQueries?: {
-    googleBooksQuery?: string;
-    openLibraryQuery?: string;
-  }
+  input: RecommenderInput
 ): Promise<{
   google: RecommendationResult | null;
   openLibrary: RecommendationResult | null;
@@ -756,33 +697,9 @@ async function fetchBothEngines(
   gcd: RecommendationResult | null;
   mergedDocs: RecommendationDoc[];
 }> {
-  const googleInput: RecommenderInput =
-    sourceQueries?.googleBooksQuery
-      ? {
-          ...input,
-          bucketPlan: {
-            ...(input as any).bucketPlan,
-            queries: [sourceQueries.googleBooksQuery],
-            preview: sourceQueries.googleBooksQuery,
-          },
-        }
-      : input;
-
-  const openLibraryInput: RecommenderInput =
-    sourceQueries?.openLibraryQuery
-      ? {
-          ...input,
-          bucketPlan: {
-            ...(input as any).bucketPlan,
-            queries: [sourceQueries.openLibraryQuery],
-            preview: sourceQueries.openLibraryQuery,
-          },
-        }
-      : input;
-
   const requests: Array<Promise<RecommendationResult>> = [
-    runEngine("googleBooks", googleInput),
-    runEngine("openLibrary", openLibraryInput),
+    runEngine("googleBooks", input),
+    runEngine("openLibrary", input),
   ];
 
   const includeKitsu = shouldUseKitsu(input);
@@ -894,13 +811,7 @@ export async function getRecommendations(
       },
     };
 
-    const googleBooksQuery = googleBooksQueryForRung(rung);
-    const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
-
-    const rungResults = await fetchBothEngines(rungInput, {
-      googleBooksQuery,
-      openLibraryQuery,
-    });
+    const rungResults = await fetchBothEngines(rungInput);
 
     if (!google && rungResults.google) google = rungResults.google;
     if (!openLibrary && rungResults.openLibrary) openLibrary = rungResults.openLibrary;
@@ -920,31 +831,24 @@ export async function getRecommendations(
     ].map((row: any) => ({
       ...row,
       queryRung: row?.queryRung ?? rung.rung,
-      queryText:
-        row?.queryText ??
-        (row?.source === "openLibrary" ? openLibraryQuery : googleBooksQuery),
+      queryText: row?.queryText ?? rung.query,
       laneKind: row?.laneKind ?? rung.laneKind ?? "precision",
     }));
 
     debugRawPool.push(...rungRawPool);
 
-    const taggedDocs = rungResults.mergedDocs.map((doc: any) => {
-      const source = sourceForDoc(doc, "googleBooks");
-      const sourceQuery = source === "openLibrary" ? openLibraryQuery : googleBooksQuery;
-
-      return {
-        ...doc,
+    const taggedDocs = rungResults.mergedDocs.map((doc: any) => ({
+      ...doc,
+      queryRung: rung.rung,
+      queryText: rung.query,
+      laneKind: rung.laneKind ?? "precision",
+      diagnostics: {
+        ...(doc?.diagnostics || {}),
         queryRung: rung.rung,
-        queryText: sourceQuery,
+        queryText: rung.query,
         laneKind: rung.laneKind ?? "precision",
-        diagnostics: {
-          ...(doc?.diagnostics || {}),
-          queryRung: rung.rung,
-          queryText: sourceQuery,
-          laneKind: rung.laneKind ?? "precision",
-        },
-      };
-    });
+      },
+    }));
 
     allMergedDocs.push(...taggedDocs);
   }
