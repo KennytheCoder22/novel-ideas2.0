@@ -959,9 +959,7 @@ if (isAnchorLane) {
     (cs?.popularityTier ?? 0) >= 2;
 
   if (hasStrongSignal) {
-    score += 2.2;
-  } else {
-    score -= 1.2;
+    score += 1.2;
   }
 }
 // --- END PATCH ---
@@ -1043,15 +1041,15 @@ if (isAnchorLane) {
     score += 0.3;
   }
 
-  // 6. Strong boost for actual popularity (you already compute ratingCount — use it more)
-  if (candidate.ratingCount > 5000) {
+  // 6. Milder popularity curve to keep more good mid-tier books alive
+  if (candidate.ratingCount > 20000) {
     score += 1.2;
+  } else if (candidate.ratingCount > 5000) {
+    score += 0.8;
   } else if (candidate.ratingCount > 1000) {
-    score += 0.7;
+    score += 0.5;
   } else if (candidate.ratingCount > 200) {
-    score += 0.3;
-  } else if (candidate.ratingCount > 50) {
-    score += 0.1;
+    score += 0.25;
   }
 
   // --- END PATCH ---
