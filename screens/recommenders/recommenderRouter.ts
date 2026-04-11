@@ -468,6 +468,8 @@ function looksLikeFictionCandidate(doc: any): boolean {
 
   if (!title) return false;
 
+  if (Number(doc?.first_publish_year || 0) > 0 && Number(doc?.first_publish_year || 0) < 1950) return false;
+
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;

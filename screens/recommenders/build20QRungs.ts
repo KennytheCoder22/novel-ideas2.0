@@ -158,7 +158,7 @@ function thrillerPrimaries(intent: QueryIntent): string[] {
   else if (betrayal) add("domestic thriller novel");
   else add("psychological thriller novel");
 
-  if (/crime/.test(joinedSubs)) add("crime thriller novel");
+  if (/crime/.test(joinedSubs)) add("crime suspense novel");
   else if (/detective|mystery/.test(joinedSubs)) add("mystery thriller novel");
   else if (survival) add("survival thriller novel");
   else add("mystery thriller novel");
@@ -302,15 +302,7 @@ function marketFacingRungParts(rung: StructuredFetchRung): string[] {
   ]).filter(Boolean);
 
   if (rung.rung === 2) {
-    const recognizableBoost =
-      rung.family === "thriller_family"
-        ? ["bestselling"]
-        : ["bestselling"];
-
-    return ensureNovelAnchor([
-      ...recognizableBoost,
-      ...baseParts,
-    ]);
+    return ensureNovelAnchor(baseParts);
   }
 
   if (rung.family === "thriller_family") {
