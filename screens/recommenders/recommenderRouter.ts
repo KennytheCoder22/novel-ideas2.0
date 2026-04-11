@@ -199,8 +199,26 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
     output.push(doc);
   };
 
-  // Place strongest anchor early to establish trust.
-  if (selectedAnchors[0]) pushUnique(selectedAnchors[0]);
+  const TOP_SCORE_THRESHOLD = 0.85;
+
+  if (selectedAnchors[0]) {
+    const topDoc = docs[0];
+    const anchor = selectedAnchors[0];
+
+    const anchorScore =
+      anchor?.diagnostics?.postFilterScore ??
+      anchor?.diagnostics?.preFilterScore ??
+      0;
+
+    const topScore =
+      topDoc?.diagnostics?.postFilterScore ??
+      topDoc?.diagnostics?.preFilterScore ??
+      0;
+
+    if (anchorScore >= topScore * TOP_SCORE_THRESHOLD) {
+      pushUnique(anchor);
+    }
+  }
 
   for (const doc of docs) {
     if (output.length >= finalLimit) break;
