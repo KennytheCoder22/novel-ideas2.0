@@ -386,6 +386,19 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bgreat .*novels\b/,
   ];
 
+  const hardRejectSpecificTitlePatterns = [
+    /\buncle silas\b/,
+    /\bgreatest .*detectives\b/,
+    /\bultimate collection\b/,
+    /\bboxed set\b/,
+    /\bbest american mystery\b/,
+    /\byear'?s best\b/,
+    /\bstudy guide\b/,
+    /\bcrime fiction in\b/,
+    /\bwriters since\b/,
+    /\bguide to genre fiction\b/,
+  ];
+
   const hardRejectCategoryPatterns = [
     /\bliterary criticism\b/,
     /\bstudy aids?\b/,
@@ -404,6 +417,12 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bnonfiction\b/,
     /\bbiography\b/,
     /\bmemoir\b/,
+    /\bcrime fiction\b/,
+    /\bliterature\b/,
+    /\bstudies\b/,
+    /\btheory\b/,
+    /\b20th century\b/,
+    /\b21st century\b/,
   ];
 
   const hardRejectDescriptionPatterns = [
@@ -468,9 +487,9 @@ function looksLikeFictionCandidate(doc: any): boolean {
 
   if (!title) return false;
 
-  if (Number(doc?.first_publish_year || 0) > 0 && Number(doc?.first_publish_year || 0) < 1950) return false;
 
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
+  if (hardRejectSpecificTitlePatterns.some((rx) => rx.test(title))) return false;
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
   if (obviousReferenceSeriesPatterns.some((rx) => rx.test(combined))) return false;
