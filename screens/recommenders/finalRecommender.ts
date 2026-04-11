@@ -315,10 +315,12 @@ function scoreQueryAlignment(candidate: Candidate): number {
 function scoreRungBoost(candidate: Candidate): number {
   const rung = Number(candidate.queryRung);
   if (!Number.isFinite(rung)) return 0;
-  if (rung <= 0) return 1.4;
-  if (rung === 1) return 1.05;
-  if (rung === 2) return 0.7;
+
+  if (rung === 0) return 2.2;
+  if (rung === 1) return 1.4;
+  if (rung === 2) return 0.75;
   if (rung === 3) return 0.35;
+  if (rung === 90) return 0.6;
   return 0.1;
 }
 
@@ -959,15 +961,15 @@ if (isAnchorLane) {
     (cs?.popularityTier ?? 0) >= 2;
 
   if (hasStrongSignal) {
-    score += 1.2;
+    score += 0.6;
   }
 }
 // --- END PATCH ---
 
   score += tasteAlignment * 3.9;
   score += scoreHypothesisAlignment(candidate, hypothesis) * 1.1;
-  score += queryAlignment * 2.6;
-  score += rungBoost * 1.75;
+  score += rungBoost * 3.2;
+  score += queryAlignment * 1.2;
   score += commercialBoost;
   score -= softMetadataPenalty(candidate);
 
