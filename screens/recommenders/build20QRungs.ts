@@ -131,41 +131,12 @@ function buildRung(
 }
 
 function thrillerPrimaries(intent: QueryIntent): string[] {
-  const joinedSubs = pickTop(intent.subgenres, 8).join(" ");
-  const tones = pickTop(intent.tones, 6);
-  const themes = pickTop(intent.themes, 6);
-
-  const dark = hasAny(tones, [/\bdark\b/, /\bbleak\b/, /\bgrim\b/, /\bpsychological\b/, /\bnoir\b/]);
-  const procedural = hasAny(tones, [/\bprocedural\b/, /\brealistic\b/, /\bgrounded\b/]);
-  const survival = hasAny(themes, [/\bsurvival\b/]);
-  const investigation = hasAny(themes, [/\binvestigation\b/, /\bmurder mystery\b/, /\bcrime\b/]);
-  const betrayal = hasAny(themes, [/\bbetrayal\b/, /\bfamily secrets\b/]);
-
-  const out: string[] = [];
-  const add = (value?: string | null) => {
-    const cleaned = normalizePhrase(value || "");
-    if (!cleaned) return;
-    if (!out.includes(cleaned)) out.push(cleaned);
-  };
-
-  if (/psychological/.test(joinedSubs) || dark) add("dark psychological thriller");
-  else if (/crime/.test(joinedSubs)) add("dark crime thriller");
-  else if (/detective|mystery/.test(joinedSubs)) add("dark mystery thriller");
-  else if (/thriller/.test(joinedSubs)) add("dark thriller novel");
-  else add("dark crime thriller");
-
-  if (procedural || investigation) add("detective mystery thriller");
-  else if (betrayal) add("domestic thriller novel");
-  else add("psychological thriller novel");
-
-  if (/crime/.test(joinedSubs)) add("crime suspense novel");
-  else if (/detective|mystery/.test(joinedSubs)) add("mystery thriller novel");
-  else if (survival) add("survival thriller novel");
-  else add("mystery thriller novel");
-
-  add(dark ? "dark mystery thriller" : "dark crime thriller");
-
-  return uniqOrdered(out);
+  return uniqOrdered([
+    "psychological suspense fiction",
+    "crime investigation novel",
+    "murder investigation novel",
+    "domestic suspense novel",
+  ]);
 }
 
 function speculativePrimaries(intent: QueryIntent): string[] {
@@ -222,12 +193,9 @@ function historicalPrimaries(): string[] {
 }
 
 function generalPrimaries(intent: QueryIntent): string[] {
-  const base = normalizePhrase(intent.baseGenre || "fiction");
   return uniqOrdered([
-    base,
-    "character-driven fiction",
-    "literary fiction",
-    "popular fiction",
+    "commercial fiction novel",
+    "bestselling fiction novel",
   ]);
 }
 
