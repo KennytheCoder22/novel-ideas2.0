@@ -40,7 +40,6 @@ function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
   if (primary.includes("historical")) return '"historical fiction novel"';
 
   return `"${(primary || "fiction").trim()}"`;
-}"`;
 }
 function fallbackToOpenLibraryQuery(query: string): string {
   const cleaned = String(query || "").toLowerCase().trim();
@@ -50,11 +49,9 @@ function fallbackToOpenLibraryQuery(query: string): string {
   if (cleaned.includes("missing")) return '"missing person thriller"';
   if (cleaned.includes("crime")) return '"crime investigation novel"';
   if (cleaned.includes("mystery")) return '"murder investigation novel"';
-  if (cleaned.includes("thriller") || cleaned.includes("suspense"))
-    return '"suspense fiction"';
+  if (cleaned.includes("thriller") || cleaned.includes("suspense")) return '"suspense fiction"';
 
   return `"${cleaned}"`;
-}"`;
 }
 function normalizeOpenLibraryAuthor(d: any): string {
   const value = Array.isArray(d?.author_name) ? d.author_name[0] : d?.author_name;
@@ -104,7 +101,7 @@ function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): { queries:
   }
   if (band === "preteen") return { domainMode: "default", queries: dedupeQueries(['"middle grade fiction"', '"juvenile fiction"', '"chapter books"', 'subject:"fiction"']) };
   if (band === "teens") return { domainMode: "default", queries: dedupeQueries(['"young adult fiction"', '"crime thriller novel"', '"psychological thriller novel"', '"epic fantasy novel"']) };
-  return { domainMode: "default", queries: dedupeQueries(['"crime thriller novel"', '"mystery thriller novel"', '"psychological thriller novel"', '"contemporary fiction novel"']) };
+  return { domainMode: "default", queries: dedupeQueries(['"domestic suspense novel"', '"missing person thriller"', '"psychological suspense fiction"', '"murder investigation novel"', '"crime investigation novel"']) };
 }
 async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any> {
   const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeoutMs);
