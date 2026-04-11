@@ -765,7 +765,23 @@ export async function getRecommendations(
           : input.deckKey === "36"
           ? "pre-teen"
           : "kids",
-      subgenres: bucketPlan?.signals?.genres || [],
+      family:
+        inferRouterFamily(bucketPlan) === "thriller"
+          ? "thriller_family"
+          : inferRouterFamily(bucketPlan) === "speculative"
+          ? "speculative_family"
+          : inferRouterFamily(bucketPlan) === "romance"
+          ? "romance_family"
+          : inferRouterFamily(bucketPlan) === "historical"
+          ? "historical_family"
+          : "general_family",
+      baseGenre:
+        bucketPlan?.preview ||
+        bucketPlan?.queries?.[0] ||
+        "fiction",
+      subgenres: bucketPlan?.queries?.length
+        ? bucketPlan.queries
+        : (bucketPlan?.signals?.genres || []),
       tones: bucketPlan?.signals?.tones || [],
       themes: bucketPlan?.signals?.scenarios || [],
     }),
