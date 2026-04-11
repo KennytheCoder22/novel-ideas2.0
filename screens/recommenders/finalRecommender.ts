@@ -971,6 +971,20 @@ if (isAnchorLane) {
   score += rungBoost * 3.2;
   score += queryAlignment * 1.2;
   score += commercialBoost;
+
+  // Open Library is an idea-level discovery source, not a label-matching source.
+  // Give viable OL books a modest lift and reduce over-penalization from exact query/rung mismatch.
+  if (candidate.source === 'openLibrary') {
+    score += 1.5;
+    score += scoreHypothesisAlignment(candidate, hypothesis) * 0.8;
+    score -= queryAlignment * 0.5;
+    score -= rungBoost * 1.8;
+
+    if (candidate.editionCount >= 5) {
+      score += 1.2;
+    }
+  }
+
   score -= softMetadataPenalty(candidate);
 
   if (candidate.hasCover) score += 0.12;
