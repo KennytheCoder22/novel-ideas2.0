@@ -958,8 +958,10 @@ if (isAnchorLane) {
     (cs?.awards ?? 0) > 0 ||
     (cs?.popularityTier ?? 0) >= 2;
 
-  if (!hasStrongSignal) {
-    score -= 2.5;
+  if (hasStrongSignal) {
+    score += 2.2;
+  } else {
+    score -= 1.2;
   }
 }
 // --- END PATCH ---
@@ -973,7 +975,7 @@ if (isAnchorLane) {
 
   if (candidate.hasCover) score += 0.12;
   if (hasAnyHardcover429(candidate)) score += 0.3;
-  if (isMetadataFragileButViable(candidate)) score += 0.2;
+  if (isMetadataFragileButViable(candidate)) score += 0.35;
 
   if (candidate.formatCategory === 'manga' || candidate.formatCategory === 'comic') {
     score += lane === 'teen' ? 0.18 : -0.08;
@@ -1028,7 +1030,7 @@ if (isAnchorLane) {
 
   // 3. Penalize excessive series clustering (already partially handled later, this reinforces early)
   if (/\b(series|book\s*\d+)\b/i.test(title)) {
-    score -= 0.6;
+    score -= 0.35;
   }
 
   // 4. Boost cleaner standalone titles
@@ -1048,6 +1050,8 @@ if (isAnchorLane) {
     score += 0.7;
   } else if (candidate.ratingCount > 200) {
     score += 0.3;
+  } else if (candidate.ratingCount > 50) {
+    score += 0.1;
   }
 
   // --- END PATCH ---
