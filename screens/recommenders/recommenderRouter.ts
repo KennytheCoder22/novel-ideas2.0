@@ -14,6 +14,9 @@ import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommen
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
+import { getNytBestsellerBooks } from "../../services/bestsellers/nytClient";
+import { adaptNytBooksToRecommendationDocs } from "../../services/bestsellers/nytAdapter";
+import { mergeBestsellerDocs } from "../../services/bestsellers/bestsellerMatcher";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 import { build20QRungs } from "./build20QRungs";
@@ -116,6 +119,55 @@ function buildAnchorLaneQuery(bucketPlan: any): string {
   if (family === "romance") return "romance novel";
   if (family === "historical") return "historical fiction novel";
   return "commercial fiction novel";
+}
+
+
+function buildNytListNamesFromProfile(profile: any): string[] {
+  const mediaType = String(profile?.mediaType || "books").toLowerCase();
+  if (mediaType !== "books") return [];
+
+  const ageBand = String(
+    profile?.ageBand ||
+      profile?.readerAgeBand ||
+      profile?.audience ||
+      ""
+  ).toLowerCase();
+
+  const genres = [
+    ...(Array.isArray(profile?.genres) ? profile.genres : []),
+    ...(Array.isArray(profile?.favoriteGenres) ? profile.favoriteGenres : []),
+    ...(Array.isArray(profile?.tags) ? profile.tags : []),
+    ...(Array.isArray(profile?.signals?.genres) ? profile.signals.genres : []),
+  ]
+    .map((value) => String(value || "").toLowerCase().trim())
+    .filter(Boolean);
+
+  const joined = genres.join(" ");
+  const out = new Set<string>();
+
+  if (ageBand.includes("teen") || ageBand.includes("young adult") || ageBand.includes("ya")) {
+    out.add("young-adult-hardcover");
+  } else {
+    out.add("hardcover-fiction");
+  }
+
+  if (joined.includes("romance")) {
+    out.add("combined-print-and-e-book-fiction");
+  }
+
+  if (joined.includes("fantasy")) {
+    out.add("hardcover-fiction");
+  }
+
+  if (joined.includes("mystery") || joined.includes("thriller") || joined.includes("crime")) {
+    out.add("combined-print-and-e-book-fiction");
+  }
+
+  if (joined.includes("historical")) {
+    out.add("hardcover-fiction");
+  }
+
+  return Array.from(out);
 }
 
 function withAnchorLane(rungs: any[], bucketPlan: any) {
@@ -954,24 +1006,85 @@ export async function getRecommendations(
   const hardcoverEnrichedDocs = await enrichWithHardcover(mergedDocs);
   const enrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
 
+  let bestsellerMergedDocs = enrichedDocs;
+
+  try {
+    const bestsellerLaneEnabled =
+      (input as any)?.mediaType === undefined
+        ? true
+        : String((input as any)?.mediaType || "").toLowerCase() === "books";
+
+    if (bestsellerLaneEnabled) {
+      const nytListNames = buildNytListNamesFromProfile({
+        mediaType: (input as any)?.mediaType || "books",
+        ageBand:
+          input.deckKey === "adult"
+            ? "adult"
+            : input.deckKey === "ms_hs"
+            ? "teen"
+            : input.deckKey === "36"
+            ? "pre-teen"
+            : "kids",
+        genres: bucketPlan?.signals?.genres || [],
+        favoriteGenres: bucketPlan?.queries || [],
+        tags: Object.keys(input.tagCounts || {}),
+        signals: bucketPlan?.signals,
+      });
+
+      if (nytListNames.length) {
+        const nytBooks = await getNytBestsellerBooks({
+          listNames: nytListNames,
+          date: "current",
+          maxPerList: 12,
+        });
+
+        if (nytBooks.length) {
+          const nytDocs = adaptNytBooksToRecommendationDocs(nytBooks);
+          const mergeResult = mergeBestsellerDocs(
+            Array.isArray(enrichedDocs) ? enrichedDocs : [],
+            nytDocs,
+            { allowInjections: true }
+          );
+
+          bestsellerMergedDocs = mergeResult.docs;
+
+          if (__DEV__) {
+            console.log("[recommenderRouter] bestseller merge", {
+              nytLists: nytListNames,
+              nytFetched: nytBooks.length,
+              nytAdapted: nytDocs.length,
+              matchedCount: mergeResult.matchedCount,
+              injectedCount: mergeResult.injectedCount,
+              finalCount: bestsellerMergedDocs.length,
+            });
+          }
+        }
+      }
+    }
+  } catch (error) {
+    if (__DEV__) {
+      console.warn("[recommenderRouter] bestseller lane failed", error);
+    }
+  }
+
   // Preserve source slices after enrichment.
-const googleDocsEnriched = enrichedDocs.filter(
+const googleDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
     sourceForDoc(doc, "googleBooks") === "googleBooks" &&
     looksLikeFictionCandidate(doc)
 );
 
-const openLibraryDocsEnriched = enrichedDocs.filter(
+const openLibraryDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
     sourceForDoc(doc, "openLibrary") === "openLibrary"
 );
-const kitsuDocsEnriched = enrichedDocs.filter(
+const kitsuDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
     sourceForDoc(doc, "kitsu") === "kitsu" &&
     looksLikeFictionCandidate(doc)
 );
 
-const gcdDocsEnriched = enrichedDocs.filter(
+const gcdDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
     sourceForDoc(doc, "gcd") === "gcd" &&
     looksLikeFictionCandidate(doc)
