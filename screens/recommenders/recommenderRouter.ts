@@ -852,8 +852,7 @@ const googleDocsEnriched = enrichedDocs.filter(
 
 const openLibraryDocsEnriched = enrichedDocs.filter(
   (doc: any) =>
-    sourceForDoc(doc, "openLibrary") === "openLibrary" &&
-    looksLikeFictionCandidate(doc)
+    sourceForDoc(doc, "openLibrary") === "openLibrary"
 );
 const kitsuDocsEnriched = enrichedDocs.filter(
   (doc: any) =>
