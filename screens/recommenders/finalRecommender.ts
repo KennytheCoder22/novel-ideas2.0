@@ -78,7 +78,7 @@ type CompactHypothesis = {
 };
 
 const NONFICTION_PATTERNS = [
-  /\b(philosophy|philosophical essays|history|biography|autobiography|memoir|self[-\s]?help|psychology|religion|spirituality|criticism|literary criticism|essays|reference|study guide|workbook|manual|textbook|companion|encyclopedia)\b/i,
+  /\b(philosophy|philosophical essays|history|biography|autobiography|memoir|self[-\s]?help|psychology|religion|spirituality|criticism|literary criticism|essays|reference|study guide|workbook|manual|textbook|companion|encyclopedia|true crime)\b/i,
   /\b(nonfiction|non-fiction)\b/i,
 ];
 
@@ -699,7 +699,7 @@ function isNonFictionBleed(candidate: Candidate): boolean {
 function isHardNonFiction(candidate: Candidate): boolean {
   const text = haystack(candidate);
 
-  if (/\b(nonfiction|non-fiction|biography|memoir|history|philosophy|criticism|literary criticism|essays|analysis)\b/i.test(text)) {
+  if (/\b(nonfiction|non-fiction|biography|memoir|history|philosophy|criticism|literary criticism|essays|analysis|true crime)\b/i.test(text)) {
     return true;
   }
 
@@ -849,15 +849,15 @@ function hasStrongTitleCaseNarrativeSignal(candidate: Candidate): boolean {
   const title = String(candidate.title || '');
   const subtitle = String(candidate.subtitle || '');
   const combined = `${title} ${subtitle}`.trim();
-  return /(thriller|mystery|crime|detective|suspense|novel|missing|murder|killer|investigation|dark|girl|wife|secret|house|wood)/i.test(combined);
+  return /\b(thriller|mystery|crime|detective|suspense|novel|missing|murder|killer|investigation|dark|girl|wife|secret|house|wood)\b/i.test(combined);
 }
 
 function looksLikeLooseLiteraryOrPoetryTitle(candidate: Candidate): boolean {
   const title = String(candidate.title || '').trim();
   if (!title) return false;
   if (/[:?]/.test(title)) return false;
-  if (/(thriller|mystery|crime|detective|suspense|novel|murder|killer|investigation)/i.test(title)) return false;
-  if (/(words|heart|peace|war|song|poems?|verse|prayer|dreams?)/i.test(title)) return true;
+  if (/\b(thriller|mystery|crime|detective|suspense|novel|murder|killer|investigation)\b/i.test(title)) return false;
+  if (/\b(words|heart|peace|war|song|poems?|verse|prayer|dreams?)\b/i.test(title)) return true;
   return false;
 }
 
@@ -909,6 +909,35 @@ function scoreHypothesisAlignment(candidate: Candidate, hypothesis: CompactHypot
   return score;
 }
 
+function scoreSemanticDiscoveryBoost(candidate: Candidate, hypothesis: CompactHypothesis | null): number {
+  if (candidate.source !== 'openLibrary') return 0;
+  if (!hypothesis) return 0;
+  if (!candidateEligibleForHypothesis(candidate, hypothesis)) return 0;
+  if (!candidateMatchesHypothesis(candidate, hypothesis)) return 0;
+  if (!looksLikeActualFictionBook(candidate)) return 0;
+  if (isInstitutionalOrCatalogCandidate(candidate) || hasReferenceOrCriticismTitle(candidate)) return 0;
+  if (looksLikeLooseLiteraryOrPoetryTitle(candidate)) return 0;
+
+  const rung = Number(candidate.queryRung);
+  const queryAlignment = scoreQueryAlignment(candidate);
+  const strongThriller = hasStrongThrillerSignal(candidate);
+  const hypothesisAlignment = scoreHypothesisAlignment(candidate, hypothesis);
+
+  let bonus = 0;
+
+  if (strongThriller) bonus += 0.95;
+  if (hypothesisAlignment >= 2.8) bonus += 0.85;
+  if (queryAlignment <= 0.35) bonus += 0.45;
+
+  if (rung === 3) bonus += 0.8;
+  else if (rung === 0) bonus += 0.4;
+
+  if (candidate.editionCount >= 8) bonus += 0.25;
+  if (candidate.publicationYear && candidate.publicationYear >= 1990) bonus += 0.2;
+
+  return Math.min(bonus, 2.35);
+}
+
 function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis: CompactHypothesis | null): string | null {
   if (!candidate.title) return 'missing title';
   if (isUnknownAuthor(candidate)) return 'unknown author';
@@ -922,10 +951,6 @@ function rejectionReason(candidate: Candidate, lane: RecommenderLane, hypothesis
   if (!candidateEligibleForHypothesis(candidate, hypothesis)) return 'ineligible-for-shelf';
   if (!candidateMatchesHypothesis(candidate, hypothesis)) return 'weak hypothesis match';
 
-  // IMPORTANT:
-  // Weak metadata / low confidence are NOT hard rejects in the 20Q model
-  // if the book still looks like viable fiction. They should be penalized,
-  // not removed from the shelf.
   return null;
 }
 
@@ -949,29 +974,27 @@ function scoreCandidate(
   const rungBoost = scoreRungBoost(candidate);
   const commercialBoost = scoreCommercialSignalBoost(candidate);
 
-// --- LANE 90 ANCHOR QUALITY ENFORCEMENT ---
-const isAnchorLane = candidate.queryRung === 90;
+  const isAnchorLane = candidate.queryRung === 90;
 
-if (isAnchorLane) {
-  const cs = candidate.commercialSignals ?? (candidate.rawDoc as any)?.commercialSignals;
+  if (isAnchorLane) {
+    const cs = candidate.commercialSignals ?? (candidate.rawDoc as any)?.commercialSignals;
 
-  const hasStrongSignal =
-    cs?.bestseller ||
-    (cs?.awards ?? 0) > 0 ||
-    (cs?.popularityTier ?? 0) >= 2 ||
-    candidate.ratingCount >= 1000;
+    const hasStrongSignal =
+      cs?.bestseller ||
+      (cs?.awards ?? 0) > 0 ||
+      (cs?.popularityTier ?? 0) >= 2 ||
+      candidate.ratingCount >= 1000;
 
-  if (hasStrongSignal) {
-    score += 1.4;
-  } else if ((cs?.popularityTier ?? 0) >= 1 || candidate.ratingCount >= 200) {
-    score += 0.7;
+    if (hasStrongSignal) {
+      score += 1.4;
+    } else if ((cs?.popularityTier ?? 0) >= 1 || candidate.ratingCount >= 200) {
+      score += 0.7;
+    }
+
+    if (/\b(page[-\s]?turner|bestseller|thriller|suspense|crime|mystery)\b/i.test(haystack(candidate))) {
+      score += 0.35;
+    }
   }
-
-  if (/\b(page[-\s]?turner|bestseller|thriller|suspense|crime|mystery)\b/i.test(haystack(candidate))) {
-    score += 0.35;
-  }
-}
-// --- END PATCH ---
 
   score += tasteAlignment * 3.9;
   score += scoreHypothesisAlignment(candidate, hypothesis) * 1.1;
@@ -979,13 +1002,12 @@ if (isAnchorLane) {
   score += queryAlignment * 1.2;
   score += commercialBoost;
 
-  // Open Library is an idea-level discovery source, not a label-matching source.
-  // Give viable OL books a modest lift and reduce over-penalization from exact query/rung mismatch.
   if (candidate.source === 'openLibrary') {
-    score += 1.5;
-    score += scoreHypothesisAlignment(candidate, hypothesis) * 0.8;
-    score -= queryAlignment * 0.5;
-    score -= rungBoost * 1.8;
+    score += 1.1;
+    score += scoreHypothesisAlignment(candidate, hypothesis) * 0.95;
+    score += scoreSemanticDiscoveryBoost(candidate, hypothesis);
+    score -= queryAlignment * 0.25;
+    score -= rungBoost * 1.15;
 
     if (candidate.editionCount >= 5) {
       score += 1.2;
@@ -1025,23 +1047,19 @@ if (isAnchorLane) {
   if (lane === 'adult' && /\b(juvenile fiction|young readers|beginning reader|chapter book)\b/i.test(haystack(candidate))) {
     score -= 3;
   }
-  if (/\b(study guide|workbook|analysis|criticism|manual|textbook)\b/i.test(haystack(candidate))) {
+  if (/\b(study guide|workbook|analysis|criticism|manual|textbook|true crime)\b/i.test(haystack(candidate))) {
     score -= 4;
   }
   if (!candidate.description && candidate.subjects.length === 0 && candidate.genres.length === 0) {
     score -= 2.5;
   }
 
-  // --- MAINSTREAM / QUALITY SIGNAL LAYER (NEW) ---
-
   const title = String(candidate.title || '').toLowerCase();
 
-  // 1. Penalize over-serialized / KU-style titles
   if (/\b(book|volume|series)\s*\d+\b/i.test(title)) {
     score -= 1.25;
   }
 
-  // 2. Penalize generic KU naming patterns
   if (
     /\b(fbi|detective|crime thriller|suspense thriller)\b/i.test(title) &&
     title.length < 45
@@ -1049,22 +1067,18 @@ if (isAnchorLane) {
     score -= 0.9;
   }
 
-  // 3. Penalize excessive series clustering (already partially handled later, this reinforces early)
   if (/\b(series|book\s*\d+)\b/i.test(title)) {
     score -= 0.35;
   }
 
-  // 4. Boost cleaner standalone titles
   if (!/\b(book\s*\d+|series|volume)\b/i.test(title)) {
     score += 0.45;
   }
 
-  // 5. Slight boost for established (older but not ancient) works
   if (candidate.publicationYear && candidate.publicationYear < 2015) {
     score += 0.3;
   }
 
-  // 6. Milder popularity curve to keep more good mid-tier books alive
   if (candidate.ratingCount > 20000) {
     score += 1.2;
   } else if (candidate.ratingCount > 5000) {
@@ -1074,8 +1088,6 @@ if (isAnchorLane) {
   } else if (candidate.ratingCount > 200) {
     score += 0.25;
   }
-
-  // --- END PATCH ---
 
   return score;
 }
@@ -1097,11 +1109,8 @@ export function finalRecommenderForDeck(
     deckKey
   );
 
-  // 20Q shelf rule:
-  // hard rejects only for clearly wrong-shelf books.
   const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
 
-  // Safety fallback only if the hard shelf over-tightens.
   const unique =
     filtered.length >= Math.max(profile.minKeep, 6)
       ? filtered
@@ -1328,9 +1337,6 @@ export function finalRecommenderForDeck(
     if (anchorCandidate) addCandidateIfAllowed(anchorCandidate.candidate);
   }
 
-  // Safety valve:
-  // if we somehow still collapse too far, backfill from the best remaining scored pool
-  // even if metadata is weak, as long as shelf eligibility is not hard-rejected.
   if (kept.length < targetMin) {
     for (const entry of scored) {
       if (kept.length >= targetMin) break;
