@@ -230,7 +230,7 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
   if (!anchorDocs.length) return docs.slice(0, finalLimit);
 
   const sortedAnchors = [...anchorDocs].sort((a: any, b: any) => recognizabilityScore(b) - recognizabilityScore(a));
-  const selectedAnchors = sortedAnchors.slice(0, 1);
+  const selectedAnchor = sortedAnchors[0];
 
   const used = new Set<string>();
   const output: any[] = [];
@@ -251,21 +251,25 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
     output.push(doc);
   };
 
-  // Place strongest anchor early to establish trust.
-  if (selectedAnchors[0]) pushUnique(selectedAnchors[0]);
+  for (const doc of docs) {
+    if (output.length >= finalLimit) break;
+    const laneKind = doc?.diagnostics?.laneKind ?? doc?.laneKind ?? doc?.rawDoc?.laneKind;
+    if (laneKind === "anchor") continue;
+    pushUnique(doc);
+  }
+
+  if (selectedAnchor && output.length < finalLimit) {
+    const key = keyFor(selectedAnchor);
+    if (key && !used.has(key)) {
+      if (output.length >= 2) output.splice(2, 0, selectedAnchor);
+      else output.push(selectedAnchor);
+      used.add(key);
+    }
+  }
 
   for (const doc of docs) {
     if (output.length >= finalLimit) break;
     pushUnique(doc);
-  }
-
-  if (selectedAnchors[1] && output.length < finalLimit) {
-    const key = keyFor(selectedAnchors[1]);
-    if (key && !used.has(key)) {
-      if (output.length >= 3) output.splice(3, 0, selectedAnchors[1]);
-      else output.push(selectedAnchors[1]);
-      used.add(key);
-    }
   }
 
   return output.slice(0, finalLimit);
@@ -301,9 +305,10 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
     if (rung?.rung === 3) return quoteIfNeeded("suspense fiction");
 
     // Rung 90 is the commercial / airport-paperback lane.
-if (rung?.rung === 90) {
-  return quoteIfNeeded("crime thriller");
-}
+    if (rung?.rung === 90) {
+      if (preview.includes("psychological")) return quoteIfNeeded("psychological thriller");
+      return quoteIfNeeded("crime thriller");
+    }
 
     return quoteIfNeeded("suspense fiction");
   }
@@ -601,6 +606,66 @@ function looksLikeFictionCandidate(doc: any): boolean {
   );
 
   return hasPositiveFictionSignal;
+}
+
+
+function looksLikeAnchorLaneCandidate(doc: any, bucketPlan: any): boolean {
+  if (!looksLikeFictionCandidate(doc)) return false;
+
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const categories = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const combined = [title, categories, description].filter(Boolean).join(" ");
+  const family = inferRouterFamily(bucketPlan);
+
+  const hardRejectPatterns = [
+    /\bwrite a bestselling\b/,
+    /\bguide\b/,
+    /\bcompanion\b/,
+    /\bseo for authors\b/,
+    /\bgetting your book published\b/,
+    /\bwriter'?s market\b/,
+    /\bbook review\b/,
+    /\bpublishers? weekly\b/,
+    /\bnew york times book review\b/,
+    /\bbookselling\b/,
+    /\bbook world\b/,
+    /\bcompanion to\b/,
+    /\bessential mystery lists\b/,
+    /\bbest mystery\b/,
+    /\bbest american mystery\b/,
+    /\bbest new horror\b/,
+    /\bbritannica book of the year\b/,
+    /\bmost popular genre fiction authors\b/,
+    /\bguide to book editors\b/,
+    /\bbook publishers\b/,
+    /\bliterary agents\b/,
+    /\bhistory of the book\b/,
+    /\bstudy of popular fiction\b/,
+    /\bcambridge companion\b/,
+    /\bthriller novels\b/,
+    /\bbestsellers?\b/,
+    /\bnovels?\s+\d+\s*-\s*\d+\b/,
+    /\bbooks?\s+\d+\s*-\s*\d+\b/,
+    /\bbooks?\s+\d+\s*(to|through)\s*\d+\b/,
+    /\bbooks?\s+1\s*-\s*3\b/,
+    /\bomnibus\b/,
+    /\bboxed set\b/,
+    /\bcollection\b/,
+  ];
+
+  if (hardRejectPatterns.some((rx) => rx.test(title) || rx.test(combined))) return false;
+
+  if (family === "thriller") {
+    const thrillerSignal =
+      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|investigation|serial killer|domestic suspense)\b/.test(combined);
+    const antiSignals =
+      /\b(horror|ghost|haunted|zombie|monster|science fiction|fantasy|dragon|magic)\b/.test(combined);
+
+    return thrillerSignal && !antiSignals;
+  }
+
+  return true;
 }
 
 function sourceForDoc(doc: any, fallbackSource: CandidateSource): CandidateSource {
@@ -981,21 +1046,27 @@ export async function getRecommendations(
 
     debugRawPool.push(...rungRawPool);
 
-    const taggedDocs = rungResults.mergedDocs.map((doc: any) => {
-      const routedQueryText = sourceForDoc(doc, "openLibrary") === "openLibrary" ? openLibraryQuery : rung.query;
-      return {
-        ...doc,
-        queryRung: rung.rung,
-        queryText: routedQueryText,
-        laneKind: rung.laneKind ?? "precision",
-        diagnostics: {
-          ...(doc?.diagnostics || {}),
+    const taggedDocs = rungResults.mergedDocs
+      .map((doc: any) => {
+        const routedQueryText = sourceForDoc(doc, "openLibrary") === "openLibrary" ? openLibraryQuery : rung.query;
+        return {
+          ...doc,
           queryRung: rung.rung,
           queryText: routedQueryText,
           laneKind: rung.laneKind ?? "precision",
-        },
-      };
-    });
+          diagnostics: {
+            ...(doc?.diagnostics || {}),
+            queryRung: rung.rung,
+            queryText: routedQueryText,
+            laneKind: rung.laneKind ?? "precision",
+          },
+        };
+      })
+      .filter((doc: any) => {
+        const laneKind = doc?.laneKind ?? doc?.diagnostics?.laneKind;
+        if (laneKind !== "anchor") return true;
+        return looksLikeAnchorLaneCandidate(doc, bucketPlan);
+      });
 
     allMergedDocs.push(...taggedDocs);
   }
@@ -1076,8 +1147,7 @@ const googleDocsEnriched = bestsellerMergedDocs.filter(
 
 const openLibraryDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
-    sourceForDoc(doc, "openLibrary") === "openLibrary" &&
-    looksLikeFictionCandidate(doc)
+    sourceForDoc(doc, "openLibrary") === "openLibrary"
 );
 const kitsuDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
