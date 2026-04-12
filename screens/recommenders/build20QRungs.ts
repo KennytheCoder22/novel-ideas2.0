@@ -179,30 +179,44 @@ function thrillerPrimaries(intent: QueryIntent): string[] {
   } = thrillerSignalHints(intent);
 
   const out: string[] = [];
+  let crimeLaneCount = 0;
   const add = (value?: string | null) => {
     const cleaned = normalizePhrase(value || "");
     if (!cleaned) return;
-    if (!out.includes(cleaned)) out.push(cleaned);
+    if (out.includes(cleaned)) return;
+
+    const isCrimeLane = /(crime|investigation|murder|detective|procedural)/.test(cleaned);
+    if (isCrimeLane && crimeLaneCount >= 2) return;
+
+    out.push(cleaned);
+    if (isCrimeLane) crimeLaneCount += 1;
   };
 
   const primary =
-    hasCrime && hasPsychological
-      ? `${hasDark ? "dark " : ""}psychological crime thriller`
+    hasPsychological && hasDark
+      ? "dark psychological thriller novel"
+      : hasPsychological
+      ? "psychological thriller novel"
       : hasCrime && hasRealistic
       ? `${hasDark ? "dark " : ""}crime investigation novel`
-      : hasPsychological
-      ? `${hasDark ? "dark " : ""}psychological thriller novel`
       : hasCrime
       ? `${hasDark ? "dark " : ""}crime thriller novel`
       : "psychological suspense fiction";
 
   add(primary);
 
+  if (hasSpeculative) {
+    add("speculative thriller novel");
+    add("science fiction thriller novel");
+  }
+
   if (hasCrime && hasRealistic) add(`${hasDark ? "dark " : ""}realistic crime suspense novel`);
   if (hasCrime) add("murder investigation novel");
   if (hasPsychological && hasCrime) add("psychological crime thriller novel");
   if (hasDomestic) add("domestic suspense novel");
   if (hasDystopian && !hasSpeculative) add("dystopian thriller novel");
+  if (hasDark && !hasCrime) add("dark suspense novel");
+  if (hasPsychological && !hasCrime) add("psychological suspense fiction");
 
   add(`${hasDark ? "dark " : ""}mystery thriller novel`);
 

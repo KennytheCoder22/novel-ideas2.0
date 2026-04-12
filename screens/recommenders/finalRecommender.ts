@@ -1072,8 +1072,8 @@ function scoreCandidate(
   score += commercialBoost;
 
   if (candidate.source === 'openLibrary') {
-    score += 0.9;
-    score += scoreHypothesisAlignment(candidate, hypothesis) * 1.05;
+    score += 0.45;
+    score += scoreHypothesisAlignment(candidate, hypothesis) * 0.75;
     score += scoreSemanticDiscoveryBoost(candidate, hypothesis);
     score += scoreOpenLibraryAuthority(candidate);
     if (hasStrongOpenLibraryAuthority(candidate) && !isGenericCommercialThriller(candidate)) score += 0.55;

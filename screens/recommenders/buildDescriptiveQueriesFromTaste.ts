@@ -63,7 +63,7 @@ function buildThrillerQueries(input: RecommenderInput): { queries: string[]; sig
   const realisticScore = scoreFromTags(tagCounts, ["realistic", "family", "authority"]);
   const investigativeScore = scoreFromTags(tagCounts, ["mystery", "crime", "systemic injustice"]);
   const dystopianScore = scoreFromTags(tagCounts, ["dystopian", "survival"]);
-  const negativeSpeculativeScore = Math.abs(scoreFromTags(tagCounts, ["science fiction", "horror", "spooky", "adventure"]));
+  const speculativeScore = scoreFromTags(tagCounts, ["science fiction", "horror", "spooky", "adventure"]);
 
   const psychologicalFromAxes =
     Number(axes.darkness || 0) >= 0.18 ||
@@ -74,22 +74,21 @@ function buildThrillerQueries(input: RecommenderInput): { queries: string[]; sig
   const useInvestigation = investigativeScore >= 2;
   const useRealism = realisticScore >= 2 || Number(axes.realism || 0) >= 0.18;
   const useDark = darkScore >= 2 || Number(axes.darkness || 0) >= 0.18;
-  const suppressSpeculative = negativeSpeculativeScore >= 1;
+  const suppressSpeculative = speculativeScore < -1;
   const useDystopian = dystopianScore >= 2 && !useCrime;
 
   const primary = [
     psychologicalFromAxes ? "psychological" : undefined,
     useDark ? "dark" : undefined,
     useCrime ? "crime" : undefined,
-    useInvestigation ? "investigation" : undefined,
     "thriller novel",
     audience,
-    suppressSpeculative ? "-science fiction -horror -fantasy" : undefined,
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
 
   const secondary = [
     psychologicalFromAxes ? "psychological" : undefined,
+    useDark ? "dark" : undefined,
     useCrime ? "crime" : undefined,
     "thriller novel",
     audience,
@@ -125,12 +124,33 @@ function buildThrillerQueries(input: RecommenderInput): { queries: string[]; sig
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
 
+  const speculativeThrillerQuery = [
+    (speculativeScore >= 2 || (!useCrime && speculativeScore >= 1)) ? "speculative thriller novel" : undefined,
+    audience,
+    NEGATIVE_TERMS,
+  ].filter(Boolean).join(" ");
+
+  const scienceFictionThrillerQuery = [
+    speculativeScore >= 2 ? "science fiction thriller novel" : undefined,
+    audience,
+    NEGATIVE_TERMS,
+  ].filter(Boolean).join(" ");
+
+  const horrorThrillerQuery = [
+    speculativeScore >= 2 ? "horror thriller novel" : undefined,
+    audience,
+    NEGATIVE_TERMS,
+  ].filter(Boolean).join(" ");
+
   const queries = uniqueQueries([
     primary,
     secondary,
     tertiary,
     realismQuery,
     domesticQuery,
+    speculativeThrillerQuery,
+    scienceFictionThrillerQuery,
+    horrorThrillerQuery,
     useDystopian ? dystopianQuery : undefined,
   ])
 
