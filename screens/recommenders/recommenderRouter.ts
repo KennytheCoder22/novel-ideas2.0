@@ -665,6 +665,36 @@ function looksLikeFictionCandidate(doc: any): boolean {
 }
 
 
+
+function looksLikeGoogleBooksFamilyCandidate(doc: any, bucketPlan: any): boolean {
+  if (!looksLikeFictionCandidate(doc)) return false;
+
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const categories = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const combined = [title, categories, description].filter(Boolean).join(" ");
+  const family = inferRouterFamily(bucketPlan);
+
+  if (family === "thriller") {
+    const cozyOrHumorousSignals =
+      /\b(cozy|cosy|humorous|funny|comic|comedic|gentle mystery|malice domestic|small town|comfort read|culinary mystery)\b/.test(combined);
+
+    const faithBasedSignals =
+      /\b(faith-based|christian fiction|inspirational fiction|amish fiction|forbidden love)\b/.test(combined);
+
+    const strongSuspenseSignals =
+      /\b(psychological|psychological suspense|domestic suspense|thriller|crime thriller|serial killer|missing|disappearance|investigation|detective|police procedural|legal thriller|gripping|twist|obsession|secret)\b/.test(combined);
+
+    if (cozyOrHumorousSignals) return false;
+    if (faithBasedSignals && !strongSuspenseSignals) return false;
+
+    return strongSuspenseSignals;
+  }
+
+  return true;
+}
+
+
 function looksLikeAnchorLaneCandidate(doc: any, bucketPlan: any): boolean {
   if (!looksLikeFictionCandidate(doc)) return false;
 
@@ -1229,7 +1259,7 @@ export async function getRecommendations(
 const googleDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
     sourceForDoc(doc, "googleBooks") === "googleBooks" &&
-    looksLikeFictionCandidate(doc)
+    looksLikeGoogleBooksFamilyCandidate(doc, bucketPlan)
 );
 
 const openLibraryDocsEnriched = bestsellerMergedDocs.filter(
