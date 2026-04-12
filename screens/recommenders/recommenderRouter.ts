@@ -288,39 +288,26 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   const preview = String(bucketPlan?.preview || "").trim().toLowerCase();
 
   if (family === "thriller") {
-    if (rung?.rung === 0) return quoteIfNeeded("psychological suspense fiction");
+    // Preserve the actual rung phrasing for Open Library so it can compete on the same intent.
+    if (base) return quoteIfNeeded(base);
 
-    if (rung?.rung === 1) {
-      if (base.includes("crime")) return quoteIfNeeded("crime fiction");
-      return quoteIfNeeded("psychological thriller");
-    }
-
-    if (rung?.rung === 2) {
-      if (base.includes("murder") || base.includes("investigation")) {
-        return quoteIfNeeded("mystery fiction");
-      }
-      return quoteIfNeeded("crime fiction");
-    }
-
-    if (rung?.rung === 3) return quoteIfNeeded("suspense fiction");
-
-    // Rung 90 is the commercial / airport-paperback lane.
     if (rung?.rung === 90) {
+      if (preview.includes("crime")) return quoteIfNeeded("crime thriller");
       if (preview.includes("psychological")) return quoteIfNeeded("psychological thriller");
-      return quoteIfNeeded("crime thriller");
+      return quoteIfNeeded("thriller novel");
     }
 
-    return quoteIfNeeded("suspense fiction");
+    return quoteIfNeeded(preview || "crime thriller novel");
   }
 
   if (family === "speculative") {
-    if (base.includes("science fiction")) return quoteIfNeeded("science fiction");
-    if (base.includes("fantasy")) return quoteIfNeeded("fantasy fiction");
-    if (base.includes("horror")) return quoteIfNeeded("horror fiction");
+    if (base) return quoteIfNeeded(base);
+    if (preview) return quoteIfNeeded(preview);
+    return quoteIfNeeded("science fiction");
   }
 
-  if (family === "romance") return quoteIfNeeded("romance fiction");
-  if (family === "historical") return quoteIfNeeded("historical fiction");
+  if (family === "romance") return quoteIfNeeded(base || preview || "romance novel");
+  if (family === "historical") return quoteIfNeeded(base || preview || "historical fiction");
 
   return quoteIfNeeded(base || preview || "fiction");
 }
@@ -774,12 +761,15 @@ function looksLikeOpenLibraryPrecisionCandidate(doc: any, bucketPlan: any): bool
 
   if (family === "thriller") {
     const strongSignal =
-      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|investigation|serial killer|domestic suspense|legal thriller|police procedural)\b/.test(combined);
+      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|investigation|serial killer|domestic suspense|legal thriller|police procedural|noir|missing person|procedural)\b/.test(combined);
+
+    const groundedBacklistSignal =
+      /\b(realistic|grounded|procedural|investigator|case|disappearance|missing|noir)\b/.test(combined);
 
     const weakOrOffGenre =
-      /\b(classic|literary fiction|drama|romance|poetry)\b/.test(combined);
+      /\b(romance|poetry)\b/.test(combined);
 
-    return strongSignal && !weakOrOffGenre;
+    return (strongSignal || groundedBacklistSignal) && !weakOrOffGenre;
   }
 
   return true;

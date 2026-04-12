@@ -295,8 +295,11 @@ function deriveSecondaryForRung(primary: string | null, family: Family, rungInde
 
   if (family === "thriller_family") {
     if (rungIndex === 0) return "novel";
-    if (rungIndex === 1) return "murder investigation";
-    if (rungIndex === 2) return "novel";
+    if (rungIndex === 1) {
+      if (/investigation|murder|detective|procedural/.test(p)) return null;
+      return "investigation novel";
+    }
+    if (rungIndex === 2) return null;
     if (rungIndex === 3) return "novel";
   }
 

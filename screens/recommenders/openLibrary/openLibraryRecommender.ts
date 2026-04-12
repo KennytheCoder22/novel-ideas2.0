@@ -9,28 +9,20 @@ function visualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undefined
 function dedupeQueries(queries: string[]): string[] { const seen = new Set<string>(); const out: string[] = []; for (const query of queries) { const trimmed = String(query || "").trim(); if (!trimmed) continue; const key = trimmed.toLowerCase(); if (seen.has(key)) continue; seen.add(key); out.push(trimmed); } return out; }
 function isAnchorLaneQuery(query: string): boolean { return /\b(bestselling|bestseller|popular|well known|famous|award winning|award-winning)\b/i.test(String(query || "")); }
 function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
-  const primary = String(rung.primary || "").toLowerCase();
-  const secondary = String(rung.secondary || "").toLowerCase();
-  const themes = rung.themes.join(" ").toLowerCase();
+  const primary = String(rung.primary || "").toLowerCase().trim();
+  const secondary = String(rung.secondary || "").toLowerCase().trim();
+  const themes = rung.themes.join(" ").toLowerCase().trim();
 
-  if (primary.includes("thriller")) {
-    if (themes.includes("domestic") || themes.includes("family")) return '"domestic suspense novel"';
-    if (themes.includes("missing") || themes.includes("disappearance")) return '"missing person thriller"';
-    if (themes.includes("obsession")) return '"obsession thriller novel"';
-    if (themes.includes("psychological")) return '"psychological suspense fiction"';
-    return '"suspense fiction"';
-  }
+  const combined = [primary, secondary, themes]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
 
-  if (primary.includes("mystery") || secondary.includes("mystery")) {
-    return '"murder investigation novel"';
-  }
+  if (!combined) return '"fiction"';
 
-  if (primary.includes("crime")) {
-    return '"crime investigation novel"';
-  }
-
-  if (primary.includes("detective")) {
-    return '"detective investigation novel"';
+  if (/\b(crime|mystery|detective|investigation|thriller|suspense|psychological|noir|procedural|murder)\b/.test(combined)) {
+    return `"${combined}"`;
   }
 
   if (primary.includes("science fiction")) return '"science fiction novel"';
@@ -39,17 +31,20 @@ function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
   if (primary.includes("romance")) return '"romance novel"';
   if (primary.includes("historical")) return '"historical fiction novel"';
 
-  return `"${(primary || "fiction").trim()}"`;
+  return `"${primary || "fiction"}"`;
 }
 function fallbackToOpenLibraryQuery(query: string): string {
-  const cleaned = String(query || "").toLowerCase().trim();
+  const cleaned = String(query || "").toLowerCase().replace(/\s+/g, " ").trim();
   if (!cleaned) return '"fiction"';
 
-  if (cleaned.includes("psychological")) return '"psychological suspense fiction"';
-  if (cleaned.includes("missing")) return '"missing person thriller"';
-  if (cleaned.includes("crime")) return '"crime investigation novel"';
-  if (cleaned.includes("mystery")) return '"murder investigation novel"';
-  if (cleaned.includes("thriller") || cleaned.includes("suspense")) return '"suspense fiction"';
+  if (/\b(crime|mystery|detective|investigation|thriller|suspense|psychological|noir|procedural|murder)\b/.test(cleaned)) {
+    return `"${cleaned}"`;
+  }
+
+  if (cleaned.includes("science fiction")) return '"science fiction novel"';
+  if (cleaned.includes("fantasy")) return '"epic fantasy novel"';
+  if (cleaned.includes("historical")) return '"historical fiction novel"';
+  if (cleaned.includes("romance")) return '"romance novel"';
 
   return `"${cleaned}"`;
 }
@@ -88,10 +83,10 @@ function looksLikeUsableOpenLibraryFiction(d: any): boolean {
 
   if (!title || !author) return false;
   if (isGarbageOpenLibraryCandidate(d)) return false;
-  if (year && year < 1980 && editionCount < 8) return false;
+  if (year && year < 1960 && editionCount < 4) return false;
   if (/\b(anthology|collection|essays|criticism|guide|handbook|bibliography|companion|screenplay|plays?)\b/i.test(text)) return false;
-  if (/\b(novel|fiction|thriller|mystery|crime|detective|suspense|psychological|young adult)\b/i.test(text)) return true;
-  return editionCount >= 12;
+  if (/\b(novel|fiction|thriller|mystery|crime|detective|suspense|psychological|young adult|noir|procedural|investigation)\b/i.test(text)) return true;
+  return editionCount >= 8;
 }
 
 function looksLikeCommercialOpenLibraryAnchor(d: any): boolean {
