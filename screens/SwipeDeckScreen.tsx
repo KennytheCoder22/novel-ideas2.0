@@ -85,6 +85,11 @@ type RecommendationHistoryBucket = {
   rejectedKeys: Set<string>;
 };
 
+type SwipeHistoryEntry = {
+  direction: "like" | "dislike" | "skip";
+  card: SwipeDeckCard;
+};
+
 type Props = {
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
@@ -568,6 +573,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [downSwipes, setDownSwipes] = useState(0);
 
   const [tagCounts, setTagCounts] = useState<TagCounts>({});
+  const [swipeHistory, setSwipeHistory] = useState<SwipeHistoryEntry[]>([]);
 
   const [recQuery, setRecQuery] = useState<string>("");
   const [recEngineLabel, setRecEngineLabel] = useState<string>("");
@@ -833,6 +839,7 @@ export default function SwipeDeckScreen(props: Props) {
     setLeftSwipes(0);
     setDownSwipes(0);
     setTagCounts({});
+    setSwipeHistory([]);
     setRecQuery("");
     setRecEngineLabel("");
     setRecLoading(false);
@@ -953,6 +960,7 @@ export default function SwipeDeckScreen(props: Props) {
   }
 function handleRight(card: SwipeDeckCard) {
   setRightSwipes((n) => n + 1);
+  setSwipeHistory((prev) => [...prev, { direction: "like", card }]);
   const anyCard: any = card as any;
   if (Array.isArray(anyCard.tags)) {
     const expandedTags = expandTeenCompanionTags(deckKey, anyCard.tags);
@@ -966,6 +974,9 @@ function handleRight(card: SwipeDeckCard) {
 function handleLeft() {
   setLeftSwipes((n) => n + 1);
   const card = currentCard;
+  if (card) {
+    setSwipeHistory((prev) => [...prev, { direction: "dislike", card }]);
+  }
   const anyCard: any = card as any;
   if (Array.isArray(anyCard?.tags)) {
     const expandedTags = expandTeenCompanionTags(deckKey, anyCard.tags);
@@ -979,6 +990,9 @@ function handleLeft() {
 
   function handleDownNotSure() {
     setDownSwipes((n) => n + 1);
+    if (currentCard) {
+      setSwipeHistory((prev) => [...prev, { direction: "skip", card: currentCard }]);
+    }
     void recordPipelineSwipe(currentCard, "skip");
     nextCard(currentCard);
   }
@@ -1221,6 +1235,7 @@ function handleLeft() {
     setLeftSwipes(0);
     setDownSwipes(0);
     setTagCounts({});
+    setSwipeHistory([]);
     setFeedback([]);
     setRecQuery("");
     setRecEngineLabel("");
@@ -1316,6 +1331,20 @@ function handleLeft() {
           .join(", ")
       : "(none)";
 
+    const swipeHistoryLines = swipeHistory.length
+      ? swipeHistory.map((entry, index) => {
+          const anyCard: any = entry.card as any;
+          const title = anyCard?.title || anyCard?.prompt || "(untitled)";
+          const author = anyCard?.author || "";
+          const genre = anyCard?.genre || "";
+          const tags = Array.isArray(anyCard?.tags)
+            ? anyCard.tags.filter((tag: any) => typeof tag === "string" && tag.trim()).join(", ")
+            : "";
+          const details = [author, genre, tags].filter(Boolean).join(" — ");
+          return `${index + 1}. ${entry.direction.toUpperCase()} — ${title}${details ? ` — ${details}` : ""}`;
+        }).join("\n")
+      : "(none)";
+
     const report = [
       "SESSION REPORT",
       `Deck: ${deck.deckLabel}`,
@@ -1323,6 +1352,10 @@ function handleLeft() {
       `Engine: ${recEngineLabel || "—"}`,
       `Saved Query Time: ${lastRecommendationTimestamp || "—"}`,
       `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
+      "",
+      "SWIPE HISTORY",
+      swipeHistoryLines,
+      "",
       `Built Query: ${recQuery || "(none)"}`,
       "",
       "ACTIVE TUNER OVERRIDE",
