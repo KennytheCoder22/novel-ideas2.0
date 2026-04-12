@@ -100,6 +100,34 @@ function looksLikeCommercialOpenLibraryAnchor(d: any): boolean {
   return /\b(novel|thriller|mystery|crime|suspense|fiction|detective)\b/i.test(text);
 }
 
+function lexicalRootForDoc(d: any): string {
+  const title = String(d?.title || "").toLowerCase().replace(/\s+/g, " ").trim();
+  return title
+    .replace(/\b(the|a|an)\b/g, " ")
+    .replace(/\b(book|volume|vol|part|episode|season|novel)\b\s*(?:#|no\.?|number)?\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)?/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .join(" ");
+}
+function collapseLexicalClusters(docsRaw: any[], laneKind: string): any[] {
+  const out: any[] = [];
+  const rootCounts = new Map<string, number>();
+  const capPerRoot = laneKind === "anchor" ? 1 : 2;
+  for (const doc of docsRaw) {
+    const root = lexicalRootForDoc(doc);
+    if (root) {
+      const current = rootCounts.get(root) || 0;
+      if (current >= capPerRoot) continue;
+      rootCounts.set(root, current + 1);
+    }
+    out.push(doc);
+  }
+  return out;
+}
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): { queries: string[]; domainMode: RecommendationResult["domainMode"]; } {
   const band = deckKeyToBand(deckKey); const isVisualDominant = visualSignalWeight(input.tagCounts) >= 4;
   if (isVisualDominant && band !== "kids") return { domainMode: "default", queries: dedupeQueries(['subject:"manga"', 'subject:"graphic novels"', 'subject:"comics"', 'subject:"fiction"']) };
@@ -163,8 +191,8 @@ export async function getOpenLibraryRecommendations(input: RecommenderInput): Pr
             if (publishers.some((p: any) => isHardSelfPublished(p))) return false;
             return looksLikeUsableOpenLibraryFiction(d);
           });
-      const mergedDocsRaw = admittedDocsRaw.slice();
-      for (const rescued of rescueDocsRaw) {
+      const mergedDocsRaw = collapseLexicalClusters(admittedDocsRaw.slice(), laneKind);
+      for (const rescued of collapseLexicalClusters(rescueDocsRaw, laneKind)) {
         const rescueKey = String(rescued?.key || rescued?.cover_edition_key || rescued?.title || "").trim();
         if (!rescueKey) continue;
         if (mergedDocsRaw.some((existing: any) => String(existing?.key || existing?.cover_edition_key || existing?.title || "").trim() === rescueKey)) continue;

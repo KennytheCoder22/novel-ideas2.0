@@ -213,14 +213,34 @@ function isGenericCommercialThriller(candidate: Candidate): boolean {
   const genericTitleSignal =
     /\b(crime scene|high crimes|murder in [a-z]|ashes of alibi|wish me dead)\b/i.test(title);
   const packagingSignal =
-    /\b(gripping|unputdownable|page[-\s]?turner|jaw[-\s]?dropping|twisty|book\s*1|series|prequel)\b/i.test(text);
+    /\b(gripping|unputdownable|page[-\s]?turner|jaw[-\s]?dropping|twisty|book\s*1|series|prequel|a .* thriller|pulse[-\s]?pounding)\b/i.test(text);
   const weakAuthoritySignal =
-    candidate.ratingCount < 200 &&
+    candidate.ratingCount < 250 &&
     !candidate.publisher &&
     !candidate.commercialSignals?.bestseller &&
+    Number(candidate.commercialSignals?.awards || 0) < 1 &&
     Number(candidate.commercialSignals?.popularityTier || 0) < 2;
 
   return genericTitleSignal || (packagingSignal && weakAuthoritySignal);
+}
+
+function hasStrongOpenLibraryAuthority(candidate: Candidate): boolean {
+  return candidate.source === 'openLibrary' && (
+    Number(candidate.editionCount || 0) >= 8 ||
+    candidate.ratingCount >= 200 ||
+    looksLikeActualFictionBook(candidate)
+  );
+}
+
+function lexicalClusterRoot(candidate: Candidate): string {
+  const title = normalizeKey(candidate.title)
+    .replace(/\b(book|volume|vol|part|episode|season|novel)\b\s*(?:#|no\.?|number)?\s*(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)?/gi, ' ')
+    .replace(/\b(the|a|an)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const tokens = title.split(/\s+/).filter(Boolean);
+  return tokens.slice(0, 2).join(' ');
 }
 
 function scoreOpenLibraryAuthority(candidate: Candidate): number {
@@ -1052,17 +1072,19 @@ function scoreCandidate(
   score += commercialBoost;
 
   if (candidate.source === 'openLibrary') {
-    score += 2.0;
+    score += 0.9;
     score += scoreHypothesisAlignment(candidate, hypothesis) * 1.05;
     score += scoreSemanticDiscoveryBoost(candidate, hypothesis);
     score += scoreOpenLibraryAuthority(candidate);
+    if (hasStrongOpenLibraryAuthority(candidate) && !isGenericCommercialThriller(candidate)) score += 0.55;
     score -= queryAlignment * 0.1;
     score -= rungBoost * 0.85;
   }
 
   if (candidate.source === 'googleBooks') {
-    if (isPrequelOrShortTieIn(candidate)) score -= 3.2;
-    if (isGenericCommercialThriller(candidate)) score -= 1.9;
+    if (isPrequelOrShortTieIn(candidate)) score -= 3.6;
+    if (isGenericCommercialThriller(candidate)) score -= 2.8;
+    if (!candidate.publisher && candidate.ratingCount < 120 && Number(candidate.commercialSignals?.popularityTier || 0) < 1) score -= 0.9;
   }
 
   score -= softMetadataPenalty(candidate);
@@ -1284,15 +1306,15 @@ export function finalRecommenderForDeck(
 
     penalty += authorCount * (2.25 * profile.authorPenaltyStrength);
     penalty += seriesCount * 3.5;
-    penalty += familyCount * 1.6;
+    penalty += familyCount * 1.9;
     penalty += publisherCount * 0.85;
 
     const currentSourceCount = sourceCounts[candidate.source || 'unknown'] || 0;
     if (candidate.source === 'googleBooks' && currentSourceCount >= 4) {
       penalty += (currentSourceCount - 3) * 0.65;
     }
-    if (candidate.source === 'openLibrary' && currentSourceCount >= 4) {
-      penalty += (currentSourceCount - 3) * 0.12;
+    if (candidate.source === 'openLibrary' && currentSourceCount >= 5) {
+      penalty += (currentSourceCount - 4) * 0.08;
     }
 
     const currentRung = Number(candidate.queryRung);
@@ -1324,6 +1346,14 @@ export function finalRecommenderForDeck(
       if (overlap >= 5) penalty += 2.6;
       else if (overlap >= 3) penalty += 1.35;
       else if (overlap >= 2) penalty += 0.6;
+    }
+
+    if (candidate.source === 'openLibrary') {
+      const clusterRoot = lexicalClusterRoot(candidate);
+      const clusterCount = selected.filter((item) => item.source === 'openLibrary' && lexicalClusterRoot(item) === clusterRoot).length;
+      if (clusterRoot && clusterCount >= 1) {
+        penalty += 1.15 * clusterCount;
+      }
     }
 
     if (hasSeriesSignals(candidate)) {

@@ -653,13 +653,49 @@ function looksLikeFictionCandidate(doc: any): boolean {
 
 
 
+function hasLegitCommercialAuthority(doc: any): boolean {
+  const ratingsCount = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || 0);
+  const avgRating = Number(doc?.averageRating || doc?.volumeInfo?.averageRating || 0);
+  const commercialSignals = (doc as any)?.commercialSignals;
+  const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
+
+  return (
+    ratingsCount >= 250 ||
+    avgRating >= 4.2 ||
+    Boolean(commercialSignals?.bestseller) ||
+    Number(commercialSignals?.awards || 0) > 0 ||
+    Number(commercialSignals?.popularityTier || 0) >= 2 ||
+    /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine)\b/.test(publisher)
+  );
+}
+
+function looksLikeLowValueGoogleBooksThriller(doc: any): boolean {
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const description = collectDescriptionText(doc);
+  const categories = collectCategoryText(doc);
+  const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
+  const combined = [title, categories, description, publisher].filter(Boolean).join(" ");
+
+  const shortOrTieInSignals =
+    /\b(prequel|short prequel|short novel|novella|short story|tie[-\s]?in|book\s*0\b|episode)\b/.test(combined);
+
+  const genericPackagingSignals =
+    /\b(gripping|unputdownable|jaw[-\s]?dropping|twisty|pulse[-\s]?pounding|page[-\s]?turner|book\s*1\b|series starter|a .* thriller)\b/.test(combined);
+
+  const genericTitleSignals =
+    /\b(ashes of alibi|wish me dead|murder in [a-z]+|crime scene|high crimes)\b/.test(title);
+
+  const weakAuthority = !hasLegitCommercialAuthority(doc);
+
+  return shortOrTieInSignals || genericTitleSignals || (genericPackagingSignals && weakAuthority);
+}
+
 function looksLikeGoogleBooksFamilyCandidate(doc: any, bucketPlan: any): boolean {
   if (!looksLikeFictionCandidate(doc)) return false;
 
-  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
   const categories = collectCategoryText(doc);
   const description = collectDescriptionText(doc);
-  const combined = [title, categories, description].filter(Boolean).join(" ");
+  const combined = [categories, description].filter(Boolean).join(" ");
   const family = inferRouterFamily(bucketPlan);
 
   if (family === "thriller") {
@@ -670,17 +706,22 @@ function looksLikeGoogleBooksFamilyCandidate(doc: any, bucketPlan: any): boolean
       /\b(faith-based|christian fiction|inspirational fiction|amish fiction|forbidden love)\b/.test(combined);
 
     const strongSuspenseSignals =
-      /\b(psychological|psychological suspense|domestic suspense|thriller|crime thriller|serial killer|missing|disappearance|investigation|detective|police procedural|legal thriller|gripping|twist|obsession|secret)\b/.test(combined);
+      /\b(psychological|psychological suspense|domestic suspense|thriller|crime thriller|serial killer|missing|disappearance|investigation|detective|police procedural|legal thriller|gripping|twist|obsession|secret|noir|procedural)\b/.test(combined);
+
+    const weakNarrativeShape =
+      !/\b(missing|disappearance|investigation|detective|case|killer|murder|obsession|secret|procedural|noir|psychological)\b/.test(combined);
 
     if (cozyOrHumorousSignals) return false;
     if (faithBasedSignals && !strongSuspenseSignals) return false;
+    if (looksLikeLowValueGoogleBooksThriller(doc)) return false;
+    if (!strongSuspenseSignals) return false;
+    if (weakNarrativeShape && !hasLegitCommercialAuthority(doc)) return false;
 
-    return strongSuspenseSignals;
+    return true;
   }
 
   return true;
 }
-
 
 function looksLikeAnchorLaneCandidate(doc: any, bucketPlan: any): boolean {
   if (!looksLikeFictionCandidate(doc)) return false;
