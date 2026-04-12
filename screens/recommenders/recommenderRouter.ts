@@ -491,6 +491,10 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bfour .*novels\b/,
     /\bbest .*novels\b/,
     /\bgreat .*novels\b/,
+    /\btrue crime\b/,
+    /\bcrime fiction\b/,
+    /\bdetective fiction\b/,
+    /\bmystery fiction\b/,
   ];
 
   const hardRejectSpecificTitlePatterns = [
@@ -530,6 +534,16 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\btheory\b/,
     /\b20th century\b/,
     /\b21st century\b/,
+    /\btrue crime\b/,
+    /\bcrime fiction\b/,
+    /\bdetective fiction\b/,
+    /\bmystery fiction\b/,
+    /\bfilm\b/,
+    /\bfilms\b/,
+    /\bmovie\b/,
+    /\bmovies\b/,
+    /\btelevision\b/,
+    /\btv series\b/,
   ];
 
   const hardRejectDescriptionPatterns = [
@@ -566,6 +580,26 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bmilitary history\b/,
     /\bworld war\b/,
     /\bhistory of (the )?(world|war|military)\b/,
+    /\bbattle of\b/,
+    /\bmilitary\b/,
+    /\bstrategy\b/,
+    /\bwarfare\b/,
+    /\bregiment\b/,
+    /\barmy\b/,
+    /\bnavy\b/,
+    /\b186\d\b/,
+    /\b18\d{2}\b/,
+    /\btrue crime\b/,
+    /\bcrime fiction\b/,
+    /\bdetective fiction\b/,
+    /\bmystery fiction\b/,
+    /\breader'?s advisory\b/,
+    /\bfilm\b/,
+    /\bfilms\b/,
+    /\bmovie\b/,
+    /\bmovies\b/,
+    /\btelevision\b/,
+    /\btv series\b/,
   ];
 
   const fictionPositivePatterns = [
@@ -623,7 +657,11 @@ function looksLikeFictionCandidate(doc: any): boolean {
     (rx) => rx.test(title) || rx.test(categories) || rx.test(description)
   );
 
-  return hasPositiveFictionSignal;
+  const hasStrongNarrativeSignal =
+    /\b(novel|fiction|thriller|mystery|crime|detective|suspense)\b/.test(title) ||
+    /\b(follows|story of|when .* discovers|investigates)\b/.test(description);
+
+  return hasPositiveFictionSignal && hasStrongNarrativeSignal;
 }
 
 
@@ -679,6 +717,12 @@ function looksLikeAnchorLaneCandidate(doc: any, bucketPlan: any): boolean {
       /\b(thriller|crime|mystery|detective|suspense|psychological|murder|investigation|serial killer|domestic suspense)\b/.test(combined);
     const antiSignals =
       /\b(horror|ghost|haunted|zombie|monster|science fiction|fantasy|dragon|magic)\b/.test(combined);
+    const psychologicalSession =
+      /\b(psychological|suspense)\b/.test(String(bucketPlan?.preview || "").toLowerCase());
+    const militarySignal =
+      /\b(sas|military|assassin|spy|covert|war)\b/.test(combined);
+
+    if (psychologicalSession && militarySignal) return false;
 
     return thrillerSignal && !antiSignals;
   }
