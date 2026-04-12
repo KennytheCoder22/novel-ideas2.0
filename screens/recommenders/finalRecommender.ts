@@ -1190,12 +1190,29 @@ export function finalRecommenderForDeck(
     deckKey
   );
 
-  const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
+const filtered = basePool.filter((candidate) => !rejectionReason(candidate, lane, hypothesis));
 
-  const unique =
-    filtered.length >= Math.max(profile.minKeep, 6)
-      ? filtered
-      : basePool.filter((candidate) => !isHardRejectReason(rejectionReason(candidate, lane, hypothesis)));
+let unique;
+
+if (filtered.length >= Math.max(profile.minKeep, 6)) {
+  unique = filtered;
+} else {
+  // fallback: relax hypothesis + soft constraints
+  unique = basePool.filter((candidate) => {
+    const reason = rejectionReason(candidate, lane, hypothesis);
+
+    // only keep hard rejections out
+    if (isHardRejectReason(reason)) return false;
+
+    // allow weak hypothesis matches in fallback
+    if (reason === 'weak hypothesis match') return true;
+
+    // allow previously filtered speculative / edge cases
+    if (reason === 'ineligible-for-shelf') return true;
+
+    return !reason;
+  });
+}
 
   const readerSoph = estimateReaderSophisticationFromTaste(options.tasteProfile, lane);
 
