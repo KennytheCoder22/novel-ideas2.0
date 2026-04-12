@@ -130,13 +130,83 @@ function buildRung(
   return { rung, family, primary, secondary, themes: uniqOrdered(themes), audience, query: "" };
 }
 
+
+function joinedIntentText(intent: QueryIntent): string {
+  return [
+    intent.baseGenre,
+    ...(intent.subgenres || []),
+    ...(intent.themes || []),
+    ...(intent.tones || []),
+    ...(intent.pacing || []),
+    ...(intent.settings || []),
+  ]
+    .filter(Boolean)
+    .map((value) => normalizePhrase(String(value)))
+    .join(" ");
+}
+
+function thrillerSignalHints(intent: QueryIntent) {
+  const joined = joinedIntentText(intent);
+
+  const hasCrime = /\b(crime|detective|investigation|murder|noir|procedural|serial killer|mystery)\b/.test(joined);
+  const hasPsychological = /\b(psychological|mind|identity|obsession|paranoia)\b/.test(joined);
+  const hasDark = /\b(dark|bleak|grim|noir)\b/.test(joined);
+  const hasRealistic = /\b(realistic|grounded|procedural)\b/.test(joined);
+  const hasDomestic = /\b(domestic|family secrets|betrayal)\b/.test(joined);
+  const hasDystopian = /\b(dystopian|survival)\b/.test(joined);
+  const hasSpeculative = /\b(science fiction|fantasy|horror|supernatural|paranormal)\b/.test(joined);
+
+  return {
+    hasCrime,
+    hasPsychological,
+    hasDark,
+    hasRealistic,
+    hasDomestic,
+    hasDystopian,
+    hasSpeculative,
+  };
+}
+
 function thrillerPrimaries(intent: QueryIntent): string[] {
-  return uniqOrdered([
-    "psychological suspense fiction",
-    "crime investigation novel",
-    "murder investigation novel",
-    "domestic suspense novel",
-  ]);
+  const {
+    hasCrime,
+    hasPsychological,
+    hasDark,
+    hasRealistic,
+    hasDomestic,
+    hasDystopian,
+    hasSpeculative,
+  } = thrillerSignalHints(intent);
+
+  const out: string[] = [];
+  const add = (value?: string | null) => {
+    const cleaned = normalizePhrase(value || "");
+    if (!cleaned) return;
+    if (!out.includes(cleaned)) out.push(cleaned);
+  };
+
+  const primary =
+    hasCrime && hasPsychological
+      ? `${hasDark ? "dark " : ""}psychological crime thriller`
+      : hasCrime && hasRealistic
+      ? `${hasDark ? "dark " : ""}crime investigation novel`
+      : hasPsychological
+      ? `${hasDark ? "dark " : ""}psychological thriller novel`
+      : hasCrime
+      ? `${hasDark ? "dark " : ""}crime thriller novel`
+      : "psychological suspense fiction";
+
+  add(primary);
+
+  if (hasCrime && hasRealistic) add(`${hasDark ? "dark " : ""}realistic crime suspense novel`);
+  if (hasCrime) add("murder investigation novel");
+  if (hasPsychological && hasCrime) add("psychological crime thriller novel");
+  if (hasDomestic) add("domestic suspense novel");
+  if (hasDystopian && !hasSpeculative) add("dystopian thriller novel");
+
+  add(`${hasDark ? "dark " : ""}mystery thriller novel`);
+
+  return uniqOrdered(out);
 }
 
 function speculativePrimaries(intent: QueryIntent): string[] {
