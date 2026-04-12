@@ -930,7 +930,12 @@ function candidateEligibleForHypothesis(candidate: Candidate, hypothesis: Compac
   const label = hypothesis.label.toLowerCase();
 
   if (label.includes('thriller') || label.includes('mystery')) {
-    return hasStrongThrillerSignal(candidate) && looksLikeActualFictionBook(candidate) && !isInstitutionalOrCatalogCandidate(candidate) && !looksLikeLooseLiteraryOrPoetryTitle(candidate);
+    return (
+      (hasStrongThrillerSignal(candidate) || hasStrongSpeculativeSignal(candidate)) &&
+      looksLikeActualFictionBook(candidate) &&
+      !isInstitutionalOrCatalogCandidate(candidate) &&
+      !looksLikeLooseLiteraryOrPoetryTitle(candidate)
+    );
   }
 
   if (label.includes('romantic')) return hasStrongRomanceSignal(candidate);
@@ -952,7 +957,10 @@ function candidateMatchesHypothesis(candidate: Candidate, hypothesis: CompactHyp
   const label = hypothesis.label.toLowerCase();
 
   if (label.includes('thriller') || label.includes('mystery')) {
-    return hasStrongThrillerSignal(candidate) && (optionalHits >= 1 || hasStrongTitleCaseNarrativeSignal(candidate));
+    return (
+      (hasStrongThrillerSignal(candidate) || hasStrongSpeculativeSignal(candidate)) &&
+      (optionalHits >= 1 || hasStrongTitleCaseNarrativeSignal(candidate))
+    );
   }
   if (label.includes('romantic')) return hasStrongRomanceSignal(candidate);
   if (label.includes('adventurous')) return hasStrongSpeculativeSignal(candidate);
