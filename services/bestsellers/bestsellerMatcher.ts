@@ -203,6 +203,163 @@ function mergeDocs(existing: RecommendationDoc, incoming: RecommendationDoc): Re
   return merged;
 }
 
+function documentText(doc: any): string {
+  return [
+    getTitle(doc),
+    getDescription(doc),
+    ...getSubjectArray(doc),
+    ...getPublisherArray(doc),
+    cleanString(doc?.queryText),
+    cleanString(doc?.subtitle),
+    cleanString(doc?.series),
+    cleanString(doc?.volumeInfo?.subtitle),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+}
+
+function countPatternHits(text: string, patterns: RegExp[]): number {
+  let hits = 0;
+  for (const pattern of patterns) {
+    if (pattern.test(text)) hits += 1;
+  }
+  return hits;
+}
+
+function inferSessionFamily(existingDocs: RecommendationDoc[]): "thriller" | "romance" | "speculative" | "historical" | "general" {
+  const combinedText = (Array.isArray(existingDocs) ? existingDocs : [])
+    .slice(0, 60)
+    .map((doc) => documentText(doc))
+    .join(" ");
+
+  const thrillerHits = countPatternHits(combinedText, [
+    /\bthriller\b/,
+    /\bmystery\b/,
+    /\bcrime\b/,
+    /\bdetective\b/,
+    /\bsuspense\b/,
+    /\bpsychological\b/,
+    /\bmurder\b/,
+    /\binvestigation\b/,
+    /\bdomestic suspense\b/,
+  ]);
+
+  const speculativeHits = countPatternHits(combinedText, [
+    /\bfantasy\b/,
+    /\bscience fiction\b/,
+    /\bsci fi\b/,
+    /\bspeculative\b/,
+    /\bdystopian\b/,
+    /\bspace opera\b/,
+    /\bhorror\b/,
+    /\bhaunted\b/,
+    /\bmagic\b/,
+  ]);
+
+  const romanceHits = countPatternHits(combinedText, [
+    /\bromance\b/,
+    /\bromantic\b/,
+    /\blove story\b/,
+    /\brelationship fiction\b/,
+  ]);
+
+  const historicalHits = countPatternHits(combinedText, [
+    /\bhistorical\b/,
+    /\bworld war\b/,
+    /\b19th century\b/,
+    /\bperiod fiction\b/,
+  ]);
+
+  const scored = [
+    { family: "thriller" as const, hits: thrillerHits },
+    { family: "speculative" as const, hits: speculativeHits },
+    { family: "romance" as const, hits: romanceHits },
+    { family: "historical" as const, hits: historicalHits },
+  ].sort((a, b) => b.hits - a.hits);
+
+  if (!scored[0] || scored[0].hits <= 0) return "general";
+  return scored[0].family;
+}
+
+function matchesFamily(doc: RecommendationDoc, family: "thriller" | "romance" | "speculative" | "historical" | "general"): boolean {
+  if (family === "general") return true;
+
+  const text = documentText(doc);
+
+  const fictionPositive = /\b(novel|fiction|thriller|mystery|crime|detective|suspense|romance|fantasy|science fiction|historical fiction)\b/.test(text);
+  if (!fictionPositive) return false;
+
+  const referenceNegative = /\b(guide|handbook|encyclopedia|analysis|criticism|study guide|reference|bookselling|publishers weekly|book review|writers market|literary agents|companion|manual|textbook)\b/.test(text);
+  if (referenceNegative) return false;
+
+  if (family === "thriller") {
+    const positive = countPatternHits(text, [
+      /\bthriller\b/,
+      /\bmystery\b/,
+      /\bcrime\b/,
+      /\bdetective\b/,
+      /\bsuspense\b/,
+      /\bpsychological\b/,
+      /\bmurder\b/,
+      /\binvestigation\b/,
+      /\bserial killer\b/,
+      /\bdomestic suspense\b/,
+      /\bpolice procedural\b/,
+    ]);
+
+    const negative = countPatternHits(text, [
+      /\blitrpg\b/,
+      /\bdungeon\b/,
+      /\bdragon\b/,
+      /\bfae\b/,
+      /\bmagic\b/,
+      /\bspace opera\b/,
+      /\bepic fantasy\b/,
+      /\bromantasy\b/,
+      /\bcozy fantasy\b/,
+      /\bpoems?\b/,
+      /\bplays?\b/,
+      /\bsonnets?\b/,
+    ]);
+
+    return positive >= 1 && negative === 0;
+  }
+
+  if (family === "speculative") {
+    return countPatternHits(text, [
+      /\bfantasy\b/,
+      /\bscience fiction\b/,
+      /\bsci fi\b/,
+      /\bspeculative\b/,
+      /\bdystopian\b/,
+      /\bmagic\b/,
+      /\bhorror\b/,
+    ]) >= 1;
+  }
+
+  if (family === "romance") {
+    return countPatternHits(text, [
+      /\bromance\b/,
+      /\bromantic\b/,
+      /\blove story\b/,
+      /\brelationship fiction\b/,
+    ]) >= 1;
+  }
+
+  if (family === "historical") {
+    return countPatternHits(text, [
+      /\bhistorical\b/,
+      /\bhistorical fiction\b/,
+      /\bperiod fiction\b/,
+      /\bworld war\b/,
+      /\b19th century\b/,
+    ]) >= 1;
+  }
+
+  return true;
+}
+
 export function mergeBestsellerDocs(
   existingDocs: RecommendationDoc[],
   bestsellerDocs: RecommendationDoc[],
@@ -210,6 +367,7 @@ export function mergeBestsellerDocs(
 ): BestsellerMergeResult {
   const allowInjections = options?.allowInjections !== false;
   const docs = Array.isArray(existingDocs) ? [...existingDocs] : [];
+  const sessionFamily = inferSessionFamily(docs);
 
   const byIsbn = new Map<string, number>();
   const byTitleAuthor = new Map<string, number>();
@@ -249,6 +407,7 @@ export function mergeBestsellerDocs(
     }
 
     if (!allowInjections) continue;
+    if (!matchesFamily(bestsellerDoc, sessionFamily)) continue;
 
     const injected = {
       ...bestsellerDoc,
@@ -263,7 +422,7 @@ export function mergeBestsellerDocs(
         ? Number((bestsellerDoc as any)?.queryRung)
         : 90,
       laneKind:
-        typeof (bestsellerDoc as any)?.laneKind === "string" && (bestsellerDoc as any).laneKind.trim()
+        typeof (bestsellerDoc as any)?.laneKind === "string" && (bestsellerDoc as any)?.laneKind.trim()
           ? (bestsellerDoc as any).laneKind
           : "anchor",
     } as RecommendationDoc;
