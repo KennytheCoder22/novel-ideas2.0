@@ -668,6 +668,31 @@ function looksLikeAnchorLaneCandidate(doc: any, bucketPlan: any): boolean {
   return true;
 }
 
+
+function looksLikeOpenLibraryPrecisionCandidate(doc: any, bucketPlan: any): boolean {
+  if (!looksLikeFictionCandidate(doc)) return false;
+
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const categories = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const combined = [title, categories, description].filter(Boolean).join(" ");
+  const family = inferRouterFamily(bucketPlan);
+
+  if (/\b(shakespeare|romeo and juliet|complete works|plays\b|poems?\b|sonnets?\b)\b/.test(combined)) return false;
+
+  if (family === "thriller") {
+    const strongSignal =
+      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|investigation|serial killer|domestic suspense|legal thriller|police procedural)\b/.test(combined);
+
+    const weakOrOffGenre =
+      /\b(classic|literary fiction|drama|romance|poetry)\b/.test(combined);
+
+    return strongSignal && !weakOrOffGenre;
+  }
+
+  return true;
+}
+
 function sourceForDoc(doc: any, fallbackSource: CandidateSource): CandidateSource {
   return doc?.source === "googleBooks" ||
     doc?.source === "openLibrary" ||
@@ -1147,7 +1172,9 @@ const googleDocsEnriched = bestsellerMergedDocs.filter(
 
 const openLibraryDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
-    sourceForDoc(doc, "openLibrary") === "openLibrary"
+    sourceForDoc(doc, "openLibrary") === "openLibrary" &&
+    looksLikeFictionCandidate(doc) &&
+    looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan)
 );
 const kitsuDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
