@@ -200,6 +200,49 @@ function metadataSignals(candidate: Candidate): number {
   return score;
 }
 
+function isPrequelOrShortTieIn(candidate: Candidate): boolean {
+  const text = haystack(candidate);
+  const title = String(candidate.title || '');
+  return /\b(prequel|short prequel novel|short novel|novella|short story|tie[-\s]?in)\b/i.test(text) ||
+    /\bprequel\b/i.test(title);
+}
+
+function isGenericCommercialThriller(candidate: Candidate): boolean {
+  const title = String(candidate.title || '').trim();
+  const text = haystack(candidate);
+  const genericTitleSignal =
+    /\b(crime scene|high crimes|murder in [a-z]|ashes of alibi|wish me dead)\b/i.test(title);
+  const packagingSignal =
+    /\b(gripping|unputdownable|page[-\s]?turner|jaw[-\s]?dropping|twisty|book\s*1|series|prequel)\b/i.test(text);
+  const weakAuthoritySignal =
+    candidate.ratingCount < 200 &&
+    !candidate.publisher &&
+    !candidate.commercialSignals?.bestseller &&
+    Number(candidate.commercialSignals?.popularityTier || 0) < 2;
+
+  return genericTitleSignal || (packagingSignal && weakAuthoritySignal);
+}
+
+function scoreOpenLibraryAuthority(candidate: Candidate): number {
+  if (candidate.source !== 'openLibrary') return 0;
+
+  let bonus = 0;
+  const editionCount = Number(candidate.editionCount || 0);
+  const year = candidate.publicationYear || 0;
+
+  if (editionCount >= 20) bonus += 1.6;
+  else if (editionCount >= 12) bonus += 1.1;
+  else if (editionCount >= 8) bonus += 0.7;
+  else if (editionCount >= 5) bonus += 0.35;
+
+  if (year >= 1980 && year <= 2024) bonus += 0.45;
+  if (candidate.hasCover) bonus += 0.2;
+  if (candidate.publisher) bonus += 0.15;
+  if (looksLikeActualFictionBook(candidate)) bonus += 0.25;
+
+  return Math.min(bonus, 2.1);
+}
+
 function dedupeCandidates(candidates: Candidate[]): Candidate[] {
   const byKey = new Map<string, Candidate>();
   for (const candidate of candidates) {
@@ -965,7 +1008,13 @@ function scoreCandidate(
   let score = 0;
 
   score += metadataSignals(candidate) * 0.16;
-  score += scorePopularity(candidate) * 0.18 * profile.popularityWeight;
+  const popularityWeight =
+    candidate.source === 'openLibrary'
+      ? 0.09
+      : candidate.source === 'googleBooks'
+      ? 0.16
+      : 0.18;
+  score += scorePopularity(candidate) * popularityWeight * profile.popularityWeight;
   score += scorePublisherBoost(candidate) * 0.8;
   score += scoreRecency(candidate) * (profile.recencyWeight * 0.7);
 
@@ -1003,15 +1052,17 @@ function scoreCandidate(
   score += commercialBoost;
 
   if (candidate.source === 'openLibrary') {
-    score += 1.1;
-    score += scoreHypothesisAlignment(candidate, hypothesis) * 0.95;
+    score += 2.0;
+    score += scoreHypothesisAlignment(candidate, hypothesis) * 1.05;
     score += scoreSemanticDiscoveryBoost(candidate, hypothesis);
-    score -= queryAlignment * 0.25;
-    score -= rungBoost * 1.15;
+    score += scoreOpenLibraryAuthority(candidate);
+    score -= queryAlignment * 0.1;
+    score -= rungBoost * 0.85;
+  }
 
-    if (candidate.editionCount >= 5) {
-      score += 1.2;
-    }
+  if (candidate.source === 'googleBooks') {
+    if (isPrequelOrShortTieIn(candidate)) score -= 3.2;
+    if (isGenericCommercialThriller(candidate)) score -= 1.9;
   }
 
   score -= softMetadataPenalty(candidate);
@@ -1238,10 +1289,10 @@ export function finalRecommenderForDeck(
 
     const currentSourceCount = sourceCounts[candidate.source || 'unknown'] || 0;
     if (candidate.source === 'googleBooks' && currentSourceCount >= 4) {
-      penalty += (currentSourceCount - 3) * 0.45;
+      penalty += (currentSourceCount - 3) * 0.65;
     }
     if (candidate.source === 'openLibrary' && currentSourceCount >= 4) {
-      penalty += (currentSourceCount - 3) * 0.2;
+      penalty += (currentSourceCount - 3) * 0.12;
     }
 
     const currentRung = Number(candidate.queryRung);
