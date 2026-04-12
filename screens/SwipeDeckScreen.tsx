@@ -1345,6 +1345,22 @@ function handleLeft() {
         }).join("\n")
       : "(none)";
 
+    const rungQueryMap = new Map<string, string>();
+    for (const row of rawPoolRows) {
+      const rungValue = row?.queryRung;
+      const queryText = typeof row?.queryText === "string" ? row.queryText.trim() : "";
+      if (rungValue == null || !queryText) continue;
+      const rungKey = String(rungValue);
+      if (!rungQueryMap.has(rungKey)) {
+        rungQueryMap.set(rungKey, queryText);
+      }
+    }
+
+    const rungQueryLines = Array.from(rungQueryMap.entries())
+      .sort((a, b) => Number(a[0]) - Number(b[0]))
+      .map(([rung, query]) => `Rung ${rung}: ${query}`)
+      .join("\n") || "(none)";
+
     const report = [
       "SESSION REPORT",
       `Deck: ${deck.deckLabel}`,
@@ -1357,6 +1373,9 @@ function handleLeft() {
       swipeHistoryLines,
       "",
       `Built Query: ${recQuery || "(none)"}`,
+      "",
+      "RUNG QUERIES",
+      rungQueryLines,
       "",
       "ACTIVE TUNER OVERRIDE",
       currentLaneOverride && Object.keys(currentLaneOverride).length > 0
