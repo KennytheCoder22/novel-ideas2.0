@@ -134,7 +134,7 @@ function buildThrillerQueries(input: RecommenderInput): { queries: string[]; sig
     useDystopian ? dystopianQuery : undefined,
   ])
 
-  signals: QuerySignals = {
+  const signals: QuerySignals = {
     genre: {
       thriller: thrillerScore,
       crime: crimeScore,
