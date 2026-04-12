@@ -551,6 +551,23 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bresearch\b/,
   ];
 
+  const additionalRejectPatterns = [
+    /\bwriting and selling\b/,
+    /\bhow to write\b/,
+    /\bwriting (a|your)\b/,
+    /\bpublishing\b/,
+    /\bpublishers?\b/,
+    /\bbook marketing\b/,
+    /\bliterary market\b/,
+    /\bfilm (study|studies)\b/,
+    /\bcinema studies\b/,
+    /\bmedia studies\b/,
+    /\bcultural studies\b/,
+    /\bmilitary history\b/,
+    /\bworld war\b/,
+    /\bhistory of (the )?(world|war|military)\b/,
+  ];
+
   const fictionPositivePatterns = [
     /\bfiction\b/,
     /\bnovel\b/,
@@ -599,6 +616,7 @@ function looksLikeFictionCandidate(doc: any): boolean {
   if (hardRejectSpecificTitlePatterns.some((rx) => rx.test(title))) return false;
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
+  if (additionalRejectPatterns.some((rx) => rx.test(combined))) return false;
   if (obviousReferenceSeriesPatterns.some((rx) => rx.test(combined))) return false;
 
   const hasPositiveFictionSignal = fictionPositivePatterns.some(
