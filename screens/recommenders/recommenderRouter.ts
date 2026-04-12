@@ -230,7 +230,7 @@ function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
   if (!anchorDocs.length) return docs.slice(0, finalLimit);
 
   const sortedAnchors = [...anchorDocs].sort((a: any, b: any) => recognizabilityScore(b) - recognizabilityScore(a));
-  const selectedAnchors = sortedAnchors.slice(0, 2);
+  const selectedAnchors = sortedAnchors.slice(0, 1);
 
   const used = new Set<string>();
   const output: any[] = [];
@@ -301,9 +301,9 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
     if (rung?.rung === 3) return quoteIfNeeded("suspense fiction");
 
     // Rung 90 is the commercial / airport-paperback lane.
-    if (rung?.rung === 90) {
-      return quoteIfNeeded("thriller fiction");
-    }
+if (rung?.rung === 90) {
+  return quoteIfNeeded("crime thriller");
+}
 
     return quoteIfNeeded("suspense fiction");
   }
@@ -1076,7 +1076,8 @@ const googleDocsEnriched = bestsellerMergedDocs.filter(
 
 const openLibraryDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
-    sourceForDoc(doc, "openLibrary") === "openLibrary"
+    sourceForDoc(doc, "openLibrary") === "openLibrary" &&
+    looksLikeFictionCandidate(doc)
 );
 const kitsuDocsEnriched = bestsellerMergedDocs.filter(
   (doc: any) =>
