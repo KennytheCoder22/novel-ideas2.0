@@ -324,32 +324,32 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const laneKind = doc?.laneKind ?? doc?.diagnostics?.laneKind ?? doc?.rawDoc?.laneKind;
 
     const fictionLike =
-  looksLikeFictionCandidate(doc) ||
-  /\b(novel|thriller|crime|mystery|fiction)\b/i.test(
-    `${doc?.title || ""} ${doc?.description || ""}`
-  );
+      looksLikeFictionCandidate(doc) ||
+      /\b(novel|thriller|crime|mystery|fiction|suspense|detective|dystopian|survival|science fiction)\b/i.test(
+        `${doc?.title || ""} ${doc?.description || ""} ${doc?.subtitle || ""}`
+      );
 
-if (!fictionLike) continue;
+    if (!fictionLike) continue;
 
     if (laneKind === "anchor") {
-  const strongReject =
-    /\b(guide|companion|writing|seo|reference|anthology|collection)\b/i.test(
-      `${doc?.title || ""} ${doc?.description || ""}`
-    );
+      const strongReject =
+        /\b(guide|companion|writing|seo|reference|anthology|collection|encyclopedia|handbook|manual|textbook|study guide)\b/i.test(
+          `${doc?.title || ""} ${doc?.description || ""}`
+        );
 
-  if (strongReject) continue;
-}
+      if (strongReject) continue;
+    }
 
     if (
-  source === "googleBooks" &&
-  !looksLikeGoogleBooksFamilyCandidate(doc, bucketPlan)
-) {
-  const fallback = /\b(novel|thriller|crime|mystery|fiction)\b/i.test(
-    `${doc?.title || ""} ${doc?.description || ""}`
-  );
+      source === "googleBooks" &&
+      !looksLikeGoogleBooksFamilyCandidate(doc, bucketPlan)
+    ) {
+      const fallback = /\b(novel|thriller|crime|mystery|fiction|suspense|detective|psychological)\b/i.test(
+        `${doc?.title || ""} ${doc?.description || ""} ${doc?.subtitle || ""}`
+      );
 
-  if (!fallback) continue;
-}
+      if (!fallback) continue;
+    }
     if (source === "openLibrary" && !looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan)) continue;
 
     filtered.push(doc);
