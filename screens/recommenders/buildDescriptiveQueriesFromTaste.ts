@@ -57,10 +57,10 @@ function uniqueQueries(values: Array<string | undefined | null>): string[] {
 function fallbackQueriesForDeck(deckKey: RecommenderInput["deckKey"]): string[] {
   const audience = audiencePhrase(deckKey);
   return [
-    `fiction novel ${audience} ${NEGATIVE_TERMS}`,
-    `character driven novel ${audience} ${NEGATIVE_TERMS}`,
-    `contemporary novel ${audience} ${NEGATIVE_TERMS}`,
-  ];
+  `family drama novel ${audience} ${NEGATIVE_TERMS}`,
+  `crime drama novel ${audience} ${NEGATIVE_TERMS}`,
+  `survival novel ${audience} ${NEGATIVE_TERMS}`,
+];
 }
 
 function buildDescriptiveAxisQueries(input: RecommenderInput): { queries: string[]; signals: QuerySignals } {
@@ -103,21 +103,21 @@ function buildDescriptiveAxisQueries(input: RecommenderInput): { queries: string
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
 
-  const secondary = [
-    useIntimacy ? "character driven" : undefined,
-    useDark ? "dark" : undefined,
-    "novel",
-    audience,
-    NEGATIVE_TERMS,
-  ].filter(Boolean).join(" ");
+const secondary = [
+  useIntimacy ? "family relationship novel" : undefined,
+  useIntrigue ? "moral conflict novel" : undefined,
+  "novel",
+  audience,
+  NEGATIVE_TERMS,
+].filter(Boolean).join(" ");
 
-  const tertiary = [
-    useIntrigue ? "suspense" : undefined,
-    useRealism ? "grounded" : undefined,
-    "fiction novel",
-    audience,
-    NEGATIVE_TERMS,
-  ].filter(Boolean).join(" ");
+const tertiary = [
+  useIntrigue ? "crime consequences novel" : undefined,
+  useRealism ? "real life struggle novel" : undefined,
+  "novel",
+  audience,
+  NEGATIVE_TERMS,
+].filter(Boolean).join(" ");
 
   const speculativeQuery = [
     useSpeculative ? "speculative fiction novel" : undefined,
@@ -128,13 +128,6 @@ function buildDescriptiveAxisQueries(input: RecommenderInput): { queries: string
   const psychologicalQuery = [
     useDark ? "psychological" : undefined,
     useIntrigue ? "suspense novel" : undefined,
-    audience,
-    NEGATIVE_TERMS,
-  ].filter(Boolean).join(" ");
-
-  const slowBurnQuery = [
-    Number(axes.pacing || 0) < -0.12 ? "slow burn novel" : undefined,
-    useIntimacy ? "character driven" : undefined,
     audience,
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
