@@ -12,27 +12,6 @@ export type FinalRecommenderOptions = {
   lane?: RecommenderLane;
   deckKey?: DeckKey;
   tasteProfile?: TasteProfile;
-  profileOverride?: Partial<RecommenderProfile>;
-  priorRecommendedIds?: string[];
-  priorRecommendedKeys?: string[];
-  priorAuthors?: string[];
-  priorSeriesKeys?: string[];
-  priorRejectedIds?: string[];
-  priorRejectedKeys?: string[];
-};
-
-type CandidateDiagnostics = {
-  source: string;
-  preFilterScore?: number;
-  postFilterScore?: number;
-  rejectionReason?: string;
-  tasteAlignment?: number;
-  queryAlignment?: number;
-  rungBoost?: number;
-};
-
-type CandidateWithDiagnostics = Candidate & {
-  diagnostics?: CandidateDiagnostics;
 };
 
 function normalize(value: unknown): string {
@@ -54,75 +33,35 @@ function haystack(c: Candidate): string {
 
 function isValidCandidate(c: Candidate): boolean {
   if (!c.title) return false;
-
-  const text = haystack(c);
-
-  if (text.includes('summary')) return false;
-  if (text.includes('analysis')) return false;
-  if (text.includes('study guide')) return false;
-
   return true;
 }
 
+/* 🔥 HARD FILTER — THIS IS THE MAIN FIX */
 function isLikelyNonFictionMeta(c: Candidate): boolean {
   const text = haystack(c);
 
   return (
-    /\bguide\b/.test(text) ||
-    /\bhandbook\b/.test(text) ||
-    /\bencyclopedia\b/.test(text) ||
-    /\bhistory of\b/.test(text) ||
-    /\bstudies\b/.test(text) ||
-    /\banalysis\b/.test(text) ||
-    /\bcriticism\b/.test(text) ||
-    /\breview\b/.test(text) ||
-    /\bdigest\b/.test(text) ||
-    /\bwriters\b/.test(text) ||
-    /\bwriting\b/.test(text) ||
-    /\bhow to write\b/.test(text) ||
-    /\badvisory\b/.test(text) ||
-    /\bmagazine\b/.test(text) ||
-    /\bjournal\b/.test(text) ||
-    /\bbulletin\b/.test(text) ||
-    /\banthology\b/.test(text) ||
-    /\bcollection\b/.test(text) ||
-    /\bcompanion\b/.test(text) ||
-    /\breference\b/.test(text) ||
-    /\bperiodical\b/.test(text)
+    /guide|handbook|encyclopedia|history of|studies|analysis|criticism|review|digest/.test(text) ||
+    /writers|writing|how to write|advisory/.test(text) ||
+    /magazine|journal|bulletin|review/.test(text) ||
+    /anthology|collection|stories\b/.test(text) ||
+    /reference|companion|literature/.test(text) ||
+    /publishers weekly|booklist|cambridge history|atlantic monthly/.test(text)
   );
-}
-
-function agePenalty(c: Candidate): number {
-  const year = Number(c.publicationYear || 0);
-  if (!year) return 0;
-  if (year < 1950) return -1.5;
-  if (year < 1980) return -0.5;
-  return 0;
-}
-
-function narrativeSignal(c: Candidate): number {
-  const text = haystack(c);
-
-  let score = 0;
-  if (/\bnovel\b|\bstory\b|\btale\b/.test(text)) score += 0.5;
-  if (/\bmurder\b|\binvestigation\b|\bfamily\b|\bsurvival\b|\bcrime\b|\bsecrets?\b/.test(text)) score += 0.5;
-
-  return score;
 }
 
 function vibeBoost(c: Candidate, taste?: TasteProfile): number {
   if (!taste) return 0;
 
-  let score = 0;
   const text = haystack(c);
 
   if ((taste.axes?.darkness || 0) > 0.2) {
     if (/dark|bleak|grim|violent|dystopian/.test(text)) {
-      score += 0.5;
+      return 0.5;
     }
   }
 
-  return score;
+  return 0;
 }
 
 function scoreQueryAlignment(c: Candidate): number {
@@ -130,12 +69,16 @@ function scoreQueryAlignment(c: Candidate): number {
 
   const text = haystack(c);
 
+  const goodTerms = c.queryTerms.filter(
+    t => t.length >= 4 && !['novel', 'fiction', 'adult'].includes(t)
+  );
+
   let matches = 0;
-  for (const term of c.queryTerms) {
+  for (const term of goodTerms) {
     if (text.includes(term)) matches++;
   }
 
-  return matches * 0.2; // weaker + distributed
+  return matches * 0.35;
 }
 
 function scoreRungBoost(c: Candidate): number {
@@ -148,10 +91,28 @@ function scoreRungBoost(c: Candidate): number {
 
 function scoreBasicQuality(c: Candidate): number {
   let score = 0;
-
   if (c.description) score += 1;
   if (c.hasCover) score += 0.5;
-  if (c.ratingCount > 0) score += Math.log10(c.ratingCount + 1);
+  return score;
+}
+
+function agePenalty(c: Candidate): number {
+  const year = Number(c.publicationYear || 0);
+  if (!year) return 0;
+  if (year < 1950) return -2;
+  if (year < 1980) return -0.75;
+  return 0;
+}
+
+function narrativeSignal(c: Candidate): number {
+  const text = haystack(c);
+
+  let score = 0;
+
+  if (/novel|story/.test(text)) score += 0.6;
+  if (/murder|investigation|family|survival|crime|secrets|identity/.test(text)) {
+    score += 0.6;
+  }
 
   return score;
 }
@@ -178,60 +139,23 @@ export function finalRecommenderForDeck(
 ): RecommendationDoc[] {
 
   const lane = options.lane ?? laneFromDeckKey(options.deckKey ?? deckKey);
-  const profile: RecommenderProfile = {
-    ...recommenderProfiles[lane],
-    ...(options.profileOverride || {}),
-  };
 
-  const base = dedupe(candidates).filter(isValidCandidate);
+  const base = dedupe(candidates)
+    .filter(isValidCandidate)
+    .filter(c => !isLikelyNonFictionMeta(c)); // 🔥 CRITICAL
 
-  const scored = base
-    .filter((c) => !isLikelyNonFictionMeta(c))
-    .map((c) => {
-      const queryAlignment = scoreQueryAlignment(c);
-      const rungBoost = scoreRungBoost(c);
-      const quality = scoreBasicQuality(c);
+  const scored = base.map((c) => {
+    const score =
+      scoreBasicQuality(c) * 1.3 +
+      scoreQueryAlignment(c) * 1.6 +
+      scoreRungBoost(c) * 2.2 +
+      vibeBoost(c, options.tasteProfile) +
+      titleMatchPenalty(c) +
+      agePenalty(c) +
+      narrativeSignal(c);
 
-      const score =
-        quality * 1.5 +
-        queryAlignment * 1.2 +
-        rungBoost * 2.5 +
-        vibeBoost(c, options.tasteProfile) +
-        titleMatchPenalty(c) +
-        agePenalty(c) +
-        narrativeSignal(c);
+    return { candidate: c, score };
+  }).sort((a, b) => b.score - a.score);
 
-      const candidate: CandidateWithDiagnostics = {
-        ...c,
-        diagnostics: {
-          source: c.source || 'unknown',
-          preFilterScore: score,
-          postFilterScore: score,
-          queryAlignment,
-          rungBoost,
-          rejectionReason: undefined,
-        }
-      };
-
-      return { candidate, score };
-    })
-    .sort((a, b) => b.score - a.score);
-
-  const selected: CandidateWithDiagnostics[] = [];
-  const seen = new Set<string>();
-
-  for (const entry of scored) {
-    if (selected.length >= 10) break;
-
-    const key = identityKey(entry.candidate);
-    if (seen.has(key)) continue;
-
-    selected.push(entry.candidate);
-    seen.add(key);
-  }
-
-  return selected.map((c) => ({
-    ...(c.rawDoc as RecommendationDoc),
-    diagnostics: c.diagnostics
-  }));
+  return scored.slice(0, 10).map(s => s.candidate.rawDoc as RecommendationDoc);
 }

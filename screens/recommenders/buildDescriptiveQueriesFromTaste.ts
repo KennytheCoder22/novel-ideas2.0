@@ -54,13 +54,12 @@ function uniqueQueries(values: Array<string | undefined | null>): string[] {
   return out;
 }
 
-function fallbackQueriesForDeck(deckKey: RecommenderInput["deckKey"]): string[] {
-  const audience = audiencePhrase(deckKey);
+function fallbackQueriesForDeck(deckKey: string): string[] {
   return [
-  `family drama novel ${audience} ${NEGATIVE_TERMS}`,
-  `crime drama novel ${audience} ${NEGATIVE_TERMS}`,
-  `survival novel ${audience} ${NEGATIVE_TERMS}`,
-];
+    "crime conspiracy novel",
+    "psychological thriller novel",
+    "survival thriller novel"
+  ];
 }
 
 function buildDescriptiveAxisQueries(input: RecommenderInput): { queries: string[]; signals: QuerySignals } {
