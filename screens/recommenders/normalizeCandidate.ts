@@ -123,11 +123,13 @@ function getEditionCount(rawDoc: any): number {
   return Number.isFinite(Number(editionCount)) ? Math.max(0, Number(editionCount)) : 0;
 }
 
-const QUERY_STOPWORDS = new Set(['subject', 'fiction', 'novel', 'book', 'books', 'story', 'stories', 'the', 'and', 'for', 'with', 'about', 'from', 'into']);
+const QUERY_STOPWORDS = new Set([
+  'subject', 'fiction', 'novel', 'book', 'books', 'story', 'stories',
+  'the', 'and', 'for', 'with', 'about', 'from', 'into'
+]);
 
 function extractQueryTerms(queryText: any): string[] {
   const raw = String(queryText || '').toLowerCase();
-
   if (!raw.trim()) return [];
 
   const subjectMatches = Array.from(
@@ -270,18 +272,25 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   const fictionPositivePatterns = [
     /\bfiction\b/,
     /\bnovel\b/,
+    /\bcharacter[-\s]?driven\b/,
+    /\brelationship[-\s]?driven\b/,
+    /\bfamily saga\b/,
+    /\blove story\b/,
+    /\bcoming[-\s]?of[-\s]?age\b/,
+    /\bspeculative\b/,
+    /\bfantasy\b/,
+    /\bscience fiction\b/,
+    /\bhorror\b/,
+    /\bromance\b/,
     /\bthriller\b/,
     /\bmystery\b/,
     /\bcrime\b/,
     /\bdetective\b/,
     /\bsuspense\b/,
     /\bpsychological\b/,
-    /\bmurder\b/,
-    /\bserial killer\b/,
-    /\binvestigation\b/,
-    /\bpolice\b/,
-    /\binspector\b/,
-    /\bprivate investigator\b/,
+    /\bmanga\b/,
+    /\bgraphic novel\b/,
+    /\bcomic\b/,
     /\bfollows\b/,
     /\btells the story\b/,
     /\bstory of\b/,
@@ -302,19 +311,15 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   ];
 
   if (!title) return false;
-
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
   if (obviousReferenceSeriesPatterns.some((rx) => rx.test(combined))) return false;
 
-  const hasPositiveFictionSignal = fictionPositivePatterns.some(
+  return fictionPositivePatterns.some(
     (rx) => rx.test(title) || rx.test(categories) || rx.test(description)
   );
-
-  return hasPositiveFictionSignal;
 }
-
 
 function isClearlyNotABookCandidate(candidate: Candidate): boolean {
   const title = String(candidate?.title || "").toLowerCase().trim();
@@ -373,16 +378,15 @@ function isClearlyNotABookCandidate(candidate: Candidate): boolean {
   return false;
 }
 
-
 function hasCover(rawDoc: any): boolean {
   if (rawDoc?.cover_i) return true;
   const imageLinks = rawDoc?.imageLinks ?? rawDoc?.volumeInfo?.imageLinks;
   return Boolean(
     imageLinks?.thumbnail ||
-      imageLinks?.smallThumbnail ||
-      imageLinks?.small ||
-      imageLinks?.medium ||
-      imageLinks?.large
+    imageLinks?.smallThumbnail ||
+    imageLinks?.small ||
+    imageLinks?.medium ||
+    imageLinks?.large
   );
 }
 
@@ -395,20 +399,13 @@ function detectFormatCategory(
 
   if (source === 'kitsu') return 'manga';
   if (source === 'gcd') return 'comic';
-
   if (subjectText.includes('manga')) return 'manga';
 
-  if (
-    subjectText.includes('graphic novel') ||
-    subjectText.includes('graphic novels')
-  ) {
+  if (subjectText.includes('graphic novel') || subjectText.includes('graphic novels')) {
     return 'graphic_novel';
   }
 
-  if (
-    subjectText.includes('comic') ||
-    subjectText.includes('comics')
-  ) {
+  if (subjectText.includes('comic') || subjectText.includes('comics')) {
     return 'comic';
   }
 
@@ -420,6 +417,7 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
   const title = getTitle(rawDoc);
   const subtitle = getSubtitle(rawDoc);
   const description = getDescription(rawDoc);
+
   const subjects = [
     ...asArray((rawDoc as any)?.subject),
     ...asArray((rawDoc as any)?.subjects),
@@ -427,6 +425,7 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
     ...asArray((rawDoc as any)?.volumeInfo?.subjects),
     ...asArray((rawDoc as any)?.volumeInfo?.categories),
   ];
+
   const uniqueSubjects = Array.from(new Set(subjects.map((item) => item.trim()).filter(Boolean)));
   const formatCategory = detectFormatCategory(rawDoc, source, uniqueSubjects);
   const ratings = getRatings(rawDoc);
@@ -441,7 +440,6 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
     subjects: uniqueSubjects,
     genres: uniqueSubjects.filter((s) => {
       const v = s.toLowerCase();
-
       return (
         v.includes('fiction') ||
         v.includes('mystery') ||
@@ -453,6 +451,9 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
         v.includes('romance') ||
         v.includes('drama') ||
         v.includes('dystopian') ||
+        v.includes('speculative') ||
+        v.includes('character') ||
+        v.includes('family saga') ||
         v.includes('manga') ||
         v.includes('graphic novel') ||
         v.includes('graphic novels') ||
@@ -485,7 +486,6 @@ export function normalizeCandidates(rawDocs: RecommendationDoc[], source: Candid
       if (source === 'openLibrary') {
         return !isClearlyNotABookCandidate(normalizeCandidate(rawDoc, source));
       }
-
       return looksLikeFictionCandidate(rawDoc);
     })
     .map((rawDoc) => normalizeCandidate(rawDoc, source))

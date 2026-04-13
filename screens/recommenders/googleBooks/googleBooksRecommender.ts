@@ -179,41 +179,11 @@ function supplementalAnchorQueries(query: string): string[] {
   const q = normalizeStoredQueryText(query);
   if (!isAnchorLaneQuery(q)) return [q];
 
-  // Lane 90 should sound reader-facing and shelf-facing, not like awards/reference discourse.
-  if (/psychological/.test(q) || /suspense/.test(q)) {
-    return dedupeQueries([
-      q,
-      "popular psychological suspense paperback novel",
-      "popular domestic suspense novel",
-      "popular suspense thriller novel",
-    ]);
-  }
-  if (/crime/.test(q)) {
-    return dedupeQueries([
-      q,
-      "popular crime thriller paperback novel",
-      "popular crime suspense novel",
-      "popular detective thriller novel",
-    ]);
-  }
-  if (/mystery/.test(q)) {
-    return dedupeQueries([
-      q,
-      "popular mystery suspense paperback novel",
-      "popular detective novel",
-      "popular murder mystery novel",
-    ]);
-  }
-  if (/thriller/.test(q)) {
-    return dedupeQueries([
-      q,
-      "popular suspense thriller paperback novel",
-      "popular airport thriller novel",
-    ]);
-  }
-  if (/fantasy/.test(q)) return dedupeQueries([q, "popular fantasy novel", "popular fantasy paperback novel"]);
-  if (/science fiction/.test(q)) return dedupeQueries([q, "popular science fiction novel", "popular science fiction paperback novel"]);
-  return dedupeQueries([q, "popular commercial fiction novel", "popular paperback novel"]);
+  return dedupeQueries([
+    q,
+    "popular novel",
+    "popular fiction paperback",
+  ]);
 }
 
 
@@ -271,7 +241,7 @@ function looksLikeCommercialAnchor(doc: any): boolean {
     .filter(Boolean)
     .join(" ");
 
-  const fictionSignal = /\b(suspense|thriller|psychological|crime|mystery|domestic suspense|novel|fiction|detective)\b/i.test(text);
+  const fictionSignal = /\b(novel|fiction)\b/i.test(text);
   const modernEnough = !year || year >= 1985;
   const shelfLengthOkay = !pageCount || pageCount >= 150;
   const audienceSignal = ratingsCount >= 3 || averageRating >= 3.2 || /\bpaperback\b/i.test(text);
@@ -280,29 +250,25 @@ function looksLikeCommercialAnchor(doc: any): boolean {
 }
 
 function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
-  const primary = String(rung.primary || "").toLowerCase();
-  const secondary = String(rung.secondary || "").toLowerCase();
-  if (primary.includes("crime thriller")) return "crime thriller novel";
-  if (primary.includes("mystery thriller")) return "mystery thriller novel";
-  if (primary.includes("detective mystery")) return "detective mystery novel";
-  if (primary.includes("science fiction")) return "science fiction novel";
-  if (primary.includes("fantasy")) return "fantasy novel";
-  if (primary.includes("horror")) return "horror novel";
-  if (primary.includes("romance")) return "romance novel";
-  if (primary.includes("historical")) return "historical fiction novel";
-  if (primary.includes("thriller") && secondary.includes("crime")) return "crime thriller novel";
-  if (primary.includes("thriller") && secondary.includes("mystery")) return "mystery thriller novel";
-  if (primary.includes("thriller")) return "thriller novel";
-  return primary || "fiction";
+  const base = String(rung?.query || rung?.primary || "").toLowerCase().trim();
+  return base || "fiction novel";
 }
 
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): string[] {
   const isVisualDominant = visualSignalWeight(input.tagCounts) >= 4;
   if (isVisualDominant) return dedupeQueries(['subject:manga', 'subject:"graphic novel"', 'subject:comics', 'subject:fiction']);
   if (deckKey === "k2") return dedupeQueries([`subject:"children's fiction"`, `subject:"middle grade fiction"`, `subject:"early reader books"`, `subject:"chapter books"`]);
-  if (deckKey === "ms_hs") return dedupeQueries([`subject:"young adult fiction"`, `crime thriller novel`, `epic fantasy novel`]);
+  if (deckKey === "ms_hs") return dedupeQueries([
+  `subject:"young adult fiction"`,
+  "young adult novel",
+  "popular young adult fiction"
+]);
   if (deckKey === "36") return dedupeQueries([`subject:"middle grade fiction"`, `subject:"juvenile fiction"`, `subject:"chapter books"`]);
-  return dedupeQueries(["crime thriller novel", "mystery thriller novel", "contemporary fiction novel"]);
+  return dedupeQueries([
+  "fiction novel",
+  "contemporary fiction novel",
+  "popular novel"
+]);
 }
 
 function getGoogleBooksApiKey(): string {
@@ -448,7 +414,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
           .filter(Boolean)
           .join(" ");
 
-        if (!/\b(novel|thriller|mystery|crime|fiction|suspense)\b/.test(anchorText)) {
+        if (!/\b(novel|fiction)\b/.test(anchorText)) {
           return false;
         }
 
@@ -466,7 +432,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
           const fallbackYear = Number(doc?.first_publish_year || 0);
           if (
-            !/\b(thriller|suspense|mystery|crime|detective|psychological|novel|fiction)\b/i.test(fallbackAnchorText) ||
+            !/\b(novel|fiction)\b/i.test(fallbackAnchorText) ||
             (fallbackYear && fallbackYear < 1975)
           ) {
             return false;

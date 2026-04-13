@@ -1,4 +1,3 @@
-
 import type { RecommenderInput } from "./types";
 
 type SignalBucket = Record<string, number>;
@@ -46,98 +45,84 @@ function uniqueQueries(values: Array<string | undefined | null>): string[] {
 function fallbackQueriesForDeck(deckKey: RecommenderInput["deckKey"]): string[] {
   const audience = audiencePhrase(deckKey);
   return [
-    `psychological suspense fiction ${audience} ${NEGATIVE_TERMS}`,
-    `psychological crime thriller novel ${audience} ${NEGATIVE_TERMS}`,
-    `crime investigation novel ${audience} ${NEGATIVE_TERMS}`,
+    `fiction novel ${audience} ${NEGATIVE_TERMS}`,
+    `character driven novel ${audience} ${NEGATIVE_TERMS}`,
+    `contemporary novel ${audience} ${NEGATIVE_TERMS}`,
   ];
 }
 
-function buildThrillerQueries(input: RecommenderInput): { queries: string[]; signals: QuerySignals } {
+function buildDescriptiveAxisQueries(input: RecommenderInput): { queries: string[]; signals: QuerySignals } {
   const audience = audiencePhrase(input.deckKey);
   const tagCounts = input.tagCounts || {};
   const axes = input.tasteProfile?.axes || {};
 
-  const crimeScore = scoreFromTags(tagCounts, ["crime", "mystery", "systemic injustice"]);
-  const thrillerScore = scoreFromTags(tagCounts, ["thriller"]);
-  const darkScore = scoreFromTags(tagCounts, ["dark", "betrayal"]);
-  const realisticScore = scoreFromTags(tagCounts, ["realistic", "family", "authority"]);
-  const investigativeScore = scoreFromTags(tagCounts, ["mystery", "crime", "systemic injustice"]);
-  const dystopianScore = scoreFromTags(tagCounts, ["dystopian", "survival"]);
-  const speculativeScore = scoreFromTags(tagCounts, ["science fiction", "horror", "spooky", "adventure"]);
+  const darkScore = scoreFromTags(tagCounts, ["dark", "betrayal", "spooky", "horror"]);
+  const fastScore = scoreFromTags(tagCounts, ["thriller", "action", "adventure"]);
+  const realisticScore = scoreFromTags(tagCounts, ["realistic", "historical", "grounded", "authority"]);
+  const speculativeScore = scoreFromTags(tagCounts, ["science fiction", "fantasy", "horror", "spooky", "dystopian"]);
+  const intimacyScore = scoreFromTags(tagCounts, ["family", "love", "relationship", "romance"]);
+  const intrigueScore = scoreFromTags(tagCounts, ["mystery", "crime", "betrayal", "identity"]);
 
-  const psychologicalFromAxes =
-    Number(axes.darkness || 0) >= 0.18 ||
-    Number(axes.realism || 0) >= 0.18 ||
-    darkScore >= 2;
+  const useDark =
+    darkScore >= 2 || Number(axes.darkness || 0) >= 0.18;
 
-  const useCrime = crimeScore + thrillerScore >= 3;
-  const useInvestigation = investigativeScore >= 2;
-  const useRealism = realisticScore >= 2 || Number(axes.realism || 0) >= 0.18;
-  const useDark = darkScore >= 2 || Number(axes.darkness || 0) >= 0.18;
-  const suppressSpeculative = speculativeScore < -1;
-  const useDystopian = dystopianScore >= 2 && !useCrime;
+  const useFast =
+    fastScore >= 2 || Number(axes.pacing || 0) >= 0.18;
+
+  const useRealism =
+    realisticScore >= 2 || Number(axes.realism || 0) >= 0.18;
+
+  const useSpeculative =
+    speculativeScore >= 2 || Number(axes.ideaDensity || 0) >= 0.18;
+
+  const useIntimacy =
+    intimacyScore >= 2 || Number(axes.characterFocus || 0) >= 0.18;
+
+  const useIntrigue =
+    intrigueScore >= 2 || useDark || useFast;
 
   const primary = [
-    psychologicalFromAxes ? "psychological" : undefined,
     useDark ? "dark" : undefined,
-    useCrime ? "crime" : undefined,
-    "thriller novel",
+    useFast ? "fast paced" : undefined,
+    useRealism ? "realistic" : undefined,
+    useSpeculative && !useRealism ? "speculative" : undefined,
+    "novel",
     audience,
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
 
   const secondary = [
-    psychologicalFromAxes ? "psychological" : undefined,
+    useIntimacy ? "character driven" : undefined,
     useDark ? "dark" : undefined,
-    useCrime ? "crime" : undefined,
-    "thriller novel",
+    "novel",
     audience,
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
 
   const tertiary = [
-    useInvestigation ? "investigation" : "murder investigation",
-    useCrime ? "crime novel" : "thriller novel",
+    useIntrigue ? "suspense" : undefined,
+    useRealism ? "grounded" : undefined,
+    "fiction novel",
     audience,
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
 
-  const realismQuery = [
-    useDark ? "dark" : undefined,
-    useRealism ? "realistic" : undefined,
-    useCrime ? "crime" : undefined,
-    "suspense novel",
+  const speculativeQuery = [
+    useSpeculative ? "speculative fiction novel" : undefined,
     audience,
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
 
-  const dystopianQuery = [
-    useDystopian ? "dystopian psychological thriller novel" : undefined,
+  const psychologicalQuery = [
+    useDark ? "psychological" : undefined,
+    useIntrigue ? "suspense novel" : undefined,
     audience,
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
 
-  const domesticQuery = [
-    psychologicalFromAxes ? "psychological" : undefined,
-    "domestic suspense novel",
-    audience,
-    NEGATIVE_TERMS,
-  ].filter(Boolean).join(" ");
-
-  const speculativeThrillerQuery = [
-    (speculativeScore >= 2 || (!useCrime && speculativeScore >= 1)) ? "speculative thriller novel" : undefined,
-    audience,
-    NEGATIVE_TERMS,
-  ].filter(Boolean).join(" ");
-
-  const scienceFictionThrillerQuery = [
-    speculativeScore >= 2 ? "science fiction thriller novel" : undefined,
-    audience,
-    NEGATIVE_TERMS,
-  ].filter(Boolean).join(" ");
-
-  const horrorThrillerQuery = [
-    speculativeScore >= 2 ? "horror thriller novel" : undefined,
+  const slowBurnQuery = [
+    Number(axes.pacing || 0) < -0.12 ? "slow burn novel" : undefined,
+    useIntimacy ? "character driven" : undefined,
     audience,
     NEGATIVE_TERMS,
   ].filter(Boolean).join(" ");
@@ -146,31 +131,29 @@ function buildThrillerQueries(input: RecommenderInput): { queries: string[]; sig
     primary,
     secondary,
     tertiary,
-    realismQuery,
-    domesticQuery,
-    speculativeThrillerQuery,
-    scienceFictionThrillerQuery,
-    horrorThrillerQuery,
-    useDystopian ? dystopianQuery : undefined,
-  ])
+    speculativeQuery,
+    psychologicalQuery,
+    slowBurnQuery,
+  ]);
 
   const signals: QuerySignals = {
     genre: {
-      thriller: thrillerScore,
-      crime: crimeScore,
-      dystopian: dystopianScore,
+      speculative: useSpeculative ? 1 : 0,
+      realism: useRealism ? 1 : 0,
+      intrigue: useIntrigue ? 1 : 0,
     },
     tone: {
-      dark: darkScore,
-      realistic: realisticScore,
-      psychological: psychologicalFromAxes ? 1 : 0,
+      dark: useDark ? 1 : 0,
+      intimate: useIntimacy ? 1 : 0,
+      fast: useFast ? 1 : 0,
     },
     texture: {
       grounded: useRealism ? 1 : 0,
-      anti_speculative: suppressSpeculative ? 1 : 0,
+      imaginative: useSpeculative ? 1 : 0,
     },
     scenario: {
-      investigation: useInvestigation ? 1 : 0,
+      suspense: useIntrigue ? 1 : 0,
+      personal: useIntimacy ? 1 : 0,
     },
   };
 
@@ -178,14 +161,16 @@ function buildThrillerQueries(input: RecommenderInput): { queries: string[]; sig
 }
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
-  const thriller = buildThrillerQueries(input);
-  const queries = thriller.queries.length ? thriller.queries : fallbackQueriesForDeck(input.deckKey);
+  const descriptive = buildDescriptiveAxisQueries(input);
+  const queries = descriptive.queries.length
+    ? descriptive.queries
+    : fallbackQueriesForDeck(input.deckKey);
 
   return {
     queries,
     preview: queries[0],
     strategy: "signal-driven-descriptive-queries",
-    signals: thriller.signals,
+    signals: descriptive.signals,
   };
 }
 
