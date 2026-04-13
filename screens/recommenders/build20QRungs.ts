@@ -172,7 +172,7 @@ function deriveHypothesisPrimaries(intent: QueryIntent, maxRungs: number): strin
   if (axes.pacingSignal > 0 && axes.intrigue) add("fast paced suspense novel");
   if (axes.speculative > 0 && axes.pacingSignal > 0) add("speculative fiction novel");
   if (axes.realism > 0 && axes.intrigue) add("grounded suspense novel");
-  if (axes.intimacy > 0) add("character driven novel");
+  if (axes.intimacy > 0) add("family drama novel");
   if (axes.realism > 0 && axes.intimacy > 0) add("family drama novel");
   if (axes.realism > 0 && axes.intrigue) add("crime drama novel");
   if (axes.slowBurnSignal) add("slow burn novel");

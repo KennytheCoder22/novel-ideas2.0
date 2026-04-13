@@ -138,7 +138,6 @@ const tertiary = [
     tertiary,
     speculativeQuery,
     psychologicalQuery,
-    slowBurnQuery,
   ]);
 
   const signals: QuerySignals = {
