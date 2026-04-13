@@ -1,82 +1,63 @@
-import type { RecommenderInput } from "./types";
+SESSION REPORT
+Deck: Adults
+Deck Key: adult
+Engine: Google Books + Open Library
+Saved Query Time: 2026-04-13T18:54:54.056Z
+Swipe Summary: Right:11 • Left:4 • Skip:4 • Decisions:15
 
-export type QuerySignalMap = Record<string, number>;
+SWIPE HISTORY
+1. DISLIKE — Stranger Things — Netflix — Sci-Fi / Horror — audience:adult, age:adult, media:tv, science fiction, horror, spooky, adventure, format:series
+2. LIKE — The Departed — Warner Bros. — Crime / Drama — audience:adult, age:adult, media:movie, crime, drama, betrayal
+3. LIKE — No Country for Old Men — Miramax — Crime / Thriller — audience:adult, age:adult, media:movie, crime, thriller, dark
+4. LIKE — The Shawshank Redemption — Castle Rock — Drama — audience:adult, age:adult, media:movie, drama, realistic, redemption, hopeful
+5. DISLIKE — The Godfather — Paramount — Crime / Drama — audience:adult, age:adult, media:movie, crime, drama, authority, family, betrayal
+6. DISLIKE — Parasite — CJ Entertainment — Thriller / Drama — audience:adult, age:adult, media:movie, thriller, realistic, mystery, social commentary
+7. SKIP — Fight Club — 20th Century — Drama / Thriller — audience:adult, age:adult, media:movie, drama, thriller, identity, dark
+8. LIKE — Field of Dreams — Universal — Sports / Drama — audience:adult, age:adult, media:movie, drama, hopeful, family
+9. LIKE — The Last of Us Part II — Naughty Dog — Action / Drama — audience:adult, age:adult, media:game, dystopian, drama, thriller, dark
+10. LIKE — 12 Years a Slave — Fox Searchlight — Historical Drama — audience:adult, age:adult, media:movie, historical, drama, survival
+11. SKIP — Normal Gossip — Podcast — Social Drama / Comedy — audience:adult, age:adult, media:podcast, realistic, drama, human connection, comedy
+12. LIKE — The Road — Cormac McCarthy — Dystopian / Literary — audience:adult, age:adult, dystopian, drama, dark, survival, family
+13. DISLIKE — The Notebook — New Line — Romance / Drama — audience:adult, age:adult, media:movie, romance, drama, human connection
+14. SKIP — Moonlight — A24 — Drama — audience:adult, age:adult, media:movie, drama, realistic, identity
+15. SKIP — Rebecca — United Artists — Gothic Romance / Mystery — audience:adult, age:adult, media:movie, romance, mystery, thriller, dark
+16. LIKE — Prisoners — Warner Bros. — Thriller / Mystery — audience:adult, age:adult, media:movie, thriller, mystery, dark
+17. LIKE — Ex Machina — A24 — Sci-Fi / Thriller — audience:adult, age:adult, media:movie, science fiction, thriller, ai, dark
+18. LIKE — Inception — Warner Bros. — Sci-Fi / Thriller — audience:adult, age:adult, media:movie, science fiction, mystery, thriller, identity
+19. LIKE — Get Out — Universal — Horror / Thriller — audience:adult, age:adult, media:movie, horror, thriller, identity, dark
 
-export type QuerySignals = {
-  genre: QuerySignalMap;
-  tone: QuerySignalMap;
-  scenario: QuerySignalMap;
-  pacing: QuerySignalMap;
-};
+Built Query: novel
 
-const GENRE_RULES: Array<[RegExp, string]> = [
-  [/(fantasy)/i, "fantasy"],
-  [/(thriller)/i, "thriller"],
-  [/(mystery|detective)/i, "mystery"],
-  [/(horror|spooky)/i, "horror"],
-  [/(science fiction|sci[- ]?fi)/i, "science fiction"],
-  [/(romance)/i, "romance"],
-  [/(historical)/i, "historical"],
-  [/(crime)/i, "crime"],
-];
+RUNG QUERIES
+Rung 0: novel
+Rung 1: dark dystopian survival novel adult fiction -analysis -guide -summary -criticism -nonfiction -biography -memoir novel
+Rung 2: dark dystopian survival novel adult fiction -analysis -guide -summary -criticism -nonfiction -biography -memoir
+Rung 90: bestselling thriller novel
 
-const TONE_RULES: Array<[RegExp, string]> = [
-  [/(dark|bleak|grim|noir)/i, "dark"],
-  [/(hopeful|uplifting)/i, "hopeful"],
-  [/(funny|comedy)/i, "humorous"],
-  [/(atmospheric|moody)/i, "atmospheric"],
-  [/(realistic|grounded|procedural)/i, "realistic"],
-  [/(psychological)/i, "psychological"],
-];
+ACTIVE TUNER OVERRIDE
+(none)
 
-// 🔥 FIXED — NO MORE "conflict"
-const SCENARIO_RULES: Array<[RegExp, string]> = [
-  [/(investigation|detective|mystery)/i, "investigation"],
-  [/(crime)/i, "crime"],
-  [/(authority|system|institution|politic)/i, "institutional"],
-  [/(betrayal)/i, "betrayal"],
-  [/(identity)/i, "identity"],
-  [/(survival)/i, "survival"],
-  [/(family)/i, "family"],
-  [/(romance|relationship|love)/i, "relationship"],
-  [/(dystopian)/i, "dystopian"],
-  [/(rebellion)/i, "rebellion"],
-  [/(technology|ai)/i, "technology"],
-];
+TOP RECOMMENDATIONS
+(none)
 
-const PACING_RULES: Array<[RegExp, string]> = [
-  [/(fast[- ]paced|intense|gripping|action)/i, "fast"],
-  [/(slow burn|deliberate)/i, "slow"],
-];
+RUNNING TAG COUNTS
+audience:adult:7, age:adult:7, media:movie:6, dark:6, thriller:5, drama:4, hopeful:2, dystopian:2, survival:2, identity:2, crime:1, redemption:1, media:game:1, historical:1, family:1, ai:1, science fiction:1, mystery:1, media:tv:-1, spooky:-1, adventure:-1, format:series:-1, authority:-1, social commentary:-1, romance:-1, human connection:-1
 
-function add(bucket: QuerySignalMap, key: string, value: number) {
-  if (!value) return;
-  bucket[key] = (bucket[key] || 0) + value;
-}
+TASTE PROFILE
+darkness:+0.31, pacing:+0.24
+confidence:1.00 • swipes:18 • feedback:0
 
-function apply(tag: string, value: number, rules: Array<[RegExp, string]>, bucket: QuerySignalMap) {
-  for (const [pattern, key] of rules) {
-    if (pattern.test(tag)) add(bucket, key, value);
-  }
-}
+SESSION MOOD
+darkness:+0.27, pacing:+0.21
+confidence:0.86 • swipes:19
 
-export function extractQuerySignals(input: RecommenderInput): QuerySignals {
-  const tagCounts = input.tagCounts || {};
+PERSONALITY PROFILE
+darkness:+0.27, pacing:+0.21
+confidence:0.86 • sessions:1
 
-  const genre: QuerySignalMap = {};
-  const tone: QuerySignalMap = {};
-  const scenario: QuerySignalMap = {};
-  const pacing: QuerySignalMap = {};
+ACTIVE TASTE
+darkness:+0.31, pacing:+0.24
+personality:0.33 • mood:0.82
 
-  for (const [tag, raw] of Object.entries(tagCounts)) {
-    const value = Number(raw || 0);
-    if (value <= 0) continue;
-
-    apply(tag, value, GENRE_RULES, genre);
-    apply(tag, value, TONE_RULES, tone);
-    apply(tag, value, SCENARIO_RULES, scenario);
-    apply(tag, value, PACING_RULES, pacing);
-  }
-
-  return { genre, tone, scenario, pacing };
-}
+RECOMMENDATION MEMORY
+shownIds:0 • shownKeys:0 • authors:0 • series:0 • rejected:0

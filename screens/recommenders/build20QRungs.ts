@@ -3,41 +3,65 @@ type QueryIntent = {
   subgenres?: string[];
   themes?: string[];
   tones?: string[];
+  hypotheses?: Array<{
+    label?: string;
+    query?: string;
+    parts?: string[];
+    score?: number;
+  }>;
 };
 
 function clean(q: string) {
-  return q.toLowerCase().replace(/\s+/g, " ").trim();
+  return String(q || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-function combine(parts: string[]) {
-  return clean(parts.filter(Boolean).join(" "));
+function dedupe(values: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    const cleaned = clean(value);
+    if (!cleaned || seen.has(cleaned)) continue;
+    seen.add(cleaned);
+    out.push(cleaned);
+  }
+
+  return out;
 }
 
-export function build20QRungs(intent: QueryIntent) {
+function combine(parts: Array<string | undefined | null>) {
+  return dedupe(parts.filter(Boolean) as string[]).join(" ").trim();
+}
+
+function buildFallbackRungs(intent: QueryIntent): string[] {
   const tones = intent.tones || [];
   const themes = intent.themes || [];
   const subs = intent.subgenres || [];
 
-  const out: string[] = [];
+  const queries = [
+    combine([tones[0], themes[0], "novel"]),
+    combine([themes[0], themes[1], "novel"]),
+    combine([subs[0], themes[0], "novel"]),
+    combine([tones[0], subs[0], "novel"]),
+    combine([intent.baseGenre, "novel"]),
+  ];
 
-  const add = (q: string) => {
-    const c = clean(q);
-    if (c && !out.includes(c)) out.push(c);
-  };
+  return dedupe(queries).filter((q) => q && q !== "novel");
+}
 
-  // 🔥 TRUE 20Q COMBINATIONS — NO GENRE LOCKING
+export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
+  const hypothesisQueries = Array.isArray(intent.hypotheses)
+    ? intent.hypotheses
+        .map((h) => clean(h?.query || ""))
+        .filter(Boolean)
+    : [];
 
-  add(combine([tones[0], themes[0], "novel"]));
-  add(combine([themes[0], themes[1], "novel"]));
-  add(combine([subs[0], themes[0], "novel"]));
-  add(combine([tones[0], subs[0], "novel"]));
+  const fallbackQueries = buildFallbackRungs(intent);
+  const queries = dedupe([...hypothesisQueries, ...fallbackQueries]).slice(0, Math.max(1, maxRungs));
 
-  // fallback
-  add(intent.baseGenre || "novel");
-
-  return out.slice(0, 4).map((q, i) => ({
+  return queries.map((query, i) => ({
     rung: i,
-    query: q,
+    query,
   }));
 }
 
