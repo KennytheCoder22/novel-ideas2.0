@@ -2,8 +2,16 @@ import type { RecommenderInput } from "./types";
 import { extractQuerySignals } from "./tasteToQuerySignals";
 import { QUERY_TRANSLATIONS } from "./queryTranslations";
 import { build20QRungs, rungToPreviewQuery } from "./build20QRungs";
+import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 
 type Family = "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
+
+type HypothesisLike = {
+  label?: string;
+  query?: string;
+  parts?: string[];
+  score?: number;
+};
 
 const THRILLER_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance)\b/i;
 const THRILLER_CORE_TERMS = /\b(crime|mystery|thriller|detective|psychological thriller|investigation|noir|procedural|serial killer|domestic thriller)\b/i;
@@ -15,12 +23,15 @@ function topKeys(obj: Record<string, number>, limit: number): string[] {
     .slice(0, limit || 3)
     .map(([key]) => key);
 }
+
 function expand(keys: string[], dictionary: Record<string, readonly string[] | string[]>): string[] {
   return keys.flatMap((key) => dictionary[key] || []);
 }
+
 function dedupeQueries(queries: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
+
   for (const query of queries) {
     const cleaned = String(query || "").replace(/\s+/g, " ").trim();
     if (!cleaned) continue;
@@ -29,14 +40,17 @@ function dedupeQueries(queries: string[]): string[] {
     seen.add(key);
     out.push(cleaned);
   }
+
   return out;
 }
+
 function ageBandForDeck(deckKey: RecommenderInput["deckKey"]): string {
   if (deckKey === "adult") return "adult";
   if (deckKey === "ms_hs") return "teen";
   if (deckKey === "36") return "pre-teen";
   return "kids";
 }
+
 function familyForGenres(genreKeys: string[]): Family {
   if (genreKeys.some((key) => ["crime", "mystery", "thriller", "dystopian"].includes(key))) return "thriller_family";
   if (genreKeys.some((key) => ["science fiction", "fantasy", "horror"].includes(key))) return "speculative_family";
@@ -44,6 +58,7 @@ function familyForGenres(genreKeys: string[]): Family {
   if (genreKeys.includes("historical fiction") || genreKeys.includes("historical")) return "historical_family";
   return "general_family";
 }
+
 function familyDefaults(family: Family): string[] {
   if (family === "thriller_family") return ["dark crime thriller novel", "dark psychological thriller novel", "dark mystery thriller novel"];
   if (family === "speculative_family") return ["science fiction novel", "fantasy novel", "horror novel"];
@@ -51,6 +66,7 @@ function familyDefaults(family: Family): string[] {
   if (family === "historical_family") return ["historical fiction novel"];
   return ["fiction novel"];
 }
+
 function softFamilyGenres(genreKeys: string[], family: Family): string[] {
   const primaryOrder = family === "thriller_family"
     ? ["crime", "mystery", "thriller", "dystopian"]
@@ -66,6 +82,7 @@ function softFamilyGenres(genreKeys: string[], family: Family): string[] {
   const adjacent = genreKeys.filter((key) => !prioritized.includes(key));
   return [...prioritized, ...adjacent].slice(0, 4);
 }
+
 function isFamilyCompatibleQuery(query: string, family: Family): boolean {
   const q = String(query || "").toLowerCase();
   if (!q) return false;
@@ -83,6 +100,7 @@ function isFamilyCompatibleQuery(query: string, family: Family): boolean {
   if (family === "historical_family") return /\bhistorical\b/.test(q);
   return true;
 }
+
 function filterGenresToFamily(queries: string[], family: Family): string[] {
   return queries.filter((query) => isFamilyCompatibleQuery(query, family));
 }
@@ -115,14 +133,11 @@ function tightenThrillerGenreFragments(queries: string[]): string[] {
 function mainstreamHarvestQueries(
   family: Family,
   deckKey: RecommenderInput["deckKey"],
-  genreFragments: string[]
+  seedQueries: string[]
 ): string[] {
   const ageBand = ageBandForDeck(deckKey);
-
-  const withAudience = (q: string) =>
-    ageBand === "teen" ? `young adult ${q}` : q;
-
-  const dominant = (genreFragments[0] || "").toLowerCase().trim();
+  const withAudience = (q: string) => (ageBand === "teen" ? `young adult ${q}` : q);
+  const dominant = (seedQueries[0] || "").toLowerCase().trim();
 
   if (family === "thriller_family") {
     const subtype = dominant || "dark psychological thriller novel";
@@ -168,12 +183,17 @@ function mainstreamHarvestQueries(
   ]);
 }
 
+function familyCompatibleHypotheses(hypotheses: HypothesisLike[], family: Family): HypothesisLike[] {
+  return hypotheses.filter((hypothesis) => isFamilyCompatibleQuery(hypothesis.query || "", family));
+}
+
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
+  const descriptive = buildDescriptiveQueriesFromTaste(input);
+
   const genreKeys = topKeys(signals.genre, 5);
   const toneKeys = topKeys(signals.tone, 4);
   const scenarioKeys = topKeys(signals.scenario, 3);
-  const pacingKeys = topKeys(signals.pacing || {}, 2);
 
   const family = familyForGenres(genreKeys);
   const softGenreKeys = softFamilyGenres(genreKeys, family);
@@ -182,7 +202,6 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const translatedGenres = filterGenresToFamily(translatedGenresRaw, family);
   const translatedTones = expand(toneKeys, QUERY_TRANSLATIONS.tone as unknown as Record<string, readonly string[] | string[]>);
   const translatedScenarios = expand(scenarioKeys, QUERY_TRANSLATIONS.scenario as unknown as Record<string, readonly string[] | string[]>);
-  const translatedPacing = expand(pacingKeys, (QUERY_TRANSLATIONS as any).pacing || {});
 
   const rawGenreFragments = dedupeQueries([
     ...translatedGenres,
@@ -193,27 +212,35 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     ? tightenThrillerGenreFragments(rawGenreFragments)
     : rawGenreFragments;
 
-  const baseGenre = genreFragments[0] || familyDefaults(family)[0] || "fiction novel";
+  const hypotheses = familyCompatibleHypotheses((descriptive.hypotheses || []) as HypothesisLike[], family);
+  const fallbackHypotheses = (descriptive.hypotheses || []) as HypothesisLike[];
+  const baseGenre = hypotheses[0]?.query || fallbackHypotheses[0]?.query || genreFragments[0] || familyDefaults(family)[0] || "fiction novel";
 
   const rungs = build20QRungs({
-    ageBand: ageBandForDeck(input.deckKey),
-    family,
     baseGenre,
     subgenres: genreFragments,
     themes: translatedScenarios,
     tones: translatedTones,
-    pacing: translatedPacing,
-    structures: [],
-    settings: [],
-    exclusions: [],
+    hypotheses: hypotheses.length ? hypotheses : fallbackHypotheses,
   }, 4);
 
+  const descriptiveQueries = dedupeQueries(descriptive.queries || []).filter((query) => isFamilyCompatibleQuery(query, family) || family === "general_family");
   const rungQueries = dedupeQueries(rungs.map((r) => rungToPreviewQuery(r)));
-  const harvestQueries = mainstreamHarvestQueries(family, input.deckKey, genreFragments);
+  const harvestQueries = mainstreamHarvestQueries(family, input.deckKey, descriptiveQueries.length ? descriptiveQueries : genreFragments);
   const queries = dedupeQueries([
-    ...harvestQueries,
+    ...descriptiveQueries,
     ...rungQueries,
+    ...harvestQueries,
   ]).slice(0, 6);
 
-  return { rungs, queries, preview: queries[0] || "", strategy: `20q-mature-fetch:${family}:mainstream-harvest` };
+  return {
+    rungs,
+    queries,
+    preview: queries[0] || descriptive.preview || "",
+    strategy: `20q-hypothesis-first:${family}`,
+    family,
+    hypotheses: hypotheses.length ? hypotheses : fallbackHypotheses,
+  };
 }
+
+export default buildBucketPlanFromTaste;
