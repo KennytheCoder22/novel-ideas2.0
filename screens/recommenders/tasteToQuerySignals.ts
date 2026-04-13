@@ -1,6 +1,7 @@
 import type { RecommenderInput } from "./types";
 
 export type QuerySignalMap = Record<string, number>;
+
 export type QuerySignals = {
   genre: QuerySignalMap;
   tone: QuerySignalMap;
@@ -9,86 +10,54 @@ export type QuerySignals = {
 };
 
 const GENRE_RULES: Array<[RegExp, string]> = [
-  [/(^|:|\b)fantasy(\b|:|$)/i, "fantasy"],
-  [/(^|:|\b)thriller(\b|:|$)/i, "thriller"],
-  [/(^|:|\b)mystery(\b|:|$)/i, "mystery"],
-  [/(^|:|\b)horror(\b|:|$)/i, "horror"],
-  [/(^|:|\b)science fiction(\b|:|$)|(^|:|\b)sci[-\s]?fi(\b|:|$)/i, "science fiction"],
-  [/(^|:|\b)romance(\b|:|$)/i, "romance"],
-  [/(^|:|\b)historical(\b|:|$)/i, "historical fiction"],
-  [/(^|:|\b)crime(\b|:|$)/i, "crime"],
-  [/(^|:|\b)detective(\b|:|$)/i, "mystery"],
+  [/(fantasy)/i, "fantasy"],
+  [/(thriller)/i, "thriller"],
+  [/(mystery|detective)/i, "mystery"],
+  [/(horror|spooky)/i, "horror"],
+  [/(science fiction|sci[- ]?fi)/i, "science fiction"],
+  [/(romance)/i, "romance"],
+  [/(historical)/i, "historical"],
+  [/(crime)/i, "crime"],
 ];
 
 const TONE_RULES: Array<[RegExp, string]> = [
   [/(dark|bleak|grim|noir)/i, "dark"],
-  [/(cozy|comfort)/i, "cozy"],
   [/(hopeful|uplifting)/i, "hopeful"],
-  [/(funny|humor|comedy)/i, "humorous"],
-  [/(spooky|gothic|haunting)/i, "spooky"],
-  [/(epic)/i, "epic"],
+  [/(funny|comedy)/i, "humorous"],
   [/(atmospheric|moody)/i, "atmospheric"],
   [/(realistic|grounded|procedural)/i, "realistic"],
   [/(psychological)/i, "psychological"],
 ];
 
-// 🔧 FIXED — softened investigation mapping
+// 🔥 FIXED — NO MORE "conflict"
 const SCENARIO_RULES: Array<[RegExp, string]> = [
-  [/(authority|politic)/i, "politics"],
-  [/(betrayal|family secrets)/i, "betrayal"],
-  [/(adventure|quest|journey)/i, "quest"],
-  [/(war|battle)/i, "war"],
-  [/(murder|investigation|detective)/i, "conflict"], // changed from "investigation"
+  [/(investigation|detective|mystery)/i, "investigation"],
+  [/(crime)/i, "crime"],
+  [/(authority|system|institution|politic)/i, "institutional"],
+  [/(betrayal)/i, "betrayal"],
+  [/(identity)/i, "identity"],
   [/(survival)/i, "survival"],
   [/(family)/i, "family"],
-  [/(mythology|prophecy)/i, "mythic"],
-  [/(crime)/i, "conflict"], // softened
+  [/(romance|relationship|love)/i, "relationship"],
+  [/(dystopian)/i, "dystopian"],
+  [/(rebellion)/i, "rebellion"],
+  [/(technology|ai)/i, "technology"],
 ];
 
 const PACING_RULES: Array<[RegExp, string]> = [
-  [/(fast[- ]paced|gripping|intense|propulsive|action)/i, "fast-paced"],
-  [/(slow burn|slow-burn|deliberate)/i, "slow-burn"],
+  [/(fast[- ]paced|intense|gripping|action)/i, "fast"],
+  [/(slow burn|deliberate)/i, "slow"],
 ];
 
-function addSignal(bucket: QuerySignalMap, key: string, value: number) {
-  if (!Number.isFinite(value) || value === 0) return;
-
-  // 🔧 slight dampening for genre-heavy signals
-  const dampened =
-    key === "crime" || key === "thriller" || key === "mystery"
-      ? value * 0.6
-      : value;
-
-  bucket[key] = (bucket[key] || 0) + dampened;
+function add(bucket: QuerySignalMap, key: string, value: number) {
+  if (!value) return;
+  bucket[key] = (bucket[key] || 0) + value;
 }
 
-function applyRules(
-  tag: string,
-  value: number,
-  rules: Array<[RegExp, string]>,
-  bucket: QuerySignalMap
-) {
+function apply(tag: string, value: number, rules: Array<[RegExp, string]>, bucket: QuerySignalMap) {
   for (const [pattern, key] of rules) {
-    if (pattern.test(tag)) addSignal(bucket, key, value);
+    if (pattern.test(tag)) add(bucket, key, value);
   }
-}
-
-function addTasteAxes(
-  input: RecommenderInput,
-  tone: QuerySignalMap,
-  pacing: QuerySignalMap
-) {
-  const axes = input.tasteProfile?.axes;
-  if (!axes) return;
-
-  if ((axes.darkness || 0) > 0.15) addSignal(tone, "dark", axes.darkness);
-  if ((axes.humor || 0) > 0.15) addSignal(tone, "humorous", axes.humor);
-  if ((axes.warmth || 0) > 0.15) addSignal(tone, "hopeful", axes.warmth);
-  if ((axes.realism || 0) > 0.15) addSignal(tone, "realistic", axes.realism);
-  if ((axes.realism || 0) < -0.15) addSignal(tone, "epic", Math.abs(axes.realism));
-
-  if ((axes.pacing || 0) > 0.15) addSignal(pacing, "fast-paced", axes.pacing);
-  if ((axes.pacing || 0) < -0.15) addSignal(pacing, "slow-burn", Math.abs(axes.pacing));
 }
 
 export function extractQuerySignals(input: RecommenderInput): QuerySignals {
@@ -101,15 +70,13 @@ export function extractQuerySignals(input: RecommenderInput): QuerySignals {
 
   for (const [tag, raw] of Object.entries(tagCounts)) {
     const value = Number(raw || 0);
-    if (!Number.isFinite(value) || value <= 0) continue;
+    if (value <= 0) continue;
 
-    applyRules(tag, value, GENRE_RULES, genre);
-    applyRules(tag, value, TONE_RULES, tone);
-    applyRules(tag, value, SCENARIO_RULES, scenario);
-    applyRules(tag, value, PACING_RULES, pacing);
+    apply(tag, value, GENRE_RULES, genre);
+    apply(tag, value, TONE_RULES, tone);
+    apply(tag, value, SCENARIO_RULES, scenario);
+    apply(tag, value, PACING_RULES, pacing);
   }
-
-  addTasteAxes(input, tone, pacing);
 
   return { genre, tone, scenario, pacing };
 }

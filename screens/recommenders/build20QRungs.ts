@@ -1,110 +1,46 @@
-// build20QRungs.ts
-
 type QueryIntent = {
   baseGenre?: string;
-  axes?: {
-    intrigue?: number;
-    darkness?: number;
-    speculative?: number;
-    realism?: number;
-    intimacy?: number;
-    pacingSignal?: number;
-  };
+  subgenres?: string[];
+  themes?: string[];
+  tones?: string[];
 };
 
-function normalizePhrase(q: string): string {
-  return String(q || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+function clean(q: string) {
+  return q.toLowerCase().replace(/\s+/g, " ").trim();
 }
 
-/**
- * 🔥 CORE FIX:
- * We ONLY generate story-shaped queries.
- * No "character driven", no "realistic fiction", no abstract garbage.
- */
-function deriveHypothesisPrimaries(
-  intent: QueryIntent,
-  maxRungs: number
-): string[] {
-  const axes = intent.axes || {};
+function combine(parts: string[]) {
+  return clean(parts.filter(Boolean).join(" "));
+}
+
+export function build20QRungs(intent: QueryIntent) {
+  const tones = intent.tones || [];
+  const themes = intent.themes || [];
+  const subs = intent.subgenres || [];
+
   const out: string[] = [];
 
-  const add = (q?: string) => {
-    if (!q) return;
-    const cleaned = normalizePhrase(q);
-    if (!cleaned) return;
-    if (!out.includes(cleaned)) out.push(cleaned);
+  const add = (q: string) => {
+    const c = clean(q);
+    if (c && !out.includes(c)) out.push(c);
   };
 
-  // 🔥 STRONG STORY-BASED QUERIES ONLY
-  if (axes.intrigue && axes.darkness) {
-    add("psychological thriller novel");
-  }
+  // 🔥 TRUE 20Q COMBINATIONS — NO GENRE LOCKING
 
-  if (axes.intrigue && axes.pacingSignal) {
-    add("fast paced thriller novel");
-  }
+  add(combine([tones[0], themes[0], "novel"]));
+  add(combine([themes[0], themes[1], "novel"]));
+  add(combine([subs[0], themes[0], "novel"]));
+  add(combine([tones[0], subs[0], "novel"]));
 
-  if (axes.speculative && axes.intrigue) {
-    add("science fiction thriller novel");
-  }
+  // fallback
+  add(intent.baseGenre || "novel");
 
-  if (axes.speculative && axes.darkness) {
-    add("dystopian thriller novel");
-  }
-
-  if (axes.intimacy && axes.intrigue) {
-    add("family secrets novel");
-  }
-
-  if (axes.realism && axes.intrigue) {
-    add("crime conspiracy novel");
-  }
-
-  if (axes.pacingSignal) {
-    add("survival thriller novel");
-  }
-
-  // fallback if nothing triggered
-  add("thriller novel");
-
-  // ensure enough rungs
-  while (out.length < Math.max(1, maxRungs)) {
-    add("psychological thriller novel");
-    if (out.length < maxRungs) add("crime conspiracy novel");
-    if (out.length < maxRungs) add("science fiction thriller novel");
-  }
-
-  return out.slice(0, Math.max(1, maxRungs));
+  return out.slice(0, 4).map((q, i) => ({
+    rung: i,
+    query: q,
+  }));
 }
 
-/**
- * Public function used by system
- */
-export function build20QRungs(intent: QueryIntent) {
-  const primaries = deriveHypothesisPrimaries(intent, 4);
-
-  const rungs = [];
-
-  for (let i = 0; i < primaries.length; i++) {
-    rungs.push({
-      rung: i,
-      query: primaries[i],
-    });
-  }
-
-  // anchor rung (kept but now harmless due to filtering)
-  rungs.push({
-    rung: 90,
-    query: "bestselling thriller novel",
-  });
-
-  return rungs;
-}
-
-export function rungToPreviewQuery(rung: { query: string }): string {
-  return rung?.query || "";
+export function rungToPreviewQuery(r: any) {
+  return r?.query || "";
 }
