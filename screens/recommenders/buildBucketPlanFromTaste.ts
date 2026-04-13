@@ -1,131 +1,215 @@
 import type { RecommenderInput } from "./types";
-import { extractQuerySignals } from "./tasteToQuerySignals";
-import { QUERY_TRANSLATIONS } from "./queryTranslations";
-import { build20QRungs, rungToPreviewQuery } from "./build20QRungs";
+import { tasteToQuerySignals as extractQuerySignals, type QuerySignals } from "./tasteToQuerySignals";
 
-function topKeys(obj: Record<string, number>, limit: number): string[] {
-  return Object.entries(obj)
-    .filter(([, score]) => score > 0.05)
+type Hypothesis = {
+  label: string;
+  semanticQuery: string;
+  retrievalQuery: string;
+  parts: string[];
+  score: number;
+};
+
+function audiencePhrase(deckKey: RecommenderInput["deckKey"]): string {
+  if (deckKey === "adult") return "adult fiction";
+  if (deckKey === "ms_hs") return "young adult fiction";
+  if (deckKey === "36") return "middle grade fiction";
+  return "fiction";
+}
+
+function topEntries(bucket: Record<string, number>, n = 3): Array<[string, number]> {
+  return Object.entries(bucket)
+    .filter(([, score]) => Number.isFinite(score) && score > 0.08)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, limit || 3)
-    .map(([key]) => key);
+    .slice(0, n);
 }
 
-function expand(keys: string[], dictionary: Record<string, readonly string[] | string[]>): string[] {
-  return keys.flatMap((key) => dictionary[key] || []);
+function topKeys(bucket: Record<string, number>, n = 3): string[] {
+  return topEntries(bucket, n).map(([key]) => key);
 }
 
-function dedupeQueries(queries: string[]): string[] {
-  const seen = new Set<string>();
+function dedupe(values: string[]): string[] {
   const out: string[] = [];
+  const seen = new Set<string>();
 
-  for (const query of queries) {
-    const cleaned = String(query || "").replace(/\s+/g, " ").trim();
-    if (!cleaned) continue;
-
-    const key = cleaned.toLowerCase();
-    if (seen.has(key)) continue;
-
-    seen.add(key);
+  for (const value of values) {
+    const cleaned = String(value || "").replace(/\s+/g, " ").trim().toLowerCase();
+    if (!cleaned || seen.has(cleaned)) continue;
+    seen.add(cleaned);
     out.push(cleaned);
   }
 
   return out;
 }
 
-function ageBandForDeck(deckKey: RecommenderInput["deckKey"]): string {
-  if (deckKey === "adult") return "adult";
-  if (deckKey === "ms_hs") return "teen";
-  if (deckKey === "36") return "pre-teen";
-  return "kids";
+function safeJoin(parts: Array<string | undefined | null>): string {
+  return dedupe(parts.filter(Boolean) as string[]).join(" ").trim();
 }
 
-// NEW: derive neutral axes instead of genre families
-function deriveAxes(signals: any) {
-  const sum = (obj: Record<string, number> = {}, keys: string[]) =>
-    keys.reduce((s, k) => s + (obj[k] || 0), 0);
+function shortQuery(parts: Array<string | undefined | null>): string {
+  const cleaned = dedupe(parts.filter(Boolean) as string[]).slice(0, 3);
+  return safeJoin([...cleaned, "novel"]);
+}
 
-  return {
-    darkness: sum(signals.tone, ["dark", "bleak", "grim"]),
-    pacing: sum(signals.pacing, ["fast", "kinetic", "action", "thriller"]),
-    ideaDensity: sum(signals.genre, ["science fiction", "philosophical"]),
-    realism: sum(signals.genre, ["realistic", "historical"]),
-    intimacy: sum(signals.tone, ["character", "relationship"]),
+function mapWorldToRetrieval(world?: string): string | undefined {
+  if (!world) return undefined;
+  if (world === "science fiction") return "science fiction";
+  if (world === "dystopian") return "dystopian";
+  if (world === "historical") return "historical";
+  if (world === "fantasy") return "fantasy";
+  if (world === "horror") return "horror";
+  if (world === "realistic") return "realistic";
+  return world;
+}
+
+function mapToneToRetrieval(tone?: string): string | undefined {
+  if (!tone) return undefined;
+  if (tone === "grounded") return "grounded";
+  return tone;
+}
+
+function buildHypotheses(signals: QuerySignals): Hypothesis[] {
+  const topTone = topKeys(signals.tone, 2);
+  const topScenario = topKeys(signals.scenario, 3);
+  const topTheme = topKeys(signals.theme, 3);
+  const topWorld = topKeys(signals.world, 2);
+  const topGenre = topKeys(signals.genre, 2);
+
+  const candidates: Hypothesis[] = [];
+
+  const push = (label: string, parts: string[], score: number) => {
+    const cleanParts = dedupe(parts.filter(Boolean));
+    if (!cleanParts.length) return;
+
+    const semanticQuery = safeJoin([...cleanParts, "novel"]);
+    const retrievalQuery = shortQuery(cleanParts);
+
+    if (!semanticQuery || semanticQuery === "novel") return;
+    if (!retrievalQuery || retrievalQuery === "novel") return;
+
+    candidates.push({
+      label,
+      semanticQuery,
+      retrievalQuery,
+      parts: cleanParts,
+      score,
+    });
   };
-}
 
-// NEW: build neutral base queries
-function buildAxisQueries(axes: any, ageBand: string): string[] {
-  const withAudience = (q: string) =>
-    ageBand === "teen" ? `young adult ${q}` : q;
-
-  const queries = [
-    axes.darkness > 0 ? "dark novel" : null,
-    axes.pacing > 0 ? "fast paced novel" : null,
-    axes.ideaDensity > 0 ? "thought provoking novel" : null,
-    axes.realism > 0 ? "realistic fiction novel" : null,
-    axes.realism < -0.2 ? "speculative fiction novel" : null,
-    axes.intimacy > 0 ? "character driven novel" : null,
-  ].filter(Boolean) as string[];
-
-  return dedupeQueries(queries.map(withAudience));
-}
-
-export function buildBucketPlanFromTaste(input: RecommenderInput) {
-  const signals = extractQuerySignals(input);
-
-  const genreKeys = topKeys(signals.genre, 5);
-  const toneKeys = topKeys(signals.tone, 4);
-  const scenarioKeys = topKeys(signals.scenario, 3);
-  const pacingKeys = topKeys(signals.pacing || {}, 2);
-
-  const translatedGenres = expand(genreKeys, QUERY_TRANSLATIONS.genre as any);
-  const translatedTones = expand(toneKeys, QUERY_TRANSLATIONS.tone as any);
-  const translatedScenarios = expand(scenarioKeys, QUERY_TRANSLATIONS.scenario as any);
-  const translatedPacing = expand(pacingKeys, (QUERY_TRANSLATIONS as any).pacing || {});
-
-  const axes = deriveAxes(signals);
-
-  const ageBand = ageBandForDeck(input.deckKey);
-
-  // NEW: axis-driven queries
-  const axisQueries = buildAxisQueries(axes, ageBand);
-
-  // keep translated fragments (but do NOT filter by genre family)
-  const fragments = dedupeQueries([
-    ...translatedGenres,
-    ...translatedTones,
-    ...translatedScenarios,
-  ]);
-
-  const baseQuery = axisQueries[0] || fragments[0] || "novel";
-
-  const rungs = build20QRungs(
-    {
-      ageBand,
-      baseGenre: baseQuery,
-      subgenres: fragments,
-      themes: translatedScenarios,
-      tones: translatedTones,
-      pacing: translatedPacing,
-      structures: [],
-      settings: [],
-      exclusions: [],
-    },
-    4
+  push(
+    "tone-theme",
+    [mapToneToRetrieval(topTone[0]), topTheme[0]],
+    1.0
   );
 
-  const rungQueries = dedupeQueries(rungs.map((r) => rungToPreviewQuery(r)));
+  push(
+    "world-theme",
+    [mapWorldToRetrieval(topWorld[0]), topTheme[0]],
+    0.96
+  );
 
-  const queries = dedupeQueries([
-    ...axisQueries,
-    ...rungQueries,
-  ]).slice(0, 6);
+  push(
+    "world-scenario",
+    [mapWorldToRetrieval(topWorld[0]), topScenario[0]],
+    0.92
+  );
+
+  push(
+    "tone-scenario",
+    [mapToneToRetrieval(topTone[0]), topScenario[0]],
+    0.88
+  );
+
+  push(
+    "genre-theme",
+    [topGenre[0], topTheme[0]],
+    0.78
+  );
+
+  push(
+    "adjacent-interpretation",
+    [mapWorldToRetrieval(topWorld[1]), topTheme[1] || topTheme[0]],
+    0.72
+  );
+
+  const deduped: Hypothesis[] = [];
+  const seen = new Set<string>();
+
+  for (const candidate of candidates.sort((a, b) => b.score - a.score)) {
+    const key = candidate.retrievalQuery.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(candidate);
+  }
+
+  return deduped;
+}
+
+function suppressionTokens(signals: QuerySignals): string[] {
+  const anti = [
+    ...topKeys(signals.antiGenre, 2),
+    ...topKeys(signals.antiWorld, 2),
+    ...topKeys(signals.antiTheme, 2),
+  ];
+
+  const out: string[] = [];
+  if (anti.includes("romance")) out.push("-romance");
+  if (anti.includes("historical")) out.push("-historical");
+  if (anti.includes("fantasy")) out.push("-fantasy");
+  if (anti.includes("horror")) out.push("-horror");
+  return out;
+}
+
+function fallbackQueries(signals: QuerySignals): string[] {
+  const scenario = topKeys(signals.scenario, 2);
+  const world = topKeys(signals.world, 2);
+  const tone = topKeys(signals.tone, 1);
+  const theme = topKeys(signals.theme, 2);
+
+  return dedupe([
+    shortQuery([mapToneToRetrieval(tone[0]), topTheme(theme, 0)]),
+    shortQuery([mapWorldToRetrieval(world[0]), topTheme(theme, 0)]),
+    shortQuery([mapWorldToRetrieval(world[0]), scenario[0]]),
+    shortQuery([mapToneToRetrieval(tone[0]), scenario[0]]),
+  ]).filter((q) => q && q !== "novel");
+
+  function topTheme(values: string[], idx: number) {
+    return values[idx];
+  }
+}
+
+export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
+  const audience = audiencePhrase(input.deckKey);
+  const signals = extractQuerySignals(input);
+  const hypotheses = buildHypotheses(signals);
+  const suppressions = suppressionTokens(signals);
+
+  const queries = dedupe(
+    (hypotheses.length ? hypotheses.map((h) => h.retrievalQuery) : fallbackQueries(signals))
+      .map((q) => safeJoin([q, ...suppressions]))
+  );
 
   return {
-    rungs,
     queries,
-    preview: rungQueries[0] || queries[0] || "",
-    strategy: "20q-neutral-axis",
+    preview: queries[0] || "",
+    strategy: "20q-short-hypothesis-composer",
+    signals: {
+      genres: topKeys(signals.genre, 3),
+      tones: topKeys(signals.tone, 3),
+      textures: topKeys(signals.world, 3),
+      scenarios: [
+        ...topKeys(signals.scenario, 3),
+        ...topKeys(signals.theme, 2),
+      ].slice(0, 5),
+    },
+    audience,
+    hypotheses: hypotheses.slice(0, 5).map((h) => ({
+      label: h.label,
+      semanticQuery: h.semanticQuery,
+      query: h.retrievalQuery,
+      parts: h.parts,
+      score: h.score,
+    })),
   };
 }
+
+export default buildDescriptiveQueriesFromTaste;
