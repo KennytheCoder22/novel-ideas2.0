@@ -104,3 +104,7 @@ export function build20QRungs(intent: QueryIntent) {
 
   return rungs;
 }
+
+export function rungToPreviewQuery(rung: { query: string }): string {
+  return rung?.query || "";
+}
