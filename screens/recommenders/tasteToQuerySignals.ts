@@ -43,7 +43,8 @@ const SCENARIO_RULES: Array<[RegExp, string]> = [
   [/(investigation|detective|case)/i, "investigation"],
   [/(crime|criminal|gangster)/i, "crime"],
   [/(survival)/i, "survival"],
-  [/(dystopian|collapse|post[-\s]?apocalyptic)/i, "collapse"],
+  [/(societal collapse|civilizational collapse|social collapse|post[-\s]?apocalyptic|dystopian)/i, "societal collapse"],
+  [/(governmental collapse|state collapse|regime collapse)/i, "governmental collapse"],
   [/(rebellion|resistance|revolution)/i, "rebellion"],
   [/(authority|institution|system|politic|systemic)/i, "institutional"],
   [/(family secrets|betrayal)/i, "betrayal"],
@@ -94,6 +95,8 @@ function weightedValue(key: string, value: number): number {
     dystopian: 1.2,
     technology: 1.2,
     survival: 1.12,
+    "societal collapse": 1.16,
+    "governmental collapse": 1.16,
     investigation: 1.08,
     psychological: 1.08,
     dark: 1.06,
@@ -166,6 +169,9 @@ function applyCrossSignalShaping(signals: QuerySignals) {
   const id = signals.theme.identity || 0;
   const tech = signals.theme.technology || 0;
   const survival = signals.scenario.survival || 0;
+  const institutional = signals.scenario.institutional || 0;
+  const authority = signals.theme.authority || 0;
+  const rebellion = signals.scenario.rebellion || 0;
   const crime = signals.genre.crime || 0;
   const thriller = signals.genre.thriller || 0;
 
@@ -180,7 +186,11 @@ function applyCrossSignalShaping(signals: QuerySignals) {
   }
 
   if (survival > 0.15 && dyst > 0.15) {
-    addSignal(signals.scenario, "collapse", 0.25);
+    addSignal(signals.scenario, "societal collapse", 0.25);
+  }
+
+  if ((institutional > 0.12 || authority > 0.12 || rebellion > 0.12) && dyst > 0.15) {
+    addSignal(signals.scenario, "governmental collapse", 0.22);
   }
 
   if ((crime + thriller) > 0.8 && (id + sci + dyst) > 0.7) {
