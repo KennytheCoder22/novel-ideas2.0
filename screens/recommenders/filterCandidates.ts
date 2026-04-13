@@ -323,11 +323,33 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const source = sourceForDoc(doc);
     const laneKind = doc?.laneKind ?? doc?.diagnostics?.laneKind ?? doc?.rawDoc?.laneKind;
 
-    if (!looksLikeFictionCandidate(doc)) continue;
+    const fictionLike =
+  looksLikeFictionCandidate(doc) ||
+  /\b(novel|thriller|crime|mystery|fiction)\b/i.test(
+    `${doc?.title || ""} ${doc?.description || ""}`
+  );
 
-    if (laneKind === "anchor" && !looksLikeAnchorLaneCandidate(doc, bucketPlan)) continue;
+if (!fictionLike) continue;
 
-    if (source === "googleBooks" && !looksLikeGoogleBooksFamilyCandidate(doc, bucketPlan)) continue;
+    if (laneKind === "anchor") {
+  const strongReject =
+    /\b(guide|companion|writing|seo|reference|anthology|collection)\b/i.test(
+      `${doc?.title || ""} ${doc?.description || ""}`
+    );
+
+  if (strongReject) continue;
+}
+
+    if (
+  source === "googleBooks" &&
+  !looksLikeGoogleBooksFamilyCandidate(doc, bucketPlan)
+) {
+  const fallback = /\b(novel|thriller|crime|mystery|fiction)\b/i.test(
+    `${doc?.title || ""} ${doc?.description || ""}`
+  );
+
+  if (!fallback) continue;
+}
     if (source === "openLibrary" && !looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan)) continue;
 
     filtered.push(doc);
