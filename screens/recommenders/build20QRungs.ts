@@ -167,14 +167,13 @@ function deriveHypothesisPrimaries(intent: QueryIntent, maxRungs: number): strin
     if (!out.includes(cleaned)) out.push(cleaned);
   };
 
-  if (axes.darkness > 0 && axes.intrigue) add("dark suspense novel");
-  if (axes.darkness > 0 && axes.speculative > 0) add("dark speculative novel");
+  if (axes.intrigue) add("suspense novel");
+  if (axes.speculative > 0) add("speculative fiction novel");
   if (axes.pacingSignal > 0 && axes.intrigue) add("fast paced suspense novel");
   if (axes.speculative > 0 && axes.pacingSignal > 0) add("speculative fiction novel");
   if (axes.realism > 0 && axes.intrigue) add("grounded suspense novel");
   if (axes.intimacy > 0) add("character driven novel");
   if (axes.slowBurnSignal) add("slow burn novel");
-  if (axes.darkness > 0) add("dark novel");
   if (axes.realism > 0) add("realistic fiction novel");
   if (axes.speculative > 0) add("speculative fiction novel");
 

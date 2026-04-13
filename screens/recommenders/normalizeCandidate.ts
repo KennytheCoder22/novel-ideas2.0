@@ -31,6 +31,25 @@ export type Candidate = {
   commercialSignals?: CommercialSignals;
 };
 
+export function titleMatchPenalty(candidate: Candidate): number {
+  const title = candidate.title.toLowerCase();
+  const terms = candidate.queryTerms || [];
+
+  if (!terms.length) return 0;
+
+  let matches = 0;
+  for (const t of terms) {
+    if (title.includes(t)) matches++;
+  }
+
+  // title match without description = bad signal
+  if (matches > 0 && !candidate.description) {
+    return -0.6;
+  }
+
+  return 0;
+}
+
 function asArray(value: any): string[] {
   if (Array.isArray(value)) return value.map((v) => String(v || '').trim()).filter(Boolean);
   if (value == null || value === '') return [];

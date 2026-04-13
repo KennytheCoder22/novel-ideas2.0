@@ -9,6 +9,18 @@ type QuerySignals = {
   scenario: SignalBucket;
 };
 
+const VIBE_WORDS = new Set([
+  'dark','gritty','bleak','hopeful','emotional','grounded',
+  'psychological','intense','moody','character-driven'
+]);
+
+function stripVibeWords(query: string): string {
+  return query
+    .split(' ')
+    .filter(w => !VIBE_WORDS.has(w.toLowerCase()))
+    .join(' ');
+}
+
 const NEGATIVE_TERMS = [
   "-analysis","-guide","-summary","-criticism","-literature","-magazine","-journal",
   "-catalog","-catalogue","-reference","-companion","-study","-workbook","-textbook",
@@ -162,9 +174,12 @@ function buildDescriptiveAxisQueries(input: RecommenderInput): { queries: string
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const descriptive = buildDescriptiveAxisQueries(input);
-  const queries = descriptive.queries.length
-    ? descriptive.queries
-    : fallbackQueriesForDeck(input.deckKey);
+const queries = descriptive.queries.length
+  ? descriptive.queries.map(q => {
+      const cleaned = stripVibeWords(q);
+      return cleaned.length > 5 ? cleaned : 'novel';
+    })
+  : fallbackQueriesForDeck(input.deckKey);
 
   return {
     queries,

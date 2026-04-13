@@ -1,5 +1,6 @@
 import type { DeckKey, RecommendationDoc, TasteProfile } from './types';
 import type { Candidate } from './normalizeCandidate';
+import { titleMatchPenalty } from './normalizeCandidate';
 import {
   laneFromDeckKey,
   recommenderProfiles,
@@ -63,10 +64,32 @@ function isValidCandidate(c: Candidate): boolean {
   return true;
 }
 
-function scoreQueryAlignment(c: Candidate): number {
-  if (!c.queryText) return 0;
+function vibeBoost(c: Candidate, taste?: TasteProfile): number {
+  if (!taste) return 0;
+
+  let score = 0;
   const text = haystack(c);
-  return text.includes(c.queryText.toLowerCase()) ? 0.5 : 0;
+
+  if ((taste.axes?.darkness || 0) > 0.2) {
+    if (/dark|bleak|grim|violent|dystopian/.test(text)) {
+      score += 0.5;
+    }
+  }
+
+  return score;
+}
+
+function scoreQueryAlignment(c: Candidate): number {
+  if (!c.queryTerms?.length) return 0;
+
+  const text = haystack(c);
+
+  let matches = 0;
+  for (const term of c.queryTerms) {
+    if (text.includes(term)) matches++;
+  }
+
+  return matches * 0.2; // weaker + distributed
 }
 
 function scoreRungBoost(c: Candidate): number {
@@ -121,10 +144,12 @@ export function finalRecommenderForDeck(
     const rungBoost = scoreRungBoost(c);
     const quality = scoreBasicQuality(c);
 
-    const score =
-      quality * 1.5 +
-      queryAlignment * 1.2 +
-      rungBoost * 2.5;
+const score =
+  quality * 1.5 +
+  queryAlignment * 1.2 +
+  rungBoost * 2.5 +
+  vibeBoost(c, options.tasteProfile) +
+  titleMatchPenalty(c);
 
     const candidate: CandidateWithDiagnostics = {
       ...c,
