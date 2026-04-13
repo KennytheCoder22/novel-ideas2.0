@@ -64,6 +64,52 @@ function isValidCandidate(c: Candidate): boolean {
   return true;
 }
 
+function isLikelyNonFictionMeta(c: Candidate): boolean {
+  const text = haystack(c);
+
+  return (
+    /\bguide\b/.test(text) ||
+    /\bhandbook\b/.test(text) ||
+    /\bencyclopedia\b/.test(text) ||
+    /\bhistory of\b/.test(text) ||
+    /\bstudies\b/.test(text) ||
+    /\banalysis\b/.test(text) ||
+    /\bcriticism\b/.test(text) ||
+    /\breview\b/.test(text) ||
+    /\bdigest\b/.test(text) ||
+    /\bwriters\b/.test(text) ||
+    /\bwriting\b/.test(text) ||
+    /\bhow to write\b/.test(text) ||
+    /\badvisory\b/.test(text) ||
+    /\bmagazine\b/.test(text) ||
+    /\bjournal\b/.test(text) ||
+    /\bbulletin\b/.test(text) ||
+    /\banthology\b/.test(text) ||
+    /\bcollection\b/.test(text) ||
+    /\bcompanion\b/.test(text) ||
+    /\breference\b/.test(text) ||
+    /\bperiodical\b/.test(text)
+  );
+}
+
+function agePenalty(c: Candidate): number {
+  const year = Number(c.publicationYear || 0);
+  if (!year) return 0;
+  if (year < 1950) return -1.5;
+  if (year < 1980) return -0.5;
+  return 0;
+}
+
+function narrativeSignal(c: Candidate): number {
+  const text = haystack(c);
+
+  let score = 0;
+  if (/\bnovel\b|\bstory\b|\btale\b/.test(text)) score += 0.5;
+  if (/\bmurder\b|\binvestigation\b|\bfamily\b|\bsurvival\b|\bcrime\b|\bsecrets?\b/.test(text)) score += 0.5;
+
+  return score;
+}
+
 function vibeBoost(c: Candidate, taste?: TasteProfile): number {
   if (!taste) return 0;
 
@@ -139,31 +185,37 @@ export function finalRecommenderForDeck(
 
   const base = dedupe(candidates).filter(isValidCandidate);
 
-  const scored = base.map((c) => {
-    const queryAlignment = scoreQueryAlignment(c);
-    const rungBoost = scoreRungBoost(c);
-    const quality = scoreBasicQuality(c);
+  const scored = base
+    .filter((c) => !isLikelyNonFictionMeta(c))
+    .map((c) => {
+      const queryAlignment = scoreQueryAlignment(c);
+      const rungBoost = scoreRungBoost(c);
+      const quality = scoreBasicQuality(c);
 
-const score =
-  quality * 1.5 +
-  queryAlignment * 1.2 +
-  rungBoost * 2.5 +
-  vibeBoost(c, options.tasteProfile) +
-  titleMatchPenalty(c);
+      const score =
+        quality * 1.5 +
+        queryAlignment * 1.2 +
+        rungBoost * 2.5 +
+        vibeBoost(c, options.tasteProfile) +
+        titleMatchPenalty(c) +
+        agePenalty(c) +
+        narrativeSignal(c);
 
-    const candidate: CandidateWithDiagnostics = {
-      ...c,
-      diagnostics: {
-        source: c.source || 'unknown',
-        preFilterScore: score,
-        postFilterScore: score,
-        queryAlignment,
-        rungBoost,
-      }
-    };
+      const candidate: CandidateWithDiagnostics = {
+        ...c,
+        diagnostics: {
+          source: c.source || 'unknown',
+          preFilterScore: score,
+          postFilterScore: score,
+          queryAlignment,
+          rungBoost,
+          rejectionReason: undefined,
+        }
+      };
 
-    return { candidate, score };
-  }).sort((a, b) => b.score - a.score);
+      return { candidate, score };
+    })
+    .sort((a, b) => b.score - a.score);
 
   const selected: CandidateWithDiagnostics[] = [];
   const seen = new Set<string>();

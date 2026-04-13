@@ -31,6 +31,18 @@ export type Candidate = {
   commercialSignals?: CommercialSignals;
 };
 
+export function isLikelyNonFictionMeta(candidate: Candidate): boolean {
+  const text = `${candidate.title} ${candidate.description || ''}`.toLowerCase();
+
+  return (
+    /guide|handbook|encyclopedia|history of|studies|analysis|criticism|review|digest/.test(text) ||
+    /writers|writing|how to write|advisory/.test(text) ||
+    /magazine|journal|review|bulletin/.test(text) ||
+    /anthology|collection|stories\b/.test(text) ||
+    /literature|reference|companion/.test(text)
+  );
+}
+
 export function titleMatchPenalty(candidate: Candidate): number {
   const title = candidate.title.toLowerCase();
   const terms = candidate.queryTerms || [];
