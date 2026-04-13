@@ -29,8 +29,38 @@ function dedupe(values: string[]): string[] {
   return out;
 }
 
+function meaningfulTokens(query: string): string[] {
+  return clean(query)
+    .split(" ")
+    .filter(Boolean)
+    .filter((t) => !["novel", "fiction", "adult"].includes(t));
+}
+
+function queryKey(query: string): string {
+  return meaningfulTokens(query).sort().join("|");
+}
+
+function distinctQueries(values: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+
+  for (const value of values) {
+    const cleaned = clean(value);
+    if (!cleaned) continue;
+    const tokens = meaningfulTokens(cleaned);
+    if (!tokens.length) continue;
+    if (tokens.length > 4) continue;
+    const key = queryKey(cleaned);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(cleaned);
+  }
+
+  return out;
+}
+
 function combine(parts: Array<string | undefined | null>) {
-  return dedupe(parts.filter(Boolean) as string[]).join(" ").trim();
+  return clean(parts.filter(Boolean).join(" "));
 }
 
 function buildFallbackRungs(intent: QueryIntent): string[] {
@@ -38,26 +68,24 @@ function buildFallbackRungs(intent: QueryIntent): string[] {
   const themes = intent.themes || [];
   const subs = intent.subgenres || [];
 
-  const queries = [
+  return distinctQueries([
     combine([tones[0], themes[0], "novel"]),
-    combine([themes[0], themes[1], "novel"]),
     combine([subs[0], themes[0], "novel"]),
     combine([tones[0], subs[0], "novel"]),
-    combine([intent.baseGenre, "novel"]),
-  ];
-
-  return dedupe(queries).filter((q) => q && q !== "novel");
+    combine([themes[0], themes[1], "novel"]),
+  ]);
 }
 
 export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
-  const hypothesisQueries = Array.isArray(intent.hypotheses)
-    ? intent.hypotheses
-        .map((h) => clean(h?.query || ""))
-        .filter(Boolean)
-    : [];
+  const hypotheses = Array.isArray(intent.hypotheses) ? intent.hypotheses : [];
+
+  const rankedHypothesisQueries = hypotheses
+    .sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0))
+    .map((h) => clean(h?.query || ""))
+    .filter(Boolean);
 
   const fallbackQueries = buildFallbackRungs(intent);
-  const queries = dedupe([...hypothesisQueries, ...fallbackQueries]).slice(0, Math.max(1, maxRungs));
+  const queries = distinctQueries([...rankedHypothesisQueries, ...fallbackQueries]).slice(0, Math.max(1, maxRungs));
 
   return queries.map((query, i) => ({
     rung: i,

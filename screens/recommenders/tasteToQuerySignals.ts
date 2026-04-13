@@ -80,9 +80,31 @@ const PACING_RULES: Array<[RegExp, string]> = [
   [/(slow burn|slow-burn|deliberate)/i, "slow"],
 ];
 
+function weightedValue(key: string, value: number): number {
+  const genericPenalty: Record<string, number> = {
+    thriller: 0.72,
+    crime: 0.78,
+    mystery: 0.84,
+    drama: 0.7,
+  };
+
+  const distinctiveBoost: Record<string, number> = {
+    identity: 1.35,
+    science fiction: 1.2,
+    dystopian: 1.2,
+    technology: 1.2,
+    survival: 1.12,
+    investigation: 1.08,
+    psychological: 1.08,
+    dark: 1.06,
+  };
+
+  return value * (distinctiveBoost[key] || genericPenalty[key] || 1);
+}
+
 function addSignal(bucket: QuerySignalMap, key: string, value: number) {
   if (!Number.isFinite(value) || value === 0) return;
-  bucket[key] = (bucket[key] || 0) + value;
+  bucket[key] = (bucket[key] || 0) + weightedValue(key, value);
 }
 
 function applyRules(
@@ -118,21 +140,69 @@ function addTasteAxes(input: RecommenderInput, signals: QuerySignals) {
   }
   if ((axes.realism || 0) < -0.12) {
     addSignal(signals.antiWorld, "realistic", Math.abs(axes.realism));
-    addSignal(signals.world, "dystopian", Math.abs(axes.realism) * 0.5);
-    addSignal(signals.world, "science fiction", Math.abs(axes.realism) * 0.35);
+    addSignal(signals.world, "dystopian", Math.abs(axes.realism) * 0.55);
+    addSignal(signals.world, "science fiction", Math.abs(axes.realism) * 0.45);
   }
 
   if ((axes.pacing || 0) > 0.12) addSignal(signals.pacing, "fast", axes.pacing);
   if ((axes.pacing || 0) < -0.12) addSignal(signals.pacing, "slow", Math.abs(axes.pacing));
 
   if ((axes.ideaDensity || 0) > 0.12) {
-    addSignal(signals.world, "science fiction", axes.ideaDensity * 0.7);
-    addSignal(signals.theme, "identity", axes.ideaDensity * 0.25);
+    addSignal(signals.world, "science fiction", axes.ideaDensity * 0.8);
+    addSignal(signals.theme, "identity", axes.ideaDensity * 0.35);
+    addSignal(signals.theme, "technology", axes.ideaDensity * 0.25);
   }
 
   if ((axes.characterFocus || 0) > 0.12) {
     addSignal(signals.theme, "family", axes.characterFocus * 0.35);
-    addSignal(signals.theme, "human connection", axes.characterFocus * 0.45);
+    addSignal(signals.theme, "human connection", axes.characterFocus * 0.5);
+  }
+}
+
+function applyCrossSignalShaping(signals: QuerySignals) {
+  const dark = signals.tone.dark || 0;
+  const sci = signals.world["science fiction"] || 0;
+  const dyst = signals.world.dystopian || 0;
+  const id = signals.theme.identity || 0;
+  const tech = signals.theme.technology || 0;
+  const survival = signals.scenario.survival || 0;
+  const crime = signals.genre.crime || 0;
+  const thriller = signals.genre.thriller || 0;
+
+  if (dark > 0.2 && (sci > 0.2 || dyst > 0.2)) {
+    addSignal(signals.theme, "identity", 0.3);
+    addSignal(signals.theme, "technology", 0.2);
+  }
+
+  if (id > 0.2 && (sci > 0.2 || tech > 0.2)) {
+    addSignal(signals.world, "science fiction", 0.25);
+    addSignal(signals.tone, "psychological", 0.18);
+  }
+
+  if (survival > 0.15 && dyst > 0.15) {
+    addSignal(signals.scenario, "collapse", 0.25);
+  }
+
+  if ((crime + thriller) > 0.8 && (id + sci + dyst) > 0.7) {
+    signals.genre.crime = crime * 0.82;
+    signals.genre.thriller = thriller * 0.86;
+  }
+
+  if ((signals.antiGenre.romance || 0) > 0.1) {
+    signals.theme["human connection"] = (signals.theme["human connection"] || 0) * 0.65;
+    signals.scenario.relationship = (signals.scenario.relationship || 0) * 0.45;
+  }
+
+  if ((signals.antiWorld.horror || 0) > 0.1) {
+    signals.world.horror = (signals.world.horror || 0) * 0.5;
+  }
+
+  if ((signals.antiGenre.fantasy || 0) > 0.1) {
+    signals.world.fantasy = (signals.world.fantasy || 0) * 0.45;
+  }
+
+  if ((signals.antiWorld.historical || 0) > 0.1 || (signals.antiGenre.historical || 0) > 0.1) {
+    signals.world.historical = (signals.world.historical || 0) * 0.4;
   }
 }
 
@@ -166,6 +236,7 @@ export function tasteToQuerySignals(input: RecommenderInput): QuerySignals {
   }
 
   addTasteAxes(input, signals);
+  applyCrossSignalShaping(signals);
 
   return signals;
 }
