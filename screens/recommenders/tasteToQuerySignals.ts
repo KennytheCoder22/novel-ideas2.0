@@ -90,7 +90,7 @@ function weightedValue(key: string, value: number): number {
 
   const distinctiveBoost: Record<string, number> = {
     identity: 1.35,
-    science fiction: 1.2,
+    "science fiction": 1.2,
     dystopian: 1.2,
     technology: 1.2,
     survival: 1.12,
