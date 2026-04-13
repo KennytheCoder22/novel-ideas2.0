@@ -1,5 +1,5 @@
 import type { RecommenderInput } from "./types";
-import { extractQuerySignals, type QuerySignals } from "./tasteToQuerySignals";
+import { tasteToQuerySignals as extractQuerySignals, type QuerySignals } from "./tasteToQuerySignals";
 
 type Hypothesis = {
   label: string;
