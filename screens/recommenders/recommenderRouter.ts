@@ -20,6 +20,7 @@ import { mergeBestsellerDocs } from "../../services/bestsellers/bestsellerMatche
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 import { build20QRungs } from "./build20QRungs";
+import { filterCandidates } from "./filterCandidates";
 
 export type EngineOverride = EngineId | "auto";
 
@@ -1286,30 +1287,24 @@ export async function getRecommendations(
     }
   }
 
-  // Preserve source slices after enrichment.
-const googleDocsEnriched = bestsellerMergedDocs.filter(
-  (doc: any) =>
-    sourceForDoc(doc, "googleBooks") === "googleBooks" &&
-    looksLikeGoogleBooksFamilyCandidate(doc, bucketPlan)
-);
+  // Preserve source slices after enrichment, then run shared candidate filtering.
+  const filteredDocs = filterCandidates(bestsellerMergedDocs, bucketPlan);
 
-const openLibraryDocsEnriched = bestsellerMergedDocs.filter(
-  (doc: any) =>
-    sourceForDoc(doc, "openLibrary") === "openLibrary" &&
-    looksLikeFictionCandidate(doc) &&
-    looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan)
-);
-const kitsuDocsEnriched = bestsellerMergedDocs.filter(
-  (doc: any) =>
-    sourceForDoc(doc, "kitsu") === "kitsu" &&
-    looksLikeFictionCandidate(doc)
-);
+  const googleDocsEnriched = filteredDocs.filter(
+    (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
+  );
 
-const gcdDocsEnriched = bestsellerMergedDocs.filter(
-  (doc: any) =>
-    sourceForDoc(doc, "gcd") === "gcd" &&
-    looksLikeFictionCandidate(doc)
-);
+  const openLibraryDocsEnriched = filteredDocs.filter(
+    (doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary"
+  );
+
+  const kitsuDocsEnriched = filteredDocs.filter(
+    (doc: any) => sourceForDoc(doc, "kitsu") === "kitsu"
+  );
+
+  const gcdDocsEnriched = filteredDocs.filter(
+    (doc: any) => sourceForDoc(doc, "gcd") === "gcd"
+  );
 
   // Normalize all sources the same way.
   // IMPORTANT: Open Library should normalize from enriched docs too, so Hardcover failure markers
