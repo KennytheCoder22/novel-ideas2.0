@@ -16,31 +16,6 @@ type SignalCandidate = {
   domain: SignalDomain;
 };
 
-const NEGATIVE_TERMS = [
-  "-analysis",
-  "-guide",
-  "-summary",
-  "-criticism",
-  "-literature",
-  "-magazine",
-  "-journal",
-  "-catalog",
-  "-catalogue",
-  "-reference",
-  "-companion",
-  "-study",
-  "-workbook",
-  "-textbook",
-  "-manual",
-  "-encyclopedia",
-  "-anthology",
-  "-collection",
-  "-essays",
-  "-nonfiction",
-  "-biography",
-  "-memoir",
-].join(" ");
-
 const GENERIC_TERMS = new Set([
   "thriller",
   "crime",
@@ -90,13 +65,6 @@ const BAD_PRIMARY_PATTERNS = new Set([
   "dark mystery",
 ]);
 
-function audiencePhrase(deckKey: RecommenderInput["deckKey"]): string {
-  if (deckKey === "adult") return "adult fiction";
-  if (deckKey === "ms_hs") return "young adult fiction";
-  if (deckKey === "36" || deckKey === "3_6") return "middle grade fiction";
-  return "fiction";
-}
-
 function dedupe(values: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -140,18 +108,6 @@ function isDistinctive(key?: string): boolean {
 
 function isWeakPrimaryScenario(key?: string): boolean {
   return !!key && WEAK_PRIMARY_SCENARIOS.has(key);
-}
-
-function mapWorldToRetrieval(world?: string): string | undefined {
-  return world || undefined;
-}
-
-function mapToneToRetrieval(tone?: string): string | undefined {
-  return tone || undefined;
-}
-
-function mapGenreToRetrieval(genre?: string): string | undefined {
-  return genre || undefined;
 }
 
 function normalizeForQuery(part?: string): string | undefined {
@@ -231,10 +187,9 @@ function weakScenarioPenalty(parts: string[], sources: SignalCandidate[]): numbe
   const weakParts = parts.filter((part) => isWeakPrimaryScenario(part));
   if (!weakParts.length) return 0;
 
-  const hasNarrativeAnchor =
-    parts.some((part) =>
-      ["identity", "science fiction", "technology", "crime investigation", "investigation", "survival", "psychological"].includes(part)
-    );
+  const hasNarrativeAnchor = parts.some((part) =>
+    ["identity", "science fiction", "technology", "crime investigation", "investigation", "survival", "psychological"].includes(part)
+  );
 
   const scenarioSourceScore = sources
     .filter((item) => item.domain === "scenario" && weakParts.includes(item.key))
@@ -247,10 +202,9 @@ function weakScenarioPenalty(parts: string[], sources: SignalCandidate[]): numbe
 
 function insufficientClusterPenalty(parts: string[], sources: SignalCandidate[]): number {
   const domains = new Set(sources.map((item) => item.domain));
-  const hasNarrativeAnchor =
-    parts.some((part) =>
-      ["identity", "science fiction", "technology", "crime investigation", "investigation", "survival", "psychological"].includes(part)
-    );
+  const hasNarrativeAnchor = parts.some((part) =>
+    ["identity", "science fiction", "technology", "crime investigation", "investigation", "survival", "psychological"].includes(part)
+  );
 
   if (domains.size < 2) return 0.55;
   if (domains.size < 3 && !hasNarrativeAnchor) return 0.35;
@@ -283,8 +237,7 @@ function addCandidate(
   scoreBias = 0
 ) {
   const parts = cleanParts(partsInput);
-  if (!parts.length) return;
-  if (parts.length < 2) return;
+  if (!parts.length || parts.length < 2) return;
   if (looksTooGeneric(parts) && !hasDistinctiveAnchor(parts)) return;
 
   const query = safeJoin([...parts, "novel"]);
@@ -317,7 +270,7 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   addCandidate(
     candidates,
     "identity-sf-core",
-    [mapToneToRetrieval(topTone), topTheme, mapWorldToRetrieval(topWorld)],
+    [topTone, topTheme, topWorld],
     [tones[0], themes[0], worlds[0]].filter(Boolean) as SignalCandidate[],
     signals,
     0.42
@@ -326,7 +279,7 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   addCandidate(
     candidates,
     "crime-investigation-core",
-    [mapToneToRetrieval(topTone), topScenario, mapGenreToRetrieval(topGenre)],
+    [topTone, topScenario, topGenre],
     [tones[0], scenarios[0], genres[0]].filter(Boolean) as SignalCandidate[],
     signals,
     0.24
@@ -335,7 +288,7 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   addCandidate(
     candidates,
     "world-theme-core",
-    [mapWorldToRetrieval(topWorld), topTheme, secondTheme],
+    [topWorld, topTheme, secondTheme],
     [worlds[0], themes[0], themes[1]].filter(Boolean) as SignalCandidate[],
     signals,
     0.2
@@ -344,7 +297,7 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   addCandidate(
     candidates,
     "dystopian-survival-core",
-    [mapToneToRetrieval(topTone), mapWorldToRetrieval(topWorld), topScenario],
+    [topTone, topWorld, topScenario],
     [tones[0], worlds[0], scenarios[0]].filter(Boolean) as SignalCandidate[],
     signals,
     0.18
@@ -353,7 +306,7 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   addCandidate(
     candidates,
     "theme-scenario-core",
-    [mapToneToRetrieval(topTone), topTheme, topScenario],
+    [topTone, topTheme, topScenario],
     [tones[0], themes[0], scenarios[0]].filter(Boolean) as SignalCandidate[],
     signals,
     0.15
@@ -362,7 +315,7 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   addCandidate(
     candidates,
     "secondary-lane",
-    [mapToneToRetrieval(secondTone || topTone), secondTheme || topTheme, secondScenario || topScenario],
+    [secondTone || topTone, secondTheme || topTheme, secondScenario || topScenario],
     [tones[1] || tones[0], themes[1] || themes[0], scenarios[1] || scenarios[0]].filter(Boolean) as SignalCandidate[],
     signals,
     0.08
@@ -371,7 +324,7 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   addCandidate(
     candidates,
     "world-scenario-secondary",
-    [mapWorldToRetrieval(secondWorld || topWorld), secondScenario || topScenario, thirdScenario || topScenario],
+    [secondWorld || topWorld, secondScenario || topScenario, thirdScenario || topScenario],
     [worlds[1] || worlds[0], scenarios[1] || scenarios[0], scenarios[2] || scenarios[0]].filter(Boolean) as SignalCandidate[],
     signals,
     0.04
@@ -405,7 +358,7 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   return diversified.length ? diversified : deduped.slice(0, 5);
 }
 
-function applySuppression(query: string, signals: QuerySignals): string {
+function lightweightSuppressions(signals: QuerySignals): string[] {
   const anti = [
     ...topKeys(signals.antiGenre, 2),
     ...topKeys(signals.antiWorld, 2),
@@ -413,48 +366,49 @@ function applySuppression(query: string, signals: QuerySignals): string {
   ];
 
   const suppressions: string[] = [];
-
   if (anti.includes("romance")) suppressions.push("-romance");
-  if (anti.includes("historical")) suppressions.push("-historical");
   if (anti.includes("fantasy")) suppressions.push("-fantasy");
   if (anti.includes("horror")) suppressions.push("-horror");
-
-  return safeJoin([query, ...suppressions, NEGATIVE_TERMS]);
+  if (anti.includes("historical")) suppressions.push("-historical");
+  return suppressions;
 }
 
-function fallbackQueries(signals: QuerySignals, audience: string): string[] {
+function compactQuery(baseQuery: string, signals: QuerySignals): string {
+  return safeJoin([baseQuery, ...lightweightSuppressions(signals)]);
+}
+
+function fallbackQueries(signals: QuerySignals): string[] {
   const scenario = topKeys(signals.scenario, 3);
   const world = topKeys(signals.world, 2);
   const tone = topKeys(signals.tone, 2);
   const theme = topKeys(signals.theme, 2);
 
   const base = [
-    safeJoin([mapToneToRetrieval(tone[0]), theme[0], mapWorldToRetrieval(world[0]), "novel"]),
-    safeJoin([mapToneToRetrieval(tone[0]), scenario[0], theme[0], "novel"]),
-    safeJoin([mapWorldToRetrieval(world[0]), scenario[0], theme[0], "novel"]),
-    safeJoin([mapToneToRetrieval(tone[1] || tone[0]), scenario[1] || scenario[0], theme[1] || theme[0], "novel"]),
+    safeJoin([tone[0], theme[0], world[0], "novel"]),
+    safeJoin([tone[0], scenario[0], theme[0], "novel"]),
+    safeJoin([world[0], scenario[0], theme[0], "novel"]),
+    safeJoin([tone[1] || tone[0], scenario[1] || scenario[0], theme[1] || theme[0], "novel"]),
     safeJoin(["psychological", "thriller", "novel"]),
     safeJoin(["crime investigation", "novel"]),
   ].filter(Boolean);
 
-  return dedupe(base.map((q) => safeJoin([q, audience, NEGATIVE_TERMS]))).filter((q) => q && q !== "novel");
+  return dedupe(base.map((q) => compactQuery(q, signals))).filter((q) => q && q !== "novel");
 }
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
-  const audience = audiencePhrase(input.deckKey);
   const signals = extractQuerySignals(input);
   const hypotheses = buildHypotheses(signals);
 
   const hypothesisQueries = hypotheses
     .slice(0, 5)
-    .map((h) => safeJoin([applySuppression(h.query, signals), audience]));
+    .map((h) => compactQuery(h.query, signals));
 
-  const queries = dedupe(hypothesisQueries.length ? hypothesisQueries : fallbackQueries(signals, audience));
+  const queries = dedupe(hypothesisQueries.length ? hypothesisQueries : fallbackQueries(signals));
 
   return {
     queries,
     preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v3",
+    strategy: "20q-hypothesis-composer-v4-compact",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),
