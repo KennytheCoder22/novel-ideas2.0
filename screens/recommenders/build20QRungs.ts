@@ -49,7 +49,6 @@ function distinctQueries(values: string[]): string[] {
     if (!cleaned) continue;
     const tokens = meaningfulTokens(cleaned);
     if (!tokens.length) continue;
-    if (tokens.length > 4) continue;
     const key = queryKey(cleaned);
     if (!key || seen.has(key)) continue;
     seen.add(key);
