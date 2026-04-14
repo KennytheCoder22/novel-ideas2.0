@@ -52,6 +52,8 @@ const DEFAULT_SWIPE_CATEGORIES = {
 };
 
 const DEFAULT_ADULT_CARDS: any[] = [];
+const MIN_20Q_DECISION_SWIPES = 4;
+const MAX_SINGLE_CARD_DIRECT_TRAIT_WEIGHT = 1.1;
 
 type DeckKey = SwipeDeck["deckKey"];
 
@@ -474,6 +476,8 @@ function tasteVectorFromAxes(axes: Record<string, number> | undefined): TasteVec
     realism: numberOrZero(safeAxes.realism),
     characterFocus: numberOrZero(safeAxes.characterFocus ?? (safeAxes as any).character_focus),
     pacing: numberOrZero(safeAxes.pacing),
+    humor: numberOrZero((safeAxes as any).humor),
+    complexity: numberOrZero((safeAxes as any).complexity),
   };
 }
 
@@ -491,6 +495,43 @@ function cardTagCounts(card: any): TagCounts {
   }
 
   return {};
+}
+
+function directTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVector | null {
+  if (!card || !(card as any)?.tasteTraits) return null;
+  return tasteVectorFromAxes((card as any).tasteTraits);
+}
+
+function weightedDirectTraitsHistory(
+  history: SwipeHistoryEntry[]
+): TasteVector[] {
+  const decisionHistory = history.filter((entry) => entry.direction !== "skip");
+  const totalDecisionCards = Math.max(decisionHistory.length, 1);
+
+  return decisionHistory
+    .map((entry) => {
+      const direct = directTraitsFromCard(entry.card);
+      if (!direct) return null;
+
+      const directionScale = entry.direction === "like" ? 1 : -1;
+      const perCardScale = Math.min(
+        MAX_SINGLE_CARD_DIRECT_TRAIT_WEIGHT,
+        1 / totalDecisionCards
+      );
+
+      const scaled: Record<string, number> = {};
+      for (const [axis, value] of Object.entries(direct)) {
+        scaled[axis] = numberOrZero(value) * directionScale * perCardScale;
+      }
+      return scaled as TasteVector;
+    })
+    .filter(Boolean) as TasteVector[];
+}
+
+function cardDirectAxisSignal(card: SwipeDeckCard, axis: TwentyQAxis): number {
+  const direct = directTraitsFromCard(card);
+  if (!direct) return 0;
+  return numberOrZero((direct as any)[axis]);
 }
 
 function swipeSignalFromCard(card: SwipeDeckCard, direction: SwipeSignal["direction"]): SwipeSignal {
@@ -613,6 +654,11 @@ function semanticStringsFromCard(card: any): string[] {
 }
 
 function cardSignalForAxis(card: SwipeDeckCard, axis: TwentyQAxis): number {
+  const directSignal = cardDirectAxisSignal(card, axis);
+  if (Math.abs(directSignal) > 0) {
+    return Math.abs(directSignal) * 4;
+  }
+
   const bag = semanticStringsFromCard(card as any);
   if (!bag.length) return 0;
 
@@ -659,7 +705,9 @@ function selectTwentyQCard(args: {
       const baseSignal = cardSignalForAxis(card, objective.axis);
       const noveltyBonus = recent.has(key) ? -1.5 : 0.35;
       const mediaBonus = objective.axis === "realism" && cardCategoryFromTags(card as any) !== "books" ? 0.2 : 0;
-      return { card, index, score: baseSignal * 3 + noveltyBonus + mediaBonus };
+      const directSignal = cardDirectAxisSignal(card, objective.axis);
+      const directBonus = Math.abs(directSignal) > 0 ? 6 + Math.abs(directSignal) * 4 : 0;
+      return { card, index, score: directBonus + baseSignal * 3 + noveltyBonus + mediaBonus };
     })
     .sort((a, b) => b.score - a.score || a.index - b.index);
 
@@ -674,9 +722,12 @@ function shouldFinishTwentyQSession(args: {
   totalCards: number;
 }): boolean {
   const { statuses, decisionSwipes, totalSeenCards, totalCards } = args;
-  if (statuses.length > 0 && statuses.every((status) => status.resolved)) return true;
-  if (decisionSwipes >= Math.max(statuses.length + 2, 8)) return true;
-  if (totalSeenCards >= totalCards) return true;
+  const allResolved = statuses.length > 0 && statuses.every((status) => status.resolved);
+  const hitDecisionCap = decisionSwipes >= Math.max(statuses.length + 2, 8);
+
+  if (allResolved && decisionSwipes >= MIN_20Q_DECISION_SWIPES) return true;
+  if (hitDecisionCap) return true;
+  if (totalSeenCards >= totalCards && decisionSwipes >= MIN_20Q_DECISION_SWIPES) return true;
   return false;
 }
 
@@ -753,10 +804,11 @@ export default function SwipeDeckScreen(props: Props) {
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
       tagCounts,
+      directTraits: weightedDirectTraitsHistory(swipeHistory),
       feedback: feedback as TasteFeedbackEvent[],
       itemTraitsById: {},
     });
-  }, [tagCounts, feedback]);
+  }, [tagCounts, feedback, swipeHistory]);
 
   const [sessionMoodProfile, setSessionMoodProfile] = useState<MoodProfile | null>(null);
   const [personalityProfileState, setPersonalityProfileState] = useState<PersonalityProfile | null>(null);
