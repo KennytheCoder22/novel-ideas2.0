@@ -14,9 +14,6 @@ import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommen
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
-import { getNytBestsellerBooks } from "../../services/bestsellers/nytClient";
-import { adaptNytBooksToRecommendationDocs } from "../../services/bestsellers/nytAdapter";
-import { mergeBestsellerDocs } from "../../services/bestsellers/bestsellerMatcher";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 import { build20QRungs } from "./build20QRungs";
@@ -29,6 +26,10 @@ type RecommenderDebugSourceStats = {
   postFilterCandidates: number;
   finalSelected: number;
 };
+
+const MIN_DECISION_SWIPES_FOR_FULL_ROUTER_EXPANSION = 4;
+const MIN_VISUAL_SIGNAL_FOR_KITSU = 2;
+const MIN_VISUAL_SIGNAL_FOR_GCD = 2;
 
 function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string[] {
   const seen = new Set<string>();
@@ -44,6 +45,14 @@ function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string
   }
 
   return out;
+}
+
+function decisionSwipeCountFromTasteProfile(input: RecommenderInput): number {
+  return Number((input as any)?.tasteProfile?.evidence?.swipes || 0);
+}
+
+function hasStrong20QSession(input: RecommenderInput): boolean {
+  return decisionSwipeCountFromTasteProfile(input) >= MIN_DECISION_SWIPES_FOR_FULL_ROUTER_EXPANSION;
 }
 
 function buildRouterBucketPlan(input: RecommenderInput) {
@@ -97,184 +106,6 @@ function inferRouterFamily(bucketPlan: any): "thriller" | "speculative" | "roman
   return "general";
 }
 
-function buildAnchorLaneQuery(bucketPlan: any): string {
-  const family = inferRouterFamily(bucketPlan);
-  const queryText = String(bucketPlan?.preview || bucketPlan?.queries?.[0] || "").toLowerCase();
-
-  // Lane 90 = commercial anchor lane:
-  // keep the phrasing shelf-facing and reader-facing, not award/reference-facing.
-  if (family === "thriller") {
-    if (queryText.includes("psychological")) return "bestselling thriller novel";
-    if (queryText.includes("crime")) return "bestselling crime thriller";
-    if (queryText.includes("mystery")) return "bestselling mystery thriller";
-    if (queryText.includes("detective")) return "bestselling thriller novel";
-    return "bestselling thriller novel";
-  }
-
-  if (family === "speculative") {
-    if (queryText.includes("fantasy")) return "fantasy novel";
-    if (queryText.includes("horror")) return "horror novel";
-    return "science fiction novel";
-  }
-
-  if (family === "romance") return "romance novel";
-  if (family === "historical") return "historical fiction novel";
-  return "commercial fiction novel";
-}
-
-
-function buildNytListNamesFromProfile(profile: any): string[] {
-  const mediaType = String(profile?.mediaType || "books").toLowerCase();
-  if (mediaType !== "books") return [];
-
-  const ageBand = String(
-    profile?.ageBand ||
-      profile?.readerAgeBand ||
-      profile?.audience ||
-      ""
-  ).toLowerCase();
-
-  const genres = [
-    ...(Array.isArray(profile?.genres) ? profile.genres : []),
-    ...(Array.isArray(profile?.favoriteGenres) ? profile.favoriteGenres : []),
-    ...(Array.isArray(profile?.tags) ? profile.tags : []),
-    ...(Array.isArray(profile?.signals?.genres) ? profile.signals.genres : []),
-  ]
-    .map((value) => String(value || "").toLowerCase().trim())
-    .filter(Boolean);
-
-  const joined = genres.join(" ");
-  const out = new Set<string>();
-
-  if (ageBand.includes("teen") || ageBand.includes("young adult") || ageBand.includes("ya")) {
-    out.add("young-adult-hardcover");
-  } else {
-    out.add("hardcover-fiction");
-  }
-
-  if (joined.includes("romance")) {
-    out.add("combined-print-and-e-book-fiction");
-  }
-
-  if (joined.includes("fantasy")) {
-    out.add("hardcover-fiction");
-  }
-
-  if (joined.includes("mystery") || joined.includes("thriller") || joined.includes("crime")) {
-    out.add("combined-print-and-e-book-fiction");
-  }
-
-  if (joined.includes("historical")) {
-    out.add("hardcover-fiction");
-  }
-
-  return Array.from(out);
-}
-
-function withAnchorLane(rungs: any[], bucketPlan: any) {
-  const anchorQuery = buildAnchorLaneQuery(bucketPlan);
-  const seen = new Set(
-    (Array.isArray(rungs) ? rungs : [])
-      .map((r: any) => String(r?.query || "").trim().toLowerCase())
-      .filter(Boolean)
-  );
-
-  const base = (Array.isArray(rungs) ? rungs : []).map((r: any) => ({ ...r, laneKind: "precision" }));
-  if (!anchorQuery || seen.has(anchorQuery.toLowerCase())) return base;
-
-  return [
-    ...base,
-    {
-      rung: 90,
-      query: anchorQuery,
-      laneKind: "anchor",
-      anchorLane: true,
-    },
-  ];
-}
-
-function recognizabilityScore(doc: any): number {
-  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
-  const description = collectDescriptionText(doc);
-  const categories = collectCategoryText(doc);
-
-  const googleRatings = Number((doc as any)?.ratingsCount || (doc as any)?.volumeInfo?.ratingsCount || 0);
-  const hardcoverRatings = Number((doc as any)?.hardcover?.ratings_count || 0);
-  const avgRating = Number((doc as any)?.averageRating || (doc as any)?.hardcover?.rating || 0);
-  const year = Number((doc as any)?.first_publish_year || 0);
-  const commercialSignals = (doc as any)?.commercialSignals;
-
-  let score = 0;
-  score += Math.min(googleRatings, 5000) / 250;
-  score += Math.min(hardcoverRatings, 5000) / 250;
-  if (avgRating >= 4) score += 1.5;
-  if (year >= 1990) score += 0.5;
-  if (/bestselling|award[- ]winning|international bestseller|new york times bestseller/.test(`${title} ${description} ${categories}`)) score += 3;
-  if (commercialSignals) {
-    if (commercialSignals.bestseller) score += 4;
-    if (Number(commercialSignals.awards || 0) > 0) score += Math.min(Number(commercialSignals.awards || 0), 2) * 2;
-    score += Math.min(Number(commercialSignals.popularityTier || 0), 3);
-    score += Math.min(Number(commercialSignals.sourceCount || 0), 2) * 0.5;
-  }
-  return score;
-}
-
-function blendAnchorLane(rankedDocs: any[], finalLimit = 10): any[] {
-  const docs = Array.isArray(rankedDocs) ? rankedDocs : [];
-  if (!docs.length) return docs;
-
-  const anchorDocs = docs.filter((doc: any) => {
-    const laneKind = doc?.diagnostics?.laneKind ?? doc?.laneKind ?? doc?.rawDoc?.laneKind;
-    return laneKind === "anchor";
-  });
-
-  if (!anchorDocs.length) return docs.slice(0, finalLimit);
-
-  const sortedAnchors = [...anchorDocs].sort((a: any, b: any) => recognizabilityScore(b) - recognizabilityScore(a));
-  const selectedAnchor = sortedAnchors[0];
-
-  const used = new Set<string>();
-  const output: any[] = [];
-
-  const keyFor = (doc: any) =>
-    String(
-      doc?.key ||
-      doc?.id ||
-      `${doc?.title || ""}|${Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author || ""}`
-    )
-      .trim()
-      .toLowerCase();
-
-  const pushUnique = (doc: any) => {
-    const key = keyFor(doc);
-    if (!key || used.has(key)) return;
-    used.add(key);
-    output.push(doc);
-  };
-
-  for (const doc of docs) {
-    if (output.length >= finalLimit) break;
-    const laneKind = doc?.diagnostics?.laneKind ?? doc?.laneKind ?? doc?.rawDoc?.laneKind;
-    if (laneKind === "anchor") continue;
-    pushUnique(doc);
-  }
-
-  if (selectedAnchor && output.length < finalLimit) {
-    const key = keyFor(selectedAnchor);
-    if (key && !used.has(key)) {
-      if (output.length >= 2) output.splice(2, 0, selectedAnchor);
-      else output.push(selectedAnchor);
-      used.add(key);
-    }
-  }
-
-  for (const doc of docs) {
-    if (output.length >= finalLimit) break;
-    pushUnique(doc);
-  }
-
-  return output.slice(0, finalLimit);
-}
 
 
 function quoteIfNeeded(value: string): string {
@@ -329,11 +160,11 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 }
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
-  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= 1;
+  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
 }
 
 function shouldUseGcd(input: RecommenderInput): boolean {
-  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= 1;
+  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
 }
 
 function extractDocs(
@@ -724,71 +555,6 @@ function looksLikeGoogleBooksFamilyCandidate(doc: any, bucketPlan: any): boolean
   return true;
 }
 
-function looksLikeAnchorLaneCandidate(doc: any, bucketPlan: any): boolean {
-  if (!looksLikeFictionCandidate(doc)) return false;
-
-  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
-  const categories = collectCategoryText(doc);
-  const description = collectDescriptionText(doc);
-  const combined = [title, categories, description].filter(Boolean).join(" ");
-  const family = inferRouterFamily(bucketPlan);
-
-  const hardRejectPatterns = [
-    /\bwrite a bestselling\b/,
-    /\bguide\b/,
-    /\bcompanion\b/,
-    /\bseo for authors\b/,
-    /\bgetting your book published\b/,
-    /\bwriter'?s market\b/,
-    /\bbook review\b/,
-    /\bpublishers? weekly\b/,
-    /\bnew york times book review\b/,
-    /\bbookselling\b/,
-    /\bbook world\b/,
-    /\bcompanion to\b/,
-    /\bessential mystery lists\b/,
-    /\bbest mystery\b/,
-    /\bbest american mystery\b/,
-    /\bbest new horror\b/,
-    /\bbritannica book of the year\b/,
-    /\bmost popular genre fiction authors\b/,
-    /\bguide to book editors\b/,
-    /\bbook publishers\b/,
-    /\bliterary agents\b/,
-    /\bhistory of the book\b/,
-    /\bstudy of popular fiction\b/,
-    /\bcambridge companion\b/,
-    /\bthriller novels\b/,
-    /\bbestsellers?\b/,
-    /\bnovels?\s+\d+\s*-\s*\d+\b/,
-    /\bbooks?\s+\d+\s*-\s*\d+\b/,
-    /\bbooks?\s+\d+\s*(to|through)\s*\d+\b/,
-    /\bbooks?\s+1\s*-\s*3\b/,
-    /\bomnibus\b/,
-    /\bboxed set\b/,
-    /\bcollection\b/,
-  ];
-
-  if (hardRejectPatterns.some((rx) => rx.test(title) || rx.test(combined))) return false;
-
-  if (family === "thriller") {
-    const thrillerSignal =
-      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|investigation|serial killer|domestic suspense)\b/.test(combined);
-    const antiSignals =
-      /\b(horror|ghost|haunted|zombie|monster|science fiction|fantasy|dragon|magic)\b/.test(combined);
-    const psychologicalSession =
-      /\b(psychological|suspense)\b/.test(String(bucketPlan?.preview || "").toLowerCase());
-    const militarySignal =
-      /\b(sas|military|assassin|spy|covert|war)\b/.test(combined);
-
-    if (psychologicalSession && militarySignal) return false;
-
-    return thrillerSignal && !antiSignals;
-  }
-
-  return true;
-}
-
 
 function looksLikeOpenLibraryPrecisionCandidate(doc: any, bucketPlan: any): boolean {
   if (!looksLikeFictionCandidate(doc)) return false;
@@ -1071,38 +837,35 @@ export async function getRecommendations(
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
 
-  const rungs = withAnchorLane(
-    build20QRungs({
-      ageBand:
-        input.deckKey === "adult"
-          ? "adult"
-          : input.deckKey === "ms_hs"
-          ? "teen"
-          : input.deckKey === "36"
-          ? "pre-teen"
-          : "kids",
-      family:
-        inferRouterFamily(bucketPlan) === "thriller"
-          ? "thriller_family"
-          : inferRouterFamily(bucketPlan) === "speculative"
-          ? "speculative_family"
-          : inferRouterFamily(bucketPlan) === "romance"
-          ? "romance_family"
-          : inferRouterFamily(bucketPlan) === "historical"
-          ? "historical_family"
-          : "general_family",
-      baseGenre:
-        bucketPlan?.preview ||
-        bucketPlan?.queries?.[0] ||
-        "fiction",
-      subgenres: bucketPlan?.queries?.length
-        ? bucketPlan.queries
-        : (bucketPlan?.signals?.genres || []),
-      tones: bucketPlan?.signals?.tones || [],
-      themes: bucketPlan?.signals?.scenarios || [],
-    }),
-    bucketPlan
-  );
+  const rungs = build20QRungs({
+    ageBand:
+      input.deckKey === "adult"
+        ? "adult"
+        : input.deckKey === "ms_hs"
+        ? "teen"
+        : input.deckKey === "36"
+        ? "pre-teen"
+        : "kids",
+    family:
+      inferRouterFamily(bucketPlan) === "thriller"
+        ? "thriller_family"
+        : inferRouterFamily(bucketPlan) === "speculative"
+        ? "speculative_family"
+        : inferRouterFamily(bucketPlan) === "romance"
+        ? "romance_family"
+        : inferRouterFamily(bucketPlan) === "historical"
+        ? "historical_family"
+        : "general_family",
+    baseGenre:
+      bucketPlan?.preview ||
+      bucketPlan?.queries?.[0] ||
+      "fiction",
+    subgenres: bucketPlan?.queries?.length
+      ? bucketPlan.queries
+      : (bucketPlan?.signals?.genres || []),
+    tones: bucketPlan?.signals?.tones || [],
+    themes: bucketPlan?.signals?.scenarios || [],
+  }).map((r: any) => ({ ...r, laneKind: "precision" }));
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
@@ -1210,11 +973,6 @@ export async function getRecommendations(
             laneKind: rung.laneKind ?? "precision",
           },
         };
-      })
-      .filter((doc: any) => {
-        const laneKind = doc?.laneKind ?? doc?.diagnostics?.laneKind;
-        if (laneKind !== "anchor") return true;
-        return looksLikeAnchorLaneCandidate(doc, bucketPlan);
       });
 
     allMergedDocs.push(...taggedDocs);
@@ -1226,69 +984,10 @@ export async function getRecommendations(
   const hardcoverEnrichedDocs = await enrichWithHardcover(mergedDocs);
   const enrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
 
-  let bestsellerMergedDocs = enrichedDocs;
-
-  try {
-    const bestsellerLaneEnabled =
-      (input as any)?.mediaType === undefined
-        ? true
-        : String((input as any)?.mediaType || "").toLowerCase() === "books";
-
-    if (bestsellerLaneEnabled) {
-      const nytListNames = buildNytListNamesFromProfile({
-        mediaType: (input as any)?.mediaType || "books",
-        ageBand:
-          input.deckKey === "adult"
-            ? "adult"
-            : input.deckKey === "ms_hs"
-            ? "teen"
-            : input.deckKey === "36"
-            ? "pre-teen"
-            : "kids",
-        genres: bucketPlan?.signals?.genres || [],
-        favoriteGenres: bucketPlan?.queries || [],
-        tags: Object.keys(input.tagCounts || {}),
-        signals: bucketPlan?.signals,
-      });
-
-      if (nytListNames.length) {
-        const nytBooks = await getNytBestsellerBooks({
-          listNames: nytListNames,
-          date: "current",
-          maxPerList: 12,
-        });
-
-        if (nytBooks.length) {
-          const nytDocs = adaptNytBooksToRecommendationDocs(nytBooks);
-          const mergeResult = mergeBestsellerDocs(
-            Array.isArray(enrichedDocs) ? enrichedDocs : [],
-            nytDocs,
-            { allowInjections: true }
-          );
-
-          bestsellerMergedDocs = mergeResult.docs;
-
-          if (__DEV__) {
-            console.log("[recommenderRouter] bestseller merge", {
-              nytLists: nytListNames,
-              nytFetched: nytBooks.length,
-              nytAdapted: nytDocs.length,
-              matchedCount: mergeResult.matchedCount,
-              injectedCount: mergeResult.injectedCount,
-              finalCount: bestsellerMergedDocs.length,
-            });
-          }
-        }
-      }
-    }
-  } catch (error) {
-    if (__DEV__) {
-      console.warn("[recommenderRouter] bestseller lane failed", error);
-    }
-  }
-
-  // Preserve source slices after enrichment, then run shared candidate filtering.
-  const filteredDocs = filterCandidates(bestsellerMergedDocs, bucketPlan);
+  // Strict 20Q router:
+  // no bestseller injection, no commercial shelf shaping, and no off-profile anchor lane.
+  // Filter only the candidates retrieved from 20Q-derived rungs.
+  const filteredDocs = filterCandidates(enrichedDocs, bucketPlan);
 
   const googleDocsEnriched = filteredDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
@@ -1378,9 +1077,10 @@ const normalizedCandidates = [
     priorRejectedKeys: input.priorRejectedKeys,
   });
 
-  const blendedRankedDocs = blendAnchorLane(rankedDocs, Math.max(1, Math.min(10, input.limit ?? 10)));
+  const finalLimit = Math.max(1, Math.min(10, input.limit ?? 10));
+  const finalRankedDocs = rankedDocs.slice(0, finalLimit);
 
-  const rankedDocsWithDiagnostics = blendedRankedDocs.map((doc: any) => ({
+  const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
     ...doc,
     source: sourceForDoc(doc, "openLibrary"),
     diagnostics: doc?.diagnostics
