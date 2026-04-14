@@ -1,19 +1,14 @@
 // /screens/recommenders/gcd/gcdGraphicNovelRecommender.ts
 //
-// Grand Comics Database recommender.
-// Teen-only auxiliary engine for comics / graphic novel / superhero sessions.
-// NOTE: GCD's public API is explicitly described as stable in URL shape but unstable
-// in returned fields, so this fetcher is intentionally defensive.
+// Grand Comics Database recommender (20Q-aligned).
+// Teen-only auxiliary engine for comics / graphic novel sessions.
+// Thin fetcher only: literal signal gating, literal query translation,
+// no hardcoded fallback inventory, no manual reranking, no hidden shaping.
 
-import type { RecommenderInput, RecommendationResult, RecommendationDoc, DeckKey } from "../types";
+import type { RecommenderInput, RecommendationResult, RecommendationDoc } from "../types";
 import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
 const GCD_BASE = "https://www.comics.org";
-
-function deckKeyToDomainMode(deckKey: DeckKey): RecommendationResult["domainMode"] {
-  if (deckKey === "k2") return "chapterMiddle";
-  return "default";
-}
 
 function normalizeText(value: any): string {
   return String(value || "")
@@ -28,46 +23,90 @@ function safeNumber(value: any, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function hasTeenGraphicIntent(tagCounts: TagCounts | undefined): boolean {
-  const graphicWeight =
+function getDirectGraphicSignalWeight(tagCounts: TagCounts | undefined): number {
+  return (
     Number(tagCounts?.["format:graphic_novel"] || 0) +
     Number(tagCounts?.["format:graphic novel"] || 0) +
-    Number(tagCounts?.["topic:manga"] || 0) +
-    Number(tagCounts?.["media:anime"] || 0) +
-    Number(tagCounts?.["genre:superheroes"] || 0);
+    Number(tagCounts?.["format:comic"] || 0) +
+    Number(tagCounts?.["format:comics"] || 0) +
+    Number(tagCounts?.["topic:comics"] || 0) +
+    Number(tagCounts?.["topic:graphic novels"] || 0) +
+    Number(tagCounts?.["topic:graphic novel"] || 0)
+  );
+}
 
-  return graphicWeight >= 1;
+function hasTeenGraphicIntent(tagCounts: TagCounts | undefined): boolean {
+  return getDirectGraphicSignalWeight(tagCounts) > 0;
+}
+
+function topPositiveTags(tagCounts: TagCounts | undefined, limit: number): string[] {
+  return Object.entries(tagCounts || {})
+    .filter(([, count]) => Number(count) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .map(([tag]) => tag)
+    .slice(0, limit);
+}
+
+function tagToGcdQuery(tag: string): string | null {
+  const normalized = normalizeText(tag);
+  const bare = normalized.includes(":") ? normalized.split(":").slice(1).join(":").trim() : normalized;
+
+  if (!bare) return null;
+
+  // Direct format/topic signals
+  if (
+    normalized === "format:graphic novel" ||
+    normalized === "format:graphic_novel" ||
+    normalized === "topic:graphic novel" ||
+    normalized === "topic:graphic novels"
+  ) {
+    return "graphic novel";
+  }
+
+  if (
+    normalized === "format:comic" ||
+    normalized === "format:comics" ||
+    normalized === "topic:comics"
+  ) {
+    return "comic";
+  }
+
+  // Literal downstream translations only
+  if (normalized.startsWith("genre:")) return bare;
+  if (normalized.startsWith("topic:")) return bare;
+  if (normalized.startsWith("theme:")) return bare;
+  if (normalized.startsWith("setting:")) return bare;
+  if (normalized.startsWith("archetype:")) return bare;
+  if (normalized.startsWith("vibe:")) return bare;
+  if (normalized.startsWith("mood:")) return bare;
+  if (normalized.startsWith("format:")) return bare;
+
+  return null;
 }
 
 function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
-  const add = (q: string) => {
-    const trimmed = q.trim();
+
+  const add = (q: string | null | undefined) => {
+    const trimmed = normalizeText(q);
     if (!trimmed || seen.has(trimmed)) return;
     seen.add(trimmed);
     out.push(trimmed);
   };
 
-  add("graphic novel");
-  add("comic");
-
-  const positive = Object.entries(tagCounts || {})
-    .filter(([, count]) => Number(count) > 0)
-    .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .map(([tag]) => tag);
-
-  for (const tag of positive.slice(0, 8)) {
-    const [prefix, rawValue] = tag.split(":");
-    const value = normalizeText(rawValue);
-    if (!value) continue;
-    if (prefix === "genre" || prefix === "topic" || prefix === "format") add(value);
-    if (value === "graphic novel" || value === "graphic novels") add("comics");
-    if (value === "superheroes") add("superhero");
-    if (value === "science fiction") add("science fiction");
+  const positive = topPositiveTags(tagCounts, 25);
+  for (const tag of positive) {
+    add(tagToGcdQuery(tag));
   }
 
-  return out;
+  // Minimal literal fallback only when direct comics/graphic evidence exists
+  // but no other usable token was produced.
+  if (!out.length && hasTeenGraphicIntent(tagCounts)) {
+    add("graphic novel");
+  }
+
+  return out.slice(0, 8);
 }
 
 async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<string> {
@@ -183,90 +222,12 @@ function gcdIssueToDoc(issue: any, queryText: string, queryRung: number): Recomm
 
 function buildSearchUrl(query: string): string {
   const encoded = encodeURIComponent(query);
-  const candidates = [
-    `${GCD_BASE}/search/advanced/process/?target=issue&method=icontains&logic=False&title=${encoded}`,
-    `${GCD_BASE}/search/advanced/process/?target=series&method=icontains&logic=False&series_name=${encoded}`,
-    `${GCD_BASE}/search/?q=${encoded}`,
-  ];
-  return candidates[0];
-}
-
-function chooseFallbackIssueIds(tagCounts: TagCounts | undefined): number[] {
-  const mangaWeight =
-    Number(tagCounts?.["topic:manga"] || 0) +
-    Number(tagCounts?.["media:anime"] || 0) +
-    Number(tagCounts?.["format:graphic_novel"] || 0);
-
-  const superheroWeight = Number(tagCounts?.["genre:superheroes"] || 0);
-  const sciFiWeight = Number(tagCounts?.["genre:science_fiction"] || 0);
-
-  if (mangaWeight >= 2) {
-    return [90001, 81234, 74500, 62311, 51234, 40210, 30555, 20001];
-  }
-
-  if (superheroWeight >= 1) {
-    return [12345, 15123, 20001, 30555, 40210, 51234];
-  }
-
-  if (sciFiWeight >= 1) {
-    return [62311, 74500, 81234, 90001, 12345, 15123];
-  }
-
-  return [12345, 15123, 20001, 30555, 40210, 51234, 62311, 74500];
-}
-
-function scoreFallbackIssueRelevance(issue: any, queryText: string, tagCounts: TagCounts | undefined): number {
-  const text = normalizeText(
-    [
-      issue?.series_name,
-      issue?.title,
-      issue?.descriptor,
-      issue?.notes,
-      issue?.keywords,
-      issue?.indicia_publisher,
-      ...(Array.isArray(issue?.story_set)
-        ? issue.story_set.flatMap((story: any) => [
-            story?.genre,
-            story?.feature,
-            story?.characters,
-            story?.synopsis,
-          ])
-        : []),
-    ]
-      .filter(Boolean)
-      .join(" | ")
-  );
-
-  let score = 0;
-
-  const queryTokens = normalizeText(queryText).split(" ").filter(Boolean);
-  for (const token of queryTokens) {
-    if (token.length >= 3 && text.includes(token)) score += 2;
-  }
-
-  if (Number(tagCounts?.["topic:manga"] || 0) > 0) {
-    if (text.includes("manga") || text.includes("anime")) score += 6;
-    if (text.includes("graphic novel") || text.includes("comics")) score += 2;
-  }
-
-  if (Number(tagCounts?.["genre:superheroes"] || 0) > 0) {
-    if (text.includes("superhero") || text.includes("super heroes")) score += 5;
-  }
-
-  if (Number(tagCounts?.["genre:science_fiction"] || 0) > 0) {
-    if (text.includes("science fiction") || text.includes("robot") || text.includes("space")) score += 4;
-  }
-
-  if (Number(tagCounts?.["format:graphic_novel"] || 0) > 0) {
-    if (text.includes("graphic novel") || text.includes("comics")) score += 3;
-  }
-
-  return score;
+  return `${GCD_BASE}/search/advanced/process/?target=issue&method=icontains&logic=False&title=${encoded}`;
 }
 
 export async function getGcdGraphicNovelRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
-  const domainMode = deckKeyToDomainMode(deckKey);
+  const domainMode: RecommendationResult["domainMode"] = "default";
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
   const fetchLimit = Math.max(8, Math.min(36, Math.max(finalLimit * 2, 12)));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
@@ -283,17 +244,26 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
 
   const queriesToTry = buildGcdSearchTerms(input.tagCounts);
+  if (!queriesToTry.length) {
+    return {
+      engineId: "gcd",
+      engineLabel: "Grand Comics Database",
+      deckKey,
+      domainMode,
+      builtFromQuery: "",
+      items: [],
+    };
+  }
+
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
-  let builtFromQuery = queriesToTry[0] || "graphic novel";
+  let builtFromQuery = queriesToTry[0] || "";
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const searchUrl = buildSearchUrl(q);
 
     let issueUrls: string[] = [];
-    let usingFallbackIds = false;
-
     try {
       const html = await fetchTextWithTimeout(searchUrl, timeoutMs);
       issueUrls = extractIssueApiUrls(html, fetchLimit);
@@ -301,16 +271,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       issueUrls = [];
     }
 
-    if (!issueUrls.length) {
-      usingFallbackIds = true;
-      const fallbackIds = chooseFallbackIssueIds(input.tagCounts);
-      issueUrls = fallbackIds.map(
-        (id) => `${GCD_BASE}/api/issue/${id}/?format=json`
-      );
-    }
+    if (!issueUrls.length) continue;
     if (!docs.length) builtFromQuery = q;
-
-    const roundDocs: Array<{ doc: RecommendationDoc; score: number }> = [];
 
     for (const issueUrl of issueUrls) {
       let issue: any;
@@ -319,22 +281,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       } catch {
         continue;
       }
+
       const doc = gcdIssueToDoc(issue, q, i);
       if (!doc?.title) continue;
 
-      const relevanceScore = usingFallbackIds
-        ? scoreFallbackIssueRelevance(issue, q, input.tagCounts)
-        : 0;
-
-      roundDocs.push({ doc, score: relevanceScore });
-    }
-
-    const orderedDocs = usingFallbackIds
-      ? roundDocs.sort((a, b) => b.score - a.score)
-      : roundDocs;
-
-    for (const entry of orderedDocs) {
-      const doc = entry.doc;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
