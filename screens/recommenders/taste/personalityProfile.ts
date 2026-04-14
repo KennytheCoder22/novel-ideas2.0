@@ -40,7 +40,7 @@ const DIMENSIONS: TasteDimension[] = [
 ];
 
 const DEFAULT_OPTIONS: Required<PersonalityUpdateOptions> = {
-  minSwipesForUpdate: 12,
+  minSwipesForUpdate: 4,
   alpha: 0.08,
   lowSignalAlpha: 0.03,
   maxAlpha: 0.12,
