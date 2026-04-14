@@ -1,4 +1,8 @@
 // services/hardcover/hardcoverRatings.ts
+//
+// Hardcover ratings lookup (20Q-aligned).
+// Pure metadata fetch only. No implied scoring, no default values,
+// no popularity shaping. Missing data is preserved as undefined.
 
 type HardcoverResult = {
   rating?: number;
@@ -40,23 +44,26 @@ export async function getHardcoverRatings(
     const response = await fetch(`/api/hardcover?${params.toString()}`);
     const json = await response.json();
 
-    console.log("[Hardcover proxy response]", safeTitle, json);
-
     const book = json?.data;
     if (!book) {
       hardcoverCache.set(key, { value: null, expiresAt: now + FAILURE_TTL_MS });
       return null;
     }
 
-    const result = {
-      rating: book.rating ?? 0,
-      ratings_count: book.ratings_count ?? 0,
-    };
+    // Preserve raw values only if present (no defaults)
+    const result: HardcoverResult = {};
+
+    if (typeof book.rating === "number") {
+      result.rating = book.rating;
+    }
+
+    if (typeof book.ratings_count === "number") {
+      result.ratings_count = book.ratings_count;
+    }
 
     hardcoverCache.set(key, { value: result, expiresAt: now + SUCCESS_TTL_MS });
     return result;
-  } catch (err) {
-    console.warn("[HardcoverRatings] proxy lookup failed:", err);
+  } catch {
     hardcoverCache.set(key, { value: null, expiresAt: now + FAILURE_TTL_MS });
     return null;
   }
