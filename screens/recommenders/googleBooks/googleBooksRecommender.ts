@@ -171,83 +171,20 @@ function dedupeQueries(queries: string[]): string[] {
 }
 
 
-function isAnchorLaneQuery(query: string): boolean {
-  return /\b(bestselling|bestseller|popular|well known|famous|award winning|award-winning)\b/i.test(String(query || ""));
+function decisionSwipeCount(input: RecommenderInput): number {
+  return Number((input as any)?.tasteProfile?.evidence?.swipes || 0);
 }
 
-function supplementalAnchorQueries(query: string): string[] {
-  const q = normalizeStoredQueryText(query);
-  if (!isAnchorLaneQuery(q)) return [q];
-
-  return dedupeQueries([
-    q,
-    "popular novel",
-    "popular fiction paperback",
-  ]);
+function hasStrong20QSession(input: RecommenderInput): boolean {
+  return decisionSwipeCount(input) >= 4;
 }
 
 
-function isAnchorLaneGarbage(doc: any): boolean {
-  const categories = [
-    ...(Array.isArray(doc?.subject) ? doc.subject : []),
-    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
-    ...(Array.isArray(doc?.categories) ? doc.categories : []),
-    ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
-  ]
-    .map((value: any) => normalizeText(value))
-    .filter(Boolean)
-    .join(" ");
-
-  const text = [
-    normalizeText(doc?.title),
-    normalizeText(doc?.subtitle),
-    normalizeText(doc?.description),
-    normalizeText(doc?.publisher),
-    normalizeText(doc?.volumeInfo?.publisher),
-    categories,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const title = normalizeText(doc?.title);
-  if (/\b(guide|handbook|yearbook|encyclopedia|digest|review|catalog|bibliography|writers?|authors?|market|masterclass|best books|best fiction|year in review|anthology|collection|stories of the century|stories of the year|boxed set|box set|omnibus|complete works|selected works|edition|study guide|companion)\b/i.test(title)) return true;
-
-  return /\b(publishing|literature|criticism|essays?|reference|popular culture|book review|seo|authorship|creative writing|language arts|bibliography|study aids|journals?|magazines?|reports?|proceedings|transactions)\b/i.test(text);
-}
 
 
-function looksLikeCommercialAnchor(doc: any): boolean {
-  const year = Number(doc?.first_publish_year || 0);
-  const pageCount = Number(doc?.pageCount || doc?.volumeInfo?.pageCount || 0);
-  const ratingsCount = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || 0);
-  const averageRating = Number(doc?.averageRating || doc?.volumeInfo?.averageRating || 0);
 
-  const categories = [
-    ...(Array.isArray(doc?.subject) ? doc.subject : []),
-    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
-    ...(Array.isArray(doc?.categories) ? doc.categories : []),
-    ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
-  ]
-    .map((value: any) => normalizeText(value))
-    .filter(Boolean)
-    .join(" ");
 
-  const text = [
-    normalizeText(doc?.title),
-    normalizeText(doc?.subtitle),
-    normalizeText(doc?.description),
-    categories,
-  ]
-    .filter(Boolean)
-    .join(" ");
 
-  const fictionSignal = /\b(novel|fiction)\b/i.test(text);
-  const modernEnough = !year || year >= 1985;
-  const shelfLengthOkay = !pageCount || pageCount >= 150;
-  const audienceSignal = ratingsCount >= 3 || averageRating >= 3.2 || /\bpaperback\b/i.test(text);
-
-  return fictionSignal && modernEnough && shelfLengthOkay && audienceSignal;
-}
 
 function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
   const base = String(rung?.query || rung?.primary || "").toLowerCase().trim();
@@ -255,20 +192,43 @@ function rungToGoogleBooksQuery(rung: StructuredFetchRung): string {
 }
 
 function getBucketQueries(deckKey: DeckKey, input: RecommenderInput): string[] {
-  const isVisualDominant = visualSignalWeight(input.tagCounts) >= 4;
-  if (isVisualDominant) return dedupeQueries(['subject:manga', 'subject:"graphic novel"', 'subject:comics', 'subject:fiction']);
-  if (deckKey === "k2") return dedupeQueries([`subject:"children's fiction"`, `subject:"middle grade fiction"`, `subject:"early reader books"`, `subject:"chapter books"`]);
-  if (deckKey === "ms_hs") return dedupeQueries([
-  `subject:"young adult fiction"`,
-  "young adult novel",
-  "popular young adult fiction"
-]);
-  if (deckKey === "36") return dedupeQueries([`subject:"middle grade fiction"`, `subject:"juvenile fiction"`, `subject:"chapter books"`]);
+  const isVisualDominant = visualSignalWeight(input.tagCounts) >= 4 && hasStrong20QSession(input);
+
+  if (isVisualDominant) {
+    return dedupeQueries([
+      'subject:manga',
+      'subject:"graphic novel"',
+      'subject:comics',
+    ]);
+  }
+
+  if (deckKey === "k2") {
+    return dedupeQueries([
+      `subject:"children's fiction"`,
+      `subject:"middle grade fiction"`,
+      `subject:"chapter books"`,
+    ]);
+  }
+
+  if (deckKey === "ms_hs") {
+    return dedupeQueries([
+      `subject:"young adult fiction"`,
+      "young adult novel",
+    ]);
+  }
+
+  if (deckKey === "36") {
+    return dedupeQueries([
+      `subject:"middle grade fiction"`,
+      `subject:"juvenile fiction"`,
+      `subject:"chapter books"`,
+    ]);
+  }
+
   return dedupeQueries([
-  "fiction novel",
-  "contemporary fiction novel",
-  "popular novel"
-]);
+    "fiction novel",
+    "contemporary fiction novel",
+  ]);
 }
 
 function getGoogleBooksApiKey(): string {
@@ -356,8 +316,8 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
-    const laneKind = isAnchorLaneQuery(q) ? "anchor" : "precision";
-    const engineQueries = supplementalAnchorQueries(q);
+    const laneKind = "precision";
+    const engineQueries = [q];
     const queryRawDocs: any[] = [];
 
     for (const engineQuery of engineQueries) {
@@ -391,55 +351,6 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       if (isHardSelfPublished(publisher)) return false;
       if (looksLikeGoogleBooksReference(doc)) return false;
       if (isGarbageGoogleBooksCandidate(doc)) return false;
-
-      if (laneKind === "anchor") {
-        if (isAnchorLaneGarbage(doc)) return false;
-
-        const categoryText = [
-          ...(Array.isArray(doc?.subject) ? doc.subject : []),
-          ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
-          ...(Array.isArray(doc?.categories) ? doc.categories : []),
-          ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
-        ]
-          .map((value: any) => normalizeText(value))
-          .filter(Boolean)
-          .join(" ");
-
-        const anchorText = [
-          normalizeText(doc?.title),
-          normalizeText(doc?.subtitle),
-          normalizeText(doc?.description),
-          categoryText,
-        ]
-          .filter(Boolean)
-          .join(" ");
-
-        if (!/\b(novel|fiction)\b/.test(anchorText)) {
-          return false;
-        }
-
-        // Keep Lane 90 alive: prefer commercial-feeling books, but do not choke the lane.
-        // Only reject when the item clearly fails even a relaxed commercial fiction sanity check.
-        if (!looksLikeCommercialAnchor(doc)) {
-          const fallbackAnchorText = [
-            normalizeText(doc?.title),
-            normalizeText(doc?.subtitle),
-            normalizeText(doc?.description),
-            categoryText,
-          ]
-            .filter(Boolean)
-            .join(" ");
-
-          const fallbackYear = Number(doc?.first_publish_year || 0);
-          if (
-            !/\b(novel|fiction)\b/i.test(fallbackAnchorText) ||
-            (fallbackYear && fallbackYear < 1975)
-          ) {
-            return false;
-          }
-        }
-      }
-
       return true;
     });
 
@@ -466,7 +377,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
         queryRung: 0,
         queryText: builtFromQuery,
         source: "googleBooks",
-        laneKind: isAnchorLaneQuery(builtFromQuery) ? "anchor" : "precision",
+        laneKind: "precision",
       }));
 
   const docs: RecommendationDoc[] = docsRaw.filter((doc: any) => doc && doc.title).map((doc: any) => ({
