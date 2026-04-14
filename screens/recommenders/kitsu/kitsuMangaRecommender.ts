@@ -1,19 +1,14 @@
 // /screens/recommenders/kitsu/kitsuMangaRecommender.ts
 //
-// Kitsu manga recommender.
+// Kitsu manga recommender (20Q-aligned).
 // Teen-only auxiliary engine for manga / anime / graphic sessions.
-// Thin fetcher only: build lightweight search queries, fetch raw docs, and
-// project them into the shared RecommendationDoc shape.
+// Thin fetcher only: literal signal gating, literal query translation,
+// no popularity sorting, no inferred market/category shaping.
 
-import type { RecommenderInput, RecommendationResult, RecommendationDoc, DeckKey } from "../types";
+import type { RecommenderInput, RecommendationResult, RecommendationDoc } from "../types";
 import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
 const KITSU_BASE = "https://kitsu.io/api/edge";
-
-function deckKeyToDomainMode(deckKey: DeckKey): RecommendationResult["domainMode"] {
-  if (deckKey === "k2") return "chapterMiddle";
-  return "default";
-}
 
 function normalizeText(value: any): string {
   return String(value || "")
@@ -28,50 +23,72 @@ function safeNumber(value: any, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function hasTeenMangaIntent(tagCounts: TagCounts | undefined): boolean {
-  const mangaWeight =
+function getDirectMangaSignalWeight(tagCounts: TagCounts | undefined): number {
+  return (
     Number(tagCounts?.["topic:manga"] || 0) +
     Number(tagCounts?.["media:anime"] || 0) +
     Number(tagCounts?.["format:graphic_novel"] || 0) +
-    Number(tagCounts?.["format:graphic novel"] || 0);
-
-  return mangaWeight >= 1;
+    Number(tagCounts?.["format:graphic novel"] || 0) +
+    Number(tagCounts?.["format:manga"] || 0)
+  );
 }
 
-function topPositiveValues(tagCounts: TagCounts | undefined, prefixes: string[], limit: number): string[] {
+function hasTeenMangaIntent(tagCounts: TagCounts | undefined): boolean {
+  return getDirectMangaSignalWeight(tagCounts) > 0;
+}
+
+function topPositiveTags(tagCounts: TagCounts | undefined, limit: number): string[] {
   return Object.entries(tagCounts || {})
-    .filter(([tag, count]) => Number(count) > 0 && prefixes.some((prefix) => tag.startsWith(prefix)))
+    .filter(([, count]) => Number(count) > 0)
     .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .map(([tag]) => tag.split(":").slice(1).join(":").replace(/_/g, " ").trim())
-    .filter(Boolean)
+    .map(([tag]) => tag)
     .slice(0, limit);
+}
+
+function tagToKitsuQuery(tag: string): string | null {
+  const normalized = normalizeText(tag);
+  const bare = normalized.includes(":") ? normalized.split(":").slice(1).join(":").trim() : normalized;
+
+  if (!bare) return null;
+
+  // Direct media / format signals
+  if (normalized === "topic:manga" || normalized === "format:manga") return "manga";
+  if (normalized === "media:anime") return "anime";
+  if (normalized === "format:graphic novel" || normalized === "format:graphic_novel") return "graphic novel";
+
+  // Literal genre/topic translation only
+  if (normalized.startsWith("genre:")) return bare;
+  if (normalized.startsWith("topic:")) return bare;
+  if (normalized.startsWith("theme:")) return bare;
+  if (normalized.startsWith("setting:")) return bare;
+  if (normalized.startsWith("archetype:")) return bare;
+  if (normalized.startsWith("vibe:")) return bare;
+  if (normalized.startsWith("mood:")) return bare;
+
+  return null;
 }
 
 function buildKitsuQueries(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
   const seen = new Set<string>();
 
-  const add = (q: string) => {
+  const add = (q: string | null | undefined) => {
     const v = normalizeText(q);
     if (!v || seen.has(v)) return;
     seen.add(v);
     queries.push(v);
   };
 
-  const has = (k: string) => Number(tagCounts?.[k] || 0) > 0;
+  const topTags = topPositiveTags(tagCounts, 25);
+  for (const tag of topTags) {
+    add(tagToKitsuQuery(tag));
+  }
 
-  // Always include base
-  add("manga");
-
-  if (has("genre:action")) add("action");
-  if (has("genre:fantasy")) add("fantasy");
-  if (has("genre:adventure")) add("adventure");
-  if (has("genre:science_fiction")) add("science fiction");
-  if (has("genre:superheroes")) add("superhero");
-  if (has("genre:sports")) add("sports");
-  if (has("genre:mystery")) add("mystery");
-  if (has("genre:horror")) add("horror");
-  if (has("archetype:training") || has("archetype:found_family")) add("shonen");
+  // Minimal literal fallback only if direct manga/comics evidence exists
+  // but no other usable query token was produced.
+  if (!queries.length && hasTeenMangaIntent(tagCounts)) {
+    add("manga");
+  }
 
   return queries.slice(0, 6);
 }
@@ -143,7 +160,7 @@ function kitsuMangaToDoc(item: any, queryText: string, queryRung: number): Recom
     source: "kitsu",
     queryRung,
     queryText,
-    subtitle: typeof attrs?.synopsis === "string" ? undefined : undefined,
+    subtitle: undefined,
     description: typeof attrs?.synopsis === "string" ? attrs.synopsis : undefined,
     averageRating,
     ratingsCount: ratingCount,
@@ -159,7 +176,7 @@ function kitsuMangaToDoc(item: any, queryText: string, queryRung: number): Recom
 
 export async function getKitsuMangaRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
-  const domainMode = deckKeyToDomainMode(deckKey);
+  const domainMode: RecommendationResult["domainMode"] = "default";
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
   const fetchLimit = Math.max(10, Math.min(20, Math.max(finalLimit * 2, 12)));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
@@ -176,17 +193,27 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   }
 
   const queriesToTry = buildKitsuQueries(input.tagCounts);
+  if (!queriesToTry.length) {
+    return {
+      engineId: "kitsu",
+      engineLabel: "Kitsu Manga",
+      deckKey,
+      domainMode,
+      builtFromQuery: "",
+      items: [],
+    };
+  }
+
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
-  let builtFromQuery = queriesToTry[0] || "manga";
+  let builtFromQuery = queriesToTry[0] || "";
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const url =
       `${KITSU_BASE}/manga` +
       `?filter[text]=${encodeURIComponent(q)}` +
-      `&page[limit]=${encodeURIComponent(String(fetchLimit))}` +
-      `&sort=-userCount`;
+      `&page[limit]=${encodeURIComponent(String(fetchLimit))}`;
 
     let data: any;
     try {
