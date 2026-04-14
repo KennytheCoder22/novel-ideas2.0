@@ -114,30 +114,8 @@ function hasNarrativeAnchor(parts: string[]): boolean {
   return parts.some((part) => NARRATIVE_ANCHORS.has(part));
 }
 
-function genericPenalty(parts: string[]): number {
-  return parts.reduce((sum, part) => sum + (isGeneric(part) ? 0.14 : 0), 0);
-}
 
-function distinctiveReward(parts: string[]): number {
-  return parts.reduce((sum, part) => sum + (isDistinctive(part) ? 0.22 : 0), 0);
-}
 
-function pairBonus(parts: string[]): number {
-  const set = new Set(parts);
-  let bonus = 0;
-
-  if (set.has("identity") && set.has("science fiction")) bonus += 0.75;
-  if (set.has("identity") && set.has("psychological")) bonus += 0.55;
-  if (set.has("science fiction") && set.has("technology")) bonus += 0.42;
-  if (set.has("crime investigation") && set.has("psychological")) bonus += 0.35;
-  if (set.has("crime investigation") && set.has("dark")) bonus += 0.28;
-  if (set.has("crime investigation") && set.has("grounded")) bonus += 0.26;
-  if (set.has("dystopian") && set.has("survival")) bonus += 0.55;
-  if (set.has("dystopian") && set.has("science fiction")) bonus += 0.28;
-  if (set.has("dark") && set.has("psychological")) bonus += 0.18;
-
-  return bonus;
-}
 
 function antiPenalty(parts: string[], signals: QuerySignals): number {
   let penalty = 0;
@@ -186,14 +164,10 @@ function bannedScenarioLeak(parts: string[], rawSources: SignalCandidate[]): boo
 function scoreCluster(parts: string[], sources: SignalCandidate[], signals: QuerySignals): number {
   const sourceWeight = sources.reduce((sum, item) => sum + item.score, 0);
   const domainCount = new Set(sources.map((item) => item.domain)).size;
-  const distinctives = distinctiveReward(parts);
-  const generics = genericPenalty(parts);
-  const pairings = pairBonus(parts);
   const anti = antiPenalty(parts, signals);
-  const domainBonus = domainCount >= 3 ? 0.45 : domainCount === 2 ? 0.18 : 0;
+  const domainBonus = domainCount >= 3 ? 0.3 : domainCount === 2 ? 0.1 : 0;
   const anchorPenalty = hasNarrativeAnchor(parts) ? 0 : 0.7;
-  const genericShapePenalty = looksTooGeneric(parts) ? 0.55 : 0;
-  return sourceWeight + distinctives + pairings + domainBonus - generics - anti - anchorPenalty - genericShapePenalty;
+  return sourceWeight + domainBonus - anti - anchorPenalty;
 }
 
 function addCandidate(
@@ -345,20 +319,15 @@ function compactQuery(baseQuery: string, signals: QuerySignals): string {
 
 function fallbackQueries(signals: QuerySignals): string[] {
   const tone = topKeys(signals.tone, 2);
-  const theme = topKeys(signals.theme, 3).map(normalizeForQuery).filter(Boolean) as string[];
-  const world = topKeys(signals.world, 2).map(normalizeForQuery).filter(Boolean) as string[];
-  const genre = topKeys(signals.genre, 2).map(normalizeForQuery).filter(Boolean) as string[];
+  const theme = topKeys(signals.theme, 2);
+  const world = topKeys(signals.world, 2);
 
   const base = [
     safeJoin([tone[0], theme[0], world[0], "novel"]),
-    safeJoin([tone[0], genre[0], theme[0], "novel"]),
-    safeJoin([world[0], theme[0], theme[1], "novel"]),
-    safeJoin(["psychological", "science fiction", "novel"]),
-    safeJoin(["crime investigation", "novel"]),
-    safeJoin(["dystopian", "survival", "novel"]),
+    safeJoin([tone[0], theme[0], "novel"]),
   ].filter(Boolean);
 
-  return dedupe(base.map((q) => compactQuery(q, signals))).filter((q) => q && q !== "novel");
+  return dedupe(base);
 }
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
