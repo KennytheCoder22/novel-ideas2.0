@@ -90,6 +90,22 @@ type SwipeHistoryEntry = {
   card: SwipeDeckCard;
 };
 
+type TwentyQAxis = keyof TasteVector;
+
+type TwentyQObjective = {
+  id: string;
+  rung: number;
+  axis: TwentyQAxis;
+  label: string;
+  description: string;
+  threshold: number;
+};
+
+type TwentyQObjectiveStatus = TwentyQObjective & {
+  score: number;
+  resolved: boolean;
+};
+
 type Props = {
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
@@ -280,11 +296,6 @@ const adultDeckFinal: SwipeDeck = (() => {
   return { deckKey, deckLabel, rules, cards } as SwipeDeck;
 })();
 
-function randomIntInclusive(min: number, max: number) {
-  const lo = Math.ceil(min);
-  const hi = Math.floor(max);
-  return Math.floor(Math.random() * (hi - lo + 1)) + lo;
-}
 
 function shuffleArray<T>(arr: T[]) {
   const a = arr.slice();
@@ -483,19 +494,27 @@ function cardTagCounts(card: any): TagCounts {
 }
 
 function swipeSignalFromCard(card: SwipeDeckCard, direction: SwipeSignal["direction"]): SwipeSignal {
-  const counts = cardTagCounts(card as any);
-  const singleCardTaste = buildTasteProfile({
-    tagCounts: counts,
-    feedback: [] as TasteFeedbackEvent[],
-    itemTraitsById: {},
-  });
+  let vector;
+
+  if ((card as any)?.tasteTraits) {
+    // Direct 20Q signal
+    vector = tasteVectorFromAxes((card as any).tasteTraits);
+  } else {
+    const counts = cardTagCounts(card as any);
+    const singleCardTaste = buildTasteProfile({
+      tagCounts: counts,
+      feedback: [] as TasteFeedbackEvent[],
+      itemTraitsById: {},
+    });
+    vector = tasteVectorFromAxes((singleCardTaste as any)?.axes);
+  }
 
   return {
     bookId:
       String((card as any)?.id || "") ||
       `${String((card as any)?.title || "untitled")}::${String((card as any)?.author || "unknown")}`,
     direction,
-    vector: tasteVectorFromAxes((singleCardTaste as any)?.axes),
+    vector,
     timestamp: new Date().toISOString(),
   };
 }
@@ -529,6 +548,138 @@ function formatTasteVectorPreview(vector: TasteVector | null | undefined) {
   return entries.length > 0 ? entries.join(", ") : "(flat)";
 }
 
+function axisValue(vector: TasteVector | null | undefined, axis: TwentyQAxis): number {
+  if (!vector) return 0;
+  return numberOrZero(vector[axis]);
+}
+
+function buildTwentyQObjectives(deckKey: DeckKey): TwentyQObjective[] {
+  const lane = laneFromDeckKey(deckKey);
+  const objectives: TwentyQObjective[] = [
+    { id: "tone-warmth", rung: 1, axis: "warmth", label: "Tone", description: "Resolve whether the reader leans warmer or sharper in tone.", threshold: 0.24 },
+    { id: "tone-darkness", rung: 2, axis: "darkness", label: "Intensity", description: "Resolve how dark or intense the reader wants the experience to feel.", threshold: 0.24 },
+    { id: "drive-pacing", rung: 3, axis: "pacing", label: "Drive", description: "Resolve whether the reader wants a faster or slower-feeling experience.", threshold: 0.24 },
+    { id: "world-reality", rung: 4, axis: "realism", label: "World", description: "Resolve whether the reader leans realistic or more speculative / stylized.", threshold: 0.24 },
+    { id: "mind-idea-density", rung: 5, axis: "ideaDensity", label: "Concept load", description: "Resolve whether the reader wants lighter or denser ideas.", threshold: 0.24 },
+    { id: "focus-character", rung: 6, axis: "characterFocus", label: "Focus", description: "Resolve whether the reader wants more character-centered material.", threshold: 0.24 },
+  ];
+
+  if (lane === "kids") {
+    return objectives.map((objective) => ({ ...objective, threshold: 0.2 }));
+  }
+
+  if (lane === "teen") {
+    return objectives.map((objective) => ({
+      ...objective,
+      threshold: objective.axis === "pacing" ? 0.2 : objective.threshold,
+    }));
+  }
+
+  return objectives;
+}
+
+function evaluateTwentyQObjective(objective: TwentyQObjective, tasteVector: TasteVector | null | undefined): TwentyQObjectiveStatus {
+  const score = axisValue(tasteVector, objective.axis);
+  return {
+    ...objective,
+    score,
+    resolved: Math.abs(score) >= objective.threshold,
+  };
+}
+
+function objectiveKeywords(axis: TwentyQAxis): string[] {
+  if (axis === "warmth") return ["warm", "heart", "hope", "cozy", "uplifting", "friendship", "romance", "tender"];
+  if (axis === "darkness") return ["dark", "grim", "bleak", "violent", "horror", "tragic", "crime", "danger"];
+  if (axis === "realism") return ["realistic", "literary", "historical", "contemporary", "grounded", "slice", "memoir", "speculative", "fantasy", "sci-fi", "magic"];
+  if (axis === "characterFocus") return ["character", "relationship", "family", "coming-of-age", "interpersonal", "ensemble"];
+  if (axis === "pacing") return ["fast", "thriller", "action", "adventure", "page-turner", "slow", "quiet", "meditative"];
+  return ["idea", "philosophical", "brainy", "intellectual", "concept", "big-idea", "thoughtful"];
+}
+
+function semanticStringsFromCard(card: any): string[] {
+  const semantic = card?.semantic || {};
+  return [
+    ...(Array.isArray(card?.tags) ? card.tags : []),
+    typeof card?.genre === "string" ? card.genre : "",
+    typeof card?.title === "string" ? card.title : "",
+    typeof card?.author === "string" ? card.author : "",
+    ...(Array.isArray(semantic?.contentTraits) ? semantic.contentTraits : []),
+    ...(Array.isArray(semantic?.toneTraits) ? semantic.toneTraits : []),
+    ...(Array.isArray(semantic?.characterTraits) ? semantic.characterTraits : []),
+    ...(Array.isArray(semantic?.storyTraits) ? semantic.storyTraits : []),
+  ]
+    .map((value) => String(value || "").toLowerCase())
+    .filter(Boolean);
+}
+
+function cardSignalForAxis(card: SwipeDeckCard, axis: TwentyQAxis): number {
+  const bag = semanticStringsFromCard(card as any);
+  if (!bag.length) return 0;
+
+  const joined = bag.join(" ");
+  let score = 0;
+  for (const keyword of objectiveKeywords(axis)) {
+    if (joined.includes(keyword)) score += 1;
+  }
+
+  if (axis === "realism") {
+    if (joined.includes("fantasy") || joined.includes("science fiction") || joined.includes("speculative")) score += 1.5;
+    if (joined.includes("historical") || joined.includes("contemporary") || joined.includes("literary")) score += 1.25;
+  }
+  if (axis === "pacing") {
+    if (joined.includes("fast") || joined.includes("thriller") || joined.includes("action")) score += 1.25;
+    if (joined.includes("quiet") || joined.includes("slow")) score += 1.0;
+  }
+  if (axis === "characterFocus") {
+    if (joined.includes("relationship") || joined.includes("family") || joined.includes("coming-of-age")) score += 1.25;
+  }
+  if (axis === "ideaDensity") {
+    if (joined.includes("philosoph") || joined.includes("concept") || joined.includes("literary")) score += 1.25;
+  }
+
+  return score;
+}
+
+function selectTwentyQCard(args: {
+  deckKey: DeckKey;
+  cards: SwipeDeckCard[];
+  tagCounts: TagCounts;
+  recentCardKeys: string[];
+  objective: TwentyQObjective | null;
+}): SwipeDeckCard | null {
+  const { deckKey, cards, tagCounts, recentCardKeys, objective } = args;
+  if (!cards.length) return null;
+  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys });
+  if (!objective) return fallback;
+
+  const recent = new Set(recentCardKeys);
+  const scored = cards
+    .map((card, index) => {
+      const key = cardIdentityKey(card);
+      const baseSignal = cardSignalForAxis(card, objective.axis);
+      const noveltyBonus = recent.has(key) ? -1.5 : 0.35;
+      const mediaBonus = objective.axis === "realism" && cardCategoryFromTags(card as any) !== "books" ? 0.2 : 0;
+      return { card, index, score: baseSignal * 3 + noveltyBonus + mediaBonus };
+    })
+    .sort((a, b) => b.score - a.score || a.index - b.index);
+
+  if (scored[0] && scored[0].score > 0.5) return scored[0].card;
+  return fallback;
+}
+
+function shouldFinishTwentyQSession(args: {
+  statuses: TwentyQObjectiveStatus[];
+  decisionSwipes: number;
+  totalSeenCards: number;
+  totalCards: number;
+}): boolean {
+  const { statuses, decisionSwipes, totalSeenCards, totalCards } = args;
+  if (statuses.length > 0 && statuses.every((status) => status.resolved)) return true;
+  if (decisionSwipes >= Math.max(statuses.length + 2, 8)) return true;
+  if (totalSeenCards >= totalCards) return true;
+  return false;
+}
+
 export default function SwipeDeckScreen(props: Props) {
   const router = useRouter();
   const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
@@ -558,11 +709,7 @@ export default function SwipeDeckScreen(props: Props) {
     [deckKey, props.swipeCategories]
   );
 
-  const requiredSwipes = useMemo(() => {
-    const min = deck.rules.targetSwipesBeforeRecommend;
-    const max = deck.rules.allowUpToSwipesBeforeRecommend;
-    return randomIntInclusive(min, max);
-  }, [deckKey, sessionNonce, deck.rules.allowUpToSwipesBeforeRecommend, deck.rules.targetSwipesBeforeRecommend]);
+  const twentyQObjectives = useMemo(() => buildTwentyQObjectives(deckKey), [deckKey]);
 
   const cards = useMemo(() => shuffleArray(deck.cards), [deckKey, sessionNonce, deck.cards]);
 
@@ -726,6 +873,16 @@ export default function SwipeDeckScreen(props: Props) {
       .join(", ");
   }, [tasteProfileWithMood]);
 
+  const twentyQStatuses = useMemo(() => {
+    return twentyQObjectives.map((objective) =>
+      evaluateTwentyQObjective(objective, activeTasteVector ?? tasteVectorFromAxes(tasteProfileWithMood.axes))
+    );
+  }, [twentyQObjectives, activeTasteVector, tasteProfileWithMood.axes]);
+
+  const activeTwentyQIndex = useMemo(() => twentyQStatuses.findIndex((status) => !status.resolved), [twentyQStatuses]);
+  const activeTwentyQObjective = activeTwentyQIndex >= 0 ? twentyQStatuses[activeTwentyQIndex] : null;
+  const resolvedTwentyQCount = useMemo(() => twentyQStatuses.filter((status) => status.resolved).length, [twentyQStatuses]);
+
   const currentLaneOverride = useMemo(() => {
     return profileOverridesByLane[laneFromDeckKey(deckKey)] || undefined;
   }, [deckKey, profileOverridesByLane]);
@@ -873,9 +1030,14 @@ export default function SwipeDeckScreen(props: Props) {
   const decisionSwipes = rightSwipes + leftSwipes;
   const totalSeenCards = seenCardKeys.length;
   const remainingCards = useMemo(() => cards.filter((card) => !seenCardKeys.includes(cardIdentityKey(card))), [cards, seenCardKeys]);
-  const isDone = decisionSwipes >= requiredSwipes || totalSeenCards >= cards.length;
+  const isDone = shouldFinishTwentyQSession({
+    statuses: twentyQStatuses,
+    decisionSwipes,
+    totalSeenCards,
+    totalCards: cards.length,
+  });
   const currentCard: SwipeDeckCard | null = !isDone
-    ? selectAdaptiveCard({ deckKey, cards: remainingCards, tagCounts, recentCardKeys })
+    ? selectTwentyQCard({ deckKey, cards: remainingCards, tagCounts, recentCardKeys, objective: activeTwentyQObjective })
     : null;
 
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
@@ -1131,7 +1293,7 @@ function handleLeft() {
       setLastRungStats((result as any)?.debugRungStats || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
-      setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes}`);
+      setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
 
       const normalizedItems = normalizeRecommendationItems(result.items);
       if (normalizedItems.length > 0) {
@@ -1368,6 +1530,8 @@ function handleLeft() {
       `Engine: ${recEngineLabel || "—"}`,
       `Saved Query Time: ${lastRecommendationTimestamp || "—"}`,
       `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
+      `20Q Progress: ${resolvedTwentyQCount}/${twentyQObjectives.length}`,
+      `Current 20Q Objective: ${activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung} • ${activeTwentyQObjective.label}` : "complete"}`,
       "",
       "SWIPE HISTORY",
       swipeHistoryLines,
@@ -1598,10 +1762,10 @@ function handleLeft() {
 
         <View style={styles.statusRow}>
           <Text style={styles.statusText}>
-            Swipes: {decisionSwipes}/{requiredSwipes}
+            20Q: {resolvedTwentyQCount}/{twentyQObjectives.length} resolved
           </Text>
           <Text style={styles.statusText}>
-            Right: {rightSwipes} • Left: {leftSwipes} • Skip: {downSwipes}
+            {activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung}: ${activeTwentyQObjective.label}` : "20Q complete"}
           </Text>
         </View>
 
@@ -1613,7 +1777,7 @@ function handleLeft() {
               <View style={styles.doneCard}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
                 <Text style={styles.doneSub}>
-                  Deck: {deck.deckLabel} • Engine: {recEngineLabel || "—"} • Built from {rightSwipes} right-swipes
+                  Deck: {deck.deckLabel} • Engine: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
                 </Text>
 
                 {recQuery ? (
@@ -1793,6 +1957,16 @@ function handleLeft() {
                     ) : (
                       <Text style={styles.cardPrompt}>{(currentCard as any)?.prompt ?? (currentCard as any)?.title ?? ""}</Text>
                     )}
+
+                    {activeTwentyQObjective ? (
+                      <View style={styles.twentyQBadge}>
+                        <Text style={styles.twentyQBadgeTitle}>Rung {activeTwentyQObjective.rung}: {activeTwentyQObjective.label}</Text>
+                        <Text style={styles.twentyQBadgeText}>{activeTwentyQObjective.description}</Text>
+                        <Text style={styles.twentyQBadgeText}>
+                          Signal: {activeTwentyQObjective.score > 0 ? "+" : ""}{activeTwentyQObjective.score.toFixed(2)} / {activeTwentyQObjective.threshold.toFixed(2)}
+                        </Text>
+                      </View>
+                    ) : null}
                   </Animated.View>
                 </View>
               </View>
@@ -2091,6 +2265,13 @@ function handleLeft() {
               <Text style={[styles.debugLabel, { marginTop: 10 }]}>Current card</Text>
               <Text style={styles.debugValue}>{currentCard?.title ?? "(none)"}</Text>
 
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>20Q plan</Text>
+              <Text style={styles.debugValueMuted}>
+                {twentyQStatuses
+                  .map((status) => `R${status.rung}:${status.label}:${status.resolved ? "done" : `${status.score >= 0 ? "+" : ""}${status.score.toFixed(2)}`}`)
+                  .join(" • ")}
+              </Text>
+
               <Text style={[styles.debugLabel, { marginTop: 10 }]}>Card tags (raw)</Text>
               <Text style={styles.debugValueMuted}>
                 {Array.isArray((currentCard as any)?.tags) && (currentCard as any).tags.length
@@ -2225,6 +2406,21 @@ const styles = StyleSheet.create({
   swipeTitle: { fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 3 },
   swipeAuthor: { fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.9)", marginBottom: 4 },
   swipeGenre: { fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.75)" },
+
+  twentyQBadge: {
+    position: "absolute",
+    right: 12,
+    top: 12,
+    width: "48%",
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    borderRadius: 14,
+    backgroundColor: "rgba(7,21,38,0.82)",
+    borderWidth: 1,
+    borderColor: "rgba(224,184,75,0.7)",
+  },
+  twentyQBadgeTitle: { color: "#fff", fontSize: 12, fontWeight: "900" },
+  twentyQBadgeText: { color: "rgba(255,255,255,0.88)", fontSize: 11, marginTop: 4, lineHeight: 14 },
 
   cardPrompt: { color: "#e5efff", fontSize: 26, fontWeight: "900", lineHeight: 32 },
 

@@ -346,7 +346,19 @@ export function normalizeTasteProfile(profile: TasteProfile): TasteProfile {
 }
 
 export function buildTasteProfile(input: TasteBuilderInput): TasteProfile {
-  const base = buildTasteProfileFromTagCounts(input.tagCounts || {});
+  const { vector, signals, swipes } = profileFromTagCounts(input.tagCounts || {});
+
+  const base: TasteProfile = {
+    axes: vector,
+    confidence: 0,
+    evidence: {
+      swipes,
+      tagSignals: signals,
+      feedbackEvents: 0,
+      ratedItems: 0,
+    },
+  };
+
   const withSemantic = applySemanticSwipeTraits(base, input.swipedItemTraits || []);
 
   let withDirect = withSemantic;
