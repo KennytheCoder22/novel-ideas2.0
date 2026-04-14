@@ -494,20 +494,11 @@ function cardTagCounts(card: any): TagCounts {
 }
 
 function swipeSignalFromCard(card: SwipeDeckCard, direction: SwipeSignal["direction"]): SwipeSignal {
-  let vector: TasteVector;
+  let vector;
 
-  if ((card as any)?.tasteTraits && typeof (card as any).tasteTraits === "object") {
-    const safeTraits = {
-      warmth: 0,
-      darkness: 0,
-      pacing: 0,
-      realism: 0,
-      characterFocus: 0,
-      ideaDensity: 0,
-      ...((card as any).tasteTraits || {}),
-    };
-
-    vector = tasteVectorFromAxes(safeTraits);
+  if ((card as any)?.tasteTraits) {
+    // Direct 20Q signal
+    vector = tasteVectorFromAxes((card as any).tasteTraits);
   } else {
     const counts = cardTagCounts(card as any);
     const singleCardTaste = buildTasteProfile({
@@ -1046,7 +1037,11 @@ export default function SwipeDeckScreen(props: Props) {
     totalCards: cards.length,
   });
   const currentCard: SwipeDeckCard | null = !isDone
-    ? selectTwentyQCard({ deckKey, cards: remainingCards, tagCounts, recentCardKeys, objective: activeTwentyQObjective })
+    ? (
+        selectTwentyQCard({ deckKey, cards: remainingCards, tagCounts, recentCardKeys, objective: activeTwentyQObjective }) ||
+        remainingCards[0] ||
+        null
+      )
     : null;
 
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
