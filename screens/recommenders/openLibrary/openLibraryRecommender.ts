@@ -1,87 +1,79 @@
-// CLEAN OpenLibrary recommender (bias-neutral)
+import type { RecommenderInput, RecommendationResult, RecommendationDoc, StructuredFetchRung } from "../types";
 
-import type { RecommenderInput, RecommendationResult, RecommendationDoc, DeckKey, StructuredFetchRung } from "../types";
-
-function normalizeText(value: any): string {
+function normalizeText(value: unknown): string {
   return String(value || "").toLowerCase().replace(/\s+/g, " ").trim();
 }
 
 function dedupeQueries(queries: string[]): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
+
   for (const q of queries) {
-    const t = String(q || "").trim().toLowerCase();
-    if (!t || seen.has(t)) continue;
-    seen.add(t);
+    const t = String(q || "").trim();
+    if (!t) continue;
+
+    const key = t.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
     out.push(t);
   }
+
   return out;
 }
 
-// 🔧 FIXED — NO genre forcing
-function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
-  const base = String(rung?.query || rung?.primary || "").trim();
-  return base ? `"${base}"` : `"fiction novel"`;
-}
-
-// 🔧 FIXED — NO genre forcing
-function fallbackToOpenLibraryQuery(query: string): string {
+function quoteQuery(query: string): string {
   const cleaned = String(query || "").trim();
-  return cleaned ? `"${cleaned}"` : `"fiction novel"`;
+  return cleaned ? `"${cleaned}"` : "";
 }
 
-// 🔧 FIXED — neutral buckets
-function getBucketQueries(deckKey: DeckKey): string[] {
-  if (deckKey === "k2") {
-    return dedupeQueries([
-      `"juvenile fiction"`,
-      `"chapter books"`,
-      `"middle grade fiction"`
-    ]);
-  }
-
-  if (deckKey === "36") {
-    return dedupeQueries([
-      `"middle grade fiction"`,
-      `"juvenile fiction"`
-    ]);
-  }
-
-  if (deckKey === "ms_hs") {
-    return dedupeQueries([
-      `"young adult fiction"`,
-      `"young adult novel"`
-    ]);
-  }
-
-  // ADULT (fixed)
-  return dedupeQueries([
-    `"fiction novel"`,
-    `"contemporary fiction"`,
-    `"popular novel"`
-  ]);
+function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
+  return quoteQuery(String(rung?.query || rung?.primary || ""));
 }
 
-// 🔧 Keep filtering but neutral
-function isGarbage(d: any): boolean {
-  const title = normalizeText(d?.title);
-  const author = normalizeText(Array.isArray(d?.author_name) ? d.author_name[0] : d?.author_name);
+function hasUsableSignal(input: RecommenderInput): boolean {
+  if (input.bucketPlan?.rungs?.some(rung => String(rung?.query || rung?.primary || "").trim())) {
+    return true;
+  }
 
-  if (!title || !author) return true;
-
-  const text = `${title} ${author}`;
-
-  if (/\b(summary|analysis|study guide|review|criticism)\b/i.test(text)) return true;
+  if (Array.isArray(input.bucketPlan?.queries) && input.bucketPlan!.queries.some(q => String(q || "").trim())) {
+    return true;
+  }
 
   return false;
 }
 
-// 🔧 Anchor filtering FIXED
-function isAcceptableAnchor(d: any): boolean {
-  const text = normalizeText(d?.title) + " " +
-               (Array.isArray(d?.subject) ? d.subject.join(" ") : "");
+function buildQueries(input: RecommenderInput): string[] {
+  if (input.bucketPlan?.rungs?.length) {
+    return dedupeQueries(input.bucketPlan.rungs.map(rungToOpenLibraryQuery).filter(Boolean));
+  }
 
-  return /\b(novel|fiction)\b/i.test(text);
+  if (Array.isArray(input.bucketPlan?.queries)) {
+    return dedupeQueries(input.bucketPlan.queries.map(quoteQuery).filter(Boolean));
+  }
+
+  return [];
+}
+
+function isGarbage(doc: any): boolean {
+  const title = normalizeText(doc?.title);
+  const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name);
+
+  if (!title || !author) return true;
+
+  const text = [
+    title,
+    author,
+    Array.isArray(doc?.subject) ? doc.subject.join(" ") : "",
+    Array.isArray(doc?.publisher) ? doc.publisher.join(" ") : ""
+  ]
+    .map(normalizeText)
+    .join(" ");
+
+  if (/\b(summary|analysis|study guide|review|criticism|notes|workbook)\b/i.test(text)) return true;
+  if (/\b(anthology|collection of stories|short stories|essays)\b/i.test(text)) return true;
+
+  return false;
 }
 
 async function fetchJson(url: string): Promise<any> {
@@ -93,29 +85,30 @@ async function fetchJson(url: string): Promise<any> {
 export async function getOpenLibraryRecommendations(
   input: RecommenderInput
 ): Promise<RecommendationResult> {
-
-  const queries =
-    input.bucketPlan?.rungs?.length
-      ? input.bucketPlan.rungs.map(rungToOpenLibraryQuery)
-      : (input.bucketPlan?.queries || getBucketQueries(input.deckKey));
-
+  const queries = buildQueries(input);
   const docsRaw: any[] = [];
+  const limit = input.limit || 12;
+
+  if (!hasUsableSignal(input) || !queries.length) {
+    return {
+      engineId: "openLibrary",
+      engineLabel: "Open Library",
+      deckKey: input.deckKey,
+      domainMode: "default",
+      builtFromQuery: "",
+      items: []
+    };
+  }
 
   for (let i = 0; i < queries.length; i++) {
     const q = queries[i];
-
     const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=100`;
 
     const data = await fetchJson(url);
-
     const docs = Array.isArray(data?.docs) ? data.docs : [];
 
     for (const d of docs) {
       if (isGarbage(d)) continue;
-
-      if (/\b(bestselling|popular)\b/i.test(q)) {
-        if (!isAcceptableAnchor(d)) continue;
-      }
 
       docsRaw.push({
         ...d,
@@ -125,12 +118,20 @@ export async function getOpenLibraryRecommendations(
       });
     }
 
-    if (docsRaw.length >= 60) break;
+    if (docsRaw.length >= Math.max(limit * 5, 60)) break;
   }
 
+  const seenKeys = new Set<string>();
+
   const items: RecommendationDoc[] = docsRaw
-    .filter(d => d.title)
-    .slice(0, input.limit || 12)
+    .filter(d => d.title && d.key)
+    .filter(d => {
+      const key = String(d.key);
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    })
+    .slice(0, limit)
     .map(d => ({
       key: d.key,
       title: d.title,
