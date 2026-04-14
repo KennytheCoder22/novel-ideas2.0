@@ -494,19 +494,27 @@ function cardTagCounts(card: any): TagCounts {
 }
 
 function swipeSignalFromCard(card: SwipeDeckCard, direction: SwipeSignal["direction"]): SwipeSignal {
-  const counts = cardTagCounts(card as any);
-  const singleCardTaste = buildTasteProfile({
-    tagCounts: counts,
-    feedback: [] as TasteFeedbackEvent[],
-    itemTraitsById: {},
-  });
+  let vector;
+
+  if ((card as any)?.tasteTraits) {
+    // Direct 20Q signal
+    vector = tasteVectorFromAxes((card as any).tasteTraits);
+  } else {
+    const counts = cardTagCounts(card as any);
+    const singleCardTaste = buildTasteProfile({
+      tagCounts: counts,
+      feedback: [] as TasteFeedbackEvent[],
+      itemTraitsById: {},
+    });
+    vector = tasteVectorFromAxes((singleCardTaste as any)?.axes);
+  }
 
   return {
     bookId:
       String((card as any)?.id || "") ||
       `${String((card as any)?.title || "untitled")}::${String((card as any)?.author || "unknown")}`,
     direction,
-    vector: tasteVectorFromAxes((singleCardTaste as any)?.axes),
+    vector,
     timestamp: new Date().toISOString(),
   };
 }

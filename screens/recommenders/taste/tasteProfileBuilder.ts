@@ -345,19 +345,26 @@ export function normalizeTasteProfile(profile: TasteProfile): TasteProfile {
   return next;
 }
 
-export function buildTasteProfileFromTagCounts(tagCounts: Record<string, number>): TasteProfile {
-  const { vector, signals, swipes } = profileFromTagCounts(tagCounts);
+export function buildTasteProfile(input: TasteBuilderInput): TasteProfile {
+  const base = buildTasteProfileFromTagCounts(input.tagCounts || {});
+  const withSemantic = applySemanticSwipeTraits(base, input.swipedItemTraits || []);
 
-  return normalizeTasteProfile({
-    axes: vector,
-    confidence: 0,
-    evidence: {
-      swipes,
-      tagSignals: signals,
-      feedbackEvents: 0,
-      ratedItems: 0,
-    },
-  });
+  let withDirect = withSemantic;
+
+  // NEW: direct tasteTraits support
+  if ((input as any).directTraits && Array.isArray((input as any).directTraits)) {
+    for (const traits of (input as any).directTraits) {
+      applyWeightedTraits(withDirect.axes, traits, 1.2);
+      withDirect.evidence.tagSignals += 1;
+      withDirect.evidence.swipes += 1;
+    }
+  }
+
+  return applyFeedbackToTasteProfile(
+    withDirect,
+    input.feedback || [],
+    input.itemTraitsById || {}
+  );
 }
 
 export function buildTasteProfile(input: TasteBuilderInput): TasteProfile {
