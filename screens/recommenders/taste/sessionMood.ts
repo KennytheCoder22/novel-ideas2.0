@@ -20,13 +20,15 @@ export interface MoodProfile {
   userId: string;
   vector: TasteVector;
   confidence: number; // 0..1
-  swipeCount: number;
+  swipeCount: number; // decision swipes only
   likeCount: number;
   dislikeCount: number;
   skipCount: number;
   createdAt: string;
   updatedAt: string;
 }
+
+const MIN_DECISION_SWIPES_FOR_STRONG_SIGNAL = 4;
 
 const DIMENSIONS: TasteDimension[] = [
   "ideaDensity",
@@ -101,23 +103,48 @@ function vectorMagnitude(vector: TasteVector): number {
   return Math.sqrt(sumSquares);
 }
 
+function countSwipeDirections(swipes: SwipeSignal[]): {
+  likes: number;
+  dislikes: number;
+  skips: number;
+  decisionSwipes: number;
+} {
+  let likes = 0;
+  let dislikes = 0;
+  let skips = 0;
+
+  for (const swipe of swipes) {
+    if (swipe.direction === "like") {
+      likes += 1;
+    } else if (swipe.direction === "dislike") {
+      dislikes += 1;
+    } else {
+      skips += 1;
+    }
+  }
+
+  return {
+    likes,
+    dislikes,
+    skips,
+    decisionSwipes: likes + dislikes,
+  };
+}
+
 export function calculateMoodConfidence(swipes: SwipeSignal[]): number {
   if (swipes.length === 0) {
     return 0;
   }
 
-  const likes = swipes.filter((s) => s.direction === "like").length;
-  const dislikes = swipes.filter((s) => s.direction === "dislike").length;
-  const meaningful = likes + dislikes;
+  const { likes, dislikes, decisionSwipes } = countSwipeDirections(swipes);
 
-  if (meaningful === 0) {
+  if (decisionSwipes === 0) {
     return 0;
   }
 
-  const countScore = Math.min(meaningful / 16, 1);
-
+  const countScore = Math.min(decisionSwipes / 8, 1);
   const balance = Math.min(likes, dislikes);
-  const contrastScore = meaningful > 0 ? Math.min(balance / 6, 1) : 0;
+  const contrastScore = decisionSwipes > 0 ? Math.min(balance / 3, 1) : 0;
 
   return clamp01(0.7 * countScore + 0.3 * contrastScore);
 }
@@ -130,12 +157,15 @@ export function computeSessionMood(swipes: SwipeSignal[]): {
   dislikeCount: number;
   skipCount: number;
 } {
-  const liked = swipes.filter((s) => s.direction === "like").map((s) => s.vector);
+  const stats = countSwipeDirections(swipes);
+
+  const liked = swipes
+    .filter((s) => s.direction === "like")
+    .map((s) => s.vector);
+
   const disliked = swipes
     .filter((s) => s.direction === "dislike")
     .map((s) => s.vector);
-
-  const skipped = swipes.filter((s) => s.direction === "skip").length;
 
   const likedMean = meanVector(liked);
   const dislikedMean = meanVector(disliked);
@@ -159,10 +189,10 @@ export function computeSessionMood(swipes: SwipeSignal[]): {
   return {
     vector: sharpened,
     confidence: calculateMoodConfidence(swipes),
-    swipeCount: swipes.length,
-    likeCount: liked.length,
-    dislikeCount: disliked.length,
-    skipCount: skipped,
+    swipeCount: stats.decisionSwipes,
+    likeCount: stats.likes,
+    dislikeCount: stats.dislikes,
+    skipCount: stats.skips,
   };
 }
 
@@ -199,5 +229,8 @@ export function appendSwipeAndRecompute(
 }
 
 export function hasStrongSessionSignal(profile: MoodProfile): boolean {
-  return profile.swipeCount >= 12 && profile.confidence >= 0.4;
+  return (
+    profile.swipeCount >= MIN_DECISION_SWIPES_FOR_STRONG_SIGNAL &&
+    profile.confidence >= 0.4
+  );
 }
