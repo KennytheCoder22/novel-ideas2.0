@@ -1,7 +1,8 @@
 // /screens/recommenders/openLibrary/openLibraryKidsQueryBuilder.ts
 //
-// Open Library Kids query builder (spec-aligned, v1).
-// Uses Open Library's subject headings + light vibe keywords.
+// Open Library Kids query builder (20Q-aligned).
+// Literal signal translation only. No inferred mode preference, no
+// handcrafted story-lane ranking, no hidden fallback shaping.
 
 import type { TagCounts, DomainMode } from "../types";
 
@@ -14,14 +15,6 @@ function norm(s: string): string {
     .trim();
 }
 
-function hasTag(tagCounts: TagCounts, predicate: (k: string) => boolean): boolean {
-  for (const [k, v] of Object.entries(tagCounts || {})) {
-    if (!v || v <= 0) continue;
-    if (predicate(k)) return true;
-  }
-  return false;
-}
-
 function pickTopTags(tagCounts: TagCounts, max = 25): string[] {
   return Object.entries(tagCounts || {})
     .filter(([, v]) => (Number(v) || 0) > 0)
@@ -31,124 +24,117 @@ function pickTopTags(tagCounts: TagCounts, max = 25): string[] {
 }
 
 function pushUnique(arr: string[], token: string, max: number) {
-  const t = token.trim();
+  const t = String(token || "").trim();
   if (!t) return;
   if (arr.includes(t)) return;
   if (arr.length >= max) return;
   arr.push(t);
 }
 
-export function inferKidsDomainMode(tagCounts: TagCounts): DomainMode {
-  const isPicture =
-    hasTag(tagCounts, (k) => norm(k).includes("format:picture book")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("picture book")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("read aloud")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("illustrated"));
+function mapTagToQueryToken(tag: string): string | null {
+  const t = norm(tag);
 
-  const isChapterMiddle =
-    hasTag(tagCounts, (k) => norm(k).includes("format:series")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("format:chapter book")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("chapter book")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("middle grade")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("genre:adventure")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("genre:mystery")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("genre:fantasy")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("theme:school")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("school")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("vibe:funny")) ||
-    hasTag(tagCounts, (k) => norm(k).includes("humor"));
+  // Format / domain constraints. These are retrieval constraints, not taste boosts.
+  if (t.includes("format:picture book") || t.includes("picture book")) return '"picture books"';
+  if (t.includes("read aloud")) return '"read aloud"';
+  if (t.includes("illustrated")) return "illustrated";
+  if (t.includes("format:chapter book") || t.includes("chapter book")) return '"chapter books"';
+  if (t.includes("middle grade")) return '"middle grade"';
+  if (t.includes("format:series")) return "series";
+  if (t.includes("early reader")) return '"early reader"';
 
-  if (isPicture && !isChapterMiddle) return "picture";
-  if (isChapterMiddle) return "chapterMiddle";
-  // default: lean toward chapterMiddle so we can surface Magic Tree House / Judy Moody zones.
-  return "chapterMiddle";
+  // Genre / theme / topic signals.
+  if (t.includes("genre:adventure") || t == "adventure") return "adventure";
+  if (t.includes("genre:mystery") || t == "mystery") return "mystery";
+  if (t.includes("genre:fantasy") || t == "fantasy") return "fantasy";
+  if (t.includes("genre:comedy") || t == "comedy") return "comedy";
+
+  if (t.includes("theme:school") || t == "school") return "school";
+  if (t.includes("friendship")) return "friendship";
+  if (t.includes("family")) return "family";
+  if (t.includes("magic")) return "magic";
+  if (t.includes("time travel")) return '"time travel"';
+  if (t.includes("dragons")) return "dragons";
+  if (t.includes("bears")) return "bears";
+  if (t.includes("animals")) return "animals";
+
+  // Vibe signals. Keep literal; do not promote above stronger evidence.
+  if (t.includes("funny") || t.includes("humor") || t.includes("vibe:funny")) return "funny";
+  if (t.includes("quirky")) return "quirky";
+  if (t.includes("cozy")) return "cozy";
+  if (t.includes("heartwarming")) return "heartwarming";
+  if (t.includes("playful")) return "playful";
+  if (t.includes("gentle")) return "gentle";
+
+  return null;
 }
 
-export function buildOpenLibraryKidsQ(tagCounts: TagCounts, domainModeOverride?: DomainMode) {
-  const mode = domainModeOverride && domainModeOverride !== "default" ? domainModeOverride : inferKidsDomainMode(tagCounts);
+export function inferKidsDomainMode(tagCounts: TagCounts): DomainMode {
+  const top = pickTopTags(tagCounts, 25).map(norm);
 
-  // NOTE: Open Library *does* support fielded search syntax like subject:"...",
-  // but in practice multiple subject clauses often over-intersect into 0 hits.
-  // For Kids we favor high-recall keyword/phrase tokens and rely on downstream
-  // post-filtering to keep results age-appropriate.
-  // IMPORTANT: Open Library search ANDs tokens by default.
-  // If we push too many phrases/keywords, we *guarantee* 0 hits.
-  // So: keep a very small "core" query (high recall), and treat
-  // everything else as optional hints for fallback.
-  const core: string[] = [];
-  const optional: string[] = [];
+  for (const t of top) {
+    if (
+      t.includes("format:picture book") ||
+      t.includes("picture book") ||
+      t.includes("read aloud") ||
+      t.includes("illustrated")
+    ) {
+      return "picture";
+    }
 
-  // (1) Domain lock (always first)
-  // Keep this FIRST per spec, but emit as a plain phrase for recall.
-  core.push('"juvenile fiction"');
+    if (
+      t.includes("early reader")
+    ) {
+      return "earlyReader";
+    }
 
-  // (2) Mode anchors
-  if (mode === "picture") {
-    // For picture books, this is usually safe and high-recall.
-    optional.push('"picture books"');
-    optional.push("illustrated");
-  } else if (mode === "earlyReader") {
-    // OL taxonomy is inconsistent here; keyword steering is safer than strict subject.
-    optional.push("readers");
-  } else {
-    // chapterMiddle
-    // Choose up to 2 story-lane subjects, based on top tags.
-    const top = pickTopTags(tagCounts, 25).map(norm);
-    const wantsHumor = top.some((t) => t.includes("humor") || t.includes("funny") || t.includes("genre:comedy") || t.includes("vibe:funny"));
-    const wantsAdventure = top.some((t) => t.includes("genre:adventure") || t.includes("adventure"));
-    const wantsSchool = top.some((t) => t.includes("theme:school") || t.includes("school"));
-    const wantsMystery = top.some((t) => t.includes("genre:mystery") || t.includes("mystery"));
-    const wantsFantasy = top.some((t) => t.includes("genre:fantasy") || t.includes("fantasy") || t.includes("magic"));
-
-    // Pick *one* strongest story lane. More than that often collapses to zero.
-    const storyCandidates: string[] = [];
-    if (wantsAdventure) storyCandidates.push('"adventure stories"');
-    if (wantsHumor) storyCandidates.push('"humorous stories"');
-    if (wantsSchool) storyCandidates.push('"school stories"');
-    if (wantsMystery) storyCandidates.push('"mystery fiction"');
-    if (wantsFantasy) storyCandidates.push('"fantasy fiction"');
-
-    if (storyCandidates.length > 0) {
-      // Use the first candidate (already preference-ordered by our heuristics).
-      optional.push(storyCandidates[0]);
+    if (
+      t.includes("format:series") ||
+      t.includes("format:chapter book") ||
+      t.includes("chapter book") ||
+      t.includes("middle grade")
+    ) {
+      return "chapterMiddle";
     }
   }
 
-  // (3) Pick ONE concrete topic/theme (optional)
-  const topNorm = pickTopTags(tagCounts, 25).map(norm);
+  // No strong signal present: preserve ambiguity.
+  return "default";
+}
 
-  const topicCandidates: string[] = [];
-  if (topNorm.some((t) => t.includes("friendship"))) topicCandidates.push("friendship");
-  if (topNorm.some((t) => t.includes("family"))) topicCandidates.push("family");
-  if (topNorm.some((t) => t.includes("magic"))) topicCandidates.push("magic");
-  if (topNorm.some((t) => t.includes("time travel"))) topicCandidates.push('"time travel"');
-  if (topNorm.some((t) => t.includes("dragons"))) topicCandidates.push("dragons");
-  if (topNorm.some((t) => t.includes("bears"))) topicCandidates.push("bears");
-  if (topNorm.some((t) => t.includes("animals"))) topicCandidates.push("animals");
+export function buildOpenLibraryKidsQ(tagCounts: TagCounts, domainModeOverride?: DomainMode) {
+  const inferredMode = inferKidsDomainMode(tagCounts);
+  const mode =
+    domainModeOverride && domainModeOverride !== "default"
+      ? domainModeOverride
+      : inferredMode;
 
-  if (topicCandidates.length > 0) {
-    optional.push(topicCandidates[0]);
+  const core: string[] = ['"juvenile fiction"'];
+  const optional: string[] = [];
+
+  // Domain mode override is honored literally when explicitly supplied.
+  if (mode === "picture") pushUnique(optional, '"picture books"', 6);
+  if (mode === "earlyReader") pushUnique(optional, '"early reader"', 6);
+  if (mode === "chapterMiddle") pushUnique(optional, '"chapter books"', 6);
+
+  // Translate top weighted tags directly, in evidence order.
+  const top = pickTopTags(tagCounts, 25);
+  for (const tag of top) {
+    const token = mapTagToQueryToken(tag);
+    if (!token) continue;
+    pushUnique(optional, token, 6);
   }
 
-  // (4) Pick ONE vibe keyword (optional)
-  // These are *very* lossy on OL, so keep them as the first thing we drop.
-  const vibeCandidates: string[] = [];
-  if (topNorm.some((t) => t.includes("funny") || t.includes("humor"))) vibeCandidates.push("funny");
-  if (topNorm.some((t) => t.includes("quirky"))) vibeCandidates.push("quirky");
-  if (topNorm.some((t) => t.includes("cozy"))) vibeCandidates.push("cozy");
-  if (topNorm.some((t) => t.includes("heartwarming"))) vibeCandidates.push("heartwarming");
-  if (topNorm.some((t) => t.includes("playful"))) vibeCandidates.push("playful");
-  if (topNorm.some((t) => t.includes("gentle"))) vibeCandidates.push("gentle");
-
-  if (vibeCandidates.length > 0) {
-    optional.push(vibeCandidates[0]);
-  }
-
-  // Hard caps (guardrail against accidental over-constraint)
-  const coreClamped = core.slice(0, 2);
-  const optionalClamped = optional.filter(Boolean).slice(0, 3);
-
+  const coreClamped = core.slice(0, 1);
+  const optionalClamped = optional.slice(0, 3);
   const q = [...coreClamped, ...optionalClamped].join(" ").trim();
 
-  return { q, mode, parts: { core: coreClamped, optional: optionalClamped } };
+  return {
+    q,
+    mode,
+    parts: {
+      core: coreClamped,
+      optional: optionalClamped,
+    },
+  };
 }
