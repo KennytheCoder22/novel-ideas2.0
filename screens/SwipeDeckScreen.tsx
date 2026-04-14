@@ -494,11 +494,20 @@ function cardTagCounts(card: any): TagCounts {
 }
 
 function swipeSignalFromCard(card: SwipeDeckCard, direction: SwipeSignal["direction"]): SwipeSignal {
-  let vector;
+  let vector: TasteVector;
 
-  if ((card as any)?.tasteTraits) {
-    // Direct 20Q signal
-    vector = tasteVectorFromAxes((card as any).tasteTraits);
+  if ((card as any)?.tasteTraits && typeof (card as any).tasteTraits === "object") {
+    const safeTraits = {
+      warmth: 0,
+      darkness: 0,
+      pacing: 0,
+      realism: 0,
+      characterFocus: 0,
+      ideaDensity: 0,
+      ...((card as any).tasteTraits || {}),
+    };
+
+    vector = tasteVectorFromAxes(safeTraits);
   } else {
     const counts = cardTagCounts(card as any);
     const singleCardTaste = buildTasteProfile({
