@@ -14,14 +14,37 @@ export interface ActiveTasteResult {
   moodWeight: number;
 }
 
+const MIN_DECISION_SWIPES_FOR_BASELINE_MOOD = 2;
+const MIN_DECISION_SWIPES_FOR_STRONG_MOOD = 4;
+
+function calculateMoodWeight(mood: MoodProfile): number {
+  const confidence = clamp01(mood.confidence);
+  const decisionSwipes =
+    typeof mood.swipeCount === "number" && Number.isFinite(mood.swipeCount)
+      ? mood.swipeCount
+      : 0;
+
+  if (decisionSwipes <= 0 || confidence <= 0) {
+    return 0;
+  }
+
+  if (decisionSwipes < MIN_DECISION_SWIPES_FOR_BASELINE_MOOD) {
+    return 0.2 * confidence;
+  }
+
+  if (decisionSwipes < MIN_DECISION_SWIPES_FOR_STRONG_MOOD) {
+    return 0.35 + 0.2 * confidence;
+  }
+
+  return 0.5 + 0.25 * confidence;
+}
+
 export function blendTaste(
   personality: PersonalityProfile,
   mood: MoodProfile
 ): ActiveTasteResult {
   const personalityWeight = getPersonalityStrength(personality);
-  const moodFloor = 0.65;
-  const moodBoost = 0.2 * clamp01(mood.confidence);
-  const moodWeight = Math.max(moodFloor + moodBoost, 1 - personalityWeight);
+  const moodWeight = calculateMoodWeight(mood);
 
   const raw = zeroVector();
 
