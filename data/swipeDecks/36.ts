@@ -1,3 +1,4 @@
+// tasteTraits auto-generated from semantic/tags
 export const deck36 = {
   deckKey: "36",
   deckLabel: "Pre-Teens",

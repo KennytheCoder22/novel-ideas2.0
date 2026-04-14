@@ -1,3 +1,4 @@
+// tasteTraits auto-generated from semantic/tags
 // /data/swipeDecks/k2.ts
 // Canonical: deck module in the exact shape SwipeDeckScreen expects.
 // (No display/output nesting; cards are flat objects with title/author/genre/tags.)

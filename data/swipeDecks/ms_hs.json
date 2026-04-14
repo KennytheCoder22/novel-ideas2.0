@@ -15,7 +15,12 @@
         "genre:fantasy",
         "world:mythic",
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ms_genre_scifi",
@@ -25,7 +30,12 @@
         "genre:science_fiction",
         "world:near_future",
         "topic:technology"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.25,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ms_genre_dystopian",
@@ -35,7 +45,12 @@
         "genre:dystopian",
         "world:dystopian",
         "theme:survival"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -0.25,
+        "darkness": 1.0,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ms_genre_adventure",
@@ -45,7 +60,12 @@
         "genre:adventure",
         "vibe:exciting",
         "pace:fast"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0,
+        "characterFocus": -0.15,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ms_genre_mystery",
@@ -55,7 +75,12 @@
         "genre:mystery",
         "genre:suspense",
         "pace:fast"
-      ]
+      ],
+      "tasteTraits": {
+        "darkness": 0.45,
+        "pacing": 0.9,
+        "ideaDensity": 0.4
+      }
     },
     {
       "id": "ms_genre_horror_light",
@@ -66,7 +91,12 @@
         "tone:light",
         "vibe:spooky",
         "vibe:dark"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -1.0,
+        "darkness": 1.0,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ms_genre_horror",
@@ -77,7 +107,12 @@
         "tone:dark",
         "vibe:spooky",
         "vibe:dark"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -1.0,
+        "darkness": 1.0,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ms_genre_urban_fantasy",
@@ -85,7 +120,11 @@
       "prompt": "Magic in the real world ✨🏙️",
       "tags": [
         "genre:fantasy"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.85,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ms_genre_superpowers",
@@ -95,7 +134,12 @@
         "genre:superheroes",
         "topic:justice",
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.8,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ms_genre_realistic_gamers",
@@ -106,7 +150,12 @@
         "topic:gaming",
         "genre:adventure",
         "format:series"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": 0.9,
+        "characterFocus": -0.15,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ms_vibe_funny",
@@ -116,7 +165,12 @@
         "vibe:funny",
         "genre:humor",
         "theme:friendship"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.55,
+        "darkness": -0.35,
+        "characterFocus": 0.75
+      }
     },
     {
       "id": "ms_vibe_dark",
@@ -126,7 +180,11 @@
         "vibe:dark",
         "vibe:gritty",
         "theme:survival"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -1.0,
+        "darkness": 1.0
+      }
     },
     {
       "id": "ms_vibe_cozy",
@@ -136,7 +194,14 @@
         "vibe:cozy",
         "vibe:heartwarming",
         "theme:community"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -1.0,
+        "pacing": -0.45,
+        "characterFocus": 0.6,
+        "ideaDensity": -0.5
+      }
     },
     {
       "id": "ms_vibe_epic",
@@ -144,7 +209,11 @@
       "prompt": "Epic stakes (save the world) 🌍",
       "tags": [
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.1,
+        "characterFocus": -0.25
+      }
     },
     {
       "id": "ms_vibe_weird",
@@ -152,7 +221,11 @@
       "prompt": "Weird in a good way 🌀",
       "tags": [
         "vibe:weird"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.1,
+        "ideaDensity": 0.6
+      }
     },
     {
       "id": "ms_vibe_twisty",
@@ -160,7 +233,10 @@
       "prompt": "Plot twists!! 🧠",
       "tags": [
         "vibe:twisty"
-      ]
+      ],
+      "tasteTraits": {
+        "ideaDensity": 0.35
+      }
     },
     {
       "id": "ms_vibe_chill",
@@ -168,7 +244,11 @@
       "prompt": "Chill, not stressful 😌",
       "tags": [
         "vibe:chill"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.1,
+        "pacing": -0.2
+      }
     },
     {
       "id": "ms_vibe_hype",
@@ -176,7 +256,10 @@
       "prompt": "High energy / hype 🔥",
       "tags": [
         "vibe:fast"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.85
+      }
     },
     {
       "id": "ms_pace_fast",
@@ -186,7 +269,11 @@
         "pace:fast",
         "vibe:fast",
         "genre:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0,
+        "characterFocus": -0.15
+      }
     },
     {
       "id": "ms_pace_short_chapters",
@@ -194,7 +281,8 @@
       "prompt": "Short chapters pls 🙏",
       "tags": [
         "pace:short_chapters"
-      ]
+      ],
+      "tasteTraits": {}
     },
     {
       "id": "ms_pace_not_too_long",
@@ -202,7 +290,11 @@
       "prompt": "Not super long 📘",
       "tags": [
         "pace:not_too_long"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.25,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "ms_pace_series",
@@ -210,7 +302,10 @@
       "prompt": "Give me a series 📚",
       "tags": [
         "format:series"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": 0.05
+      }
     },
     {
       "id": "ms_access_easy",
@@ -218,7 +313,10 @@
       "prompt": "Easy to get into (low effort) ✅",
       "tags": [
         "access:easy"
-      ]
+      ],
+      "tasteTraits": {
+        "ideaDensity": -0.55
+      }
     },
     {
       "id": "ms_access_high_readability",
@@ -226,7 +324,10 @@
       "prompt": "Simple language, strong story 🧩",
       "tags": [
         "access:readable"
-      ]
+      ],
+      "tasteTraits": {
+        "ideaDensity": -0.5
+      }
     },
     {
       "id": "ms_topic_gaming",
@@ -236,7 +337,11 @@
         "topic:gaming",
         "genre:adventure",
         "format:series"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": -0.15,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ms_topic_vr",
@@ -249,7 +354,12 @@
         "world:near_future",
         "genre:adventure",
         "format:series"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.25,
+        "ideaDensity": 0.55
+      }
     },
     {
       "id": "ms_topic_ai",
@@ -260,7 +370,12 @@
         "genre:science_fiction",
         "topic:technology",
         "world:near_future"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.25,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ms_topic_space",
@@ -272,7 +387,12 @@
         "world:space",
         "world:near_future",
         "topic:technology"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.25,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ms_topic_time",
@@ -283,7 +403,12 @@
         "genre:science_fiction",
         "world:near_future",
         "topic:technology"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.25,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ms_topic_dragons",
@@ -294,7 +419,12 @@
         "genre:fantasy",
         "world:mythic",
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ms_topic_magic_school",
@@ -304,7 +434,11 @@
         "topic:training",
         "topic:magic_school",
         "vibe:progression"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.95,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ms_topic_heist",
@@ -315,7 +449,12 @@
         "genre:adventure",
         "vibe:exciting",
         "pace:fast"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0,
+        "characterFocus": -0.15,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ms_topic_survival",
@@ -323,7 +462,10 @@
       "prompt": "Survival / outsmart the world 🧊",
       "tags": [
         "topic:survival"
-      ]
+      ],
+      "tasteTraits": {
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ms_topic_monsters",
@@ -334,7 +476,12 @@
         "genre:fantasy",
         "world:mythic",
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ms_char_found_family",
@@ -342,7 +489,11 @@
       "prompt": "Found-family / squad goals 🫶",
       "tags": [
         "theme:found_family"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.65,
+        "characterFocus": 0.9
+      }
     },
     {
       "id": "ms_char_antihero",
@@ -350,7 +501,10 @@
       "prompt": "Antihero main character 😈",
       "tags": [
         "character:antihero"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": 0.65
+      }
     },
     {
       "id": "ms_char_strong_lead",
@@ -358,7 +512,10 @@
       "prompt": "Strong main character 💪",
       "tags": [
         "character:strong_lead"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": 0.55
+      }
     },
     {
       "id": "ms_char_duo",
@@ -366,7 +523,10 @@
       "prompt": "Best friend duo 🤝",
       "tags": [
         "character:friend_duo"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": 0.85
+      }
     },
     {
       "id": "ms_format_graphic_novel",
@@ -376,7 +536,8 @@
         "format:graphic_novel",
         "genre:comics",
         "vibe:visual"
-      ]
+      ],
+      "tasteTraits": {}
     },
     {
       "id": "ms_format_short_stories",
@@ -386,7 +547,10 @@
         "format:short_stories",
         "pace:fast",
         "format:anthology"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.9
+      }
     },
     {
       "id": "ms_format_audio",
@@ -394,7 +558,8 @@
       "prompt": "Audiobook-friendly 🎧",
       "tags": [
         "format:audiobook_friendly"
-      ]
+      ],
+      "tasteTraits": {}
     },
     {
       "id": "ms_format_verse",
@@ -402,7 +567,10 @@
       "prompt": "Verse novel (fast pages) 📝",
       "tags": [
         "format:verse_novel"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.25
+      }
     }
   ]
 }

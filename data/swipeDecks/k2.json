@@ -17,112 +17,128 @@
       "title": "The Very Hungry Caterpillar",
       "author": "Eric Carle",
       "genre": "Picture Book",
-      "isbn": "9780399226908"
+      "isbn": "9780399226908",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Brown Bear, Brown Bear, What Do You See?",
       "author": "Bill Martin Jr.",
       "genre": "Picture Book",
-      "isbn": "9780805047905"
+      "isbn": "9780805047905",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Goodnight Moon",
       "author": "Margaret Wise Brown",
       "genre": "Bedtime Story",
-      "isbn": "9780060775858"
+      "isbn": "9780060775858",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Where the Wild Things Are",
       "author": "Maurice Sendak",
       "genre": "Classic Picture Book",
-      "isbn": "9780060254926"
+      "isbn": "9780060254926",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Chicka Chicka Boom Boom",
       "author": "Bill Martin Jr. & John Archambault",
       "genre": "Alphabet / Rhyming",
-      "isbn": "9780689835681"
+      "isbn": "9780689835681",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Green Eggs and Ham",
       "author": "Dr. Seuss",
       "genre": "Rhyming / Humor",
-      "isbn": "9780394800165"
+      "isbn": "9780394800165",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "The Cat in the Hat",
       "author": "Dr. Seuss",
       "genre": "Rhyming / Humor",
-      "isbn": "9780394800011"
+      "isbn": "9780394800011",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "If You Give a Mouse a Cookie",
       "author": "Laura Numeroff",
       "genre": "Picture Book",
-      "isbn": "9780060245863"
+      "isbn": "9780060245863",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Don't Let the Pigeon Drive the Bus!",
       "author": "Mo Willems",
       "genre": "Humor",
-      "isbn": "9780786819881"
+      "isbn": "9780786819881",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Frog and Toad Are Friends",
       "author": "Arnold Lobel",
       "genre": "Early Reader",
-      "isbn": "9780060239572"
+      "isbn": "9780060239572",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Pete the Cat: I Love My White Shoes",
       "author": "Eric Litwin",
       "genre": "Picture Book",
-      "isbn": "9780061906220"
+      "isbn": "9780061906220",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Dragons Love Tacos",
       "author": "Adam Rubin",
       "genre": "Humor",
-      "isbn": "9780803736801"
+      "isbn": "9780803736801",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "The Day the Crayons Quit",
       "author": "Drew Daywalt",
       "genre": "Humor",
-      "isbn": "9780399255373"
+      "isbn": "9780399255373",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Giraffes Can't Dance",
       "author": "Giles Andreae",
       "genre": "Picture Book",
-      "isbn": "9780439287197"
+      "isbn": "9780439287197",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "The Gruffalo",
       "author": "Julia Donaldson",
       "genre": "Picture Book",
-      "isbn": "9780142403877"
+      "isbn": "9780142403877",
+      "tasteTraits": {}
     },
     {
       "type": "book",
       "title": "Olivia",
       "author": "Ian Falconer",
       "genre": "Picture Book",
-      "isbn": "9780689874727"
+      "isbn": "9780689874727",
+      "tasteTraits": {}
     }
   ]
 }

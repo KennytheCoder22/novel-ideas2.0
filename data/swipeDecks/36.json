@@ -21,7 +21,12 @@
         "vibe:whimsical",
         "vibe:epic",
         "theme:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.85,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "36_genre_scifi",
@@ -32,7 +37,12 @@
         "topic:ai",
         "vibe:epic",
         "theme:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.3,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "36_genre_adventure",
@@ -43,7 +53,12 @@
         "vibe:epic",
         "pacing:fast_paced",
         "theme:high_stakes"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0,
+        "characterFocus": -0.35,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "36_genre_mystery",
@@ -53,7 +68,11 @@
         "genre:mystery",
         "vibe:quirky",
         "theme:high_stakes"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.55,
+        "ideaDensity": 0.4
+      }
     },
     {
       "id": "36_genre_humor",
@@ -63,7 +82,12 @@
         "genre:comedy",
         "vibe:playful",
         "vibe:uplifting"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.6,
+        "darkness": -0.85,
+        "ideaDensity": -0.3
+      }
     },
     {
       "id": "36_genre_graphic",
@@ -73,7 +97,11 @@
         "format:graphic_novel",
         "vibe:playful",
         "genre:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": -0.15,
+        "ideaDensity": -0.2
+      }
     },
     {
       "id": "36_genre_superheroes",
@@ -84,7 +112,13 @@
         "vibe:heroic",
         "vibe:epic",
         "theme:high_stakes"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.55,
+        "realism": -0.8,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "36_genre_spooky_light",
@@ -95,7 +129,12 @@
         "vibe:spooky",
         "vibe:uplifting",
         "theme:courage"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.05,
+        "darkness": 1.0,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "36_topic_gaming",
@@ -105,7 +144,11 @@
         "vibe:energetic",
         "theme:adventure",
         "vibe:quirky"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.75,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_topic_trapped_in_game",
@@ -116,7 +159,14 @@
         "topic:ai",
         "theme:survival",
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -0.25,
+        "darkness": 0.45,
+        "realism": -1.0,
+        "characterFocus": -0.3,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "36_topic_robots",
@@ -127,7 +177,13 @@
         "topic:robots",
         "vibe:quirky",
         "theme:friendship"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.55,
+        "realism": -1.0,
+        "characterFocus": 0.65,
+        "ideaDensity": 0.55
+      }
     },
     {
       "id": "36_topic_dragons",
@@ -137,7 +193,12 @@
         "genre:fantasy",
         "vibe:epic",
         "theme:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.85,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_topic_magic",
@@ -147,7 +208,11 @@
         "genre:fantasy",
         "vibe:whimsical",
         "theme:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.85,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_topic_space",
@@ -158,7 +223,12 @@
         "topic:space",
         "vibe:epic",
         "theme:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.3,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "36_topic_time_travel",
@@ -169,7 +239,12 @@
         "topic:time_travel",
         "vibe:quirky",
         "theme:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.1,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "36_topic_animals",
@@ -179,7 +254,13 @@
         "topic:animals",
         "vibe:warm",
         "theme:friendship"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -0.5,
+        "characterFocus": 0.75,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_topic_dinosaurs",
@@ -189,7 +270,11 @@
         "topic:dinosaurs",
         "genre:adventure",
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": -0.35,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_topic_myths",
@@ -200,7 +285,12 @@
         "genre:fantasy",
         "vibe:epic",
         "theme:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_topic_school",
@@ -210,7 +300,13 @@
         "topic:school",
         "theme:friendship",
         "vibe:warm"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -0.5,
+        "characterFocus": 0.75,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_topic_friend_group",
@@ -220,7 +316,14 @@
         "theme:friendship",
         "theme:community",
         "vibe:cozy"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -0.55,
+        "pacing": -0.35,
+        "characterFocus": 1.0,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "36_topic_underwater",
@@ -230,7 +333,11 @@
         "topic:ocean",
         "genre:adventure",
         "vibe:atmospheric"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": -0.15,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_topic_survival",
@@ -241,7 +348,14 @@
         "theme:high_stakes",
         "vibe:epic",
         "pacing:fast_paced"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -0.25,
+        "darkness": 0.45,
+        "pacing": 1.0,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_vibe_cozy",
@@ -251,7 +365,14 @@
         "vibe:cozy",
         "vibe:warm",
         "theme:family"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -1.0,
+        "pacing": -0.45,
+        "characterFocus": 0.75,
+        "ideaDensity": -0.25
+      }
     },
     {
       "id": "36_vibe_epic",
@@ -261,7 +382,11 @@
         "vibe:epic",
         "theme:high_stakes",
         "genre:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.65,
+        "characterFocus": -0.4
+      }
     },
     {
       "id": "36_vibe_weird",
@@ -271,7 +396,11 @@
         "vibe:weird",
         "vibe:quirky",
         "genre:fantasy"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.95,
+        "ideaDensity": 0.6
+      }
     },
     {
       "id": "36_vibe_twisty",
@@ -281,7 +410,11 @@
         "vibe:quirky",
         "genre:mystery",
         "theme:high_stakes"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.55,
+        "ideaDensity": 0.25
+      }
     },
     {
       "id": "36_vibe_brave",
@@ -291,7 +424,10 @@
         "vibe:heroic",
         "theme:courage",
         "genre:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": -0.15
+      }
     },
     {
       "id": "36_vibe_chill",
@@ -301,7 +437,14 @@
         "vibe:calm",
         "vibe:cozy",
         "theme:community"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -0.9,
+        "pacing": -1.0,
+        "characterFocus": 0.6,
+        "ideaDensity": -0.25
+      }
     },
     {
       "id": "36_pace_fast",
@@ -311,7 +454,10 @@
         "pacing:fast_paced",
         "vibe:energetic",
         "theme:high_stakes"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0
+      }
     },
     {
       "id": "36_pace_short_chapters",
@@ -320,7 +466,11 @@
       "tags": [
         "pacing:short_chapters",
         "pacing:concise"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.85,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "36_pace_not_too_long",
@@ -329,7 +479,11 @@
       "tags": [
         "pacing:concise",
         "pacing:short_chapters"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.85,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "36_format_series",
@@ -338,7 +492,11 @@
       "tags": [
         "format:series",
         "theme:friendship"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.55,
+        "characterFocus": 0.8
+      }
     },
     {
       "id": "36_format_short_stories",
@@ -347,7 +505,11 @@
       "tags": [
         "format:short_stories",
         "pacing:concise"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.35,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "36_format_audio",
@@ -356,7 +518,11 @@
       "tags": [
         "format:audiobook_friendly",
         "pacing:concise"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.35,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "36_world_realistic",
@@ -366,7 +532,13 @@
         "genre:realistic",
         "vibe:warm",
         "theme:community"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -0.5,
+        "realism": 0.95,
+        "characterFocus": 0.6
+      }
     },
     {
       "id": "36_world_fantasy",
@@ -376,7 +548,10 @@
         "genre:fantasy",
         "vibe:whimsical",
         "theme:adventure"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.8
+      }
     },
     {
       "id": "36_genre_sports",
@@ -387,7 +562,13 @@
         "vibe:energetic",
         "theme:courage",
         "theme:friendship"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.55,
+        "pacing": 0.75,
+        "characterFocus": 0.75,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "36_genre_realistic_fun",
@@ -398,7 +579,14 @@
         "genre:adventure",
         "vibe:warm",
         "theme:friendship"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -0.5,
+        "realism": 0.9,
+        "characterFocus": 0.6,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "36_topic_detectives",
@@ -409,7 +597,13 @@
         "theme:friendship",
         "vibe:quirky",
         "pacing:fast_paced"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.55,
+        "pacing": 0.9,
+        "characterFocus": 0.75,
+        "ideaDensity": 0.35
+      }
     },
     {
       "id": "36_topic_cooking",
@@ -420,7 +614,14 @@
         "theme:family",
         "vibe:cozy",
         "vibe:warm"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -1.0,
+        "pacing": -0.35,
+        "characterFocus": 1.0,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "36_topic_competitions",
@@ -430,7 +631,11 @@
         "theme:high_stakes",
         "vibe:energetic",
         "theme:courage"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "36_vibe_goofy",
@@ -440,7 +645,11 @@
         "genre:comedy",
         "vibe:playful",
         "vibe:quirky"
-      ]
+      ],
+      "tasteTraits": {
+        "darkness": -0.4,
+        "ideaDensity": -0.35
+      }
     },
     {
       "id": "36_vibe_heartfelt",
@@ -450,7 +659,12 @@
         "vibe:warm",
         "theme:friendship",
         "theme:family"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -0.5,
+        "characterFocus": 1.0
+      }
     },
     {
       "id": "36_format_standalone",
@@ -459,7 +673,11 @@
       "tags": [
         "format:standalone",
         "pacing:concise"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.35,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "36_world_historical",
@@ -469,7 +687,10 @@
         "genre:historical_fiction",
         "theme:adventure",
         "vibe:atmospheric"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": 0.7
+      }
     },
     {
       "id": "36_pace_page_turner",
@@ -479,7 +700,11 @@
         "pacing:fast_paced",
         "theme:high_stakes",
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0,
+        "characterFocus": -0.2
+      }
     }
   ]
 }

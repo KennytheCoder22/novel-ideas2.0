@@ -20,7 +20,12 @@
         "genre:science_fiction",
         "world:near_future",
         "topic:technology"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.25,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ad_genre_fantasy",
@@ -30,7 +35,12 @@
         "genre:fantasy",
         "world:mythic",
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.2,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ad_genre_speculative",
@@ -38,7 +48,10 @@
       "prompt": "Speculative / what-if 🤔",
       "tags": [
         "genre:speculative"
-      ]
+      ],
+      "tasteTraits": {
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ad_genre_dystopian",
@@ -48,7 +61,12 @@
         "genre:dystopian",
         "world:dystopian",
         "theme:survival"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -0.25,
+        "darkness": 1.0,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ad_genre_mystery",
@@ -59,7 +77,12 @@
         "genre:crime",
         "genre:suspense",
         "pace:fast"
-      ]
+      ],
+      "tasteTraits": {
+        "darkness": 0.45,
+        "pacing": 0.9,
+        "ideaDensity": 0.4
+      }
     },
     {
       "id": "ad_genre_thriller",
@@ -70,7 +93,13 @@
         "genre:suspense",
         "pace:fast",
         "vibe:dark"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -0.75,
+        "darkness": 1.0,
+        "pacing": 0.9,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ad_genre_horror",
@@ -80,7 +109,13 @@
         "genre:horror",
         "genre:paranormal",
         "vibe:dark"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -1.0,
+        "darkness": 1.0,
+        "realism": -0.85,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ad_genre_literary",
@@ -89,7 +124,11 @@
       "tags": [
         "genre:literary",
         "genre:realistic_fiction"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": 0.9,
+        "ideaDensity": 0.9
+      }
     },
     {
       "id": "ad_genre_drama",
@@ -99,7 +138,13 @@
         "genre:drama",
         "genre:realistic_fiction",
         "vibe:emotional"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.25,
+        "realism": 0.9,
+        "characterFocus": 1.0,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ad_genre_romance",
@@ -109,7 +154,12 @@
         "genre:romance",
         "theme:relationships",
         "vibe:emotional"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.85,
+        "characterFocus": 1.0,
+        "ideaDensity": 0.05
+      }
     },
     {
       "id": "ad_genre_historical",
@@ -118,7 +168,11 @@
       "tags": [
         "genre:historical_fiction",
         "vibe:serious"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": 0.85,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ad_topic_ai",
@@ -129,7 +183,12 @@
         "genre:science_fiction",
         "topic:technology",
         "world:near_future"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.25,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ad_topic_space",
@@ -141,7 +200,12 @@
         "world:space",
         "world:near_future",
         "topic:technology"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.25,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ad_topic_time",
@@ -150,7 +214,12 @@
       "tags": [
         "topic:time_travel",
         "genre:science_fiction"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "characterFocus": -0.1,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ad_topic_cyberpunk",
@@ -160,7 +229,14 @@
         "topic:cyberpunk",
         "genre:science_fiction",
         "vibe:dark"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -0.45,
+        "darkness": 0.85,
+        "realism": -1.0,
+        "characterFocus": -0.1,
+        "ideaDensity": 1.0
+      }
     },
     {
       "id": "ad_topic_magic_real",
@@ -170,7 +246,11 @@
         "genre:fantasy",
         "genre:paranormal",
         "world:real_world"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.9,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ad_topic_mythology",
@@ -180,7 +260,11 @@
         "topic:mythology",
         "world:mythic",
         "genre:fantasy"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -1.0,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ad_topic_politics",
@@ -189,7 +273,12 @@
       "tags": [
         "topic:politics",
         "theme:power"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": 0.3,
+        "characterFocus": -0.15,
+        "ideaDensity": 0.85
+      }
     },
     {
       "id": "ad_topic_survival",
@@ -199,7 +288,12 @@
         "topic:survival",
         "theme:survival",
         "genre:dystopian"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -0.25,
+        "darkness": 1.0,
+        "ideaDensity": 0.1
+      }
     },
     {
       "id": "ad_vibe_dark",
@@ -208,7 +302,11 @@
       "tags": [
         "vibe:dark",
         "theme:survival"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": -0.85,
+        "darkness": 1.0
+      }
     },
     {
       "id": "ad_vibe_twisty",
@@ -217,7 +315,10 @@
       "tags": [
         "vibe:twisty",
         "genre:mystery"
-      ]
+      ],
+      "tasteTraits": {
+        "ideaDensity": 0.6
+      }
     },
     {
       "id": "ad_vibe_epic",
@@ -225,7 +326,11 @@
       "prompt": "Epic scope 🌍",
       "tags": [
         "vibe:epic"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.1,
+        "characterFocus": -0.25
+      }
     },
     {
       "id": "ad_vibe_cozy",
@@ -235,7 +340,14 @@
         "vibe:cozy",
         "theme:community",
         "theme:relationships"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "darkness": -0.75,
+        "pacing": -0.45,
+        "characterFocus": 1.0,
+        "ideaDensity": -0.25
+      }
     },
     {
       "id": "ad_vibe_weird",
@@ -243,7 +355,11 @@
       "prompt": "Weird & experimental 🌀",
       "tags": [
         "vibe:weird"
-      ]
+      ],
+      "tasteTraits": {
+        "realism": -0.1,
+        "ideaDensity": 0.6
+      }
     },
     {
       "id": "ad_vibe_emotional",
@@ -251,7 +367,13 @@
       "prompt": "Emotional / reflective 💭",
       "tags": [
         "vibe:emotional"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 0.35,
+        "pacing": -0.1,
+        "characterFocus": 0.6,
+        "ideaDensity": 0.15
+      }
     },
     {
       "id": "ad_vibe_fast",
@@ -260,7 +382,10 @@
       "tags": [
         "vibe:fast",
         "pace:fast"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0
+      }
     },
     {
       "id": "ad_pace_fast",
@@ -270,7 +395,11 @@
         "pace:fast",
         "genre:adventure",
         "vibe:fast"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 1.0,
+        "characterFocus": -0.15
+      }
     },
     {
       "id": "ad_pace_slow",
@@ -279,7 +408,11 @@
       "tags": [
         "pace:slow",
         "vibe:thoughtful"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": -1.0,
+        "ideaDensity": 0.55
+      }
     },
     {
       "id": "ad_pace_short",
@@ -287,7 +420,11 @@
       "prompt": "Shorter reads 📘",
       "tags": [
         "pace:not_too_long"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.25,
+        "ideaDensity": -0.15
+      }
     },
     {
       "id": "ad_char_antihero",
@@ -295,7 +432,10 @@
       "prompt": "Antihero main character 😈",
       "tags": [
         "character:antihero"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": 0.65
+      }
     },
     {
       "id": "ad_char_complex",
@@ -303,7 +443,10 @@
       "prompt": "Complex characters 🧩",
       "tags": [
         "character:complex"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": 0.9
+      }
     },
     {
       "id": "ad_char_found_family",
@@ -312,7 +455,11 @@
       "tags": [
         "theme:found_family",
         "theme:family"
-      ]
+      ],
+      "tasteTraits": {
+        "warmth": 1.0,
+        "characterFocus": 1.0
+      }
     },
     {
       "id": "ad_format_series",
@@ -320,7 +467,10 @@
       "prompt": "Series 📚",
       "tags": [
         "format:series"
-      ]
+      ],
+      "tasteTraits": {
+        "characterFocus": 0.05
+      }
     },
     {
       "id": "ad_format_standalone",
@@ -328,7 +478,8 @@
       "prompt": "Standalone novel 📖",
       "tags": [
         "format:standalone"
-      ]
+      ],
+      "tasteTraits": {}
     },
     {
       "id": "ad_format_short_stories",
@@ -338,7 +489,10 @@
         "format:short_stories",
         "pace:fast",
         "format:anthology"
-      ]
+      ],
+      "tasteTraits": {
+        "pacing": 0.9
+      }
     },
     {
       "id": "ad_format_audio",
@@ -346,7 +500,8 @@
       "prompt": "Audiobook-friendly 🎧",
       "tags": [
         "format:audiobook_friendly"
-      ]
+      ],
+      "tasteTraits": {}
     }
   ]
 }

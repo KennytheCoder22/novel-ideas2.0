@@ -13,6 +13,17 @@ export type SwipeDeckCardType =
 
 export type AgeSignal = "younger" | "neutral" | "older";
 
+export type TasteAxis =
+  | "warmth"
+  | "darkness"
+  | "pacing"
+  | "realism"
+  | "characterFocus"
+  | "ideaDensity";
+
+export type TasteTraits = Partial<Record<TasteAxis, number>>;
+
+
 /**
  * UI-only fields. Nothing in `display` should ever affect recommendation output.
  */
@@ -59,6 +70,11 @@ export interface SwipeDeckCard {
   // New split model
   display?: SwipeDeckCardDisplay;
   output?: SwipeDeckCardOutput;
+
+  // New: 20Q-aligned structured trait evidence.
+  // These values represent how strongly this card signals each taste axis.
+  // Recommended range is roughly -1 to 1.
+  tasteTraits?: TasteTraits;
 
   // Optional media/cover metadata used by SwipeDeckScreen
   wikiTitle?: string;
