@@ -367,12 +367,4 @@ export function buildTasteProfile(input: TasteBuilderInput): TasteProfile {
   );
 }
 
-export function buildTasteProfile(input: TasteBuilderInput): TasteProfile {
-  const base = buildTasteProfileFromTagCounts(input.tagCounts || {});
-  const withSemantic = applySemanticSwipeTraits(base, input.swipedItemTraits || []);
-  return applyFeedbackToTasteProfile(
-    withSemantic,
-    input.feedback || [],
-    input.itemTraitsById || {}
-  );
-}
+
