@@ -277,7 +277,7 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   );
 
   const hasNarrativeSignal =
-    /\b(novel|story|follows|tells the story|journey|survival|investigation)\b/.test(combined);
+    /\b(novel|follows|tells the story|journey|survival|investigation)\b/.test(combined);
 
   return hasFictionSignal && hasNarrativeSignal;
 }
@@ -291,6 +291,9 @@ function isClearlyNotABookCandidate(candidate: Candidate): boolean {
   if (!title || title.length < 3) return true;
 
   if (candidate.pageCount > 0 && candidate.pageCount < 60) return true;
+
+  // HARD REJECT: low-signal generic horror-story spam
+  if (/\bhorror story\b/.test(title) && candidate.pageCount > 0 && candidate.pageCount < 120) return true;
 
   const hardRejectTitlePatterns = [
     /\bencyclop(a|e)dia\b/,

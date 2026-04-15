@@ -110,6 +110,26 @@ function isGarbageGoogleBooksCandidate(doc: any): boolean {
     return true;
   }
 
+  // HARD REJECT: low-quality horror-story spam
+  if (/\bhorror story\b/.test(title) && /\b(scary|ghost|paranormal|supernatural)\b/.test(text)) {
+    return true;
+  }
+
+  // HARD REJECT: generic paranormal/scary-ghost packaging
+  if (/\bscary ghosts?\b|\bparanormal horror story\b/.test(text)) {
+    return true;
+  }
+
+  // HARD REJECT: writing / author advice bleed
+  if (/\b(write a novel|how to write|writer'?s market|writing guide|writing handbook)\b/.test(text)) {
+    return true;
+  }
+
+  // HARD REJECT: horror-adjacent reference books
+  if (/\b(dictionary|companion|guide|handbook)\b/.test(title) && /\b(horror|fiction|literature)\b/.test(text)) {
+    return true;
+  }
+
   return false;
 }
 
