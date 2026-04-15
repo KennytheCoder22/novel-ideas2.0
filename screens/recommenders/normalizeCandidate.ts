@@ -272,9 +272,14 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
 
-  return fictionPositivePatterns.some(
+  const hasFictionSignal = fictionPositivePatterns.some(
     (rx) => rx.test(title) || rx.test(categories) || rx.test(description) || rx.test(combined)
   );
+
+  const hasNarrativeSignal =
+    /\b(novel|story|follows|tells the story|journey|survival|investigation)\b/.test(combined);
+
+  return hasFictionSignal && hasNarrativeSignal;
 }
 
 function isClearlyNotABookCandidate(candidate: Candidate): boolean {
@@ -284,6 +289,8 @@ function isClearlyNotABookCandidate(candidate: Candidate): boolean {
   const description = String(candidate?.description || '').toLowerCase();
 
   if (!title || title.length < 3) return true;
+
+  if (candidate.pageCount > 0 && candidate.pageCount < 60) return true;
 
   const hardRejectTitlePatterns = [
     /\bencyclop(a|e)dia\b/,

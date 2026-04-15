@@ -113,6 +113,31 @@ function isGarbageGoogleBooksCandidate(doc: any): boolean {
   return false;
 }
 
+
+function isClearlyNotNarrativeBook(doc: any): boolean {
+  const text = [
+    doc?.title,
+    doc?.subtitle,
+    doc?.description,
+    ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (!text) return false;
+
+  if (/\b(workbook|textbook|study guide|manual|handbook|guide|reference)\b/.test(text)) return true;
+  if (/\b(essay|essays|philosophy|treatise|apology for|scepticism|critique)\b/.test(text)) return true;
+  if (/\b(erotic|bdsm|explicit|taboo|alpha male|virgin|first time)\b/.test(text)) return true;
+  if (/\b(history of|themes in|study of|analysis of)\b/.test(text)) return true;
+
+  return false;
+}
+
 async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 3): Promise<any> {
   let attempt = 0;
   while (attempt <= retries) {
@@ -351,6 +376,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       if (isHardSelfPublished(publisher)) return false;
       if (looksLikeGoogleBooksReference(doc)) return false;
       if (isGarbageGoogleBooksCandidate(doc)) return false;
+      if (isClearlyNotNarrativeBook(doc)) return false;
       return true;
     });
 
