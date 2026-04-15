@@ -52,6 +52,9 @@ const DISTINCTIVE_TERMS = new Set([
   "rebellion",
   "character-driven",
   "relationship-focused",
+  "psychological science fiction",
+  "science fiction thriller",
+  "romantic science fiction",
 ]);
 
 const BANNED_PRIMARY_SCENARIOS = new Set([
@@ -62,6 +65,8 @@ const BANNED_PRIMARY_SCENARIOS = new Set([
 
 const NARRATIVE_ANCHORS = new Set([
   "science fiction",
+  "psychological science fiction",
+  "science fiction thriller",
   "dystopian",
   "historical fiction",
   "fantasy",
@@ -124,6 +129,8 @@ const RETRIEVAL_HYGIENE_TERMS = [
   "-reader",
 ];
 
+const POSITIVE_FICTION_HINTS = ["fiction", "story", "book"];
+
 function dedupe(values: string[]): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
@@ -178,6 +185,14 @@ function normalizeForQuery(part?: string): string | undefined {
   return part;
 }
 
+function toRetrievalModifier(part?: string): string | undefined {
+  if (!part) return undefined;
+  if (part === "character-driven") return "psychological";
+  if (part === "relationship-focused") return "romance";
+  if (part === "family saga") return "family";
+  return part;
+}
+
 function isGeneric(key?: string): boolean {
   return !!key && GENERIC_TERMS.has(key);
 }
@@ -212,25 +227,30 @@ function antiPenalty(parts: string[], signals: QuerySignals): number {
 }
 
 function cleanParts(parts: Array<string | undefined | null>): string[] {
-  return dedupe(parts.map(normalizeForQuery).filter(Boolean) as string[]);
+  return dedupe(
+    parts
+      .map(normalizeForQuery)
+      .map((part) => toRetrievalModifier(part))
+      .filter(Boolean) as string[]
+  );
 }
 
 function sortPartsForSearch(parts: string[]): string[] {
   const priority = new Map<string, number>([
     ["psychological", 0],
-    ["horror", 1],
-    ["thriller", 2],
-    ["mystery", 3],
-    ["science fiction", 4],
-    ["dystopian", 5],
-    ["historical fiction", 6],
-    ["fantasy", 7],
-    ["romance", 8],
-    ["survival", 9],
-    ["investigation", 10],
-    ["family saga", 11],
-    ["character-driven", 12],
-    ["relationship-focused", 13],
+    ["psychological science fiction", 1],
+    ["science fiction thriller", 2],
+    ["horror", 3],
+    ["thriller", 4],
+    ["mystery", 5],
+    ["science fiction", 6],
+    ["dystopian", 7],
+    ["historical fiction", 8],
+    ["fantasy", 9],
+    ["romance", 10],
+    ["survival", 11],
+    ["investigation", 12],
+    ["family", 13],
     ["moral conflict", 14],
     ["redemption", 15],
     ["technology", 16],
@@ -259,8 +279,12 @@ function enforceSearchableStructure(parts: string[]): string[] {
     out.push("thriller");
   }
 
-  if (out.includes("character-driven") && !out.includes("family saga") && !out.includes("relationship-focused")) {
-    out.push("relationship-focused");
+  if (out.includes("psychological") && out.includes("science fiction")) {
+    out.push("psychological science fiction");
+  }
+
+  if (out.includes("science fiction") && out.includes("thriller")) {
+    out.push("science fiction thriller");
   }
 
   return dedupe(sortPartsForSearch(out));
@@ -268,18 +292,9 @@ function enforceSearchableStructure(parts: string[]): string[] {
 
 function choosePrimaryAnchor(parts: string[]): string | undefined {
   const set = new Set(parts);
-  const softCharacterQuery =
-    set.has("character-driven") || set.has("relationship-focused") || set.has("family saga");
-  const strongSpeculativeSignal =
-    set.has("horror") ||
-    set.has("dystopian") ||
-    set.has("science fiction") ||
-    set.has("gothic") ||
-    set.has("war") ||
-    set.has("rebellion") ||
-    set.has("technology") ||
-    set.has("investigation");
 
+  if (set.has("psychological science fiction")) return "psychological science fiction";
+  if (set.has("science fiction thriller")) return "science fiction thriller";
   if (set.has("psychological") && set.has("horror")) return "psychological horror";
   if (set.has("psychological") && set.has("thriller")) return "psychological thriller";
   if (set.has("horror")) return "horror";
@@ -288,14 +303,11 @@ function choosePrimaryAnchor(parts: string[]): string | undefined {
   if (set.has("dystopian")) return "dystopian";
   if (set.has("science fiction")) return "science fiction";
   if (set.has("historical fiction")) return "historical fiction";
-  if (set.has("fantasy") && strongSpeculativeSignal) return "fantasy";
-  if (set.has("fantasy") && !softCharacterQuery) return "fantasy";
-  if (softCharacterQuery) return "literary fiction";
   if (set.has("fantasy")) return "fantasy";
   if (set.has("romance")) return "romance";
   if (set.has("survival")) return "science fiction";
   if (set.has("investigation")) return "mystery";
-  if (set.has("family saga")) return "literary fiction";
+  if (set.has("family")) return "literary fiction";
 
   return undefined;
 }
@@ -349,7 +361,7 @@ function buildSearchQuery(parts: string[]): string | undefined {
 
   if (finalModifiers.length === 0) return undefined;
 
-  return safeJoin([...finalModifiers, anchor, "novel"]);
+  return safeJoin([...finalModifiers, anchor, "novel", ...POSITIVE_FICTION_HINTS]);
 }
 
 function addCandidate(
@@ -364,7 +376,7 @@ function addCandidate(
   parts = enforceSearchableStructure(parts);
 
   if (parts.length < 2) return;
-  if (!hasNarrativeAnchor(parts) && !parts.includes("historical fiction") && !parts.includes("character-driven")) return;
+  if (!hasNarrativeAnchor(parts) && !parts.includes("historical fiction") && !parts.includes("psychological")) return;
   if (looksTooGeneric(parts) && !parts.some((p) => isDistinctive(p))) return;
   if (bannedScenarioLeak(parts, rawSources)) return;
 
@@ -514,7 +526,7 @@ function fallbackQueries(signals: QuerySignals): string[] {
   const fallbackPartsA = enforceSearchableStructure([genre[0], world[0], theme[0]]);
   const fallbackPartsB = enforceSearchableStructure([genre[0], world[0]]);
   const fallbackPartsC = enforceSearchableStructure([genre[0], theme[0] || world[0]]);
-  const fallbackPartsD = enforceSearchableStructure([theme[0], world[0], "character-driven"]);
+  const fallbackPartsD = enforceSearchableStructure([theme[0], world[0], "psychological"]);
 
   const base = [
     buildSearchQuery(fallbackPartsA),
@@ -535,7 +547,7 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   return {
     queries,
     preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v9-anchor-veto-soft-signal-translation",
+    strategy: "20q-hypothesis-composer-v10-retrieval-vocabulary-fiction-binding",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),
