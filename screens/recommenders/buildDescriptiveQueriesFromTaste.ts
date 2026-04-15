@@ -36,11 +36,15 @@ const DISTINCTIVE_TERMS = new Set([
   "survival",
   "dystopian",
   "historical",
+  "historical fiction",
   "betrayal",
   "redemption",
   "social commentary",
   "authority",
   "family conflict",
+  "moral conflict",
+  "fantasy",
+  "horror",
 ]);
 
 const BANNED_PRIMARY_SCENARIOS = new Set([
@@ -51,25 +55,29 @@ const BANNED_PRIMARY_SCENARIOS = new Set([
 
 const NARRATIVE_ANCHORS = new Set([
   "science fiction",
-  "technology",
-  "crime investigation",
-  "investigation",
-  "survival",
-  "psychological",
   "dystopian",
+  "historical fiction",
+  "fantasy",
+  "horror",
+  "mystery",
+  "thriller",
+  "romance",
+  "psychological",
+  "survival",
+  "investigation",
+  "crime investigation",
 ]);
 
-const SEARCHABLE_SCENARIOS = new Set([
-  "survival",
-  "investigation",
-  "crime investigation",
-  "journey",
-  "family conflict",
-  "murder",
-  "betrayal",
-  "rebellion",
-  "war",
-  "dystopian",
+const QUERY_DROP_TERMS = new Set([
+  "hopeful",
+  "hope",
+  "cozy",
+  "grounded",
+  "realistic",
+  "epic",
+  "humorous",
+  "funny",
+  "warm",
 ]);
 
 function dedupe(values: string[]): string[] {
@@ -107,10 +115,18 @@ function domainEntries(signals: QuerySignals, domain: SignalDomain, n = 4): Sign
 
 function normalizeForQuery(part?: string): string | undefined {
   if (!part) return undefined;
-  if (part === "realistic") return "grounded";
-  if (part === "crime") return "crime investigation";
-  if (part === "institutional") return "governmental";
+
+  if (part === "realistic") return undefined;
+  if (part === "grounded") return undefined;
+  if (part === "hopeful") return undefined;
+  if (part === "crime") return "mystery";
+  if (part === "crime investigation") return "mystery";
+  if (part === "institutional") return "political";
+  if (part === "historical") return "historical fiction";
+  if (part === "family") return "family saga";
+  if (part === "identity") return "psychological";
   if (part === "societal collapse" || part === "governmental collapse" || part === "collapse") return undefined;
+
   return part;
 }
 
@@ -155,42 +171,57 @@ function sortPartsForSearch(parts: string[]): string[] {
   const priority = new Map<string, number>([
     ["psychological", 0],
     ["horror", 1],
-    ["science fiction", 2],
-    ["dystopian", 3],
-    ["survival", 4],
-    ["investigation", 5],
-    ["crime investigation", 6],
-    ["journey", 7],
-    ["technology", 8],
-    ["identity", 20],
-    ["redemption", 21],
-    ["hopeful", 22],
-    ["grounded", 23],
+    ["thriller", 2],
+    ["mystery", 3],
+    ["science fiction", 4],
+    ["dystopian", 5],
+    ["historical fiction", 6],
+    ["fantasy", 7],
+    ["romance", 8],
+    ["survival", 9],
+    ["investigation", 10],
+    ["family saga", 11],
+    ["moral conflict", 12],
+    ["redemption", 13],
+    ["technology", 14],
   ]);
 
   return [...parts].sort((a, b) => {
-    const pa = priority.has(a) ? priority.get(a)! : 10;
-    const pb = priority.has(b) ? priority.get(b)! : 10;
+    const pa = priority.has(a) ? priority.get(a)! : 50;
+    const pb = priority.has(b) ? priority.get(b)! : 50;
     if (pa !== pb) return pa - pb;
     return a.localeCompare(b);
   });
 }
 
 function enforceSearchableStructure(parts: string[]): string[] {
-  const out = dedupe(parts);
-  const hasScenario = out.some((part) => SEARCHABLE_SCENARIOS.has(part));
+  let out = dedupe(parts).filter((part) => !QUERY_DROP_TERMS.has(part));
 
-  if (out.includes("identity") && (out.includes("horror") || out.includes("science fiction"))) {
-    const idx = out.indexOf("identity");
-    out.splice(idx, 1);
-    if (!out.includes("psychological")) out.push("psychological");
-  }
-
-  if (out.includes("horror") && !hasScenario && !out.includes("psychological")) {
-    out.push("psychological");
+  if (out.includes("psychological") && out.includes("science fiction") && !out.includes("thriller")) {
+    out.push("thriller");
   }
 
   return dedupe(sortPartsForSearch(out));
+}
+
+function choosePrimaryAnchor(parts: string[]): string | undefined {
+  const set = new Set(parts);
+
+  if (set.has("psychological") && set.has("horror")) return "psychological horror";
+  if (set.has("psychological") && set.has("thriller")) return "psychological thriller";
+  if (set.has("horror")) return "horror";
+  if (set.has("thriller")) return "thriller";
+  if (set.has("mystery")) return "mystery";
+  if (set.has("dystopian")) return "dystopian";
+  if (set.has("science fiction")) return "science fiction";
+  if (set.has("historical fiction")) return "historical fiction";
+  if (set.has("fantasy")) return "fantasy";
+  if (set.has("romance")) return "romance";
+  if (set.has("survival")) return "science fiction";
+  if (set.has("investigation")) return "mystery";
+  if (set.has("family saga")) return "literary fiction";
+
+  return undefined;
 }
 
 function looksTooGeneric(parts: string[]): boolean {
@@ -221,14 +252,22 @@ function scoreCluster(parts: string[], sources: SignalCandidate[], signals: Quer
   return sourceWeight + domainBonus - anti - anchorPenalty;
 }
 
-function deAcademicize(query: string): string {
-  let out = String(query || "").trim().toLowerCase();
+function buildSearchQuery(parts: string[]): string | undefined {
+  const anchor = choosePrimaryAnchor(parts);
+  if (!anchor) return undefined;
 
-  if (out.includes("identity") && (out.includes("horror") || out.includes("science fiction"))) {
-    out = out.replace(/\bidentity\b/g, "psychological");
-  }
+  const anchorTokens = new Set(anchor.split(" "));
+  const modifiers = parts.filter(
+    (part) =>
+      !QUERY_DROP_TERMS.has(part) &&
+      !anchorTokens.has(part) &&
+      part !== anchor &&
+      part !== "psychological" &&
+      part !== "mystery"
+  );
 
-  return out.replace(/\s+/g, " ").trim();
+  const trimmedModifiers = modifiers.slice(0, 2);
+  return safeJoin([anchor, "novel", ...trimmedModifiers]);
 }
 
 function addCandidate(
@@ -243,12 +282,12 @@ function addCandidate(
   parts = enforceSearchableStructure(parts);
 
   if (parts.length < 2) return;
-  if (!hasNarrativeAnchor(parts) && !parts.includes("historical")) return;
+  if (!hasNarrativeAnchor(parts) && !parts.includes("historical fiction")) return;
   if (looksTooGeneric(parts) && !parts.some((p) => isDistinctive(p))) return;
   if (bannedScenarioLeak(parts, rawSources)) return;
 
-  const query = deAcademicize(safeJoin([...parts, "story"]));
-  if (!query || query === "story") return;
+  const query = buildSearchQuery(parts);
+  if (!query || query === "novel") return;
 
   const score = scoreCluster(parts, rawSources, signals) + scoreBias;
   bag.push({ label, query, parts, score });
@@ -377,20 +416,24 @@ function lightweightSuppressions(signals: QuerySignals): string[] {
 }
 
 function compactQuery(baseQuery: string, signals: QuerySignals): string {
-  return safeJoin([deAcademicize(baseQuery), ...lightweightSuppressions(signals)]);
+  return safeJoin([baseQuery, ...lightweightSuppressions(signals)]);
 }
 
 function fallbackQueries(signals: QuerySignals): string[] {
-  const tone = topKeys(signals.tone, 2);
-  const theme = topKeys(signals.theme, 2);
+  const genre = topKeys(signals.genre, 2);
   const world = topKeys(signals.world, 2);
+  const theme = topKeys(signals.theme, 2);
+
+  const fallbackPartsA = enforceSearchableStructure([genre[0], world[0], theme[0]]);
+  const fallbackPartsB = enforceSearchableStructure([genre[0], world[0]]);
 
   const base = [
-    deAcademicize(safeJoin([...enforceSearchableStructure([tone[0], theme[0], world[0]]), "story"])),
-    deAcademicize(safeJoin([...enforceSearchableStructure([tone[0], theme[0]]), "story"])),
+    buildSearchQuery(fallbackPartsA),
+    buildSearchQuery(fallbackPartsB),
+    genre[0] ? safeJoin([normalizeForQuery(genre[0]), "novel"]) : "",
   ].filter(Boolean);
 
-  return dedupe(base);
+  return dedupe(base as string[]);
 }
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
@@ -402,7 +445,7 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   return {
     queries,
     preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v6-retrieval-aware-story-query",
+    strategy: "20q-hypothesis-composer-v7-retrieval-aware-subgenre-novel-query",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),
