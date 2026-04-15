@@ -47,6 +47,26 @@ function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string
   return out;
 }
 
+function normalizeQueryKey(value: unknown): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/["']/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function preferredPrimaryRungs(rungs: any[]): Set<string> {
+  const primaryQueryKey = normalizeQueryKey(rungs?.[0]?.query);
+  if (!primaryQueryKey) return new Set<string>();
+
+  return new Set(
+    (Array.isArray(rungs) ? rungs : [])
+      .filter((r) => normalizeQueryKey(r?.query) === primaryQueryKey)
+      .map((r) => String(r?.rung))
+      .filter(Boolean)
+  );
+}
+
 function decisionSwipeCountFromTasteProfile(input: RecommenderInput): number {
   return Number((input as any)?.tasteProfile?.evidence?.swipes || 0);
 }
@@ -1052,7 +1072,17 @@ const normalizedCandidates = [
     ...(includeGcd ? gcdCandidates : []),
   ];
 
-  const candidatePoolPreview = normalizedCandidates.slice(0, 50).map((c: any) => ({
+  const preferredRungs = preferredPrimaryRungs(rungs);
+  const primaryIntentCandidates = normalizedCandidates.filter((c: any) =>
+    preferredRungs.has(String(c?.rawDoc?.queryRung ?? c?.queryRung ?? ""))
+  );
+
+  const finalLimit = Math.max(1, Math.min(10, input.limit ?? 10));
+  const rankingPool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
+    ? primaryIntentCandidates
+    : normalizedCandidates;
+
+  const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => ({
     title: c.title,
     author: Array.isArray(c.author_name) ? c.author_name[0] : c.author,
     source: c.source,
@@ -1066,7 +1096,7 @@ const normalizedCandidates = [
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
   // finalRecommender performs the actual preference-aware magic.
-  const rankedDocs = finalRecommenderForDeck(normalizedCandidates, input.deckKey, {
+  const rankedDocs = finalRecommenderForDeck(rankingPool, input.deckKey, {
     tasteProfile: input.tasteProfile,
     profileOverride: input.profileOverride,
     priorRecommendedIds: input.priorRecommendedIds,
@@ -1077,7 +1107,6 @@ const normalizedCandidates = [
     priorRejectedKeys: input.priorRejectedKeys,
   });
 
-  const finalLimit = Math.max(1, Math.min(10, input.limit ?? 10));
   const finalRankedDocs = rankedDocs.slice(0, finalLimit);
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
