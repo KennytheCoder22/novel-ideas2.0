@@ -50,7 +50,8 @@ const DISTINCTIVE_TERMS = new Set([
   "gothic",
   "war",
   "rebellion",
-  "technology",
+  "character-driven",
+  "relationship-focused",
 ]);
 
 const BANNED_PRIMARY_SCENARIOS = new Set([
@@ -72,6 +73,7 @@ const NARRATIVE_ANCHORS = new Set([
   "survival",
   "investigation",
   "crime investigation",
+  "literary fiction",
 ]);
 
 const QUERY_DROP_TERMS = new Set([
@@ -84,6 +86,13 @@ const QUERY_DROP_TERMS = new Set([
   "humorous",
   "funny",
   "warm",
+]);
+
+const ABSTRACT_QUERY_TERMS = new Set([
+  "human connection",
+  "connection",
+  "relationship",
+  "relationships",
 ]);
 
 const RETRIEVAL_HYGIENE_TERMS = [
@@ -102,6 +111,17 @@ const RETRIEVAL_HYGIENE_TERMS = [
   "-anthologies",
   "-collection",
   "-collections",
+  "-philosophy",
+  "-study",
+  "-studies",
+  "-literature",
+  "-encyclopedia",
+  "-handbook",
+  "-catalog",
+  "-magazine",
+  "-journal",
+  "-readers",
+  "-reader",
 ];
 
 function dedupe(values: string[]): string[] {
@@ -143,6 +163,10 @@ function normalizeForQuery(part?: string): string | undefined {
   if (part === "realistic") return undefined;
   if (part === "grounded") return undefined;
   if (part === "hopeful") return undefined;
+  if (part === "cozy") return "character-driven";
+  if (part === "human connection") return "character-driven";
+  if (part === "relationship") return "relationship-focused";
+  if (part === "relationships") return "relationship-focused";
   if (part === "crime") return "mystery";
   if (part === "crime investigation") return "investigation";
   if (part === "institutional") return "political";
@@ -205,14 +229,17 @@ function sortPartsForSearch(parts: string[]): string[] {
     ["survival", 9],
     ["investigation", 10],
     ["family saga", 11],
-    ["moral conflict", 12],
-    ["redemption", 13],
-    ["technology", 14],
-    ["political", 15],
-    ["social commentary", 16],
-    ["war", 17],
-    ["rebellion", 18],
-    ["gothic", 19],
+    ["character-driven", 12],
+    ["relationship-focused", 13],
+    ["moral conflict", 14],
+    ["redemption", 15],
+    ["technology", 16],
+    ["political", 17],
+    ["social commentary", 18],
+    ["war", 19],
+    ["rebellion", 20],
+    ["gothic", 21],
+    ["literary fiction", 22],
   ]);
 
   return [...parts].sort((a, b) => {
@@ -224,10 +251,16 @@ function sortPartsForSearch(parts: string[]): string[] {
 }
 
 function enforceSearchableStructure(parts: string[]): string[] {
-  let out = dedupe(parts).filter((part) => !QUERY_DROP_TERMS.has(part));
+  let out = dedupe(parts)
+    .filter((part) => !QUERY_DROP_TERMS.has(part))
+    .filter((part) => !ABSTRACT_QUERY_TERMS.has(part));
 
   if (out.includes("psychological") && out.includes("science fiction") && !out.includes("thriller")) {
     out.push("thriller");
+  }
+
+  if (out.includes("character-driven") && !out.includes("family saga") && !out.includes("relationship-focused")) {
+    out.push("relationship-focused");
   }
 
   return dedupe(sortPartsForSearch(out));
@@ -235,6 +268,17 @@ function enforceSearchableStructure(parts: string[]): string[] {
 
 function choosePrimaryAnchor(parts: string[]): string | undefined {
   const set = new Set(parts);
+  const softCharacterQuery =
+    set.has("character-driven") || set.has("relationship-focused") || set.has("family saga");
+  const strongSpeculativeSignal =
+    set.has("horror") ||
+    set.has("dystopian") ||
+    set.has("science fiction") ||
+    set.has("gothic") ||
+    set.has("war") ||
+    set.has("rebellion") ||
+    set.has("technology") ||
+    set.has("investigation");
 
   if (set.has("psychological") && set.has("horror")) return "psychological horror";
   if (set.has("psychological") && set.has("thriller")) return "psychological thriller";
@@ -244,6 +288,9 @@ function choosePrimaryAnchor(parts: string[]): string | undefined {
   if (set.has("dystopian")) return "dystopian";
   if (set.has("science fiction")) return "science fiction";
   if (set.has("historical fiction")) return "historical fiction";
+  if (set.has("fantasy") && strongSpeculativeSignal) return "fantasy";
+  if (set.has("fantasy") && !softCharacterQuery) return "fantasy";
+  if (softCharacterQuery) return "literary fiction";
   if (set.has("fantasy")) return "fantasy";
   if (set.has("romance")) return "romance";
   if (set.has("survival")) return "science fiction";
@@ -289,6 +336,7 @@ function buildSearchQuery(parts: string[]): string | undefined {
   const modifiers = parts.filter(
     (part) =>
       !QUERY_DROP_TERMS.has(part) &&
+      !ABSTRACT_QUERY_TERMS.has(part) &&
       !anchorTokens.has(part) &&
       part !== anchor
   );
@@ -316,7 +364,7 @@ function addCandidate(
   parts = enforceSearchableStructure(parts);
 
   if (parts.length < 2) return;
-  if (!hasNarrativeAnchor(parts) && !parts.includes("historical fiction")) return;
+  if (!hasNarrativeAnchor(parts) && !parts.includes("historical fiction") && !parts.includes("character-driven")) return;
   if (looksTooGeneric(parts) && !parts.some((p) => isDistinctive(p))) return;
   if (bannedScenarioLeak(parts, rawSources)) return;
 
@@ -446,6 +494,7 @@ function lightweightSuppressions(signals: QuerySignals): string[] {
   if (anti.includes("romance")) suppressions.push("-romance");
   if (anti.includes("fantasy")) suppressions.push("-fantasy");
   if (anti.includes("historical")) suppressions.push("-historical");
+  if (anti.includes("science fiction")) suppressions.push("-science-fiction");
   return suppressions;
 }
 
@@ -465,11 +514,13 @@ function fallbackQueries(signals: QuerySignals): string[] {
   const fallbackPartsA = enforceSearchableStructure([genre[0], world[0], theme[0]]);
   const fallbackPartsB = enforceSearchableStructure([genre[0], world[0]]);
   const fallbackPartsC = enforceSearchableStructure([genre[0], theme[0] || world[0]]);
+  const fallbackPartsD = enforceSearchableStructure([theme[0], world[0], "character-driven"]);
 
   const base = [
     buildSearchQuery(fallbackPartsA),
     buildSearchQuery(fallbackPartsB),
     buildSearchQuery(fallbackPartsC),
+    buildSearchQuery(fallbackPartsD),
   ].filter(Boolean);
 
   return dedupe(base as string[]);
@@ -484,7 +535,7 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   return {
     queries,
     preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v8-enforced-modifier-retrieval-hygiene",
+    strategy: "20q-hypothesis-composer-v9-anchor-veto-soft-signal-translation",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),

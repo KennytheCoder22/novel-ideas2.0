@@ -14,7 +14,7 @@ export const QUERY_TRANSLATIONS = {
 
   tone: {
     dark: ["dark"],
-    cozy: [],
+    cozy: ["character-driven"],
     hopeful: [],
     humorous: [],
     spooky: ["psychological"],
@@ -42,7 +42,7 @@ export const QUERY_TRANSLATIONS = {
     investigation: ["investigation"],
     survival: ["survival"],
     family: ["family saga"],
-    relationship: ["relationship"],
+    relationship: ["character-driven"],
     murder: ["murder"],
     rebellion: ["rebellion"],
     institutional: ["political"],
@@ -57,5 +57,6 @@ export const QUERY_TRANSLATIONS = {
     "family conflict": ["family saga"],
     "social commentary": ["social commentary"],
     "moral conflict": ["moral conflict"],
+    "human connection": ["character-driven"],
   },
 } as const;
