@@ -1,12 +1,6 @@
 import type { DeckKey, RecommendationDoc, TasteProfile } from './types';
 import type { Candidate } from './normalizeCandidate';
-import { titleMatchPenalty } from './normalizeCandidate';
-import {
-  laneFromDeckKey,
-  recommenderProfiles,
-  type RecommenderLane,
-  type RecommenderProfile
-} from './recommenderProfiles';
+import { type RecommenderLane } from './recommenderProfiles';
 
 export type FinalRecommenderOptions = {
   lane?: RecommenderLane;
@@ -32,11 +26,9 @@ function haystack(c: Candidate): string {
 }
 
 function isValidCandidate(c: Candidate): boolean {
-  if (!c.title) return false;
-  return true;
+  return Boolean(c.title);
 }
 
-/* 🔥 HARD FILTER — THIS IS THE MAIN FIX */
 function isLikelyNonFictionMeta(c: Candidate): boolean {
   const text = haystack(c);
 
@@ -44,77 +36,14 @@ function isLikelyNonFictionMeta(c: Candidate): boolean {
     /guide|handbook|encyclopedia|history of|studies|analysis|criticism|review|digest/.test(text) ||
     /writers|writing|how to write|advisory/.test(text) ||
     /magazine|journal|bulletin|review/.test(text) ||
-    /anthology|collection|stories\b/.test(text) ||
+    /anthology|collection/.test(text) ||
     /reference|companion|literature/.test(text) ||
     /publishers weekly|booklist|cambridge history|atlantic monthly/.test(text)
   );
 }
 
-function vibeBoost(c: Candidate, taste?: TasteProfile): number {
-  if (!taste) return 0;
-
-  const text = haystack(c);
-
-  if ((taste.axes?.darkness || 0) > 0.2) {
-    if (/dark|bleak|grim|violent|dystopian/.test(text)) {
-      return 0.5;
-    }
-  }
-
-  return 0;
-}
-
-function scoreQueryAlignment(c: Candidate): number {
-  if (!c.queryTerms?.length) return 0;
-
-  const text = haystack(c);
-
-  const goodTerms = c.queryTerms.filter(
-    t => t.length >= 4 && !['novel', 'fiction', 'adult'].includes(t)
-  );
-
-  let matches = 0;
-  for (const term of goodTerms) {
-    if (text.includes(term)) matches++;
-  }
-
-  return matches * 0.35;
-}
-
-function scoreRungBoost(c: Candidate): number {
-  const r = Number(c.queryRung);
-  if (r === 0) return 2;
-  if (r === 1) return 1;
-  if (r === 2) return 0.5;
-  return 0;
-}
-
-function scoreBasicQuality(c: Candidate): number {
-  let score = 0;
-  if (c.description) score += 1;
-  if (c.hasCover) score += 0.5;
-  return score;
-}
-
-function agePenalty(c: Candidate): number {
-  const year = Number(c.publicationYear || 0);
-  if (!year) return 0;
-  if (year < 1950) return -2;
-  if (year < 1980) return -0.75;
-  return 0;
-}
-
-function narrativeSignal(c: Candidate): number {
-  const text = haystack(c);
-
-  let score = 0;
-
-  if (/novel|story/.test(text)) score += 0.6;
-  if (/murder|investigation|family|survival|crime|secrets|identity/.test(text)) {
-    score += 0.6;
-  }
-
-  return score;
+function evidenceRank(c: Candidate): number {
+  return Number.isFinite(Number(c.queryRung)) ? Number(c.queryRung) : 999;
 }
 
 function dedupe(candidates: Candidate[]): Candidate[] {
@@ -124,8 +53,31 @@ function dedupe(candidates: Candidate[]): Candidate[] {
     const key = identityKey(c);
     const existing = map.get(key);
 
-    if (!existing || scoreBasicQuality(c) > scoreBasicQuality(existing)) {
+    if (!existing) {
       map.set(key, c);
+      continue;
+    }
+
+    const currentRank = evidenceRank(c);
+    const existingRank = evidenceRank(existing);
+
+    if (currentRank < existingRank) {
+      map.set(key, c);
+      continue;
+    }
+
+    if (currentRank === existingRank) {
+      const currentHasDescription = Boolean(c.description);
+      const existingHasDescription = Boolean(existing.description);
+
+      if (currentHasDescription && !existingHasDescription) {
+        map.set(key, c);
+        continue;
+      }
+
+      if (currentHasDescription === existingHasDescription && c.hasCover && !existing.hasCover) {
+        map.set(key, c);
+      }
     }
   }
 
@@ -134,28 +86,25 @@ function dedupe(candidates: Candidate[]): Candidate[] {
 
 export function finalRecommenderForDeck(
   candidates: Candidate[],
-  deckKey: DeckKey,
-  options: FinalRecommenderOptions = {}
+  _deckKey: DeckKey,
+  _options: FinalRecommenderOptions = {}
 ): RecommendationDoc[] {
-
-  const lane = options.lane ?? laneFromDeckKey(options.deckKey ?? deckKey);
-
-  const base = dedupe(candidates)
+  const base = dedupe(Array.isArray(candidates) ? candidates : [])
     .filter(isValidCandidate)
-    .filter(c => !isLikelyNonFictionMeta(c)); // 🔥 CRITICAL
+    .filter((c) => !isLikelyNonFictionMeta(c));
 
-  const scored = base.map((c) => {
-    const score =
-      scoreBasicQuality(c) * 1.3 +
-      scoreQueryAlignment(c) * 1.6 +
-      scoreRungBoost(c) * 2.2 +
-      vibeBoost(c, options.tasteProfile) +
-      titleMatchPenalty(c) +
-      agePenalty(c) +
-      narrativeSignal(c);
+  const ordered = base.sort((a, b) => {
+    const rungDiff = evidenceRank(a) - evidenceRank(b);
+    if (rungDiff !== 0) return rungDiff;
 
-    return { candidate: c, score };
-  }).sort((a, b) => b.score - a.score);
+    const aHasDescription = a.description ? 1 : 0;
+    const bHasDescription = b.description ? 1 : 0;
+    if (aHasDescription !== bHasDescription) return bHasDescription - aHasDescription;
 
-  return scored.slice(0, 10).map(s => s.candidate.rawDoc as RecommendationDoc);
+    const aHasCover = a.hasCover ? 1 : 0;
+    const bHasCover = b.hasCover ? 1 : 0;
+    return bHasCover - aHasCover;
+  });
+
+  return ordered.slice(0, 10).map((c) => c.rawDoc as RecommendationDoc);
 }

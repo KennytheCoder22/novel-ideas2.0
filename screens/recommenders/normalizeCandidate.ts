@@ -1,4 +1,4 @@
-import type { CommercialSignals, RecommendationDoc } from './types';
+import type { RecommendationDoc } from './types';
 
 export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'gcd';
 
@@ -7,7 +7,6 @@ export type FormatCategory = 'manga' | 'graphic_novel' | 'comic' | 'prose';
 export type Candidate = {
   queryRung?: number;
   queryText?: string;
-  queryTerms?: string[];
   id: string;
   title: string;
   author: string;
@@ -17,8 +16,8 @@ export type Candidate = {
   subjects: string[];
   genres: string[];
   publicationYear: number;
-  ratingCount: number;
-  averageRating: number;
+  ratingCount?: number;
+  averageRating?: number;
   pageCount: number;
   editionCount: number;
   publisher: string;
@@ -27,45 +26,18 @@ export type Candidate = {
   rawDoc: RecommendationDoc;
   source: CandidateSource;
   formatCategory: FormatCategory;
-  hardcover?: any;
-  commercialSignals?: CommercialSignals;
 };
-
-export function isLikelyNonFictionMeta(candidate: Candidate): boolean {
-  const text = `${candidate.title} ${candidate.description || ''}`.toLowerCase();
-
-  return (
-    /guide|handbook|encyclopedia|history of|studies|analysis|criticism|review|digest/.test(text) ||
-    /writers|writing|how to write|advisory/.test(text) ||
-    /magazine|journal|review|bulletin/.test(text) ||
-    /anthology|collection|stories\b/.test(text) ||
-    /literature|reference|companion/.test(text)
-  );
-}
-
-export function titleMatchPenalty(candidate: Candidate): number {
-  const title = candidate.title.toLowerCase();
-  const terms = candidate.queryTerms || [];
-
-  if (!terms.length) return 0;
-
-  let matches = 0;
-  for (const t of terms) {
-    if (title.includes(t)) matches++;
-  }
-
-  // title match without description = bad signal
-  if (matches > 0 && !candidate.description) {
-    return -0.6;
-  }
-
-  return 0;
-}
 
 function asArray(value: any): string[] {
   if (Array.isArray(value)) return value.map((v) => String(v || '').trim()).filter(Boolean);
   if (value == null || value === '') return [];
   return [String(value).trim()].filter(Boolean);
+}
+
+function normalizeText(value: unknown): string {
+  if (Array.isArray(value)) return value.map(normalizeText).join(' ').toLowerCase();
+  if (value == null) return '';
+  return String(value).toLowerCase();
 }
 
 function getTitle(rawDoc: any): string {
@@ -79,7 +51,9 @@ function getSubtitle(rawDoc: any): string {
 function getDescription(rawDoc: any): string {
   const description = rawDoc?.description ?? rawDoc?.volumeInfo?.description ?? '';
   if (typeof description === 'string') return description.trim();
-  if (description && typeof description === 'object' && typeof description.text === 'string') return description.text.trim();
+  if (description && typeof description === 'object' && typeof description.text === 'string') {
+    return description.text.trim();
+  }
   return '';
 }
 
@@ -121,7 +95,7 @@ function getPublicationYear(rawDoc: any): number {
   return match ? Number(match[0]) : 0;
 }
 
-function getRatings(rawDoc: any): { averageRating: number; ratingCount: number } {
+function getRatings(rawDoc: any): { averageRating?: number; ratingCount?: number } {
   const averageRaw =
     rawDoc?.ratings?.summary?.average ??
     rawDoc?.ratingSummary?.average ??
@@ -138,10 +112,15 @@ function getRatings(rawDoc: any): { averageRating: number; ratingCount: number }
     rawDoc?.ratingsCount ??
     rawDoc?.volumeInfo?.ratingsCount;
 
-  return {
-    averageRating: Number.isFinite(Number(averageRaw)) ? Math.max(0, Math.min(5, Number(averageRaw))) : 0,
-    ratingCount: Number.isFinite(Number(countRaw)) ? Math.max(0, Number(countRaw)) : 0,
-  };
+  const averageRating = Number.isFinite(Number(averageRaw))
+    ? Math.max(0, Math.min(5, Number(averageRaw)))
+    : undefined;
+
+  const ratingCount = Number.isFinite(Number(countRaw))
+    ? Math.max(0, Number(countRaw))
+    : undefined;
+
+  return { averageRating, ratingCount };
 }
 
 function getPageCount(rawDoc: any): number {
@@ -152,41 +131,6 @@ function getPageCount(rawDoc: any): number {
 function getEditionCount(rawDoc: any): number {
   const editionCount = rawDoc?.edition_count ?? rawDoc?.editionCount;
   return Number.isFinite(Number(editionCount)) ? Math.max(0, Number(editionCount)) : 0;
-}
-
-const QUERY_STOPWORDS = new Set([
-  'subject', 'fiction', 'novel', 'book', 'books', 'story', 'stories',
-  'the', 'and', 'for', 'with', 'about', 'from', 'into'
-]);
-
-function extractQueryTerms(queryText: any): string[] {
-  const raw = String(queryText || '').toLowerCase();
-  if (!raw.trim()) return [];
-
-  const subjectMatches = Array.from(
-    raw.matchAll(/subject:"([^"]+)"|subject:([a-z0-9_\-]+)/g)
-  )
-    .map((m) => (m[1] || m[2] || '').trim())
-    .filter(Boolean);
-
-  const cleanedFreeText = raw
-    .replace(/subject:"[^"]+"|subject:[a-z0-9_\-]+/g, ' ')
-    .replace(/[^a-z0-9]+/g, ' ')
-    .trim();
-
-  const freeTextTerms = cleanedFreeText
-    .split(/\s+/)
-    .map((word) => word.trim())
-    .filter((word) => word.length >= 3)
-    .filter((word) => !QUERY_STOPWORDS.has(word));
-
-  return Array.from(new Set([...subjectMatches, ...freeTextTerms]));
-}
-
-function normalizeText(value: unknown): string {
-  if (Array.isArray(value)) return value.map(normalizeText).join(' ').toLowerCase();
-  if (value == null) return '';
-  return String(value).toLowerCase();
 }
 
 function collectCategoryText(doc: any): string {
@@ -223,6 +167,8 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   const description = collectDescriptionText(doc);
   const author = normalizeText(doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.volumeInfo?.authors);
   const combined = [title, categories, description, author].filter(Boolean).join(' ');
+
+  if (!title) return false;
 
   const hardRejectTitlePatterns = [
     /\bguide\b/,
@@ -303,12 +249,6 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   const fictionPositivePatterns = [
     /\bfiction\b/,
     /\bnovel\b/,
-    /\bcharacter[-\s]?driven\b/,
-    /\brelationship[-\s]?driven\b/,
-    /\bfamily saga\b/,
-    /\blove story\b/,
-    /\bcoming[-\s]?of[-\s]?age\b/,
-    /\bspeculative\b/,
     /\bfantasy\b/,
     /\bscience fiction\b/,
     /\bhorror\b/,
@@ -328,37 +268,20 @@ export function looksLikeFictionCandidate(doc: any): boolean {
     /\bwhen\b.*\bdiscovers?\b/,
   ];
 
-  const obviousReferenceSeriesPatterns = [
-    /\bpublishers?\s+weekly\b/,
-    /\bnewsweek\b/,
-    /\bcontemporary authors\b/,
-    /\babout the author\b/,
-    /\bsource book\b/,
-    /\btalking book\b/,
-    /\btopics\b/,
-    /\bguide\b/,
-    /\bhandbook\b/,
-    /\bcatalog(?:ue)?\b/,
-  ];
-
-  if (!title) return false;
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
-  if (obviousReferenceSeriesPatterns.some((rx) => rx.test(combined))) return false;
 
   return fictionPositivePatterns.some(
-    (rx) => rx.test(title) || rx.test(categories) || rx.test(description)
+    (rx) => rx.test(title) || rx.test(categories) || rx.test(description) || rx.test(combined)
   );
 }
 
 function isClearlyNotABookCandidate(candidate: Candidate): boolean {
-  const title = String(candidate?.title || "").toLowerCase().trim();
-  const publisher = String(candidate?.publisher || "").toLowerCase().trim();
-  const subjects = Array.isArray(candidate?.subjects)
-    ? candidate.subjects.join(" ").toLowerCase()
-    : "";
-  const description = String(candidate?.description || "").toLowerCase();
+  const title = String(candidate?.title || '').toLowerCase().trim();
+  const publisher = String(candidate?.publisher || '').toLowerCase().trim();
+  const subjects = Array.isArray(candidate?.subjects) ? candidate.subjects.join(' ').toLowerCase() : '';
+  const description = String(candidate?.description || '').toLowerCase();
 
   if (!title || title.length < 3) return true;
 
@@ -431,14 +354,8 @@ function detectFormatCategory(
   if (source === 'kitsu') return 'manga';
   if (source === 'gcd') return 'comic';
   if (subjectText.includes('manga')) return 'manga';
-
-  if (subjectText.includes('graphic novel') || subjectText.includes('graphic novels')) {
-    return 'graphic_novel';
-  }
-
-  if (subjectText.includes('comic') || subjectText.includes('comics')) {
-    return 'comic';
-  }
+  if (subjectText.includes('graphic novel') || subjectText.includes('graphic novels')) return 'graphic_novel';
+  if (subjectText.includes('comic') || subjectText.includes('comics')) return 'comic';
 
   return 'prose';
 }
@@ -480,11 +397,7 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
         v.includes('science fiction') ||
         v.includes('horror') ||
         v.includes('romance') ||
-        v.includes('drama') ||
         v.includes('dystopian') ||
-        v.includes('speculative') ||
-        v.includes('character') ||
-        v.includes('family saga') ||
         v.includes('manga') ||
         v.includes('graphic novel') ||
         v.includes('graphic novels') ||
@@ -503,22 +416,14 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
     rawDoc,
     source,
     formatCategory,
-    hardcover: (rawDoc as any)?.hardcover,
-    commercialSignals: (rawDoc as any)?.commercialSignals,
     queryRung: Number.isFinite(Number((rawDoc as any)?.queryRung)) ? Number((rawDoc as any)?.queryRung) : undefined,
     queryText: typeof (rawDoc as any)?.queryText === 'string' ? (rawDoc as any).queryText : undefined,
-    queryTerms: extractQueryTerms((rawDoc as any)?.queryText),
   };
 }
 
 export function normalizeCandidates(rawDocs: RecommendationDoc[], source: CandidateSource): Candidate[] {
   return (Array.isArray(rawDocs) ? rawDocs : [])
-    .filter((rawDoc) => {
-      if (source === 'openLibrary') {
-        return !isClearlyNotABookCandidate(normalizeCandidate(rawDoc, source));
-      }
-      return looksLikeFictionCandidate(rawDoc);
-    })
     .map((rawDoc) => normalizeCandidate(rawDoc, source))
-    .filter((candidate) => !isClearlyNotABookCandidate(candidate));
+    .filter((candidate) => !isClearlyNotABookCandidate(candidate))
+    .filter((candidate) => looksLikeFictionCandidate(candidate.rawDoc));
 }
