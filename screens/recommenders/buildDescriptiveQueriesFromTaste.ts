@@ -45,6 +45,12 @@ const DISTINCTIVE_TERMS = new Set([
   "moral conflict",
   "fantasy",
   "horror",
+  "political",
+  "family saga",
+  "gothic",
+  "war",
+  "rebellion",
+  "technology",
 ]);
 
 const BANNED_PRIMARY_SCENARIOS = new Set([
@@ -79,6 +85,24 @@ const QUERY_DROP_TERMS = new Set([
   "funny",
   "warm",
 ]);
+
+const RETRIEVAL_HYGIENE_TERMS = [
+  "-writers",
+  "-writer",
+  "-writing",
+  "-guide",
+  "-reference",
+  "-bibliography",
+  "-analysis",
+  "-criticism",
+  "-review",
+  "-summary",
+  "-workbook",
+  "-anthology",
+  "-anthologies",
+  "-collection",
+  "-collections",
+];
 
 function dedupe(values: string[]): string[] {
   const out: string[] = [];
@@ -120,7 +144,7 @@ function normalizeForQuery(part?: string): string | undefined {
   if (part === "grounded") return undefined;
   if (part === "hopeful") return undefined;
   if (part === "crime") return "mystery";
-  if (part === "crime investigation") return "mystery";
+  if (part === "crime investigation") return "investigation";
   if (part === "institutional") return "political";
   if (part === "historical") return "historical fiction";
   if (part === "family") return "family saga";
@@ -184,6 +208,11 @@ function sortPartsForSearch(parts: string[]): string[] {
     ["moral conflict", 12],
     ["redemption", 13],
     ["technology", 14],
+    ["political", 15],
+    ["social commentary", 16],
+    ["war", 17],
+    ["rebellion", 18],
+    ["gothic", 19],
   ]);
 
   return [...parts].sort((a, b) => {
@@ -261,13 +290,18 @@ function buildSearchQuery(parts: string[]): string | undefined {
     (part) =>
       !QUERY_DROP_TERMS.has(part) &&
       !anchorTokens.has(part) &&
-      part !== anchor &&
-      part !== "psychological" &&
-      part !== "mystery"
+      part !== anchor
   );
 
-  const trimmedModifiers = modifiers.slice(0, 2);
-  return safeJoin([anchor, "novel", ...trimmedModifiers]);
+  const strongModifiers = modifiers.filter((m) => !GENERIC_TERMS.has(m));
+  const finalModifiers =
+    strongModifiers.length > 0
+      ? strongModifiers.slice(0, 2)
+      : modifiers.slice(0, 1);
+
+  if (finalModifiers.length === 0) return undefined;
+
+  return safeJoin([...finalModifiers, anchor, "novel"]);
 }
 
 function addCandidate(
@@ -416,7 +450,11 @@ function lightweightSuppressions(signals: QuerySignals): string[] {
 }
 
 function compactQuery(baseQuery: string, signals: QuerySignals): string {
-  return safeJoin([baseQuery, ...lightweightSuppressions(signals)]);
+  return safeJoin([
+    baseQuery,
+    ...lightweightSuppressions(signals),
+    ...RETRIEVAL_HYGIENE_TERMS,
+  ]);
 }
 
 function fallbackQueries(signals: QuerySignals): string[] {
@@ -426,11 +464,12 @@ function fallbackQueries(signals: QuerySignals): string[] {
 
   const fallbackPartsA = enforceSearchableStructure([genre[0], world[0], theme[0]]);
   const fallbackPartsB = enforceSearchableStructure([genre[0], world[0]]);
+  const fallbackPartsC = enforceSearchableStructure([genre[0], theme[0] || world[0]]);
 
   const base = [
     buildSearchQuery(fallbackPartsA),
     buildSearchQuery(fallbackPartsB),
-    genre[0] ? safeJoin([normalizeForQuery(genre[0]), "novel"]) : "",
+    buildSearchQuery(fallbackPartsC),
   ].filter(Boolean);
 
   return dedupe(base as string[]);
@@ -445,7 +484,7 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   return {
     queries,
     preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v7-retrieval-aware-subgenre-novel-query",
+    strategy: "20q-hypothesis-composer-v8-enforced-modifier-retrieval-hygiene",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),

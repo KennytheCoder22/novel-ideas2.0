@@ -1,15 +1,15 @@
 export const QUERY_TRANSLATIONS = {
   genre: {
-    fantasy: ["fantasy novel"],
-    thriller: ["thriller novel"],
-    mystery: ["mystery novel"],
-    crime: ["mystery novel"],
-    horror: ["horror novel"],
-    "science fiction": ["science fiction novel"],
-    romance: ["romance novel"],
-    historical: ["historical fiction novel"],
-    "historical fiction": ["historical fiction novel"],
-    drama: ["literary fiction novel"],
+    fantasy: ["fantasy"],
+    thriller: ["thriller"],
+    mystery: ["mystery"],
+    crime: ["mystery"],
+    horror: ["horror"],
+    "science fiction": ["science fiction"],
+    romance: ["romance"],
+    historical: ["historical fiction"],
+    "historical fiction": ["historical fiction"],
+    drama: ["literary fiction"],
   },
 
   tone: {
