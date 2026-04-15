@@ -55,6 +55,8 @@ const DISTINCTIVE_TERMS = new Set([
   "psychological science fiction",
   "science fiction thriller",
   "romantic science fiction",
+  "dark fantasy",
+  "psychological mystery",
 ]);
 
 const BANNED_PRIMARY_SCENARIOS = new Set([
@@ -67,6 +69,8 @@ const NARRATIVE_ANCHORS = new Set([
   "science fiction",
   "psychological science fiction",
   "science fiction thriller",
+  "dark fantasy",
+  "psychological mystery",
   "dystopian",
   "historical fiction",
   "fantasy",
@@ -128,8 +132,6 @@ const RETRIEVAL_HYGIENE_TERMS = [
   "-readers",
   "-reader",
 ];
-
-const POSITIVE_FICTION_HINTS = ["fiction", "story", "book"];
 
 function dedupe(values: string[]): string[] {
   const out: string[] = [];
@@ -237,29 +239,31 @@ function cleanParts(parts: Array<string | undefined | null>): string[] {
 
 function sortPartsForSearch(parts: string[]): string[] {
   const priority = new Map<string, number>([
-    ["psychological", 0],
-    ["psychological science fiction", 1],
-    ["science fiction thriller", 2],
-    ["horror", 3],
-    ["thriller", 4],
-    ["mystery", 5],
-    ["science fiction", 6],
-    ["dystopian", 7],
-    ["historical fiction", 8],
-    ["fantasy", 9],
-    ["romance", 10],
-    ["survival", 11],
-    ["investigation", 12],
-    ["family", 13],
-    ["moral conflict", 14],
-    ["redemption", 15],
-    ["technology", 16],
-    ["political", 17],
-    ["social commentary", 18],
-    ["war", 19],
-    ["rebellion", 20],
-    ["gothic", 21],
-    ["literary fiction", 22],
+    ["dark fantasy", 0],
+    ["psychological mystery", 1],
+    ["psychological science fiction", 2],
+    ["science fiction thriller", 3],
+    ["psychological", 4],
+    ["horror", 5],
+    ["thriller", 6],
+    ["mystery", 7],
+    ["science fiction", 8],
+    ["dystopian", 9],
+    ["historical fiction", 10],
+    ["fantasy", 11],
+    ["romance", 12],
+    ["survival", 13],
+    ["investigation", 14],
+    ["family", 15],
+    ["moral conflict", 16],
+    ["redemption", 17],
+    ["technology", 18],
+    ["political", 19],
+    ["social commentary", 20],
+    ["war", 21],
+    ["rebellion", 22],
+    ["gothic", 23],
+    ["literary fiction", 24],
   ]);
 
   return [...parts].sort((a, b) => {
@@ -287,12 +291,22 @@ function enforceSearchableStructure(parts: string[]): string[] {
     out.push("science fiction thriller");
   }
 
+  if (out.includes("psychological") && out.includes("fantasy")) {
+    out.push("dark fantasy");
+  }
+
+  if (out.includes("psychological") && out.includes("mystery")) {
+    out.push("psychological mystery");
+  }
+
   return dedupe(sortPartsForSearch(out));
 }
 
 function choosePrimaryAnchor(parts: string[]): string | undefined {
   const set = new Set(parts);
 
+  if (set.has("dark fantasy")) return "dark fantasy";
+  if (set.has("psychological mystery")) return "psychological mystery";
   if (set.has("psychological science fiction")) return "psychological science fiction";
   if (set.has("science fiction thriller")) return "science fiction thriller";
   if (set.has("psychological") && set.has("horror")) return "psychological horror";
@@ -303,11 +317,12 @@ function choosePrimaryAnchor(parts: string[]): string | undefined {
   if (set.has("dystopian")) return "dystopian";
   if (set.has("science fiction")) return "science fiction";
   if (set.has("historical fiction")) return "historical fiction";
-  if (set.has("fantasy")) return "fantasy";
+  if (set.has("fantasy") && (set.has("horror") || set.has("gothic") || set.has("war") || set.has("rebellion"))) return "fantasy";
   if (set.has("romance")) return "romance";
   if (set.has("survival")) return "science fiction";
   if (set.has("investigation")) return "mystery";
   if (set.has("family")) return "literary fiction";
+  if (set.has("fantasy")) return "fantasy";
 
   return undefined;
 }
@@ -356,12 +371,12 @@ function buildSearchQuery(parts: string[]): string | undefined {
   const strongModifiers = modifiers.filter((m) => !GENERIC_TERMS.has(m));
   const finalModifiers =
     strongModifiers.length > 0
-      ? strongModifiers.slice(0, 2)
+      ? strongModifiers.slice(0, 1)
       : modifiers.slice(0, 1);
 
   if (finalModifiers.length === 0) return undefined;
 
-  return safeJoin([...finalModifiers, anchor, "novel", ...POSITIVE_FICTION_HINTS]);
+  return safeJoin([...finalModifiers, anchor, "novel"]);
 }
 
 function addCandidate(
@@ -547,7 +562,7 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   return {
     queries,
     preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v10-retrieval-vocabulary-fiction-binding",
+    strategy: "20q-hypothesis-composer-v10b-subgenre-anchor-retrieval-fix",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),
