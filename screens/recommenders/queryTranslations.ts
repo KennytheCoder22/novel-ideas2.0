@@ -1,15 +1,15 @@
 export const QUERY_TRANSLATIONS = {
   genre: {
-    fantasy: ["fantasy novel"],
-    thriller: ["thriller novel"],
-    mystery: ["mystery novel"],
-    crime: ["crime novel"],
-    horror: ["horror novel"],
-    "science fiction": ["science fiction novel"],
-    romance: ["romance novel"],
-    historical: ["historical novel"],
-    "historical fiction": ["historical fiction novel"],
-    drama: ["drama novel"],
+    fantasy: ["fantasy story"],
+    thriller: ["thriller story"],
+    mystery: ["mystery story"],
+    crime: ["crime story"],
+    horror: ["horror story"],
+    "science fiction": ["science fiction story"],
+    romance: ["romance story"],
+    historical: ["historical story"],
+    "historical fiction": ["historical fiction story"],
+    drama: ["drama story"],
   },
 
   tone: {
@@ -47,5 +47,14 @@ export const QUERY_TRANSLATIONS = {
     rebellion: ["rebellion"],
     institutional: ["institutional"],
     mythic: ["mythic"],
+  },
+
+  theme: {
+    identity: ["psychological", "self-discovery"],
+    technology: ["technology"],
+    redemption: ["redemption"],
+    authority: ["authority"],
+    "family conflict": ["family conflict"],
+    "social commentary": ["social commentary"],
   },
 } as const;
