@@ -147,11 +147,9 @@ const BASE_GENRE_REWRITES: Record<string, string[]> = {
   thriller: ["psychological thriller novel", "crime thriller novel"],
   mystery: ["murder investigation novel", "crime detective fiction"],
   fantasy: ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"],
-  "science fiction": [
-    "science fiction novel",
-    "dystopian science fiction novel",
-    "space opera science fiction",
-  ],
+  "science fiction": ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
+  scifi: ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
+  sci-fi: ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
   romance: ["romance novel"],
   "historical fiction": ["historical fiction novel"],
   literary: ["literary fiction novel"],
@@ -172,6 +170,10 @@ const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
 function tokenize(value: string): string[] {
   return clean(value)
     .split(" ")
+    .map((token) => token.trim())
+    .filter(Boolean)
+    .filter((token) => !token.startsWith("-"))
+    .filter((token) => token !== "or" && token !== "and")
     .map((token) => token.replace(/[^a-z0-9-]/g, ""))
     .filter(Boolean);
 }
@@ -179,6 +181,7 @@ function tokenize(value: string): string[] {
 function removeBannedTokens(value: string): string {
   return tokenize(value)
     .filter((token) => !BANNED_TOKENS.has(token))
+    .filter((token) => token !== "science-fiction")
     .join(" ")
     .trim();
 }
@@ -186,7 +189,7 @@ function removeBannedTokens(value: string): string {
 function ensureBookNativeSuffix(value: string): string {
   const cleaned = clean(value);
   if (!cleaned) return "";
-  if (/\b(novel|fiction)\b/.test(cleaned)) return cleaned;
+  if (/(novel|fiction)/.test(cleaned)) return cleaned;
   return `${cleaned} novel`;
 }
 
@@ -194,7 +197,16 @@ function sanitizeQuery(value: string): string {
   const stripped = removeBannedTokens(value);
   const cleaned = clean(stripped);
   if (!cleaned) return "";
-  return ensureBookNativeSuffix(cleaned);
+
+  const noOperators = cleaned
+    .split(" ")
+    .filter(Boolean)
+    .filter((token) => !token.startsWith("-"))
+    .join(" ")
+    .trim();
+
+  if (!noOperators) return "";
+  return ensureBookNativeSuffix(noOperators);
 }
 
 function normalizedBaseGenre(intent: QueryIntent): string {
@@ -307,7 +319,9 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
     const anchor = rungAnchor(query);
     if (seenAnchors.has(anchor)) continue;
     seenAnchors.add(anchor);
-    selected.push(query);
+    const safeQuery = sanitizeQuery(query);
+    if (!safeQuery) continue;
+    selected.push(safeQuery);
     if (selected.length >= Math.max(1, maxRungs)) break;
   }
 
