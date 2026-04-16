@@ -168,7 +168,7 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
       );
 
     const speculativeReject =
-      /\b(bookshop mysteries|family names|family science|theme in .* fiction|science fact\/science fiction|analog science|public library|publishers weekly)\b/.test(
+      /\b(bookshop mysteries|family names|family science|theme in .* fiction|science fact\/science fiction|analog science|public library|publishers weekly|books?\s*\d+\s*-\s*\d+)\b/.test(
         combined
       );
 
