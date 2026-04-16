@@ -34,13 +34,34 @@ function collectDescriptionText(doc: any): string {
     .join(" ");
 }
 
-function looksLikeFictionCandidate(doc: any): boolean {
+function inferRouterFamily(bucketPlan: any): "thriller" | "speculative" | "romance" | "historical" | "general" {
+  const text = [
+    bucketPlan?.preview,
+    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+    ...(Array.isArray(bucketPlan?.signals?.genres) ? bucketPlan.signals.genres : []),
+    ...(Array.isArray(bucketPlan?.signals?.tones) ? bucketPlan.signals.tones : []),
+    ...(Array.isArray(bucketPlan?.signals?.scenarios) ? bucketPlan.signals.scenarios : []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
+  if (/(science fiction|sci-fi|fantasy|speculative|dystopian|space opera|haunted|horror|technology|ai)/.test(text)) return "speculative";
+  if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
+  if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
+  return "general";
+}
+
+function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
   const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
   const categories = collectCategoryText(doc);
   const description = collectDescriptionText(doc);
   const author = normalizeText(
     doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
   );
+  const combined = [title, categories, description, author].filter(Boolean).join(" ");
+  const family = inferRouterFamily(bucketPlan);
 
   if (!title) return false;
 
@@ -74,6 +95,22 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\byear'?s best\b/,
     /\bbest american\b/,
     /\btrue crime\b/,
+    /\bbooks?\s*\d+\s*-\s*\d+\b/,
+    /\bbook\s*one\b/,
+    /\bbook\s*1\b/,
+    /\bother fictions\b/,
+    /\blanguage and theme in\b/,
+    /\bpsychology of\b/,
+    /\bhistorical dictionary\b/,
+    /\bguide to literature\b/,
+    /\bscience fiction reviews\b/,
+    /\bscience fact\/science fiction\b/,
+    /\banalog science\b/,
+    /\bimaginative tales\b/,
+    /\bfamily (science|names|revolution)\b/,
+    /\bfinding list of books\b/,
+    /\bgeneral catalogue\b/,
+    /\bcatalogue of english prose fiction\b/,
   ];
 
   const hardRejectCategoryPatterns = [
@@ -126,8 +163,6 @@ function looksLikeFictionCandidate(doc: any): boolean {
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
 
-  const combined = [title, categories, description, author].filter(Boolean).join(" ");
-
   const fictionPositive =
     /\b(fiction|novel|thriller|mystery|crime|detective|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
       combined
@@ -137,15 +172,53 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\b(follows|story of|when .* discovers|investigates|must survive|after .* collapse)\b/.test(description) ||
     /\b(novel|fiction)\b/.test(title);
 
-  return fictionPositive || narrativePositive;
+  if (!(fictionPositive && narrativePositive)) return false;
+
+  if (family === "speculative") {
+    const speculativePositive =
+      /\b(science fiction|fantasy|dystopian|speculative|space|spaceship|alien|robot|android|ai|artificial intelligence|future|time travel|portal|parallel world|magic|magical|haunted|ghost|horror)\b/.test(
+        combined
+      );
+
+    const speculativeReject =
+      /\b(cozy mystery|mysteries\b|bookshop mysteries|family names|family science|literary criticism|theme in .* fiction)\b/.test(
+        combined
+      );
+
+    if (!speculativePositive) return false;
+    if (speculativeReject) return false;
+  }
+
+  if (family === "thriller") {
+    const thrillerPositive =
+      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|serial killer|investigation|police procedural|noir)\b/.test(
+        combined
+      );
+    if (!thrillerPositive) return false;
+  }
+
+  if (family === "historical") {
+    const historicalPositive =
+      /\b(historical fiction|historical novel|period fiction|victorian|edwardian|civil war|world war|regency|gilded age)\b/.test(
+        combined
+      );
+    if (!historicalPositive) return false;
+  }
+
+  if (family === "romance") {
+    const romancePositive = /\b(romance|love story|romantic)\b/.test(combined);
+    if (!romancePositive) return false;
+  }
+
+  return true;
 }
 
-export function filterCandidates(docs: RecommendationDoc[], _bucketPlan: any): RecommendationDoc[] {
+export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
 
   for (const doc of inputDocs) {
-    if (!looksLikeFictionCandidate(doc)) continue;
+    if (!looksLikeFictionCandidate(doc, bucketPlan)) continue;
     filtered.push(doc);
   }
 
