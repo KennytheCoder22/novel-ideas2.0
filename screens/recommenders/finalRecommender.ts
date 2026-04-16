@@ -102,7 +102,8 @@ function scoreCandidate(c: Candidate): number {
   score += Math.max(0, 10 - Math.min(9, evidenceRank(c)));
   score += metadataTrust(c);
 
-  if (/science fiction|fantasy|horror|thriller|mystery|survival|dystopian/.test(text)) score += 3;\n  if (!/science fiction|fantasy|horror|thriller|dystopian|speculative/.test(text)) score -= 5;
+  if (/science fiction|fantasy|horror|thriller|mystery|survival|dystopian/.test(text)) score += 3;
+  if (!/science fiction|fantasy|horror|thriller|dystopian|speculative/.test(text)) score -= 5;
   if (/novel|fiction/.test(text)) score += 2;
   if (/book\s*1\b|book\s*one\b|books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) score -= 8;
   if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) score -= 6;
