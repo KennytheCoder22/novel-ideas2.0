@@ -35,7 +35,7 @@ function isLikelyNonFictionMeta(c: Candidate): boolean {
   return (
     /guide|handbook|encyclopedia|history of|studies|analysis|criticism|review|digest/.test(text) ||
     /writers|writing|how to write|advisory/.test(text) ||
-    /magazine|journal|bulletin|review/.test(text) ||
+    /magazine|journal|bulletin/.test(text) ||
     /anthology|collection/.test(text) ||
     /reference|companion|literature/.test(text) ||
     /publishers weekly|booklist|cambridge history|atlantic monthly/.test(text)
@@ -84,16 +84,48 @@ function dedupe(candidates: Candidate[]): Candidate[] {
   return Array.from(map.values());
 }
 
+function metadataTrust(c: Candidate): number {
+  let score = 0;
+  const raw: any = c.rawDoc || {};
+  if (raw.isbn || raw.isbn13 || raw.isbn10) score += 1;
+  if (raw.lccn || raw.oclc || raw.googleBooksId || raw.id) score += 1;
+  if (c.description) score += 1;
+  if (c.hasCover) score += 1;
+  if ((c.pageCount || 0) >= 120) score += 1;
+  return score;
+}
+
+function scoreCandidate(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+
+  score += Math.max(0, 10 - Math.min(9, evidenceRank(c)));
+  score += metadataTrust(c);
+
+  if (/science fiction|fantasy|horror|thriller|mystery|survival|dystopian/.test(text)) score += 3;
+  if (/novel|fiction/.test(text)) score += 2;
+  if (/book\s*1\b|book\s*one\b|books?\s*1\s*-\s*3\b|boxed set|omnibus|collection|anthology/.test(text)) score -= 4;
+  if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) score -= 6;
+
+  return score;
+}
+
 export function finalRecommenderForDeck(
   candidates: Candidate[],
   _deckKey: DeckKey,
   _options: FinalRecommenderOptions = {}
 ): RecommendationDoc[] {
-  const base = dedupe(Array.isArray(candidates) ? candidates : [])
-    .filter(isValidCandidate)
-    .filter((c) => !isLikelyNonFictionMeta(c));
+  const deduped = dedupe(Array.isArray(candidates) ? candidates : []).filter(isValidCandidate);
 
-  const ordered = base.sort((a, b) => {
+  const strictBase = deduped.filter((c) => !isLikelyNonFictionMeta(c));
+  const relaxedBase = deduped.filter((c) => metadataTrust(c) >= 2);
+
+  const base = strictBase.length > 0 ? strictBase : relaxedBase;
+
+  const ordered = [...base].sort((a, b) => {
+    const scoreDiff = scoreCandidate(b) - scoreCandidate(a);
+    if (scoreDiff !== 0) return scoreDiff;
+
     const rungDiff = evidenceRank(a) - evidenceRank(b);
     if (rungDiff !== 0) return rungDiff;
 

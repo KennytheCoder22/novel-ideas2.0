@@ -95,19 +95,6 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\byear'?s best\b/,
     /\bbest american\b/,
     /\btrue crime\b/,
-    /\bbooks?\s*\d+\s*-\s*\d+\b/,
-    /\bbook\s*one\b/,
-    /\bbook\s*1\b/,
-    /\bother fictions\b/,
-    /\blanguage and theme in\b/,
-    /\bpsychology of\b/,
-    /\bhistorical dictionary\b/,
-    /\bguide to literature\b/,
-    /\bscience fiction reviews\b/,
-    /\bscience fact\/science fiction\b/,
-    /\banalog science\b/,
-    /\bimaginative tales\b/,
-    /\bfamily (science|names|revolution)\b/,
     /\bfinding list of books\b/,
     /\bgeneral catalogue\b/,
     /\bcatalogue of english prose fiction\b/,
@@ -172,16 +159,16 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\b(follows|story of|when .* discovers|investigates|must survive|after .* collapse)\b/.test(description) ||
     /\b(novel|fiction)\b/.test(title);
 
-  if (!(fictionPositive && narrativePositive)) return false;
+  if (!(fictionPositive || narrativePositive)) return false;
 
   if (family === "speculative") {
     const speculativePositive =
-      /\b(science fiction|fantasy|dystopian|speculative|space|spaceship|alien|robot|android|ai|artificial intelligence|future|time travel|portal|parallel world|magic|magical|haunted|ghost|horror)\b/.test(
+      /\b(science fiction|fantasy|dystopian|speculative|space|spaceship|alien|robot|android|ai|artificial intelligence|future|time travel|portal|parallel world|magic|magical|haunted|ghost|horror|thriller|survival)\b/.test(
         combined
       );
 
     const speculativeReject =
-      /\b(cozy mystery|mysteries\b|bookshop mysteries|family names|family science|literary criticism|theme in .* fiction)\b/.test(
+      /\b(bookshop mysteries|family names|family science|theme in .* fiction|science fact\/science fiction|analog science|public library|publishers weekly)\b/.test(
         combined
       );
 
@@ -191,7 +178,7 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
 
   if (family === "thriller") {
     const thrillerPositive =
-      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|serial killer|investigation|police procedural|noir)\b/.test(
+      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|serial killer|investigation|police procedural|noir|survival)\b/.test(
         combined
       );
     if (!thrillerPositive) return false;
