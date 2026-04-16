@@ -62,6 +62,29 @@ function combine(parts: Array<string | undefined | null>) {
   return clean(parts.filter(Boolean).join(" "));
 }
 
+function rungAnchor(query: string): string {
+  const q = clean(query || "");
+  const anchors = [
+    "psychological science fiction",
+    "science fiction thriller",
+    "psychological thriller",
+    "psychological horror",
+    "dark fantasy",
+    "psychological mystery",
+    "historical fiction",
+    "literary fiction",
+    "science fiction",
+    "dystopian",
+    "fantasy",
+    "horror",
+    "thriller",
+    "mystery",
+    "romance",
+  ];
+
+  return anchors.find((anchor) => q.includes(anchor)) || queryKey(q);
+}
+
 function buildFallbackRungs(intent: QueryIntent): string[] {
   return distinctQueries([
     clean(intent.baseGenre || ""),
@@ -85,10 +108,21 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
       ? []
       : buildFallbackRungs(intent);
 
-  const queries = distinctQueries([
+  const selected: string[] = [];
+  const seenAnchors = new Set<string>();
+
+  for (const query of distinctQueries([
     ...rankedHypothesisQueries,
     ...fallbackQueries,
-  ]).slice(0, Math.max(1, maxRungs));
+  ])) {
+    const anchor = rungAnchor(query);
+    if (seenAnchors.has(anchor)) continue;
+    seenAnchors.add(anchor);
+    selected.push(query);
+    if (selected.length >= Math.max(1, maxRungs)) break;
+  }
+
+  const queries = selected;
 
   return queries.map((query, i) => ({
     rung: i,

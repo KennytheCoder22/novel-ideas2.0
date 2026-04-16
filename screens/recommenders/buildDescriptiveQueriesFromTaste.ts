@@ -402,6 +402,29 @@ function addCandidate(
   bag.push({ label, query, parts, score });
 }
 
+function anchorOf(query: string): string {
+  const q = clean(query || "");
+  const anchors = [
+    "psychological science fiction",
+    "science fiction thriller",
+    "psychological thriller",
+    "psychological horror",
+    "dark fantasy",
+    "psychological mystery",
+    "historical fiction",
+    "literary fiction",
+    "science fiction",
+    "dystopian",
+    "fantasy",
+    "horror",
+    "thriller",
+    "mystery",
+    "romance",
+  ];
+
+  return anchors.find((anchor) => q.includes(anchor)) || q;
+}
+
 function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   const tones = domainEntries(signals, "tone", 4);
   const scenarios = domainEntries(signals, "scenario", 5);
@@ -496,13 +519,11 @@ function buildHypotheses(signals: QuerySignals): Hypothesis[] {
   }
 
   const diversified: Hypothesis[] = [];
-  const coveredAnchors = new Set<string>();
+  const seenAnchors = new Set<string>();
   for (const candidate of deduped) {
-    const anchor =
-      candidate.parts.find((part) => NARRATIVE_ANCHORS.has(part)) ||
-      candidate.parts[0];
-    if (coveredAnchors.has(anchor) && diversified.length >= 3) continue;
-    coveredAnchors.add(anchor);
+    const anchor = anchorOf(candidate.query);
+    if (seenAnchors.has(anchor)) continue;
+    seenAnchors.add(anchor);
     diversified.push(candidate);
     if (diversified.length >= 5) break;
   }
