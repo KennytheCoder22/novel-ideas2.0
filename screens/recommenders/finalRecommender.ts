@@ -259,6 +259,10 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     return { reject: true, reason: 'hard_reject_text', detail: text.slice(0, 180) };
   }
 
+  if (/\b(stories|tales|short stories)\b/.test(title) && !/\bnovel\b/.test(title)) {
+    return { reject: true, reason: 'hard_reject_title', detail: 'story or tale collection signal' };
+  }
+
   if (/\banthology\b|\bcollection\b|\bomnibus\b|\bboxed set\b|\bbooks?\s*\d+\s*-\s*\d+\b/.test(text)) {
     return { reject: true, reason: 'non_fiction_meta', detail: 'collection or omnibus signal' };
   }
@@ -346,7 +350,11 @@ export function finalRecommenderForDeck(
     });
   }
 
-  const relaxedFallback = deduped.filter((c) => metadataTrust(c) >= 2 && !isHardReject(c).reject);
+  const relaxedFallback = deduped.filter((c) => {
+    if (isHardReject(c).reject) return false;
+    if (isLikelyNonFictionMeta(c)) return false;
+    return metadataTrust(c) >= 2 && hasFictionSignals(c);
+  });
   const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback;
 
   buildDebug(input.length, deduped.length, base, rejected);
