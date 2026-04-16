@@ -402,6 +402,13 @@ function addCandidate(
   bag.push({ label, query, parts, score });
 }
 
+function clean(q: string) {
+  return String(q || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function anchorOf(query: string): string {
   const q = clean(query || "");
   const anchors = [
