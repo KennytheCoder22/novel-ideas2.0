@@ -189,7 +189,7 @@ function removeBannedTokens(value: string): string {
 function ensureBookNativeSuffix(value: string): string {
   const cleaned = clean(value);
   if (!cleaned) return "";
-  if (/(novel|fiction)/.test(cleaned)) return cleaned;
+  if (/\b(novel|fiction)\b/.test(cleaned)) return cleaned;
   return `${cleaned} novel`;
 }
 
@@ -226,6 +226,48 @@ function normalizedBaseGenre(intent: QueryIntent): string {
   return "";
 }
 
+function queryGenre(query: string): string {
+  const q = clean(query);
+  if (/science fiction|space opera|dystopian|technological dystopia|scifi|sci fi|sci-fi|ai thriller/.test(q)) return "science fiction";
+  if (/psychological horror|survival horror|haunted|horror/.test(q)) return "horror";
+  if (/crime thriller|psychological thriller|spy thriller|thriller/.test(q)) return "thriller";
+  if (/murder investigation|crime detective|detective|mystery/.test(q)) return "mystery";
+  if (/epic fantasy|dark fantasy|magic fantasy|fantasy/.test(q)) return "fantasy";
+  if (/romance/.test(q)) return "romance";
+  if (/historical fiction/.test(q)) return "historical fiction";
+  if (/literary/.test(q)) return "literary";
+  return "";
+}
+
+function allowedGenresForBase(base: string): Set<string> {
+  switch (base) {
+    case "science fiction":
+      return new Set(["science fiction"]);
+    case "horror":
+      return new Set(["horror", "thriller"]);
+    case "thriller":
+      return new Set(["thriller", "mystery"]);
+    case "mystery":
+      return new Set(["mystery", "thriller"]);
+    case "fantasy":
+      return new Set(["fantasy"]);
+    case "romance":
+      return new Set(["romance"]);
+    case "historical fiction":
+      return new Set(["historical fiction"]);
+    case "literary":
+      return new Set(["literary"]);
+    default:
+      return new Set(["science fiction","horror","thriller","mystery","fantasy","romance","historical fiction","literary"]);
+  }
+}
+
+function isQueryAllowedForBase(query: string, base: string): boolean {
+  const family = queryGenre(query);
+  if (!base || !family) return true;
+  return allowedGenresForBase(base).has(family);
+}
+
 function expandBaseGenre(intent: QueryIntent): string[] {
   const base = normalizedBaseGenre(intent);
   if (!base) return [];
@@ -250,21 +292,27 @@ function extractThemeSeeds(intent: QueryIntent): string[] {
 
 function themeFallbackQueries(intent: QueryIntent): string[] {
   const outputs: string[] = [];
+  const base = normalizedBaseGenre(intent);
   for (const seed of extractThemeSeeds(intent)) {
     for (const rewrite of THEME_REWRITES) {
       if (rewrite.pattern.test(seed)) outputs.push(...rewrite.outputs);
     }
   }
-  return distinctQueries(outputs.map(sanitizeQuery).filter(Boolean));
+  return distinctQueries(outputs.map(sanitizeQuery).filter(Boolean)).filter((query) =>
+    isQueryAllowedForBase(query, base)
+  );
 }
 
 function buildFallbackRungs(intent: QueryIntent): string[] {
+  const base = normalizedBaseGenre(intent);
   return distinctQueries([
     ...expandBaseGenre(intent),
     ...themeFallbackQueries(intent),
     sanitizeQuery(clean(intent.baseGenre || "")),
     ...dedupe(intent.subgenres || []).map((query) => sanitizeQuery(query)),
-  ].filter(Boolean)).slice(0, 6);
+  ].filter(Boolean))
+    .filter((query) => isQueryAllowedForBase(query, base))
+    .slice(0, 6);
 }
 
 function hypothesisToBookQuery(hypothesis: QueryIntent["hypotheses"][number], intent: QueryIntent): string {
@@ -295,6 +343,7 @@ function hypothesisToBookQuery(hypothesis: QueryIntent["hypotheses"][number], in
 
 export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
   const hypotheses = Array.isArray(intent.hypotheses) ? intent.hypotheses : [];
+  const base = normalizedBaseGenre(intent);
 
   const rankedHypothesisQueries = distinctQueries(
     hypotheses
@@ -302,7 +351,7 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
       .sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0))
       .map((h) => hypothesisToBookQuery(h, intent))
       .filter(Boolean)
-  );
+  ).filter((query) => isQueryAllowedForBase(query, base));
 
   const fallbackQueries =
     rankedHypothesisQueries.length >= Math.max(1, maxRungs)
@@ -321,6 +370,7 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
     seenAnchors.add(anchor);
     const safeQuery = sanitizeQuery(query);
     if (!safeQuery) continue;
+    if (!isQueryAllowedForBase(safeQuery, base)) continue;
     selected.push(safeQuery);
     if (selected.length >= Math.max(1, maxRungs)) break;
   }

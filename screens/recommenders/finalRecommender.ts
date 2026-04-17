@@ -302,18 +302,82 @@ function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidat
   };
 }
 
-function scoreCandidate(c: Candidate): number {
+function detectBaseGenreFromCandidates(candidates: Candidate[]): string {
+  const genreCounts = new Map<string, number>();
+
+  for (const candidate of candidates) {
+    const queryText = normalize((candidate as any).queryText || '');
+    let genre = '';
+
+    if (/science fiction|space opera|dystopian|scifi|sci fi|sci-fi/.test(queryText)) genre = 'science fiction';
+    else if (/psychological horror|survival horror|haunted|horror/.test(queryText)) genre = 'horror';
+    else if (/psychological thriller|crime thriller|spy thriller|thriller/.test(queryText)) genre = 'thriller';
+    else if (/murder investigation|crime detective|detective|mystery/.test(queryText)) genre = 'mystery';
+    else if (/dark fantasy|epic fantasy|magic fantasy|fantasy/.test(queryText)) genre = 'fantasy';
+    else if (/romance/.test(queryText)) genre = 'romance';
+    else if (/historical fiction/.test(queryText)) genre = 'historical fiction';
+    else if (/literary/.test(queryText)) genre = 'literary';
+
+    if (!genre) continue;
+
+    const weight = Math.max(1, 6 - Math.min(4, evidenceRank(candidate)));
+    genreCounts.set(genre, (genreCounts.get(genre) || 0) + weight);
+  }
+
+  let bestGenre = '';
+  let bestScore = -1;
+
+  for (const [genre, score] of genreCounts.entries()) {
+    if (score > bestScore) {
+      bestGenre = genre;
+      bestScore = score;
+    }
+  }
+
+  return bestGenre;
+}
+
+function candidateMatchesBaseGenre(text: string, baseGenre: string): boolean {
+  if (!baseGenre) return true;
+  switch (baseGenre) {
+    case 'science fiction':
+      return /science fiction|dystopian|space opera|speculative|scifi|sci fi|sci-fi/.test(text);
+    case 'horror':
+      return /horror|haunted|ghost|psychological horror|survival horror/.test(text);
+    case 'thriller':
+      return /thriller|psychological thriller|crime thriller|spy thriller|suspense/.test(text);
+    case 'mystery':
+      return /mystery|detective|crime detective|murder investigation/.test(text);
+    case 'fantasy':
+      return /fantasy|magic|epic fantasy|dark fantasy/.test(text);
+    case 'romance':
+      return /romance/.test(text);
+    case 'historical fiction':
+      return /historical fiction/.test(text);
+    case 'literary':
+      return /literary fiction|literary/.test(text);
+    default:
+      return true;
+  }
+}
+
+function scoreCandidate(c: Candidate, baseGenre?: string): number {
   const text = haystack(c);
   let score = 0;
 
-  score += Math.max(0, 10 - Math.min(9, evidenceRank(c)));
+  score += Math.max(0, 15 - (Math.min(9, evidenceRank(c)) * 4));
   score += metadataTrust(c);
 
   if (/science fiction|fantasy|horror|thriller|mystery|survival|dystopian/.test(text)) score += 3;
-  if (!/science fiction|fantasy|horror|thriller|dystopian|speculative/.test(text)) score -= 5;
+  if (!/science fiction|fantasy|horror|thriller|mystery|dystopian|speculative/.test(text)) score -= 5;
   if (/novel|fiction/.test(text)) score += 2;
   if (/book\s*1\b|book\s*one\b|books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) score -= 8;
   if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) score -= 6;
+
+  if (baseGenre) {
+    if (candidateMatchesBaseGenre(text, baseGenre)) score += 6;
+    else score -= 6;
+  }
 
   return score;
 }
@@ -348,11 +412,15 @@ export function finalRecommenderForDeck(
 
   const relaxedFallback = deduped.filter((c) => metadataTrust(c) >= 2 && !isHardReject(c).reject);
   const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback;
+  const baseGenre =
+    detectBaseGenreFromCandidates(base) ||
+    detectBaseGenreFromCandidates(deduped) ||
+    normalize((_options as any)?.lane || '');
 
   buildDebug(input.length, deduped.length, base, rejected);
 
   const ordered = [...base].sort((a, b) => {
-    const scoreDiff = scoreCandidate(b) - scoreCandidate(a);
+    const scoreDiff = scoreCandidate(b, baseGenre) - scoreCandidate(a, baseGenre);
     if (scoreDiff !== 0) return scoreDiff;
 
     const rungDiff = evidenceRank(a) - evidenceRank(b);
