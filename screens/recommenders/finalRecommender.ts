@@ -282,7 +282,10 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   }
 
   if (!hasFictionSignals(c)) {
-    return { pass: false, reason: 'weak_fiction_signal', detail: 'missing fiction/narrative signal' };
+    const trust = metadataTrust(c);
+    if (trust < 3) {
+      return { pass: false, reason: 'weak_fiction_signal', detail: 'missing fiction/narrative signal' };
+    }
   }
 
   return { pass: true };
@@ -421,7 +424,13 @@ export function finalRecommenderForDeck(
 
   buildDebug(input.length, deduped.length, base, rejected);
 
-  const ordered = [...base].sort((a, b) => {
+  let working = base;
+
+  if (working.length < 6) {
+    working = deduped.filter(c => !isHardReject(c).reject);
+  }
+
+  const ordered = [...working].sort((a, b) => {
     const scoreDiff = scoreCandidate(b, baseGenre) - scoreCandidate(a, baseGenre);
     if (scoreDiff !== 0) return scoreDiff;
 
@@ -437,5 +446,20 @@ export function finalRecommenderForDeck(
     return bHasCover - aHasCover;
   });
 
-  return ordered.slice(0, 10).map((c) => c.rawDoc as RecommendationDoc);
+  const seenAuthors = new Map<string, number>();
+  const capped: Candidate[] = [];
+
+  for (const c of ordered) {
+    const author = normalize(c.author);
+    const count = seenAuthors.get(author) || 0;
+
+    if (count >= 1) continue;
+
+    seenAuthors.set(author, count + 1);
+    capped.push(c);
+
+    if (capped.length >= 10) break;
+  }
+
+  return capped.slice(0, 10).map((c) => c.rawDoc as RecommendationDoc);
 }
