@@ -209,7 +209,21 @@ function hasMinimumRatings(doc: any): boolean {
     Number(doc?.hardcover?.ratings_count) ||
     0;
 
-  return ratings >= MIN_RATINGS;
+  const pageCount =
+    Number(doc?.pageCount) ||
+    Number(doc?.volumeInfo?.pageCount) ||
+    0;
+
+  const hasDescription = String(
+    doc?.description ||
+    doc?.volumeInfo?.description ||
+    ""
+  ).trim().length > 120;
+
+  if (ratings >= MIN_RATINGS) return true;
+  if (pageCount >= 180 && hasDescription) return true;
+
+  return false;
 }
 
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
