@@ -284,8 +284,7 @@ if (trust < 3) {
 // Require at least one meaningful signal
 const hasStrongSignal =
   (c.ratingCount || 0) >= 10 ||
-  (c.pageCount || 0) >= 150 ||
-  Boolean(c.description && c.description.length > 120);
+  ((c.pageCount || 0) >= 150 && Boolean(c.description && c.description.length > 120));
 
 if (!hasStrongSignal) {
   return { pass: false, reason: 'low_metadata_trust', detail: 'no strong signal' };
