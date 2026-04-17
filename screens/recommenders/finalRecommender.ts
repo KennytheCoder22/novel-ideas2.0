@@ -371,9 +371,19 @@ export function finalRecommenderForDeck(
     });
   }
 
-  const relaxedFallback = deduped.filter(
-  (c) => metadataTrust(c) >= 3 && !isHardReject(c).reject
-);
+const relaxedFallback = deduped.filter((c) => {
+  if (isHardReject(c).reject) return false;
+
+  const trust = metadataTrust(c);
+  if (trust < 3) return false;
+
+  const hasStrongSignal =
+    (c.ratingCount || 0) >= 10 ||
+    (c.pageCount || 0) >= 150 ||
+    Boolean(c.description && c.description.length > 120);
+
+  return hasStrongSignal;
+});
   const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback;
 
   buildDebug(input.length, deduped.length, base, rejected);
