@@ -144,8 +144,15 @@ const BANNED_TOKENS = new Set([
 
 const BASE_GENRE_REWRITES: Record<string, string[]> = {
   horror: ["psychological horror novel", "survival horror novel"],
-  thriller: ["psychological thriller novel", "crime thriller novel"],
-  mystery: ["murder investigation novel", "crime detective fiction"],
+thriller: [
+  "psychological thriller novel",
+  "domestic thriller novel",
+  "mystery thriller novel"
+],
+mystery: [
+  "mystery thriller novel",
+  "psychological mystery novel"
+],
   fantasy: ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"],
   "science fiction": ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
   romance: ["romance novel"],
@@ -159,7 +166,7 @@ const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
   { pattern: /\bspace\b|\bgalaxy\b|\bcosmic\b|\binterstellar\b/, outputs: ["space opera science fiction"] },
   { pattern: /\bmagic\b|\bmagical\b|\bwizard\b|\bwitch\b/, outputs: ["magic fantasy novel"] },
   { pattern: /\bghost\b|\bhaunted\b/, outputs: ["haunted house horror novel"] },
-  { pattern: /\bmurder\b|\binvestigation\b|\bdetective\b/, outputs: ["murder investigation novel", "crime detective fiction"] },
+  { pattern: /\bmurder\b|\binvestigation\b|\bdetective\b/, outputs: ["mystery thriller novel", "crime thriller novel"] },
   { pattern: /\bspy\b|\bespionage\b/, outputs: ["spy thriller novel"] },
   { pattern: /\bpsychological\b|\bidentity\b|\bmind\b/, outputs: ["psychological thriller novel", "psychological horror novel"] },
 ];
