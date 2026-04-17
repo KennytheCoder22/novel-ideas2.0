@@ -274,10 +274,22 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     return { pass: false, reason: 'non_fiction_meta', detail: 'non-fiction/meta heuristic hit' };
   }
 
-  const trust = metadataTrust(c);
-  if (trust < 2) {
-    return { pass: false, reason: 'low_metadata_trust', detail: `metadataTrust=${trust}` };
-  }
+const trust = metadataTrust(c);
+
+// Stronger baseline
+if (trust < 3) {
+  return { pass: false, reason: 'low_metadata_trust', detail: `metadataTrust=${trust}` };
+}
+
+// Require at least one meaningful signal
+const hasStrongSignal =
+  (c.ratingCount || 0) >= 10 ||
+  (c.pageCount || 0) >= 150 ||
+  Boolean(c.description && c.description.length > 120);
+
+if (!hasStrongSignal) {
+  return { pass: false, reason: 'low_metadata_trust', detail: 'no strong signal' };
+}
 
   if (!hasFictionSignals(c)) {
     return { pass: false, reason: 'weak_fiction_signal', detail: 'missing fiction/narrative signal' };
@@ -359,7 +371,9 @@ export function finalRecommenderForDeck(
     });
   }
 
-  const relaxedFallback = deduped.filter((c) => metadataTrust(c) >= 2 && !isHardReject(c).reject);
+  const relaxedFallback = deduped.filter(
+  (c) => metadataTrust(c) >= 3 && !isHardReject(c).reject
+);
   const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback;
 
   buildDebug(input.length, deduped.length, base, rejected);
