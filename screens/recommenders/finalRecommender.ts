@@ -306,14 +306,27 @@ function scoreCandidate(c: Candidate): number {
   const text = haystack(c);
   let score = 0;
 
-  score += Math.max(0, 10 - Math.min(9, evidenceRank(c)));
-  score += metadataTrust(c);
+  // Prefer lower rungs, but not overwhelmingly
+  score += Math.max(0, 12 - Math.min(9, evidenceRank(c)) * 2);
 
-  if (/science fiction|fantasy|horror|thriller|mystery|survival|dystopian/.test(text)) score += 3;
-  if (!/science fiction|fantasy|horror|thriller|dystopian|speculative/.test(text)) score -= 5;
+  // Metadata matters, but do not let it dominate
+  const trust = metadataTrust(c);
+  score += trust;
+
+  // Genre and narrative signals
+  if (/horror|thriller|mystery|suspense|dark/.test(text)) score += 3;
   if (/novel|fiction/.test(text)) score += 2;
+  if (/follows|tells the story|story of|when .* discovers|investigation|journey/.test(text)) score += 2;
+
+  // Penalize obvious junk
   if (/book\s*1\b|book\s*one\b|books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) score -= 8;
   if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) score -= 6;
+
+  // Penalize low-signal entries with weak catalog support
+  if (trust <= 2 && !c.ratingCount) score -= 4;
+
+  // Reward stronger catalog signals
+  if (trust >= 4) score += 3;
 
   return score;
 }
