@@ -159,11 +159,24 @@ const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
   { pattern: /\bspace\b|\bgalaxy\b|\bcosmic\b|\binterstellar\b/, outputs: ["space opera science fiction"] },
   { pattern: /\bmagic\b|\bmagical\b|\bwizard\b|\bwitch\b/, outputs: ["magic fantasy novel"] },
   { pattern: /\bghost\b|\bhaunted\b/, outputs: ["haunted house horror novel"] },
-  { pattern: /\bsurvival\b/, outputs: ["survival horror novel"] },
   { pattern: /\bmurder\b|\binvestigation\b|\bdetective\b/, outputs: ["murder investigation novel", "crime detective fiction"] },
   { pattern: /\bspy\b|\bespionage\b/, outputs: ["spy thriller novel"] },
   { pattern: /\bpsychological\b|\bidentity\b|\bmind\b/, outputs: ["psychological thriller novel", "psychological horror novel"] },
 ];
+
+function survivalAwareRewrite(intent: QueryIntent): string[] {
+  const base = normalizedBaseGenre(intent);
+
+  if (base === "horror") {
+    return ["survival horror novel"];
+  }
+
+  if (base === "thriller") {
+    return ["survival thriller novel"];
+  }
+
+  return [];
+}
 
 function tokenize(value: string): string[] {
   return clean(value)
@@ -204,6 +217,7 @@ function sanitizeQuery(value: string): string {
     .trim();
 
   if (!noOperators) return "";
+  if (/\bsurvival mystery\b/.test(noOperators)) return "";
   return ensureBookNativeSuffix(noOperators);
 }
 
@@ -291,11 +305,17 @@ function extractThemeSeeds(intent: QueryIntent): string[] {
 function themeFallbackQueries(intent: QueryIntent): string[] {
   const outputs: string[] = [];
   const base = normalizedBaseGenre(intent);
+
   for (const seed of extractThemeSeeds(intent)) {
     for (const rewrite of THEME_REWRITES) {
       if (rewrite.pattern.test(seed)) outputs.push(...rewrite.outputs);
     }
+
+    if (/\bsurvival\b/.test(seed)) {
+      outputs.push(...survivalAwareRewrite(intent));
+    }
   }
+
   return distinctQueries(outputs.map(sanitizeQuery).filter(Boolean)).filter((query) =>
     isQueryAllowedForBase(query, base)
   );
