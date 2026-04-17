@@ -200,12 +200,25 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
   return true;
 }
 
+const MIN_RATINGS = 20;
+
+function hasMinimumRatings(doc: any): boolean {
+  const ratings =
+    Number(doc?.ratingsCount) ||
+    Number(doc?.volumeInfo?.ratingsCount) ||
+    Number(doc?.hardcover?.ratings_count) ||
+    0;
+
+  return ratings >= MIN_RATINGS;
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
 
   for (const doc of inputDocs) {
     if (!looksLikeFictionCandidate(doc, bucketPlan)) continue;
+    if (!hasMinimumRatings(doc)) continue;
     filtered.push(doc);
   }
 
