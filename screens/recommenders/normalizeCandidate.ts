@@ -171,6 +171,9 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   if (!title) return false;
 
   const hardRejectTitlePatterns = [
+    /\bshort stories\b/,
+    /\bhorror stories\b/,
+    /\bstories of\b/,
     /\bguide\b/,
     /\bcompanion\b/,
     /\banalysis\b/,
@@ -324,10 +327,6 @@ if (candidate.pageCount > 0 && candidate.pageCount < 30) return true;
     /\bbooklist\b/,
   ];
 
-  const genericPublicationTitle =
-    /^[a-z\s&.\-]{1,25}$/.test(title) &&
-    !/\b(novel|story|mystery|thriller|crime|fiction|detective|romance|fantasy|horror|manga|comic)\b/.test(title);
-
   const metadataLooksReference =
     /\bperiodicals?\b/.test(subjects) ||
     /\bliterary criticism\b/.test(subjects) ||
@@ -339,7 +338,6 @@ if (candidate.pageCount > 0 && candidate.pageCount < 30) return true;
 
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return true;
   if (hardRejectPublisherPatterns.some((rx) => rx.test(publisher))) return true;
-  if (genericPublicationTitle) return true;
   if (metadataLooksReference) return true;
 
   return false;
