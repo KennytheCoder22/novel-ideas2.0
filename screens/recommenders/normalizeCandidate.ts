@@ -270,7 +270,8 @@ export function looksLikeFictionCandidate(doc: any): boolean {
 
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
-  if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
+  // Soft ignore instead of hard reject
+const descriptionLooksAcademic = hardRejectDescriptionPatterns.some((rx) => rx.test(description));
 
   const hasFictionSignal = fictionPositivePatterns.some(
     (rx) => rx.test(title) || rx.test(categories) || rx.test(description) || rx.test(combined)
@@ -279,7 +280,8 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   const hasNarrativeSignal =
     /\b(novel|follows|tells the story|journey|survival|investigation)\b/.test(combined);
 
-  return hasFictionSignal && hasNarrativeSignal;
+  // Allow strong fiction signal alone OR narrative signal
+return hasFictionSignal || hasNarrativeSignal;
 }
 
 function isClearlyNotABookCandidate(candidate: Candidate): boolean {
@@ -290,7 +292,8 @@ function isClearlyNotABookCandidate(candidate: Candidate): boolean {
 
   if (!title || title.length < 3) return true;
 
-  if (candidate.pageCount > 0 && candidate.pageCount < 60) return true;
+  // Only reject extremely short content (pamphlets)
+if (candidate.pageCount > 0 && candidate.pageCount < 30) return true;
 
   // HARD REJECT: low-signal generic horror-story spam
   if (/\bhorror story\b/.test(title) && candidate.pageCount > 0 && candidate.pageCount < 120) return true;
