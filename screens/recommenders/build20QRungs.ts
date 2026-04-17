@@ -148,8 +148,6 @@ const BASE_GENRE_REWRITES: Record<string, string[]> = {
   mystery: ["murder investigation novel", "crime detective fiction"],
   fantasy: ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"],
   "science fiction": ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
-  scifi: ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
-  sci-fi: ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
   romance: ["romance novel"],
   "historical fiction": ["historical fiction novel"],
   literary: ["literary fiction novel"],
