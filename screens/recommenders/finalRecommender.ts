@@ -176,6 +176,8 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
   }
 
   const hardRejectTitlePatterns = [
+    /\bshort stories\b/,
+    /\bstories\b/,
     /\bguide\b/,
     /\bcompanion\b/,
     /\banalysis\b/,
@@ -259,7 +261,7 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     return { reject: true, reason: 'hard_reject_text', detail: text.slice(0, 180) };
   }
 
-  if (/\banthology\b|\bcollection\b|\bomnibus\b|\bboxed set\b|\bbooks?\s*\d+\s*-\s*\d+\b/.test(text)) {
+  if (/\banthology\b|\bcollection\b|\bomnibus\b|\bboxed set\b|\bshort stories\b|\bstories\b|\bbooks?\s*\d+\s*-\s*\d+\b/.test(text)) {
     return { reject: true, reason: 'non_fiction_meta', detail: 'collection or omnibus signal' };
   }
 
