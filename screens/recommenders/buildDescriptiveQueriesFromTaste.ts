@@ -459,58 +459,136 @@ function modifiersForQueries(parts: string[], anchor: string): { strong: string[
   };
 }
 
-function buildQueryVariants(parts: string[]): QueryPack | undefined {
-  const primaryAnchor = choosePrimaryAnchor(parts);
-  if (!primaryAnchor) return undefined;
 
-  const anchors = dedupe([
-    primaryAnchor,
-    ...alternateAnchors(parts, primaryAnchor),
-    parts.includes("horror") ? "horror" : "",
-    parts.includes("psychological") && parts.includes("horror") ? "psychological horror" : "",
-    parts.includes("psychological") && parts.includes("thriller") ? "psychological thriller" : "",
-    parts.includes("gothic") && parts.includes("horror") ? "gothic horror" : "",
-    parts.includes("dark") && parts.includes("horror") ? "dark horror" : "",
-    parts.includes("survival") && parts.includes("horror") ? "survival horror" : "",
-  ].filter(Boolean) as string[]);
+type RungRole =
+  | "core"
+  | "intensify"
+  | "adjacent_recall"
+  | "controlled_explore";
 
-  const queries: string[] = [];
-  const pushQuery = (...queryParts: Array<string | undefined | null>) => {
-    const q = titleSafeJoin(queryParts);
-    if (q && q !== "novel" && q !== "fiction") queries.push(q);
-  };
+function strongestModifiers(parts: string[]): string[] {
+  return dedupe(
+    parts.filter(
+      (part) =>
+        !QUERY_DROP_TERMS.has(part) &&
+        !ABSTRACT_QUERY_TERMS.has(part) &&
+        !GENERIC_TERMS.has(part)
+    )
+  );
+}
 
-  for (const anchor of anchors) {
-    const { strong, generic } = modifiersForQueries(parts, anchor);
-    const primaryModifier = strong[0] || generic[0];
-    const secondaryModifier = strong[1] || generic[1];
+function sameFamilyExpansions(anchor: string, parts: string[]): string[] {
+  const set = new Set(parts);
+  const out: string[] = [];
 
-    pushQuery(primaryModifier, anchor, "novel");
-    pushQuery(anchor, "novel");
-
-    if (secondaryModifier) pushQuery(primaryModifier, secondaryModifier, anchor, "novel");
-    if (primaryModifier) pushQuery(primaryModifier, anchor, "fiction");
-
-    if (anchor.includes("horror")) {
-      pushQuery("modern", anchor, "novel");
-      pushQuery("dark", anchor, "novel");
-      pushQuery("atmospheric", anchor, "novel");
-    } else if (anchor.includes("thriller") || anchor.includes("mystery")) {
-      pushQuery("psychological", anchor, "novel");
-      pushQuery("dark", anchor, "novel");
-      pushQuery("bestseller", anchor, "novel");
-    } else if (anchor.includes("science fiction")) {
-      pushQuery("modern", anchor, "novel");
-      pushQuery("dark", anchor, "novel");
-    } else if (anchor.includes("fantasy")) {
-      pushQuery("character driven", anchor, "novel");
-      pushQuery("dark", anchor, "novel");
-    } else {
-      pushQuery(anchor, "fiction");
-    }
+  if (anchor === "psychological horror" || anchor === "horror") {
+    if (set.has("survival")) out.push("survival horror");
+    if (set.has("gothic")) out.push("gothic horror");
+    if (set.has("dark")) out.push("dark psychological horror");
+    out.push("haunted psychological horror");
+    out.push("psychological horror thriller");
   }
 
-  const deduped = dedupe(queries).slice(0, 8);
+  if (anchor === "psychological thriller" || anchor === "thriller") {
+    out.push("domestic thriller");
+    out.push("psychological suspense");
+    out.push("mystery thriller");
+  }
+
+  if (anchor === "mystery") {
+    out.push("psychological mystery");
+    out.push("crime thriller");
+    out.push("mystery thriller");
+  }
+
+  if (anchor === "science fiction" || anchor === "science fiction thriller") {
+    out.push("psychological science fiction");
+    out.push("dystopian science fiction");
+    out.push("science fiction thriller");
+  }
+
+  if (anchor === "fantasy" || anchor === "dark fantasy") {
+    out.push("dark fantasy");
+    out.push("gothic fantasy");
+    out.push("magic fantasy");
+  }
+
+  return dedupe(out).filter(Boolean);
+}
+
+function exploratoryExpansions(anchor: string, parts: string[]): string[] {
+  const out: string[] = [];
+
+  if (anchor.includes("horror")) {
+    out.push("dark psychological fiction");
+    out.push("literary horror");
+  } else if (anchor.includes("thriller") || anchor.includes("mystery")) {
+    out.push("psychological suspense");
+    out.push("dark psychological fiction");
+  } else if (anchor.includes("science fiction")) {
+    out.push("literary science fiction");
+  } else if (anchor.includes("fantasy")) {
+    out.push("character driven fantasy");
+  }
+
+  return dedupe(out).filter(Boolean);
+}
+
+function buildRoleQueries(parts: string[], role: RungRole): string[] {
+  const primaryAnchor = choosePrimaryAnchor(parts);
+  if (!primaryAnchor) return [];
+
+  const strong = strongestModifiers(parts);
+  const first = strong[0];
+  const second = strong[1];
+
+  const out: string[] = [];
+  const push = (...queryParts: Array<string | undefined | null>) => {
+    const q = titleSafeJoin(queryParts);
+    if (q && q !== "novel" && q !== "fiction") out.push(q);
+  };
+
+  if (role === "core") {
+    push(first, primaryAnchor, "novel");
+    push(primaryAnchor, "novel");
+    return dedupe(out);
+  }
+
+  if (role === "intensify") {
+    for (const expansion of sameFamilyExpansions(primaryAnchor, parts).slice(0, 3)) {
+      push(expansion, "novel");
+      if (first) push(first, expansion, "novel");
+    }
+    return dedupe(out);
+  }
+
+  if (role === "adjacent_recall") {
+    for (const expansion of sameFamilyExpansions(primaryAnchor, parts).slice(0, 5)) {
+      push(expansion, "novel");
+      if (second) push(second, expansion, "novel");
+    }
+    return dedupe(out);
+  }
+
+  if (role === "controlled_explore") {
+    for (const expansion of exploratoryExpansions(primaryAnchor, parts).slice(0, 3)) {
+      push(expansion, "novel");
+    }
+    return dedupe(out);
+  }
+
+  return [];
+}
+
+function buildQueryVariants(parts: string[]): QueryPack | undefined {
+  const roleOrdered = [
+    ...buildRoleQueries(parts, "core"),
+    ...buildRoleQueries(parts, "intensify"),
+    ...buildRoleQueries(parts, "adjacent_recall"),
+    ...buildRoleQueries(parts, "controlled_explore"),
+  ];
+
+  const deduped = dedupe(roleOrdered).slice(0, 8);
   if (!deduped.length) return undefined;
 
   return {

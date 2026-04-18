@@ -143,7 +143,12 @@ const BANNED_TOKENS = new Set([
 ]);
 
 const BASE_GENRE_REWRITES: Record<string, string[]> = {
-  horror: ["psychological horror novel", "survival horror novel"],
+  horror: [
+    "psychological horror novel",
+    "survival horror novel",
+    "haunted psychological horror novel",
+    "psychological horror thriller novel"
+  ],
 thriller: [
   "psychological thriller novel",
   "domestic thriller novel",
@@ -225,6 +230,10 @@ function sanitizeQuery(value: string): string {
 
   if (!noOperators) return "";
   if (/\bsurvival mystery\b/.test(noOperators)) return "";
+  if (/\bmodern psychological horror\b/.test(noOperators)) return "";
+  if (/\bdark psychological fiction fiction\b/.test(noOperators)) return "";
+  if (/\bbestseller\b/.test(noOperators)) return "";
+  if (/\baward winning\b/.test(noOperators)) return "";
   return ensureBookNativeSuffix(noOperators);
 }
 
@@ -366,6 +375,63 @@ function hypothesisToBookQuery(hypothesis: QueryIntent["hypotheses"][number], in
   return sanitized;
 }
 
+
+type RungRole =
+  | "core"
+  | "intensify"
+  | "adjacent_recall"
+  | "controlled_explore";
+
+type RungCandidate = {
+  query: string;
+  role: RungRole;
+  anchor: string;
+};
+
+function classifyRungRole(query: string): RungRole {
+  const q = clean(query);
+
+  if (
+    /\bpsychological horror novel\b/.test(q) ||
+    /\bpsychological thriller novel\b/.test(q) ||
+    /\bdark fantasy novel\b/.test(q) ||
+    /\bscience fiction novel\b/.test(q) ||
+    /\bmystery thriller novel\b/.test(q)
+  ) {
+    return "core";
+  }
+
+  if (
+    /\bsurvival horror\b/.test(q) ||
+    /\bdomestic thriller\b/.test(q) ||
+    /\bpsychological mystery\b/.test(q) ||
+    /\bdystopian science fiction\b/.test(q) ||
+    /\bgothic fantasy\b/.test(q)
+  ) {
+    return "intensify";
+  }
+
+  if (
+    /\bhaunted psychological horror\b/.test(q) ||
+    /\bpsychological horror thriller\b/.test(q) ||
+    /\bcrime thriller\b/.test(q) ||
+    /\bscience fiction thriller\b/.test(q) ||
+    /\bmagic fantasy\b/.test(q)
+  ) {
+    return "adjacent_recall";
+  }
+
+  return "controlled_explore";
+}
+
+function buildRungCandidates(queries: string[]): RungCandidate[] {
+  return distinctQueries(queries).map((query) => ({
+    query,
+    role: classifyRungRole(query),
+    anchor: rungAnchor(query),
+  }));
+}
+
 export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
   const hypotheses = Array.isArray(intent.hypotheses) ? intent.hypotheses : [];
   const base = normalizedBaseGenre(intent);
@@ -383,23 +449,59 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
       ? []
       : buildFallbackRungs(intent);
 
+  const candidateQueries = distinctQueries([
+    ...rankedHypothesisQueries,
+    ...fallbackQueries,
+  ]);
+
+  const rungCandidates = buildRungCandidates(candidateQueries)
+    .filter((candidate) => {
+      const safeQuery = sanitizeQuery(candidate.query);
+      return !!safeQuery && isQueryAllowedForBase(safeQuery, base);
+    })
+    .map((candidate) => ({
+      ...candidate,
+      query: sanitizeQuery(candidate.query),
+    }))
+    .filter((candidate) => !!candidate.query);
+
   const selected: string[] = [];
+  const usedQueries = new Set<string>();
   const anchorCounts = new Map<string, number>();
   const maxPerAnchor = 2;
 
-  for (const query of distinctQueries([
-    ...rankedHypothesisQueries,
-    ...fallbackQueries,
-  ])) {
-    const anchor = rungAnchor(query);
-    const currentAnchorCount = anchorCounts.get(anchor) || 0;
-    if (currentAnchorCount >= maxPerAnchor) continue;
-    const safeQuery = sanitizeQuery(query);
-    if (!safeQuery) continue;
-    if (!isQueryAllowedForBase(safeQuery, base)) continue;
-    selected.push(safeQuery);
-    anchorCounts.set(anchor, currentAnchorCount + 1);
+  const roleOrder: RungRole[] = [
+    "core",
+    "intensify",
+    "adjacent_recall",
+    "controlled_explore",
+  ];
+
+  for (const role of roleOrder) {
+    const candidate = rungCandidates.find((item) => {
+      if (item.role !== role) return false;
+      if (usedQueries.has(item.query)) return false;
+      const count = anchorCounts.get(item.anchor) || 0;
+      return count < maxPerAnchor;
+    });
+
+    if (!candidate) continue;
+    selected.push(candidate.query);
+    usedQueries.add(candidate.query);
+    anchorCounts.set(candidate.anchor, (anchorCounts.get(candidate.anchor) || 0) + 1);
     if (selected.length >= Math.max(1, maxRungs)) break;
+  }
+
+  if (selected.length < Math.max(1, maxRungs)) {
+    for (const candidate of rungCandidates) {
+      if (usedQueries.has(candidate.query)) continue;
+      const count = anchorCounts.get(candidate.anchor) || 0;
+      if (count >= maxPerAnchor) continue;
+      selected.push(candidate.query);
+      usedQueries.add(candidate.query);
+      anchorCounts.set(candidate.anchor, count + 1);
+      if (selected.length >= Math.max(1, maxRungs)) break;
+    }
   }
 
   const queries = selected.length ? selected : buildFallbackRungs(intent).slice(0, Math.max(1, maxRungs));
