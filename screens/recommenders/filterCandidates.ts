@@ -207,15 +207,25 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\b(follows|story of|when .* discovers|investigates|must survive|after .* collapse|a novel about|a thriller about|haunted by|trapped in|must confront|must uncover)\b/.test(description) ||
     /\b(novel|thriller|suspense|horror|fiction)\b/.test(title);
 
+  const strongNarrative =
+    /\b(novel|thriller|horror|suspense|fiction)\b/.test(title) ||
+    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover)\b/.test(description);
+
+  const genericTitle =
+    /^\s*novels?\b/.test(title) ||
+    /\bnovels?\s+of\b/.test(title);
+
+  const pageCount =
+    Number(doc?.pageCount) ||
+    Number(doc?.volumeInfo?.pageCount) ||
+    0;
+
+  const hasRealLength = pageCount >= 120;
+
   if (!fictionPositive) return false;
-  if (!narrativePositive && description.length < 120) return false;
-
-  const weakFiction =
-    !narrativePositive &&
-    !/\b(novel|fiction|thriller|horror|suspense)\b/.test(title) &&
-    description.length < 140;
-
-  if (weakFiction) return false;
+  if (genericTitle) return false;
+  if (!strongNarrative) return false;
+  if (!hasRealLength && description.length < 120) return false;
 
   if (family === "speculative") {
     const speculativePositive =
