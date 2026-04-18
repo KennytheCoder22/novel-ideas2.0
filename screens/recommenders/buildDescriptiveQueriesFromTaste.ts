@@ -463,41 +463,54 @@ function buildQueryVariants(parts: string[]): QueryPack | undefined {
   const primaryAnchor = choosePrimaryAnchor(parts);
   if (!primaryAnchor) return undefined;
 
-  const { strong, generic } = modifiersForQueries(parts, primaryAnchor);
-  const alternates = alternateAnchors(parts, primaryAnchor);
+  const anchors = dedupe([
+    primaryAnchor,
+    ...alternateAnchors(parts, primaryAnchor),
+    parts.includes("horror") ? "horror" : "",
+    parts.includes("psychological") && parts.includes("horror") ? "psychological horror" : "",
+    parts.includes("psychological") && parts.includes("thriller") ? "psychological thriller" : "",
+    parts.includes("gothic") && parts.includes("horror") ? "gothic horror" : "",
+    parts.includes("dark") && parts.includes("horror") ? "dark horror" : "",
+    parts.includes("survival") && parts.includes("horror") ? "survival horror" : "",
+  ].filter(Boolean) as string[]);
+
   const queries: string[] = [];
-
-  const primaryModifier = strong[0] || generic[0];
-  const secondaryModifier = strong[1] || generic[1];
-
   const pushQuery = (...queryParts: Array<string | undefined | null>) => {
     const q = titleSafeJoin(queryParts);
     if (q && q !== "novel" && q !== "fiction") queries.push(q);
   };
 
-  // primary anchor family
-  pushQuery(primaryModifier, primaryAnchor, "novel");
-  pushQuery(primaryAnchor, "novel");
+  for (const anchor of anchors) {
+    const { strong, generic } = modifiersForQueries(parts, anchor);
+    const primaryModifier = strong[0] || generic[0];
+    const secondaryModifier = strong[1] || generic[1];
 
-  // richer variants
-  if (secondaryModifier) pushQuery(primaryModifier, secondaryModifier, primaryAnchor, "novel");
-  if (primaryModifier) pushQuery(primaryModifier, primaryAnchor, "fiction");
+    pushQuery(primaryModifier, anchor, "novel");
+    pushQuery(anchor, "novel");
 
-  // alternate anchor families
-  for (const alt of alternates.slice(0, 3)) {
-    pushQuery(primaryModifier, alt, "novel");
-    pushQuery(alt, "novel");
+    if (secondaryModifier) pushQuery(primaryModifier, secondaryModifier, anchor, "novel");
+    if (primaryModifier) pushQuery(primaryModifier, anchor, "fiction");
+
+    if (anchor.includes("horror")) {
+      pushQuery("modern", anchor, "novel");
+      pushQuery("dark", anchor, "novel");
+      pushQuery("atmospheric", anchor, "novel");
+    } else if (anchor.includes("thriller") || anchor.includes("mystery")) {
+      pushQuery("psychological", anchor, "novel");
+      pushQuery("dark", anchor, "novel");
+      pushQuery("bestseller", anchor, "novel");
+    } else if (anchor.includes("science fiction")) {
+      pushQuery("modern", anchor, "novel");
+      pushQuery("dark", anchor, "novel");
+    } else if (anchor.includes("fantasy")) {
+      pushQuery("character driven", anchor, "novel");
+      pushQuery("dark", anchor, "novel");
+    } else {
+      pushQuery(anchor, "fiction");
+    }
   }
 
-  // one quality-biased variant for retrieval breadth
-  const qualityTerm = SHARED_QUALITY_TERMS[0];
-  if (primaryAnchor.includes("horror")) pushQuery("modern", primaryAnchor, "novel");
-  else if (primaryAnchor.includes("thriller") || primaryAnchor.includes("mystery")) pushQuery(qualityTerm, primaryAnchor, "novel");
-  else if (primaryAnchor.includes("science fiction")) pushQuery("modern", primaryAnchor, "novel");
-  else if (primaryAnchor.includes("fantasy")) pushQuery("character driven", primaryAnchor, "novel");
-  else pushQuery(primaryAnchor, "fiction");
-
-  const deduped = dedupe(queries).slice(0, 5);
+  const deduped = dedupe(queries).slice(0, 8);
   if (!deduped.length) return undefined;
 
   return {
@@ -732,7 +745,7 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   return {
     queries,
     preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v11-high-diversity-query-packs",
+    strategy: "20q-hypothesis-composer-v12-multi-anchor-query-packs",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),

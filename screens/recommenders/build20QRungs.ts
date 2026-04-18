@@ -384,19 +384,21 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
       : buildFallbackRungs(intent);
 
   const selected: string[] = [];
-  const seenAnchors = new Set<string>();
+  const anchorCounts = new Map<string, number>();
+  const maxPerAnchor = 2;
 
   for (const query of distinctQueries([
     ...rankedHypothesisQueries,
     ...fallbackQueries,
   ])) {
     const anchor = rungAnchor(query);
-    if (seenAnchors.has(anchor)) continue;
-    seenAnchors.add(anchor);
+    const currentAnchorCount = anchorCounts.get(anchor) || 0;
+    if (currentAnchorCount >= maxPerAnchor) continue;
     const safeQuery = sanitizeQuery(query);
     if (!safeQuery) continue;
     if (!isQueryAllowedForBase(safeQuery, base)) continue;
     selected.push(safeQuery);
+    anchorCounts.set(anchor, currentAnchorCount + 1);
     if (selected.length >= Math.max(1, maxRungs)) break;
   }
 
