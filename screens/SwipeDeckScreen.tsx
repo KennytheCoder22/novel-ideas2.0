@@ -1509,6 +1509,108 @@ function handleLeft() {
     setSuppressPersonalityLearningForNextRun(false);
   }
 
+  function summarizeCounts(values: Array<string | number | undefined | null>) {
+    const counts = new Map<string, number>();
+    for (const value of values) {
+      const key = String(value ?? "").trim();
+      if (!key) continue;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([key, count]) => `${key}:${count}`)
+      .join(", ");
+  }
+
+  function inferQueryFamily(queryText: unknown): string {
+    const q = String(queryText || "").toLowerCase();
+    if (!q) return "unknown";
+    if (/(psychological horror|survival horror|haunted|ghost|supernatural|gothic horror|horror)/.test(q)) return "horror";
+    if (/(science fiction|sci-fi|scifi|space opera|dystopian)/.test(q)) return "science fiction";
+    if (/(domestic suspense|psychological suspense|crime thriller|spy thriller|thriller)/.test(q)) return "thriller";
+    if (/(mystery|detective|crime)/.test(q)) return "mystery";
+    if (/(dark fantasy|gothic fantasy|fantasy)/.test(q)) return "fantasy";
+    if (/romance/.test(q)) return "romance";
+    return "unknown";
+  }
+
+  function compactFieldBlock(label: string, value: unknown) {
+    const normalized = String(value ?? "").trim();
+    if (!normalized) return null;
+    return `${label}: ${normalized}`;
+  }
+
+  function formatDiagnosticObject(value: any, allowList?: string[]) {
+    if (!value || typeof value !== "object") return [] as string[];
+
+    const keys = Array.isArray(allowList)
+      ? allowList.filter((key) => value[key] != null && String(value[key]).trim() !== "")
+      : Object.keys(value).filter((key) => value[key] != null && String(value[key]).trim() !== "");
+
+    return keys.map((key) => `${key}:${typeof value[key] === "object" ? JSON.stringify(value[key]) : String(value[key])}`);
+  }
+
+  function candidateIdentityKey(row: any): string {
+    return `${String(row?.title || "").trim().toLowerCase()}::${String(row?.author || "").trim().toLowerCase()}`;
+  }
+
+  function buildRawCandidateLookup(rows: any[]) {
+    const map = new Map<string, any[]>();
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const key = candidateIdentityKey(row);
+      if (!key) continue;
+      const bucket = map.get(key) || [];
+      bucket.push(row);
+      map.set(key, bucket);
+    }
+    return map;
+  }
+
+  function formatQueryFamilyBreakdown(rows: any[]) {
+    if (!Array.isArray(rows) || rows.length === 0) return "(none)";
+    return summarizeCounts(rows.map((row) => inferQueryFamily(row?.queryText)));
+  }
+
+  function formatLaneBreakdown(rows: any[]) {
+    if (!Array.isArray(rows) || rows.length === 0) return "(none)";
+    return summarizeCounts(rows.map((row) => row?.laneKind || "(none)"));
+  }
+
+  function formatRungBreakdown(rows: any[]) {
+    if (!Array.isArray(rows) || rows.length === 0) return "(none)";
+    return summarizeCounts(rows.map((row) => row?.queryRung != null ? `rung${row.queryRung}` : "rung?"));
+  }
+
+  function formatRecommendationDiagnostics(items: RecItem[], candidateRows: any[], rawRows: any[]) {
+    if (!Array.isArray(items) || items.length === 0) return "(none)";
+
+    const candidateLookup = buildRawCandidateLookup(candidateRows);
+    const rawLookup = buildRawCandidateLookup(rawRows);
+
+    return items.map((item, index) => {
+      const title = item.kind === "open_library" ? item.doc?.title : item.book?.title;
+      const author = item.kind === "open_library"
+        ? (Array.isArray(item.doc?.author_name) && item.doc.author_name.length > 0 ? item.doc.author_name[0] : "Unknown author")
+        : item.book?.author;
+      const key = `${String(title || "").trim().toLowerCase()}::${String(author || "").trim().toLowerCase()}`;
+      const candidate = (candidateLookup.get(key) || [])[0] || null;
+      const matchingRawRows = rawLookup.get(key) || [];
+      const diagnostics = item.kind === "open_library" ? (item.doc as any)?.diagnostics || {} : {};
+
+      const traceBits = [
+        compactFieldBlock("queryFamily", inferQueryFamily(candidate?.queryText ?? diagnostics?.queryText ?? (item.kind === "open_library" ? (item.doc as any)?.queryText : ""))),
+        compactFieldBlock("candidateLane", candidate?.laneKind),
+        compactFieldBlock("candidateRung", candidate?.queryRung),
+        compactFieldBlock("candidateScore", typeof candidate?.score === "number" ? candidate.score.toFixed(3) : ""),
+        compactFieldBlock("rawMatches", matchingRawRows.length),
+        ...formatDiagnosticObject(diagnostics, ["source", "preFilterScore", "postFilterScore", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
+        ...formatDiagnosticObject(candidate, ["queryText", "queryRung", "laneKind", "score", "baseIntent", "queryFamily", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]),
+      ].filter(Boolean);
+
+      return [`${index + 1}. ${title || "Untitled"} — ${author || "Unknown author"}`, ...traceBits.map((line) => `   ${line}`)].join("\n");
+    }).join("\n");
+  }
+
   async function handleCopySessionReport() {
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
@@ -1521,14 +1623,17 @@ function handleLeft() {
                 : "Unknown author";
             const year = doc?.first_publish_year ? ` (${doc.first_publish_year})` : "";
             const diagnostics = doc?.diagnostics || {};
+            const queryText = diagnostics.queryText ?? doc?.queryText ?? "(missing)";
 
             return [
               `${i + 1}. ${title} — ${author}${year}`,
               `   source: ${diagnostics.source ?? doc?.source ?? "(unknown)"}`,
+              `   queryFamily: ${inferQueryFamily(queryText)}`,
               `   preFilterScore: ${diagnostics.preFilterScore ?? "(missing)"}`,
               `   postFilterScore: ${diagnostics.postFilterScore ?? "(missing)"}`,
-              `   queryText: ${diagnostics.queryText ?? doc?.queryText ?? "(missing)"}`,
+              `   queryText: ${queryText}`,
               `   queryRung: ${diagnostics.queryRung ?? doc?.queryRung ?? "(missing)"}`,
+              ...formatDiagnosticObject(diagnostics, ["baseIntent", "baseIntentLocked", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]).map((line) => `   ${line}`),
             ].join("\n");
           }
           const title = item.book?.title ?? "Untitled";
@@ -1575,6 +1680,13 @@ function handleLeft() {
       .map(([rung, query]) => `Rung ${rung}: ${query}`)
       .join("\n") || "(none)";
 
+    const sourceCountSummary = sourceCountRows
+      .map(({ key, label }) => {
+        const stats = lastSourceCounts?.[key];
+        return `${label}: raw=${stats?.rawFetched ?? 0}, postFilter=${stats?.postFilterCandidates ?? 0}, final=${stats?.finalSelected ?? 0}`;
+      })
+      .join("\n");
+
     const report = [
       "SESSION REPORT",
       `Deck: ${deck.deckLabel}`,
@@ -1584,6 +1696,7 @@ function handleLeft() {
       `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
       `20Q Progress: ${resolvedTwentyQCount}/${twentyQObjectives.length}`,
       `Current 20Q Objective: ${activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung} • ${activeTwentyQObjective.label}` : "complete"}`,
+      `Active query family: ${inferQueryFamily(recQuery)}`,
       "",
       "SWIPE HISTORY",
       swipeHistoryLines,
@@ -1592,6 +1705,21 @@ function handleLeft() {
       "",
       "RUNG QUERIES",
       rungQueryLines,
+      "",
+      "FETCHER COUNTS",
+      sourceCountSummary || "(none)",
+      "",
+      "RAW POOL SUMMARY",
+      `count:${rawPoolRows.length}`,
+      `queryFamilies:${formatQueryFamilyBreakdown(rawPoolRows)}`,
+      `lanes:${formatLaneBreakdown(rawPoolRows)}`,
+      `rungs:${formatRungBreakdown(rawPoolRows)}`,
+      "",
+      "CANDIDATE POOL SUMMARY",
+      `count:${candidatePoolRows.length}`,
+      `queryFamilies:${formatQueryFamilyBreakdown(candidatePoolRows)}`,
+      `lanes:${formatLaneBreakdown(candidatePoolRows)}`,
+      `rungs:${formatRungBreakdown(candidatePoolRows)}`,
       "",
       "ACTIVE TUNER OVERRIDE",
       currentLaneOverride && Object.keys(currentLaneOverride).length > 0
@@ -1602,6 +1730,9 @@ function handleLeft() {
       "",
       "TOP RECOMMENDATIONS",
       recommendationLines,
+      "",
+      "RECOMMENDATION TRACE",
+      formatRecommendationDiagnostics(recItems, candidatePoolRows, rawPoolRows),
       "",
       "RUNNING TAG COUNTS",
       sortedTagCounts,
@@ -1630,7 +1761,7 @@ function handleLeft() {
     ].join("\n");
 
     await Clipboard.setStringAsync(report);
-    Alert.alert("Copied", "Session report copied to clipboard.");
+    Alert.alert("Copied", "Expanded session report copied to clipboard.");
   }
 
   async function handleCopyCandidatePool() {
