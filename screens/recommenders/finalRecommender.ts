@@ -37,6 +37,7 @@ export type ScoreBreakdown = {
   penaltyScore: number;
   genericTitlePenalty: number;
   overfitPenalty: number;
+  anchorBoost: number;
   finalScore: number;
 };
 
@@ -167,14 +168,15 @@ function metadataTrust(c: Candidate): number {
 function authorityScore(c: Candidate): number {
   const ratings = c.ratingCount || 0;
 
-  if (ratings >= 10000) return 4;
-  if (ratings >= 3000) return 3;
-  if (ratings >= 1000) return 2;
-  if (ratings >= 200) return 1;
-  if (ratings >= 50) return 0.5;
-  if (ratings > 0) return 0;
+  if (ratings >= 10000) return 8;
+  if (ratings >= 3000) return 6;
+  if (ratings >= 1000) return 5;
+  if (ratings >= 200) return 3;
+  if (ratings >= 50) return 1.5;
+  if (ratings >= 10) return 0;
+  if (ratings > 0) return -4;
 
-  return -1.5;
+  return -4;
 }
 
 function hasFictionSignals(c: Candidate): boolean {
@@ -346,10 +348,10 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
   const text = haystack(c);
   let score = 0;
 
-  if (/psychological/.test(text)) score += 2;
-  if (/horror|dark|spooky/.test(text)) score += 1.5;
-  if (/survival/.test(text)) score += 2;
-  if (/thriller|mystery/.test(text)) score += 1.5;
+  if (/psychological/.test(text)) score += 1;
+  if (/horror|dark|spooky/.test(text)) score += 0.75;
+  if (/survival/.test(text)) score += 1;
+  if (/thriller|mystery/.test(text)) score += 0.75;
   if (/fast paced|fast-paced/.test(text)) score += 1;
   if (/science fiction/.test(text)) score -= 4;
   if (/romance/.test(text)) score -= 1.5;
@@ -360,10 +362,10 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
     const realism = Number((taste as any).realism || 0);
 
     if (/horror|dark|psychological|survival|thriller|mystery/.test(text)) {
-      score += darkness * 3;
+      score += darkness * 1.5;
     }
     if (/hopeful|cozy|heartwarming|family|human connection/.test(text)) {
-      score += warmth * 4;
+      score += warmth * 3;
     }
     if (/science fiction|space opera|futuristic/.test(text)) {
       score -= Math.max(0, -realism) * 4;
@@ -378,9 +380,9 @@ function narrativeScore(c: Candidate): number {
   let score = 0;
 
   if (/psychological horror|psychological thriller/.test(text)) {
-    score += 5;
+    score += 3;
   } else if (/horror|thriller|mystery|dark/.test(text)) {
-    score += 2.5;
+    score += 1.25;
   }
 
   if (/novel|fiction/.test(text)) score += 1.5;
@@ -408,7 +410,7 @@ function genericTitlePenalty(c: Candidate): number {
     /^lies$/,
   ];
 
-  if (veryGenericTitles.some((rx) => rx.test(title))) return -7;
+  if (veryGenericTitles.some((rx) => rx.test(title))) return -12;
 
   if (
     title.split(" ").length <= 2 &&
@@ -423,21 +425,58 @@ function genericTitlePenalty(c: Candidate): number {
 function overfitPenalty(c: Candidate): number {
   const text = haystack(c);
   const ratings = c.ratingCount || 0;
+  const trust = metadataTrust(c);
 
   const keywordHits =
     (text.match(/psychological/g)?.length || 0) +
     (text.match(/horror/g)?.length || 0) +
-    (text.match(/dark/g)?.length || 0);
+    (text.match(/dark/g)?.length || 0) +
+    (text.match(/survival/g)?.length || 0) +
+    (text.match(/thriller/g)?.length || 0) +
+    (text.match(/mystery/g)?.length || 0);
 
-  if (keywordHits >= 3 && ratings < 50) {
-    return -6;
+  if (keywordHits >= 4 && ratings < 50) {
+    return -12;
   }
 
-  if (keywordHits >= 2 && ratings < 10) {
-    return -8;
+  if (keywordHits >= 3 && ratings < 10) {
+    return -14;
+  }
+
+  if (keywordHits >= 2 && ratings == 0 && trust <= 4) {
+    return -10;
   }
 
   return 0;
+}
+
+
+function anchorBoost(c: Candidate): number {
+  const text = haystack(c);
+  const title = normalize(c.title);
+  const author = normalize(c.author);
+  const ratings = c.ratingCount || 0;
+  let score = 0;
+
+  const canonicalAnchors = [
+    /stephen king/,
+    /shirley jackson/,
+    /jackson/,
+    /king/,
+  ];
+
+  if (canonicalAnchors.some((rx) => rx.test(author))) score += 10;
+
+  if (/the dark half/.test(title)) score += 8;
+  if (/haunting of hill house/.test(title)) score += 8;
+
+  if (ratings >= 1000) score += 6;
+  else if (ratings >= 200) score += 4;
+  else if (ratings >= 50) score += 2;
+
+  if (/psychological horror|psychological thriller/.test(text) && ratings >= 50) score += 2;
+
+  return score;
 }
 
 function penaltyScore(c: Candidate): number {
@@ -458,14 +497,15 @@ function penaltyScore(c: Candidate): number {
 }
 
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
-  const queryScore = queryMatchScore(c) * 0.6;
-  const metadataScore = metadataTrust(c) * 1.0;
-  const authority = authorityScore(c) * 3.5;
+  const queryScore = queryMatchScore(c) * 0.35;
+  const metadataScore = metadataTrust(c) * 0.75;
+  const authority = authorityScore(c) * 4.5;
   const behavior = behaviorScore(c, taste);
   const narrative = narrativeScore(c);
   const penalties = penaltyScore(c);
   const genericPenalty = genericTitlePenalty(c);
   const overfit = overfitPenalty(c);
+  const anchor = anchorBoost(c);
 
   return {
     queryScore,
@@ -476,7 +516,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     penaltyScore: penalties,
     genericTitlePenalty: genericPenalty,
     overfitPenalty: overfit,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit,
+    anchorBoost: anchor,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor,
   };
 }
 
