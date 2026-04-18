@@ -98,6 +98,7 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\bfinding list of books\b/,
     /\bgeneral catalogue\b/,
     /\bcatalogue of english prose fiction\b/,
+    /\bcentury of the .*novel\b/,
   ];
 
   const hardRejectCategoryPatterns = [
@@ -127,6 +128,7 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\bmovies\b/,
     /\btelevision\b/,
     /\btv series\b/,
+    /\bnovels?\b.*\b(criticism|study|history|analysis)\b/,
   ];
 
   const hardRejectDescriptionPatterns = [
@@ -149,6 +151,7 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
+  if (/\bliterature\b/.test(categories) && !/\bfiction\b/.test(categories)) return false;
 
   const fictionPositive =
     /\b(fiction|novel|thriller|mystery|crime|detective|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
@@ -159,7 +162,15 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\b(follows|story of|when .* discovers|investigates|must survive|after .* collapse)\b/.test(description) ||
     /\b(novel|fiction)\b/.test(title);
 
-  if (!(fictionPositive || narrativePositive)) return false;
+  // Require STRONG fiction signal, not just narrative phring
+if (!fictionPositive) return false;
+
+// Narrative signal becomes a booster, not a gate
+const hasStrongNarrative =
+  /\b(follows|story of|when .* discovers|investigates|must survive)\b/.test(description);
+
+// If it looks weak AND lacks narrative, kill it
+if (!hasStrongNarrative && !/\bnovel\b/.test(title)) return false;
 
   if (family === "speculative") {
     const speculativePositive =
