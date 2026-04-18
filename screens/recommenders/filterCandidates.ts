@@ -141,6 +141,10 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\bselected novels? and plays\b/,
     /\bintroduction to the novels? of\b/,
     /\bdevelopment of .* novel\b/,
+    /\benglish gothic novel\b/,
+    /\bgothic novel:\s*texts\b/,
+    /\bnovel:\s*texts\b/,
+    /\btexts\s*$/,
   ];
 
   const hardRejectCategoryPatterns = [
@@ -171,6 +175,7 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\btelevision\b/,
     /\btv series\b/,
     /\bnovels?\b.*\b(criticism|study|history|analysis)\b/,
+    /\btexts\b/,
   ];
 
   const hardRejectDescriptionPatterns = [
@@ -206,6 +211,12 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\b(readers'? advisory|about books|guide for readers|history of horror literature|literary reference)\b/.test(description);
 
   if (bookCultureReject) return false;
+
+  const academicNovelStudyReject =
+    /\b(english gothic novel|gothic novel:\s*texts|novel:\s*texts)\b/.test(title) ||
+    (/\btexts\b/.test(title) && /\b(literature|criticism|studies)\b/.test(categories + " " + description));
+
+  if (academicNovelStudyReject) return false;
 
   const novelMetaReject =
     /\b(future of the novel|novelists?|novel vs\.? fiction|famous authors on their methods|introduction to the novels? of|development of .* novel|selected novels? and plays|novels? and (other works|related works|stories|tales))\b/.test(combined);
