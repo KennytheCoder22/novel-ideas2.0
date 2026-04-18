@@ -1,6 +1,6 @@
 import type { RecommendationDoc } from "./types";
 
-type RouterFamily = "thriller" | "speculative" | "romance" | "historical" | "general";
+type RouterFamily = "horror" | "thriller" | "speculative" | "romance" | "historical" | "general";
 
 type FilterDiagnostics = {
   kept: boolean;
@@ -22,6 +22,8 @@ type FilterDiagnostics = {
     horrorAligned: boolean;
     historicalPositive: boolean;
     romancePositive: boolean;
+    weakSeriesSpam: boolean;
+    legitAuthority: boolean;
   };
 };
 
@@ -71,8 +73,9 @@ function inferRouterFamily(bucketPlan: any): RouterFamily {
     .join(" ")
     .toLowerCase();
 
-  if (/(haunted|ghost|supernatural|occult|monster|creature|apocalypse|post-apocalyptic|zombie|survival horror|body horror|psychological horror|horror|science fiction|sci-fi|fantasy|speculative|dystopian|space opera|technology|ai)/.test(text)) return "speculative";
+  if (/(psychological horror|survival horror|haunted house horror|haunted psychological horror|psychological horror thriller|horror|haunted|ghost|supernatural|occult|monster|creature|possession|terror|dread|eerie|disturbing|dark fantasy)/.test(text)) return "horror";
   if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
+  if (/(science fiction|sci-fi|fantasy|speculative|dystopian|space opera|technology|ai|artificial intelligence)/.test(text)) return "speculative";
   if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
   if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
   return "general";
@@ -91,6 +94,42 @@ function wantsHorrorTone(bucketPlan: any): boolean {
     .toLowerCase();
 
   return /(horror|haunted|ghost|supernatural|occult|monster|creature|zombie|body horror|psychological horror|survival horror|terror|dread|eerie|disturbing|dark fantasy)/.test(text);
+}
+
+
+function hasLegitCommercialAuthority(doc: any): boolean {
+  const ratingsCount =
+    Number(doc?.ratingsCount) ||
+    Number(doc?.volumeInfo?.ratingsCount) ||
+    Number(doc?.hardcover?.ratings_count) ||
+    0;
+  const avgRating =
+    Number(doc?.averageRating) ||
+    Number(doc?.volumeInfo?.averageRating) ||
+    Number(doc?.hardcover?.rating) ||
+    0;
+  const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
+  const commercialSignals = (doc as any)?.commercialSignals;
+
+  return (
+    ratingsCount >= 100 ||
+    avgRating >= 4.2 ||
+    Boolean(commercialSignals?.bestseller) ||
+    Number(commercialSignals?.awards || 0) > 0 ||
+    Number(commercialSignals?.popularityTier || 0) >= 2 ||
+    /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine)\b/.test(publisher)
+  );
+}
+
+function isWeakSeriesSpam(title: string, doc: any, hasDescription: boolean, hasRealLength: boolean): boolean {
+  const ratingsCount =
+    Number(doc?.ratingsCount) ||
+    Number(doc?.volumeInfo?.ratingsCount) ||
+    Number(doc?.hardcover?.ratings_count) ||
+    0;
+  const sequelPattern = /\b(book|volume|vol\.?|part)\s*\d+\b|\bseries\b/i.test(title);
+  const veryWeakAuthority = ratingsCount < 50 && !hasLegitCommercialAuthority(doc);
+  return sequelPattern && veryWeakAuthority && !(hasDescription && hasRealLength);
 }
 
 function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
@@ -238,7 +277,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   const strongNarrative =
     /\b(novel|thriller|horror|suspense|fiction)\b/.test(title) ||
-    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover)\b/.test(description);
+    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|haunted|ghost|terror|dread|survive|escape)\b/.test(description);
 
   const genericTitle =
     /^\s*novels?\b/.test(title) ||
@@ -266,6 +305,8 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     );
 
   const romancePositive = /\b(romance|love story|romantic)\b/.test(combined);
+  const legitAuthority = hasLegitCommercialAuthority(doc);
+  const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
 
   const diagnostics: FilterDiagnostics = {
     kept: false,
@@ -287,6 +328,8 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
       horrorAligned,
       historicalPositive,
       romancePositive,
+      weakSeriesSpam,
+      legitAuthority,
     },
   };
 
@@ -315,6 +358,11 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   if (genericTitle) diagnostics.rejectReasons.push("generic_title");
   if (!strongNarrative) diagnostics.rejectReasons.push("missing_narrative_signal");
   if (!hasRealLength && !hasDescription) diagnostics.rejectReasons.push("insufficient_length_or_description");
+  if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
+
+  if (family === "horror") {
+    if (!horrorAligned) diagnostics.rejectReasons.push("missing_horror_alignment");
+  }
 
   if (family === "speculative") {
     const speculativeReject =
@@ -341,6 +389,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 }
 
 const MIN_RATINGS = 20;
+const MIN_RELAXED_HORROR_RATINGS = 5;
 
 function hasMinimumRatings(doc: any): boolean {
   const ratings =
@@ -365,6 +414,20 @@ function hasMinimumRatings(doc: any): boolean {
   if (pageCount >= 240 && String(doc?.title || doc?.volumeInfo?.title || "").trim().length > 0 && hasDescription) return true;
 
   return false;
+}
+
+function passesRelaxedHorrorFloor(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (diagnostics.family !== "horror") return false;
+  const ratings =
+    Number(doc?.ratingsCount) ||
+    Number(doc?.volumeInfo?.ratingsCount) ||
+    Number(doc?.hardcover?.ratings_count) ||
+    0;
+
+  if (!diagnostics.flags.horrorAligned) return false;
+  if (diagnostics.flags.weakSeriesSpam) return false;
+  if (ratings >= MIN_RELAXED_HORROR_RATINGS) return true;
+  return diagnostics.hasRealLength && diagnostics.hasDescription;
 }
 
 function attachDiagnostics(doc: RecommendationDoc, diagnostics: FilterDiagnostics): RecommendationDoc {
@@ -405,13 +468,17 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     }
 
     if (!hasMinimumRatings(doc)) {
-      diagnostics.rejectReasons.push("below_ratings_floor");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      if (passesRelaxedHorrorFloor(doc, diagnostics)) {
+        diagnostics.passedChecks.push("passed_relaxed_horror_ratings_gate");
+      } else {
+        diagnostics.rejectReasons.push("below_ratings_floor");
+        diagnostics.kept = false;
+        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        continue;
+      }
+    } else {
+      diagnostics.passedChecks.push("passed_ratings_gate");
     }
-
-    diagnostics.passedChecks.push("passed_ratings_gate");
     diagnostics.kept = true;
 
     const withDiagnostics = attachDiagnostics(doc, diagnostics);

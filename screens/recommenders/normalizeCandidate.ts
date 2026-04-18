@@ -343,6 +343,26 @@ if (candidate.pageCount > 0 && candidate.pageCount < 30) return true;
   return false;
 }
 
+
+function hasLegitSeriesAuthority(candidate: Candidate): boolean {
+  const ratings = Number(candidate?.ratingCount || 0);
+  const avg = Number(candidate?.averageRating || 0);
+  const publisher = String(candidate?.publisher || '').toLowerCase().trim();
+  return (
+    ratings >= 75 ||
+    avg >= 4.2 ||
+    /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine)\b/.test(publisher)
+  );
+}
+
+function isWeakSeriesSpamCandidate(candidate: Candidate): boolean {
+  const title = String(candidate?.title || '').toLowerCase().trim();
+  const hasSeriesMarker = /\b(book|volume|vol\.?|part)\s*\d+\b|\bseries\b/.test(title);
+  if (!hasSeriesMarker) return false;
+  const hasShape = candidate.pageCount >= 120 && String(candidate?.description || '').trim().length > 120;
+  return !hasLegitSeriesAuthority(candidate) && !hasShape;
+}
+
 function hasCover(rawDoc: any): boolean {
   if (rawDoc?.cover_i) return true;
   const imageLinks = rawDoc?.imageLinks ?? rawDoc?.volumeInfo?.imageLinks;

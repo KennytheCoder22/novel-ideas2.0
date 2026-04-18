@@ -796,6 +796,42 @@ function buildLaneQuotaPool(candidates: any[], finalLimit: number): any[] {
 
 
 
+
+function ensureRungCoverage(candidates: any[], finalLimit: number): any[] {
+  const byRung = new Map<string, any[]>();
+
+  for (const candidate of candidates) {
+    const rung = String(candidate?.rawDoc?.queryRung ?? candidate?.queryRung ?? "unknown");
+    if (!byRung.has(rung)) byRung.set(rung, []);
+    byRung.get(rung)!.push(candidate);
+  }
+
+  const selected: any[] = [];
+  const seen = new Set<string>();
+
+  for (const [_, items] of byRung.entries()) {
+    const pick = items
+      .slice()
+      .sort((a, b) => candidateScoreValue(b) - candidateScoreValue(a))[0];
+    if (!pick) continue;
+    const key = candidateKey(pick);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    selected.push(pick);
+    if (selected.length >= finalLimit) break;
+  }
+
+  for (const candidate of candidates) {
+    const key = candidateKey(candidate);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    selected.push(candidate);
+    if (selected.length >= Math.max(finalLimit * 2, finalLimit)) break;
+  }
+
+  return selected;
+}
+
 function enforceAuthorDiversity(candidates: any[], maxPerAuthor = 1): any[] {
   const counts = new Map<string, number>();
   const out: any[] = [];
@@ -1351,7 +1387,7 @@ const normalizedCandidates = [
     }
   }
 
-  const rankingPool = buildLaneQuotaPool(basePool, finalLimit);
+  const rankingPool = ensureRungCoverage(buildLaneQuotaPool(basePool, finalLimit), finalLimit);
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => {
     const filterDiagnostics = c?.rawDoc?.diagnostics?.filterDiagnostics ?? c?.diagnostics?.filterDiagnostics;
