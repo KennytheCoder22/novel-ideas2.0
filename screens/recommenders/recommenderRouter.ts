@@ -290,7 +290,7 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bmanual\b/,
     /\breference\b/,
     /\bcatalog(?:ue)?\b/,
-    /\bencyclop(?:aedia|edia)\b/,
+    /\bencyclopedia\b/,
     /\banthology\b/,
     /\bcollection\b/,
     /\bessays?\b/,
@@ -323,14 +323,6 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bwriting .*novels\b/,
     /\babout\b.*\bnovels\b/,
     /\bnovels?\b.*\bof\b/,
-    /\bnovels? and tales\b/,
-    /\brelated works\b/,
-    /\bnovels? and related works\b/,
-    /\brestif'?s novels\b/,
-    /\btrue stories?\b/,
-    /\bsea stories?\b/,
-    /\bsteamboat stories?\b/,
-    /\bsurvival bible\b/,
     /\bcollected\b/,
     /\bselected\b/,
     /\bcomplete works\b/,
@@ -341,8 +333,6 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\btrue crime\b/,
     /\bcrime fiction\b/,
     /\bdetective fiction\b/,
-    /\bmystery fiction\b/,
-    /\bthe crime novel\b/,
     /\bmystery fiction\b/,
   ];
 
@@ -357,12 +347,6 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bcrime fiction in\b/,
     /\bwriters since\b/,
     /\bguide to genre fiction\b/,
-    /^mystery fiction$/,
-    /^crime fiction$/,
-    /^detective fiction$/,
-    /^the crime novel$/,
-    /^the novels and related works of .+$/,
-    /^novels and tales:.+$/,
   ];
 
   const hardRejectCategoryPatterns = [
@@ -418,12 +402,6 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bcritical\b/,
     /\bessays?\b/,
     /\bresearch\b/,
-    /\bnon[- ]fiction\b/,
-    /\bmemoir\b/,
-    /\bbiograph(?:y|ical)\b/,
-    /\btrue stories?\b/,
-    /\baccount of\b/,
-    /\bchronicles? the real\b/,
   ];
 
   const additionalRejectPatterns = [
@@ -467,18 +445,21 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bfiction\b/,
     /\bnovel\b/,
     /\bthriller\b/,
+    /\bmystery\b/,
+    /\bcrime\b/,
+    /\bdetective\b/,
     /\bsuspense\b/,
     /\bpsychological\b/,
     /\bmurder\b/,
     /\bserial killer\b/,
     /\binvestigation\b/,
-    /\bpolice procedural\b/,
-    /\bdomestic suspense\b/,
+    /\bpolice\b/,
+    /\binspector\b/,
     /\bprivate investigator\b/,
     /\bfollows\b/,
     /\btells the story\b/,
-    /\bwhen\b.*\b(discovers?|finds?|realizes?)\b/,
-    /\bmust\b.*\b(survive|solve|stop|uncover|escape)\b/,
+    /\bstory of\b/,
+    /\bwhen\b.*\bdiscovers?\b/,
     /\bmanga\b/,
     /\bgraphic novel\b/,
     /\bcomic\b/,
@@ -515,26 +496,11 @@ function looksLikeFictionCandidate(doc: any): boolean {
     (rx) => rx.test(title) || rx.test(categories) || rx.test(description)
   );
 
-  const genericMetaTitle =
-    /^(mystery fiction|crime fiction|detective fiction|the crime novel|the novels and related works of .+)$/.test(title) ||
-    /\b(novels? and tales|related works|complete works|collected works|true stories?|sea stories?|steamboat stories?)\b/.test(title);
+  const hasStrongNarrativeSignal =
+    /\b(novel|fiction|thriller|mystery|crime|detective|suspense)\b/.test(title) ||
+    /\b(follows|story of|when .* discovers|investigates)\b/.test(description);
 
-  const titleNarrativeSignal =
-    /\b(novel|thriller|suspense|psychological thriller|domestic suspense|graphic novel|manga)\b/.test(title) ||
-    /\b(book\s*#?\d+|series)\b/.test(title);
-
-  const descriptionNarrativeSignal =
-    /\b(follows|tells the story|when .* (discovers?|finds?|realizes?)|must .* (survive|solve|stop|uncover|escape)|investigates|is drawn into|finds herself|finds himself|obsession|secret|killer|murder)\b/.test(description);
-
-  const titleNonfictionSignal =
-    /\b(bible|encyclop(?:aedia|edia)|guide|handbook|manual|reference|journal|magazine|anthology|collection|bibliograph(?:y|ies)|study|criticism|analysis|review|summary)\b/.test(title);
-
-  if (genericMetaTitle) return false;
-  if (titleNonfictionSignal) return false;
-
-  const hasLegitAuthority = hasLegitCommercialAuthority(doc);
-
-  return hasPositiveFictionSignal && (descriptionNarrativeSignal || titleNarrativeSignal || hasLegitAuthority);
+  return hasPositiveFictionSignal && hasStrongNarrativeSignal;
 }
 
 
@@ -667,6 +633,137 @@ function dedupeDocs(docs: RecommendationDoc[]): RecommendationDoc[] {
   }
 
   return out;
+}
+
+type RouterQueryLane = {
+  query: string;
+  laneKind: string;
+  source: CandidateSource | "all";
+};
+
+function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string {
+  const base = [
+    "-writers", "-writer", "-writing", "-guide", "-reference", "-bibliography", "-analysis",
+    "-criticism", "-review", "-summary", "-workbook", "-anthology", "-anthologies", "-collection",
+    "-collections", "-philosophy", "-study", "-studies", "-literature", "-encyclopedia", "-handbook",
+    "-catalog", "-magazine", "-journal", "-readers", "-reader",
+  ];
+
+  if (family === "speculative") base.unshift("-science-fiction");
+  if (family === "thriller") base.unshift("-true-crime", "-cozy", "-humorous");
+
+  return base.join(" ");
+}
+
+function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLane[] {
+  const family = inferRouterFamily(bucketPlan);
+  const base = String(rung?.query || "").trim();
+  const lowered = base.toLowerCase();
+  const negativeTerms = rungNegativeTerms(family);
+
+  const lanes = dedupeNonEmptyQueries([
+    base,
+    `${base} fiction`,
+    `${base} ${negativeTerms}`,
+    family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
+    family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
+    family === "thriller" && /psychological/.test(lowered) ? "psychological suspense novel" : "",
+    family === "thriller" && /thriller|crime|mystery|detective/.test(lowered) ? "domestic suspense novel" : "",
+    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 3) : []),
+  ]);
+
+  const mapped: RouterQueryLane[] = lanes.map((query) => {
+    const q = query.toLowerCase();
+    let laneKind = "core";
+    if (q.includes(negativeTerms.split(" ")[0]?.replace(/^-/, "") || "__nope__") || q.includes("-guide") || q.includes("-reference")) {
+      laneKind = "strict-filtered";
+    } else if (/literary horror/.test(q)) {
+      laneKind = "literary-alt";
+    } else if (/dark psychological fiction|psychological suspense|domestic suspense/.test(q)) {
+      laneKind = "dark-alt";
+    } else if (q !== lowered && q.includes("fiction")) {
+      laneKind = "fiction-variant";
+    } else if (q !== lowered) {
+      laneKind = "bucket-alt";
+    }
+    return { query, laneKind, source: "googleBooks" };
+  });
+
+  const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
+  if (openLibraryQuery) {
+    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary" });
+  }
+
+  return mapped;
+}
+
+function candidateKey(candidate: any): string {
+  const title = String(candidate?.title || "").trim().toLowerCase();
+  const author = Array.isArray(candidate?.author_name) && candidate.author_name.length > 0
+    ? String(candidate.author_name[0] || "").trim().toLowerCase()
+    : String(candidate?.author || "").trim().toLowerCase();
+  return String(candidate?.id || candidate?.key || "").trim().toLowerCase() || `${title}|${author}`;
+}
+
+function candidateScoreValue(candidate: any): number {
+  const raw = Number(candidate?.score ?? candidate?.diagnostics?.postFilterScore ?? candidate?.diagnostics?.preFilterScore ?? 0);
+  return Number.isFinite(raw) ? raw : 0;
+}
+
+function buildLaneQuotaPool(candidates: any[], finalLimit: number): any[] {
+  const targetSize = Math.max(finalLimit * 2, 12);
+  const lanePriority = ["core", "strict-filtered", "dark-alt", "literary-alt", "fiction-variant", "bucket-alt", "ol-backfill"];
+  const grouped = new Map<string, any[]>();
+
+  for (const candidate of candidates) {
+    const lane = String(candidate?.rawDoc?.laneKind ?? candidate?.laneKind ?? candidate?.diagnostics?.laneKind ?? "core");
+    if (!grouped.has(lane)) grouped.set(lane, []);
+    grouped.get(lane)!.push(candidate);
+  }
+
+  for (const [lane, items] of grouped.entries()) {
+    grouped.set(lane, [...items].sort((a, b) => {
+      const rungA = Number(a?.rawDoc?.queryRung ?? a?.queryRung ?? 999);
+      const rungB = Number(b?.rawDoc?.queryRung ?? b?.queryRung ?? 999);
+      return candidateScoreValue(b) - candidateScoreValue(a) || rungA - rungB;
+    }));
+  }
+
+  const orderedLanes = [
+    ...lanePriority.filter((lane) => grouped.has(lane)),
+    ...Array.from(grouped.keys()).filter((lane) => !lanePriority.includes(lane)),
+  ];
+
+  const selected: any[] = [];
+  const seen = new Set<string>();
+
+  for (const lane of orderedLanes) {
+    const pick = grouped.get(lane)?.shift();
+    if (!pick) continue;
+    const key = candidateKey(pick);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    selected.push(pick);
+  }
+
+  while (selected.length < targetSize) {
+    let progressed = false;
+    for (const lane of orderedLanes) {
+      const bucket = grouped.get(lane);
+      if (!bucket?.length) continue;
+      const pick = bucket.shift();
+      if (!pick) continue;
+      const key = candidateKey(pick);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      selected.push(pick);
+      progressed = true;
+      if (selected.length >= targetSize) break;
+    }
+    if (!progressed) break;
+  }
+
+  return selected;
 }
 
 function countResultItems(result: RecommendationResult | null | undefined): number {
@@ -891,7 +988,7 @@ export async function getRecommendations(
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
 
-  const baseRungs = build20QRungs({
+  const rungs = build20QRungs({
     ageBand:
       input.deckKey === "adult"
         ? "adult"
@@ -919,16 +1016,7 @@ export async function getRecommendations(
       : (bucketPlan?.signals?.genres || []),
     tones: bucketPlan?.signals?.tones || [],
     themes: bucketPlan?.signals?.scenarios || [],
-  });
-
-  const rungs = baseRungs.flatMap((r: any) =>
-    buildHighDiversityQueryLanes({ ...r, laneKind: "precision" }, bucketPlan).map((lane) => ({
-      ...r,
-      query: lane.query,
-      laneKind: lane.laneKind,
-      source: lane.source,
-    }))
-  );
+  }).map((r: any) => ({ ...r, laneKind: "precision" }));
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
@@ -944,102 +1032,92 @@ export async function getRecommendations(
   };
 
   for (const rung of rungs) {
-    const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
-    const rungSource = (rung as any)?.source || "googleBooks";
+    const queryLanes = buildHighDiversityQueryLanes(rung, bucketPlan);
 
-    const googleInput: RecommenderInput = {
-      ...routedInput,
-      bucketPlan: {
-        ...bucketPlan,
-        queries: rungSource === "googleBooks" ? [rung.query] : [""],
-        preview: rung.query,
-      },
-    };
+    for (const lane of queryLanes) {
+      const laneInput: RecommenderInput = {
+        ...routedInput,
+        bucketPlan: {
+          ...bucketPlan,
+          queries: [lane.query],
+          preview: lane.query,
+        },
+      };
 
-    const openLibraryInput: RecommenderInput = {
-      ...routedInput,
-      bucketPlan: {
-        ...bucketPlan,
-        queries: rungSource === "openLibrary" ? [rung.query] : (openLibraryQuery ? [openLibraryQuery] : [""]),
-        preview: rungSource === "openLibrary" ? rung.query : openLibraryQuery,
-      },
-    };
+      const requests: Array<Promise<RecommendationResult>> = [];
+      if (lane.source === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
+      if (lane.source === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
+      if (includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
+      if (includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
 
-    const [googleResult, openLibraryResult, kitsuResult, gcdResult] = await Promise.allSettled([
-      runEngine("googleBooks", googleInput),
-      runEngine("openLibrary", openLibraryInput),
-      ...(includeKitsu ? [getKitsuMangaRecommendations(googleInput)] : []),
-      ...(includeGcd ? [getGcdGraphicNovelRecommendations(googleInput)] : []),
-    ]);
+      const results = await Promise.allSettled(requests);
+      let index = 0;
 
-    const rungResults = {
-      google: googleResult.status === "fulfilled" ? googleResult.value : null,
-      openLibrary: openLibraryResult.status === "fulfilled" ? openLibraryResult.value : null,
-      kitsu: includeKitsu
-        ? ((kitsuResult.status === "fulfilled" ? kitsuResult.value : null) as RecommendationResult | null)
-        : null,
-      gcd: includeGcd
-        ? (((includeKitsu ? gcdResult : kitsuResult).status === "fulfilled"
-            ? (includeKitsu ? gcdResult : kitsuResult).value
-            : null) as RecommendationResult | null)
-        : null,
-      mergedDocs: dedupeDocs([
-        ...dedupeDocs(extractDocs(googleResult.status === "fulfilled" ? googleResult.value : null, "googleBooks")),
-        ...dedupeDocs(extractDocs(openLibraryResult.status === "fulfilled" ? openLibraryResult.value : null, "openLibrary")),
-        ...(includeKitsu
-          ? dedupeDocs(extractDocs(kitsuResult.status === "fulfilled" ? kitsuResult.value : null, "kitsu"))
-          : []),
-        ...(includeGcd
-          ? dedupeDocs(extractDocs(((includeKitsu ? gcdResult : kitsuResult).status === "fulfilled"
-              ? (includeKitsu ? gcdResult : kitsuResult).value
-              : null), "gcd"))
-          : []),
-      ]),
-    };
+      const laneGoogle = lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+        ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
+        : null;
+      if (lane.source === "googleBooks") index += 1;
 
+      const laneOpenLibrary = lane.source === "openLibrary" && results[index]?.status === "fulfilled"
+        ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
+        : null;
+      if (lane.source === "openLibrary") index += 1;
 
-    if (!google && rungResults.google) google = rungResults.google;
-    if (!openLibrary && rungResults.openLibrary) openLibrary = rungResults.openLibrary;
-    if (!kitsu && rungResults.kitsu) kitsu = rungResults.kitsu;
-    if (!gcd && rungResults.gcd) gcd = rungResults.gcd;
+      const laneKitsu = includeKitsu && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+        ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
+        : null;
+      if (includeKitsu && lane.source === "googleBooks") index += 1;
 
-    aggregatedRawFetched.googleBooks += Number((rungResults.google as any)?.debugRawFetchedCount ?? countResultItems(rungResults.google));
-    aggregatedRawFetched.openLibrary += Number((rungResults.openLibrary as any)?.debugRawFetchedCount ?? countResultItems(rungResults.openLibrary));
-    aggregatedRawFetched.kitsu += Number((rungResults.kitsu as any)?.debugRawFetchedCount ?? countResultItems(rungResults.kitsu));
-    aggregatedRawFetched.gcd += Number((rungResults.gcd as any)?.debugRawFetchedCount ?? countResultItems(rungResults.gcd));
+      const laneGcd = includeGcd && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+        ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
+        : null;
 
-    const rungRawPool = [
-      ...(((rungResults.google as any)?.debugRawPool as any[]) || []),
-      ...(((rungResults.openLibrary as any)?.debugRawPool as any[]) || []),
-      ...(((rungResults.kitsu as any)?.debugRawPool as any[]) || []),
-      ...(((rungResults.gcd as any)?.debugRawPool as any[]) || []),
-    ].map((row: any) => ({
-      ...row,
-      queryRung: rung.rung,
-      queryText: row?.source === "openLibrary" ? openLibraryQuery : (row?.queryText ?? rung.query),
-      laneKind: rung.laneKind ?? "precision",
-    }));
+      const laneMergedDocs = dedupeDocs([
+        ...dedupeDocs(extractDocs(laneGoogle, "googleBooks")),
+        ...dedupeDocs(extractDocs(laneOpenLibrary, "openLibrary")),
+        ...(includeKitsu && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
+        ...(includeGcd && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneGcd, "gcd")) : []),
+      ]);
 
-    debugRawPool.push(...rungRawPool);
+      if (!google && laneGoogle) google = laneGoogle;
+      if (!openLibrary && laneOpenLibrary) openLibrary = laneOpenLibrary;
+      if (!kitsu && laneKitsu) kitsu = laneKitsu;
+      if (!gcd && laneGcd) gcd = laneGcd;
 
-    const taggedDocs = rungResults.mergedDocs
-      .map((doc: any) => {
-        const routedQueryText = sourceForDoc(doc, "openLibrary") === "openLibrary" ? openLibraryQuery : rung.query;
-        return {
-          ...doc,
+      aggregatedRawFetched.googleBooks += Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle));
+      aggregatedRawFetched.openLibrary += Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary));
+      aggregatedRawFetched.kitsu += Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu));
+      aggregatedRawFetched.gcd += Number((laneGcd as any)?.debugRawFetchedCount ?? countResultItems(laneGcd));
+
+      const laneRawPool = [
+        ...(((laneGoogle as any)?.debugRawPool as any[]) || []),
+        ...(((laneOpenLibrary as any)?.debugRawPool as any[]) || []),
+        ...(((laneKitsu as any)?.debugRawPool as any[]) || []),
+        ...(((laneGcd as any)?.debugRawPool as any[]) || []),
+      ].map((row: any) => ({
+        ...row,
+        queryRung: rung.rung,
+        queryText: row?.queryText ?? lane.query,
+        laneKind: lane.laneKind,
+      }));
+
+      debugRawPool.push(...laneRawPool);
+
+      const taggedDocs = laneMergedDocs.map((doc: any) => ({
+        ...doc,
+        queryRung: rung.rung,
+        queryText: lane.query,
+        laneKind: lane.laneKind,
+        diagnostics: {
+          ...(doc?.diagnostics || {}),
           queryRung: rung.rung,
-          queryText: routedQueryText,
-          laneKind: rung.laneKind ?? "precision",
-          diagnostics: {
-            ...(doc?.diagnostics || {}),
-            queryRung: rung.rung,
-            queryText: routedQueryText,
-            laneKind: rung.laneKind ?? "precision",
-          },
-        };
-      });
+          queryText: lane.query,
+          laneKind: lane.laneKind,
+        },
+      }));
 
-    allMergedDocs.push(...taggedDocs);
+      allMergedDocs.push(...taggedDocs);
+    }
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
@@ -1088,77 +1166,6 @@ export async function getRecommendations(
 
   
 
-function candidateKey(candidate: any): string {
-  const title = String(candidate?.title || "").trim().toLowerCase();
-  const author = Array.isArray(candidate?.author_name) && candidate.author_name.length > 0
-    ? String(candidate.author_name[0] || "").trim().toLowerCase()
-    : String(candidate?.author || "").trim().toLowerCase();
-  return String(candidate?.id || candidate?.key || candidate?.rawDoc?.id || candidate?.rawDoc?.key || "").trim().toLowerCase() || `${title}|${author}`;
-}
-
-function candidateScoreValue(candidate: any): number {
-  const raw = Number(candidate?.score ?? candidate?.diagnostics?.postFilterScore ?? candidate?.diagnostics?.preFilterScore ?? 0);
-  return Number.isFinite(raw) ? raw : 0;
-}
-
-function buildLaneQuotaPool(candidates: any[], finalLimit: number): any[] {
-  const targetSize = Math.max(finalLimit * 2, 12);
-  const lanePriority = ["core", "dark-alt", "literary-alt", "fiction-variant", "strict-filtered", "bucket-alt", "ol-backfill", "precision"];
-  const grouped = new Map<string, any[]>();
-
-  for (const candidate of candidates) {
-    const lane = String(candidate?.rawDoc?.laneKind ?? candidate?.laneKind ?? candidate?.diagnostics?.laneKind ?? "precision");
-    if (!grouped.has(lane)) grouped.set(lane, []);
-    grouped.get(lane)!.push(candidate);
-  }
-
-  for (const [lane, items] of grouped.entries()) {
-    grouped.set(lane, [...items].sort((a, b) => {
-      const rungA = Number(a?.rawDoc?.queryRung ?? a?.queryRung ?? 999);
-      const rungB = Number(b?.rawDoc?.queryRung ?? b?.queryRung ?? 999);
-      return candidateScoreValue(b) - candidateScoreValue(a) || rungA - rungB;
-    }));
-  }
-
-  const orderedLanes = [
-    ...lanePriority.filter((lane) => grouped.has(lane)),
-    ...Array.from(grouped.keys()).filter((lane) => !lanePriority.includes(lane)),
-  ];
-
-  const selected: any[] = [];
-  const seen = new Set<string>();
-
-  for (const lane of orderedLanes) {
-    const bucket = grouped.get(lane);
-    if (!bucket?.length) continue;
-    const pick = bucket.shift();
-    if (!pick) continue;
-    const key = candidateKey(pick);
-    if (!key || seen.has(key)) continue;
-    seen.add(key);
-    selected.push(pick);
-  }
-
-  while (selected.length < targetSize) {
-    let progressed = false;
-    for (const lane of orderedLanes) {
-      const bucket = grouped.get(lane);
-      if (!bucket?.length) continue;
-      const pick = bucket.shift();
-      if (!pick) continue;
-      const key = candidateKey(pick);
-      if (!key || seen.has(key)) continue;
-      seen.add(key);
-      selected.push(pick);
-      progressed = true;
-      if (selected.length >= targetSize) break;
-    }
-    if (!progressed) break;
-  }
-
-  return selected;
-}
-
 function buildRungDiagnostics(candidates: any[]) {
   const byRung: Record<string, number> = {};
   const byRungSource: Record<string, Record<string, number>> = {};
@@ -1193,10 +1200,10 @@ const normalizedCandidates = [
   );
 
   const finalLimit = Math.max(1, Math.min(10, input.limit ?? 10));
-  const baseRankingPool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
+  const basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
     ? primaryIntentCandidates
     : normalizedCandidates;
-  const rankingPool = buildLaneQuotaPool(baseRankingPool, finalLimit);
+  const rankingPool = buildLaneQuotaPool(basePool, finalLimit);
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => ({
     title: c.title,
