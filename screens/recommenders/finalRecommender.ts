@@ -36,6 +36,7 @@ export type ScoreBreakdown = {
   narrativeScore: number;
   penaltyScore: number;
   genericTitlePenalty: number;
+  overfitPenalty: number;
   finalScore: number;
 };
 
@@ -345,8 +346,8 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
   const text = haystack(c);
   let score = 0;
 
-  if (/psychological/.test(text)) score += 4;
-  if (/horror|dark|spooky/.test(text)) score += 3;
+  if (/psychological/.test(text)) score += 2;
+  if (/horror|dark|spooky/.test(text)) score += 1.5;
   if (/survival/.test(text)) score += 2;
   if (/thriller|mystery/.test(text)) score += 1.5;
   if (/fast paced|fast-paced/.test(text)) score += 1;
@@ -359,7 +360,7 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
     const realism = Number((taste as any).realism || 0);
 
     if (/horror|dark|psychological|survival|thriller|mystery/.test(text)) {
-      score += darkness * 6;
+      score += darkness * 3;
     }
     if (/hopeful|cozy|heartwarming|family|human connection/.test(text)) {
       score += warmth * 4;
@@ -407,13 +408,33 @@ function genericTitlePenalty(c: Candidate): number {
     /^lies$/,
   ];
 
-  if (veryGenericTitles.some((rx) => rx.test(title))) return -4;
+  if (veryGenericTitles.some((rx) => rx.test(title))) return -7;
 
   if (
     title.split(" ").length <= 2 &&
     !/\b(psychological|horror|thriller|mystery|survival|dark|haunting|ghost|murder)\b/.test(title)
   ) {
     return -2;
+  }
+
+  return 0;
+}
+
+function overfitPenalty(c: Candidate): number {
+  const text = haystack(c);
+  const ratings = c.ratingCount || 0;
+
+  const keywordHits =
+    (text.match(/psychological/g)?.length || 0) +
+    (text.match(/horror/g)?.length || 0) +
+    (text.match(/dark/g)?.length || 0);
+
+  if (keywordHits >= 3 && ratings < 50) {
+    return -6;
+  }
+
+  if (keywordHits >= 2 && ratings < 10) {
+    return -8;
   }
 
   return 0;
@@ -437,13 +458,14 @@ function penaltyScore(c: Candidate): number {
 }
 
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
-  const queryScore = queryMatchScore(c) * 1.2;
+  const queryScore = queryMatchScore(c) * 0.6;
   const metadataScore = metadataTrust(c) * 1.0;
-  const authority = authorityScore(c) * 2.25;
+  const authority = authorityScore(c) * 3.5;
   const behavior = behaviorScore(c, taste);
   const narrative = narrativeScore(c);
   const penalties = penaltyScore(c);
   const genericPenalty = genericTitlePenalty(c);
+  const overfit = overfitPenalty(c);
 
   return {
     queryScore,
@@ -453,7 +475,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     narrativeScore: narrative,
     penaltyScore: penalties,
     genericTitlePenalty: genericPenalty,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty,
+    overfitPenalty: overfit,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit,
   };
 }
 
