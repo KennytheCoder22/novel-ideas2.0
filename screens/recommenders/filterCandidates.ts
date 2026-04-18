@@ -98,6 +98,8 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\bfinding list of books\b/,
     /\bgeneral catalogue\b/,
     /\bcatalogue of english prose fiction\b/,
+    /^\s*the book lady\s*$/,
+    /\bpopular fiction\b/,
     /\bcentury of the .*novel\b/,
   ];
 
@@ -152,6 +154,13 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
   if (/\bliterature\b/.test(categories) && !/\bfiction\b/.test(categories)) return false;
+
+  const bookCultureReject =
+    /\b(book lady|readers'? advisory|popular fiction|books and reading|literary culture|book review|writing speculative fiction)\b/.test(title) ||
+    /\b(readers'? advisory|books and reading|book clubs?|library science|literary criticism|popular fiction)\b/.test(categories) ||
+    /\b(readers'? advisory|about books|guide for readers|history of horror literature|literary reference)\b/.test(description);
+
+  if (bookCultureReject) return false;
 
   const fictionPositive =
     /\b(fiction|novel|thriller|mystery|crime|detective|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
