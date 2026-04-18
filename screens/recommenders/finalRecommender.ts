@@ -35,6 +35,7 @@ export type ScoreBreakdown = {
   behaviorScore: number;
   narrativeScore: number;
   penaltyScore: number;
+  genericTitlePenalty: number;
   finalScore: number;
 };
 
@@ -389,6 +390,35 @@ function narrativeScore(c: Candidate): number {
   return score;
 }
 
+function genericTitlePenalty(c: Candidate): number {
+  const title = normalize(c.title);
+  if (!title) return 0;
+
+  const veryGenericTitles = [
+    /^shadows$/,
+    /^darkness$/,
+    /^silence$/,
+    /^fear$/,
+    /^terror$/,
+    /^night$/,
+    /^echo$/,
+    /^echoes$/,
+    /^secrets$/,
+    /^lies$/,
+  ];
+
+  if (veryGenericTitles.some((rx) => rx.test(title))) return -4;
+
+  if (
+    title.split(" ").length <= 2 &&
+    !/\b(psychological|horror|thriller|mystery|survival|dark|haunting|ghost|murder)\b/.test(title)
+  ) {
+    return -2;
+  }
+
+  return 0;
+}
+
 function penaltyScore(c: Candidate): number {
   const text = haystack(c);
   let score = 0;
@@ -407,12 +437,13 @@ function penaltyScore(c: Candidate): number {
 }
 
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
-  const queryScore = queryMatchScore(c) * 2;
-  const metadataScore = metadataTrust(c) * 1.25;
-  const authority = authorityScore(c);
+  const queryScore = queryMatchScore(c) * 1.2;
+  const metadataScore = metadataTrust(c) * 1.0;
+  const authority = authorityScore(c) * 2.25;
   const behavior = behaviorScore(c, taste);
   const narrative = narrativeScore(c);
   const penalties = penaltyScore(c);
+  const genericPenalty = genericTitlePenalty(c);
 
   return {
     queryScore,
@@ -421,7 +452,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     behaviorScore: behavior,
     narrativeScore: narrative,
     penaltyScore: penalties,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties,
+    genericTitlePenalty: genericPenalty,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty,
   };
 }
 
@@ -473,8 +505,7 @@ export function finalRecommenderForDeck(
 
     const hasStrongSignal =
       (c.ratingCount || 0) >= 10 ||
-      (c.pageCount || 0) >= 150 ||
-      Boolean(c.description && c.description.length > 120);
+      ((c.pageCount || 0) >= 150 && Boolean(c.description && c.description.length > 120));
 
     return hasStrongSignal;
   });
