@@ -170,7 +170,13 @@ const hasStrongNarrative =
   /\b(follows|story of|when .* discovers|investigates|must survive)\b/.test(description);
 
 // If it looks weak AND lacks narrative, kill it
-if (!hasStrongNarrative && !/\bnovel\b/.test(title)) return false;
+// Allow broader fiction through, but still block obvious weak cases
+const weakFiction =
+  !hasStrongNarrative &&
+  !/\bnovel\b/.test(title) &&
+  description.length < 80;
+
+if (weakFiction) return false;
 
   if (family === "speculative") {
     const speculativePositive =
