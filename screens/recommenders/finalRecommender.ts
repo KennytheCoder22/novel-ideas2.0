@@ -156,12 +156,13 @@ function metadataTrust(c: Candidate): number {
 function authorityScore(c: Candidate): number {
   const ratings = c.ratingCount || 0;
 
-  if (ratings >= 5000) return 8;
-  if (ratings >= 1000) return 6;
-  if (ratings >= 200) return 4;
-  if (ratings >= 50) return 2;
+  if (ratings >= 10000) return 10;
+  if (ratings >= 3000) return 7;
+  if (ratings >= 1000) return 5;
+  if (ratings >= 200) return 3;
+  if (ratings >= 50) return 1;
 
-  return -2;
+  return -3;
 }
 
 function hasFictionSignals(c: Candidate): boolean {
@@ -364,7 +365,16 @@ function scoreCandidate(c: Candidate, taste?: TasteProfile): number {
 
   score += queryMatchScore(c) * SCORING.queryMatch;
   score += trust * SCORING.metadata;
-  score += authorityScore(c) * SCORING.authority;
+
+  const authority = authorityScore(c);
+
+  // Turn authority into a multiplier, not a bonus
+  if (authority > 0) {
+    score *= 1 + authority * 0.15;
+  } else {
+    score += authority * 2; // punish weak/no-signal titles
+  }
+
   score += behaviorScore(c, taste) * SCORING.behavior;
 
   if (/psychological horror|psychological thriller/.test(text)) {
