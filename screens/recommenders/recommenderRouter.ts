@@ -109,7 +109,7 @@ function buildRouterBucketPlan(input: RecommenderInput) {
 }
 
 
-function inferRouterFamily(bucketPlan: any): "thriller" | "speculative" | "romance" | "historical" | "general" {
+function inferRouterFamily(bucketPlan: any): "horror" | "thriller" | "speculative" | "romance" | "historical" | "general" {
   const text = [
     bucketPlan?.preview,
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
@@ -121,8 +121,9 @@ function inferRouterFamily(bucketPlan: any): "thriller" | "speculative" | "roman
     .join(" ")
     .toLowerCase();
 
+  if (/(psychological horror|survival horror|haunted house horror|haunted psychological horror|psychological horror thriller|horror|haunted|ghost|supernatural horror|slasher|occult|possession)/.test(text)) return "horror";
   if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
-  if (/(science fiction|sci-fi|fantasy|speculative|dystopian|space opera|haunted|horror)/.test(text)) return "speculative";
+  if (/(science fiction|sci-fi|fantasy|speculative|dystopian|space opera)/.test(text)) return "speculative";
   if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
   if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
   return "general";
@@ -672,6 +673,10 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const lowered = base.toLowerCase();
   const negativeTerms = rungNegativeTerms(family);
 
+  function isHorrorQuery(q: string): boolean {
+    return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror)/i.test(q);
+  }
+
   const lanes = dedupeNonEmptyQueries([
     base,
     `${base} fiction`,
@@ -683,25 +688,37 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 3) : []),
   ]);
 
-  const mapped: RouterQueryLane[] = lanes.map((query) => {
-    const q = query.toLowerCase();
-    let laneKind = "core";
-    if (q.includes(negativeTerms.split(" ")[0]?.replace(/^-/, "") || "__nope__") || q.includes("-guide") || q.includes("-reference")) {
-      laneKind = "strict-filtered";
-    } else if (/literary horror/.test(q)) {
-      laneKind = "literary-alt";
-    } else if (/dark psychological fiction|psychological suspense|domestic suspense/.test(q)) {
-      laneKind = "dark-alt";
-    } else if (q !== lowered && q.includes("fiction")) {
-      laneKind = "fiction-variant";
-    } else if (q !== lowered) {
-      laneKind = "bucket-alt";
-    }
-    return { query, laneKind, source: "googleBooks" };
-  });
+  let filteredLanes = lanes;
+  if (family === "horror") {
+    filteredLanes = lanes.filter((query) => isHorrorQuery(query));
+  }
+
+  const mapped: RouterQueryLane[] = filteredLanes
+    .map((query) => {
+      const q = query.toLowerCase();
+      let laneKind = "core";
+      if (q.includes(negativeTerms.split(" ")[0]?.replace(/^-/, "") || "__nope__") || q.includes("-guide") || q.includes("-reference")) {
+        laneKind = "strict-filtered";
+      } else if (/literary horror/.test(q)) {
+        laneKind = "literary-alt";
+      } else if (/dark psychological fiction|psychological suspense|domestic suspense/.test(q)) {
+        laneKind = "dark-alt";
+      } else if (q !== lowered && q.includes("fiction")) {
+        laneKind = "fiction-variant";
+      } else if (q !== lowered) {
+        laneKind = "bucket-alt";
+      }
+
+      if (family === "horror" && (laneKind === "strict-filtered" || laneKind === "fiction-variant" || laneKind === "literary-alt" || laneKind === "dark-alt")) {
+        return null;
+      }
+
+      return { query, laneKind, source: "googleBooks" } as RouterQueryLane;
+    })
+    .filter(Boolean) as RouterQueryLane[];
 
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
-  if (openLibraryQuery) {
+  if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
     mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary" });
   }
 
@@ -1088,7 +1105,9 @@ export async function getRecommendations(
         ? "pre-teen"
         : "kids",
     family:
-      inferRouterFamily(bucketPlan) === "thriller"
+      inferRouterFamily(bucketPlan) === "horror"
+        ? "speculative_family"
+        : inferRouterFamily(bucketPlan) === "thriller"
         ? "thriller_family"
         : inferRouterFamily(bucketPlan) === "speculative"
         ? "speculative_family"
@@ -1235,8 +1254,7 @@ export async function getRecommendations(
     })
   );
 
-  const candidateDocs =
-    filteredDocs.length >= MIN_RELAXED_FILTER_POOL ? filteredDocs : relaxedFallbackDocs;
+  const candidateDocs = filteredDocs;
 
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
@@ -1299,7 +1317,7 @@ const normalizedCandidates = [
     ...openLibraryCandidates,
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeGcd ? gcdCandidates : []),
-  ];
+  ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
 
   const preferredRungs = preferredPrimaryRungs(rungs);
   const primaryIntentCandidates = normalizedCandidates.filter((c: any) =>
@@ -1368,7 +1386,9 @@ const normalizedCandidates = [
     priorRejectedKeys: input.priorRejectedKeys,
   });
 
-  const finalRankedDocs = rankedDocs.slice(0, finalLimit);
+  const finalRankedDocs = rankedDocs
+    .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false)
+    .slice(0, finalLimit);
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
     ...doc,
