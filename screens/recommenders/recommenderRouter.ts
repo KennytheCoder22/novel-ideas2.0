@@ -486,6 +486,14 @@ function looksLikeFictionCandidate(doc: any): boolean {
 
   if (!title) return false;
 
+// HARD KILL: meta-literary / genre-study titles that masquerade as fiction
+const metaLiteraryTitlePatterns = [
+  /^\s*the\s+(crime|gothic|american|english|modern|historical|victorian|detective|mystery|thriller|horror)\s+novel\b/,
+  /\bnovel\b.*\b(criticism|history|study|studies|tradition|form|genre)\b/,
+  /\b(the|a)\s+.*\s+novel\s+(in|of)\b/,
+];
+
+if (metaLiteraryTitlePatterns.some((rx) => rx.test(title))) return false;
 
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
   if (hardRejectSpecificTitlePatterns.some((rx) => rx.test(title))) return false;
@@ -498,9 +506,9 @@ function looksLikeFictionCandidate(doc: any): boolean {
     (rx) => rx.test(title) || rx.test(categories) || rx.test(description)
   );
 
-  const hasStrongNarrativeSignal =
-    /\b(novel|fiction|thriller|mystery|crime|detective|suspense)\b/.test(title) ||
-    /\b(follows|story of|when .* discovers|investigates)\b/.test(description);
+const hasStrongNarrativeSignal =
+  /\b(thriller|mystery|crime|detective|suspense)\b/.test(title) ||
+  /\b(follows|story of|when .* discovers|investigates|haunted|killer|disappearance|obsession)\b/.test(description);
 
   return hasPositiveFictionSignal && hasStrongNarrativeSignal;
 }
@@ -546,6 +554,7 @@ function looksLikeLowValueGoogleBooksThriller(doc: any): boolean {
 
 function looksLikeGoogleBooksFamilyCandidate(doc: any, bucketPlan: any): boolean {
   if (!looksLikeFictionCandidate(doc)) return false;
+  if (/\bthe .* novel\b/.test(normalizeText(doc?.title))) return false;
 
   const categories = collectCategoryText(doc);
   const description = collectDescriptionText(doc);
