@@ -62,6 +62,7 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
   );
   const combined = [title, categories, description, author].filter(Boolean).join(" ");
   const family = inferRouterFamily(bucketPlan);
+  const laneKind = normalizeText((doc as any)?.laneKind ?? (doc as any)?.diagnostics?.laneKind);
 
   if (!title) return false;
 
@@ -101,6 +102,22 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /^\s*the book lady\s*$/,
     /\bpopular fiction\b/,
     /\bcentury of the .*novel\b/,
+    /\bnovels? and tales\b/,
+    /\bnovels? and related works\b/,
+    /\brelated works\b/,
+    /\bcomplete works\b/,
+    /\bcollected works\b/,
+    /\brestif'?s novels\b/,
+    /\bthe crime novel\b/,
+    /\bmystery fiction\b/,
+    /\bcrime fiction\b/,
+    /\bdetective fiction\b/,
+    /\bi'?m looking for a book\b/,
+    /\bthe new international encyclop(?:ae|a)e?dia\b/,
+    /\btrue stories?\b/,
+    /\bsea stories?\b/,
+    /\bsteamboat stories?\b/,
+    /\bsurvival bible\b/,
   ];
 
   const hardRejectCategoryPatterns = [
@@ -148,6 +165,13 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\bstudy guide\b/,
     /\bresearch\b/,
     /\bproceedings\b/,
+    /\bcollected essays\b/,
+    /\bthis reference\b/,
+    /\bnon[- ]fiction\b/,
+    /\bmemoir\b/,
+    /\bbiograph(?:y|ical)\b/,
+    /\bchronicles the real\b/,
+    /\btrue story\b/,
   ];
 
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
@@ -163,40 +187,35 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
   if (bookCultureReject) return false;
 
   const fictionPositive =
-    /\b(fiction|novel|thriller|mystery|crime|detective|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
-      combined
-    );
+    /\b(fiction|novel|thriller|mystery novel|crime thriller|detective novel|suspense|dystopian|survival horror|science fiction|fantasy|horror novel|romance novel|historical fiction|literary fiction|young adult fiction|domestic suspense|psychological thriller|psychological suspense|police procedural|noir)\b/.test(combined);
 
-  const narrativePositive =
-    /\b(follows|story of|when .* discovers|investigates|must survive|after .* collapse)\b/.test(description) ||
-    /\b(novel|fiction)\b/.test(title);
+  if (!fictionPositive) return false;
 
-  // Require STRONG fiction signal, not just narrative phring
-if (!fictionPositive) return false;
+  const strongNarrative =
+    /\b(follows|story of|when .* discovers|when .* realizes|investigates|must survive|must solve|must uncover|finds herself|finds himself|drawn into|haunted by|obsession|secret|killer|murder|missing|disappearance)\b/.test(description);
 
-// Narrative signal becomes a booster, not a gate
-const hasStrongNarrative =
-  /\b(follows|story of|when .* discovers|investigates|must survive)\b/.test(description);
+  const titleStorySignal =
+    /\b(novel|thriller|suspense|psychological thriller|psychological suspense|domestic suspense|crime thriller|mystery novel|detective novel|horror novel)\b/.test(title) ||
+    /\b(book\s*#?\d+|series)\b/.test(title);
 
-// If it looks weak AND lacks narrative, kill it
-// Allow broader fiction through, but still block obvious weak cases
-const weakFiction =
-  !hasStrongNarrative &&
-  !/\bnovel\b/.test(title) &&
-  description.length < 80;
+  if (!strongNarrative && !titleStorySignal && description.length < 140) return false;
 
-if (weakFiction) return false;
+  if (laneKind === "strict-filtered") {
+    const strictMetaReject =
+      /\b(novels? and tales|related works|complete works|collected works|works of|encyclop|fiction theory|crime novel|mystery fiction|detective fiction|bibliograph|reference|reader|guide|handbook|study|criticism|analysis|summary|review|anthology|collection|book clubs?|books and reading|essays?)\b/.test(combined);
+
+    const strictKeepSignal =
+      /\b(novel|thriller|suspense|psychological thriller|psychological suspense|domestic suspense|crime thriller|mystery novel|detective novel|horror novel|police procedural|noir)\b/.test(combined) || strongNarrative;
+
+    if (strictMetaReject || !strictKeepSignal) return false;
+  }
 
   if (family === "speculative") {
     const speculativePositive =
-      /\b(science fiction|fantasy|dystopian|speculative|space|spaceship|alien|robot|android|ai|artificial intelligence|future|time travel|portal|parallel world|magic|magical|haunted|ghost|horror|thriller|survival)\b/.test(
-        combined
-      );
+      /\b(science fiction|fantasy|dystopian|speculative|space|spaceship|alien|robot|android|ai|artificial intelligence|future|time travel|portal|parallel world|magic|magical|haunted|ghost|horror|thriller|survival)\b/.test(combined);
 
     const speculativeReject =
-      /\b(bookshop mysteries|family names|family science|theme in .* fiction|science fact\/science fiction|analog science|public library|publishers weekly|books?\s*\d+\s*-\s*\d+)\b/.test(
-        combined
-      );
+      /\b(bookshop mysteries|family names|family science|theme in .* fiction|science fact\/science fiction|analog science|public library|publishers weekly|books?\s*\d+\s*-\s*\d+)\b/.test(combined);
 
     if (!speculativePositive) return false;
     if (speculativeReject) return false;
@@ -204,27 +223,30 @@ if (weakFiction) return false;
 
   if (family === "thriller") {
     const thrillerPositive =
-      /\b(thriller|crime|mystery|detective|suspense|psychological|murder|serial killer|investigation|police procedural|noir|survival)\b/.test(
-        combined
-      );
+      /\b(thriller|crime thriller|mystery novel|detective novel|suspense|psychological|murder|serial killer|investigation|police procedural|noir|survival horror|domestic suspense|psychological suspense|psychological thriller|missing|disappearance|secret)\b/.test(combined);
+
+    const thrillerMetaReject =
+      /\b(the crime novel|mystery fiction|crime fiction|detective fiction|encyclop|study|criticism|analysis|related works|novels and tales|works of|books and reading)\b/.test(combined);
+
     if (!thrillerPositive) return false;
+    if (thrillerMetaReject) return false;
   }
 
   if (family === "historical") {
     const historicalPositive =
-      /\b(historical fiction|historical novel|period fiction|victorian|edwardian|civil war|world war|regency|gilded age)\b/.test(
-        combined
-      );
+      /\b(historical fiction|historical novel|period fiction|victorian|edwardian|civil war|world war|regency|gilded age)\b/.test(combined);
     if (!historicalPositive) return false;
   }
 
   if (family === "romance") {
-    const romancePositive = /\b(romance|love story|romantic)\b/.test(combined);
+    const romancePositive = /\b(romance novel|love story|romantic suspense|romantic thriller)\b/.test(combined);
     if (!romancePositive) return false;
   }
 
   return true;
 }
+
+const MIN_RATINGS = 20;
 
 function hasMinimumRatings(doc: any): boolean {
   const ratings =
@@ -238,23 +260,14 @@ function hasMinimumRatings(doc: any): boolean {
     Number(doc?.volumeInfo?.pageCount) ||
     0;
 
-  const description = String(
+  const hasDescription = String(
     doc?.description ||
     doc?.volumeInfo?.description ||
     ""
-  ).trim();
+  ).trim().length > 120;
 
-  const hasDescription = description.length > 80;
-
-  // 1. Strong signal: keep
-  if (ratings >= 10) return true;
-
-  // 2. Medium signal: allow
-  if (pageCount >= 150 && hasDescription) return true;
-
-  // 3. NEW: allow low-metadata fiction through if it passed earlier filters
-  // (this is the key fix)
-  if (hasDescription) return true;
+  if (ratings >= MIN_RATINGS) return true;
+  if (pageCount >= 180 && hasDescription) return true;
 
   return false;
 }
