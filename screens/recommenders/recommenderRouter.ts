@@ -766,6 +766,44 @@ function buildLaneQuotaPool(candidates: any[], finalLimit: number): any[] {
   return selected;
 }
 
+
+
+function enforceAuthorDiversity(candidates: any[], maxPerAuthor = 1): any[] {
+  const counts = new Map<string, number>();
+  const out: any[] = [];
+
+  for (const c of candidates) {
+    const author =
+      Array.isArray(c?.author_name) && c.author_name.length > 0
+        ? c.author_name[0]
+        : c?.author;
+
+    const key = String(author || "").toLowerCase().trim();
+    const count = counts.get(key) || 0;
+
+    if (count >= maxPerAuthor) continue;
+
+    counts.set(key, count + 1);
+    out.push(c);
+  }
+
+  return out;
+}
+
+function enforceLaneDiversity(candidates: any[], minLanes = 3): any[] {
+  const lanes = new Map<string, any[]>();
+
+  for (const c of candidates) {
+    const lane = String(c?.rawDoc?.laneKind ?? c?.laneKind ?? c?.diagnostics?.laneKind ?? "core");
+    if (!lanes.has(lane)) lanes.set(lane, []);
+    lanes.get(lane)!.push(c);
+  }
+
+  if (lanes.size >= minLanes) return candidates;
+
+  return candidates;
+}
+
 function countResultItems(result: RecommendationResult | null | undefined): number {
   if (!result) return 0;
   if (Array.isArray((result as any).items)) return (result as any).items.length;
@@ -1200,9 +1238,15 @@ const normalizedCandidates = [
   );
 
   const finalLimit = Math.max(1, Math.min(10, input.limit ?? 10));
-  const basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
+  let basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
     ? primaryIntentCandidates
     : normalizedCandidates;
+
+  if (basePool.length < finalLimit * 2) {
+    basePool = enforceAuthorDiversity(normalizedCandidates, 1);
+    basePool = enforceLaneDiversity(basePool, 3);
+  }
+
   const rankingPool = buildLaneQuotaPool(basePool, finalLimit);
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => ({
