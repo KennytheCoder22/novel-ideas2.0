@@ -334,30 +334,15 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
   const text = haystack(c);
   let score = 0;
 
-  const likedGenres = Array.isArray((taste as any).likedGenres) ? (taste as any).likedGenres : [];
-  const dislikedGenres = Array.isArray((taste as any).dislikedGenres) ? (taste as any).dislikedGenres : [];
-  const likedAuthors = Array.isArray((taste as any).likedAuthors) ? (taste as any).likedAuthors : [];
-  const dislikedAuthors = Array.isArray((taste as any).dislikedAuthors) ? (taste as any).dislikedAuthors : [];
+  // Align with real session signals (tags)
+  const signals = ['horror', 'dark', 'survival', 'thriller', 'mystery'];
 
-  for (const liked of likedGenres) {
-    const normalized = normalize(liked);
-    if (normalized && text.includes(normalized)) score += 2;
+  for (const signal of signals) {
+    if (text.includes(signal)) score += 2;
   }
 
-  for (const disliked of dislikedGenres) {
-    const normalized = normalize(disliked);
-    if (normalized && text.includes(normalized)) score -= 3;
-  }
-
-  const author = normalize(c.author);
-
-  for (const liked of likedAuthors) {
-    if (author && author === normalize(liked)) score += 3;
-  }
-
-  for (const disliked of dislikedAuthors) {
-    if (author && author === normalize(disliked)) score -= 4;
-  }
+  // Penalize known negative preference
+  if (text.includes('science fiction')) score -= 4;
 
   return score;
 }
@@ -462,7 +447,7 @@ export function finalRecommenderForDeck(
     const author = normalize(candidate.author);
     const count = authorCounts.get(author) || 0;
 
-    if (count >= 2) continue;
+    if (count >= 1) continue;
 
     selected.push(candidate);
     authorCounts.set(author, count + 1);
