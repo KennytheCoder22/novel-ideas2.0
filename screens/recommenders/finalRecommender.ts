@@ -274,21 +274,19 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     return { pass: false, reason: 'non_fiction_meta', detail: 'non-fiction/meta heuristic hit' };
   }
 
-const trust = metadataTrust(c);
+  const trust = metadataTrust(c);
 
-// Stronger baseline
-if (trust < 3) {
-  return { pass: false, reason: 'low_metadata_trust', detail: `metadataTrust=${trust}` };
-}
+  if (trust < 3) {
+    return { pass: false, reason: 'low_metadata_trust', detail: `metadataTrust=${trust}` };
+  }
 
-// Require at least one meaningful signal
-const hasStrongSignal =
-  (c.ratingCount || 0) >= 10 ||
-  ((c.pageCount || 0) >= 150 && Boolean(c.description && c.description.length > 120));
+  const hasStrongSignal =
+    (c.ratingCount || 0) >= 10 ||
+    ((c.pageCount || 0) >= 150 && Boolean(c.description && c.description.length > 120));
 
-if (!hasStrongSignal) {
-  return { pass: false, reason: 'low_metadata_trust', detail: 'no strong signal' };
-}
+  if (!hasStrongSignal) {
+    return { pass: false, reason: 'low_metadata_trust', detail: 'no strong signal' };
+  }
 
   if (!hasFictionSignals(c)) {
     return { pass: false, reason: 'weak_fiction_signal', detail: 'missing fiction/narrative signal' };
@@ -313,31 +311,82 @@ function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidat
   };
 }
 
-function scoreCandidate(c: Candidate): number {
+const SCORING = {
+  queryMatch: 1.5,
+  metadata: 1.0,
+  narrative: 1.0,
+  behavior: 2.5,
+  strongTrustBonus: 3,
+  weakTrustPenalty: -4,
+  seriesPenalty: -4,
+  metaPenalty: -6,
+} as const;
+
+function queryMatchScore(c: Candidate): number {
+  const rung = evidenceRank(c);
+  if (!Number.isFinite(rung) || rung >= 999) return 0;
+  return Math.max(0, 10 - rung * 2);
+}
+
+function behaviorScore(c: Candidate, taste?: TasteProfile): number {
+  if (!taste) return 0;
+
   const text = haystack(c);
   let score = 0;
 
-  // Prefer lower rungs, but not overwhelmingly
-  score += Math.max(0, 12 - Math.min(9, evidenceRank(c)) * 2);
+  const likedGenres = Array.isArray((taste as any).likedGenres) ? (taste as any).likedGenres : [];
+  const dislikedGenres = Array.isArray((taste as any).dislikedGenres) ? (taste as any).dislikedGenres : [];
+  const likedAuthors = Array.isArray((taste as any).likedAuthors) ? (taste as any).likedAuthors : [];
+  const dislikedAuthors = Array.isArray((taste as any).dislikedAuthors) ? (taste as any).dislikedAuthors : [];
 
-  // Metadata matters, but do not let it dominate
+  for (const liked of likedGenres) {
+    const normalized = normalize(liked);
+    if (normalized && text.includes(normalized)) score += 2;
+  }
+
+  for (const disliked of dislikedGenres) {
+    const normalized = normalize(disliked);
+    if (normalized && text.includes(normalized)) score -= 3;
+  }
+
+  const author = normalize(c.author);
+
+  for (const liked of likedAuthors) {
+    if (author && author === normalize(liked)) score += 3;
+  }
+
+  for (const disliked of dislikedAuthors) {
+    if (author && author === normalize(disliked)) score -= 4;
+  }
+
+  return score;
+}
+
+function scoreCandidate(c: Candidate, taste?: TasteProfile): number {
+  const text = haystack(c);
   const trust = metadataTrust(c);
-  score += trust;
+  let score = 0;
 
-  // Genre and narrative signals
-  if (/horror|thriller|mystery|suspense|dark/.test(text)) score += 3;
-  if (/novel|fiction/.test(text)) score += 2;
-  if (/follows|tells the story|story of|when .* discovers|investigation|journey/.test(text)) score += 2;
+  score += queryMatchScore(c) * SCORING.queryMatch;
+  score += trust * SCORING.metadata;
+  score += behaviorScore(c, taste) * SCORING.behavior;
 
-  // Penalize obvious junk
-  if (/book\s*1\b|book\s*one\b|books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) score -= 8;
-  if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) score -= 6;
+  if (/horror|thriller|mystery|suspense|dark/.test(text)) score += 3 * SCORING.narrative;
+  if (/novel|fiction/.test(text)) score += 2 * SCORING.narrative;
+  if (/follows|tells the story|story of|when .* discovers|investigation|journey/.test(text)) {
+    score += 2 * SCORING.narrative;
+  }
 
-  // Penalize low-signal entries with weak catalog support
-  if (trust <= 2 && !c.ratingCount) score -= 4;
+  if (/book\s*1\b|book\s*one\b|books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) {
+    score += SCORING.seriesPenalty;
+  }
 
-  // Reward stronger catalog signals
-  if (trust >= 4) score += 3;
+  if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) {
+    score += SCORING.metaPenalty;
+  }
+
+  if (trust <= 2 && !c.ratingCount) score += SCORING.weakTrustPenalty;
+  if (trust >= 4) score += SCORING.strongTrustBonus;
 
   return score;
 }
@@ -370,25 +419,28 @@ export function finalRecommenderForDeck(
     });
   }
 
-const relaxedFallback = deduped.filter((c) => {
-  if (isHardReject(c).reject) return false;
+  const relaxedFallback = deduped.filter((c) => {
+    if (isHardReject(c).reject) return false;
 
-  const trust = metadataTrust(c);
-  if (trust < 3) return false;
+    const trust = metadataTrust(c);
+    if (trust < 3) return false;
 
-  const hasStrongSignal =
-    (c.ratingCount || 0) >= 10 ||
-    (c.pageCount || 0) >= 150 ||
-    Boolean(c.description && c.description.length > 120);
+    const hasStrongSignal =
+      (c.ratingCount || 0) >= 10 ||
+      (c.pageCount || 0) >= 150 ||
+      Boolean(c.description && c.description.length > 120);
 
-  return hasStrongSignal;
-});
+    return hasStrongSignal;
+  });
+
   const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback;
 
   buildDebug(input.length, deduped.length, base, rejected);
 
+  const { tasteProfile } = _options;
+
   const ordered = [...base].sort((a, b) => {
-    const scoreDiff = scoreCandidate(b) - scoreCandidate(a);
+    const scoreDiff = scoreCandidate(b, tasteProfile) - scoreCandidate(a, tasteProfile);
     if (scoreDiff !== 0) return scoreDiff;
 
     const rungDiff = evidenceRank(a) - evidenceRank(b);
@@ -403,5 +455,20 @@ const relaxedFallback = deduped.filter((c) => {
     return bHasCover - aHasCover;
   });
 
-  return ordered.slice(0, 10).map((c) => c.rawDoc as RecommendationDoc);
+  const selected: Candidate[] = [];
+  const authorCounts = new Map<string, number>();
+
+  for (const candidate of ordered) {
+    const author = normalize(candidate.author);
+    const count = authorCounts.get(author) || 0;
+
+    if (count >= 2) continue;
+
+    selected.push(candidate);
+    authorCounts.set(author, count + 1);
+
+    if (selected.length >= 10) break;
+  }
+
+  return selected.map((c) => c.rawDoc as RecommendationDoc);
 }
