@@ -821,6 +821,48 @@ function countResultItems(result: RecommendationResult | null | undefined): numb
   if (Array.isArray((result as any).recommendations)) return (result as any).recommendations.length;
   if (Array.isArray((result as any).docs)) return (result as any).docs.length;
   return 0;
+
+
+function buildFilterAuditRows(docs: RecommendationDoc[]): any[] {
+  return (Array.isArray(docs) ? docs : []).slice(0, 250).map((doc: any) => {
+    const filterDiagnostics = doc?.diagnostics?.filterDiagnostics || {};
+    return {
+      title: doc?.title,
+      author: Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author,
+      source: doc?.source,
+      queryText: doc?.queryText ?? doc?.diagnostics?.queryText,
+      queryRung: doc?.queryRung ?? doc?.diagnostics?.queryRung,
+      laneKind: doc?.laneKind ?? doc?.diagnostics?.laneKind,
+      kept: Boolean(doc?.diagnostics?.filterKept),
+      rejectReasons: Array.isArray(doc?.diagnostics?.filterRejectReasons) ? doc.diagnostics.filterRejectReasons : [],
+      passedChecks: Array.isArray(doc?.diagnostics?.filterPassedChecks) ? doc.diagnostics.filterPassedChecks : [],
+      filterFamily: doc?.diagnostics?.filterFamily ?? filterDiagnostics?.family,
+      wantsHorrorTone: doc?.diagnostics?.filterWantsHorrorTone ?? filterDiagnostics?.wantsHorrorTone,
+      flags: doc?.diagnostics?.filterFlags ?? filterDiagnostics?.flags ?? {},
+      pageCount: doc?.diagnostics?.pageCount,
+      ratingsCount: doc?.diagnostics?.ratingsCount,
+    };
+  });
+}
+
+function summarizeFilterAudit(rows: any[]) {
+  const summary = {
+    kept: 0,
+    rejected: 0,
+    reasons: {} as Record<string, number>,
+  };
+
+  for (const row of Array.isArray(rows) ? rows : []) {
+    if (row?.kept) summary.kept += 1;
+    else summary.rejected += 1;
+
+    for (const reason of Array.isArray(row?.rejectReasons) ? row.rejectReasons : []) {
+      summary.reasons[reason] = (summary.reasons[reason] || 0) + 1;
+    }
+  }
+
+  return summary;
+}
 }
 
 function hasHardcoverFailureShape(value: unknown): boolean {
@@ -1179,6 +1221,8 @@ export async function getRecommendations(
   // no bestseller injection, no commercial shelf shaping, and no off-profile anchor lane.
   // Filter only the candidates retrieved from 20Q-derived rungs.
   const filteredDocs = filterCandidates(enrichedDocs, bucketPlan);
+  const filterAuditRows = buildFilterAuditRows(enrichedDocs);
+  const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
 
   const relaxedFallbackDocs = dedupeDocs(
     enrichedDocs.filter((doc: any) => {
@@ -1292,16 +1336,24 @@ const normalizedCandidates = [
 
   const rankingPool = buildLaneQuotaPool(basePool, finalLimit);
 
-  const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => ({
-    title: c.title,
-    author: Array.isArray(c.author_name) ? c.author_name[0] : c.author,
-    source: c.source,
-    score: c.score,
-    queryText: c?.rawDoc?.queryText ?? c?.queryText,
-    queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
-    laneKind: c?.rawDoc?.laneKind ?? c?.laneKind ?? c?.diagnostics?.laneKind,
-    commercialSignals: c?.commercialSignals ?? c?.rawDoc?.commercialSignals,
-  }));
+  const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => {
+    const filterDiagnostics = c?.rawDoc?.diagnostics?.filterDiagnostics ?? c?.diagnostics?.filterDiagnostics;
+    return {
+      title: c.title,
+      author: Array.isArray(c.author_name) ? c.author_name[0] : c.author,
+      source: c.source,
+      score: c.score,
+      queryText: c?.rawDoc?.queryText ?? c?.queryText,
+      queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
+      laneKind: c?.rawDoc?.laneKind ?? c?.laneKind ?? c?.diagnostics?.laneKind,
+      commercialSignals: c?.commercialSignals ?? c?.rawDoc?.commercialSignals,
+      filterKept: c?.rawDoc?.diagnostics?.filterKept ?? c?.diagnostics?.filterKept,
+      filterRejectReasons: c?.rawDoc?.diagnostics?.filterRejectReasons ?? c?.diagnostics?.filterRejectReasons ?? [],
+      filterPassedChecks: c?.rawDoc?.diagnostics?.filterPassedChecks ?? c?.diagnostics?.filterPassedChecks ?? [],
+      filterFamily: c?.rawDoc?.diagnostics?.filterFamily ?? c?.diagnostics?.filterFamily ?? filterDiagnostics?.family,
+      filterFlags: c?.rawDoc?.diagnostics?.filterFlags ?? c?.diagnostics?.filterFlags ?? filterDiagnostics?.flags ?? {},
+    };
+  });
 
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
@@ -1324,6 +1376,7 @@ const normalizedCandidates = [
     source: sourceForDoc(doc, "openLibrary"),
     diagnostics: doc?.diagnostics
       ? {
+          ...doc.diagnostics,
           source: doc.diagnostics.source || sourceForDoc(doc, "openLibrary"),
           preFilterScore: doc.diagnostics.preFilterScore,
           postFilterScore: doc.diagnostics.postFilterScore,
@@ -1333,8 +1386,25 @@ const normalizedCandidates = [
           rungBoost: doc.diagnostics.rungBoost,
           commercialBoost: (doc.diagnostics as any).commercialBoost,
           laneKind: doc.diagnostics.laneKind ?? doc.laneKind ?? doc.rawDoc?.laneKind,
+          filterDiagnostics: doc.diagnostics.filterDiagnostics ?? doc?.rawDoc?.diagnostics?.filterDiagnostics,
+          filterKept: doc.diagnostics.filterKept ?? doc?.rawDoc?.diagnostics?.filterKept,
+          filterRejectReasons: doc.diagnostics.filterRejectReasons ?? doc?.rawDoc?.diagnostics?.filterRejectReasons ?? [],
+          filterPassedChecks: doc.diagnostics.filterPassedChecks ?? doc?.rawDoc?.diagnostics?.filterPassedChecks ?? [],
+          filterFamily: doc.diagnostics.filterFamily ?? doc?.rawDoc?.diagnostics?.filterFamily,
+          filterWantsHorrorTone: doc.diagnostics.filterWantsHorrorTone ?? doc?.rawDoc?.diagnostics?.filterWantsHorrorTone,
+          filterFlags: doc.diagnostics.filterFlags ?? doc?.rawDoc?.diagnostics?.filterFlags ?? {},
         }
-      : undefined,
+      : {
+          source: sourceForDoc(doc, "openLibrary"),
+          laneKind: doc?.laneKind ?? doc?.rawDoc?.laneKind,
+          filterDiagnostics: doc?.rawDoc?.diagnostics?.filterDiagnostics,
+          filterKept: doc?.rawDoc?.diagnostics?.filterKept,
+          filterRejectReasons: doc?.rawDoc?.diagnostics?.filterRejectReasons ?? [],
+          filterPassedChecks: doc?.rawDoc?.diagnostics?.filterPassedChecks ?? [],
+          filterFamily: doc?.rawDoc?.diagnostics?.filterFamily,
+          filterWantsHorrorTone: doc?.rawDoc?.diagnostics?.filterWantsHorrorTone,
+          filterFlags: doc?.rawDoc?.diagnostics?.filterFlags ?? {},
+        },
   }));
 
   const rankedCountsBySource: Record<CandidateSource, number> = {
@@ -1400,5 +1470,7 @@ const normalizedCandidates = [
     debugCandidatePool: candidatePoolPreview,
     debugRawPool,
     debugRungStats: buildRungDiagnostics(normalizedCandidates),
+    debugFilterAudit: filterAuditRows,
+    debugFilterAuditSummary: filterAuditSummary,
   } as RecommendationResult;
 }

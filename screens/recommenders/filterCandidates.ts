@@ -1,5 +1,30 @@
 import type { RecommendationDoc } from "./types";
 
+type RouterFamily = "thriller" | "speculative" | "romance" | "historical" | "general";
+
+type FilterDiagnostics = {
+  kept: boolean;
+  family: RouterFamily;
+  wantsHorrorTone: boolean;
+  title: string;
+  pageCount: number;
+  ratingsCount: number;
+  hasDescription: boolean;
+  hasRealLength: boolean;
+  passedChecks: string[];
+  rejectReasons: string[];
+  flags: {
+    fictionPositive: boolean;
+    strongNarrative: boolean;
+    genericTitle: boolean;
+    speculativePositive: boolean;
+    thrillerPositive: boolean;
+    horrorAligned: boolean;
+    historicalPositive: boolean;
+    romancePositive: boolean;
+  };
+};
+
 function normalizeText(value: unknown): string {
   if (Array.isArray(value)) return value.map(normalizeText).join(" ").toLowerCase();
   if (value == null) return "";
@@ -34,7 +59,7 @@ function collectDescriptionText(doc: any): string {
     .join(" ");
 }
 
-function inferRouterFamily(bucketPlan: any): "thriller" | "speculative" | "romance" | "historical" | "general" {
+function inferRouterFamily(bucketPlan: any): RouterFamily {
   const text = [
     bucketPlan?.preview,
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
@@ -46,8 +71,6 @@ function inferRouterFamily(bucketPlan: any): "thriller" | "speculative" | "roman
     .join(" ")
     .toLowerCase();
 
-  // Prioritize horror/speculative cues before generic thriller so
-  // “psychological horror” does not collapse into domestic suspense.
   if (/(haunted|ghost|supernatural|occult|monster|creature|apocalypse|post-apocalyptic|zombie|survival horror|body horror|psychological horror|horror|science fiction|sci-fi|fantasy|speculative|dystopian|space opera|technology|ai)/.test(text)) return "speculative";
   if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
   if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
@@ -70,7 +93,7 @@ function wantsHorrorTone(bucketPlan: any): boolean {
   return /(horror|haunted|ghost|supernatural|occult|monster|creature|zombie|body horror|psychological horror|survival horror|terror|dread|eerie|disturbing|dark fantasy)/.test(text);
 }
 
-function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
+function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
   const categories = collectCategoryText(doc);
   const description = collectDescriptionText(doc);
@@ -79,8 +102,7 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
   );
   const combined = [title, categories, description, author].filter(Boolean).join(" ");
   const family = inferRouterFamily(bucketPlan);
-
-  if (!title) return false;
+  const horrorToneWanted = wantsHorrorTone(bucketPlan);
 
   const hardRejectTitlePatterns = [
     /\bguide\b/,
@@ -200,37 +222,19 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\bbiograph(?:y|ical)\b/,
   ];
 
-  if (hardRejectTitlePatterns.some((rx) => rx.test(title))) return false;
-  if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) return false;
-  if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) return false;
-  if (/\bliterature\b/.test(categories) && !/\bfiction\b/.test(categories)) return false;
-
-  const bookCultureReject =
-    /\b(book lady|readers'? advisory|popular fiction|books and reading|literary culture|book review|writing speculative fiction)\b/.test(title) ||
-    /\b(readers'? advisory|books and reading|book clubs?|library science|literary criticism|popular fiction)\b/.test(categories) ||
-    /\b(readers'? advisory|about books|guide for readers|history of horror literature|literary reference)\b/.test(description);
-
-  if (bookCultureReject) return false;
-
-  const academicNovelStudyReject =
-    /\b(english gothic novel|gothic novel:\s*texts|novel:\s*texts)\b/.test(title) ||
-    (/\btexts\b/.test(title) && /\b(literature|criticism|studies)\b/.test(categories + " " + description));
-
-  if (academicNovelStudyReject) return false;
-
-  const novelMetaReject =
-    /\b(future of the novel|novelists?|novel vs\.? fiction|famous authors on their methods|introduction to the novels? of|development of .* novel|selected novels? and plays|novels? and (other works|related works|stories|tales))\b/.test(combined);
-
-  if (novelMetaReject) return false;
+  const pageCount = Number(doc?.pageCount) || Number(doc?.volumeInfo?.pageCount) || 0;
+  const ratingsCount =
+    Number(doc?.ratingsCount) ||
+    Number(doc?.volumeInfo?.ratingsCount) ||
+    Number(doc?.hardcover?.ratings_count) ||
+    0;
+  const hasDescription = String(doc?.description || doc?.volumeInfo?.description || "").trim().length > 120;
+  const hasRealLength = pageCount >= 120;
 
   const fictionPositive =
     /\b(fiction|novel|thriller|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
       combined
     );
-
-  const narrativePositive =
-    /\b(follows|story of|when .* discovers|investigates|must survive|after .* collapse|a novel about|a thriller about|haunted by|trapped in|must confront|must uncover)\b/.test(description) ||
-    /\b(novel|thriller|suspense|horror|fiction)\b/.test(title);
 
   const strongNarrative =
     /\b(novel|thriller|horror|suspense|fiction)\b/.test(title) ||
@@ -243,60 +247,97 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\bnovels?\s+and\s+(tales|stories|other works|related works)\b/.test(title) ||
     /\bfuture of the novel\b/.test(title);
 
-  const pageCount =
-    Number(doc?.pageCount) ||
-    Number(doc?.volumeInfo?.pageCount) ||
-    0;
+  const speculativePositive =
+    /\b(science fiction|fantasy|dystopian|speculative|space|spaceship|alien|robot|android|ai|artificial intelligence|future|time travel|portal|parallel world|magic|magical|haunted|ghost|supernatural|occult|monster|creature|horror|survival horror|terror|dread)\b/.test(
+      combined
+    );
 
-  const hasRealLength = pageCount >= 120;
+  const thrillerPositive =
+    /\b(thriller|suspense|psychological|murder|serial killer|investigation|police procedural|noir|survival)\b/.test(
+      combined
+    );
 
-  if (!fictionPositive) return false;
-  if (genericTitle) return false;
-  if (!strongNarrative) return false;
-  if (!hasRealLength && description.length < 120) return false;
+  const horrorAligned =
+    /\b(horror|haunted|ghost|supernatural|occult|monster|creature|survival horror|terror|dread|eerie|disturbing|dark fantasy)\b/.test(combined);
+
+  const historicalPositive =
+    /\b(historical fiction|historical novel|period fiction|victorian|edwardian|civil war|world war|regency|gilded age)\b/.test(
+      combined
+    );
+
+  const romancePositive = /\b(romance|love story|romantic)\b/.test(combined);
+
+  const diagnostics: FilterDiagnostics = {
+    kept: false,
+    family,
+    wantsHorrorTone: horrorToneWanted,
+    title,
+    pageCount,
+    ratingsCount,
+    hasDescription,
+    hasRealLength,
+    passedChecks: [],
+    rejectReasons: [],
+    flags: {
+      fictionPositive,
+      strongNarrative,
+      genericTitle,
+      speculativePositive,
+      thrillerPositive,
+      horrorAligned,
+      historicalPositive,
+      romancePositive,
+    },
+  };
+
+  if (!title) diagnostics.rejectReasons.push("missing_title");
+  if (hardRejectTitlePatterns.some((rx) => rx.test(title))) diagnostics.rejectReasons.push("hard_reject_title");
+  if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) diagnostics.rejectReasons.push("hard_reject_category");
+  if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) diagnostics.rejectReasons.push("hard_reject_description");
+  if (/\bliterature\b/.test(categories) && !/\bfiction\b/.test(categories)) diagnostics.rejectReasons.push("literature_without_fiction");
+
+  const bookCultureReject =
+    /\b(book lady|readers'? advisory|popular fiction|books and reading|literary culture|book review|writing speculative fiction)\b/.test(title) ||
+    /\b(readers'? advisory|books and reading|book clubs?|library science|literary criticism|popular fiction)\b/.test(categories) ||
+    /\b(readers'? advisory|about books|guide for readers|history of horror literature|literary reference)\b/.test(description);
+  if (bookCultureReject) diagnostics.rejectReasons.push("book_culture_reference");
+
+  const academicNovelStudyReject =
+    /\b(english gothic novel|gothic novel:\s*texts|novel:\s*texts)\b/.test(title) ||
+    (/\btexts\b/.test(title) && /\b(literature|criticism|studies)\b/.test(categories + " " + description));
+  if (academicNovelStudyReject) diagnostics.rejectReasons.push("academic_novel_study");
+
+  const novelMetaReject =
+    /\b(future of the novel|novelists?|novel vs\.? fiction|famous authors on their methods|introduction to the novels? of|development of .* novel|selected novels? and plays|novels? and (other works|related works|stories|tales))\b/.test(combined);
+  if (novelMetaReject) diagnostics.rejectReasons.push("novel_meta_reference");
+
+  if (!fictionPositive) diagnostics.rejectReasons.push("missing_fiction_signal");
+  if (genericTitle) diagnostics.rejectReasons.push("generic_title");
+  if (!strongNarrative) diagnostics.rejectReasons.push("missing_narrative_signal");
+  if (!hasRealLength && !hasDescription) diagnostics.rejectReasons.push("insufficient_length_or_description");
 
   if (family === "speculative") {
-    const speculativePositive =
-      /\b(science fiction|fantasy|dystopian|speculative|space|spaceship|alien|robot|android|ai|artificial intelligence|future|time travel|portal|parallel world|magic|magical|haunted|ghost|supernatural|occult|monster|creature|horror|survival horror|terror|dread)\b/.test(
-        combined
-      );
-
     const speculativeReject =
       /\b(bookshop mysteries|family names|family science|theme in .* fiction|science fact\/science fiction|analog science|public library|publishers weekly|books?\s*\d+\s*-\s*\d+|historical dictionary|guide to|popular culture)\b/.test(
         combined
       );
-
-    if (!speculativePositive) return false;
-    if (speculativeReject) return false;
+    if (!speculativePositive) diagnostics.rejectReasons.push("missing_speculative_signal");
+    if (speculativeReject) diagnostics.rejectReasons.push("speculative_off_profile_reference");
   }
 
   if (family === "thriller") {
-    const thrillerPositive =
-      /\b(thriller|suspense|psychological|murder|serial killer|investigation|police procedural|noir|survival)\b/.test(
-        combined
-      );
-    if (!thrillerPositive) return false;
-
-    if (wantsHorrorTone(bucketPlan)) {
-      const horrorAligned = /\b(horror|haunted|ghost|supernatural|occult|monster|creature|survival horror|terror|dread|eerie|disturbing|dark fantasy)\b/.test(combined);
-      if (!horrorAligned) return false;
-    }
+    if (!thrillerPositive) diagnostics.rejectReasons.push("missing_thriller_signal");
+    if (horrorToneWanted && !horrorAligned) diagnostics.rejectReasons.push("missing_horror_alignment");
   }
 
-  if (family === "historical") {
-    const historicalPositive =
-      /\b(historical fiction|historical novel|period fiction|victorian|edwardian|civil war|world war|regency|gilded age)\b/.test(
-        combined
-      );
-    if (!historicalPositive) return false;
-  }
+  if (family === "historical" && !historicalPositive) diagnostics.rejectReasons.push("missing_historical_signal");
+  if (family === "romance" && !romancePositive) diagnostics.rejectReasons.push("missing_romance_signal");
 
-  if (family === "romance") {
-    const romancePositive = /\b(romance|love story|romantic)\b/.test(combined);
-    if (!romancePositive) return false;
-  }
+  if (fictionPositive) diagnostics.passedChecks.push("fiction_positive");
+  if (strongNarrative) diagnostics.passedChecks.push("strong_narrative");
+  if (hasRealLength || hasDescription) diagnostics.passedChecks.push("minimum_shape");
 
-  return true;
+  return diagnostics;
 }
 
 const MIN_RATINGS = 20;
@@ -326,14 +367,56 @@ function hasMinimumRatings(doc: any): boolean {
   return false;
 }
 
+function attachDiagnostics(doc: RecommendationDoc, diagnostics: FilterDiagnostics): RecommendationDoc {
+  const existing = (doc as any)?.diagnostics || {};
+  return {
+    ...(doc as any),
+    diagnostics: {
+      ...existing,
+      filterDiagnostics: diagnostics,
+      filterKept: diagnostics.kept,
+      filterRejectReasons: diagnostics.rejectReasons,
+      filterPassedChecks: diagnostics.passedChecks,
+      filterFamily: diagnostics.family,
+      filterWantsHorrorTone: diagnostics.wantsHorrorTone,
+      filterFlags: diagnostics.flags,
+      pageCount: diagnostics.pageCount,
+      ratingsCount: diagnostics.ratingsCount,
+    },
+  } as RecommendationDoc;
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
 
   for (const doc of inputDocs) {
-    if (!looksLikeFictionCandidate(doc, bucketPlan)) continue;
-    if (!hasMinimumRatings(doc)) continue;
-    filtered.push(doc);
+    const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
+
+    if (diagnostics.rejectReasons.length === 0) {
+      diagnostics.passedChecks.push("passed_content_gate");
+    }
+
+    if (diagnostics.rejectReasons.length > 0) {
+      diagnostics.kept = false;
+      filtered.push(...[]);
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
+
+    if (!hasMinimumRatings(doc)) {
+      diagnostics.rejectReasons.push("below_ratings_floor");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
+
+    diagnostics.passedChecks.push("passed_ratings_gate");
+    diagnostics.kept = true;
+
+    const withDiagnostics = attachDiagnostics(doc, diagnostics);
+    Object.assign(doc as any, withDiagnostics);
+    filtered.push(withDiagnostics);
   }
 
   return filtered;
