@@ -28,6 +28,16 @@ export type QualityRejectRecord = {
   detail?: string;
 };
 
+export type ScoreBreakdown = {
+  queryScore: number;
+  metadataScore: number;
+  authorityScore: number;
+  behaviorScore: number;
+  narrativeScore: number;
+  penaltyScore: number;
+  finalScore: number;
+};
+
 export type FinalRecommenderDebug = {
   inputCount: number;
   dedupedCount: number;
@@ -152,17 +162,17 @@ function metadataTrust(c: Candidate): number {
   return score;
 }
 
-
 function authorityScore(c: Candidate): number {
   const ratings = c.ratingCount || 0;
 
-  if (ratings >= 10000) return 10;
-  if (ratings >= 3000) return 7;
-  if (ratings >= 1000) return 5;
-  if (ratings >= 200) return 3;
-  if (ratings >= 50) return 1;
+  if (ratings >= 10000) return 4;
+  if (ratings >= 3000) return 3;
+  if (ratings >= 1000) return 2;
+  if (ratings >= 200) return 1;
+  if (ratings >= 50) return 0.5;
+  if (ratings > 0) return 0;
 
-  return -3;
+  return -1.5;
 }
 
 function hasFictionSignals(c: Candidate): boolean {
@@ -324,18 +334,6 @@ function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidat
   };
 }
 
-const SCORING = {
-  queryMatch: 1.5,
-  metadata: 1.2,
-  narrative: 1.2,
-  behavior: 2.0,
-  authority: 2.5,
-  strongTrustBonus: 4,
-  weakTrustPenalty: -5,
-  seriesPenalty: -4,
-  metaPenalty: -6,
-} as const;
-
 function queryMatchScore(c: Candidate): number {
   const rung = evidenceRank(c);
   if (!Number.isFinite(rung) || rung >= 999) return 0;
@@ -343,62 +341,100 @@ function queryMatchScore(c: Candidate): number {
 }
 
 function behaviorScore(c: Candidate, taste?: TasteProfile): number {
-  if (!taste) return 0;
-
   const text = haystack(c);
   let score = 0;
 
-  if (/horror|dark/.test(text)) score += 3;
   if (/psychological/.test(text)) score += 4;
+  if (/horror|dark|spooky/.test(text)) score += 3;
   if (/survival/.test(text)) score += 2;
-  if (/thriller|mystery/.test(text)) score += 2;
+  if (/thriller|mystery/.test(text)) score += 1.5;
+  if (/fast paced|fast-paced/.test(text)) score += 1;
+  if (/science fiction/.test(text)) score -= 4;
+  if (/romance/.test(text)) score -= 1.5;
 
-  if (/science fiction/.test(text)) score -= 5;
+  if (taste) {
+    const darkness = Number((taste as any).darkness || 0);
+    const warmth = Number((taste as any).warmth || 0);
+    const realism = Number((taste as any).realism || 0);
+
+    if (/horror|dark|psychological|survival|thriller|mystery/.test(text)) {
+      score += darkness * 6;
+    }
+    if (/hopeful|cozy|heartwarming|family|human connection/.test(text)) {
+      score += warmth * 4;
+    }
+    if (/science fiction|space opera|futuristic/.test(text)) {
+      score -= Math.max(0, -realism) * 4;
+    }
+  }
 
   return score;
 }
 
-function scoreCandidate(c: Candidate, taste?: TasteProfile): number {
+function narrativeScore(c: Candidate): number {
   const text = haystack(c);
-  const trust = metadataTrust(c);
   let score = 0;
 
-  score += queryMatchScore(c) * SCORING.queryMatch;
-  score += trust * SCORING.metadata;
-
-  const authority = authorityScore(c);
-
-  // Turn authority into a multiplier, not a bonus
-  if (authority > 0) {
-    score *= 1 + authority * 0.15;
-  } else {
-    score += authority * 2; // punish weak/no-signal titles
-  }
-
-  score += behaviorScore(c, taste) * SCORING.behavior;
-
   if (/psychological horror|psychological thriller/.test(text)) {
-    score += 5 * SCORING.narrative;
+    score += 5;
   } else if (/horror|thriller|mystery|dark/.test(text)) {
-    score += 2 * SCORING.narrative;
+    score += 2.5;
   }
-  if (/novel|fiction/.test(text)) score += 2 * SCORING.narrative;
+
+  if (/novel|fiction/.test(text)) score += 1.5;
   if (/follows|tells the story|story of|when .* discovers|investigation|journey/.test(text)) {
-    score += 2 * SCORING.narrative;
+    score += 1.5;
   }
-
-  if (/book\s*1\b|book\s*one\b|books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) {
-    score += SCORING.seriesPenalty;
-  }
-
-  if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) {
-    score += SCORING.metaPenalty;
-  }
-
-  if (trust <= 2 && !c.ratingCount) score += SCORING.weakTrustPenalty;
-  if (trust >= 4) score += SCORING.strongTrustBonus;
 
   return score;
+}
+
+function penaltyScore(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+
+  if (/book\s*1\b|book\s*one\b/.test(text)) score -= 2;
+  if (/books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) score -= 5;
+  if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) {
+    score -= 6;
+  }
+
+  const trust = metadataTrust(c);
+  if (trust <= 2 && !(c.ratingCount || 0)) score -= 5;
+  if (trust >= 4) score += 2;
+
+  return score;
+}
+
+function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
+  const queryScore = queryMatchScore(c) * 2;
+  const metadataScore = metadataTrust(c) * 1.25;
+  const authority = authorityScore(c);
+  const behavior = behaviorScore(c, taste);
+  const narrative = narrativeScore(c);
+  const penalties = penaltyScore(c);
+
+  return {
+    queryScore,
+    metadataScore,
+    authorityScore: authority,
+    behaviorScore: behavior,
+    narrativeScore: narrative,
+    penaltyScore: penalties,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties,
+  };
+}
+
+function withScores(c: Candidate, breakdown: ScoreBreakdown): RecommendationDoc {
+  const rawDoc = ((c.rawDoc || {}) as RecommendationDoc) || ({} as RecommendationDoc);
+  return {
+    ...rawDoc,
+    preFilterScore: breakdown.finalScore,
+    postFilterScore: breakdown.finalScore,
+    scoreBreakdown: breakdown,
+    queryText: (c as any).queryText ?? (rawDoc as any).queryText,
+    queryRung: (c as any).queryRung ?? (rawDoc as any).queryRung,
+  } as RecommendationDoc;
 }
 
 export function finalRecommenderForDeck(
@@ -448,37 +484,41 @@ export function finalRecommenderForDeck(
   buildDebug(input.length, deduped.length, base, rejected);
 
   const { tasteProfile } = _options;
+  const scored = base.map((candidate) => ({
+    candidate,
+    breakdown: scoreCandidateDetailed(candidate, tasteProfile),
+  }));
 
-  const ordered = [...base].sort((a, b) => {
-    const scoreDiff = scoreCandidate(b, tasteProfile) - scoreCandidate(a, tasteProfile);
+  const ordered = [...scored].sort((a, b) => {
+    const scoreDiff = b.breakdown.finalScore - a.breakdown.finalScore;
     if (scoreDiff !== 0) return scoreDiff;
 
-    const rungDiff = evidenceRank(a) - evidenceRank(b);
+    const rungDiff = evidenceRank(a.candidate) - evidenceRank(b.candidate);
     if (rungDiff !== 0) return rungDiff;
 
-    const aHasDescription = a.description ? 1 : 0;
-    const bHasDescription = b.description ? 1 : 0;
+    const aHasDescription = a.candidate.description ? 1 : 0;
+    const bHasDescription = b.candidate.description ? 1 : 0;
     if (aHasDescription !== bHasDescription) return bHasDescription - aHasDescription;
 
-    const aHasCover = a.hasCover ? 1 : 0;
-    const bHasCover = b.hasCover ? 1 : 0;
+    const aHasCover = a.candidate.hasCover ? 1 : 0;
+    const bHasCover = b.candidate.hasCover ? 1 : 0;
     return bHasCover - aHasCover;
   });
 
-  const selected: Candidate[] = [];
+  const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
 
-  for (const candidate of ordered) {
-    const author = normalize(candidate.author);
+  for (const entry of ordered) {
+    const author = normalize(entry.candidate.author);
     const count = authorCounts.get(author) || 0;
 
     if (count >= 1) continue;
 
-    selected.push(candidate);
+    selected.push(entry);
     authorCounts.set(author, count + 1);
 
     if (selected.length >= 10) break;
   }
 
-  return selected.map((c) => c.rawDoc as RecommendationDoc);
+  return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown));
 }
