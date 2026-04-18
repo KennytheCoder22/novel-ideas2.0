@@ -226,8 +226,6 @@ if (weakFiction) return false;
   return true;
 }
 
-const MIN_RATINGS = 20;
-
 function hasMinimumRatings(doc: any): boolean {
   const ratings =
     Number(doc?.ratingsCount) ||
@@ -240,14 +238,23 @@ function hasMinimumRatings(doc: any): boolean {
     Number(doc?.volumeInfo?.pageCount) ||
     0;
 
-  const hasDescription = String(
+  const description = String(
     doc?.description ||
     doc?.volumeInfo?.description ||
     ""
-  ).trim().length > 120;
+  ).trim();
 
-  if (ratings >= MIN_RATINGS) return true;
-  if (pageCount >= 180 && hasDescription) return true;
+  const hasDescription = description.length > 80;
+
+  // 1. Strong signal: keep
+  if (ratings >= 10) return true;
+
+  // 2. Medium signal: allow
+  if (pageCount >= 150 && hasDescription) return true;
+
+  // 3. NEW: allow low-metadata fiction through if it passed earlier filters
+  // (this is the key fix)
+  if (hasDescription) return true;
 
   return false;
 }
