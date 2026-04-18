@@ -132,6 +132,15 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
     /\bdictionary of\b/,
     /\bhistorical dictionary\b/,
     /\bguide to united states popular culture\b/,
+    /\bfuture of the novel\b/,
+    /\bnovelists?\b/,
+    /\bnovel vs\.? fiction\b/,
+    /\bnovels? and (other works|related works|stories|tales)\b/,
+    /\bfamous authors on their methods\b/,
+    /\bon their methods\b/,
+    /\bselected novels? and plays\b/,
+    /\bintroduction to the novels? of\b/,
+    /\bdevelopment of .* novel\b/,
   ];
 
   const hardRejectCategoryPatterns = [
@@ -198,6 +207,11 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
 
   if (bookCultureReject) return false;
 
+  const novelMetaReject =
+    /\b(future of the novel|novelists?|novel vs\.? fiction|famous authors on their methods|introduction to the novels? of|development of .* novel|selected novels? and plays|novels? and (other works|related works|stories|tales))\b/.test(combined);
+
+  if (novelMetaReject) return false;
+
   const fictionPositive =
     /\b(fiction|novel|thriller|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
       combined
@@ -213,7 +227,10 @@ function looksLikeFictionCandidate(doc: any, bucketPlan: any): boolean {
 
   const genericTitle =
     /^\s*novels?\b/.test(title) ||
-    /\bnovels?\s+of\b/.test(title);
+    /^\s*novelists?\b/.test(title) ||
+    /\bnovels?\s+of\b/.test(title) ||
+    /\bnovels?\s+and\s+(tales|stories|other works|related works)\b/.test(title) ||
+    /\bfuture of the novel\b/.test(title);
 
   const pageCount =
     Number(doc?.pageCount) ||
