@@ -821,7 +821,7 @@ function countResultItems(result: RecommendationResult | null | undefined): numb
   if (Array.isArray((result as any).recommendations)) return (result as any).recommendations.length;
   if (Array.isArray((result as any).docs)) return (result as any).docs.length;
   return 0;
-
+}
 
 function buildFilterAuditRows(docs: RecommendationDoc[]): any[] {
   return (Array.isArray(docs) ? docs : []).slice(0, 250).map((doc: any) => {
@@ -862,7 +862,6 @@ function summarizeFilterAudit(rows: any[]) {
   }
 
   return summary;
-}
 }
 
 function hasHardcoverFailureShape(value: unknown): boolean {
