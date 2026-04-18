@@ -486,12 +486,13 @@ function sameFamilyExpansions(anchor: string, parts: string[]): string[] {
     if (set.has("gothic")) out.push("gothic horror");
     if (set.has("dark")) out.push("dark psychological horror");
     out.push("haunted psychological horror");
+    out.push("haunted house horror");
     out.push("psychological horror thriller");
   }
 
   if (anchor === "psychological thriller" || anchor === "thriller") {
-    out.push("domestic thriller");
-    out.push("psychological suspense");
+    out.push("psychological thriller");
+    out.push("crime thriller");
     out.push("mystery thriller");
   }
 
@@ -520,8 +521,9 @@ function exploratoryExpansions(anchor: string, parts: string[]): string[] {
   const out: string[] = [];
 
   if (anchor.includes("horror")) {
-    out.push("dark psychological fiction");
-    out.push("literary horror");
+    out.push("dark psychological horror");
+    out.push("gothic horror");
+    out.push("supernatural horror");
   } else if (anchor.includes("thriller") || anchor.includes("mystery")) {
     out.push("psychological suspense");
     out.push("dark psychological fiction");
@@ -580,6 +582,25 @@ function buildRoleQueries(parts: string[], role: RungRole): string[] {
   return [];
 }
 
+function stripWeakHorrorVariants(queries: string[], parts: string[]): string[] {
+  const isHorrorFamily =
+    parts.includes("horror") ||
+    (parts.includes("psychological") && parts.includes("horror"));
+
+  if (!isHorrorFamily) return dedupe(queries);
+
+  return dedupe(
+    queries.filter((query) => {
+      const q = titleSafeJoin([query]);
+      if (/\bfiction\b/.test(q)) return false;
+      if (/\bpsychological suspense\b/.test(q)) return false;
+      if (/\bdomestic (thriller|suspense)\b/.test(q)) return false;
+      if (/\bliterary horror\b/.test(q)) return false;
+      return true;
+    })
+  );
+}
+
 function buildQueryVariants(parts: string[]): QueryPack | undefined {
   const roleOrdered = [
     ...buildRoleQueries(parts, "core"),
@@ -588,7 +609,7 @@ function buildQueryVariants(parts: string[]): QueryPack | undefined {
     ...buildRoleQueries(parts, "controlled_explore"),
   ];
 
-  const deduped = dedupe(roleOrdered).slice(0, 8);
+  const deduped = stripWeakHorrorVariants(roleOrdered, parts).slice(0, 8);
   if (!deduped.length) return undefined;
 
   return {

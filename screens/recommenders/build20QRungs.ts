@@ -232,6 +232,8 @@ function sanitizeQuery(value: string): string {
   if (/\bsurvival mystery\b/.test(noOperators)) return "";
   if (/\bmodern psychological horror\b/.test(noOperators)) return "";
   if (/\bdark psychological fiction fiction\b/.test(noOperators)) return "";
+  if (/\bmystery book\b/.test(noOperators)) return "";
+  if (/\bomnibus\b/.test(noOperators)) return "";
   if (/\bbestseller\b/.test(noOperators)) return "";
   if (/\baward winning\b/.test(noOperators)) return "";
   return ensureBookNativeSuffix(noOperators);
@@ -318,6 +320,22 @@ function extractThemeSeeds(intent: QueryIntent): string[] {
   return dedupe(seeds.map((seed) => clean(seed)).filter(Boolean));
 }
 
+function filterQueriesForBase(outputs: string[], base: string): string[] {
+  if (!base) return outputs;
+
+  if (base === "horror") {
+    return outputs.filter((query) => {
+      const q = clean(query);
+      if (/\bpsychological thriller\b/.test(q)) return false;
+      if (/\bpsychological suspense\b/.test(q)) return false;
+      if (/\bdomestic (thriller|suspense)\b/.test(q)) return false;
+      return true;
+    });
+  }
+
+  return outputs;
+}
+
 function themeFallbackQueries(intent: QueryIntent): string[] {
   const outputs: string[] = [];
   const base = normalizedBaseGenre(intent);
@@ -332,7 +350,9 @@ function themeFallbackQueries(intent: QueryIntent): string[] {
     }
   }
 
-  return distinctQueries(outputs.map(sanitizeQuery).filter(Boolean)).filter((query) =>
+  const baseFiltered = filterQueriesForBase(outputs, base);
+
+  return distinctQueries(baseFiltered.map(sanitizeQuery).filter(Boolean)).filter((query) =>
     isQueryAllowedForBase(query, base)
   );
 }
