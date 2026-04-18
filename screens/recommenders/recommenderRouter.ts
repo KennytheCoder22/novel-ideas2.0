@@ -524,13 +524,25 @@ function looksLikeFictionCandidate(doc: any): boolean {
     narrativeSignals.some((rx) => rx.test(title));
 
   const isGenericGenreTitle = genericGenreTitlePatterns.some((rx) => rx.test(title));
+  const hasNonfictionTitleSignal =
+    /\btrue\b.*\bstories?\b/.test(title) ||
+    /\bsea stories?\b/.test(title) ||
+    /\bsteamboat stories?\b/.test(title) ||
+    /\bsurvival bible\b/.test(title) ||
+    /\bbible\b/.test(title);
 
   const hasNarrativeBookSignal =
-    /\b(novel|story|stories|tale|tales|thriller|suspense|manga|graphic novel|comic)\b/.test(title) ||
+    /\b(novel|thriller|suspense|manga|graphic novel|comic)\b/.test(title) ||
     /\b(fiction|novel|thriller|suspense|graphic novel|comic)\b/.test(categories) ||
     hasNarrativeLanguage;
 
-  return hasPositiveFictionSignal && hasStrongNarrativeSignal && hasNarrativeBookSignal && !isGenericGenreTitle;
+  return (
+    hasPositiveFictionSignal &&
+    hasStrongNarrativeSignal &&
+    hasNarrativeBookSignal &&
+    !isGenericGenreTitle &&
+    !hasNonfictionTitleSignal
+  );
 }
 
 
