@@ -903,14 +903,26 @@ export async function getRecommendations(
   for (const rung of rungs) {
     const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
 
-    const googleInput: RecommenderInput = {
-      ...routedInput,
-      bucketPlan: {
-        ...bucketPlan,
-        queries: [rung.query],
-        preview: rung.query,
-      },
-    };
+// Build HIGH-DIVERSITY query pack per rung
+const rungQueryPack = dedupeNonEmptyQueries([
+  rung.query,
+
+  // Expand with semantic variants (cheap + high impact)
+  `${rung.query} novel`,
+  `${rung.query} fiction`,
+
+  // Blend in bucket plan diversity
+  ...(bucketPlan.queries || []).slice(0, 3),
+]);
+
+const googleInput: RecommenderInput = {
+  ...routedInput,
+  bucketPlan: {
+    ...bucketPlan,
+    queries: rungQueryPack,   // <-- KEY CHANGE
+    preview: rung.query,
+  },
+};
 
     const openLibraryInput: RecommenderInput = {
       ...routedInput,
