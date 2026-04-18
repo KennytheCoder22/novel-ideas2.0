@@ -784,10 +784,6 @@ export default function SwipeDeckScreen(props: Props) {
 
   const [showRating, setShowRating] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
-  const [showSourceCounts, setShowSourceCounts] = useState(false);
-  const [showCandidatePool, setShowCandidatePool] = useState(false);
-  const [showRawPool, setShowRawPool] = useState(false);
-  const [showRungs, setShowRungs] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
   const [profileOverridesByLane, setProfileOverridesByLane] = useState<Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>>({});
   const [ratingPreview, setRatingPreview] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
@@ -1058,10 +1054,6 @@ export default function SwipeDeckScreen(props: Props) {
     setAutoSearched(false);
     setShowRating(false);
     setShowDebug(false);
-    setShowSourceCounts(false);
-    setShowCandidatePool(false);
-    setShowRawPool(false);
-    setShowRungs(false);
     setLastSourceCounts(null);
     setLastCandidatePool([]);
     setLastRawPool([]);
@@ -1611,7 +1603,7 @@ function handleLeft() {
     }).join("\n");
   }
 
-  async function handleCopySessionReport() {
+  async function handleCopyDiagnostics() {
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
           if (item.kind === "open_library") {
@@ -1761,54 +1753,10 @@ function handleLeft() {
     ].join("\n");
 
     await Clipboard.setStringAsync(report);
-    Alert.alert("Copied", "Expanded session report copied to clipboard.");
+    Alert.alert("Copied", "Diagnostics copied to clipboard.");
   }
 
-  async function handleCopyCandidatePool() {
-    if (!candidatePoolRows.length) {
-      Alert.alert("Nothing to copy", "Run recommendations first so the candidate pool can be captured.");
-      return;
-    }
 
-    const poolText = [
-      "CANDIDATE POOL",
-      ...candidatePoolRows.map((item: any, index: number) => {
-        const title = item?.title || "(untitled)";
-        const author = item?.author || "Unknown author";
-        const source = item?.source || "unknown";
-        const scorePart = typeof item?.score === "number" ? ` — score:${item.score.toFixed(3)}` : "";
-        const lanePart = item?.laneKind ? ` — lane:${item.laneKind}` : "";
-        const rungPart = item?.queryRung != null ? ` — rung:${item.queryRung}` : "";
-        return `${index + 1}. ${title} — ${author} — ${source}${lanePart}${rungPart}${scorePart}`;
-      }),
-    ].join("\n");
-
-    await Clipboard.setStringAsync(poolText);
-    Alert.alert("Copied", "Candidate pool copied to clipboard.");
-  }
-
-  async function handleCopyRawPool() {
-    if (!rawPoolRows.length) {
-      Alert.alert("Nothing to copy", "Run recommendations first so the raw pool can be captured.");
-      return;
-    }
-
-    const poolText = [
-      "RAW POOL",
-      ...rawPoolRows.map((item: any, index: number) => {
-        const title = item?.title || "(untitled)";
-        const author = item?.author || "Unknown author";
-        const source = item?.source || "unknown";
-        const lanePart = item?.laneKind ? ` — lane:${item.laneKind}` : "";
-        const rungPart = item?.queryRung != null ? ` — rung:${item.queryRung}` : "";
-        const queryPart = item?.queryText ? ` — query:${item.queryText}` : "";
-        return `${index + 1}. ${title} — ${author} — ${source}${lanePart}${rungPart}${queryPart}`;
-      }),
-    ].join("\n");
-
-    await Clipboard.setStringAsync(poolText);
-    Alert.alert("Copied", "Raw pool copied to clipboard.");
-  }
 
   React.useEffect(() => {
     if (!isDone) return;
@@ -2231,8 +2179,8 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
-          <TouchableOpacity style={styles.copyToggle} onPress={handleCopySessionReport}>
-            <Text style={styles.debugToggleText}>Copy</Text>
+          <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
+            <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.rerunToggle} onPress={handleRerunExactQuery}>
@@ -2241,30 +2189,6 @@ function handleLeft() {
 
           <TouchableOpacity style={styles.tuneToggle} onPress={() => setShowEqualizer(true)}>
             <Text style={styles.debugToggleText}>Tune</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.countsToggle} onPress={() => setShowSourceCounts((v) => !v)}>
-            <Text style={styles.debugToggleText}>Counts</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.rungsToggle} onPress={() => setShowRungs((v) => !v)}>
-            <Text style={styles.debugToggleText}>Rungs</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.copyRawPoolToggle} onPress={handleCopyRawPool}>
-            <Text style={styles.debugToggleText}>Copy Raw</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.rawPoolToggle} onPress={() => setShowRawPool((v) => !v)}>
-            <Text style={styles.debugToggleText}>Raw Pool</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.copyPoolToggle} onPress={handleCopyCandidatePool}>
-            <Text style={styles.debugToggleText}>Copy Pool</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.poolToggle} onPress={() => setShowCandidatePool((v) => !v)}>
-            <Text style={styles.debugToggleText}>Pool</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
@@ -2304,132 +2228,10 @@ function handleLeft() {
         }}
       />
 
-      {showSourceCounts && (
-        <View style={styles.countsPanel}>
-          <View style={styles.debugCard}>
-            <View style={styles.debugHeader}>
-              <Text style={styles.debugTitle}>Fetcher counts</Text>
-              <TouchableOpacity onPress={() => setShowSourceCounts(false)} style={styles.debugCloseBtn}>
-                <Text style={styles.debugCloseText}>×</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
-              {sourceCountRows.length > 0 ? (
-                sourceCountRows.map(({ key, label }) => {
-                  const stats = lastSourceCounts?.[key];
-                  return (
-                    <View key={key} style={styles.countsRow}>
-                      <Text style={styles.debugValue}>{label}</Text>
-                      <Text style={styles.debugValueMuted}>
-                        raw fetched: {stats?.rawFetched ?? 0} • post-filter: {stats?.postFilterCandidates ?? 0} • final selected: {stats?.finalSelected ?? 0}
-                      </Text>
-                    </View>
-                  );
-                })
-              ) : (
-                <Text style={styles.debugValueMuted}>Run recommendations to populate source counts.</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      )}
-
-      {showRawPool && (
-        <View style={styles.rawPoolPanel}>
-          <View style={styles.debugCard}>
-            <View style={styles.debugHeader}>
-              <Text style={styles.debugTitle}>Raw pool</Text>
-              <TouchableOpacity onPress={() => setShowRawPool(false)} style={styles.debugCloseBtn}>
-                <Text style={styles.debugCloseText}>×</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
-              {rawPoolRows.length > 0 ? (
-                rawPoolRows.map((item: any, index: number) => (
-                  <View key={`${item?.source || 'unknown'}-${item?.title || 'untitled'}-${index}`} style={styles.countsRow}>
-                    <Text style={styles.debugValue}>{index + 1}. {item?.title || '(untitled)'}</Text>
-                    <Text style={styles.debugValueMuted}>{item?.author || 'Unknown author'}</Text>
-                    <Text style={styles.debugValueMuted}>
-                      {item?.source || 'unknown'}{item?.laneKind ? ` • ${item.laneKind}` : ''}{item?.queryRung != null ? ` • rung ${item.queryRung}` : ''}{item?.queryText ? ` • ${item.queryText}` : ''}
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.debugValueMuted}>No raw pool captured.</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      )}
-
-      {showCandidatePool && (
-        <View style={styles.poolPanel}>
-          <View style={styles.debugCard}>
-            <View style={styles.debugHeader}>
-              <Text style={styles.debugTitle}>Candidate pool</Text>
-              <TouchableOpacity onPress={() => setShowCandidatePool(false)} style={styles.debugCloseBtn}>
-                <Text style={styles.debugCloseText}>×</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
-              {candidatePoolRows.length > 0 ? (
-                candidatePoolRows.map((item: any, index: number) => (
-                  <View key={`${item?.source || 'unknown'}-${item?.title || 'untitled'}-${index}`} style={styles.countsRow}>
-                    <Text style={styles.debugValue}>{index + 1}. {item?.title || '(untitled)'}</Text>
-                    <Text style={styles.debugValueMuted}>{item?.author || 'Unknown author'}</Text>
-                    <Text style={styles.debugValueMuted}>
-                      {item?.source || 'unknown'}{item?.laneKind ? ` • ${item.laneKind}` : ''}{item?.queryRung != null ? ` • rung ${item.queryRung}` : ''}{typeof item?.score === 'number' ? ` • ${item.score.toFixed(3)}` : ''}
-                    </Text>
-                  </View>
-                ))
-              ) : (
-                <Text style={styles.debugValueMuted}>No candidate pool captured.</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      )}
 
 
-      {showRungs && (
-        <View style={styles.rungsPanel}>
-          <View style={styles.debugCard}>
-            <View style={styles.debugHeader}>
-              <Text style={styles.debugTitle}>Rung distribution</Text>
-              <TouchableOpacity onPress={() => setShowRungs(false)} style={styles.debugCloseBtn}>
-                <Text style={styles.debugCloseText}>×</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
-              {lastRungStats ? (
-                <>
-                  <Text style={styles.debugLabel}>Totals by rung</Text>
-                  {Object.entries(lastRungStats.byRung || {}).map(([rung, count]) => (
-                    <View key={`rung-${rung}`} style={styles.countsRow}>
-                      <Text style={styles.debugValue}>Rung {rung}</Text>
-                      <Text style={styles.debugValueMuted}>{String(count)} candidates</Text>
-                    </View>
-                  ))}
 
-                  <Text style={[styles.debugLabel, { marginTop: 12 }]}>By source</Text>
-                  {Object.entries(lastRungStats.byRungSource || {}).map(([rung, sources]: any) => (
-                    <View key={`rung-source-${rung}`} style={styles.countsRow}>
-                      <Text style={styles.debugValue}>Rung {rung}</Text>
-                      {Object.entries(sources || {}).map(([source, count]) => (
-                        <Text key={`${rung}-${source}`} style={styles.debugValueMuted}>
-                          {String(source)}: {String(count)}
-                        </Text>
-                      ))}
-                    </View>
-                  ))}
-                </>
-              ) : (
-                <Text style={styles.debugValueMuted}>Run recommendations to populate rung diagnostics.</Text>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      )}
+
 
       {showDebug && (
         <View style={styles.debugPanel}>
@@ -2684,6 +2486,14 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
 
+  diagnosticsToggle: {
+    minWidth: 112,
+    alignItems: "center",
+    backgroundColor: "#7c3aed",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
   copyToggle: {
     minWidth: 112,
     alignItems: "center",
