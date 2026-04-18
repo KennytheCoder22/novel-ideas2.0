@@ -30,6 +30,8 @@ type RecommenderDebugSourceStats = {
 const MIN_DECISION_SWIPES_FOR_FULL_ROUTER_EXPANSION = 4;
 const MIN_VISUAL_SIGNAL_FOR_KITSU = 2;
 const MIN_VISUAL_SIGNAL_FOR_GCD = 2;
+const MIN_RELAXED_FILTER_POOL = 10;
+const MIN_ROUTER_RECOVERY_POOL = 12;
 
 function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string[] {
   const seen = new Set<string>();
@@ -1169,19 +1171,34 @@ export async function getRecommendations(
   // Filter only the candidates retrieved from 20Q-derived rungs.
   const filteredDocs = filterCandidates(enrichedDocs, bucketPlan);
 
-  const googleDocsEnriched = filteredDocs.filter(
+  const relaxedFallbackDocs = dedupeDocs(
+    enrichedDocs.filter((doc: any) => {
+      const source = sourceForDoc(doc, "googleBooks");
+
+      if (source === "googleBooks") return looksLikeGoogleBooksFamilyCandidate(doc, bucketPlan);
+      if (source === "openLibrary") return looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan);
+      if (source === "kitsu" || source === "gcd") return true;
+
+      return false;
+    })
+  );
+
+  const candidateDocs =
+    filteredDocs.length >= MIN_RELAXED_FILTER_POOL ? filteredDocs : relaxedFallbackDocs;
+
+  const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
   );
 
-  const openLibraryDocsEnriched = filteredDocs.filter(
+  const openLibraryDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary"
   );
 
-  const kitsuDocsEnriched = filteredDocs.filter(
+  const kitsuDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "kitsu") === "kitsu"
   );
 
-  const gcdDocsEnriched = filteredDocs.filter(
+  const gcdDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "gcd") === "gcd"
   );
 
@@ -1245,6 +1262,23 @@ const normalizedCandidates = [
   if (basePool.length < finalLimit * 2) {
     basePool = enforceAuthorDiversity(normalizedCandidates, 1);
     basePool = enforceLaneDiversity(basePool, 3);
+  }
+
+  if (basePool.length < MIN_ROUTER_RECOVERY_POOL) {
+    const existing = new Set(basePool.map((c: any) => candidateKey(c)));
+    const recoveryFeed = [...normalizedCandidates].sort((a: any, b: any) => {
+      const rungA = Number(a?.rawDoc?.queryRung ?? a?.queryRung ?? 999);
+      const rungB = Number(b?.rawDoc?.queryRung ?? b?.queryRung ?? 999);
+      return candidateScoreValue(b) - candidateScoreValue(a) || rungA - rungB;
+    });
+
+    for (const candidate of recoveryFeed) {
+      const key = candidateKey(candidate);
+      if (!key || existing.has(key)) continue;
+      basePool.push(candidate);
+      existing.add(key);
+      if (basePool.length >= MIN_ROUTER_RECOVERY_POOL) break;
+    }
   }
 
   const rankingPool = buildLaneQuotaPool(basePool, finalLimit);
