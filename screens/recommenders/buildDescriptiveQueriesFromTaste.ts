@@ -8,6 +8,11 @@ type Hypothesis = {
   score: number;
 };
 
+type QueryPack = {
+  primary: string;
+  variants: string[];
+};
+
 type SignalDomain = "genre" | "tone" | "scenario" | "theme" | "world";
 
 type SignalCandidate = {
@@ -132,6 +137,19 @@ const RETRIEVAL_HYGIENE_TERMS = [
   "-readers",
   "-reader",
 ];
+
+const QUERY_SUFFIXES = [
+  "novel",
+  "fiction",
+];
+
+const SHARED_QUALITY_TERMS = [
+  "bestseller",
+  "highly rated",
+  "award winning",
+];
+
+
 
 function dedupe(values: string[]): string[] {
   const out: string[] = [];
@@ -355,10 +373,77 @@ function scoreCluster(parts: string[], sources: SignalCandidate[], signals: Quer
   return sourceWeight + domainBonus - anti - anchorPenalty;
 }
 
-function buildSearchQuery(parts: string[]): string | undefined {
-  const anchor = choosePrimaryAnchor(parts);
-  if (!anchor) return undefined;
 
+function titleSafeJoin(parts: Array<string | undefined | null>): string {
+  return String(parts.filter(Boolean).join(" "))
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function alternateAnchors(parts: string[], primaryAnchor: string): string[] {
+  const set = new Set(parts);
+  const alternates: string[] = [];
+
+  if (primaryAnchor === "psychological horror") {
+    alternates.push("dark psychological fiction");
+    alternates.push("literary horror");
+    if (set.has("thriller")) alternates.push("psychological thriller");
+    if (set.has("gothic") || set.has("fantasy") || set.has("dark fantasy")) alternates.push("gothic horror");
+  }
+
+  if (primaryAnchor === "horror") {
+    alternates.push("literary horror");
+    if (set.has("psychological")) alternates.push("psychological horror");
+    if (set.has("gothic") || set.has("fantasy")) alternates.push("gothic horror");
+  }
+
+  if (primaryAnchor === "psychological thriller") {
+    alternates.push("dark psychological fiction");
+    alternates.push("psychological suspense");
+    if (set.has("mystery") || set.has("investigation")) alternates.push("psychological mystery");
+  }
+
+  if (primaryAnchor === "mystery") {
+    alternates.push("psychological mystery");
+    alternates.push("crime investigation novel");
+    alternates.push("suspense thriller");
+  }
+
+  if (primaryAnchor === "science fiction") {
+    alternates.push("science fiction thriller");
+    alternates.push("literary science fiction");
+    if (set.has("psychological")) alternates.push("psychological science fiction");
+    if (set.has("dystopian")) alternates.push("dystopian science fiction");
+  }
+
+  if (primaryAnchor === "science fiction thriller") {
+    alternates.push("psychological science fiction");
+    alternates.push("dystopian science fiction");
+    alternates.push("literary science fiction");
+  }
+
+  if (primaryAnchor === "dark fantasy") {
+    alternates.push("gothic fantasy");
+    alternates.push("dark fantasy fiction");
+    alternates.push("character driven fantasy");
+  }
+
+  if (primaryAnchor === "historical fiction") {
+    alternates.push("literary historical fiction");
+    if (set.has("war")) alternates.push("war historical fiction");
+    if (set.has("family")) alternates.push("family saga historical fiction");
+  }
+
+  if (primaryAnchor === "romance") {
+    alternates.push("relationship fiction");
+    alternates.push("character driven romance");
+  }
+
+  return dedupe(alternates).filter((anchor) => anchor !== primaryAnchor);
+}
+
+function modifiersForQueries(parts: string[], anchor: string): { strong: string[]; generic: string[] } {
   const anchorTokens = new Set(anchor.split(" "));
   const modifiers = parts.filter(
     (part) =>
@@ -368,15 +453,61 @@ function buildSearchQuery(parts: string[]): string | undefined {
       part !== anchor
   );
 
-  const strongModifiers = modifiers.filter((m) => !GENERIC_TERMS.has(m));
-  const finalModifiers =
-    strongModifiers.length > 0
-      ? strongModifiers.slice(0, 1)
-      : modifiers.slice(0, 1);
+  return {
+    strong: dedupe(modifiers.filter((m) => !GENERIC_TERMS.has(m))),
+    generic: dedupe(modifiers),
+  };
+}
 
-  if (finalModifiers.length === 0) return undefined;
+function buildQueryVariants(parts: string[]): QueryPack | undefined {
+  const primaryAnchor = choosePrimaryAnchor(parts);
+  if (!primaryAnchor) return undefined;
 
-  return safeJoin([...finalModifiers, anchor, "novel"]);
+  const { strong, generic } = modifiersForQueries(parts, primaryAnchor);
+  const alternates = alternateAnchors(parts, primaryAnchor);
+  const queries: string[] = [];
+
+  const primaryModifier = strong[0] || generic[0];
+  const secondaryModifier = strong[1] || generic[1];
+
+  const pushQuery = (...queryParts: Array<string | undefined | null>) => {
+    const q = titleSafeJoin(queryParts);
+    if (q && q !== "novel" && q !== "fiction") queries.push(q);
+  };
+
+  // primary anchor family
+  pushQuery(primaryModifier, primaryAnchor, "novel");
+  pushQuery(primaryAnchor, "novel");
+
+  // richer variants
+  if (secondaryModifier) pushQuery(primaryModifier, secondaryModifier, primaryAnchor, "novel");
+  if (primaryModifier) pushQuery(primaryModifier, primaryAnchor, "fiction");
+
+  // alternate anchor families
+  for (const alt of alternates.slice(0, 3)) {
+    pushQuery(primaryModifier, alt, "novel");
+    pushQuery(alt, "novel");
+  }
+
+  // one quality-biased variant for retrieval breadth
+  const qualityTerm = SHARED_QUALITY_TERMS[0];
+  if (primaryAnchor.includes("horror")) pushQuery("modern", primaryAnchor, "novel");
+  else if (primaryAnchor.includes("thriller") || primaryAnchor.includes("mystery")) pushQuery(qualityTerm, primaryAnchor, "novel");
+  else if (primaryAnchor.includes("science fiction")) pushQuery("modern", primaryAnchor, "novel");
+  else if (primaryAnchor.includes("fantasy")) pushQuery("character driven", primaryAnchor, "novel");
+  else pushQuery(primaryAnchor, "fiction");
+
+  const deduped = dedupe(queries).slice(0, 5);
+  if (!deduped.length) return undefined;
+
+  return {
+    primary: deduped[0],
+    variants: deduped,
+  };
+}
+
+function buildSearchQuery(parts: string[]): string | undefined {
+  return buildQueryVariants(parts)?.primary;
 }
 
 function addCandidate(
@@ -561,6 +692,11 @@ function compactQuery(baseQuery: string, signals: QuerySignals): string {
   ]);
 }
 
+function compactQueryPack(pack: QueryPack, signals: QuerySignals): string[] {
+  return dedupe(pack.variants.map((query) => compactQuery(query, signals)));
+}
+
+
 function fallbackQueries(signals: QuerySignals): string[] {
   const genre = topKeys(signals.genre, 2);
   const world = topKeys(signals.world, 2);
@@ -571,26 +707,32 @@ function fallbackQueries(signals: QuerySignals): string[] {
   const fallbackPartsC = enforceSearchableStructure([genre[0], theme[0] || world[0]]);
   const fallbackPartsD = enforceSearchableStructure([theme[0], world[0], "psychological"]);
 
-  const base = [
-    buildSearchQuery(fallbackPartsA),
-    buildSearchQuery(fallbackPartsB),
-    buildSearchQuery(fallbackPartsC),
-    buildSearchQuery(fallbackPartsD),
-  ].filter(Boolean);
+  const packs = [
+    buildQueryVariants(fallbackPartsA),
+    buildQueryVariants(fallbackPartsB),
+    buildQueryVariants(fallbackPartsC),
+    buildQueryVariants(fallbackPartsD),
+  ].filter(Boolean) as QueryPack[];
 
-  return dedupe(base as string[]);
+  return dedupe(packs.flatMap((pack) => pack.variants));
 }
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
   const hypotheses = buildHypotheses(signals);
-  const hypothesisQueries = hypotheses.slice(0, 5).map((h) => compactQuery(h.query, signals));
+
+  const queryPacks = hypotheses
+    .slice(0, 5)
+    .map((h) => buildQueryVariants(h.parts))
+    .filter(Boolean) as QueryPack[];
+
+  const hypothesisQueries = queryPacks.flatMap((pack) => compactQueryPack(pack, signals));
   const queries = dedupe(hypothesisQueries.length ? hypothesisQueries : fallbackQueries(signals));
 
   return {
     queries,
     preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v10b-subgenre-anchor-retrieval-fix",
+    strategy: "20q-hypothesis-composer-v11-high-diversity-query-packs",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),
