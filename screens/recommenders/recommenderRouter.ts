@@ -445,9 +445,6 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bfiction\b/,
     /\bnovel\b/,
     /\bthriller\b/,
-    /\bmystery\b/,
-    /\bcrime\b/,
-    /\bdetective\b/,
     /\bsuspense\b/,
     /\bpsychological\b/,
     /\bmurder\b/,
@@ -463,6 +460,28 @@ function looksLikeFictionCandidate(doc: any): boolean {
     /\bmanga\b/,
     /\bgraphic novel\b/,
     /\bcomic\b/,
+  ];
+
+  const narrativeSignals = [
+    /\bfollows\b/,
+    /\btells the story\b/,
+    /\bstory of\b/,
+    /\bwhen .* (discovers?|finds?|realizes?)\b/,
+    /\binvestigates?\b/,
+    /\bmust (stop|solve|survive|uncover)\b/,
+    /\bafter .* (murder|death|disappearance)\b/,
+    /\bsearch for the truth\b/,
+  ];
+
+  const genericGenreTitlePatterns = [
+    /^mystery fiction$/,
+    /^crime fiction$/,
+    /^detective fiction$/,
+    /^horror fiction$/,
+    /^science fiction$/,
+    /^the crime novel$/,
+    /^the mystery novel$/,
+    /^the detective novel$/,
   ];
 
   const obviousReferenceSeriesPatterns = [
@@ -497,10 +516,21 @@ function looksLikeFictionCandidate(doc: any): boolean {
   );
 
   const hasStrongNarrativeSignal =
-    /\b(novel|fiction|thriller|mystery|crime|detective|suspense)\b/.test(title) ||
-    /\b(follows|story of|when .* discovers|investigates)\b/.test(description);
+    /\b(novel|thriller|suspense|manga|graphic novel|comic)\b/.test(title) ||
+    /\b(follows|story of|when .* discovers|investigates|must (stop|solve|survive|uncover))\b/.test(description);
 
-  return hasPositiveFictionSignal && hasStrongNarrativeSignal;
+  const hasNarrativeLanguage =
+    narrativeSignals.some((rx) => rx.test(description)) ||
+    narrativeSignals.some((rx) => rx.test(title));
+
+  const isGenericGenreTitle = genericGenreTitlePatterns.some((rx) => rx.test(title));
+
+  const hasNarrativeBookSignal =
+    /\b(novel|story|stories|tale|tales|thriller|suspense|manga|graphic novel|comic)\b/.test(title) ||
+    /\b(fiction|novel|thriller|suspense|graphic novel|comic)\b/.test(categories) ||
+    hasNarrativeLanguage;
+
+  return hasPositiveFictionSignal && hasStrongNarrativeSignal && hasNarrativeBookSignal && !isGenericGenreTitle;
 }
 
 
