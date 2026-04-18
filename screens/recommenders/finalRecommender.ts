@@ -152,6 +152,18 @@ function metadataTrust(c: Candidate): number {
   return score;
 }
 
+
+function authorityScore(c: Candidate): number {
+  const ratings = c.ratingCount || 0;
+
+  if (ratings >= 5000) return 8;
+  if (ratings >= 1000) return 6;
+  if (ratings >= 200) return 4;
+  if (ratings >= 50) return 2;
+
+  return -2;
+}
+
 function hasFictionSignals(c: Candidate): boolean {
   const text = haystack(c);
   return (
@@ -313,11 +325,12 @@ function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidat
 
 const SCORING = {
   queryMatch: 1.5,
-  metadata: 1.0,
-  narrative: 1.0,
-  behavior: 2.5,
-  strongTrustBonus: 3,
-  weakTrustPenalty: -4,
+  metadata: 1.2,
+  narrative: 1.2,
+  behavior: 2.0,
+  authority: 2.5,
+  strongTrustBonus: 4,
+  weakTrustPenalty: -5,
   seriesPenalty: -4,
   metaPenalty: -6,
 } as const;
@@ -334,15 +347,12 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
   const text = haystack(c);
   let score = 0;
 
-  // Align with real session signals (tags)
-  const signals = ['horror', 'dark', 'survival', 'thriller', 'mystery'];
+  if (/horror|dark/.test(text)) score += 3;
+  if (/psychological/.test(text)) score += 4;
+  if (/survival/.test(text)) score += 2;
+  if (/thriller|mystery/.test(text)) score += 2;
 
-  for (const signal of signals) {
-    if (text.includes(signal)) score += 2;
-  }
-
-  // Penalize known negative preference
-  if (text.includes('science fiction')) score -= 4;
+  if (/science fiction/.test(text)) score -= 5;
 
   return score;
 }
@@ -354,9 +364,14 @@ function scoreCandidate(c: Candidate, taste?: TasteProfile): number {
 
   score += queryMatchScore(c) * SCORING.queryMatch;
   score += trust * SCORING.metadata;
+  score += authorityScore(c) * SCORING.authority;
   score += behaviorScore(c, taste) * SCORING.behavior;
 
-  if (/horror|thriller|mystery|suspense|dark/.test(text)) score += 3 * SCORING.narrative;
+  if (/psychological horror|psychological thriller/.test(text)) {
+    score += 5 * SCORING.narrative;
+  } else if (/horror|thriller|mystery|dark/.test(text)) {
+    score += 2 * SCORING.narrative;
+  }
   if (/novel|fiction/.test(text)) score += 2 * SCORING.narrative;
   if (/follows|tells the story|story of|when .* discovers|investigation|journey/.test(text)) {
     score += 2 * SCORING.narrative;
