@@ -551,6 +551,8 @@ function anchorBoost(c: Candidate): number {
       'joe hill',
       'ramsey campbell',
       'anne rice',
+      'dean koontz',
+      'thomas harris',
     ],
     thriller: [
       'gillian flynn',
