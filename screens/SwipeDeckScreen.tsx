@@ -2542,6 +2542,18 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
+          {(Object.keys(DEBUG_GENRE_PRESETS) as DebugGenreKey[]).map((genreKey) => (
+            <TouchableOpacity
+              key={`stack-${genreKey}`}
+              style={styles.genreQuickToggle}
+              onPress={() => {
+                void runDebugGenreSession(genreKey);
+              }}
+            >
+              <Text style={styles.debugToggleText}>{DEBUG_GENRE_PRESETS[genreKey].label}</Text>
+            </TouchableOpacity>
+          ))}
+
           <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
@@ -2670,22 +2682,6 @@ function handleLeft() {
                       .join(", ")
                   : "(none)"}
               </Text>
-
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Genre sim</Text>
-              <View style={styles.genreSimWrap}>
-                {(Object.keys(DEBUG_GENRE_PRESETS) as DebugGenreKey[]).map((genreKey) => (
-                  <TouchableOpacity
-                    key={genreKey}
-                    style={styles.genreSimButton}
-                    onPress={() => {
-                      void runDebugGenreSession(genreKey);
-                    }}
-                  >
-                    <Text style={styles.genreSimButtonText}>{DEBUG_GENRE_PRESETS[genreKey].label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
 
               <Text style={[styles.debugLabel, { marginTop: 10 }]}>Final query preview</Text>
               <Text style={styles.debugValueMuted}>{recQuery?.trim() ? recQuery : "(none)"}</Text>
@@ -2865,6 +2861,14 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
 
+  genreQuickToggle: {
+    minWidth: 112,
+    alignItems: "center",
+    backgroundColor: "#1d4ed8",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
   diagnosticsToggle: {
     minWidth: 112,
     alignItems: "center",
