@@ -532,6 +532,41 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
 }
 
 
+function passesOpenLibraryHorrorRecovery(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (diagnostics.family !== "horror") return false;
+  if (!isOpenLibraryLikeDoc(doc)) return false;
+
+  const rawTitle = String(doc?.title || doc?.volumeInfo?.title || "").trim();
+  const normalizedTitle = normalizeText(rawTitle);
+  const author = normalizeText(
+    doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
+  );
+  const subjects = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const firstPublishedYear =
+    Number(doc?.first_publish_year) ||
+    Number(doc?.publishYear) ||
+    Number(doc?.firstPublishedYear) ||
+    0;
+
+  const hasBasicBibliographicShape = Boolean(rawTitle) && Boolean(author && author !== "unknown");
+  const hasAnySignal =
+    diagnostics.flags.fictionPositive ||
+    diagnostics.flags.strongNarrative ||
+    diagnostics.flags.horrorAligned ||
+    subjects.trim().length > 0 ||
+    description.trim().length > 0 ||
+    firstPublishedYear > 0;
+
+  const canonicalClassic =
+    /\b(dracula|frankenstein|carrie|the terror|the turn of the screw|the haunting of hill house|haunted|the exorcist|pet sematary|the long walk|bag of bones|the picture of dorian gray|jekyll|hyde|cujo)\b/.test(
+      normalizedTitle
+    );
+
+  return hasBasicBibliographicShape && (canonicalClassic || hasAnySignal);
+}
+
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -554,6 +589,23 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     const isOpenLibraryLike = isOpenLibraryLikeDoc(doc);
     const isWeakSource = isOpenLibraryLike;
+
+    if (isOpenLibraryLike && diagnostics.family === "horror") {
+      const recoveryReady =
+        hasOpenLibraryFallbackShape(doc, diagnostics) ||
+        passesOpenLibraryHorrorRecovery(doc, diagnostics);
+
+      if (recoveryReady) {
+        const removed = new Set([
+          "insufficient_length_or_description",
+          "missing_horror_alignment_hard",
+          "too_many_soft_failures",
+        ]);
+
+        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+        diagnostics.passedChecks.push("openlibrary_horror_recovery_precheck");
+      }
+    }
     const nonCriticalRejectReasons = new Set([
       "missing_fiction_signal",
       "missing_narrative_signal",
@@ -603,6 +655,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (!hasMinimumRatings(doc) || !hasNarrativeOrDescription) {
       if (passesRelaxedHorrorFloor(doc, diagnostics)) {
         diagnostics.passedChecks.push("passed_relaxed_horror_shape_gate");
+      } else if (isOpenLibraryLike && passesOpenLibraryHorrorRecovery(doc, diagnostics)) {
+        diagnostics.passedChecks.push("openlibrary_horror_recovery");
       } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else {
