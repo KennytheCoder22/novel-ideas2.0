@@ -44,23 +44,41 @@ function containsBlockedTerm(text: string): boolean {
 }
 
 function isFictionCandidate(c: Candidate): boolean {
+  const title = String(c.title || "").toLowerCase();
   const cats = (c.categories || []).join(" ").toLowerCase();
   const desc = (c.description || "").toLowerCase();
+  const combined = `${title} ${cats} ${desc}`;
 
-  return (
-    cats.includes("fiction") ||
-    desc.includes("novel") ||
-    desc.includes("story")
-  );
+  const positiveSignals = [
+    /fiction/,
+    /novel/,
+    /story/,
+    /horror/,
+    /haunted/,
+    /ghost/,
+    /supernatural/,
+    /occult/,
+    /psychological/,
+    /survival/,
+    /thriller/,
+    /gothic/,
+    /dracula/,
+    /vampire/,
+    /monster/,
+    /curse/,
+    /nightmare/,
+    /macabre/,
+    /paranormal/,
+  ];
+
+  return positiveSignals.some((rx) => rx.test(combined));
 }
 
 function isValidStructure(c: Candidate): boolean {
-  return !!(
-    c.title &&
-    c.authors &&
-    c.authors.length > 0 &&
-    c.language === "en"
-  );
+  const hasAuthor = Array.isArray(c.authors) ? c.authors.length > 0 : true;
+  const lang = String(c.language || "").toLowerCase();
+  const languageOkay = !lang || lang === "en" || lang.startsWith("en-");
+  return !!(c.title && hasAuthor && languageOkay);
 }
 
 function passesLengthFilter(c: Candidate): boolean {
@@ -69,10 +87,14 @@ function passesLengthFilter(c: Candidate): boolean {
 }
 
 function passesRatingGate(c: Candidate): boolean {
-  // 🚨 KEY FIX: Open Library bypasses rating gate
+  // Open Library bypasses rating gate entirely.
   if (c.source === "openLibrary") return true;
 
-  if (!c.rating || !c.ratingsCount) return false;
+  // For Google Books, allow strong-shape books through even with sparse ratings.
+  if (!c.rating || !c.ratingsCount) {
+    const hasDesc = String(c.description || "").trim().length >= 120;
+    return Boolean(c.pageCount && c.pageCount >= 140 && hasDesc);
+  }
 
   return c.rating >= 3.5 && c.ratingsCount >= 20;
 }
