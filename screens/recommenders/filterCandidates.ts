@@ -584,6 +584,8 @@ function passesOpenLibraryHorrorRecovery(doc: any, diagnostics: FilterDiagnostic
 
   if (canonicalClassic) return true;
 
+  if (!horrorSubjectSignal && !diagnostics.flags.horrorAligned) return false;
+
   // For sparse Open Library records, only recover when there is actual horror/gothic metadata.
   if (horrorSubjectSignal && hasUsefulMetadata) return true;
 
@@ -677,7 +679,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       continue;
     }
 
-    const hasNarrativeOrDescription = diagnostics.flags.strongNarrative || diagnostics.hasDescription;
+    const hasNarrativeOrDescription =
+      diagnostics.flags.strongNarrative ||
+      (diagnostics.hasDescription && diagnostics.flags.fictionPositive);
 
     if (!hasMinimumRatings(doc) || !hasNarrativeOrDescription) {
       if (passesRelaxedHorrorFloor(doc, diagnostics)) {
