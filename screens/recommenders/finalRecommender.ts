@@ -306,7 +306,12 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bguide to\b/,
     /\bhow to\b/,
     /\blearn how to\b/,
-    /\bwritten for students\b/,\n    /\blibrary of congress\b/,\n    /\bnational library service\b/,\n    /\breaders?\s+advisory\b/,\n    /\bgenre fiction\b/,\n    /\bfaith-based domestic suspense\b/,
+    /\bwritten for students\b/,
+    /\blibrary of congress\b/,
+    /\bnational library service\b/,
+    /\breaders?\s+advisory\b/,
+    /\bgenre fiction\b/,
+    /\bfaith-based domestic suspense\b/,
     /\btextbook\b/,
     /\bworkbook\b/,
     /\bstudy guide\b/
