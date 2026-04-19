@@ -376,8 +376,9 @@ function filterSignalScore(c: Candidate): number {
   if (passedChecks.includes('openlibrary_horror_recovery')) score += 4;
   if (passedChecks.includes('passed_shape_gate')) score += 2;
 
-  if (isOpenLibraryCandidate(c) && flags.authorAffinity) score += 3;
-  if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_horror_recovery')) score += 2;
+  if (isOpenLibraryCandidate(c) && flags.authorAffinity) score += 6;
+  if (isOpenLibraryCandidate(c) && passedChecks.includes('author_affinity_horror_recovery')) score += 6;
+  if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_horror_recovery')) score += 4;
 
   return score;
 }
@@ -626,6 +627,19 @@ function penaltyScore(c: Candidate): number {
   const trust = metadataTrust(c);
   if (trust <= 2 && !(c.ratingCount || 0)) score -= 5;
   if (trust >= 4) score += 2;
+
+  const source = String(c.source || '').toLowerCase();
+  const isGoogleBooks = source === 'googlebooks';
+  const flags = getFilterDiagnostics(c)?.filterFlags || getFilterDiagnostics(c)?.flags || {};
+
+  if (
+    isGoogleBooks &&
+    (c.ratingCount || 0) < 5 &&
+    trust <= 3 &&
+    !flags.authorAffinity
+  ) {
+    score -= 8;
+  }
 
   return score;
 }
