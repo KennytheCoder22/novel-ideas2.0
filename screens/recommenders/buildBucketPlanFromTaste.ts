@@ -90,7 +90,14 @@ function guaranteedFamilyFallbacks(family: Family): string[] {
   if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
   if (family === "thriller_family") return ["psychological thriller novel", "domestic thriller novel", "mystery thriller novel"];
   if (family === "historical_family") return ["historical fiction novel"];
-  if (family === "romance_family") return ["romance novel"];
+  if (family === "romance_family") return [
+    "second chance romance novel",
+    "forbidden love romance novel",
+    "fantasy romance novel",
+    "gothic romance novel",
+    "historical romance novel",
+    "emotional romance novel",
+  ];
   return ["fiction novel"];
 }
 

@@ -160,7 +160,14 @@ mystery: [
 ],
   fantasy: ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"],
   "science fiction": ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
-  romance: ["romance novel"],
+  romance: [
+    "second chance romance novel",
+    "forbidden love romance novel",
+    "fantasy romance novel",
+    "gothic romance novel",
+    "historical romance novel",
+    "emotional romance novel",
+  ],
   "historical fiction": ["historical fiction novel"],
   literary: ["literary fiction novel"],
 };
@@ -174,6 +181,11 @@ const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
   { pattern: /\bmurder\b|\binvestigation\b|\bdetective\b/, outputs: ["mystery thriller novel", "crime thriller novel"] },
   { pattern: /\bspy\b|\bespionage\b/, outputs: ["spy thriller novel"] },
   { pattern: /\bpsychological\b|\bidentity\b|\bmind\b/, outputs: ["psychological thriller novel", "psychological horror novel"] },
+  { pattern: /\blove\b|\bromance\b|\brelationship\b|\brelationships\b|\bhuman connection\b/, outputs: ["emotional romance novel", "second chance romance novel"] },
+  { pattern: /\bbetrayal\b|\bredemption\b|\breunion\b/, outputs: ["second chance romance novel"] },
+  { pattern: /\bforbidden\b|\bauthority\b|\brebellion\b/, outputs: ["forbidden love romance novel"] },
+  { pattern: /\bfantasy\b|\bmagic\b|\bfae\b|\bgothic\b/, outputs: ["fantasy romance novel", "gothic romance novel"] },
+  { pattern: /\bhistorical\b|\bperiod\b|\bvictorian\b|\bwar\b/, outputs: ["historical romance novel"] },
 ];
 
 function survivalAwareRewrite(intent: QueryIntent): string[] {
@@ -258,12 +270,12 @@ function normalizedBaseGenre(intent: QueryIntent): string {
 
 function queryGenre(query: string): string {
   const q = clean(query);
+  if (/second chance romance|forbidden love romance|fantasy romance|gothic romance|historical romance|emotional romance|romance/.test(q)) return "romance";
   if (/science fiction|space opera|dystopian|technological dystopia|scifi|sci fi|sci-fi|ai thriller/.test(q)) return "science fiction";
   if (/psychological horror|survival horror|haunted|horror/.test(q)) return "horror";
   if (/crime thriller|psychological thriller|spy thriller|thriller/.test(q)) return "thriller";
   if (/murder investigation|crime detective|detective|mystery/.test(q)) return "mystery";
   if (/epic fantasy|dark fantasy|magic fantasy|fantasy/.test(q)) return "fantasy";
-  if (/romance/.test(q)) return "romance";
   if (/historical fiction/.test(q)) return "historical fiction";
   if (/literary/.test(q)) return "literary";
   return "";

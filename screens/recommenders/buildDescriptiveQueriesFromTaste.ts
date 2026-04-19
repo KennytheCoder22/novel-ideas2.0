@@ -320,6 +320,15 @@ function enforceSearchableStructure(parts: string[]): string[] {
     out = out.filter((part) => part !== "literary fiction");
   }
 
+  if (out.includes("romance")) {
+    if (out.includes("fantasy")) out.push("fantasy romance");
+    if (out.includes("historical fiction")) out.push("historical romance");
+    if (out.includes("gothic") || out.includes("dark") || out.includes("mystery")) out.push("gothic romance");
+    if (out.includes("redemption") || out.includes("betrayal")) out.push("second chance romance");
+    if (out.includes("authority") || out.includes("rebellion")) out.push("forbidden love romance");
+    if (out.includes("character-driven") || out.includes("relationship-focused")) out.push("emotional romance");
+  }
+
   return dedupe(sortPartsForSearch(out));
 }
 
@@ -338,6 +347,12 @@ function choosePrimaryAnchor(parts: string[]): string | undefined {
   if (set.has("mystery")) return "mystery";
   if (set.has("dystopian")) return "dystopian";
   if (set.has("science fiction")) return "science fiction";
+  if (set.has("historical romance")) return "historical romance";
+  if (set.has("fantasy romance")) return "fantasy romance";
+  if (set.has("gothic romance")) return "gothic romance";
+  if (set.has("second chance romance")) return "second chance romance";
+  if (set.has("forbidden love romance")) return "forbidden love romance";
+  if (set.has("emotional romance")) return "emotional romance";
   if (set.has("historical fiction")) return "historical fiction";
   if (set.has("romance")) return "romance";
   if (set.has("survival")) return "science fiction";
@@ -436,9 +451,13 @@ function alternateAnchors(parts: string[], primaryAnchor: string): string[] {
     if (set.has("family")) alternates.push("family saga historical fiction");
   }
 
-  if (primaryAnchor === "romance") {
-    alternates.push("relationship fiction");
-    alternates.push("character driven romance");
+  if (primaryAnchor === "romance" || primaryAnchor === "emotional romance") {
+    alternates.push("second chance romance");
+    alternates.push("forbidden love romance");
+    alternates.push("emotional romance");
+    if (set.has("fantasy")) alternates.push("fantasy romance");
+    if (set.has("historical fiction")) alternates.push("historical romance");
+    if (set.has("gothic") || set.has("dark") || set.has("mystery")) alternates.push("gothic romance");
   }
 
   return dedupe(alternates).filter((anchor) => anchor !== primaryAnchor);
@@ -515,6 +534,15 @@ function sameFamilyExpansions(anchor: string, parts: string[]): string[] {
     out.push("magic fantasy");
   }
 
+  if (anchor.includes("romance") || anchor === "romance") {
+    out.push("second chance romance");
+    out.push("forbidden love romance");
+    out.push("emotional romance");
+    if (set.has("fantasy")) out.push("fantasy romance");
+    if (set.has("historical fiction")) out.push("historical romance");
+    if (set.has("gothic") || set.has("dark") || set.has("mystery")) out.push("gothic romance");
+  }
+
   return dedupe(out).filter(Boolean);
 }
 
@@ -532,6 +560,10 @@ function exploratoryExpansions(anchor: string, parts: string[]): string[] {
     out.push("literary science fiction");
   } else if (anchor.includes("fantasy")) {
     out.push("character driven fantasy");
+  } else if (anchor.includes("romance") || anchor === "romance") {
+    out.push("second chance romance");
+    out.push("forbidden love romance");
+    out.push("gothic romance");
   }
 
   return dedupe(out).filter(Boolean);
@@ -838,7 +870,14 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
   if (genres.has("mystery") || genres.has("crime")) return ["mystery thriller novel", "psychological mystery novel", "crime thriller novel"];
   if (genres.has("thriller")) return ["psychological thriller novel", "domestic thriller novel", "mystery thriller novel"];
   if (genres.has("historical")) return ["historical fiction novel"];
-  if (genres.has("romance")) return ["romance novel"];
+  if (genres.has("romance")) return [
+    "second chance romance novel",
+    "forbidden love romance novel",
+    "fantasy romance novel",
+    "gothic romance novel",
+    "historical romance novel",
+    "emotional romance novel",
+  ];
   return [];
 }
 
