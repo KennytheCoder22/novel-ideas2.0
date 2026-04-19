@@ -88,6 +88,7 @@ export async function getOpenLibraryRecommendations(
   const queries = buildQueries(input);
   const docsRaw: any[] = [];
   const limit = input.limit || 12;
+  const intakeLimit = Math.max(limit * 3, 36);
 
   if (!hasUsableSignal(input) || !queries.length) {
     return {
@@ -131,7 +132,7 @@ export async function getOpenLibraryRecommendations(
       seenKeys.add(key);
       return true;
     })
-    .slice(0, limit)
+    .slice(0, intakeLimit)
     .map(d => ({
       key: d.key,
       title: d.title,
@@ -150,6 +151,15 @@ export async function getOpenLibraryRecommendations(
     deckKey: input.deckKey,
     domainMode: "default",
     builtFromQuery: queries[0] || "",
-    items: items.map(doc => ({ kind: "open_library", doc }))
+    items: items.map(doc => ({ kind: "open_library", doc })),
+    debugRawFetchedCount: docsRaw.length,
+    debugRawPool: docsRaw.slice(0, intakeLimit).map((d) => ({
+      title: d.title,
+      author: Array.isArray(d.author_name) ? d.author_name[0] : d.author_name,
+      source: "openLibrary",
+      queryText: d.queryText,
+      queryRung: d.queryRung,
+      key: d.key
+    }))
   };
 }

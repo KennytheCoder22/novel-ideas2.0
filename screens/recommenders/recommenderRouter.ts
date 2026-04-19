@@ -32,6 +32,8 @@ const MIN_VISUAL_SIGNAL_FOR_KITSU = 2;
 const MIN_VISUAL_SIGNAL_FOR_GCD = 2;
 const MIN_RELAXED_FILTER_POOL = 10;
 const MIN_ROUTER_RECOVERY_POOL = 12;
+const MIN_OPEN_LIBRARY_SURVIVORS = 3;
+const MIN_OPEN_LIBRARY_BASE_POOL = 6;
 
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
@@ -730,6 +732,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
 
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
+    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary" });
     mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary" });
   }
 
@@ -751,7 +754,7 @@ function candidateScoreValue(candidate: any): number {
 
 function buildLaneQuotaPool(candidates: any[], finalLimit: number): any[] {
   const targetSize = Math.max(finalLimit * 2, 12);
-  const lanePriority = ["core", "strict-filtered", "dark-alt", "literary-alt", "fiction-variant", "bucket-alt", "ol-backfill"];
+  const lanePriority = ["core", "ol-backfill", "strict-filtered", "dark-alt", "literary-alt", "fiction-variant", "bucket-alt"];
   const grouped = new Map<string, any[]>();
 
   for (const candidate of candidates) {
@@ -1310,7 +1313,7 @@ const openLibrarySurvivors = candidateDocs.filter(
   (doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary"
 );
 
-if (openLibrarySurvivors.length === 0) {
+if (openLibrarySurvivors.length < MIN_OPEN_LIBRARY_SURVIVORS) {
   const recoveredOL = enrichedDocs.filter(
     (doc: any) =>
       sourceForDoc(doc, "openLibrary") === "openLibrary" &&
@@ -1386,19 +1389,48 @@ const normalizedCandidates = [
     ...(includeGcd ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
 
+  const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
+  const nonOpenLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source !== "openLibrary");
+
   const preferredRungs = preferredPrimaryRungs(rungs);
   const primaryIntentCandidates = normalizedCandidates.filter((c: any) =>
     preferredRungs.has(String(c?.rawDoc?.queryRung ?? c?.queryRung ?? ""))
   );
 
   const finalLimit = Math.max(1, Math.min(10, input.limit ?? 10));
+  const primaryIntentOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source === "openLibrary");
+  const primaryIntentNonOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source !== "openLibrary");
+
   let basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
-    ? primaryIntentCandidates
-    : normalizedCandidates;
+    ? dedupeDocs([
+        ...primaryIntentOpenLibraryCandidates.slice(0, MIN_OPEN_LIBRARY_BASE_POOL),
+        ...primaryIntentNonOpenLibraryCandidates,
+        ...primaryIntentOpenLibraryCandidates.slice(MIN_OPEN_LIBRARY_BASE_POOL),
+      ] as any)
+    : dedupeDocs([
+        ...openLibraryNormalizedCandidates.slice(0, MIN_OPEN_LIBRARY_BASE_POOL),
+        ...nonOpenLibraryNormalizedCandidates,
+        ...openLibraryNormalizedCandidates.slice(MIN_OPEN_LIBRARY_BASE_POOL),
+      ] as any);
 
   if (basePool.length < finalLimit * 2) {
-    basePool = enforceAuthorDiversity(normalizedCandidates, 1);
+    basePool = dedupeDocs([
+      ...openLibraryNormalizedCandidates.slice(0, MIN_OPEN_LIBRARY_BASE_POOL),
+      ...enforceAuthorDiversity(normalizedCandidates, 1),
+    ] as any);
     basePool = enforceLaneDiversity(basePool, 3);
+  }
+
+  const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
+  if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_BASE_POOL) {
+    const existing = new Set(basePool.map((c: any) => candidateKey(c)));
+    for (const candidate of openLibraryNormalizedCandidates) {
+      const key = candidateKey(candidate);
+      if (!key || existing.has(key)) continue;
+      basePool.push(candidate);
+      existing.add(key);
+      if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_BASE_POOL) break;
+    }
   }
 
   if (basePool.length < MIN_ROUTER_RECOVERY_POOL) {
