@@ -86,6 +86,14 @@ function familyCompatibleHypotheses(hypotheses: HypothesisLike[], family: Family
   return hypotheses.filter((hypothesis) => isFamilyCompatibleQuery(hypothesis.query || "", family));
 }
 
+function guaranteedFamilyFallbacks(family: Family): string[] {
+  if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
+  if (family === "thriller_family") return ["psychological thriller novel", "domestic thriller novel", "mystery thriller novel"];
+  if (family === "historical_family") return ["historical fiction novel"];
+  if (family === "romance_family") return ["romance novel"];
+  return ["fiction novel"];
+}
+
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
   const descriptive = buildDescriptiveQueriesFromTaste(input);
@@ -131,9 +139,10 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const activeHypotheses = hypotheses.length ? hypotheses : descriptiveHypotheses;
 
   const baseGenre =
-    descriptiveQueries[0] ||
-    activeHypotheses[0]?.query ||
     translatedGenres[0] ||
+    activeHypotheses[0]?.query ||
+    descriptiveQueries[0] ||
+    guaranteedFamilyFallbacks(family)[0] ||
     "fiction novel";
 
   const subgenres = filterCompatibleQueries([
@@ -154,6 +163,7 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const queries = dedupeQueries([
     ...descriptiveQueries,
     ...rungQueries,
+    ...guaranteedFamilyFallbacks(family),
   ]).slice(0, 6);
 
   return {

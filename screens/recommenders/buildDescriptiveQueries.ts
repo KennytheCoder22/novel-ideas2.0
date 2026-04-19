@@ -128,7 +128,6 @@ const RETRIEVAL_HYGIENE_TERMS = [
   "-philosophy",
   "-study",
   "-studies",
-  "-literature",
   "-encyclopedia",
   "-handbook",
   "-catalog",
@@ -317,6 +316,10 @@ function enforceSearchableStructure(parts: string[]): string[] {
     out.push("psychological mystery");
   }
 
+  if (out.includes("fantasy")) {
+    out = out.filter((part) => part !== "literary fiction");
+  }
+
   return dedupe(sortPartsForSearch(out));
 }
 
@@ -324,6 +327,7 @@ function choosePrimaryAnchor(parts: string[]): string | undefined {
   const set = new Set(parts);
 
   if (set.has("dark fantasy")) return "dark fantasy";
+  if (set.has("fantasy")) return "fantasy";
   if (set.has("psychological mystery")) return "psychological mystery";
   if (set.has("psychological science fiction")) return "psychological science fiction";
   if (set.has("science fiction thriller")) return "science fiction thriller";
@@ -335,12 +339,9 @@ function choosePrimaryAnchor(parts: string[]): string | undefined {
   if (set.has("dystopian")) return "dystopian";
   if (set.has("science fiction")) return "science fiction";
   if (set.has("historical fiction")) return "historical fiction";
-  if (set.has("fantasy") && (set.has("horror") || set.has("gothic") || set.has("war") || set.has("rebellion"))) return "fantasy";
   if (set.has("romance")) return "romance";
   if (set.has("survival")) return "science fiction";
   if (set.has("investigation")) return "mystery";
-  if (set.has("family")) return "literary fiction";
-  if (set.has("fantasy")) return "fantasy";
 
   return undefined;
 }
@@ -829,6 +830,18 @@ function fallbackQueries(signals: QuerySignals): string[] {
   return dedupe(packs.flatMap((pack) => pack.variants));
 }
 
+function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
+  const genres = new Set(topKeys(signals.genre, 3));
+  if (genres.has("fantasy")) return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
+  if (genres.has("horror")) return ["psychological horror novel", "survival horror novel", "haunted house horror novel"];
+  if (genres.has("science fiction")) return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"];
+  if (genres.has("mystery") || genres.has("crime")) return ["mystery thriller novel", "psychological mystery novel", "crime thriller novel"];
+  if (genres.has("thriller")) return ["psychological thriller novel", "domestic thriller novel", "mystery thriller novel"];
+  if (genres.has("historical")) return ["historical fiction novel"];
+  if (genres.has("romance")) return ["romance novel"];
+  return [];
+}
+
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
   const hypotheses = buildHypotheses(signals);
@@ -839,7 +852,13 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
     .filter(Boolean) as QueryPack[];
 
   const hypothesisQueries = queryPacks.flatMap((pack) => compactQueryPack(pack, signals));
-  const queries = dedupe(hypothesisQueries.length ? hypothesisQueries : fallbackQueries(signals));
+  const fallback = fallbackQueries(signals);
+  const guaranteed = guaranteedGenreFallbacks(signals);
+  const queries = dedupe(
+    hypothesisQueries.length
+      ? hypothesisQueries
+      : (fallback.length ? fallback : guaranteed)
+  );
 
   return {
     queries,

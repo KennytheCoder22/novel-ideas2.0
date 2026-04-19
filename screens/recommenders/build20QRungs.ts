@@ -245,13 +245,13 @@ function normalizedBaseGenre(intent: QueryIntent): string {
     const cleaned = clean(value);
     if (!cleaned) continue;
     if (/science fiction|sci fi|sci-fi|scifi/.test(cleaned)) return "science fiction";
-    if (/historical fiction/.test(cleaned)) return "historical fiction";
-    if (/literary fiction|literary/.test(cleaned)) return "literary";
     if (/fantasy/.test(cleaned)) return "fantasy";
     if (/horror/.test(cleaned)) return "horror";
     if (/thriller/.test(cleaned)) return "thriller";
     if (/mystery|detective|crime/.test(cleaned)) return "mystery";
+    if (/historical fiction/.test(cleaned)) return "historical fiction";
     if (/romance/.test(cleaned)) return "romance";
+    if (/literary fiction|literary/.test(cleaned)) return "literary";
   }
   return "";
 }
@@ -302,6 +302,15 @@ function expandBaseGenre(intent: QueryIntent): string[] {
   const base = normalizedBaseGenre(intent);
   if (!base) return [];
   return BASE_GENRE_REWRITES[base] || [ensureBookNativeSuffix(base)];
+}
+
+function scrubCrossGenreLiterals(value: string, base: string): string {
+  let cleaned = clean(value);
+  if (!cleaned) return "";
+  if (base === "fantasy") {
+    cleaned = cleaned.replace(/\bliterary fiction\b/g, " ").replace(/\s+/g, " ").trim();
+  }
+  return cleaned;
 }
 
 function extractThemeSeeds(intent: QueryIntent): string[] {
@@ -359,11 +368,22 @@ function themeFallbackQueries(intent: QueryIntent): string[] {
 
 function buildFallbackRungs(intent: QueryIntent): string[] {
   const base = normalizedBaseGenre(intent);
+  const cleanedBase = scrubCrossGenreLiterals(intent.baseGenre || "", base);
+  const cleanedSubgenres = dedupe(intent.subgenres || []).map((query) =>
+    sanitizeQuery(scrubCrossGenreLiterals(query, base))
+  );
+
+  const guaranteed =
+    base === "fantasy"
+      ? ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"]
+      : [];
+
   return distinctQueries([
     ...expandBaseGenre(intent),
+    ...guaranteed,
     ...themeFallbackQueries(intent),
-    sanitizeQuery(clean(intent.baseGenre || "")),
-    ...dedupe(intent.subgenres || []).map((query) => sanitizeQuery(query)),
+    sanitizeQuery(cleanedBase),
+    ...cleanedSubgenres,
   ].filter(Boolean))
     .filter((query) => isQueryAllowedForBase(query, base))
     .slice(0, 6);
