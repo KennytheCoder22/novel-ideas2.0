@@ -868,7 +868,7 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
   if (genres.has("horror")) return ["psychological horror novel", "survival horror novel", "haunted house horror novel"];
   if (genres.has("science fiction")) return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"];
   if (genres.has("mystery") || genres.has("crime")) return ["mystery thriller novel", "psychological mystery novel", "crime thriller novel"];
-  if (genres.has("thriller")) return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "domestic secrets suspense novel", "obsession psychological thriller novel"];
+  if (genres.has("thriller")) return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "obsession psychological thriller novel", "procedural crime thriller novel"];
   if (genres.has("historical")) return ["historical fiction novel"];
   if (genres.has("romance")) return [
     "second chance romance novel",

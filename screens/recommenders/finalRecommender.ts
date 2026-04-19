@@ -311,7 +311,7 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bnational library service\b/,
     /\breaders?\s+advisory\b/,
     /\bgenre fiction\b/,
-    /\bfaith-based domestic suspense\b/,
+    /\bfaith-based domestic suspense\b/,\n    /\bchristian fiction\b/,\n    /\bforbidden love\b/,
     /\btextbook\b/,
     /\bworkbook\b/,
     /\bstudy guide\b/
@@ -647,13 +647,34 @@ function anchorBoost(c: Candidate): number {
 
 function penaltyScore(c: Candidate): number {
   const text = haystack(c);
+  const lane = String((c as any)?.laneKind || "").toLowerCase();
+  const family = String((c as any)?.queryFamily || "").toLowerCase();
   let score = 0;
 
-  if (/book\s*1\b|book\s*one\b/.test(text)) score -= 2;
+  if (/book\s*1\b|book\s*one\b|book\s*two\b|book\s*three\b/.test(text)) score -= 6;
   if (/book\s*\d+\b/.test(text) && !((c.ratingCount || 0) > 100 || metadataTrust(c) >= 4)) score -= 8;
   if (/books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) score -= 5;
   if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) {
     score -= 6;
+  }
+
+  if (lane === "strict-filtered") score -= 4;
+  if (lane === "fiction-variant") score -= 2;
+  if (lane === "dark-alt" && /\bdomestic suspense\b/.test(text)) score -= 3;
+
+  if (family === "mystery") {
+    const thrillerNative = /\bthriller\b|\bpsychological\b|\bsuspense\b|\bmissing\b|\bkiller\b|\bfbi\b|\bcrime\b/.test(text);
+    if (!thrillerNative) score -= 6;
+  }
+
+  if (/\bfaith-based\b|\bchristian fiction\b/.test(text)) score -= 10;
+  if (/\bforbidden love\b/.test(text)) score -= 8;
+  if (/\bdomestic suspense\b/.test(text) && !/\bcrime\b|\bmissing\b|\bkiller\b|\bfbi\b|\bdetective\b/.test(text)) {
+    score -= 4;
+  }
+
+  if (/\bfbi suspense thriller\b|\bpsychological suspense thriller\b/.test(text) && (c.ratingCount || 0) < 25) {
+    score -= 4;
   }
 
   const trust = metadataTrust(c);
@@ -676,6 +697,24 @@ function penaltyScore(c: Candidate): number {
   return score;
 }
 
+function thrillerSessionFit(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+
+  if (/\bmissing\b|\bmissing person\b/.test(text)) score += 3;
+  if (/\bpsychological\b|\bsuspense\b/.test(text)) score += 3;
+  if (/\bcrime\b|\binvestigation\b|\bdetective\b|\bfbi\b|\bprocedural\b/.test(text)) score += 2;
+  if (/\bserial killer\b/.test(text)) score += 2;
+
+  if (/\bfaith-based\b|\bforbidden love\b|\bchristian fiction\b/.test(text)) score -= 8;
+  if (/\bdomestic suspense\b/.test(text) && !/\bcrime\b|\bmissing\b|\binvestigation\b|\bdetective\b|\bfbi\b/.test(text)) {
+    score -= 3;
+  }
+
+  return score;
+}
+
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -687,6 +726,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const overfit = overfitPenalty(c);
   const anchor = anchorBoost(c);
   const filterSignals = filterSignalScore(c);
+  const sessionFit = thrillerSessionFit(c);
 
   return {
     queryScore,
@@ -699,7 +739,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     overfitPenalty: overfit,
     anchorBoost: anchor,
     filterSignalScore: filterSignals,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals + sessionFit,
   };
 }
 
@@ -886,8 +926,17 @@ export function finalRecommenderForDeck(
   const nonOpenLibraryPool = ordered.filter((entry) => !isOpenLibraryCandidate(entry.candidate));
 
   pickFromPool(nonOpenLibraryPool, selected, authorCounts, MAX_RESULTS);
-  pickFromPool(openLibraryPool, selected, authorCounts, MAX_RESULTS);
-  pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
+
+  if (selected.length < 6) {
+    pickFromPool(openLibraryPool, selected, authorCounts, MAX_RESULTS);
+  }
+
+  pickFromPool(
+    ordered.filter((entry) => !isOpenLibraryCandidate(entry.candidate)),
+    selected,
+    authorCounts,
+    MAX_RESULTS
+  );
 
   return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown));
 }

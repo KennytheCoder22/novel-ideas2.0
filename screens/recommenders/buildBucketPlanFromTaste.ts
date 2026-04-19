@@ -13,8 +13,8 @@ type HypothesisLike = {
   score?: number;
 };
 
-const THRILLER_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance)\b/i;
-const THRILLER_CORE_TERMS = /\b(crime|mystery|thriller|detective|psychological thriller|investigation|noir|procedural|serial killer|domestic thriller)\b/i;
+const THRILLER_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance|faith-based|christian fiction)\b/i;
+const THRILLER_CORE_TERMS = /\b(crime|thriller|detective|psychological thriller|psychological suspense|investigation|noir|procedural|serial killer|missing person|crime conspiracy)\b/i;
 
 function topKeys(obj: Record<string, number>, limit: number): string[] {
   return Object.entries(obj)
@@ -88,7 +88,7 @@ function familyCompatibleHypotheses(hypotheses: HypothesisLike[], family: Family
 
 function guaranteedFamilyFallbacks(family: Family): string[] {
   if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
-  if (family === "thriller_family") return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "domestic secrets suspense novel", "obsession psychological thriller novel"];
+  if (family === "thriller_family") return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "obsession psychological thriller novel", "procedural crime thriller novel"];
   if (family === "historical_family") return ["historical fiction novel"];
   if (family === "romance_family") return [
     "second chance romance novel",

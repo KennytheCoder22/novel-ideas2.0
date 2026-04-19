@@ -153,8 +153,8 @@ thriller: [
   "missing person thriller novel",
   "serial killer investigation thriller novel",
   "crime conspiracy thriller novel",
-  "domestic secrets suspense novel",
-  "obsession psychological thriller novel"
+  "obsession psychological thriller novel",
+  "procedural crime thriller novel"
 ],
 mystery: [
   "mystery thriller novel",
@@ -269,6 +269,20 @@ function normalizedBaseGenre(intent: QueryIntent): string {
   }
   return "";
 }
+
+function allowDomesticSuspenseForThriller(intent: QueryIntent): boolean {
+  const joined = clean([
+    ...(intent.themes || []),
+    ...(intent.subgenres || []),
+    ...(intent.tones || []),
+  ].join(" "));
+
+  const hasDomesticSignals = /\bfamily secrets\b|\bbetrayal\b|\bmarriage\b|\brelationship\b|\bdomestic\b/.test(joined);
+  const hasCrimeSignals = /\bserial killer\b|\binvestigation\b|\bprocedural\b|\bcrime\b|\bdetective\b|\bfbi\b|\bmissing\b/.test(joined);
+
+  return hasDomesticSignals && !hasCrimeSignals;
+}
+
 
 function queryGenre(query: string): string {
   const q = clean(query);
@@ -392,10 +406,19 @@ function buildFallbackRungs(intent: QueryIntent): string[] {
       ? ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"]
       : [];
 
+  const domesticAwareThemeQueries =
+    base === "thriller"
+      ? themeFallbackQueries(intent).filter((query) =>
+          /\bdomestic secrets suspense\b/.test(query)
+            ? allowDomesticSuspenseForThriller(intent)
+            : true
+        )
+      : themeFallbackQueries(intent);
+
   return distinctQueries([
     ...expandBaseGenre(intent),
     ...guaranteed,
-    ...themeFallbackQueries(intent),
+    ...domesticAwareThemeQueries,
     sanitizeQuery(cleanedBase),
     ...cleanedSubgenres,
   ].filter(Boolean))
@@ -458,7 +481,7 @@ function classifyRungRole(query: string): RungRole {
 
   if (
     /\bsurvival horror\b/.test(q) ||
-    /\bdomestic secrets suspense\b/.test(q) ||
+    /\bprocedural crime thriller\b/.test(q) ||
     /\bpsychological mystery\b/.test(q) ||
     /\bdystopian science fiction\b/.test(q) ||
     /\bgothic fantasy\b/.test(q)

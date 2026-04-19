@@ -189,7 +189,7 @@ export function looksLikeFictionCandidate(doc: any): boolean {
     /\bcollection\b/,
     /\bessays?\b/,
     /\babout the author\b/,
-    /\bpublishers?\s+weekly\b/,
+    /\bpublishers?\s+weekly\b/,\n    /\btransactions of\b/,\n    /\bthe nation\b/,\n    /\bthe athenaeum\b/,\n    /\bt\.?\s*p\.?'?s weekly\b/,\n    /\bpunch\b/,\n    /\bbook news monthly\b/,\n    /\bfilm year book\b/,\n    /\bfilm daily year book\b/,\n    /\bthe publisher and bookseller\b/,\n    /\bthe author & journalist\b/,\n    /\bcontemporaries in fiction\b/,\n    /\bnovels & novelists\b/,
     /\bjournal\b/,
     /\bmagazine\b/,
     /\bnewsweek\b/,
@@ -283,8 +283,10 @@ const descriptionLooksAcademic = hardRejectDescriptionPatterns.some((rx) => rx.t
   const hasNarrativeSignal =
     /\b(novel|follows|tells the story|journey|survival|investigation)\b/.test(combined);
 
-  // Allow strong fiction signal alone OR narrative signal with explicit book-native evidence
-return hasFictionSignal || (hasNarrativeSignal && /\b(novel|fiction)\b/.test(combined));
+  const titleLooksPeriodical =
+    /\bweekly\b|\bathenaeum\b|\bnation\b|\boutlook\b|\bpunch\b|\btransactions\b|\bbook news monthly\b|\bfilm year book\b|\bauthor & journalist\b/.test(title);
+
+  return hasFictionSignal || (hasNarrativeSignal && !titleLooksPeriodical && /\b(novel|fiction|thriller|mystery|suspense)\b/.test(combined));
 }
 
 function isClearlyNotABookCandidate(candidate: Candidate): boolean {
@@ -294,6 +296,7 @@ function isClearlyNotABookCandidate(candidate: Candidate): boolean {
   const description = String(candidate?.description || '').toLowerCase();
 
   if (!title || title.length < 3) return true;
+  if (/\bboxed set\b|\bomnibus\b|\b350\+\b|\bcollection\b|\banthology\b/.test(title)) return true;
 
   // Only reject extremely short content (pamphlets)
 if (candidate.pageCount > 0 && candidate.pageCount < 30) return true;
