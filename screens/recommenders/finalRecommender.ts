@@ -38,6 +38,7 @@ export type ScoreBreakdown = {
   genericTitlePenalty: number;
   overfitPenalty: number;
   anchorBoost: number;
+  filterSignalScore: number;
   finalScore: number;
 };
 
@@ -347,6 +348,40 @@ function isOpenLibraryCandidate(c: Candidate): boolean {
   );
 }
 
+function getFilterDiagnostics(candidate: Candidate): any {
+  return (candidate as any)?.rawDoc?.diagnostics?.filterDiagnostics ||
+    (candidate as any)?.rawDoc?.diagnostics ||
+    (candidate as any)?.diagnostics?.filterDiagnostics ||
+    (candidate as any)?.diagnostics ||
+    {};
+}
+
+function filterSignalScore(c: Candidate): number {
+  const d = getFilterDiagnostics(c);
+  const flags = d?.filterFlags || d?.flags || {};
+  const passedChecks: string[] = Array.isArray(d?.filterPassedChecks)
+    ? d.filterPassedChecks
+    : Array.isArray(d?.passedChecks)
+      ? d.passedChecks
+      : [];
+
+  let score = 0;
+
+  if (flags.authorAffinity) score += 12;
+  if (flags.horrorAligned) score += 6;
+  if (flags.strongNarrative) score += 4;
+  if (flags.legitAuthority) score += 2;
+
+  if (passedChecks.includes('author_affinity_horror_recovery')) score += 6;
+  if (passedChecks.includes('openlibrary_horror_recovery')) score += 4;
+  if (passedChecks.includes('passed_shape_gate')) score += 2;
+
+  if (isOpenLibraryCandidate(c) && flags.authorAffinity) score += 3;
+  if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_horror_recovery')) score += 2;
+
+  return score;
+}
+
 function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidate[], rejected: QualityRejectRecord[]): void {
   const rejectionCounts = rejected.reduce<Record<string, number>>((acc, item) => {
     acc[item.reason] = (acc[item.reason] || 0) + 1;
@@ -531,6 +566,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const genericPenalty = genericTitlePenalty(c);
   const overfit = overfitPenalty(c);
   const anchor = anchorBoost(c);
+  const filterSignals = filterSignalScore(c);
 
   return {
     queryScore,
@@ -542,7 +578,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     genericTitlePenalty: genericPenalty,
     overfitPenalty: overfit,
     anchorBoost: anchor,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor,
+    filterSignalScore: filterSignals,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals,
   };
 }
 
