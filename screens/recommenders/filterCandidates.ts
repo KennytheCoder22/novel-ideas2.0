@@ -24,6 +24,7 @@ type FilterDiagnostics = {
     romancePositive: boolean;
     weakSeriesSpam: boolean;
     legitAuthority: boolean;
+    authorAffinity: boolean;
   };
 };
 
@@ -94,6 +95,43 @@ function wantsHorrorTone(bucketPlan: any): boolean {
     .toLowerCase();
 
   return /(horror|haunted|ghost|supernatural|occult|monster|creature|zombie|body horror|psychological horror|survival horror|terror|dread|eerie|disturbing|dark fantasy)/.test(text);
+}
+
+const HORROR_AUTHOR_AFFINITY = new Set([
+  "stephen king",
+  "shirley jackson",
+  "clive barker",
+  "peter straub",
+  "anne rice",
+  "nick cutter",
+  "paul tremblay",
+  "grady hendrix",
+  "dan simmons",
+  "richard matheson",
+  "ramsey campbell",
+  "thomas ligotti",
+  "joe hill",
+  "caitlin r. kiernan",
+  "caitlin kiernan",
+  "tananarive due",
+  "adam cesare",
+  "john ajvide lindqvist",
+  "william peter blatty",
+  "bret easton ellis",
+  "brom",
+  "josh malerman",
+  "algernon blackwood",
+  "henry james",
+  "mary shelley",
+  "bram stoker",
+  "gaston leroux",
+  "wilkie collins",
+]);
+
+function hasAuthorAffinityForFamily(author: string, family: RouterFamily): boolean {
+  if (!author) return false;
+  if (family === "horror") return HORROR_AUTHOR_AFFINITY.has(author);
+  return false;
 }
 
 
@@ -305,6 +343,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     );
 
   const romancePositive = /\b(romance|love story|romantic)\b/.test(combined);
+  const authorAffinity = hasAuthorAffinityForFamily(author, family);
   const legitAuthority = hasLegitCommercialAuthority(doc);
   const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
 
@@ -330,6 +369,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
       romancePositive,
       weakSeriesSpam,
       legitAuthority,
+      authorAffinity,
     },
   };
 
@@ -392,6 +432,10 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   if (fictionPositive) diagnostics.passedChecks.push("fiction_positive");
   if (strongNarrative) diagnostics.passedChecks.push("strong_narrative");
+  if (authorAffinity) diagnostics.passedChecks.push("author_affinity");
+  if (family === "horror" && authorAffinity && !diagnostics.flags.horrorAligned) {
+    diagnostics.passedChecks.push("author_affinity_horror_recovery");
+  }
   if (hasRealLength || hasDescription) diagnostics.passedChecks.push("minimum_shape");
 
   return diagnostics;
@@ -507,11 +551,13 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
     diagnostics.flags.fictionPositive ||
     diagnostics.flags.strongNarrative ||
     diagnostics.flags.horrorAligned ||
+    diagnostics.flags.authorAffinity ||
     hasSubjectSignal ||
     hasDescriptionSignal;
 
   const gothicOrHorrorSignal =
     diagnostics.flags.horrorAligned ||
+    diagnostics.flags.authorAffinity ||
     /\b(gothic|ghost|haunted|haunting|supernatural|occult|monster|creature|terror|dread|vampire|werewolf|zombie|devil|exorcist|possession|dark fantasy)\b/.test(
       subjects + " " + description
     );
@@ -584,7 +630,9 @@ function passesOpenLibraryHorrorRecovery(doc: any, diagnostics: FilterDiagnostic
 
   if (canonicalClassic) return true;
 
-  if (!horrorSubjectSignal && !diagnostics.flags.horrorAligned) return false;
+  if (diagnostics.flags.authorAffinity && hasUsefulMetadata) return true;
+
+  if (!horrorSubjectSignal && !diagnostics.flags.horrorAligned && !diagnostics.flags.authorAffinity) return false;
 
   // For sparse Open Library records, only recover when there is actual horror/gothic metadata.
   if (horrorSubjectSignal && hasUsefulMetadata) return true;
@@ -681,7 +729,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     const hasNarrativeOrDescription =
       diagnostics.flags.strongNarrative ||
-      (diagnostics.hasDescription && diagnostics.flags.fictionPositive);
+      (diagnostics.hasDescription && diagnostics.flags.fictionPositive) ||
+      (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive);
 
     if (!hasMinimumRatings(doc) || !hasNarrativeOrDescription) {
       if (passesRelaxedHorrorFloor(doc, diagnostics)) {
