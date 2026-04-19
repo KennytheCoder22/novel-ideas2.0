@@ -122,6 +122,12 @@ function dedupe(candidates: Candidate[]): Candidate[] {
 
     const currentRank = evidenceRank(c);
     const existingRank = evidenceRank(existing);
+    const currentIsOpenLibrary = isOpenLibraryCandidate(c);
+    const existingIsOpenLibrary = isOpenLibraryCandidate(existing);
+    const currentFilterSignals = filterSignalScore(c);
+    const existingFilterSignals = filterSignalScore(existing);
+    const currentAnchor = anchorBoost(c);
+    const existingAnchor = anchorBoost(existing);
 
     if (currentRank < existingRank) {
       map.set(key, c);
@@ -129,6 +135,15 @@ function dedupe(candidates: Candidate[]): Candidate[] {
     }
 
     if (currentRank === existingRank) {
+      if (currentIsOpenLibrary !== existingIsOpenLibrary) {
+        const currentPreference = (currentIsOpenLibrary ? 1 : 0) + currentFilterSignals + currentAnchor;
+        const existingPreference = (existingIsOpenLibrary ? 1 : 0) + existingFilterSignals + existingAnchor;
+        if (currentPreference > existingPreference) {
+          map.set(key, c);
+          continue;
+        }
+      }
+
       const currentHasDescription = Boolean(c.description);
       const existingHasDescription = Boolean(existing.description);
 
@@ -138,6 +153,11 @@ function dedupe(candidates: Candidate[]): Candidate[] {
       }
 
       if (currentHasDescription === existingHasDescription && c.hasCover && !existing.hasCover) {
+        map.set(key, c);
+        continue;
+      }
+
+      if (currentFilterSignals + currentAnchor > existingFilterSignals + existingAnchor) {
         map.set(key, c);
       }
     }
@@ -683,6 +703,62 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown): RecommendationDoc 
   } as RecommendationDoc;
 }
 
+function passesOpenLibrarySelectionFloor(candidate: Candidate): boolean {
+  if (!isOpenLibraryCandidate(candidate)) return false;
+
+  const hardReject = isHardReject(candidate);
+  if (hardReject.reject) return false;
+
+  const trust = metadataTrust(candidate);
+  const descriptionLength = String(candidate.description || '').trim().length;
+  const hasShape =
+    (candidate.pageCount || 0) >= 80 ||
+    descriptionLength > 80 ||
+    Boolean(candidate.hasCover) ||
+    Boolean((candidate as any)?.rawDoc?.key) ||
+    Boolean((candidate as any)?.rawDoc?.id);
+
+  const filterSignals = filterSignalScore(candidate);
+  const anchor = anchorBoost(candidate);
+  const fictionSignals = hasFictionSignals(candidate);
+
+  return hasShape || fictionSignals || filterSignals >= 8 || anchor >= 8 || trust >= 1;
+}
+
+function canTakeCandidate(
+  candidate: Candidate,
+  selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  authorCounts: Map<string, number>
+): boolean {
+  const author = normalize(candidate.author);
+  const count = authorCounts.get(author) || 0;
+  if (count >= 1) return false;
+
+  if (isOpenLibraryCandidate(candidate) && !passesOpenLibrarySelectionFloor(candidate)) {
+    return false;
+  }
+
+  return !selected.some((entry) => identityKey(entry.candidate) === identityKey(candidate));
+}
+
+function pickFromPool(
+  pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  authorCounts: Map<string, number>,
+  limit: number
+): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
+  for (const entry of pool) {
+    if (selected.length >= limit) break;
+    if (!canTakeCandidate(entry.candidate, selected, authorCounts)) continue;
+
+    selected.push(entry);
+    const author = normalize(entry.candidate.author);
+    authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+  }
+
+  return selected;
+}
+
 export function finalRecommenderForDeck(
   candidates: Candidate[],
   _deckKey: DeckKey,
@@ -792,52 +868,16 @@ export function finalRecommenderForDeck(
 
   const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
-  let openLibraryCount = 0;
+  const MAX_RESULTS = 10;
   const MIN_OPEN_LIBRARY = 3;
 
-  for (const entry of ordered) {
-    const candidate = entry.candidate;
-    const source = String(candidate.source || '').toLowerCase();
-    const isOpenLibrary =
-      source.includes('openlibrary') ||
-      source.includes('open library') ||
-      source === 'ol';
+  const openLibraryPool = ordered.filter((entry) => isOpenLibraryCandidate(entry.candidate));
+  const nonOpenLibraryPool = ordered.filter((entry) => !isOpenLibraryCandidate(entry.candidate));
 
-    const author = normalize(candidate.author);
-    const count = authorCounts.get(author) || 0;
-
-    if (count >= 1) continue;
-
-    if (!isOpenLibrary && openLibraryCount < MIN_OPEN_LIBRARY) {
-      const remainingSlots = 10 - selected.length;
-      const remainingOlNeeded = MIN_OPEN_LIBRARY - openLibraryCount;
-      if (remainingSlots <= remainingOlNeeded) {
-        continue;
-      }
-    }
-
-    // Keep a minimal quality floor for Open Library, but do not require ratings.
-    if (isOpenLibrary) {
-      const trust = metadataTrust(candidate);
-      const descriptionLength = String(candidate.description || '').trim().length;
-      const hasShape =
-        (candidate.pageCount || 0) >= 80 ||
-        descriptionLength > 80 ||
-        Boolean(candidate.hasCover) ||
-        Boolean((candidate as any)?.rawDoc?.key) ||
-        Boolean((candidate as any)?.rawDoc?.id);
-
-      if (trust < 1 && !hasShape) {
-        continue;
-      }
-    }
-
-    selected.push(entry);
-    authorCounts.set(author, count + 1);
-    if (isOpenLibrary) openLibraryCount += 1;
-
-    if (selected.length >= 10) break;
-  }
+  pickFromPool(openLibraryPool, selected, authorCounts, Math.min(MIN_OPEN_LIBRARY, MAX_RESULTS));
+  pickFromPool(nonOpenLibraryPool, selected, authorCounts, MAX_RESULTS);
+  pickFromPool(openLibraryPool, selected, authorCounts, MAX_RESULTS);
+  pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
 
   return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown));
 }
