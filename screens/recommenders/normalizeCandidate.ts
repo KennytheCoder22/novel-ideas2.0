@@ -317,7 +317,13 @@ if (candidate.pageCount > 0 && candidate.pageCount < 30) return true;
     /\btimes literary supplement\b/,
     /\ba\.l\.a\. booklist\b/,
     /\bbook dealers\b/,
-    /\bpublishers? weekly\b/,\n    /\bbraille books?\b/,\n    /\bcumulated fiction index\b/,\n    /\btechnique of the mystery story\b/,\n    /\breaders?\s+advisory\b/,\n    /\bguide to genre fiction\b/,\n    /\bmammoth book\b/,
+    /\bpublishers? weekly\b/,
+    /\bbraille books?\b/,
+    /\bcumulated fiction index\b/,
+    /\btechnique of the mystery story\b/,
+    /\breaders?\s+advisory\b/,
+    /\bguide to genre fiction\b/,
+    /\bmammoth book\b/,
   ];
 
   const hardRejectPublisherPatterns = [
