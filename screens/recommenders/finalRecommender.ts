@@ -657,11 +657,29 @@ export function finalRecommenderForDeck(
   const authorCounts = new Map<string, number>();
 
   for (const entry of ordered) {
-    const author = normalize(entry.candidate.author);
-    const count = authorCounts.get(author) || 0;
+    const candidate = entry.candidate;
+const source = String(candidate.source || "").toLowerCase();
+const isOpenLibrary = source.includes("openlibrary");
 
-    if (count >= 1) continue;
+const author = normalize(candidate.author);
+const count = authorCounts.get(author) || 0;
 
+if (count >= 1) continue;
+
+// 🚫 Add Open Library quality floor
+if (isOpenLibrary) {
+  const trust = metadataTrust(candidate);
+  const ratings = candidate.ratingCount || 0;
+
+  // Reject weak OL entries
+  if (
+    trust < 3 &&
+    ratings < 5 &&
+    (!candidate.description || candidate.description.length < 80)
+  ) {
+    continue;
+  }
+}
     selected.push(entry);
     authorCounts.set(author, count + 1);
 
