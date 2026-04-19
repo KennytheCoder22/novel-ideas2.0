@@ -325,6 +325,19 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   return { pass: true };
 }
 
+
+
+function isOpenLibraryCandidate(c: Candidate): boolean {
+  const source = String(c?.source || (c as any)?.engine || (c as any)?.rawDoc?.source || '').toLowerCase();
+  const lane = String((c as any)?.laneKind || (c as any)?.candidateLane || '').toLowerCase();
+  return (
+    source.includes('openlibrary') ||
+    source.includes('open library') ||
+    source == 'ol' ||
+    lane == 'ol-backfill'
+  );
+}
+
 function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidate[], rejected: QualityRejectRecord[]): void {
   const rejectionCounts = rejected.reduce<Record<string, number>>((acc, item) => {
     acc[item.reason] = (acc[item.reason] || 0) + 1;
@@ -548,7 +561,29 @@ export function finalRecommenderForDeck(
   const qualityPassed: Candidate[] = [];
 
   for (const candidate of deduped) {
-    const verdict = passesQuality(candidate);
+    let verdict = passesQuality(candidate);
+
+    if (!verdict.pass && isOpenLibraryCandidate(candidate)) {
+      const hardReject = isHardReject(candidate);
+      const trust = metadataTrust(candidate);
+      const hasBibliographicShape =
+        Boolean(candidate?.title) &&
+        Boolean(normalize(candidate?.author)) &&
+        (
+          Boolean(candidate?.hasCover) ||
+          Boolean(candidate?.description) ||
+          (candidate?.pageCount || 0) >= 120 ||
+          Boolean((candidate as any)?.rawDoc?.key) ||
+          Boolean((candidate as any)?.rawDoc?.id)
+        );
+
+      const hasSomeFictionSignal = hasFictionSignals(candidate);
+
+      if (!hardReject.reject && hasBibliographicShape && (hasSomeFictionSignal || trust >= 2)) {
+        verdict = { pass: true };
+      }
+    }
+
     if (verdict.pass) {
       qualityPassed.push(candidate);
       continue;
@@ -569,13 +604,27 @@ export function finalRecommenderForDeck(
     if (isHardReject(c).reject) return false;
 
     const trust = metadataTrust(c);
-    if (trust < 3) return false;
+    const isOpenLibrary = isOpenLibraryCandidate(c);
+
+    if (!isOpenLibrary && trust < 3) return false;
+    if (isOpenLibrary && trust < 2) return false;
 
     const hasStrongSignal =
       (c.ratingCount || 0) >= 10 ||
       ((c.pageCount || 0) >= 150 && Boolean(c.description && c.description.length > 120));
 
-    return hasStrongSignal;
+    const hasBibliographicShape =
+      Boolean(c?.title) &&
+      Boolean(normalize(c?.author)) &&
+      (
+        Boolean(c?.hasCover) ||
+        Boolean(c?.description) ||
+        (c?.pageCount || 0) >= 120 ||
+        Boolean((c as any)?.rawDoc?.key) ||
+        Boolean((c as any)?.rawDoc?.id)
+      );
+
+    return hasStrongSignal || (isOpenLibrary && hasBibliographicShape);
   });
 
   const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length > 0 ? relaxedFallback : deduped.slice(0, 20);
