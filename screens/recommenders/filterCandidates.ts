@@ -392,26 +392,27 @@ const MIN_RATINGS = 20;
 const MIN_RELAXED_HORROR_RATINGS = 5;
 
 function hasMinimumRatings(doc: any): boolean {
-  const ratings =
-    Number(doc?.ratingsCount) ||
-    Number(doc?.volumeInfo?.ratingsCount) ||
-    Number(doc?.hardcover?.ratings_count) ||
-    0;
-
   const pageCount =
     Number(doc?.pageCount) ||
     Number(doc?.volumeInfo?.pageCount) ||
     0;
 
-  const hasDescription = String(
+  const descriptionLength = String(
     doc?.description ||
     doc?.volumeInfo?.description ||
     ""
-  ).trim().length > 120;
+  ).trim().length;
 
-  if (ratings >= MIN_RATINGS) return true;
-  if (pageCount >= 180 && hasDescription) return true;
-  if (pageCount >= 240 && String(doc?.title || doc?.volumeInfo?.title || "").trim().length > 0 && hasDescription) return true;
+  const hasLongDescription = descriptionLength > 120;
+  const hasUsableDescription = descriptionLength > 80;
+  const hasTitle = String(doc?.title || doc?.volumeInfo?.title || "").trim().length > 0;
+
+  // Ratings are too sparse and inconsistent to be a hard gate.
+  // Treat "minimum quality shape" as bibliographic/narrative shape instead.
+  if (pageCount >= 120) return true;
+  if (pageCount >= 80 && hasLongDescription) return true;
+  if (hasTitle && hasLongDescription) return true;
+  if (hasTitle && pageCount >= 60 && hasUsableDescription) return true;
 
   return false;
 }
@@ -569,17 +570,17 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (!hasMinimumRatings(doc)) {
       if (passesRelaxedHorrorFloor(doc, diagnostics)) {
-        diagnostics.passedChecks.push("passed_relaxed_horror_ratings_gate");
+        diagnostics.passedChecks.push("passed_relaxed_horror_shape_gate");
       } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
-        diagnostics.passedChecks.push("openlibrary_ratings_bypass");
+        diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else {
-        diagnostics.rejectReasons.push("below_ratings_floor");
+        diagnostics.rejectReasons.push("below_shape_floor");
         diagnostics.kept = false;
         Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
         continue;
       }
     } else {
-      diagnostics.passedChecks.push("passed_ratings_gate");
+      diagnostics.passedChecks.push("passed_shape_gate");
     }
     diagnostics.kept = true;
 

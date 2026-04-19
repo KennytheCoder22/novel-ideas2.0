@@ -300,25 +300,34 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   const hardReject = isHardReject(c);
   if (hardReject.reject) return { pass: false, reason: hardReject.reason, detail: hardReject.detail };
 
-  if (isLikelyNonFictionMeta(c)) {
-    return { pass: false, reason: 'non_fiction_meta', detail: 'non-fiction/meta heuristic hit' };
+  const fictionSignals = hasFictionSignals(c);
+
+  // Only let meta/non-fiction heuristics win when we do not also have fiction/narrative evidence.
+  if (isLikelyNonFictionMeta(c) && !fictionSignals) {
+    return { pass: false, reason: 'non_fiction_meta', detail: 'non-fiction/meta heuristic hit without fiction signal' };
   }
 
   const trust = metadataTrust(c);
+  const descriptionLength = String(c.description || '').trim().length;
+  const hasShapeSignal =
+    (c.pageCount || 0) >= 120 ||
+    descriptionLength > 120 ||
+    ((c.pageCount || 0) >= 80 && descriptionLength > 80) ||
+    Boolean(c.hasCover && descriptionLength > 80);
 
-  if (trust < 3) {
+  if (trust < 2 && !hasShapeSignal) {
     return { pass: false, reason: 'low_metadata_trust', detail: `metadataTrust=${trust}` };
   }
 
   const hasStrongSignal =
-    (c.ratingCount || 0) >= 10 ||
-    ((c.pageCount || 0) >= 150 && Boolean(c.description && c.description.length > 120));
+    hasShapeSignal ||
+    (c.ratingCount || 0) >= 10;
 
   if (!hasStrongSignal) {
-    return { pass: false, reason: 'low_metadata_trust', detail: 'no strong signal' };
+    return { pass: false, reason: 'low_metadata_trust', detail: 'no strong bibliographic or narrative shape' };
   }
 
-  if (!hasFictionSignals(c)) {
+  if (!fictionSignals) {
     return { pass: false, reason: 'weak_fiction_signal', detail: 'missing fiction/narrative signal' };
   }
 
@@ -605,13 +614,16 @@ export function finalRecommenderForDeck(
 
     const trust = metadataTrust(c);
     const isOpenLibrary = isOpenLibraryCandidate(c);
+    const descriptionLength = String(c.description || '').trim().length;
 
-    if (!isOpenLibrary && trust < 3) return false;
-    if (isOpenLibrary && trust < 2) return false;
+    if (!isOpenLibrary && trust < 2) return false;
+    if (isOpenLibrary && trust < 1) return false;
 
     const hasStrongSignal =
-      (c.ratingCount || 0) >= 10 ||
-      ((c.pageCount || 0) >= 150 && Boolean(c.description && c.description.length > 120));
+      (c.pageCount || 0) >= 120 ||
+      descriptionLength > 120 ||
+      ((c.pageCount || 0) >= 80 && descriptionLength > 80) ||
+      (c.ratingCount || 0) >= 10;
 
     const hasBibliographicShape =
       Boolean(c?.title) &&
@@ -619,12 +631,12 @@ export function finalRecommenderForDeck(
       (
         Boolean(c?.hasCover) ||
         Boolean(c?.description) ||
-        (c?.pageCount || 0) >= 120 ||
+        (c?.pageCount || 0) >= 80 ||
         Boolean((c as any)?.rawDoc?.key) ||
         Boolean((c as any)?.rawDoc?.id)
       );
 
-    return hasStrongSignal || (isOpenLibrary && hasBibliographicShape);
+    return hasStrongSignal || hasBibliographicShape;
   });
 
   const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length > 0 ? relaxedFallback : deduped.slice(0, 20);
@@ -659,24 +671,25 @@ export function finalRecommenderForDeck(
   for (const entry of ordered) {
     const candidate = entry.candidate;
 const source = String(candidate.source || "").toLowerCase();
-const isOpenLibrary = source.includes("openlibrary");
+const isOpenLibrary = source.includes("openlibrary") || source.includes("open library") || source === "ol";
 
 const author = normalize(candidate.author);
 const count = authorCounts.get(author) || 0;
 
 if (count >= 1) continue;
 
-// 🚫 Add Open Library quality floor
+// Keep a minimal quality floor for Open Library, but do not require ratings.
 if (isOpenLibrary) {
   const trust = metadataTrust(candidate);
-  const ratings = candidate.ratingCount || 0;
+  const descriptionLength = String(candidate.description || '').trim().length;
+  const hasShape =
+    (candidate.pageCount || 0) >= 80 ||
+    descriptionLength > 80 ||
+    Boolean(candidate.hasCover) ||
+    Boolean((candidate as any)?.rawDoc?.key) ||
+    Boolean((candidate as any)?.rawDoc?.id);
 
-  // Reject weak OL entries
-  if (
-    trust < 3 &&
-    ratings < 5 &&
-    (!candidate.description || candidate.description.length < 80)
-  ) {
+  if (trust < 1 && !hasShape) {
     continue;
   }
 }
