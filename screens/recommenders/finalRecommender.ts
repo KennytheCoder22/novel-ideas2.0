@@ -792,34 +792,49 @@ export function finalRecommenderForDeck(
 
   const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
+  let openLibraryCount = 0;
+  const MIN_OPEN_LIBRARY = 3;
 
   for (const entry of ordered) {
     const candidate = entry.candidate;
-const source = String(candidate.source || "").toLowerCase();
-const isOpenLibrary = source.includes("openlibrary") || source.includes("open library") || source === "ol";
+    const source = String(candidate.source || '').toLowerCase();
+    const isOpenLibrary =
+      source.includes('openlibrary') ||
+      source.includes('open library') ||
+      source === 'ol';
 
-const author = normalize(candidate.author);
-const count = authorCounts.get(author) || 0;
+    const author = normalize(candidate.author);
+    const count = authorCounts.get(author) || 0;
 
-if (count >= 1) continue;
+    if (count >= 1) continue;
 
-// Keep a minimal quality floor for Open Library, but do not require ratings.
-if (isOpenLibrary) {
-  const trust = metadataTrust(candidate);
-  const descriptionLength = String(candidate.description || '').trim().length;
-  const hasShape =
-    (candidate.pageCount || 0) >= 80 ||
-    descriptionLength > 80 ||
-    Boolean(candidate.hasCover) ||
-    Boolean((candidate as any)?.rawDoc?.key) ||
-    Boolean((candidate as any)?.rawDoc?.id);
+    if (!isOpenLibrary && openLibraryCount < MIN_OPEN_LIBRARY) {
+      const remainingSlots = 10 - selected.length;
+      const remainingOlNeeded = MIN_OPEN_LIBRARY - openLibraryCount;
+      if (remainingSlots <= remainingOlNeeded) {
+        continue;
+      }
+    }
 
-  if (trust < 1 && !hasShape) {
-    continue;
-  }
-}
+    // Keep a minimal quality floor for Open Library, but do not require ratings.
+    if (isOpenLibrary) {
+      const trust = metadataTrust(candidate);
+      const descriptionLength = String(candidate.description || '').trim().length;
+      const hasShape =
+        (candidate.pageCount || 0) >= 80 ||
+        descriptionLength > 80 ||
+        Boolean(candidate.hasCover) ||
+        Boolean((candidate as any)?.rawDoc?.key) ||
+        Boolean((candidate as any)?.rawDoc?.id);
+
+      if (trust < 1 && !hasShape) {
+        continue;
+      }
+    }
+
     selected.push(entry);
     authorCounts.set(author, count + 1);
+    if (isOpenLibrary) openLibraryCount += 1;
 
     if (selected.length >= 10) break;
   }
