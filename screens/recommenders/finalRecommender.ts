@@ -516,25 +516,97 @@ function anchorBoost(c: Candidate): number {
   const title = normalize(c.title);
   const author = normalize(c.author);
   const ratings = c.ratingCount || 0;
+
   let score = 0;
 
-  const canonicalAnchors = [
-    /stephen king/,
-    /shirley jackson/,
-    /jackson/,
-    /king/,
-  ];
+  const isHorror =
+    /horror|haunted|ghost|supernatural|occult|possession|terror|dread|gothic/.test(text);
 
-  if (canonicalAnchors.some((rx) => rx.test(author))) score += 10;
+  const isThriller =
+    /thriller|crime|detective|mystery|suspense|investigation|serial killer|noir|procedural/.test(text);
 
-  if (/the dark half/.test(title)) score += 8;
-  if (/haunting of hill house/.test(title)) score += 8;
+  const isSpeculative =
+    /science fiction|fantasy|dystopian|speculative|space opera|space|alien|magic/.test(text);
 
-  if (ratings >= 1000) score += 6;
-  else if (ratings >= 200) score += 4;
-  else if (ratings >= 50) score += 2;
+  const isRomance =
+    /romance|love story|relationship|romantic/.test(text);
 
-  if (/psychological horror|psychological thriller/.test(text) && ratings >= 50) score += 2;
+  const AUTHOR_MAP: Record<string, string[]> = {
+    horror: [
+      'stephen king',
+      'shirley jackson',
+      'peter straub',
+      'clive barker',
+      'william peter blatty',
+      'nick cutter',
+      'paul tremblay',
+      'grady hendrix',
+      'dan simmons',
+      'richard matheson',
+      'bram stoker',
+      'mary shelley',
+      'henry james',
+      'wilkie collins',
+      'gaston leroux',
+      'joe hill',
+      'ramsey campbell',
+      'anne rice',
+    ],
+    thriller: [
+      'gillian flynn',
+      'tana french',
+      'dennis lehane',
+      'thomas harris',
+      'john le carre',
+      'lee child',
+      'patricia highsmith',
+      'ruth ware',
+      'paula hawkins',
+    ],
+    speculative: [
+      'ursula k le guin',
+      'philip k dick',
+      'octavia butler',
+      'neal stephenson',
+      'isaac asimov',
+      'arthur c clarke',
+      'n k jemisin',
+      'george orwell',
+    ],
+    romance: [
+      'jane austen',
+      'nicholas sparks',
+      'colleen hoover',
+      'emily henry',
+      'julia quinn',
+    ],
+  };
+
+  function matchesAuthor(list: string[]): boolean {
+    return list.some((name) => author.includes(name));
+  }
+
+  if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
+  else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
+  else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
+  else if (isRomance && matchesAuthor(AUTHOR_MAP.romance)) score += 8;
+
+  if (/cujo/.test(title)) score += 10;
+  if (/the long walk/.test(title)) score += 10;
+  if (/haunting of hill house/.test(title)) score += 10;
+  if (/the exorcist/.test(title)) score += 10;
+  if (/dracula/.test(title)) score += 10;
+  if (/frankenstein/.test(title)) score += 10;
+  if (/pet sematary/.test(title)) score += 10;
+  if (/the terror/.test(title)) score += 8;
+  if (/the turn of the screw/.test(title)) score += 8;
+
+  if (ratings >= 5000) score += 6;
+  else if (ratings >= 1000) score += 4;
+  else if (ratings >= 200) score += 2;
+
+  if (isHorror && /psychological|survival|haunted house/.test(text)) score += 3;
+  if (isThriller && /psychological|domestic|legal/.test(text)) score += 2;
 
   return score;
 }
