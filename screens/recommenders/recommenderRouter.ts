@@ -1290,7 +1290,25 @@ export async function getRecommendations(
     })
   );
 
-  const candidateDocs = filteredDocs;
+  let candidateDocs = filteredDocs;
+
+// HARD SAFETY: prevent Open Library collapse
+const openLibrarySurvivors = candidateDocs.filter(
+  (doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary"
+);
+
+if (openLibrarySurvivors.length === 0) {
+  const recoveredOL = enrichedDocs.filter(
+    (doc: any) =>
+      sourceForDoc(doc, "openLibrary") === "openLibrary" &&
+      looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan)
+  );
+
+  candidateDocs = dedupeDocs([
+    ...candidateDocs,
+    ...recoveredOL.slice(0, 12), // controlled backfill
+  ]);
+}
 
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
