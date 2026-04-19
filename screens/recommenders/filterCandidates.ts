@@ -381,6 +381,15 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   if (family === "historical" && !historicalPositive) diagnostics.passedChecks.push("soft_missing_historical_signal");
   if (family === "romance" && !romancePositive) diagnostics.passedChecks.push("soft_missing_romance_signal");
 
+  if (family === "horror" && !horrorAligned) {
+    diagnostics.rejectReasons.push("missing_horror_alignment_hard");
+  }
+
+  const softFailCount = diagnostics.passedChecks.filter((check) => check.startsWith("soft_")).length;
+  if (softFailCount >= 2 && !strongNarrative) {
+    diagnostics.rejectReasons.push("too_many_soft_failures");
+  }
+
   if (fictionPositive) diagnostics.passedChecks.push("fiction_positive");
   if (strongNarrative) diagnostics.passedChecks.push("strong_narrative");
   if (hasRealLength || hasDescription) diagnostics.passedChecks.push("minimum_shape");
@@ -408,11 +417,11 @@ function hasMinimumRatings(doc: any): boolean {
   const hasTitle = String(doc?.title || doc?.volumeInfo?.title || "").trim().length > 0;
 
   // Ratings are too sparse and inconsistent to be a hard gate.
-  // Treat "minimum quality shape" as bibliographic/narrative shape instead.
-  if (pageCount >= 120) return true;
-  if (pageCount >= 80 && hasLongDescription) return true;
-  if (hasTitle && hasLongDescription) return true;
-  if (hasTitle && pageCount >= 60 && hasUsableDescription) return true;
+  // Treat the gate as a narrative/description shape floor instead.
+  if (hasLongDescription) return true;
+  if (hasTitle && hasUsableDescription) return true;
+  if (hasTitle && pageCount >= 120) return true;
+  if (pageCount >= 80 && hasUsableDescription) return true;
 
   return false;
 }
@@ -478,7 +487,8 @@ function isOpenLibraryLikeDoc(doc: any): boolean {
 }
 
 function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): boolean {
-  const title = String(doc?.title || doc?.volumeInfo?.title || "").trim();
+  const rawTitle = String(doc?.title || doc?.volumeInfo?.title || "").trim();
+  const normalizedTitle = normalizeText(rawTitle);
   const author = normalizeText(
     doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
   );
@@ -492,7 +502,7 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
 
   const hasSubjectSignal = subjects.trim().length > 0;
   const hasDescriptionSignal = description.trim().length > 0;
-  const hasBasicBibliographicShape = Boolean(title) && Boolean(author && author !== "unknown");
+  const hasBasicBibliographicShape = Boolean(rawTitle) && Boolean(author && author !== "unknown");
   const hasNarrativeishShape =
     diagnostics.flags.fictionPositive ||
     diagnostics.flags.strongNarrative ||
@@ -500,7 +510,25 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
     hasSubjectSignal ||
     hasDescriptionSignal;
 
-  return hasBasicBibliographicShape && hasNarrativeishShape && (diagnostics.hasRealLength || hasSubjectSignal || firstPublishedYear > 0);
+  const canonicalClassic =
+    /\b(dracula|frankenstein|carrie|the terror|the turn of the screw|the haunting of hill house|haunted|the exorcist|pet sematary|the long walk|bag of bones|the picture of dorian gray|jekyll|hyde)\b/.test(
+      normalizedTitle
+    );
+
+  const oldBacklistBook =
+    firstPublishedYear > 1800 &&
+    firstPublishedYear <= new Date().getFullYear() &&
+    hasBasicBibliographicShape &&
+    (canonicalClassic || diagnostics.family === "horror");
+
+  return (
+    hasBasicBibliographicShape &&
+    (
+      canonicalClassic ||
+      oldBacklistBook ||
+      (hasNarrativeishShape && (diagnostics.hasRealLength || hasSubjectSignal || firstPublishedYear > 0))
+    )
+  );
 }
 
 
@@ -516,6 +544,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "insufficient_length_or_description",
     "weak_series_spam",
     "speculative_off_profile_reference",
+    "missing_horror_alignment_hard",
+    "too_many_soft_failures",
+    "below_shape_floor",
   ]);
 
   for (const doc of inputDocs) {
@@ -533,7 +564,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       "missing_historical_signal",
       "missing_romance_signal",
       "literature_without_fiction",
-      "insufficient_length_or_description",
     ]);
 
     const hasCriticalReject = diagnostics.rejectReasons.some(
@@ -568,7 +598,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       continue;
     }
 
-    if (!hasMinimumRatings(doc)) {
+    const hasNarrativeOrDescription = diagnostics.flags.strongNarrative || diagnostics.hasDescription;
+
+    if (!hasMinimumRatings(doc) || !hasNarrativeOrDescription) {
       if (passesRelaxedHorrorFloor(doc, diagnostics)) {
         diagnostics.passedChecks.push("passed_relaxed_horror_shape_gate");
       } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
