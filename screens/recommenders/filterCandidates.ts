@@ -449,6 +449,60 @@ function attachDiagnostics(doc: RecommendationDoc, diagnostics: FilterDiagnostic
   } as RecommendationDoc;
 }
 
+
+function isOpenLibraryLikeDoc(doc: any): boolean {
+  const source = String(
+    doc?.source ||
+    doc?.engine ||
+    doc?.rawDoc?.source ||
+    doc?.rawDoc?.engine ||
+    ""
+  ).toLowerCase();
+
+  if (source === "openlibrary" || source.includes("open library")) return true;
+
+  const hasOpenLibraryKeys =
+    Boolean(doc?.key) ||
+    Boolean(doc?.cover_i) ||
+    Boolean(doc?.edition_key) ||
+    Boolean(doc?.ia) ||
+    Boolean(doc?.lending_edition_s) ||
+    Boolean(doc?.rawDoc?.key) ||
+    Boolean(doc?.rawDoc?.cover_i) ||
+    Boolean(doc?.rawDoc?.edition_key);
+
+  const lacksGoogleBooksVolumeInfo = !doc?.volumeInfo && !doc?.rawDoc?.volumeInfo;
+
+  return hasOpenLibraryKeys && lacksGoogleBooksVolumeInfo;
+}
+
+function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): boolean {
+  const title = String(doc?.title || doc?.volumeInfo?.title || "").trim();
+  const author = normalizeText(
+    doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
+  );
+  const subjects = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const firstPublishedYear =
+    Number(doc?.first_publish_year) ||
+    Number(doc?.publishYear) ||
+    Number(doc?.firstPublishedYear) ||
+    0;
+
+  const hasSubjectSignal = subjects.trim().length > 0;
+  const hasDescriptionSignal = description.trim().length > 0;
+  const hasBasicBibliographicShape = Boolean(title) && Boolean(author && author !== "unknown");
+  const hasNarrativeishShape =
+    diagnostics.flags.fictionPositive ||
+    diagnostics.flags.strongNarrative ||
+    diagnostics.flags.horrorAligned ||
+    hasSubjectSignal ||
+    hasDescriptionSignal;
+
+  return hasBasicBibliographicShape && hasNarrativeishShape && (diagnostics.hasRealLength || hasSubjectSignal || firstPublishedYear > 0);
+}
+
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -466,8 +520,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
   for (const doc of inputDocs) {
     const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
 
-    const source = String((doc as any)?.source || (doc as any)?.engine || (doc as any)?.rawDoc?.source || "").toLowerCase();
-    const isWeakSource = source === "openlibrary" || source.includes("open library");
+    const isOpenLibraryLike = isOpenLibraryLikeDoc(doc);
+    const isWeakSource = isOpenLibraryLike;
     const nonCriticalRejectReasons = new Set([
       "missing_fiction_signal",
       "missing_narrative_signal",
@@ -477,9 +531,13 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       "missing_thriller_signal",
       "missing_historical_signal",
       "missing_romance_signal",
+      "literature_without_fiction",
+      "insufficient_length_or_description",
     ]);
 
-    const hasCriticalReject = diagnostics.rejectReasons.some((reason) => criticalRejectReasons.has(reason));
+    const hasCriticalReject = diagnostics.rejectReasons.some(
+      (reason) => criticalRejectReasons.has(reason) && !(isOpenLibraryLike && nonCriticalRejectReasons.has(reason))
+    );
     const onlyNonCriticalRejects =
       diagnostics.rejectReasons.length > 0 &&
       diagnostics.rejectReasons.every((reason) => nonCriticalRejectReasons.has(reason));
@@ -491,6 +549,11 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (isWeakSource && onlyNonCriticalRejects) {
       diagnostics.passedChecks.push("weak_source_noncritical_reject_bypass");
+      diagnostics.rejectReasons = [];
+    }
+
+    if (isOpenLibraryLike && !hasCriticalReject) {
+      diagnostics.passedChecks.push("openlibrary_noncritical_reject_bypass");
       diagnostics.rejectReasons = [];
     }
 
@@ -507,6 +570,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (!hasMinimumRatings(doc)) {
       if (passesRelaxedHorrorFloor(doc, diagnostics)) {
         diagnostics.passedChecks.push("passed_relaxed_horror_ratings_gate");
+      } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
+        diagnostics.passedChecks.push("openlibrary_ratings_bypass");
       } else {
         diagnostics.rejectReasons.push("below_ratings_floor");
         diagnostics.kept = false;
