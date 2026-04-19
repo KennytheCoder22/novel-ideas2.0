@@ -511,7 +511,7 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
     hasDescriptionSignal;
 
   const canonicalClassic =
-    /\b(dracula|frankenstein|carrie|the terror|the turn of the screw|the haunting of hill house|haunted|the exorcist|pet sematary|the long walk|bag of bones|the picture of dorian gray|jekyll|hyde)\b/.test(
+    /\b(dracula|frankenstein|carrie|the terror|the turn of the screw|the haunting of hill house|the exorcist|pet sematary|the long walk|bag of bones|the picture of dorian gray|jekyll|hyde|cujo|hell house|house of leaves)\b/.test(
       normalizedTitle
     );
 
@@ -519,14 +519,14 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
     firstPublishedYear > 1800 &&
     firstPublishedYear <= new Date().getFullYear() &&
     hasBasicBibliographicShape &&
-    (canonicalClassic || diagnostics.family === "horror");
+    canonicalClassic;
 
   return (
     hasBasicBibliographicShape &&
     (
       canonicalClassic ||
       oldBacklistBook ||
-      (hasNarrativeishShape && (diagnostics.hasRealLength || hasSubjectSignal || firstPublishedYear > 0))
+      (hasNarrativeishShape && diagnostics.flags.horrorAligned && (diagnostics.hasRealLength || hasSubjectSignal || firstPublishedYear > 0))
     )
   );
 }
@@ -543,6 +543,7 @@ function passesOpenLibraryHorrorRecovery(doc: any, diagnostics: FilterDiagnostic
   );
   const subjects = collectCategoryText(doc);
   const description = collectDescriptionText(doc);
+  const combined = [normalizedTitle, subjects, description, author].filter(Boolean).join(" ");
   const firstPublishedYear =
     Number(doc?.first_publish_year) ||
     Number(doc?.publishYear) ||
@@ -550,20 +551,36 @@ function passesOpenLibraryHorrorRecovery(doc: any, diagnostics: FilterDiagnostic
     0;
 
   const hasBasicBibliographicShape = Boolean(rawTitle) && Boolean(author && author !== "unknown");
-  const hasAnySignal =
-    diagnostics.flags.fictionPositive ||
-    diagnostics.flags.strongNarrative ||
-    diagnostics.flags.horrorAligned ||
+
+  const canonicalClassic =
+    /\b(dracula|frankenstein|carrie|the terror|the turn of the screw|the haunting of hill house|the exorcist|pet sematary|the long walk|bag of bones|cujo|house of leaves|hell house)\b/.test(
+      normalizedTitle
+    );
+
+  const horrorSubjectSignal =
+    /\b(horror|ghost|haunted|haunting|supernatural|occult|monster|creature|terror|dread|gothic|vampire|werewolf|zombie|devil|exorcist|possession|dark fantasy)\b/.test(
+      combined
+    );
+
+  const thrillerishSignal =
+    /\b(psychological|thriller|suspense|mystery|survival)\b/.test(combined);
+
+  const hasUsefulMetadata =
     subjects.trim().length > 0 ||
     description.trim().length > 0 ||
     firstPublishedYear > 0;
 
-  const canonicalClassic =
-    /\b(dracula|frankenstein|carrie|the terror|the turn of the screw|the haunting of hill house|haunted|the exorcist|pet sematary|the long walk|bag of bones|the picture of dorian gray|jekyll|hyde|cujo)\b/.test(
-      normalizedTitle
-    );
+  if (!hasBasicBibliographicShape) return false;
 
-  return hasBasicBibliographicShape && (canonicalClassic || hasAnySignal);
+  if (canonicalClassic) return true;
+
+  // For sparse Open Library records, only recover when there is actual horror/gothic metadata.
+  if (horrorSubjectSignal && hasUsefulMetadata) return true;
+
+  // Allow borderline thriller-survival recovery only when the filter already saw horror alignment.
+  if (diagnostics.flags.horrorAligned && thrillerishSignal && hasUsefulMetadata) return true;
+
+  return false;
 }
 
 
