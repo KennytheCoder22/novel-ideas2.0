@@ -11,7 +11,7 @@ import { getGoogleBooksRecommendations } from "./googleBooks/googleBooksRecommen
 import { getOpenLibraryRecommendations } from "./openLibrary/openLibraryRecommender";
 import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
 import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
-import { normalizeCandidate, normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
+import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
@@ -674,26 +674,13 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const negativeTerms = rungNegativeTerms(family);
 
   function isHorrorQuery(q: string): boolean {
-    return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror|dread|eerie|gothic)/i.test(q);
+    return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror)/i.test(q);
   }
-
-  const horrorExtras = family === "horror"
-    ? dedupeNonEmptyQueries([
-        /psychological/.test(lowered) ? "haunted psychological horror novel" : "",
-        /survival/.test(lowered) ? "survival horror thriller novel" : "",
-        /haunted/.test(lowered) ? "supernatural haunted house horror novel" : "",
-        "gothic horror novel",
-      ])
-    : [];
 
   const lanes = dedupeNonEmptyQueries([
     base,
     `${base} fiction`,
     `${base} ${negativeTerms}`,
-    family === "horror" ? horrorExtras[0] : "",
-    family === "horror" ? horrorExtras[1] : "",
-    family === "horror" ? horrorExtras[2] : "",
-    family === "horror" ? horrorExtras[3] : "",
     family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
     family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
     family === "thriller" && /psychological/.test(lowered) ? "psychological suspense novel" : "",
@@ -710,13 +697,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     .map((query) => {
       const q = query.toLowerCase();
       let laneKind = "core";
-
-      if (family === "horror" && q !== lowered) {
-        if (/gothic/.test(q)) laneKind = "gothic-alt";
-        else if (/supernatural|haunted/.test(q)) laneKind = "tone-alt";
-        else if (/thriller|survival/.test(q)) laneKind = "scenario-alt";
-        else laneKind = "bucket-alt";
-      } else if (q.includes(negativeTerms.split(" ")[0]?.replace(/^-/, "") || "__nope__") || q.includes("-guide") || q.includes("-reference")) {
+      if (q.includes(negativeTerms.split(" ")[0]?.replace(/^-/, "") || "__nope__") || q.includes("-guide") || q.includes("-reference")) {
         laneKind = "strict-filtered";
       } else if (/literary horror/.test(q)) {
         laneKind = "literary-alt";
@@ -1293,7 +1274,7 @@ export async function getRecommendations(
   // Strict 20Q router:
   // no bestseller injection, no commercial shelf shaping, and no off-profile anchor lane.
   // Filter only the candidates retrieved from 20Q-derived rungs.
-  const { candidates: filteredDocs, diagnostics: filterDiagnostics } = filterCandidates(enrichedDocs, bucketPlan);
+  const filteredDocs = filterCandidates(enrichedDocs, bucketPlan);
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
 
@@ -1325,20 +1306,9 @@ if (openLibrarySurvivors.length === 0) {
 
   candidateDocs = dedupeDocs([
     ...candidateDocs,
-    ...recoveredOL.slice(0, 12),
+    ...recoveredOL.slice(0, 12), // controlled backfill
   ]);
 }
-
-console.log("[NovelIdeas] FILTER DIAGNOSTICS", {
-  raw: enrichedDocs.length,
-  filtered: filteredDocs.length,
-  rejects: filterDiagnostics?.rejects,
-  candidateDocs: candidateDocs.length,
-  sources: {
-    googleBooks: candidateDocs.filter((d: any) => sourceForDoc(d, "googleBooks") === "googleBooks").length,
-    openLibrary: candidateDocs.filter((d: any) => sourceForDoc(d, "openLibrary") === "openLibrary").length,
-  },
-});
 
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
@@ -1360,10 +1330,7 @@ console.log("[NovelIdeas] FILTER DIAGNOSTICS", {
   // IMPORTANT: Open Library should normalize from enriched docs too, so Hardcover failure markers
   // survive into candidate.rawDoc and finalRecommender can treat 429s as soft/non-blocking.
   const googleCandidates = normalizeCandidates(googleDocsEnriched, "googleBooks");
-  let openLibraryCandidates = normalizeCandidates(openLibraryDocsEnriched, "openLibrary");
-  if (openLibraryCandidates.length === 0 && openLibraryDocsEnriched.length > 0) {
-    openLibraryCandidates = buildRecoveredOpenLibraryCandidates(openLibraryDocsEnriched, bucketPlan);
-  }
+  const openLibraryCandidates = normalizeCandidates(openLibraryDocsEnriched, "openLibrary");
   const kitsuCandidatesRaw = normalizeCandidates(kitsuDocsEnriched, "kitsu");
   const gcdCandidates = normalizeCandidates(gcdDocsEnriched, "gcd");
 
@@ -1397,16 +1364,6 @@ function buildRungDiagnostics(candidates: any[]) {
     byRungSource,
     total: candidates.length,
   };
-}
-
-
-function buildRecoveredOpenLibraryCandidates(docs: RecommendationDoc[], bucketPlan: any) {
-  return dedupeDocs(
-    (Array.isArray(docs) ? docs : [])
-      .filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary")
-      .filter((doc: any) => looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan))
-      .slice(0, 12)
-  ).map((doc: any) => normalizeCandidate(doc, "openLibrary"));
 }
 
 const normalizedCandidates = [
