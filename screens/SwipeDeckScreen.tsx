@@ -796,6 +796,9 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
   const [lastRawPool, setLastRawPool] = useState<any[]>([]);
   const [lastRungStats, setLastRungStats] = useState<any | null>(null);
+  const [lastFilterAudit, setLastFilterAudit] = useState<any[]>([]);
+  const [lastFilterAuditSummary, setLastFilterAuditSummary] = useState<any | null>(null);
+  const [lastFinalRecommenderDebug, setLastFinalRecommenderDebug] = useState<any | null>(null);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -1058,6 +1061,9 @@ export default function SwipeDeckScreen(props: Props) {
     setLastCandidatePool([]);
     setLastRawPool([]);
     setLastRungStats(null);
+    setLastFilterAudit([]);
+    setLastFilterAuditSummary(null);
+    setLastFinalRecommenderDebug(null);
     setFeedback([]);
     setSessionMoodProfile(null);
     setActiveTasteVector(null);
@@ -1335,6 +1341,9 @@ function handleLeft() {
       setLastCandidatePool(Array.isArray((result as any)?.debugCandidatePool) ? (result as any).debugCandidatePool : []);
       setLastRawPool(Array.isArray((result as any)?.debugRawPool) ? (result as any).debugRawPool : []);
       setLastRungStats((result as any)?.debugRungStats || null);
+      setLastFilterAudit(Array.isArray((result as any)?.debugFilterAudit) ? (result as any).debugFilterAudit : []);
+      setLastFilterAuditSummary((result as any)?.debugFilterAuditSummary || null);
+      setLastFinalRecommenderDebug((result as any)?.debugFinalRecommender || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
@@ -1459,6 +1468,9 @@ function handleLeft() {
     setLastCandidatePool([]);
     setLastRawPool([]);
     setLastRungStats(null);
+    setLastFilterAudit([]);
+    setLastFilterAuditSummary(null);
+    setLastFinalRecommenderDebug(null);
     setSessionMoodProfile(null);
     setPersonalityProfileState(fresh);
     setActiveTasteVector(null);
@@ -1603,6 +1615,102 @@ function handleLeft() {
     }).join("\n");
   }
 
+
+  function formatPoolDetailRows(rows: any[], label: string) {
+    if (!Array.isArray(rows) || rows.length === 0) return "(none)";
+
+    return rows.slice(0, 120).map((row, index) => {
+      const title = row?.title || "Untitled";
+      const author = row?.author || "Unknown author";
+      const bits = [
+        compactFieldBlock("source", row?.source),
+        compactFieldBlock("queryFamily", inferQueryFamily(row?.queryText)),
+        compactFieldBlock("queryText", row?.queryText),
+        compactFieldBlock("queryRung", row?.queryRung),
+        compactFieldBlock("laneKind", row?.laneKind),
+        compactFieldBlock("score", typeof row?.score === "number" ? row.score.toFixed(3) : row?.score),
+        compactFieldBlock("filterKept", row?.filterKept),
+        compactFieldBlock("filterFamily", row?.filterFamily),
+        compactFieldBlock("rejectReasons", Array.isArray(row?.filterRejectReasons) && row.filterRejectReasons.length ? row.filterRejectReasons.join(", ") : (Array.isArray(row?.rejectReasons) && row.rejectReasons.length ? row.rejectReasons.join(", ") : "")),
+        compactFieldBlock("passedChecks", Array.isArray(row?.filterPassedChecks) && row.filterPassedChecks.length ? row.filterPassedChecks.join(", ") : (Array.isArray(row?.passedChecks) && row.passedChecks.length ? row.passedChecks.join(", ") : "")),
+      ].filter(Boolean);
+
+      return [`${index + 1}. ${title} — ${author}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
+    }).join("\n");
+  }
+
+  function formatFilterAuditSummary(summary: any) {
+    if (!summary || typeof summary !== "object") return "(none)";
+    const reasons = summary?.reasons && typeof summary.reasons === "object"
+      ? Object.entries(summary.reasons)
+          .sort((a: any, b: any) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])))
+          .map(([reason, count]) => `${reason}:${count}`)
+          .join(", ")
+      : "(none)";
+
+    return [
+      `kept:${summary?.kept ?? 0}`,
+      `rejected:${summary?.rejected ?? 0}`,
+      `reasons:${reasons || "(none)"}`,
+    ].join("\n");
+  }
+
+  function formatFilterAuditRows(rows: any[]) {
+    if (!Array.isArray(rows) || rows.length === 0) return "(none)";
+
+    return rows.slice(0, 160).map((row, index) => {
+      const bits = [
+        compactFieldBlock("source", row?.source),
+        compactFieldBlock("queryText", row?.queryText),
+        compactFieldBlock("queryRung", row?.queryRung),
+        compactFieldBlock("laneKind", row?.laneKind),
+        compactFieldBlock("kept", row?.kept),
+        compactFieldBlock("filterFamily", row?.filterFamily),
+        compactFieldBlock("wantsHorrorTone", row?.wantsHorrorTone),
+        compactFieldBlock("pageCount", row?.pageCount),
+        compactFieldBlock("ratingsCount", row?.ratingsCount),
+        compactFieldBlock("rejectReasons", Array.isArray(row?.rejectReasons) && row.rejectReasons.length ? row.rejectReasons.join(", ") : ""),
+        compactFieldBlock("passedChecks", Array.isArray(row?.passedChecks) && row.passedChecks.length ? row.passedChecks.join(", ") : ""),
+        compactFieldBlock("flags", row?.flags ? JSON.stringify(row.flags) : ""),
+      ].filter(Boolean);
+
+      return [`${index + 1}. ${row?.title || "Untitled"} — ${row?.author || "Unknown author"}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
+    }).join("\n");
+  }
+
+  function formatFinalRecommenderDebug(debug: any) {
+    if (!debug || typeof debug !== "object") return "(none)";
+    const rejectionCounts = debug?.rejectionCounts && typeof debug.rejectionCounts === "object"
+      ? Object.entries(debug.rejectionCounts)
+          .sort((a: any, b: any) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])))
+          .map(([reason, count]) => `${reason}:${count}`)
+          .join(", ")
+      : "(none)";
+
+    return [
+      `inputCount:${debug?.inputCount ?? 0}`,
+      `dedupedCount:${debug?.dedupedCount ?? 0}`,
+      `acceptedCount:${debug?.acceptedCount ?? 0}`,
+      `rejectedCount:${debug?.rejectedCount ?? 0}`,
+      `rejectionCounts:${rejectionCounts || "(none)"}`,
+    ].join("\n");
+  }
+
+  function formatFinalRecommenderRejections(debug: any) {
+    const rows = Array.isArray(debug?.rejected) ? debug.rejected : [];
+    if (!rows.length) return "(none)";
+
+    return rows.slice(0, 120).map((row: any, index: number) => {
+      const bits = [
+        compactFieldBlock("source", row?.source),
+        compactFieldBlock("reason", row?.reason),
+        compactFieldBlock("detail", row?.detail),
+      ].filter(Boolean);
+
+      return [`${index + 1}. ${row?.title || "Untitled"} — ${row?.author || "Unknown author"}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
+    }).join("\n");
+  }
+
   async function handleCopyDiagnostics() {
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
@@ -1707,11 +1815,29 @@ function handleLeft() {
       `lanes:${formatLaneBreakdown(rawPoolRows)}`,
       `rungs:${formatRungBreakdown(rawPoolRows)}`,
       "",
+      "RAW POOL DETAIL",
+      formatPoolDetailRows(rawPoolRows, "raw"),
+      "",
       "CANDIDATE POOL SUMMARY",
       `count:${candidatePoolRows.length}`,
       `queryFamilies:${formatQueryFamilyBreakdown(candidatePoolRows)}`,
       `lanes:${formatLaneBreakdown(candidatePoolRows)}`,
       `rungs:${formatRungBreakdown(candidatePoolRows)}`,
+      "",
+      "CANDIDATE POOL DETAIL",
+      formatPoolDetailRows(candidatePoolRows, "candidate"),
+      "",
+      "FILTER AUDIT SUMMARY",
+      formatFilterAuditSummary(lastFilterAuditSummary),
+      "",
+      "FILTER AUDIT DETAIL",
+      formatFilterAuditRows(lastFilterAudit),
+      "",
+      "FINAL RECOMMENDER SUMMARY",
+      formatFinalRecommenderDebug(lastFinalRecommenderDebug),
+      "",
+      "FINAL RECOMMENDER REJECTIONS",
+      formatFinalRecommenderRejections(lastFinalRecommenderDebug),
       "",
       "ACTIVE TUNER OVERRIDE",
       currentLaneOverride && Object.keys(currentLaneOverride).length > 0
@@ -1744,6 +1870,9 @@ function handleLeft() {
       "ACTIVE TASTE",
       formatTasteVectorPreview(activeTasteVector),
       `personality:${activeTasteWeights?.personalityWeight?.toFixed(2) ?? "0.00"} • mood:${activeTasteWeights?.moodWeight?.toFixed(2) ?? "0.00"}`,
+      "",
+      "RUNG STATS",
+      lastRungStats ? JSON.stringify(lastRungStats, null, 2) : "(none)",
       "",
       "RECOMMENDATION MEMORY",
       (() => {

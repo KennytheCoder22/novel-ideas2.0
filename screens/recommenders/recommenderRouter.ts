@@ -12,7 +12,7 @@ import { getOpenLibraryRecommendations } from "./openLibrary/openLibraryRecommen
 import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
 import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
-import { finalRecommenderForDeck } from "./finalRecommender";
+import { finalRecommenderForDeck, getLastFinalRecommenderDebug } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
@@ -1558,5 +1558,6 @@ const normalizedCandidates = [
     debugRungStats: buildRungDiagnostics(normalizedCandidates),
     debugFilterAudit: filterAuditRows,
     debugFilterAuditSummary: filterAuditSummary,
+    debugFinalRecommender: getLastFinalRecommenderDebug(),
   } as RecommendationResult;
 }

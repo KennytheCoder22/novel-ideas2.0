@@ -14,7 +14,27 @@ export type CommercialSignals = {
 export type RecommendationDoc = { key?: string; id?: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number | string; subject?: string[]; subtitle?: string; description?: string; edition_count?: number; language?: string[]; ebook_access?: string; commercialSignals?: CommercialSignals; };
 export type RecommendationItem = { kind: "open_library"; doc: RecommendationDoc; };
 export type RecommendationResult = {
-  debugRungStats?: RungDiagnostics; engineId: EngineId; engineLabel: string; deckKey: DeckKey; domainMode?: DomainMode; builtFromQuery: string; items: RecommendationItem[]; };
+  debugRungStats?: RungDiagnostics;
+  debugSourceStats?: Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number; }>;
+  debugCandidatePool?: any[];
+  debugRawPool?: any[];
+  debugFilterAudit?: any[];
+  debugFilterAuditSummary?: { kept: number; rejected: number; reasons: Record<string, number>; };
+  debugFinalRecommender?: {
+    inputCount: number;
+    dedupedCount: number;
+    acceptedCount: number;
+    rejectedCount: number;
+    rejectionCounts: Record<string, number>;
+    rejected: Array<{ id: string; title: string; author: string; source: EngineId; reason: string; detail?: string; }>;
+  };
+  engineId: EngineId;
+  engineLabel: string;
+  deckKey: DeckKey;
+  domainMode?: DomainMode;
+  builtFromQuery: string;
+  items: RecommendationItem[];
+};
 export type RecommenderProfileOverride = Record<string, number | undefined>;
 export type StructuredFetchRung = { rung: number; family?: string; primary: string | null; secondary: string | null; themes: string[]; audience: string; query: string; };
 export type BucketPlan = { queries?: string[]; rungs?: StructuredFetchRung[]; bucketId?: string; domainMode?: DomainMode; preview?: string; strategy?: string; signals?: { genres?: string[]; tones?: string[]; textures?: string[]; scenarios?: string[]; }; };
