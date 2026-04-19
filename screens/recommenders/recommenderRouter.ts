@@ -1293,7 +1293,7 @@ export async function getRecommendations(
   // Strict 20Q router:
   // no bestseller injection, no commercial shelf shaping, and no off-profile anchor lane.
   // Filter only the candidates retrieved from 20Q-derived rungs.
-  const filteredDocs = filterCandidates(enrichedDocs, bucketPlan);
+  const { candidates: filteredDocs, diagnostics: filterDiagnostics } = filterCandidates(enrichedDocs, bucketPlan);
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
 
@@ -1332,6 +1332,7 @@ if (openLibrarySurvivors.length === 0) {
 console.log("[NovelIdeas] FILTER DIAGNOSTICS", {
   raw: enrichedDocs.length,
   filtered: filteredDocs.length,
+  rejects: filterDiagnostics?.rejects,
   candidateDocs: candidateDocs.length,
   sources: {
     googleBooks: candidateDocs.filter((d: any) => sourceForDoc(d, "googleBooks") === "googleBooks").length,
