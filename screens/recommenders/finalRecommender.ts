@@ -240,7 +240,7 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bencyclopedia\b/,
     /\bessays?\b/,
     /\babout the author\b/,
-    /\bpublishers?\s+weekly\b/,
+    /\bpublishers?\s+weekly\b/,\n    /\bbraille books?\b/,\n    /\bcumulated fiction index\b/,\n    /\btechnique of the mystery story\b/,\n    /\breaders?\s+advisory\b/,\n    /\bguide to genre fiction\b/,\n    /\bmammoth book\b/,
     /\bjournal\b/,
     /\bmagazine\b/,
     /\bnewsweek\b/,
@@ -300,7 +300,7 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bguide to\b/,
     /\bhow to\b/,
     /\blearn how to\b/,
-    /\bwritten for students\b/,
+    /\bwritten for students\b/,\n    /\blibrary of congress\b/,\n    /\bnational library service\b/,\n    /\breaders?\s+advisory\b/,\n    /\bgenre fiction\b/,\n    /\bfaith-based domestic suspense\b/,
     /\btextbook\b/,
     /\bworkbook\b/,
     /\bstudy guide\b/
@@ -639,6 +639,7 @@ function penaltyScore(c: Candidate): number {
   let score = 0;
 
   if (/book\s*1\b|book\s*one\b/.test(text)) score -= 2;
+  if (/book\s*\d+\b/.test(text) && !((c.ratingCount || 0) > 100 || metadataTrust(c) >= 4)) score -= 8;
   if (/books?\s*\d+\s*-\s*\d+\b|boxed set|omnibus|collection|anthology/.test(text)) score -= 5;
   if (/guide|handbook|encyclopedia|studies|analysis|criticism|review|digest|journal|magazine/.test(text)) {
     score -= 6;
@@ -840,7 +841,7 @@ export function finalRecommenderForDeck(
     return hasStrongSignal || hasBibliographicShape;
   });
 
-  const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length > 0 ? relaxedFallback : deduped.slice(0, 20);
+  const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length >= 5 ? relaxedFallback : qualityPassed.slice(0, 10);
 
   buildDebug(input.length, deduped.length, base, rejected);
 
@@ -869,12 +870,10 @@ export function finalRecommenderForDeck(
   const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
-  const MIN_OPEN_LIBRARY = 3;
 
   const openLibraryPool = ordered.filter((entry) => isOpenLibraryCandidate(entry.candidate));
   const nonOpenLibraryPool = ordered.filter((entry) => !isOpenLibraryCandidate(entry.candidate));
 
-  pickFromPool(openLibraryPool, selected, authorCounts, Math.min(MIN_OPEN_LIBRARY, MAX_RESULTS));
   pickFromPool(nonOpenLibraryPool, selected, authorCounts, MAX_RESULTS);
   pickFromPool(openLibraryPool, selected, authorCounts, MAX_RESULTS);
   pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);

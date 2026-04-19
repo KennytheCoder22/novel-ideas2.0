@@ -150,9 +150,11 @@ const BASE_GENRE_REWRITES: Record<string, string[]> = {
     "psychological horror thriller novel"
   ],
 thriller: [
-  "psychological thriller novel",
-  "domestic thriller novel",
-  "mystery thriller novel"
+  "missing person thriller novel",
+  "serial killer investigation thriller novel",
+  "crime conspiracy thriller novel",
+  "domestic secrets suspense novel",
+  "obsession psychological thriller novel"
 ],
 mystery: [
   "mystery thriller novel",
@@ -445,7 +447,8 @@ function classifyRungRole(query: string): RungRole {
 
   if (
     /\bpsychological horror novel\b/.test(q) ||
-    /\bpsychological thriller novel\b/.test(q) ||
+    /\bmissing person thriller novel\b/.test(q) ||
+    /\bobsession psychological thriller novel\b/.test(q) ||
     /\bdark fantasy novel\b/.test(q) ||
     /\bscience fiction novel\b/.test(q) ||
     /\bmystery thriller novel\b/.test(q)
@@ -455,7 +458,7 @@ function classifyRungRole(query: string): RungRole {
 
   if (
     /\bsurvival horror\b/.test(q) ||
-    /\bdomestic thriller\b/.test(q) ||
+    /\bdomestic secrets suspense\b/.test(q) ||
     /\bpsychological mystery\b/.test(q) ||
     /\bdystopian science fiction\b/.test(q) ||
     /\bgothic fantasy\b/.test(q)
@@ -466,7 +469,8 @@ function classifyRungRole(query: string): RungRole {
   if (
     /\bhaunted psychological horror\b/.test(q) ||
     /\bpsychological horror thriller\b/.test(q) ||
-    /\bcrime thriller\b/.test(q) ||
+    /\bcrime conspiracy thriller\b/.test(q) ||
+    /\bserial killer investigation thriller\b/.test(q) ||
     /\bscience fiction thriller\b/.test(q) ||
     /\bmagic fantasy\b/.test(q)
   ) {

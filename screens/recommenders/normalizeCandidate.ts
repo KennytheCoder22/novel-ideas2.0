@@ -283,8 +283,8 @@ const descriptionLooksAcademic = hardRejectDescriptionPatterns.some((rx) => rx.t
   const hasNarrativeSignal =
     /\b(novel|follows|tells the story|journey|survival|investigation)\b/.test(combined);
 
-  // Allow strong fiction signal alone OR narrative signal
-return hasFictionSignal || hasNarrativeSignal;
+  // Allow strong fiction signal alone OR narrative signal with explicit book-native evidence
+return hasFictionSignal || (hasNarrativeSignal && /\b(novel|fiction)\b/.test(combined));
 }
 
 function isClearlyNotABookCandidate(candidate: Candidate): boolean {
@@ -317,7 +317,7 @@ if (candidate.pageCount > 0 && candidate.pageCount < 30) return true;
     /\btimes literary supplement\b/,
     /\ba\.l\.a\. booklist\b/,
     /\bbook dealers\b/,
-    /\bpublishers? weekly\b/,
+    /\bpublishers? weekly\b/,\n    /\bbraille books?\b/,\n    /\bcumulated fiction index\b/,\n    /\btechnique of the mystery story\b/,\n    /\breaders?\s+advisory\b/,\n    /\bguide to genre fiction\b/,\n    /\bmammoth book\b/,
   ];
 
   const hardRejectPublisherPatterns = [

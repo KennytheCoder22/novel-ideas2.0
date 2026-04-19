@@ -88,7 +88,7 @@ function familyCompatibleHypotheses(hypotheses: HypothesisLike[], family: Family
 
 function guaranteedFamilyFallbacks(family: Family): string[] {
   if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
-  if (family === "thriller_family") return ["psychological thriller novel", "domestic thriller novel", "mystery thriller novel"];
+  if (family === "thriller_family") return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "domestic secrets suspense novel", "obsession psychological thriller novel"];
   if (family === "historical_family") return ["historical fiction novel"];
   if (family === "romance_family") return [
     "second chance romance novel",
