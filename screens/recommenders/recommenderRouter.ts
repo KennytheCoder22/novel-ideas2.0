@@ -674,7 +674,6 @@ function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string
     "-catalog", "-magazine", "-journal", "-readers", "-reader",
   ];
 
-  if (family === "speculative") base.unshift("-science-fiction");
   if (family === "thriller") base.unshift("-true-crime", "-cozy", "-humorous");
 
   return base.join(" ");
@@ -682,7 +681,11 @@ function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string
 
 function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLane[] {
   const family = inferRouterFamily(bucketPlan);
-  const base = String(rung?.query || "").trim();
+  let base = String(rung?.query || "").trim();
+  base = base
+    .replace(/\b(fantasy|horror|thriller|mystery|science fiction)\s+\1\b/gi, "$1")
+    .replace(/\s+/g, " ")
+    .trim();
   const lowered = base.toLowerCase();
   const negativeTerms = rungNegativeTerms(family);
 
@@ -1145,7 +1148,8 @@ export async function getRecommendations(
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
 
-  const rungs = asArray(
+  const routerFamily = inferRouterFamily(bucketPlan);
+  let rungs = asArray(
     build20QRungs({
       ageBand:
         input.deckKey === "adult"
@@ -1156,20 +1160,21 @@ export async function getRecommendations(
           ? "pre-teen"
           : "kids",
       family:
-        inferRouterFamily(bucketPlan) === "horror"
+        routerFamily === "horror"
           ? "speculative_family"
-          : inferRouterFamily(bucketPlan) === "thriller"
+          : routerFamily === "thriller"
           ? "thriller_family"
-          : inferRouterFamily(bucketPlan) === "speculative"
+          : routerFamily === "speculative"
           ? "speculative_family"
-          : inferRouterFamily(bucketPlan) === "romance"
+          : routerFamily === "romance"
           ? "romance_family"
-          : inferRouterFamily(bucketPlan) === "historical"
+          : routerFamily === "historical"
           ? "historical_family"
           : "general_family",
       baseGenre:
-        bucketPlan?.preview ||
+        bucketPlan?.signals?.genres?.[0] ||
         bucketPlan?.queries?.[0] ||
+        bucketPlan?.preview ||
         "fiction",
       subgenres: bucketPlan?.queries?.length
         ? bucketPlan.queries
@@ -1177,7 +1182,17 @@ export async function getRecommendations(
       tones: bucketPlan?.signals?.tones || [],
       themes: bucketPlan?.signals?.scenarios || [],
     })
-  ).map((r: any) => ({ ...r, laneKind: "precision" }));
+  );
+
+  if (!rungs.length && routerFamily === "speculative") {
+    rungs = [
+      { rung: 0, query: "epic fantasy novel" },
+      { rung: 1, query: "dark fantasy novel" },
+      { rung: 2, query: "magic fantasy novel" },
+    ];
+  }
+
+  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision" }));
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
