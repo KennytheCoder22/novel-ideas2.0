@@ -510,8 +510,14 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
     hasSubjectSignal ||
     hasDescriptionSignal;
 
+  const gothicOrHorrorSignal =
+    diagnostics.flags.horrorAligned ||
+    /\b(gothic|ghost|haunted|haunting|supernatural|occult|monster|creature|terror|dread|vampire|werewolf|zombie|devil|exorcist|possession|dark fantasy)\b/.test(
+      subjects + " " + description
+    );
+
   const canonicalClassic =
-    /\b(dracula|frankenstein|carrie|the terror|the turn of the screw|the haunting of hill house|the exorcist|pet sematary|the long walk|bag of bones|the picture of dorian gray|jekyll|hyde|cujo|hell house|house of leaves)\b/.test(
+    /\b(dracula|frankenstein|carrie|the terror|the turn of the screw|the haunting of hill house|the exorcist|pet sematary|the long walk|bag of bones|cujo|hell house|house of leaves)\b/.test(
       normalizedTitle
     );
 
@@ -526,7 +532,11 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
     (
       canonicalClassic ||
       oldBacklistBook ||
-      (hasNarrativeishShape && diagnostics.flags.horrorAligned && (diagnostics.hasRealLength || hasSubjectSignal || firstPublishedYear > 0))
+      (
+        hasNarrativeishShape &&
+        gothicOrHorrorSignal &&
+        (diagnostics.hasRealLength || hasSubjectSignal || hasDescriptionSignal || firstPublishedYear > 0)
+      )
     )
   );
 }
