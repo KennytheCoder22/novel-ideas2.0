@@ -466,10 +466,31 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
   for (const doc of inputDocs) {
     const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
 
+    const source = String((doc as any)?.source || (doc as any)?.engine || (doc as any)?.rawDoc?.source || "").toLowerCase();
+    const isWeakSource = source === "openlibrary" || source.includes("open library");
+    const nonCriticalRejectReasons = new Set([
+      "missing_fiction_signal",
+      "missing_narrative_signal",
+      "missing_horror_alignment",
+      "generic_title",
+      "missing_speculative_signal",
+      "missing_thriller_signal",
+      "missing_historical_signal",
+      "missing_romance_signal",
+    ]);
+
     const hasCriticalReject = diagnostics.rejectReasons.some((reason) => criticalRejectReasons.has(reason));
+    const onlyNonCriticalRejects =
+      diagnostics.rejectReasons.length > 0 &&
+      diagnostics.rejectReasons.every((reason) => nonCriticalRejectReasons.has(reason));
 
     if (!hasCriticalReject && diagnostics.rejectReasons.length > 2) {
       diagnostics.passedChecks.push("aggressive_reject_reset");
+      diagnostics.rejectReasons = [];
+    }
+
+    if (isWeakSource && onlyNonCriticalRejects) {
+      diagnostics.passedChecks.push("weak_source_noncritical_reject_bypass");
       diagnostics.rejectReasons = [];
     }
 
