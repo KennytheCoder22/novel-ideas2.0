@@ -123,6 +123,147 @@ type Props = {
   };
 };
 
+type DebugGenreKey =
+  | "fantasy"
+  | "romance"
+  | "horror"
+  | "thriller"
+  | "mystery"
+  | "science_fiction"
+  | "historical";
+
+type DebugGenrePreset = {
+  label: string;
+  rightSwipes: number;
+  leftSwipes: number;
+  downSwipes: number;
+  positiveTags: string[];
+  negativeTags?: string[];
+  keywords: string[];
+};
+
+const DEBUG_GENRE_PRESETS: Record<DebugGenreKey, DebugGenrePreset> = {
+  fantasy: {
+    label: "Fantasy",
+    rightSwipes: 8,
+    leftSwipes: 0,
+    downSwipes: 4,
+    positiveTags: [
+      "fantasy",
+      "dark fantasy",
+      "adventure",
+      "epic",
+      "atmospheric",
+      "mythology",
+      "magic",
+      "authority",
+    ],
+    negativeTags: ["realistic"],
+    keywords: ["fantasy", "magic", "myth", "dragon", "epic", "adventure", "quest"],
+  },
+  romance: {
+    label: "Romance",
+    rightSwipes: 8,
+    leftSwipes: 1,
+    downSwipes: 3,
+    positiveTags: [
+      "romance",
+      "love",
+      "human connection",
+      "character-driven",
+      "warm",
+      "hopeful",
+      "relationship",
+    ],
+    negativeTags: ["dark"],
+    keywords: ["romance", "love", "relationship", "heart", "tender", "rom-com"],
+  },
+  horror: {
+    label: "Horror",
+    rightSwipes: 8,
+    leftSwipes: 0,
+    downSwipes: 5,
+    positiveTags: [
+      "horror",
+      "spooky",
+      "dark",
+      "psychological",
+      "mystery",
+      "survival",
+      "gothic",
+    ],
+    negativeTags: ["cozy"],
+    keywords: ["horror", "haunted", "ghost", "dark", "spooky", "gothic", "survival"],
+  },
+  thriller: {
+    label: "Thriller",
+    rightSwipes: 8,
+    leftSwipes: 0,
+    downSwipes: 4,
+    positiveTags: [
+      "thriller",
+      "mystery",
+      "crime",
+      "psychological",
+      "fast-paced",
+      "dark",
+      "investigation",
+    ],
+    negativeTags: ["cozy"],
+    keywords: ["thriller", "crime", "mystery", "detective", "investigation", "suspense"],
+  },
+  mystery: {
+    label: "Mystery",
+    rightSwipes: 8,
+    leftSwipes: 0,
+    downSwipes: 4,
+    positiveTags: [
+      "mystery",
+      "crime",
+      "investigation",
+      "detective",
+      "psychological",
+      "dark",
+    ],
+    negativeTags: ["romance"],
+    keywords: ["mystery", "crime", "detective", "investigation", "case", "murder"],
+  },
+  science_fiction: {
+    label: "Sci-Fi",
+    rightSwipes: 8,
+    leftSwipes: 0,
+    downSwipes: 4,
+    positiveTags: [
+      "science fiction",
+      "ai",
+      "dystopian",
+      "identity",
+      "technology",
+      "weird",
+      "adventure",
+    ],
+    negativeTags: ["historical"],
+    keywords: ["science fiction", "sci-fi", "ai", "space", "dystopian", "future", "technology"],
+  },
+  historical: {
+    label: "Historical",
+    rightSwipes: 8,
+    leftSwipes: 1,
+    downSwipes: 3,
+    positiveTags: [
+      "historical",
+      "historical fiction",
+      "family",
+      "war",
+      "literary",
+      "atmospheric",
+    ],
+    negativeTags: ["science fiction"],
+    keywords: ["historical", "period", "war", "victorian", "gilded", "family saga"],
+  },
+};
+
+
 function resolveDeckFromModule(mod: any, expectedKey: DeckKey, fallbackLabel: string): SwipeDeck {
   const candidates: any[] = [];
   if (mod && typeof mod === "object") {
@@ -364,6 +505,62 @@ function addTags(counts: TagCounts, tags: string[], delta: number) {
   }
   return next;
 }
+
+function buildDebugGenreTagCounts(deckKey: DeckKey, genreKey: DebugGenreKey): TagCounts {
+  const preset = DEBUG_GENRE_PRESETS[genreKey];
+  const counts: TagCounts = {};
+
+  for (const tag of preset.positiveTags) {
+    const normalized = String(tag || "").trim();
+    if (!normalized) continue;
+    counts[normalized.includes(":") ? normalized : normalized.toLowerCase()] =
+      (counts[normalized.includes(":") ? normalized : normalized.toLowerCase()] || 0) + 1;
+  }
+
+  for (const tag of preset.negativeTags || []) {
+    const normalized = String(tag || "").trim().toLowerCase();
+    if (!normalized) continue;
+    counts[normalized] = (counts[normalized] || 0) - 1;
+  }
+
+  if (deckKey === "k2") {
+    counts["audience:kids"] = 8;
+    counts["age:k2"] = 8;
+  } else if (deckKey === "36") {
+    counts["audience:kids"] = 8;
+    counts["age:36"] = 8;
+  } else if (deckKey === "ms_hs") {
+    counts["audience:teen"] = 8;
+    counts["age:mshs"] = 8;
+  } else {
+    counts["audience:adult"] = 8;
+    counts["age:adult"] = 8;
+  }
+
+  return counts;
+}
+
+function buildDebugGenreSwipeHistory(
+  cards: SwipeDeckCard[],
+  genreKey: DebugGenreKey,
+  maxLikes = 8
+): SwipeHistoryEntry[] {
+  const preset = DEBUG_GENRE_PRESETS[genreKey];
+  const keywords = preset.keywords.map((keyword) => keyword.toLowerCase());
+
+  const scored = cards
+    .map((card, index) => {
+      const bag = semanticStringsFromCard(card as any).join(" ");
+      const score = keywords.reduce((sum, keyword) => sum + (bag.includes(keyword) ? 1 : 0), 0);
+      return { card, index, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, maxLikes);
+
+  return scored.map((entry) => ({ direction: "like" as const, card: entry.card }));
+}
+
 
 function expandTeenCompanionTags(deckKey: DeckKey, tags: string[]): string[] {
   const base = Array.isArray(tags) ? tags.filter(Boolean) : [];
@@ -1513,6 +1710,43 @@ function handleLeft() {
     setSuppressPersonalityLearningForNextRun(false);
   }
 
+  async function runDebugGenreSession(genreKey: DebugGenreKey) {
+    const preset = DEBUG_GENRE_PRESETS[genreKey];
+    const syntheticTagCounts = buildDebugGenreTagCounts(deckKey, genreKey);
+    const syntheticSwipeHistory = buildDebugGenreSwipeHistory(cards, genreKey, preset.rightSwipes);
+    const syntheticTasteProfile = buildTasteProfile({
+      tagCounts: syntheticTagCounts,
+      directTraits: weightedDirectTraitsHistory(syntheticSwipeHistory),
+      feedback: [] as TasteFeedbackEvent[],
+      itemTraitsById: {},
+    });
+
+    setTagCounts(syntheticTagCounts);
+    setSwipeHistory(syntheticSwipeHistory);
+    setRightSwipes(preset.rightSwipes);
+    setLeftSwipes(preset.leftSwipes);
+    setDownSwipes(preset.downSwipes);
+    setRecItems([]);
+    setRecIndex(0);
+    setRecError(null);
+    setShowRating(false);
+    setAutoSearched(true);
+
+    const input: RecommenderInput = {
+      deckKey,
+      tagCounts: syntheticTagCounts,
+      tasteProfile: syntheticTasteProfile,
+      limit: 10,
+      timeoutMs: 15000,
+    };
+
+    await performRecommendationRun(input);
+    setLastRecommendationSwipeSummary(
+      `Genre Sim: ${preset.label} • Right:${preset.rightSwipes} • Left:${preset.leftSwipes} • Skip:${preset.downSwipes}`
+    );
+  }
+
+
   function summarizeCounts(values: Array<string | number | undefined | null>) {
     const counts = new Map<string, number>();
     for (const value of values) {
@@ -2437,6 +2671,22 @@ function handleLeft() {
                   : "(none)"}
               </Text>
 
+
+              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Genre sim</Text>
+              <View style={styles.genreSimWrap}>
+                {(Object.keys(DEBUG_GENRE_PRESETS) as DebugGenreKey[]).map((genreKey) => (
+                  <TouchableOpacity
+                    key={genreKey}
+                    style={styles.genreSimButton}
+                    onPress={() => {
+                      void runDebugGenreSession(genreKey);
+                    }}
+                  >
+                    <Text style={styles.genreSimButtonText}>{DEBUG_GENRE_PRESETS[genreKey].label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
               <Text style={[styles.debugLabel, { marginTop: 10 }]}>Final query preview</Text>
               <Text style={styles.debugValueMuted}>{recQuery?.trim() ? recQuery : "(none)"}</Text>
 
@@ -2748,7 +2998,16 @@ const styles = StyleSheet.create({
   debugScrollContent: { paddingHorizontal: 12, paddingVertical: 10 },
   debugLabel: { color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "800" },
   debugValue: { color: "#fff", fontSize: 13, fontWeight: "900", marginTop: 2 },
-  debugValueMuted: { color: "rgba(255,255,255,0.88)", fontSize: 12, marginTop: 2, lineHeight: 16 },
+  genreSimWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 8 },
+  genreSimButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: "#1d4ed8",
+    borderWidth: 1,
+    borderColor: "#93c5fd",
+  },
+  genreSimButtonText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   countsRow: { marginTop: 10 },
 });
 
