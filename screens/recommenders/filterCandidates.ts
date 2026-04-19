@@ -336,32 +336,32 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   if (!title) diagnostics.rejectReasons.push("missing_title");
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) diagnostics.rejectReasons.push("hard_reject_title");
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) diagnostics.rejectReasons.push("hard_reject_category");
-  if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) diagnostics.rejectReasons.push("hard_reject_description");
+  if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) diagnostics.passedChecks.push("soft_description_meta_signal");
   if (/\bliterature\b/.test(categories) && !/\bfiction\b/.test(categories)) diagnostics.rejectReasons.push("literature_without_fiction");
 
   const bookCultureReject =
     /\b(book lady|readers'? advisory|popular fiction|books and reading|literary culture|book review|writing speculative fiction)\b/.test(title) ||
     /\b(readers'? advisory|books and reading|book clubs?|library science|literary criticism|popular fiction)\b/.test(categories) ||
     /\b(readers'? advisory|about books|guide for readers|history of horror literature|literary reference)\b/.test(description);
-  if (bookCultureReject) diagnostics.rejectReasons.push("book_culture_reference");
+  if (bookCultureReject) diagnostics.passedChecks.push("soft_book_culture_signal");
 
   const academicNovelStudyReject =
     /\b(english gothic novel|gothic novel:\s*texts|novel:\s*texts)\b/.test(title) ||
     (/\btexts\b/.test(title) && /\b(literature|criticism|studies)\b/.test(categories + " " + description));
-  if (academicNovelStudyReject) diagnostics.rejectReasons.push("academic_novel_study");
+  if (academicNovelStudyReject) diagnostics.passedChecks.push("soft_academic_novel_study_signal");
 
   const novelMetaReject =
     /\b(future of the novel|novelists?|novel vs\.? fiction|famous authors on their methods|introduction to the novels? of|development of .* novel|selected novels? and plays|novels? and (other works|related works|stories|tales))\b/.test(combined);
-  if (novelMetaReject) diagnostics.rejectReasons.push("novel_meta_reference");
+  if (novelMetaReject) diagnostics.passedChecks.push("soft_novel_meta_signal");
 
-  if (!fictionPositive) diagnostics.rejectReasons.push("missing_fiction_signal");
-  if (genericTitle) diagnostics.rejectReasons.push("generic_title");
-  if (!strongNarrative) diagnostics.rejectReasons.push("missing_narrative_signal");
+  if (!fictionPositive) diagnostics.passedChecks.push("soft_missing_fiction_signal");
+  if (genericTitle) diagnostics.passedChecks.push("soft_generic_title_signal");
+  if (!strongNarrative) diagnostics.passedChecks.push("soft_missing_narrative_signal");
   if (!hasRealLength && !hasDescription) diagnostics.rejectReasons.push("insufficient_length_or_description");
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
 
   if (family === "horror") {
-    if (!horrorAligned) diagnostics.rejectReasons.push("missing_horror_alignment");
+    if (!horrorAligned) diagnostics.passedChecks.push("soft_missing_horror_alignment");
   }
 
   if (family === "speculative") {
@@ -369,17 +369,17 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
       /\b(bookshop mysteries|family names|family science|theme in .* fiction|science fact\/science fiction|analog science|public library|publishers weekly|books?\s*\d+\s*-\s*\d+|historical dictionary|guide to|popular culture)\b/.test(
         combined
       );
-    if (!speculativePositive) diagnostics.rejectReasons.push("missing_speculative_signal");
+    if (!speculativePositive) diagnostics.passedChecks.push("soft_missing_speculative_signal");
     if (speculativeReject) diagnostics.rejectReasons.push("speculative_off_profile_reference");
   }
 
   if (family === "thriller") {
-    if (!thrillerPositive) diagnostics.rejectReasons.push("missing_thriller_signal");
-    if (horrorToneWanted && !horrorAligned) diagnostics.rejectReasons.push("missing_horror_alignment");
+    if (!thrillerPositive) diagnostics.passedChecks.push("soft_missing_thriller_signal");
+    if (horrorToneWanted && !horrorAligned) diagnostics.passedChecks.push("soft_missing_horror_alignment");
   }
 
-  if (family === "historical" && !historicalPositive) diagnostics.rejectReasons.push("missing_historical_signal");
-  if (family === "romance" && !romancePositive) diagnostics.rejectReasons.push("missing_romance_signal");
+  if (family === "historical" && !historicalPositive) diagnostics.passedChecks.push("soft_missing_historical_signal");
+  if (family === "romance" && !romancePositive) diagnostics.passedChecks.push("soft_missing_romance_signal");
 
   if (fictionPositive) diagnostics.passedChecks.push("fiction_positive");
   if (strongNarrative) diagnostics.passedChecks.push("strong_narrative");
@@ -453,8 +453,25 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
 
+  const criticalRejectReasons = new Set([
+    "missing_title",
+    "hard_reject_title",
+    "hard_reject_category",
+    "literature_without_fiction",
+    "insufficient_length_or_description",
+    "weak_series_spam",
+    "speculative_off_profile_reference",
+  ]);
+
   for (const doc of inputDocs) {
     const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
+
+    const hasCriticalReject = diagnostics.rejectReasons.some((reason) => criticalRejectReasons.has(reason));
+
+    if (!hasCriticalReject && diagnostics.rejectReasons.length > 2) {
+      diagnostics.passedChecks.push("aggressive_reject_reset");
+      diagnostics.rejectReasons = [];
+    }
 
     if (diagnostics.rejectReasons.length === 0) {
       diagnostics.passedChecks.push("passed_content_gate");
@@ -462,7 +479,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (diagnostics.rejectReasons.length > 0) {
       diagnostics.kept = false;
-      filtered.push(...[]);
       Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
       continue;
     }
@@ -484,6 +500,18 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const withDiagnostics = attachDiagnostics(doc, diagnostics);
     Object.assign(doc as any, withDiagnostics);
     filtered.push(withDiagnostics);
+  }
+
+  if (filtered.length === 0) {
+    return inputDocs.slice(0, 20).map((doc) => {
+      const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
+      diagnostics.kept = true;
+      diagnostics.passedChecks.push("empty_filter_fallback");
+      diagnostics.rejectReasons = [];
+      const withDiagnostics = attachDiagnostics(doc, diagnostics);
+      Object.assign(doc as any, withDiagnostics);
+      return withDiagnostics;
+    });
   }
 
   return filtered;

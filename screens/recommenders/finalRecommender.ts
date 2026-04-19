@@ -72,19 +72,22 @@ function identityKey(c: Candidate): string {
 }
 
 function haystack(c: Candidate): string {
+  const subjects = Array.isArray(c?.subjects) ? c.subjects : [];
+  const genres = Array.isArray(c?.genres) ? c.genres : [];
+
   return [
-    c.title,
-    c.subtitle || '',
-    c.author,
-    c.publisher || '',
-    c.description || '',
-    ...(c.subjects || []),
-    ...(c.genres || [])
+    c?.title || '',
+    c?.subtitle || '',
+    c?.author || '',
+    c?.publisher || '',
+    c?.description || '',
+    ...subjects,
+    ...genres
   ].join(' ').toLowerCase();
 }
 
 function isValidCandidate(c: Candidate): boolean {
-  return Boolean(c.title);
+  return Boolean(c && c.title);
 }
 
 function isLikelyNonFictionMeta(c: Candidate): boolean {
@@ -538,8 +541,8 @@ export function finalRecommenderForDeck(
   _deckKey: DeckKey,
   _options: FinalRecommenderOptions = {}
 ): RecommendationDoc[] {
-  const input = Array.isArray(candidates) ? candidates : [];
-  const deduped = dedupe(input).filter(isValidCandidate);
+  const input = Array.isArray(candidates) ? candidates.filter(Boolean) : [];
+  const deduped = (Array.isArray(input) ? dedupe(input) : []).filter(isValidCandidate);
 
   const rejected: QualityRejectRecord[] = [];
   const qualityPassed: Candidate[] = [];
@@ -561,7 +564,8 @@ export function finalRecommenderForDeck(
     });
   }
 
-  const relaxedFallback = deduped.filter((c) => {
+  const relaxedFallback = (Array.isArray(deduped) ? deduped : []).filter((c) => {
+    if (!c) return false;
     if (isHardReject(c).reject) return false;
 
     const trust = metadataTrust(c);
@@ -574,7 +578,7 @@ export function finalRecommenderForDeck(
     return hasStrongSignal;
   });
 
-  const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback;
+  const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length > 0 ? relaxedFallback : deduped.slice(0, 20);
 
   buildDebug(input.length, deduped.length, base, rejected);
 
