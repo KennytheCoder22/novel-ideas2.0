@@ -430,6 +430,33 @@ function passesRelaxedHorrorFloor(doc: any, diagnostics: FilterDiagnostics): boo
   return diagnostics.hasRealLength && diagnostics.hasDescription;
 }
 
+function canRecoverAfterSourceCollapse(doc: any, diagnostics: FilterDiagnostics): boolean {
+  const source = String((doc as any)?.source || "").toLowerCase();
+  const remainingReasons = diagnostics.rejectReasons.filter((reason) => reason !== "below_ratings_floor");
+  if (remainingReasons.length > 0) return false;
+
+  if (source === "openlibrary") {
+    return (
+      diagnostics.flags.fictionPositive &&
+      diagnostics.flags.strongNarrative &&
+      (diagnostics.flags.horrorAligned || diagnostics.family !== "horror") &&
+      (diagnostics.hasDescription || diagnostics.hasRealLength)
+    );
+  }
+
+  return false;
+}
+
+function recoveryPriority(doc: any, diagnostics: FilterDiagnostics): number {
+  let score = 0;
+  if (diagnostics.flags.legitAuthority) score += 5;
+  if (diagnostics.hasDescription) score += 3;
+  if (diagnostics.hasRealLength) score += 2;
+  if (diagnostics.flags.horrorAligned) score += 2;
+  score += Math.min(5, Math.floor((diagnostics.ratingsCount || 0) / 10));
+  return score;
+}
+
 function attachDiagnostics(doc: RecommendationDoc, diagnostics: FilterDiagnostics): RecommendationDoc {
   const existing = (doc as any)?.diagnostics || {};
   return {
@@ -452,6 +479,7 @@ function attachDiagnostics(doc: RecommendationDoc, diagnostics: FilterDiagnostic
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
+  const rejectedRows: Array<{ doc: RecommendationDoc; diagnostics: FilterDiagnostics }> = [];
 
   for (const doc of inputDocs) {
     const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
@@ -462,8 +490,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (diagnostics.rejectReasons.length > 0) {
       diagnostics.kept = false;
-      filtered.push(...[]);
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      const withDiagnostics = attachDiagnostics(doc, diagnostics);
+      Object.assign(doc as any, withDiagnostics);
+      rejectedRows.push({ doc: withDiagnostics, diagnostics });
       continue;
     }
 
@@ -473,17 +502,52 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       } else {
         diagnostics.rejectReasons.push("below_ratings_floor");
         diagnostics.kept = false;
-        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        const withDiagnostics = attachDiagnostics(doc, diagnostics);
+        Object.assign(doc as any, withDiagnostics);
+        rejectedRows.push({ doc: withDiagnostics, diagnostics });
         continue;
       }
     } else {
       diagnostics.passedChecks.push("passed_ratings_gate");
     }
-    diagnostics.kept = true;
 
+    diagnostics.kept = true;
     const withDiagnostics = attachDiagnostics(doc, diagnostics);
     Object.assign(doc as any, withDiagnostics);
     filtered.push(withDiagnostics);
+  }
+
+  const sourceInputCounts = new Map<string, number>();
+  const sourceKeptCounts = new Map<string, number>();
+
+  for (const doc of inputDocs) {
+    const source = String((doc as any)?.source || "unknown").toLowerCase();
+    sourceInputCounts.set(source, (sourceInputCounts.get(source) || 0) + 1);
+  }
+
+  for (const doc of filtered) {
+    const source = String((doc as any)?.source || "unknown").toLowerCase();
+    sourceKeptCounts.set(source, (sourceKeptCounts.get(source) || 0) + 1);
+  }
+
+  for (const [source, total] of sourceInputCounts.entries()) {
+    if (!total) continue;
+    if ((sourceKeptCounts.get(source) || 0) > 0) continue;
+
+    const recoverable = rejectedRows
+      .filter((row) => String((row.doc as any)?.source || "").toLowerCase() === source)
+      .filter((row) => canRecoverAfterSourceCollapse(row.doc, row.diagnostics))
+      .sort((a, b) => recoveryPriority(b.doc, b.diagnostics) - recoveryPriority(a.doc, a.diagnostics))
+      .slice(0, source === "openlibrary" ? 2 : 1);
+
+    for (const row of recoverable) {
+      row.diagnostics.rejectReasons = row.diagnostics.rejectReasons.filter((reason) => reason !== "below_ratings_floor");
+      row.diagnostics.passedChecks.push("recovered_after_source_collapse");
+      row.diagnostics.kept = true;
+      const recovered = attachDiagnostics(row.doc, row.diagnostics);
+      Object.assign(row.doc as any, recovered);
+      filtered.push(recovered);
+    }
   }
 
   return filtered;

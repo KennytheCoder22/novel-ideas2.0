@@ -11,7 +11,7 @@ import { getGoogleBooksRecommendations } from "./googleBooks/googleBooksRecommen
 import { getOpenLibraryRecommendations } from "./openLibrary/openLibraryRecommender";
 import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
 import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
-import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
+import { normalizeCandidate, normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
 import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
@@ -674,13 +674,26 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const negativeTerms = rungNegativeTerms(family);
 
   function isHorrorQuery(q: string): boolean {
-    return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror)/i.test(q);
+    return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror|dread|eerie|gothic)/i.test(q);
   }
+
+  const horrorExtras = family === "horror"
+    ? dedupeNonEmptyQueries([
+        /psychological/.test(lowered) ? "haunted psychological horror novel" : "",
+        /survival/.test(lowered) ? "survival horror thriller novel" : "",
+        /haunted/.test(lowered) ? "supernatural haunted house horror novel" : "",
+        "gothic horror novel",
+      ])
+    : [];
 
   const lanes = dedupeNonEmptyQueries([
     base,
     `${base} fiction`,
     `${base} ${negativeTerms}`,
+    family === "horror" ? horrorExtras[0] : "",
+    family === "horror" ? horrorExtras[1] : "",
+    family === "horror" ? horrorExtras[2] : "",
+    family === "horror" ? horrorExtras[3] : "",
     family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
     family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
     family === "thriller" && /psychological/.test(lowered) ? "psychological suspense novel" : "",
@@ -697,7 +710,13 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     .map((query) => {
       const q = query.toLowerCase();
       let laneKind = "core";
-      if (q.includes(negativeTerms.split(" ")[0]?.replace(/^-/, "") || "__nope__") || q.includes("-guide") || q.includes("-reference")) {
+
+      if (family === "horror" && q !== lowered) {
+        if (/gothic/.test(q)) laneKind = "gothic-alt";
+        else if (/supernatural|haunted/.test(q)) laneKind = "tone-alt";
+        else if (/thriller|survival/.test(q)) laneKind = "scenario-alt";
+        else laneKind = "bucket-alt";
+      } else if (q.includes(negativeTerms.split(" ")[0]?.replace(/^-/, "") || "__nope__") || q.includes("-guide") || q.includes("-reference")) {
         laneKind = "strict-filtered";
       } else if (/literary horror/.test(q)) {
         laneKind = "literary-alt";
@@ -1306,9 +1325,19 @@ if (openLibrarySurvivors.length === 0) {
 
   candidateDocs = dedupeDocs([
     ...candidateDocs,
-    ...recoveredOL.slice(0, 12), // controlled backfill
+    ...recoveredOL.slice(0, 12),
   ]);
 }
+
+console.log("[NovelIdeas] FILTER DIAGNOSTICS", {
+  raw: enrichedDocs.length,
+  filtered: filteredDocs.length,
+  candidateDocs: candidateDocs.length,
+  sources: {
+    googleBooks: candidateDocs.filter((d: any) => sourceForDoc(d, "googleBooks") === "googleBooks").length,
+    openLibrary: candidateDocs.filter((d: any) => sourceForDoc(d, "openLibrary") === "openLibrary").length,
+  },
+});
 
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
@@ -1330,7 +1359,10 @@ if (openLibrarySurvivors.length === 0) {
   // IMPORTANT: Open Library should normalize from enriched docs too, so Hardcover failure markers
   // survive into candidate.rawDoc and finalRecommender can treat 429s as soft/non-blocking.
   const googleCandidates = normalizeCandidates(googleDocsEnriched, "googleBooks");
-  const openLibraryCandidates = normalizeCandidates(openLibraryDocsEnriched, "openLibrary");
+  let openLibraryCandidates = normalizeCandidates(openLibraryDocsEnriched, "openLibrary");
+  if (openLibraryCandidates.length === 0 && openLibraryDocsEnriched.length > 0) {
+    openLibraryCandidates = buildRecoveredOpenLibraryCandidates(openLibraryDocsEnriched, bucketPlan);
+  }
   const kitsuCandidatesRaw = normalizeCandidates(kitsuDocsEnriched, "kitsu");
   const gcdCandidates = normalizeCandidates(gcdDocsEnriched, "gcd");
 
@@ -1364,6 +1396,16 @@ function buildRungDiagnostics(candidates: any[]) {
     byRungSource,
     total: candidates.length,
   };
+}
+
+
+function buildRecoveredOpenLibraryCandidates(docs: RecommendationDoc[], bucketPlan: any) {
+  return dedupeDocs(
+    (Array.isArray(docs) ? docs : [])
+      .filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary")
+      .filter((doc: any) => looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan))
+      .slice(0, 12)
+  ).map((doc: any) => normalizeCandidate(doc, "openLibrary"));
 }
 
 const normalizedCandidates = [
