@@ -33,6 +33,17 @@ const MIN_VISUAL_SIGNAL_FOR_GCD = 2;
 const MIN_RELAXED_FILTER_POOL = 10;
 const MIN_ROUTER_RECOVERY_POOL = 12;
 
+function asArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
+  if (Array.isArray(value)) return value as RecommendationDoc[];
+  if (value && Array.isArray(value.candidates)) return value.candidates as RecommendationDoc[];
+  return [];
+}
+
+
 function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -1131,37 +1142,39 @@ export async function getRecommendations(
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
 
-  const rungs = build20QRungs({
-    ageBand:
-      input.deckKey === "adult"
-        ? "adult"
-        : input.deckKey === "ms_hs"
-        ? "teen"
-        : input.deckKey === "36"
-        ? "pre-teen"
-        : "kids",
-    family:
-      inferRouterFamily(bucketPlan) === "horror"
-        ? "speculative_family"
-        : inferRouterFamily(bucketPlan) === "thriller"
-        ? "thriller_family"
-        : inferRouterFamily(bucketPlan) === "speculative"
-        ? "speculative_family"
-        : inferRouterFamily(bucketPlan) === "romance"
-        ? "romance_family"
-        : inferRouterFamily(bucketPlan) === "historical"
-        ? "historical_family"
-        : "general_family",
-    baseGenre:
-      bucketPlan?.preview ||
-      bucketPlan?.queries?.[0] ||
-      "fiction",
-    subgenres: bucketPlan?.queries?.length
-      ? bucketPlan.queries
-      : (bucketPlan?.signals?.genres || []),
-    tones: bucketPlan?.signals?.tones || [],
-    themes: bucketPlan?.signals?.scenarios || [],
-  }).map((r: any) => ({ ...r, laneKind: "precision" }));
+  const rungs = asArray(
+    build20QRungs({
+      ageBand:
+        input.deckKey === "adult"
+          ? "adult"
+          : input.deckKey === "ms_hs"
+          ? "teen"
+          : input.deckKey === "36"
+          ? "pre-teen"
+          : "kids",
+      family:
+        inferRouterFamily(bucketPlan) === "horror"
+          ? "speculative_family"
+          : inferRouterFamily(bucketPlan) === "thriller"
+          ? "thriller_family"
+          : inferRouterFamily(bucketPlan) === "speculative"
+          ? "speculative_family"
+          : inferRouterFamily(bucketPlan) === "romance"
+          ? "romance_family"
+          : inferRouterFamily(bucketPlan) === "historical"
+          ? "historical_family"
+          : "general_family",
+      baseGenre:
+        bucketPlan?.preview ||
+        bucketPlan?.queries?.[0] ||
+        "fiction",
+      subgenres: bucketPlan?.queries?.length
+        ? bucketPlan.queries
+        : (bucketPlan?.signals?.genres || []),
+      tones: bucketPlan?.signals?.tones || [],
+      themes: bucketPlan?.signals?.scenarios || [],
+    })
+  ).map((r: any) => ({ ...r, laneKind: "precision" }));
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
@@ -1177,7 +1190,7 @@ export async function getRecommendations(
   };
 
   for (const rung of rungs) {
-    const queryLanes = buildHighDiversityQueryLanes(rung, bucketPlan);
+    const queryLanes = asArray(buildHighDiversityQueryLanes(rung, bucketPlan));
 
     for (const lane of queryLanes) {
       const laneInput: RecommenderInput = {
@@ -1274,7 +1287,7 @@ export async function getRecommendations(
   // Strict 20Q router:
   // no bestseller injection, no commercial shelf shaping, and no off-profile anchor lane.
   // Filter only the candidates retrieved from 20Q-derived rungs.
-  const filteredDocs = filterCandidates(enrichedDocs, bucketPlan);
+  const filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
 
@@ -1329,10 +1342,10 @@ if (openLibrarySurvivors.length === 0) {
   // Normalize all sources the same way.
   // IMPORTANT: Open Library should normalize from enriched docs too, so Hardcover failure markers
   // survive into candidate.rawDoc and finalRecommender can treat 429s as soft/non-blocking.
-  const googleCandidates = normalizeCandidates(googleDocsEnriched, "googleBooks");
-  const openLibraryCandidates = normalizeCandidates(openLibraryDocsEnriched, "openLibrary");
-  const kitsuCandidatesRaw = normalizeCandidates(kitsuDocsEnriched, "kitsu");
-  const gcdCandidates = normalizeCandidates(gcdDocsEnriched, "gcd");
+  const googleCandidates = asArray(normalizeCandidates(googleDocsEnriched, "googleBooks"));
+  const openLibraryCandidates = asArray(normalizeCandidates(openLibraryDocsEnriched, "openLibrary"));
+  const kitsuCandidatesRaw = asArray(normalizeCandidates(kitsuDocsEnriched, "kitsu"));
+  const gcdCandidates = asArray(normalizeCandidates(gcdDocsEnriched, "gcd"));
 
   // Light dedupe for visual shelves.
   const seenTitles = new Set<string>();
@@ -1429,7 +1442,7 @@ const normalizedCandidates = [
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
   // finalRecommender performs the actual preference-aware magic.
-  const rankedDocs = finalRecommenderForDeck(rankingPool, input.deckKey, {
+  const rankedDocs = asArray(finalRecommenderForDeck(rankingPool, input.deckKey, {
     tasteProfile: input.tasteProfile,
     profileOverride: input.profileOverride,
     priorRecommendedIds: input.priorRecommendedIds,
@@ -1438,7 +1451,7 @@ const normalizedCandidates = [
     priorSeriesKeys: input.priorSeriesKeys,
     priorRejectedIds: input.priorRejectedIds,
     priorRejectedKeys: input.priorRejectedKeys,
-  });
+  }));
 
   const finalRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false)
