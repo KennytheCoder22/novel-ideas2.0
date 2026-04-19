@@ -50,35 +50,38 @@ function isFictionCandidate(c: Candidate): boolean {
   const combined = `${title} ${cats} ${desc}`;
 
   const positiveSignals = [
-    /fiction/,
-    /novel/,
-    /story/,
-    /horror/,
-    /haunted/,
-    /ghost/,
-    /supernatural/,
-    /occult/,
-    /psychological/,
-    /survival/,
-    /thriller/,
-    /gothic/,
-    /dracula/,
-    /vampire/,
-    /monster/,
-    /curse/,
-    /nightmare/,
-    /macabre/,
-    /paranormal/,
+    /\bfiction\b/,
+    /\bnovel\b/,
+    /\bstory\b/,
+    /\bhorror\b/,
+    /\bhaunted\b/,
+    /\bghost\b/,
+    /\bsupernatural\b/,
+    /\boccult\b/,
+    /\bpsychological\b/,
+    /\bsurvival\b/,
+    /\bthriller\b/,
+    /\bgothic\b/,
+    /\bdracula\b/,
+    /\bvampire\b/,
+    /\bmonster\b/,
+    /\bcurse\b/,
+    /\bnightmare\b/,
+    /\bmacabre\b/,
+    /\bparanormal\b/,
   ];
 
   return positiveSignals.some((rx) => rx.test(combined));
 }
 
+function languageOkay(c: Candidate): boolean {
+  const lang = String(c.language || "").toLowerCase().trim();
+  return !lang || lang === "en" || lang.startsWith("en-");
+}
+
 function isValidStructure(c: Candidate): boolean {
-  const hasAuthor = Array.isArray(c.authors) ? c.authors.length > 0 : true;
-  const lang = String(c.language || "").toLowerCase();
-  const languageOkay = !lang || lang === "en" || lang.startsWith("en-");
-  return !!(c.title && hasAuthor && languageOkay);
+  const hasAuthor = !Array.isArray(c.authors) || c.authors.length > 0;
+  return !!(c.title && hasAuthor && languageOkay(c));
 }
 
 function passesLengthFilter(c: Candidate): boolean {
@@ -125,38 +128,32 @@ export function filterCandidates(candidates: Candidate[]) {
     const source = normalizeSource(c.source);
     diagnostics.sources[source] = (diagnostics.sources[source] || 0) + 1;
 
-    // 1. Structure check
+    // 1. Structure + language sanity
     if (!isValidStructure(c)) {
       diagnostics.rejects["structure"] = (diagnostics.rejects["structure"] || 0) + 1;
       continue;
     }
 
-    // 2. Language
-    if (c.language !== "en") {
-      diagnostics.rejects["language"] = (diagnostics.rejects["language"] || 0) + 1;
-      continue;
-    }
-
-    // 3. Content block (annotated / spam)
+    // 2. Content block (annotated / spam)
     if (isBlockedContent(c)) {
       diagnostics.rejects["blocked_terms"] = (diagnostics.rejects["blocked_terms"] || 0) + 1;
       continue;
     }
 
-    // 4. Fiction enforcement
+    // 3. Fiction / horror enforcement
     if (!isFictionCandidate(c)) {
       diagnostics.rejects["non_fiction"] = (diagnostics.rejects["non_fiction"] || 0) + 1;
       continue;
     }
 
-    // 5. Length sanity
+    // 4. Length sanity
     if (!passesLengthFilter(c)) {
       diagnostics.rejects["too_short"] = (diagnostics.rejects["too_short"] || 0) + 1;
       continue;
     }
 
-    // 6. Rating gate (WITH Open Library bypass)
-    if (!passesRatingGate(c)) {
+    // 5. Rating gate (WITH Open Library bypass)
+    if (!passesRatingGate({ ...c, source })) {
       diagnostics.rejects["ratings"] = (diagnostics.rejects["ratings"] || 0) + 1;
       continue;
     }
