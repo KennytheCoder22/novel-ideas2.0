@@ -311,7 +311,9 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bnational library service\b/,
     /\breaders?\s+advisory\b/,
     /\bgenre fiction\b/,
-    /\bfaith-based domestic suspense\b/,\n    /\bchristian fiction\b/,\n    /\bforbidden love\b/,
+    /\bfaith-based domestic suspense\b/,
+    /\bchristian fiction\b/,
+    /\bforbidden love\b/,
     /\btextbook\b/,
     /\bworkbook\b/,
     /\bstudy guide\b/
