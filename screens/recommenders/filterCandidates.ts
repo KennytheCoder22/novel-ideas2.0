@@ -1,6 +1,6 @@
 import type { RecommendationDoc } from "./types";
 
-type RouterFamily = "horror" | "thriller" | "speculative" | "romance" | "historical" | "general";
+type RouterFamily = "fantasy" | "horror" | "thriller" | "speculative" | "romance" | "historical" | "general";
 
 type FilterDiagnostics = {
   kept: boolean;
@@ -68,6 +68,7 @@ function collectDescriptionText(doc: any): string {
 function inferRouterFamily(bucketPlan: any): RouterFamily {
   const explicitLane = String(bucketPlan?.lane || "").toLowerCase();
 
+  if (explicitLane === "fantasy") return "fantasy";
   if (explicitLane === "horror") return "horror";
   if (explicitLane === "thriller") return "thriller";
   if (explicitLane === "romance") return "romance";
@@ -86,7 +87,7 @@ function inferRouterFamily(bucketPlan: any): RouterFamily {
     .join(" ")
     .toLowerCase();
 
-  if (/(psychological horror|survival horror|haunted house horror|haunted psychological horror|psychological horror thriller|horror|haunted|ghost|supernatural|occult|monster|creature|possession|terror|dread|eerie|disturbing|dark fantasy)/.test(text)) return "horror";
+  if (/(psychological horror|survival horror|haunted house horror|haunted psychological horror|psychological horror thriller|horror|haunted|ghost|supernatural|occult|monster|creature|possession|terror|dread|eerie|disturbing)/.test(text)) return "horror";
   if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
   if (/(science fiction|sci-fi|fantasy|speculative|dystopian|space opera|technology|ai|artificial intelligence)/.test(text)) return "speculative";
   if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
@@ -106,7 +107,7 @@ function wantsHorrorTone(bucketPlan: any): boolean {
     .join(" ")
     .toLowerCase();
 
-  return /(horror|haunted|ghost|supernatural|occult|monster|creature|zombie|body horror|psychological horror|survival horror|terror|dread|eerie|disturbing|dark fantasy)/.test(text);
+  return /(horror|haunted|ghost|supernatural|occult|monster|creature|zombie|body horror|psychological horror|survival horror|terror|dread|eerie|disturbing)/.test(text);
 }
 
 const HORROR_AUTHOR_AFFINITY = new Set([
@@ -254,7 +255,12 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
     return !historicalNative;
   }
 
-  if (family === "speculative") {
+  
+  if (family === "fantasy") {
+    if (!speculativePositive) diagnostics.passedChecks.push("soft_missing_fantasy_signal");
+  }
+
+if (family === "speculative") {
     const speculativeNative = flags.speculativePositive;
     const obviousThrillerOnly = (flags.thrillerPositive || flags.mysteryPositive || flags.crimePositive) && !speculativeNative;
     return !speculativeNative || obviousThrillerOnly;
@@ -438,7 +444,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     /\b(suspense|psychological suspense|domestic suspense|tension|cat and mouse)\b/.test(combined);
 
   const horrorAligned =
-    isHorrorLane && /\b(horror|haunted|ghost|supernatural|occult|monster|creature|survival horror|terror|dread|eerie|disturbing|dark fantasy)\b/.test(combined);
+    isHorrorLane && /\b(horror|haunted|ghost|supernatural|occult|monster|creature|survival horror|terror|dread|eerie|disturbing)\b/.test(combined);
 
   const historicalPositive =
     /\b(historical fiction|historical novel|period fiction|victorian|edwardian|civil war|world war|regency|gilded age)\b/.test(
@@ -510,7 +516,12 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     if (!horrorAligned) diagnostics.passedChecks.push("soft_missing_horror_alignment");
   }
 
-  if (family === "speculative") {
+  
+  if (family === "fantasy") {
+    if (!speculativePositive) diagnostics.passedChecks.push("soft_missing_fantasy_signal");
+  }
+
+if (family === "speculative") {
     const speculativeReject =
       /\b(bookshop mysteries|family names|family science|theme in .* fiction|science fact\/science fiction|analog science|public library|publishers weekly|books?\s*\d+\s*-\s*\d+|historical dictionary|guide to|popular culture)\b/.test(
         combined
@@ -726,7 +737,7 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
   const gothicOrHorrorSignal =
     diagnostics.flags.horrorAligned ||
     diagnostics.flags.authorAffinity ||
-    /\b(gothic|ghost|haunted|haunting|supernatural|occult|monster|creature|terror|dread|vampire|werewolf|zombie|devil|exorcist|possession|dark fantasy)\b/.test(
+    /\b(gothic|ghost|haunted|haunting|supernatural|occult|monster|creature|terror|dread|vampire|werewolf|zombie|devil|exorcist|possession)\b/.test(
       subjects + " " + description
     );
 
@@ -782,7 +793,7 @@ function passesOpenLibraryHorrorRecovery(doc: any, diagnostics: FilterDiagnostic
     );
 
   const horrorSubjectSignal =
-    /\b(horror|ghost|haunted|haunting|supernatural|occult|monster|creature|terror|dread|gothic|vampire|werewolf|zombie|devil|exorcist|possession|dark fantasy)\b/.test(
+    /\b(horror|ghost|haunted|haunting|supernatural|occult|monster|creature|terror|dread|gothic|vampire|werewolf|zombie|devil|exorcist|possession)\b/.test(
       combined
     );
 
