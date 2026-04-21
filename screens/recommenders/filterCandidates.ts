@@ -272,7 +272,8 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   );
   const combined = [title, categories, description, author].filter(Boolean).join(" ");
   const family = (bucketPlan?.lane || inferRouterFamily(bucketPlan)) as RouterFamily;
-  const horrorToneWanted = wantsHorrorTone(bucketPlan);
+  const isHorrorLane = family === "horror";
+  const horrorToneWanted = isHorrorLane && wantsHorrorTone(bucketPlan);
 
   const hardRejectTitlePatterns = [
     /\bguide\b/,
@@ -437,7 +438,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     /\b(suspense|psychological suspense|domestic suspense|tension|cat and mouse)\b/.test(combined);
 
   const horrorAligned =
-    /\b(horror|haunted|ghost|supernatural|occult|monster|creature|survival horror|terror|dread|eerie|disturbing|dark fantasy)\b/.test(combined);
+    isHorrorLane && /\b(horror|haunted|ghost|supernatural|occult|monster|creature|survival horror|terror|dread|eerie|disturbing|dark fantasy)\b/.test(combined);
 
   const historicalPositive =
     /\b(historical fiction|historical novel|period fiction|victorian|edwardian|civil war|world war|regency|gilded age)\b/.test(
