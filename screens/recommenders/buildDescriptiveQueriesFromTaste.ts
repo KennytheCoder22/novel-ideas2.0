@@ -514,12 +514,29 @@ function sameFamilyExpansions(anchor: string, parts: string[]): string[] {
     out.push("psychological thriller");
     out.push("crime thriller");
     out.push("mystery thriller");
+    out.push("serial killer investigation thriller");
+    out.push("missing person thriller");
+    out.push("missing child thriller");
+    out.push("abduction thriller");
+    out.push("fugitive thriller");
+    out.push("manhunt thriller");
+    out.push("conspiracy thriller");
+    out.push("crime conspiracy thriller");
+    out.push("domestic suspense thriller");
+    out.push("small town murder thriller");
+    out.push("fbi investigation thriller");
+    out.push("procedural crime thriller");
+    out.push("obsession psychological thriller");
   }
 
   if (anchor === "mystery") {
     out.push("psychological mystery");
     out.push("crime thriller");
     out.push("mystery thriller");
+    out.push("detective investigation thriller");
+    out.push("procedural crime thriller");
+    out.push("serial killer investigation thriller");
+    out.push("missing person thriller");
   }
 
   if (anchor === "science fiction" || anchor === "science fiction thriller") {
@@ -555,7 +572,11 @@ function exploratoryExpansions(anchor: string, parts: string[]): string[] {
     out.push("supernatural horror");
   } else if (anchor.includes("thriller") || anchor.includes("mystery")) {
     out.push("psychological suspense");
-    out.push("dark psychological fiction");
+    out.push("crime conspiracy thriller");
+    out.push("investigation thriller");
+    out.push("detective investigation thriller");
+    out.push("fugitive thriller");
+    out.push("manhunt thriller");
   } else if (anchor.includes("science fiction")) {
     out.push("literary science fiction");
   } else if (anchor.includes("fantasy")) {
@@ -590,7 +611,7 @@ function buildRoleQueries(parts: string[], role: RungRole): string[] {
   }
 
   if (role === "intensify") {
-    for (const expansion of sameFamilyExpansions(primaryAnchor, parts).slice(0, 3)) {
+    for (const expansion of sameFamilyExpansions(primaryAnchor, parts).slice(0, 5)) {
       push(expansion, "novel");
       if (first) push(first, expansion, "novel");
     }
@@ -598,7 +619,7 @@ function buildRoleQueries(parts: string[], role: RungRole): string[] {
   }
 
   if (role === "adjacent_recall") {
-    for (const expansion of sameFamilyExpansions(primaryAnchor, parts).slice(0, 5)) {
+    for (const expansion of sameFamilyExpansions(primaryAnchor, parts).slice(0, 8)) {
       push(expansion, "novel");
       if (second) push(second, expansion, "novel");
     }
@@ -606,7 +627,7 @@ function buildRoleQueries(parts: string[], role: RungRole): string[] {
   }
 
   if (role === "controlled_explore") {
-    for (const expansion of exploratoryExpansions(primaryAnchor, parts).slice(0, 3)) {
+    for (const expansion of exploratoryExpansions(primaryAnchor, parts).slice(0, 5)) {
       push(expansion, "novel");
     }
     return dedupe(out);
@@ -642,7 +663,7 @@ function buildQueryVariants(parts: string[]): QueryPack | undefined {
     ...buildRoleQueries(parts, "controlled_explore"),
   ];
 
-  const deduped = stripWeakHorrorVariants(roleOrdered, parts).slice(0, 8);
+  const deduped = stripWeakHorrorVariants(roleOrdered, parts).slice(0, 12);
   if (!deduped.length) return undefined;
 
   return {
@@ -868,7 +889,20 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
   if (genres.has("horror")) return ["psychological horror novel", "survival horror novel", "haunted house horror novel"];
   if (genres.has("science fiction")) return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"];
   if (genres.has("mystery") || genres.has("crime")) return ["mystery thriller novel", "psychological mystery novel", "crime thriller novel"];
-  if (genres.has("thriller")) return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "obsession psychological thriller novel", "procedural crime thriller novel"];
+  if (genres.has("thriller")) return [
+    "missing person thriller novel",
+    "missing child thriller novel",
+    "serial killer investigation thriller novel",
+    "crime conspiracy thriller novel",
+    "obsession psychological thriller novel",
+    "procedural crime thriller novel",
+    "detective investigation thriller novel",
+    "fugitive thriller novel",
+    "manhunt thriller novel",
+    "abduction thriller novel",
+    "small town murder thriller novel",
+    "fbi investigation thriller novel",
+  ];
   if (genres.has("historical")) return ["historical fiction novel"];
   if (genres.has("romance")) return [
     "second chance romance novel",
