@@ -606,12 +606,21 @@ function anchorBoost(c: Candidate): number {
       'gillian flynn',
       'tana french',
       'dennis lehane',
-      'thomas harris',
-      'john le carre',
+      'michael connelly',
       'lee child',
-      'patricia highsmith',
-      'ruth ware',
+      'john grisham',
+      'thomas harris',
+      'patricia cornwell',
+      'harlan coben',
+      'karin slaughter',
       'paula hawkins',
+      'a j finn',
+      'aj finn',
+      'don winslow',
+      'ruth ware',
+      'patricia highsmith',
+      'john le carre',
+      'stephen king',
     ],
     speculative: [
       'ursula k le guin',
@@ -639,14 +648,14 @@ function anchorBoost(c: Candidate): number {
   if (lane === "horror") {
     if (matchesAuthor(AUTHOR_MAP.horror)) score += 14;
   } else if (lane === "thriller") {
-    if (matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
+    if (matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
   } else if (lane === "speculative") {
     if (matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
   } else if (lane === "romance") {
     if (matchesAuthor(AUTHOR_MAP.romance)) score += 8;
   } else {
     if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
-    else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
+    else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
     else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
     else if (isRomance && matchesAuthor(AUTHOR_MAP.romance)) score += 8;
   }
@@ -698,6 +707,7 @@ function penaltyScore(c: Candidate): number {
   if (/\bdomestic suspense\b/.test(text) && !/\bcrime\b|\bmissing\b|\bkiller\b|\bfbi\b|\bdetective\b/.test(text)) {
     score -= 4;
   }
+  if (!c.hasCover) score -= 6;
 
   if (/\bfbi suspense thriller\b|\bpsychological suspense thriller\b/.test(text) && (c.ratingCount || 0) < 25) {
     score -= 4;

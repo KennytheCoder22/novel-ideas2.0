@@ -123,22 +123,15 @@ function buildRouterBucketPlan(input: RecommenderInput) {
 
 
 function inferRouterFamily(bucketPlan: any): "horror" | "thriller" | "speculative" | "romance" | "historical" | "general" {
-  const text = [
-    bucketPlan?.preview,
-    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
-    ...(Array.isArray(bucketPlan?.signals?.genres) ? bucketPlan.signals.genres : []),
-    ...(Array.isArray(bucketPlan?.signals?.tones) ? bucketPlan.signals.tones : []),
-    ...(Array.isArray(bucketPlan?.signals?.scenarios) ? bucketPlan.signals.scenarios : []),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  const explicitLane = String(bucketPlan?.lane || "").toLowerCase();
 
-  if (/(psychological horror|survival horror|haunted house horror|haunted psychological horror|psychological horror thriller|horror|haunted|ghost|supernatural horror|slasher|occult|possession)/.test(text)) return "horror";
-  if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
-  if (/(science fiction|sci-fi|fantasy|speculative|dystopian|space opera)/.test(text)) return "speculative";
-  if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
-  if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
+  if (explicitLane === "horror") return "horror";
+  if (explicitLane === "thriller") return "thriller";
+  if (explicitLane === "romance") return "romance";
+  if (explicitLane === "historical") return "historical";
+  if (explicitLane === "speculative" || explicitLane === "speculative_family") return "speculative";
+  if (explicitLane === "general" || explicitLane === "general_family") return "general";
+
   return "general";
 }
 

@@ -202,13 +202,7 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
       flags.suspensePositive ||
       /\b(missing|disappearance|abduction|kidnapp(?:ed|ing)?|detective|investigat(?:e|es|ion)|crime|murder|killer|fbi|procedural|noir|police|serial killer|manhunt|fugitive)\b/.test(combined);
 
-    const strongCrossLane =
-      (flags.romancePositive && !thrillerNative) ||
-      (flags.historicalPositive && !thrillerNative) ||
-      (flags.horrorAligned && !thrillerNative) ||
-      (flags.speculativePositive && !thrillerNative);
-
-    return !thrillerNative || strongCrossLane;
+    return !thrillerNative;
   }
 
   if (family === "romance") {
