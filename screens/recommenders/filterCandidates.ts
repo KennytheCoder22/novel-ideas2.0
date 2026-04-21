@@ -856,15 +856,27 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     }
 
     const hasNarrativeOrDescription =
-      diagnostics.flags.strongNarrative ||
-      (diagnostics.hasDescription && diagnostics.flags.fictionPositive) ||
-      (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive) ||
-      (
-        diagnostics.family === "thriller" &&
-        (diagnostics.flags.thrillerPositive || diagnostics.flags.crimePositive || diagnostics.flags.suspensePositive) &&
-        (diagnostics.hasDescription || diagnostics.hasRealLength) &&
-        (diagnostics.ratingsCount > 0 || diagnostics.flags.legitAuthority)
-      );
+      diagnostics.family === "thriller"
+        ? (
+            (
+              diagnostics.flags.thrillerPositive ||
+              diagnostics.flags.crimePositive ||
+              diagnostics.flags.suspensePositive
+            ) &&
+            (
+              diagnostics.hasDescription ||
+              diagnostics.hasRealLength
+            ) &&
+            (
+              diagnostics.ratingsCount >= 5 ||
+              diagnostics.flags.legitAuthority
+            )
+          )
+        : (
+            diagnostics.flags.strongNarrative ||
+            (diagnostics.hasDescription && diagnostics.flags.fictionPositive) ||
+            (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive)
+          );
 
     if (!hasMinimumRatings(doc) || !hasNarrativeOrDescription) {
       if (passesRelaxedHorrorFloor(doc, diagnostics)) {
