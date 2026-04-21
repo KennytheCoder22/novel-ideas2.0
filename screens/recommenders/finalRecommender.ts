@@ -767,7 +767,10 @@ function penaltyScore(c: Candidate): number {
   if (/\bdomestic suspense\b/.test(text) && !/\bcrime\b|\bmissing\b|\bkiller\b|\bfbi\b|\bdetective\b/.test(text)) {
     score -= 4;
   }
-  if (!c.hasCover) score -= 6;
+  if (!c.hasCover) {
+    if (isOpenLibraryCandidate(c)) score -= 1;
+    else score -= 6;
+  }
 
   if (/\bfbi suspense thriller\b|\bpsychological suspense thriller\b/.test(text) && (c.ratingCount || 0) < 25) {
     score -= 4;
@@ -841,6 +844,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const anchor = anchorBoost(c);
   const filterSignals = filterSignalScore(c);
   const sessionFit = thrillerSessionFit(c);
+  const openLibraryRecoveredBoost =
+    isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
 
   return {
     queryScore,
@@ -853,7 +858,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     overfitPenalty: overfit,
     anchorBoost: anchor,
     filterSignalScore: filterSignals,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals + sessionFit,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals + sessionFit + openLibraryRecoveredBoost,
   };
 }
 
@@ -1036,21 +1041,7 @@ export function finalRecommenderForDeck(
   const authorCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
 
-  const openLibraryPool = ordered.filter((entry) => isOpenLibraryCandidate(entry.candidate));
-  const nonOpenLibraryPool = ordered.filter((entry) => !isOpenLibraryCandidate(entry.candidate));
-
-  pickFromPool(nonOpenLibraryPool, selected, authorCounts, MAX_RESULTS);
-
-  if (selected.length < 6) {
-    pickFromPool(openLibraryPool, selected, authorCounts, MAX_RESULTS);
-  }
-
-  pickFromPool(
-    ordered.filter((entry) => !isOpenLibraryCandidate(entry.candidate)),
-    selected,
-    authorCounts,
-    MAX_RESULTS
-  );
+  pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
 
   return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown));
 }
