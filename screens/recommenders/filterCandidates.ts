@@ -25,6 +25,9 @@ type FilterDiagnostics = {
     weakSeriesSpam: boolean;
     legitAuthority: boolean;
     authorAffinity: boolean;
+    mysteryPositive: boolean;
+    crimePositive: boolean;
+    suspensePositive: boolean;
   };
 };
 
@@ -177,6 +180,54 @@ function isWeakSeriesSpam(title: string, doc: any, hasDescription: boolean, hasR
   const sequelPattern = /\b(book|volume|vol\.?|part)\s*\d+\b|\bseries\b/i.test(title);
   const veryWeakAuthority = ratingsCount < 50 && !hasLegitCommercialAuthority(doc);
   return sequelPattern && veryWeakAuthority && !(hasDescription && hasRealLength);
+}
+
+function isLaneMismatch(family: RouterFamily, combined: string, flags: {
+  speculativePositive: boolean;
+  thrillerPositive: boolean;
+  horrorAligned: boolean;
+  historicalPositive: boolean;
+  romancePositive: boolean;
+  mysteryPositive: boolean;
+  crimePositive: boolean;
+  suspensePositive: boolean;
+  strongNarrative: boolean;
+  fictionPositive: boolean;
+}): boolean {
+  if (family === "thriller") {
+    const thrillerNative =
+      flags.thrillerPositive ||
+      flags.mysteryPositive ||
+      flags.crimePositive ||
+      flags.suspensePositive ||
+      /\b(missing|disappearance|abduction|kidnapp(?:ed|ing)?|detective|investigat(?:e|es|ion)|crime|murder|killer|fbi|procedural|noir|police|serial killer|manhunt|fugitive)\b/.test(combined);
+
+    const strongCrossLane =
+      (flags.romancePositive && !thrillerNative) ||
+      (flags.historicalPositive && !thrillerNative) ||
+      (flags.horrorAligned && !thrillerNative) ||
+      (flags.speculativePositive && !thrillerNative);
+
+    return !thrillerNative || strongCrossLane;
+  }
+
+  if (family === "romance") {
+    const romanceNative = flags.romancePositive || /\b(second chance|forbidden love|love story|marriage|relationship)\b/.test(combined);
+    return !romanceNative;
+  }
+
+  if (family === "historical") {
+    const historicalNative = flags.historicalPositive;
+    return !historicalNative;
+  }
+
+  if (family === "speculative") {
+    const speculativeNative = flags.speculativePositive;
+    const obviousThrillerOnly = (flags.thrillerPositive || flags.mysteryPositive || flags.crimePositive) && !speculativeNative;
+    return !speculativeNative || obviousThrillerOnly;
+  }
+
+  return false;
 }
 
 function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
@@ -339,9 +390,18 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     );
 
   const thrillerPositive =
-    /\b(thriller|suspense|psychological|murder|serial killer|investigation|police procedural|noir|survival)\b/.test(
+    /\b(thriller|psychological thriller|crime thriller|domestic suspense|legal thriller|murder|serial killer|investigation|police procedural|noir|survival)\b/.test(
       combined
     );
+
+  const mysteryPositive =
+    /\b(mystery|detective|whodunit|case|private investigator|investigation)\b/.test(combined);
+
+  const crimePositive =
+    /\b(crime|criminal|murder|killer|kidnapp(?:ed|ing)?|abduction|fbi|police|procedural|manhunt|fugitive)\b/.test(combined);
+
+  const suspensePositive =
+    /\b(suspense|psychological suspense|domestic suspense|tension|cat and mouse)\b/.test(combined);
 
   const horrorAligned =
     /\b(horror|haunted|ghost|supernatural|occult|monster|creature|survival horror|terror|dread|eerie|disturbing|dark fantasy)\b/.test(combined);
@@ -379,6 +439,9 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
       weakSeriesSpam,
       legitAuthority,
       authorAffinity,
+      mysteryPositive,
+      crimePositive,
+      suspensePositive,
     },
   };
 
@@ -429,6 +492,19 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   if (family === "historical" && !historicalPositive) diagnostics.passedChecks.push("soft_missing_historical_signal");
   if (family === "romance" && !romancePositive) diagnostics.passedChecks.push("soft_missing_romance_signal");
+
+  if (family === "thriller" && isLaneMismatch(family, combined, diagnostics.flags)) {
+    diagnostics.rejectReasons.push("lane_mismatch_thriller");
+  }
+  if (family === "romance" && isLaneMismatch(family, combined, diagnostics.flags)) {
+    diagnostics.rejectReasons.push("lane_mismatch_romance");
+  }
+  if (family === "historical" && isLaneMismatch(family, combined, diagnostics.flags)) {
+    diagnostics.rejectReasons.push("lane_mismatch_historical");
+  }
+  if (family === "speculative" && isLaneMismatch(family, combined, diagnostics.flags)) {
+    diagnostics.rejectReasons.push("lane_mismatch_speculative");
+  }
 
   if (family === "horror" && !horrorAligned) {
     diagnostics.rejectReasons.push("missing_horror_alignment_hard");
@@ -667,6 +743,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "weak_series_spam",
     "speculative_off_profile_reference",
     "missing_horror_alignment_hard",
+    "lane_mismatch_thriller",
+    "lane_mismatch_romance",
+    "lane_mismatch_historical",
+    "lane_mismatch_speculative",
     "too_many_soft_failures",
     "below_shape_floor",
   ]);
