@@ -257,14 +257,24 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   }
 
   if (family === "fantasy") {
+    const fantasyKeywordSignal =
+      /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy|gothic fantasy)\b/.test(combined);
+
     const fantasyNative =
-      flags.speculativePositive &&
-      /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy)\b/.test(combined);
+      fantasyKeywordSignal ||
+      flags.speculativePositive ||
+      flags.strongNarrative ||
+      flags.authorAffinity;
 
     const obviousNonFantasyMeta =
-      /\b(guide to|historical dictionary|publishers weekly|library of congress|subject headings|writers? market|book review|anthology|collection|encyclopedia|companion|criticism|analysis|handbook|catalog|journal|magazine|texts)\b/.test(combined);
+      /\b(guide to|historical dictionary|publishers weekly|library of congress|subject headings|writers? market|book review|encyclopedia|companion|criticism|analysis|handbook|catalog|journal|magazine|texts)\b/.test(combined);
 
-    return !fantasyNative || obviousNonFantasyMeta;
+    const anthologyLikeMeta =
+      /\b(anthology|collection)\b/.test(combined) &&
+      !fantasyKeywordSignal &&
+      !flags.strongNarrative;
+
+    return !fantasyNative || obviousNonFantasyMeta || anthologyLikeMeta;
   }
 
   if (family === "speculative") {
@@ -594,7 +604,11 @@ if (family === "speculative") {
   if (family === "romance" && !romancePositive) diagnostics.passedChecks.push("soft_missing_romance_signal");
 
   if (family === "fantasy" && isLaneMismatch(family, combined, diagnostics.flags)) {
-    diagnostics.rejectReasons.push("lane_mismatch_fantasy");
+    if (isOpenLibraryLikeDoc(doc) && (diagnostics.flags.strongNarrative || diagnostics.flags.fictionPositive)) {
+      diagnostics.passedChecks.push("soft_lane_mismatch_fantasy");
+    } else {
+      diagnostics.rejectReasons.push("lane_mismatch_fantasy");
+    }
   }
   if (family === "thriller" && isLaneMismatch(family, combined, diagnostics.flags)) {
     diagnostics.rejectReasons.push("lane_mismatch_thriller");
@@ -833,6 +847,51 @@ function passesOpenLibraryHorrorRecovery(doc: any, diagnostics: FilterDiagnostic
 }
 
 
+function passesOpenLibraryFantasyRecovery(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (diagnostics.family !== "fantasy") return false;
+  if (!isOpenLibraryLikeDoc(doc)) return false;
+
+  const rawTitle = String(doc?.title || doc?.volumeInfo?.title || "").trim();
+  const normalizedTitle = normalizeText(rawTitle);
+  const author = normalizeText(
+    doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
+  );
+  const subjects = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const combined = [normalizedTitle, subjects, description, author].filter(Boolean).join(" ");
+  const firstPublishedYear =
+    Number(doc?.first_publish_year) ||
+    Number(doc?.publishYear) ||
+    Number(doc?.firstPublishedYear) ||
+    0;
+
+  const hasBasicBibliographicShape = Boolean(rawTitle) && Boolean(author && author !== "unknown");
+
+  const fantasySignal =
+    /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy|gothic fantasy)\b/.test(
+      combined
+    );
+
+  const classicFantasyTitle =
+    /\b(the hobbit|the fellowship of the ring|the two towers|the return of the king|a wizard of earthsea|dragonflight|the name of the wind)\b/.test(
+      normalizedTitle
+    );
+
+  const hasUsefulMetadata =
+    subjects.trim().length > 0 ||
+    description.trim().length > 0 ||
+    firstPublishedYear > 0;
+
+  if (!hasBasicBibliographicShape) return false;
+  if (classicFantasyTitle) return true;
+  if (diagnostics.flags.authorAffinity && hasUsefulMetadata) return true;
+  if (fantasySignal && hasUsefulMetadata) return true;
+  if (diagnostics.flags.strongNarrative && (fantasySignal || diagnostics.flags.speculativePositive || hasUsefulMetadata)) return true;
+
+  return false;
+}
+
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -903,11 +962,27 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       }
     }
 
+    if (isOpenLibraryLike && diagnostics.family === "fantasy") {
+      const recoveryReady = passesOpenLibraryFantasyRecovery(doc, diagnostics);
+
+      if (recoveryReady) {
+        const removed = new Set([
+          "insufficient_length_or_description",
+          "lane_mismatch_fantasy",
+          "too_many_soft_failures",
+        ]);
+
+        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+        diagnostics.passedChecks.push("openlibrary_fantasy_recovery_precheck");
+      }
+    }
+
     const nonCriticalRejectReasons = new Set([
       "missing_fiction_signal",
       "missing_narrative_signal",
       "missing_horror_alignment",
       "generic_title",
+      "soft_lane_mismatch_fantasy",
       "missing_fantasy_signal",
       "missing_speculative_signal",
       "missing_thriller_signal",
@@ -976,6 +1051,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("passed_relaxed_horror_shape_gate");
       } else if (isOpenLibraryLike && passesOpenLibraryHorrorRecovery(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_horror_recovery");
+      } else if (isOpenLibraryLike && passesOpenLibraryFantasyRecovery(doc, diagnostics)) {
+        diagnostics.passedChecks.push("openlibrary_fantasy_recovery");
       } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else {

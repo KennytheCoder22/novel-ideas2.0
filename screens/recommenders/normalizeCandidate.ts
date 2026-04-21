@@ -477,9 +477,30 @@ export function normalizeCandidates(rawDocs: RecommendationDoc[], source: Candid
   return (Array.isArray(rawDocs) ? rawDocs : [])
     .map((rawDoc) => normalizeCandidate(rawDoc, source))
     .filter((candidate) => !isClearlyNotABookCandidate(candidate))
-    .filter((candidate) =>
-      candidate.source === 'openLibrary'
-        ? Boolean(candidate.title) && Boolean(candidate.author) && !isClearlyNotABookCandidate(candidate)
-        : looksLikeFictionCandidate(candidate.rawDoc)
-    );
+    .filter((candidate) => {
+      if (candidate.source === 'openLibrary') {
+        const text = [
+          String(candidate.title || '').toLowerCase(),
+          String(candidate.description || '').toLowerCase(),
+          Array.isArray(candidate.subjects) ? candidate.subjects.join(' ').toLowerCase() : '',
+          Array.isArray(candidate.genres) ? candidate.genres.join(' ').toLowerCase() : '',
+        ].join(' ');
+
+        const fantasySignal =
+          /\b(fantasy|magic|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy)\b/.test(text);
+
+        const classicFantasyTitle =
+          /\b(the hobbit|the fellowship of the ring|the two towers|the return of the king|a wizard of earthsea|dragonflight|the name of the wind)\b/.test(
+            String(candidate.title || '').toLowerCase()
+          );
+
+        return Boolean(candidate.title) && Boolean(candidate.author) && !isClearlyNotABookCandidate(candidate) && (
+          looksLikeFictionCandidate(candidate.rawDoc) ||
+          fantasySignal ||
+          classicFantasyTitle
+        );
+      }
+
+      return looksLikeFictionCandidate(candidate.rawDoc);
+    });
 }

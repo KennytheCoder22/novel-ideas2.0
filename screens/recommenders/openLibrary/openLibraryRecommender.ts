@@ -22,6 +22,28 @@ function dedupeQueries(queries: string[]): string[] {
   return out;
 }
 
+
+function inferFamily(input: RecommenderInput): "fantasy" | "horror" | "thriller" | "speculative" | "romance" | "historical" | "general" {
+  const text = [
+    input.bucketPlan?.preview,
+    ...(Array.isArray(input.bucketPlan?.queries) ? input.bucketPlan.queries : []),
+    ...(Array.isArray((input.bucketPlan as any)?.signals?.genres) ? (input.bucketPlan as any).signals.genres : []),
+    ...(Array.isArray((input.bucketPlan as any)?.signals?.tones) ? (input.bucketPlan as any).signals.tones : []),
+    ...(Array.isArray((input.bucketPlan as any)?.signals?.scenarios) ? (input.bucketPlan as any).signals.scenarios : []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/(epic fantasy|high fantasy|magic fantasy|quest fantasy|character driven fantasy|dark fantasy|fantasy|wizard|witch|dragon|fae|mythic)/.test(text)) return "fantasy";
+  if (/(psychological horror|survival horror|haunted house horror|horror|haunted|ghost|supernatural|occult|monster|terror|dread)/.test(text)) return "horror";
+  if (/(thriller|mystery|crime|detective|suspense|murder|investigation)/.test(text)) return "thriller";
+  if (/(science fiction|sci-fi|speculative|dystopian|space opera|technology|ai|artificial intelligence)/.test(text)) return "speculative";
+  if (/(romance|love story)/.test(text)) return "romance";
+  if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
+  return "general";
+}
+
 function quoteQuery(query: string): string {
   const cleaned = String(query || "").trim();
   return cleaned ? `"${cleaned}"` : "";
@@ -55,7 +77,7 @@ function buildQueries(input: RecommenderInput): string[] {
   return [];
 }
 
-function isGarbage(doc: any): boolean {
+function isGarbage(doc: any, family: string): boolean {
   const title = normalizeText(doc?.title);
   const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name);
 
@@ -70,8 +92,16 @@ function isGarbage(doc: any): boolean {
     .map(normalizeText)
     .join(" ");
 
-  if (/\b(summary|analysis|study guide|review|criticism|notes|workbook)\b/i.test(text)) return true;
-  if (/\b(anthology|collection of stories|short stories|essays)\b/i.test(text)) return true;
+  if (/(summary|analysis|study guide|review|criticism|notes|workbook)/i.test(text)) return true;
+  if (/(anthology|collection of stories|short stories|essays)/i.test(text)) return true;
+
+  if (family === "fantasy") {
+    const obviousFantasySignal =
+      /(fantasy|magic|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy)/.test(text);
+    const classicFantasyTitle =
+      /(the hobbit|the fellowship of the ring|the two towers|the return of the king|a wizard of earthsea|dragonflight|the name of the wind)/.test(title);
+    if (obviousFantasySignal || classicFantasyTitle) return false;
+  }
 
   return false;
 }
@@ -86,6 +116,7 @@ export async function getOpenLibraryRecommendations(
   input: RecommenderInput
 ): Promise<RecommendationResult> {
   const queries = buildQueries(input);
+  const family = inferFamily(input);
   const docsRaw: any[] = [];
   const limit = input.limit || 12;
   const intakeLimit = Math.max(limit * 3, 36);
@@ -109,7 +140,7 @@ export async function getOpenLibraryRecommendations(
     const docs = Array.isArray(data?.docs) ? data.docs : [];
 
     for (const d of docs) {
-      if (isGarbage(d)) continue;
+      if (isGarbage(d, family)) continue;
 
       docsRaw.push({
         ...d,
@@ -140,6 +171,10 @@ export async function getOpenLibraryRecommendations(
       first_publish_year: d.first_publish_year,
       cover_i: d.cover_i,
       subject: d.subject,
+      publisher: d.publisher,
+      language: d.language,
+      edition_count: d.edition_count,
+      first_sentence: d.first_sentence,
       source: "openLibrary",
       queryText: d.queryText,
       queryRung: d.queryRung
