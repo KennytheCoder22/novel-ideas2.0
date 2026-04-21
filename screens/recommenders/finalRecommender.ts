@@ -87,6 +87,19 @@ function haystack(c: Candidate): string {
   ].join(' ').toLowerCase();
 }
 
+function explicitLaneForCandidate(c: Candidate): string {
+  const rawDoc: any = c?.rawDoc || {};
+  const diagnostics = rawDoc?.diagnostics || {};
+  return String(
+    diagnostics?.filterFamily ||
+    rawDoc?.laneKind ||
+    (c as any)?.laneKind ||
+    rawDoc?.queryFamily ||
+    (c as any)?.queryFamily ||
+    ""
+  ).toLowerCase();
+}
+
 function isValidCandidate(c: Candidate): boolean {
   return Boolean(c && c.title);
 }
@@ -550,7 +563,7 @@ function anchorBoost(c: Candidate): number {
   const title = normalize(c.title);
   const author = normalize(c.author);
   const ratings = c.ratingCount || 0;
-  const lane = String((c as any)?.queryFamily || (c as any)?.laneKind || "").toLowerCase();
+  const lane = explicitLaneForCandidate(c);
 
   let score = 0;
 
@@ -623,14 +636,20 @@ function anchorBoost(c: Candidate): number {
     return list.some((name) => author.includes(name));
   }
 
-  if (lane === "horror" && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
-  else if (lane === "thriller" && matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
-  else if (lane === "speculative" && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
-  else if (lane === "romance" && matchesAuthor(AUTHOR_MAP.romance)) score += 8;
-  else if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
-  else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
-  else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
-  else if (isRomance && matchesAuthor(AUTHOR_MAP.romance)) score += 8;
+  if (lane === "horror") {
+    if (matchesAuthor(AUTHOR_MAP.horror)) score += 14;
+  } else if (lane === "thriller") {
+    if (matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
+  } else if (lane === "speculative") {
+    if (matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
+  } else if (lane === "romance") {
+    if (matchesAuthor(AUTHOR_MAP.romance)) score += 8;
+  } else {
+    if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
+    else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
+    else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
+    else if (isRomance && matchesAuthor(AUTHOR_MAP.romance)) score += 8;
+  }
 
   if (/cujo/.test(title)) score += 10;
   if (/the long walk/.test(title)) score += 10;

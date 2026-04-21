@@ -63,6 +63,15 @@ function collectDescriptionText(doc: any): string {
 }
 
 function inferRouterFamily(bucketPlan: any): RouterFamily {
+  const explicitLane = String(bucketPlan?.lane || "").toLowerCase();
+
+  if (explicitLane === "horror") return "horror";
+  if (explicitLane === "thriller") return "thriller";
+  if (explicitLane === "romance") return "romance";
+  if (explicitLane === "historical") return "historical";
+  if (explicitLane === "speculative" || explicitLane === "speculative_family") return "speculative";
+  if (explicitLane === "general" || explicitLane === "general_family") return "general";
+
   const text = [
     bucketPlan?.preview,
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
