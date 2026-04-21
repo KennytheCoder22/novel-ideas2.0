@@ -89,7 +89,8 @@ function inferRouterFamily(bucketPlan: any): RouterFamily {
 
   if (/(psychological horror|survival horror|haunted house horror|haunted psychological horror|psychological horror thriller|horror|haunted|ghost|supernatural|occult|monster|creature|possession|terror|dread|eerie|disturbing)/.test(text)) return "horror";
   if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
-  if (/(science fiction|sci-fi|fantasy|speculative|dystopian|space opera|technology|ai|artificial intelligence)/.test(text)) return "speculative";
+  if (/(epic fantasy|high fantasy|magic fantasy|quest fantasy|character driven fantasy|dark fantasy|fantasy|wizard|witch|dragon|fae|mythic)/.test(text)) return "fantasy";
+  if (/(science fiction|sci-fi|speculative|dystopian|space opera|technology|ai|artificial intelligence)/.test(text)) return "speculative";
   if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
   if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
   return "general";
@@ -255,12 +256,18 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
     return !historicalNative;
   }
 
-  
   if (family === "fantasy") {
-    if (!speculativePositive) diagnostics.passedChecks.push("soft_missing_fantasy_signal");
+    const fantasyNative =
+      flags.speculativePositive &&
+      /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy)\b/.test(combined);
+
+    const obviousNonFantasyMeta =
+      /\b(guide to|historical dictionary|publishers weekly|library of congress|subject headings|writers? market|book review|anthology|collection|encyclopedia|companion|criticism|analysis|handbook|catalog|journal|magazine|texts)\b/.test(combined);
+
+    return !fantasyNative || obviousNonFantasyMeta;
   }
 
-if (family === "speculative") {
+  if (family === "speculative") {
     const speculativeNative = flags.speculativePositive;
     const obviousThrillerOnly = (flags.thrillerPositive || flags.mysteryPositive || flags.crimePositive) && !speculativeNative;
     return !speculativeNative || obviousThrillerOnly;
@@ -586,6 +593,9 @@ if (family === "speculative") {
   if (family === "historical" && !historicalPositive) diagnostics.passedChecks.push("soft_missing_historical_signal");
   if (family === "romance" && !romancePositive) diagnostics.passedChecks.push("soft_missing_romance_signal");
 
+  if (family === "fantasy" && isLaneMismatch(family, combined, diagnostics.flags)) {
+    diagnostics.rejectReasons.push("lane_mismatch_fantasy");
+  }
   if (family === "thriller" && isLaneMismatch(family, combined, diagnostics.flags)) {
     diagnostics.rejectReasons.push("lane_mismatch_thriller");
   }
@@ -836,6 +846,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "weak_series_spam",
     "speculative_off_profile_reference",
     "missing_horror_alignment_hard",
+    "lane_mismatch_fantasy",
     "lane_mismatch_thriller",
     "lane_mismatch_romance",
     "lane_mismatch_historical",
@@ -897,6 +908,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       "missing_narrative_signal",
       "missing_horror_alignment",
       "generic_title",
+      "missing_fantasy_signal",
       "missing_speculative_signal",
       "missing_thriller_signal",
       "missing_historical_signal",
