@@ -409,7 +409,13 @@ function buildFallbackRungs(intent: QueryIntent): string[] {
 
   const guaranteed =
     base === "fantasy"
-      ? ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"]
+      ? [
+          "epic fantasy novel",
+          "high fantasy novel",
+          "magic fantasy novel",
+          "quest fantasy novel",
+          "character driven fantasy novel",
+        ]
       : [];
 
   const domesticAwareThemeQueries =
@@ -475,35 +481,41 @@ function classifyRungRole(query: string): RungRole {
   const q = clean(query);
 
   if (
-    /\bpsychological horror novel\b/.test(q) ||
-    /\bmissing person thriller novel\b/.test(q) ||
-    /\bobsession psychological thriller novel\b/.test(q) ||
-    /\bdark fantasy novel\b/.test(q) ||
-    /\bscience fiction novel\b/.test(q) ||
-    /\bmystery thriller novel\b/.test(q)
+    /psychological horror novel/.test(q) ||
+    /missing person thriller novel/.test(q) ||
+    /obsession psychological thriller novel/.test(q) ||
+    /epic fantasy novel/.test(q) ||
+    /science fiction novel/.test(q) ||
+    /mystery thriller novel/.test(q)
   ) {
     return "core";
   }
 
   if (
-    /\bsurvival horror\b/.test(q) ||
-    /\bprocedural crime thriller\b/.test(q) ||
-    /\bpsychological mystery\b/.test(q) ||
-    /\bdystopian science fiction\b/.test(q) ||
-    /\bgothic fantasy\b/.test(q)
+    /survival horror/.test(q) ||
+    /procedural crime thriller/.test(q) ||
+    /psychological mystery/.test(q) ||
+    /dystopian science fiction/.test(q) ||
+    /high fantasy novel/.test(q) ||
+    /quest fantasy novel/.test(q)
   ) {
     return "intensify";
   }
 
   if (
-    /\bhaunted psychological horror\b/.test(q) ||
-    /\bpsychological horror thriller\b/.test(q) ||
-    /\bcrime conspiracy thriller\b/.test(q) ||
-    /\bserial killer investigation thriller\b/.test(q) ||
-    /\bscience fiction thriller\b/.test(q) ||
-    /\bmagic fantasy\b/.test(q)
+    /haunted psychological horror/.test(q) ||
+    /psychological horror thriller/.test(q) ||
+    /crime conspiracy thriller/.test(q) ||
+    /serial killer investigation thriller/.test(q) ||
+    /science fiction thriller/.test(q) ||
+    /magic fantasy/.test(q) ||
+    /character driven fantasy/.test(q)
   ) {
     return "adjacent_recall";
+  }
+
+  if (/dark fantasy novel/.test(q)) {
+    return "controlled_explore";
   }
 
   return "controlled_explore";
