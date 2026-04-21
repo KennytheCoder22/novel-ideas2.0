@@ -686,6 +686,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror)/i.test(q);
   }
 
+  const thrillerAllowsDomestic =
+    family === "thriller" &&
+    /domestic|family secret|marriage|betrayal|relationship/.test(
+      String(base || "") + " " + String(bucketPlan?.preview || "")
+    ) &&
+    !/serial killer|procedural|fbi|investigation|detective|crime conspiracy|manhunt|fugitive/.test(
+      String(base || "") + " " + String(bucketPlan?.preview || "")
+    );
+
   const lanes = dedupeNonEmptyQueries([
     base,
     `${base} fiction`,
@@ -693,8 +702,8 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
     family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
     family === "thriller" && /psychological/.test(lowered) ? "psychological suspense novel" : "",
-    family === "thriller" && /thriller|crime|mystery|detective/.test(lowered) ? "domestic suspense novel" : "",
-    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 3) : []),
+    thrillerAllowsDomestic ? "domestic suspense novel" : "",
+    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 5) : []),
   ]);
 
   let filteredLanes = lanes;
@@ -969,7 +978,7 @@ async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<Recommend
   // Gold-standard router rule:
   // Hardcover is enrichment only. Never block, never drop, never downgrade shelf eligibility.
   // Cap lookups now that fetch runs per rung.
-  const HARDCOVER_LOOKUP_LIMIT = 12;
+  const HARDCOVER_LOOKUP_LIMIT = 40;
 
   const indexedDocs = docs.map((doc, index) => ({ doc, index }));
   const prioritized = [...indexedDocs].sort(
@@ -1409,35 +1418,39 @@ const normalizedCandidates = [
   const primaryIntentOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source === "openLibrary");
   const primaryIntentNonOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source !== "openLibrary");
 
+  const thrillerOpenLibraryQuota = routerFamily === "thriller" ? 2 : MIN_OPEN_LIBRARY_BASE_POOL;
+
   let basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
     ? dedupeDocs([
-        ...primaryIntentOpenLibraryCandidates.slice(0, MIN_OPEN_LIBRARY_BASE_POOL),
+        ...primaryIntentOpenLibraryCandidates.slice(0, thrillerOpenLibraryQuota),
         ...primaryIntentNonOpenLibraryCandidates,
-        ...primaryIntentOpenLibraryCandidates.slice(MIN_OPEN_LIBRARY_BASE_POOL),
+        ...primaryIntentOpenLibraryCandidates.slice(thrillerOpenLibraryQuota),
       ] as any)
     : dedupeDocs([
-        ...openLibraryNormalizedCandidates.slice(0, MIN_OPEN_LIBRARY_BASE_POOL),
+        ...openLibraryNormalizedCandidates.slice(0, thrillerOpenLibraryQuota),
         ...nonOpenLibraryNormalizedCandidates,
-        ...openLibraryNormalizedCandidates.slice(MIN_OPEN_LIBRARY_BASE_POOL),
+        ...openLibraryNormalizedCandidates.slice(thrillerOpenLibraryQuota),
       ] as any);
 
   if (basePool.length < finalLimit * 2) {
     basePool = dedupeDocs([
-      ...openLibraryNormalizedCandidates.slice(0, MIN_OPEN_LIBRARY_BASE_POOL),
+      ...openLibraryNormalizedCandidates.slice(0, thrillerOpenLibraryQuota),
       ...enforceAuthorDiversity(normalizedCandidates, 1),
     ] as any);
     basePool = enforceLaneDiversity(basePool, 3);
   }
 
-  const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
-  if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_BASE_POOL) {
-    const existing = new Set(basePool.map((c: any) => candidateKey(c)));
-    for (const candidate of openLibraryNormalizedCandidates) {
-      const key = candidateKey(candidate);
-      if (!key || existing.has(key)) continue;
-      basePool.push(candidate);
-      existing.add(key);
-      if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_BASE_POOL) break;
+  if (routerFamily !== "thriller") {
+    const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
+    if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_BASE_POOL) {
+      const existing = new Set(basePool.map((c: any) => candidateKey(c)));
+      for (const candidate of openLibraryNormalizedCandidates) {
+        const key = candidateKey(candidate);
+        if (!key || existing.has(key)) continue;
+        basePool.push(candidate);
+        existing.add(key);
+        if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_BASE_POOL) break;
+      }
     }
   }
 

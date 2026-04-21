@@ -140,9 +140,43 @@ const HORROR_AUTHOR_AFFINITY = new Set([
   "wilkie collins",
 ]);
 
+const THRILLER_AUTHOR_AFFINITY = new Set([
+  "gillian flynn",
+  "tana french",
+  "dennis lehane",
+  "michael connelly",
+  "lee child",
+  "john grisham",
+  "thomas harris",
+  "patricia cornwell",
+  "harlan coben",
+  "karin slaughter",
+  "paula hawkins",
+  "a j finn",
+  "aj finn",
+  "don winslow",
+  "ruth ware",
+  "patricia highsmith",
+  "john le carre",
+  "michael robotham",
+  "nicci french",
+  "blake crouch",
+  "mary higgins clark",
+  "helen fields",
+  "stieg larsson",
+  "daniel silva",
+  "robert ludlum",
+  "mary kubica",
+  "lisa jewell",
+  "alex michaelides",
+]);
+
+
+
 function hasAuthorAffinityForFamily(author: string, family: RouterFamily): boolean {
   if (!author) return false;
   if (family === "horror") return HORROR_AUTHOR_AFFINITY.has(author);
+  if (family === "thriller") return THRILLER_AUTHOR_AFFINITY.has(author);
   return false;
 }
 
@@ -518,8 +552,16 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
       diagnostics.rejectReasons.push("thriller_meta_reference");
     }
 
+    const hardcoverRatingsCount = Number((doc as any)?.hardcover?.ratings_count || 0);
+    const isOpenLibraryLikeDoc =
+      String((doc as any)?.source || "").toLowerCase().includes("openlibrary") ||
+      String((doc as any)?.engine || "").toLowerCase().includes("openlibrary") ||
+      String((doc as any)?.laneKind || "").toLowerCase() === "ol-backfill";
+
     const missingOrLowQualityCover =
       !Boolean((doc as any)?.hasCover) &&
+      !isOpenLibraryLikeDoc &&
+      hardcoverRatingsCount === 0 &&
       /\b(miss|mrs\.?|mystery|detective story|novel)\b/.test(title) &&
       ratingsCount === 0 &&
       !legitAuthority;
@@ -816,6 +858,28 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_horror_recovery_precheck");
       }
     }
+    if (isOpenLibraryLike && diagnostics.family === "thriller") {
+      const hardcoverRatingsCount = Number((doc as any)?.hardcover?.ratings_count || 0);
+      const hardcoverRating = Number((doc as any)?.hardcover?.rating || 0);
+      const thrillerRecoverySignals =
+        diagnostics.flags.authorAffinity ||
+        diagnostics.flags.legitAuthority ||
+        hardcoverRatingsCount >= 10 ||
+        hardcoverRating >= 3.7;
+
+      if (thrillerRecoverySignals) {
+        const removed = new Set([
+          "insufficient_length_or_description",
+          "thriller_native_signal_required",
+          "missing_or_low_quality_cover",
+          "too_many_soft_failures",
+        ]);
+
+        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+        diagnostics.passedChecks.push("openlibrary_thriller_recovery_precheck");
+      }
+    }
+
     const nonCriticalRejectReasons = new Set([
       "missing_fiction_signal",
       "missing_narrative_signal",
@@ -861,15 +925,20 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
             (
               diagnostics.flags.thrillerPositive ||
               diagnostics.flags.crimePositive ||
-              diagnostics.flags.suspensePositive
+              diagnostics.flags.suspensePositive ||
+              diagnostics.flags.mysteryPositive
             ) &&
             (
               diagnostics.hasDescription ||
-              diagnostics.hasRealLength
+              diagnostics.hasRealLength ||
+              Number((doc as any)?.hardcover?.ratings_count || 0) >= 10
             ) &&
             (
               diagnostics.ratingsCount >= 5 ||
-              diagnostics.flags.legitAuthority
+              diagnostics.flags.legitAuthority ||
+              Number((doc as any)?.hardcover?.ratings_count || 0) >= 10 ||
+              Number((doc as any)?.hardcover?.rating || 0) >= 3.7 ||
+              diagnostics.flags.authorAffinity
             )
           )
         : (

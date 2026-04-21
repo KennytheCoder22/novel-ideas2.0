@@ -621,6 +621,18 @@ function anchorBoost(c: Candidate): number {
       'patricia highsmith',
       'john le carre',
       'stephen king',
+      'michael robotham',
+      'nicci french',
+      'blake crouch',
+      'mary higgins clark',
+      'helen fields',
+      'stieg larsson',
+      'daniel silva',
+      'robert ludlum',
+      'lisa jewell',
+      'mary kubica',
+      'shari lapena',
+      'alex michaelides',
     ],
     speculative: [
       'ursula k le guin',
@@ -693,13 +705,15 @@ function penaltyScore(c: Candidate): number {
     score -= 6;
   }
 
-  if (lane === "strict-filtered") score -= 4;
-  if (lane === "fiction-variant") score -= 2;
-  if (lane === "dark-alt" && /\bdomestic suspense\b/.test(text)) score -= 3;
+  if (lane === "strict-filtered") score -= 8;
+  if (lane === "fiction-variant") score -= 4;
+  if (lane === "dark-alt" && /\bdomestic suspense\b/.test(text)) score -= 5;
+  if (lane === "ol-backfill") score -= 3;
 
   if (family === "mystery") {
-    const thrillerNative = /\bthriller\b|\bpsychological\b|\bsuspense\b|\bmissing\b|\bkiller\b|\bfbi\b|\bcrime\b/.test(text);
-    if (!thrillerNative) score -= 6;
+    const thrillerNative = /\bthriller\b|\bpsychological\b|\bsuspense\b|\bmissing\b|\bkiller\b|\bfbi\b|\bcrime\b|\binvestigation\b|\bprocedural\b/.test(text);
+    if (!thrillerNative) score -= 10;
+    else score -= 3;
   }
 
   if (/\bfaith-based\b|\bchristian fiction\b/.test(text)) score -= 10;
@@ -719,7 +733,10 @@ function penaltyScore(c: Candidate): number {
 
   const source = String(c.source || '').toLowerCase();
   const isGoogleBooks = source === 'googlebooks';
+  const isOpenLibrary = source === 'openlibrary';
   const flags = getFilterDiagnostics(c)?.filterFlags || getFilterDiagnostics(c)?.flags || {};
+  const hardcoverRatings = Number((c as any)?.rawDoc?.hardcover?.ratings_count || 0);
+  const hardcoverRating = Number((c as any)?.rawDoc?.hardcover?.rating || 0);
 
   if (
     isGoogleBooks &&
@@ -728,6 +745,20 @@ function penaltyScore(c: Candidate): number {
     !flags.authorAffinity
   ) {
     score -= 8;
+  }
+
+  if (
+    isOpenLibrary &&
+    !flags.authorAffinity &&
+    hardcoverRatings === 0 &&
+    hardcoverRating === 0 &&
+    trust <= 3
+  ) {
+    score -= 8;
+  }
+
+  if (isOpenLibrary && (hardcoverRatings >= 25 || hardcoverRating >= 3.8 || flags.legitAuthority)) {
+    score += 5;
   }
 
   return score;
