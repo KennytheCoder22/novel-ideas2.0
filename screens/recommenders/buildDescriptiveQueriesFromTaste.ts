@@ -256,7 +256,7 @@ function cleanParts(parts: Array<string | undefined | null>): string[] {
 
 function sortPartsForSearch(parts: string[]): string[] {
   const priority = new Map<string, number>([
-    ["dark fantasy", 0],
+    ["dark fantasy", 8],
     ["psychological mystery", 1],
     ["psychological science fiction", 2],
     ["science fiction thriller", 3],
@@ -309,7 +309,7 @@ function enforceSearchableStructure(parts: string[]): string[] {
   }
 
   if (out.includes("psychological") && out.includes("fantasy")) {
-    out.push("dark fantasy");
+    // Do not force dark fantasy for fantasy sessions; allow broader fantasy variants.
   }
 
   if (out.includes("psychological") && out.includes("mystery")) {

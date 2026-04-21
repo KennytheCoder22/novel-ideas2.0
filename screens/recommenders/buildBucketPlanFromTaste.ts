@@ -118,6 +118,10 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.includes("horror") ||
     descriptiveQueriesLower.some((q) => /horror|haunted|ghost|supernatural|occult|possession/.test(q));
 
+  const isFantasy =
+    genreKeys.includes("fantasy") ||
+    descriptiveQueriesLower.some((q) => /fantasy|magic|dragon|wizard|witch|fae|mythic/.test(q));
+
   const isThriller =
     genreKeys.some((key) => ["crime", "mystery", "thriller"].includes(key)) ||
     descriptiveQueriesLower.some((q) => /thriller|crime|detective|investigation|serial killer|missing person|procedural|suspense/.test(q));
@@ -133,6 +137,8 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
 
   if (isHorror) {
     family = "speculative_family";
+  } else if (isFantasy) {
+    family = "speculative_family";
   } else if (isThriller) {
     family = "thriller_family";
   } else if (isRomance) {
@@ -143,6 +149,7 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
 
   let lane: string = family;
   if (isHorror) lane = "horror";
+  else if (isFantasy) lane = "fantasy";
   else if (isThriller) lane = "thriller";
   else if (isRomance) lane = "romance";
   else if (isHistorical) lane = "historical";

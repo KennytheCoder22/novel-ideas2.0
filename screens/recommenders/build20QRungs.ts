@@ -160,7 +160,13 @@ mystery: [
   "mystery thriller novel",
   "psychological mystery novel"
 ],
-  fantasy: ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"],
+  fantasy: [
+    "epic fantasy novel",
+    "high fantasy novel",
+    "magic fantasy novel",
+    "quest fantasy novel",
+    "character driven fantasy novel",
+  ],
   "science fiction": ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"],
   romance: [
     "second chance romance novel",
