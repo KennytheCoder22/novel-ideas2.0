@@ -485,8 +485,48 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   }
 
   if (family === "thriller") {
+    const thrillerNative =
+      thrillerPositive ||
+      mysteryPositive ||
+      crimePositive ||
+      suspensePositive;
+
     if (!thrillerPositive) diagnostics.passedChecks.push("soft_missing_thriller_signal");
     if (horrorToneWanted && !horrorAligned) diagnostics.passedChecks.push("soft_missing_horror_alignment");
+
+    if (!thrillerNative) {
+      diagnostics.rejectReasons.push("thriller_native_signal_required");
+    }
+
+    const antiqueOffProfileThriller =
+      /\b(victorian|edwardian|19th century)\b/.test(combined) ||
+      (pageCount >= 250 &&
+        ratingsCount === 0 &&
+        !legitAuthority &&
+        /\b(miss|mrs\.?|lady|gentleman|detective story|mystery story|novel)\b/.test(title) &&
+        !crimePositive &&
+        !suspensePositive);
+
+    if (antiqueOffProfileThriller) {
+      diagnostics.rejectReasons.push("antique_off_profile_thriller");
+    }
+
+    const thrillerMetaReference =
+      /\b(technique of the mystery story|critical survey|mystery book|mammoth mystery book|boxed set|anthology|collection|true crime stories|crime fiction and|detective fiction|literary criticism)\b/.test(combined);
+
+    if (thrillerMetaReference) {
+      diagnostics.rejectReasons.push("thriller_meta_reference");
+    }
+
+    const missingOrLowQualityCover =
+      !Boolean((doc as any)?.hasCover) &&
+      /\b(miss|mrs\.?|mystery|detective story|novel)\b/.test(title) &&
+      ratingsCount === 0 &&
+      !legitAuthority;
+
+    if (missingOrLowQualityCover) {
+      diagnostics.rejectReasons.push("missing_or_low_quality_cover");
+    }
   }
 
   if (family === "historical" && !historicalPositive) diagnostics.passedChecks.push("soft_missing_historical_signal");
@@ -746,6 +786,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "lane_mismatch_romance",
     "lane_mismatch_historical",
     "lane_mismatch_speculative",
+    "thriller_native_signal_required",
+    "antique_off_profile_thriller",
+    "thriller_meta_reference",
+    "missing_or_low_quality_cover",
     "too_many_soft_failures",
     "below_shape_floor",
   ]);
@@ -791,17 +835,12 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.rejectReasons.length > 0 &&
       diagnostics.rejectReasons.every((reason) => nonCriticalRejectReasons.has(reason));
 
-    if (!hasCriticalReject && diagnostics.rejectReasons.length > 2) {
-      diagnostics.passedChecks.push("aggressive_reject_reset");
-      diagnostics.rejectReasons = [];
-    }
-
-    if (isWeakSource && onlyNonCriticalRejects) {
+    if (isWeakSource && diagnostics.family !== "thriller" && onlyNonCriticalRejects) {
       diagnostics.passedChecks.push("weak_source_noncritical_reject_bypass");
       diagnostics.rejectReasons = [];
     }
 
-    if (isOpenLibraryLike && !hasCriticalReject) {
+    if (isOpenLibraryLike && diagnostics.family !== "thriller" && !hasCriticalReject) {
       diagnostics.passedChecks.push("openlibrary_noncritical_reject_bypass");
       diagnostics.rejectReasons = [];
     }
@@ -819,7 +858,13 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const hasNarrativeOrDescription =
       diagnostics.flags.strongNarrative ||
       (diagnostics.hasDescription && diagnostics.flags.fictionPositive) ||
-      (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive);
+      (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive) ||
+      (
+        diagnostics.family === "thriller" &&
+        (diagnostics.flags.thrillerPositive || diagnostics.flags.crimePositive || diagnostics.flags.suspensePositive) &&
+        (diagnostics.hasDescription || diagnostics.hasRealLength) &&
+        (diagnostics.ratingsCount > 0 || diagnostics.flags.legitAuthority)
+      );
 
     if (!hasMinimumRatings(doc) || !hasNarrativeOrDescription) {
       if (passesRelaxedHorrorFloor(doc, diagnostics)) {
