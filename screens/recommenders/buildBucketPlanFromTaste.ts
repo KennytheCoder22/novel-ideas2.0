@@ -110,7 +110,17 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const scenarioKeys = topKeys(signals.scenario, 3);
   const themeKeys = topKeys(signals.theme, 3);
 
-  const family = familyForGenres(genreKeys);
+  let family = familyForGenres(genreKeys);
+
+  const isHorror =
+    genreKeys.includes("horror") ||
+    (descriptive.queries || []).some((q) => /horror|haunted|ghost|supernatural/.test(String(q).toLowerCase()));
+
+  if (isHorror) {
+    family = "speculative_family";
+  }
+
+  const lane = isHorror ? "horror" : family;
 
   const translatedGenres = translateSignalBucket(
     genreKeys,
@@ -179,6 +189,7 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     preview: queries[0] || descriptive.preview || baseGenre,
     strategy: `20q-signal-bucket-plan:${family}`,
     family,
+    lane,
     hypotheses: activeHypotheses,
   };
 }

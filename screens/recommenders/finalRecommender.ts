@@ -550,6 +550,7 @@ function anchorBoost(c: Candidate): number {
   const title = normalize(c.title);
   const author = normalize(c.author);
   const ratings = c.ratingCount || 0;
+  const lane = String((c as any)?.queryFamily || (c as any)?.laneKind || "").toLowerCase();
 
   let score = 0;
 
@@ -622,7 +623,11 @@ function anchorBoost(c: Candidate): number {
     return list.some((name) => author.includes(name));
   }
 
-  if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
+  if (lane === "horror" && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
+  else if (lane === "thriller" && matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
+  else if (lane === "speculative" && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
+  else if (lane === "romance" && matchesAuthor(AUTHOR_MAP.romance)) score += 8;
+  else if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
   else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 12;
   else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
   else if (isRomance && matchesAuthor(AUTHOR_MAP.romance)) score += 8;

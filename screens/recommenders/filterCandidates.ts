@@ -178,7 +178,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
   );
   const combined = [title, categories, description, author].filter(Boolean).join(" ");
-  const family = inferRouterFamily(bucketPlan);
+  const family = (bucketPlan?.lane || inferRouterFamily(bucketPlan)) as RouterFamily;
   const horrorToneWanted = wantsHorrorTone(bucketPlan);
 
   const hardRejectTitlePatterns = [
@@ -488,6 +488,7 @@ function attachDiagnostics(doc: RecommendationDoc, diagnostics: FilterDiagnostic
   const existing = (doc as any)?.diagnostics || {};
   return {
     ...(doc as any),
+    laneKind: diagnostics.family,
     diagnostics: {
       ...existing,
       filterDiagnostics: diagnostics,
