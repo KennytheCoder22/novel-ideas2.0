@@ -200,9 +200,14 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
       flags.mysteryPositive ||
       flags.crimePositive ||
       flags.suspensePositive ||
-      /\b(missing|disappearance|abduction|kidnapp(?:ed|ing)?|detective|investigat(?:e|es|ion)|crime|murder|killer|fbi|procedural|noir|police|serial killer|manhunt|fugitive)\b/.test(combined);
+      /\b(missing|disappearance|abduction|kidnapp(?:ed|ing)?|detective|investigat(?:e|es|ion)|crime|murder|killer|fbi|procedural|noir|police|serial killer|manhunt|fugitive|case|victim|search)\b/.test(combined);
 
-    return !thrillerNative;
+    if (!thrillerNative) return true;
+
+    const obviousNonThrillerMeta =
+      /\b(essays|treatise|philosophy|upheaval|social upheaval|history of|criticism|book of answers|critical survey|technique of the mystery story|mystery book|mammoth mystery book|century of british mystery|jew in english fiction)\b/.test(combined);
+
+    return obviousNonThrillerMeta;
   }
 
   if (family === "romance") {
