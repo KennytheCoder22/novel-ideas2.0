@@ -362,8 +362,13 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     ((c.pageCount || 0) >= 80 && descriptionLength > 80) ||
     Boolean(c.hasCover && descriptionLength > 80);
 
+  const filterSignals = filterSignalScore(c);
+  const isOL = isOpenLibraryCandidate(c);
+
   if (trust < 2 && !hasShapeSignal) {
-    return { pass: false, reason: 'low_metadata_trust', detail: `metadataTrust=${trust}` };
+    if (!(isOL && filterSignals >= 4)) {
+      return { pass: false, reason: 'low_metadata_trust', detail: `metadataTrust=${trust}` };
+    }
   }
 
   const hasStrongSignal =
@@ -375,7 +380,9 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   }
 
   if (!fictionSignals) {
-    return { pass: false, reason: 'weak_fiction_signal', detail: 'missing fiction/narrative signal' };
+    if (!(isOL && filterSignals >= 4)) {
+      return { pass: false, reason: 'weak_fiction_signal', detail: 'missing fiction/narrative signal' };
+    }
   }
 
   return { pass: true };
@@ -791,9 +798,10 @@ function penaltyScore(c: Candidate): number {
     !flags.authorAffinity &&
     hardcoverRatings === 0 &&
     hardcoverRating === 0 &&
-    trust <= 3
+    trust <= 2 &&
+    filterSignalScore(c) < 4
   ) {
-    score -= 8;
+    score -= 4;
   }
 
   if (isOpenLibrary && (hardcoverRatings >= 25 || hardcoverRating >= 3.8 || flags.legitAuthority)) {
