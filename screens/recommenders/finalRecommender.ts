@@ -420,11 +420,15 @@ function filterSignalScore(c: Candidate): number {
 
   if (passedChecks.includes('author_affinity_horror_recovery')) score += 6;
   if (passedChecks.includes('openlibrary_horror_recovery')) score += 4;
+  if (passedChecks.includes('openlibrary_fantasy_recovery_precheck')) score += 4;
+  if (passedChecks.includes('openlibrary_fantasy_recovery')) score += 5;
   if (passedChecks.includes('passed_shape_gate')) score += 2;
 
   if (isOpenLibraryCandidate(c) && flags.authorAffinity) score += 6;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('author_affinity_horror_recovery')) score += 6;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_horror_recovery')) score += 4;
+  if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_fantasy_recovery_precheck')) score += 4;
+  if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_fantasy_recovery')) score += 5;
 
   return score;
 }
@@ -463,13 +467,21 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
   if (/science fiction/.test(text)) score -= 4;
   if (/romance/.test(text)) score -= 1.5;
 
+  const lane = explicitLaneForCandidate(c);
+  if (lane === "fantasy") {
+    if (/fantasy|epic fantasy|high fantasy|mythic|kingdom|quest|sorcery|dragon|wizard|magic/.test(text)) score += 1.5;
+    if (/guide|handbook|companion|catalog|encyclopedia|subject headings|publishers weekly|graphic novel using digital techniques/.test(text)) score -= 6;
+  }
+
   if (taste) {
     const darkness = Number((taste as any).darkness || 0);
     const warmth = Number((taste as any).warmth || 0);
     const realism = Number((taste as any).realism || 0);
 
+    const lane = explicitLaneForCandidate(c);
     if (/horror|dark|psychological|survival|thriller|mystery/.test(text)) {
-      score += darkness * 1.5;
+      const appliedDarkness = lane === "fantasy" ? Math.min(darkness, 0.4) : darkness;
+      score += appliedDarkness * 1.5;
     }
     if (/hopeful|cozy|heartwarming|family|human connection/.test(text)) {
       score += warmth * 3;
@@ -644,6 +656,20 @@ function anchorBoost(c: Candidate): number {
       'n k jemisin',
       'george orwell',
     ],
+    fantasy: [
+      'j r r tolkien',
+      'tolkien',
+      'george r r martin',
+      'patrick rothfuss',
+      'robin hobb',
+      'steven erikson',
+      'joe abercrombie',
+      'brandon sanderson',
+      'ursula k le guin',
+      'anne mccaffrey',
+      'mark lawrence',
+      'n k jemisin',
+    ],
     romance: [
       'jane austen',
       'nicholas sparks',
@@ -663,12 +689,15 @@ function anchorBoost(c: Candidate): number {
     if (matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
   } else if (lane === "speculative") {
     if (matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
+  } else if (lane === "fantasy") {
+    if (matchesAuthor(AUTHOR_MAP.fantasy)) score += 12;
   } else if (lane === "romance") {
     if (matchesAuthor(AUTHOR_MAP.romance)) score += 8;
   } else {
     if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
     else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
     else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
+    else if (/fantasy|epic fantasy|high fantasy|dark fantasy|magic/.test(text) && matchesAuthor(AUTHOR_MAP.fantasy)) score += 12;
     else if (isRomance && matchesAuthor(AUTHOR_MAP.romance)) score += 8;
   }
 
@@ -681,6 +710,16 @@ function anchorBoost(c: Candidate): number {
   if (/pet sematary/.test(title)) score += 10;
   if (/the terror/.test(title)) score += 8;
   if (/the turn of the screw/.test(title)) score += 8;
+
+  if (lane === "fantasy") {
+    if (/the hobbit/.test(title)) score += 10;
+    if (/the fellowship of the ring/.test(title)) score += 10;
+    if (/the two towers/.test(title)) score += 10;
+    if (/the return of the king/.test(title)) score += 10;
+    if (/the name of the wind/.test(title)) score += 8;
+    if (/dragonflight/.test(title)) score += 8;
+    if (/the final empire/.test(title)) score += 8;
+  }
 
   if (ratings >= 5000) score += 6;
   else if (ratings >= 1000) score += 4;

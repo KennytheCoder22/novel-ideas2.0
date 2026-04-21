@@ -257,24 +257,14 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   }
 
   if (family === "fantasy") {
-    const fantasyKeywordSignal =
-      /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy|gothic fantasy)\b/.test(combined);
-
     const fantasyNative =
-      fantasyKeywordSignal ||
-      flags.speculativePositive ||
-      flags.strongNarrative ||
-      flags.authorAffinity;
+      flags.speculativePositive &&
+      /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy)\b/.test(combined);
 
     const obviousNonFantasyMeta =
-      /\b(guide to|historical dictionary|publishers weekly|library of congress|subject headings|writers? market|book review|encyclopedia|companion|criticism|analysis|handbook|catalog|journal|magazine|texts)\b/.test(combined);
+      /\b(guide to|historical dictionary|publishers weekly|library of congress|subject headings|writers? market|book review|anthology|collection|encyclopedia|companion|criticism|analysis|handbook|catalog|journal|magazine|texts)\b/.test(combined);
 
-    const anthologyLikeMeta =
-      /\b(anthology|collection)\b/.test(combined) &&
-      !fantasyKeywordSignal &&
-      !flags.strongNarrative;
-
-    return !fantasyNative || obviousNonFantasyMeta || anthologyLikeMeta;
+    return !fantasyNative || obviousNonFantasyMeta;
   }
 
   if (family === "speculative") {
@@ -847,6 +837,8 @@ function passesOpenLibraryHorrorRecovery(doc: any, diagnostics: FilterDiagnostic
 }
 
 
+
+
 function passesOpenLibraryFantasyRecovery(doc: any, diagnostics: FilterDiagnostics): boolean {
   if (diagnostics.family !== "fantasy") return false;
   if (!isOpenLibraryLikeDoc(doc)) return false;
@@ -873,7 +865,7 @@ function passesOpenLibraryFantasyRecovery(doc: any, diagnostics: FilterDiagnosti
     );
 
   const classicFantasyTitle =
-    /\b(the hobbit|the fellowship of the ring|the two towers|the return of the king|a wizard of earthsea|dragonflight|the name of the wind)\b/.test(
+    /\b(the hobbit|the fellowship of the ring|the two towers|the return of the king|a wizard of earthsea|dragonflight|the name of the wind|the final empire|the chronicles of narnia|a dance with dragons|house of flame and shadow|queen of shadows)\b/.test(
       normalizedTitle
     );
 
@@ -890,7 +882,6 @@ function passesOpenLibraryFantasyRecovery(doc: any, diagnostics: FilterDiagnosti
 
   return false;
 }
-
 
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
