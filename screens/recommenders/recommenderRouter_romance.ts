@@ -764,6 +764,31 @@ function candidateScoreValue(candidate: any): number {
   return Number.isFinite(raw) ? raw : 0;
 }
 
+
+function rawAuthorText(doc: any): string {
+  const value =
+    doc?.author ??
+    doc?.rawDoc?.author ??
+    (Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name) ??
+    (Array.isArray(doc?.rawDoc?.author_name) ? doc.rawDoc.author_name[0] : doc?.rawDoc?.author_name) ??
+    (Array.isArray(doc?.volumeInfo?.authors) ? doc.volumeInfo.authors[0] : doc?.volumeInfo?.authors) ??
+    "";
+  return normalizeText(value);
+}
+
+function hasStrongRomanceOpenLibraryFinalShape(doc: any): boolean {
+  const title = normalizeText(doc?.title ?? doc?.rawDoc?.title ?? doc?.volumeInfo?.title);
+  const author = rawAuthorText(doc);
+  const queryText = normalizeText(doc?.rawDoc?.queryText ?? doc?.queryText);
+  const diagnostics = doc?.rawDoc?.diagnostics?.filterDiagnostics ?? doc?.diagnostics?.filterDiagnostics ?? {};
+  const passedChecks = doc?.rawDoc?.diagnostics?.filterPassedChecks ?? doc?.diagnostics?.filterPassedChecks ?? [];
+  const explicitRomance = /\b(romance|love|bride|wedding|marriage|duke|earl|regency|courtship|kiss|heart|lover|wallflower|rake|mail order)\b/.test(title + " " + queryText);
+  const canonical = /\b(pride and prejudice|persuasion|sense and sensibility|emma|northanger abbey|rebecca|outlander|the flame and the flower|secrets of a summer night|devil in winter|love in the afternoon|the viscount who loved me|romancing mister bridgerton|lord of scoundrels)\b/.test(title);
+  const authorAffinity = Boolean(diagnostics?.flags?.authorAffinity) || /\b(jane austen|georgette heyer|julia quinn|lisa kleypas|lorretta chase|mary balogh|tessa dare|eloisa james|nora roberts|debbie macomber|johanna lindsey|julie garwood|kathleen e\.? woodiwiss|sherry thomas|virginia henley|rosemary rogers|ava march|heather graham|anne gracie|julia london|beverly jenkins)\b/.test(author);
+  const weakPackaging = /\b(complete .* novels? in one|boxed set|collection|unknown author)\b/.test(title + " " + author);
+  return !weakPackaging && (canonical || authorAffinity || (explicitRomance && passedChecks.includes("openlibrary_romance_recovery")));
+}
+
 function buildLaneQuotaPool(candidates: any[], finalLimit: number): any[] {
   const targetSize = Math.max(finalLimit * 2, 12);
   const lanePriority = ["core", "ol-backfill", "strict-filtered", "dark-alt", "literary-alt", "fiction-variant", "bucket-alt"];
@@ -1501,10 +1526,11 @@ const normalizedCandidates = [
 
   function romanceCanonicalScore(doc: any): number {
     const title = normalizeText(doc?.title ?? doc?.rawDoc?.title ?? doc?.volumeInfo?.title);
-    const author = normalizeText(doc?.author ?? doc?.rawDoc?.author ?? doc?.author_name ?? doc?.rawDoc?.author_name ?? doc?.volumeInfo?.authors);
+    const author = rawAuthorText(doc);
     let score = 0;
     if (/\b(jane austen|georgette heyer|julia quinn|lisa kleypas|lorretta chase|mary balogh|tessa dare|eloisa james|nora roberts|debbie macomber|johanna lindsey|julie garwood|kathleen e\.? woodiwiss|sherry thomas|virginia henley|rosemary rogers|ava march|heather graham|anne gracie|julia london|beverly jenkins)\b/.test(author)) score += 3;
     if (/\b(pride and prejudice|persuasion|sense and sensibility|emma|northanger abbey|rebecca|outlander|the flame and the flower|secrets of a summer night|devil in winter|love in the afternoon|the viscount who loved me|romancing mister bridgerton|lord of scoundrels|the hating game|book lovers|people we meet on vacation|the kiss quotient|a court of thorns and roses|the night circus)\b/.test(title)) score += 4;
+    if (/\b(complete .* novels? in one|boxed set|collection|unknown author)\b/.test(title + " " + author)) score -= 3;
     const commercial = Number(doc?.commercialSignals?.popularityTier || doc?.rawDoc?.commercialSignals?.popularityTier || 0);
     score += Math.min(2, commercial);
     return score;
@@ -1514,13 +1540,15 @@ const normalizedCandidates = [
     if (routerFamily !== "romance") return ranked.slice(0, finalLimitValue);
 
     const initial = [...ranked.slice(0, finalLimitValue)];
+    const targetOl = Math.min(MIN_ROMANCE_OPEN_LIBRARY_FINAL, finalLimitValue);
     const olCount = initial.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary").length;
-    if (olCount >= Math.min(MIN_ROMANCE_OPEN_LIBRARY_FINAL, finalLimitValue)) return initial;
+    if (olCount >= targetOl) return initial;
 
-    const needed = Math.min(MIN_ROMANCE_OPEN_LIBRARY_FINAL, finalLimitValue) - olCount;
+    const needed = targetOl - olCount;
     const poolOL = rankingPoolSource
       .filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary")
       .filter((doc: any) => !(initial.some((picked: any) => candidateKey(picked) === candidateKey(doc))))
+      .filter((doc: any) => hasStrongRomanceOpenLibraryFinalShape(doc))
       .sort((a: any, b: any) => romanceCanonicalScore(b) - romanceCanonicalScore(a) || candidateScoreValue(b) - candidateScoreValue(a));
 
     const replaceable = initial
@@ -1530,7 +1558,9 @@ const normalizedCandidates = [
 
     let inserted = 0;
     for (let i = 0; i < replaceable.length && inserted < needed && inserted < poolOL.length; i += 1) {
-      initial[replaceable[i].idx] = poolOL[inserted];
+      const incoming = poolOL[inserted];
+      if (romanceCanonicalScore(incoming) < romanceCanonicalScore(replaceable[i].doc)) continue;
+      initial[replaceable[i].idx] = incoming;
       inserted += 1;
     }
 

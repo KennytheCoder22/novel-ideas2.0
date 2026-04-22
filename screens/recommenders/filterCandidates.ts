@@ -221,7 +221,7 @@ const ROMANCE_CANONICAL_TITLE_PATTERNS = [
   /\bsense and sensibility\b/,
   /\bemma\b/,
   /\bnorthanger abbey\b/,
-  /\bbecca\b/,
+  /\brebecca\b/,
   /\boutlander\b/,
   /\bthe flame and the flower\b/,
   /\bsecrets of a summer night\b/,
@@ -240,6 +240,23 @@ const ROMANCE_CANONICAL_TITLE_PATTERNS = [
 
 function hasCanonicalRomanceTitle(title: string): boolean {
   return ROMANCE_CANONICAL_TITLE_PATTERNS.some((rx) => rx.test(title));
+}
+
+
+function isMetaLiteraryRomanceLeak(title: string, categories: string, description: string): boolean {
+  const combined = [title, categories, description].filter(Boolean).join(" ");
+  return (
+    /\b(history of the novel|the english novel|oxford history of the novel|research companion|popular romance fiction|new approaches to popular romance fiction|novel of sentiment|gothic romance)\b/.test(combined) ||
+    (/\bnovel\b/.test(title) && /\b(history|criticism|study|studies|companion|research|approaches|texts|english)\b/.test(combined)) ||
+    /\b(literary criticism|criticism|studies|reference|companion|research)\b/.test(categories)
+  );
+}
+
+function hasStrongRomanceTitleSignal(title: string): boolean {
+  return (
+    /\b(romance|love|lover|kiss|heart|wedding|marriage|bride|duke|earl|viscount|lord|lady|rake|wallflower|courtship|matchmaking|husband|wife|scandal|desire|passion|temptation|devil|seduce|seduction|groom|highlander|laird|mail order|cowboy|earl|regency)\b/.test(title) ||
+    hasCanonicalRomanceTitle(title)
+  );
 }
 
 
@@ -586,6 +603,10 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   const novelMetaReject =
     /\b(future of the novel|novelists?|novel vs\.? fiction|famous authors on their methods|introduction to the novels? of|development of .* novel|selected novels? and plays|novels? and (other works|related works|stories|tales))\b/.test(combined);
   if (novelMetaReject) diagnostics.passedChecks.push("soft_novel_meta_signal");
+
+  if (family === "romance" && isMetaLiteraryRomanceLeak(title, categories, description)) {
+    diagnostics.rejectReasons.push("romance_meta_reference");
+  }
 
   if (!fictionPositive) diagnostics.passedChecks.push("soft_missing_fiction_signal");
   if (genericTitle) diagnostics.passedChecks.push("soft_generic_title_signal");
@@ -976,22 +997,21 @@ function passesOpenLibraryRomanceRecovery(doc: any, diagnostics: FilterDiagnosti
     0;
 
   const hasBasicBibliographicShape = Boolean(rawTitle) && Boolean(author && author !== "unknown");
-  const romanceSignal =
-    diagnostics.flags.romancePositive ||
-    diagnostics.flags.authorAffinity ||
-    hasCanonicalRomanceTitle(normalizedTitle) ||
-    /\b(romance|love|courtship|marriage|wedding|duke|earl|regency|wallflower|rake|historical romance|gothic romance|fantasy romance|second chance|forbidden love|lover|kiss|heart)\b/.test(combined);
-
+  const canonicalTitle = hasCanonicalRomanceTitle(normalizedTitle);
+  const strongTitleSignal = hasStrongRomanceTitleSignal(normalizedTitle);
+  const explicitRomanceMetadata =
+    /\b(romance|love story|historical romance|gothic romance|fantasy romance|regency romance|courtship|wedding|marriage|mail order bride|bride|duke|earl|viscount|wallflower|rake|kiss|lover|heart)\b/.test(subjects + " " + description);
   const hasUsefulMetadata =
     subjects.trim().length > 0 ||
     description.trim().length > 0 ||
     firstPublishedYear > 0;
 
   if (!hasBasicBibliographicShape) return false;
-  if (hasCanonicalRomanceTitle(normalizedTitle)) return true;
-  if (diagnostics.flags.authorAffinity && hasUsefulMetadata) return true;
-  if (romanceSignal && hasUsefulMetadata) return true;
-  if (romanceSignal && firstPublishedYear > 1800) return true;
+  if (isMetaLiteraryRomanceLeak(normalizedTitle, subjects, description)) return false;
+  if (canonicalTitle) return true;
+  if (diagnostics.flags.authorAffinity && (hasUsefulMetadata || strongTitleSignal)) return true;
+  if (strongTitleSignal && explicitRomanceMetadata) return true;
+  if (strongTitleSignal && firstPublishedYear > 1800 && (author && author !== "unknown")) return true;
 
   return false;
 }
@@ -1020,6 +1040,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "missing_or_low_quality_cover",
     "too_many_soft_failures",
     "below_shape_floor",
+    "romance_meta_reference",
   ]);
 
   for (const doc of inputDocs) {
@@ -1123,7 +1144,15 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.rejectReasons = [];
     }
 
-    if (isOpenLibraryLike && diagnostics.family !== "thriller" && !hasCriticalReject) {
+    if (
+      isOpenLibraryLike &&
+      diagnostics.family !== "thriller" &&
+      !hasCriticalReject &&
+      (
+        diagnostics.family !== "romance" ||
+        diagnostics.passedChecks.includes("openlibrary_romance_recovery_precheck")
+      )
+    ) {
       diagnostics.passedChecks.push("openlibrary_noncritical_reject_bypass");
       diagnostics.rejectReasons = [];
     }
@@ -1163,7 +1192,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         : (
             diagnostics.flags.strongNarrative ||
             (diagnostics.hasDescription && diagnostics.flags.fictionPositive) ||
-            (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive)
+            (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive) ||
+            (diagnostics.family === "romance" && hasStrongRomanceTitleSignal(diagnostics.title) && (diagnostics.hasRealLength || diagnostics.hasDescription || diagnostics.flags.authorAffinity))
           );
 
     if (!hasMinimumRatings(doc) || !hasNarrativeOrDescription) {
