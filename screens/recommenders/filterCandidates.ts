@@ -177,11 +177,79 @@ const THRILLER_AUTHOR_AFFINITY = new Set([
 ]);
 
 
+const ROMANCE_AUTHOR_AFFINITY = new Set([
+  "jane austen",
+  "georgette heyer",
+  "julia quinn",
+  "lisa kleypas",
+  "lorretta chase",
+  "mary balogh",
+  "sarah maclean",
+  "tessa dare",
+  "eloisa james",
+  "jennifer crusie",
+  "nora roberts",
+  "debbie macomber",
+  "judith mcnaught",
+  "jude deveraux",
+  "johanna lindsey",
+  "julie garwood",
+  "katheleen e. woodiwiss",
+  "kathleen e. woodiwiss",
+  "sherry thomas",
+  "virginia henley",
+  "rosemary rogers",
+  "ava march",
+  "heather graham",
+  "anne gracie",
+  "julia london",
+  "beth o'leary",
+  "emily henry",
+  "abby jimenez",
+  "christina lauren",
+  "ali hazelwood",
+  "helen hoang",
+  "beverly jenkins",
+  "susan elizabeth phillips",
+  "sarah j. maas",
+  "erin morgenstern",
+]);
+
+const ROMANCE_CANONICAL_TITLE_PATTERNS = [
+  /\bpride and prejudice\b/,
+  /\bpersuasion\b/,
+  /\bsense and sensibility\b/,
+  /\bemma\b/,
+  /\bnorthanger abbey\b/,
+  /\bbecca\b/,
+  /\boutlander\b/,
+  /\bthe flame and the flower\b/,
+  /\bsecrets of a summer night\b/,
+  /\bdevil in winter\b/,
+  /\blove in the afternoon\b/,
+  /\bthe viscount who loved me\b/,
+  /\bromancing mister bridgerton\b/,
+  /\blord of scoundrels\b/,
+  /\bthe hating game\b/,
+  /\bbook lovers\b/,
+  /\bpeople we meet on vacation\b/,
+  /\bthe kiss quotient\b/,
+  /\ba court of thorns and roses\b/,
+  /\bthe night circus\b/,
+];
+
+function hasCanonicalRomanceTitle(title: string): boolean {
+  return ROMANCE_CANONICAL_TITLE_PATTERNS.some((rx) => rx.test(title));
+}
+
+
+
 
 function hasAuthorAffinityForFamily(author: string, family: RouterFamily): boolean {
   if (!author) return false;
   if (family === "horror") return HORROR_AUTHOR_AFFINITY.has(author);
   if (family === "thriller") return THRILLER_AUTHOR_AFFINITY.has(author);
+  if (family === "romance") return ROMANCE_AUTHOR_AFFINITY.has(author);
   return false;
 }
 
@@ -250,7 +318,10 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   }
 
   if (family === "romance") {
-    const romanceNative = flags.romancePositive || /\b(second chance|forbidden love|love story|marriage|relationship)\b/.test(combined);
+    const romanceNative =
+      flags.romancePositive ||
+      /\b(second chance|forbidden love|love story|marriage|relationship|courtship|duke|earl|bridgerton|regency|historical romance|gothic romance|fantasy romance|enemies to lovers|slow burn|rom-com|rom com|widow|debutante|matchmaking|spinster|rake|wallflower|wedding|husband|wife|lover|kiss|heart)\b/.test(combined) ||
+      hasCanonicalRomanceTitle(combined);
     return !romanceNative;
   }
 
@@ -461,7 +532,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
       combined
     );
 
-  const romancePositive = /\b(romance|love story|romantic)\b/.test(combined);
+  const romancePositive = /\b(romance|love story|romantic|courtship|second chance|forbidden love|historical romance|gothic romance|fantasy romance|rom-com|rom com|duke|earl|bridgerton|regency|wallflower|rake|wedding|husband|wife|lover|kiss|heart)\b/.test(combined) || hasCanonicalRomanceTitle(combined) || (family === "romance" && hasAuthorAffinityForFamily(author, family));
   const authorAffinity = hasAuthorAffinityForFamily(author, family);
   const legitAuthority = hasLegitCommercialAuthority(doc);
   const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
@@ -886,6 +957,45 @@ function passesOpenLibraryFantasyRecovery(doc: any, diagnostics: FilterDiagnosti
   return false;
 }
 
+function passesOpenLibraryRomanceRecovery(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (diagnostics.family !== "romance") return false;
+  if (!isOpenLibraryLikeDoc(doc)) return false;
+
+  const rawTitle = String(doc?.title || doc?.volumeInfo?.title || "").trim();
+  const normalizedTitle = normalizeText(rawTitle);
+  const author = normalizeText(
+    doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
+  );
+  const subjects = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const combined = [normalizedTitle, subjects, description, author].filter(Boolean).join(" ");
+  const firstPublishedYear =
+    Number(doc?.first_publish_year) ||
+    Number(doc?.publishYear) ||
+    Number(doc?.firstPublishedYear) ||
+    0;
+
+  const hasBasicBibliographicShape = Boolean(rawTitle) && Boolean(author && author !== "unknown");
+  const romanceSignal =
+    diagnostics.flags.romancePositive ||
+    diagnostics.flags.authorAffinity ||
+    hasCanonicalRomanceTitle(normalizedTitle) ||
+    /\b(romance|love|courtship|marriage|wedding|duke|earl|regency|wallflower|rake|historical romance|gothic romance|fantasy romance|second chance|forbidden love|lover|kiss|heart)\b/.test(combined);
+
+  const hasUsefulMetadata =
+    subjects.trim().length > 0 ||
+    description.trim().length > 0 ||
+    firstPublishedYear > 0;
+
+  if (!hasBasicBibliographicShape) return false;
+  if (hasCanonicalRomanceTitle(normalizedTitle)) return true;
+  if (diagnostics.flags.authorAffinity && hasUsefulMetadata) return true;
+  if (romanceSignal && hasUsefulMetadata) return true;
+  if (romanceSignal && firstPublishedYear > 1800) return true;
+
+  return false;
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -971,6 +1081,22 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       }
     }
 
+    if (isOpenLibraryLike && diagnostics.family === "romance") {
+      const recoveryReady = passesOpenLibraryRomanceRecovery(doc, diagnostics);
+
+      if (recoveryReady) {
+        const removed = new Set([
+          "insufficient_length_or_description",
+          "lane_mismatch_romance",
+          "too_many_soft_failures",
+          "below_shape_floor",
+        ]);
+
+        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+        diagnostics.passedChecks.push("openlibrary_romance_recovery_precheck");
+      }
+    }
+
     const nonCriticalRejectReasons = new Set([
       "missing_fiction_signal",
       "missing_narrative_signal",
@@ -1047,6 +1173,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_horror_recovery");
       } else if (isOpenLibraryLike && passesOpenLibraryFantasyRecovery(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_fantasy_recovery");
+      } else if (isOpenLibraryLike && passesOpenLibraryRomanceRecovery(doc, diagnostics)) {
+        diagnostics.passedChecks.push("openlibrary_romance_recovery");
       } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else {

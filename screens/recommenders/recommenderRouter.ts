@@ -34,6 +34,7 @@ const MIN_RELAXED_FILTER_POOL = 10;
 const MIN_ROUTER_RECOVERY_POOL = 12;
 const MIN_OPEN_LIBRARY_SURVIVORS = 3;
 const MIN_OPEN_LIBRARY_BASE_POOL = 6;
+const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
 
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
@@ -1498,6 +1499,44 @@ const normalizedCandidates = [
     };
   });
 
+  function romanceCanonicalScore(doc: any): number {
+    const title = normalizeText(doc?.title ?? doc?.rawDoc?.title ?? doc?.volumeInfo?.title);
+    const author = normalizeText(doc?.author ?? doc?.rawDoc?.author ?? doc?.author_name ?? doc?.rawDoc?.author_name ?? doc?.volumeInfo?.authors);
+    let score = 0;
+    if (/\b(jane austen|georgette heyer|julia quinn|lisa kleypas|lorretta chase|mary balogh|tessa dare|eloisa james|nora roberts|debbie macomber|johanna lindsey|julie garwood|kathleen e\.? woodiwiss|sherry thomas|virginia henley|rosemary rogers|ava march|heather graham|anne gracie|julia london|beverly jenkins)\b/.test(author)) score += 3;
+    if (/\b(pride and prejudice|persuasion|sense and sensibility|emma|northanger abbey|rebecca|outlander|the flame and the flower|secrets of a summer night|devil in winter|love in the afternoon|the viscount who loved me|romancing mister bridgerton|lord of scoundrels|the hating game|book lovers|people we meet on vacation|the kiss quotient|a court of thorns and roses|the night circus)\b/.test(title)) score += 4;
+    const commercial = Number(doc?.commercialSignals?.popularityTier || doc?.rawDoc?.commercialSignals?.popularityTier || 0);
+    score += Math.min(2, commercial);
+    return score;
+  }
+
+  function rebalanceRomanceFinalSources(ranked: any[], rankingPoolSource: any[], finalLimitValue: number): any[] {
+    if (routerFamily !== "romance") return ranked.slice(0, finalLimitValue);
+
+    const initial = [...ranked.slice(0, finalLimitValue)];
+    const olCount = initial.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary").length;
+    if (olCount >= Math.min(MIN_ROMANCE_OPEN_LIBRARY_FINAL, finalLimitValue)) return initial;
+
+    const needed = Math.min(MIN_ROMANCE_OPEN_LIBRARY_FINAL, finalLimitValue) - olCount;
+    const poolOL = rankingPoolSource
+      .filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary")
+      .filter((doc: any) => !(initial.some((picked: any) => candidateKey(picked) === candidateKey(doc))))
+      .sort((a: any, b: any) => romanceCanonicalScore(b) - romanceCanonicalScore(a) || candidateScoreValue(b) - candidateScoreValue(a));
+
+    const replaceable = initial
+      .map((doc: any, idx: number) => ({ doc, idx }))
+      .filter(({ doc }) => sourceForDoc(doc, "openLibrary") !== "openLibrary")
+      .sort((a: any, b: any) => romanceCanonicalScore(a.doc) - romanceCanonicalScore(b.doc) || candidateScoreValue(a.doc) - candidateScoreValue(b.doc));
+
+    let inserted = 0;
+    for (let i = 0; i < replaceable.length && inserted < needed && inserted < poolOL.length; i += 1) {
+      initial[replaceable[i].idx] = poolOL[inserted];
+      inserted += 1;
+    }
+
+    return dedupeDocs(initial as any).slice(0, finalLimitValue) as any[];
+  }
+
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
   // finalRecommender performs the actual preference-aware magic.
@@ -1512,9 +1551,10 @@ const normalizedCandidates = [
     priorRejectedKeys: input.priorRejectedKeys,
   }));
 
-  const finalRankedDocs = rankedDocs
-    .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false)
-    .slice(0, finalLimit);
+  const postFilteredRankedDocs = rankedDocs
+    .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
+
+  const finalRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit);
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
     ...doc,
