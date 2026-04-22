@@ -165,10 +165,14 @@ async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 3): 
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const resp = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
-      if (resp.status === 429) {
+      if (resp.status === 429 || resp.status === 503) {
         if (attempt === retries) {
           const body = await resp.text().catch(() => "");
-          throw new Error(body ? `Google Books 429 ${body}` : "Google Books 429");
+          throw new Error(
+            body
+              ? `Google Books ${resp.status} ${body}`
+              : `Google Books ${resp.status}`
+          );
         }
         await new Promise((resolve) => setTimeout(resolve, 500 * Math.pow(2, attempt)));
         attempt += 1;
