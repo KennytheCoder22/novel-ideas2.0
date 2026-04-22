@@ -254,10 +254,19 @@ function isMetaLiteraryRomanceLeak(title: string, categories: string, descriptio
 
 function hasStrongRomanceTitleSignal(title: string): boolean {
   return (
-    /\b(romance|love|lover|kiss|heart|wedding|marriage|bride|duke|earl|viscount|lord|lady|rake|wallflower|courtship|matchmaking|husband|wife|scandal|desire|passion|temptation|devil|seduce|seduction|groom|highlander|laird|mail order|cowboy|earl|regency)\b/.test(title) ||
+    /\b(romance|love story|kiss|wedding|marriage|bride|duke|earl|viscount|lord|lady|rake|wallflower|courtship|matchmaking|husband|wife|scandal|desire|passion|temptation|seduce|seduction|groom|highlander|laird|mail order bride|regency|historical romance|gothic romance)\b/.test(title) ||
     hasCanonicalRomanceTitle(title)
   );
 }
+
+function hasRichRomanceMetadata(subjects: string, description: string): boolean {
+  const combined = [subjects, description].filter(Boolean).join(" ");
+  return (
+    /\b(historical romance|regency romance|gothic romance|fantasy romance|courtship|wedding|marriage|mail order bride|second chance|forbidden love|duke|earl|viscount|wallflower|rake|highlander|laird|romance)\b/.test(combined) &&
+    (description.trim().length >= 80 || subjects.trim().length >= 20)
+  );
+}
+
 
 
 
@@ -989,7 +998,6 @@ function passesOpenLibraryRomanceRecovery(doc: any, diagnostics: FilterDiagnosti
   );
   const subjects = collectCategoryText(doc);
   const description = collectDescriptionText(doc);
-  const combined = [normalizedTitle, subjects, description, author].filter(Boolean).join(" ");
   const firstPublishedYear =
     Number(doc?.first_publish_year) ||
     Number(doc?.publishYear) ||
@@ -999,8 +1007,7 @@ function passesOpenLibraryRomanceRecovery(doc: any, diagnostics: FilterDiagnosti
   const hasBasicBibliographicShape = Boolean(rawTitle) && Boolean(author && author !== "unknown");
   const canonicalTitle = hasCanonicalRomanceTitle(normalizedTitle);
   const strongTitleSignal = hasStrongRomanceTitleSignal(normalizedTitle);
-  const explicitRomanceMetadata =
-    /\b(romance|love story|historical romance|gothic romance|fantasy romance|regency romance|courtship|wedding|marriage|mail order bride|bride|duke|earl|viscount|wallflower|rake|kiss|lover|heart)\b/.test(subjects + " " + description);
+  const richRomanceMetadata = hasRichRomanceMetadata(subjects, description);
   const hasUsefulMetadata =
     subjects.trim().length > 0 ||
     description.trim().length > 0 ||
@@ -1008,10 +1015,10 @@ function passesOpenLibraryRomanceRecovery(doc: any, diagnostics: FilterDiagnosti
 
   if (!hasBasicBibliographicShape) return false;
   if (isMetaLiteraryRomanceLeak(normalizedTitle, subjects, description)) return false;
+
   if (canonicalTitle) return true;
   if (diagnostics.flags.authorAffinity && (hasUsefulMetadata || strongTitleSignal)) return true;
-  if (strongTitleSignal && explicitRomanceMetadata) return true;
-  if (strongTitleSignal && firstPublishedYear > 1800 && (author && author !== "unknown")) return true;
+  if (strongTitleSignal && richRomanceMetadata && author && author !== "unknown") return true;
 
   return false;
 }
@@ -1193,7 +1200,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
             diagnostics.flags.strongNarrative ||
             (diagnostics.hasDescription && diagnostics.flags.fictionPositive) ||
             (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive) ||
-            (diagnostics.family === "romance" && hasStrongRomanceTitleSignal(diagnostics.title) && (diagnostics.hasRealLength || diagnostics.hasDescription || diagnostics.flags.authorAffinity))
+            (diagnostics.family === "romance" && (
+              diagnostics.flags.authorAffinity ||
+              (hasStrongRomanceTitleSignal(diagnostics.title) && (diagnostics.hasRealLength || diagnostics.hasDescription))
+            ))
           );
 
     if (!hasMinimumRatings(doc) || !hasNarrativeOrDescription) {
