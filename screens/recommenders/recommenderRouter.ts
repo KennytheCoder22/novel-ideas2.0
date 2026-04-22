@@ -106,8 +106,10 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   ]);
 
   return {
+    ...translatedBucketPlan,
     queries,
     preview:
+      translatedBucketPlan?.preview ||
       descriptivePlan?.preview ||
       primaryQueries[0] ||
       translatedBucketPlan?.queries?.[0] ||
@@ -117,7 +119,11 @@ function buildRouterBucketPlan(input: RecommenderInput) {
       descriptivePlan?.strategy && translatedBucketPlan?.strategy
         ? `${descriptivePlan.strategy}+${translatedBucketPlan.strategy}`
         : descriptivePlan?.strategy || translatedBucketPlan?.strategy || "router-bucket-plan",
-    signals: descriptivePlan?.signals,
+    signals: translatedBucketPlan?.signals || descriptivePlan?.signals,
+    hypotheses: translatedBucketPlan?.hypotheses || descriptivePlan?.hypotheses,
+    family: translatedBucketPlan?.family,
+    lane: translatedBucketPlan?.lane,
+    rungs: translatedBucketPlan?.rungs,
   };
 }
 

@@ -88,10 +88,13 @@ function inferRouterFamily(bucketPlan: any): RouterFamily {
     .toLowerCase();
 
   if (/(psychological horror|survival horror|haunted house horror|haunted psychological horror|psychological horror thriller|horror|haunted|ghost|supernatural|occult|monster|creature|possession|terror|dread|eerie|disturbing)/.test(text)) return "horror";
+  const romanceNative = /(romance|love story|rom-com|rom com|second chance romance|forbidden love romance|historical romance|gothic romance|fantasy romance|emotional romance)/.test(text);
+  const hardThrillerNative = /(psychological thriller|crime thriller|serial killer|missing person|missing child|murder investigation|detective|fbi|procedural|crime conspiracy|conspiracy thriller|manhunt|fugitive|abduction|spy thriller|legal thriller)/.test(text);
+  if (romanceNative && !hardThrillerNative) return "romance";
   if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
   if (/(epic fantasy|high fantasy|magic fantasy|quest fantasy|character driven fantasy|dark fantasy|fantasy|wizard|witch|dragon|fae|mythic)/.test(text)) return "fantasy";
   if (/(science fiction|sci-fi|speculative|dystopian|space opera|technology|ai|artificial intelligence)/.test(text)) return "speculative";
-  if (/(romance|love story|rom-com|rom com)/.test(text)) return "romance";
+  if (romanceNative) return "romance";
   if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
   return "general";
 }

@@ -113,6 +113,7 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   let family = familyForGenres(genreKeys);
 
   const descriptiveQueriesLower = (descriptive.queries || []).map((q) => String(q).toLowerCase());
+  const descriptiveBlob = descriptiveQueriesLower.join(" ");
 
   const isHorror =
     genreKeys.includes("horror") ||
@@ -122,13 +123,19 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.includes("fantasy") ||
     descriptiveQueriesLower.some((q) => /fantasy|magic|dragon|wizard|witch|fae|mythic/.test(q));
 
-  const isThriller =
+  const romanceSignalPresent =
+    genreKeys.includes("romance") ||
+    descriptiveQueriesLower.some((q) => /romance|love story|relationship|second chance romance|forbidden love romance|historical romance|gothic romance|fantasy romance|emotional romance/.test(q));
+
+  const hardThrillerNative = /psychological thriller|crime thriller|serial killer|missing person|missing child|murder investigation|detective|fbi|procedural|crime conspiracy|conspiracy thriller|manhunt|fugitive|abduction|spy thriller|legal thriller/.test(descriptiveBlob);
+
+  const thrillerSignalPresent =
     genreKeys.some((key) => ["crime", "mystery", "thriller"].includes(key)) ||
     descriptiveQueriesLower.some((q) => /thriller|crime|detective|investigation|serial killer|missing person|procedural|suspense/.test(q));
 
-  const isRomance =
-    genreKeys.includes("romance") ||
-    descriptiveQueriesLower.some((q) => /romance|love story|relationship|second chance romance|forbidden love romance|historical romance|gothic romance/.test(q));
+  const isThriller = thrillerSignalPresent && (!romanceSignalPresent || hardThrillerNative);
+
+  const isRomance = romanceSignalPresent;
 
   const isHistorical =
     genreKeys.includes("historical fiction") ||
@@ -139,10 +146,10 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     family = "speculative_family";
   } else if (isFantasy) {
     family = "speculative_family";
-  } else if (isThriller) {
-    family = "thriller_family";
   } else if (isRomance) {
     family = "romance_family";
+  } else if (isThriller) {
+    family = "thriller_family";
   } else if (isHistorical) {
     family = "historical_family";
   }
@@ -150,8 +157,8 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   let lane: string = family;
   if (isHorror) lane = "horror";
   else if (isFantasy) lane = "fantasy";
-  else if (isThriller) lane = "thriller";
   else if (isRomance) lane = "romance";
+  else if (isThriller) lane = "thriller";
   else if (isHistorical) lane = "historical";
 
   const translatedGenres = translateSignalBucket(
