@@ -1465,12 +1465,21 @@ const normalizedCandidates = [
       ] as any);
 
   if (basePool.length < finalLimit * 2) {
+    const qualitySorted = [...normalizedCandidates].sort((a: any, b: any) => {
+      return (
+        romanceCanonicalScore(b) - romanceCanonicalScore(a) ||
+        candidateScoreValue(b) - candidateScoreValue(a)
+      );
+    });
+
     basePool = dedupeDocs([
       ...openLibraryNormalizedCandidates.slice(0, thrillerOpenLibraryQuota),
-      ...enforceAuthorDiversity(normalizedCandidates, 1),
+      ...enforceAuthorDiversity(qualitySorted, 1),
     ] as any);
     basePool = enforceLaneDiversity(basePool, 3);
   }
+
+  basePool = enforceAuthorDiversity(basePool, 1);
 
   if (routerFamily !== "thriller") {
     const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
