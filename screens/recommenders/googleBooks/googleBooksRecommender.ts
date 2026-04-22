@@ -366,7 +366,32 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     const queryRawDocs: any[] = [];
 
     for (const engineQuery of engineQueries) {
-      const rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs);
+      let rawDocs: any[] = [];
+
+      try {
+        rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs);
+      } catch (err: any) {
+        console.error("GoogleBooks fetch failed", {
+          engineQuery,
+          queryIndex,
+          builtFromQuery,
+          message: err?.message || String(err || "unknown error"),
+        });
+
+        rawPoolRows.push({
+          title: "[GOOGLE_BOOKS_FETCH_ERROR]",
+          author: undefined,
+          source: "googleBooks",
+          queryText: q,
+          engineQueryText: engineQuery,
+          queryRung: queryIndex,
+          laneKind,
+          error: err?.message || String(err || "unknown error"),
+        });
+
+        rawDocs = [];
+      }
+
       totalRawFetched += Array.isArray(rawDocs) ? rawDocs.length : 0;
       for (const rawDoc of Array.isArray(rawDocs) ? rawDocs : []) {
         rawPoolRows.push({
@@ -455,6 +480,9 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     ratingsCount: typeof doc.ratingsCount === "number" ? doc.ratingsCount : undefined,
     volumeInfo: doc.volumeInfo,
   } as any));
+
+  console.log("GoogleBooks queriesToTry", queriesToTry);
+  console.log("GoogleBooks totalRawFetched", totalRawFetched);
 
   return {
     engineId: "googleBooks",
