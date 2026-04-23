@@ -876,6 +876,43 @@ function compactQueryPack(pack: QueryPack, signals: QuerySignals): string[] {
   return dedupe(pack.variants.map((query) => compactQuery(query, signals)));
 }
 
+function mysterySignalScore(signals: QuerySignals): number {
+  return (signals.genre["mystery"] || 0)
+    + (signals.genre["crime"] || 0)
+    + (signals.theme["investigation"] || 0)
+    + (signals.theme["crime investigation"] || 0)
+    + (signals.scenario["investigation"] || 0)
+    + (signals.scenario["crime investigation"] || 0)
+    + (signals.theme["psychological"] || 0) * 0.35;
+}
+
+function romanceSignalScore(signals: QuerySignals): number {
+  return (signals.genre["romance"] || 0)
+    + (signals.theme["relationship"] || 0)
+    + (signals.theme["relationships"] || 0)
+    + (signals.theme["human connection"] || 0)
+    + (signals.tone["relationship-focused"] || 0)
+    + (signals.tone["character-driven"] || 0) * 0.15;
+}
+
+function shouldForceMysteryQueries(signals: QuerySignals): boolean {
+  const mystery = mysterySignalScore(signals);
+  const romance = romanceSignalScore(signals);
+  const antiRomance = (signals.antiGenre["romance"] || 0) + (signals.antiTheme["relationship"] || 0);
+  return mystery >= 0.9 && mystery >= romance + 0.2 && antiRomance >= 0;
+}
+
+function lockedMysteryQueries(signals: QuerySignals): string[] {
+  const base = [
+    "murder investigation novel",
+    "crime detective fiction",
+    "psychological mystery novel",
+    "private investigator mystery novel",
+    "cold case mystery novel",
+  ];
+  return dedupe(base.map((query) => compactQuery(query, signals)).filter((q) => !/\bromance\b/.test(q)));
+}
+
 
 function fallbackQueries(signals: QuerySignals): string[] {
   const genre = topKeys(signals.genre, 2);
@@ -931,6 +968,27 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
 
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
+
+  if (shouldForceMysteryQueries(signals)) {
+    const queries = lockedMysteryQueries(signals);
+    return {
+      queries,
+      preview: queries[0] || "murder investigation novel",
+      strategy: "20q-hypothesis-composer-v12-mystery-lock",
+      signals: {
+        genres: topKeys(signals.genre, 3),
+        tones: topKeys(signals.tone, 3),
+        textures: topKeys(signals.world, 3),
+        scenarios: [...topKeys(signals.scenario, 3), ...topKeys(signals.theme, 2)].slice(0, 5),
+      },
+      hypotheses: [
+        { label: "mystery-lock-primary", query: "murder investigation novel", parts: ["mystery", "investigation"], score: mysterySignalScore(signals) },
+        { label: "mystery-lock-secondary", query: "crime detective fiction", parts: ["crime", "detective"], score: mysterySignalScore(signals) - 0.05 },
+        { label: "mystery-lock-adjacent", query: "psychological mystery novel", parts: ["psychological", "mystery"], score: mysterySignalScore(signals) - 0.1 },
+      ],
+    };
+  }
+
   const hypotheses = buildHypotheses(signals);
 
   const queryPacks = hypotheses

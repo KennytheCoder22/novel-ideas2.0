@@ -158,7 +158,17 @@ function isClearlyNotNarrativeBook(doc: any): boolean {
   return false;
 }
 
-async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 3): Promise<any> {
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryDelayMs(attempt: number, status?: number): number {
+  const base = status === 429 ? 1250 : 700;
+  const jitter = Math.floor(Math.random() * 250);
+  return base * Math.pow(2, attempt) + jitter;
+}
+
+async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 4): Promise<any> {
   let attempt = 0;
   while (attempt <= retries) {
     const controller = new AbortController();
@@ -174,7 +184,7 @@ async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 3): 
               : `Google Books ${resp.status}`
           );
         }
-        await new Promise((resolve) => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+        await sleep(retryDelayMs(attempt, resp.status));
         attempt += 1;
         continue;
       }
@@ -185,7 +195,7 @@ async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 3): 
       return await resp.json();
     } catch (err) {
       if (attempt === retries) throw err;
-      await new Promise((resolve) => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+      await sleep(retryDelayMs(attempt));
       attempt += 1;
     } finally {
       clearTimeout(timer);
@@ -294,11 +304,12 @@ function toGoogleBooksQuery(query: string): string {
 async function googleBooksSearch(query: string, limit: number, timeoutMs: number): Promise<any[]> {
   const q = toGoogleBooksQuery(query);
   if (!q) return [];
-  const maxResults = Math.max(1, Math.min(40, Number(limit) || 10));
+  const maxResults = Math.max(1, Math.min(10, Number(limit) || 10));
   const apiKey = getGoogleBooksApiKey();
   const params = new URLSearchParams({ q, maxResults: String(maxResults), orderBy: "relevance", printType: "books", projection: "full", langRestrict: "en" });
   if (apiKey) params.set("key", apiKey);
   const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
+  await sleep(175 + Math.floor(Math.random() * 125));
   const json = await fetchJsonWithRetry(url, timeoutMs);
   const items = Array.isArray(json?.items) ? json.items : [];
   return items.map((item: any) => {
@@ -365,6 +376,9 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
+    if (queryIndex > 0) {
+      await sleep(300 + Math.floor(Math.random() * 250));
+    }
     const laneKind = "precision";
     const engineQueries = [q];
     const queryRawDocs: any[] = [];
