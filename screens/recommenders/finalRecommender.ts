@@ -470,6 +470,7 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
   if (/horror|dark|spooky/.test(text)) score += 0.75;
   if (/survival/.test(text)) score += 1;
   if (/thriller|mystery/.test(text)) score += 0.75;
+  if (lane === "mystery" && /detective|investigation|private investigator|whodunit|case|inspector|cold case/.test(text)) score += 2.25;
   if (/fast paced|fast-paced/.test(text)) score += 1;
   if (/science fiction/.test(text)) score -= 4;
   if (/romance/.test(text)) score -= 1.5;
@@ -505,10 +506,16 @@ function narrativeScore(c: Candidate): number {
   const text = haystack(c);
   let score = 0;
 
-  if (/psychological horror|psychological thriller/.test(text)) {
+  if (/psychological mystery/.test(text)) {
+    score += 3;
+  } else if (/psychological horror|psychological thriller/.test(text)) {
     score += 3;
   } else if (/horror|thriller|mystery|dark/.test(text)) {
     score += 1.25;
+  }
+
+  if (/detective|investigation|private investigator|whodunit|case|inspector|cold case/.test(text)) {
+    score += 1.75;
   }
 
   if (/novel|fiction/.test(text)) score += 1.5;
@@ -621,6 +628,22 @@ function anchorBoost(c: Candidate): number {
       'dean koontz',
       'thomas harris',
     ],
+    mystery: [
+      "agatha christie",
+      "tana french",
+      "p d james",
+      "louise penny",
+      "dorothy l sayers",
+      "raymond chandler",
+      "arthur conan doyle",
+      "ross macdonald",
+      "sara paretsky",
+      "walter mosley",
+      "stieg larsson",
+      "attica locke",
+      "patricia highsmith",
+      "michael connelly",
+    ],
     thriller: [
       'gillian flynn',
       'tana french',
@@ -692,6 +715,8 @@ function anchorBoost(c: Candidate): number {
 
   if (lane === "horror") {
     if (matchesAuthor(AUTHOR_MAP.horror)) score += 14;
+  } else if (lane === "mystery") {
+    if (matchesAuthor(AUTHOR_MAP.mystery)) score += 14;
   } else if (lane === "thriller") {
     if (matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
   } else if (lane === "speculative") {
@@ -702,6 +727,7 @@ function anchorBoost(c: Candidate): number {
     if (matchesAuthor(AUTHOR_MAP.romance)) score += 8;
   } else {
     if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
+    else if ((/mystery|detective|investigation|private investigator|whodunit|case/.test(text)) && matchesAuthor(AUTHOR_MAP.mystery)) score += 14;
     else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
     else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
     else if (/fantasy|epic fantasy|high fantasy|dark fantasy|magic/.test(text) && matchesAuthor(AUTHOR_MAP.fantasy)) score += 12;
@@ -733,6 +759,7 @@ function anchorBoost(c: Candidate): number {
   else if (ratings >= 200) score += 2;
 
   if (isHorror && /psychological|survival|haunted house/.test(text)) score += 3;
+  if (lane === "mystery" && /detective|investigation|private investigator|whodunit|cold case|case|inspector/.test(text)) score += 3;
   if (isThriller && /psychological|domestic|legal/.test(text)) score += 2;
 
   return score;
@@ -814,6 +841,18 @@ function penaltyScore(c: Candidate): number {
   return score;
 }
 
+function mysterySessionFit(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+
+  if (/\bmystery\b|\bdetective\b|\binvestigation\b|\bcase\b|\bprivate investigator\b|\binspector\b|\bwhodunit\b/.test(text)) score += 3;
+  if (/\bpsychological mystery\b|\bcold case\b|\bpolice procedural\b/.test(text)) score += 2;
+  if (/\bspy thriller\b|\bmanhunt\b|\bfugitive\b|\bcrime conspiracy\b/.test(text)) score -= 4;
+  if (/\bcozy mystery\b|\bculinary mystery\b/.test(text)) score -= 3;
+
+  return score;
+}
+
 function thrillerSessionFit(c: Candidate): number {
   const text = haystack(c);
   let score = 0;
@@ -843,7 +882,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const overfit = overfitPenalty(c);
   const anchor = anchorBoost(c);
   const filterSignals = filterSignalScore(c);
-  const sessionFit = thrillerSessionFit(c);
+  const sessionFit = explicitLaneForCandidate(c) === "mystery" ? mysterySessionFit(c) : thrillerSessionFit(c);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
 

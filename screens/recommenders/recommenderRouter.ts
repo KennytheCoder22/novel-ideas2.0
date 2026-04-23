@@ -129,10 +129,11 @@ function buildRouterBucketPlan(input: RecommenderInput) {
 }
 
 
-function inferRouterFamily(bucketPlan: any): "horror" | "thriller" | "speculative" | "romance" | "historical" | "general" {
+function inferRouterFamily(bucketPlan: any): "horror" | "mystery" | "thriller" | "speculative" | "romance" | "historical" | "general" {
   const explicitLane = String(bucketPlan?.lane || "").toLowerCase();
 
   if (explicitLane === "horror") return "horror";
+  if (explicitLane === "mystery") return "mystery";
   if (explicitLane === "thriller") return "thriller";
   if (explicitLane === "romance") return "romance";
   if (explicitLane === "historical") return "historical";
@@ -154,6 +155,14 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   const family = inferRouterFamily(bucketPlan);
   const base = String(rung?.query || "").trim().toLowerCase();
   const preview = String(bucketPlan?.preview || "").trim().toLowerCase();
+
+  if (family === "mystery") {
+    if (base) return quoteIfNeeded(base);
+    if (preview.includes("psychological")) return quoteIfNeeded("psychological mystery");
+    if (preview.includes("detective")) return quoteIfNeeded("detective mystery");
+    if (preview.includes("cold case")) return quoteIfNeeded("cold case mystery");
+    return quoteIfNeeded(preview || "murder investigation novel");
+  }
 
   if (family === "thriller") {
     // Preserve the actual rung phrasing for Open Library so it can compete on the same intent.
@@ -575,6 +584,26 @@ function looksLikeGoogleBooksFamilyCandidate(doc: any, bucketPlan: any): boolean
   const combined = [categories, description].filter(Boolean).join(" ");
   const family = inferRouterFamily(bucketPlan);
 
+  if (family === "mystery") {
+    const cozyOrHumorousSignals =
+      /\b(cozy|cosy|humorous|funny|comic|comedic|gentle mystery|culinary mystery)\b/.test(combined);
+
+    const trueCrimeSignals = /\b(true crime|memoir|nonfiction)\b/.test(combined);
+
+    const strongMysterySignals =
+      /\b(mystery|detective|investigation|murder|private investigator|pi\b|inspector|whodunit|case|cold case|police procedural|psychological mystery|crime detective)\b/.test(combined);
+
+    const weakNarrativeShape =
+      !/\b(case|investigation|detective|murder|missing|clue|suspect|victim|private investigator|inspector|whodunit|cold case)\b/.test(combined);
+
+    if (cozyOrHumorousSignals) return false;
+    if (trueCrimeSignals) return false;
+    if (!strongMysterySignals) return false;
+    if (weakNarrativeShape && !hasLegitCommercialAuthority(doc)) return false;
+
+    return true;
+  }
+
   if (family === "thriller") {
     const cozyOrHumorousSignals =
       /\b(cozy|cosy|humorous|funny|comic|comedic|gentle mystery|malice domestic|small town|comfort read|culinary mystery)\b/.test(combined);
@@ -611,6 +640,19 @@ function looksLikeOpenLibraryPrecisionCandidate(doc: any, bucketPlan: any): bool
   const family = inferRouterFamily(bucketPlan);
 
   if (/\b(shakespeare|romeo and juliet|complete works|plays\b|poems?\b|sonnets?\b)\b/.test(combined)) return false;
+
+  if (family === "mystery") {
+    const strongSignal =
+      /\b(mystery|detective|investigation|murder|private investigator|inspector|whodunit|case|cold case|police procedural|psychological mystery|crime detective|missing person)\b/.test(combined);
+
+    const groundedBacklistSignal =
+      /\b(detective|investigator|case|mystery|procedural|inspector|missing|noir|private investigator)\b/.test(combined);
+
+    const weakOrOffGenre =
+      /\b(romance|poetry|true crime)\b/.test(combined);
+
+    return (strongSignal || groundedBacklistSignal) && !weakOrOffGenre;
+  }
 
   if (family === "thriller") {
     const strongSignal =
@@ -674,6 +716,7 @@ function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string
     "-catalog", "-magazine", "-journal", "-readers", "-reader",
   ];
 
+  if (family === "mystery") base.unshift("-true-crime", "-cozy", "-humorous", "-spy", "-conspiracy");
   if (family === "thriller") base.unshift("-true-crime", "-cozy", "-humorous");
 
   return base.join(" ");
@@ -708,6 +751,9 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     `${base} ${negativeTerms}`,
     family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
     family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
+    family === "mystery" && /psychological/.test(lowered) ? "psychological mystery novel" : "",
+    family === "mystery" && /murder|investigation|detective/.test(lowered) ? "crime detective fiction" : "",
+    family === "mystery" && !/private investigator/.test(lowered) ? "private investigator mystery novel" : "",
     family === "thriller" && /psychological/.test(lowered) ? "psychological suspense novel" : "",
     thrillerAllowsDomestic ? "domestic suspense novel" : "",
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 5) : []),
@@ -1196,6 +1242,8 @@ export async function getRecommendations(
       family:
         routerFamily === "horror"
           ? "speculative_family"
+          : routerFamily === "mystery"
+          ? "mystery_family"
           : routerFamily === "thriller"
           ? "thriller_family"
           : routerFamily === "speculative"
@@ -1217,6 +1265,15 @@ export async function getRecommendations(
       themes: bucketPlan?.signals?.scenarios || [],
     })
   );
+
+  if (!rungs.length && routerFamily === "mystery") {
+    rungs = [
+      { rung: 0, query: "murder investigation novel" },
+      { rung: 1, query: "crime detective fiction" },
+      { rung: 2, query: "psychological mystery novel" },
+      { rung: 3, query: "private investigator mystery novel" },
+    ];
+  }
 
   if (!rungs.length && routerFamily === "speculative") {
     rungs = [

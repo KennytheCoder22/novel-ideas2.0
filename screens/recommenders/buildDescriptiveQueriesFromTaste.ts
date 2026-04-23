@@ -335,12 +335,17 @@ function enforceSearchableStructure(parts: string[]): string[] {
 function choosePrimaryAnchor(parts: string[]): string | undefined {
   const set = new Set(parts);
 
+  if (set.has("psychological mystery")) return "psychological mystery";
+  if (set.has("murder investigation")) return "murder investigation";
+  if (set.has("crime detective")) return "crime detective";
+  if (set.has("private investigator mystery")) return "private investigator mystery";
+  if (set.has("cold case mystery")) return "cold case mystery";
   if (set.has("dark fantasy")) return "dark fantasy";
   if (set.has("fantasy")) return "fantasy";
-  if (set.has("psychological mystery")) return "psychological mystery";
   if (set.has("psychological science fiction")) return "psychological science fiction";
   if (set.has("science fiction thriller")) return "science fiction thriller";
   if (set.has("psychological") && set.has("horror")) return "psychological horror";
+  if ((set.has("psychological") && set.has("mystery")) || (set.has("psychological") && set.has("investigation"))) return "psychological mystery";
   if (set.has("psychological") && set.has("thriller")) return "psychological thriller";
   if (set.has("horror")) return "horror";
   if (set.has("thriller")) return "thriller";
@@ -356,7 +361,7 @@ function choosePrimaryAnchor(parts: string[]): string | undefined {
   if (set.has("historical fiction")) return "historical fiction";
   if (set.has("romance")) return "romance";
   if (set.has("survival")) return "science fiction";
-  if (set.has("investigation")) return "mystery";
+  if (set.has("investigation")) return "murder investigation";
 
   return undefined;
 }
@@ -414,16 +419,25 @@ function alternateAnchors(parts: string[], primaryAnchor: string): string[] {
     if (set.has("gothic") || set.has("fantasy")) alternates.push("gothic horror");
   }
 
+  if (primaryAnchor === "psychological mystery") {
+    alternates.push("murder investigation");
+    alternates.push("crime detective");
+    alternates.push("private investigator mystery");
+    alternates.push("cold case mystery");
+  }
+
   if (primaryAnchor === "psychological thriller") {
     alternates.push("dark psychological fiction");
     alternates.push("psychological suspense");
     if (set.has("mystery") || set.has("investigation")) alternates.push("psychological mystery");
   }
 
-  if (primaryAnchor === "mystery") {
+  if (primaryAnchor === "mystery" || primaryAnchor === "murder investigation" || primaryAnchor === "crime detective" || primaryAnchor === "private investigator mystery") {
     alternates.push("psychological mystery");
-    alternates.push("crime investigation novel");
-    alternates.push("suspense thriller");
+    alternates.push("crime detective");
+    alternates.push("murder investigation");
+    alternates.push("private investigator mystery");
+    alternates.push("cold case mystery");
   }
 
   if (primaryAnchor === "science fiction") {
@@ -888,7 +902,7 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
   if (genres.has("fantasy")) return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
   if (genres.has("horror")) return ["psychological horror novel", "survival horror novel", "haunted house horror novel"];
   if (genres.has("science fiction")) return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"];
-  if (genres.has("mystery") || genres.has("crime")) return ["mystery thriller novel", "psychological mystery novel", "crime thriller novel"];
+  if (genres.has("mystery") || genres.has("crime")) return ["murder investigation novel", "crime detective fiction", "psychological mystery novel", "private investigator mystery novel", "cold case mystery novel"];
   if (genres.has("thriller")) return [
     "missing person thriller novel",
     "missing child thriller novel",

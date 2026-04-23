@@ -4,7 +4,7 @@ import { QUERY_TRANSLATIONS } from "./queryTranslations";
 import { build20QRungs, rungToPreviewQuery } from "./build20QRungs";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 
-type Family = "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
+type Family = "mystery_family" | "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
 
 type HypothesisLike = {
   label?: string;
@@ -14,7 +14,9 @@ type HypothesisLike = {
 };
 
 const THRILLER_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance|faith-based|christian fiction)\b/i;
-const THRILLER_CORE_TERMS = /\b(crime|thriller|detective|psychological thriller|psychological suspense|investigation|noir|procedural|serial killer|missing person|crime conspiracy)\b/i;
+const THRILLER_CORE_TERMS = /\b(crime|thriller|psychological thriller|psychological suspense|serial killer|missing person|crime conspiracy|manhunt|fugitive|legal thriller|spy thriller)\b/i;
+const MYSTERY_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance|faith-based|christian fiction|science fiction|space opera)\b/i;
+const MYSTERY_CORE_TERMS = /\b(mystery|detective|psychological mystery|investigation|murder investigation|crime detective|private investigator|cold case|police procedural|whodunit|noir)\b/i;
 
 function topKeys(obj: Record<string, number>, limit: number): string[] {
   return Object.entries(obj)
@@ -57,7 +59,8 @@ function translateSignalBucket(
   return filterCompatibleQueries(expand(keys, dictionary), family);
 }
 function familyForGenres(genreKeys: string[]): Family {
-  if (genreKeys.some((key) => ["crime", "mystery", "thriller"].includes(key))) return "thriller_family";
+  if (genreKeys.some((key) => ["mystery", "detective"].includes(key))) return "mystery_family";
+  if (genreKeys.some((key) => ["crime", "thriller"].includes(key))) return "thriller_family";
   if (genreKeys.some((key) => ["science fiction", "fantasy", "horror", "dystopian"].includes(key))) return "speculative_family";
   if (genreKeys.includes("romance")) return "romance_family";
   if (genreKeys.includes("historical fiction") || genreKeys.includes("historical")) return "historical_family";
@@ -68,9 +71,16 @@ function isFamilyCompatibleQuery(query: string, family: Family): boolean {
   const q = String(query || "").toLowerCase();
   if (!q) return false;
 
+  if (family === "mystery_family") {
+    if (/\bscience fiction\b|\bfantasy\b|\bhorror\b|\bromance\b|\bhistorical fiction\b/.test(q)) return false;
+    if (MYSTERY_DRIFT_TERMS.test(q)) return false;
+    if (/\b(serial killer investigation thriller|crime conspiracy thriller|spy thriller|legal thriller|manhunt thriller|fugitive thriller)\b/.test(q)) return false;
+    return MYSTERY_CORE_TERMS.test(q);
+  }
   if (family === "thriller_family") {
     if (/\bscience fiction\b|\bfantasy\b|\bhorror\b|\bromance\b|\bhistorical fiction\b/.test(q)) return false;
     if (THRILLER_DRIFT_TERMS.test(q)) return false;
+    if (/\bpsychological mystery\b|\bprivate investigator mystery\b|\bcold case mystery\b/.test(q)) return false;
     return THRILLER_CORE_TERMS.test(q);
   }
   if (family === "speculative_family") {
@@ -87,6 +97,7 @@ function familyCompatibleHypotheses(hypotheses: HypothesisLike[], family: Family
 }
 
 function guaranteedFamilyFallbacks(family: Family): string[] {
+  if (family === "mystery_family") return ["murder investigation novel", "crime detective fiction", "psychological mystery novel", "private investigator mystery novel", "cold case mystery novel"];
   if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
   if (family === "thriller_family") return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "obsession psychological thriller novel", "procedural crime thriller novel"];
   if (family === "historical_family") return ["historical fiction novel"];
@@ -127,13 +138,20 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.includes("romance") ||
     descriptiveQueriesLower.some((q) => /romance|love story|relationship|second chance romance|forbidden love romance|historical romance|gothic romance|fantasy romance|emotional romance/.test(q));
 
-  const hardThrillerNative = /psychological thriller|crime thriller|serial killer|missing person|missing child|murder investigation|detective|fbi|procedural|crime conspiracy|conspiracy thriller|manhunt|fugitive|abduction|spy thriller|legal thriller/.test(descriptiveBlob);
+  const hardMysteryNative = /psychological mystery|murder investigation|crime detective|private investigator|cold case|whodunit|detective mystery|police procedural mystery/.test(descriptiveBlob);
+
+  const mysterySignalPresent =
+    genreKeys.some((key) => ["mystery", "detective"].includes(key)) ||
+    descriptiveQueriesLower.some((q) => /psychological mystery|murder investigation|crime detective|private investigator|cold case|detective mystery|police procedural mystery/.test(q));
+
+  const hardThrillerNative = /psychological thriller|crime thriller|serial killer|missing person|missing child|fbi|crime conspiracy|conspiracy thriller|manhunt|fugitive|abduction|spy thriller|legal thriller/.test(descriptiveBlob);
 
   const thrillerSignalPresent =
-    genreKeys.some((key) => ["crime", "mystery", "thriller"].includes(key)) ||
-    descriptiveQueriesLower.some((q) => /thriller|crime|detective|investigation|serial killer|missing person|procedural|suspense/.test(q));
+    genreKeys.some((key) => ["crime", "thriller"].includes(key)) ||
+    descriptiveQueriesLower.some((q) => /thriller|crime thriller|serial killer|missing person|crime conspiracy|procedural crime thriller|suspense/.test(q));
 
-  const isThriller = thrillerSignalPresent && (!romanceSignalPresent || hardThrillerNative);
+  const isMystery = mysterySignalPresent && (!romanceSignalPresent || hardMysteryNative);
+  const isThriller = !isMystery && thrillerSignalPresent && (!romanceSignalPresent || hardThrillerNative);
 
   const isRomance = romanceSignalPresent;
 
@@ -148,6 +166,8 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     family = "speculative_family";
   } else if (isRomance) {
     family = "romance_family";
+  } else if (isMystery) {
+    family = "mystery_family";
   } else if (isThriller) {
     family = "thriller_family";
   } else if (isHistorical) {
@@ -158,6 +178,7 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   if (isHorror) lane = "horror";
   else if (isFantasy) lane = "fantasy";
   else if (isRomance) lane = "romance";
+  else if (isMystery) lane = "mystery";
   else if (isThriller) lane = "thriller";
   else if (isHistorical) lane = "historical";
 

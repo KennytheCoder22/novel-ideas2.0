@@ -157,8 +157,11 @@ thriller: [
   "procedural crime thriller novel"
 ],
 mystery: [
-  "mystery thriller novel",
-  "psychological mystery novel"
+  "murder investigation novel",
+  "crime detective fiction",
+  "psychological mystery novel",
+  "private investigator mystery novel",
+  "cold case mystery novel",
 ],
   fantasy: [
     "epic fantasy novel",
@@ -186,9 +189,9 @@ const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
   { pattern: /\bspace\b|\bgalaxy\b|\bcosmic\b|\binterstellar\b/, outputs: ["space opera science fiction"] },
   { pattern: /\bmagic\b|\bmagical\b|\bwizard\b|\bwitch\b/, outputs: ["magic fantasy novel"] },
   { pattern: /\bghost\b|\bhaunted\b/, outputs: ["haunted house horror novel"] },
-  { pattern: /\bmurder\b|\binvestigation\b|\bdetective\b/, outputs: ["mystery thriller novel", "crime thriller novel"] },
+  { pattern: /\bmurder\b|\binvestigation\b|\bdetective\b/, outputs: ["murder investigation novel", "crime detective fiction", "psychological mystery novel"] },
   { pattern: /\bspy\b|\bespionage\b/, outputs: ["spy thriller novel"] },
-  { pattern: /\bpsychological\b|\bidentity\b|\bmind\b/, outputs: ["psychological thriller novel", "psychological horror novel"] },
+  { pattern: /\bpsychological\b|\bidentity\b|\bmind\b/, outputs: ["psychological mystery novel", "psychological thriller novel", "psychological horror novel"] },
   { pattern: /\blove\b|\bromance\b|\brelationship\b|\brelationships\b|\bhuman connection\b/, outputs: ["emotional romance novel", "second chance romance novel"] },
   { pattern: /\bbetrayal\b|\bredemption\b|\breunion\b/, outputs: ["second chance romance novel"] },
   { pattern: /\bforbidden\b|\bauthority\b|\brebellion\b/, outputs: ["forbidden love romance novel"] },
@@ -205,6 +208,10 @@ function survivalAwareRewrite(intent: QueryIntent): string[] {
 
   if (base === "thriller") {
     return ["survival thriller novel"];
+  }
+
+  if (base === "mystery") {
+    return ["cold case mystery novel"];
   }
 
   return [];
@@ -408,7 +415,15 @@ function buildFallbackRungs(intent: QueryIntent): string[] {
   );
 
   const guaranteed =
-    base === "fantasy"
+    base === "mystery"
+      ? [
+          "murder investigation novel",
+          "crime detective fiction",
+          "psychological mystery novel",
+          "private investigator mystery novel",
+          "cold case mystery novel",
+        ]
+      : base === "fantasy"
       ? [
           "epic fantasy novel",
           "high fantasy novel",
@@ -486,7 +501,8 @@ function classifyRungRole(query: string): RungRole {
     /obsession psychological thriller novel/.test(q) ||
     /epic fantasy novel/.test(q) ||
     /science fiction novel/.test(q) ||
-    /mystery thriller novel/.test(q)
+    /murder investigation novel/.test(q) ||
+    /crime detective fiction/.test(q)
   ) {
     return "core";
   }
@@ -495,6 +511,8 @@ function classifyRungRole(query: string): RungRole {
     /survival horror/.test(q) ||
     /procedural crime thriller/.test(q) ||
     /psychological mystery/.test(q) ||
+    /private investigator mystery/.test(q) ||
+    /cold case mystery/.test(q) ||
     /dystopian science fiction/.test(q) ||
     /high fantasy novel/.test(q) ||
     /quest fantasy novel/.test(q)

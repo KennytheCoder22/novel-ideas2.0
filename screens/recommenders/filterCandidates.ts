@@ -1,6 +1,6 @@
 import type { RecommendationDoc } from "./types";
 
-type RouterFamily = "fantasy" | "horror" | "thriller" | "speculative" | "romance" | "historical" | "general";
+type RouterFamily = "fantasy" | "horror" | "mystery" | "thriller" | "speculative" | "romance" | "historical" | "general";
 
 type FilterDiagnostics = {
   kept: boolean;
@@ -70,6 +70,7 @@ function inferRouterFamily(bucketPlan: any): RouterFamily {
 
   if (explicitLane === "fantasy") return "fantasy";
   if (explicitLane === "horror") return "horror";
+  if (explicitLane === "mystery") return "mystery";
   if (explicitLane === "thriller") return "thriller";
   if (explicitLane === "romance") return "romance";
   if (explicitLane === "historical") return "historical";
@@ -89,9 +90,12 @@ function inferRouterFamily(bucketPlan: any): RouterFamily {
 
   if (/(psychological horror|survival horror|haunted house horror|haunted psychological horror|psychological horror thriller|horror|haunted|ghost|supernatural|occult|monster|creature|possession|terror|dread|eerie|disturbing)/.test(text)) return "horror";
   const romanceNative = /(romance|love story|rom-com|rom com|second chance romance|forbidden love romance|historical romance|gothic romance|fantasy romance|emotional romance)/.test(text);
+  const hardMysteryNative = /(psychological mystery|murder investigation|crime detective|private investigator|cold case|whodunit|detective mystery|police procedural mystery)/.test(text);
   const hardThrillerNative = /(psychological thriller|crime thriller|serial killer|missing person|missing child|murder investigation|detective|fbi|procedural|crime conspiracy|conspiracy thriller|manhunt|fugitive|abduction|spy thriller|legal thriller)/.test(text);
-  if (romanceNative && !hardThrillerNative) return "romance";
-  if (/(thriller|mystery|crime|detective|suspense|psychological|murder|investigation)/.test(text)) return "thriller";
+  if (romanceNative && !hardThrillerNative && !hardMysteryNative) return "romance";
+  if (hardMysteryNative) return "mystery";
+  if (/(thriller|crime thriller|serial killer|missing person|crime conspiracy|legal thriller|spy thriller|manhunt|fugitive|abduction)/.test(text)) return "thriller";
+  if (/(mystery|detective|investigation|murder|private investigator|whodunit|cold case|police procedural)/.test(text)) return "mystery";
   if (/(epic fantasy|high fantasy|magic fantasy|quest fantasy|character driven fantasy|dark fantasy|fantasy|wizard|witch|dragon|fae|mythic)/.test(text)) return "fantasy";
   if (/(science fiction|sci-fi|speculative|dystopian|space opera|technology|ai|artificial intelligence)/.test(text)) return "speculative";
   if (romanceNative) return "romance";
@@ -327,6 +331,24 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   strongNarrative: boolean;
   fictionPositive: boolean;
 }): boolean {
+  if (family === "mystery") {
+    const mysteryNative =
+      flags.mysteryPositive ||
+      flags.crimePositive ||
+      /\b(mystery|detective|investigation|investigat(?:e|es|ion)|murder|private investigator|pi\b|inspector|whodunit|case|cold case|police procedural|suspect|victim|clue)\b/.test(combined);
+
+    if (!mysteryNative) return true;
+
+    const obviousNonMysteryMeta =
+      /\b(essays|treatise|philosophy|history of|criticism|technique of the mystery story|mystery book|mammoth mystery book|anthology|collection|boxed set|true crime stories|detective fiction|literary criticism)\b/.test(combined);
+
+    const obviousThrillerOnly =
+      /\b(manhunt|fugitive|spy thriller|crime conspiracy|international conspiracy|military thriller|legal thriller)\b/.test(combined) &&
+      !/\b(mystery|detective|investigation|case|whodunit|private investigator)\b/.test(combined);
+
+    return obviousNonMysteryMeta || obviousThrillerOnly;
+  }
+
   if (family === "thriller") {
     const thrillerNative =
       flags.thrillerPositive ||
@@ -694,6 +716,7 @@ if (family === "speculative") {
     }
   }
 
+  if (family === "mystery" && !mysteryPositive) diagnostics.passedChecks.push("soft_missing_mystery_signal");
   if (family === "historical" && !historicalPositive) diagnostics.passedChecks.push("soft_missing_historical_signal");
   if (family === "romance" && !romancePositive) diagnostics.passedChecks.push("soft_missing_romance_signal");
 
@@ -703,6 +726,9 @@ if (family === "speculative") {
     } else {
       diagnostics.rejectReasons.push("lane_mismatch_fantasy");
     }
+  }
+  if (family === "mystery" && isLaneMismatch(family, combined, diagnostics.flags)) {
+    diagnostics.rejectReasons.push("lane_mismatch_mystery");
   }
   if (family === "thriller" && isLaneMismatch(family, combined, diagnostics.flags)) {
     diagnostics.rejectReasons.push("lane_mismatch_thriller");
@@ -1211,6 +1237,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("passed_relaxed_horror_shape_gate");
       } else if (isOpenLibraryLike && passesOpenLibraryHorrorRecovery(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_horror_recovery");
+      } else if (isOpenLibraryLike && diagnostics.family === "mystery" && diagnostics.flags.mysteryPositive && (diagnostics.flags.strongNarrative || diagnostics.hasDescription || diagnostics.hasRealLength)) {
+        diagnostics.passedChecks.push("openlibrary_mystery_recovery");
       } else if (isOpenLibraryLike && passesOpenLibraryFantasyRecovery(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_fantasy_recovery");
       } else if (isOpenLibraryLike && passesOpenLibraryRomanceRecovery(doc, diagnostics)) {
