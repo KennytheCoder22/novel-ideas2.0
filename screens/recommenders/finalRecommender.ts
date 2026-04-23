@@ -466,16 +466,18 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
   const text = haystack(c);
   let score = 0;
 
+  const lane = explicitLaneForCandidate(c);
+
   if (/psychological/.test(text)) score += 1;
   if (/horror|dark|spooky/.test(text)) score += 0.75;
   if (/survival/.test(text)) score += 1;
   if (/thriller|mystery/.test(text)) score += 0.75;
   if (lane === "mystery" && /detective|investigation|private investigator|whodunit|case|inspector|cold case/.test(text)) score += 2.25;
   if (/fast paced|fast-paced/.test(text)) score += 1;
-  if (/science fiction/.test(text)) score -= 4;
+  if (lane === "science_fiction") {
+    if (/science fiction|space opera|dystopian|ai|artificial intelligence|robot|android|alien|time travel|interstellar|futuristic/.test(text)) score += 3;
+  } else if (/science fiction/.test(text)) score -= 4;
   if (/romance/.test(text)) score -= 1.5;
-
-  const lane = explicitLaneForCandidate(c);
   if (lane === "fantasy") {
     if (/fantasy|epic fantasy|high fantasy|mythic|kingdom|quest|sorcery|dragon|wizard|magic/.test(text)) score += 1.5;
     if (/guide|handbook|companion|catalog|encyclopedia|subject headings|publishers weekly|graphic novel using digital techniques/.test(text)) score -= 6;
@@ -495,7 +497,8 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
       score += warmth * 3;
     }
     if (/science fiction|space opera|futuristic/.test(text)) {
-      score -= Math.max(0, -realism) * 4;
+      if (lane === "science_fiction") score += Math.max(0, -realism) * 2;
+      else score -= Math.max(0, -realism) * 4;
     }
   }
 
@@ -676,6 +679,22 @@ function anchorBoost(c: Candidate): number {
       'shari lapena',
       'alex michaelides',
     ],
+    science_fiction: [
+      'ursula k le guin',
+      'philip k dick',
+      'octavia butler',
+      'neal stephenson',
+      'isaac asimov',
+      'arthur c clarke',
+      'george orwell',
+      'blake crouch',
+      'adrian tchaikovsky',
+      'ann leckie',
+      'becky chambers',
+      'john scalzi',
+      'andy weir',
+      'martha wells',
+    ],
     speculative: [
       'ursula k le guin',
       'philip k dick',
@@ -719,6 +738,8 @@ function anchorBoost(c: Candidate): number {
     if (matchesAuthor(AUTHOR_MAP.mystery)) score += 14;
   } else if (lane === "thriller") {
     if (matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
+  } else if (lane === "science_fiction") {
+    if (matchesAuthor(AUTHOR_MAP.science_fiction)) score += 12;
   } else if (lane === "speculative") {
     if (matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
   } else if (lane === "fantasy") {
@@ -729,6 +750,7 @@ function anchorBoost(c: Candidate): number {
     if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
     else if ((/mystery|detective|investigation|private investigator|whodunit|case/.test(text)) && matchesAuthor(AUTHOR_MAP.mystery)) score += 14;
     else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
+    else if (/science fiction|space opera|dystopian|ai|artificial intelligence|robot|android|alien|time travel|interstellar|futuristic/.test(text) && matchesAuthor(AUTHOR_MAP.science_fiction)) score += 12;
     else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
     else if (/fantasy|epic fantasy|high fantasy|dark fantasy|magic/.test(text) && matchesAuthor(AUTHOR_MAP.fantasy)) score += 12;
     else if (isRomance && matchesAuthor(AUTHOR_MAP.romance)) score += 8;

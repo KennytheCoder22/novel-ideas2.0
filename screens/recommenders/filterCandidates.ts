@@ -1,6 +1,6 @@
 import type { RecommendationDoc } from "./types";
 
-type RouterFamily = "fantasy" | "horror" | "mystery" | "thriller" | "speculative" | "romance" | "historical" | "general";
+type RouterFamily = "fantasy" | "horror" | "mystery" | "thriller" | "science_fiction" | "speculative" | "romance" | "historical" | "general";
 
 type FilterDiagnostics = {
   kept: boolean;
@@ -74,6 +74,7 @@ function inferRouterFamily(bucketPlan: any): RouterFamily {
   if (explicitLane === "thriller") return "thriller";
   if (explicitLane === "romance") return "romance";
   if (explicitLane === "historical") return "historical";
+  if (explicitLane === "science_fiction" || explicitLane === "science_fiction_family") return "science_fiction";
   if (explicitLane === "speculative" || explicitLane === "speculative_family") return "speculative";
   if (explicitLane === "general" || explicitLane === "general_family") return "general";
 
@@ -97,7 +98,8 @@ function inferRouterFamily(bucketPlan: any): RouterFamily {
   if (/(thriller|crime thriller|serial killer|missing person|crime conspiracy|legal thriller|spy thriller|manhunt|fugitive|abduction)/.test(text)) return "thriller";
   if (/(mystery|detective|investigation|murder|private investigator|whodunit|cold case|police procedural)/.test(text)) return "mystery";
   if (/(epic fantasy|high fantasy|magic fantasy|quest fantasy|character driven fantasy|dark fantasy|fantasy|wizard|witch|dragon|fae|mythic)/.test(text)) return "fantasy";
-  if (/(science fiction|sci-fi|speculative|dystopian|space opera|technology|ai|artificial intelligence)/.test(text)) return "speculative";
+  if (/(science fiction|sci-fi|dystopian|space opera|technology|ai|artificial intelligence|robot|android|time travel|interstellar)/.test(text)) return "science_fiction";
+  if (/(speculative)/.test(text)) return "speculative";
   if (romanceNative) return "romance";
   if (/(historical|period fiction|gilded age|19th century|world war)/.test(text)) return "historical";
   return "general";
@@ -389,6 +391,21 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
     return !fantasyNative || obviousNonFantasyMeta;
   }
 
+  if (family === "science_fiction") {
+    const scienceFictionNative =
+      flags.speculativePositive &&
+      /\b(science fiction|sci-fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|future|futuristic|time travel|interstellar|spaceship|parallel world)\b/.test(combined);
+
+    const obviousNonScienceFiction =
+      /\b(fantasy romance|gothic romance|historical romance|wizard|witch|dragon|fae|magic|haunted|ghost|supernatural|occult)\b/.test(combined);
+
+    const obviousThrillerOnly =
+      (flags.thrillerPositive || flags.mysteryPositive || flags.crimePositive) &&
+      !/\b(science fiction|sci-fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|future|futuristic|time travel|interstellar|spaceship|parallel world)\b/.test(combined);
+
+    return !scienceFictionNative || obviousNonScienceFiction || obviousThrillerOnly;
+  }
+
   if (family === "speculative") {
     const speculativeNative = flags.speculativePositive;
     const obviousThrillerOnly = (flags.thrillerPositive || flags.mysteryPositive || flags.crimePositive) && !speculativeNative;
@@ -650,6 +667,14 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   }
 
   
+  if (family === "science_fiction") {
+    const scienceFictionReject =
+      /\b(bookshop mysteries|family names|science fact\/science fiction|analog science|public library|publishers weekly|historical dictionary|guide to|popular culture|writers? market|literary criticism)\b/.test(combined);
+    const scienceFictionNative = /\b(science fiction|sci-fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|future|futuristic|time travel|interstellar|spaceship|parallel world)\b/.test(combined);
+    if (!scienceFictionNative) diagnostics.passedChecks.push("soft_missing_science_fiction_signal");
+    if (scienceFictionReject) diagnostics.rejectReasons.push("science_fiction_off_profile_reference");
+  }
+
   if (family === "fantasy") {
     if (!speculativePositive) diagnostics.passedChecks.push("soft_missing_fantasy_signal");
   }
@@ -738,6 +763,9 @@ if (family === "speculative") {
   }
   if (family === "historical" && isLaneMismatch(family, combined, diagnostics.flags)) {
     diagnostics.rejectReasons.push("lane_mismatch_historical");
+  }
+  if (family === "science_fiction" && isLaneMismatch(family, combined, diagnostics.flags)) {
+    diagnostics.rejectReasons.push("lane_mismatch_science_fiction");
   }
   if (family === "speculative" && isLaneMismatch(family, combined, diagnostics.flags)) {
     diagnostics.rejectReasons.push("lane_mismatch_speculative");

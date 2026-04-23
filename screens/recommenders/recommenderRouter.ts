@@ -129,7 +129,7 @@ function buildRouterBucketPlan(input: RecommenderInput) {
 }
 
 
-function inferRouterFamily(bucketPlan: any): "horror" | "mystery" | "thriller" | "speculative" | "romance" | "historical" | "general" {
+function inferRouterFamily(bucketPlan: any): "horror" | "mystery" | "thriller" | "science_fiction" | "speculative" | "romance" | "historical" | "general" {
   const explicitLane = String(bucketPlan?.lane || "").toLowerCase();
 
   if (explicitLane === "horror") return "horror";
@@ -137,6 +137,7 @@ function inferRouterFamily(bucketPlan: any): "horror" | "mystery" | "thriller" |
   if (explicitLane === "thriller") return "thriller";
   if (explicitLane === "romance") return "romance";
   if (explicitLane === "historical") return "historical";
+  if (explicitLane === "science_fiction" || explicitLane === "science_fiction_family") return "science_fiction";
   if (explicitLane === "speculative" || explicitLane === "speculative_family") return "speculative";
   if (explicitLane === "general" || explicitLane === "general_family") return "general";
 
@@ -175,6 +176,12 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
     }
 
     return quoteIfNeeded(preview || "crime thriller novel");
+  }
+
+  if (family === "science_fiction") {
+    if (base) return quoteIfNeeded(base);
+    if (preview) return quoteIfNeeded(preview);
+    return quoteIfNeeded("science fiction novel");
   }
 
   if (family === "speculative") {
@@ -1246,6 +1253,8 @@ export async function getRecommendations(
           ? "mystery_family"
           : routerFamily === "thriller"
           ? "thriller_family"
+          : routerFamily === "science_fiction"
+          ? "science_fiction_family"
           : routerFamily === "speculative"
           ? "speculative_family"
           : routerFamily === "romance"
@@ -1272,6 +1281,15 @@ export async function getRecommendations(
       { rung: 1, query: "crime detective fiction" },
       { rung: 2, query: "psychological mystery novel" },
       { rung: 3, query: "private investigator mystery novel" },
+    ];
+  }
+
+  if (!rungs.length && routerFamily === "science_fiction") {
+    rungs = [
+      { rung: 0, query: "science fiction novel" },
+      { rung: 1, query: "dystopian science fiction novel" },
+      { rung: 2, query: "space opera science fiction" },
+      { rung: 3, query: "psychological science fiction novel" },
     ];
   }
 

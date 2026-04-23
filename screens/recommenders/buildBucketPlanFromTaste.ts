@@ -4,7 +4,7 @@ import { QUERY_TRANSLATIONS } from "./queryTranslations";
 import { build20QRungs, rungToPreviewQuery } from "./build20QRungs";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 
-type Family = "mystery_family" | "thriller_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
+type Family = "mystery_family" | "thriller_family" | "science_fiction_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
 
 type HypothesisLike = {
   label?: string;
@@ -61,7 +61,8 @@ function translateSignalBucket(
 function familyForGenres(genreKeys: string[]): Family {
   if (genreKeys.some((key) => ["mystery", "detective"].includes(key))) return "mystery_family";
   if (genreKeys.some((key) => ["crime", "thriller"].includes(key))) return "thriller_family";
-  if (genreKeys.some((key) => ["science fiction", "fantasy", "horror", "dystopian"].includes(key))) return "speculative_family";
+  if (genreKeys.some((key) => ["science fiction", "dystopian"].includes(key))) return "science_fiction_family";
+  if (genreKeys.some((key) => ["fantasy", "horror"].includes(key))) return "speculative_family";
   if (genreKeys.includes("romance")) return "romance_family";
   if (genreKeys.includes("historical fiction") || genreKeys.includes("historical")) return "historical_family";
   return "general_family";
@@ -83,6 +84,11 @@ function isFamilyCompatibleQuery(query: string, family: Family): boolean {
     if (/\bpsychological mystery\b|\bprivate investigator mystery\b|\bcold case mystery\b/.test(q)) return false;
     return THRILLER_CORE_TERMS.test(q);
   }
+  if (family === "science_fiction_family") {
+    if (/\bfantasy\b|\bhorror\b|\bromance\b|\bhistorical fiction\b/.test(q)) return false;
+    if (/\bcrime thriller\b|\bdetective mystery\b|\bmystery thriller\b|\bserial killer\b|\bmanhunt\b|\bfugitive\b/.test(q) && !/\bscience fiction\b|\bdystopian\b|\bspace opera\b|\bartificial intelligence\b|\bai\b/.test(q)) return false;
+    return /\bscience fiction\b|\bdystopian\b|\bspace opera\b|\bartificial intelligence\b|\bai\b/.test(q);
+  }
   if (family === "speculative_family") {
     if (/\bcrime thriller\b|\bdetective mystery\b|\bmystery thriller\b/.test(q)) return false;
     return /\bscience fiction\b|\bfantasy\b|\bhorror\b/.test(q);
@@ -98,6 +104,7 @@ function familyCompatibleHypotheses(hypotheses: HypothesisLike[], family: Family
 
 function guaranteedFamilyFallbacks(family: Family): string[] {
   if (family === "mystery_family") return ["murder investigation novel", "crime detective fiction", "psychological mystery novel", "private investigator mystery novel", "cold case mystery novel"];
+  if (family === "science_fiction_family") return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction", "psychological science fiction novel"];
   if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
   if (family === "thriller_family") return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "obsession psychological thriller novel", "procedural crime thriller novel"];
   if (family === "historical_family") return ["historical fiction novel"];
@@ -160,10 +167,18 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.includes("historical") ||
     descriptiveQueriesLower.some((q) => /historical fiction|historical romance|period fiction|gilded age|regency|victorian/.test(q));
 
+  const isScienceFiction =
+    !isHorror &&
+    !isFantasy &&
+    genreKeys.some((key) => ["science fiction", "dystopian"].includes(key)) ||
+    descriptiveQueriesLower.some((q) => /science fiction|dystopian|space opera|artificial intelligence|\bai\b/.test(q));
+
   if (isHorror) {
     family = "speculative_family";
   } else if (isFantasy) {
     family = "speculative_family";
+  } else if (isScienceFiction) {
+    family = "science_fiction_family";
   } else if (isRomance) {
     family = "romance_family";
   } else if (isMystery) {
@@ -177,6 +192,7 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   let lane: string = family;
   if (isHorror) lane = "horror";
   else if (isFantasy) lane = "fantasy";
+  else if (isScienceFiction) lane = "science_fiction";
   else if (isRomance) lane = "romance";
   else if (isMystery) lane = "mystery";
   else if (isThriller) lane = "thriller";

@@ -184,7 +184,7 @@ mystery: [
 };
 
 const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
-  { pattern: /\btechnology\b|\btech\b|\bai\b|\bartificial intelligence\b|\brobot\b|\brobots\b|\bmachine\b/, outputs: ["ai thriller novel", "technological dystopia novel"] },
+  { pattern: /\btechnology\b|\btech\b|\bai\b|\bartificial intelligence\b|\brobot\b|\brobots\b|\bmachine\b/, outputs: ["artificial intelligence science fiction novel", "technological dystopia novel"] },
   { pattern: /\bdystopi/, outputs: ["dystopian science fiction novel"] },
   { pattern: /\bspace\b|\bgalaxy\b|\bcosmic\b|\binterstellar\b/, outputs: ["space opera science fiction"] },
   { pattern: /\bmagic\b|\bmagical\b|\bwizard\b|\bwitch\b/, outputs: ["magic fantasy novel"] },
