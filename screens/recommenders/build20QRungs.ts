@@ -312,7 +312,7 @@ function queryGenre(query: string): string {
   if (/crime thriller|psychological thriller|spy thriller|thriller/.test(q)) return "thriller";
   if (/murder investigation|crime detective|detective|mystery/.test(q)) return "mystery";
   if (/epic fantasy|dark fantasy|magic fantasy|fantasy/.test(q)) return "fantasy";
-  if (/historical fiction/.test(q)) return "historical fiction";
+  if (/historical fiction|historical novel|period fiction|19th century|american society|new york society|civil war|world war|family saga|high society|gilded age|victorian|edwardian|regency/.test(q)) return "historical fiction";
   if (/literary/.test(q)) return "literary";
   return "";
 }
@@ -599,55 +599,45 @@ function buildHistoricalRungs(intent: QueryIntent, maxRungs = 4) {
       : []),
   ].join(" "));
 
-  const queries: string[] = [];
+  // Historical rungs are deliberately deterministic. The router relies on these
+  // rungs being semantically different; letting the shared role selector rebuild
+  // them can collapse the ladder back into repeated generic queries.
+  const primary = "19th century american novel";
+  const intensify = /\b(war|battle|military|civil war|world war|soldier)\b/.test(joined)
+    ? "civil war historical fiction novel"
+    : "american society novel 19th century";
+  const adjacent = /\b(family|saga|generational|inheritance|dynasty)\b/.test(joined)
+    ? "family saga historical fiction novel"
+    : "new york society novel 19th century";
+  const explore = /\b(dark|gritty|realistic|literary|character|atmospheric|complex)\b/.test(joined)
+    ? "literary historical fiction novel"
+    : "historical fiction novel";
 
-  // Historical lane core: use proven, semantically distinct intake queries.
-  // These avoid the generic "historical fiction novel" Google Books bucket,
-  // which repeatedly pulls guides, criticism, catalogs, and writer-market books.
-  queries.push(
-    "19th century american novel",
+  const queries = distinctQueries([
+    primary,
+    intensify,
+    adjacent,
+    explore,
     "american society novel 19th century",
-    "new york society novel 19th century"
-  );
+    "new york society novel 19th century",
+    "historical fiction novel",
+  ]);
 
-  // Add taste-aware historical expansions without collapsing into modifier spam.
-  if (/\b(war|battle|military|civil war|world war|soldier)\b/.test(joined)) {
-    queries.push(
-      "civil war historical fiction novel",
-      "world war historical fiction novel"
-    );
-  }
-
-  if (/\b(family|saga|generational|inheritance|dynasty)\b/.test(joined)) {
-    queries.push("family saga historical novel");
-  }
-
-  if (/\b(politics|elite|wealth|class|society)\b/.test(joined)) {
-    queries.push("high society historical fiction novel");
-  }
-
-  if (/\b(dark|gritty|realistic|literary|character|atmospheric|complex)\b/.test(joined)) {
-    queries.push("literary historical fiction novel");
-  }
-
-  // Final broad fallback only after the more precise historical rung set.
-  queries.push("historical fiction novel");
-
-  return distinctQueries(queries)
-    .slice(0, Math.max(1, maxRungs))
-    .map((query, i) => ({
-      rung: i,
-      query,
-    }));
+  return queries.slice(0, Math.max(1, maxRungs)).map((query, i) => ({
+    rung: i,
+    query,
+  }));
 }
 
 export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
   const hypotheses = Array.isArray(intent.hypotheses) ? intent.hypotheses : [];
   const base = normalizedBaseGenre(intent);
 
-  const historicalQueries = isHistoricalIntent(intent, base)
-    ? buildHistoricalRungs(intent, maxRungs).map((r) => r.query)
-    : [];
+  if (isHistoricalIntent(intent, base)) {
+    return buildHistoricalRungs(intent, maxRungs);
+  }
+
+  const historicalQueries: string[] = [];
 
   const rankedHypothesisQueries = distinctQueries(
     hypotheses
