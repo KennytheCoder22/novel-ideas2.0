@@ -962,6 +962,71 @@ function ensureRungCoverage(candidates: any[], finalLimit: number): any[] {
   return selected;
 }
 
+
+function ensureHistoricalRungDiversity(candidates: any[], finalLimit: number): any[] {
+  const targetSize = Math.max(finalLimit * 2, finalLimit);
+  const byRung = new Map<string, any[]>();
+
+  for (const candidate of candidates) {
+    const rung = String(candidate?.rawDoc?.queryRung ?? candidate?.queryRung ?? "unknown");
+    if (!byRung.has(rung)) byRung.set(rung, []);
+    byRung.get(rung)!.push(candidate);
+  }
+
+  for (const [rung, items] of byRung.entries()) {
+    byRung.set(rung, [...items].sort((a, b) => candidateScoreValue(b) - candidateScoreValue(a)));
+  }
+
+  const orderedRungs = [
+    "0",
+    "1",
+    "2",
+    "3",
+    ...Array.from(byRung.keys()).filter((rung) => !["0", "1", "2", "3"].includes(rung)),
+  ].filter((rung, index, arr) => byRung.has(rung) && arr.indexOf(rung) === index);
+
+  const selected: any[] = [];
+  const seen = new Set<string>();
+
+  for (const rung of orderedRungs) {
+    const bucket = byRung.get(rung) || [];
+    const pick = bucket.find((candidate) => {
+      const key = candidateKey(candidate);
+      return key && !seen.has(key);
+    });
+
+    if (!pick) continue;
+    const key = candidateKey(pick);
+    seen.add(key);
+    selected.push(pick);
+    if (selected.length >= Math.min(finalLimit, orderedRungs.length)) break;
+  }
+
+  while (selected.length < targetSize) {
+    let progressed = false;
+
+    for (const rung of orderedRungs) {
+      const bucket = byRung.get(rung) || [];
+      const pick = bucket.find((candidate) => {
+        const key = candidateKey(candidate);
+        return key && !seen.has(key);
+      });
+
+      if (!pick) continue;
+      const key = candidateKey(pick);
+      seen.add(key);
+      selected.push(pick);
+      progressed = true;
+
+      if (selected.length >= targetSize) break;
+    }
+
+    if (!progressed) break;
+  }
+
+  return selected.length ? selected : candidates;
+}
+
 function enforceAuthorDiversity(candidates: any[], maxPerAuthor = 1): any[] {
   const counts = new Map<string, number>();
   const out: any[] = [];
@@ -1613,7 +1678,11 @@ const normalizedCandidates = [
     }
   }
 
-  const rankingPool = ensureRungCoverage(buildLaneQuotaPool(basePool, finalLimit), finalLimit);
+  const quotaPool = buildLaneQuotaPool(basePool, finalLimit);
+  const rankingPool =
+    routerFamily === "historical"
+      ? ensureHistoricalRungDiversity(quotaPool, finalLimit)
+      : ensureRungCoverage(quotaPool, finalLimit);
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => {
     const filterDiagnostics = c?.rawDoc?.diagnostics?.filterDiagnostics ?? c?.diagnostics?.filterDiagnostics;
