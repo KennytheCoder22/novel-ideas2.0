@@ -740,6 +740,20 @@ function anchorBoost(c: Candidate): number {
       'ken follett',
       'susan higginbotham',
       'henryk sienkiewicz',
+      'michael shaara',
+      'jeff shaara',
+      'james michener',
+      'edward rutherfurd',
+      'bernard cornwell',
+      'patrick o brian',
+      'philippa gregory',
+      'colleen mccullough',
+      'howard bahr',
+      'tea cooper',
+      'sharon kay penman',
+      'robert harris',
+      'e l doctorow',
+      'e l doctrow',
     ],
   };
 
@@ -762,7 +776,9 @@ function anchorBoost(c: Candidate): number {
   } else if (lane === "romance") {
     if (matchesAuthor(AUTHOR_MAP.romance)) score += 8;
   } else if (lane === "historical") {
-    if (matchesAuthor(AUTHOR_MAP.historical)) score += 10;
+    const historicalCanonicalAuthor = matchesAuthor(AUTHOR_MAP.historical);
+    if (historicalCanonicalAuthor) score += 16;
+    if (isOpenLibraryCandidate(c) && historicalCanonicalAuthor) score += 8;
     if (/historical fiction|historical novel|period fiction|victorian|edwardian|regency|gilded age|civil war|world war|19th century|family saga/.test(text)) score += 6;
     if (/literary criticism|history of the novel|study of|guide|handbook|reference|catalog|bibliography/.test(text)) score -= 10;
   } else {
@@ -784,6 +800,19 @@ function anchorBoost(c: Candidate): number {
   if (/pet sematary/.test(title)) score += 10;
   if (/the terror/.test(title)) score += 8;
   if (/the turn of the screw/.test(title)) score += 8;
+
+  if (lane === "historical") {
+    if (/killer angels/.test(title)) score += 12;
+    if (/pillars of the earth/.test(title)) score += 12;
+    if (/wolf hall/.test(title)) score += 12;
+    if (/shogun/.test(title)) score += 12;
+    if (/lonesome dove/.test(title)) score += 12;
+    if (/the black flower/.test(title)) score += 10;
+    if (/the fateful lightning/.test(title)) score += 10;
+    if (/the first lady and the rebel/.test(title)) score += 10;
+    if (/i claudius/.test(title)) score += 10;
+    if (/the book thief/.test(title)) score += 10;
+  }
 
   if (lane === "fantasy") {
     if (/the hobbit/.test(title)) score += 10;
