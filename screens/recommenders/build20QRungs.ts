@@ -691,18 +691,19 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
     "controlled_explore",
   ];
 
-for (const role of roleOrder) {
-  const candidatesForRole = rungCandidates.filter((item) => {
-    if (item.role !== role) return false;
-    if (usedQueries.has(item.query)) return false;
-    const count = anchorCounts.get(item.anchor) || 0;
-    return count < maxPerAnchor;
-  });
+  for (const role of roleOrder) {
+    const candidatesForRole = rungCandidates.filter((item) => {
+      if (item.role !== role) return false;
+      if (usedQueries.has(item.query)) return false;
+      const count = anchorCounts.get(item.anchor) || 0;
+      return count < maxPerAnchor;
+    });
 
-  // 🔑 FORCE diversity: prefer queries not already dominating
-  const candidate =
-    candidatesForRole.find((item) => !usedQueries.has(item.query)) ||
-    candidatesForRole[0];
+    // Prefer a completely unused anchor first so one query family cannot dominate all rungs.
+    const candidate =
+      candidatesForRole.find((item) => (anchorCounts.get(item.anchor) || 0) === 0) ||
+      candidatesForRole.find((item) => !usedQueries.has(item.query)) ||
+      candidatesForRole[0];
 
     if (!candidate) continue;
     selected.push(candidate.query);
