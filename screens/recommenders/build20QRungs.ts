@@ -691,17 +691,18 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
     "controlled_explore",
   ];
 
-  for (const role of roleOrder) {
-    const candidatesForRole = rungCandidates.filter((item) => {
-      if (item.role !== role) return false;
-      if (usedQueries.has(item.query)) return false;
-      const count = anchorCounts.get(item.anchor) || 0;
-      return count < maxPerAnchor;
-    });
+for (const role of roleOrder) {
+  const candidatesForRole = rungCandidates.filter((item) => {
+    if (item.role !== role) return false;
+    if (usedQueries.has(item.query)) return false;
+    const count = anchorCounts.get(item.anchor) || 0;
+    return count < maxPerAnchor;
+  });
 
-    const candidate =
-      candidatesForRole.find((item) => !/\b19th century american novel\b/.test(item.query)) ||
-      candidatesForRole[0];
+  // 🔑 FORCE diversity: prefer queries not already dominating
+  const candidate =
+    candidatesForRole.find((item) => !usedQueries.has(item.query)) ||
+    candidatesForRole[0];
 
     if (!candidate) continue;
     selected.push(candidate.query);
