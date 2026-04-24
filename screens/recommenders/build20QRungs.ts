@@ -64,6 +64,13 @@ function combine(parts: Array<string | undefined | null>) {
 
 function rungAnchor(query: string): string {
   const q = clean(query || "");
+
+  // Historical queries need independent anchors; otherwise every query containing
+  // "historical fiction" collapses into the same anchor and destroys rung diversity.
+  if (/\b(19th century|american society|new york society|civil war|world war|family saga|high society|war historical|period fiction)\b/.test(q)) {
+    return q;
+  }
+
   const anchors = [
     "psychological science fiction",
     "science fiction thriller",
@@ -567,36 +574,55 @@ function buildHistoricalRungs(intent: QueryIntent, maxRungs = 4) {
     ...(intent.subgenres || []),
     ...(intent.themes || []),
     ...(intent.tones || []),
-    ...(Array.isArray(intent.hypotheses) ? intent.hypotheses.flatMap((h) => [h?.label || "", h?.query || "", ...(h?.parts || [])]) : []),
+    ...(Array.isArray(intent.hypotheses)
+      ? intent.hypotheses.flatMap((h) => [
+          h?.label || "",
+          h?.query || "",
+          ...(h?.parts || []),
+        ])
+      : []),
   ].join(" "));
 
-  const rungs: string[] = [];
+  const queries: string[] = [];
 
-  if (/\b(war|world war|civil war|battle|soldier|military)\b/.test(joined)) {
-    rungs.push("war historical fiction novel");
-  }
-  if (/\b(family|saga|generational|inheritance)\b/.test(joined)) {
-    rungs.push("family saga historical fiction novel");
-  }
-  if (/\b(victorian|edwardian|gilded age|19th century|society)\b/.test(joined)) {
-    rungs.push("19th century society historical fiction novel");
-  }
-  if (/\b(literary|atmospheric|character|complex|dark)\b/.test(joined)) {
-    rungs.push("literary historical fiction novel");
-  }
-
-  rungs.push(
-    "historical fiction novel",
-    "period fiction novel",
-    "19th century historical fiction novel",
-    "war historical fiction novel",
-    "family saga historical fiction novel"
+  // Historical lane core: use proven, semantically distinct intake queries.
+  // These avoid the generic "historical fiction novel" Google Books bucket,
+  // which repeatedly pulls guides, criticism, catalogs, and writer-market books.
+  queries.push(
+    "19th century american novel",
+    "american society novel 19th century",
+    "new york society novel 19th century"
   );
 
-  return distinctQueries(rungs).slice(0, Math.max(1, maxRungs)).map((query, i) => ({
-    rung: i,
-    query,
-  }));
+  // Add taste-aware historical expansions without collapsing into modifier spam.
+  if (/\b(war|battle|military|civil war|world war|soldier)\b/.test(joined)) {
+    queries.push(
+      "civil war historical fiction novel",
+      "world war historical fiction novel"
+    );
+  }
+
+  if (/\b(family|saga|generational|inheritance|dynasty)\b/.test(joined)) {
+    queries.push("family saga historical novel");
+  }
+
+  if (/\b(politics|elite|wealth|class|society)\b/.test(joined)) {
+    queries.push("high society historical fiction novel");
+  }
+
+  if (/\b(dark|gritty|realistic|literary|character|atmospheric|complex)\b/.test(joined)) {
+    queries.push("literary historical fiction novel");
+  }
+
+  // Final broad fallback only after the more precise historical rung set.
+  queries.push("historical fiction novel");
+
+  return distinctQueries(queries)
+    .slice(0, Math.max(1, maxRungs))
+    .map((query, i) => ({
+      rung: i,
+      query,
+    }));
 }
 
 export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
