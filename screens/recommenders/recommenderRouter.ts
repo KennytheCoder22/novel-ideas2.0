@@ -725,7 +725,6 @@ function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string
 
   if (family === "mystery") base.unshift("-true-crime", "-cozy", "-humorous", "-spy", "-conspiracy");
   if (family === "thriller") base.unshift("-true-crime", "-cozy", "-humorous");
-  if (family === "historical") base.unshift("-history", "-biography", "-memoir", "-textbook", "-literary-criticism");
 
   return base.join(" ");
 }
@@ -740,22 +739,26 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const lowered = base.toLowerCase();
   const negativeTerms = rungNegativeTerms(family);
 
+  function isHorrorQuery(q: string): boolean {
+    return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror)/i.test(q);
+  }
+
   if (family === "historical") {
-    const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
-    const historicalGoogleQueries = dedupeNonEmptyQueries([
-      base,
-      `${base} fiction`,
-      `${base} ${negativeTerms}`,
+    const historicalBase = base || String(bucketPlan?.preview || "historical fiction novel").trim();
+    const openLibraryQuery = openLibraryQueryForRung({ ...rung, query: historicalBase }, bucketPlan);
+    const lanes = dedupeNonEmptyQueries([
+      historicalBase,
+      /fiction|novel/i.test(historicalBase) ? "" : `${historicalBase} novel`,
+      `${historicalBase} ${negativeTerms}`,
     ]);
 
-    const mapped: RouterQueryLane[] = historicalGoogleQueries.map((query) => {
+    const mapped: RouterQueryLane[] = lanes.map((query) => {
       const q = query.toLowerCase();
-      const laneKind = q.includes("-guide") || q.includes("-reference") || q.includes("-criticism") || q.includes("-history")
-        ? "strict-filtered"
-        : q !== lowered && q.includes("fiction")
-          ? "fiction-variant"
-          : "core";
-      return { query, laneKind, source: "googleBooks" } as RouterQueryLane;
+      return {
+        query,
+        laneKind: q.includes("-guide") || q.includes("-reference") || q.includes("-criticism") ? "strict-filtered" : "core",
+        source: "googleBooks",
+      } as RouterQueryLane;
     });
 
     if (openLibraryQuery) {
@@ -764,10 +767,6 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     }
 
     return mapped;
-  }
-
-  function isHorrorQuery(q: string): boolean {
-    return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror)/i.test(q);
   }
 
   const thrillerAllowsDomestic =

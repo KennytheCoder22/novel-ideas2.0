@@ -477,14 +477,14 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
   if (lane === "science_fiction") {
     if (/science fiction|space opera|dystopian|ai|artificial intelligence|robot|android|alien|time travel|interstellar|futuristic/.test(text)) score += 3;
   } else if (/science fiction/.test(text)) score -= 4;
+  if (lane === "historical") {
+    if (/historical fiction|historical novel|period fiction|victorian|edwardian|regency|gilded age|civil war|world war|19th century|family saga/.test(text)) score += 3;
+    if (/literary criticism|study of|studies of|history of the novel|guide|handbook|reference|catalog|bibliography/.test(text)) score -= 8;
+  }
   if (/romance/.test(text)) score -= 1.5;
   if (lane === "fantasy") {
     if (/fantasy|epic fantasy|high fantasy|mythic|kingdom|quest|sorcery|dragon|wizard|magic/.test(text)) score += 1.5;
     if (/guide|handbook|companion|catalog|encyclopedia|subject headings|publishers weekly|graphic novel using digital techniques/.test(text)) score -= 6;
-  }
-  if (lane === "historical") {
-    if (/historical fiction|historical novel|period fiction|19th century|victorian|edwardian|gilded age|civil war|world war|regency/.test(text)) score += 2.5;
-    if (/history of the novel|criticism|literary criticism|analysis|guide|handbook|companion|catalog|reference/.test(text)) score -= 8;
   }
 
   if (taste) {
@@ -525,10 +525,7 @@ function narrativeScore(c: Candidate): number {
     score += 1.75;
   }
 
-  if (/historical fiction|historical novel|period fiction|19th century|victorian|edwardian|civil war|world war|regency/.test(text)) {
-    score += 2.25;
-  }
-
+  if (/historical fiction|historical novel|period fiction/.test(text)) score += 2.5;
   if (/novel|fiction/.test(text)) score += 1.5;
   if (/follows|tells the story|story of|when .* discovers|investigation|journey/.test(text)) {
     score += 1.5;
@@ -615,9 +612,6 @@ function anchorBoost(c: Candidate): number {
 
   const isRomance =
     /romance|love story|relationship|romantic/.test(text);
-
-  const isHistorical =
-    /historical fiction|historical novel|period fiction|19th century|victorian|edwardian|gilded age|civil war|world war|regency/.test(text);
 
   const AUTHOR_MAP: Record<string, string[]> = {
     horror: [
@@ -716,19 +710,6 @@ function anchorBoost(c: Candidate): number {
       'n k jemisin',
       'george orwell',
     ],
-    historical: [
-      'hilary mantel',
-      'geraldine brooks',
-      'colson whitehead',
-      'amor towles',
-      'maggie o farrell',
-      "maggie o'farrell",
-      'anthony doerr',
-      'susan higginbotham',
-      'henryk sienkiewicz',
-      'baroness orczy',
-      'ken follett',
-    ],
     fantasy: [
       'j r r tolkien',
       'tolkien',
@@ -750,6 +731,16 @@ function anchorBoost(c: Candidate): number {
       'emily henry',
       'julia quinn',
     ],
+    historical: [
+      'hilary mantel',
+      'geraldine brooks',
+      'colson whitehead',
+      'amor towles',
+      'anthony doerr',
+      'ken follett',
+      'susan higginbotham',
+      'henryk sienkiewicz',
+    ],
   };
 
   function matchesAuthor(list: string[]): boolean {
@@ -770,6 +761,10 @@ function anchorBoost(c: Candidate): number {
     if (matchesAuthor(AUTHOR_MAP.fantasy)) score += 12;
   } else if (lane === "romance") {
     if (matchesAuthor(AUTHOR_MAP.romance)) score += 8;
+  } else if (lane === "historical") {
+    if (matchesAuthor(AUTHOR_MAP.historical)) score += 10;
+    if (/historical fiction|historical novel|period fiction|victorian|edwardian|regency|gilded age|civil war|world war|19th century|family saga/.test(text)) score += 6;
+    if (/literary criticism|history of the novel|study of|guide|handbook|reference|catalog|bibliography/.test(text)) score -= 10;
   } else {
     if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
     else if ((/mystery|detective|investigation|private investigator|whodunit|case/.test(text)) && matchesAuthor(AUTHOR_MAP.mystery)) score += 14;

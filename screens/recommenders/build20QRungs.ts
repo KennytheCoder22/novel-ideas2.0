@@ -179,12 +179,7 @@ mystery: [
     "historical romance novel",
     "emotional romance novel",
   ],
-  "historical fiction": [
-    "19th century american novel",
-    "american society novel 19th century",
-    "new york society novel 19th century",
-    "historical fiction set in 19th century america",
-  ],
+  "historical fiction": ["historical fiction novel"],
   literary: ["literary fiction novel"],
 };
 
@@ -203,19 +198,6 @@ const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
   { pattern: /\bfantasy\b|\bmagic\b|\bfae\b|\bgothic\b/, outputs: ["fantasy romance novel", "gothic romance novel"] },
   { pattern: /\bhistorical\b|\bperiod\b|\bvictorian\b|\bwar\b/, outputs: ["historical romance novel"] },
 ];
-
-const HISTORICAL_FICTION_RUNG_QUERIES = [
-  "19th century american novel",
-  "american society novel 19th century",
-  "new york society novel 19th century",
-  "historical fiction set in 19th century america",
-];
-
-function buildHistoricalFictionRungs(maxRungs = 4) {
-  return HISTORICAL_FICTION_RUNG_QUERIES
-    .slice(0, Math.max(1, maxRungs))
-    .map((query, i) => ({ rung: i, query }));
-}
 
 function survivalAwareRewrite(intent: QueryIntent): string[] {
   const base = normalizedBaseGenre(intent);
@@ -427,11 +409,6 @@ function themeFallbackQueries(intent: QueryIntent): string[] {
 
 function buildFallbackRungs(intent: QueryIntent): string[] {
   const base = normalizedBaseGenre(intent);
-
-  if (base === "historical fiction") {
-    return HISTORICAL_FICTION_RUNG_QUERIES.slice(0, 6);
-  }
-
   const cleanedBase = scrubCrossGenreLiterals(intent.baseGenre || "", base);
   const cleanedSubgenres = dedupe(intent.subgenres || []).map((query) =>
     sanitizeQuery(scrubCrossGenreLiterals(query, base))
@@ -570,12 +547,64 @@ function buildRungCandidates(queries: string[]): RungCandidate[] {
   }));
 }
 
+
+function isHistoricalIntent(intent: QueryIntent, base: string): boolean {
+  const joined = clean([
+    base,
+    intent.baseGenre || "",
+    ...(intent.subgenres || []),
+    ...(intent.themes || []),
+    ...(intent.tones || []),
+    ...(Array.isArray(intent.hypotheses) ? intent.hypotheses.flatMap((h) => [h?.label || "", h?.query || "", ...(h?.parts || [])]) : []),
+  ].join(" "));
+
+  return base === "historical fiction" || /\b(historical fiction|period fiction|victorian|edwardian|gilded age|19th century|civil war|world war|regency)\b/.test(joined);
+}
+
+function buildHistoricalRungs(intent: QueryIntent, maxRungs = 4) {
+  const joined = clean([
+    intent.baseGenre || "",
+    ...(intent.subgenres || []),
+    ...(intent.themes || []),
+    ...(intent.tones || []),
+    ...(Array.isArray(intent.hypotheses) ? intent.hypotheses.flatMap((h) => [h?.label || "", h?.query || "", ...(h?.parts || [])]) : []),
+  ].join(" "));
+
+  const rungs: string[] = [];
+
+  if (/\b(war|world war|civil war|battle|soldier|military)\b/.test(joined)) {
+    rungs.push("war historical fiction novel");
+  }
+  if (/\b(family|saga|generational|inheritance)\b/.test(joined)) {
+    rungs.push("family saga historical fiction novel");
+  }
+  if (/\b(victorian|edwardian|gilded age|19th century|society)\b/.test(joined)) {
+    rungs.push("19th century society historical fiction novel");
+  }
+  if (/\b(literary|atmospheric|character|complex|dark)\b/.test(joined)) {
+    rungs.push("literary historical fiction novel");
+  }
+
+  rungs.push(
+    "historical fiction novel",
+    "period fiction novel",
+    "19th century historical fiction novel",
+    "war historical fiction novel",
+    "family saga historical fiction novel"
+  );
+
+  return distinctQueries(rungs).slice(0, Math.max(1, maxRungs)).map((query, i) => ({
+    rung: i,
+    query,
+  }));
+}
+
 export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
   const hypotheses = Array.isArray(intent.hypotheses) ? intent.hypotheses : [];
   const base = normalizedBaseGenre(intent);
 
-  if (base === "historical fiction") {
-    return buildHistoricalFictionRungs(maxRungs);
+  if (isHistoricalIntent(intent, base)) {
+    return buildHistoricalRungs(intent, maxRungs);
   }
 
   const rankedHypothesisQueries = distinctQueries(

@@ -321,6 +321,32 @@ function isWeakSeriesSpam(title: string, doc: any, hasDescription: boolean, hasR
   return sequelPattern && veryWeakAuthority && !(hasDescription && hasRealLength);
 }
 
+
+function isHistoricalMetaLiteraryLeak(combined: string): boolean {
+  return /\b(history of the novel|technique and spirit of the .*historical novel|study of the .*novel|studies of the .*novel|criticism|literary criticism|critical survey|companion|guide to|bibliography|catalogue|catalog|handbook|reference|the english historical novel|development of .*novel|novels? and tales?)\b/.test(combined);
+}
+
+function hasHistoricalNarrativeSignal(combined: string): boolean {
+  return /\b(historical fiction|historical novel|period fiction|victorian|edwardian|regency|gilded age|civil war|world war|19th century|family saga|war|revolution|empire|frontier|society|follows|story of|novel|fiction)\b/.test(combined);
+}
+
+function passesOpenLibraryHistoricalRecovery(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (diagnostics.family !== "historical") return false;
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const categories = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const combined = [title, categories, description].filter(Boolean).join(" ");
+
+  if (isHistoricalMetaLiteraryLeak(combined)) return false;
+  if (/\b(complete works|plays\b|poems?\b|sonnets?|anthology|collection|boxed set|omnibus)\b/.test(combined)) return false;
+
+  const titleHistoricalShape = /\b(historical fiction|historical novel|victorian|edwardian|regency|gilded age|civil war|world war|19th century|frontier|revolution|queen|king|empire|warrior|archer|traitor)\b/.test(title);
+  const metadataHistoricalShape = diagnostics.flags.historicalPositive || /\b(historical fiction|historical novel|period fiction|victorian|edwardian|regency|gilded age|civil war|world war|19th century|family saga)\b/.test(combined);
+  const fictionShape = diagnostics.flags.fictionPositive || diagnostics.flags.strongNarrative || /\b(novel|fiction|story)\b/.test(combined);
+
+  return fictionShape && (titleHistoricalShape || metadataHistoricalShape);
+}
+
 function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   speculativePositive: boolean;
   thrillerPositive: boolean;
@@ -376,19 +402,9 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   }
 
   if (family === "historical") {
-    const historicalNative =
-      flags.historicalPositive ||
-      /(historical fiction|historical novel|period fiction|19th century|victorian|edwardian|gilded age|civil war|world war|regency|american society|new york society)/.test(combined);
-
-    const historicalMetaReference =
-      /(history of the novel|technique and spirit of the .* historical novel|study of the novel|studies in|criticism|literary criticism|analysis|guide to|companion|handbook|bibliography|catalog(?:ue)?|reference|english historical novel from its origins|historical novels and tales|best historical novels)/.test(combined);
-
-    const narrativeShape =
-      flags.strongNarrative ||
-      flags.fictionPositive ||
-      /(novel|story|follows|tells the story|family|war|society|love|conflict|journey|rebel|civil war)/.test(combined);
-
-    return !historicalNative || historicalMetaReference || !narrativeShape;
+    const historicalNative = flags.historicalPositive || hasHistoricalNarrativeSignal(combined);
+    const obviousHistoricalMeta = isHistoricalMetaLiteraryLeak(combined);
+    return !historicalNative || obviousHistoricalMeta;
   }
 
   if (family === "fantasy") {
@@ -753,12 +769,9 @@ if (family === "speculative") {
   }
 
   if (family === "mystery" && !mysteryPositive) diagnostics.passedChecks.push("soft_missing_mystery_signal");
-  if (family === "historical" && !historicalPositive) diagnostics.passedChecks.push("soft_missing_historical_signal");
-
   if (family === "historical") {
-    const historicalMetaReference =
-      /(history of the novel|technique and spirit of the .* historical novel|study of the novel|studies in|criticism|literary criticism|analysis|guide to|companion|handbook|bibliography|catalog(?:ue)?|reference|english historical novel from its origins|historical novels and tales|best historical novels)/.test(combined);
-    if (historicalMetaReference) diagnostics.rejectReasons.push("historical_meta_reference");
+    if (!historicalPositive) diagnostics.passedChecks.push("soft_missing_historical_signal");
+    if (isHistoricalMetaLiteraryLeak(combined)) diagnostics.rejectReasons.push("historical_meta_reference");
   }
   if (family === "romance" && !romancePositive) diagnostics.passedChecks.push("soft_missing_romance_signal");
 
@@ -1111,7 +1124,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "lane_mismatch_thriller",
     "lane_mismatch_romance",
     "lane_mismatch_historical",
-    "historical_meta_reference",
     "lane_mismatch_speculative",
     "thriller_native_signal_required",
     "antique_off_profile_thriller",
@@ -1181,28 +1193,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       }
     }
 
-    if (isOpenLibraryLike && diagnostics.family === "historical") {
-      const sourceText = [
-        normalizeText((doc as any)?.title ?? (doc as any)?.volumeInfo?.title),
-        collectCategoryText(doc),
-        collectDescriptionText(doc),
-      ].filter(Boolean).join(" ");
-      const historicalRecoveryReady =
-        diagnostics.flags.historicalPositive ||
-        /(historical fiction|historical novel|period fiction|19th century|victorian|edwardian|civil war|world war|regency|gilded age)/.test(sourceText);
-
-      if (historicalRecoveryReady && !diagnostics.rejectReasons.includes("historical_meta_reference")) {
-        const removed = new Set([
-          "insufficient_length_or_description",
-          "lane_mismatch_historical",
-          "too_many_soft_failures",
-        ]);
-
-        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
-        diagnostics.passedChecks.push("openlibrary_historical_recovery_precheck");
-      }
-    }
-
     if (isOpenLibraryLike && diagnostics.family === "romance") {
       const recoveryReady = passesOpenLibraryRomanceRecovery(doc, diagnostics);
 
@@ -1216,6 +1206,22 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
         diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
         diagnostics.passedChecks.push("openlibrary_romance_recovery_precheck");
+      }
+    }
+
+    if (isOpenLibraryLike && diagnostics.family === "historical") {
+      const recoveryReady = passesOpenLibraryHistoricalRecovery(doc, diagnostics);
+
+      if (recoveryReady) {
+        const removed = new Set([
+          "insufficient_length_or_description",
+          "lane_mismatch_historical",
+          "too_many_soft_failures",
+          "below_shape_floor",
+        ]);
+
+        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+        diagnostics.passedChecks.push("openlibrary_historical_recovery_precheck");
       }
     }
 
@@ -1294,13 +1300,15 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
             diagnostics.flags.strongNarrative ||
             (diagnostics.hasDescription && diagnostics.flags.fictionPositive) ||
             (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive) ||
-            (diagnostics.family === "historical" && (
-              diagnostics.flags.historicalPositive &&
-              (diagnostics.flags.strongNarrative || diagnostics.flags.fictionPositive || diagnostics.hasDescription || diagnostics.hasRealLength)
-            )) ||
             (diagnostics.family === "romance" && (
               diagnostics.flags.authorAffinity ||
               (hasStrongRomanceTitleSignal(diagnostics.title) && (diagnostics.hasRealLength || diagnostics.hasDescription))
+            )) ||
+            (diagnostics.family === "historical" && (
+              diagnostics.flags.historicalPositive ||
+              diagnostics.passedChecks.includes("openlibrary_historical_recovery_precheck") ||
+              diagnostics.hasDescription ||
+              diagnostics.hasRealLength
             ))
           );
 
@@ -1313,10 +1321,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_mystery_recovery");
       } else if (isOpenLibraryLike && passesOpenLibraryFantasyRecovery(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_fantasy_recovery");
-      } else if (isOpenLibraryLike && diagnostics.family === "historical" && diagnostics.flags.historicalPositive) {
-        diagnostics.passedChecks.push("openlibrary_historical_recovery");
       } else if (isOpenLibraryLike && passesOpenLibraryRomanceRecovery(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_romance_recovery");
+      } else if (isOpenLibraryLike && passesOpenLibraryHistoricalRecovery(doc, diagnostics)) {
+        diagnostics.passedChecks.push("openlibrary_historical_recovery");
       } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else {

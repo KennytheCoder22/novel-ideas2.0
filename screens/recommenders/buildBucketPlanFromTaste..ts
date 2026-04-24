@@ -94,7 +94,10 @@ function isFamilyCompatibleQuery(query: string, family: Family): boolean {
     return /\bscience fiction\b|\bfantasy\b|\bhorror\b/.test(q);
   }
   if (family === "romance_family") return /\bromance\b/.test(q);
-  if (family === "historical_family") return /\bhistorical\b/.test(q);
+  if (family === "historical_family") {
+    if (/(science fiction|fantasy|horror|romance|thriller|mystery|detective)/.test(q) && !/historical/.test(q)) return false;
+    return /(historical|period fiction|victorian|edwardian|gilded age|19th century|civil war|world war|regency)/.test(q);
+  }
   return true;
 }
 
@@ -108,10 +111,11 @@ function guaranteedFamilyFallbacks(family: Family): string[] {
   if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
   if (family === "thriller_family") return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "obsession psychological thriller novel", "procedural crime thriller novel"];
   if (family === "historical_family") return [
-    "19th century american novel",
-    "american society novel 19th century",
-    "new york society novel 19th century",
-    "historical fiction set in 19th century america",
+    "historical fiction novel",
+    "period fiction novel",
+    "literary historical fiction novel",
+    "war historical fiction novel",
+    "family saga historical fiction novel",
   ];
   if (family === "romance_family") return [
     "second chance romance novel",
@@ -124,24 +128,39 @@ function guaranteedFamilyFallbacks(family: Family): string[] {
   return ["fiction novel"];
 }
 
-function buildHistoricalBucketPlan(input: RecommenderInput, descriptive: any, activeHypotheses: HypothesisLike[] = []) {
-  const queries = [
-    "19th century american novel",
-    "american society novel 19th century",
-    "new york society novel 19th century",
-    "historical fiction set in 19th century america",
-  ];
 
-  const rungs = queries.map((query, i) => ({ rung: i, query }));
+function buildIsolatedHistoricalBucketPlan(input: RecommenderInput, descriptive: ReturnType<typeof buildDescriptiveQueriesFromTaste>, hypotheses: HypothesisLike[]) {
+  const isolatedHypotheses = familyCompatibleHypotheses(hypotheses, "historical_family");
+  const activeHypotheses = isolatedHypotheses.length ? isolatedHypotheses : hypotheses.filter((h) => /\bhistorical\b/i.test(h?.query || h?.label || ""));
+
+  const rungs = build20QRungs({
+    baseGenre: "historical fiction",
+    subgenres: [
+      "historical fiction",
+      "period fiction",
+      "literary historical fiction",
+      "war historical fiction",
+      "family saga historical fiction",
+    ],
+    themes: [],
+    tones: [],
+    hypotheses: activeHypotheses,
+  }, 4);
+
+  const rungQueries = dedupeQueries(rungs.map((r) => rungToPreviewQuery(r)));
+  const queries = dedupeQueries([
+    ...rungQueries,
+    ...guaranteedFamilyFallbacks("historical_family"),
+  ]).slice(0, 6);
 
   return {
     rungs,
     queries,
-    preview: queries[0],
-    strategy: "historical-fiction-isolated-lane",
-    family: "historical_family",
+    preview: queries[0] || descriptive.preview || "historical fiction novel",
+    strategy: "20q-isolated-historical-plan",
+    family: "historical_family" as Family,
     lane: "historical",
-    hypotheses: activeHypotheses.length ? activeHypotheses : ((descriptive?.hypotheses || []) as HypothesisLike[]),
+    hypotheses: activeHypotheses,
   };
 }
 
@@ -205,24 +224,24 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     family = "speculative_family";
   } else if (isScienceFiction) {
     family = "science_fiction_family";
-  } else if (isHistorical) {
-    family = "historical_family";
   } else if (isRomance) {
     family = "romance_family";
   } else if (isMystery) {
     family = "mystery_family";
   } else if (isThriller) {
     family = "thriller_family";
+  } else if (isHistorical) {
+    family = "historical_family";
   }
 
   let lane: string = family;
   if (isHorror) lane = "horror";
   else if (isFantasy) lane = "fantasy";
   else if (isScienceFiction) lane = "science_fiction";
-  else if (isHistorical) lane = "historical";
   else if (isRomance) lane = "romance";
   else if (isMystery) lane = "mystery";
   else if (isThriller) lane = "thriller";
+  else if (isHistorical) lane = "historical";
 
   const translatedGenres = translateSignalBucket(
     genreKeys,
@@ -254,12 +273,12 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   );
 
   const descriptiveHypotheses = (descriptive.hypotheses || []) as HypothesisLike[];
+  if (family === "historical_family" || lane === "historical") {
+    return buildIsolatedHistoricalBucketPlan(input, descriptive, descriptiveHypotheses);
+  }
+
   const hypotheses = familyCompatibleHypotheses(descriptiveHypotheses, family);
   const activeHypotheses = hypotheses.length ? hypotheses : descriptiveHypotheses;
-
-  if (family === "historical_family" || lane === "historical") {
-    return buildHistoricalBucketPlan(input, descriptive, activeHypotheses);
-  }
 
   const baseGenre =
     translatedGenres[0] ||
