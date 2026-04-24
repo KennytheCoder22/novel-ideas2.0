@@ -502,6 +502,22 @@ type RungCandidate = {
 function classifyRungRole(query: string): RungRole {
   const q = clean(query);
 
+  if (/\b(19th century|american society|new york society)\b/.test(q)) {
+    return "core";
+  }
+
+  if (/\b(civil war|world war|war historical)\b/.test(q)) {
+    return "intensify";
+  }
+
+  if (/\b(family saga|high society)\b/.test(q)) {
+    return "adjacent_recall";
+  }
+
+  if (/\bliterary historical\b/.test(q)) {
+    return "controlled_explore";
+  }
+
   if (
     /psychological horror novel/.test(q) ||
     /missing person thriller novel/.test(q) ||
@@ -629,9 +645,9 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
   const hypotheses = Array.isArray(intent.hypotheses) ? intent.hypotheses : [];
   const base = normalizedBaseGenre(intent);
 
-  if (isHistoricalIntent(intent, base)) {
-    return buildHistoricalRungs(intent, maxRungs);
-  }
+  const historicalQueries = isHistoricalIntent(intent, base)
+    ? buildHistoricalRungs(intent, maxRungs).map((r) => r.query)
+    : [];
 
   const rankedHypothesisQueries = distinctQueries(
     hypotheses
@@ -647,6 +663,7 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
       : buildFallbackRungs(intent);
 
   const candidateQueries = distinctQueries([
+    ...historicalQueries,
     ...rankedHypothesisQueries,
     ...fallbackQueries,
   ]);
