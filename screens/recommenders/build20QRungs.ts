@@ -692,12 +692,16 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
   ];
 
   for (const role of roleOrder) {
-    const candidate = rungCandidates.find((item) => {
+    const candidatesForRole = rungCandidates.filter((item) => {
       if (item.role !== role) return false;
       if (usedQueries.has(item.query)) return false;
       const count = anchorCounts.get(item.anchor) || 0;
       return count < maxPerAnchor;
     });
+
+    const candidate =
+      candidatesForRole.find((item) => !/\b19th century american novel\b/.test(item.query)) ||
+      candidatesForRole[0];
 
     if (!candidate) continue;
     selected.push(candidate.query);
