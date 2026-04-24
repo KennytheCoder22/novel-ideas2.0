@@ -191,7 +191,7 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   }
 
   if (family === "romance") return quoteIfNeeded(base || preview || "romance novel");
-  if (family === "historical") return quoteIfNeeded(base || preview || "historical fiction");
+  if (family === "historical") return quoteIfNeeded(base || preview || "historical fiction novel");
 
   return quoteIfNeeded(base || preview || "fiction");
 }
@@ -725,6 +725,7 @@ function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string
 
   if (family === "mystery") base.unshift("-true-crime", "-cozy", "-humorous", "-spy", "-conspiracy");
   if (family === "thriller") base.unshift("-true-crime", "-cozy", "-humorous");
+  if (family === "historical") base.unshift("-history", "-biography", "-memoir", "-textbook", "-literary-criticism");
 
   return base.join(" ");
 }
@@ -738,6 +739,32 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     .trim();
   const lowered = base.toLowerCase();
   const negativeTerms = rungNegativeTerms(family);
+
+  if (family === "historical") {
+    const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
+    const historicalGoogleQueries = dedupeNonEmptyQueries([
+      base,
+      `${base} fiction`,
+      `${base} ${negativeTerms}`,
+    ]);
+
+    const mapped: RouterQueryLane[] = historicalGoogleQueries.map((query) => {
+      const q = query.toLowerCase();
+      const laneKind = q.includes("-guide") || q.includes("-reference") || q.includes("-criticism") || q.includes("-history")
+        ? "strict-filtered"
+        : q !== lowered && q.includes("fiction")
+          ? "fiction-variant"
+          : "core";
+      return { query, laneKind, source: "googleBooks" } as RouterQueryLane;
+    });
+
+    if (openLibraryQuery) {
+      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary" });
+      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary" });
+    }
+
+    return mapped;
+  }
 
   function isHorrorQuery(q: string): boolean {
     return /(horror|haunted|ghost|supernatural|occult|possession|creepy|terror)/i.test(q);

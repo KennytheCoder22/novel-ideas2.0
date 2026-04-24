@@ -179,7 +179,12 @@ mystery: [
     "historical romance novel",
     "emotional romance novel",
   ],
-  "historical fiction": ["historical fiction novel"],
+  "historical fiction": [
+    "19th century american novel",
+    "american society novel 19th century",
+    "new york society novel 19th century",
+    "historical fiction set in 19th century america",
+  ],
   literary: ["literary fiction novel"],
 };
 
@@ -198,6 +203,19 @@ const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
   { pattern: /\bfantasy\b|\bmagic\b|\bfae\b|\bgothic\b/, outputs: ["fantasy romance novel", "gothic romance novel"] },
   { pattern: /\bhistorical\b|\bperiod\b|\bvictorian\b|\bwar\b/, outputs: ["historical romance novel"] },
 ];
+
+const HISTORICAL_FICTION_RUNG_QUERIES = [
+  "19th century american novel",
+  "american society novel 19th century",
+  "new york society novel 19th century",
+  "historical fiction set in 19th century america",
+];
+
+function buildHistoricalFictionRungs(maxRungs = 4) {
+  return HISTORICAL_FICTION_RUNG_QUERIES
+    .slice(0, Math.max(1, maxRungs))
+    .map((query, i) => ({ rung: i, query }));
+}
 
 function survivalAwareRewrite(intent: QueryIntent): string[] {
   const base = normalizedBaseGenre(intent);
@@ -409,6 +427,11 @@ function themeFallbackQueries(intent: QueryIntent): string[] {
 
 function buildFallbackRungs(intent: QueryIntent): string[] {
   const base = normalizedBaseGenre(intent);
+
+  if (base === "historical fiction") {
+    return HISTORICAL_FICTION_RUNG_QUERIES.slice(0, 6);
+  }
+
   const cleanedBase = scrubCrossGenreLiterals(intent.baseGenre || "", base);
   const cleanedSubgenres = dedupe(intent.subgenres || []).map((query) =>
     sanitizeQuery(scrubCrossGenreLiterals(query, base))
@@ -550,6 +573,10 @@ function buildRungCandidates(queries: string[]): RungCandidate[] {
 export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
   const hypotheses = Array.isArray(intent.hypotheses) ? intent.hypotheses : [];
   const base = normalizedBaseGenre(intent);
+
+  if (base === "historical fiction") {
+    return buildHistoricalFictionRungs(maxRungs);
+  }
 
   const rankedHypothesisQueries = distinctQueries(
     hypotheses

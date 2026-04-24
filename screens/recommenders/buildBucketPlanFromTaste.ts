@@ -107,7 +107,12 @@ function guaranteedFamilyFallbacks(family: Family): string[] {
   if (family === "science_fiction_family") return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction", "psychological science fiction novel"];
   if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
   if (family === "thriller_family") return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "obsession psychological thriller novel", "procedural crime thriller novel"];
-  if (family === "historical_family") return ["historical fiction novel"];
+  if (family === "historical_family") return [
+    "19th century american novel",
+    "american society novel 19th century",
+    "new york society novel 19th century",
+    "historical fiction set in 19th century america",
+  ];
   if (family === "romance_family") return [
     "second chance romance novel",
     "forbidden love romance novel",
@@ -117,6 +122,27 @@ function guaranteedFamilyFallbacks(family: Family): string[] {
     "emotional romance novel",
   ];
   return ["fiction novel"];
+}
+
+function buildHistoricalBucketPlan(input: RecommenderInput, descriptive: any, activeHypotheses: HypothesisLike[] = []) {
+  const queries = [
+    "19th century american novel",
+    "american society novel 19th century",
+    "new york society novel 19th century",
+    "historical fiction set in 19th century america",
+  ];
+
+  const rungs = queries.map((query, i) => ({ rung: i, query }));
+
+  return {
+    rungs,
+    queries,
+    preview: queries[0],
+    strategy: "historical-fiction-isolated-lane",
+    family: "historical_family",
+    lane: "historical",
+    hypotheses: activeHypotheses.length ? activeHypotheses : ((descriptive?.hypotheses || []) as HypothesisLike[]),
+  };
 }
 
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
@@ -179,24 +205,24 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     family = "speculative_family";
   } else if (isScienceFiction) {
     family = "science_fiction_family";
+  } else if (isHistorical) {
+    family = "historical_family";
   } else if (isRomance) {
     family = "romance_family";
   } else if (isMystery) {
     family = "mystery_family";
   } else if (isThriller) {
     family = "thriller_family";
-  } else if (isHistorical) {
-    family = "historical_family";
   }
 
   let lane: string = family;
   if (isHorror) lane = "horror";
   else if (isFantasy) lane = "fantasy";
   else if (isScienceFiction) lane = "science_fiction";
+  else if (isHistorical) lane = "historical";
   else if (isRomance) lane = "romance";
   else if (isMystery) lane = "mystery";
   else if (isThriller) lane = "thriller";
-  else if (isHistorical) lane = "historical";
 
   const translatedGenres = translateSignalBucket(
     genreKeys,
@@ -230,6 +256,10 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const descriptiveHypotheses = (descriptive.hypotheses || []) as HypothesisLike[];
   const hypotheses = familyCompatibleHypotheses(descriptiveHypotheses, family);
   const activeHypotheses = hypotheses.length ? hypotheses : descriptiveHypotheses;
+
+  if (family === "historical_family" || lane === "historical") {
+    return buildHistoricalBucketPlan(input, descriptive, activeHypotheses);
+  }
 
   const baseGenre =
     translatedGenres[0] ||

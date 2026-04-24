@@ -219,7 +219,7 @@ function authorityScore(c: Candidate): number {
 function hasFictionSignals(c: Candidate): boolean {
   const text = haystack(c);
   return (
-    /science fiction|fantasy|horror|thriller|mystery|survival|dystopian|speculative|suspense|crime|detective|romance/.test(text) ||
+    /science fiction|fantasy|horror|thriller|mystery|survival|dystopian|speculative|suspense|crime|detective|romance|historical fiction|historical novel|period fiction/.test(text) ||
     /novel|fiction|manga|graphic novel|comic/.test(text) ||
     /follows|tells the story|story of|when .* discovers|investigation|journey/.test(text)
   );
@@ -482,6 +482,10 @@ function behaviorScore(c: Candidate, taste?: TasteProfile): number {
     if (/fantasy|epic fantasy|high fantasy|mythic|kingdom|quest|sorcery|dragon|wizard|magic/.test(text)) score += 1.5;
     if (/guide|handbook|companion|catalog|encyclopedia|subject headings|publishers weekly|graphic novel using digital techniques/.test(text)) score -= 6;
   }
+  if (lane === "historical") {
+    if (/historical fiction|historical novel|period fiction|19th century|victorian|edwardian|gilded age|civil war|world war|regency/.test(text)) score += 2.5;
+    if (/history of the novel|criticism|literary criticism|analysis|guide|handbook|companion|catalog|reference/.test(text)) score -= 8;
+  }
 
   if (taste) {
     const darkness = Number((taste as any).darkness || 0);
@@ -519,6 +523,10 @@ function narrativeScore(c: Candidate): number {
 
   if (/detective|investigation|private investigator|whodunit|case|inspector|cold case/.test(text)) {
     score += 1.75;
+  }
+
+  if (/historical fiction|historical novel|period fiction|19th century|victorian|edwardian|civil war|world war|regency/.test(text)) {
+    score += 2.25;
   }
 
   if (/novel|fiction/.test(text)) score += 1.5;
@@ -607,6 +615,9 @@ function anchorBoost(c: Candidate): number {
 
   const isRomance =
     /romance|love story|relationship|romantic/.test(text);
+
+  const isHistorical =
+    /historical fiction|historical novel|period fiction|19th century|victorian|edwardian|gilded age|civil war|world war|regency/.test(text);
 
   const AUTHOR_MAP: Record<string, string[]> = {
     horror: [
@@ -704,6 +715,19 @@ function anchorBoost(c: Candidate): number {
       'arthur c clarke',
       'n k jemisin',
       'george orwell',
+    ],
+    historical: [
+      'hilary mantel',
+      'geraldine brooks',
+      'colson whitehead',
+      'amor towles',
+      'maggie o farrell',
+      "maggie o'farrell",
+      'anthony doerr',
+      'susan higginbotham',
+      'henryk sienkiewicz',
+      'baroness orczy',
+      'ken follett',
     ],
     fantasy: [
       'j r r tolkien',
