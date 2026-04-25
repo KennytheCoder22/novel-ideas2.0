@@ -7,6 +7,7 @@ export type FormatCategory = 'manga' | 'graphic_novel' | 'comic' | 'prose';
 export type Candidate = {
   queryRung?: number;
   queryText?: string;
+  queryFamily?: string;
   id: string;
   title: string;
   author: string;
@@ -38,6 +39,76 @@ function normalizeText(value: unknown): string {
   if (Array.isArray(value)) return value.map(normalizeText).join(' ').toLowerCase();
   if (value == null) return '';
   return String(value).toLowerCase();
+}
+
+function cleanQueryText(value: unknown): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/^['"]|['"]$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function inferHistoricalQueryRung(rawDoc: any): number | undefined {
+  const queryText = cleanQueryText(
+    rawDoc?.queryText ??
+    rawDoc?.diagnostics?.queryText ??
+    rawDoc?.rawQuery ??
+    rawDoc?.query
+  );
+
+  if (!queryText) return undefined;
+  if (/\bcivil war historical fiction novel\b/.test(queryText)) return 1;
+  if (/\bfamily saga historical fiction novel\b/.test(queryText)) return 2;
+  if (/\bliterary historical fiction novel\b/.test(queryText)) return 3;
+  if (/\b19th century american novel\b/.test(queryText)) return 0;
+
+  return undefined;
+}
+
+function inferQueryFamily(rawDoc: any): string | undefined {
+  const explicit = String(
+    rawDoc?.queryFamily ??
+    rawDoc?.diagnostics?.queryFamily ??
+    rawDoc?.filterFamily ??
+    rawDoc?.diagnostics?.filterFamily ??
+    ''
+  ).toLowerCase().trim();
+
+  if (explicit && explicit !== 'unknown') return explicit;
+
+  const queryText = cleanQueryText(
+    rawDoc?.queryText ??
+    rawDoc?.diagnostics?.queryText ??
+    rawDoc?.rawQuery ??
+    rawDoc?.query
+  );
+
+  if (/\b(19th century american novel|civil war historical fiction novel|family saga historical fiction novel|literary historical fiction novel|historical fiction|historical novel|period fiction)\b/.test(queryText)) {
+    return 'historical';
+  }
+
+  return explicit || undefined;
+}
+
+function getQueryRung(rawDoc: any): number | undefined {
+  const explicitRaw = rawDoc?.queryRung ?? rawDoc?.diagnostics?.queryRung;
+  const explicit = Number.isFinite(Number(explicitRaw)) ? Number(explicitRaw) : undefined;
+  const inferredHistorical = inferHistoricalQueryRung(rawDoc);
+
+  // Historical query text is the stable identity at the API boundary. Some
+  // upstream paths currently stamp every historical row as rung 0.
+  if (typeof inferredHistorical === 'number') return inferredHistorical;
+
+  return explicit;
+}
+
+function getQueryText(rawDoc: any): string | undefined {
+  return typeof rawDoc?.queryText === 'string'
+    ? rawDoc.queryText
+    : typeof rawDoc?.diagnostics?.queryText === 'string'
+      ? rawDoc.diagnostics.queryText
+      : undefined;
 }
 
 function getTitle(rawDoc: any): string {
@@ -449,6 +520,8 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
         v.includes('science fiction') ||
         v.includes('horror') ||
         v.includes('romance') ||
+        v.includes('historical') ||
+        v.includes('period fiction') ||
         v.includes('dystopian') ||
         v.includes('manga') ||
         v.includes('graphic novel') ||
@@ -468,8 +541,9 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
     rawDoc,
     source,
     formatCategory,
-    queryRung: Number.isFinite(Number((rawDoc as any)?.queryRung)) ? Number((rawDoc as any)?.queryRung) : undefined,
-    queryText: typeof (rawDoc as any)?.queryText === 'string' ? (rawDoc as any).queryText : undefined,
+    queryRung: getQueryRung(rawDoc),
+    queryText: getQueryText(rawDoc),
+    queryFamily: inferQueryFamily(rawDoc),
   };
 }
 
@@ -494,10 +568,17 @@ export function normalizeCandidates(rawDocs: RecommendationDoc[], source: Candid
             String(candidate.title || '').toLowerCase()
           );
 
+        const historicalLaneCandidate =
+          candidate.queryFamily === 'historical' ||
+          /\b(19th century american novel|civil war historical fiction novel|family saga historical fiction novel|literary historical fiction novel)\b/.test(
+            cleanQueryText(candidate.queryText)
+          );
+
         return Boolean(candidate.title) && Boolean(candidate.author) && !isClearlyNotABookCandidate(candidate) && (
           looksLikeFictionCandidate(candidate.rawDoc) ||
           fantasySignal ||
-          classicFantasyTitle
+          classicFantasyTitle ||
+          historicalLaneCandidate
         );
       }
 
