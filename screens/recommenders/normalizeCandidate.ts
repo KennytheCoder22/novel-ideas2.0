@@ -242,6 +242,12 @@ export function looksLikeFictionCandidate(doc: any): boolean {
   if (!title) return false;
 
   const hardRejectTitlePatterns = [
+    /\breadings?\s+in\b.*\b(novel|fiction|literature)\b/,
+    /\bcentury\s+readings?\s+in\b.*\bnovel\b/,
+    /\b(life|women|race|gender|class)\s+in\b.*\bfiction\b/,
+    /\bredefining\b.*\bfiction\b/,
+    /\b(columbian|latin american|irish|english|british|american)\b.*\bhistorical\s+fiction\b/,
+    /\b(columbian|american|english|british|historical)\s+novels?\b/,
     /\bshort stories\b/,
     /\bhorror stories\b/,
     /\bstories of\b/,
@@ -311,6 +317,8 @@ export function looksLikeFictionCandidate(doc: any): boolean {
     /\bnonfiction\b/,
     /\bbiography\b/,
     /\bmemoir\b/,
+    /\bhistory and criticism\b/,
+    /\breadings?\b/,
   ];
 
   const hardRejectDescriptionPatterns = [
@@ -467,6 +475,30 @@ function hasCover(rawDoc: any): boolean {
   );
 }
 
+function isNoCoverLowQualityMetaCandidate(candidate: Candidate): boolean {
+  if (candidate.hasCover) return false;
+
+  const title = String(candidate.title || '').toLowerCase().trim();
+  const subjects = Array.isArray(candidate.subjects) ? candidate.subjects.join(' ').toLowerCase() : '';
+  const description = String(candidate.description || '').toLowerCase();
+  const combined = [title, subjects, description, candidate.publisher].filter(Boolean).join(' ').toLowerCase();
+  const ratings = Number(candidate.ratingCount || 0);
+  const avg = Number(candidate.averageRating || 0);
+
+  const metaShape =
+    /(readings?|reader|criticism|critical|study|studies|analysis|essays?|companion|guide|reference|bibliography|catalogue?|catalog|survey|history of|history and criticism|in fiction|historical novels?|literary criticism)/.test(combined) ||
+    /(readings?.*(novel|fiction|literature)|century readings?.*novel|redefining.*fiction|(life|women|race|gender|class).*in fiction)/.test(title);
+
+  const weakShape =
+    !description ||
+    description.trim().length < 80 ||
+    (candidate.pageCount > 0 && candidate.pageCount < 120) ||
+    (candidate.pageCount === 0 && ratings === 0);
+
+  const authority = ratings >= 20 || avg >= 4.0 || hasLegitSeriesAuthority(candidate);
+  return metaShape || (weakShape && !authority && !/\b(novel|follows|story of|thriller|mystery|horror|fantasy|romance)\b/.test(description));
+}
+
 function detectFormatCategory(
   rawDoc: any,
   source: CandidateSource,
@@ -551,6 +583,7 @@ export function normalizeCandidates(rawDocs: RecommendationDoc[], source: Candid
   return (Array.isArray(rawDocs) ? rawDocs : [])
     .map((rawDoc) => normalizeCandidate(rawDoc, source))
     .filter((candidate) => !isClearlyNotABookCandidate(candidate))
+    .filter((candidate) => !isNoCoverLowQualityMetaCandidate(candidate))
     .filter((candidate) => {
       if (candidate.source === 'openLibrary') {
         const text = [

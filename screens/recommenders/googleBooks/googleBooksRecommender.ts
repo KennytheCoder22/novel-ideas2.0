@@ -34,8 +34,8 @@ function normalizeStoredQueryText(query: string): string {
   return deduped.join(" ");
 }
 
-const GOOGLE_BOOKS_REFERENCE_TITLE_PAT = /\b(guide|writer'?s market|studies in|literature|review|digest|catalog|catalogue|bibliography|anthology|encyclopedia|handbook|manual|journal|periodical|proceedings|transactions|magazine|bulletin|report|annual report|yearbook)\b/i;
-const GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT = /\b(literary criticism|criticism|bibliography|reference|study aids|language arts|language and literature|periodicals|essays|authorship|creative writing|journals|magazines|reports|proceedings|transactions)\b/i;
+const GOOGLE_BOOKS_REFERENCE_TITLE_PAT = /\b(guide|writer'?s market|studies in|literature|review|digest|catalog|catalogue|bibliography|anthology|encyclopedia|handbook|manual|journal|periodical|proceedings|transactions|magazine|bulletin|report|annual report|yearbook|readings?|reader|criticism|critical|redefining|history and criticism)\b/i;
+const GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT = /\b(literary criticism|criticism|bibliography|reference|study aids|language arts|language and literature|periodicals|essays|authorship|creative writing|journals|magazines|reports|proceedings|transactions|history and criticism|readings?)\b/i;
 const GOOGLE_BOOKS_REFERENCE_AUTHOR_PAT = /\b(university|press|society|association|department of|review|journal)\b/i;
 
 const GOOGLE_BOOKS_LIGHT_HARD_REJECT_TITLE_PAT = /\b(boxed set|box set|omnibus|complete works?|selected works?|stories of the year|illustrated edition|collector'?s edition)\b/i;
@@ -62,6 +62,37 @@ function looksLikeGoogleBooksReference(doc: any): boolean {
   return false;
 }
 
+function hasGoogleBooksCoverSignal(doc: any): boolean {
+  if (Boolean(doc?.cover_i)) return true;
+  const imageLinks = doc?.imageLinks ?? doc?.volumeInfo?.imageLinks;
+  return Boolean(imageLinks?.thumbnail || imageLinks?.smallThumbnail || imageLinks?.small || imageLinks?.medium || imageLinks?.large);
+}
+
+function looksLikeNoCoverMetaGoogleBooksCandidate(doc: any): boolean {
+  if (hasGoogleBooksCoverSignal(doc)) return false;
+
+  const title = normalizeText(doc?.title);
+  const subtitle = normalizeText(doc?.subtitle);
+  const description = normalizeText(doc?.description);
+  const categories = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+    ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
+  ].map((v: any) => normalizeText(v)).join(" | ");
+  const text = [title, subtitle, description, categories].filter(Boolean).join(" | ");
+  const pageCount = Number(doc?.pageCount ?? doc?.volumeInfo?.pageCount ?? 0);
+  const ratingsCount = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+
+  const metaShape =
+    looksLikeGoogleBooksReference(doc) ||
+    /\b(readings?|reader|criticism|critical|study|studies|analysis|essays?|companion|guide|reference|bibliography|catalogue?|catalog|survey|history of|history and criticism|in fiction|historical novels?|literary criticism)\b/.test(text) ||
+    /\b(readings?\b.*\b(novel|fiction|literature)|century readings?\b.*\bnovel|redefining\b.*\bfiction|(life|women|race|gender|class)\b.*\bin fiction)\b/.test(title);
+
+  const weakShape = pageCount === 0 || pageCount < 120 || ratingsCount === 0;
+  return metaShape || (weakShape && /\b(novel|fiction|literature)\b/.test(text) && !/\b(follows|story of|thriller|mystery|horror|fantasy|romance)\b/.test(description));
+}
+
 function isGarbageGoogleBooksCandidate(doc: any): boolean {
   const title = normalizeText(doc?.title);
   const subtitle = normalizeText(doc?.subtitle);
@@ -80,6 +111,7 @@ function isGarbageGoogleBooksCandidate(doc: any): boolean {
 
   if (!title || !author) return true;
   if (author === "unknown" || author.length < 3) return true;
+  if (looksLikeNoCoverMetaGoogleBooksCandidate(doc)) return true;
 
   if (/\b(test|ebook|sample|preview|canary)\b/i.test(title)) return true;
   if (/\b(abstracts|theses|dissertations|index|journal|proceedings|transactions|bulletin|report|yearbook|catalog|catalogue)\b/i.test(title)) return true;

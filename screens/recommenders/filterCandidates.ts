@@ -529,23 +529,56 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
 
 function isUniversalMetaReferenceCandidate(title: string, categories: string, description: string, combined: string): boolean {
   const metaTitle =
-    /\b(aesthetics|history|histories|technique|spirit|development|rise|study|studies|criticism|companion|guide|bibliography|catalogue?|gold star list|finding list|survey|index)\b.*\b(novel|novels|fiction|literature|books?)\b/.test(title) ||
-    /\b(novel|novels|fiction|literature|books?)\b.*\b(aesthetics|history|histories|technique|spirit|development|rise|study|studies|criticism|before|since|1900|1910|1920|1930|bibliography|catalogue?|list|survey|index)\b/.test(title) ||
-    /^\s*(the\s+)?(american|english|british|historical|crime|detective|mystery|thriller|horror|gothic|modern|victorian)\s+novels?\b/.test(title);
+    /\b(aesthetics|history|histories|technique|spirit|development|rise|study|studies|criticism|companion|guide|bibliography|catalogue?|gold star list|finding list|survey|index|readings|reader|redefining)\b.*\b(novel|novels|fiction|literature|books?)\b/.test(title) ||
+    /\b(novel|novels|fiction|literature|books?)\b.*\b(aesthetics|history|histories|technique|spirit|development|rise|study|studies|criticism|before|since|1900|1910|1920|1930|bibliography|catalogue?|list|survey|index|readings|reader|redefining)\b/.test(title) ||
+    /^\s*(the\s+)?(american|english|british|historical|crime|detective|mystery|thriller|horror|gothic|modern|victorian)\s+novels?\b/.test(title) ||
+    /\b(readings?\s+in|century\s+readings?\s+in|life\s+in|women\s+in|race\s+in|gender\s+in|class\s+in|redefining)\b.*\b(novel|novels|fiction|literature)\b/.test(title) ||
+    /\b(irish|latin american|american|english|british|columbian|victorian|modern)\b.*\b(historical\s+fiction|fiction|novels?)\b/.test(title) && /\b(readings?|redefining|history|criticism|studies|study|survey|companion|guide|life in|fiction$|novels$)\b/.test(title);
 
   const metaCategory =
-    /\b(literary criticism|criticism|reference|study aids?|bibliograph(?:y|ies)|books and reading|authors?|publishing|libraries|literature|studies|theory|education)\b/.test(categories) &&
+    /\b(literary criticism|criticism|reference|study aids?|bibliograph(?:y|ies)|books and reading|authors?|publishing|libraries|literature|studies|theory|education|history and criticism|readings?)\b/.test(categories) &&
     !/\b(fiction|juvenile fiction|young adult fiction|comics|graphic novels?)\b/.test(categories);
 
   const metaDescription =
-    /\b(examines?|explores?|analyzes?|analysis of|study of|studies of|critical survey|scholarly|academic|reference work|resource for|guide to|introduction to|history of|bibliography)\b/.test(description) &&
+    /\b(examines?|explores?|analyzes?|analysis of|study of|studies of|critical survey|scholarly|academic|reference work|resource for|guide to|introduction to|history of|bibliography|readings? in)\b/.test(description) &&
     /\b(novel|novels|fiction|literature|genre|author|authors|texts?)\b/.test(description);
 
   const listOrCatalog =
-    /\b(gold star list|finding list|catalogue?|catalog|bibliography|index|reader'?s guide|companion to|cambridge companion|oxford companion)\b/.test(combined);
+    /\b(gold star list|finding list|catalogue?|catalog|bibliography|index|reader'?s guide|companion to|cambridge companion|oxford companion|century readings?|selected readings?)\b/.test(combined);
 
   return metaTitle || metaCategory || metaDescription || listOrCatalog;
 }
+
+function candidateHasCoverSignal(doc: any): boolean {
+  if (Boolean((doc as any)?.hasCover)) return true;
+  if (Boolean(doc?.cover_i) || Boolean(doc?.rawDoc?.cover_i)) return true;
+  const imageLinks = doc?.imageLinks ?? doc?.volumeInfo?.imageLinks ?? doc?.rawDoc?.imageLinks ?? doc?.rawDoc?.volumeInfo?.imageLinks;
+  return Boolean(imageLinks?.thumbnail || imageLinks?.smallThumbnail || imageLinks?.small || imageLinks?.medium || imageLinks?.large);
+}
+
+function isNoCoverLowQualityMetaCandidate(doc: any, diagnostics: FilterDiagnostics, combined: string, categories: string, description: string): boolean {
+  if (candidateHasCoverSignal(doc)) return false;
+
+  const title = diagnostics.title;
+  const pageCount = Number(diagnostics.pageCount || 0);
+  const ratingsCount = Number(diagnostics.ratingsCount || 0);
+  const hardcoverRatingsCount = Number((doc as any)?.hardcover?.ratings_count || 0);
+  const hasAuthority = diagnostics.flags.legitAuthority || diagnostics.flags.authorAffinity || ratingsCount >= 20 || hardcoverRatingsCount >= 10;
+
+  const metaShape =
+    isUniversalMetaReferenceCandidate(title, categories, description, combined) ||
+    /\b(readings?|reader|criticism|critical|study|studies|analysis|essays?|companion|guide|reference|bibliography|catalogue?|catalog|survey|history of|in fiction|historical novels?|literary criticism|history and criticism)\b/.test(combined);
+
+  const weakShape =
+    !diagnostics.hasDescription ||
+    (pageCount > 0 && pageCount < 120) ||
+    (pageCount === 0 && ratingsCount === 0 && hardcoverRatingsCount === 0);
+
+  // Missing covers are not automatically bad. They become a hard quality signal
+  // only when paired with meta/reference/academic shape or very sparse metadata.
+  return metaShape || (weakShape && !hasAuthority && !diagnostics.flags.strongNarrative);
+}
+
 
 function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
@@ -806,6 +839,11 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   if (isUniversalMetaReferenceCandidate(title, categories, description, combined)) {
     diagnostics.rejectReasons.push("universal_meta_reference");
+  }
+
+
+  if (isNoCoverLowQualityMetaCandidate(doc, diagnostics, combined, categories, description)) {
+    diagnostics.rejectReasons.push("no_cover_low_quality_meta");
   }
 
   const bookCultureReject =
@@ -1283,6 +1321,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "below_shape_floor",
     "romance_meta_reference",
     "universal_meta_reference",
+    "no_cover_low_quality_meta",
   ]);
 
   for (const doc of inputDocs) {

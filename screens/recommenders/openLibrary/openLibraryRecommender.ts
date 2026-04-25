@@ -77,11 +77,38 @@ function buildQueries(input: RecommenderInput): string[] {
   return [];
 }
 
+
+function hasOpenLibraryCoverSignal(doc: any): boolean {
+  return Boolean(doc?.cover_i || doc?.cover_edition_key || doc?.edition_key?.length);
+}
+
+function looksLikeNoCoverMetaOpenLibraryCandidate(doc: any): boolean {
+  if (hasOpenLibraryCoverSignal(doc)) return false;
+
+  const title = normalizeText(doc?.title);
+  const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name);
+  const subjects = Array.isArray(doc?.subject) ? doc.subject.map(normalizeText).join(" ") : "";
+  const publishers = Array.isArray(doc?.publisher) ? doc.publisher.map(normalizeText).join(" ") : "";
+  const firstSentence = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence);
+  const text = [title, author, subjects, publishers, firstSentence].filter(Boolean).join(" ");
+
+  const metaShape =
+    /\b(readings?|reader|criticism|critical|study|studies|analysis|essays?|companion|guide|reference|bibliography|catalogue?|catalog|survey|history of|history and criticism|in fiction|historical novels?|literary criticism)\b/.test(text) ||
+    /\b(readings?\b.*\b(novel|fiction|literature)|century readings?\b.*\bnovel|redefining\b.*\bfiction|(life|women|race|gender|class)\b.*\bin fiction)\b/.test(title);
+
+  const editionCount = Number(doc?.edition_count || 0);
+  const firstPublishYear = Number(doc?.first_publish_year || 0);
+  const hasSparseShape = !subjects && !firstSentence && editionCount <= 1;
+
+  return metaShape || (hasSparseShape && firstPublishYear > 0 && /\b(novel|fiction|literature)\b/.test(text) && !/\b(thriller|mystery|horror|fantasy|romance|detective|suspense)\b/.test(text));
+}
+
 function isGarbage(doc: any, family: string): boolean {
   const title = normalizeText(doc?.title);
   const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name);
 
   if (!title || !author) return true;
+  if (looksLikeNoCoverMetaOpenLibraryCandidate(doc)) return true;
 
   const text = [
     title,
@@ -94,6 +121,8 @@ function isGarbage(doc: any, family: string): boolean {
 
   if (/(summary|analysis|study guide|review|criticism|notes|workbook)/i.test(text)) return true;
   if (/(anthology|collection of stories|short stories|essays)/i.test(text)) return true;
+  if (/\b(readings?|reader|companion|guide|reference|bibliography|catalogue?|catalog|survey|history and criticism|literary criticism)\b/i.test(text)) return true;
+  if (/\b(readings?\b.*\b(novel|fiction|literature)|century readings?\b.*\bnovel|redefining\b.*\bfiction|(life|women|race|gender|class)\b.*\bin fiction)\b/i.test(title)) return true;
 
   if (family === "fantasy") {
     const obviousFantasySignal =
