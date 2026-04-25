@@ -713,6 +713,7 @@ type RouterQueryLane = {
   query: string;
   laneKind: string;
   source: CandidateSource | "all";
+  queryRung?: number;
 };
 
 function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string {
@@ -758,12 +759,14 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         query,
         laneKind: q.includes("-guide") || q.includes("-reference") || q.includes("-criticism") ? "strict-filtered" : "core",
         source: "googleBooks",
+        queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     });
 
     if (openLibraryQuery) {
-      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary" });
-      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary" });
+      const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
+      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
     }
 
     return mapped;
@@ -817,14 +820,20 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         return null;
       }
 
-      return { query, laneKind, source: "googleBooks" } as RouterQueryLane;
+      return {
+        query,
+        laneKind,
+        source: "googleBooks",
+        queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
+      } as RouterQueryLane;
     })
     .filter(Boolean) as RouterQueryLane[];
 
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
-    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary" });
-    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary" });
+    const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
+    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
   }
 
   return mapped;
@@ -1470,27 +1479,43 @@ export async function getRecommendations(
         ...(((laneOpenLibrary as any)?.debugRawPool as any[]) || []),
         ...(((laneKitsu as any)?.debugRawPool as any[]) || []),
         ...(((laneGcd as any)?.debugRawPool as any[]) || []),
-      ].map((row: any) => ({
-        ...row,
-        queryRung: rung.rung,
-        queryText: row?.queryText ?? lane.query,
-        laneKind: lane.laneKind,
-      }));
+      ].map((row: any) => {
+        const queryRung = Number.isFinite(Number(lane.queryRung))
+          ? Number(lane.queryRung)
+          : Number.isFinite(Number(rung?.rung))
+          ? Number(rung.rung)
+          : undefined;
+
+        return {
+          ...row,
+          queryRung,
+          queryText: row?.queryText ?? lane.query,
+          laneKind: lane.laneKind,
+        };
+      });
 
       debugRawPool.push(...laneRawPool);
 
-      const taggedDocs = laneMergedDocs.map((doc: any) => ({
-        ...doc,
-        queryRung: rung.rung,
-        queryText: lane.query,
-        laneKind: lane.laneKind,
-        diagnostics: {
-          ...(doc?.diagnostics || {}),
-          queryRung: rung.rung,
+      const taggedDocs = laneMergedDocs.map((doc: any) => {
+        const queryRung = Number.isFinite(Number(lane.queryRung))
+          ? Number(lane.queryRung)
+          : Number.isFinite(Number(rung?.rung))
+          ? Number(rung.rung)
+          : undefined;
+
+        return {
+          ...doc,
+          queryRung,
           queryText: lane.query,
           laneKind: lane.laneKind,
-        },
-      }));
+          diagnostics: {
+            ...(doc?.diagnostics || {}),
+            queryRung,
+            queryText: lane.query,
+            laneKind: lane.laneKind,
+          },
+        };
+      });
 
       allMergedDocs.push(...taggedDocs);
     }
