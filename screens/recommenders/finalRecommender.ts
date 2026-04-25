@@ -415,7 +415,9 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     (c.ratingCount || 0) >= 10;
 
   if (!hasStrongSignal) {
-    return { pass: false, reason: 'low_metadata_trust', detail: 'no strong bibliographic or narrative shape' };
+    if (!(isOL && filterSignals >= 5)) {
+      return { pass: false, reason: 'low_metadata_trust', detail: 'no strong bibliographic or narrative shape' };
+    }
   }
 
   if (!fictionSignals) {
@@ -468,6 +470,8 @@ function filterSignalScore(c: Candidate): number {
   if (passedChecks.includes('openlibrary_horror_recovery')) score += 4;
   if (passedChecks.includes('openlibrary_fantasy_recovery_precheck')) score += 4;
   if (passedChecks.includes('openlibrary_fantasy_recovery')) score += 5;
+  if (passedChecks.includes('openlibrary_source_recovery_precheck')) score += 5;
+  if (passedChecks.includes('openlibrary_source_recovery')) score += 6;
   if (passedChecks.includes('passed_shape_gate')) score += 2;
 
   if (isOpenLibraryCandidate(c) && flags.authorAffinity) score += 6;
@@ -475,6 +479,8 @@ function filterSignalScore(c: Candidate): number {
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_horror_recovery')) score += 4;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_fantasy_recovery_precheck')) score += 4;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_fantasy_recovery')) score += 5;
+  if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_source_recovery_precheck')) score += 5;
+  if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_source_recovery')) score += 6;
 
   return score;
 }

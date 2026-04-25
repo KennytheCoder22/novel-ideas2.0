@@ -1222,6 +1222,56 @@ async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<Recommend
   return enriched;
 }
 
+
+async function enrichOpenLibraryBeforeFiltering(docs: RecommendationDoc[]): Promise<RecommendationDoc[]> {
+  // Open Library often has sparse page/description/rating metadata. Give OL rows
+  // a lightweight Hardcover pass BEFORE filterCandidates so the central filter
+  // can judge them with the same authority signals available to Google Books.
+  const OPEN_LIBRARY_PREFILTER_LIMIT = 120;
+
+  const indexedDocs = docs.map((doc, index) => ({ doc, index }));
+  const openLibraryIndexes = indexedDocs
+    .filter(({ doc }) => sourceForDoc(doc, "openLibrary") === "openLibrary")
+    .sort((a, b) => hardcoverLookupPriority(b.doc) - hardcoverLookupPriority(a.doc))
+    .slice(0, OPEN_LIBRARY_PREFILTER_LIMIT)
+    .map((entry) => entry.index);
+
+  const selectedIndexes = new Set(openLibraryIndexes);
+  if (!selectedIndexes.size) return docs;
+
+  const enriched = await Promise.all(
+    indexedDocs.map(async ({ doc, index }) => {
+      if (!selectedIndexes.has(index)) return doc;
+      if ((doc as any)?.hardcover && !hasHardcoverFailureShape((doc as any).hardcover)) return doc;
+
+      try {
+        const title = doc.title;
+        const author = Array.isArray((doc as any).author_name)
+          ? (doc as any).author_name[0]
+          : (doc as any).author;
+        if (!title) return doc;
+
+        const data = await getHardcoverRatings(title, author);
+        if (!data) return doc;
+
+        return {
+          ...doc,
+          hardcover: {
+            ...((doc as any)?.hardcover || {}),
+            rating: data.rating,
+            ratings_count: data.ratings_count,
+            prefilter: true,
+          },
+        } as any;
+      } catch {
+        return attachHardcoverFailureMarker(doc);
+      }
+    })
+  );
+
+  return enriched;
+}
+
 function inferCommercialSignals(doc: RecommendationDoc): CommercialSignals {
   const title = normalizeText(doc?.title ?? (doc as any)?.volumeInfo?.title);
   const description = collectDescriptionText(doc);
@@ -1578,8 +1628,13 @@ export async function getRecommendations(
 
   const mergedDocs = dedupeDocs(allMergedDocs);
 
+  // Open Library gets a lightweight Hardcover pass BEFORE filtering. This is
+  // enrichment-only: it never drops rows, but it gives filterCandidates earlier
+  // authority signals for sparse OL records.
+  const openLibraryPrefilterEnrichedDocs = await enrichOpenLibraryBeforeFiltering(mergedDocs);
+
   // Hardcover enrichment is non-blocking and runs AFTER merging.
-  const hardcoverEnrichedDocs = await enrichWithHardcover(mergedDocs);
+  const hardcoverEnrichedDocs = await enrichWithHardcover(openLibraryPrefilterEnrichedDocs);
   const enrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
 
   // Strict 20Q router:

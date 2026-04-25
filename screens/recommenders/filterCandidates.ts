@@ -347,6 +347,76 @@ function passesOpenLibraryHistoricalRecovery(doc: any, diagnostics: FilterDiagno
   return fictionShape && (titleHistoricalShape || metadataHistoricalShape);
 }
 
+
+function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (!isOpenLibraryLikeDoc(doc)) return false;
+
+  const rawTitle = String(doc?.title || doc?.volumeInfo?.title || "").trim();
+  const normalizedTitle = normalizeText(rawTitle);
+  const author = normalizeText(
+    doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
+  );
+  const subjects = collectCategoryText(doc);
+  const description = collectDescriptionText(doc);
+  const queryText = normalizeText(doc?.queryText ?? doc?.diagnostics?.queryText ?? doc?.rawQuery ?? doc?.query);
+  const combined = [normalizedTitle, subjects, description, author].filter(Boolean).join(" ");
+  const combinedWithQuery = [combined, queryText].filter(Boolean).join(" ");
+  const firstPublishedYear =
+    Number(doc?.first_publish_year) ||
+    Number(doc?.publishYear) ||
+    Number(doc?.firstPublishedYear) ||
+    0;
+  const hardcoverRatingsCount = Number((doc as any)?.hardcover?.ratings_count || 0);
+  const hardcoverRating = Number((doc as any)?.hardcover?.rating || 0);
+
+  if (!rawTitle || !author || author === "unknown") return false;
+  if (diagnostics.flags.weakSeriesSpam) return false;
+  if (isUniversalMetaReferenceCandidate(normalizedTitle, subjects, description, combined)) return false;
+  if (isHistoricalMetaLiteraryLeak(combined)) return false;
+  if (/\b(complete works|plays\b|poems?\b|sonnets?|anthology|collection|boxed set|omnibus|guide|handbook|dictionary|companion|catalogue?|bibliography|study guide)\b/.test(combined)) return false;
+
+  const hasUsefulMetadata =
+    subjects.trim().length > 0 ||
+    description.trim().length > 0 ||
+    firstPublishedYear > 0 ||
+    hardcoverRatingsCount > 0 ||
+    hardcoverRating > 0;
+
+  const hasAuthority =
+    diagnostics.flags.authorAffinity ||
+    diagnostics.flags.legitAuthority ||
+    hardcoverRatingsCount >= 10 ||
+    hardcoverRating >= 3.7;
+
+  const familySignalByLane: Record<RouterFamily, RegExp> = {
+    horror: /\b(horror|haunted|haunting|ghost|supernatural|occult|monster|creature|terror|dread|gothic|vampire|zombie|survival horror|psychological horror)\b/,
+    fantasy: /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy)\b/,
+    mystery: /\b(mystery|detective|investigation|murder|private investigator|whodunit|case|cold case|police procedural|inspector)\b/,
+    thriller: /\b(thriller|suspense|psychological|crime|murder|serial killer|investigation|missing|disappearance|fbi|procedural|noir|spy thriller|legal thriller)\b/,
+    romance: /\b(romance|love story|courtship|marriage|wedding|duke|earl|regency|wallflower|rake|kiss|lover|historical romance|gothic romance)\b/,
+    historical: /\b(historical fiction|historical novel|period fiction|victorian|edwardian|regency|gilded age|civil war|world war|19th century|family saga|frontier|revolution|empire)\b/,
+    science_fiction: /\b(science fiction|sci-fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|future|time travel|interstellar|spaceship)\b/,
+    speculative: /\b(speculative|science fiction|fantasy|dystopian|alternate history|supernatural|time travel)\b/,
+    general: /\b(novel|fiction|story)\b/,
+  };
+
+  const familySignal = familySignalByLane[diagnostics.family]?.test(combinedWithQuery) || false;
+  const titleOrMetadataSignal = familySignalByLane[diagnostics.family]?.test(combined) || false;
+  const fictionShape =
+    diagnostics.flags.fictionPositive ||
+    diagnostics.flags.strongNarrative ||
+    /\b(novel|fiction|story)\b/.test(combinedWithQuery);
+
+  // Query intent alone is not enough. Sparse OL rows need either external
+  // authority (Hardcover/canonical author) or some native title/subject/description signal.
+  return Boolean(
+    fictionShape &&
+    hasUsefulMetadata &&
+    familySignal &&
+    (hasAuthority || titleOrMetadataSignal || diagnostics.flags.strongNarrative)
+  );
+}
+
 function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   speculativePositive: boolean;
   thrillerPositive: boolean;
@@ -1250,6 +1320,24 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       }
     }
 
+    if (isOpenLibraryLike && passesOpenLibrarySourceRecovery(doc, diagnostics)) {
+      const removed = new Set([
+        "insufficient_length_or_description",
+        "too_many_soft_failures",
+        "below_shape_floor",
+        "missing_or_low_quality_cover",
+        "thriller_native_signal_required",
+        "lane_mismatch_fantasy",
+        "lane_mismatch_thriller",
+        "lane_mismatch_romance",
+        "lane_mismatch_historical",
+        "lane_mismatch_speculative",
+      ]);
+
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+      diagnostics.passedChecks.push("openlibrary_source_recovery_precheck");
+    }
+
     const nonCriticalRejectReasons = new Set([
       "missing_fiction_signal",
       "missing_narrative_signal",
@@ -1350,6 +1438,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_romance_recovery");
       } else if (isOpenLibraryLike && passesOpenLibraryHistoricalRecovery(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_historical_recovery");
+      } else if (isOpenLibraryLike && passesOpenLibrarySourceRecovery(doc, diagnostics)) {
+        diagnostics.passedChecks.push("openlibrary_source_recovery");
       } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else {
