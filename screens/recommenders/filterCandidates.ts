@@ -442,6 +442,26 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   return false;
 }
 
+function isUniversalMetaReferenceCandidate(title: string, categories: string, description: string, combined: string): boolean {
+  const metaTitle =
+    /\b(aesthetics|history|histories|technique|spirit|development|rise|study|studies|criticism|companion|guide|bibliography|catalogue?|gold star list|finding list|survey|index)\b.*\b(novel|novels|fiction|literature|books?)\b/.test(title) ||
+    /\b(novel|novels|fiction|literature|books?)\b.*\b(aesthetics|history|histories|technique|spirit|development|rise|study|studies|criticism|before|since|1900|1910|1920|1930|bibliography|catalogue?|list|survey|index)\b/.test(title) ||
+    /^\s*(the\s+)?(american|english|british|historical|crime|detective|mystery|thriller|horror|gothic|modern|victorian)\s+novels?\b/.test(title);
+
+  const metaCategory =
+    /\b(literary criticism|criticism|reference|study aids?|bibliograph(?:y|ies)|books and reading|authors?|publishing|libraries|literature|studies|theory|education)\b/.test(categories) &&
+    !/\b(fiction|juvenile fiction|young adult fiction|comics|graphic novels?)\b/.test(categories);
+
+  const metaDescription =
+    /\b(examines?|explores?|analyzes?|analysis of|study of|studies of|critical survey|scholarly|academic|reference work|resource for|guide to|introduction to|history of|bibliography)\b/.test(description) &&
+    /\b(novel|novels|fiction|literature|genre|author|authors|texts?)\b/.test(description);
+
+  const listOrCatalog =
+    /\b(gold star list|finding list|catalogue?|catalog|bibliography|index|reader'?s guide|companion to|cambridge companion|oxford companion)\b/.test(combined);
+
+  return metaTitle || metaCategory || metaDescription || listOrCatalog;
+}
+
 function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
   const categories = collectCategoryText(doc);
@@ -663,6 +683,10 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) diagnostics.rejectReasons.push("hard_reject_category");
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) diagnostics.passedChecks.push("soft_description_meta_signal");
   if (/\bliterature\b/.test(categories) && !/\bfiction\b/.test(categories)) diagnostics.rejectReasons.push("literature_without_fiction");
+
+  if (isUniversalMetaReferenceCandidate(title, categories, description, combined)) {
+    diagnostics.rejectReasons.push("universal_meta_reference");
+  }
 
   const bookCultureReject =
     /\b(book lady|readers'? advisory|popular fiction|books and reading|literary culture|book review|writing speculative fiction)\b/.test(title) ||
@@ -1132,6 +1156,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "too_many_soft_failures",
     "below_shape_floor",
     "romance_meta_reference",
+    "universal_meta_reference",
   ]);
 
   for (const doc of inputDocs) {
@@ -1343,18 +1368,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     filtered.push(withDiagnostics);
   }
 
-  if (filtered.length === 0) {
-    return inputDocs.slice(0, 20).map((doc) => {
-      const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
-      diagnostics.kept = true;
-      diagnostics.passedChecks.push("empty_filter_fallback");
-      diagnostics.rejectReasons = [];
-      const withDiagnostics = attachDiagnostics(doc, diagnostics);
-      Object.assign(doc as any, withDiagnostics);
-      return withDiagnostics;
-    });
-  }
-
+  // Do not re-admit rejected rows when the pool goes empty. Returning [] keeps
+  // filterCandidates as the single source of truth and prevents universal junk
+  // from bypassing diagnostics.
   return filtered;
 }
 

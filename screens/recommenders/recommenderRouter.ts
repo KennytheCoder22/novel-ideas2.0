@@ -1589,37 +1589,11 @@ export async function getRecommendations(
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
 
-  const relaxedFallbackDocs = dedupeDocs(
-    enrichedDocs.filter((doc: any) => {
-      const source = sourceForDoc(doc, "googleBooks");
-
-      if (source === "googleBooks") return looksLikeGoogleBooksFamilyCandidate(doc, bucketPlan);
-      if (source === "openLibrary") return looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan);
-      if (source === "kitsu" || source === "gcd") return true;
-
-      return false;
-    })
-  );
-
+  // Centralized filtering rule:
+  // filterCandidates is the only keep/reject authority after fetch + enrichment.
+  // Do not recover source-specific docs here, because that bypasses the universal
+  // and lane-specific diagnostics in filterCandidates.
   let candidateDocs = filteredDocs;
-
-// HARD SAFETY: prevent Open Library collapse
-const openLibrarySurvivors = candidateDocs.filter(
-  (doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary"
-);
-
-if (openLibrarySurvivors.length < MIN_OPEN_LIBRARY_SURVIVORS) {
-  const recoveredOL = enrichedDocs.filter(
-    (doc: any) =>
-      sourceForDoc(doc, "openLibrary") === "openLibrary" &&
-      looksLikeOpenLibraryPrecisionCandidate(doc, bucketPlan)
-  );
-
-  candidateDocs = dedupeDocs([
-    ...candidateDocs,
-    ...recoveredOL.slice(0, 12), // controlled backfill
-  ]);
-}
 
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
