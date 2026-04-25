@@ -646,6 +646,10 @@ function anchorBoost(c: Candidate): number {
 
   let score = 0;
 
+  const CANONICAL_AUTHOR_BOOST = 16;
+  const CANONICAL_TITLE_BOOST = 16;
+  const OPEN_LIBRARY_CANONICAL_AUTHOR_BOOST = 8;
+
   const isHorror =
     /horror|haunted|ghost|supernatural|occult|possession|terror|dread|gothic/.test(text);
 
@@ -802,71 +806,144 @@ function anchorBoost(c: Candidate): number {
     ],
   };
 
+  const TITLE_MAP: Record<string, string[]> = {
+    horror: [
+      'cujo',
+      'the long walk',
+      'the haunting of hill house',
+      'the exorcist',
+      'dracula',
+      'frankenstein',
+      'pet sematary',
+      'the terror',
+      'the turn of the screw',
+    ],
+    mystery: [
+      'murder on the orient express',
+      'the hound of the baskervilles',
+      'the big sleep',
+      'the maltese falcon',
+      'in the woods',
+      'the girl with the dragon tattoo',
+      'the mysterious affair at styles',
+      'gaudy night',
+    ],
+    thriller: [
+      'gone girl',
+      'the silence of the lambs',
+      'the girl on the train',
+      'the day of the jackal',
+      'the bourne identity',
+      'the firm',
+      'the da vinci code',
+      'eye of the needle',
+    ],
+    science_fiction: [
+      'dune',
+      'foundation',
+      'neuromancer',
+      'the left hand of darkness',
+      'kindred',
+      'the martian',
+      'enders game',
+      'fahrenheit 451',
+    ],
+    speculative: [
+      'dune',
+      'foundation',
+      'kindred',
+      'the handmaids tale',
+      'the left hand of darkness',
+      'neuromancer',
+      'the dispossessed',
+      'parable of the sower',
+    ],
+    fantasy: [
+      'the hobbit',
+      'the fellowship of the ring',
+      'the two towers',
+      'the return of the king',
+      'the name of the wind',
+      'dragonflight',
+      'the final empire',
+      'a game of thrones',
+      'a wizard of earthsea',
+      'assassins apprentice',
+      'the way of kings',
+      'the fifth season',
+    ],
+    romance: [
+      'pride and prejudice',
+      'sense and sensibility',
+      'persuasion',
+      'jane eyre',
+      'the notebook',
+      'beach read',
+      'people we meet on vacation',
+      'red white and royal blue',
+    ],
+    historical: [
+      'the killer angels',
+      'pillars of the earth',
+      'wolf hall',
+      'shogun',
+      'lonesome dove',
+      'the black flower',
+      'the fateful lightning',
+      'the first lady and the rebel',
+      'i claudius',
+      'the book thief',
+      'all the light we cannot see',
+      'the underground railroad',
+      'a gentleman in moscow',
+      'the nightingale',
+    ],
+  };
+
   function matchesAuthor(list: string[]): boolean {
     return list.some((name) => author.includes(name));
   }
 
-  if (lane === "horror") {
-    if (matchesAuthor(AUTHOR_MAP.horror)) score += 14;
-  } else if (lane === "mystery") {
-    if (matchesAuthor(AUTHOR_MAP.mystery)) score += 14;
-  } else if (lane === "thriller") {
-    if (matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
-  } else if (lane === "science_fiction") {
-    if (matchesAuthor(AUTHOR_MAP.science_fiction)) score += 12;
-  } else if (lane === "speculative") {
-    if (matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
-  } else if (lane === "fantasy") {
-    if (matchesAuthor(AUTHOR_MAP.fantasy)) score += 12;
-  } else if (lane === "romance") {
-    if (matchesAuthor(AUTHOR_MAP.romance)) score += 8;
-  } else if (lane === "historical") {
-    const historicalCanonicalAuthor = matchesAuthor(AUTHOR_MAP.historical);
-    if (historicalCanonicalAuthor) score += 16;
-    if (isOpenLibraryCandidate(c) && historicalCanonicalAuthor) score += 8;
-    if (/historical fiction|historical novel|period fiction|victorian|edwardian|regency|gilded age|civil war|world war|19th century|family saga/.test(text)) score += 6;
-    if (/literary criticism|history of the novel|study of|guide|handbook|reference|catalog|bibliography/.test(text)) score -= 10;
-  } else {
-    if (isHorror && matchesAuthor(AUTHOR_MAP.horror)) score += 14;
-    else if ((/mystery|detective|investigation|private investigator|whodunit|case/.test(text)) && matchesAuthor(AUTHOR_MAP.mystery)) score += 14;
-    else if (isThriller && matchesAuthor(AUTHOR_MAP.thriller)) score += 14;
-    else if (/science fiction|space opera|dystopian|ai|artificial intelligence|robot|android|alien|time travel|interstellar|futuristic/.test(text) && matchesAuthor(AUTHOR_MAP.science_fiction)) score += 12;
-    else if (isSpeculative && matchesAuthor(AUTHOR_MAP.speculative)) score += 10;
-    else if (/fantasy|epic fantasy|high fantasy|dark fantasy|magic/.test(text) && matchesAuthor(AUTHOR_MAP.fantasy)) score += 12;
-    else if (isRomance && matchesAuthor(AUTHOR_MAP.romance)) score += 8;
+  function matchesTitle(list: string[]): boolean {
+    return list.some((name) => title.includes(normalize(name)));
   }
 
-  if (/cujo/.test(title)) score += 10;
-  if (/the long walk/.test(title)) score += 10;
-  if (/haunting of hill house/.test(title)) score += 10;
-  if (/the exorcist/.test(title)) score += 10;
-  if (/dracula/.test(title)) score += 10;
-  if (/frankenstein/.test(title)) score += 10;
-  if (/pet sematary/.test(title)) score += 10;
-  if (/the terror/.test(title)) score += 8;
-  if (/the turn of the screw/.test(title)) score += 8;
+  function addCanonicalBoosts(laneKey: string): void {
+    const authors = AUTHOR_MAP[laneKey] || [];
+    const titles = TITLE_MAP[laneKey] || [];
+
+    const canonicalAuthor = matchesAuthor(authors);
+    const canonicalTitle = matchesTitle(titles);
+
+    if (canonicalAuthor) {
+      score += CANONICAL_AUTHOR_BOOST;
+      if (isOpenLibraryCandidate(c)) score += OPEN_LIBRARY_CANONICAL_AUTHOR_BOOST;
+    }
+
+    if (canonicalTitle) {
+      score += CANONICAL_TITLE_BOOST;
+    }
+  }
+
+  if (AUTHOR_MAP[lane]) {
+    addCanonicalBoosts(lane);
+  } else {
+    if (isHorror) addCanonicalBoosts('horror');
+    else if (/mystery|detective|investigation|private investigator|whodunit|case/.test(text)) addCanonicalBoosts('mystery');
+    else if (isThriller) addCanonicalBoosts('thriller');
+    else if (/science fiction|space opera|dystopian|ai|artificial intelligence|robot|android|alien|time travel|interstellar|futuristic/.test(text)) addCanonicalBoosts('science_fiction');
+    else if (isSpeculative) addCanonicalBoosts('speculative');
+    else if (/fantasy|epic fantasy|high fantasy|dark fantasy|magic/.test(text)) addCanonicalBoosts('fantasy');
+    else if (isRomance) addCanonicalBoosts('romance');
+  }
 
   if (lane === "historical") {
-    if (/killer angels/.test(title)) score += 12;
-    if (/pillars of the earth/.test(title)) score += 12;
-    if (/wolf hall/.test(title)) score += 12;
-    if (/shogun/.test(title)) score += 12;
-    if (/lonesome dove/.test(title)) score += 12;
-    if (/the black flower/.test(title)) score += 10;
-    if (/the fateful lightning/.test(title)) score += 10;
-    if (/the first lady and the rebel/.test(title)) score += 10;
-    if (/i claudius/.test(title)) score += 10;
-    if (/the book thief/.test(title)) score += 10;
+    if (/historical fiction|historical novel|period fiction|victorian|edwardian|regency|gilded age|civil war|world war|19th century|family saga/.test(text)) score += 6;
+    if (/literary criticism|history of the novel|study of|guide|handbook|reference|catalog|bibliography/.test(text)) score -= 10;
   }
 
   if (lane === "fantasy") {
-    if (/the hobbit/.test(title)) score += 10;
-    if (/the fellowship of the ring/.test(title)) score += 10;
-    if (/the two towers/.test(title)) score += 10;
-    if (/the return of the king/.test(title)) score += 10;
-    if (/the name of the wind/.test(title)) score += 8;
-    if (/dragonflight/.test(title)) score += 8;
-    if (/the final empire/.test(title)) score += 8;
+    if (/fantasy|epic fantasy|high fantasy|mythic|kingdom|quest|sorcery|dragon|wizard|magic/.test(text)) score += 1.5;
   }
 
   if (ratings >= 5000) score += 6;
