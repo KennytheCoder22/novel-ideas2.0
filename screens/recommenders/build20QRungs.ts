@@ -588,47 +588,19 @@ function isHistoricalIntent(intent: QueryIntent, base: string): boolean {
   return /\b(historical|period|victorian|edwardian|gilded|19th century|civil war|world war|regency|society|family saga)\b/.test(joined);
 }
 
-function buildHistoricalRungs(intent: QueryIntent, maxRungs = 4) {
-  const joined = clean([
-    intent.baseGenre || "",
-    ...(intent.subgenres || []),
-    ...(intent.themes || []),
-    ...(intent.tones || []),
-    ...(Array.isArray(intent.hypotheses)
-      ? intent.hypotheses.flatMap((h) => [
-          h?.label || "",
-          h?.query || "",
-          ...(h?.parts || []),
-        ])
-      : []),
-  ].join(" "));
-
-  // Historical rungs are deliberately deterministic. The router relies on these
-  // rungs being semantically different; letting the shared role selector rebuild
-  // them can collapse the ladder back into repeated generic queries.
-  const primary = "19th century american novel";
-  const intensify = /\b(war|battle|military|civil war|world war|soldier)\b/.test(joined)
-    ? "civil war historical fiction novel"
-    : "american society novel 19th century";
-  const adjacent = /\b(family|saga|generational|inheritance|dynasty)\b/.test(joined)
-    ? "family saga historical fiction novel"
-    : "new york society novel 19th century";
-  const explore = /\b(dark|gritty|realistic|literary|character|atmospheric|complex)\b/.test(joined)
-    ? "literary historical fiction novel"
-    : "historical fiction novel";
-
-  const queries = distinctQueries([
-    primary,
-    intensify,
-    adjacent,
-    explore,
-    "american society novel 19th century",
-    "new york society novel 19th century",
-    "historical fiction novel",
-  ]);
+function buildHistoricalRungs(_intent: QueryIntent, maxRungs = 4) {
+  // Historical is an isolated lane. These rungs are intentionally fixed so
+  // downstream tuning cannot collapse them back into repeated primary-query calls.
+  const queries = [
+    "19th century american novel",
+    "civil war historical fiction novel",
+    "family saga historical fiction novel",
+    "literary historical fiction novel",
+  ];
 
   return queries.slice(0, Math.max(1, maxRungs)).map((query, i) => ({
     rung: i,
+    family: "historical",
     query,
   }));
 }
