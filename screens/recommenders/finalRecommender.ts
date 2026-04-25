@@ -1081,6 +1081,48 @@ function thrillerSessionFit(c: Candidate): number {
   return score;
 }
 
+
+function collectWeightedTerms(value: any, weight = 1, out: Map<string, number> = new Map()): Map<string, number> {
+  if (!value) return out;
+
+  if (value instanceof Map) {
+    for (const [key, rawWeight] of value.entries()) {
+      const term = normalize(key);
+      const numericWeight = Number(rawWeight);
+      if (term) out.set(term, (out.get(term) || 0) + (Number.isFinite(numericWeight) ? numericWeight : weight));
+    }
+    return out;
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (typeof item === 'string') {
+        const term = normalize(item);
+        if (term) out.set(term, (out.get(term) || 0) + weight);
+      } else if (item && typeof item === 'object') {
+        collectWeightedTerms(item, weight, out);
+      }
+    }
+    return out;
+  }
+
+  if (typeof value === 'object') {
+    for (const [key, rawWeight] of Object.entries(value)) {
+      const term = normalize(key);
+      const numericWeight = Number(rawWeight);
+      if (term) out.set(term, (out.get(term) || 0) + (Number.isFinite(numericWeight) ? numericWeight * weight : weight));
+    }
+    return out;
+  }
+
+  if (typeof value === 'string') {
+    const term = normalize(value);
+    if (term) out.set(term, (out.get(term) || 0) + weight);
+  }
+
+  return out;
+}
+
 function collectSessionSignals(taste?: TasteProfile): { positive: Map<string, number>; negative: Map<string, number>; confidence: number } {
   const anyTaste: any = taste || {};
   const positive = new Map<string, number>();
