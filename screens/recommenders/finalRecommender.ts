@@ -1141,7 +1141,9 @@ function candidateTerms(c: Candidate): Set<string> {
     'space opera', 'dystopian', 'weird', 'supernatural', 'haunted', 'noir', 'procedural'
   ];
   for (const term of patternTerms) {
-    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, \"\\$&\").replace(/ /g, \"[\\s-]+\");
+    const escaped = term
+  .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  .replace(/ /g, "[\\s-]+");
     const rx = new RegExp('\\b' + escaped + '\\b');
     if (rx.test(text)) terms.add(term);
   }
