@@ -39,6 +39,7 @@ export type ScoreBreakdown = {
   overfitPenalty: number;
   anchorBoost: number;
   filterSignalScore: number;
+  personalAffinityScore: number;
   finalScore: number;
 };
 
@@ -1069,6 +1070,133 @@ function thrillerSessionFit(c: Candidate): number {
 }
 
 
+
+function collectWeightedTerms(value: any, weight = 1, out: Map<string, number> = new Map()): Map<string, number> {
+  if (!value) return out;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (typeof item === 'string') {
+        const key = normalize(item);
+        if (key) out.set(key, (out.get(key) || 0) + weight);
+      } else if (item && typeof item === 'object') {
+        const key = normalize(item.tag || item.key || item.name || item.label || item.value || item.title || item.author);
+        const rawWeight = Number(item.weight ?? item.score ?? item.count ?? 1);
+        if (key) out.set(key, (out.get(key) || 0) + weight * (Number.isFinite(rawWeight) ? rawWeight : 1));
+      }
+    }
+    return out;
+  }
+  if (typeof value === 'object') {
+    for (const [rawKey, rawValue] of Object.entries(value)) {
+      const key = normalize(rawKey);
+      const numeric = Number(rawValue);
+      if (key && Number.isFinite(numeric)) out.set(key, (out.get(key) || 0) + weight * numeric);
+    }
+  }
+  return out;
+}
+
+function collectSessionSignals(taste?: TasteProfile): { positive: Map<string, number>; negative: Map<string, number>; confidence: number } {
+  const anyTaste: any = taste || {};
+  const positive = new Map<string, number>();
+  const negative = new Map<string, number>();
+  collectWeightedTerms(anyTaste.runningTagCounts, 1, positive);
+  collectWeightedTerms(anyTaste.tagCounts, 1, positive);
+  collectWeightedTerms(anyTaste.likedTagCounts, 1.5, positive);
+  collectWeightedTerms(anyTaste.rightTagCounts, 1.5, positive);
+  collectWeightedTerms(anyTaste.positiveTags, 1.5, positive);
+  collectWeightedTerms(anyTaste.likedTags, 1.5, positive);
+  collectWeightedTerms(anyTaste.likes, 1, positive);
+  collectWeightedTerms(anyTaste.swipeLikes, 1, positive);
+  collectWeightedTerms(anyTaste.dislikedTagCounts, 1.5, negative);
+  collectWeightedTerms(anyTaste.leftTagCounts, 1.5, negative);
+  collectWeightedTerms(anyTaste.negativeTags, 1.5, negative);
+  collectWeightedTerms(anyTaste.dislikedTags, 1.5, negative);
+  collectWeightedTerms(anyTaste.dislikes, 1, negative);
+  collectWeightedTerms(anyTaste.swipeDislikes, 1, negative);
+  for (const [key, value] of [...positive.entries()]) {
+    if (value < 0) {
+      positive.delete(key);
+      negative.set(key, (negative.get(key) || 0) + Math.abs(value));
+    }
+  }
+  const confidence = Math.max(0, Math.min(1, Number(anyTaste.confidence ?? anyTaste.sessionConfidence ?? 0.65)));
+  return { positive, negative, confidence };
+}
+
+function candidateTerms(c: Candidate): Set<string> {
+  const text = haystack(c);
+  const terms = new Set<string>();
+  const rawTerms = [explicitLaneForCandidate(c), ...(Array.isArray(c.subjects) ? c.subjects : []), ...(Array.isArray(c.genres) ? c.genres : [])];
+  for (const term of rawTerms) {
+    const key = normalize(term);
+    if (key) terms.add(key);
+  }
+  const patternTerms = [
+    'historical', 'historical fiction', 'crime', 'mystery', 'detective', 'investigation',
+    'thriller', 'suspense', 'horror', 'spooky', 'dark', 'atmospheric', 'gothic',
+    'fantasy', 'magic', 'epic', 'adventure', 'war', 'war society', 'political',
+    'family', 'family saga', 'romance', 'relationship', 'survival', 'redemption',
+    'fast paced', 'slow burn', 'literary', 'psychological', 'realistic', 'science fiction',
+    'space opera', 'dystopian', 'weird', 'supernatural', 'haunted', 'noir', 'procedural'
+  ];
+  for (const term of patternTerms) {
+    const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, \"\\$&\").replace(/ /g, \"[\\s-]+\");
+    const rx = new RegExp('\\b' + escaped + '\\b');
+    if (rx.test(text)) terms.add(term);
+  }
+  return terms;
+}
+
+function twentyQPersonalAffinityScore(c: Candidate, taste?: TasteProfile): number {
+  if (!taste) return 0;
+  const { positive, negative, confidence } = collectSessionSignals(taste);
+  if (!positive.size && !negative.size) return 0;
+  const text = haystack(c);
+  const terms = candidateTerms(c);
+  let positiveScore = 0;
+  let negativeScore = 0;
+  for (const [term, weight] of positive.entries()) {
+    if (term && (terms.has(term) || text.includes(term))) positiveScore += Math.min(4, Math.max(0.5, Math.abs(weight))) * 1.15;
+  }
+  for (const [term, weight] of negative.entries()) {
+    if (term && (terms.has(term) || text.includes(term))) negativeScore += Math.min(5, Math.max(1, Math.abs(weight))) * 1.4;
+  }
+  const anyTaste: any = taste;
+  const traits: Array<[string, RegExp]> = [
+    ['darkness', /dark|gothic|horror|psychological|violent|war|murder|haunted|dread/],
+    ['realism', /realistic|historical|crime|war|society|political|family|investigation/],
+    ['characterFocus', /character|family|relationship|coming of age|psychological|literary|personal|redemption/],
+    ['complexity', /political|conspiracy|epic|multi generational|family saga|literary|mystery|war|society/],
+    ['pacing', /fast paced|thriller|suspense|adventure|chase|survival|action/],
+    ['ideaDensity', /science fiction|philosophical|speculative|dystopian|political|conceptual/],
+    ['warmth', /hopeful|heartwarming|romance|family|community|friendship|cozy/],
+  ];
+  let traitScore = 0;
+  for (const [trait, rx] of traits) {
+    const value = Number(anyTaste?.[trait] || 0);
+    if (value && rx.test(text)) traitScore += Math.max(-2.5, Math.min(2.5, value * 2.2));
+  }
+  const lane = explicitLaneForCandidate(c);
+  let laneBonus = 0;
+  if (positive.has(lane)) laneBonus += 3;
+  if (negative.has(lane)) laneBonus -= 4;
+  return Math.max(-14, Math.min(18, (positiveScore - negativeScore + traitScore + laneBonus) * Math.max(0.35, confidence)));
+}
+
+function buildPersonalFitReasons(c: Candidate, taste?: TasteProfile): string[] {
+  if (!taste) return [];
+  const { positive, negative } = collectSessionSignals(taste);
+  const text = haystack(c);
+  const terms = candidateTerms(c);
+  const reasons: string[] = [];
+  const positives = [...positive.entries()].filter(([term]) => terms.has(term) || text.includes(term)).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,3).map(([term])=>term);
+  if (positives.length) reasons.push('Matches your session signals: ' + positives.join(', '));
+  const negatives = [...negative.entries()].filter(([term]) => terms.has(term) || text.includes(term)).sort((a,b)=>Math.abs(b[1])-Math.abs(a[1])).slice(0,2).map(([term])=>term);
+  if (negatives.length) reasons.push('Potential tension with disliked signals: ' + negatives.join(', '));
+  return reasons;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1081,6 +1209,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const anchor = anchorBoost(c);
   const filterSignals = filterSignalScore(c);
   const sessionFit = explicitLaneForCandidate(c) === "mystery" ? mysterySessionFit(c) : thrillerSessionFit(c);
+  const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
 
@@ -1095,17 +1224,20 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     overfitPenalty: overfit,
     anchorBoost: anchor,
     filterSignalScore: filterSignals,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals + sessionFit + openLibraryRecoveredBoost,
+    personalAffinityScore: personalAffinity,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals + sessionFit + personalAffinity + openLibraryRecoveredBoost,
   };
 }
 
-function withScores(c: Candidate, breakdown: ScoreBreakdown): RecommendationDoc {
+function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfile): RecommendationDoc {
   const rawDoc = ((c.rawDoc || {}) as RecommendationDoc) || ({} as RecommendationDoc);
+  const personalFitReasons = buildPersonalFitReasons(c, taste);
   return {
     ...rawDoc,
     preFilterScore: breakdown.finalScore,
     postFilterScore: breakdown.finalScore,
     scoreBreakdown: breakdown,
+    personalFitReasons,
     queryText: (c as any).queryText ?? (rawDoc as any).queryText,
     queryRung: (c as any).queryRung ?? (rawDoc as any).queryRung,
   } as RecommendationDoc;
@@ -1309,5 +1441,5 @@ export function finalRecommenderForDeck(
   seedHistoricalRungDiversity(ordered, selected, authorCounts, MAX_RESULTS);
   pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
 
-  return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown));
+  return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
 }
