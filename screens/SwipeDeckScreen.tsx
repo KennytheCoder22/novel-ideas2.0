@@ -919,8 +919,24 @@ function selectTwentyQCard(args: {
     })
     .sort((a, b) => b.score - a.score || a.index - b.index);
 
-  if (scored[0] && scored[0].score > 0.5) return scored[0].card;
-  return fallback;
+  const viable = scored.filter((entry) => entry.score > 0.5);
+  if (!viable.length) return fallback;
+
+  const candidatePool = viable.slice(0, Math.min(8, viable.length));
+  const minScore = Math.min(...candidatePool.map((entry) => entry.score));
+  const weightedPool = candidatePool.map((entry, index) => ({
+    ...entry,
+    weight: Math.max(0.05, entry.score - minScore + Math.max(0.15, 1.15 - index * 0.12)),
+  }));
+
+  const totalWeight = weightedPool.reduce((sum, entry) => sum + entry.weight, 0);
+  let roll = Math.random() * totalWeight;
+  for (const entry of weightedPool) {
+    roll -= entry.weight;
+    if (roll <= 0) return entry.card;
+  }
+
+  return weightedPool[weightedPool.length - 1]?.card ?? fallback;
 }
 
 function shouldFinishTwentyQSession(args: {
