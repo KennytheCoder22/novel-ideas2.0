@@ -324,9 +324,9 @@ function allowedGenresForBase(base: string): Set<string> {
     case "horror":
       return new Set(["horror"]);
     case "thriller":
-      return new Set(["thriller", "mystery"]);
+      return new Set(["thriller"]);
     case "mystery":
-      return new Set(["mystery", "thriller"]);
+      return new Set(["mystery"]);
     case "fantasy":
       return new Set(["fantasy"]);
     case "romance":

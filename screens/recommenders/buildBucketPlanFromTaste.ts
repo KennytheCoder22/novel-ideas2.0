@@ -4,7 +4,7 @@ import { QUERY_TRANSLATIONS } from "./queryTranslations";
 import { build20QRungs, rungToPreviewQuery } from "./build20QRungs";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 
-type Family = "mystery_family" | "thriller_family" | "science_fiction_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
+type Family = "fantasy_family" | "horror_family" | "mystery_family" | "thriller_family" | "science_fiction_family" | "speculative_family" | "romance_family" | "historical_family" | "general_family";
 
 type HypothesisLike = {
   label?: string;
@@ -13,6 +13,10 @@ type HypothesisLike = {
   score?: number;
 };
 
+const FANTASY_DRIFT_TERMS = /\b(science fiction|sci[- ]?fi|space opera|dystopian|horror|thriller|mystery|detective|crime|romance|historical fiction)\b/i;
+const FANTASY_CORE_TERMS = /\b(fantasy|epic fantasy|high fantasy|dark fantasy|magic|magical|wizard|witch|dragon|fae|fairy|mythic|quest|kingdom|sword|sorcery)\b/i;
+const HORROR_DRIFT_TERMS = /\b(science fiction|sci[- ]?fi|space opera|dystopian|fantasy romance|romance|historical fiction|cozy mystery)\b/i;
+const HORROR_CORE_TERMS = /\b(horror|psychological horror|survival horror|haunted|ghost|supernatural|occult|possession|monster|terror|dread|eerie|disturbing)\b/i;
 const THRILLER_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance|faith-based|christian fiction)\b/i;
 const THRILLER_CORE_TERMS = /\b(crime|thriller|psychological thriller|psychological suspense|serial killer|missing person|crime conspiracy|manhunt|fugitive|legal thriller|spy thriller)\b/i;
 const MYSTERY_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance|faith-based|christian fiction|science fiction|space opera)\b/i;
@@ -62,7 +66,8 @@ function familyForGenres(genreKeys: string[]): Family {
   if (genreKeys.some((key) => ["mystery", "detective"].includes(key))) return "mystery_family";
   if (genreKeys.some((key) => ["crime", "thriller"].includes(key))) return "thriller_family";
   if (genreKeys.some((key) => ["science fiction", "dystopian"].includes(key))) return "science_fiction_family";
-  if (genreKeys.some((key) => ["fantasy", "horror"].includes(key))) return "speculative_family";
+  if (genreKeys.includes("fantasy")) return "fantasy_family";
+  if (genreKeys.includes("horror")) return "horror_family";
   if (genreKeys.includes("romance")) return "romance_family";
   if (genreKeys.includes("historical fiction") || genreKeys.includes("historical")) return "historical_family";
   return "general_family";
@@ -89,6 +94,14 @@ function isFamilyCompatibleQuery(query: string, family: Family): boolean {
     if (/\bcrime thriller\b|\bdetective mystery\b|\bmystery thriller\b|\bserial killer\b|\bmanhunt\b|\bfugitive\b/.test(q) && !/\bscience fiction\b|\bdystopian\b|\bspace opera\b|\bartificial intelligence\b|\bai\b/.test(q)) return false;
     return /\bscience fiction\b|\bdystopian\b|\bspace opera\b|\bartificial intelligence\b|\bai\b/.test(q);
   }
+  if (family === "fantasy_family") {
+    if (FANTASY_DRIFT_TERMS.test(q) && !FANTASY_CORE_TERMS.test(q)) return false;
+    return FANTASY_CORE_TERMS.test(q);
+  }
+  if (family === "horror_family") {
+    if (HORROR_DRIFT_TERMS.test(q) && !HORROR_CORE_TERMS.test(q)) return false;
+    return HORROR_CORE_TERMS.test(q);
+  }
   if (family === "speculative_family") {
     if (/\bcrime thriller\b|\bdetective mystery\b|\bmystery thriller\b/.test(q)) return false;
     return /\bscience fiction\b|\bfantasy\b|\bhorror\b/.test(q);
@@ -108,7 +121,9 @@ function familyCompatibleHypotheses(hypotheses: HypothesisLike[], family: Family
 function guaranteedFamilyFallbacks(family: Family): string[] {
   if (family === "mystery_family") return ["murder investigation novel", "crime detective fiction", "psychological mystery novel", "private investigator mystery novel", "cold case mystery novel"];
   if (family === "science_fiction_family") return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction", "psychological science fiction novel"];
-  if (family === "speculative_family") return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
+  if (family === "fantasy_family") return ["epic fantasy novel", "high fantasy novel", "magic fantasy novel", "quest fantasy novel", "character driven fantasy novel"];
+  if (family === "horror_family") return ["psychological horror novel", "survival horror novel", "haunted house horror novel", "supernatural horror novel"];
+  if (family === "speculative_family") return ["science fiction novel", "epic fantasy novel", "psychological horror novel"];
   if (family === "thriller_family") return ["missing person thriller novel", "serial killer investigation thriller novel", "crime conspiracy thriller novel", "obsession psychological thriller novel", "procedural crime thriller novel"];
   if (family === "historical_family") return [
     "historical fiction novel",
@@ -215,13 +230,15 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
   const isScienceFiction =
     !isHorror &&
     !isFantasy &&
-    genreKeys.some((key) => ["science fiction", "dystopian"].includes(key)) ||
-    descriptiveQueriesLower.some((q) => /science fiction|dystopian|space opera|artificial intelligence|\bai\b/.test(q));
+    (
+      genreKeys.some((key) => ["science fiction", "dystopian"].includes(key)) ||
+      descriptiveQueriesLower.some((q) => /science fiction|dystopian|space opera|artificial intelligence|\bai\b/.test(q))
+    );
 
   if (isHorror) {
-    family = "speculative_family";
+    family = "horror_family";
   } else if (isFantasy) {
-    family = "speculative_family";
+    family = "fantasy_family";
   } else if (isScienceFiction) {
     family = "science_fiction_family";
   } else if (isRomance) {

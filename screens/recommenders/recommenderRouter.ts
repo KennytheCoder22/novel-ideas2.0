@@ -129,9 +129,10 @@ function buildRouterBucketPlan(input: RecommenderInput) {
 }
 
 
-function inferRouterFamily(bucketPlan: any): "horror" | "mystery" | "thriller" | "science_fiction" | "speculative" | "romance" | "historical" | "general" {
+function inferRouterFamily(bucketPlan: any): "fantasy" | "horror" | "mystery" | "thriller" | "science_fiction" | "speculative" | "romance" | "historical" | "general" {
   const explicitLane = String(bucketPlan?.lane || "").toLowerCase();
 
+  if (explicitLane === "fantasy") return "fantasy";
   if (explicitLane === "horror") return "horror";
   if (explicitLane === "mystery") return "mystery";
   if (explicitLane === "thriller") return "thriller";
@@ -182,6 +183,18 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
     return quoteIfNeeded("science fiction novel");
+  }
+
+  if (family === "fantasy") {
+    if (base) return quoteIfNeeded(base);
+    if (preview) return quoteIfNeeded(preview);
+    return quoteIfNeeded("epic fantasy novel");
+  }
+
+  if (family === "horror") {
+    if (base) return quoteIfNeeded(base);
+    if (preview) return quoteIfNeeded(preview);
+    return quoteIfNeeded("psychological horror novel");
   }
 
   if (family === "speculative") {
@@ -785,6 +798,10 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     base,
     `${base} fiction`,
     `${base} ${negativeTerms}`,
+    family === "fantasy" && /dark/.test(lowered) ? "dark fantasy novel" : "",
+    family === "fantasy" && /magic|wizard|witch/.test(lowered) ? "magic fantasy novel" : "",
+    family === "horror" && /psychological/.test(lowered) ? "psychological horror novel" : "",
+    family === "horror" && /haunted|ghost/.test(lowered) ? "haunted house horror novel" : "",
     family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
     family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
     family === "mystery" && /psychological/.test(lowered) ? "psychological mystery novel" : "",
@@ -798,6 +815,10 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   let filteredLanes = lanes;
   if (family === "horror") {
     filteredLanes = lanes.filter((query) => isHorrorQuery(query));
+  }
+
+  if (family === "fantasy") {
+    filteredLanes = lanes.filter((query) => /fantasy|magic|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery/i.test(query));
   }
 
   const mapped: RouterQueryLane[] = filteredLanes
