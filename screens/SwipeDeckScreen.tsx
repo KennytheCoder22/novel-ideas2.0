@@ -892,7 +892,18 @@ function selectTwentyQCard(args: {
 }): SwipeDeckCard | null {
   const { deckKey, cards, tagCounts, recentCardKeys, objective } = args;
   if (!cards.length) return null;
+
+  const hasSessionEvidence =
+    recentCardKeys.length > 0 ||
+    Object.values(tagCounts || {}).some((value) => Number(value || 0) !== 0);
+
   const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys });
+
+  // First card of a fresh session should not be locked to the strongest
+  // diagnostic/20Q card. Use the already shuffled session deck plus the
+  // adaptive weighted picker so every age band starts with real variety.
+  if (!hasSessionEvidence) return fallback;
+
   if (!objective) return fallback;
 
   const recent = new Set(recentCardKeys);
@@ -1283,9 +1294,16 @@ export default function SwipeDeckScreen(props: Props) {
     totalSeenCards,
     totalCards: cards.length,
   });
-  const currentCard: SwipeDeckCard | null = !isDone
-    ? selectTwentyQCard({ deckKey, cards: remainingCards, tagCounts, recentCardKeys, objective: activeTwentyQObjective })
-    : null;
+  const currentCard: SwipeDeckCard | null = useMemo(() => {
+    if (isDone) return null;
+    return selectTwentyQCard({
+      deckKey,
+      cards: remainingCards,
+      tagCounts,
+      recentCardKeys,
+      objective: activeTwentyQObjective,
+    });
+  }, [isDone, deckKey, remainingCards, tagCounts, recentCardKeys, activeTwentyQObjective]);
 
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
 
