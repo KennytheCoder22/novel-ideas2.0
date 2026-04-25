@@ -572,16 +572,20 @@ function buildRungCandidates(queries: string[]): RungCandidate[] {
 
 
 function isHistoricalIntent(intent: QueryIntent, base: string): boolean {
+  if (base === "historical fiction") return true;
+
   const joined = clean([
     base,
     intent.baseGenre || "",
     ...(intent.subgenres || []),
     ...(intent.themes || []),
     ...(intent.tones || []),
-    ...(Array.isArray(intent.hypotheses) ? intent.hypotheses.flatMap((h) => [h?.label || "", h?.query || "", ...(h?.parts || [])]) : []),
+    ...(Array.isArray(intent.hypotheses)
+      ? intent.hypotheses.flatMap((h) => [h?.label || "", h?.query || "", ...(h?.parts || [])])
+      : []),
   ].join(" "));
 
-  return base === "historical fiction" || /\b(historical fiction|period fiction|victorian|edwardian|gilded age|19th century|civil war|world war|regency)\b/.test(joined);
+  return /\b(historical|period|victorian|edwardian|gilded|19th century|civil war|world war|regency|society|family saga)\b/.test(joined);
 }
 
 function buildHistoricalRungs(intent: QueryIntent, maxRungs = 4) {
@@ -634,6 +638,11 @@ export function build20QRungs(intent: QueryIntent, maxRungs = 4) {
   const base = normalizedBaseGenre(intent);
 
   if (isHistoricalIntent(intent, base)) {
+    const historicalRungs = buildHistoricalRungs(intent, maxRungs);
+    if (historicalRungs.length) return historicalRungs;
+  }
+
+  if (base === "historical fiction") {
     return buildHistoricalRungs(intent, maxRungs);
   }
 
