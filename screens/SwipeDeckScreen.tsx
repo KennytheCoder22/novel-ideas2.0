@@ -911,23 +911,35 @@ function selectTwentyQCard(args: {
     .map((card, index) => {
       const key = cardIdentityKey(card);
       const baseSignal = cardSignalForAxis(card, objective.axis);
-      const noveltyBonus = recent.has(key) ? -1.5 : 0.35;
+      const noveltyBonus = recent.has(key) ? -2.0 : 0.45;
       const mediaBonus = objective.axis === "realism" && cardCategoryFromTags(card as any) !== "books" ? 0.2 : 0;
       const directSignal = cardDirectAxisSignal(card, objective.axis);
-      const directBonus = Math.abs(directSignal) > 0 ? 6 + Math.abs(directSignal) * 4 : 0;
-      return { card, index, score: directBonus + baseSignal * 3 + noveltyBonus + mediaBonus };
+
+      // Direct 20Q traits are useful, but they were overpowering the picker and
+      // causing the same high-signal cards to appear in the same early order.
+      // Treat strong cards as qualified rather than automatically next.
+      const directMagnitude = Math.abs(directSignal);
+      const directBonus = directMagnitude > 0 ? Math.min(3.2, directMagnitude * 3.2) : 0;
+      const score = directBonus + baseSignal * 1.9 + noveltyBonus + mediaBonus;
+
+      return { card, index, score };
     })
     .sort((a, b) => b.score - a.score || a.index - b.index);
 
   const viable = scored.filter((entry) => entry.score > 0.5);
   if (!viable.length) return fallback;
 
-  const candidatePool = viable.slice(0, Math.min(8, viable.length));
+  // Use a broader, flatter qualified pool so every age band keeps feeling fresh
+  // after the first card while still asking useful 20Q questions.
+  const candidatePool = viable.slice(0, Math.min(18, viable.length));
   const minScore = Math.min(...candidatePool.map((entry) => entry.score));
-  const weightedPool = candidatePool.map((entry, index) => ({
-    ...entry,
-    weight: Math.max(0.05, entry.score - minScore + Math.max(0.15, 1.15 - index * 0.12)),
-  }));
+  const weightedPool = candidatePool.map((entry, index) => {
+    const normalizedScore = Math.max(0, entry.score - minScore);
+    return {
+      ...entry,
+      weight: Math.max(0.08, Math.sqrt(normalizedScore + 0.35) + Math.max(0, 0.45 - index * 0.015)),
+    };
+  });
 
   const totalWeight = weightedPool.reduce((sum, entry) => sum + entry.weight, 0);
   let roll = Math.random() * totalWeight;
