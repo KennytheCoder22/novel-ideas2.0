@@ -13,6 +13,128 @@ type HypothesisLike = {
   score?: number;
 };
 
+function getSwipeActionForRouting(value: any): string {
+  return String(
+    value?.action ??
+    value?.decision ??
+    value?.type ??
+    value?.swipe ??
+    value?.feedback ??
+    value?.rating ??
+    ""
+  ).toLowerCase().trim();
+}
+
+function isSkippedSwipeForRouting(value: any): boolean {
+  const action = getSwipeActionForRouting(value);
+  return action === "skip" || action === "skipped" || action === "pass";
+}
+
+function isNegativeSwipeForRouting(value: any): boolean {
+  const action = getSwipeActionForRouting(value);
+  return action === "dislike" || action === "left" || action === "thumbs_down" || action === "down" || action === "no";
+}
+
+function isPositiveSwipeForRouting(value: any): boolean {
+  const action = getSwipeActionForRouting(value);
+  return action === "like" || action === "right" || action === "thumbs_up" || action === "up" || action === "yes";
+}
+
+function collectSwipeTagsForRouting(value: any): string[] {
+  const sources = [
+    value?.tags,
+    value?.card?.tags,
+    value?.item?.tags,
+    value?.media?.tags,
+    value?.doc?.tags,
+    value?.signalTags,
+  ];
+
+  const out: string[] = [];
+  for (const source of sources) {
+    if (Array.isArray(source)) {
+      for (const tag of source) {
+        const cleaned = String(tag || "").toLowerCase().trim();
+        if (cleaned) out.push(cleaned);
+      }
+    }
+  }
+  return Array.from(new Set(out));
+}
+
+function findSwipeArraysForRouting(input: any): any[][] {
+  const candidates = [
+    input?.swipeHistory,
+    input?.swipes,
+    input?.cards,
+    input?.session?.swipeHistory,
+    input?.session?.swipes,
+    input?.tasteProfile?.swipeHistory,
+    input?.tasteProfile?.evidence?.swipeHistory,
+    input?.tasteProfile?.evidence?.swipes,
+  ];
+  return candidates.filter((value) => Array.isArray(value));
+}
+
+function buildDecisionTagCountsForRouting(swipes: any[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const swipe of swipes) {
+    if (isSkippedSwipeForRouting(swipe)) continue;
+    const sign = isNegativeSwipeForRouting(swipe) ? -1 : isPositiveSwipeForRouting(swipe) ? 1 : 0;
+    if (!sign) continue;
+    for (const tag of collectSwipeTagsForRouting(swipe)) {
+      counts[tag] = (counts[tag] || 0) + sign;
+    }
+  }
+  return counts;
+}
+
+function removeSkippedSwipeEvidenceForRouting<T extends RecommenderInput>(input: T): T {
+  const swipeArrays = findSwipeArraysForRouting(input as any);
+  if (!swipeArrays.length) return input;
+
+  const primarySwipes = swipeArrays.reduce((best, current) => current.length > best.length ? current : best, [] as any[]);
+  const decisionSwipes = primarySwipes.filter((swipe) => !isSkippedSwipeForRouting(swipe));
+  const decisionTagCounts = buildDecisionTagCountsForRouting(primarySwipes);
+  const hasDecisionTagCounts = Object.keys(decisionTagCounts).length > 0;
+
+  const next: any = {
+    ...(input as any),
+    swipeHistory: Array.isArray((input as any).swipeHistory) ? (input as any).swipeHistory.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).swipeHistory,
+    swipes: Array.isArray((input as any).swipes) ? (input as any).swipes.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).swipes,
+    cards: Array.isArray((input as any).cards) ? (input as any).cards.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).cards,
+  };
+
+  if ((input as any).session && typeof (input as any).session === "object") {
+    next.session = {
+      ...(input as any).session,
+      swipeHistory: Array.isArray((input as any).session.swipeHistory) ? (input as any).session.swipeHistory.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).session.swipeHistory,
+      swipes: Array.isArray((input as any).session.swipes) ? (input as any).session.swipes.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).session.swipes,
+    };
+  }
+
+  if (hasDecisionTagCounts) {
+    next.tagCounts = decisionTagCounts;
+  }
+
+  if ((input as any).tasteProfile && typeof (input as any).tasteProfile === "object") {
+    next.tasteProfile = {
+      ...(input as any).tasteProfile,
+      ...(hasDecisionTagCounts ? { runningTagCounts: decisionTagCounts, tagCounts: decisionTagCounts } : {}),
+      swipeHistory: Array.isArray((input as any).tasteProfile.swipeHistory) ? (input as any).tasteProfile.swipeHistory.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).tasteProfile.swipeHistory,
+      evidence: {
+        ...((input as any).tasteProfile.evidence || {}),
+        swipes: decisionSwipes.length,
+        feedback: decisionSwipes.filter((swipe) => isPositiveSwipeForRouting(swipe) || isNegativeSwipeForRouting(swipe)).length,
+        swipeHistory: Array.isArray((input as any).tasteProfile.evidence?.swipeHistory) ? (input as any).tasteProfile.evidence.swipeHistory.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).tasteProfile.evidence?.swipeHistory,
+      },
+    };
+  }
+
+  return next as T;
+}
+
+
 const FANTASY_DRIFT_TERMS = /\b(science fiction|sci[- ]?fi|space opera|dystopian|horror|thriller|mystery|detective|crime|romance|historical fiction)\b/i;
 const FANTASY_CORE_TERMS = /\b(fantasy|epic fantasy|high fantasy|dark fantasy|magic|magical|wizard|witch|dragon|fae|fairy|mythic|quest|kingdom|sword|sorcery)\b/i;
 const HORROR_DRIFT_TERMS = /\b(science fiction|sci[- ]?fi|space opera|dystopian|fantasy romance|romance|historical fiction|cozy mystery)\b/i;
@@ -180,8 +302,9 @@ function buildIsolatedHistoricalBucketPlan(input: RecommenderInput, descriptive:
 }
 
 export function buildBucketPlanFromTaste(input: RecommenderInput) {
-  const signals = extractQuerySignals(input);
-  const descriptive = buildDescriptiveQueriesFromTaste(input);
+  const routingInput = removeSkippedSwipeEvidenceForRouting(input);
+  const signals = extractQuerySignals(routingInput);
+  const descriptive = buildDescriptiveQueriesFromTaste(routingInput);
 
   const genreKeys = topKeys(signals.genre, 5);
   const toneKeys = topKeys(signals.tone, 4);
@@ -291,7 +414,7 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
 
   const descriptiveHypotheses = (descriptive.hypotheses || []) as HypothesisLike[];
   if (family === "historical_family" || lane === "historical") {
-    return buildIsolatedHistoricalBucketPlan(input, descriptive, descriptiveHypotheses);
+    return buildIsolatedHistoricalBucketPlan(routingInput, descriptive, descriptiveHypotheses);
   }
 
   const hypotheses = familyCompatibleHypotheses(descriptiveHypotheses, family);

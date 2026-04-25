@@ -47,6 +47,129 @@ function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
 }
 
 
+function getSwipeActionForRouting(value: any): string {
+  return String(
+    value?.action ??
+    value?.decision ??
+    value?.type ??
+    value?.swipe ??
+    value?.feedback ??
+    value?.rating ??
+    ""
+  ).toLowerCase().trim();
+}
+
+function isSkippedSwipeForRouting(value: any): boolean {
+  const action = getSwipeActionForRouting(value);
+  return action === "skip" || action === "skipped" || action === "pass";
+}
+
+function isNegativeSwipeForRouting(value: any): boolean {
+  const action = getSwipeActionForRouting(value);
+  return action === "dislike" || action === "left" || action === "thumbs_down" || action === "down" || action === "no";
+}
+
+function isPositiveSwipeForRouting(value: any): boolean {
+  const action = getSwipeActionForRouting(value);
+  return action === "like" || action === "right" || action === "thumbs_up" || action === "up" || action === "yes";
+}
+
+function collectSwipeTagsForRouting(value: any): string[] {
+  const sources = [
+    value?.tags,
+    value?.card?.tags,
+    value?.item?.tags,
+    value?.media?.tags,
+    value?.doc?.tags,
+    value?.signalTags,
+  ];
+
+  const out: string[] = [];
+  for (const source of sources) {
+    if (Array.isArray(source)) {
+      for (const tag of source) {
+        const cleaned = String(tag || "").toLowerCase().trim();
+        if (cleaned) out.push(cleaned);
+      }
+    }
+  }
+  return Array.from(new Set(out));
+}
+
+function findSwipeArraysForRouting(input: any): any[][] {
+  const candidates = [
+    input?.swipeHistory,
+    input?.swipes,
+    input?.cards,
+    input?.session?.swipeHistory,
+    input?.session?.swipes,
+    input?.tasteProfile?.swipeHistory,
+    input?.tasteProfile?.evidence?.swipeHistory,
+    input?.tasteProfile?.evidence?.swipes,
+  ];
+  return candidates.filter((value) => Array.isArray(value));
+}
+
+function buildDecisionTagCountsForRouting(swipes: any[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const swipe of swipes) {
+    if (isSkippedSwipeForRouting(swipe)) continue;
+    const sign = isNegativeSwipeForRouting(swipe) ? -1 : isPositiveSwipeForRouting(swipe) ? 1 : 0;
+    if (!sign) continue;
+    for (const tag of collectSwipeTagsForRouting(swipe)) {
+      counts[tag] = (counts[tag] || 0) + sign;
+    }
+  }
+  return counts;
+}
+
+function removeSkippedSwipeEvidenceForRouting<T extends RecommenderInput>(input: T): T {
+  const swipeArrays = findSwipeArraysForRouting(input as any);
+  if (!swipeArrays.length) return input;
+
+  const primarySwipes = swipeArrays.reduce((best, current) => current.length > best.length ? current : best, [] as any[]);
+  const decisionSwipes = primarySwipes.filter((swipe) => !isSkippedSwipeForRouting(swipe));
+  const decisionTagCounts = buildDecisionTagCountsForRouting(primarySwipes);
+  const hasDecisionTagCounts = Object.keys(decisionTagCounts).length > 0;
+
+  const next: any = {
+    ...(input as any),
+    swipeHistory: Array.isArray((input as any).swipeHistory) ? (input as any).swipeHistory.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).swipeHistory,
+    swipes: Array.isArray((input as any).swipes) ? (input as any).swipes.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).swipes,
+    cards: Array.isArray((input as any).cards) ? (input as any).cards.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).cards,
+  };
+
+  if ((input as any).session && typeof (input as any).session === "object") {
+    next.session = {
+      ...(input as any).session,
+      swipeHistory: Array.isArray((input as any).session.swipeHistory) ? (input as any).session.swipeHistory.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).session.swipeHistory,
+      swipes: Array.isArray((input as any).session.swipes) ? (input as any).session.swipes.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).session.swipes,
+    };
+  }
+
+  if (hasDecisionTagCounts) {
+    next.tagCounts = decisionTagCounts;
+  }
+
+  if ((input as any).tasteProfile && typeof (input as any).tasteProfile === "object") {
+    next.tasteProfile = {
+      ...(input as any).tasteProfile,
+      ...(hasDecisionTagCounts ? { runningTagCounts: decisionTagCounts, tagCounts: decisionTagCounts } : {}),
+      swipeHistory: Array.isArray((input as any).tasteProfile.swipeHistory) ? (input as any).tasteProfile.swipeHistory.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).tasteProfile.swipeHistory,
+      evidence: {
+        ...((input as any).tasteProfile.evidence || {}),
+        swipes: decisionSwipes.length,
+        feedback: decisionSwipes.filter((swipe) => isPositiveSwipeForRouting(swipe) || isNegativeSwipeForRouting(swipe)).length,
+        swipeHistory: Array.isArray((input as any).tasteProfile.evidence?.swipeHistory) ? (input as any).tasteProfile.evidence.swipeHistory.filter((swipe: any) => !isSkippedSwipeForRouting(swipe)) : (input as any).tasteProfile.evidence?.swipeHistory,
+      },
+    };
+  }
+
+  return next as T;
+}
+
+
+
 function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
@@ -92,8 +215,9 @@ function hasStrong20QSession(input: RecommenderInput): boolean {
 }
 
 function buildRouterBucketPlan(input: RecommenderInput) {
-  const descriptivePlan = buildDescriptiveQueriesFromTaste(input);
-  const translatedBucketPlan = buildBucketPlanFromTaste(input);
+  const routingInput = removeSkippedSwipeEvidenceForRouting(input);
+  const descriptivePlan = buildDescriptiveQueriesFromTaste(routingInput);
+  const translatedBucketPlan = buildBucketPlanFromTaste(routingInput);
 
   // Gold-standard router rule:
   // prefer the descriptive query hypothesis as primary; use translated buckets
@@ -1609,10 +1733,11 @@ export async function getRecommendations(
   input: RecommenderInput,
   override?: EngineOverride
 ): Promise<RecommendationResult> {
-  const preferredEngine = chooseEngine(input, override);
-  const baseBucketPlan = buildRouterBucketPlan(input);
+  const routingInput = removeSkippedSwipeEvidenceForRouting(input);
+  const preferredEngine = chooseEngine(routingInput, override);
+  const baseBucketPlan = buildRouterBucketPlan(routingInput);
   const routerFamily = inferRouterFamily(baseBucketPlan);
-  const hybridLaneWeights = buildHybridLaneWeights(input, baseBucketPlan);
+  const hybridLaneWeights = buildHybridLaneWeights(routingInput, baseBucketPlan);
   const isHybridMode = Object.keys(hybridLaneWeights).length > 1;
   const bucketPlan = {
     ...baseBucketPlan,
@@ -1625,18 +1750,18 @@ export async function getRecommendations(
 
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
-  const routedInput: RecommenderInput = { ...input, bucketPlan };
+  const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
   let rungs = asArray(
     build20QRungs({
       ageBand:
-        input.deckKey === "adult"
+        routingInput.deckKey === "adult"
           ? "adult"
-          : input.deckKey === "ms_hs"
+          : routingInput.deckKey === "ms_hs"
           ? "teen"
-          : input.deckKey === "36"
+          : routingInput.deckKey === "36"
           ? "pre-teen"
           : "kids",
       family:
@@ -1973,7 +2098,7 @@ const normalizedCandidates = [
     preferredRungs.has(String(c?.rawDoc?.queryRung ?? c?.queryRung ?? ""))
   );
 
-  const finalLimit = Math.max(1, Math.min(10, input.limit ?? 10));
+  const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
   const primaryIntentOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source === "openLibrary");
   const primaryIntentNonOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source !== "openLibrary");
 
@@ -2111,14 +2236,14 @@ const normalizedCandidates = [
   // router gathers a broad but sane shelf;
   // finalRecommender performs the actual preference-aware magic.
   const rankedDocs = asArray(finalRecommenderForDeck(rankingPool, input.deckKey, {
-    tasteProfile: input.tasteProfile,
-    profileOverride: input.profileOverride,
-    priorRecommendedIds: input.priorRecommendedIds,
-    priorRecommendedKeys: input.priorRecommendedKeys,
-    priorAuthors: input.priorAuthors,
-    priorSeriesKeys: input.priorSeriesKeys,
-    priorRejectedIds: input.priorRejectedIds,
-    priorRejectedKeys: input.priorRejectedKeys,
+    tasteProfile: routingInput.tasteProfile,
+    profileOverride: routingInput.profileOverride,
+    priorRecommendedIds: routingInput.priorRecommendedIds,
+    priorRecommendedKeys: routingInput.priorRecommendedKeys,
+    priorAuthors: routingInput.priorAuthors,
+    priorSeriesKeys: routingInput.priorSeriesKeys,
+    priorRejectedIds: routingInput.priorRejectedIds,
+    priorRejectedKeys: routingInput.priorRejectedKeys,
   }));
 
   const postFilteredRankedDocs = rankedDocs
@@ -2209,11 +2334,11 @@ const normalizedCandidates = [
   return {
     engineId: preferredEngine,
     engineLabel,
-    deckKey: input.deckKey,
+    deckKey: routingInput.deckKey,
     domainMode:
-      input.deckKey === "k2"
-        ? (input.domainModeOverride ?? "chapterMiddle")
-        : (input.domainModeOverride ?? "default"),
+      routingInput.deckKey === "k2"
+        ? (routingInput.domainModeOverride ?? "chapterMiddle")
+        : (routingInput.domainModeOverride ?? "default"),
     builtFromQuery:
       (google as any)?.builtFromQuery ||
       (openLibrary as any)?.builtFromQuery ||
