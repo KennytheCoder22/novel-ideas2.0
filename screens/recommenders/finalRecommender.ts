@@ -121,6 +121,24 @@ function evidenceRank(c: Candidate): number {
   return Number.isFinite(Number(c.queryRung)) ? Number(c.queryRung) : 999;
 }
 
+function isHistoricalCandidate(c: Candidate): boolean {
+  return explicitLaneForCandidate(c) === "historical";
+}
+
+function historicalDedupePreference(
+  c: Candidate,
+  isOpenLibrary: boolean,
+  filterSignals: number,
+  anchor: number
+): number {
+  let score = filterSignals + anchor;
+  if (isOpenLibrary) score += 2;
+  if (c.description) score += 1;
+  if (c.hasCover) score += 1;
+  if ((c.pageCount || 0) >= 120) score += 1;
+  return score;
+}
+
 function dedupe(candidates: Candidate[]): Candidate[] {
   const map = new Map<string, Candidate>();
 
@@ -141,6 +159,27 @@ function dedupe(candidates: Candidate[]): Candidate[] {
     const existingFilterSignals = filterSignalScore(existing);
     const currentAnchor = anchorBoost(c);
     const existingAnchor = anchorBoost(existing);
+
+    if (isHistoricalCandidate(c) || isHistoricalCandidate(existing)) {
+      const currentPreference = historicalDedupePreference(c, currentIsOpenLibrary, currentFilterSignals, currentAnchor);
+      const existingPreference = historicalDedupePreference(existing, existingIsOpenLibrary, existingFilterSignals, existingAnchor);
+
+      if (currentPreference > existingPreference) {
+        map.set(key, c);
+        continue;
+      }
+
+      if (currentPreference === existingPreference && currentRank !== existingRank) {
+        // Historical rungs are different shelves, not a strict quality order.
+        // Keep rung as a tiebreaker only so lower rungs no longer erase better alternate-rung evidence.
+        if (currentRank < existingRank) {
+          map.set(key, c);
+          continue;
+        }
+      }
+
+      continue;
+    }
 
     if (currentRank < existingRank) {
       map.set(key, c);
@@ -459,6 +498,12 @@ function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidat
 function queryMatchScore(c: Candidate): number {
   const rung = evidenceRank(c);
   if (!Number.isFinite(rung) || rung >= 999) return 0;
+
+  if (isHistoricalCandidate(c)) {
+    // Historical rungs represent complementary shelves, so do not score rung 0 as inherently better.
+    return 8;
+  }
+
   return Math.max(0, 10 - rung * 2);
 }
 
@@ -1039,6 +1084,34 @@ function pickFromPool(
   return selected;
 }
 
+function seedHistoricalRungDiversity(
+  pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  authorCounts: Map<string, number>,
+  limit: number
+): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
+  const hasHistorical = pool.some((entry) => isHistoricalCandidate(entry.candidate));
+  if (!hasHistorical) return selected;
+
+  for (const rung of [1, 2, 3]) {
+    if (selected.length >= limit) break;
+
+    const pick = pool.find((entry) => {
+      if (!isHistoricalCandidate(entry.candidate)) return false;
+      if (evidenceRank(entry.candidate) !== rung) return false;
+      return canTakeCandidate(entry.candidate, selected, authorCounts);
+    });
+
+    if (!pick) continue;
+
+    selected.push(pick);
+    const author = normalize(pick.candidate.author);
+    authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+  }
+
+  return selected;
+}
+
 export function finalRecommenderForDeck(
   candidates: Candidate[],
   _deckKey: DeckKey,
@@ -1150,6 +1223,7 @@ export function finalRecommenderForDeck(
   const authorCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
 
+  seedHistoricalRungDiversity(ordered, selected, authorCounts, MAX_RESULTS);
   pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
 
   return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown));
