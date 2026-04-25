@@ -762,7 +762,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     const openLibraryQuery = openLibraryQueryForRung({ ...rung, query: historicalBase }, bucketPlan);
     const lanes = dedupeNonEmptyQueries([
       historicalBase,
-      /fiction|novel/i.test(historicalBase) ? "" : `${historicalBase} novel`,
+      /\b(fiction|novel)\b/i.test(historicalBase) ? "" : `${historicalBase} novel`,
       `${historicalBase} ${negativeTerms}`,
     ]);
 
@@ -1422,6 +1422,18 @@ export async function getRecommendations(
     ];
   }
 
+  if (routerFamily === "historical") {
+    // Historical must keep four independent shelves. Some upstream taste plans can
+    // collapse every rung to the same base query; restore the canonical rung pack here
+    // so each fetch lane carries its own query and rung identity end-to-end.
+    rungs = [
+      { rung: 0, query: "19th century american novel" },
+      { rung: 1, query: "civil war historical fiction novel" },
+      { rung: 2, query: "family saga historical fiction novel" },
+      { rung: 3, query: "literary historical fiction novel" },
+    ];
+  }
+
   rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision" }));
 
   let google: RecommendationResult | null = null;
@@ -1441,12 +1453,31 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, bucketPlan));
 
     for (const lane of queryLanes) {
+      const laneQueryRung = Number.isFinite(Number(lane.queryRung))
+        ? Number(lane.queryRung)
+        : Number.isFinite(Number(rung?.rung))
+        ? Number(rung.rung)
+        : undefined;
+
       const laneInput: RecommenderInput = {
         ...routedInput,
         bucketPlan: {
           ...bucketPlan,
           queries: [lane.query],
           preview: lane.query,
+          // Critical: do not preserve the parent bucketPlan.rungs here. Each lane
+          // is a single fetch request. Keeping the parent rungs lets source fetchers
+          // re-expand all historical queries under the current lane/rung, which is
+          // what produced four rung labels with the same effective query identity.
+          rungs: [
+            {
+              ...(rung || {}),
+              rung: laneQueryRung,
+              query: lane.query,
+              primary: lane.query,
+              secondary: null,
+            },
+          ],
         },
       };
 
@@ -1511,6 +1542,7 @@ export async function getRecommendations(
           ...row,
           queryRung,
           queryText: row?.queryText ?? lane.query,
+          queryFamily: row?.queryFamily ?? routerFamily,
           laneKind: lane.laneKind,
         };
       });
@@ -1528,11 +1560,13 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
+          queryFamily: routerFamily,
           laneKind: lane.laneKind,
           diagnostics: {
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
+            queryFamily: routerFamily,
             laneKind: lane.laneKind,
           },
         };
