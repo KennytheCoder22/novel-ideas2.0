@@ -1292,6 +1292,112 @@ function laneBlendScore(c: Candidate): number {
   return softOverlap ? Math.min(3, maxWeight * 4) : -3;
 }
 
+
+
+function normalizeFamilyName(value: unknown): string {
+  const cleaned = String(value || "").toLowerCase().trim();
+  if (cleaned === "science_fiction_family") return "science_fiction";
+  if (cleaned === "speculative_family") return "speculative";
+  return cleaned.replace(/_family$/, "");
+}
+
+function candidateMatchesFamilyText(c: Candidate, family: string): boolean {
+  const text = haystack(c);
+  const normalizedFamily = normalizeFamilyName(family);
+
+  if (normalizedFamily === "horror") {
+    return /\bhorror\b|\bhaunted\b|\bhaunting\b|\bghost\b|\bsupernatural\b|\boccult\b|\bpossession\b|\bterror\b|\bdread\b|\bgothic\b|\bvampire\b|\bzombie\b|\bpsychological horror\b|\bsurvival horror\b|\bhaunted house\b/.test(text);
+  }
+
+  if (normalizedFamily === "thriller") {
+    return /\bthriller\b|\bsuspense\b|\bpsychological thriller\b|\bdomestic suspense\b|\bcrime thriller\b|\bserial killer\b|\bfbi\b|\bmissing person\b|\bmanhunt\b|\bfugitive\b|\bcat and mouse\b|\bnoir\b|\bprocedural\b/.test(text);
+  }
+
+  if (normalizedFamily === "mystery") {
+    return /\bmystery\b|\bdetective\b|\binvestigation\b|\bcase\b|\bprivate investigator\b|\binspector\b|\bwhodunit\b|\bcold case\b|\bpolice procedural\b/.test(text);
+  }
+
+  if (normalizedFamily === "science_fiction") {
+    return /\bscience fiction\b|\bsci[-\s]?fi\b|\bdystopian\b|\bspace opera\b|\bai\b|\bartificial intelligence\b|\brobot\b|\bandroid\b|\balien\b|\bfuture\b|\btime travel\b|\binterstellar\b/.test(text);
+  }
+
+  if (normalizedFamily === "fantasy") {
+    return /\bfantasy\b|\bmagic\b|\bmagical\b|\bwizard\b|\bwitch\b|\bdragon\b|\bfae\b|\bmythic\b|\bquest\b|\bkingdom\b|\bsword\b|\bsorcery\b/.test(text);
+  }
+
+  if (normalizedFamily === "romance") {
+    return /\bromance\b|\blove story\b|\bromantic\b|\bcourtship\b|\bmarriage\b|\bwedding\b|\bduke\b|\bearl\b|\bregency\b|\bwallflower\b|\brake\b|\bkiss\b|\blover\b/.test(text);
+  }
+
+  if (normalizedFamily === "historical") {
+    return /\bhistorical fiction\b|\bhistorical novel\b|\bperiod fiction\b|\bvictorian\b|\bedwardian\b|\bgilded age\b|\bcivil war\b|\bworld war\b|\b19th century\b|\bfamily saga\b|\bfrontier\b|\brevolution\b/.test(text);
+  }
+
+  return false;
+}
+
+function intendedSessionFamilies(c: Candidate, taste?: TasteProfile): { primary: string; weights: Record<string, number>; strongIntent: boolean } {
+  const raw: any = (c as any)?.rawDoc || {};
+  const diagnostics: any = raw?.diagnostics || (c as any)?.diagnostics || {};
+  const weights: Record<string, number> = raw?.hybridLaneWeights || diagnostics?.hybridLaneWeights || (c as any)?.hybridLaneWeights || {};
+  const primary = normalizeFamilyName(raw?.primaryLane || diagnostics?.primaryLane || raw?.queryFamily || (c as any)?.queryFamily || _candidateFamilyFromOptionsFallback(c));
+  const text = [
+    raw?.queryText,
+    diagnostics?.queryText,
+    (c as any)?.queryText,
+    raw?.bucketPlan?.preview,
+    JSON.stringify(weights || {}),
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const strongIntent = /\bhorror\b|\bhaunted\b|\bsupernatural\b|\bpsychological horror\b|\bsurvival horror\b|\bthriller\b|\bpsychological thriller\b|\bcrime thriller\b|\bmystery\b|\bdetective\b|\bscience fiction\b|\bsci[-\s]?fi\b|\bfantasy\b|\bromance\b|\bhistorical fiction\b/.test(text) || Object.keys(weights || {}).length <= 1;
+
+  const normalizedWeights: Record<string, number> = {};
+  for (const [family, weight] of Object.entries(weights || {})) {
+    const key = normalizeFamilyName(family);
+    const numeric = Number(weight || 0);
+    if (key && Number.isFinite(numeric) && numeric > 0) normalizedWeights[key] = numeric;
+  }
+
+  return { primary, weights: normalizedWeights, strongIntent };
+}
+
+function _candidateFamilyFromOptionsFallback(c: Candidate): string {
+  const lane = explicitLaneForCandidate(c);
+  return lane || "";
+}
+
+function familyAlignmentPenalty(c: Candidate, taste?: TasteProfile): number {
+  const { primary, weights, strongIntent } = intendedSessionFamilies(c, taste);
+  const candidateFamily = normalizeFamilyName(explicitLaneForCandidate(c));
+  const weightedFamilies = Object.keys(weights).filter((family) => Number(weights[family] || 0) >= 0.12);
+  const allowedFamilies = new Set(weightedFamilies.length ? weightedFamilies : primary ? [primary] : []);
+
+  if (!allowedFamilies.size || !strongIntent) return 0;
+
+  if (candidateFamily && allowedFamilies.has(candidateFamily)) return 0;
+
+  for (const family of allowedFamilies) {
+    if (candidateMatchesFamilyText(c, family)) return -2;
+  }
+
+  const text = haystack(c);
+  const isStrongOffFamilySciFi = /\b(dune|neuromancer|foundation|space opera|science fiction|sci[-\s]?fi|robot|android|alien|interstellar)\b/.test(text);
+  const isStrongOffFamilyFantasy = /\b(epic fantasy|high fantasy|wizard|dragon|kingdom|sorcery)\b/.test(text);
+  const isStrongOffFamilyRomance = /\b(romance|love story|courtship|wedding|duke|earl|regency)\b/.test(text);
+
+  let penalty = -18;
+
+  if ((allowedFamilies.has("horror") || allowedFamilies.has("mystery") || allowedFamilies.has("thriller")) && isStrongOffFamilySciFi) penalty -= 12;
+  if ((allowedFamilies.has("horror") || allowedFamilies.has("mystery") || allowedFamilies.has("thriller")) && isStrongOffFamilyFantasy) penalty -= 8;
+  if (!allowedFamilies.has("romance") && isStrongOffFamilyRomance) penalty -= 6;
+
+  // In true hybrid mode, soften the penalty slightly for the 2nd/3rd weighted lanes,
+  // but keep unrelated families below aligned candidates.
+  if (weightedFamilies.length > 1) penalty += 6;
+
+  return penalty;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1306,6 +1412,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const laneBlend = laneBlendScore(c);
+  const familyAlignment = familyAlignmentPenalty(c, taste);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
 
@@ -1315,14 +1422,14 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     authorityScore: authority,
     behaviorScore: behavior,
     narrativeScore: narrative,
-    penaltyScore: penalties,
+    penaltyScore: penalties + familyAlignment,
     genericTitlePenalty: genericPenalty,
     overfitPenalty: overfit,
     anchorBoost: anchor,
     filterSignalScore: filterSignals,
     personalAffinityScore: personalAffinity,
     laneBlendScore: laneBlend,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals + sessionFit + personalAffinity + laneBlend + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + anchor + filterSignals + sessionFit + personalAffinity + laneBlend + openLibraryRecoveredBoost,
   };
 }
 
