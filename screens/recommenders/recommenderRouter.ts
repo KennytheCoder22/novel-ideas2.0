@@ -106,24 +106,74 @@ function buildRouterBucketPlan(input: RecommenderInput) {
     ...secondaryQueries,
   ]);
 
+  const preview =
+    descriptivePlan?.preview ||
+    translatedBucketPlan?.preview ||
+    primaryQueries[0] ||
+    translatedBucketPlan?.queries?.[0] ||
+    queries[0] ||
+    "";
+
+  const intentText = [
+    descriptivePlan?.lane,
+    descriptivePlan?.family,
+    translatedBucketPlan?.lane,
+    translatedBucketPlan?.family,
+    preview,
+    ...queries,
+    ...(Array.isArray(descriptivePlan?.signals?.genres) ? descriptivePlan.signals.genres : []),
+    ...(Array.isArray(translatedBucketPlan?.signals?.genres) ? translatedBucketPlan.signals.genres : []),
+    ...(Array.isArray(descriptivePlan?.signals?.tones) ? descriptivePlan.signals.tones : []),
+    ...(Array.isArray(translatedBucketPlan?.signals?.tones) ? translatedBucketPlan.signals.tones : []),
+    ...(Array.isArray(descriptivePlan?.signals?.scenarios) ? descriptivePlan.signals.scenarios : []),
+    ...(Array.isArray(translatedBucketPlan?.signals?.scenarios) ? translatedBucketPlan.signals.scenarios : []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const explicitFamily = String(
+    descriptivePlan?.lane ||
+    descriptivePlan?.family ||
+    translatedBucketPlan?.lane ||
+    translatedBucketPlan?.family ||
+    ""
+  ).toLowerCase();
+
+  // Keep the active 20Q family stable from fetch through filter/final scoring.
+  // Mystery and thriller share many words; thriller-intent sessions should not
+  // collapse to mystery merely because the query contains murder/detective/case.
+  const resolvedFamily =
+    /\bthriller\b|\bpsychological suspense\b|\bdomestic suspense\b|\bserial killer\b|\bmissing person\b|\bmissing child\b|\babduction\b|\bfbi\b|\bmanhunt\b|\bfugitive\b|\bcrime conspiracy\b|\bspy thriller\b|\blegal thriller\b/.test(intentText)
+      ? "thriller"
+      : /\bhorror\b|\bhaunted\b|\bghost\b|\bsupernatural\b/.test(intentText)
+      ? "horror"
+      : /\bfantasy\b|\bmagic\b|\bdragon\b|\bquest\b/.test(intentText)
+      ? "fantasy"
+      : /\bscience fiction\b|\bsci-fi\b|\bdystopian\b|\bspace opera\b/.test(intentText)
+      ? "science_fiction"
+      : /\bromance\b|\blove story\b|\bregency\b/.test(intentText)
+      ? "romance"
+      : /\bhistorical\b|\bperiod fiction\b|\bgilded age\b|\b19th century\b/.test(intentText)
+      ? "historical"
+      : /\bmystery\b|\bwhodunit\b|\bprivate investigator\b|\bcold case\b|\bdetective mystery\b/.test(intentText)
+      ? "mystery"
+      : ["fantasy", "horror", "mystery", "thriller", "romance", "historical", "science_fiction", "speculative", "general"].includes(explicitFamily)
+      ? explicitFamily
+      : translatedBucketPlan?.lane || translatedBucketPlan?.family || "general";
+
   return {
     ...translatedBucketPlan,
     queries,
-    preview:
-      translatedBucketPlan?.preview ||
-      descriptivePlan?.preview ||
-      primaryQueries[0] ||
-      translatedBucketPlan?.queries?.[0] ||
-      queries[0] ||
-      "",
+    preview,
     strategy:
       descriptivePlan?.strategy && translatedBucketPlan?.strategy
-        ? `${descriptivePlan.strategy}+${translatedBucketPlan.strategy}`
+        ? `${descriptivePlan.strategy}+${translatedBucketPlan?.strategy}`
         : descriptivePlan?.strategy || translatedBucketPlan?.strategy || "router-bucket-plan",
     signals: translatedBucketPlan?.signals || descriptivePlan?.signals,
     hypotheses: translatedBucketPlan?.hypotheses || descriptivePlan?.hypotheses,
-    family: translatedBucketPlan?.family,
-    lane: translatedBucketPlan?.lane,
+    family: resolvedFamily,
+    lane: resolvedFamily,
     rungs: translatedBucketPlan?.rungs,
   };
 }

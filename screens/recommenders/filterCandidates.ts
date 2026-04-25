@@ -180,6 +180,7 @@ const THRILLER_AUTHOR_AFFINITY = new Set([
   "mary kubica",
   "lisa jewell",
   "alex michaelides",
+  "stephen king",
 ]);
 
 
@@ -279,9 +280,10 @@ function hasRichRomanceMetadata(subjects: string, description: string): boolean 
 
 function hasAuthorAffinityForFamily(author: string, family: RouterFamily): boolean {
   if (!author) return false;
-  if (family === "horror") return HORROR_AUTHOR_AFFINITY.has(author);
-  if (family === "thriller") return THRILLER_AUTHOR_AFFINITY.has(author);
-  if (family === "romance") return ROMANCE_AUTHOR_AFFINITY.has(author);
+  const matches = (set: Set<string>) => Array.from(set).some((name) => author === name || author.includes(name));
+  if (family === "horror") return matches(HORROR_AUTHOR_AFFINITY);
+  if (family === "thriller") return matches(THRILLER_AUTHOR_AFFINITY);
+  if (family === "romance") return matches(ROMANCE_AUTHOR_AFFINITY);
   return false;
 }
 
@@ -348,6 +350,15 @@ function passesOpenLibraryHistoricalRecovery(doc: any, diagnostics: FilterDiagno
 }
 
 
+
+function hasCanonicalThrillerTitle(title: string): boolean {
+  return /\b(red dragon|the silence of the lambs|hannibal|mr\.? mercedes|you|gone girl|sharp objects|dark places|the girl on the train|the silent patient|the firm|the bourne identity|the day of the jackal|the da vinci code|the woman in the window|the talented mr\.? ripley|strangers on a train|the spy who came in from the cold|killing me softly|fractured)\b/.test(title);
+}
+
+function hasThrillerOverlapSignal(combined: string): boolean {
+  return /\b(thriller|suspense|psychological|crime|murder|killer|serial killer|detective|investigation|case|missing|disappearance|abduction|fbi|procedural|police|noir|manhunt|fugitive|obsession|cat and mouse)\b/.test(combined);
+}
+
 function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostics): boolean {
   if (!isOpenLibraryLikeDoc(doc)) return false;
 
@@ -382,9 +393,11 @@ function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostic
     hardcoverRatingsCount > 0 ||
     hardcoverRating > 0;
 
+  const hasCanonicalThriller = diagnostics.family === "thriller" && hasCanonicalThrillerTitle(normalizedTitle);
   const hasAuthority =
     diagnostics.flags.authorAffinity ||
     diagnostics.flags.legitAuthority ||
+    hasCanonicalThriller ||
     hardcoverRatingsCount >= 10 ||
     hardcoverRating >= 3.7;
 
@@ -401,7 +414,9 @@ function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostic
   };
 
   const familySignal = familySignalByLane[diagnostics.family]?.test(combinedWithQuery) || false;
-  const titleOrMetadataSignal = familySignalByLane[diagnostics.family]?.test(combined) || false;
+  const titleOrMetadataSignal =
+    familySignalByLane[diagnostics.family]?.test(combined) ||
+    (diagnostics.family === "thriller" && (hasCanonicalThrillerTitle(normalizedTitle) || hasThrillerOverlapSignal(combined)));
   const fictionShape =
     diagnostics.flags.fictionPositive ||
     diagnostics.flags.strongNarrative ||
@@ -677,8 +692,8 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     );
 
   const strongNarrative =
-    /\b(novel|thriller|horror|suspense|fiction)\b/.test(title) ||
-    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|haunted|ghost|terror|dread|survive|escape)\b/.test(description);
+    /\b(novel|thriller|horror|suspense|fiction|red dragon|mr\.? mercedes|you|fractured|killing me softly|silence of the lambs|gone girl)\b/.test(title) ||
+    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|haunted|ghost|terror|dread|survive|escape|killer|serial killer|detective|case|investigation|disappearance|missing|obsession)\b/.test(description);
 
   const genericTitle =
     /^\s*novels?\b/.test(title) ||
@@ -1257,6 +1272,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       const thrillerRecoverySignals =
         diagnostics.flags.authorAffinity ||
         diagnostics.flags.legitAuthority ||
+        hasCanonicalThrillerTitle(diagnostics.title) ||
+        hasThrillerOverlapSignal([diagnostics.title, collectCategoryText(doc), collectDescriptionText(doc)].join(" ")) ||
         hardcoverRatingsCount >= 10 ||
         hardcoverRating >= 3.7;
 
@@ -1265,6 +1282,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
           "insufficient_length_or_description",
           "thriller_native_signal_required",
           "missing_or_low_quality_cover",
+          "lane_mismatch_thriller",
+          "below_shape_floor",
           "too_many_soft_failures",
         ]);
 
@@ -1359,14 +1378,13 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.rejectReasons.length > 0 &&
       diagnostics.rejectReasons.every((reason) => nonCriticalRejectReasons.has(reason));
 
-    if (isWeakSource && diagnostics.family !== "thriller" && onlyNonCriticalRejects) {
+    if (isWeakSource && onlyNonCriticalRejects) {
       diagnostics.passedChecks.push("weak_source_noncritical_reject_bypass");
       diagnostics.rejectReasons = [];
     }
 
     if (
       isOpenLibraryLike &&
-      diagnostics.family !== "thriller" &&
       !hasCriticalReject &&
       (
         diagnostics.family !== "romance" ||
@@ -1399,14 +1417,20 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
             (
               diagnostics.hasDescription ||
               diagnostics.hasRealLength ||
-              Number((doc as any)?.hardcover?.ratings_count || 0) >= 10
+              Number((doc as any)?.hardcover?.ratings_count || 0) >= 10 ||
+              (isOpenLibraryLike && diagnostics.passedChecks.includes("openlibrary_thriller_recovery_precheck")) ||
+              (isOpenLibraryLike && diagnostics.passedChecks.includes("openlibrary_source_recovery_precheck")) ||
+              (isOpenLibraryLike && hasCanonicalThrillerTitle(diagnostics.title))
             ) &&
             (
               diagnostics.ratingsCount >= 5 ||
               diagnostics.flags.legitAuthority ||
               Number((doc as any)?.hardcover?.ratings_count || 0) >= 10 ||
               Number((doc as any)?.hardcover?.rating || 0) >= 3.7 ||
-              diagnostics.flags.authorAffinity
+              diagnostics.flags.authorAffinity ||
+              (isOpenLibraryLike && diagnostics.passedChecks.includes("openlibrary_thriller_recovery_precheck")) ||
+              (isOpenLibraryLike && diagnostics.passedChecks.includes("openlibrary_source_recovery_precheck")) ||
+              (isOpenLibraryLike && hasCanonicalThrillerTitle(diagnostics.title))
             )
           )
         : (

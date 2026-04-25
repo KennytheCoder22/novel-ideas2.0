@@ -91,14 +91,22 @@ function haystack(c: Candidate): string {
 function explicitLaneForCandidate(c: Candidate): string {
   const rawDoc: any = c?.rawDoc || {};
   const diagnostics = rawDoc?.diagnostics || {};
-  return String(
+  const family = String(
     diagnostics?.filterFamily ||
-    rawDoc?.laneKind ||
-    (c as any)?.laneKind ||
+    diagnostics?.filterDiagnostics?.family ||
+    rawDoc?.filterFamily ||
     rawDoc?.queryFamily ||
     (c as any)?.queryFamily ||
+    rawDoc?.lane ||
+    (c as any)?.lane ||
+    rawDoc?.laneKind ||
+    (c as any)?.laneKind ||
     ""
   ).toLowerCase();
+
+  if (family === "science_fiction_family") return "science_fiction";
+  if (family === "speculative_family") return "speculative";
+  return family;
 }
 
 function isValidCandidate(c: Candidate): boolean {
@@ -473,6 +481,7 @@ function filterSignalScore(c: Candidate): number {
   if (passedChecks.includes('openlibrary_fantasy_recovery')) score += 5;
   if (passedChecks.includes('openlibrary_source_recovery_precheck')) score += 5;
   if (passedChecks.includes('openlibrary_source_recovery')) score += 6;
+  if (passedChecks.includes('openlibrary_thriller_recovery_precheck')) score += 6;
   if (passedChecks.includes('passed_shape_gate')) score += 2;
 
   if (isOpenLibraryCandidate(c) && flags.authorAffinity) score += 6;
@@ -482,6 +491,7 @@ function filterSignalScore(c: Candidate): number {
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_fantasy_recovery')) score += 5;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_source_recovery_precheck')) score += 5;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_source_recovery')) score += 6;
+  if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_thriller_recovery_precheck')) score += 6;
 
   return score;
 }
@@ -837,6 +847,12 @@ function anchorBoost(c: Candidate): number {
     ],
     thriller: [
       'gone girl',
+      'red dragon',
+      'mr mercedes',
+      'you',
+      'sharp objects',
+      'dark places',
+      'the silent patient',
       'the silence of the lambs',
       'the girl on the train',
       'the day of the jackal',
@@ -936,8 +952,8 @@ function anchorBoost(c: Candidate): number {
     addCanonicalBoosts(lane);
   } else {
     if (isHorror) addCanonicalBoosts('horror');
-    else if (/mystery|detective|investigation|private investigator|whodunit|case/.test(text)) addCanonicalBoosts('mystery');
     else if (isThriller) addCanonicalBoosts('thriller');
+    else if (/mystery|detective|investigation|private investigator|whodunit|case/.test(text)) addCanonicalBoosts('mystery');
     else if (/science fiction|space opera|dystopian|ai|artificial intelligence|robot|android|alien|time travel|interstellar|futuristic/.test(text)) addCanonicalBoosts('science_fiction');
     else if (isSpeculative) addCanonicalBoosts('speculative');
     else if (/fantasy|epic fantasy|high fantasy|dark fantasy|magic/.test(text)) addCanonicalBoosts('fantasy');
@@ -967,7 +983,7 @@ function anchorBoost(c: Candidate): number {
 function penaltyScore(c: Candidate): number {
   const text = haystack(c);
   const lane = String((c as any)?.laneKind || "").toLowerCase();
-  const family = String((c as any)?.queryFamily || "").toLowerCase();
+  const family = explicitLaneForCandidate(c);
   let score = 0;
 
   if (/book\s*1\b|book\s*one\b|book\s*two\b|book\s*three\b/.test(text)) score -= 6;
@@ -1056,44 +1072,13 @@ function thrillerSessionFit(c: Candidate): number {
   const text = haystack(c);
   let score = 0;
 
-  if (/\bmissing\b|\bmissing person\b/.test(text)) score += 3;
-  if (/\bpsychological\b|\bsuspense\b/.test(text)) score += 3;
-  if (/\bcrime\b|\binvestigation\b|\bdetective\b|\bfbi\b|\bprocedural\b/.test(text)) score += 2;
-  if (/\bserial killer\b/.test(text)) score += 2;
-
-  if (/\bfaith-based\b|\bforbidden love\b|\bchristian fiction\b/.test(text)) score -= 8;
-  if (/\bdomestic suspense\b/.test(text) && !/\bcrime\b|\bmissing\b|\binvestigation\b|\bdetective\b|\bfbi\b/.test(text)) {
-    score -= 3;
-  }
+  if (/\bthriller\b|\bsuspense\b|\bpsychological\b|\bcrime\b|\bmurder\b|\bkiller\b|\bserial killer\b|\bdetective\b|\binvestigation\b|\bcase\b|\bmissing\b|\bdisappearance\b|\bfbi\b|\bprocedural\b|\bnoir\b|\bobsession\b/.test(text)) score += 4;
+  if (/\bred dragon\b|\bmr\.? mercedes\b|\byou\b|\bgone girl\b|\bsharp objects\b|\bdark places\b|\bthe silent patient\b|\bthe silence of the lambs\b|\bthe girl on the train\b/.test(text)) score += 5;
+  if (/\bpsychological thriller\b|\bdomestic suspense\b|\bcrime thriller\b|\bserial killer\b|\bcat and mouse\b/.test(text)) score += 3;
+  if (/\bcozy mystery\b|\bculinary mystery\b|\bgentle mystery\b|\bcomfort read\b/.test(text)) score -= 5;
+  if (/\btrue crime\b|\bnonfiction\b|\bguide\b|\bhandbook\b|\bcriticism\b|\banalysis\b/.test(text)) score -= 6;
 
   return score;
-}
-
-
-
-function collectWeightedTerms(value: any, weight = 1, out: Map<string, number> = new Map()): Map<string, number> {
-  if (!value) return out;
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      if (typeof item === 'string') {
-        const key = normalize(item);
-        if (key) out.set(key, (out.get(key) || 0) + weight);
-      } else if (item && typeof item === 'object') {
-        const key = normalize(item.tag || item.key || item.name || item.label || item.value || item.title || item.author);
-        const rawWeight = Number(item.weight ?? item.score ?? item.count ?? 1);
-        if (key) out.set(key, (out.get(key) || 0) + weight * (Number.isFinite(rawWeight) ? rawWeight : 1));
-      }
-    }
-    return out;
-  }
-  if (typeof value === 'object') {
-    for (const [rawKey, rawValue] of Object.entries(value)) {
-      const key = normalize(rawKey);
-      const numeric = Number(rawValue);
-      if (key && Number.isFinite(numeric)) out.set(key, (out.get(key) || 0) + weight * numeric);
-    }
-  }
-  return out;
 }
 
 function collectSessionSignals(taste?: TasteProfile): { positive: Map<string, number>; negative: Map<string, number>; confidence: number } {
