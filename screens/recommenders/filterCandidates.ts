@@ -555,7 +555,18 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
   );
   const combined = [title, categories, description, author].filter(Boolean).join(" ");
-  const family = (bucketPlan?.lane || inferRouterFamily(bucketPlan)) as RouterFamily;
+  const docFamilyRaw = normalizeText(
+    doc?.queryFamily ??
+    doc?.diagnostics?.queryFamily ??
+    doc?.rawDoc?.queryFamily ??
+    doc?.lane ??
+    doc?.diagnostics?.filterFamily
+  ).replace(/_family$/, "");
+  const family = (
+    bucketPlan?.hybridMode && ["fantasy", "horror", "mystery", "thriller", "science_fiction", "speculative", "romance", "historical", "general"].includes(docFamilyRaw)
+      ? docFamilyRaw
+      : (bucketPlan?.lane || inferRouterFamily(bucketPlan))
+  ) as RouterFamily;
   const isHorrorLane = family === "horror";
   const horrorToneWanted = isHorrorLane && wantsHorrorTone(bucketPlan);
 

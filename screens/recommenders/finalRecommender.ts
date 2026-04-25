@@ -40,6 +40,7 @@ export type ScoreBreakdown = {
   anchorBoost: number;
   filterSignalScore: number;
   personalAffinityScore: number;
+  laneBlendScore: number;
   finalScore: number;
 };
 
@@ -1226,6 +1227,38 @@ function buildPersonalFitReasons(c: Candidate, taste?: TasteProfile): string[] {
   return reasons;
 }
 
+
+function laneBlendScore(c: Candidate): number {
+  const raw: any = (c as any)?.rawDoc || {};
+  const weights = raw?.hybridLaneWeights || raw?.diagnostics?.hybridLaneWeights || (c as any)?.hybridLaneWeights;
+  if (!weights || typeof weights !== "object") return 0;
+
+  const lane = explicitLaneForCandidate(c);
+  const normalizedLane = lane === "science_fiction_family" ? "science_fiction" : lane.replace(/_family$/, "");
+  const weight = Number(weights[normalizedLane] || 0);
+  const values = Object.values(weights).map((value: any) => Number(value || 0)).filter((value) => value > 0);
+  if (!values.length) return 0;
+
+  const maxWeight = Math.max(...values);
+  if (weight > 0) return Math.max(1, Math.min(8, weight * 10));
+
+  const text = haystack(c);
+  const softOverlap = Object.entries(weights).some(([family, rawWeight]) => {
+    const w = Number(rawWeight || 0);
+    if (w < 0.16) return false;
+    if (family === "thriller") return /thriller|suspense|crime|serial killer|missing|fbi|procedural/.test(text);
+    if (family === "mystery") return /mystery|detective|investigation|case|whodunit|cold case/.test(text);
+    if (family === "horror") return /horror|haunted|ghost|supernatural|occult|terror|dread/.test(text);
+    if (family === "fantasy") return /fantasy|magic|wizard|dragon|quest|kingdom/.test(text);
+    if (family === "science_fiction") return /science fiction|sci-fi|dystopian|space opera|ai|robot|alien|future/.test(text);
+    if (family === "romance") return /romance|love story|marriage|courtship|kiss/.test(text);
+    if (family === "historical") return /historical|period fiction|victorian|civil war|world war|19th century/.test(text);
+    return false;
+  });
+
+  return softOverlap ? Math.min(3, maxWeight * 4) : -3;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1239,6 +1272,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const filterSignals = filterSignalScore(c);
   const sessionFit = explicitLaneForCandidate(c) === "mystery" ? mysterySessionFit(c) : thrillerSessionFit(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
+  const laneBlend = laneBlendScore(c);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
 
@@ -1254,7 +1288,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     anchorBoost: anchor,
     filterSignalScore: filterSignals,
     personalAffinityScore: personalAffinity,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals + sessionFit + personalAffinity + openLibraryRecoveredBoost,
+    laneBlendScore: laneBlend,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + genericPenalty + overfit + anchor + filterSignals + sessionFit + personalAffinity + laneBlend + openLibraryRecoveredBoost,
   };
 }
 

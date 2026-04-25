@@ -779,6 +779,141 @@ type RouterQueryLane = {
   queryRung?: number;
 };
 
+
+type RouterFamilyKey = ReturnType<typeof inferRouterFamily>;
+
+const ROUTER_FAMILIES: RouterFamilyKey[] = [
+  "fantasy",
+  "horror",
+  "mystery",
+  "thriller",
+  "science_fiction",
+  "romance",
+  "historical",
+];
+
+function normalizeRouterFamilyValue(value: unknown): RouterFamilyKey | null {
+  const cleaned = String(value || "").toLowerCase().trim();
+  if (cleaned === "science_fiction_family") return "science_fiction";
+  if (cleaned === "speculative_family") return "speculative";
+  const withoutFamily = cleaned.replace(/_family$/, "");
+  if ([...ROUTER_FAMILIES, "speculative", "general"].includes(withoutFamily as RouterFamilyKey)) {
+    return withoutFamily as RouterFamilyKey;
+  }
+  return null;
+}
+
+function collectHybridSignalText(input: RecommenderInput, bucketPlan: any): string {
+  const safeJson = (value: unknown) => {
+    try { return JSON.stringify(value || {}); } catch { return ""; }
+  };
+
+  return [
+    safeJson((input as any)?.tagCounts),
+    safeJson((input as any)?.tasteProfile),
+    safeJson((input as any)?.profileOverride),
+    safeJson(bucketPlan?.signals),
+    safeJson(bucketPlan?.hypotheses),
+    String(bucketPlan?.preview || ""),
+    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+  ].join(" ").toLowerCase();
+}
+
+function buildHybridLaneWeights(input: RecommenderInput, bucketPlan: any): Record<string, number> {
+  const text = collectHybridSignalText(input, bucketPlan);
+  const scores: Record<string, number> = {
+    fantasy: 0,
+    horror: 0,
+    mystery: 0,
+    thriller: 0,
+    science_fiction: 0,
+    romance: 0,
+    historical: 0,
+  };
+
+  const patterns: Array<[keyof typeof scores, RegExp, number]> = [
+    ["thriller", /\b(thriller|suspense|psychological thriller|serial killer|missing person|manhunt|fugitive|crime conspiracy|legal thriller|spy thriller|abduction)\b/g, 1.5],
+    ["mystery", /\b(mystery|detective|whodunit|private investigator|cold case|murder investigation|crime detective|case|investigation)\b/g, 1.35],
+    ["horror", /\b(horror|haunted|ghost|supernatural|occult|possession|monster|terror|dread|gothic|vampire|zombie)\b/g, 1.45],
+    ["fantasy", /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery)\b/g, 1.4],
+    ["science_fiction", /\b(science fiction|sci-fi|sci fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|future|time travel|interstellar)\b/g, 1.45],
+    ["romance", /\b(romance|love story|romantic|courtship|marriage|wedding|duke|earl|regency|wallflower|rake|kiss|lover|second chance|forbidden love)\b/g, 1.25],
+    ["historical", /\b(historical|historical fiction|period fiction|victorian|edwardian|gilded age|civil war|world war|19th century|family saga|frontier|revolution)\b/g, 1.25],
+  ];
+
+  for (const [family, rx, weight] of patterns) {
+    const matches = text.match(rx);
+    if (matches?.length) scores[family] += matches.length * weight;
+  }
+
+  const explicit = normalizeRouterFamilyValue(bucketPlan?.lane || bucketPlan?.family);
+  if (explicit && scores[explicit] !== undefined) scores[explicit] += 2.5;
+
+  const ranked = Object.entries(scores)
+    .filter(([, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  if (!ranked.length) return { [inferRouterFamily(bucketPlan)]: 1 };
+
+  const total = ranked.reduce((sum, [, score]) => sum + score, 0) || 1;
+  const normalized = ranked.map(([family, score]) => [family, score / total] as [string, number]);
+  const [topFamily, topWeight] = normalized[0];
+  const secondWeight = normalized[1]?.[1] || 0;
+
+  const isHybrid = topWeight < 0.62 && secondWeight >= 0.16;
+  if (!isHybrid) return { [topFamily]: 1 };
+
+  const out: Record<string, number> = {};
+  let selectedTotal = 0;
+  for (const [family, weight] of normalized.slice(0, 3)) {
+    if (weight < 0.12) continue;
+    out[family] = weight;
+    selectedTotal += weight;
+  }
+
+  for (const family of Object.keys(out)) out[family] = Number((out[family] / selectedTotal).toFixed(3));
+  return Object.keys(out).length > 1 ? out : { [topFamily]: 1 };
+}
+
+function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
+  if (family === "thriller") return [
+    { rung: 40, query: "psychological thriller novel" },
+    { rung: 41, query: "crime thriller novel" },
+    { rung: 42, query: "serial killer investigation thriller novel" },
+  ];
+  if (family === "mystery") return [
+    { rung: 50, query: "murder investigation novel" },
+    { rung: 51, query: "crime detective fiction" },
+    { rung: 52, query: "psychological mystery novel" },
+  ];
+  if (family === "horror") return [
+    { rung: 60, query: "psychological horror novel" },
+    { rung: 61, query: "haunted house horror novel" },
+    { rung: 62, query: "survival horror novel" },
+  ];
+  if (family === "fantasy") return [
+    { rung: 70, query: "epic fantasy novel" },
+    { rung: 71, query: "dark fantasy novel" },
+    { rung: 72, query: "magic fantasy novel" },
+  ];
+  if (family === "science_fiction") return [
+    { rung: 80, query: "science fiction novel" },
+    { rung: 81, query: "dystopian science fiction novel" },
+    { rung: 82, query: "space opera science fiction" },
+  ];
+  if (family === "romance") return [
+    { rung: 90, query: "second chance romance novel" },
+    { rung: 91, query: "emotional romance novel" },
+    { rung: 92, query: "historical romance novel" },
+  ];
+  if (family === "historical") return [
+    { rung: 100, query: "historical fiction novel" },
+    { rung: 101, query: "period fiction novel" },
+    { rung: 102, query: "family saga historical fiction novel" },
+  ];
+  return [{ rung: 999, query: "fiction novel" }];
+}
+
 function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string {
   const base = [
     "-writers", "-writer", "-writing", "-guide", "-reference", "-bibliography", "-analysis",
@@ -1447,7 +1582,18 @@ export async function getRecommendations(
   override?: EngineOverride
 ): Promise<RecommendationResult> {
   const preferredEngine = chooseEngine(input, override);
-  const bucketPlan = buildRouterBucketPlan(input);
+  const baseBucketPlan = buildRouterBucketPlan(input);
+  const routerFamily = inferRouterFamily(baseBucketPlan);
+  const hybridLaneWeights = buildHybridLaneWeights(input, baseBucketPlan);
+  const isHybridMode = Object.keys(hybridLaneWeights).length > 1;
+  const bucketPlan = {
+    ...baseBucketPlan,
+    lane: routerFamily,
+    family: routerFamily,
+    hybridMode: isHybridMode,
+    hybridLaneWeights,
+    primaryLane: routerFamily,
+  };
 
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
@@ -1455,8 +1601,6 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
-
-  const routerFamily = inferRouterFamily(bucketPlan);
   let rungs = asArray(
     build20QRungs({
       ageBand:
@@ -1534,6 +1678,21 @@ export async function getRecommendations(
     ];
   }
 
+
+  if (isHybridMode) {
+    const existingKeys = new Set(rungs.map((r: any) => normalizeQueryKey(r?.query)));
+    for (const family of Object.keys(hybridLaneWeights)) {
+      const normalizedFamily = normalizeRouterFamilyValue(family);
+      if (!normalizedFamily || normalizedFamily === routerFamily) continue;
+      for (const rung of fallbackRungsForRouterFamily(normalizedFamily).slice(0, 2)) {
+        const key = normalizeQueryKey(rung.query);
+        if (!key || existingKeys.has(key)) continue;
+        existingKeys.add(key);
+        rungs.push({ ...rung, hybridFamily: normalizedFamily });
+      }
+    }
+  }
+
   rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision" }));
 
   let google: RecommendationResult | null = null;
@@ -1550,7 +1709,16 @@ export async function getRecommendations(
   };
 
   for (const rung of rungs) {
-    const queryLanes = asArray(buildHighDiversityQueryLanes(rung, bucketPlan));
+    const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
+    const effectiveBucketPlan = {
+      ...bucketPlan,
+      lane: rungFamily,
+      family: rungFamily,
+      hybridMode: isHybridMode,
+      hybridLaneWeights,
+      primaryLane: routerFamily,
+    };
+    const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
@@ -1562,7 +1730,7 @@ export async function getRecommendations(
       const laneInput: RecommenderInput = {
         ...routedInput,
         bucketPlan: {
-          ...bucketPlan,
+          ...effectiveBucketPlan,
           queries: [lane.query],
           preview: lane.query,
           // Critical: do not preserve the parent bucketPlan.rungs here. Each lane
@@ -1642,7 +1810,9 @@ export async function getRecommendations(
           ...row,
           queryRung,
           queryText: row?.queryText ?? lane.query,
-          queryFamily: row?.queryFamily ?? routerFamily,
+          queryFamily: row?.queryFamily ?? rungFamily,
+          hybridLaneWeights,
+          primaryLane: routerFamily,
           laneKind: lane.laneKind,
         };
       });
@@ -1660,7 +1830,9 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
-          queryFamily: routerFamily,
+          queryFamily: rungFamily,
+          hybridLaneWeights,
+          primaryLane: routerFamily,
           laneKind: lane.laneKind,
           diagnostics: {
             ...(doc?.diagnostics || {}),
