@@ -1082,6 +1082,39 @@ function thrillerSessionFit(c: Candidate): number {
   return score;
 }
 
+function horrorSessionFit(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+
+  if (/\bhorror\b|\bhaunted\b|\bhaunting\b|\bghost\b|\bsupernatural\b|\boccult\b|\bpossession\b|\bterror\b|\bdread\b|\bgothic\b|\bvampire\b|\bzombie\b/.test(text)) score += 4;
+  if (/\bpsychological horror\b|\bsurvival horror\b|\bhaunted house\b|\bbody horror\b/.test(text)) score += 3;
+  if (/\bthriller\b|\bsuspense\b|\bpsychological\b/.test(text)) score += 1.5;
+  if (/\bscience fiction\b|\bspace opera\b|\brobot\b|\bandroid\b|\balien\b/.test(text)) score -= 4;
+  if (/\bcozy\b|\bheartwarming\b|\bguide\b|\bhandbook\b|\bcriticism\b|\banalysis\b/.test(text)) score -= 5;
+
+  return score;
+}
+
+function scienceFictionSessionFit(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+
+  if (/\bscience fiction\b|\bsci-fi\b|\bdystopian\b|\bspace opera\b|\bai\b|\bartificial intelligence\b|\brobot\b|\bandroid\b|\balien\b|\bfuture\b|\btime travel\b|\binterstellar\b/.test(text)) score += 4;
+  if (/\bhorror\b|\bhaunted\b|\bghost\b|\bsupernatural\b/.test(text)) score -= 3;
+  if (/\bthriller\b|\bmystery\b|\bcrime\b/.test(text) && !/\bscience fiction\b|\bdystopian\b|\bfuture\b/.test(text)) score -= 3;
+
+  return score;
+}
+
+function sessionFitScore(c: Candidate): number {
+  const lane = explicitLaneForCandidate(c);
+  if (lane === "mystery") return mysterySessionFit(c);
+  if (lane === "thriller") return thrillerSessionFit(c);
+  if (lane === "horror") return horrorSessionFit(c);
+  if (lane === "science_fiction") return scienceFictionSessionFit(c);
+  return 0;
+}
+
 
 function collectWeightedTerms(value: any, weight = 1, out: Map<string, number> = new Map()): Map<string, number> {
   if (!value) return out;
@@ -1270,7 +1303,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const overfit = overfitPenalty(c);
   const anchor = anchorBoost(c);
   const filterSignals = filterSignalScore(c);
-  const sessionFit = explicitLaneForCandidate(c) === "mystery" ? mysterySessionFit(c) : thrillerSessionFit(c);
+  const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const laneBlend = laneBlendScore(c);
   const openLibraryRecoveredBoost =

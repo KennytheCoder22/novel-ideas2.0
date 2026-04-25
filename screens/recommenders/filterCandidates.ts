@@ -555,13 +555,37 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
   );
   const combined = [title, categories, description, author].filter(Boolean).join(" ");
-  const docFamilyRaw = normalizeText(
+  const queryIntentText = normalizeText([
+    doc?.queryText,
+    doc?.diagnostics?.queryText,
+    doc?.rawDoc?.queryText,
+    doc?.rawQuery,
+    doc?.query,
+  ].filter(Boolean).join(" "));
+  const rawFamilyCandidate = normalizeText(
     doc?.queryFamily ??
     doc?.diagnostics?.queryFamily ??
     doc?.rawDoc?.queryFamily ??
     doc?.lane ??
     doc?.diagnostics?.filterFamily
   ).replace(/_family$/, "");
+  const queryIntentFamily =
+    /\b(psychological horror|survival horror|haunted house horror|horror|haunted|ghost|supernatural|occult|possession|gothic horror)\b/.test(queryIntentText)
+      ? "horror"
+      : /\b(psychological thriller|crime thriller|thriller|suspense|serial killer|missing person|manhunt|fugitive|legal thriller|spy thriller)\b/.test(queryIntentText)
+      ? "thriller"
+      : /\b(science fiction|sci-fi|dystopian|space opera|ai|robot|alien|time travel)\b/.test(queryIntentText)
+      ? "science_fiction"
+      : /\b(mystery|detective|whodunit|cold case|murder investigation)\b/.test(queryIntentText)
+      ? "mystery"
+      : /\b(fantasy|magic|dragon|quest)\b/.test(queryIntentText)
+      ? "fantasy"
+      : /\b(romance|love story|regency|courtship)\b/.test(queryIntentText)
+      ? "romance"
+      : /\b(historical fiction|historical novel|period fiction|civil war|world war|19th century)\b/.test(queryIntentText)
+      ? "historical"
+      : "";
+  const docFamilyRaw = queryIntentFamily || rawFamilyCandidate;
   const family = (
     bucketPlan?.hybridMode && ["fantasy", "horror", "mystery", "thriller", "science_fiction", "speculative", "romance", "historical", "general"].includes(docFamilyRaw)
       ? docFamilyRaw
@@ -733,7 +757,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     /\b(suspense|psychological suspense|domestic suspense|tension|cat and mouse)\b/.test(combined);
 
   const horrorAligned =
-    isHorrorLane && /\b(horror|haunted|ghost|supernatural|occult|monster|creature|survival horror|terror|dread|eerie|disturbing)\b/.test(combined);
+    isHorrorLane && /\b(horror|haunted|haunting|ghost|supernatural|occult|monster|creature|survival horror|psychological horror|haunted house|terror|dread|eerie|disturbing|gothic|possession|vampire|zombie)\b/.test([combined, queryIntentText].join(" "));
 
   const historicalPositive =
     /\b(historical fiction|historical novel|period fiction|victorian|edwardian|civil war|world war|regency|gilded age)\b/.test(
@@ -922,7 +946,13 @@ if (family === "speculative") {
   }
 
   if (family === "horror" && !horrorAligned) {
-    diagnostics.rejectReasons.push("missing_horror_alignment_hard");
+    const horrorQueryNative = /\b(psychological horror|survival horror|haunted house horror|horror|haunted|ghost|supernatural|occult|gothic horror)\b/.test(queryIntentText);
+    const thrillerOverlapNative = thrillerPositive || suspensePositive || mysteryPositive || crimePositive;
+    if (bucketPlan?.hybridMode && horrorQueryNative && thrillerOverlapNative) {
+      diagnostics.passedChecks.push("soft_horror_thriller_overlap");
+    } else {
+      diagnostics.rejectReasons.push("missing_horror_alignment_hard");
+    }
   }
 
   const softFailCount = diagnostics.passedChecks.filter((check) => check.startsWith("soft_")).length;

@@ -143,11 +143,16 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   // Keep the active 20Q family stable from fetch through filter/final scoring.
   // Mystery and thriller share many words; thriller-intent sessions should not
   // collapse to mystery merely because the query contains murder/detective/case.
+  const hasHorrorIntent =
+    /\b(psychological horror|survival horror|haunted house horror|horror|haunted|ghost|supernatural|occult|possession|monster|terror|dread|gothic horror)\b/.test(intentText);
+  const hasThrillerIntent =
+    /\b(thriller|psychological suspense|domestic suspense|serial killer|missing person|missing child|abduction|fbi|manhunt|fugitive|crime conspiracy|spy thriller|legal thriller)\b/.test(intentText);
+
   const resolvedFamily =
-    /\bthriller\b|\bpsychological suspense\b|\bdomestic suspense\b|\bserial killer\b|\bmissing person\b|\bmissing child\b|\babduction\b|\bfbi\b|\bmanhunt\b|\bfugitive\b|\bcrime conspiracy\b|\bspy thriller\b|\blegal thriller\b/.test(intentText)
-      ? "thriller"
-      : /\bhorror\b|\bhaunted\b|\bghost\b|\bsupernatural\b/.test(intentText)
+    hasHorrorIntent
       ? "horror"
+      : hasThrillerIntent
+      ? "thriller"
       : /\bfantasy\b|\bmagic\b|\bdragon\b|\bquest\b/.test(intentText)
       ? "fantasy"
       : /\bscience fiction\b|\bsci-fi\b|\bdystopian\b|\bspace opera\b/.test(intentText)
@@ -845,6 +850,29 @@ function buildHybridLaneWeights(input: RecommenderInput, bucketPlan: any): Recor
     const matches = text.match(rx);
     if (matches?.length) scores[family] += matches.length * weight;
   }
+
+  const applyNumericLaneSignals = (value: any, multiplier = 2) => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return;
+    for (const [rawKey, rawValue] of Object.entries(value)) {
+      const numeric = Number(rawValue);
+      if (!Number.isFinite(numeric) || numeric === 0) continue;
+      const key = String(rawKey || "").toLowerCase().replace(/^genre:/, "").trim();
+      const lane =
+        /science fiction|sci-fi|sci fi|dystopian|space opera/.test(key) ? "science_fiction" :
+        /horror|haunted|ghost|supernatural|gothic/.test(key) ? "horror" :
+        /thriller|suspense|serial killer|psychological/.test(key) ? "thriller" :
+        /mystery|detective|investigation|crime/.test(key) ? "mystery" :
+        /fantasy|magic|dragon/.test(key) ? "fantasy" :
+        /romance|love/.test(key) ? "romance" :
+        /historical|period|civil war|world war/.test(key) ? "historical" :
+        null;
+      if (lane && scores[lane] !== undefined) scores[lane] += numeric * multiplier;
+    }
+  };
+
+  applyNumericLaneSignals((input as any)?.tagCounts, 2.4);
+  applyNumericLaneSignals((input as any)?.tasteProfile?.runningTagCounts, 2.4);
+  applyNumericLaneSignals((input as any)?.tasteProfile?.tagCounts, 1.8);
 
   const explicit = normalizeRouterFamilyValue(bucketPlan?.lane || bucketPlan?.family);
   if (explicit && scores[explicit] !== undefined) scores[explicit] += 2.5;
@@ -1838,8 +1866,10 @@ export async function getRecommendations(
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
-            queryFamily: routerFamily,
+            queryFamily: rungFamily,
             laneKind: lane.laneKind,
+            hybridLaneWeights,
+            primaryLane: routerFamily,
           },
         };
       });
