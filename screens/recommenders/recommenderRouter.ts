@@ -948,6 +948,146 @@ function collectHybridSignalText(input: RecommenderInput, bucketPlan: any): stri
   ].join(" ").toLowerCase();
 }
 
+
+function buildDirectEvidenceLaneWeights(input: RecommenderInput): Record<string, number> {
+  const scores: Record<string, number> = {
+    fantasy: 0,
+    horror: 0,
+    mystery: 0,
+    thriller: 0,
+    science_fiction: 0,
+    romance: 0,
+    historical: 0,
+  };
+
+  const sources = [
+    (input as any)?.tagCounts,
+    (input as any)?.tasteProfile?.runningTagCounts,
+    (input as any)?.tasteProfile?.tagCounts,
+  ].filter((value) => value && typeof value === "object" && !Array.isArray(value));
+
+  for (const source of sources) {
+    for (const [rawKey, rawValue] of Object.entries(source)) {
+      const numeric = Number(rawValue);
+      if (!Number.isFinite(numeric) || numeric === 0) continue;
+
+      const rawKeyText = String(rawKey || "").toLowerCase().trim();
+      const key = rawKeyText.replace(/^genre:/, "").trim();
+
+      // Direct swipe evidence only. Do not let generated query text, fallback rungs,
+      // or broad literary/drama wording manufacture the primary lane.
+      if (/science fiction|sci-fi|sci fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|time travel|interstellar/.test(key)) {
+        scores.science_fiction += numeric * 1.35;
+      }
+      if (/mystery|detective|investigation|crime|case|murder|whodunit|private investigator|cold case/.test(key)) {
+        scores.mystery += numeric * 1.3;
+      }
+      if (/thriller|suspense|serial killer|psychological|missing person|abduction|manhunt|fugitive/.test(key)) {
+        scores.thriller += numeric * 1.25;
+      }
+      if (/horror|spooky|haunted|ghost|supernatural|gothic|occult|possession|monster|terror|dread/.test(key)) {
+        scores.horror += numeric * 1.2;
+      }
+      if (/fantasy|magic|wizard|witch|dragon|fae|mythic|quest|kingdom|sorcery/.test(key)) {
+        scores.fantasy += numeric * 1.2;
+      }
+
+      // Romance should only become a book lane from explicit book/genre-romance evidence,
+      // not from cross-media relationship tags.
+      if (/^genre:romance$/.test(rawKeyText) || /romance novel|romantic fiction|regency romance/.test(key)) {
+        scores.romance += numeric;
+      }
+
+      // Historical must be explicit positive evidence. Grounded, realistic, family,
+      // drama, literary, or social/political tags are not enough.
+      if (/^genre:historical$/.test(rawKeyText) || /\bhistorical fiction\b|\bhistorical novel\b|\bperiod fiction\b|\bgilded age\b|\bcivil war historical\b|\b19th century\b/.test(key)) {
+        scores.historical += numeric * 1.15;
+      }
+    }
+  }
+
+  const positive = Object.entries(scores)
+    .filter(([, score]) => score > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  if (!positive.length) return {};
+
+  const selected = positive.slice(0, 3).filter(([, score], index) => {
+    if (index === 0) return score >= 0.75;
+    return score >= 0.75 && score >= positive[0][1] * 0.38;
+  });
+
+  const total = selected.reduce((sum, [, score]) => sum + score, 0) || 1;
+  const out: Record<string, number> = {};
+  for (const [family, score] of selected) {
+    out[family] = Number((score / total).toFixed(3));
+  }
+
+  return out;
+}
+
+function choosePrimaryRouterFamilyFromWeights(
+  fallbackFamily: RouterFamilyKey,
+  laneWeights: Record<string, number>,
+  input: RecommenderInput
+): RouterFamilyKey {
+  const ranked = Object.entries(laneWeights || {})
+    .map(([family, weight]) => [normalizeRouterFamilyValue(family), Number(weight)] as [RouterFamilyKey | null, number])
+    .filter(([family, weight]) => Boolean(family) && Number.isFinite(weight) && weight > 0) as [RouterFamilyKey, number][];
+
+  if (!ranked.length) return fallbackFamily;
+
+  ranked.sort((a, b) => b[1] - a[1]);
+
+  const directHistorical = buildDirectEvidenceLaneWeights(input).historical || 0;
+  const topNonHistorical = ranked.find(([family]) => family !== "historical");
+
+  // Historical is a valid lane, but it should not be the default landing zone
+  // for mixed grounded/literary/drama sessions. It must have direct positive
+  // evidence to become primary.
+  if (ranked[0][0] === "historical" && directHistorical <= 0 && topNonHistorical) {
+    return topNonHistorical[0];
+  }
+
+  return ranked[0][0];
+}
+
+function mergeEvidenceLaneWeights(
+  generatedWeights: Record<string, number>,
+  evidenceWeights: Record<string, number>
+): Record<string, number> {
+  if (!Object.keys(evidenceWeights || {}).length) return generatedWeights;
+
+  const merged: Record<string, number> = {};
+
+  for (const [family, weight] of Object.entries(evidenceWeights)) {
+    const numeric = Number(weight);
+    if (Number.isFinite(numeric) && numeric > 0) merged[family] = numeric * 1.35;
+  }
+
+  for (const [family, weight] of Object.entries(generatedWeights || {})) {
+    const normalized = normalizeRouterFamilyValue(family);
+    const numeric = Number(weight);
+    if (!normalized || !Number.isFinite(numeric) || numeric <= 0) continue;
+
+    // Generated historical text is often a fallback artifact. Only keep it when
+    // direct swipe evidence also supports historical.
+    if (normalized === "historical" && !evidenceWeights.historical) continue;
+
+    merged[normalized] = (merged[normalized] || 0) + numeric * 0.35;
+  }
+
+  const ranked = Object.entries(merged)
+    .filter(([, weight]) => weight > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  const total = ranked.reduce((sum, [, weight]) => sum + weight, 0) || 1;
+  const out: Record<string, number> = {};
+  for (const [family, weight] of ranked) out[family] = Number((weight / total).toFixed(3));
+  return out;
+}
+
 function buildHybridLaneWeights(input: RecommenderInput, bucketPlan: any): Record<string, number> {
   const text = collectHybridSignalText(input, bucketPlan);
   const scores: Record<string, number> = {
@@ -1738,8 +1878,14 @@ export async function getRecommendations(
   const routingInput = removeSkippedSwipeEvidenceForRouting(input);
   const preferredEngine = chooseEngine(routingInput, override);
   const baseBucketPlan = buildRouterBucketPlan(routingInput);
-  const routerFamily = inferRouterFamily(baseBucketPlan);
-  const hybridLaneWeights = buildHybridLaneWeights(routingInput, baseBucketPlan);
+  const generatedHybridLaneWeights = buildHybridLaneWeights(routingInput, baseBucketPlan);
+  const evidenceLaneWeights = buildDirectEvidenceLaneWeights(routingInput);
+  const hybridLaneWeights = mergeEvidenceLaneWeights(generatedHybridLaneWeights, evidenceLaneWeights);
+  const routerFamily = choosePrimaryRouterFamilyFromWeights(
+    inferRouterFamily(baseBucketPlan),
+    hybridLaneWeights,
+    routingInput
+  );
   const isHybridMode = Object.keys(hybridLaneWeights).length > 1;
   const bucketPlan = {
     ...baseBucketPlan,
@@ -1783,6 +1929,7 @@ export async function getRecommendations(
           ? "historical_family"
           : "general_family",
       baseGenre:
+        fallbackRungsForRouterFamily(routerFamily)?.[0]?.query ||
         bucketPlan?.signals?.genres?.[0] ||
         bucketPlan?.queries?.[0] ||
         bucketPlan?.preview ||
