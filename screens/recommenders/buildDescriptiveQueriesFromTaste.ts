@@ -915,6 +915,98 @@ function lockedMysteryQueries(signals: QuerySignals): string[] {
 }
 
 
+
+function directDecisionTagScores(input: RecommenderInput): Record<string, number> {
+  const scores: Record<string, number> = {};
+  const sources = [
+    (input as any)?.tagCounts,
+    (input as any)?.tasteProfile?.runningTagCounts,
+    (input as any)?.tasteProfile?.tagCounts,
+  ].filter((value) => value && typeof value === "object" && !Array.isArray(value));
+
+  for (const source of sources) {
+    for (const [rawKey, rawValue] of Object.entries(source)) {
+      const key = String(rawKey || "").toLowerCase().replace(/^genre:/, "").trim();
+      const value = Number(rawValue);
+      if (!key || !Number.isFinite(value) || value === 0) continue;
+      scores[key] = (scores[key] || 0) + value;
+    }
+  }
+
+  return scores;
+}
+
+function directScore(tags: Record<string, number>, patterns: RegExp[]): number {
+  let score = 0;
+  for (const [key, value] of Object.entries(tags)) {
+    if (patterns.some((rx) => rx.test(key))) score += value;
+  }
+  return score;
+}
+
+function shouldSuppressHistoricalQueries(tags: Record<string, number>, signals: QuerySignals): boolean {
+  const directHistorical = directScore(tags, [/\bhistorical\b/, /\bhistorical fiction\b/, /\bperiod fiction\b/, /\bcivil war\b/, /\b19th century\b/]);
+  const antiHistorical = (signals.antiGenre["historical"] || 0) + (signals.antiWorld["historical"] || 0);
+  return directHistorical <= 0.25 || antiHistorical > directHistorical;
+}
+
+function tasteShapedQueries(input: RecommenderInput, signals: QuerySignals): string[] {
+  const tags = directDecisionTagScores(input);
+  const science = directScore(tags, [/science fiction/, /sci-fi/, /sci fi/, /\bai\b/, /artificial intelligence/, /technology/, /identity/]);
+  const mystery = directScore(tags, [/mystery/, /crime/, /detective/, /investigation/, /murder/, /case/]);
+  const thriller = directScore(tags, [/thriller/, /suspense/, /psychological/]);
+  const dark = directScore(tags, [/dark/, /psychological/, /identity/, /moral/, /authority/]);
+  const human = directScore(tags, [/human connection/, /redemption/, /hopeful/, /family/, /realistic/, /drama/, /character/]);
+  const romance = directScore(tags, [/romance/, /love story/, /relationship/]);
+  const antiRomance = romance < 0 || (signals.antiGenre["romance"] || 0) > 0;
+  const historical = directScore(tags, [/historical/, /period fiction/, /civil war/, /19th century/]);
+
+  const out: string[] = [];
+
+  if (science > 0.5 && (human > 0.5 || dark > 0.5)) {
+    out.push("human centered science fiction novel");
+    out.push("literary science fiction identity novel");
+    out.push("emotional speculative fiction novel");
+    out.push("psychological science fiction novel");
+  } else if (science > 0.5) {
+    out.push("literary science fiction novel");
+    out.push("psychological science fiction novel");
+    out.push("dystopian science fiction novel");
+  }
+
+  if (mystery > 0.5 || thriller > 0.5) {
+    if (dark > 0.25 || thriller > 0.25) {
+      out.push("psychological mystery novel");
+      out.push("dark crime novel");
+      out.push("psychological suspense novel");
+    }
+    out.push("crime detective fiction");
+    out.push("murder investigation novel");
+  }
+
+  if (human > 0.75 && romance <= 0.25) {
+    out.push("character driven literary fiction novel");
+    out.push("hopeful character driven fiction");
+    out.push("redemption literary fiction novel");
+  }
+
+  if (historical > 0.75 && !shouldSuppressHistoricalQueries(tags, signals)) {
+    out.push("historical fiction novel");
+  }
+
+  const cleaned = dedupe(out)
+    .filter((q) => !(antiRomance && /\bromance\b|\blove story\b/.test(q)))
+    .filter((q) => !(shouldSuppressHistoricalQueries(tags, signals) && /\bhistorical\b|\b19th century\b|\bcivil war\b/.test(q)));
+
+  return cleaned.map((query) => compactQuery(query, signals));
+}
+
+function suppressUnsupportedHistoricalQueries(queries: string[], input: RecommenderInput, signals: QuerySignals): string[] {
+  const tags = directDecisionTagScores(input);
+  if (!shouldSuppressHistoricalQueries(tags, signals)) return queries;
+  return queries.filter((query) => !/\b(19th century|civil war historical|family saga historical|literary historical|historical fiction|historical novel|period fiction)\b/i.test(query));
+}
+
 function fallbackQueries(signals: QuerySignals): string[] {
   const genre = topKeys(signals.genre, 2);
   const world = topKeys(signals.world, 2);
@@ -998,19 +1090,20 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
     .map((h) => buildQueryVariants(h.parts))
     .filter(Boolean) as QueryPack[];
 
+  const directTasteQueries = tasteShapedQueries(input, signals);
   const hypothesisQueries = queryPacks.flatMap((pack) => compactQueryPack(pack, signals));
   const fallback = fallbackQueries(signals);
   const guaranteed = guaranteedGenreFallbacks(signals);
-  const queries = dedupe(
-    hypothesisQueries.length
-      ? hypothesisQueries
-      : (fallback.length ? fallback : guaranteed)
-  );
+  const generatedQueries = dedupe([
+    ...directTasteQueries,
+    ...(hypothesisQueries.length ? hypothesisQueries : (fallback.length ? fallback : guaranteed)),
+  ]);
+  const queries = suppressUnsupportedHistoricalQueries(generatedQueries, input, signals);
 
   return {
     queries,
-    preview: queries[0] || "",
-    strategy: "20q-hypothesis-composer-v12-multi-anchor-query-packs",
+    preview: queries[0] || directTasteQueries[0] || "",
+    strategy: "20q-hypothesis-composer-v13-taste-shaped-query-packs",
     signals: {
       genres: topKeys(signals.genre, 3),
       tones: topKeys(signals.tone, 3),

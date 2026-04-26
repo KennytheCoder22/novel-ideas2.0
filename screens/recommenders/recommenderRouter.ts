@@ -223,7 +223,13 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   // prefer the descriptive query hypothesis as primary; use translated buckets
   // only as expansion, never as a replacement.
   const primaryQueries = Array.isArray(descriptivePlan?.queries) ? descriptivePlan.queries : [];
-  const secondaryQueries = Array.isArray(translatedBucketPlan?.queries) ? translatedBucketPlan.queries : [];
+  const directEvidenceWeights = buildDirectEvidenceLaneWeights(routingInput);
+  const hasDirectHistoricalEvidence = Number(directEvidenceWeights.historical || 0) > 0;
+  const secondaryQueries = (Array.isArray(translatedBucketPlan?.queries) ? translatedBucketPlan.queries : [])
+    .filter((query: string) => {
+      if (hasDirectHistoricalEvidence) return true;
+      return !/\b(19th century|civil war historical|family saga historical|literary historical|historical fiction|historical novel|period fiction)\b/i.test(String(query || ""));
+    });
 
   const queries = dedupeNonEmptyQueries([
     ...primaryQueries,
@@ -232,9 +238,9 @@ function buildRouterBucketPlan(input: RecommenderInput) {
 
   const preview =
     descriptivePlan?.preview ||
-    translatedBucketPlan?.preview ||
     primaryQueries[0] ||
-    translatedBucketPlan?.queries?.[0] ||
+    secondaryQueries[0] ||
+    (!hasDirectHistoricalEvidence ? "" : translatedBucketPlan?.preview) ||
     queries[0] ||
     "";
 
@@ -283,13 +289,13 @@ function buildRouterBucketPlan(input: RecommenderInput) {
       ? "science_fiction"
       : /\bromance novel\b|\bromantic fiction\b|\bgenre:romance\b|\bregency romance\b/.test(intentText)
       ? "romance"
-      : /\bhistorical\b|\bperiod fiction\b|\bgilded age\b|\b19th century\b/.test(intentText)
+      : hasDirectHistoricalEvidence && /\bhistorical\b|\bperiod fiction\b|\bgilded age\b|\b19th century\b/.test(intentText)
       ? "historical"
       : /\bmystery\b|\bwhodunit\b|\bprivate investigator\b|\bcold case\b|\bdetective mystery\b/.test(intentText)
       ? "mystery"
-      : ["fantasy", "horror", "mystery", "thriller", "romance", "historical", "science_fiction", "speculative", "general"].includes(explicitFamily)
+      : ["fantasy", "horror", "mystery", "thriller", "romance", "historical", "science_fiction", "speculative", "general"].includes(explicitFamily) && (explicitFamily !== "historical" || hasDirectHistoricalEvidence)
       ? explicitFamily
-      : translatedBucketPlan?.lane || translatedBucketPlan?.family || "general";
+      : (hasDirectHistoricalEvidence ? (translatedBucketPlan?.lane || translatedBucketPlan?.family) : "") || "general";
 
   return {
     ...translatedBucketPlan,
@@ -1277,6 +1283,9 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     base,
     `${base} fiction`,
     `${base} ${negativeTerms}`,
+    family === "science_fiction" && /human centered|identity|literary|emotional/.test(lowered) ? "human centered science fiction novel" : "",
+    family === "science_fiction" && /identity|literary/.test(lowered) ? "literary science fiction identity novel" : "",
+    family === "science_fiction" && /emotional|speculative/.test(lowered) ? "emotional speculative fiction novel" : "",
     family === "fantasy" && /dark/.test(lowered) ? "dark fantasy novel" : "",
     family === "fantasy" && /magic|wizard|witch/.test(lowered) ? "magic fantasy novel" : "",
     family === "horror" && /psychological/.test(lowered) ? "psychological horror novel" : "",
