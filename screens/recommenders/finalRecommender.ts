@@ -58,6 +58,26 @@ const ANCHOR_SCORE_CAP = 10;
 const NEGATIVE_TASTE_MISMATCH_PENALTY = -10;
 const MIN_TASTE_SCORE_FOR_RANKING = -2;
 
+// Temporary validation logging for the taste-shaped query rollout.
+// Set to false after filtering/ranking behavior is confirmed stable.
+const DEBUG_FINAL_RECOMMENDER_VALIDATION = true;
+
+function debugFinalLog(label: string, payload?: unknown): void {
+  if (!DEBUG_FINAL_RECOMMENDER_VALIDATION) return;
+  if (payload === undefined) console.log(`[FINAL RECOMMENDER DEBUG] ${label}`);
+  else console.log(`[FINAL RECOMMENDER DEBUG] ${label}`, payload);
+}
+
+function debugFinalPreview(label: string, entries: Array<{ candidate: Candidate; breakdown?: ScoreBreakdown }> | Candidate[], limit = 10): void {
+  if (!DEBUG_FINAL_RECOMMENDER_VALIDATION) return;
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  console.log(`[FINAL RECOMMENDER DEBUG] ${label} COUNT:`, safeEntries.length);
+  safeEntries.slice(0, limit).forEach((entry: any, index) => {
+    const candidate = entry?.candidate || entry;
+    console.log(`[FINAL RECOMMENDER DEBUG] ${label} ${index + 1}:`, candidate?.title, "|", candidate?.author, "|", candidate?.source, "| score=", entry?.breakdown?.finalScore);
+  });
+}
+
 let lastFinalRecommenderDebug: FinalRecommenderDebug = {
   inputCount: 0,
   dedupedCount: 0,
@@ -1661,6 +1681,16 @@ export function finalRecommenderForDeck(
 
   const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length >= 5 ? relaxedFallback : qualityPassed.slice(0, 10);
 
+  debugFinalLog("QUALITY FILTER SUMMARY", {
+    inputCount: input.length,
+    dedupedCount: deduped.length,
+    qualityPassedCount: qualityPassed.length,
+    relaxedFallbackCount: relaxedFallback.length,
+    baseCount: base.length,
+    rejectedCount: rejected.length,
+  });
+  debugFinalPreview("QUALITY BASE", base);
+
   buildDebug(input.length, deduped.length, base, rejected);
 
   const { tasteProfile } = _options;
@@ -1676,6 +1706,12 @@ export function finalRecommenderForDeck(
   const rankingSource = tasteRankable.length >= Math.min(10, scored.length)
     ? tasteRankable
     : scored;
+
+  debugFinalLog("RANKING SOURCE SUMMARY", {
+    scoredCount: scored.length,
+    tasteRankableCount: tasteRankable.length,
+    rankingSourceCount: rankingSource.length,
+  });
 
   const ordered = [...rankingSource].sort((a, b) => {
     const scoreDiff = b.breakdown.finalScore - a.breakdown.finalScore;
@@ -1699,6 +1735,9 @@ export function finalRecommenderForDeck(
 
   seedHistoricalRungDiversity(ordered, selected, authorCounts, MAX_RESULTS);
   pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
+
+  debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
+  debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
   return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
 }

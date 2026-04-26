@@ -148,6 +148,20 @@ const SHARED_QUALITY_TERMS = [
   "award winning",
 ];
 
+// Temporary validation logging for the taste-shaped query rollout.
+// Set to false after query/fetch behavior is confirmed stable.
+const DEBUG_TASTE_QUERY_VALIDATION = true;
+const MAX_TASTE_QUERY_COUNT = 8;
+const MAX_QUERY_WORDS = 5;
+
+function debugTasteQueries(label: string, queries: string[]): void {
+  if (!DEBUG_TASTE_QUERY_VALIDATION) return;
+
+  console.log(`=== ${label} QUERY DEBUG START ===`);
+  console.log("Final Query Count:", queries.length);
+  queries.forEach((query, index) => console.log(`Query ${index + 1}:`, query));
+  console.log(`=== ${label} QUERY DEBUG END ===`);
+}
 
 
 function dedupe(values: string[]): string[] {
@@ -866,11 +880,39 @@ function lightweightSuppressions(signals: QuerySignals): string[] {
 }
 
 function compactQuery(baseQuery: string, signals: QuerySignals): string {
-  return safeJoin([
-    baseQuery,
-    ...lightweightSuppressions(signals),
-    ...RETRIEVAL_HYGIENE_TERMS,
-  ]);
+  // Keep generated taste queries short and subgenre-shaped.
+  // Retrieval hygiene is handled downstream by filtering/ranking; adding many
+  // negative terms here was causing fetch-time query bloat and fallback collapse.
+  return normalizeFinalTasteQuery(baseQuery) || safeJoin([baseQuery]);
+}
+
+function normalizeFinalTasteQuery(query: string): string {
+  const cleaned = String(query || "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!cleaned) return "";
+
+  const withoutNegativeTerms = cleaned
+    .split(" ")
+    .filter((term) => term && !term.startsWith("-"))
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!withoutNegativeTerms) return "";
+
+  const words = withoutNegativeTerms.split(" ").filter(Boolean);
+  if (words.length <= MAX_QUERY_WORDS) return withoutNegativeTerms;
+
+  const anchor = anchorOf(withoutNegativeTerms);
+  const anchorQuery = /\b(novel|fiction)\b/.test(anchor) ? anchor : `${anchor} novel`;
+  return anchorQuery.split(" ").slice(0, MAX_QUERY_WORDS).join(" ").trim();
+}
+
+function finalizeTasteQueries(queries: string[]): string[] {
+  return dedupe(queries.map(normalizeFinalTasteQuery).filter(Boolean)).slice(0, MAX_TASTE_QUERY_COUNT);
 }
 
 function compactQueryPack(pack: QueryPack, signals: QuerySignals): string[] {
@@ -1064,7 +1106,8 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
 
   if (shouldForceMysteryQueries(signals)) {
-    const queries = lockedMysteryQueries(signals);
+    const queries = finalizeTasteQueries(lockedMysteryQueries(signals));
+    debugTasteQueries("MYSTERY LOCK", queries);
     return {
       queries,
       preview: queries[0] || "murder investigation novel",
@@ -1098,7 +1141,8 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
     ...directTasteQueries,
     ...(hypothesisQueries.length ? hypothesisQueries : (fallback.length ? fallback : guaranteed)),
   ]);
-  const queries = suppressUnsupportedHistoricalQueries(generatedQueries, input, signals);
+  const queries = finalizeTasteQueries(suppressUnsupportedHistoricalQueries(generatedQueries, input, signals));
+  debugTasteQueries("TASTE-SHAPED", queries);
 
   return {
     queries,

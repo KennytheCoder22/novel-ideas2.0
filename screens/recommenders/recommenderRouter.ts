@@ -36,6 +36,26 @@ const MIN_OPEN_LIBRARY_SURVIVORS = 3;
 const MIN_OPEN_LIBRARY_BASE_POOL = 6;
 const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
 
+// Temporary validation logging for the taste-shaped query rollout.
+// Set to false after query/fetch/filter/final behavior is confirmed stable.
+const DEBUG_RECOMMENDER_VALIDATION = true;
+
+function debugRouterLog(label: string, payload?: unknown): void {
+  if (!DEBUG_RECOMMENDER_VALIDATION) return;
+  if (payload === undefined) console.log(`[RECOMMENDER DEBUG] ${label}`);
+  else console.log(`[RECOMMENDER DEBUG] ${label}`, payload);
+}
+
+function debugDocPreview(label: string, docs: any[], limit = 10): void {
+  if (!DEBUG_RECOMMENDER_VALIDATION) return;
+  const safeDocs = Array.isArray(docs) ? docs : [];
+  console.log(`[RECOMMENDER DEBUG] ${label} COUNT:`, safeDocs.length);
+  safeDocs.slice(0, limit).forEach((doc, index) => {
+    const author = Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author;
+    console.log(`[RECOMMENDER DEBUG] ${label} ${index + 1}:`, doc?.title, "|", author, "|", doc?.source ?? doc?.rawDoc?.source);
+  });
+}
+
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
@@ -234,7 +254,16 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   const queries = dedupeNonEmptyQueries([
     ...primaryQueries,
     ...secondaryQueries,
-  ]);
+  ]).slice(0, 8);
+
+  debugRouterLog("ROUTER QUERY PLAN", {
+    deckKey: (routingInput as any)?.deckKey,
+    domainModeOverride: (routingInput as any)?.domainModeOverride,
+    primaryQueryCount: primaryQueries.length,
+    secondaryQueryCount: secondaryQueries.length,
+    finalQueryCount: queries.length,
+    queries,
+  });
 
   const preview =
     descriptivePlan?.preview ||
@@ -1814,7 +1843,15 @@ function enrichWithCommercialSignals(docs: RecommendationDoc[]): RecommendationD
 }
 
 async function runEngine(engine: EngineId, input: RecommenderInput): Promise<RecommendationResult> {
-  if (engine === "googleBooks") return getGoogleBooksRecommendations(input);
+  if (engine === "googleBooks") {
+    debugRouterLog("SENDING QUERIES TO GOOGLE BOOKS", {
+      deckKey: (input as any)?.deckKey,
+      domainModeOverride: (input as any)?.domainModeOverride,
+      queries: (input as any)?.queries ?? (input as any)?.bucketPlan?.queries,
+      query: (input as any)?.query,
+    });
+    return getGoogleBooksRecommendations(input);
+  }
 
   const domainModeOverride: DomainMode | undefined =
     input.deckKey === "k2" ? (input.domainModeOverride ?? "chapterMiddle") : input.domainModeOverride;
@@ -1822,7 +1859,15 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
   const routedInput: RecommenderInput =
     domainModeOverride === input.domainModeOverride ? input : { ...input, domainModeOverride };
 
-  if (engine === "openLibrary") return getOpenLibraryRecommendations(routedInput);
+  if (engine === "openLibrary") {
+    debugRouterLog("SENDING QUERIES TO OPEN LIBRARY", {
+      deckKey: (routedInput as any)?.deckKey,
+      domainModeOverride: (routedInput as any)?.domainModeOverride,
+      queries: (routedInput as any)?.queries ?? (routedInput as any)?.bucketPlan?.queries,
+      query: (routedInput as any)?.query,
+    });
+    return getOpenLibraryRecommendations(routedInput);
+  }
   if (engine === "kitsu") return getKitsuMangaRecommendations(routedInput);
   return getGcdGraphicNovelRecommendations(routedInput);
 }
@@ -2163,6 +2208,9 @@ export async function getRecommendations(
 
   const mergedDocs = dedupeDocs(allMergedDocs);
 
+  debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
+  debugRouterLog("RAW FETCHED BY SOURCE", aggregatedRawFetched);
+
   // Open Library gets a lightweight Hardcover pass BEFORE filtering. This is
   // enrichment-only: it never drops rows, but it gives filterCandidates earlier
   // authority signals for sparse OL records.
@@ -2176,6 +2224,8 @@ export async function getRecommendations(
   // no bestseller injection, no commercial shelf shaping, and no off-profile anchor lane.
   // Filter only the candidates retrieved from 20Q-derived rungs.
   const filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
+  debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
+  debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
 
@@ -2208,6 +2258,13 @@ export async function getRecommendations(
   const openLibraryCandidates = asArray(normalizeCandidates(openLibraryDocsEnriched, "openLibrary"));
   const kitsuCandidatesRaw = asArray(normalizeCandidates(kitsuDocsEnriched, "kitsu"));
   const gcdCandidates = asArray(normalizeCandidates(gcdDocsEnriched, "gcd"));
+
+  debugRouterLog("NORMALIZED CANDIDATES BY SOURCE", {
+    googleBooks: googleCandidates.length,
+    openLibrary: openLibraryCandidates.length,
+    kitsu: kitsuCandidatesRaw.length,
+    gcd: gcdCandidates.length,
+  });
 
   // Light dedupe for visual shelves.
   const seenTitles = new Set<string>();
@@ -2393,6 +2450,8 @@ const normalizedCandidates = [
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
   // finalRecommender performs the actual preference-aware magic.
+  debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPool);
+
   const rankedDocs = asArray(finalRecommenderForDeck(rankingPool, input.deckKey, {
     tasteProfile: routingInput.tasteProfile,
     profileOverride: routingInput.profileOverride,
@@ -2408,6 +2467,8 @@ const normalizedCandidates = [
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
 
   const finalRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit);
+
+  debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
     ...doc,
