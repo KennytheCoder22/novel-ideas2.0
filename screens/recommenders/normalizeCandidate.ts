@@ -499,6 +499,14 @@ function isNoCoverLowQualityMetaCandidate(candidate: Candidate): boolean {
   return metaShape || (weakShape && !authority && !/\b(novel|follows|story of|thriller|mystery|horror|fantasy|romance)\b/.test(description));
 }
 
+function hasCanonicalScienceFictionTitle(title: string): boolean {
+  return /\b(dune|foundation|neuromancer|the left hand of darkness|the dispossessed|the lathe of heaven|parable of the sower|kindred|fahrenheit 451|brave new world|nineteen eighty[-\s]?four|1984|we|the time machine|the war of the worlds|the handmaid'?s tale|the testaments|klara and the sun|never let me go|the road|ready player one|annihilation|the power|the passage|the giver|the hunger games|the ballad of songbirds and snakes|a voyage to arcturus)\b/.test(title);
+}
+
+function hasCanonicalScienceFictionAuthor(author: string): boolean {
+  return /\b(ursula k\.? le guin|octavia (e\. )?butler|philip k\.? dick|isaac asimov|arthur c\.? clarke|frank herbert|ray bradbury|william gibson|neal stephenson|george orwell|aldous huxley|h\. ?g\. ?wells|h g wells|margaret atwood|kazuo ishiguro|jeff vandermeer|cormac mccarthy|lois lowry|suzanne collins|ernest cline|naomi alderman|yevgeny zamyatin|evgenii zamyatin|mary shelley|justin cronin|ling ma)\b/.test(author);
+}
+
 function detectFormatCategory(
   rawDoc: any,
   source: CandidateSource,
@@ -608,11 +616,21 @@ export function normalizeCandidates(rawDocs: RecommendationDoc[], source: Candid
             cleanQueryText(candidate.queryText)
           );
 
+        const scienceFictionLaneCandidate =
+          candidate.queryFamily === 'science_fiction' ||
+          /\b(science fiction|dystopian|space opera|speculative)\b/.test(cleanQueryText(candidate.queryText));
+
+        const canonicalScienceFiction =
+          scienceFictionLaneCandidate &&
+          (hasCanonicalScienceFictionTitle(String(candidate.title || '').toLowerCase()) ||
+            hasCanonicalScienceFictionAuthor(String(candidate.author || '').toLowerCase()));
+
         return Boolean(candidate.title) && Boolean(candidate.author) && !isClearlyNotABookCandidate(candidate) && (
           looksLikeFictionCandidate(candidate.rawDoc) ||
           fantasySignal ||
           classicFantasyTitle ||
-          historicalLaneCandidate
+          historicalLaneCandidate ||
+          canonicalScienceFiction
         );
       }
 

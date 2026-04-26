@@ -31,9 +31,9 @@ const MIN_DECISION_SWIPES_FOR_FULL_ROUTER_EXPANSION = 4;
 const MIN_VISUAL_SIGNAL_FOR_KITSU = 2;
 const MIN_VISUAL_SIGNAL_FOR_GCD = 2;
 const MIN_RELAXED_FILTER_POOL = 10;
-const MIN_ROUTER_RECOVERY_POOL = 12;
-const MIN_OPEN_LIBRARY_SURVIVORS = 3;
-const MIN_OPEN_LIBRARY_BASE_POOL = 6;
+const MIN_ROUTER_RECOVERY_POOL = 30;
+const MIN_OPEN_LIBRARY_SURVIVORS = 6;
+const MIN_OPEN_LIBRARY_BASE_POOL = 10;
 const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
 
 // Temporary validation logging for the taste-shaped query rollout.
@@ -1308,10 +1308,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
       String(base || "") + " " + String(bucketPlan?.preview || "")
     );
 
+  const baseNeedsFictionVariant = base && !/\b(novel|fiction)\b/i.test(base);
   const lanes = dedupeNonEmptyQueries([
     base,
-    `${base} fiction`,
+    baseNeedsFictionVariant ? `${base} fiction` : "",
     `${base} ${negativeTerms}`,
+    family === "science_fiction" ? "literary science fiction novel" : "",
+    family === "science_fiction" ? "psychological science fiction novel" : "",
+    family === "science_fiction" ? "romantic science fiction novel" : "",
+    family === "science_fiction" ? "dystopian science fiction novel" : "",
     family === "science_fiction" && /human centered|identity|literary|emotional/.test(lowered) ? "human centered science fiction novel" : "",
     family === "science_fiction" && /identity|literary/.test(lowered) ? "literary science fiction identity novel" : "",
     family === "science_fiction" && /emotional|speculative/.test(lowered) ? "emotional speculative fiction novel" : "",
@@ -1416,7 +1421,7 @@ function hasStrongRomanceOpenLibraryFinalShape(doc: any): boolean {
 }
 
 function buildLaneQuotaPool(candidates: any[], finalLimit: number): any[] {
-  const targetSize = Math.max(finalLimit * 2, 12);
+  const targetSize = Math.max(finalLimit * 4, 30);
   const lanePriority = ["core", "ol-backfill", "strict-filtered", "dark-alt", "literary-alt", "fiction-variant", "bucket-alt"];
   const grouped = new Map<string, any[]>();
 
@@ -1503,7 +1508,7 @@ function ensureRungCoverage(candidates: any[], finalLimit: number): any[] {
     if (!key || seen.has(key)) continue;
     seen.add(key);
     selected.push(candidate);
-    if (selected.length >= Math.max(finalLimit * 2, finalLimit)) break;
+    if (selected.length >= Math.max(finalLimit * 4, finalLimit)) break;
   }
 
   return selected;
@@ -1511,7 +1516,7 @@ function ensureRungCoverage(candidates: any[], finalLimit: number): any[] {
 
 
 function ensureHistoricalRungDiversity(candidates: any[], finalLimit: number): any[] {
-  const targetSize = Math.max(finalLimit * 2, finalLimit);
+  const targetSize = Math.max(finalLimit * 4, finalLimit);
   const byRung = new Map<string, any[]>();
 
   for (const candidate of candidates) {

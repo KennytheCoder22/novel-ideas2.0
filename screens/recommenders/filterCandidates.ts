@@ -351,6 +351,14 @@ function passesOpenLibraryHistoricalRecovery(doc: any, diagnostics: FilterDiagno
 
 
 
+function hasCanonicalScienceFictionTitle(title: string): boolean {
+  return /\b(dune|foundation|neuromancer|the left hand of darkness|the dispossessed|the lathe of heaven|parable of the sower|kindred|fahrenheit 451|brave new world|nineteen eighty[-\s]?four|1984|we|the time machine|the war of the worlds|the handmaid'?s tale|the testaments|klara and the sun|never let me go|the road|ready player one|annihilation|the power|the passage|the giver|the hunger games|the ballad of songbirds and snakes|a voyage to arcturus)\b/.test(title);
+}
+
+function hasCanonicalScienceFictionAuthor(author: string): boolean {
+  return /\b(ursula k\.? le guin|octavia (e\. )?butler|philip k\.? dick|isaac asimov|arthur c\.? clarke|frank herbert|ray bradbury|william gibson|neal stephenson|george orwell|aldous huxley|h\. ?g\. ?wells|h g wells|margaret atwood|kazuo ishiguro|jeff vandermeer|cormac mccarthy|lois lowry|suzanne collins|ernest cline|naomi alderman|yevgeny zamyatin|evgenii zamyatin|mary shelley|justin cronin|ling ma)\b/.test(author);
+}
+
 function hasCanonicalThrillerTitle(title: string): boolean {
   return /\b(red dragon|the silence of the lambs|hannibal|mr\.? mercedes|you|gone girl|sharp objects|dark places|the girl on the train|the silent patient|the firm|the bourne identity|the day of the jackal|the da vinci code|the woman in the window|the talented mr\.? ripley|strangers on a train|the spy who came in from the cold|killing me softly|fractured)\b/.test(title);
 }
@@ -397,10 +405,15 @@ function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostic
     hardcoverRating > 0;
 
   const hasCanonicalThriller = diagnostics.family === "thriller" && hasCanonicalThrillerTitle(normalizedTitle);
+  const hasCanonicalScienceFiction = diagnostics.family === "science_fiction" && (
+    hasCanonicalScienceFictionTitle(normalizedTitle) ||
+    hasCanonicalScienceFictionAuthor(author)
+  );
   const hasAuthority =
     diagnostics.flags.authorAffinity ||
     diagnostics.flags.legitAuthority ||
     hasCanonicalThriller ||
+    hasCanonicalScienceFiction ||
     hardcoverRatingsCount >= 10 ||
     hardcoverRating >= 3.7;
 
@@ -419,7 +432,8 @@ function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostic
   const familySignal = familySignalByLane[diagnostics.family]?.test(combinedWithQuery) || false;
   const titleOrMetadataSignal =
     familySignalByLane[diagnostics.family]?.test(combined) ||
-    (diagnostics.family === "thriller" && (hasCanonicalThrillerTitle(normalizedTitle) || hasThrillerOverlapSignal(combined)));
+    (diagnostics.family === "thriller" && (hasCanonicalThrillerTitle(normalizedTitle) || hasThrillerOverlapSignal(combined))) ||
+    (diagnostics.family === "science_fiction" && hasCanonicalScienceFiction);
   const fictionShape =
     diagnostics.flags.fictionPositive ||
     diagnostics.flags.strongNarrative ||
@@ -429,7 +443,7 @@ function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostic
   // authority (Hardcover/canonical author) or some native title/subject/description signal.
   return Boolean(
     fictionShape &&
-    hasUsefulMetadata &&
+    (hasUsefulMetadata || hasCanonicalScienceFiction) &&
     familySignal &&
     (hasAuthority || titleOrMetadataSignal || diagnostics.flags.strongNarrative)
   );

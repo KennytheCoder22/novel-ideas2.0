@@ -60,6 +60,7 @@ const DISTINCTIVE_TERMS = new Set([
   "psychological science fiction",
   "science fiction thriller",
   "romantic science fiction",
+  "literary science fiction",
   "dark fantasy",
   "psychological mystery",
 ]);
@@ -74,6 +75,8 @@ const NARRATIVE_ANCHORS = new Set([
   "science fiction",
   "psychological science fiction",
   "science fiction thriller",
+  "romantic science fiction",
+  "literary science fiction",
   "dark fantasy",
   "psychological mystery",
   "dystopian",
@@ -322,6 +325,14 @@ function enforceSearchableStructure(parts: string[]): string[] {
     out.push("science fiction thriller");
   }
 
+  if (out.includes("science fiction") && out.includes("romance")) {
+    out.push("romantic science fiction");
+  }
+
+  if (out.includes("science fiction") && (out.includes("psychological") || out.includes("character-driven"))) {
+    out.push("literary science fiction");
+  }
+
   if (out.includes("psychological") && out.includes("fantasy")) {
     // Do not force dark fantasy for fantasy sessions; allow broader fantasy variants.
   }
@@ -358,6 +369,8 @@ function choosePrimaryAnchor(parts: string[]): string | undefined {
   if (set.has("dark fantasy")) return "dark fantasy";
   if (set.has("fantasy")) return "fantasy";
   if (set.has("psychological science fiction")) return "psychological science fiction";
+  if (set.has("romantic science fiction")) return "romantic science fiction";
+  if (set.has("literary science fiction")) return "literary science fiction";
   if (set.has("science fiction thriller")) return "science fiction thriller";
   if (set.has("psychological") && set.has("horror")) return "psychological horror";
   if ((set.has("psychological") && set.has("mystery")) || (set.has("psychological") && set.has("investigation"))) return "psychological mystery";
@@ -684,6 +697,40 @@ function stripWeakHorrorVariants(queries: string[], parts: string[]): string[] {
   );
 }
 
+function isGenericBaseQuery(query: string): boolean {
+  const q = titleSafeJoin([query]);
+  return new Set([
+    "science fiction novel",
+    "fantasy novel",
+    "horror novel",
+    "thriller novel",
+    "mystery novel",
+    "romance novel",
+    "historical fiction novel",
+  ]).has(q);
+}
+
+function prioritizeTasteQueryVariants(queries: string[], parts: string[]): string[] {
+  const seeded: string[] = [];
+  const set = new Set(parts);
+
+  // Avoid making a broad shelf like "science fiction novel" the lead query when
+  // the swipe evidence contains a more specific taste lane. The broad query is
+  // still kept as recall/backfill, just not as the primary fetch driver.
+  if (set.has("science fiction")) {
+    if (set.has("psychological") || set.has("psychological science fiction")) seeded.push("psychological science fiction novel");
+    if (set.has("romance") || set.has("romantic science fiction")) seeded.push("romantic science fiction novel");
+    if (set.has("dystopian")) seeded.push("dystopian science fiction novel");
+    if (set.has("literary science fiction") || set.has("character-driven")) seeded.push("literary science fiction novel");
+    if (set.has("science fiction thriller") || set.has("thriller")) seeded.push("science fiction thriller novel");
+  }
+
+  const normalized = dedupe([...seeded, ...queries].map(normalizeFinalTasteQuery).filter(Boolean));
+  const specific = normalized.filter((query) => !isGenericBaseQuery(query));
+  const generic = normalized.filter((query) => isGenericBaseQuery(query));
+  return [...specific, ...generic];
+}
+
 function buildQueryVariants(parts: string[]): QueryPack | undefined {
   const roleOrdered = [
     ...buildRoleQueries(parts, "core"),
@@ -692,7 +739,7 @@ function buildQueryVariants(parts: string[]): QueryPack | undefined {
     ...buildRoleQueries(parts, "controlled_explore"),
   ];
 
-  const deduped = stripWeakHorrorVariants(roleOrdered, parts).slice(0, 12);
+  const deduped = prioritizeTasteQueryVariants(stripWeakHorrorVariants(roleOrdered, parts), parts).slice(0, 12);
   if (!deduped.length) return undefined;
 
   return {
@@ -740,6 +787,8 @@ function anchorOf(query: string): string {
   const anchors = [
     "psychological science fiction",
     "science fiction thriller",
+    "romantic science fiction",
+    "literary science fiction",
     "psychological thriller",
     "psychological horror",
     "dark fantasy",
