@@ -1,6 +1,7 @@
 import type { DeckKey, RecommendationDoc, TasteProfile } from './types';
 import type { Candidate } from './normalizeCandidate';
 import { type RecommenderLane } from './recommenderProfiles';
+import { computeToneMatchScore } from './toneScoring';
 
 export type FinalRecommenderOptions = {
   lane?: RecommenderLane;
@@ -41,6 +42,7 @@ export type ScoreBreakdown = {
   filterSignalScore: number;
   personalAffinityScore: number;
   laneBlendScore: number;
+  toneScore: number;
   procurementScore: number;
   finalScore: number;
 };
@@ -1507,6 +1509,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
+  const tone = computeToneMatchScore(c, taste);
   const procurement = procurementAvailabilityScore(c);
   const familyAlignment = familyAlignmentPenalty(c, taste);
   const openLibraryRecoveredBoost =
@@ -1525,8 +1528,9 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     filterSignalScore: filterSignals,
     personalAffinityScore: personalAffinity,
     laneBlendScore: laneBlend,
+    toneScore: tone,
     procurementScore: procurement,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + procurement + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + openLibraryRecoveredBoost,
   };
 }
 
