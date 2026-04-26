@@ -125,6 +125,7 @@ function inferFamilyFromQueryText(query: string, fallback: RouterFamilyKey): Rou
 }
 
 function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey): boolean {
+  const narrativeText = [doc?.title, doc?.description].filter(Boolean).join(" ").toLowerCase();
   const text = [
     doc?.title,
     doc?.description,
@@ -134,8 +135,8 @@ function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey)
   ].filter(Boolean).join(" ").toLowerCase();
   if (!text) return false;
 
-  if (family === "thriller") return /\b(thriller|suspense|crime|murder|killer|investigation|detective|fbi|conspiracy|manhunt|abduction)\b/.test(text);
-  if (family === "mystery") return /\b(mystery|detective|investigation|crime|whodunit|private investigator)\b/.test(text);
+  if (family === "thriller") return /\b(thriller|suspense|crime|murder|killer|investigation|detective|fbi|conspiracy|manhunt|abduction)\b/.test(narrativeText);
+  if (family === "mystery") return /\b(mystery|detective|investigation|crime|whodunit|private investigator)\b/.test(narrativeText);
   if (family === "horror") return /\b(horror|haunted|ghost|supernatural|occult|dread|nightmare)\b/.test(text);
   if (family === "science_fiction" || family === "speculative") return /\b(science fiction|sci-fi|dystopian|speculative|space|alien|time travel|ai|artificial intelligence)\b/.test(text);
   if (family === "fantasy") return /\b(fantasy|magic|dragon|sorcer|witch|fae|epic fantasy|dark fantasy)\b/.test(text);
@@ -2427,6 +2428,10 @@ export async function getRecommendations(
     });
 
     candidateDocs = capNytAnchorInjections(mergedBestsellers.docs);
+    candidateDocs = candidateDocs.filter((doc) => {
+      if (!isNytAnchorDoc(doc)) return true;
+      return nytAnchorMatchesFamily(doc, routerFamily);
+    });
     nytAnchorDebug = {
       ...nytAnchorDebug,
       matched: mergedBestsellers.matchedCount,
