@@ -60,6 +60,11 @@ const GOOGLE_BOOKS_PROCUREMENT_NEGATIVE_TERMS = [
   "textbooks",
   "companion",
   "companions",
+  "series starter",
+  "book 1",
+  "book one",
+  "fbi suspense thriller",
+  "fbi thriller",
 ];
 
 function addGoogleBooksProcurementHygiene(query: string): string {
@@ -442,6 +447,8 @@ function buildToneAwareEngineQueries(query: string, input: RecommenderInput): st
 
   const axes = (input as any)?.tasteProfile?.axes || {};
   const darkness = Number(axes?.darkness || 0);
+  const warmth = Number(axes?.warmth || 0);
+  const characterFocus = Number(axes?.characterFocus || 0);
   const complexity = Number(axes?.complexity || 0);
   const realism = Number(axes?.realism || 0);
   const pacing = Number(axes?.pacing || 0);
@@ -457,10 +464,13 @@ function buildToneAwareEngineQueries(query: string, input: RecommenderInput): st
   if (!isSubjectQuery && darkness >= 0.35 && !/\b(dark|grim|noir|psychological)\b/.test(q)) {
     push(`psychological ${q}`);
   }
+  if (!isSubjectQuery && (warmth >= 0.2 || characterFocus >= 0.25) && /\b(thriller|mystery|suspense|science fiction|fantasy)\b/.test(q) && !/\b(character driven|emotional|relationship)\b/.test(q)) {
+    push(`character driven emotional ${q}`);
+  }
   if (!isSubjectQuery && complexity >= 0.3 && !/\b(literary|political|conspiracy|family saga)\b/.test(q)) {
     push(`literary ${q}`);
   }
-  if (!isSubjectQuery && realism >= 0.3 && /\b(mystery|crime|thriller|detective)\b/.test(q) && !/\b(procedural|grounded)\b/.test(q)) {
+  if (!isSubjectQuery && realism >= 0.3 && warmth < 0.15 && characterFocus < 0.2 && /\b(mystery|crime|thriller|detective)\b/.test(q) && !/\b(procedural|grounded)\b/.test(q)) {
     push(`procedural ${q}`);
   }
   if (!isSubjectQuery && pacing >= 0.3 && /\b(thriller|mystery|horror|survival)\b/.test(q) && !/\b(fast paced|high stakes)\b/.test(q)) {
