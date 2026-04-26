@@ -18,6 +18,9 @@ import { buildBucketPlanFromTaste } from "./buildBucketPlanFromTaste";
 import { buildDescriptiveQueriesFromTaste } from "./buildDescriptiveQueriesFromTaste";
 import { build20QRungs } from "./build20QRungs";
 import { filterCandidates } from "./filterCandidates";
+import { getNytBestsellerBooks } from "../../services/bestsellers/nytClient";
+import { adaptNytBooksToRecommendationDocs } from "../../services/bestsellers/nytAdapter";
+import { mergeBestsellerDocs } from "../../services/bestsellers/bestsellerMatcher";
 
 export type EngineOverride = EngineId | "auto";
 
@@ -35,6 +38,9 @@ const MIN_ROUTER_RECOVERY_POOL = 18;
 const MIN_OPEN_LIBRARY_SURVIVORS = 3;
 const MIN_OPEN_LIBRARY_BASE_POOL = 4;
 const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
+const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
+const MIN_POOL_FOR_NYT_INJECTION = 14;
+const MAX_NYT_ANCHOR_INJECTIONS = 2;
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -64,6 +70,104 @@ function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
   if (Array.isArray(value)) return value as RecommendationDoc[];
   if (value && Array.isArray(value.candidates)) return value.candidates as RecommendationDoc[];
   return [];
+}
+
+type NytAnchorDebug = {
+  enabled: boolean;
+  fetched: number;
+  matched: number;
+  injected: number;
+  allowInjections: boolean;
+  lists: string[];
+  error?: string;
+};
+
+function nytListsForRouterFamily(family: RouterFamilyKey): string[] {
+  if (family === "romance") {
+    return ["combined-print-and-e-book-fiction", "trade-fiction-paperback"];
+  }
+
+  if (family === "science_fiction" || family === "speculative" || family === "fantasy" || family === "horror") {
+    return ["combined-print-and-e-book-fiction", "hardcover-fiction", "trade-fiction-paperback"];
+  }
+
+  if (family === "mystery" || family === "thriller") {
+    return ["combined-print-and-e-book-fiction", "hardcover-fiction", "trade-fiction-paperback"];
+  }
+
+  if (family === "historical") {
+    return ["combined-print-and-e-book-fiction", "trade-fiction-paperback"];
+  }
+
+  return ["combined-print-and-e-book-fiction", "hardcover-fiction"];
+}
+
+function shouldUseNytAnchors(input: RecommenderInput): boolean {
+  if (input.deckKey !== "adult" && input.deckKey !== "ms_hs") return false;
+  return decisionSwipeCountFromTasteProfile(input) >= MIN_DECISION_SWIPES_FOR_NYT_ANCHORS;
+}
+
+function shouldAllowNytAnchorInjections(filteredCount: number, finalLimit: number): boolean {
+  return filteredCount < Math.max(MIN_POOL_FOR_NYT_INJECTION, finalLimit * 2);
+}
+
+function isNytAnchorDoc(doc: RecommendationDoc): boolean {
+  return Boolean((doc as any)?.nyt || (doc as any)?.commercialSignals?.bestseller) &&
+    String((doc as any)?.laneKind || "").toLowerCase() === "anchor";
+}
+
+function capNytAnchorInjections(docs: RecommendationDoc[], maxAnchors = MAX_NYT_ANCHOR_INJECTIONS): RecommendationDoc[] {
+  let anchorCount = 0;
+  return (Array.isArray(docs) ? docs : []).filter((doc) => {
+    if (!isNytAnchorDoc(doc)) return true;
+    anchorCount += 1;
+    return anchorCount <= maxAnchors;
+  });
+}
+
+async function fetchNytAnchorDocs(
+  input: RecommenderInput,
+  family: RouterFamilyKey
+): Promise<{ docs: RecommendationDoc[]; debug: NytAnchorDebug }> {
+  const lists = nytListsForRouterFamily(family);
+  const debug: NytAnchorDebug = {
+    enabled: shouldUseNytAnchors(input),
+    fetched: 0,
+    matched: 0,
+    injected: 0,
+    allowInjections: false,
+    lists,
+  };
+
+  if (!debug.enabled) return { docs: [], debug };
+
+  try {
+    const books = await getNytBestsellerBooks({
+      listNames: lists,
+      date: "current",
+      maxPerList: 10,
+      timeoutMs: 4500,
+    });
+
+    debug.fetched = books.length;
+    const docs = adaptNytBooksToRecommendationDocs(books).map((doc) => ({
+      ...doc,
+      queryFamily: family,
+      primaryLane: family,
+      diagnostics: {
+        ...((doc as any)?.diagnostics || {}),
+        queryFamily: family,
+        primaryLane: family,
+        laneKind: "anchor",
+        commercialBoost: "nyt-bestseller-anchor",
+      },
+    })) as RecommendationDoc[];
+
+    return { docs, debug };
+  } catch (error: any) {
+    debug.error = typeof error?.message === "string" ? error.message : "NYT bestseller fetch failed";
+    return { docs: [], debug };
+  }
 }
 
 
@@ -2253,8 +2357,8 @@ export async function getRecommendations(
   const enrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
 
   // Strict 20Q router:
-  // no bestseller injection, no commercial shelf shaping, and no off-profile anchor lane.
-  // Filter only the candidates retrieved from 20Q-derived rungs.
+  // taste comes only from 20Q-derived rungs. NYT is allowed only after filtering
+  // as a procurement/commercial anchor, never as query or taste evidence.
   const filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
   debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
@@ -2262,10 +2366,38 @@ export async function getRecommendations(
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
 
   // Centralized filtering rule:
-  // filterCandidates is the only keep/reject authority after fetch + enrichment.
-  // Do not recover source-specific docs here, because that bypasses the universal
-  // and lane-specific diagnostics in filterCandidates.
+  // filterCandidates is the only keep/reject authority for fetched candidates.
+  // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  let nytAnchorDebug: NytAnchorDebug = {
+    enabled: false,
+    fetched: 0,
+    matched: 0,
+    injected: 0,
+    allowInjections: false,
+    lists: [],
+  };
+
+  const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
+  const allowNytInjections = shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
+  const nytAnchorResult = await fetchNytAnchorDocs(routingInput, routerFamily);
+  nytAnchorDebug = { ...nytAnchorResult.debug, allowInjections: allowNytInjections };
+
+  if (nytAnchorResult.docs.length) {
+    const mergedBestsellers = mergeBestsellerDocs(candidateDocs, nytAnchorResult.docs, {
+      allowInjections: allowNytInjections,
+    });
+
+    candidateDocs = capNytAnchorInjections(mergedBestsellers.docs);
+    nytAnchorDebug = {
+      ...nytAnchorDebug,
+      matched: mergedBestsellers.matchedCount,
+      injected: Math.min(mergedBestsellers.injectedCount, MAX_NYT_ANCHOR_INJECTIONS),
+    };
+
+    debugRouterLog("NYT PROCUREMENT ANCHORS", nytAnchorDebug);
+    debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
+  }
 
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
@@ -2580,6 +2712,11 @@ const normalizedCandidates = [
       postFilterCandidates: includeGcd ? gcdCandidates.length : 0,
       finalSelected: rankedCountsBySource.gcd,
     },
+    nyt: {
+      rawFetched: nytAnchorDebug.fetched,
+      postFilterCandidates: nytAnchorDebug.matched + nytAnchorDebug.injected,
+      finalSelected: rankedDocsWithDiagnostics.filter((doc: any) => Boolean(doc?.nyt || doc?.rawDoc?.nyt)).length,
+    },
   };
 
   return {
@@ -2604,5 +2741,6 @@ const normalizedCandidates = [
     debugFilterAudit: filterAuditRows,
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: getLastFinalRecommenderDebug(),
+    debugNytAnchors: nytAnchorDebug,
   } as RecommendationResult;
 }
