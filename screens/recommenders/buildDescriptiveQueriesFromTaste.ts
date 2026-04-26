@@ -996,10 +996,10 @@ function shouldForceMysteryQueries(signals: QuerySignals): boolean {
 
 function lockedMysteryQueries(signals: QuerySignals): string[] {
   const base = [
-    "murder investigation novel",
-    "crime detective fiction",
+    "psychological suspense novel",
+    "detective thriller novel",
+    "police procedural mystery novel",
     "psychological mystery novel",
-    "private investigator mystery novel",
     "cold case mystery novel",
   ];
   return dedupe(base.map((query) => compactQuery(query, signals)).filter((q) => !/\bromance\b/.test(q)));
@@ -1055,10 +1055,11 @@ function tasteShapedQueries(input: RecommenderInput, signals: QuerySignals): str
   const out: string[] = [];
 
   if (science > 0.5 && (human > 0.5 || dark > 0.5)) {
-    out.push("human centered science fiction novel");
-    out.push("literary science fiction identity novel");
-    out.push("emotional speculative fiction novel");
     out.push("psychological science fiction novel");
+    out.push("science fiction thriller novel");
+    out.push("human centered science fiction novel");
+    out.push("literary science fiction novel");
+    out.push("emotional speculative fiction novel");
   } else if (science > 0.5) {
     out.push("literary science fiction novel");
     out.push("psychological science fiction novel");
@@ -1067,12 +1068,14 @@ function tasteShapedQueries(input: RecommenderInput, signals: QuerySignals): str
 
   if (mystery > 0.5 || thriller > 0.5) {
     if (dark > 0.25 || thriller > 0.25) {
-      out.push("psychological mystery novel");
-      out.push("dark crime novel");
       out.push("psychological suspense novel");
+      out.push("detective thriller novel");
+      out.push("crime thriller novel");
+      out.push("police procedural thriller novel");
     }
-    out.push("crime detective fiction");
-    out.push("murder investigation novel");
+    out.push("police procedural mystery novel");
+    out.push("psychological mystery novel");
+    out.push("cold case mystery novel");
   }
 
   if (human > 0.75 && romance <= 0.25) {
@@ -1123,7 +1126,13 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
   if (genres.has("fantasy")) return ["epic fantasy novel", "dark fantasy novel", "magic fantasy novel"];
   if (genres.has("horror")) return ["psychological horror novel", "survival horror novel", "haunted house horror novel"];
   if (genres.has("science fiction")) return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction"];
-  if (genres.has("mystery") || genres.has("crime")) return ["murder investigation novel", "crime detective fiction", "psychological mystery novel", "private investigator mystery novel", "cold case mystery novel"];
+  if (genres.has("mystery") || genres.has("crime")) return [
+    "psychological suspense novel",
+    "detective thriller novel",
+    "police procedural mystery novel",
+    "psychological mystery novel",
+    "cold case mystery novel",
+  ];
   if (genres.has("thriller")) return [
     "missing person thriller novel",
     "missing child thriller novel",
@@ -1159,7 +1168,7 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
     debugTasteQueries("MYSTERY LOCK", queries);
     return {
       queries,
-      preview: queries[0] || "murder investigation novel",
+      preview: queries[0] || "psychological suspense novel",
       strategy: "20q-hypothesis-composer-v12-mystery-lock",
       signals: {
         genres: topKeys(signals.genre, 3),
@@ -1168,9 +1177,9 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
         scenarios: [...topKeys(signals.scenario, 3), ...topKeys(signals.theme, 2)].slice(0, 5),
       },
       hypotheses: [
-        { label: "mystery-lock-primary", query: "murder investigation novel", parts: ["mystery", "investigation"], score: mysterySignalScore(signals) },
-        { label: "mystery-lock-secondary", query: "crime detective fiction", parts: ["crime", "detective"], score: mysterySignalScore(signals) - 0.05 },
-        { label: "mystery-lock-adjacent", query: "psychological mystery novel", parts: ["psychological", "mystery"], score: mysterySignalScore(signals) - 0.1 },
+        { label: "mystery-lock-primary", query: "psychological suspense novel", parts: ["psychological", "suspense"], score: mysterySignalScore(signals) },
+        { label: "mystery-lock-secondary", query: "detective thriller novel", parts: ["detective", "thriller"], score: mysterySignalScore(signals) - 0.05 },
+        { label: "mystery-lock-adjacent", query: "police procedural mystery novel", parts: ["police procedural", "mystery"], score: mysterySignalScore(signals) - 0.1 },
       ],
     };
   }

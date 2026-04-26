@@ -481,7 +481,7 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
     if (preview.includes("psychological")) return quoteIfNeeded("psychological mystery");
     if (preview.includes("detective")) return quoteIfNeeded("detective mystery");
     if (preview.includes("cold case")) return quoteIfNeeded("cold case mystery");
-    return quoteIfNeeded(preview || "murder investigation novel");
+    return quoteIfNeeded(preview || "psychological mystery novel");
   }
 
   if (family === "thriller") {
@@ -1314,9 +1314,10 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
     { rung: 42, query: "serial killer investigation thriller novel" },
   ];
   if (family === "mystery") return [
-    { rung: 50, query: "murder investigation novel" },
-    { rung: 51, query: "crime detective fiction" },
-    { rung: 52, query: "psychological mystery novel" },
+    { rung: 50, query: "psychological suspense novel" },
+    { rung: 51, query: "detective mystery novel" },
+    { rung: 52, query: "police procedural mystery novel" },
+    { rung: 53, query: "psychological mystery novel" },
   ];
   if (family === "horror") return [
     { rung: 60, query: "psychological horror novel" },
@@ -1455,7 +1456,8 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
     family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
     family === "mystery" && /psychological/.test(lowered) ? "psychological mystery novel" : "",
-    family === "mystery" && /murder|investigation|detective/.test(lowered) ? "crime detective fiction" : "",
+    family === "mystery" && /murder|investigation|detective/.test(lowered) ? "detective mystery novel" : "",
+    family === "mystery" && /murder|investigation|police|procedural/.test(lowered) ? "police procedural mystery novel" : "",
     family === "mystery" && !/private investigator/.test(lowered) ? "private investigator mystery novel" : "",
     family === "thriller" && /psychological/.test(lowered) ? "psychological suspense novel" : "",
     thrillerAllowsDomestic ? "domestic suspense novel" : "",
@@ -2131,10 +2133,10 @@ export async function getRecommendations(
 
   if (!rungs.length && routerFamily === "mystery") {
     rungs = [
-      { rung: 0, query: "murder investigation novel" },
-      { rung: 1, query: "crime detective fiction" },
-      { rung: 2, query: "psychological mystery novel" },
-      { rung: 3, query: "private investigator mystery novel" },
+      { rung: 0, query: "psychological suspense novel" },
+      { rung: 1, query: "detective mystery novel" },
+      { rung: 2, query: "police procedural mystery novel" },
+      { rung: 3, query: "psychological mystery novel" },
     ];
   }
 

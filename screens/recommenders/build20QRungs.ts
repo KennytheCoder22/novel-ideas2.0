@@ -164,10 +164,10 @@ thriller: [
   "procedural crime thriller novel"
 ],
 mystery: [
-  "murder investigation novel",
-  "crime detective fiction",
+  "psychological suspense novel",
+  "detective mystery novel",
+  "police procedural mystery novel",
   "psychological mystery novel",
-  "private investigator mystery novel",
   "cold case mystery novel",
 ],
   fantasy: [
@@ -196,7 +196,7 @@ const THEME_REWRITES: Array<{ pattern: RegExp; outputs: string[] }> = [
   { pattern: /\bspace\b|\bgalaxy\b|\bcosmic\b|\binterstellar\b/, outputs: ["space opera science fiction"] },
   { pattern: /\bmagic\b|\bmagical\b|\bwizard\b|\bwitch\b/, outputs: ["magic fantasy novel"] },
   { pattern: /\bghost\b|\bhaunted\b/, outputs: ["haunted house horror novel"] },
-  { pattern: /\bmurder\b|\binvestigation\b|\bdetective\b/, outputs: ["murder investigation novel", "crime detective fiction", "psychological mystery novel"] },
+  { pattern: /\bmurder\b|\binvestigation\b|\bdetective\b/, outputs: ["detective mystery novel", "police procedural mystery novel", "psychological mystery novel"] },
   { pattern: /\bspy\b|\bespionage\b/, outputs: ["spy thriller novel"] },
   { pattern: /\bpsychological\b|\bidentity\b|\bmind\b/, outputs: ["psychological mystery novel", "psychological thriller novel", "psychological horror novel"] },
   { pattern: /\blove\b|\bromance\b|\brelationship\b|\brelationships\b|\bhuman connection\b/, outputs: ["emotional romance novel", "second chance romance novel"] },
@@ -424,10 +424,10 @@ function buildFallbackRungs(intent: QueryIntent): string[] {
   const guaranteed =
     base === "mystery"
       ? [
-          "murder investigation novel",
-          "crime detective fiction",
+          "psychological suspense novel",
+          "detective mystery novel",
+          "police procedural mystery novel",
           "psychological mystery novel",
-          "private investigator mystery novel",
           "cold case mystery novel",
         ]
       : base === "fantasy"
@@ -524,8 +524,9 @@ function classifyRungRole(query: string): RungRole {
     /obsession psychological thriller novel/.test(q) ||
     /epic fantasy novel/.test(q) ||
     /science fiction novel/.test(q) ||
-    /murder investigation novel/.test(q) ||
-    /crime detective fiction/.test(q)
+    /\bpsychological suspense novel\b/.test(q) ||
+    /\bdetective mystery novel\b/.test(q) ||
+    /\bpolice procedural mystery novel\b/.test(q)
   ) {
     return "core";
   }

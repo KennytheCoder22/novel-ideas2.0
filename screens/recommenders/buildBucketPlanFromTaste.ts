@@ -142,7 +142,7 @@ const HORROR_CORE_TERMS = /\b(horror|psychological horror|survival horror|haunte
 const THRILLER_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance|faith-based|christian fiction)\b/i;
 const THRILLER_CORE_TERMS = /\b(crime|thriller|psychological thriller|psychological suspense|serial killer|missing person|crime conspiracy|manhunt|fugitive|legal thriller|spy thriller)\b/i;
 const MYSTERY_DRIFT_TERMS = /\b(romance|romantic|fantasy romance|paranormal romance|urban romance|fantasy|magical|magic|witch|dragon|demon|fae|fairy|vampire|werewolf|shifter|office romance|faith-based|christian fiction|science fiction|space opera)\b/i;
-const MYSTERY_CORE_TERMS = /\b(mystery|detective|psychological mystery|investigation|murder investigation|crime detective|private investigator|cold case|police procedural|whodunit|noir)\b/i;
+const MYSTERY_CORE_TERMS = /\b(mystery|detective|detective mystery|psychological suspense|psychological mystery|investigation|police procedural mystery|private investigator|cold case|police procedural|whodunit|noir)\b/i;
 
 function topKeys(obj: Record<string, number>, limit: number): string[] {
   return Object.entries(obj)
@@ -241,7 +241,13 @@ function familyCompatibleHypotheses(hypotheses: HypothesisLike[], family: Family
 }
 
 function guaranteedFamilyFallbacks(family: Family): string[] {
-  if (family === "mystery_family") return ["murder investigation novel", "crime detective fiction", "psychological mystery novel", "private investigator mystery novel", "cold case mystery novel"];
+  if (family === "mystery_family") return [
+    "psychological suspense novel",
+    "detective mystery novel",
+    "police procedural mystery novel",
+    "psychological mystery novel",
+    "cold case mystery novel",
+  ];
   if (family === "science_fiction_family") return ["science fiction novel", "dystopian science fiction novel", "space opera science fiction", "psychological science fiction novel"];
   if (family === "fantasy_family") return ["epic fantasy novel", "high fantasy novel", "magic fantasy novel", "quest fantasy novel", "character driven fantasy novel"];
   if (family === "horror_family") return ["psychological horror novel", "survival horror novel", "haunted house horror novel", "supernatural horror novel"];
