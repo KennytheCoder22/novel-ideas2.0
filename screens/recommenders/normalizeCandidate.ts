@@ -583,7 +583,8 @@ export function normalizeCandidates(rawDocs: RecommendationDoc[], source: Candid
   return (Array.isArray(rawDocs) ? rawDocs : [])
     .map((rawDoc) => normalizeCandidate(rawDoc, source))
     .filter((candidate) => !isClearlyNotABookCandidate(candidate))
-    .filter((candidate) => !isNoCoverLowQualityMetaCandidate(candidate))
+    // Keep sparse/no-cover candidates in the candidate pool.
+    // finalRecommender should decide whether they fit the user's taste strongly enough.
     .filter((candidate) => {
       if (candidate.source === 'openLibrary') {
         const text = [

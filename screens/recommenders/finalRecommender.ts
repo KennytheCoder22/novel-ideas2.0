@@ -53,6 +53,11 @@ export type FinalRecommenderDebug = {
   rejected: QualityRejectRecord[];
 };
 
+const PERSONAL_AFFINITY_WEIGHT = 2.75;
+const ANCHOR_SCORE_CAP = 10;
+const NEGATIVE_TASTE_MISMATCH_PENALTY = -10;
+const MIN_TASTE_SCORE_FOR_RANKING = -2;
+
 let lastFinalRecommenderDebug: FinalRecommenderDebug = {
   inputCount: 0,
   dedupedCount: 0,
@@ -1419,10 +1424,13 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const penalties = penaltyScore(c);
   const genericPenalty = genericTitlePenalty(c);
   const overfit = overfitPenalty(c);
-  const anchor = anchorBoost(c);
+  const rawAnchor = anchorBoost(c);
+  const anchor = Math.min(rawAnchor, ANCHOR_SCORE_CAP);
   const filterSignals = filterSignalScore(c);
   const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
+  const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
+  const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const familyAlignment = familyAlignmentPenalty(c, taste);
   const openLibraryRecoveredBoost =
@@ -1441,7 +1449,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     filterSignalScore: filterSignals,
     personalAffinityScore: personalAffinity,
     laneBlendScore: laneBlend,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + anchor + filterSignals + sessionFit + personalAffinity + laneBlend + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + openLibraryRecoveredBoost,
   };
 }
 
@@ -1537,6 +1545,19 @@ function seedHistoricalRungDiversity(
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
   const hasHistorical = pool.some((entry) => isHistoricalCandidate(entry.candidate));
   if (!hasHistorical) return selected;
+
+  const firstRaw: any = pool.find((entry) => isHistoricalCandidate(entry.candidate))?.candidate?.rawDoc || {};
+  const weights = firstRaw?.hybridLaneWeights || firstRaw?.diagnostics?.hybridLaneWeights || {};
+  const historicalWeight = Number(weights?.historical || 0);
+  const maxWeight = Math.max(0, ...Object.values(weights).map((value: any) => Number(value || 0)));
+  const primaryLane = normalizeFamilyName(firstRaw?.primaryLane || firstRaw?.diagnostics?.primaryLane || '');
+
+  // Historical rung diversity is helpful only for genuinely historical sessions.
+  // In hybrid sessions where historical is merely a generated fallback lane, seeding
+  // historical rungs before normal ranking hijacks the final list away from taste.
+  if (Object.keys(weights).length > 1 && primaryLane !== 'historical' && historicalWeight < Math.max(0.45, maxWeight)) {
+    return selected;
+  }
 
   for (const rung of [1, 2, 3]) {
     if (selected.length >= limit) break;
@@ -1648,7 +1669,15 @@ export function finalRecommenderForDeck(
     breakdown: scoreCandidateDetailed(candidate, tasteProfile),
   }));
 
-  const ordered = [...scored].sort((a, b) => {
+  const tasteRankable = tasteProfile
+    ? scored.filter((entry) => entry.breakdown.personalAffinityScore >= MIN_TASTE_SCORE_FOR_RANKING)
+    : scored;
+
+  const rankingSource = tasteRankable.length >= Math.min(10, scored.length)
+    ? tasteRankable
+    : scored;
+
+  const ordered = [...rankingSource].sort((a, b) => {
     const scoreDiff = b.breakdown.finalScore - a.breakdown.finalScore;
     if (scoreDiff !== 0) return scoreDiff;
 
