@@ -111,6 +111,39 @@ function shouldAllowNytAnchorInjections(filteredCount: number, finalLimit: numbe
   return filteredCount < Math.max(MIN_POOL_FOR_NYT_INJECTION, finalLimit * 2);
 }
 
+function inferFamilyFromQueryText(query: string, fallback: RouterFamilyKey): RouterFamilyKey {
+  const q = String(query || "").toLowerCase();
+  if (!q) return fallback;
+  if (/\b(psychological thriller|crime thriller|conspiracy thriller|fugitive thriller|manhunt thriller|abduction thriller|thriller)\b/.test(q)) return "thriller";
+  if (/\b(psychological mystery|detective mystery|cold case mystery|mystery)\b/.test(q)) return "mystery";
+  if (/\b(psychological horror|survival horror|haunted|horror)\b/.test(q)) return "horror";
+  if (/\b(science fiction|dystopian|space opera|speculative)\b/.test(q)) return "science_fiction";
+  if (/\b(epic fantasy|dark fantasy|magic fantasy|fantasy)\b/.test(q)) return "fantasy";
+  if (/\b(historical fiction|historical novel|period fiction|19th century|civil war)\b/.test(q)) return "historical";
+  if (/\b(romance|love story|second chance romance|gothic romance|historical romance)\b/.test(q)) return "romance";
+  return fallback;
+}
+
+function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey): boolean {
+  const text = [
+    doc?.title,
+    doc?.description,
+    ...(Array.isArray((doc as any)?.subject) ? (doc as any).subject : []),
+    (doc as any)?.nyt?.display_name,
+    (doc as any)?.nyt?.list_name,
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (!text) return false;
+
+  if (family === "thriller") return /\b(thriller|suspense|crime|murder|killer|investigation|detective|fbi|conspiracy|manhunt|abduction)\b/.test(text);
+  if (family === "mystery") return /\b(mystery|detective|investigation|crime|whodunit|private investigator)\b/.test(text);
+  if (family === "horror") return /\b(horror|haunted|ghost|supernatural|occult|dread|nightmare)\b/.test(text);
+  if (family === "science_fiction" || family === "speculative") return /\b(science fiction|sci-fi|dystopian|speculative|space|alien|time travel|ai|artificial intelligence)\b/.test(text);
+  if (family === "fantasy") return /\b(fantasy|magic|dragon|sorcer|witch|fae|epic fantasy|dark fantasy)\b/.test(text);
+  if (family === "historical") return /\b(historical|period fiction|world war|civil war|victorian|regency|gilded age)\b/.test(text);
+  if (family === "romance") return /\b(romance|love|relationship|second chance|forbidden love)\b/.test(text);
+  return false;
+}
+
 function isNytAnchorDoc(doc: RecommendationDoc): boolean {
   return Boolean((doc as any)?.nyt || (doc as any)?.commercialSignals?.bestseller) &&
     String((doc as any)?.laneKind || "").toLowerCase() === "anchor";
@@ -163,7 +196,9 @@ async function fetchNytAnchorDocs(
       },
     })) as RecommendationDoc[];
 
-    return { docs, debug };
+    const familyMatchedDocs = docs.filter((doc) => nytAnchorMatchesFamily(doc, family));
+
+    return { docs: familyMatchedDocs, debug };
   } catch (error: any) {
     debug.error = typeof error?.message === "string" ? error.message : "NYT bestseller fetch failed";
     return { docs: [], debug };
@@ -2215,6 +2250,7 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
+      const laneFamily = inferFamilyFromQueryText(String(lane?.query || ""), rungFamily);
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
         : Number.isFinite(Number(rung?.rung))
@@ -2304,7 +2340,7 @@ export async function getRecommendations(
           ...row,
           queryRung,
           queryText: row?.queryText ?? lane.query,
-          queryFamily: row?.queryFamily ?? rungFamily,
+          queryFamily: row?.queryFamily ?? laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
           laneKind: lane.laneKind,
@@ -2324,7 +2360,7 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
-          queryFamily: rungFamily,
+          queryFamily: laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
           laneKind: lane.laneKind,
@@ -2332,7 +2368,7 @@ export async function getRecommendations(
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
-            queryFamily: rungFamily,
+            queryFamily: laneFamily,
             laneKind: lane.laneKind,
             hybridLaneWeights,
             primaryLane: routerFamily,

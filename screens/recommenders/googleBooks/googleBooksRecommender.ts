@@ -231,10 +231,16 @@ function isGarbageGoogleBooksCandidate(doc: any): boolean {
   const seriesMatch = title.match(/\bbook\s*(\d+)\b/i);
   if (seriesMatch) {
     const n = parseInt(seriesMatch[1], 10);
-    if (n >= 3 && /\b(fbi|detective|crime|thriller|suspense)\b/i.test(text)) {
+    const lowAuthority = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0) < 25;
+    if (n >= 2 && lowAuthority && /\b(fbi|detective|crime|thriller|suspense)\b/i.test(text)) {
       return true;
     }
   }
+
+  const formulaAuthor = /\b(blake pierce|ava strong|jack mars|morgan rice|harper lin)\b/i.test(author);
+  const formulaTitle = /\b(a|an)\s+[a-z]+\s+(fbi|detective|crime|mystery|suspense)\s+thriller\b/i.test(title);
+  const lowAuthority = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0) < 25;
+  if ((formulaAuthor || formulaTitle) && lowAuthority && !hasMainstreamPublisherSignal(doc)) return true;
 
   if (/\b(paranormal romance|fantasy romance|urban romance|office romance)\b/i.test(text) && /\bcrime thriller|mystery thriller|psychological thriller|detective\b/i.test(text)) {
     return true;

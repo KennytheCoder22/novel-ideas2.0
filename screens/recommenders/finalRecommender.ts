@@ -18,7 +18,8 @@ export type QualityRejectReason =
   | 'hard_reject_text'
   | 'non_fiction_meta'
   | 'low_metadata_trust'
-  | 'weak_fiction_signal';
+  | 'weak_fiction_signal'
+  | 'formula_series_spam';
 
 export type QualityRejectRecord = {
   id: string;
@@ -320,6 +321,26 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     ratings >= 25 ||
     canonicalStrength >= 12 ||
     /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(publisher);
+
+  const knownFormulaAuthor =
+    /\b(blake pierce|ava strong|jack mars|morgan rice|sara fendrick|harper lin)\b/.test(normalize(c.author));
+  const formulaicTitle =
+    /\b(a|an)\s+[a-z]+\s+(fbi|detective|crime|mystery|suspense)\s+thriller\b/.test(title) ||
+    /\b(book|volume|part)\s*\d+\b/.test(title) ||
+    /\b(series|series starter|fbi suspense thriller)\b/.test(text);
+  const weakAuthorityThriller =
+    /\b(thriller|suspense|crime|mystery|fbi|detective|serial killer|manhunt|abduction)\b/.test(text) &&
+    ratings < 25 &&
+    !hasCommercialShape &&
+    !Boolean((c.rawDoc as any)?.commercialSignals?.bestseller);
+
+  if ((knownFormulaAuthor && ratings < 200) || (formulaicTitle && weakAuthorityThriller)) {
+    return {
+      reject: true,
+      reason: 'formula_series_spam',
+      detail: `author=${c.author}, ratings=${ratings}, title=${c.title}`,
+    };
+  }
 
   // Google Books often surfaces public-domain or metadata-thin editions for broad
   // mystery queries. Unless an older item has clear authority/canonical signals,
