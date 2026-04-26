@@ -1360,6 +1360,42 @@ function passesOpenLibraryRomanceRecovery(doc: any, diagnostics: FilterDiagnosti
   return false;
 }
 
+
+function hasProcurementShape(doc: any): boolean {
+  const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
+  const saleInfo = doc?.saleInfo || doc?.volumeInfo?.saleInfo || {};
+  const procurementSignals = (doc as any)?.procurementSignals || {};
+  const identifiers = (doc as any)?.industryIdentifiers ?? doc?.volumeInfo?.industryIdentifiers;
+  const hasIndustryIdentifier =
+    Boolean((doc as any)?.isbn10 || (doc as any)?.isbn13) ||
+    (Array.isArray(identifiers) && identifiers.some((id: any) => String(id?.identifier || "").trim()));
+  const hasPurchaseSignal =
+    Boolean((doc as any)?.buyLink || saleInfo?.buyLink || saleInfo?.isEbook) ||
+    Boolean(procurementSignals?.hasPurchaseSignal);
+  const hasMainstreamPublisher =
+    Boolean(procurementSignals?.hasMainstreamPublisherSignal) ||
+    /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(publisher);
+
+  return Boolean(hasPurchaseSignal || hasIndustryIdentifier || hasMainstreamPublisher || procurementSignals?.hasShelfAvailabilitySignal);
+}
+
+function passesCommercialNarrativeFloor(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (diagnostics.family !== "thriller" && diagnostics.family !== "mystery") return false;
+
+  const hasLaneSignal =
+    diagnostics.flags.thrillerPositive ||
+    diagnostics.flags.mysteryPositive ||
+    diagnostics.flags.crimePositive ||
+    diagnostics.flags.suspensePositive;
+
+  return Boolean(
+    diagnostics.pageCount >= 200 &&
+    diagnostics.flags.strongNarrative &&
+    hasLaneSignal &&
+    hasProcurementShape(doc)
+  );
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -1611,6 +1647,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_source_recovery");
       } else if (isOpenLibraryLike && hasOpenLibraryFallbackShape(doc, diagnostics)) {
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
+      } else if (!isOpenLibraryLike && passesCommercialNarrativeFloor(doc, diagnostics)) {
+        diagnostics.passedChecks.push("commercial_narrative_shape_bypass");
       } else {
         diagnostics.rejectReasons.push("below_shape_floor");
         diagnostics.kept = false;

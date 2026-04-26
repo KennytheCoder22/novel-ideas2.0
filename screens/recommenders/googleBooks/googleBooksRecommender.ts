@@ -34,6 +34,97 @@ function normalizeStoredQueryText(query: string): string {
   return deduped.join(" ");
 }
 
+
+const GOOGLE_BOOKS_PROCUREMENT_NEGATIVE_TERMS = [
+  "boxed set",
+  "box set",
+  "omnibus",
+  "anthology",
+  "collection",
+  "guide",
+  "handbook",
+  "reference",
+  "criticism",
+  "analysis",
+  "study guide",
+  "readers advisory",
+  "magazine",
+  "journal",
+  "catalog",
+  "catalogue",
+  "bibliography",
+];
+
+function addGoogleBooksProcurementHygiene(query: string): string {
+  const q = normalizeStoredQueryText(query);
+  if (!q || q.startsWith("subject:")) return q;
+
+  const alreadyHasNegatives = /\s-\w+/.test(q);
+  const negatives = GOOGLE_BOOKS_PROCUREMENT_NEGATIVE_TERMS
+    .filter((term) => !q.includes(`-${term.replace(/\s+/g, "-")}`))
+    .map((term) => term.includes(" ") ? `-"${term}"` : `-${term}`)
+    .join(" ");
+
+  // Keep user/taste intent intact, but bias Google Books away from things a
+  // patron cannot reasonably buy or find on a physical shelf.
+  return alreadyHasNegatives ? q : `${q} ${negatives}`.replace(/\s+/g, " ").trim();
+}
+
+function hasIndustryIdentifier(doc: any): boolean {
+  const identifiers = doc?.volumeInfo?.industryIdentifiers;
+  return Array.isArray(identifiers) && identifiers.some((id: any) => String(id?.identifier || "").trim());
+}
+
+function hasGoogleBooksPurchaseSignal(doc: any): boolean {
+  const saleInfo = doc?.saleInfo || doc?.volumeInfo?.saleInfo || {};
+  const accessInfo = doc?.accessInfo || doc?.volumeInfo?.accessInfo || {};
+  const saleability = String(saleInfo?.saleability || "").toUpperCase();
+
+  return Boolean(
+    saleInfo?.buyLink ||
+    saleability === "FOR_SALE" ||
+    saleInfo?.isEbook ||
+    accessInfo?.epub?.isAvailable ||
+    accessInfo?.pdf?.isAvailable
+  );
+}
+
+function hasMainstreamPublisherSignal(doc: any): boolean {
+  const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
+  return /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(publisher);
+}
+
+function hasShelfAvailabilitySignal(doc: any): boolean {
+  const year = Number(doc?.first_publish_year || 0);
+  const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+  const hasCover = hasGoogleBooksCoverSignal(doc);
+  const hasId = hasIndustryIdentifier(doc);
+  const hasPurchase = hasGoogleBooksPurchaseSignal(doc);
+  const mainstreamPublisher = hasMainstreamPublisherSignal(doc);
+
+  return Boolean(
+    hasPurchase ||
+    (hasId && hasCover && year >= 1990) ||
+    (mainstreamPublisher && hasCover && year >= 1980) ||
+    ratings >= 25
+  );
+}
+
+function looksLikeLowProcurementGoogleBooksCandidate(doc: any): boolean {
+  const year = Number(doc?.first_publish_year || 0);
+  const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+  const hasCover = hasGoogleBooksCoverSignal(doc);
+  const hasId = hasIndustryIdentifier(doc);
+  const mainstreamPublisher = hasMainstreamPublisherSignal(doc);
+
+  // Allow canonical/backlist items through elsewhere by publisher/ratings; reject
+  // only the obscure metadata-thin rows that are unlikely to be findable in stores.
+  if (hasShelfAvailabilitySignal(doc)) return false;
+  if (year > 0 && year < 1980 && !mainstreamPublisher && ratings < 25) return true;
+  if (!hasId && !hasCover && ratings < 25) return true;
+  return false;
+}
+
 const GOOGLE_BOOKS_REFERENCE_TITLE_PAT = /\b(guide|writer'?s market|studies in|literature|review|digest|catalog|catalogue|bibliography|anthology|encyclopedia|handbook|manual|journal|periodical|proceedings|transactions|magazine|bulletin|report|annual report|yearbook|readings?|reader|criticism|critical|redefining|history and criticism)\b/i;
 const GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT = /\b(literary criticism|criticism|bibliography|reference|study aids|language arts|language and literature|periodicals|essays|authorship|creative writing|journals|magazines|reports|proceedings|transactions|history and criticism|readings?)\b/i;
 const GOOGLE_BOOKS_REFERENCE_AUTHOR_PAT = /\b(university|press|society|association|department of|review|journal)\b/i;
@@ -330,7 +421,7 @@ function toGoogleBooksQuery(query: string): string {
   const q = normalizeStoredQueryText(query);
   if (!q) return "";
   if (q.startsWith("subject:")) return q;
-  return q;
+  return addGoogleBooksProcurementHygiene(q);
 }
 
 async function googleBooksSearch(query: string, limit: number, timeoutMs: number): Promise<any[]> {
@@ -376,6 +467,18 @@ async function googleBooksSearch(query: string, limit: number, timeoutMs: number
       categories,
       language: typeof volumeInfo.language === "string" ? [volumeInfo.language] : undefined,
       ebook_access: accessInfo?.epub?.isAvailable ? "epub" : accessInfo?.pdf?.isAvailable ? "pdf" : saleInfo?.isEbook ? "ebook" : "no_ebook",
+      industryIdentifiers: Array.isArray(volumeInfo.industryIdentifiers) ? volumeInfo.industryIdentifiers : undefined,
+      isbn13: Array.isArray(volumeInfo.industryIdentifiers) ? volumeInfo.industryIdentifiers.find((id: any) => id?.type === "ISBN_13")?.identifier : undefined,
+      isbn10: Array.isArray(volumeInfo.industryIdentifiers) ? volumeInfo.industryIdentifiers.find((id: any) => id?.type === "ISBN_10")?.identifier : undefined,
+      saleInfo,
+      accessInfo,
+      buyLink: typeof saleInfo?.buyLink === "string" ? saleInfo.buyLink : undefined,
+      saleability: typeof saleInfo?.saleability === "string" ? saleInfo.saleability : undefined,
+      procurementSignals: {
+        hasIndustryIdentifier: Array.isArray(volumeInfo.industryIdentifiers) && volumeInfo.industryIdentifiers.some((id: any) => String(id?.identifier || "").trim()),
+        hasPurchaseSignal: Boolean(saleInfo?.buyLink || saleInfo?.isEbook || accessInfo?.epub?.isAvailable || accessInfo?.pdf?.isAvailable),
+        hasShelfAvailabilitySignal: false,
+      },
       volumeInfo,
     };
   }).filter((doc: any) => doc && doc.title);
@@ -468,6 +571,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       if (looksLikeGoogleBooksReference(doc)) return false;
       if (isGarbageGoogleBooksCandidate(doc)) return false;
       if (isClearlyNotNarrativeBook(doc)) return false;
+      if (looksLikeLowProcurementGoogleBooksCandidate(doc)) return false;
       return true;
     });
 
@@ -524,6 +628,20 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     description: typeof doc.description === "string" ? doc.description : undefined,
     averageRating: typeof doc.averageRating === "number" ? doc.averageRating : undefined,
     ratingsCount: typeof doc.ratingsCount === "number" ? doc.ratingsCount : undefined,
+    industryIdentifiers: Array.isArray(doc.industryIdentifiers) ? doc.industryIdentifiers : Array.isArray(doc.volumeInfo?.industryIdentifiers) ? doc.volumeInfo.industryIdentifiers : undefined,
+    isbn13: doc.isbn13,
+    isbn10: doc.isbn10,
+    buyLink: doc.buyLink,
+    saleability: doc.saleability,
+    saleInfo: doc.saleInfo,
+    accessInfo: doc.accessInfo,
+    procurementSignals: {
+      ...(doc.procurementSignals || {}),
+      hasIndustryIdentifier: hasIndustryIdentifier(doc),
+      hasPurchaseSignal: hasGoogleBooksPurchaseSignal(doc),
+      hasShelfAvailabilitySignal: hasShelfAvailabilitySignal(doc),
+      hasMainstreamPublisherSignal: hasMainstreamPublisherSignal(doc),
+    },
     volumeInfo: doc.volumeInfo,
   } as any));
 

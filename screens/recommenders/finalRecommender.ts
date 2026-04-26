@@ -41,6 +41,7 @@ export type ScoreBreakdown = {
   filterSignalScore: number;
   personalAffinityScore: number;
   laneBlendScore: number;
+  procurementScore: number;
   finalScore: number;
 };
 
@@ -1455,6 +1456,40 @@ function familyAlignmentPenalty(c: Candidate, taste?: TasteProfile): number {
   return penalty;
 }
 
+
+function procurementAvailabilityScore(c: Candidate): number {
+  const raw: any = c.rawDoc || {};
+  const volumeInfo = raw.volumeInfo || {};
+  const saleInfo = raw.saleInfo || volumeInfo.saleInfo || {};
+  const procurementSignals = raw.procurementSignals || {};
+  const identifiers = raw.industryIdentifiers || volumeInfo.industryIdentifiers;
+  const publisher = normalize(c.publisher || raw.publisher || volumeInfo.publisher);
+  const year = Number(c.publicationYear || raw.first_publish_year || 0);
+  const ratings = Number(c.ratingCount || raw.ratingsCount || volumeInfo.ratingsCount || 0);
+
+  const hasIndustryIdentifier =
+    Boolean(raw.isbn || raw.isbn10 || raw.isbn13) ||
+    (Array.isArray(identifiers) && identifiers.some((id: any) => String(id?.identifier || "").trim()));
+  const hasPurchaseSignal =
+    Boolean(raw.buyLink || saleInfo?.buyLink || saleInfo?.isEbook) ||
+    Boolean(procurementSignals?.hasPurchaseSignal);
+  const hasMainstreamPublisher =
+    Boolean(procurementSignals?.hasMainstreamPublisherSignal) ||
+    /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press|little brown|grand central|sourcebooks|kensington|crooked lane|berkley|delacorte|del rey|orbit|ace|roc|anchor|scribner|atria|william morrow|putnam|mulholland|flatiron)\b/.test(publisher);
+
+  let score = 0;
+  if (hasPurchaseSignal) score += 8;
+  if (hasIndustryIdentifier) score += 6;
+  if (hasMainstreamPublisher) score += 5;
+  if (c.hasCover) score += 2;
+  if (ratings >= 25) score += 3;
+  if (year >= 2000) score += 2;
+  else if (year > 0 && year < 1980 && !hasMainstreamPublisher && ratings < 25) score -= 10;
+  if (!hasIndustryIdentifier && !hasPurchaseSignal && ratings < 25) score -= 6;
+
+  return score;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1472,6 +1507,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
+  const procurement = procurementAvailabilityScore(c);
   const familyAlignment = familyAlignmentPenalty(c, taste);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
@@ -1489,7 +1525,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     filterSignalScore: filterSignals,
     personalAffinityScore: personalAffinity,
     laneBlendScore: laneBlend,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + openLibraryRecoveredBoost,
+    procurementScore: procurement,
+    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + procurement + openLibraryRecoveredBoost,
   };
 }
 
@@ -1739,6 +1776,9 @@ export function finalRecommenderForDeck(
 
     const rungDiff = evidenceRank(a.candidate) - evidenceRank(b.candidate);
     if (rungDiff !== 0) return rungDiff;
+
+    const procurementDiff = b.breakdown.procurementScore - a.breakdown.procurementScore;
+    if (procurementDiff !== 0) return procurementDiff;
 
     const aHasDescription = a.candidate.description ? 1 : 0;
     const bHasDescription = b.candidate.description ? 1 : 0;
