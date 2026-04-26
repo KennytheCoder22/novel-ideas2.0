@@ -207,7 +207,7 @@ function normalizeForQuery(part?: string): string | undefined {
 function toRetrievalModifier(part?: string): string | undefined {
   if (!part) return undefined;
   if (part === "character-driven") return "psychological";
-  if (part === "relationship-focused") return "romance";
+  if (part === "relationship-focused") return "character-driven";
   if (part === "family saga") return "family";
   return part;
 }
@@ -320,7 +320,8 @@ function enforceSearchableStructure(parts: string[]): string[] {
     out = out.filter((part) => part !== "literary fiction");
   }
 
-  if (out.includes("romance")) {
+  const hasExplicitRomanceAnchor = out.includes("romance");
+  if (hasExplicitRomanceAnchor) {
     if (out.includes("fantasy")) out.push("fantasy romance");
     if (out.includes("historical fiction")) out.push("historical romance");
     if (out.includes("gothic") || out.includes("dark") || out.includes("mystery")) out.push("gothic romance");
@@ -956,12 +957,13 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
   ];
   if (genres.has("historical")) return ["historical fiction novel"];
   if (genres.has("romance")) return [
+    "romance novel",
+    "emotional romance novel",
+    "fantasy romance novel",
+    "historical romance novel",
     "second chance romance novel",
     "forbidden love romance novel",
-    "fantasy romance novel",
     "gothic romance novel",
-    "historical romance novel",
-    "emotional romance novel",
   ];
   return [];
 }

@@ -281,7 +281,7 @@ function buildRouterBucketPlan(input: RecommenderInput) {
       ? "fantasy"
       : /\bscience fiction\b|\bsci-fi\b|\bdystopian\b|\bspace opera\b/.test(intentText)
       ? "science_fiction"
-      : /\bromance\b|\blove story\b|\bregency\b/.test(intentText)
+      : /\bromance novel\b|\bromantic fiction\b|\bgenre:romance\b|\bregency romance\b/.test(intentText)
       ? "romance"
       : /\bhistorical\b|\bperiod fiction\b|\bgilded age\b|\b19th century\b/.test(intentText)
       ? "historical"
@@ -966,7 +966,7 @@ function buildHybridLaneWeights(input: RecommenderInput, bucketPlan: any): Recor
     ["horror", /\b(horror|haunted|ghost|supernatural|occult|possession|monster|terror|dread|gothic|vampire|zombie)\b/g, 1.45],
     ["fantasy", /\b(fantasy|magic|magical|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery)\b/g, 1.4],
     ["science_fiction", /\b(science fiction|sci-fi|sci fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|future|time travel|interstellar)\b/g, 1.45],
-    ["romance", /\b(romance|love story|romantic|courtship|marriage|wedding|duke|earl|regency|wallflower|rake|kiss|lover|second chance|forbidden love)\b/g, 1.25],
+    ["romance", /\b(genre:romance|romance novel|romantic fiction|regency romance|duke|earl|wallflower|rake|second chance romance|forbidden love romance)\b/g, 1.0],
     ["historical", /\b(historical|historical fiction|period fiction|victorian|edwardian|gilded age|civil war|world war|19th century|family saga|frontier|revolution)\b/g, 1.25],
   ];
 
@@ -980,14 +980,15 @@ function buildHybridLaneWeights(input: RecommenderInput, bucketPlan: any): Recor
     for (const [rawKey, rawValue] of Object.entries(value)) {
       const numeric = Number(rawValue);
       if (!Number.isFinite(numeric) || numeric === 0) continue;
-      const key = String(rawKey || "").toLowerCase().replace(/^genre:/, "").trim();
+      const rawKeyText = String(rawKey || "").toLowerCase().trim();
+      const key = rawKeyText.replace(/^genre:/, "").trim();
       const lane =
         /science fiction|sci-fi|sci fi|dystopian|space opera/.test(key) ? "science_fiction" :
         /horror|haunted|ghost|supernatural|gothic/.test(key) ? "horror" :
         /thriller|suspense|serial killer|psychological/.test(key) ? "thriller" :
         /mystery|detective|investigation|crime/.test(key) ? "mystery" :
         /fantasy|magic|dragon/.test(key) ? "fantasy" :
-        /romance|love/.test(key) ? "romance" :
+        (/^genre:romance$/.test(rawKeyText) || /romance novel|romantic fiction|regency romance/.test(key)) ? "romance" :
         /historical|period|civil war|world war/.test(key) ? "historical" :
         null;
       if (lane && scores[lane] !== undefined) scores[lane] += numeric * multiplier;
@@ -1054,9 +1055,10 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
     { rung: 82, query: "space opera science fiction" },
   ];
   if (family === "romance") return [
-    { rung: 90, query: "second chance romance novel" },
+    { rung: 90, query: "romance novel" },
     { rung: 91, query: "emotional romance novel" },
     { rung: 92, query: "historical romance novel" },
+    { rung: 93, query: "second chance romance novel" },
   ];
   if (family === "historical") return [
     { rung: 100, query: "historical fiction novel" },

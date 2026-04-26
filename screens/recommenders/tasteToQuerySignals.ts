@@ -23,7 +23,6 @@ const GENRE_RULES: Array<[RegExp, string]> = [
   [/(^|:|\b)science fiction(\b|:|$)|(^|:|\b)sci[-\s]?fi(\b|:|$)/i, "science fiction"],
   [/(^|:|\b)fantasy(\b|:|$)/i, "fantasy"],
   [/(^|:|\b)horror(\b|:|$)|(^|:|\b)spooky(\b|:|$)/i, "horror"],
-  [/(^|:|\b)romance(\b|:|$)/i, "romance"],
   [/(^|:|\b)historical(\b|:|$)/i, "historical"],
   [/(^|:|\b)drama(\b|:|$)/i, "drama"],
 ];
@@ -100,6 +99,19 @@ function applyRules(
   }
 }
 
+function applyExplicitRomanceGenreSignal(tag: string, value: number, signals: QuerySignals) {
+  const cleaned = String(tag || "").toLowerCase().trim();
+  const isExplicitRomanceGenre =
+    /^genre[:_\s-]+romance$/.test(cleaned) ||
+    /^book[:_\s-]+romance$/.test(cleaned) ||
+    /romance\s+novels?/.test(cleaned) ||
+    /romantic\s+fiction/.test(cleaned);
+
+  if (!isExplicitRomanceGenre) return;
+  if (value > 0) addSignal(signals.genre, "romance", value);
+  else addSignal(signals.antiGenre, "romance", Math.abs(value));
+}
+
 function addTasteAxes(input: RecommenderInput, signals: QuerySignals) {
   const axes = input.tasteProfile?.axes;
   if (!axes) return;
@@ -125,8 +137,26 @@ function addTasteAxes(input: RecommenderInput, signals: QuerySignals) {
   if ((axes.pacing || 0) < -0.12) addSignal(signals.pacing, "slow", Math.abs(axes.pacing));
 }
 
-function applyCrossSignalShaping(_signals: QuerySignals) {
-  return;
+function applyCrossSignalShaping(signals: QuerySignals) {
+  const relationshipStrength =
+    (signals.scenario["relationship"] || 0) +
+    (signals.theme["human connection"] || 0) * 0.35;
+
+  const speculativeStrength =
+    (signals.genre["science fiction"] || 0) +
+    (signals.genre["fantasy"] || 0) +
+    (signals.world["science fiction"] || 0) +
+    (signals.world["fantasy"] || 0) +
+    (signals.theme["technology"] || 0) +
+    (signals.theme["identity"] || 0) * 0.5;
+
+  // Romance in cross-media cards is often a relationship/theme signal, not a
+  // request for genre-romance books. Only promote relationship evidence into
+  // the romance book lane when it is reinforced and not clearly embedded in
+  // sci-fi/fantasy/identity/technology taste.
+  if (relationshipStrength >= 2.25 && relationshipStrength >= speculativeStrength + 0.5) {
+    addSignal(signals.genre, "romance", relationshipStrength * 0.6);
+  }
 }
 
 export function tasteToQuerySignals(input: RecommenderInput): QuerySignals {
@@ -150,6 +180,7 @@ export function tasteToQuerySignals(input: RecommenderInput): QuerySignals {
     const value = Number(raw || 0);
     if (!Number.isFinite(value) || value === 0) continue;
 
+    applyExplicitRomanceGenreSignal(tag, value, signals);
     applyRules(tag, value, GENRE_RULES, signals.genre, signals.antiGenre);
     applyRules(tag, value, TONE_RULES, signals.tone, signals.antiTone);
     applyRules(tag, value, SCENARIO_RULES, signals.scenario, signals.antiScenario);
