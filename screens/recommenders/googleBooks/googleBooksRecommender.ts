@@ -341,8 +341,7 @@ async function googleBooksSearch(query: string, limit: number, timeoutMs: number
   const params = new URLSearchParams({ q, maxResults: String(maxResults), orderBy: "relevance", printType: "books", projection: "full", langRestrict: "en" });
   if (apiKey) params.set("key", apiKey);
   const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
-  await sleep(175 + Math.floor(Math.random() * 125));
-  const json = await fetchJsonWithRetry(url, timeoutMs);
+  const json = await fetchJsonWithRetry(url, timeoutMs, 2);
   const items = Array.isArray(json?.items) ? json.items : [];
   return items.map((item: any) => {
     const volumeInfo = item?.volumeInfo ?? {};
@@ -385,8 +384,8 @@ async function googleBooksSearch(query: string, limit: number, timeoutMs: number
 export async function getGoogleBooksRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
-  const fetchLimit = Math.max(60, Math.min(200, finalLimit * 6));
-  const timeoutMs = Math.max(1000, Math.min(30000, input.timeoutMs ?? 15000));
+  const fetchLimit = Math.max(24, Math.min(80, finalLimit * 4));
+  const timeoutMs = Math.max(1000, Math.min(12000, input.timeoutMs ?? 8000));
   const domainMode = deckKeyToDomainMode(deckKey);
 
   const explicitBucketPlan = (input as any)?.bucketPlan as { queries?: string[]; rungs?: StructuredFetchRung[] } | undefined;
@@ -404,13 +403,10 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   const seenKeys = new Set<string>();
   let primaryDocsRaw: any[] = [];
   let totalRawFetched = 0;
-  const minQueryPassesBeforeEarlyExit = Math.min(4, queriesToTry.length);
+  const minQueryPassesBeforeEarlyExit = Math.min(2, queriesToTry.length);
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
-    if (queryIndex > 0) {
-      await sleep(300 + Math.floor(Math.random() * 250));
-    }
     const laneKind = "precision";
     const engineQueries = [q];
     const queryRawDocs: any[] = [];

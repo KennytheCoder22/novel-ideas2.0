@@ -148,7 +148,7 @@ export async function getOpenLibraryRecommendations(
   const family = inferFamily(input);
   const docsRaw: any[] = [];
   const limit = input.limit || 12;
-  const intakeLimit = Math.max(limit * 3, 36);
+  const intakeLimit = Math.max(limit * 2, 24);
 
   if (!hasUsableSignal(input) || !queries.length) {
     return {
@@ -163,7 +163,7 @@ export async function getOpenLibraryRecommendations(
 
   for (let i = 0; i < queries.length; i++) {
     const q = queries[i];
-    const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=100`;
+    const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
 
     const data = await fetchJson(url);
     const docs = Array.isArray(data?.docs) ? data.docs : [];
@@ -179,7 +179,7 @@ export async function getOpenLibraryRecommendations(
       });
     }
 
-    if (docsRaw.length >= Math.max(limit * 5, 60)) break;
+    if (docsRaw.length >= Math.max(limit * 3, 36)) break;
   }
 
   const seenKeys = new Set<string>();

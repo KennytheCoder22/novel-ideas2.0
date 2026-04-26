@@ -31,9 +31,9 @@ const MIN_DECISION_SWIPES_FOR_FULL_ROUTER_EXPANSION = 4;
 const MIN_VISUAL_SIGNAL_FOR_KITSU = 2;
 const MIN_VISUAL_SIGNAL_FOR_GCD = 2;
 const MIN_RELAXED_FILTER_POOL = 10;
-const MIN_ROUTER_RECOVERY_POOL = 30;
-const MIN_OPEN_LIBRARY_SURVIVORS = 6;
-const MIN_OPEN_LIBRARY_BASE_POOL = 10;
+const MIN_ROUTER_RECOVERY_POOL = 18;
+const MIN_OPEN_LIBRARY_SURVIVORS = 3;
+const MIN_OPEN_LIBRARY_BASE_POOL = 4;
 const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
 
 // Temporary validation logging for the taste-shaped query rollout.
@@ -254,7 +254,7 @@ function buildRouterBucketPlan(input: RecommenderInput) {
   const queries = dedupeNonEmptyQueries([
     ...primaryQueries,
     ...secondaryQueries,
-  ]).slice(0, 8);
+  ]).slice(0, 4);
 
   debugRouterLog("ROUTER QUERY PLAN", {
     deckKey: (routingInput as any)?.deckKey,
@@ -1296,7 +1296,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
       mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
     }
 
-    return mapped;
+    return mapped.slice(0, 4);
   }
 
   const thrillerAllowsDomestic =
@@ -1379,7 +1379,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
   }
 
-  return mapped;
+  return mapped.slice(0, 4);
 }
 
 function candidateKey(candidate: any): string {
@@ -1706,7 +1706,7 @@ async function enrichWithHardcover(docs: RecommendationDoc[]): Promise<Recommend
   // Gold-standard router rule:
   // Hardcover is enrichment only. Never block, never drop, never downgrade shelf eligibility.
   // Cap lookups now that fetch runs per rung.
-  const HARDCOVER_LOOKUP_LIMIT = 40;
+  const HARDCOVER_LOOKUP_LIMIT = 12;
 
   const indexedDocs = docs.map((doc, index) => ({ doc, index }));
   const prioritized = [...indexedDocs].sort(
@@ -1749,7 +1749,7 @@ async function enrichOpenLibraryBeforeFiltering(docs: RecommendationDoc[]): Prom
   // Open Library often has sparse page/description/rating metadata. Give OL rows
   // a lightweight Hardcover pass BEFORE filterCandidates so the central filter
   // can judge them with the same authority signals available to Google Books.
-  const OPEN_LIBRARY_PREFILTER_LIMIT = 120;
+  const OPEN_LIBRARY_PREFILTER_LIMIT = 30;
 
   const indexedDocs = docs.map((doc, index) => ({ doc, index }));
   const openLibraryIndexes = indexedDocs
@@ -2055,6 +2055,9 @@ export async function getRecommendations(
   }
 
   rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision" }));
+
+  // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
+  rungs = rungs.slice(0, 4);
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
