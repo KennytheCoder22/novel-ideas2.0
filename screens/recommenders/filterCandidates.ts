@@ -382,6 +382,9 @@ function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostic
 
   if (!rawTitle || !author || author === "unknown") return false;
   if (diagnostics.flags.weakSeriesSpam) return false;
+  if (hasOpenLibraryRecoveryBlocker(diagnostics)) return false;
+  if (isAnthologyOrCollectionCandidate(normalizedTitle, subjects, description, combined)) return false;
+  if (diagnostics.family === "science_fiction" && isScienceFictionMetaReferenceCandidate(normalizedTitle, subjects, description, combined)) return false;
   if (isUniversalMetaReferenceCandidate(normalizedTitle, subjects, description, combined)) return false;
   if (isHistoricalMetaLiteraryLeak(combined)) return false;
   if (/\b(complete works|plays\b|poems?\b|sonnets?|anthology|collection|boxed set|omnibus|guide|handbook|dictionary|companion|catalogue?|bibliography|study guide)\b/.test(combined)) return false;
@@ -547,6 +550,47 @@ function isUniversalMetaReferenceCandidate(title: string, categories: string, de
     /\b(gold star list|finding list|catalogue?|catalog|bibliography|index|reader'?s guide|companion to|cambridge companion|oxford companion|century readings?|selected readings?)\b/.test(combined);
 
   return metaTitle || metaCategory || metaDescription || listOrCatalog;
+}
+
+function isAnthologyOrCollectionCandidate(title: string, categories: string, description: string, combined: string): boolean {
+  return (
+    /\b(anthology|anthologies|collection|collections|collected|complete novels|selected stories|short stories|short science fiction novels|boxed set|box set|omnibus|baker['’]?s dozen)\b/.test(combined) ||
+    /\b(five|great|best|classic|selected|complete)\s+(great\s+)?(science fiction\s+)?novels\b/.test(title) ||
+    /\b\d+\s+(great\s+)?(science fiction\s+)?novels\b/.test(title) ||
+    /\bscience fiction stories\b/.test(title)
+  );
+}
+
+function isScienceFictionMetaReferenceCandidate(title: string, categories: string, description: string, combined: string): boolean {
+  const bareScienceFictionNovelTitle = /^\s*(the\s+)?science\s+fiction\s+novels?\s*$/.test(title) || /^\s*science\s+fiction\s*$/.test(title);
+  const metaTitle =
+    bareScienceFictionNovelTitle ||
+    /\b(best|great|five|100|hundred|classic|selected)\s+(science fiction\s+)?novels\b/.test(title) ||
+    /\bscience and fiction\b/.test(title) ||
+    /\b(survey of|companion to|readings in|guide to|history of|principles of|index(?:es)?|criticism of)\b.*\b(science fiction|sci-fi|novels?|fiction|literature)\b/.test(title) ||
+    /\b(science fiction|sci-fi|novels?|fiction|literature)\b.*\b(companion|readings|guide|history|principles|index(?:es)?|criticism|survey|reference|bibliography|literature)\b/.test(title);
+  const metaText =
+    /\b(science fiction|sci-fi)\b.*\b(criticism|literary criticism|literature|history and criticism|bibliography|reference|study|studies|survey|guide|companion|readings|index(?:es)?|principles)\b/.test(combined) ||
+    /\b(criticism|literary criticism|literature|history and criticism|bibliography|reference|study|studies|survey|guide|companion|readings|index(?:es)?|principles)\b.*\b(science fiction|sci-fi)\b/.test(combined);
+  const metaCategory =
+    /\b(literary criticism|criticism|reference|bibliography|books and reading|literature|history and criticism|study aids?|studies|theory|education)\b/.test(categories) &&
+    !/\b(fiction|juvenile fiction|young adult fiction|comics|graphic novels?)\b/.test(categories);
+  const metaDescription =
+    /\b(examines?|explores?|analyzes?|analysis of|study of|studies of|survey of|guide to|introduction to|history of|bibliography|reference work|critical)\b/.test(description) &&
+    /\b(science fiction|sci-fi|novels?|fiction|literature|genre)\b/.test(description);
+  return metaTitle || metaText || metaCategory || metaDescription;
+}
+
+const OPEN_LIBRARY_RECOVERY_BLOCK_REASONS = new Set([
+  "universal_meta_reference",
+  "no_cover_low_quality_meta",
+  "science_fiction_off_profile_reference",
+  "anthology_or_collection",
+  "title_meta_reference",
+]);
+
+function hasOpenLibraryRecoveryBlocker(diagnostics: FilterDiagnostics): boolean {
+  return diagnostics.rejectReasons.some((reason) => OPEN_LIBRARY_RECOVERY_BLOCK_REASONS.has(reason));
 }
 
 function candidateHasCoverSignal(doc: any): boolean {
@@ -841,6 +885,13 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     diagnostics.rejectReasons.push("universal_meta_reference");
   }
 
+  if (isAnthologyOrCollectionCandidate(title, categories, description, combined)) {
+    diagnostics.rejectReasons.push("anthology_or_collection");
+  }
+
+  if (family === "science_fiction" && isScienceFictionMetaReferenceCandidate(title, categories, description, combined)) {
+    diagnostics.rejectReasons.push("title_meta_reference");
+  }
 
   if (isNoCoverLowQualityMetaCandidate(doc, diagnostics, combined, categories, description)) {
     diagnostics.rejectReasons.push("no_cover_low_quality_meta");
@@ -878,7 +929,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   
   if (family === "science_fiction") {
     const scienceFictionReject =
-      /\b(bookshop mysteries|family names|science fact\/science fiction|analog science|public library|publishers weekly|historical dictionary|guide to|popular culture|writers? market|literary criticism)\b/.test(combined);
+      /\b(bookshop mysteries|family names|science fact\/science fiction|analog science|public library|publishers weekly|historical dictionary|guide to|popular culture|writers? market|literary criticism|criticism|literature|history of|survey of|companion to|readings in|principles of|index(?:es)?|bibliography|reference|anthology|collection|collected|complete novels|selected stories|short stories|short science fiction novels|baker['’]?s dozen)\b/.test(combined);
     const scienceFictionNative = /\b(science fiction|sci-fi|dystopian|space opera|ai|artificial intelligence|robot|android|alien|future|futuristic|time travel|interstellar|spaceship|parallel world)\b/.test(combined);
     if (!scienceFictionNative) diagnostics.passedChecks.push("soft_missing_science_fiction_signal");
     if (scienceFictionReject) diagnostics.rejectReasons.push("science_fiction_off_profile_reference");

@@ -309,6 +309,14 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
  /\breaders?\s+advisory\b/,
  /\bguide to genre fiction\b/,
  /\bmammoth book\b/,
+    /\b(best|great|five|100|hundred|classic|selected)\s+(science fiction\s+)?novels\b/,
+    /^\s*(the\s+)?science\s+fiction\s+novels?\s*$/,
+    /\bscience and fiction\b/,
+    /\b(survey of|companion to|readings in|history of|principles of|index(?:es)?|criticism of)\b.*\b(science fiction|sci-fi|novels?|fiction|literature)\b/,
+    /\bcomplete novels\b/,
+    /\bselected stories\b/,
+    /\bshort science fiction novels\b/,
+    /\bbaker['’]?s dozen\b/,
     /\bjournal\b/,
     /\bmagazine\b/,
     /\bnewsweek\b/,
@@ -353,6 +361,9 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
   }
 
   const hardRejectTextPatterns = [
+    /\bscience fiction\b.*\b(criticism|literary criticism|literature|history and criticism|bibliography|reference|study|studies|survey|guide|companion|readings|index(?:es)?|principles)\b/,
+    /\b(criticism|literary criticism|literature|history and criticism|bibliography|reference|study|studies|survey|guide|companion|readings|index(?:es)?|principles)\b.*\bscience fiction\b/,
+    /\b(anthology|anthologies|collection|collections|collected|complete novels|selected stories|short stories|short science fiction novels|boxed set|box set|omnibus|baker['’]?s dozen)\b/,
     /\bstudy aids?\b/,
     /\bliterary criticism\b/,
     /\breference\b/,
@@ -385,7 +396,7 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     return { reject: true, reason: 'hard_reject_text', detail: text.slice(0, 180) };
   }
 
-  if (/\banthology\b|\bcollection\b|\bomnibus\b|\bboxed set\b|\bbooks?\s*\d+\s*-\s*\d+\b/.test(text)) {
+  if (/\bantholog(?:y|ies)\b|\bcollections?\b|\bcollected\b|\bcomplete novels\b|\bselected stories\b|\bshort stories\b|\bshort science fiction novels\b|\bbaker['’]?s dozen\b|\bomnibus\b|\bboxed set\b|\bbox set\b|\bbooks?\s*\d+\s*-\s*\d+\b/.test(text)) {
     return { reject: true, reason: 'non_fiction_meta', detail: 'collection or omnibus signal' };
   }
 
@@ -1100,6 +1111,7 @@ function scienceFictionSessionFit(c: Candidate): number {
   let score = 0;
 
   if (/\bscience fiction\b|\bsci-fi\b|\bdystopian\b|\bspace opera\b|\bai\b|\bartificial intelligence\b|\brobot\b|\bandroid\b|\balien\b|\bfuture\b|\btime travel\b|\binterstellar\b/.test(text)) score += 4;
+  if (/\b(best|great|five|100|hundred|classic|selected)\s+(science fiction\s+)?novels\b|\bscience and fiction\b|\bscience fiction\b.*\b(criticism|literary criticism|literature|history and criticism|bibliography|reference|study|studies|survey|guide|companion|readings|index(?:es)?|principles)\b|\b(anthology|collection|collected|complete novels|selected stories|short stories|short science fiction novels|baker['’]?s dozen)\b/.test(text)) score -= 12;
   if (/\bhorror\b|\bhaunted\b|\bghost\b|\bsupernatural\b/.test(text)) score -= 3;
   if (/\bthriller\b|\bmystery\b|\bcrime\b/.test(text) && !/\bscience fiction\b|\bdystopian\b|\bfuture\b/.test(text)) score -= 3;
 
@@ -1469,6 +1481,15 @@ function passesOpenLibrarySelectionFloor(candidate: Candidate): boolean {
   return hasShape || fictionSignals || filterSignals >= 8 || anchor >= 8 || trust >= 1;
 }
 
+function seriesClusterKey(candidate: Candidate): string {
+  const title = normalize(candidate.title);
+  const match =
+    title.match(/\b(golden amazon)\b/) ||
+    title.match(/\b([a-z0-9 ]+?)\s+(?:saga|series)\b/) ||
+    title.match(/\b([a-z0-9 ]+?)\s+book\s+(?:one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/);
+  return match?.[1]?.trim() || "";
+}
+
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -1477,6 +1498,11 @@ function canTakeCandidate(
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
   if (count >= 1) return false;
+
+  const seriesKey = seriesClusterKey(candidate);
+  if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
+    return false;
+  }
 
   if (isOpenLibraryCandidate(candidate) && !passesOpenLibrarySelectionFloor(candidate)) {
     return false;
