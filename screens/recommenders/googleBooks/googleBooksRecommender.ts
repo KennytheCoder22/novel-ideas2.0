@@ -53,6 +53,13 @@ const GOOGLE_BOOKS_PROCUREMENT_NEGATIVE_TERMS = [
   "catalog",
   "catalogue",
   "bibliography",
+  "biography",
+  "memoir",
+  "essays",
+  "textbook",
+  "textbooks",
+  "companion",
+  "companions",
 ];
 
 function addGoogleBooksProcurementHygiene(query: string): string {
@@ -420,8 +427,41 @@ function getGoogleBooksApiKey(): string {
 function toGoogleBooksQuery(query: string): string {
   const q = normalizeStoredQueryText(query);
   if (!q) return "";
-  if (q.startsWith("subject:")) return q;
   return addGoogleBooksProcurementHygiene(q);
+}
+
+function buildToneAwareEngineQueries(query: string, input: RecommenderInput): string[] {
+  const q = normalizeStoredQueryText(query);
+  if (!q) return [];
+
+  const axes = (input as any)?.tasteProfile?.axes || {};
+  const darkness = Number(axes?.darkness || 0);
+  const complexity = Number(axes?.complexity || 0);
+  const realism = Number(axes?.realism || 0);
+  const pacing = Number(axes?.pacing || 0);
+  const isSubjectQuery = q.startsWith("subject:");
+
+  const variants: string[] = [q];
+  const push = (candidate: string) => {
+    const normalized = normalizeStoredQueryText(candidate);
+    if (!normalized || variants.includes(normalized)) return;
+    variants.push(normalized);
+  };
+
+  if (!isSubjectQuery && darkness >= 0.35 && !/\b(dark|grim|noir|psychological)\b/.test(q)) {
+    push(`psychological ${q}`);
+  }
+  if (!isSubjectQuery && complexity >= 0.3 && !/\b(literary|political|conspiracy|family saga)\b/.test(q)) {
+    push(`literary ${q}`);
+  }
+  if (!isSubjectQuery && realism >= 0.3 && /\b(mystery|crime|thriller|detective)\b/.test(q) && !/\b(procedural|grounded)\b/.test(q)) {
+    push(`procedural ${q}`);
+  }
+  if (!isSubjectQuery && pacing >= 0.3 && /\b(thriller|mystery|horror|survival)\b/.test(q) && !/\b(fast paced|high stakes)\b/.test(q)) {
+    push(`fast paced ${q}`);
+  }
+
+  return dedupeQueries(variants).slice(0, 3);
 }
 
 async function googleBooksSearch(query: string, limit: number, timeoutMs: number): Promise<any[]> {
@@ -500,7 +540,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
   const queriesToTry = planQueries.length ? planQueries : getBucketQueries(deckKey, input);
   const builtFromQuery = normalizeStoredQueryText(queriesToTry[0] || "");
-  const minCandidateFloor = Math.max(0, Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0));
+  const minCandidateFloor = Math.max(10, Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0));
   const collectedDocsRaw: any[] = [];
   const rawPoolRows: any[] = [];
   const seenKeys = new Set<string>();
@@ -511,7 +551,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
     const laneKind = "precision";
-    const engineQueries = [q];
+    const engineQueries = buildToneAwareEngineQueries(q, input);
     const queryRawDocs: any[] = [];
 
     for (const engineQuery of engineQueries) {
@@ -587,7 +627,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       }
     }
 
-    const enoughCandidates = collectedDocsRaw.length >= Math.max(fetchLimit, minCandidateFloor);
+    const enoughCandidates = collectedDocsRaw.length >= Math.max(finalLimit, minCandidateFloor);
     if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && enoughCandidates) break;
   }
 
