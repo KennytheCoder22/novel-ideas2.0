@@ -309,6 +309,26 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     return { reject: true, reason: 'missing_author', detail: 'missing or unknown author' };
   }
 
+  const source = normalize(c.source);
+  const publicationYear = Number(c.publicationYear || (c.rawDoc as any)?.first_publish_year || 0);
+  const ratings = Number(c.ratingCount || 0);
+  const canonicalStrength = anchorBoost(c);
+  const hasCommercialShape =
+    ratings >= 25 ||
+    canonicalStrength >= 12 ||
+    /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(publisher);
+
+  // Google Books often surfaces public-domain or metadata-thin editions for broad
+  // mystery queries. Unless an older item has clear authority/canonical signals,
+  // keep it out of the final shelf so it cannot crowd out modern/high-signal books.
+  if (source === 'googlebooks' && publicationYear > 0 && publicationYear < 1950 && !hasCommercialShape) {
+    return {
+      reject: true,
+      reason: 'low_metadata_trust',
+      detail: `old low-authority google books result: year=${publicationYear}, ratings=${ratings}`,
+    };
+  }
+
   if ((c.pageCount || 0) > 0 && c.pageCount < 60) {
     return { reject: true, reason: 'too_short', detail: `pageCount=${c.pageCount}` };
   }

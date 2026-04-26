@@ -46,7 +46,11 @@ function inferFamily(input: RecommenderInput): "fantasy" | "horror" | "thriller"
 
 function quoteQuery(query: string): string {
   const cleaned = String(query || "").trim();
-  return cleaned ? `"${cleaned}"` : "";
+  // Do not wrap Open Library searches in quotes. Exact-phrase queries are too
+  // brittle for OL and were returning empty pools for useful intent queries
+  // like murder investigation novel. Keep the query short, but broad enough
+  // for OL to contribute diversity.
+  return cleaned;
 }
 
 function rungToOpenLibraryQuery(rung: StructuredFetchRung): string {
@@ -119,16 +123,16 @@ function isGarbage(doc: any, family: string): boolean {
     .map(normalizeText)
     .join(" ");
 
-  if (/(summary|analysis|study guide|review|criticism|notes|workbook)/i.test(text)) return true;
-  if (/(anthology|collection of stories|short stories|essays)/i.test(text)) return true;
+  if (/\b(summary|analysis|study guide|review|criticism|notes|workbook)\b/i.test(text)) return true;
+  if (/\b(anthology|collection of stories|short stories|essays)\b/i.test(text)) return true;
   if (/\b(readings?|reader|companion|guide|reference|bibliography|catalogue?|catalog|survey|history and criticism|literary criticism)\b/i.test(text)) return true;
   if (/\b(readings?\b.*\b(novel|fiction|literature)|century readings?\b.*\bnovel|redefining\b.*\bfiction|(life|women|race|gender|class)\b.*\bin fiction)\b/i.test(title)) return true;
 
   if (family === "fantasy") {
     const obviousFantasySignal =
-      /(fantasy|magic|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy)/.test(text);
+      /\b(fantasy|magic|wizard|witch|dragon|fae|mythic|quest|kingdom|sword|sorcery|epic fantasy|high fantasy|dark fantasy)\b/.test(text);
     const classicFantasyTitle =
-      /(the hobbit|the fellowship of the ring|the two towers|the return of the king|a wizard of earthsea|dragonflight|the name of the wind)/.test(title);
+      /\b(the hobbit|the fellowship of the ring|the two towers|the return of the king|a wizard of earthsea|dragonflight|the name of the wind)\b/.test(title);
     if (obviousFantasySignal || classicFantasyTitle) return false;
   }
 

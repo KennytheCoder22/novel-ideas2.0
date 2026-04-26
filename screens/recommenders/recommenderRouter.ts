@@ -1257,6 +1257,30 @@ function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string
   return base.join(" ");
 }
 
+
+function capRouterQueryLanes(lanes: RouterQueryLane[]): RouterQueryLane[] {
+  const googleLanes = lanes.filter((lane) => lane.source === "googleBooks");
+  const openLibraryLanes = lanes.filter((lane) => lane.source === "openLibrary");
+  const otherLanes = lanes.filter((lane) => lane.source !== "googleBooks" && lane.source !== "openLibrary");
+
+  // Keep the latency guardrail, but never let Google Books consume the entire
+  // lane budget. Open Library is the main diversity/sanity-check source for
+  // adult prose recommendations, and slicing after appending OL lanes caused
+  // OL to be cut off before it could run.
+  if (openLibraryLanes.length > 0) {
+    return [
+      ...googleLanes.slice(0, 3),
+      ...openLibraryLanes.slice(0, 1),
+      ...otherLanes.slice(0, 1),
+    ].slice(0, 4);
+  }
+
+  return [
+    ...googleLanes.slice(0, 4),
+    ...otherLanes.slice(0, 1),
+  ].slice(0, 4);
+}
+
 function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLane[] {
   const family = inferRouterFamily(bucketPlan);
   let base = String(rung?.query || "").trim();
@@ -1296,7 +1320,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
       mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
     }
 
-    return mapped.slice(0, 4);
+    return capRouterQueryLanes(mapped);
   }
 
   const thrillerAllowsDomestic =
@@ -1379,7 +1403,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
   }
 
-  return mapped.slice(0, 4);
+  return capRouterQueryLanes(mapped);
 }
 
 function candidateKey(candidate: any): string {
