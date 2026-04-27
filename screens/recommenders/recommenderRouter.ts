@@ -585,7 +585,7 @@ function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string
   const out: string[] = [];
 
   for (const value of values) {
-    const cleaned = String(value || "").replace(/\s+/g, " ").trim();
+    const cleaned = cleanQueryText(value);
     if (!cleaned) continue;
     const key = cleaned.toLowerCase();
     if (seen.has(key)) continue;
@@ -596,8 +596,15 @@ function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string
   return out;
 }
 
-function normalizeQueryKey(value: unknown): string {
+function cleanQueryText(value: unknown): string {
   return String(value || "")
+    .replace(/^["'\s]+|["'\s]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeQueryKey(value: unknown): string {
+  return cleanQueryText(value)
     .toLowerCase()
     .replace(/["']/g, " ")
     .replace(/\s+/g, " ")
@@ -1706,11 +1713,18 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
 
 function safeDefaultQueriesForFamily(family: RouterFamilyKey | string): string[] {
   const normalized = normalizeRouterFamilyValue(family) || "general";
-  if (normalized === "thriller") return ["psychological thriller novel", "suspense novel"];
+  if (normalized === "thriller") return ["psychological thriller novel", "crime thriller novel", "suspense novel"];
   if (normalized === "science_fiction" || normalized === "speculative") return ["science fiction novel", "speculative fiction novel"];
   if (normalized === "fantasy") return ["fantasy novel", "dark fantasy novel"];
   if (normalized === "horror") return ["horror novel", "psychological horror novel"];
   return ["psychological suspense novel", "science fiction novel", "fantasy novel", "horror novel"];
+}
+
+function rotateQueriesForSession(queries: string[], sessionSalt: number): string[] {
+  const cleaned = dedupeNonEmptyQueries((queries || []).map((q) => cleanQueryText(q)));
+  if (cleaned.length <= 1) return cleaned;
+  const shift = Math.abs(Number(sessionSalt || 0)) % cleaned.length;
+  return cleaned.slice(shift).concat(cleaned.slice(0, shift));
 }
 
 function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string {
@@ -2586,6 +2600,7 @@ export async function getRecommendations(
   override?: EngineOverride
 ): Promise<RecommendationResult> {
   const recommendationStartMs = Date.now();
+  const sessionSalt = recommendationStartMs;
   const routingInput = removeSkippedSwipeEvidenceForRouting(input);
   const preferredEngine = chooseEngine(routingInput, override);
   const baseBucketPlan = buildRouterBucketPlan(routingInput);
@@ -2695,7 +2710,32 @@ export async function getRecommendations(
   }
 
   if (!rungs.length) {
-    rungs = safeDefaultQueriesForFamily(routerFamily).map((query, rung) => ({ rung, query }));
+    rungs = rotateQueriesForSession(safeDefaultQueriesForFamily(routerFamily), sessionSalt).map((query, rung) => ({ rung, query: cleanQueryText(query) }));
+  }
+  const hybridSciFiThriller =
+    Number(hybridLaneWeights.science_fiction || 0) >= 0.2 &&
+    Number(hybridLaneWeights.thriller || 0) >= 0.2;
+  if (routerFamily === "thriller" && !hybridSciFiThriller) {
+    const thrillerRotation = rotateQueriesForSession([
+      "psychological thriller novel",
+      "character driven suspense novel",
+      "crime thriller novel",
+      "mystery suspense novel",
+    ], sessionSalt);
+    rungs = dedupeNonEmptyQueries([...(rungs.map((r: any) => r?.query)), ...thrillerRotation])
+      .slice(0, 4)
+      .map((query, rung) => ({ rung, query: cleanQueryText(query) }));
+  }
+
+  if (hybridSciFiThriller) {
+    const mixedQueries = rotateQueriesForSession([
+      "science fiction thriller novel",
+      "speculative suspense novel",
+      "psychological thriller novel",
+      "crime thriller novel",
+      "suspense novel",
+    ], sessionSalt).slice(0, 4);
+    rungs = mixedQueries.map((query, rung) => ({ rung, query: cleanQueryText(query) }));
   }
 
   if (routerFamily === "historical") {
@@ -2725,7 +2765,9 @@ export async function getRecommendations(
     }
   }
 
-  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision" }));
+  rungs = rungs
+    .map((r: any) => ({ ...r, query: cleanQueryText(r?.query), laneKind: "precision" }))
+    .filter((r: any) => Boolean(r?.query));
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   rungs = rungs.slice(0, 4);
@@ -3051,6 +3093,18 @@ export async function getRecommendations(
   const openLibraryRawCount = familyDominanceControlledDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary").length;
   let filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
   let fallbackRelaxedTriggered = false;
+  if (filteredDocs.length === 0) {
+    const relaxedBucketPlan = {
+      ...bucketPlan,
+      lane: "general",
+      family: "general",
+      queries: rotateQueriesForSession(safeDefaultQueriesForFamily(activeFamily), sessionSalt),
+      preview: rotateQueriesForSession(safeDefaultQueriesForFamily(activeFamily), sessionSalt)[0],
+      relaxedFilterPass: true,
+    };
+    filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, relaxedBucketPlan as any));
+    if (filteredDocs.length > 0) fallbackRelaxedTriggered = true;
+  }
   if (filteredDocs.length < MIN_RELAXED_FILTER_POOL) {
     fallbackRelaxedTriggered = true;
     const existing = new Set(filteredDocs.map((doc: any) => candidateKey(doc)));
@@ -3208,7 +3262,7 @@ export async function getRecommendations(
   if (!isHybridMode && activeFamily === "thriller") {
     candidateDocs = candidateDocs.filter((doc: any) => {
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
-      return !family || family === "thriller" || family === "mystery";
+      return !family || family === "thriller" || family === "mystery" || family === "science_fiction" || family === "speculative";
     });
   }
 
@@ -3491,9 +3545,18 @@ let normalizedCandidates = [
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
   const rankingMs = Date.now() - rankingStartMs;
 
-  const recentIds = new Set((routingInput.priorRecommendedIds || []).map((v) => String(v).toLowerCase().trim()));
-  const recentKeys = new Set((routingInput.priorRecommendedKeys || []).map((v) => String(v).toLowerCase().trim()));
-  const recentAuthors = new Set((routingInput.priorAuthors || []).map((v) => normalizeText(v)));
+  const recentIds = new Set([
+    ...(routingInput.priorRecommendedIds || []),
+    ...((routingInput as any).shownIds || []),
+  ].map((v) => String(v).toLowerCase().trim()));
+  const recentKeys = new Set([
+    ...(routingInput.priorRecommendedKeys || []),
+    ...((routingInput as any).shownKeys || []),
+  ].map((v) => String(v).toLowerCase().trim()));
+  const recentAuthors = new Set([
+    ...(routingInput.priorAuthors || []),
+    ...((routingInput as any).shownAuthors || []),
+  ].map((v) => normalizeText(v)));
   const recentSeries = new Set((routingInput.priorSeriesKeys || []).map((v) => String(v).toLowerCase().trim()));
   const recentTitleAuthor = new Set(
     (Array.isArray((routingInput as any)?.priorRecommendedTitleAuthors) ? (routingInput as any).priorRecommendedTitleAuthors : [])

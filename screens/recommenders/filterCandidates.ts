@@ -1706,7 +1706,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "speculative_off_profile_reference",
     "missing_horror_alignment_hard",
     "lane_mismatch_fantasy",
-    "lane_mismatch_thriller",
     "lane_mismatch_romance",
     "lane_mismatch_historical",
     "lane_mismatch_speculative",
