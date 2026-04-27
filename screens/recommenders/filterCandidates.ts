@@ -367,6 +367,13 @@ function hasThrillerOverlapSignal(combined: string): boolean {
   return /\b(thriller|suspense|psychological|crime|murder|killer|serial killer|detective|investigation|case|missing|disappearance|abduction|fbi|procedural|police|noir|manhunt|fugitive|obsession|cat and mouse)\b/.test(combined);
 }
 
+function hasThrillerAdjacentNarrativeSignal(combined: string): boolean {
+  const crimeAndSuspense = /\b(crime|murder|killer|investigation|detective|abduction|kidnapp(?:ed|ing)?|conspiracy)\b/.test(combined) && /\b(suspense|tension|cat and mouse|high stakes|danger|threat)\b/.test(combined);
+  const mysteryAndPacing = /\b(mystery|case|detective|investigation)\b/.test(combined) && /\b(pace|fast[- ]paced|race against time|urgent|manhunt|fugitive|chase)\b/.test(combined);
+  const psychologicalIntensity = /\b(psychological|obsession|paranoia|mind games|manipulation|dark secret)\b/.test(combined) && /\b(intense|intensity|high stakes|danger|deadly|volatile)\b/.test(combined);
+  return crimeAndSuspense || mysteryAndPacing || psychologicalIntensity;
+}
+
 function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostics): boolean {
   if (!isOpenLibraryLikeDoc(doc)) return false;
 
@@ -466,6 +473,7 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   suspensePositive: boolean;
   strongNarrative: boolean;
   fictionPositive: boolean;
+  authorAffinity: boolean;
 }): boolean {
   if (family === "mystery") {
     const mysteryNative =
@@ -493,7 +501,8 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
       flags.suspensePositive ||
       /\b(missing|disappearance|abduction|kidnapp(?:ed|ing)?|detective|investigat(?:e|es|ion)|crime|murder|killer|fbi|procedural|noir|police|serial killer|manhunt|fugitive|case|victim|search)\b/.test(combined);
 
-    if (!thrillerNative) return true;
+    const thrillerAdjacent = hasThrillerAdjacentNarrativeSignal(combined) || flags.authorAffinity || flags.strongNarrative;
+    if (!thrillerNative && !thrillerAdjacent) return true;
 
     const obviousNonThrillerMeta =
       /\b(essays|treatise|philosophy|upheaval|social upheaval|history of|criticism|book of answers|critical survey|technique of the mystery story|mystery book|mammoth mystery book|century of british mystery|jew in english fiction)\b/.test(combined);
@@ -840,7 +849,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     );
 
   const thrillerPositive =
-    /\b(thriller|psychological thriller|crime thriller|domestic suspense|legal thriller|murder|serial killer|investigation|police procedural|noir|survival)\b/.test(
+    /\b(thriller|psychological thriller|crime thriller|domestic suspense|legal thriller|murder|serial killer|investigation|police procedural|noir|survival|high stakes|race against time|cat and mouse|intense)\b/.test(
       combined
     );
 
@@ -974,12 +983,18 @@ if (family === "speculative") {
       mysteryPositive ||
       crimePositive ||
       suspensePositive;
+    const thrillerAdjacent =
+      hasThrillerAdjacentNarrativeSignal(combined) ||
+      (crimePositive && suspensePositive && strongNarrative) ||
+      (mysteryPositive && /\b(tension|high stakes|urgent|race against time|manhunt|fugitive)\b/.test(combined) && strongNarrative) ||
+      (/\b(psychological|obsession|paranoia|mind games)\b/.test(combined) && strongNarrative) ||
+      authorAffinity;
 
     if (!thrillerPositive) diagnostics.passedChecks.push("soft_missing_thriller_signal");
     if (horrorToneWanted && !horrorAligned) diagnostics.passedChecks.push("soft_missing_horror_alignment");
 
-    if (!thrillerNative) {
-      diagnostics.rejectReasons.push("thriller_native_signal_required");
+    if (!thrillerNative && !thrillerAdjacent) {
+      diagnostics.passedChecks.push("soft_missing_thriller_native");
     }
 
     const antiqueOffProfileThriller =
@@ -1432,7 +1447,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "lane_mismatch_romance",
     "lane_mismatch_historical",
     "lane_mismatch_speculative",
-    "thriller_native_signal_required",
     "antique_off_profile_thriller",
     "thriller_meta_reference",
     "missing_or_low_quality_cover",
@@ -1480,7 +1494,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       if (thrillerRecoverySignals) {
         const removed = new Set([
           "insufficient_length_or_description",
-          "thriller_native_signal_required",
           "missing_or_low_quality_cover",
           "lane_mismatch_thriller",
           "below_shape_floor",
@@ -1545,7 +1558,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         "too_many_soft_failures",
         "below_shape_floor",
         "missing_or_low_quality_cover",
-        "thriller_native_signal_required",
         "lane_mismatch_fantasy",
         "lane_mismatch_thriller",
         "lane_mismatch_romance",
