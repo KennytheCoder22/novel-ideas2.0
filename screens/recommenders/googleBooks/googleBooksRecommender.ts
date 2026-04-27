@@ -53,6 +53,18 @@ const GOOGLE_BOOKS_PROCUREMENT_NEGATIVE_TERMS = [
   "catalog",
   "catalogue",
   "bibliography",
+  "biography",
+  "memoir",
+  "essays",
+  "textbook",
+  "textbooks",
+  "companion",
+  "companions",
+  "series starter",
+  "book 1",
+  "book one",
+  "fbi suspense thriller",
+  "fbi thriller",
 ];
 
 function addGoogleBooksProcurementHygiene(query: string): string {
@@ -125,8 +137,8 @@ function looksLikeLowProcurementGoogleBooksCandidate(doc: any): boolean {
   return false;
 }
 
-const GOOGLE_BOOKS_REFERENCE_TITLE_PAT = /\b(guide|writer'?s market|studies in|literature|review|digest|catalog|catalogue|bibliography|anthology|encyclopedia|handbook|manual|journal|periodical|proceedings|transactions|magazine|bulletin|report|annual report|yearbook|readings?|reader|criticism|critical|redefining|history and criticism)\b/i;
-const GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT = /\b(literary criticism|criticism|bibliography|reference|study aids|language arts|language and literature|periodicals|essays|authorship|creative writing|journals|magazines|reports|proceedings|transactions|history and criticism|readings?)\b/i;
+const GOOGLE_BOOKS_REFERENCE_TITLE_PAT = /\b(guide|writer'?s market|studies in|literature|review|digest|catalog|catalogue|bibliography|anthology|encyclopedia|dictionary|handbook|manual|journal|periodical|proceedings|transactions|magazine|bulletin|report|annual report|yearbook|readings?|reader|criticism|critical|redefining|history and criticism|summary|study guide|textbook)\b/i;
+const GOOGLE_BOOKS_REFERENCE_CATEGORY_PAT = /\b(literary criticism|criticism|bibliography|reference|study aids|language arts|language and literature|periodicals|essays|authorship|creative writing|journals|magazines|reports|proceedings|transactions|history and criticism|readings?|encyclopedia|textbook|study guide)\b/i;
 const GOOGLE_BOOKS_REFERENCE_AUTHOR_PAT = /\b(university|press|society|association|department of|review|journal)\b/i;
 
 const GOOGLE_BOOKS_LIGHT_HARD_REJECT_TITLE_PAT = /\b(boxed set|box set|omnibus|complete works?|selected works?|stories of the year|illustrated edition|collector'?s edition)\b/i;
@@ -205,8 +217,10 @@ function isGarbageGoogleBooksCandidate(doc: any): boolean {
   if (looksLikeNoCoverMetaGoogleBooksCandidate(doc)) return true;
 
   if (/\b(test|ebook|sample|preview|canary)\b/i.test(title)) return true;
-  if (/\b(abstracts|theses|dissertations|index|journal|proceedings|transactions|bulletin|report|yearbook|catalog|catalogue)\b/i.test(title)) return true;
-  if (/\b(abstracts|theses|dissertations|proceedings|transactions|bulletin|report|catalog|catalogue)\b/i.test(text)) return true;
+  if (/\b(abstracts|theses|dissertations|index|journal|proceedings|transactions|bulletin|report|yearbook|catalog|catalogue|encyclopedia|dictionary|textbook)\b/i.test(title)) return true;
+  if (/\b(abstracts|theses|dissertations|proceedings|transactions|bulletin|report|catalog|catalogue|encyclopedia|dictionary|textbook|literary criticism)\b/i.test(text)) return true;
+  if (/\b(summary|study guide|teacher'?s guide|lesson plans?|cliffsnotes|sparknotes|book notes?)\b/i.test(text)) return true;
+  if (/\b(how to write|writing workbook|writing prompts?|author workbook)\b/i.test(text)) return true;
 
   if (/\b(film|films|cinema|movie|movies|screen|hollywood|hitchcock)\b/i.test(text)) return true;
   if (/\b(criticism|critical|history of|studies in|analysis)\b/i.test(text)) return true;
@@ -224,10 +238,22 @@ function isGarbageGoogleBooksCandidate(doc: any): boolean {
   const seriesMatch = title.match(/\bbook\s*(\d+)\b/i);
   if (seriesMatch) {
     const n = parseInt(seriesMatch[1], 10);
-    if (n >= 3 && /\b(fbi|detective|crime|thriller|suspense)\b/i.test(text)) {
+    const lowAuthority = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0) < 25;
+    if (n >= 2 && lowAuthority && /\b(fbi|detective|crime|thriller|suspense)\b/i.test(text)) {
       return true;
     }
   }
+
+  const formulaAuthor = /\b(blake pierce|ava strong|jack mars|morgan rice|harper lin)\b/i.test(author);
+  const formulaTitle = /\b(a|an)\s+[a-z]+\s+(fbi|detective|crime|mystery|suspense)\s+thriller\b/i.test(title);
+  const lowAuthority = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0) < 25;
+  const zeroRating = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0) <= 0;
+  const strongCommercialAuthority =
+    hasShelfAvailabilitySignal(doc) ||
+    hasMainstreamPublisherSignal(doc) ||
+    Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0) >= 120;
+  if ((formulaAuthor || formulaTitle) && lowAuthority && !strongCommercialAuthority) return true;
+  if (zeroRating && (formulaAuthor || /\b(book|volume|part)\s*\d+\b/i.test(title)) && /\b(fbi|detective|crime|thriller|suspense)\b/i.test(text) && !strongCommercialAuthority) return true;
 
   if (/\b(paranormal romance|fantasy romance|urban romance|office romance)\b/i.test(text) && /\bcrime thriller|mystery thriller|psychological thriller|detective\b/i.test(text)) {
     return true;
@@ -279,6 +305,140 @@ function isClearlyNotNarrativeBook(doc: any): boolean {
   if (/\b(history of|themes in|study of|analysis of)\b/.test(text)) return true;
 
   return false;
+}
+
+function looksLikeLowAuthorityLegacyLibraryTitle(doc: any): boolean {
+  const year = Number(doc?.first_publish_year || 0);
+  const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+  const publisher = normalizeText(doc?.publisher ?? doc?.volumeInfo?.publisher);
+  const text = normalizeText([doc?.title, doc?.subtitle, doc?.description].filter(Boolean).join(" "));
+  const strongAuthority = hasShelfAvailabilitySignal(doc) || hasMainstreamPublisherSignal(doc) || ratings >= 50;
+  if (strongAuthority) return false;
+  if (year > 0 && year < 1975 && ratings === 0) return true;
+  if (/\b(public library|library edition|catalog card|reference desk|circulation)\b/.test(`${publisher} ${text}`)) return true;
+  return false;
+}
+
+function hasStrongAuthoritySignal(doc: any): boolean {
+  const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+  return Boolean(
+    hasShelfAvailabilitySignal(doc) ||
+    hasMainstreamPublisherSignal(doc) ||
+    ratings >= 120 ||
+    doc?.saleInfo?.buyLink ||
+    String(doc?.saleability || doc?.saleInfo?.saleability || "").toUpperCase() === "FOR_SALE"
+  );
+}
+
+function hasStrongNarrativeShapeSignal(doc: any): boolean {
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const description = normalizeText(doc?.description ?? doc?.volumeInfo?.description);
+  const pageCount = Number(doc?.pageCount ?? doc?.volumeInfo?.pageCount ?? 0);
+  const hasNarrativeLexicon =
+    /\b(thriller|mystery|crime|suspense|horror|fantasy|science fiction|novel|fiction)\b/.test(title) ||
+    /\b(follows|story of|must uncover|must survive|investigates|killer|missing|case|obsession|conspiracy|haunted)\b/.test(description);
+  return hasNarrativeLexicon && (pageCount >= 140 || description.length > 180);
+}
+
+function capRawDocsPerAuthor(docs: any[], queryFamily: string, maxPerAuthor = 2): any[] {
+  const out: any[] = [];
+  const authorCounts = new Map<string, number>();
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.volumeInfo?.authors?.[0]) || "unknown";
+    const key = `${queryFamily}:${author}`;
+    const count = authorCounts.get(key) || 0;
+    if (count >= maxPerAuthor) continue;
+    authorCounts.set(key, count + 1);
+    out.push(doc);
+  }
+  return out;
+}
+
+function enforceEarlyIntakeQualityAndDiversity(docs: any[], queryFamily: string): any[] {
+  const primarySeeded = (Array.isArray(docs) ? docs : []).filter((doc) => {
+    if (!doc?.title) return false;
+    if (looksLikeGoogleBooksReference(doc)) return false;
+    if (isClearlyNotNarrativeBook(doc)) return false;
+    if (looksLikeLowAuthorityLegacyLibraryTitle(doc)) return false;
+    if (isGarbageGoogleBooksCandidate(doc)) return false;
+    const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+    if (ratings === 0 && !(hasStrongAuthoritySignal(doc) || hasStrongNarrativeShapeSignal(doc))) return false;
+    return true;
+  });
+
+  // If strict intake gets too thin, widen early intake slightly and let downstream
+  // final filters/ranking enforce stricter quality floors.
+  const seeded = primarySeeded.length >= 12
+    ? primarySeeded
+    : (Array.isArray(docs) ? docs : []).filter((doc) => {
+        if (!doc?.title) return false;
+        if (looksLikeGoogleBooksReference(doc)) return false;
+        if (isClearlyNotNarrativeBook(doc)) return false;
+        if (looksLikeLowAuthorityLegacyLibraryTitle(doc)) return false;
+        const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+        if (ratings === 0 && !(hasStrongAuthoritySignal(doc) || hasStrongNarrativeShapeSignal(doc))) return false;
+        return true;
+      });
+
+  const capped: any[] = [];
+  const authorCounts = new Map<string, number>();
+  for (const doc of seeded) {
+    const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.volumeInfo?.authors?.[0]) || "unknown";
+    const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+    const maxPerAuthor = ratings === 0 && !hasStrongAuthoritySignal(doc) ? 1 : 2;
+    const key = `${queryFamily}:${author}`;
+    const count = authorCounts.get(key) || 0;
+    if (count >= maxPerAuthor) continue;
+    authorCounts.set(key, count + 1);
+    capped.push(doc);
+  }
+
+  const total = capped.length;
+  if (total < 4) return capped;
+
+  let dominantKey = "";
+  let dominantCount = 0;
+  authorCounts.forEach((count, key) => {
+    if (count > dominantCount) {
+      dominantCount = count;
+      dominantKey = key;
+    }
+  });
+  if (dominantCount / total <= 0.3) return capped;
+
+  const maxAllowedDominant = Math.max(1, Math.floor(total * 0.3));
+  let keptDominant = 0;
+  return capped.filter((doc) => {
+    const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.volumeInfo?.authors?.[0]) || "unknown";
+    const key = `${queryFamily}:${author}`;
+    if (key !== dominantKey) return true;
+    if (keptDominant >= maxAllowedDominant) return false;
+    keptDominant += 1;
+    return true;
+  });
+}
+
+function buildAuthorityBackfillQueries(queryFamily: string): string[] {
+  if (queryFamily === "thriller") {
+    return [
+      'inauthor:"Gillian Flynn" psychological thriller novel',
+      'inauthor:"Dennis Lehane" thriller novel',
+      'inauthor:"Thomas Harris" thriller novel',
+      '"shutter island" thriller novel',
+      '"gone girl" thriller novel',
+    ];
+  }
+  if (queryFamily === "mystery") {
+    return [
+      'inauthor:"Tana French" mystery novel',
+      'inauthor:"Louise Penny" detective mystery novel',
+      '"the girl with the dragon tattoo" mystery novel',
+    ];
+  }
+  return [
+    'bestseller fiction novel',
+    'award winning fiction novel',
+  ];
 }
 
 function sleep(ms: number): Promise<void> {
@@ -420,8 +580,62 @@ function getGoogleBooksApiKey(): string {
 function toGoogleBooksQuery(query: string): string {
   const q = normalizeStoredQueryText(query);
   if (!q) return "";
-  if (q.startsWith("subject:")) return q;
-  return addGoogleBooksProcurementHygiene(q);
+  return q
+    .replace(/\s-\w[\w-]*/g, " ")
+    .replace(/\s-\"[^\"]+\"/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function buildToneAwareEngineQueries(query: string, input: RecommenderInput): string[] {
+  const q = normalizeStoredQueryText(query);
+  if (!q) return [];
+
+  const axes = (input as any)?.tasteProfile?.axes || {};
+  const darkness = Number(axes?.darkness || 0);
+  const warmth = Number(axes?.warmth || 0);
+  const characterFocus = Number(axes?.characterFocus || 0);
+  const complexity = Number(axes?.complexity || 0);
+  const realism = Number(axes?.realism || 0);
+  const pacing = Number(axes?.pacing || 0);
+  const isSubjectQuery = q.startsWith("subject:");
+
+  const variants: string[] = [q];
+  const push = (candidate: string) => {
+    const normalized = normalizeStoredQueryText(candidate);
+    if (!normalized || variants.includes(normalized)) return;
+    variants.push(normalized);
+  };
+
+  if (!isSubjectQuery && darkness >= 0.35 && !/\b(dark|grim|noir|psychological)\b/.test(q)) {
+    push(`psychological ${q}`);
+  }
+  if (!isSubjectQuery && (warmth >= 0.2 || characterFocus >= 0.25) && /\b(thriller|mystery|suspense|science fiction|fantasy)\b/.test(q) && !/\b(character driven|emotional|relationship)\b/.test(q)) {
+    push(`character driven emotional ${q}`);
+  }
+  if (!isSubjectQuery && complexity >= 0.3 && !/\b(literary|political|conspiracy|family saga)\b/.test(q)) {
+    push(`literary ${q}`);
+  }
+  if (!isSubjectQuery && realism >= 0.3 && warmth < 0.15 && characterFocus < 0.2 && /\b(mystery|crime|thriller|detective)\b/.test(q) && !/\b(procedural|grounded)\b/.test(q)) {
+    push(`procedural ${q}`);
+  }
+  if (!isSubjectQuery && pacing >= 0.3 && /\b(thriller|mystery|horror|survival)\b/.test(q) && !/\b(fast paced|high stakes)\b/.test(q)) {
+    push(`fast paced ${q}`);
+  }
+
+  return dedupeQueries(variants).slice(0, 3);
+}
+
+function inferQueryFamilyFromText(query: string): "thriller" | "mystery" | "horror" | "science_fiction" | "fantasy" | "romance" | "historical" | "general" {
+  const q = normalizeStoredQueryText(query);
+  if (/\b(thriller|suspense|conspiracy|manhunt|abduction)\b/.test(q)) return "thriller";
+  if (/\b(mystery|detective|whodunit|private investigator)\b/.test(q)) return "mystery";
+  if (/\b(horror|haunted|occult|ghost|supernatural)\b/.test(q)) return "horror";
+  if (/\b(science fiction|dystopian|space opera|speculative)\b/.test(q)) return "science_fiction";
+  if (/\b(fantasy|magic|dragon|gothic fantasy)\b/.test(q)) return "fantasy";
+  if (/\b(romance|love story|relationship)\b/.test(q)) return "romance";
+  if (/\b(historical|period fiction|civil war|19th century)\b/.test(q)) return "historical";
+  return "general";
 }
 
 async function googleBooksSearch(query: string, limit: number, timeoutMs: number): Promise<any[]> {
@@ -500,7 +714,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
   const queriesToTry = planQueries.length ? planQueries : getBucketQueries(deckKey, input);
   const builtFromQuery = normalizeStoredQueryText(queriesToTry[0] || "");
-  const minCandidateFloor = Math.max(0, Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0));
+  const minCandidateFloor = Math.max(10, Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0));
   const collectedDocsRaw: any[] = [];
   const rawPoolRows: any[] = [];
   const seenKeys = new Set<string>();
@@ -510,8 +724,9 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
+    const queryFamily = inferQueryFamilyFromText(q);
     const laneKind = "precision";
-    const engineQueries = [q];
+    const engineQueries = buildToneAwareEngineQueries(q, input);
     const queryRawDocs: any[] = [];
 
     for (const engineQuery of engineQueries) {
@@ -520,29 +735,48 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       try {
         rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs);
       } catch (err: any) {
-        console.error("GoogleBooks fetch failed", {
-          engineQuery,
-          queryIndex,
-          builtFromQuery,
-          message: err?.message || String(err || "unknown error"),
-        });
+        // Retry with a simplified payload before declaring source failure.
+        const simplifiedQuery = normalizeStoredQueryText(engineQuery)
+          .replace(/\s-\w[\w-]*/g, " ")
+          .replace(/\s-\"[^\"]+\"/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (simplifiedQuery && simplifiedQuery !== normalizeStoredQueryText(engineQuery)) {
+          try {
+            rawDocs = await googleBooksSearch(simplifiedQuery, fetchLimit, timeoutMs);
+          } catch {
+            rawDocs = [];
+          }
+        }
 
-        rawPoolRows.push({
-          title: "[GOOGLE_BOOKS_FETCH_ERROR]",
-          author: undefined,
-          source: "googleBooks",
-          queryText: q,
-          engineQueryText: engineQuery,
-          queryRung: queryIndex,
-          laneKind,
-          error: err?.message || String(err || "unknown error"),
-        });
+        if (!Array.isArray(rawDocs) || rawDocs.length === 0) {
+          console.error("GoogleBooks fetch failed", {
+            engineQuery,
+            simplifiedQuery,
+            queryIndex,
+            builtFromQuery,
+            message: err?.message || String(err || "unknown error"),
+          });
 
-        rawDocs = [];
+          rawPoolRows.push({
+            title: "[GOOGLE_BOOKS_FETCH_ERROR]",
+            author: undefined,
+            source: "googleBooks",
+            queryText: q,
+            engineQueryText: engineQuery,
+            queryRung: queryIndex,
+            laneKind,
+            error: err?.message || String(err || "unknown error"),
+          });
+
+          rawDocs = [];
+        }
       }
+      const rawAuthorCappedDocs = capRawDocsPerAuthor(rawDocs, queryFamily, 2);
 
-      totalRawFetched += Array.isArray(rawDocs) ? rawDocs.length : 0;
-      for (const rawDoc of Array.isArray(rawDocs) ? rawDocs : []) {
+      const intakeDocs = enforceEarlyIntakeQualityAndDiversity(rawAuthorCappedDocs, queryFamily);
+      totalRawFetched += Array.isArray(intakeDocs) ? intakeDocs.length : 0;
+      for (const rawDoc of Array.isArray(intakeDocs) ? intakeDocs : []) {
         rawPoolRows.push({
           title: rawDoc?.title,
           author: Array.isArray(rawDoc?.author_name) ? rawDoc.author_name[0] : undefined,
@@ -553,7 +787,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
           laneKind,
         });
       }
-      queryRawDocs.push(...(Array.isArray(rawDocs) ? rawDocs : []));
+      queryRawDocs.push(...(Array.isArray(intakeDocs) ? intakeDocs : []));
     }
 
     const dedupedQueryRawDocs: any[] = [];
@@ -572,14 +806,30 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       if (isGarbageGoogleBooksCandidate(doc)) return false;
       if (isClearlyNotNarrativeBook(doc)) return false;
       if (looksLikeLowProcurementGoogleBooksCandidate(doc)) return false;
+      if (looksLikeLowAuthorityLegacyLibraryTitle(doc)) return false;
       return true;
     });
 
-    if (queryIndex === 0) primaryDocsRaw = admittedDocsRaw;
+    const cappedByAuthor: any[] = [];
+    const authorCounts = new Map<string, number>();
+    for (const doc of admittedDocsRaw) {
+      const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.volumeInfo?.authors?.[0]);
+      const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+      const strongAuthority = hasShelfAvailabilitySignal(doc) || hasMainstreamPublisherSignal(doc) || ratings >= 120;
+      const lowAuthority = ratings <= 5 && !strongAuthority;
+      const maxPerAuthor = lowAuthority ? 1 : 2;
+      const key = `${queryFamily}:${author || "unknown"}`;
+      const current = authorCounts.get(key) || 0;
+      if (current >= maxPerAuthor) continue;
+      authorCounts.set(key, current + 1);
+      cappedByAuthor.push(doc);
+    }
+
+    if (queryIndex === 0) primaryDocsRaw = cappedByAuthor;
 
     const shouldBackfillFromThisQuery = queryIndex === 0 || collectedDocsRaw.length < Math.max(minCandidateFloor, finalLimit * 2);
     if (shouldBackfillFromThisQuery) {
-      for (const doc of admittedDocsRaw) {
+      for (const doc of cappedByAuthor) {
         const key = String(doc?.key || doc?.id || `${doc?.title || "unknown"}|${queryIndex}`);
         if (seenKeys.has(key)) continue;
         seenKeys.add(key);
@@ -587,8 +837,34 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       }
     }
 
-    const enoughCandidates = collectedDocsRaw.length >= Math.max(fetchLimit, minCandidateFloor);
+    const enoughCandidates = collectedDocsRaw.length >= Math.max(finalLimit, minCandidateFloor);
     if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && enoughCandidates) break;
+  }
+
+  const primaryFamily = inferQueryFamilyFromText(queriesToTry[0] || "");
+  if (collectedDocsRaw.length < Math.max(10, finalLimit)) {
+    for (const authorityQuery of buildAuthorityBackfillQueries(primaryFamily).slice(0, 3)) {
+      let fallbackDocs: any[] = [];
+      try {
+        fallbackDocs = await googleBooksSearch(authorityQuery, fetchLimit, timeoutMs);
+      } catch {
+        fallbackDocs = [];
+      }
+      const intakeDocs = enforceEarlyIntakeQualityAndDiversity(capRawDocsPerAuthor(fallbackDocs, primaryFamily, 2), primaryFamily);
+      for (const doc of intakeDocs) {
+        const key = String(doc?.key || doc?.id || `${doc?.title || "unknown"}|authority_backfill`);
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        collectedDocsRaw.push({
+          ...doc,
+          queryRung: 98,
+          queryText: normalizeStoredQueryText(authorityQuery),
+          source: "googleBooks",
+          laneKind: "authority_backfill",
+        });
+      }
+      if (collectedDocsRaw.length >= Math.max(10, finalLimit * 2)) break;
+    }
   }
 
   const docsRaw = collectedDocsRaw.length

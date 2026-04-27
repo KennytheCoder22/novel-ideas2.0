@@ -18,7 +18,8 @@ export type QualityRejectReason =
   | 'hard_reject_text'
   | 'non_fiction_meta'
   | 'low_metadata_trust'
-  | 'weak_fiction_signal';
+  | 'weak_fiction_signal'
+  | 'formula_series_spam';
 
 export type QualityRejectRecord = {
   id: string;
@@ -44,6 +45,9 @@ export type ScoreBreakdown = {
   laneBlendScore: number;
   toneScore: number;
   procurementScore: number;
+  groundedRealismScore: number;
+  psychologicalIntensityScore: number;
+  emotionalWeightScore: number;
   finalScore: number;
 };
 
@@ -60,6 +64,7 @@ const PERSONAL_AFFINITY_WEIGHT = 2.75;
 const ANCHOR_SCORE_CAP = 10;
 const NEGATIVE_TASTE_MISMATCH_PENALTY = -10;
 const MIN_TASTE_SCORE_FOR_RANKING = -2;
+const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after filtering/ranking behavior is confirmed stable.
@@ -281,16 +286,21 @@ function metadataTrust(c: Candidate): number {
 
 function authorityScore(c: Candidate): number {
   const ratings = c.ratingCount || 0;
+  const text = haystack(c);
+  const canonicalSignal = /\b(shutter island|gone girl|red dragon|the silence of the lambs|the silent patient|the girl on the train|mr\.? mercedes)\b/.test(text);
+  const publisher = normalize(c.publisher);
+  const mainstreamPublisher = /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|little brown|sourcebooks|berkley|delacorte|orbit|scribner|putnam)\b/.test(publisher);
 
   if (ratings >= 10000) return 8;
   if (ratings >= 3000) return 6;
   if (ratings >= 1000) return 5;
   if (ratings >= 200) return 3;
   if (ratings >= 50) return 1.5;
+  if (ratings === 0 && (canonicalSignal || mainstreamPublisher)) return -1.5;
   if (ratings >= 10) return 0;
-  if (ratings > 0) return -4;
+  if (ratings > 0) return -5;
 
-  return -4;
+  return -7;
 }
 
 function hasFictionSignals(c: Candidate): boolean {
@@ -320,6 +330,33 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     ratings >= 25 ||
     canonicalStrength >= 12 ||
     /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(publisher);
+
+  const knownFormulaAuthor =
+    /\b(blake pierce|ava strong|jack mars|morgan rice|sara fendrick|harper lin)\b/.test(normalize(c.author));
+  const formulaicTitle =
+    /\b(a|an)\s+[a-z]+\s+(fbi|detective|crime|mystery|suspense)\s+thriller\b/.test(title) ||
+    /\b(book|volume|part)\s*\d+\b/.test(title) ||
+    /\b(series|series starter|fbi suspense thriller)\b/.test(text);
+  const repetitiveDomesticPattern = /\b(wife|husband|perfect family|family secret|the secret|the lie|the perfect|missing wife|perfect marriage)\b/.test(title);
+  const weakAuthorityThriller =
+    /\b(thriller|suspense|crime|mystery|fbi|detective|serial killer|manhunt|abduction)\b/.test(text) &&
+    ratings < 25 &&
+    !hasCommercialShape &&
+    !Boolean((c.rawDoc as any)?.commercialSignals?.bestseller);
+  const repeatedFormulaSpam =
+    ((knownFormulaAuthor && ratings < 50) || formulaicTitle) && repetitiveDomesticPattern;
+
+  if (
+    (knownFormulaAuthor && ratings < 200) ||
+    (formulaicTitle && weakAuthorityThriller) ||
+    (repeatedFormulaSpam && weakAuthorityThriller)
+  ) {
+    return {
+      reject: true,
+      reason: 'formula_series_spam',
+      detail: `author=${c.author}, ratings=${ratings}, title=${c.title}`,
+    };
+  }
 
   // Google Books often surfaces public-domain or metadata-thin editions for broad
   // mystery queries. Unless an older item has clear authority/canonical signals,
@@ -472,6 +509,40 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
 
   const filterSignals = filterSignalScore(c);
   const isOL = isOpenLibraryCandidate(c);
+  const diagnostics = getFilterDiagnostics(c);
+  const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
+    ? diagnostics.filterPassedChecks
+    : Array.isArray(diagnostics?.passedChecks)
+      ? diagnostics.passedChecks
+      : [];
+  const isRescuedBorderline =
+    passedChecks.includes('borderline_rescue_layer') ||
+    passedChecks.includes('relaxed_pool_floor_rescue') ||
+    passedChecks.includes('pagecount_shape_floor_override');
+  const knownAuthorityForZeroRating =
+    anchorBoost(c) >= 10 ||
+    /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(normalize(c.publisher)) ||
+    Boolean((c.rawDoc as any)?.commercialSignals?.bestseller) ||
+    Boolean((c.rawDoc as any)?.commercialSignals?.hasMainstreamPublisherSignal);
+
+  if (isRescuedBorderline && (c.ratingCount || 0) === 0 && !knownAuthorityForZeroRating) {
+    return { pass: false, reason: 'low_metadata_trust', detail: 'zero-rating rescued item without authority signal' };
+  }
+
+  const softFailureCount = passedChecks.filter((check) =>
+    check.startsWith('soft_') ||
+    check.includes('borderline_rescue') ||
+    check.includes('metadata_shape_relaxation')
+  ).length;
+  const hasStrongSignals =
+    (c.ratingCount || 0) >= 50 ||
+    anchorBoost(c) >= 10 ||
+    filterSignals >= 10 ||
+    knownTitleBoost(c) > 0 ||
+    classicAuthorBoost(c) > 0;
+  if (softFailureCount >= 3 && !hasStrongSignals) {
+    return { pass: false, reason: 'low_metadata_trust', detail: `compound soft failures=${softFailureCount}` };
+  }
 
   if (trust < 2 && !hasShapeSignal) {
     if (!(isOL && filterSignals >= 4)) {
@@ -552,6 +623,8 @@ function filterSignalScore(c: Candidate): number {
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_source_recovery_precheck')) score += 5;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_source_recovery')) score += 6;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_thriller_recovery_precheck')) score += 6;
+  if (passedChecks.includes('borderline_rescue_penalty')) score -= 4;
+  if (passedChecks.includes('relaxed_pool_floor_rescue')) score -= 3;
 
   return score;
 }
@@ -656,6 +729,31 @@ function narrativeScore(c: Candidate): number {
   return score;
 }
 
+function groundedRealismScore(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+  if (/\b(psychological|domestic|relationship|family|marriage|trauma|grief|memory|obsession)\b/.test(text)) score += 4;
+  if (/\b(detective|investigation|crime|legal|procedural|journalist|missing person)\b/.test(text)) score += 3;
+  if (/\b(epic fantasy|dragon|fae|magic school|chosen one|space opera|interstellar empire)\b/.test(text)) score -= 5;
+  return score;
+}
+
+function psychologicalIntensityScore(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+  if (/\b(psychological thriller|mind games|paranoia|gaslighting|unreliable narrator|obsession|cat and mouse)\b/.test(text)) score += 6;
+  else if (/\b(psychological|tension|suspense|intense)\b/.test(text)) score += 3;
+  return score;
+}
+
+function emotionalWeightScore(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+  if (/\b(grief|loss|trauma|regret|family secrets|identity|betrayal|redemption|mourning)\b/.test(text)) score += 4;
+  if (/\b(character-driven|literary|emotionally|intimate)\b/.test(text)) score += 2;
+  return score;
+}
+
 function genericTitlePenalty(c: Candidate): number {
   const title = normalize(c.title);
   if (!title) return 0;
@@ -711,6 +809,177 @@ function overfitPenalty(c: Candidate): number {
   }
 
   return 0;
+}
+
+function knownTitleBoost(c: Candidate): number {
+  const title = normalize(c.title);
+  if (!title) return 0;
+  if (/\b(gone girl|shutter island|the silence of the lambs|the time machine|the war of the worlds|frankenstein|the caves of steel|and then there were none|the girl with the dragon tattoo)\b/.test(title)) {
+    return 8;
+  }
+  return 0;
+}
+
+function classicAuthorBoost(c: Candidate): number {
+  const author = normalize(c.author);
+  if (!author) return 0;
+  if (/\b(h\.?g\.?\s*wells|mary shelley|isaac asimov|ursula k\.?\s*le guin|arthur c\.?\s*clarke|ray bradbury|philip k\.?\s*dick|jules verne)\b/.test(author)) {
+    return 9;
+  }
+  return 0;
+}
+
+function ratingsCountBoost(c: Candidate): number {
+  const ratings = Number(c.ratingCount || 0);
+  if (ratings >= 5000) return 10;
+  if (ratings >= 1000) return 7;
+  if (ratings >= 250) return 4;
+  if (ratings >= 50) return 2;
+  return 0;
+}
+
+function noveltyTitlePenalty(c: Candidate): number {
+  const title = normalize(c.title);
+  const ratings = Number(c.ratingCount || 0);
+  const authority = anchorBoost(c);
+  if (!title) return 0;
+  if (/\b(chihuahua of the baskervilles|hamster .* detective|parody mystery|spoof mystery)\b/.test(title)) return -30;
+  if (/\b(parallel lives)\b/.test(title) && ratings < 100 && authority < 10) return -16;
+  if (title.split(" ").length >= 7 && ratings < 30 && authority < 8) return -8;
+  return 0;
+}
+
+function metadataConfidencePenalty(c: Candidate): number {
+  const trust = metadataTrust(c);
+  const ratings = Number(c.ratingCount || 0);
+  const desc = String(c.description || "").trim().length;
+  const hasShape = (c.pageCount || 0) >= 120 || desc >= 120 || Boolean(c.hasCover);
+  const hasNarrativeSignal = /\b(novel|fiction|story|character|journey|discovers|must|haunted|psychological|speculative|dystopian|mystery|thriller|science fiction)\b/.test(haystack(c));
+  const hasAuthorAffinity = Boolean(getFilterDiagnostics(c)?.filterFlags?.authorAffinity || getFilterDiagnostics(c)?.flags?.authorAffinity);
+  if (trust <= 1 && !hasShape) return -18;
+  if (trust <= 2 && ratings < 25 && !hasShape) return -10;
+  if (ratings === 0 && desc < 80 && !hasNarrativeSignal && !hasAuthorAffinity) return -14;
+  return 0;
+}
+
+function lowRatingsPenalty(c: Candidate): number {
+  const ratings = Number(c.ratingCount || 0);
+  const protectedCandidate = knownTitleBoost(c) > 0 || classicAuthorBoost(c) > 0;
+  if (protectedCandidate) return 0;
+  const hasNarrativeSignal = narrativeScore(c) >= 2.5;
+  const hasAffinity = twentyQPersonalAffinityScore(c) >= 3;
+  if (ratings === 0 && !hasNarrativeSignal && !hasAffinity) return -18;
+  if (ratings === 0) return -14;
+  if (ratings < 10) return -10;
+  if (ratings < 30) return -6;
+  return 0;
+}
+
+function formulaSeriesPenalty(c: Candidate): number {
+  const title = normalize(c.title);
+  const text = haystack(c);
+  const ratings = Number(c.ratingCount || 0);
+  const authority = anchorBoost(c) + knownTitleBoost(c) + classicAuthorBoost(c);
+  let penalty = 0;
+
+  if (/\b(book|volume|part)\s*\d+\b/.test(title) && ratings < 100) penalty -= 6;
+  if (/\b(series|series starter|fbi suspense thriller|domestic suspense thriller)\b/.test(text) && ratings < 75) penalty -= 5;
+  if (/\b(wife|husband|secret|lie|perfect family|perfect marriage)\b/.test(title) && ratings === 0 && authority < 10) penalty -= 7;
+  if (/\b(a|an)\s+[a-z]+\s+(fbi|detective|crime|mystery|suspense)\s+thriller\b/.test(title) && ratings < 50) penalty -= 7;
+  return penalty;
+}
+
+function genericRungPenalty(c: Candidate): number {
+  const rung = evidenceRank(c);
+  if (rung !== 0) return 0;
+  const highAuthority =
+    Number(c.ratingCount || 0) >= 250 ||
+    anchorBoost(c) >= 12 ||
+    knownTitleBoost(c) > 0 ||
+    classicAuthorBoost(c) > 0;
+  return highAuthority ? -2 : -8;
+}
+
+function tasteAxisAlignmentBoost(c: Candidate, taste?: TasteProfile): number {
+  if (!taste) return 0;
+  const text = haystack(c);
+  const ideaDensity = Number((taste as any).ideaDensity || 0);
+  const characterFocus = Number((taste as any).characterFocus || 0);
+  const warmth = Number((taste as any).warmth || 0);
+  const darkness = Number((taste as any).darkness || 0);
+  let score = 0;
+
+  if (ideaDensity > 0 && /\b(speculative|philosophical|conceptual|existential|metaphysical|dystopian|alternate reality|science fiction)\b/.test(text)) score += Math.min(8, ideaDensity * 5);
+  if (characterFocus > 0 && /\b(character[-\s]?driven|intimate|relationships?|family|identity|grief|memory|trauma|emotional)\b/.test(text)) score += Math.min(7, characterFocus * 4.5);
+  if (warmth > 0 && /\b(hope|hopeful|human connection|compassion|redemption|friendship|kindness)\b/.test(text)) score += Math.min(5, warmth * 3.5);
+  if (darkness > 0 && /\b(dark|psychological|haunting|dread|bleak|noir|obsession)\b/.test(text)) score += Math.min(6, darkness * 3.8);
+
+  if (/\b(space opera|military sci[-\s]?fi|interstellar empire|fleet battles?)\b/.test(text) && !/\b(philosophical|character[-\s]?driven|emotional|psychological)\b/.test(text)) score -= 5;
+  return score;
+}
+
+function classicDominancePenalty(c: Candidate, taste?: TasteProfile): number {
+  const year = Number(c.publicationYear || (c.rawDoc as any)?.first_publish_year || 0);
+  const isClassic = classicAuthorBoost(c) > 0 || (year > 0 && year < 1970);
+  if (!isClassic) return 0;
+  const subgenreFit = /\b(psychological|speculative|philosophical|character[-\s]?driven|emotional|dystopian|social|literary)\b/.test(haystack(c));
+  const authority = anchorBoost(c) >= 10 || Number(c.ratingCount || 0) >= 500;
+  const tasteFit = twentyQPersonalAffinityScore(c, taste) >= 3 || computeToneMatchScore(c, taste) >= 2.5;
+  if (subgenreFit || (authority && tasteFit)) return 0;
+  return -8;
+}
+
+function passesStrongFinalQualityGate(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfile): boolean {
+  const metadataStrong = metadataTrust(c) >= 4 && String(c.description || '').trim().length >= 80;
+  const authorityStrong = breakdown.authorityScore >= 20 || anchorBoost(c) >= 12 || Number(c.ratingCount || 0) >= 250;
+  const titleDescriptionStrong = breakdown.narrativeScore >= 4 || breakdown.filterSignalScore >= 10;
+  const tasteAlignmentStrong = breakdown.personalAffinityScore >= 4 || breakdown.toneScore >= 3 || tasteAxisAlignmentBoost(c, taste) >= 4;
+  const familyConfidenceStrong = familyAlignmentPenalty(c, taste) >= -2 && (breakdown.laneBlendScore >= 3 || sessionFitScore(c) >= 3);
+  return metadataStrong || authorityStrong || titleDescriptionStrong || tasteAlignmentStrong || familyConfidenceStrong;
+}
+
+function hasStrongNarrativeOrAuthoritySignal(c: Candidate): boolean {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  const rung = evidenceRank(c);
+  const strongRung = Number.isFinite(rung) && rung >= 1 && rung <= 3;
+  return Boolean(
+    flags.strongNarrative ||
+    flags.authorAffinity ||
+    flags.legitAuthority ||
+    strongRung ||
+    Number(c.ratingCount || 0) > 0
+  );
+}
+
+function rescuePenaltyScore(c: Candidate): number {
+  const diagnostics = getFilterDiagnostics(c);
+  const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
+    ? diagnostics.filterPassedChecks
+    : Array.isArray(diagnostics?.passedChecks)
+      ? diagnostics.passedChecks
+      : [];
+  const rescuePenaltyCount = passedChecks.filter((check) => check === "borderline_rescue_penalty").length;
+  const stackedSoft = passedChecks.filter((check) =>
+    check === "soft_missing_narrative_signal" ||
+    check === "soft_missing_thriller_signal" ||
+    check === "soft_minimum_authority_floor_miss"
+  ).length;
+  if (rescuePenaltyCount >= 2) return -8;
+  if (rescuePenaltyCount >= 1 && stackedSoft >= 1) return -6;
+  return rescuePenaltyCount >= 1 ? -3 : 0;
+}
+
+function rankingPriorityBoost(c: Candidate): number {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  const rung = evidenceRank(c);
+  let score = 0;
+  if (flags.strongNarrative) score += 8;
+  if (flags.authorAffinity || flags.legitAuthority) score += 6;
+  if (rung >= 1 && rung <= 3) score += 4;
+  else if (rung === 0) score -= 3;
+  return score;
 }
 
 
@@ -1135,10 +1404,32 @@ function thrillerSessionFit(c: Candidate): number {
   if (/\bthriller\b|\bsuspense\b|\bpsychological\b|\bcrime\b|\bmurder\b|\bkiller\b|\bserial killer\b|\bdetective\b|\binvestigation\b|\bcase\b|\bmissing\b|\bdisappearance\b|\bfbi\b|\bprocedural\b|\bnoir\b|\bobsession\b/.test(text)) score += 4;
   if (/\bred dragon\b|\bmr\.? mercedes\b|\byou\b|\bgone girl\b|\bsharp objects\b|\bdark places\b|\bthe silent patient\b|\bthe silence of the lambs\b|\bthe girl on the train\b/.test(text)) score += 5;
   if (/\bpsychological thriller\b|\bdomestic suspense\b|\bcrime thriller\b|\bserial killer\b|\bcat and mouse\b/.test(text)) score += 3;
+  if (/\bthriller\b|\bsuspense\b|\bpsychological thriller\b|\bcrime thriller\b/.test(text)) score += 2;
+  if (/\bmystery\b/.test(text) && !/\bthriller\b|\bsuspense\b|\bpsychological thriller\b|\bcrime thriller\b/.test(text)) score -= 5;
   if (/\bcozy mystery\b|\bculinary mystery\b|\bgentle mystery\b|\bcomfort read\b/.test(text)) score -= 5;
   if (/\btrue crime\b|\bnonfiction\b|\bguide\b|\bhandbook\b|\bcriticism\b|\banalysis\b/.test(text)) score -= 6;
 
   return score;
+}
+
+function thrillerAuthorityBonus(c: Candidate): number {
+  const raw: any = c.rawDoc || {};
+  const family = normalizeFamilyName(raw?.queryFamily || raw?.diagnostics?.queryFamily || (c as any)?.queryFamily || '');
+  if (family !== "thriller") return 0;
+
+  const text = haystack(c);
+  const author = normalize(c.author);
+  const ratings = Number(c.ratingCount || raw?.ratingsCount || raw?.volumeInfo?.ratingsCount || 0);
+  let bonus = 0;
+
+  if (/\b(dean koontz|nelson demille|jo nesb[øo]|thomas harris|gillian flynn|dennis lehane|john sandford|lee child|karin slaughter)\b/.test(author)) bonus += 6;
+  if (/\b(shutter island|gone girl|the silence of the lambs|red dragon|the silent patient|the girl on the train|dark places|sharp objects)\b/.test(text)) bonus += 5;
+  if (ratings >= 5000) bonus += 6;
+  else if (ratings >= 1000) bonus += 4;
+  else if (ratings >= 250) bonus += 2;
+
+  if (/\b(mystery)\b/.test(text) && !/\b(thriller|suspense|crime thriller|psychological thriller)\b/.test(text)) bonus -= 2;
+  return bonus;
 }
 
 function horrorSessionFit(c: Candidate): number {
@@ -1495,7 +1786,8 @@ function procurementAvailabilityScore(c: Candidate): number {
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
-  const authority = authorityScore(c) * 4.5;
+  const authority = authorityScore(c) * 4.5 + thrillerAuthorityBonus(c);
+  const authorityRankBoost = ratingsCountBoost(c) + knownTitleBoost(c) + classicAuthorBoost(c);
   const behavior = behaviorScore(c, taste);
   const narrative = narrativeScore(c);
   const penalties = penaltyScore(c);
@@ -1512,8 +1804,50 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const tone = computeToneMatchScore(c, taste);
   const procurement = procurementAvailabilityScore(c);
   const familyAlignment = familyAlignmentPenalty(c, taste);
+  const raw: any = c.rawDoc || {};
+  const diagnostics: any = raw?.diagnostics || {};
+  const primaryLane = normalizeFamilyName(raw?.primaryLane || diagnostics?.primaryLane || "");
+  const laneWeights = raw?.hybridLaneWeights || diagnostics?.hybridLaneWeights || {};
+  const laneWeightRanked = Object.values(laneWeights || {}).map((v: any) => Number(v || 0)).filter((v) => v > 0).sort((a, b) => b - a);
+  const isHybridLane = laneWeightRanked.length > 1 && laneWeightRanked[1] >= 0.18;
+  const candidateLane = laneFamilyForCandidate(c);
+  const laneCommitment =
+    primaryLane === "thriller" && !isHybridLane
+      ? (candidateLane === "thriller" ? 10 : candidateLane === "mystery" ? 5 : -12)
+      : 0;
+  const groundedRealism = groundedRealismScore(c);
+  const psychologicalIntensity = psychologicalIntensityScore(c);
+  const emotionalWeight = emotionalWeightScore(c);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
+  const noveltyPenalty = noveltyTitlePenalty(c);
+  const confidencePenalty = metadataConfidencePenalty(c) + lowRatingsPenalty(c);
+  const seriesFormulaPenalty = formulaSeriesPenalty(c);
+  const genericQueryPenalty = genericRungPenalty(c);
+  const rescuePenalty = rescuePenaltyScore(c);
+  const rankingPriority = rankingPriorityBoost(c);
+  const axisAlignment = tasteAxisAlignmentBoost(c, taste);
+  const classicPenalty = classicDominancePenalty(c, taste);
+  const qualityGatePenalty = passesStrongFinalQualityGate(c, {
+    queryScore,
+    metadataScore,
+    authorityScore: authority,
+    behaviorScore: behavior,
+    narrativeScore: narrative,
+    penaltyScore: penalties + familyAlignment,
+    genericTitlePenalty: genericPenalty,
+    overfitPenalty: overfit,
+    anchorBoost: anchor,
+    filterSignalScore: filterSignals,
+    personalAffinityScore: personalAffinity,
+    laneBlendScore: laneBlend,
+    toneScore: tone,
+    procurementScore: procurement,
+    groundedRealismScore: groundedRealism,
+    psychologicalIntensityScore: psychologicalIntensity,
+    emotionalWeightScore: emotionalWeight,
+    finalScore: 0,
+  }, taste) ? 0 : -16;
 
   return {
     queryScore,
@@ -1530,7 +1864,10 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     laneBlendScore: laneBlend,
     toneScore: tone,
     procurementScore: procurement,
-    finalScore: queryScore + metadataScore + authority + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + openLibraryRecoveredBoost,
+    groundedRealismScore: groundedRealism,
+    psychologicalIntensityScore: psychologicalIntensity,
+    emotionalWeightScore: emotionalWeight,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 
@@ -1582,11 +1919,13 @@ function seriesClusterKey(candidate: Candidate): string {
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
-  authorCounts: Map<string, number>
+  authorCounts: Map<string, number>,
+  subtypeCounts?: Map<string, number>,
+  targetCount = 10
 ): boolean {
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
-  if (count >= 1) return false;
+  if (count >= 2) return false;
 
   const seriesKey = seriesClusterKey(candidate);
   if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
@@ -1597,32 +1936,113 @@ function canTakeCandidate(
     return false;
   }
 
+  const lane = laneFamilyForCandidate(candidate);
+  if (lane === "thriller" && subtypeCounts) {
+    const subtype = thrillerSubtype(candidate);
+    const cap = Math.max(1, Math.floor(targetCount * 0.4));
+    const current = subtypeCounts.get(subtype) || 0;
+    if (selected.length >= 5 && current >= cap) return false;
+  }
+
   return !selected.some((entry) => identityKey(entry.candidate) === identityKey(candidate));
+}
+
+function hasMinimumShapeForFallback(c: Candidate): boolean {
+  const descriptionLength = String(c.description || '').trim().length;
+  return Boolean(
+    (c.pageCount || 0) >= 80 ||
+    descriptionLength > 80 ||
+    Boolean(c.hasCover && descriptionLength > 40)
+  );
+}
+
+function isFallbackEligibleCandidate(c: Candidate): boolean {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
+    ? diagnostics.filterPassedChecks
+    : Array.isArray(diagnostics?.passedChecks)
+      ? diagnostics.passedChecks
+      : [];
+  return Boolean(
+    flags.fictionPositive &&
+    hasMinimumShapeForFallback(c) &&
+    passedChecks.includes('passed_content_gate')
+  );
+}
+
+function isTierAStrongNarrativeCandidate(c: Candidate): boolean {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  return Boolean(flags.strongNarrative);
+}
+
+function laneFamilyForCandidate(c: Candidate): string {
+  return normalizeFamilyName(explicitLaneForCandidate(c));
+}
+
+function isExplicitHybridSession(pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>): boolean {
+  const firstRaw: any = pool?.[0]?.candidate?.rawDoc || {};
+  const weights = firstRaw?.hybridLaneWeights || firstRaw?.diagnostics?.hybridLaneWeights || {};
+  const ranked = Object.values(weights || {}).map((v: any) => Number(v || 0)).filter((v) => v > 0).sort((a, b) => b - a);
+  return ranked.length > 1 && ranked[1] >= 0.18;
 }
 
 function pickFromPool(
   pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   authorCounts: Map<string, number>,
-  limit: number
+  limit: number,
+  subtypeCounts?: Map<string, number>,
+  targetCount = 10
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
-  for (const entry of pool) {
+  for (let i = 0; i < pool.length; i += 1) {
+    const entry = pool[i];
     if (selected.length >= limit) break;
-    if (!canTakeCandidate(entry.candidate, selected, authorCounts)) continue;
+    if (!canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount)) continue;
+    if (subtypeCounts && laneFamilyForCandidate(entry.candidate) === "thriller") {
+      const subtype = thrillerSubtype(entry.candidate);
+      const subtypeSeen = (subtypeCounts.get(subtype) || 0) > 0;
+      const wantsMoreSubtypeDiversity = selected.length < Math.min(6, targetCount - 2);
+      if (subtypeSeen && wantsMoreSubtypeDiversity) {
+        const hasUnseenSubtypeAlternative = pool.slice(i + 1).some((candidateEntry) => {
+          if (laneFamilyForCandidate(candidateEntry.candidate) !== "thriller") return false;
+          if (!canTakeCandidate(candidateEntry.candidate, selected, authorCounts, subtypeCounts, targetCount)) return false;
+          const otherSubtype = thrillerSubtype(candidateEntry.candidate);
+          return (subtypeCounts.get(otherSubtype) || 0) === 0;
+        });
+        if (hasUnseenSubtypeAlternative) continue;
+      }
+    }
 
     selected.push(entry);
     const author = normalize(entry.candidate.author);
     authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+    if (subtypeCounts && laneFamilyForCandidate(entry.candidate) === "thriller") {
+      const subtype = thrillerSubtype(entry.candidate);
+      subtypeCounts.set(subtype, (subtypeCounts.get(subtype) || 0) + 1);
+    }
   }
 
   return selected;
+}
+
+function isHighConfidenceEntry(entry: { candidate: Candidate; breakdown: ScoreBreakdown }): boolean {
+  const c = entry.candidate;
+  const ratings = Number(c.ratingCount || 0);
+  const anchor = anchorBoost(c);
+  const authority = entry.breakdown.authorityScore;
+  const canonical = knownTitleBoost(c) > 0 || classicAuthorBoost(c) > 0;
+  return canonical || ratings >= 200 || anchor >= 14 || authority >= 22;
 }
 
 function seedHistoricalRungDiversity(
   pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   authorCounts: Map<string, number>,
-  limit: number
+  limit: number,
+  subtypeCounts?: Map<string, number>,
+  targetCount = 10
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
   const hasHistorical = pool.some((entry) => isHistoricalCandidate(entry.candidate));
   if (!hasHistorical) return selected;
@@ -1646,7 +2066,7 @@ function seedHistoricalRungDiversity(
     const pick = pool.find((entry) => {
       if (!isHistoricalCandidate(entry.candidate)) return false;
       if (evidenceRank(entry.candidate) !== rung) return false;
-      return canTakeCandidate(entry.candidate, selected, authorCounts);
+      return canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount);
     });
 
     if (!pick) continue;
@@ -1654,11 +2074,28 @@ function seedHistoricalRungDiversity(
     selected.push(pick);
     const author = normalize(pick.candidate.author);
     authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+    if (subtypeCounts && laneFamilyForCandidate(pick.candidate) === "thriller") {
+      const subtype = thrillerSubtype(pick.candidate);
+      subtypeCounts.set(subtype, (subtypeCounts.get(subtype) || 0) + 1);
+    }
   }
 
   return selected;
 }
 
+function thrillerSubtype(c: Candidate): string {
+  const text = haystack(c);
+  if (/\bdomestic suspense|wife|husband|marriage|family|neighbor|secret|lying|lie|perfect|missing woman|missing girl|suburban\b/.test(text)) return "domestic_suspense";
+  if (/\bpsychological thriller|unreliable narrator|obsession|mind games|gaslighting\b/.test(text)) return "psychological_thriller";
+  if (/\bcrime thriller|serial killer|detective|fbi|procedural|manhunt\b/.test(text)) return "crime_thriller";
+  if (/\baction thriller|survival thriller|fugitive|chase|escape|on the run\b/.test(text)) return "action_survival_thriller";
+  if (/\bhorror thriller|supernatural thriller|occult thriller|haunted\b/.test(text)) return "horror_thriller";
+  if (/\bconspiracy thriller|political thriller|spy thriller|cover-up\b/.test(text)) return "conspiracy_thriller";
+  if (/\bmystery thriller|whodunit|cold case|private investigator\b/.test(text)) return "mystery_thriller";
+  return "general_thriller";
+}
+
+// Top-level export intentionally kept at module scope (post-merge cleanup guard).
 export function finalRecommenderForDeck(
   candidates: Candidate[],
   _deckKey: DeckKey,
@@ -1672,6 +2109,9 @@ export function finalRecommenderForDeck(
 
   for (const candidate of deduped) {
     let verdict = passesQuality(candidate);
+    if (!verdict.pass && verdict.reason === 'low_metadata_trust' && hasStrongNarrativeOrAuthoritySignal(candidate)) {
+      verdict = { pass: true };
+    }
 
     if (!verdict.pass && isOpenLibraryCandidate(candidate)) {
       const hardReject = isHardReject(candidate);
@@ -1740,7 +2180,7 @@ export function finalRecommenderForDeck(
     return hasStrongSignal || hasBibliographicShape;
   });
 
-  const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length >= 5 ? relaxedFallback : qualityPassed.slice(0, 10);
+  const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length >= 5 ? relaxedFallback : relaxedFallback.slice(0, 10);
 
   debugFinalLog("QUALITY FILTER SUMMARY", {
     inputCount: input.length,
@@ -1793,14 +2233,64 @@ export function finalRecommenderForDeck(
     return bHasCover - aHasCover;
   });
 
+  const TIER_B_SCORE_THRESHOLD = ordered.length >= 15 ? 14 : 22;
+  const tierA = ordered.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
+  const tierB = ordered.filter((entry) =>
+    !isTierAStrongNarrativeCandidate(entry.candidate) &&
+    isFallbackEligibleCandidate(entry.candidate) &&
+    entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
+  );
+  let displayPool = tierA.length >= 3 ? tierA : [...tierA, ...tierB];
+  const minDisplayPool = ordered.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, ordered.length);
+  if (displayPool.length < minDisplayPool) {
+    const fallback = ordered.filter((entry) =>
+      passesStrongFinalQualityGate(entry.candidate, entry.breakdown, tasteProfile) ||
+      entry.breakdown.finalScore >= (TIER_B_SCORE_THRESHOLD - 4)
+    );
+    const merged = [...displayPool];
+    for (const entry of fallback) {
+      if (merged.some((existing) => identityKey(existing.candidate) === identityKey(entry.candidate))) continue;
+      merged.push(entry);
+      if (merged.length >= Math.max(minDisplayPool, TARGET_MIN_RESULTS_WHEN_VIABLE)) break;
+    }
+    displayPool = merged;
+  }
+
+  const firstRawForLane: any = displayPool?.[0]?.candidate?.rawDoc || {};
+  const sessionPrimaryLane = normalizeFamilyName(
+    String(firstRawForLane?.primaryLane || firstRawForLane?.diagnostics?.primaryLane || "")
+  );
+  const isHybridSession = isExplicitHybridSession(displayPool);
+  if (sessionPrimaryLane === "thriller" && !isHybridSession) {
+    const primaryLaneEntries = displayPool.filter((entry) => {
+      const lane = laneFamilyForCandidate(entry.candidate);
+      return lane === "thriller" || lane === "mystery";
+    });
+    const fallbackEntries = displayPool.filter((entry) => {
+      const lane = laneFamilyForCandidate(entry.candidate);
+      return lane !== "thriller" && lane !== "mystery";
+    });
+    const PRIMARY_LANE_MIN = 4;
+    const FALLBACK_CAP = primaryLaneEntries.length >= PRIMARY_LANE_MIN ? 0 : 2;
+    displayPool = [...primaryLaneEntries, ...fallbackEntries.slice(0, FALLBACK_CAP)];
+  }
+
   const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
+  const thrillerSubtypeCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
+  const HIGH_CONFIDENCE_TARGET = 4;
 
-  seedHistoricalRungDiversity(ordered, selected, authorCounts, MAX_RESULTS);
-  pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
+  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
+  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
+  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
+    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+  }
 
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
+  debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
   return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));

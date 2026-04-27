@@ -22,6 +22,25 @@ function dedupeQueries(queries: string[]): string[] {
   return out;
 }
 
+function simplifyOpenLibraryQuery(query: string): string {
+  const cleaned = normalizeText(query);
+  if (!cleaned) return "";
+  return cleaned
+    .replace(/\b(psychological|character[-\s]?driven|philosophical|literary|emotional|atmospheric|dark|gritty)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function fallbackQueryForFamily(family: string): string {
+  if (family === "thriller") return "psychological thriller novel";
+  if (family === "horror") return "psychological horror novel";
+  if (family === "fantasy") return "dark fantasy novel";
+  if (family === "romance") return "contemporary romance novel";
+  if (family === "historical") return "historical fiction novel";
+  if (family === "speculative") return "speculative fiction novel";
+  return "fiction novel";
+}
+
 
 function inferFamily(input: RecommenderInput): "fantasy" | "horror" | "thriller" | "speculative" | "romance" | "historical" | "general" {
   const text = [
@@ -70,12 +89,17 @@ function hasUsableSignal(input: RecommenderInput): boolean {
 }
 
 function buildQueries(input: RecommenderInput): string[] {
+  const family = inferFamily(input);
   if (input.bucketPlan?.rungs?.length) {
-    return dedupeQueries(input.bucketPlan.rungs.map(rungToOpenLibraryQuery).filter(Boolean));
+    const base = dedupeQueries(input.bucketPlan.rungs.map(rungToOpenLibraryQuery).filter(Boolean));
+    const simplified = base.map(simplifyOpenLibraryQuery).filter(Boolean);
+    return dedupeQueries([...base, ...simplified, fallbackQueryForFamily(family)]);
   }
 
   if (Array.isArray(input.bucketPlan?.queries)) {
-    return dedupeQueries(input.bucketPlan.queries.map(quoteQuery).filter(Boolean));
+    const base = dedupeQueries(input.bucketPlan.queries.map(quoteQuery).filter(Boolean));
+    const simplified = base.map(simplifyOpenLibraryQuery).filter(Boolean);
+    return dedupeQueries([...base, ...simplified, fallbackQueryForFamily(family)]);
   }
 
   return [];
@@ -127,6 +151,13 @@ function isGarbage(doc: any, family: string): boolean {
   if (/\b(anthology|collection of stories|short stories|essays)\b/i.test(text)) return true;
   if (/\b(readings?|reader|companion|guide|reference|bibliography|catalogue?|catalog|survey|history and criticism|literary criticism)\b/i.test(text)) return true;
   if (/\b(readings?\b.*\b(novel|fiction|literature)|century readings?\b.*\bnovel|redefining\b.*\bfiction|(life|women|race|gender|class)\b.*\bin fiction)\b/i.test(title)) return true;
+  if (/\b(new suspense novel|new thriller novel|untitled|unknown title|book \d+|novel \d+)\b/i.test(title)) return true;
+  if (/^\s*(the\s+)?(novel|book|collection|megapack)\s*$/i.test(title)) return true;
+  if (/\b(novel|book|collection|megapack)\b/i.test(title) && title.split(" ").length <= 3) return true;
+
+  const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
+  const firstSentence = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence);
+  if (!firstSentence && ratingsCount === 0) return true;
 
   if (family === "fantasy") {
     const obviousFantasySignal =
@@ -168,9 +199,17 @@ export async function getOpenLibraryRecommendations(
   for (let i = 0; i < queries.length; i++) {
     const q = queries[i];
     const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
-
-    const data = await fetchJson(url);
-    const docs = Array.isArray(data?.docs) ? data.docs : [];
+    let docs: any[] = [];
+    try {
+      const data = await fetchJson(url);
+      docs = Array.isArray(data?.docs) ? data.docs : [];
+    } catch (error: any) {
+      console.warn("[OPEN_LIBRARY_FETCH_WARNING]", {
+        query: q,
+        error: error?.message || String(error),
+      });
+      continue;
+    }
 
     for (const d of docs) {
       if (isGarbage(d, family)) continue;
@@ -211,7 +250,14 @@ export async function getOpenLibraryRecommendations(
       source: "openLibrary",
       queryText: d.queryText,
       queryRung: d.queryRung
-    }));
+    }))
+    .filter((doc) => {
+      if (!doc.title) return false;
+      const hasKnownAuthor = Array.isArray(doc.author_name) ? doc.author_name.length > 0 : false;
+      const firstSentence = normalizeText(Array.isArray((doc as any)?.first_sentence) ? (doc as any).first_sentence.join(" ") : (doc as any)?.first_sentence);
+      const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
+      return hasKnownAuthor || firstSentence.length >= 60 || ratingsCount > 0;
+    });
 
   return {
     engineId: "openLibrary",
