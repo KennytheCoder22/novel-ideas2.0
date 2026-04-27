@@ -51,6 +51,13 @@ export type RecommendationResult = {
   fetchErrorCount?: number;
   repeatedCandidateCount?: number;
   repeatSuppressedCount?: number;
+  openLibraryRawCount?: number;
+  candidatePoolCount?: number;
+  filteredOutCount?: number;
+  fallbackRelaxedTriggered?: boolean;
+  emergencyFallbackUsed?: boolean;
+  authorDiversityApplied?: boolean;
+  googleBooksUnavailable?: boolean;
   queryWasRetried?: boolean;
   retryCount?: number;
   fallbackUsed?: "google_retry" | "open_library" | "none";

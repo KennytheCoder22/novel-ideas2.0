@@ -74,6 +74,118 @@ function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
+function rawPrimaryAuthor(doc: any): string {
+  const fromArray = Array.isArray(doc?.author_name) ? String(doc.author_name[0] || "") : "";
+  return normalizeText(fromArray || doc?.author || doc?.rawDoc?.author || doc?.authorName || "");
+}
+
+function rawPublishYear(doc: any): number {
+  const fromVolume = Number(String(doc?.volumeInfo?.publishedDate || "").slice(0, 4));
+  const year = Number(
+    doc?.first_publish_year ||
+    doc?.publishYear ||
+    doc?.rawDoc?.first_publish_year ||
+    fromVolume ||
+    0
+  );
+  return Number.isFinite(year) ? year : 0;
+}
+
+function classicPublicDomainSignal(doc: any): boolean {
+  const text = normalizeText([doc?.title, rawPrimaryAuthor(doc), doc?.description, doc?.rawDoc?.description].filter(Boolean).join(" "));
+  const year = rawPublishYear(doc);
+  return /\b(h\.?g\.?\s*wells|jules verne|mary shelley|arthur conan doyle|bram stoker)\b/.test(text) || (year > 0 && year < 1950);
+}
+
+function docGenreLooseMatch(doc: any, family: RouterFamilyKey): boolean {
+  const text = normalizeText([
+    doc?.title,
+    doc?.description,
+    doc?.rawDoc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+  ].filter(Boolean).join(" "));
+  if (!text) return false;
+  if (family === "thriller") return /\b(thriller|suspense|crime|killer|manhunt|abduction|conspiracy|fugitive|procedural)\b/.test(text);
+  if (family === "mystery") return /\b(mystery|detective|whodunit|investigation|crime)\b/.test(text);
+  if (family === "horror") return /\b(horror|haunted|occult|ghost|supernatural|dread|nightmare)\b/.test(text);
+  if (family === "science_fiction" || family === "speculative") return /\b(science fiction|sci-fi|speculative|dystopian|space|ai|time travel|alien)\b/.test(text);
+  if (family === "fantasy") return /\b(fantasy|magic|dragon|witch|sorcer|epic fantasy|dark fantasy)\b/.test(text);
+  if (family === "romance") return /\b(romance|love|relationship|forbidden love|second chance)\b/.test(text);
+  if (family === "historical") return /\b(historical|period fiction|victorian|regency|world war|civil war)\b/.test(text);
+  return /\b(fiction|novel)\b/.test(text);
+}
+
+function isOpenLibraryBaselineAcceptable(doc: any, family: RouterFamilyKey): boolean {
+  const source = sourceForDoc(doc, "openLibrary");
+  if (source !== "openLibrary") return false;
+  const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description].filter(Boolean).join(" "));
+  if (!text) return false;
+  if (/\b(nonfiction|biography|memoir|criticism|reference|textbook|study guide)\b/.test(text)) return false;
+  if (/\b(anthology|collected works|essays|short stories collection|companion guide|analysis)\b/.test(text)) return false;
+  const fictionPositive = /\b(fiction|novel|story|thriller|mystery|fantasy|horror|romance|speculative|historical)\b/.test(text);
+  const authorKnown = rawPrimaryAuthor(doc) && rawPrimaryAuthor(doc) !== "unknown";
+  return fictionPositive && (docGenreLooseMatch(doc, family) || authorKnown || String(doc?.description || doc?.rawDoc?.description || "").length >= 40);
+}
+
+function enforceAuthorMaxTwo<T extends any>(docs: T[]): T[] {
+  const counts = new Map<string, number>();
+  const out: T[] = [];
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const author = rawPrimaryAuthor(doc) || "__unknown__";
+    const current = counts.get(author) || 0;
+    if (current >= 2) continue;
+    counts.set(author, current + 1);
+    out.push(doc);
+  }
+  return out;
+}
+
+function emergencyFallbackDocsForFamily(family: RouterFamilyKey): RecommendationDoc[] {
+  const byFamily: Record<string, { title: string; author: string; year: number; subjects: string[] }[]> = {
+    thriller: [
+      { title: "Gone Girl", author: "Gillian Flynn", year: 2012, subjects: ["thriller", "psychological thriller"] },
+      { title: "Shutter Island", author: "Dennis Lehane", year: 2003, subjects: ["thriller", "mystery"] },
+      { title: "The Good Girl", author: "Mary Kubica", year: 2014, subjects: ["thriller", "crime fiction"] },
+    ],
+    fantasy: [
+      { title: "The Final Empire", author: "Brandon Sanderson", year: 2006, subjects: ["fantasy", "epic fantasy"] },
+      { title: "Assassin's Apprentice", author: "Robin Hobb", year: 1995, subjects: ["fantasy"] },
+      { title: "The Blade Itself", author: "Joe Abercrombie", year: 2006, subjects: ["dark fantasy"] },
+    ],
+    horror: [
+      { title: "The Shining", author: "Stephen King", year: 1977, subjects: ["horror"] },
+      { title: "The Haunting of Hill House", author: "Shirley Jackson", year: 1959, subjects: ["horror", "gothic"] },
+      { title: "A Head Full of Ghosts", author: "Paul Tremblay", year: 2015, subjects: ["horror", "psychological horror"] },
+    ],
+    mystery: [
+      { title: "In the Woods", author: "Tana French", year: 2007, subjects: ["mystery", "detective"] },
+      { title: "The Cuckoo's Calling", author: "Robert Galbraith", year: 2013, subjects: ["mystery", "crime"] },
+      { title: "The Black Echo", author: "Michael Connelly", year: 1992, subjects: ["mystery", "police procedural"] },
+    ],
+  };
+  const rows = byFamily[family] || byFamily.thriller;
+  return rows.map((row, index) => ({
+    key: `emergency:${family}:${index}:${row.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
+    title: row.title,
+    author_name: [row.author],
+    first_publish_year: row.year,
+    subject: row.subjects,
+    description: `${row.title} by ${row.author}`,
+    source: "openLibrary",
+    laneKind: "emergency_fallback",
+    diagnostics: {
+      source: "openLibrary",
+      fallbackRelaxed: true,
+      emergencyFallback: true,
+      filterKept: true,
+      filterPassedChecks: ["emergency_fallback_injected"],
+      filterRejectReasons: [],
+    },
+  } as any));
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
@@ -2839,29 +2951,34 @@ export async function getRecommendations(
   // taste comes only from 20Q-derived rungs. NYT is allowed only after filtering
   // as a procurement/commercial anchor, never as query or taste evidence.
   const filterStartMs = Date.now();
+  const openLibraryRawCount = familyDominanceControlledDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary").length;
   let filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
-  if (!filteredDocs.length) {
-    const emergencyFallbackQuery =
-      activeFamily === "thriller" ? "thriller novel" :
-      activeFamily === "mystery" ? "mystery novel" :
-      activeFamily === "horror" ? "horror novel" :
-      activeFamily === "science_fiction" ? "science fiction novel" :
-      activeFamily === "fantasy" ? "fantasy novel" :
-      activeFamily === "romance" ? "romance novel" :
-      activeFamily === "historical" ? "historical fiction novel" :
-      "fiction novel";
-    try {
-      const emergencyGoogle = await runEngine("googleBooks", {
-        ...routedInput,
-        bucketPlan: { ...bucketPlan, queries: [emergencyFallbackQuery], preview: emergencyFallbackQuery },
+  let fallbackRelaxedTriggered = false;
+  if (filteredDocs.length < MIN_RELAXED_FILTER_POOL) {
+    fallbackRelaxedTriggered = true;
+    const existing = new Set(filteredDocs.map((doc: any) => candidateKey(doc)));
+    const relaxedOpenLibraryPool = enrichedDocs
+      .filter((doc: any) => !existing.has(candidateKey(doc)))
+      .filter((doc: any) => isOpenLibraryBaselineAcceptable(doc, activeFamily))
+      .sort((a: any, b: any) => {
+        const aClassicPenalty = classicPublicDomainSignal(a) ? 1 : 0;
+        const bClassicPenalty = classicPublicDomainSignal(b) ? 1 : 0;
+        const aFamily = Number(docGenreLooseMatch(a, activeFamily));
+        const bFamily = Number(docGenreLooseMatch(b, activeFamily));
+        return bFamily - aFamily || aClassicPenalty - bClassicPenalty || candidateScoreValue(b) - candidateScoreValue(a);
       });
-      const emergencyDocs = dedupeDocs(extractDocs(emergencyGoogle, "googleBooks"));
-      if (emergencyDocs.length) {
-        filteredDocs = unwrapFilteredCandidates(filterCandidates(emergencyDocs as any, bucketPlan));
-      }
-    } catch {
-      // best-effort fallback; keep empty and allow downstream recovery.
+    for (const doc of relaxedOpenLibraryPool) {
+      if (filteredDocs.length >= MIN_RELAXED_FILTER_POOL) break;
+      const diagnostics = {
+        ...((doc as any)?.diagnostics || {}),
+        filterKept: true,
+        filterFallbackRelaxed: true,
+        fallbackRelaxed: true,
+      };
+      filteredDocs.push({ ...(doc as any), diagnostics });
+      existing.add(candidateKey(doc));
     }
+    filteredDocs = enforceAuthorMaxTwo(filteredDocs);
   }
   const filterMs = Date.now() - filterStartMs;
   debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
@@ -2896,6 +3013,7 @@ export async function getRecommendations(
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  let authorDiversityApplied = false;
   const lowSurvivalSources = new Set(
     Object.entries(sourceSurvivalBySource)
       .filter(([, stats]) => Number(stats.raw || 0) >= 20 && Number(stats.survivalRate || 0) < 0.05)
@@ -2928,6 +3046,26 @@ export async function getRecommendations(
       candidateDocs.push(doc);
     }
   }
+  if (candidateDocs.length < MIN_RELAXED_FILTER_POOL) {
+    fallbackRelaxedTriggered = true;
+    const existing = new Set(candidateDocs.map((doc: any) => candidateKey(doc)));
+    const relaxedAdds = enrichedDocs
+      .filter((doc: any) => !existing.has(candidateKey(doc)))
+      .filter((doc: any) => isOpenLibraryBaselineAcceptable(doc, activeFamily))
+      .sort((a: any, b: any) => {
+        const aClassicPenalty = classicPublicDomainSignal(a) ? 1 : 0;
+        const bClassicPenalty = classicPublicDomainSignal(b) ? 1 : 0;
+        return aClassicPenalty - bClassicPenalty || Number(docGenreLooseMatch(b, activeFamily)) - Number(docGenreLooseMatch(a, activeFamily));
+      });
+    for (const doc of relaxedAdds) {
+      if (candidateDocs.length >= MIN_RELAXED_FILTER_POOL) break;
+      candidateDocs.push(doc);
+      existing.add(candidateKey(doc));
+    }
+  }
+  const candidateDocsPreDiversity = candidateDocs.length;
+  candidateDocs = enforceAuthorMaxTwo(candidateDocs);
+  authorDiversityApplied = candidateDocs.length !== candidateDocsPreDiversity;
   let anchorRejectedForWeakAlignment = 0;
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
@@ -2939,9 +3077,9 @@ export async function getRecommendations(
   };
 
   const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
-  const googleFetchFailureDetected = Number(aggregatedRawFetched.googleBooks || 0) === 0;
-  const allowNytInjections = !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
-  const nytAnchorResult = googleFetchFailureDetected
+  const googleBooksUnavailable = Number(aggregatedRawFetched.googleBooks || 0) === 0;
+  const allowNytInjections = !googleBooksUnavailable && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
+  const nytAnchorResult = googleBooksUnavailable
     ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
     : await fetchNytAnchorDocs(routedInput, activeFamily);
   nytAnchorDebug = { ...nytAnchorResult.debug, allowInjections: allowNytInjections };
@@ -3053,12 +3191,17 @@ function buildRungDiagnostics(candidates: any[]) {
   };
 }
 
-const normalizedCandidates = [
+let normalizedCandidates = [
     ...googleCandidates,
     ...openLibraryCandidates,
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeGcd ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
+  let emergencyFallbackUsed = false;
+  if (normalizedCandidates.length === 0) {
+    emergencyFallbackUsed = true;
+    normalizedCandidates = asArray(normalizeCandidates(emergencyFallbackDocsForFamily(activeFamily), "openLibrary"));
+  }
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
   const nonOpenLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source !== "openLibrary");
@@ -3135,10 +3278,19 @@ const normalizedCandidates = [
   }
 
   const quotaPool = buildLaneQuotaPool(basePool, finalLimit);
-  const rankingPool =
+  let rankingPool =
     routerFamily === "historical"
       ? ensureHistoricalRungDiversity(quotaPool, finalLimit)
       : ensureRungCoverage(quotaPool, finalLimit);
+  if (fallbackRelaxedTriggered) {
+    rankingPool = [...rankingPool].sort((a: any, b: any) => {
+      const aClassic = Number(classicPublicDomainSignal(a));
+      const bClassic = Number(classicPublicDomainSignal(b));
+      const aMatch = Number(docGenreLooseMatch(a, activeFamily));
+      const bMatch = Number(docGenreLooseMatch(b, activeFamily));
+      return aClassic - bClassic || bMatch - aMatch || candidateScoreValue(b) - candidateScoreValue(a);
+    });
+  }
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => {
     const filterDiagnostics = c?.rawDoc?.diagnostics?.filterDiagnostics ?? c?.diagnostics?.filterDiagnostics;
@@ -3259,7 +3411,11 @@ const normalizedCandidates = [
     .sort((a: any, b: any) => Number(b.noveltyScore || 0) - Number(a.noveltyScore || 0));
   repeatSuppressedCount = withNovelty.length - repeatFiltered.length;
   const noveltyRankedPool = repeatFiltered.length >= finalLimit ? repeatFiltered : withNovelty;
-  const finalRankedDocs = rebalanceRomanceFinalSources(noveltyRankedPool, rankingPool, finalLimit);
+  let finalRankedDocs = rebalanceRomanceFinalSources(noveltyRankedPool, rankingPool, finalLimit);
+  if (finalRankedDocs.length === 0) {
+    emergencyFallbackUsed = true;
+    finalRankedDocs = asArray(normalizeCandidates(emergencyFallbackDocsForFamily(activeFamily), "openLibrary")).slice(0, finalLimit);
+  }
   const subtypeDistributionFinal = finalRankedDocs.reduce<Record<string, number>>((acc, doc: any) => {
     const family = inferDocFamily(doc) || activeFamily || "unknown";
     const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description, doc?.queryText, doc?.rawDoc?.queryText].filter(Boolean).join(" "));
@@ -3370,6 +3526,8 @@ const normalizedCandidates = [
       finalSelected: rankedDocsWithDiagnostics.filter((doc: any) => Boolean(doc?.nyt || doc?.rawDoc?.nyt)).length,
     },
   };
+  const candidatePoolCount = rankingPool.length;
+  const filteredOutCount = Math.max(0, enrichedDocs.length - filteredDocs.length);
 
   return {
     engineId: preferredEngine,
@@ -3419,6 +3577,13 @@ const normalizedCandidates = [
     fetchErrorCount,
     repeatedCandidateCount,
     repeatSuppressedCount,
+    openLibraryRawCount,
+    candidatePoolCount,
+    filteredOutCount,
+    fallbackRelaxedTriggered,
+    emergencyFallbackUsed,
+    authorDiversityApplied,
+    googleBooksUnavailable,
     queryWasRetried,
     retryCount,
     fallbackUsed,
