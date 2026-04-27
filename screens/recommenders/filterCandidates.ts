@@ -948,7 +948,15 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   if (!fictionPositive) diagnostics.passedChecks.push("soft_missing_fiction_signal");
   if (genericTitle) diagnostics.passedChecks.push("soft_generic_title_signal");
   if (!strongNarrative) diagnostics.passedChecks.push("soft_missing_narrative_signal");
-  if (!hasRealLength && !hasDescription) diagnostics.rejectReasons.push("insufficient_length_or_description");
+  const knownClassicSignal =
+    hasCanonicalThrillerTitle(title) ||
+    hasCanonicalScienceFictionTitle(title) ||
+    hasCanonicalRomanceTitle(title) ||
+    /\b(dracula|frankenstein|the exorcist|the hobbit|foundation|dune|murder on the orient express|the hound of the baskervilles|the haunting of hill house)\b/.test(title);
+  if (!hasRealLength && !hasDescription) {
+    if (isOpenLibraryLikeDoc(doc) && knownClassicSignal) diagnostics.passedChecks.push("soft_sparse_classic_metadata");
+    else diagnostics.rejectReasons.push("insufficient_length_or_description");
+  }
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
 
   if (family === "horror") {
@@ -1452,7 +1460,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "missing_or_low_quality_cover",
     "too_many_soft_failures",
     "below_shape_floor",
-    "minimum_authority_floor",
     "romance_meta_reference",
     "universal_meta_reference",
     "no_cover_low_quality_meta",
@@ -1632,10 +1639,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.flags.strongNarrative ||
       externalAuthoritySignal;
     if (!minimumAuthorityFloorMet) {
-      diagnostics.rejectReasons.push("minimum_authority_floor");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      diagnostics.passedChecks.push("soft_minimum_authority_floor_miss");
     }
 
     const hasNarrativeOrDescription =
