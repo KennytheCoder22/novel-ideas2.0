@@ -827,18 +827,23 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   const hasDescription = String(doc?.description || doc?.volumeInfo?.description || "").trim().length > 120;
   const hasRealLength = pageCount >= 120;
 
-  const fictionPositive =
+  const classicAuthorSignal =
+    /\b(h\.?g\.?\s*wells|jules verne|mary shelley|isaac asimov|frank herbert|arthur c\.?\s*clarke|philip k\.?\s*dick|iain m\.?\s*banks)\b/.test(author);
+
+  let fictionPositive =
     (
       /\b(novel|thriller|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
         combined
       ) ||
-      /\b(follows|story of|must survive|must uncover|investigates|disappearance|serial killer|murder case)\b/.test(description)
+      /\b(follows|story of|must survive|must uncover|investigates|disappearance|serial killer|murder case)\b/.test(description) ||
+      classicAuthorSignal
     ) &&
     !/\b(reference|guide|criticism|study of|analysis of|companion to|anthology|collection)\b/.test(combined);
 
-  const strongNarrative =
+  let strongNarrative =
     /\b(thriller|horror|suspense|red dragon|mr\.? mercedes|killing me softly|silence of the lambs|gone girl)\b/.test(title) ||
-    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|survive|escape|killer|serial killer|detective|investigation|disappearance|missing|obsession)\b/.test(description);
+    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|survive|escape|killer|serial killer|detective|investigation|disappearance|missing|obsession)\b/.test(description) ||
+    classicAuthorSignal;
 
   const genericTitle =
     /^\s*novels?\b/.test(title) ||
@@ -847,7 +852,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     /\bnovels?\s+and\s+(tales|stories|other works|related works)\b/.test(title) ||
     /\bfuture of the novel\b/.test(title);
 
-  const speculativePositive =
+  let speculativePositive =
     /\b(science fiction|fantasy|dystopian|speculative|space|spaceship|alien|robot|android|ai|artificial intelligence|future|time travel|portal|parallel world|magic|magical|haunted|ghost|supernatural|occult|monster|creature|horror|survival horror|terror|dread)\b/.test(
       combined
     );
@@ -876,8 +881,13 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   const romancePositive = /\b(romance|love story|romantic|courtship|second chance|forbidden love|historical romance|gothic romance|fantasy romance|rom-com|rom com|duke|earl|bridgerton|regency|wallflower|rake|wedding|husband|wife|lover|kiss|heart)\b/.test(combined) || hasCanonicalRomanceTitle(combined) || (family === "romance" && hasAuthorAffinityForFamily(author, family));
   const authorAffinity = hasAuthorAffinityForFamily(author, family);
-  const legitAuthority = hasLegitCommercialAuthority(doc);
+  let legitAuthority = hasLegitCommercialAuthority(doc) || classicAuthorSignal;
   const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
+
+  if (isOpenLibraryLikeDoc(doc) && family === "science_fiction") {
+    fictionPositive = true;
+    speculativePositive = true;
+  }
 
   const diagnostics: FilterDiagnostics = {
     kept: false,
@@ -965,7 +975,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     if (isOpenLibraryLikeDoc(doc) && knownClassicSignal) diagnostics.passedChecks.push("soft_sparse_classic_metadata");
     else diagnostics.rejectReasons.push("insufficient_length_or_description");
   }
-  if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative) {
+  if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
     diagnostics.rejectReasons.push("narrative_strength_required");
   }
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
@@ -1709,6 +1719,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       diagnostics.ratingsCount === 0 &&
       !diagnostics.flags.strongNarrative &&
+      !diagnostics.flags.fictionPositive &&
+      !diagnostics.flags.speculativePositive &&
       !hasRescueAuthoritySignal(doc, diagnostics)
     ) {
       diagnostics.rejectReasons.push("low_authority_zero_signal");
