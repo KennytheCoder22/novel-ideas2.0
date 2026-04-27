@@ -403,6 +403,11 @@ function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostic
     firstPublishedYear > 0 ||
     hardcoverRatingsCount > 0 ||
     hardcoverRating > 0;
+  const hasMinimumMetadataCompleteness =
+    rawTitle.length > 0 &&
+    author.length > 0 &&
+    author !== "unknown" &&
+    (diagnostics.hasRealLength || description.trim().length > 80);
 
   const hasCanonicalThriller = diagnostics.family === "thriller" && hasCanonicalThrillerTitle(normalizedTitle);
   const hasCanonicalScienceFiction = diagnostics.family === "science_fiction" && (
@@ -442,6 +447,7 @@ function passesOpenLibrarySourceRecovery(doc: any, diagnostics: FilterDiagnostic
   // Query intent alone is not enough. Sparse OL rows need either external
   // authority (Hardcover/canonical author) or some native title/subject/description signal.
   return Boolean(
+    hasMinimumMetadataCompleteness &&
     fictionShape &&
     (hasUsefulMetadata || hasCanonicalScienceFiction) &&
     familySignal &&
@@ -1181,6 +1187,9 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
   const hasSubjectSignal = subjects.trim().length > 0;
   const hasDescriptionSignal = description.trim().length > 0;
   const hasBasicBibliographicShape = Boolean(rawTitle) && Boolean(author && author !== "unknown");
+  const hasMinimumMetadataCompleteness =
+    hasBasicBibliographicShape &&
+    (diagnostics.hasRealLength || description.trim().length > 80);
   const hasNarrativeishShape =
     diagnostics.flags.fictionPositive ||
     diagnostics.flags.strongNarrative ||
@@ -1208,7 +1217,7 @@ function hasOpenLibraryFallbackShape(doc: any, diagnostics: FilterDiagnostics): 
     canonicalClassic;
 
   return (
-    hasBasicBibliographicShape &&
+    hasMinimumMetadataCompleteness &&
     (
       canonicalClassic ||
       oldBacklistBook ||
@@ -1420,6 +1429,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "missing_or_low_quality_cover",
     "too_many_soft_failures",
     "below_shape_floor",
+    "minimum_authority_floor",
     "romance_meta_reference",
     "universal_meta_reference",
     "no_cover_low_quality_meta",
@@ -1586,6 +1596,27 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       continue;
     }
 
+    const zeroRating = diagnostics.ratingsCount === 0;
+    const externalAuthoritySignal =
+      diagnostics.flags.legitAuthority ||
+      diagnostics.flags.authorAffinity ||
+      Boolean((doc as any)?.commercialSignals?.bestseller) ||
+      Number((doc as any)?.commercialSignals?.popularityTier || 0) >= 2 ||
+      hasCanonicalThrillerTitle(diagnostics.title) ||
+      hasCanonicalScienceFictionTitle(diagnostics.title) ||
+      hasCanonicalRomanceTitle(diagnostics.title);
+    const minimumAuthorityFloorMet =
+      !zeroRating ||
+      hasProcurementShape(doc) ||
+      diagnostics.flags.strongNarrative ||
+      externalAuthoritySignal;
+    if (!minimumAuthorityFloorMet) {
+      diagnostics.rejectReasons.push("minimum_authority_floor");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
+
     const hasNarrativeOrDescription =
       diagnostics.family === "thriller"
         ? (
@@ -1616,8 +1647,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
           )
         : (
             diagnostics.flags.strongNarrative ||
-            (diagnostics.hasDescription && diagnostics.flags.fictionPositive) ||
-            (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive) ||
+            (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive && hasProcurementShape(doc)) ||
             (diagnostics.family === "romance" && (
               diagnostics.flags.authorAffinity ||
               (hasStrongRomanceTitleSignal(diagnostics.title) && (diagnostics.hasRealLength || diagnostics.hasDescription))
