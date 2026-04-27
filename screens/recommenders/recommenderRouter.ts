@@ -2742,6 +2742,27 @@ export async function getRecommendations(
   const filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
   debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
+  const sourceSurvivalBySource = Object.fromEntries(
+    Object.entries(aggregatedRawFetched).map(([source, raw]) => {
+      const rawCount = Number(raw || 0);
+      const survived = filteredDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === source).length;
+      const survivalRate = rawCount > 0 ? survived / rawCount : 0;
+      return [
+        source,
+        {
+          raw: rawCount,
+          survived,
+          survivalRate,
+        },
+      ];
+    })
+  ) as Record<string, { raw: number; survived: number; survivalRate: number }>;
+  const sourceQualityScoreBySource = Object.fromEntries(
+    Object.entries(sourceSurvivalBySource).map(([source, stats]) => {
+      const qualityScore = Math.max(0, Math.min(1, Number(stats.survivalRate || 0) * 3));
+      return [source, qualityScore];
+    })
+  ) as Record<string, number>;
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
   const softFailurePenaltyCount = Number(filterAuditSummary?.reasons?.too_many_soft_failures || 0);
@@ -2751,6 +2772,21 @@ export async function getRecommendations(
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  const lowSurvivalSources = new Set(
+    Object.entries(sourceSurvivalBySource)
+      .filter(([, stats]) => Number(stats.raw || 0) >= 20 && Number(stats.survivalRate || 0) < 0.05)
+      .map(([source]) => source)
+  );
+  if (lowSurvivalSources.size > 0 && candidateDocs.length > 0) {
+    const seenBySource: Record<string, number> = {};
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      const source = sourceForDoc(doc, "openLibrary");
+      if (!lowSurvivalSources.has(source)) return true;
+      const cap = Math.max(2, Math.min(4, Math.ceil(candidateDocs.length * 0.2)));
+      seenBySource[source] = (seenBySource[source] || 0) + 1;
+      return seenBySource[source] <= cap;
+    });
+  }
   let anchorRejectedForWeakAlignment = 0;
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
@@ -3183,6 +3219,8 @@ const normalizedCandidates = [
     familyCapApplied,
     sourceHealthBySource,
     sourcePenaltyApplied,
+    sourceSurvivalBySource,
+    sourceQualityScoreBySource,
     softFailurePenaltyCount,
     softFailureHardRejectCount,
     duplicateWorkGroupsCollapsed: collapsedWorks.collapsed,

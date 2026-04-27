@@ -976,7 +976,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     else diagnostics.rejectReasons.push("insufficient_length_or_description");
   }
   if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
-    diagnostics.rejectReasons.push("narrative_strength_required");
+    diagnostics.passedChecks.push("soft_narrative_strength_required");
   }
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
 
@@ -1618,6 +1618,24 @@ function hasAuthorityAffinityOverride(diagnostics: FilterDiagnostics): boolean {
   return Boolean(diagnostics.flags.authorAffinity && diagnostics.flags.legitAuthority);
 }
 
+function narrativeQualityScore(doc: any, diagnostics: FilterDiagnostics): number {
+  let score = 0;
+  const descriptionLength = collectDescriptionText(doc).trim().length;
+  if (diagnostics.flags.strongNarrative) score += 3;
+  if (lanePositiveSignalCount(diagnostics) > 0) score += 2;
+  if (descriptionLength >= 120) score += 2;
+  else if (descriptionLength >= 80) score += 1;
+  if (diagnostics.hasRealLength) score += 1;
+  return score;
+}
+
+function meetsUniversalQualityFloor(doc: any, diagnostics: FilterDiagnostics): boolean {
+  const ratingSignal = diagnostics.ratingsCount > 0;
+  const authoritySignal = diagnostics.flags.legitAuthority || diagnostics.flags.authorAffinity;
+  const narrativeSignal = narrativeQualityScore(doc, diagnostics) >= 6;
+  return Boolean(authoritySignal || ratingSignal || narrativeSignal);
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -1628,7 +1646,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "hard_reject_title",
     "hard_reject_category",
     "anthology_or_collection",
-    "narrative_strength_required",
     "low_authority_zero_signal",
     "literature_without_fiction",
     "weak_series_spam",
@@ -1647,6 +1664,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "romance_meta_reference",
     "universal_meta_reference",
     "no_cover_low_quality_meta",
+    "universal_quality_floor_miss",
   ]);
   const shapeMetadataRelaxableReasons = new Set([
     "insufficient_length_or_description",
@@ -1655,7 +1673,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "too_many_soft_failures",
     "no_cover_low_quality_meta",
   ]);
-  const targetPoolMinimum = 8;
+  const targetPoolMinimum = Math.max(10, inputDocs.length >= 20 ? 12 : 10);
 
   for (const doc of inputDocs) {
     const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
@@ -1932,7 +1950,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.passedChecks.push("soft_minimum_authority_floor_miss");
     }
 
-    const hasSoftMissingNarrative = diagnostics.passedChecks.includes("soft_missing_narrative_signal");
+    const hasSoftMissingNarrative =
+      diagnostics.passedChecks.includes("soft_missing_narrative_signal") ||
+      diagnostics.passedChecks.includes("soft_narrative_strength_required");
     const lanePositive = lanePositiveSignalCount(diagnostics) > 0;
     if (
       hasSoftMissingNarrative &&
@@ -1940,7 +1960,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       !diagnostics.flags.authorAffinity &&
       !(lanePositive && diagnostics.ratingsCount > 0)
     ) {
-      diagnostics.rejectReasons.push("narrative_strength_required");
+      diagnostics.passedChecks.push("soft_narrative_strength_required");
     }
 
     if (
@@ -2069,6 +2089,13 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       }
     } else {
       diagnostics.passedChecks.push("passed_shape_gate");
+    }
+
+    if (!meetsUniversalQualityFloor(doc, diagnostics)) {
+      diagnostics.rejectReasons.push("universal_quality_floor_miss");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
     }
 
     if (rescueMechanismCount(diagnostics) > 1) {

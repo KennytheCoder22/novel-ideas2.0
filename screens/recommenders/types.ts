@@ -33,6 +33,8 @@ export type RecommendationResult = {
     lowAuthorityZeroRate: number;
   }>;
   sourcePenaltyApplied?: Record<string, number>;
+  sourceSurvivalBySource?: Record<string, { raw: number; survived: number; survivalRate: number; }>;
+  sourceQualityScoreBySource?: Record<string, number>;
   softFailurePenaltyCount?: number;
   softFailureHardRejectCount?: number;
   duplicateWorkGroupsCollapsed?: number;

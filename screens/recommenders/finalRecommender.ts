@@ -104,8 +104,23 @@ function normalize(value: unknown): string {
   return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
+function canonicalTitle(value: unknown): string {
+  return normalize(value)
+    .replace(/\b(a novel|novel|book \d+|book one|book two|book three|volume \d+|vol \d+|illustrated|special edition|collector'?s edition|anniversary edition)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function canonicalAuthor(value: unknown): string {
+  const normalized = normalize(value);
+  if (!normalized) return '';
+  const parts = normalized.split(' ').filter(Boolean);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1]}`.trim();
+}
+
 function identityKey(c: Candidate): string {
-  return `${normalize(c.title)}|${normalize(c.author)}`;
+  return `${canonicalTitle(c.title)}|${canonicalAuthor(c.author)}`;
 }
 
 function haystack(c: Candidate): string {
@@ -981,11 +996,27 @@ function rankingPriorityBoost(c: Candidate): number {
   const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   const rung = evidenceRank(c);
   let score = 0;
+  if (flags.authorAffinity || flags.legitAuthority) score += 10;
   if (flags.strongNarrative) score += 8;
-  if (flags.authorAffinity || flags.legitAuthority) score += 6;
+  if (twentyQPersonalAffinityScore(c) >= 2.5 || computeToneMatchScore(c) >= 2) score += 5;
+  if (laneBlendScore(c) >= 2) score += 4;
   if (rung >= 1 && rung <= 3) score += 4;
   else if (rung === 0) score -= 3;
   return score;
+}
+
+function lowSignalPenalty(c: Candidate): number {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  const descriptionLength = String(c.description || '').trim().length;
+  const title = normalize(c.title);
+  const genericTitle = /\b(horror|thriller|mystery|novel|book|stories)\b/.test(title) && title.split(' ').length <= 3;
+  let penalty = 0;
+  if ((c.ratingCount || 0) === 0) penalty -= 5;
+  if (!normalize(c.author) || normalize(c.author) === 'unknown') penalty -= 3;
+  if (genericTitle) penalty -= 3;
+  if (descriptionLength < 80 && !flags.authorAffinity && !flags.legitAuthority) penalty -= 3;
+  return penalty;
 }
 
 
@@ -1790,7 +1821,7 @@ function procurementAvailabilityScore(c: Candidate): number {
 }
 
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
-  const queryScore = queryMatchScore(c) * 0.35;
+  const queryScore = queryMatchScore(c) * 0.2;
   const metadataScore = metadataTrust(c) * 0.75;
   const authority = authorityScore(c) * 4.5 + thrillerAuthorityBonus(c);
   const authorityRankBoost = ratingsCountBoost(c) + knownTitleBoost(c) + classicAuthorBoost(c);
@@ -1832,6 +1863,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const genericQueryPenalty = genericRungPenalty(c);
   const rescuePenalty = rescuePenaltyScore(c);
   const rankingPriority = rankingPriorityBoost(c);
+  const lowSignal = lowSignalPenalty(c);
   const axisAlignment = tasteAxisAlignmentBoost(c, taste);
   const classicPenalty = classicDominancePenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
@@ -1873,7 +1905,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + lowSignal + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 
