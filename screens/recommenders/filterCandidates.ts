@@ -1955,6 +1955,21 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     ) {
       diagnostics.rejectReasons.push("insufficient_length_or_description");
     }
+    const descriptionLengthForFloor = collectDescriptionText(doc).trim().length;
+    if (
+      descriptionLengthForFloor > 0 &&
+      descriptionLengthForFloor < 80 &&
+      !diagnostics.flags.legitAuthority &&
+      !diagnostics.flags.authorAffinity
+    ) {
+      diagnostics.rejectReasons.push("insufficient_length_or_description");
+    }
+
+    if (diagnostics.rejectReasons.length > 0) {
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
 
     const hasNarrativeOrDescription =
       diagnostics.family === "thriller"
@@ -2060,18 +2075,11 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     }
 
     if (isOpenLibraryLike) {
-      const author = normalizeText(
-        (doc as any)?.author_name?.[0] ??
-        (doc as any)?.author ??
-        (doc as any)?.authorName ??
-        (doc as any)?.volumeInfo?.authors?.[0]
-      );
-      const hasKnownAuthor = Boolean(author && author !== "unknown");
       const descriptionLength = collectDescriptionText(doc).trim().length;
       const laneMatched = lanePositiveSignalCount(diagnostics) > 0;
       const hasOlMinimumSignal =
         descriptionLength >= 90 ||
-        hasKnownAuthor ||
+        diagnostics.flags.authorAffinity ||
         diagnostics.ratingsCount > 0 ||
         diagnostics.flags.strongNarrative;
       if (!hasOlMinimumSignal || !laneMatched) {
