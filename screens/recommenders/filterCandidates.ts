@@ -1511,6 +1511,34 @@ function filterDocIdentity(doc: any): string {
   );
 }
 
+function hasStrongQueryFamilyMatch(diagnostics: FilterDiagnostics): boolean {
+  const title = diagnostics.title || "";
+  if (diagnostics.family === "science_fiction") {
+    return Boolean(
+      diagnostics.flags.speculativePositive ||
+      diagnostics.flags.fictionPositive ||
+      hasCanonicalScienceFictionTitle(title) ||
+      diagnostics.flags.authorAffinity
+    );
+  }
+  if (diagnostics.family === "thriller") {
+    return Boolean(
+      diagnostics.flags.thrillerPositive ||
+      diagnostics.flags.suspensePositive ||
+      diagnostics.flags.crimePositive ||
+      diagnostics.flags.fictionPositive
+    );
+  }
+  if (diagnostics.family === "mystery") {
+    return Boolean(
+      diagnostics.flags.mysteryPositive ||
+      diagnostics.flags.crimePositive ||
+      diagnostics.flags.fictionPositive
+    );
+  }
+  return diagnostics.flags.fictionPositive;
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -1833,6 +1861,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
           )
         : (
             diagnostics.flags.strongNarrative ||
+            diagnostics.flags.fictionPositive ||
             (diagnostics.flags.authorAffinity && diagnostics.flags.fictionPositive && hasProcurementShape(doc)) ||
             (diagnostics.family === "romance" && (
               diagnostics.flags.authorAffinity ||
@@ -1868,6 +1897,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && (diagnostics.flags.strongNarrative || diagnostics.pageCount >= 160 || diagnostics.hasDescription)) {
         diagnostics.passedChecks.push("openlibrary_relaxed_shape_floor");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
+      } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && hasStrongQueryFamilyMatch(diagnostics)) {
+        diagnostics.passedChecks.push("query_match_shape_floor_rescue");
+        diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else if (diagnostics.pageCount >= 250 && (isBorderlineRescueCandidate(doc, diagnostics) || hasRescueAuthoritySignal(doc, diagnostics))) {
         diagnostics.passedChecks.push("pagecount_shape_floor_override");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
