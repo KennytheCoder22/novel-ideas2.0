@@ -1647,6 +1647,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
     mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
     mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+    if (family === "thriller" || family === "mystery" || family === "horror") {
+      const simpleFallbackQuery =
+        family === "thriller" ? "psychological thriller novel" :
+        family === "mystery" ? "detective mystery novel" :
+        "psychological horror novel";
+      if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
+        mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+      }
+    }
   }
 
   return capRouterQueryLanes(mapped);
@@ -2526,8 +2535,11 @@ export async function getRecommendations(
   };
 
   const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
-  const allowNytInjections = shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
-  const nytAnchorResult = await fetchNytAnchorDocs(routedInput, routerFamily);
+  const googleFetchFailureDetected = Number(aggregatedRawFetched.googleBooks || 0) === 0;
+  const allowNytInjections = !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
+  const nytAnchorResult = googleFetchFailureDetected
+    ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
+    : await fetchNytAnchorDocs(routedInput, routerFamily);
   nytAnchorDebug = { ...nytAnchorResult.debug, allowInjections: allowNytInjections };
 
   if (nytAnchorResult.docs.length) {

@@ -580,7 +580,11 @@ function getGoogleBooksApiKey(): string {
 function toGoogleBooksQuery(query: string): string {
   const q = normalizeStoredQueryText(query);
   if (!q) return "";
-  return addGoogleBooksProcurementHygiene(q);
+  return q
+    .replace(/\s-\w[\w-]*/g, " ")
+    .replace(/\s-\"[^\"]+\"/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function buildToneAwareEngineQueries(query: string, input: RecommenderInput): string[] {
@@ -731,25 +735,42 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       try {
         rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs);
       } catch (err: any) {
-        console.error("GoogleBooks fetch failed", {
-          engineQuery,
-          queryIndex,
-          builtFromQuery,
-          message: err?.message || String(err || "unknown error"),
-        });
+        // Retry with a simplified payload before declaring source failure.
+        const simplifiedQuery = normalizeStoredQueryText(engineQuery)
+          .replace(/\s-\w[\w-]*/g, " ")
+          .replace(/\s-\"[^\"]+\"/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (simplifiedQuery && simplifiedQuery !== normalizeStoredQueryText(engineQuery)) {
+          try {
+            rawDocs = await googleBooksSearch(simplifiedQuery, fetchLimit, timeoutMs);
+          } catch {
+            rawDocs = [];
+          }
+        }
 
-        rawPoolRows.push({
-          title: "[GOOGLE_BOOKS_FETCH_ERROR]",
-          author: undefined,
-          source: "googleBooks",
-          queryText: q,
-          engineQueryText: engineQuery,
-          queryRung: queryIndex,
-          laneKind,
-          error: err?.message || String(err || "unknown error"),
-        });
+        if (!Array.isArray(rawDocs) || rawDocs.length === 0) {
+          console.error("GoogleBooks fetch failed", {
+            engineQuery,
+            simplifiedQuery,
+            queryIndex,
+            builtFromQuery,
+            message: err?.message || String(err || "unknown error"),
+          });
 
-        rawDocs = [];
+          rawPoolRows.push({
+            title: "[GOOGLE_BOOKS_FETCH_ERROR]",
+            author: undefined,
+            source: "googleBooks",
+            queryText: q,
+            engineQueryText: engineQuery,
+            queryRung: queryIndex,
+            laneKind,
+            error: err?.message || String(err || "unknown error"),
+          });
+
+          rawDocs = [];
+        }
       }
       const rawAuthorCappedDocs = capRawDocsPerAuthor(rawDocs, queryFamily, 2);
 
