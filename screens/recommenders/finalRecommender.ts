@@ -355,7 +355,28 @@ function crossSourcePresence(c: Candidate): number {
 }
 
 function isKnownAuthorityAuthor(author: string): boolean {
-  return /\b(gillian flynn|dennis lehane|shirley jackson|thomas harris|stephen king|agatha christie|tana french|donna tartt|michael connelly|john le carre|ray bradbury|ursula k\.? le guin|isaac asimov|j\.?r\.?r\.? tolkien)\b/.test(author);
+  return /\b(gillian flynn|dennis lehane|mary kubica|shirley jackson|thomas harris|stephen king|agatha christie|tana french|donna tartt|michael connelly|john le carre|ray bradbury|ursula k\.? le guin|isaac asimov|j\.?r\.?r\.? tolkien)\b/.test(author);
+}
+
+function queryFamilyCoverage(c: Candidate): number {
+  const raw: any = c.rawDoc || {};
+  const families = new Set(
+    [
+      raw?.queryFamily,
+      raw?.diagnostics?.queryFamily,
+      raw?.diagnostics?.filterFamily,
+      ...(Array.isArray(raw?.queryFamilies) ? raw.queryFamilies : []),
+      ...(Array.isArray(raw?.familyHits) ? raw.familyHits : []),
+    ]
+      .map((value: any) => normalize(value))
+      .filter(Boolean)
+  );
+  return families.size;
+}
+
+function isExplicitAuthorityContradiction(c: Candidate): boolean {
+  const text = haystack(c);
+  return /\b(nonfiction|guide|handbook|study|analysis|criticism)\b/.test(text);
 }
 
 function highAuthoritySignal(c: Candidate): boolean {
@@ -372,12 +393,14 @@ function highAuthoritySignal(c: Candidate): boolean {
     (c.pageCount || 0) >= 160;
   const knownAuthor = isKnownAuthorityAuthor(normalize(c.author));
   const isOpenLibrary = isOpenLibraryCandidate(c);
+  const familyCoverage = queryFamilyCoverage(c) >= 2;
+  if (flags.authorAffinity && !isExplicitAuthorityContradiction(c)) return true;
   return Boolean(
-    flags.authorAffinity ||
     flags.legitAuthority ||
     knownAuthor ||
     multiSource ||
     multiRung ||
+    familyCoverage ||
     laneAlignedNarrative ||
     (isOpenLibrary && (knownAuthor || flags.authorAffinity))
   );
@@ -1079,8 +1102,8 @@ function rankingPriorityBoost(c: Candidate): number {
   const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   const rung = evidenceRank(c);
   let score = 0;
-  if (flags.authorAffinity || flags.legitAuthority) score += 10;
-  if (flags.strongNarrative) score += 8;
+  if (flags.authorAffinity || flags.legitAuthority || highAuthoritySignal(c)) score += 12;
+  if (flags.strongNarrative) score += 2;
   if (twentyQPersonalAffinityScore(c) >= 2.5 || computeToneMatchScore(c) >= 2) score += 5;
   if (laneBlendScore(c) >= 2) score += 4;
   if (rung >= 1 && rung <= 3) score += 4;
@@ -1925,7 +1948,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const authority = authorityScore(c) * 4.5 + thrillerAuthorityBonus(c);
   const authorityRankBoost = ratingsCountBoost(c) + knownTitleBoost(c) + classicAuthorBoost(c);
   const behavior = behaviorScore(c, taste);
-  const narrative = narrativeScore(c);
+  const narrative = narrativeScore(c) * 0.45;
   const penalties = penaltyScore(c);
   const genericPenalty = genericTitlePenalty(c);
   const overfit = overfitPenalty(c);
@@ -2110,12 +2133,6 @@ function isFallbackEligibleCandidate(c: Candidate): boolean {
     hasMinimumShapeForFallback(c) &&
     passedChecks.includes('passed_content_gate')
   );
-}
-
-function isTierAStrongNarrativeCandidate(c: Candidate): boolean {
-  const diagnostics = getFilterDiagnostics(c);
-  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
-  return Boolean(flags.strongNarrative);
 }
 
 function laneFamilyForCandidate(c: Candidate): string {
@@ -2378,9 +2395,9 @@ export function finalRecommenderForDeck(
   });
 
   const TIER_B_SCORE_THRESHOLD = ordered.length >= 15 ? 14 : 22;
-  const tierA = ordered.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
+  const tierA = ordered.filter((entry) => authorityTier(entry.candidate, entry.breakdown) >= 2);
   const tierB = ordered.filter((entry) =>
-    !isTierAStrongNarrativeCandidate(entry.candidate) &&
+    authorityTier(entry.candidate, entry.breakdown) === 1 &&
     isFallbackEligibleCandidate(entry.candidate) &&
     entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
   );

@@ -326,7 +326,7 @@ function crossSourcePresenceCount(doc: any): number {
 }
 
 function isKnownAuthorityAuthor(author: string): boolean {
-  return /\b(gillian flynn|dennis lehane|shirley jackson|thomas harris|stephen king|agatha christie|tana french|michael connelly|ray bradbury|ursula k\.?\s*le guin|isaac asimov|j\.?r\.?r\.?\s*tolkien)\b/.test(author);
+  return /\b(gillian flynn|dennis lehane|mary kubica|shirley jackson|thomas harris|stephen king|agatha christie|tana french|michael connelly|ray bradbury|ursula k\.?\s*le guin|isaac asimov|j\.?r\.?r\.?\s*tolkien)\b/.test(author);
 }
 
 function hasHighAuthoritySignal(doc: any, diagnostics: Pick<FilterDiagnostics, "flags" | "pageCount">): boolean {
@@ -340,12 +340,21 @@ function hasHighAuthoritySignal(doc: any, diagnostics: Pick<FilterDiagnostics, "
     diagnostics.flags.strongNarrative &&
     lanePositiveSignalCount(diagnostics as FilterDiagnostics) > 0 &&
     diagnostics.pageCount >= 160;
+  const familyCoverage = new Set(
+    [
+      doc?.queryFamily,
+      doc?.diagnostics?.queryFamily,
+      doc?.diagnostics?.filterFamily,
+      ...(Array.isArray(doc?.queryFamilies) ? doc.queryFamilies : []),
+    ].map((value) => normalizeText(value)).filter(Boolean)
+  ).size >= 2;
   return Boolean(
     diagnostics.flags.authorAffinity ||
     diagnostics.flags.legitAuthority ||
     isKnownAuthorityAuthor(author) ||
     multiSource ||
     multiRungSignal ||
+    familyCoverage ||
     laneAlignedNarrative
   );
 }
