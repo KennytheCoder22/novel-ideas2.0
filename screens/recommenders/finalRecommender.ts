@@ -198,6 +198,40 @@ function historicalDedupePreference(
   return score;
 }
 
+function mergeCandidateSignals(primary: Candidate, secondary: Candidate): Candidate {
+  const primaryRaw: any = primary.rawDoc || {};
+  const secondaryRaw: any = secondary.rawDoc || {};
+  const mergedSources = Array.from(
+    new Set(
+      [
+        primary.source,
+        secondary.source,
+        ...(Array.isArray(primaryRaw?.sources) ? primaryRaw.sources : []),
+        ...(Array.isArray(secondaryRaw?.sources) ? secondaryRaw.sources : []),
+        ...(Array.isArray(primaryRaw?.sourceMatches) ? primaryRaw.sourceMatches : []),
+        ...(Array.isArray(secondaryRaw?.sourceMatches) ? secondaryRaw.sourceMatches : []),
+      ].filter(Boolean)
+    )
+  );
+  const mergedRaw = {
+    ...secondaryRaw,
+    ...primaryRaw,
+    sources: mergedSources,
+    sourceMatches: mergedSources,
+    sourceCount: Math.max(Number(primaryRaw?.sourceCount || 0), Number(secondaryRaw?.sourceCount || 0), mergedSources.length),
+    matchedSourceCount: Math.max(Number(primaryRaw?.matchedSourceCount || 0), Number(secondaryRaw?.matchedSourceCount || 0), mergedSources.length),
+  };
+  return {
+    ...secondary,
+    ...primary,
+    ratingCount: Math.max(Number(primary.ratingCount || 0), Number(secondary.ratingCount || 0)),
+    pageCount: Math.max(Number(primary.pageCount || 0), Number(secondary.pageCount || 0)),
+    hasCover: Boolean(primary.hasCover || secondary.hasCover),
+    description: String(primary.description || secondary.description || ""),
+    rawDoc: mergedRaw,
+  };
+}
+
 function dedupe(candidates: Candidate[]): Candidate[] {
   const map = new Map<string, Candidate>();
 
@@ -209,6 +243,8 @@ function dedupe(candidates: Candidate[]): Candidate[] {
       map.set(key, c);
       continue;
     }
+
+    const merged = mergeCandidateSignals(c, existing);
 
     const currentRank = evidenceRank(c);
     const existingRank = evidenceRank(existing);
@@ -224,7 +260,7 @@ function dedupe(candidates: Candidate[]): Candidate[] {
       const existingPreference = historicalDedupePreference(existing, existingIsOpenLibrary, existingFilterSignals, existingAnchor);
 
       if (currentPreference > existingPreference) {
-        map.set(key, c);
+        map.set(key, mergeCandidateSignals(c, existing));
         continue;
       }
 
@@ -232,7 +268,7 @@ function dedupe(candidates: Candidate[]): Candidate[] {
         // Historical rungs are different shelves, not a strict quality order.
         // Keep rung as a tiebreaker only so lower rungs no longer erase better alternate-rung evidence.
         if (currentRank < existingRank) {
-          map.set(key, c);
+          map.set(key, mergeCandidateSignals(c, existing));
           continue;
         }
       }
@@ -241,7 +277,7 @@ function dedupe(candidates: Candidate[]): Candidate[] {
     }
 
     if (currentRank < existingRank) {
-      map.set(key, c);
+      map.set(key, mergeCandidateSignals(c, existing));
       continue;
     }
 
@@ -250,7 +286,7 @@ function dedupe(candidates: Candidate[]): Candidate[] {
         const currentPreference = (currentIsOpenLibrary ? 1 : 0) + currentFilterSignals + currentAnchor;
         const existingPreference = (existingIsOpenLibrary ? 1 : 0) + existingFilterSignals + existingAnchor;
         if (currentPreference > existingPreference) {
-          map.set(key, c);
+          map.set(key, mergeCandidateSignals(c, existing));
           continue;
         }
       }
@@ -259,19 +295,21 @@ function dedupe(candidates: Candidate[]): Candidate[] {
       const existingHasDescription = Boolean(existing.description);
 
       if (currentHasDescription && !existingHasDescription) {
-        map.set(key, c);
+        map.set(key, mergeCandidateSignals(c, existing));
         continue;
       }
 
       if (currentHasDescription === existingHasDescription && c.hasCover && !existing.hasCover) {
-        map.set(key, c);
+        map.set(key, mergeCandidateSignals(c, existing));
         continue;
       }
 
       if (currentFilterSignals + currentAnchor > existingFilterSignals + existingAnchor) {
-        map.set(key, c);
+        map.set(key, mergeCandidateSignals(c, existing));
+        continue;
       }
     }
+    map.set(key, merged);
   }
 
   return Array.from(map.values());
@@ -300,6 +338,37 @@ function metadataTrust(c: Candidate): number {
   return score;
 }
 
+function crossSourcePresence(c: Candidate): number {
+  const raw: any = c.rawDoc || {};
+  const sources = new Set(
+    [
+      c.source,
+      ...(Array.isArray(raw?.sources) ? raw.sources : []),
+      ...(Array.isArray(raw?.sourceMatches) ? raw.sourceMatches : []),
+      ...(Array.isArray((raw?.diagnostics as any)?.sourceMatches) ? (raw?.diagnostics as any).sourceMatches : []),
+    ]
+      .map((value) => normalize(value))
+      .filter(Boolean)
+  );
+  const explicit = Number(raw?.sourceCount || raw?.matchedSourceCount || 0);
+  return Math.max(explicit, sources.size);
+}
+
+function highAuthoritySignal(c: Candidate): boolean {
+  const d = getFilterDiagnostics(c);
+  const flags = d?.filterFlags || d?.flags || {};
+  const multiSource = crossSourcePresence(c) >= 2;
+  const multiRung =
+    Number((c.rawDoc as any)?.queryMatchCount || 0) >= 2 ||
+    Number((c.rawDoc as any)?.matchedQueryCount || 0) >= 2 ||
+    Number((c.rawDoc as any)?.queryHitCount || 0) >= 2;
+  const laneAlignedNarrative =
+    Boolean(flags.strongNarrative) &&
+    laneBlendScore(c) >= 1 &&
+    (c.pageCount || 0) >= 160;
+  return Boolean(flags.authorAffinity || flags.legitAuthority || multiSource || multiRung || laneAlignedNarrative);
+}
+
 function authorityScore(c: Candidate): number {
   const ratings = c.ratingCount || 0;
   const text = haystack(c);
@@ -307,16 +376,16 @@ function authorityScore(c: Candidate): number {
   const publisher = normalize(c.publisher);
   const mainstreamPublisher = /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|little brown|sourcebooks|berkley|delacorte|orbit|scribner|putnam)\b/.test(publisher);
 
-  if (ratings >= 10000) return 8;
-  if (ratings >= 3000) return 6;
-  if (ratings >= 1000) return 5;
-  if (ratings >= 200) return 3;
-  if (ratings >= 50) return 1.5;
-  if (ratings === 0 && (canonicalSignal || mainstreamPublisher)) return -1.5;
-  if (ratings >= 10) return 0;
-  if (ratings > 0) return -5;
-
-  return -7;
+  let score = 0;
+  if (highAuthoritySignal(c)) score += 7;
+  if (ratings >= 10000) score += 4;
+  else if (ratings >= 3000) score += 3;
+  else if (ratings >= 1000) score += 2;
+  else if (ratings >= 200) score += 1;
+  else if (ratings > 0) score += 0.5;
+  if (ratings === 0 && (canonicalSignal || mainstreamPublisher)) score += 1;
+  if (crossSourcePresence(c) >= 2) score += 3;
+  return score;
 }
 
 function hasFictionSignals(c: Candidate): boolean {
@@ -1017,6 +1086,12 @@ function lowSignalPenalty(c: Candidate): number {
   if (genericTitle) penalty -= 3;
   if (descriptionLength < 80 && !flags.authorAffinity && !flags.legitAuthority) penalty -= 3;
   return penalty;
+}
+
+function authorityTier(c: Candidate, breakdown: ScoreBreakdown): number {
+  if (highAuthoritySignal(c) || breakdown.authorityScore >= 30) return 2;
+  if (breakdown.authorityScore >= 15) return 1;
+  return 0;
 }
 
 
@@ -1857,6 +1932,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const emotionalWeight = emotionalWeightScore(c);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
+  const crossSourceBoost = crossSourcePresence(c) >= 2 ? 6 : 0;
   const noveltyPenalty = noveltyTitlePenalty(c);
   const confidencePenalty = metadataConfidencePenalty(c) + lowRatingsPenalty(c);
   const seriesFormulaPenalty = formulaSeriesPenalty(c);
@@ -1905,7 +1981,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + lowSignal + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + lowSignal + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + crossSourceBoost,
   };
 }
 
@@ -2255,6 +2331,9 @@ export function finalRecommenderForDeck(
   });
 
   const ordered = [...rankingSource].sort((a, b) => {
+    const authorityTierDiff = authorityTier(b.candidate, b.breakdown) - authorityTier(a.candidate, a.breakdown);
+    if (authorityTierDiff !== 0) return authorityTierDiff;
+
     const scoreDiff = b.breakdown.finalScore - a.breakdown.finalScore;
     if (scoreDiff !== 0) return scoreDiff;
 

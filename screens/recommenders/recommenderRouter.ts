@@ -2787,6 +2787,23 @@ export async function getRecommendations(
       return seenBySource[source] <= cap;
     });
   }
+  const MIN_CANDIDATE_POOL_TARGET = 12;
+  if (candidateDocs.length < MIN_CANDIDATE_POOL_TARGET && filteredDocs.length > candidateDocs.length) {
+    const existing = new Set(candidateDocs.map((doc: any) => candidateKey(doc)));
+    const rankedBackfill = [...filteredDocs]
+      .filter((doc: any) => !existing.has(candidateKey(doc)))
+      .sort((a: any, b: any) => {
+        const aAuthority = Number(hasStrongDocAuthority(a));
+        const bAuthority = Number(hasStrongDocAuthority(b));
+        const aScore = candidateScoreValue(a);
+        const bScore = candidateScoreValue(b);
+        return bAuthority - aAuthority || bScore - aScore;
+      });
+    for (const doc of rankedBackfill) {
+      if (candidateDocs.length >= MIN_CANDIDATE_POOL_TARGET) break;
+      candidateDocs.push(doc);
+    }
+  }
   let anchorRejectedForWeakAlignment = 0;
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,

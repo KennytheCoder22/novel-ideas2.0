@@ -312,6 +312,38 @@ function hasLegitCommercialAuthority(doc: any): boolean {
   );
 }
 
+function crossSourcePresenceCount(doc: any): number {
+  const directSources = Array.isArray((doc as any)?.sources) ? (doc as any).sources : [];
+  const sourceMatches = Array.isArray((doc as any)?.sourceMatches) ? (doc as any).sourceMatches : [];
+  const rawSources = Array.isArray((doc as any)?.rawDoc?.sources) ? (doc as any).rawDoc.sources : [];
+  const explicitSourceCount = Number((doc as any)?.sourceCount || (doc as any)?.matchedSourceCount || 0);
+  const merged = new Set(
+    [...directSources, ...sourceMatches, ...rawSources]
+      .map((s: any) => normalizeText(s))
+      .filter(Boolean)
+  );
+  return Math.max(explicitSourceCount, merged.size);
+}
+
+function hasHighAuthoritySignal(doc: any, diagnostics: Pick<FilterDiagnostics, "flags" | "pageCount">): boolean {
+  const multiSource = crossSourcePresenceCount(doc) >= 2;
+  const multiRungSignal =
+    Number((doc as any)?.queryMatchCount || 0) >= 2 ||
+    Number((doc as any)?.matchedQueryCount || 0) >= 2 ||
+    Number((doc as any)?.queryHitCount || 0) >= 2;
+  const laneAlignedNarrative =
+    diagnostics.flags.strongNarrative &&
+    lanePositiveSignalCount(diagnostics as FilterDiagnostics) > 0 &&
+    diagnostics.pageCount >= 160;
+  return Boolean(
+    diagnostics.flags.authorAffinity ||
+    diagnostics.flags.legitAuthority ||
+    multiSource ||
+    multiRungSignal ||
+    laneAlignedNarrative
+  );
+}
+
 function isWeakSeriesSpam(title: string, doc: any, hasDescription: boolean, hasRealLength: boolean): boolean {
   const ratingsCount =
     Number(doc?.ratingsCount) ||
@@ -881,7 +913,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   const romancePositive = /\b(romance|love story|romantic|courtship|second chance|forbidden love|historical romance|gothic romance|fantasy romance|rom-com|rom com|duke|earl|bridgerton|regency|wallflower|rake|wedding|husband|wife|lover|kiss|heart)\b/.test(combined) || hasCanonicalRomanceTitle(combined) || (family === "romance" && hasAuthorAffinityForFamily(author, family));
   const authorAffinity = hasAuthorAffinityForFamily(author, family);
-  let legitAuthority = hasLegitCommercialAuthority(doc) || classicAuthorSignal;
+  let legitAuthority = hasLegitCommercialAuthority(doc) || classicAuthorSignal || crossSourcePresenceCount(doc) >= 2;
   const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
 
   if (isOpenLibraryLikeDoc(doc) && family === "science_fiction") {
@@ -917,6 +949,10 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
       suspensePositive,
     },
   };
+  if (hasHighAuthoritySignal(doc, diagnostics)) {
+    diagnostics.flags.legitAuthority = true;
+    legitAuthority = true;
+  }
 
   if (!title) diagnostics.rejectReasons.push("missing_title");
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) diagnostics.rejectReasons.push("hard_reject_title");
@@ -1120,8 +1156,8 @@ if (family === "speculative") {
   }
 
   const softFailCount = diagnostics.passedChecks.filter((check) => check.startsWith("soft_")).length;
-  if (softFailCount >= 2 && !strongNarrative) {
-    diagnostics.rejectReasons.push("too_many_soft_failures");
+  if (softFailCount >= 4 && !strongNarrative && !authorAffinity && !legitAuthority) {
+    diagnostics.passedChecks.push("soft_too_many_soft_failures");
   }
 
   if (fictionPositive) diagnostics.passedChecks.push("fiction_positive");
@@ -1501,7 +1537,6 @@ function exceedsRescueCeiling(diagnostics: FilterDiagnostics): boolean {
     "too_many_soft_failures",
     "soft_missing_narrative_signal",
     "soft_missing_thriller_signal",
-    "low_authority_zero_signal",
     "missing_narrative_signal",
   ]);
   const softHits = [
@@ -1630,10 +1665,15 @@ function narrativeQualityScore(doc: any, diagnostics: FilterDiagnostics): number
 }
 
 function meetsUniversalQualityFloor(doc: any, diagnostics: FilterDiagnostics): boolean {
-  const ratingSignal = diagnostics.ratingsCount > 0;
-  const authoritySignal = diagnostics.flags.legitAuthority || diagnostics.flags.authorAffinity;
-  const narrativeSignal = narrativeQualityScore(doc, diagnostics) >= 6;
-  return Boolean(authoritySignal || ratingSignal || narrativeSignal);
+  const descriptionLength = collectDescriptionText(doc).trim().length;
+  const weakDescription = descriptionLength < 80;
+  const rejectByHardRule =
+    !diagnostics.flags.legitAuthority &&
+    !diagnostics.flags.authorAffinity &&
+    !diagnostics.flags.strongNarrative &&
+    weakDescription;
+  if (!rejectByHardRule) return true;
+  return narrativeQualityScore(doc, diagnostics) >= 6 || diagnostics.ratingsCount > 0;
 }
 
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
@@ -1646,7 +1686,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "hard_reject_title",
     "hard_reject_category",
     "anthology_or_collection",
-    "low_authority_zero_signal",
     "literature_without_fiction",
     "weak_series_spam",
     "speculative_off_profile_reference",
@@ -1673,7 +1712,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "too_many_soft_failures",
     "no_cover_low_quality_meta",
   ]);
-  const targetPoolMinimum = Math.max(10, inputDocs.length >= 20 ? 12 : 10);
+  const targetPoolMinimum = inputDocs.length >= 30 ? 15 : 12;
 
   for (const doc of inputDocs) {
     const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
@@ -1848,11 +1887,11 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       !diagnostics.flags.speculativePositive &&
       !hasRescueAuthoritySignal(doc, diagnostics)
     ) {
-      diagnostics.rejectReasons.push("low_authority_zero_signal");
+      diagnostics.passedChecks.push("soft_low_authority_zero_signal");
     }
 
     if (diagnostics.family === "thriller") {
-      const thrillerSoftRejects = new Set(["narrative_strength_required", "low_authority_zero_signal"]);
+      const thrillerSoftRejects = new Set(["narrative_strength_required", "soft_low_authority_zero_signal"]);
       if (
         diagnostics.rejectReasons.length > 0 &&
         diagnostics.rejectReasons.every((reason) => thrillerSoftRejects.has(reason))
@@ -1976,7 +2015,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       !diagnostics.flags.strongNarrative &&
       !diagnostics.flags.legitAuthority
     ) {
-      diagnostics.rejectReasons.push("low_authority_zero_signal");
+      diagnostics.passedChecks.push("soft_low_authority_zero_signal");
     }
 
     if (
@@ -2098,21 +2137,15 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       continue;
     }
 
-    if (rescueMechanismCount(diagnostics) > 1) {
+    if (rescueMechanismCount(diagnostics) > 2) {
       if (!hasAuthorityAffinityOverride(diagnostics)) {
-        diagnostics.rejectReasons.push("too_many_soft_failures");
-        diagnostics.kept = false;
-        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-        continue;
+        diagnostics.passedChecks.push("soft_too_many_soft_failures");
       }
     }
 
-    if (entrySignalCount(doc, diagnostics) < 2) {
+    if (entrySignalCount(doc, diagnostics) < 1) {
       if (!hasAuthorityAffinityOverride(diagnostics)) {
-        diagnostics.rejectReasons.push("too_many_soft_failures");
-        diagnostics.kept = false;
-        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-        continue;
+        diagnostics.passedChecks.push("soft_too_many_soft_failures");
       }
     }
 
@@ -2126,10 +2159,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.flags.strongNarrative;
       if (!hasOlMinimumSignal || !laneMatched) {
         if (!hasAuthorityAffinityOverride(diagnostics)) {
-          diagnostics.rejectReasons.push("too_many_soft_failures");
-          diagnostics.kept = false;
-          Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-          continue;
+          diagnostics.passedChecks.push("soft_too_many_soft_failures");
         }
       }
     }
@@ -2166,6 +2196,32 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       Object.assign(rescued as any, withDiagnostics);
       filtered.push(withDiagnostics);
       existingKeys.add(key);
+    }
+  }
+
+  if (filtered.length < targetPoolMinimum) {
+    const existingKeys = new Set(filtered.map((doc: any) => filterDocIdentity(doc)));
+    const relaxedPool = inputDocs
+      .filter((doc: any) => !existingKeys.has(filterDocIdentity(doc)))
+      .map((doc: any) => ({ doc, diagnostics: buildFilterDiagnostics(doc, bucketPlan) }))
+      .filter(({ diagnostics }) => !diagnostics.rejectReasons.some((reason) => criticalRejectReasons.has(reason)))
+      .sort((a, b) => {
+        const aScore = narrativeQualityScore(a.doc, a.diagnostics) + Number(a.diagnostics.ratingsCount > 0) * 2 + Number(hasHighAuthoritySignal(a.doc, a.diagnostics)) * 4;
+        const bScore = narrativeQualityScore(b.doc, b.diagnostics) + Number(b.diagnostics.ratingsCount > 0) * 2 + Number(hasHighAuthoritySignal(b.doc, b.diagnostics)) * 4;
+        return bScore - aScore;
+      });
+
+    for (const entry of relaxedPool) {
+      if (filtered.length >= targetPoolMinimum) break;
+      const { doc, diagnostics } = entry;
+      diagnostics.kept = true;
+      diagnostics.rejectReasons = [];
+      diagnostics.passedChecks.push("relaxed_pool_floor_rescue");
+      diagnostics.passedChecks.push("soft_too_many_soft_failures");
+      const withDiagnostics = attachDiagnostics(doc, diagnostics);
+      Object.assign(doc as any, withDiagnostics);
+      filtered.push(withDiagnostics);
+      existingKeys.add(filterDocIdentity(doc));
     }
   }
 
