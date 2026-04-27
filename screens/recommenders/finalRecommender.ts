@@ -1161,11 +1161,32 @@ function thrillerSessionFit(c: Candidate): number {
   if (/\bthriller\b|\bsuspense\b|\bpsychological\b|\bcrime\b|\bmurder\b|\bkiller\b|\bserial killer\b|\bdetective\b|\binvestigation\b|\bcase\b|\bmissing\b|\bdisappearance\b|\bfbi\b|\bprocedural\b|\bnoir\b|\bobsession\b/.test(text)) score += 4;
   if (/\bred dragon\b|\bmr\.? mercedes\b|\byou\b|\bgone girl\b|\bsharp objects\b|\bdark places\b|\bthe silent patient\b|\bthe silence of the lambs\b|\bthe girl on the train\b/.test(text)) score += 5;
   if (/\bpsychological thriller\b|\bdomestic suspense\b|\bcrime thriller\b|\bserial killer\b|\bcat and mouse\b/.test(text)) score += 3;
-  if (/\bmystery\b/.test(text) && !/\bthriller\b|\bsuspense\b|\bpsychological thriller\b|\bcrime thriller\b/.test(text)) score -= 4;
+  if (/\bthriller\b|\bsuspense\b|\bpsychological thriller\b|\bcrime thriller\b/.test(text)) score += 2;
+  if (/\bmystery\b/.test(text) && !/\bthriller\b|\bsuspense\b|\bpsychological thriller\b|\bcrime thriller\b/.test(text)) score -= 5;
   if (/\bcozy mystery\b|\bculinary mystery\b|\bgentle mystery\b|\bcomfort read\b/.test(text)) score -= 5;
   if (/\btrue crime\b|\bnonfiction\b|\bguide\b|\bhandbook\b|\bcriticism\b|\banalysis\b/.test(text)) score -= 6;
 
   return score;
+}
+
+function thrillerAuthorityBonus(c: Candidate): number {
+  const raw: any = c.rawDoc || {};
+  const family = normalizeFamilyName(raw?.queryFamily || raw?.diagnostics?.queryFamily || (c as any)?.queryFamily || '');
+  if (family !== "thriller") return 0;
+
+  const text = haystack(c);
+  const author = normalize(c.author);
+  const ratings = Number(c.ratingCount || raw?.ratingsCount || raw?.volumeInfo?.ratingsCount || 0);
+  let bonus = 0;
+
+  if (/\b(dean koontz|nelson demille|jo nesb[øo]|thomas harris|gillian flynn|dennis lehane|john sandford|lee child|karin slaughter)\b/.test(author)) bonus += 6;
+  if (/\b(shutter island|gone girl|the silence of the lambs|red dragon|the silent patient|the girl on the train|dark places|sharp objects)\b/.test(text)) bonus += 5;
+  if (ratings >= 5000) bonus += 6;
+  else if (ratings >= 1000) bonus += 4;
+  else if (ratings >= 250) bonus += 2;
+
+  if (/\b(mystery)\b/.test(text) && !/\b(thriller|suspense|crime thriller|psychological thriller)\b/.test(text)) bonus -= 2;
+  return bonus;
 }
 
 function horrorSessionFit(c: Candidate): number {
@@ -1522,7 +1543,7 @@ function procurementAvailabilityScore(c: Candidate): number {
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
-  const authority = authorityScore(c) * 4.5;
+  const authority = authorityScore(c) * 4.5 + thrillerAuthorityBonus(c);
   const behavior = behaviorScore(c, taste);
   const narrative = narrativeScore(c);
   const penalties = penaltyScore(c);
