@@ -282,16 +282,21 @@ function metadataTrust(c: Candidate): number {
 
 function authorityScore(c: Candidate): number {
   const ratings = c.ratingCount || 0;
+  const text = haystack(c);
+  const canonicalSignal = /\b(shutter island|gone girl|red dragon|the silence of the lambs|the silent patient|the girl on the train|mr\.? mercedes)\b/.test(text);
+  const publisher = normalize(c.publisher);
+  const mainstreamPublisher = /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|little brown|sourcebooks|berkley|delacorte|orbit|scribner|putnam)\b/.test(publisher);
 
   if (ratings >= 10000) return 8;
   if (ratings >= 3000) return 6;
   if (ratings >= 1000) return 5;
   if (ratings >= 200) return 3;
   if (ratings >= 50) return 1.5;
+  if (ratings === 0 && (canonicalSignal || mainstreamPublisher)) return -1.5;
   if (ratings >= 10) return 0;
-  if (ratings > 0) return -4;
+  if (ratings > 0) return -5;
 
-  return -4;
+  return -7;
 }
 
 function hasFictionSignals(c: Candidate): boolean {
@@ -1156,6 +1161,7 @@ function thrillerSessionFit(c: Candidate): number {
   if (/\bthriller\b|\bsuspense\b|\bpsychological\b|\bcrime\b|\bmurder\b|\bkiller\b|\bserial killer\b|\bdetective\b|\binvestigation\b|\bcase\b|\bmissing\b|\bdisappearance\b|\bfbi\b|\bprocedural\b|\bnoir\b|\bobsession\b/.test(text)) score += 4;
   if (/\bred dragon\b|\bmr\.? mercedes\b|\byou\b|\bgone girl\b|\bsharp objects\b|\bdark places\b|\bthe silent patient\b|\bthe silence of the lambs\b|\bthe girl on the train\b/.test(text)) score += 5;
   if (/\bpsychological thriller\b|\bdomestic suspense\b|\bcrime thriller\b|\bserial killer\b|\bcat and mouse\b/.test(text)) score += 3;
+  if (/\bmystery\b/.test(text) && !/\bthriller\b|\bsuspense\b|\bpsychological thriller\b|\bcrime thriller\b/.test(text)) score -= 4;
   if (/\bcozy mystery\b|\bculinary mystery\b|\bgentle mystery\b|\bcomfort read\b/.test(text)) score -= 5;
   if (/\btrue crime\b|\bnonfiction\b|\bguide\b|\bhandbook\b|\bcriticism\b|\banalysis\b/.test(text)) score -= 6;
 

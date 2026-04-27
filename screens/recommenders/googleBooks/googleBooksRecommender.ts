@@ -330,17 +330,41 @@ function hasStrongAuthoritySignal(doc: any): boolean {
   );
 }
 
+function hasStrongNarrativeShapeSignal(doc: any): boolean {
+  const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
+  const description = normalizeText(doc?.description ?? doc?.volumeInfo?.description);
+  const pageCount = Number(doc?.pageCount ?? doc?.volumeInfo?.pageCount ?? 0);
+  const hasNarrativeLexicon =
+    /\b(thriller|mystery|crime|suspense|horror|fantasy|science fiction|novel|fiction)\b/.test(title) ||
+    /\b(follows|story of|must uncover|must survive|investigates|killer|missing|case|obsession|conspiracy|haunted)\b/.test(description);
+  return hasNarrativeLexicon && (pageCount >= 140 || description.length > 180);
+}
+
 function enforceEarlyIntakeQualityAndDiversity(docs: any[], queryFamily: string): any[] {
-  const seeded = (Array.isArray(docs) ? docs : []).filter((doc) => {
+  const primarySeeded = (Array.isArray(docs) ? docs : []).filter((doc) => {
     if (!doc?.title) return false;
     if (looksLikeGoogleBooksReference(doc)) return false;
     if (isClearlyNotNarrativeBook(doc)) return false;
     if (looksLikeLowAuthorityLegacyLibraryTitle(doc)) return false;
     if (isGarbageGoogleBooksCandidate(doc)) return false;
     const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
-    if (ratings === 0 && !hasStrongAuthoritySignal(doc)) return false;
+    if (ratings === 0 && !(hasStrongAuthoritySignal(doc) || hasStrongNarrativeShapeSignal(doc))) return false;
     return true;
   });
+
+  // If strict intake gets too thin, widen early intake slightly and let downstream
+  // final filters/ranking enforce stricter quality floors.
+  const seeded = primarySeeded.length >= 12
+    ? primarySeeded
+    : (Array.isArray(docs) ? docs : []).filter((doc) => {
+        if (!doc?.title) return false;
+        if (looksLikeGoogleBooksReference(doc)) return false;
+        if (isClearlyNotNarrativeBook(doc)) return false;
+        if (looksLikeLowAuthorityLegacyLibraryTitle(doc)) return false;
+        const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+        if (ratings === 0 && !(hasStrongAuthoritySignal(doc) || hasStrongNarrativeShapeSignal(doc))) return false;
+        return true;
+      });
 
   const capped: any[] = [];
   const authorCounts = new Map<string, number>();
@@ -378,6 +402,29 @@ function enforceEarlyIntakeQualityAndDiversity(docs: any[], queryFamily: string)
     keptDominant += 1;
     return true;
   });
+}
+
+function buildAuthorityBackfillQueries(queryFamily: string): string[] {
+  if (queryFamily === "thriller") {
+    return [
+      'inauthor:"Gillian Flynn" psychological thriller novel',
+      'inauthor:"Dennis Lehane" thriller novel',
+      'inauthor:"Thomas Harris" thriller novel',
+      '"shutter island" thriller novel',
+      '"gone girl" thriller novel',
+    ];
+  }
+  if (queryFamily === "mystery") {
+    return [
+      'inauthor:"Tana French" mystery novel',
+      'inauthor:"Louise Penny" detective mystery novel',
+      '"the girl with the dragon tattoo" mystery novel',
+    ];
+  }
+  return [
+    'bestseller fiction novel',
+    'award winning fiction novel',
+  ];
 }
 
 function sleep(ms: number): Promise<void> {
@@ -756,6 +803,32 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
     const enoughCandidates = collectedDocsRaw.length >= Math.max(finalLimit, minCandidateFloor);
     if (queryIndex + 1 >= minQueryPassesBeforeEarlyExit && enoughCandidates) break;
+  }
+
+  const primaryFamily = inferQueryFamilyFromText(queriesToTry[0] || "");
+  if (collectedDocsRaw.length < Math.max(10, finalLimit)) {
+    for (const authorityQuery of buildAuthorityBackfillQueries(primaryFamily).slice(0, 3)) {
+      let fallbackDocs: any[] = [];
+      try {
+        fallbackDocs = await googleBooksSearch(authorityQuery, fetchLimit, timeoutMs);
+      } catch {
+        fallbackDocs = [];
+      }
+      const intakeDocs = enforceEarlyIntakeQualityAndDiversity(fallbackDocs, primaryFamily);
+      for (const doc of intakeDocs) {
+        const key = String(doc?.key || doc?.id || `${doc?.title || "unknown"}|authority_backfill`);
+        if (seenKeys.has(key)) continue;
+        seenKeys.add(key);
+        collectedDocsRaw.push({
+          ...doc,
+          queryRung: 98,
+          queryText: normalizeStoredQueryText(authorityQuery),
+          source: "googleBooks",
+          laneKind: "authority_backfill",
+        });
+      }
+      if (collectedDocsRaw.length >= Math.max(10, finalLimit * 2)) break;
+    }
   }
 
   const docsRaw = collectedDocsRaw.length

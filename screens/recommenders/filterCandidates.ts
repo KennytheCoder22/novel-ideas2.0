@@ -1397,11 +1397,20 @@ function passesCommercialNarrativeFloor(doc: any, diagnostics: FilterDiagnostics
     diagnostics.flags.crimePositive ||
     diagnostics.flags.suspensePositive;
 
+  const authoritySignal =
+    diagnostics.flags.legitAuthority ||
+    diagnostics.flags.authorAffinity ||
+    Boolean((doc as any)?.commercialSignals?.bestseller) ||
+    Number((doc as any)?.commercialSignals?.popularityTier || 0) >= 2 ||
+    diagnostics.ratingsCount >= 20;
+
   return Boolean(
     diagnostics.pageCount >= 200 &&
     diagnostics.flags.strongNarrative &&
     hasLaneSignal &&
-    hasProcurementShape(doc)
+    hasProcurementShape(doc) &&
+    authoritySignal &&
+    diagnostics.ratingsCount > 0
   );
 }
 
