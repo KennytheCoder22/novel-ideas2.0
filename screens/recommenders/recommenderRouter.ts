@@ -1704,6 +1704,15 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
   return [{ rung: 999, query: "fiction novel" }];
 }
 
+function safeDefaultQueriesForFamily(family: RouterFamilyKey | string): string[] {
+  const normalized = normalizeRouterFamilyValue(family) || "general";
+  if (normalized === "thriller") return ["psychological thriller novel", "suspense novel"];
+  if (normalized === "science_fiction" || normalized === "speculative") return ["science fiction novel", "speculative fiction novel"];
+  if (normalized === "fantasy") return ["fantasy novel", "dark fantasy novel"];
+  if (normalized === "horror") return ["horror novel", "psychological horror novel"];
+  return ["psychological suspense novel", "science fiction novel", "fantasy novel", "horror novel"];
+}
+
 function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string {
   const base = [
     "-writers", "-writer", "-writing", "-guide", "-reference", "-bibliography", "-analysis",
@@ -2685,6 +2694,10 @@ export async function getRecommendations(
     ];
   }
 
+  if (!rungs.length) {
+    rungs = safeDefaultQueriesForFamily(routerFamily).map((query, rung) => ({ rung, query }));
+  }
+
   if (routerFamily === "historical") {
     // Historical must keep four independent shelves. Some upstream taste plans can
     // collapse every rung to the same base query; restore the canonical rung pack here
@@ -3235,6 +3248,7 @@ export async function getRecommendations(
   const openLibraryCandidates = asArray(normalizeCandidates(openLibraryDocsEnriched, "openLibrary"));
   const kitsuCandidatesRaw = asArray(normalizeCandidates(kitsuDocsEnriched, "kitsu"));
   const gcdCandidates = asArray(normalizeCandidates(gcdDocsEnriched, "gcd"));
+  const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
 
   debugRouterLog("NORMALIZED CANDIDATES BY SOURCE", {
     googleBooks: googleCandidates.length,
@@ -3314,7 +3328,6 @@ let normalizedCandidates = [
     preferredRungs.has(String(c?.rawDoc?.queryRung ?? c?.queryRung ?? ""))
   );
 
-  const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
   const primaryIntentOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source === "openLibrary");
   const primaryIntentNonOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source !== "openLibrary");
 
@@ -3647,6 +3660,13 @@ let normalizedCandidates = [
   };
   const candidatePoolCount = rankingPool.length;
   const filteredOutCount = Math.max(0, enrichedDocs.length - filteredDocs.length);
+  const safeBuiltFromQuery =
+    (google as any)?.builtFromQuery ||
+    (openLibrary as any)?.builtFromQuery ||
+    bucketPlan.preview ||
+    bucketPlan.queries?.[0] ||
+    rungs?.[0]?.query ||
+    safeDefaultQueriesForFamily(activeFamily)[0];
 
   return {
     engineId: preferredEngine,
@@ -3656,12 +3676,7 @@ let normalizedCandidates = [
       routingInput.deckKey === "k2"
         ? (routingInput.domainModeOverride ?? "chapterMiddle")
         : (routingInput.domainModeOverride ?? "default"),
-    builtFromQuery:
-      (google as any)?.builtFromQuery ||
-      (openLibrary as any)?.builtFromQuery ||
-      bucketPlan.preview ||
-      bucketPlan.queries?.[0] ||
-      "",
+    builtFromQuery: safeBuiltFromQuery,
     items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
