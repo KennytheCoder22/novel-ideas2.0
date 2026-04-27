@@ -1614,6 +1614,10 @@ function rescueMechanismCount(diagnostics: FilterDiagnostics): number {
     .length;
 }
 
+function hasAuthorityAffinityOverride(diagnostics: FilterDiagnostics): boolean {
+  return Boolean(diagnostics.flags.authorAffinity && diagnostics.flags.legitAuthority);
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -1887,6 +1891,13 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     }
 
     if (diagnostics.rejectReasons.length > 0) {
+      const onlySoftFailureRejects = diagnostics.rejectReasons.every((reason) => reason === "too_many_soft_failures");
+      if (onlySoftFailureRejects && hasAuthorityAffinityOverride(diagnostics)) {
+        diagnostics.rejectReasons = [];
+      }
+    }
+
+    if (diagnostics.rejectReasons.length > 0) {
       const metadataOrShapeOnlyReject =
         diagnostics.rejectReasons.length > 0 &&
         diagnostics.rejectReasons.every((reason) => shapeMetadataRelaxableReasons.has(reason));
@@ -2061,17 +2072,21 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     }
 
     if (rescueMechanismCount(diagnostics) > 1) {
-      diagnostics.rejectReasons.push("too_many_soft_failures");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      if (!hasAuthorityAffinityOverride(diagnostics)) {
+        diagnostics.rejectReasons.push("too_many_soft_failures");
+        diagnostics.kept = false;
+        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        continue;
+      }
     }
 
     if (entrySignalCount(doc, diagnostics) < 2) {
-      diagnostics.rejectReasons.push("too_many_soft_failures");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      if (!hasAuthorityAffinityOverride(diagnostics)) {
+        diagnostics.rejectReasons.push("too_many_soft_failures");
+        diagnostics.kept = false;
+        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        continue;
+      }
     }
 
     if (isOpenLibraryLike) {
@@ -2083,10 +2098,12 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.ratingsCount > 0 ||
         diagnostics.flags.strongNarrative;
       if (!hasOlMinimumSignal || !laneMatched) {
-        diagnostics.rejectReasons.push("too_many_soft_failures");
-        diagnostics.kept = false;
-        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-        continue;
+        if (!hasAuthorityAffinityOverride(diagnostics)) {
+          diagnostics.rejectReasons.push("too_many_soft_failures");
+          diagnostics.kept = false;
+          Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+          continue;
+        }
       }
     }
     diagnostics.kept = true;

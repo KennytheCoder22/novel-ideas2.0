@@ -65,6 +65,7 @@ const ANCHOR_SCORE_CAP = 10;
 const NEGATIVE_TASTE_MISMATCH_PENALTY = -10;
 const MIN_TASTE_SCORE_FOR_RANKING = -2;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
+const TARGET_MIN_RESULTS_FOR_MEDIUM_POOL = 7;
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after filtering/ranking behavior is confirmed stable.
@@ -954,20 +955,25 @@ function hasStrongNarrativeOrAuthoritySignal(c: Candidate): boolean {
 
 function rescuePenaltyScore(c: Candidate): number {
   const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
     ? diagnostics.filterPassedChecks
     : Array.isArray(diagnostics?.passedChecks)
       ? diagnostics.passedChecks
       : [];
   const rescuePenaltyCount = passedChecks.filter((check) => check === "borderline_rescue_penalty").length;
+  const pagecountOverrideCount = passedChecks.filter((check) => check === "pagecount_shape_floor_override").length;
   const stackedSoft = passedChecks.filter((check) =>
     check === "soft_missing_narrative_signal" ||
     check === "soft_missing_thriller_signal" ||
     check === "soft_minimum_authority_floor_miss"
   ).length;
-  if (rescuePenaltyCount >= 2) return -8;
-  if (rescuePenaltyCount >= 1 && stackedSoft >= 1) return -6;
-  return rescuePenaltyCount >= 1 ? -3 : 0;
+  const rescueStack = rescuePenaltyCount + pagecountOverrideCount;
+  const protectedRescue = Boolean(flags.strongNarrative && (flags.authorAffinity || flags.legitAuthority));
+  if (protectedRescue) return rescueStack >= 2 ? -2 : 0;
+  if (rescueStack >= 2) return -10;
+  if (rescueStack >= 1 && stackedSoft >= 1) return -8;
+  return rescueStack >= 1 ? -4 : 0;
 }
 
 function rankingPriorityBoost(c: Candidate): number {
@@ -1939,7 +1945,9 @@ function canTakeCandidate(
   const lane = laneFamilyForCandidate(candidate);
   if (lane === "thriller" && subtypeCounts) {
     const subtype = thrillerSubtype(candidate);
-    const cap = Math.max(1, Math.floor(targetCount * 0.4));
+    const cap = targetCount >= 8
+      ? Math.min(3, Math.max(1, Math.floor(targetCount * 0.4)))
+      : Math.max(1, Math.floor(targetCount * 0.4));
     const current = subtypeCounts.get(subtype) || 0;
     if (selected.length >= 5 && current >= cap) return false;
   }
@@ -2287,6 +2295,8 @@ export function finalRecommenderForDeck(
   pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
     pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+  } else if (selected.length < TARGET_MIN_RESULTS_FOR_MEDIUM_POOL && ordered.length >= 10) {
+    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_FOR_MEDIUM_POOL), thrillerSubtypeCounts, MAX_RESULTS);
   }
 
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);

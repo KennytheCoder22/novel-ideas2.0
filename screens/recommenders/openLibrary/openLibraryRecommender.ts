@@ -157,7 +157,7 @@ function isGarbage(doc: any, family: string): boolean {
 
   const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
   const firstSentence = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence);
-  if (!firstSentence && ratingsCount === 0) return true;
+  if (!firstSentence && ratingsCount === 0 && title.split(" ").length <= 2) return true;
 
   if (family === "fantasy") {
     const obviousFantasySignal =
@@ -182,6 +182,7 @@ export async function getOpenLibraryRecommendations(
   const queries = buildQueries(input);
   const family = inferFamily(input);
   const docsRaw: any[] = [];
+  const attemptedQueries: string[] = [];
   const limit = input.limit || 12;
   const intakeLimit = Math.max(limit * 2, 24);
 
@@ -199,6 +200,7 @@ export async function getOpenLibraryRecommendations(
   for (let i = 0; i < queries.length; i++) {
     const q = queries[i];
     const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
+    attemptedQueries.push(q);
     let docs: any[] = [];
     try {
       const data = await fetchJson(url);
@@ -258,6 +260,14 @@ export async function getOpenLibraryRecommendations(
       const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
       return hasKnownAuthor || firstSentence.length >= 60 || ratingsCount > 0;
     });
+
+  if (docsRaw.length === 0) {
+    console.warn("[OPEN_LIBRARY_EMPTY_POOL]", {
+      family,
+      attemptedQueries: attemptedQueries.slice(0, 8),
+      queryCount: attemptedQueries.length,
+    });
+  }
 
   return {
     engineId: "openLibrary",
