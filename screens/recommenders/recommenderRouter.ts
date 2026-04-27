@@ -142,48 +142,132 @@ function enforceAuthorMaxTwo<T extends any>(docs: T[]): T[] {
   return out;
 }
 
-function emergencyFallbackDocsForFamily(family: RouterFamilyKey): RecommendationDoc[] {
-  const byFamily: Record<string, { title: string; author: string; year: number; subjects: string[] }[]> = {
-    thriller: [
-      { title: "Gone Girl", author: "Gillian Flynn", year: 2012, subjects: ["thriller", "psychological thriller"] },
-      { title: "Shutter Island", author: "Dennis Lehane", year: 2003, subjects: ["thriller", "mystery"] },
-      { title: "The Good Girl", author: "Mary Kubica", year: 2014, subjects: ["thriller", "crime fiction"] },
-    ],
-    fantasy: [
-      { title: "The Final Empire", author: "Brandon Sanderson", year: 2006, subjects: ["fantasy", "epic fantasy"] },
-      { title: "Assassin's Apprentice", author: "Robin Hobb", year: 1995, subjects: ["fantasy"] },
-      { title: "The Blade Itself", author: "Joe Abercrombie", year: 2006, subjects: ["dark fantasy"] },
-    ],
-    horror: [
-      { title: "The Shining", author: "Stephen King", year: 1977, subjects: ["horror"] },
-      { title: "The Haunting of Hill House", author: "Shirley Jackson", year: 1959, subjects: ["horror", "gothic"] },
-      { title: "A Head Full of Ghosts", author: "Paul Tremblay", year: 2015, subjects: ["horror", "psychological horror"] },
-    ],
-    mystery: [
-      { title: "In the Woods", author: "Tana French", year: 2007, subjects: ["mystery", "detective"] },
-      { title: "The Cuckoo's Calling", author: "Robert Galbraith", year: 2013, subjects: ["mystery", "crime"] },
-      { title: "The Black Echo", author: "Michael Connelly", year: 1992, subjects: ["mystery", "police procedural"] },
-    ],
-  };
-  const rows = byFamily[family] || byFamily.thriller;
-  return rows.map((row, index) => ({
-    key: `emergency:${family}:${index}:${row.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`,
-    title: row.title,
-    author_name: [row.author],
-    first_publish_year: row.year,
-    subject: row.subjects,
-    description: `${row.title} by ${row.author}`,
+type EmergencyFallbackSeed = {
+  title: string;
+  author: string;
+  year: number;
+  subtype: string;
+  tones: string[];
+};
+
+const EMERGENCY_FALLBACK_LIBRARY: Record<string, EmergencyFallbackSeed[]> = {
+  thriller: [
+    ["Gone Girl","Gillian Flynn",2012,"psychological",["dark","crime"]],["Shutter Island","Dennis Lehane",2003,"psychological",["dark","mystery"]],["The Good Girl","Mary Kubica",2014,"domestic",["dark","crime"]],["The Silent Patient","Alex Michaelides",2019,"psychological",["dark","identity"]],["The Girl on the Train","Paula Hawkins",2015,"domestic",["dark","psychological"]],["Before I Go to Sleep","S. J. Watson",2011,"psychological",["identity","tense"]],["Sharp Objects","Gillian Flynn",2006,"crime",["dark","gritty"]],["I Am Pilgrim","Terry Hayes",2013,"conspiracy",["fast","global"]],["The Chain","Adrian McKinty",2019,"survival_action",["tense","fast"]],["No Exit","Taylor Adams",2017,"survival_action",["fast","winter"]],["The Kind Worth Killing","Peter Swanson",2015,"psychological",["dark","crime"]],["The Reversal","Michael Connelly",2010,"crime",["procedural","realistic"]],["Bluebird, Bluebird","Attica Locke",2017,"crime",["noir","realistic"]],["In the Woods","Tana French",2007,"crime",["literary","psychological"]],["Blacktop Wasteland","S. A. Cosby",2020,"crime",["gritty","realistic"]],["The Dry","Jane Harper",2016,"crime",["atmospheric","mystery"]],["Dark Places","Gillian Flynn",2009,"psychological",["dark","crime"]],["Long Bright River","Liz Moore",2020,"crime",["realistic","character"]],["Razorblade Tears","S. A. Cosby",2021,"crime",["gritty","revenge"]],["The Guest List","Lucy Foley",2020,"domestic",["twisty","ensemble"]],["The Last House Guest","Megan Miranda",2019,"domestic",["suspense","coastal"]],["A Nearly Normal Family","M. T. Edvardsson",2018,"legal",["family","psychological"]],["The Power of the Dog","Don Winslow",2005,"conspiracy",["crime","epic"]],["The Snowman","Jo Nesbø",2007,"crime",["serial killer","dark"]],["The Talented Mr. Ripley","Patricia Highsmith",1955,"psychological",["identity","noir"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  mystery: [
+    ["The Cuckoo's Calling","Robert Galbraith",2013,"detective",["procedural","character"]],["Still Life","Louise Penny",2005,"cozy",["small town","warm"]],["The No. 1 Ladies' Detective Agency","Alexander McCall Smith",1998,"cozy",["warm","character"]],["The Black Echo","Michael Connelly",1992,"detective",["procedural","gritty"]],["Magpie Murders","Anthony Horowitz",2016,"meta",["classic puzzle","literary"]],["Big Little Lies","Liane Moriarty",2014,"domestic",["character","twisty"]],["The Thursday Murder Club","Richard Osman",2020,"cozy",["warm","ensemble"]],["The Sweetness at the Bottom of the Pie","Alan Bradley",2009,"cozy",["historical","voice"]],["Still Missing","Chevy Stevens",2010,"crime",["tense","dark"]],["A Great Deliverance","Elizabeth George",1988,"detective",["procedural","literary"]],["Faceless Killers","Henning Mankell",1991,"detective",["noir","realistic"]],["Case Histories","Kate Atkinson",2004,"detective",["character","literary"]],["The Crossing Places","Elly Griffiths",2009,"detective",["atmospheric","forensic"]],["Murder on the Orient Express","Agatha Christie",1934,"classic puzzle",["cozy","locked room"]],["The Woman in White","Wilkie Collins",1859,"gothic mystery",["classic","atmospheric"]],["Raven Black","Ann Cleeves",2006,"detective",["island","noir"]],["In a Dark, Dark Wood","Ruth Ware",2015,"domestic",["tense","twisty"]],["The Searcher","Tana French",2020,"detective",["character","atmospheric"]],["The Ruin","Dervla McTiernan",2018,"detective",["procedural","dark"]],["What Rose Forgot","Nevada Barr",2019,"cozy",["voice","character"]],["The Janes","Louisa Luna",2018,"crime",["dark","investigation"]],["Hercule Poirot's Christmas","Agatha Christie",1938,"classic puzzle",["holiday","cozy"]],["The Girl with a Clock for a Heart","Peter Swanson",2014,"noir",["dark","twisty"]],["A Rising Man","Abir Mukherjee",2016,"historical mystery",["colonial","procedural"]],["IQ","Joe Ide",2016,"detective",["voice","modern"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  horror: [
+    ["The Shining","Stephen King",1977,"haunted",["dark","psychological"]],["The Haunting of Hill House","Shirley Jackson",1959,"haunted",["gothic","atmospheric"]],["A Head Full of Ghosts","Paul Tremblay",2015,"possession",["psychological","dark"]],["The Fisherman","John Langan",2016,"cosmic",["bleak","literary"]],["Mexican Gothic","Silvia Moreno-Garcia",2020,"gothic",["atmospheric","body horror"]],["Bird Box","Josh Malerman",2014,"apocalyptic",["survival","tense"]],["The Only Good Indians","Stephen Graham Jones",2020,"folk",["dark","identity"]],["The Exorcist","William Peter Blatty",1971,"possession",["religious","dark"]],["The Troop","Nick Cutter",2014,"body horror",["graphic","survival"]],["The Cabin at the End of the World","Paul Tremblay",2018,"home invasion",["apocalyptic","tense"]],["Ghost Story","Peter Straub",1979,"ghost",["winter","atmospheric"]],["The Woman in Black","Susan Hill",1983,"ghost",["gothic","classic"]],["The Ritual","Adam Nevill",2011,"folk",["wilderness","dark"]],["House of Leaves","Mark Z. Danielewski",2000,"experimental",["psychological","meta"]],["The Ruins","Scott Smith",2006,"survival",["body horror","tense"]],["Let the Right One In","John Ajvide Lindqvist",2004,"vampire",["dark","character"]],["NOS4A2","Joe Hill",2013,"supernatural",["dark fantasy","road"]],["My Best Friend's Exorcism","Grady Hendrix",2016,"possession",["retro","character"]],["The Silent Companions","Laura Purcell",2017,"gothic",["historical","haunted"]],["The Drowning Girl","Caitlín R. Kiernan",2012,"psychological",["identity","literary"]],["The Red Tree","Caitlín R. Kiernan",2009,"psychological",["isolation","dark"]],["The Hunger","Alma Katsu",2018,"historical horror",["survival","supernatural"]],["The Terror","Dan Simmons",2007,"historical horror",["expedition","bleak"]],["Horrorstör","Grady Hendrix",2014,"haunted",["dark humor","satire"]],["Come Closer","Sara Gran",2003,"possession",["psychological","minimal"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  fantasy: [
+    ["The Final Empire","Brandon Sanderson",2006,"epic",["adventure","dark"]],["Assassin's Apprentice","Robin Hobb",1995,"character",["dark","court"]],["The Blade Itself","Joe Abercrombie",2006,"grimdark",["dark","character"]],["The Name of the Wind","Patrick Rothfuss",2007,"epic",["lyrical","character"]],["The Lies of Locke Lamora","Scott Lynch",2006,"heist",["adventure","witty"]],["The Priory of the Orange Tree","Samantha Shannon",2019,"epic",["dragon","court"]],["The Fifth Season","N. K. Jemisin",2015,"epic",["dark","idea dense"]],["Uprooted","Naomi Novik",2015,"folk",["romantic","dark"]],["Jade City","Fonda Lee",2017,"urban",["crime","family"]],["Black Sun","Rebecca Roanhorse",2020,"epic",["mythic","dark"]],["The Poppy War","R. F. Kuang",2018,"grimdark",["war","dark"]],["The Bear and the Nightingale","Katherine Arden",2017,"folk",["winter","atmospheric"]],["A Wizard of Earthsea","Ursula K. Le Guin",1968,"coming of age",["philosophical","adventure"]],["The Blacktongue Thief","Christopher Buehlman",2021,"quest",["adventure","voice"]],["The Grace of Kings","Ken Liu",2015,"epic",["strategy","character"]],["The Bone Season","Samantha Shannon",2013,"urban",["dark","identity"]],["The City of Brass","S. A. Chakraborty",2017,"epic",["political","adventure"]],["The Hundred Thousand Kingdoms","N. K. Jemisin",2010,"epic",["court","mythic"]],["A Darker Shade of Magic","V. E. Schwab",2015,"portal",["adventure","dark"]],["The Goblin Emperor","Katherine Addison",2014,"court",["warm","character"]],["The Once and Future Witches","Alix E. Harrow",2020,"historical fantasy",["identity","feminist"]],["The Rage of Dragons","Evan Winter",2017,"epic",["revenge","fast"]],["Kings of the Wyld","Nicholas Eames",2017,"quest",["humor","adventure"]],["The Sword of Kaigen","M. L. Wang",2019,"epic",["family","dark"]],["Nettle & Bone","T. Kingfisher",2022,"dark fairy tale",["quest","character"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  science_fiction: [
+    ["Kindred","Octavia E. Butler",1979,"time travel",["identity","historical"]],["The Left Hand of Darkness","Ursula K. Le Guin",1969,"speculative",["identity","political"]],["The Dispossessed","Ursula K. Le Guin",1974,"speculative",["political","idea dense"]],["Station Eleven","Emily St. John Mandel",2014,"post-apocalyptic",["character","literary"]],["The Three-Body Problem","Cixin Liu",2008,"hard sci-fi",["idea dense","cosmic"]],["Children of Time","Adrian Tchaikovsky",2015,"hard sci-fi",["evolution","idea dense"]],["Ancillary Justice","Ann Leckie",2013,"space opera",["identity","political"]],["Project Hail Mary","Andy Weir",2021,"hard sci-fi",["adventure","problem solving"]],["The Space Between Worlds","Micaiah Johnson",2020,"multiverse",["identity","dark"]],["Parable of the Sower","Octavia E. Butler",1993,"dystopian",["realistic","dark"]],["Never Let Me Go","Kazuo Ishiguro",2005,"speculative",["identity","emotional"]],["Red Mars","Kim Stanley Robinson",1992,"hard sci-fi",["political","idea dense"]],["Hyperion","Dan Simmons",1989,"space opera",["literary","epic"]],["A Memory Called Empire","Arkady Martine",2019,"space opera",["political","identity"]],["The Martian","Andy Weir",2011,"hard sci-fi",["humor","survival"]],["The Ministry for the Future","Kim Stanley Robinson",2020,"climate",["realistic","policy"]],["Sea of Tranquility","Emily St. John Mandel",2022,"time travel",["literary","identity"]],["The Mountain in the Sea","Ray Nayler",2022,"speculative",["idea dense","ecological"]],["The City & the City","China Miéville",2009,"weird",["noir","political"]],["Do Androids Dream of Electric Sheep?","Philip K. Dick",1968,"speculative",["identity","philosophical"]],["Snow Crash","Neal Stephenson",1992,"cyberpunk",["fast","satirical"]],["The Windup Girl","Paolo Bacigalupi",2009,"biopunk",["dark","idea dense"]],["Babel-17","Samuel R. Delany",1966,"space opera",["linguistic","idea dense"]],["Autonomous","Annalee Newitz",2017,"cyberpunk",["identity","political"]],["The Future","Naomi Alderman",2023,"near-future",["dark","satirical"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  historical: [
+    ["The Nightingale","Kristin Hannah",2015,"ww2",["emotional","character"]],["Wolf Hall","Hilary Mantel",2009,"court",["political","literary"]],["The Book Thief","Markus Zusak",2005,"ww2",["emotional","identity"]],["All the Light We Cannot See","Anthony Doerr",2014,"ww2",["literary","character"]],["The Pillars of the Earth","Ken Follett",1989,"medieval",["epic","architectural"]],["Homegoing","Yaa Gyasi",2016,"multi-generational",["identity","literary"]],["The Paris Library","Janet Skeslien Charles",2021,"ww2",["warm","character"]],["The Four Winds","Kristin Hannah",2021,"depression",["family","gritty"]],["A Gentleman in Moscow","Amor Towles",2016,"20th century",["character","warm"]],["The Miniaturist","Jessie Burton",2014,"17th century",["gothic","atmospheric"]],["The Japanese Lover","Isabel Allende",2015,"multi-era",["romantic","character"]],["The Rose Code","Kate Quinn",2021,"ww2",["spy","character"]],["The Alice Network","Kate Quinn",2017,"ww1/ww2",["spy","emotional"]],["The Shadow of the Wind","Carlos Ruiz Zafón",2001,"postwar",["gothic","mystery"]],["The Poisonwood Bible","Barbara Kingsolver",1998,"postcolonial",["literary","family"]],["The Thousand Autumns of Jacob de Zoet","David Mitchell",2010,"18th century",["literary","adventure"]],["Year of Wonders","Geraldine Brooks",2001,"plague",["historical","character"]],["Pachinko","Min Jin Lee",2017,"multi-generational",["identity","family"]],["The Personal Librarian","Marie Benedict",2021,"gilded age",["identity","biographical"]],["The Warm Hands of Ghosts","Katherine Arden",2024,"ww1",["dark","supernatural"]],["Hamnet","Maggie O'Farrell",2020,"elizabethan",["literary","family"]],["Girl with a Pearl Earring","Tracy Chevalier",1999,"17th century",["art","character"]],["The Lincoln Highway","Amor Towles",2021,"1950s",["road","character"]],["Washington Black","Esi Edugyan",2018,"19th century",["adventure","identity"]],["The Great Believers","Rebecca Makkai",2018,"1980s",["literary","emotional"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  romance: [
+    ["Beach Read","Emily Henry",2020,"contemporary",["warm","witty"]],["Book Lovers","Emily Henry",2022,"contemporary",["witty","character"]],["The Hating Game","Sally Thorne",2016,"workplace",["witty","banter"]],["The Kiss Quotient","Helen Hoang",2018,"contemporary",["warm","character"]],["The Love Hypothesis","Ali Hazelwood",2021,"workplace",["witty","academic"]],["Pride and Prejudice","Jane Austen",1813,"regency",["witty","classic"]],["Persuasion","Jane Austen",1817,"regency",["second chance","classic"]],["Outlander","Diana Gabaldon",1991,"historical",["adventure","emotional"]],["The Duke and I","Julia Quinn",2000,"regency",["witty","society"]],["Bringing Down the Duke","Evie Dunmore",2019,"historical",["political","warm"]],["Red, White & Royal Blue","Casey McQuiston",2019,"contemporary",["witty","political"]],["Get a Life, Chloe Brown","Talia Hibbert",2019,"contemporary",["warm","character"]],["Take a Hint, Dani Brown","Talia Hibbert",2020,"contemporary",["witty","warm"]],["The Flatshare","Beth O'Leary",2019,"contemporary",["warm","character"]],["People We Meet on Vacation","Emily Henry",2021,"friends-to-lovers",["warm","travel"]],["You Deserve Each Other","Sarah Hogle",2020,"second chance",["witty","chaotic"]],["Love on the Brain","Ali Hazelwood",2022,"workplace",["witty","academic"]],["A Court of Mist and Fury","Sarah J. Maas",2016,"fantasy romance",["epic","dark"]],["The Viscount Who Loved Me","Julia Quinn",2000,"regency",["banter","society"]],["The Wall of Winnipeg and Me","Mariana Zapata",2016,"sports",["slow burn","warm"]],["It Happened One Summer","Tessa Bailey",2021,"contemporary",["coastal","witty"]],["The Wedding Date","Jasmine Guillory",2018,"contemporary",["warm","character"]],["Part of Your World","Abby Jimenez",2022,"contemporary",["emotional","small town"]],["The Charm Offensive","Alison Cochrun",2021,"contemporary",["warm","identity"]],["The Dead Romantics","Ashley Poston",2022,"paranormal romance",["warm","grief"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+};
+
+function buildEmergencyFallbackDocs(
+  family: RouterFamilyKey,
+  input: RecommenderInput,
+  maxItems = 8
+): {
+  docs: RecommendationDoc[];
+  poolSize: number;
+  afterMemoryCount: number;
+  repeatSuppressed: number;
+  selectedTitles: string[];
+  selectionMode: "static" | "ranked" | "randomized_score_band";
+} {
+  const familyKey = family === "speculative" ? "science_fiction" : family;
+  const seeds = EMERGENCY_FALLBACK_LIBRARY[familyKey] || EMERGENCY_FALLBACK_LIBRARY.thriller;
+  const recentIds = new Set((input.priorRecommendedIds || []).map((v) => normalizeText(v)));
+  const recentKeys = new Set((input.priorRecommendedKeys || []).map((v) => normalizeText(v)));
+  const recentAuthors = new Set((input.priorAuthors || []).map((v) => normalizeText(v)));
+  const recentSeries = new Set((input.priorSeriesKeys || []).map((v) => normalizeText(v)));
+  const axes = (input?.tasteProfile?.axes || {}) as Record<string, number>;
+  const dark = Number(axes.darkness || 0);
+  const realism = Number(axes.realism || 0);
+  const ideaDensity = Number(axes.ideaDensity || 0);
+  const warmth = Number(axes.warmth || 0);
+  const likedTags = normalizeText(Object.entries(input.tagCounts || {}).filter(([, value]) => Number(value || 0) > 0).map(([k]) => k).join(" "));
+  const dislikedTags = normalizeText(Object.entries(input.tagCounts || {}).filter(([, value]) => Number(value || 0) < 0).map(([k]) => k).join(" "));
+
+  const scored = seeds.map((seed, index) => {
+    const key = `emergency:${familyKey}:${normalizeText(seed.title).replace(/[^a-z0-9]+/g, "-")}`;
+    const text = normalizeText(`${seed.title} ${seed.author} ${seed.subtype} ${seed.tones.join(" ")} ${familyKey}`);
+    let score = 30;
+    if (dark > 0.25 && /\b(dark|psychological|noir|grimdark|bleak)\b/.test(text)) score += 4;
+    if (realism > 0.25 && /\b(crime|procedural|realistic|historical|political)\b/.test(text)) score += 4;
+    if (ideaDensity > 0.25 && /\b(speculative|political|philosophical|idea dense|hard sci-fi)\b/.test(text)) score += 4;
+    if (warmth > 0.2 && /\b(warm|character|cozy|emotional)\b/.test(text)) score += 3;
+    if (likedTags && likedTags.split(" ").some((token) => token.length > 3 && text.includes(token))) score += 2;
+    if (dislikedTags && dislikedTags.split(" ").some((token) => token.length > 3 && text.includes(token))) score -= 4;
+    if (classicPublicDomainSignal({ title: seed.title, author_name: [seed.author], first_publish_year: seed.year })) score -= 2;
+    const alreadyShown =
+      recentIds.has(normalizeText(key)) ||
+      recentKeys.has(normalizeText(key)) ||
+      recentAuthors.has(normalizeText(seed.author)) ||
+      recentSeries.has(normalizeText(seed.title));
+    if (alreadyShown) score -= 30;
+    return { seed, key, score, alreadyShown, index };
+  });
+
+  const afterMemory = scored.filter((row) => !row.alreadyShown);
+  const rankingBase = (afterMemory.length >= 5 ? afterMemory : scored).sort((a, b) => b.score - a.score);
+  const picked: typeof rankingBase = [];
+  const authorSeen = new Set<string>();
+  const subtypeSeen = new Set<string>();
+
+  for (const row of rankingBase) {
+    if (picked.length >= Math.max(5, Math.min(8, maxItems))) break;
+    const author = normalizeText(row.seed.author);
+    if (authorSeen.has(author)) continue;
+    if (!subtypeSeen.has(row.seed.subtype) || picked.length >= 5) {
+      picked.push(row);
+      authorSeen.add(author);
+      subtypeSeen.add(row.seed.subtype);
+    }
+  }
+  const topBandScore = picked.length ? picked[0].score : 0;
+  const banded = picked.map((row) => ({ ...row, band: Math.floor((topBandScore - row.score) / 3) }));
+  banded.sort((a, b) => a.band - b.band || (Math.random() < 0.5 ? -1 : 1));
+
+  const docs = banded.map((row) => ({
+    key: row.key,
+    title: row.seed.title,
+    author_name: [row.seed.author],
+    first_publish_year: row.seed.year,
+    subject: [familyKey, row.seed.subtype, ...row.seed.tones],
+    description: `${row.seed.title} by ${row.seed.author}`,
     source: "openLibrary",
     laneKind: "emergency_fallback",
     diagnostics: {
       source: "openLibrary",
       fallbackRelaxed: true,
       emergencyFallback: true,
+      fallbackScore: row.score,
       filterKept: true,
-      filterPassedChecks: ["emergency_fallback_injected"],
+      filterPassedChecks: ["emergency_fallback_ranked"],
       filterRejectReasons: [],
     },
   } as any));
+
+  return {
+    docs,
+    poolSize: seeds.length,
+    afterMemoryCount: afterMemory.length,
+    repeatSuppressed: scored.length - afterMemory.length,
+    selectedTitles: docs.map((d: any) => String(d.title || "")),
+    selectionMode: "randomized_score_band",
+  };
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
@@ -3198,9 +3282,28 @@ let normalizedCandidates = [
     ...(includeGcd ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
   let emergencyFallbackUsed = false;
+  let emergencyFallbackReason = "";
+  let fallbackPoolSize = 0;
+  let fallbackCandidatesAfterMemory = 0;
+  let fallbackRepeatSuppressedCount = 0;
+  let fallbackSelectedTitles: string[] = [];
+  let fallbackSelectionMode: "static" | "ranked" | "randomized_score_band" = "ranked";
   if (normalizedCandidates.length === 0) {
-    emergencyFallbackUsed = true;
-    normalizedCandidates = asArray(normalizeCandidates(emergencyFallbackDocsForFamily(activeFamily), "openLibrary"));
+    if (openLibraryCandidates.length >= 3) {
+      normalizedCandidates = openLibraryCandidates.slice(0, Math.max(3, finalLimit));
+      emergencyFallbackReason = "normalized_empty_using_openlibrary_candidates";
+      fallbackSelectionMode = "ranked";
+    } else {
+      const fallbackPack = buildEmergencyFallbackDocs(activeFamily, routingInput, Math.max(5, Math.min(8, finalLimit)));
+      emergencyFallbackUsed = true;
+      emergencyFallbackReason = "normalized_candidates_empty";
+      fallbackPoolSize = fallbackPack.poolSize;
+      fallbackCandidatesAfterMemory = fallbackPack.afterMemoryCount;
+      fallbackRepeatSuppressedCount = fallbackPack.repeatSuppressed;
+      fallbackSelectedTitles = fallbackPack.selectedTitles;
+      fallbackSelectionMode = fallbackPack.selectionMode;
+      normalizedCandidates = asArray(normalizeCandidates(fallbackPack.docs, "openLibrary"));
+    }
   }
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
@@ -3413,8 +3516,24 @@ let normalizedCandidates = [
   const noveltyRankedPool = repeatFiltered.length >= finalLimit ? repeatFiltered : withNovelty;
   let finalRankedDocs = rebalanceRomanceFinalSources(noveltyRankedPool, rankingPool, finalLimit);
   if (finalRankedDocs.length === 0) {
-    emergencyFallbackUsed = true;
-    finalRankedDocs = asArray(normalizeCandidates(emergencyFallbackDocsForFamily(activeFamily), "openLibrary")).slice(0, finalLimit);
+    const relaxedOpenLibraryFinal = rankingPool
+      .filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary")
+      .slice(0, Math.max(3, finalLimit));
+    if (relaxedOpenLibraryFinal.length >= 3) {
+      finalRankedDocs = relaxedOpenLibraryFinal;
+      fallbackSelectionMode = "ranked";
+      emergencyFallbackReason = emergencyFallbackReason || "relaxed_openlibrary_final";
+    } else {
+      const fallbackPack = buildEmergencyFallbackDocs(activeFamily, routingInput, Math.max(5, Math.min(8, finalLimit)));
+      emergencyFallbackUsed = true;
+      emergencyFallbackReason = emergencyFallbackReason || "final_ranked_empty";
+      fallbackPoolSize = fallbackPack.poolSize;
+      fallbackCandidatesAfterMemory = fallbackPack.afterMemoryCount;
+      fallbackRepeatSuppressedCount = fallbackPack.repeatSuppressed;
+      fallbackSelectedTitles = fallbackPack.selectedTitles;
+      fallbackSelectionMode = fallbackPack.selectionMode;
+      finalRankedDocs = asArray(normalizeCandidates(fallbackPack.docs, "openLibrary")).slice(0, finalLimit);
+    }
   }
   const subtypeDistributionFinal = finalRankedDocs.reduce<Record<string, number>>((acc, doc: any) => {
     const family = inferDocFamily(doc) || activeFamily || "unknown";
@@ -3582,6 +3701,12 @@ let normalizedCandidates = [
     filteredOutCount,
     fallbackRelaxedTriggered,
     emergencyFallbackUsed,
+    emergencyFallbackReason,
+    fallbackPoolSize,
+    fallbackCandidatesAfterMemory,
+    fallbackRepeatSuppressedCount,
+    fallbackSelectedTitles,
+    fallbackSelectionMode,
     authorDiversityApplied,
     googleBooksUnavailable,
     queryWasRetried,

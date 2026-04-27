@@ -56,6 +56,12 @@ export type RecommendationResult = {
   filteredOutCount?: number;
   fallbackRelaxedTriggered?: boolean;
   emergencyFallbackUsed?: boolean;
+  emergencyFallbackReason?: string;
+  fallbackPoolSize?: number;
+  fallbackCandidatesAfterMemory?: number;
+  fallbackRepeatSuppressedCount?: number;
+  fallbackSelectedTitles?: string[];
+  fallbackSelectionMode?: "static" | "ranked" | "randomized_score_band";
   authorDiversityApplied?: boolean;
   googleBooksUnavailable?: boolean;
   queryWasRetried?: boolean;
