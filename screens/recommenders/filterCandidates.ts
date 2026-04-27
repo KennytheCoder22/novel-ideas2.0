@@ -828,13 +828,17 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   const hasRealLength = pageCount >= 120;
 
   const fictionPositive =
-    /\b(fiction|novel|thriller|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
-      combined
-    );
+    (
+      /\b(novel|thriller|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
+        combined
+      ) ||
+      /\b(follows|story of|must survive|must uncover|investigates|disappearance|serial killer|murder case)\b/.test(description)
+    ) &&
+    !/\b(reference|guide|criticism|study of|analysis of|companion to|anthology|collection)\b/.test(combined);
 
   const strongNarrative =
-    /\b(novel|thriller|horror|suspense|fiction|red dragon|mr\.? mercedes|you|fractured|killing me softly|silence of the lambs|gone girl)\b/.test(title) ||
-    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|haunted|ghost|terror|dread|survive|escape|killer|serial killer|detective|case|investigation|disappearance|missing|obsession)\b/.test(description);
+    /\b(thriller|horror|suspense|red dragon|mr\.? mercedes|killing me softly|silence of the lambs|gone girl)\b/.test(title) ||
+    /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|survive|escape|killer|serial killer|detective|investigation|disappearance|missing|obsession)\b/.test(description);
 
   const genericTitle =
     /^\s*novels?\b/.test(title) ||
@@ -948,11 +952,15 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   if (!fictionPositive) diagnostics.passedChecks.push("soft_missing_fiction_signal");
   if (genericTitle) diagnostics.passedChecks.push("soft_generic_title_signal");
   if (!strongNarrative) diagnostics.passedChecks.push("soft_missing_narrative_signal");
-  const knownClassicSignal =
+  const classicAuthorWhitelist =
+    /\b(h\.?g\.?\s*wells|mary shelley|jules verne|isaac asimov|arthur c\.?\s*clarke|ray bradbury|ursula k\.?\s*le guin|philip k\.?\s*dick)\b/.test(author);
+  const canonicalWorkOverride =
     hasCanonicalThrillerTitle(title) ||
     hasCanonicalScienceFictionTitle(title) ||
     hasCanonicalRomanceTitle(title) ||
-    /\b(dracula|frankenstein|the exorcist|the hobbit|foundation|dune|murder on the orient express|the hound of the baskervilles|the haunting of hill house)\b/.test(title);
+    /\b(the time machine|the war of the worlds|frankenstein|the caves of steel|i, robot|childhood'?s end|fahrenheit 451|left hand of darkness|do androids dream of electric sheep)\b/.test(title) ||
+    /\b(dracula|the exorcist|the hobbit|foundation|dune|murder on the orient express|the hound of the baskervilles|the haunting of hill house)\b/.test(title);
+  const knownClassicSignal = canonicalWorkOverride || classicAuthorWhitelist;
   if (!hasRealLength && !hasDescription) {
     if (isOpenLibraryLikeDoc(doc) && knownClassicSignal) diagnostics.passedChecks.push("soft_sparse_classic_metadata");
     else diagnostics.rejectReasons.push("insufficient_length_or_description");
@@ -1078,7 +1086,11 @@ if (family === "speculative") {
     diagnostics.rejectReasons.push("lane_mismatch_historical");
   }
   if (family === "science_fiction" && isLaneMismatch(family, combined, diagnostics.flags)) {
-    diagnostics.rejectReasons.push("lane_mismatch_science_fiction");
+    if (diagnostics.flags.legitAuthority || diagnostics.flags.authorAffinity || hasCanonicalScienceFictionTitle(title)) {
+      diagnostics.passedChecks.push("soft_lane_mismatch_science_fiction");
+    } else {
+      diagnostics.rejectReasons.push("lane_mismatch_science_fiction");
+    }
   }
   if (family === "speculative" && isLaneMismatch(family, combined, diagnostics.flags)) {
     diagnostics.rejectReasons.push("lane_mismatch_speculative");
@@ -1497,6 +1509,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "missing_title",
     "hard_reject_title",
     "hard_reject_category",
+    "anthology_or_collection",
     "literature_without_fiction",
     "weak_series_spam",
     "speculative_off_profile_reference",
@@ -1505,7 +1518,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "lane_mismatch_thriller",
     "lane_mismatch_romance",
     "lane_mismatch_historical",
-    "lane_mismatch_science_fiction",
     "lane_mismatch_speculative",
     "antique_off_profile_thriller",
     "thriller_meta_reference",
