@@ -769,6 +769,15 @@ function knownTitleBoost(c: Candidate): number {
   return 0;
 }
 
+function classicAuthorBoost(c: Candidate): number {
+  const author = normalize(c.author);
+  if (!author) return 0;
+  if (/\b(h\.?g\.?\s*wells|mary shelley|isaac asimov|ursula k\.?\s*le guin|arthur c\.?\s*clarke|ray bradbury|philip k\.?\s*dick|jules verne)\b/.test(author)) {
+    return 9;
+  }
+  return 0;
+}
+
 function ratingsCountBoost(c: Candidate): number {
   const ratings = Number(c.ratingCount || 0);
   if (ratings >= 5000) return 10;
@@ -786,6 +795,26 @@ function noveltyTitlePenalty(c: Candidate): number {
   if (/\b(chihuahua of the baskervilles|hamster .* detective|parody mystery|spoof mystery)\b/.test(title)) return -30;
   if (/\b(parallel lives)\b/.test(title) && ratings < 100 && authority < 10) return -16;
   if (title.split(" ").length >= 7 && ratings < 30 && authority < 8) return -8;
+  return 0;
+}
+
+function metadataConfidencePenalty(c: Candidate): number {
+  const trust = metadataTrust(c);
+  const ratings = Number(c.ratingCount || 0);
+  const desc = String(c.description || "").trim().length;
+  const hasShape = (c.pageCount || 0) >= 120 || desc >= 120 || Boolean(c.hasCover);
+  if (trust <= 1 && !hasShape) return -18;
+  if (trust <= 2 && ratings < 25 && !hasShape) return -10;
+  return 0;
+}
+
+function lowRatingsPenalty(c: Candidate): number {
+  const ratings = Number(c.ratingCount || 0);
+  const protectedCandidate = knownTitleBoost(c) > 0 || classicAuthorBoost(c) > 0;
+  if (protectedCandidate) return 0;
+  if (ratings === 0) return -16;
+  if (ratings < 10) return -10;
+  if (ratings < 30) return -6;
   return 0;
 }
 
@@ -1594,7 +1623,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
   const authority = authorityScore(c) * 4.5 + thrillerAuthorityBonus(c);
-  const authorityRankBoost = ratingsCountBoost(c) + knownTitleBoost(c);
+  const authorityRankBoost = ratingsCountBoost(c) + knownTitleBoost(c) + classicAuthorBoost(c);
   const behavior = behaviorScore(c, taste);
   const narrative = narrativeScore(c);
   const penalties = penaltyScore(c);
@@ -1614,6 +1643,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
   const noveltyPenalty = noveltyTitlePenalty(c);
+  const confidencePenalty = metadataConfidencePenalty(c) + lowRatingsPenalty(c);
 
   return {
     queryScore,
@@ -1630,7 +1660,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     laneBlendScore: laneBlend,
     toneScore: tone,
     procurementScore: procurement,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + noveltyPenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + openLibraryRecoveredBoost,
   };
 }
 
@@ -1716,6 +1746,15 @@ function pickFromPool(
   }
 
   return selected;
+}
+
+function isHighConfidenceEntry(entry: { candidate: Candidate; breakdown: ScoreBreakdown }): boolean {
+  const c = entry.candidate;
+  const ratings = Number(c.ratingCount || 0);
+  const anchor = anchorBoost(c);
+  const authority = entry.breakdown.authorityScore;
+  const canonical = knownTitleBoost(c) > 0 || classicAuthorBoost(c) > 0;
+  return canonical || ratings >= 200 || anchor >= 14 || authority >= 22;
 }
 
 function seedHistoricalRungDiversity(
@@ -1896,8 +1935,11 @@ export function finalRecommenderForDeck(
   const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
+  const HIGH_CONFIDENCE_TARGET = 4;
 
   seedHistoricalRungDiversity(ordered, selected, authorCounts, MAX_RESULTS);
+  const highConfidencePool = ordered.filter((entry) => isHighConfidenceEntry(entry));
+  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET));
   pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
 
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
