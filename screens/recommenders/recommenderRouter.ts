@@ -2419,6 +2419,10 @@ export async function getRecommendations(
   let fetchErrorCount = 0;
   let repeatedCandidateCount = 0;
   let repeatSuppressedCount = 0;
+  let queryWasRetried = false;
+  let retryCount = 0;
+  let fallbackUsed: "google_retry" | "open_library" | "none" = "none";
+  let zeroResultCause: "query" | "fetch_error" | "filter" | "none" = "none";
   let rungs = asArray(
     build20QRungs({
       ageBand:
@@ -2587,8 +2591,12 @@ export async function getRecommendations(
         Number((routingInput as any)?.recentSourceStats?.openLibrary?.finalSelected || 0) === 0 &&
         Number((routingInput as any)?.recentSourceStats?.openLibrary?.runs || 0) >= 2;
       const shouldSkipOpenLibraryByGoogle = lane.source === "openLibrary" && aggregatedRawFetched.googleBooks >= MIN_GOOGLE_RAW_BEFORE_OPEN_LIBRARY;
-      if (lane.source === "openLibrary" && (shouldSkipOpenLibraryByHistory || shouldSkipOpenLibraryByGoogle)) {
-        openLibrarySkippedReason = shouldSkipOpenLibraryByHistory ? "recent_zero_contribution" : "google_viable_pool";
+      const shouldSkipOpenLibraryByGoogleFailure = lane.source === "openLibrary" && aggregatedRawFetched.googleBooks === 0 && fetchErrorCount > 0;
+      if (lane.source === "openLibrary" && (shouldSkipOpenLibraryByHistory || shouldSkipOpenLibraryByGoogle || shouldSkipOpenLibraryByGoogleFailure)) {
+        openLibrarySkippedReason =
+          shouldSkipOpenLibraryByGoogleFailure ? "google_retry_pending" :
+          shouldSkipOpenLibraryByHistory ? "recent_zero_contribution" :
+          "google_viable_pool";
         return null;
       }
 
@@ -2634,6 +2642,14 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (lane.source === "googleBooks") index += 1;
+      if (laneGoogle) {
+        queryWasRetried = queryWasRetried || Boolean((laneGoogle as any)?.queryWasRetried);
+        retryCount += Number((laneGoogle as any)?.retryCount || 0);
+        if ((laneGoogle as any)?.fallbackUsed === "google_retry") fallbackUsed = "google_retry";
+        if ((laneGoogle as any)?.zeroResultCause && (laneGoogle as any)?.zeroResultCause !== "none") {
+          zeroResultCause = (laneGoogle as any).zeroResultCause;
+        }
+      }
 
       const laneOpenLibrary = lane.source === "openLibrary" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
@@ -2823,7 +2839,30 @@ export async function getRecommendations(
   // taste comes only from 20Q-derived rungs. NYT is allowed only after filtering
   // as a procurement/commercial anchor, never as query or taste evidence.
   const filterStartMs = Date.now();
-  const filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
+  let filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
+  if (!filteredDocs.length) {
+    const emergencyFallbackQuery =
+      activeFamily === "thriller" ? "thriller novel" :
+      activeFamily === "mystery" ? "mystery novel" :
+      activeFamily === "horror" ? "horror novel" :
+      activeFamily === "science_fiction" ? "science fiction novel" :
+      activeFamily === "fantasy" ? "fantasy novel" :
+      activeFamily === "romance" ? "romance novel" :
+      activeFamily === "historical" ? "historical fiction novel" :
+      "fiction novel";
+    try {
+      const emergencyGoogle = await runEngine("googleBooks", {
+        ...routedInput,
+        bucketPlan: { ...bucketPlan, queries: [emergencyFallbackQuery], preview: emergencyFallbackQuery },
+      });
+      const emergencyDocs = dedupeDocs(extractDocs(emergencyGoogle, "googleBooks"));
+      if (emergencyDocs.length) {
+        filteredDocs = unwrapFilteredCandidates(filterCandidates(emergencyDocs as any, bucketPlan));
+      }
+    } catch {
+      // best-effort fallback; keep empty and allow downstream recovery.
+    }
+  }
   const filterMs = Date.now() - filterStartMs;
   debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
@@ -3291,6 +3330,9 @@ const normalizedCandidates = [
     const source = sourceForDoc(doc, "openLibrary");
     rankedCountsBySource[source] = (rankedCountsBySource[source] || 0) + 1;
   }
+  if (fallbackUsed !== "google_retry" && rankedCountsBySource.openLibrary > 0 && rankedCountsBySource.googleBooks === 0) {
+    fallbackUsed = "open_library";
+  }
 
   const engineLabel =
     includeKitsu && includeGcd
@@ -3377,5 +3419,9 @@ const normalizedCandidates = [
     fetchErrorCount,
     repeatedCandidateCount,
     repeatSuppressedCount,
+    queryWasRetried,
+    retryCount,
+    fallbackUsed,
+    zeroResultCause,
   } as RecommendationResult;
 }

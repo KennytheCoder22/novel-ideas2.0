@@ -51,6 +51,10 @@ export type RecommendationResult = {
   fetchErrorCount?: number;
   repeatedCandidateCount?: number;
   repeatSuppressedCount?: number;
+  queryWasRetried?: boolean;
+  retryCount?: number;
+  fallbackUsed?: "google_retry" | "open_library" | "none";
+  zeroResultCause?: "query" | "fetch_error" | "filter" | "none";
   debugFinalRecommender?: {
     inputCount: number;
     dedupedCount: number;

@@ -581,10 +581,33 @@ function toGoogleBooksQuery(query: string): string {
   const q = normalizeStoredQueryText(query);
   if (!q) return "";
   return q
+    .replace(/^"(.*)"$/, "$1")
     .replace(/\s-\w[\w-]*/g, " ")
     .replace(/\s-\"[^\"]+\"/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+const MIN_RESULTS_PER_QUERY = 10;
+const MAX_QUERY_RETRIES = 3;
+
+function simplifyGoogleQuery(query: string): string {
+  return normalizeStoredQueryText(query)
+    .replace(/\b(dark|emotional|character driven|relationship driven|literary|gritty|intense|atmospheric|moody)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function broaderFallbackForFamily(query: string): string {
+  const q = normalizeStoredQueryText(query);
+  if (/\bthriller\b/.test(q)) return "thriller novel";
+  if (/\bmystery\b/.test(q)) return "mystery novel";
+  if (/\bhorror\b/.test(q)) return "horror novel";
+  if (/\bscience fiction\b|\bsci[- ]?fi\b/.test(q)) return "science fiction novel";
+  if (/\bfantasy\b/.test(q)) return "fantasy novel";
+  if (/\bromance\b/.test(q)) return "romance novel";
+  if (/\bhistorical\b/.test(q)) return "historical fiction novel";
+  return "fiction novel";
 }
 
 function buildToneAwareEngineQueries(query: string, input: RecommenderInput): string[] {
@@ -721,6 +744,10 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   let primaryDocsRaw: any[] = [];
   let totalRawFetched = 0;
   const minQueryPassesBeforeEarlyExit = Math.min(2, queriesToTry.length);
+  let queryWasRetried = false;
+  let retryCount = 0;
+  let fallbackUsed: "google_retry" | "open_library" | "none" = "none";
+  let zeroResultCause: "query" | "fetch_error" | "filter" | "none" = "none";
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
@@ -731,46 +758,41 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
     for (const engineQuery of engineQueries) {
       let rawDocs: any[] = [];
+      let fetchFailed = false;
+      const retryQueries = dedupeQueries([
+        normalizeStoredQueryText(engineQuery).replace(/^\"(.*)\"$/, "$1"),
+        simplifyGoogleQuery(engineQuery),
+        broaderFallbackForFamily(engineQuery),
+        normalizeStoredQueryText(queriesToTry[queryIndex + 1] || ""),
+      ]).filter(Boolean).slice(0, MAX_QUERY_RETRIES + 1);
 
-      try {
-        rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs);
-      } catch (err: any) {
-        // Retry with a simplified payload before declaring source failure.
-        const simplifiedQuery = normalizeStoredQueryText(engineQuery)
-          .replace(/\s-\w[\w-]*/g, " ")
-          .replace(/\s-\"[^\"]+\"/g, " ")
-          .replace(/\s+/g, " ")
-          .trim();
-        if (simplifiedQuery && simplifiedQuery !== normalizeStoredQueryText(engineQuery)) {
-          try {
-            rawDocs = await googleBooksSearch(simplifiedQuery, fetchLimit, timeoutMs);
-          } catch {
-            rawDocs = [];
-          }
-        }
-
-        if (!Array.isArray(rawDocs) || rawDocs.length === 0) {
+      for (let retryIndex = 0; retryIndex < retryQueries.length; retryIndex += 1) {
+        const retryQuery = retryQueries[retryIndex];
+        try {
+          rawDocs = await googleBooksSearch(retryQuery, fetchLimit, timeoutMs);
+        } catch (err: any) {
+          fetchFailed = true;
+          rawDocs = [];
           console.error("GoogleBooks fetch failed", {
             engineQuery,
-            simplifiedQuery,
+            retryQuery,
+            retryIndex,
             queryIndex,
             builtFromQuery,
             message: err?.message || String(err || "unknown error"),
           });
-
-          rawPoolRows.push({
-            title: "[GOOGLE_BOOKS_FETCH_ERROR]",
-            author: undefined,
-            source: "googleBooks",
-            queryText: q,
-            engineQueryText: engineQuery,
-            queryRung: queryIndex,
-            laneKind,
-            error: err?.message || String(err || "unknown error"),
-          });
-
-          rawDocs = [];
         }
+
+        if (Array.isArray(rawDocs) && rawDocs.length >= MIN_RESULTS_PER_QUERY) break;
+        if (retryIndex < retryQueries.length - 1) {
+          queryWasRetried = true;
+          retryCount += 1;
+          fallbackUsed = "google_retry";
+        }
+      }
+
+      if (!Array.isArray(rawDocs) || rawDocs.length === 0) {
+        zeroResultCause = fetchFailed ? "fetch_error" : "query";
       }
       const rawAuthorCappedDocs = capRawDocsPerAuthor(rawDocs, queryFamily, 2);
 
@@ -876,6 +898,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
         source: "googleBooks",
         laneKind: "precision",
       }));
+  if (!docsRaw.length && zeroResultCause === "none") zeroResultCause = "filter";
 
   const docs: RecommendationDoc[] = docsRaw.filter((doc: any) => doc && doc.title).map((doc: any) => ({
     key: doc.key ?? doc.id,
@@ -933,6 +956,10 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     items: docs.map((doc) => ({ kind: "open_library", doc })),
     debugRawFetchedCount: totalRawFetched,
     debugRawPool: rawPoolRows,
+    queryWasRetried,
+    retryCount,
+    fallbackUsed,
+    zeroResultCause,
   };
 }
 

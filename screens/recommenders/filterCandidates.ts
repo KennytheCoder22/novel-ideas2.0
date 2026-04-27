@@ -2224,6 +2224,16 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       .filter((doc: any) => !existingKeys.has(filterDocIdentity(doc)))
       .map((doc: any) => ({ doc, diagnostics: buildFilterDiagnostics(doc, bucketPlan) }))
       .filter(({ diagnostics }) => !diagnostics.rejectReasons.some((reason) => criticalRejectReasons.has(reason)))
+      .filter(({ doc, diagnostics }) => {
+        const author = normalizeText(doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors);
+        const ratings = Number(doc?.ratingsCount ?? doc?.volumeInfo?.ratingsCount ?? 0);
+        const pageCount = Number(doc?.pageCount ?? doc?.volumeInfo?.pageCount ?? 0);
+        const year = Number(doc?.first_publish_year || doc?.publishYear || doc?.volumeInfo?.publishedDate?.slice?.(0, 4) || 0);
+        const classicCluster = /\b(h g wells|jules verne|arthur conan doyle|bram stoker|mary shelley)\b/.test(author);
+        if (classicCluster && !diagnostics.flags.authorAffinity && !diagnostics.flags.strongNarrative) return false;
+        if (ratings === 0 && pageCount === 0 && !diagnostics.flags.strongNarrative && lanePositiveSignalCount(diagnostics) === 0) return false;
+        return year >= 1980 || diagnostics.flags.strongNarrative || lanePositiveSignalCount(diagnostics) > 0;
+      })
       .sort((a, b) => {
         const aScore = narrativeQualityScore(a.doc, a.diagnostics) + Number(a.diagnostics.ratingsCount > 0) * 2 + Number(hasHighAuthoritySignal(a.doc, a.diagnostics)) * 4;
         const bScore = narrativeQualityScore(b.doc, b.diagnostics) + Number(b.diagnostics.ratingsCount > 0) * 2 + Number(hasHighAuthoritySignal(b.doc, b.diagnostics)) * 4;
