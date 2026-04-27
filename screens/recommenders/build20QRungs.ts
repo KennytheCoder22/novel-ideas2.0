@@ -157,11 +157,11 @@ const BASE_GENRE_REWRITES: Record<string, string[]> = {
     "psychological horror thriller novel"
   ],
 thriller: [
-  "missing person thriller novel",
-  "serial killer investigation thriller novel",
+  "character driven psychological suspense novel",
+  "dark emotional thriller novel",
+  "relationship driven suspense novel",
   "crime conspiracy thriller novel",
-  "obsession psychological thriller novel",
-  "procedural crime thriller novel"
+  "obsession psychological thriller novel"
 ],
 mystery: [
   "psychological suspense novel",

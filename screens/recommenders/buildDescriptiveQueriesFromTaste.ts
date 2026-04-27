@@ -1095,6 +1095,53 @@ function tasteShapedQueries(input: RecommenderInput, signals: QuerySignals): str
   return cleaned.map((query) => compactQuery(query, signals));
 }
 
+function axisToneAwareQueries(input: RecommenderInput, signals: QuerySignals): string[] {
+  const axes = (input as any)?.tasteProfile?.axes || {};
+  const darkness = Number(axes?.darkness || 0);
+  const warmth = Number(axes?.warmth || 0);
+  const characterFocus = Number(axes?.characterFocus || 0);
+  const complexity = Number(axes?.complexity || 0);
+  const realism = Number(axes?.realism || 0);
+  const pacing = Number(axes?.pacing || 0);
+  const genreHints = new Set(topKeys(signals.genre, 3));
+  const out: string[] = [];
+
+  if (darkness >= 0.35) {
+    if (genreHints.has("horror")) out.push("psychological horror novel", "grim survival horror novel");
+    if (genreHints.has("thriller") || genreHints.has("mystery") || genreHints.has("crime")) {
+      out.push("dark character driven psychological thriller novel", "noir psychological mystery novel");
+    }
+    if (genreHints.has("fantasy")) out.push("dark fantasy novel", "gothic fantasy novel");
+  }
+
+  if (warmth >= 0.22 || characterFocus >= 0.22) {
+    if (genreHints.has("thriller") || genreHints.has("mystery") || genreHints.has("crime")) {
+      out.push("character driven psychological suspense novel", "emotional relationship driven suspense novel");
+    }
+    if (genreHints.has("science fiction")) out.push("character driven literary science fiction novel");
+    if (!genreHints.has("horror")) out.push("intimate character driven fiction novel");
+  }
+
+  if (complexity >= 0.3) {
+    if (genreHints.has("science fiction")) out.push("literary science fiction novel", "political science fiction novel");
+    if (genreHints.has("thriller") || genreHints.has("mystery")) out.push("conspiracy thriller novel", "multi-layered mystery novel");
+    if (genreHints.has("historical")) out.push("family saga historical fiction novel");
+  }
+
+  if (realism >= 0.3) {
+    if (genreHints.has("mystery") || genreHints.has("crime") || genreHints.has("thriller")) out.push("police procedural mystery novel");
+    if (genreHints.has("historical")) out.push("literary historical fiction novel");
+    if (!genreHints.has("science fiction") && !genreHints.has("fantasy")) out.push("grounded character driven fiction novel");
+  }
+
+  if (pacing >= 0.3) {
+    if (genreHints.has("thriller") || genreHints.has("mystery")) out.push("high tension psychological suspense novel");
+    if (genreHints.has("horror")) out.push("survival horror thriller novel");
+  }
+
+  return dedupe(out).map((query) => compactQuery(query, signals));
+}
+
 function suppressUnsupportedHistoricalQueries(queries: string[], input: RecommenderInput, signals: QuerySignals): string[] {
   const tags = directDecisionTagScores(input);
   if (!shouldSuppressHistoricalQueries(tags, signals)) return queries;
@@ -1134,18 +1181,12 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
     "cold case mystery novel",
   ];
   if (genres.has("thriller")) return [
-    "missing person thriller novel",
-    "missing child thriller novel",
-    "serial killer investigation thriller novel",
-    "crime conspiracy thriller novel",
+    "character driven psychological suspense novel",
+    "dark emotional thriller novel",
+    "relationship driven suspense novel",
     "obsession psychological thriller novel",
-    "procedural crime thriller novel",
-    "detective investigation thriller novel",
-    "fugitive thriller novel",
-    "manhunt thriller novel",
-    "abduction thriller novel",
-    "small town murder thriller novel",
-    "fbi investigation thriller novel",
+    "conspiracy psychological thriller novel",
+    "high tension mystery thriller novel",
   ];
   if (genres.has("historical")) return ["historical fiction novel"];
   if (genres.has("romance")) return [
@@ -1192,10 +1233,12 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
     .filter(Boolean) as QueryPack[];
 
   const directTasteQueries = tasteShapedQueries(input, signals);
+  const axisDrivenQueries = axisToneAwareQueries(input, signals);
   const hypothesisQueries = queryPacks.flatMap((pack) => compactQueryPack(pack, signals));
   const fallback = fallbackQueries(signals);
   const guaranteed = guaranteedGenreFallbacks(signals);
   const generatedQueries = dedupe([
+    ...axisDrivenQueries,
     ...directTasteQueries,
     ...(hypothesisQueries.length ? hypothesisQueries : (fallback.length ? fallback : guaranteed)),
   ]);

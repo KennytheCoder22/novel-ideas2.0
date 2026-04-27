@@ -41,6 +41,7 @@ const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
 const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
 const MIN_POOL_FOR_NYT_INJECTION = 14;
 const MAX_NYT_ANCHOR_INJECTIONS = 2;
+const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -111,6 +112,65 @@ function shouldAllowNytAnchorInjections(filteredCount: number, finalLimit: numbe
   return filteredCount < Math.max(MIN_POOL_FOR_NYT_INJECTION, finalLimit * 2);
 }
 
+function inferFamilyFromQueryText(query: string, fallback: RouterFamilyKey): RouterFamilyKey {
+  const q = String(query || "").toLowerCase();
+  if (!q) return fallback;
+  if (/\b(psychological thriller|crime thriller|conspiracy thriller|fugitive thriller|manhunt thriller|abduction thriller|thriller)\b/.test(q)) return "thriller";
+  if (/\b(psychological mystery|detective mystery|cold case mystery|mystery)\b/.test(q)) return "mystery";
+  if (/\b(psychological horror|survival horror|haunted|horror)\b/.test(q)) return "horror";
+  if (/\b(science fiction|dystopian|space opera|speculative)\b/.test(q)) return "science_fiction";
+  if (/\b(epic fantasy|dark fantasy|magic fantasy|fantasy)\b/.test(q)) return "fantasy";
+  if (/\b(historical fiction|historical novel|period fiction|19th century|civil war)\b/.test(q)) return "historical";
+  if (/\b(romance|love story|second chance romance|gothic romance|historical romance)\b/.test(q)) return "romance";
+  return fallback;
+}
+
+function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey): boolean {
+  const narrativeText = [doc?.title, doc?.description].filter(Boolean).join(" ").toLowerCase();
+  const text = [
+    doc?.title,
+    doc?.description,
+    ...(Array.isArray((doc as any)?.subject) ? (doc as any).subject : []),
+    (doc as any)?.nyt?.display_name,
+    (doc as any)?.nyt?.list_name,
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (!text) return false;
+
+  if (family === "thriller") return /\b(thriller|suspense|crime|murder|killer|investigation|detective|fbi|conspiracy|manhunt|abduction)\b/.test(narrativeText);
+  if (family === "mystery") return /\b(mystery|detective|investigation|crime|whodunit|private investigator)\b/.test(narrativeText);
+  if (family === "horror") return /\b(horror|haunted|ghost|supernatural|occult|dread|nightmare)\b/.test(text);
+  if (family === "science_fiction" || family === "speculative") return /\b(science fiction|sci-fi|dystopian|speculative|space|alien|time travel|ai|artificial intelligence)\b/.test(text);
+  if (family === "fantasy") return /\b(fantasy|magic|dragon|sorcer|witch|fae|epic fantasy|dark fantasy)\b/.test(text);
+  if (family === "historical") return /\b(historical|period fiction|world war|civil war|victorian|regency|gilded age)\b/.test(text);
+  if (family === "romance") return /\b(romance|love|relationship|second chance|forbidden love)\b/.test(text);
+  return false;
+}
+
+function collectRouterToneTokens(input: RecommenderInput): string[] {
+  const bucketPlan: any = (input as any)?.bucketPlan || {};
+  const fromSignals = Array.isArray(bucketPlan?.signals?.tones) ? bucketPlan.signals.tones : [];
+  const fromQueries = Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 6) : [];
+  const seed = [bucketPlan?.preview, ...fromSignals, ...fromQueries].filter(Boolean).join(" ").toLowerCase();
+  const tokens = seed.match(/\b(gritty|dark|bleak|tense|fast|slow|cozy|warm|emotional|brooding|suspenseful|atmospheric|twisty|literary|romantic|hopeful|intense|violent|haunting)\b/g) || [];
+  return Array.from(new Set(tokens));
+}
+
+function nytAnchorToneSimilarity(doc: RecommendationDoc, toneTokens: string[]): number {
+  if (!toneTokens.length) return 0;
+  const text = [
+    doc?.title,
+    doc?.description,
+    ...(Array.isArray((doc as any)?.subject) ? (doc as any).subject : []),
+    ...(Array.isArray((doc as any)?.subjects) ? (doc as any).subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (!text) return 0;
+  let hits = 0;
+  for (const token of toneTokens) {
+    if (text.includes(token)) hits += 1;
+  }
+  return hits / toneTokens.length;
+}
+
 function isNytAnchorDoc(doc: RecommendationDoc): boolean {
   return Boolean((doc as any)?.nyt || (doc as any)?.commercialSignals?.bestseller) &&
     String((doc as any)?.laneKind || "").toLowerCase() === "anchor";
@@ -163,7 +223,15 @@ async function fetchNytAnchorDocs(
       },
     })) as RecommendationDoc[];
 
-    return { docs, debug };
+    const toneTokens = collectRouterToneTokens(input);
+    const familyMatchedDocs = docs.filter((doc) => {
+      const familyMatch = nytAnchorMatchesFamily(doc, family);
+      const toneSimilarity = nytAnchorToneSimilarity(doc, toneTokens);
+      (doc as any).nytToneSimilarity = toneSimilarity;
+      return familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
+    });
+
+    return { docs: familyMatchedDocs, debug };
   } catch (error: any) {
     debug.error = typeof error?.message === "string" ? error.message : "NYT bestseller fetch failed";
     return { docs: [], debug };
@@ -1044,6 +1112,7 @@ type RouterQueryLane = {
   query: string;
   laneKind: string;
   source: CandidateSource | "all";
+  queryFamily?: RouterFamilyKey;
   queryRung?: number;
 };
 
@@ -1162,6 +1231,75 @@ function buildDirectEvidenceLaneWeights(input: RecommenderInput): Record<string,
     out[family] = Number((score / total).toFixed(3));
   }
 
+  return out;
+}
+
+function familyForTagText(text: string): RouterFamilyKey | null {
+  const key = String(text || "").toLowerCase();
+  if (!key) return null;
+  if (/science fiction|sci-fi|sci fi|dystopian|space opera|alien|robot|ai/.test(key)) return "science_fiction";
+  if (/fantasy|magic|dragon|fae|wizard|witch|epic/.test(key)) return "fantasy";
+  if (/horror|haunted|ghost|occult|supernatural|terror|dread/.test(key)) return "horror";
+  if (/thriller|suspense|psychological thriller|serial killer|manhunt|abduction/.test(key)) return "thriller";
+  if (/mystery|detective|investigation|crime|whodunit|procedural/.test(key)) return "mystery";
+  if (/historical|period fiction|victorian|civil war|world war/.test(key)) return "historical";
+  if (/romance|love story|relationship|courtship/.test(key)) return "romance";
+  return null;
+}
+
+function buildUserAffinityLaneMultipliers(input: RecommenderInput): Record<string, number> {
+  const swipeArrays = findSwipeArraysForRouting(input as any);
+  const primarySwipes = swipeArrays.reduce((best, current) => current.length > best.length ? current : best, [] as any[]);
+  if (!primarySwipes.length) return {};
+
+  const scores: Record<string, number> = {};
+  for (const swipe of primarySwipes) {
+    const action = getSwipeActionForRouting(swipe);
+    const tags = collectSwipeTagsForRouting(swipe);
+    const text = [action, ...tags].join(" ");
+    const family = familyForTagText(text);
+    if (!family) continue;
+    const delta =
+      isPositiveSwipeForRouting(swipe) ? 1.35 :
+      isNegativeSwipeForRouting(swipe) ? -1.15 :
+      isSkippedSwipeForRouting(swipe) ? -0.75 :
+      0;
+    if (!delta) continue;
+    scores[family] = (scores[family] || 0) + delta;
+  }
+
+  const multipliers: Record<string, number> = {};
+  for (const [family, score] of Object.entries(scores)) {
+    if (score <= -2) multipliers[family] = 0.45;
+    else if (score < 0) multipliers[family] = 0.72;
+    else if (score >= 2) multipliers[family] = 1.3;
+    else multipliers[family] = 1.08;
+  }
+
+  // Adjacent grounded/psychological boost when fantasy/horror are repeatedly skipped.
+  if ((scores.fantasy || 0) <= -2 || (scores.horror || 0) <= -2) {
+    multipliers.thriller = Math.max(multipliers.thriller || 1, 1.2);
+    multipliers.mystery = Math.max(multipliers.mystery || 1, 1.15);
+    multipliers.historical = Math.max(multipliers.historical || 1, 1.1);
+  }
+
+  return multipliers;
+}
+
+function applyLaneAffinityMultipliers(
+  laneWeights: Record<string, number>,
+  affinityMultipliers: Record<string, number>
+): Record<string, number> {
+  if (!Object.keys(laneWeights || {}).length) return laneWeights;
+  const adjusted: Record<string, number> = {};
+  for (const [family, weight] of Object.entries(laneWeights || {})) {
+    const multiplier = Number(affinityMultipliers?.[family] || 1);
+    adjusted[family] = Math.max(0, Number(weight) * multiplier);
+  }
+  const ranked = Object.entries(adjusted).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const total = ranked.reduce((sum, [, w]) => sum + w, 0) || 1;
+  const out: Record<string, number> = {};
+  for (const [family, w] of ranked) out[family] = Number((w / total).toFixed(3));
   return out;
 }
 
@@ -1415,14 +1553,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         query,
         laneKind: q.includes("-guide") || q.includes("-reference") || q.includes("-criticism") ? "strict-filtered" : "core",
         source: "googleBooks",
+        queryFamily: family,
         queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     });
 
     if (openLibraryQuery) {
       const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryRung });
-      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
     }
 
     return capRouterQueryLanes(mapped);
@@ -1497,6 +1636,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         query,
         laneKind,
         source: "googleBooks",
+        queryFamily: family,
         queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     })
@@ -1505,8 +1645,17 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
     const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryRung });
-    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+    if (family === "thriller" || family === "mystery" || family === "horror") {
+      const simpleFallbackQuery =
+        family === "thriller" ? "psychological thriller novel" :
+        family === "mystery" ? "detective mystery novel" :
+        "psychological horror novel";
+      if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
+        mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+      }
+    }
   }
 
   return capRouterQueryLanes(mapped);
@@ -2069,7 +2218,11 @@ export async function getRecommendations(
   const baseBucketPlan = buildRouterBucketPlan(routingInput);
   const generatedHybridLaneWeights = buildHybridLaneWeights(routingInput, baseBucketPlan);
   const evidenceLaneWeights = buildDirectEvidenceLaneWeights(routingInput);
-  const hybridLaneWeights = mergeEvidenceLaneWeights(generatedHybridLaneWeights, evidenceLaneWeights);
+  const affinityMultipliers = buildUserAffinityLaneMultipliers(input);
+  const hybridLaneWeights = applyLaneAffinityMultipliers(
+    mergeEvidenceLaneWeights(generatedHybridLaneWeights, evidenceLaneWeights),
+    affinityMultipliers
+  );
   const routerFamily = choosePrimaryRouterFamilyFromWeights(
     inferRouterFamily(baseBucketPlan),
     hybridLaneWeights,
@@ -2215,6 +2368,7 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
+      const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || rungFamily;
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
         : Number.isFinite(Number(rung?.rung))
@@ -2304,7 +2458,7 @@ export async function getRecommendations(
           ...row,
           queryRung,
           queryText: row?.queryText ?? lane.query,
-          queryFamily: row?.queryFamily ?? rungFamily,
+          queryFamily: row?.queryFamily ?? laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
           laneKind: lane.laneKind,
@@ -2324,7 +2478,7 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
-          queryFamily: rungFamily,
+          queryFamily: laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
           laneKind: lane.laneKind,
@@ -2332,7 +2486,7 @@ export async function getRecommendations(
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
-            queryFamily: rungFamily,
+            queryFamily: laneFamily,
             laneKind: lane.laneKind,
             hybridLaneWeights,
             primaryLane: routerFamily,
@@ -2381,8 +2535,11 @@ export async function getRecommendations(
   };
 
   const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
-  const allowNytInjections = shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
-  const nytAnchorResult = await fetchNytAnchorDocs(routingInput, routerFamily);
+  const googleFetchFailureDetected = Number(aggregatedRawFetched.googleBooks || 0) === 0;
+  const allowNytInjections = !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
+  const nytAnchorResult = googleFetchFailureDetected
+    ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
+    : await fetchNytAnchorDocs(routedInput, routerFamily);
   nytAnchorDebug = { ...nytAnchorResult.debug, allowInjections: allowNytInjections };
 
   if (nytAnchorResult.docs.length) {
@@ -2391,6 +2548,12 @@ export async function getRecommendations(
     });
 
     candidateDocs = capNytAnchorInjections(mergedBestsellers.docs);
+    candidateDocs = candidateDocs.filter((doc) => {
+      if (!isNytAnchorDoc(doc)) return true;
+      const familyMatch = nytAnchorMatchesFamily(doc, routerFamily);
+      const toneSimilarity = Number((doc as any)?.nytToneSimilarity || 0);
+      return familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
+    });
     nytAnchorDebug = {
       ...nytAnchorDebug,
       matched: mergedBestsellers.matchedCount,
@@ -2399,6 +2562,26 @@ export async function getRecommendations(
 
     debugRouterLog("NYT PROCUREMENT ANCHORS", nytAnchorDebug);
     debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
+  }
+
+  if (!isHybridMode && routerFamily === "thriller") {
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
+      return !family || family === "thriller" || family === "mystery";
+    });
+  }
+
+  if (!isHybridMode) {
+    candidateDocs = candidateDocs.map((doc: any) => ({
+      ...doc,
+      queryFamily: routerFamily,
+      primaryLane: routerFamily,
+      diagnostics: {
+        ...(doc?.diagnostics || {}),
+        queryFamily: routerFamily,
+        primaryLane: routerFamily,
+      },
+    }));
   }
 
   const googleDocsEnriched = candidateDocs.filter(
