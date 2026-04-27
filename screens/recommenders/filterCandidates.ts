@@ -325,7 +325,12 @@ function crossSourcePresenceCount(doc: any): number {
   return Math.max(explicitSourceCount, merged.size);
 }
 
+function isKnownAuthorityAuthor(author: string): boolean {
+  return /\b(gillian flynn|dennis lehane|shirley jackson|thomas harris|stephen king|agatha christie|tana french|michael connelly|ray bradbury|ursula k\.?\s*le guin|isaac asimov|j\.?r\.?r\.?\s*tolkien)\b/.test(author);
+}
+
 function hasHighAuthoritySignal(doc: any, diagnostics: Pick<FilterDiagnostics, "flags" | "pageCount">): boolean {
+  const author = normalizeText(doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors);
   const multiSource = crossSourcePresenceCount(doc) >= 2;
   const multiRungSignal =
     Number((doc as any)?.queryMatchCount || 0) >= 2 ||
@@ -338,6 +343,7 @@ function hasHighAuthoritySignal(doc: any, diagnostics: Pick<FilterDiagnostics, "
   return Boolean(
     diagnostics.flags.authorAffinity ||
     diagnostics.flags.legitAuthority ||
+    isKnownAuthorityAuthor(author) ||
     multiSource ||
     multiRungSignal ||
     laneAlignedNarrative
@@ -913,7 +919,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   const romancePositive = /\b(romance|love story|romantic|courtship|second chance|forbidden love|historical romance|gothic romance|fantasy romance|rom-com|rom com|duke|earl|bridgerton|regency|wallflower|rake|wedding|husband|wife|lover|kiss|heart)\b/.test(combined) || hasCanonicalRomanceTitle(combined) || (family === "romance" && hasAuthorAffinityForFamily(author, family));
   const authorAffinity = hasAuthorAffinityForFamily(author, family);
-  let legitAuthority = hasLegitCommercialAuthority(doc) || classicAuthorSignal || crossSourcePresenceCount(doc) >= 2;
+  let legitAuthority = hasLegitCommercialAuthority(doc) || classicAuthorSignal || crossSourcePresenceCount(doc) >= 2 || isKnownAuthorityAuthor(author);
   const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
 
   if (isOpenLibraryLikeDoc(doc) && family === "science_fiction") {
@@ -1995,6 +2001,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const lanePositive = lanePositiveSignalCount(diagnostics) > 0;
     if (
       hasSoftMissingNarrative &&
+      !isOpenLibraryLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity &&
       !(lanePositive && diagnostics.ratingsCount > 0)
@@ -2004,6 +2011,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (
       diagnostics.pageCount === 0 &&
+      !isOpenLibraryLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
@@ -2020,6 +2028,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (
       !diagnostics.hasDescription &&
+      !isOpenLibraryLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
@@ -2029,6 +2038,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       descriptionLengthForFloor > 0 &&
       descriptionLengthForFloor < 80 &&
+      !isOpenLibraryLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {

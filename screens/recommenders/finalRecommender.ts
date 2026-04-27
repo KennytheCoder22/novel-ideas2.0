@@ -354,6 +354,10 @@ function crossSourcePresence(c: Candidate): number {
   return Math.max(explicit, sources.size);
 }
 
+function isKnownAuthorityAuthor(author: string): boolean {
+  return /\b(gillian flynn|dennis lehane|shirley jackson|thomas harris|stephen king|agatha christie|tana french|donna tartt|michael connelly|john le carre|ray bradbury|ursula k\.? le guin|isaac asimov|j\.?r\.?r\.? tolkien)\b/.test(author);
+}
+
 function highAuthoritySignal(c: Candidate): boolean {
   const d = getFilterDiagnostics(c);
   const flags = d?.filterFlags || d?.flags || {};
@@ -366,7 +370,17 @@ function highAuthoritySignal(c: Candidate): boolean {
     Boolean(flags.strongNarrative) &&
     laneBlendScore(c) >= 1 &&
     (c.pageCount || 0) >= 160;
-  return Boolean(flags.authorAffinity || flags.legitAuthority || multiSource || multiRung || laneAlignedNarrative);
+  const knownAuthor = isKnownAuthorityAuthor(normalize(c.author));
+  const isOpenLibrary = isOpenLibraryCandidate(c);
+  return Boolean(
+    flags.authorAffinity ||
+    flags.legitAuthority ||
+    knownAuthor ||
+    multiSource ||
+    multiRung ||
+    laneAlignedNarrative ||
+    (isOpenLibrary && (knownAuthor || flags.authorAffinity))
+  );
 }
 
 function authorityScore(c: Candidate): number {
@@ -1079,12 +1093,22 @@ function lowSignalPenalty(c: Candidate): number {
   const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   const descriptionLength = String(c.description || '').trim().length;
   const title = normalize(c.title);
+  const isOpenLibrary = isOpenLibraryCandidate(c);
   const genericTitle = /\b(horror|thriller|mystery|novel|book|stories)\b/.test(title) && title.split(' ').length <= 3;
   let penalty = 0;
-  if ((c.ratingCount || 0) === 0) penalty -= 5;
+  if (!isOpenLibrary && (c.ratingCount || 0) === 0) penalty -= 5;
   if (!normalize(c.author) || normalize(c.author) === 'unknown') penalty -= 3;
   if (genericTitle) penalty -= 3;
-  if (descriptionLength < 80 && !flags.authorAffinity && !flags.legitAuthority) penalty -= 3;
+  if (!isOpenLibrary && descriptionLength < 80 && !flags.authorAffinity && !flags.legitAuthority) penalty -= 3;
+  return penalty;
+}
+
+function syntheticTitlePenalty(c: Candidate): number {
+  const text = normalize(`${c.title || ''} ${c.subtitle || ''}`);
+  let penalty = 0;
+  if (/\ba gripping\b|\ba jaw dropping\b|\bheart[- ]stopping\b|\bpage[- ]turner\b/.test(text)) penalty -= 6;
+  if (/\bbook\s*\d+\b|\bin series\b|\binstallment\b/.test(text)) penalty -= 5;
+  if (/\bfrom the bestselling author\b|\bmust[- ]read\b|\bunputdownable\b|\bthriller sensation\b/.test(text)) penalty -= 6;
   return penalty;
 }
 
@@ -1940,6 +1964,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const rescuePenalty = rescuePenaltyScore(c);
   const rankingPriority = rankingPriorityBoost(c);
   const lowSignal = lowSignalPenalty(c);
+  const syntheticPenalty = syntheticTitlePenalty(c);
   const axisAlignment = tasteAxisAlignmentBoost(c, taste);
   const classicPenalty = classicDominancePenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
@@ -1981,7 +2006,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + lowSignal + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + crossSourceBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + lowSignal + syntheticPenalty + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + crossSourceBoost,
   };
 }
 
@@ -2399,11 +2424,20 @@ export function finalRecommenderForDeck(
   const thrillerSubtypeCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
   const HIGH_CONFIDENCE_TARGET = 4;
+  const tierAEntries = displayPool.filter((entry) => authorityTier(entry.candidate, entry.breakdown) >= 2);
+  const tierBEntries = displayPool.filter((entry) => authorityTier(entry.candidate, entry.breakdown) === 1);
+  const tierCEntries = displayPool.filter((entry) => authorityTier(entry.candidate, entry.breakdown) === 0);
+  const tierATarget = Math.min(MAX_RESULTS, Math.max(4, Math.ceil(MAX_RESULTS * 0.6)));
+  const tierBTarget = Math.min(MAX_RESULTS - tierATarget, 3);
 
   seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
-  const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
+  const highConfidencePool = tierAEntries.filter((entry) => isHighConfidenceEntry(entry));
   pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
-  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  pickFromPool(tierAEntries, selected, authorCounts, tierATarget, thrillerSubtypeCounts, MAX_RESULTS);
+  pickFromPool(tierBEntries, selected, authorCounts, Math.min(MAX_RESULTS, tierATarget + tierBTarget), thrillerSubtypeCounts, MAX_RESULTS);
+  if (selected.length < TARGET_MIN_RESULTS_FOR_MEDIUM_POOL) {
+    pickFromPool(tierCEntries, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  }
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
     pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   } else if (selected.length < TARGET_MIN_RESULTS_FOR_MEDIUM_POOL && ordered.length >= 10) {
@@ -2414,5 +2448,11 @@ export function finalRecommenderForDeck(
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
-  return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+  const authorityOrderedSelected = [...selected].sort((a, b) => {
+    const tierDiff = authorityTier(b.candidate, b.breakdown) - authorityTier(a.candidate, a.breakdown);
+    if (tierDiff !== 0) return tierDiff;
+    return b.breakdown.finalScore - a.breakdown.finalScore;
+  });
+
+  return authorityOrderedSelected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
 }
