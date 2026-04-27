@@ -461,11 +461,13 @@ async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 4): 
       if (resp.status === 429 || resp.status === 503) {
         if (attempt === retries) {
           const body = await resp.text().catch(() => "");
-          throw new Error(
+          const quotaError = new Error(
             body
               ? `Google Books ${resp.status} ${body}`
               : `Google Books ${resp.status}`
           );
+          (quotaError as any).status = resp.status;
+          throw quotaError;
         }
         await sleep(retryDelayMs(attempt, resp.status));
         attempt += 1;
@@ -473,7 +475,9 @@ async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 4): 
       }
       if (!resp.ok) {
         const body = await resp.text().catch(() => "");
-        throw new Error(body ? `Google Books error: ${resp.status} ${body}` : `Google Books error: ${resp.status}`);
+        const apiError = new Error(body ? `Google Books error: ${resp.status} ${body}` : `Google Books error: ${resp.status}`);
+        (apiError as any).status = resp.status;
+        throw apiError;
       }
       return await resp.json();
     } catch (err) {
@@ -505,7 +509,7 @@ function dedupeQueries(queries: string[]): string[] {
   const out: string[] = [];
   for (const query of queries) {
     const trimmed = normalizeStoredQueryText(String(query || ""));
-    if (!trimmed || seen.has(trimmed)) continue;
+    if (!trimmed || !isValidGoogleQuery(trimmed) || seen.has(trimmed)) continue;
     seen.add(trimmed);
     out.push(trimmed);
   }
@@ -590,12 +594,22 @@ function toGoogleBooksQuery(query: string): string {
 
 const MIN_RESULTS_PER_QUERY = 10;
 const MAX_QUERY_RETRIES = 3;
+const GOOGLE_QUERY_CACHE_TTL_MS = 5 * 60 * 1000;
+let googleQuotaSafeUntil = 0;
+const googleQueryCache = new Map<string, { expiresAt: number; docs: any[] }>();
 
 function simplifyGoogleQuery(query: string): string {
   return normalizeStoredQueryText(query)
     .replace(/\b(dark|emotional|character driven|relationship driven|literary|gritty|intense|atmospheric|moody)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function isValidGoogleQuery(query: string): boolean {
+  const q = normalizeStoredQueryText(query);
+  if (!q) return false;
+  if (q === "novel" || q === "book" || q === "fiction") return false;
+  return q.split(" ").length >= 2;
 }
 
 function broaderFallbackForFamily(query: string): string {
@@ -664,6 +678,10 @@ function inferQueryFamilyFromText(query: string): "thriller" | "mystery" | "horr
 async function googleBooksSearch(query: string, limit: number, timeoutMs: number): Promise<any[]> {
   const q = toGoogleBooksQuery(query);
   if (!q) return [];
+  const cacheKey = `${q}|${limit}`;
+  const cached = googleQueryCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) return cached.docs;
+  if (Date.now() < googleQuotaSafeUntil) return [];
   const maxResults = Math.max(1, Math.min(10, Number(limit) || 10));
   const apiKey = getGoogleBooksApiKey();
   const params = new URLSearchParams({ q, maxResults: String(maxResults), orderBy: "relevance", printType: "books", projection: "full", langRestrict: "en" });
@@ -671,7 +689,7 @@ async function googleBooksSearch(query: string, limit: number, timeoutMs: number
   const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
   const json = await fetchJsonWithRetry(url, timeoutMs, 2);
   const items = Array.isArray(json?.items) ? json.items : [];
-  return items.map((item: any) => {
+  const docs = items.map((item: any) => {
     const volumeInfo = item?.volumeInfo ?? {};
     const accessInfo = item?.accessInfo ?? {};
     const saleInfo = item?.saleInfo ?? {};
@@ -719,6 +737,8 @@ async function googleBooksSearch(query: string, limit: number, timeoutMs: number
       volumeInfo,
     };
   }).filter((doc: any) => doc && doc.title);
+  googleQueryCache.set(cacheKey, { expiresAt: Date.now() + GOOGLE_QUERY_CACHE_TTL_MS, docs });
+  return docs;
 }
 
 export async function getGoogleBooksRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
@@ -735,7 +755,16 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       ? dedupeQueries(explicitBucketPlan.queries)
       : getBucketQueries(deckKey, input));
 
-  const queriesToTry = planQueries.length ? planQueries : getBucketQueries(deckKey, input);
+  const activeFamily = String((input as any)?.bucketPlan?.family || (input as any)?.bucketPlan?.lane || "").toLowerCase();
+  const familySafeDefaults =
+    activeFamily === "thriller" ? ["psychological thriller novel", "suspense novel", "mystery thriller novel"] :
+    activeFamily === "science_fiction" ? ["science fiction novel", "speculative fiction novel", "dystopian science fiction novel"] :
+    activeFamily === "horror" ? ["horror novel", "psychological horror novel", "gothic horror novel"] :
+    activeFamily === "fantasy" ? ["fantasy novel", "epic fantasy novel", "dark fantasy novel"] :
+    ["fiction novel", "bestseller fiction novel", "award winning fiction novel"];
+  const queriesToTry = (planQueries.length ? planQueries : getBucketQueries(deckKey, input)).length
+    ? (planQueries.length ? planQueries : getBucketQueries(deckKey, input))
+    : familySafeDefaults;
   const builtFromQuery = normalizeStoredQueryText(queriesToTry[0] || "");
   const minCandidateFloor = Math.max(10, Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0));
   const collectedDocsRaw: any[] = [];
@@ -748,6 +777,11 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   let retryCount = 0;
   let fallbackUsed: "google_retry" | "open_library" | "none" = "none";
   let zeroResultCause: "query" | "fetch_error" | "filter" | "none" = "none";
+  let googleBooksStatus: "ok" | "error" = "ok";
+  let googleBooksErrorCode = "";
+  let googleBooksErrorMessage = "";
+  let googleBooksQuotaSuspected = false;
+  const quotaSafeMode = Date.now() < googleQuotaSafeUntil;
 
   for (let queryIndex = 0; queryIndex < queriesToTry.length; queryIndex += 1) {
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
@@ -773,13 +807,25 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
         } catch (err: any) {
           fetchFailed = true;
           rawDocs = [];
+          googleBooksStatus = "error";
+          googleBooksErrorMessage = String(err?.message || "unknown error");
+          const parsedStatus = Number((err as any)?.status);
+          if (Number.isFinite(parsedStatus) && parsedStatus > 0) googleBooksErrorCode = String(parsedStatus);
+          if (!googleBooksErrorCode && /(429|503)/.test(googleBooksErrorMessage)) {
+            googleBooksErrorCode = /(429|503)/.exec(googleBooksErrorMessage)?.[1] || "";
+          }
+          if (googleBooksErrorCode === "429" || googleBooksErrorCode === "503") {
+            googleBooksQuotaSuspected = true;
+            googleQuotaSafeUntil = Math.max(googleQuotaSafeUntil, Date.now() + GOOGLE_QUERY_CACHE_TTL_MS);
+          }
           console.error("GoogleBooks fetch failed", {
             engineQuery,
             retryQuery,
             retryIndex,
             queryIndex,
             builtFromQuery,
-            message: err?.message || String(err || "unknown error"),
+            message: googleBooksErrorMessage,
+            code: googleBooksErrorCode || "unknown",
           });
         }
 
@@ -960,6 +1006,11 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     retryCount,
     fallbackUsed,
     zeroResultCause,
+    googleBooksStatus,
+    googleBooksErrorCode,
+    googleBooksErrorMessage,
+    googleBooksQuotaSuspected,
+    quotaSafeMode,
   };
 }
 
