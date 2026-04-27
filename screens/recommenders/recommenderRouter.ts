@@ -1674,6 +1674,94 @@ function candidateScoreValue(candidate: any): number {
   return Number.isFinite(raw) ? raw : 0;
 }
 
+function adjacentFamiliesFor(primary: RouterFamilyKey): Set<RouterFamilyKey> {
+  if (primary === "thriller") return new Set(["mystery", "horror"]);
+  if (primary === "mystery") return new Set(["thriller", "historical"]);
+  if (primary === "horror") return new Set(["thriller", "mystery", "fantasy"]);
+  if (primary === "fantasy") return new Set(["speculative", "historical", "horror"]);
+  if (primary === "science_fiction") return new Set(["speculative", "fantasy", "thriller"]);
+  if (primary === "speculative") return new Set(["science_fiction", "fantasy", "horror"]);
+  if (primary === "romance") return new Set(["historical", "fantasy"]);
+  if (primary === "historical") return new Set(["mystery", "romance", "fantasy"]);
+  return new Set();
+}
+
+function inferDocFamily(doc: any): RouterFamilyKey | null {
+  return normalizeRouterFamilyValue(
+    doc?.queryFamily ||
+    doc?.diagnostics?.queryFamily ||
+    doc?.rawDoc?.queryFamily ||
+    doc?.diagnostics?.filterFamily ||
+    doc?.rawDoc?.diagnostics?.filterFamily ||
+    doc?.laneKind
+  );
+}
+
+function hasStrongDocAuthority(doc: any): boolean {
+  const ratings = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || doc?.rawDoc?.ratingsCount || 0);
+  const popularityTier = Number(doc?.commercialSignals?.popularityTier || doc?.rawDoc?.commercialSignals?.popularityTier || 0);
+  const title = normalizeText(doc?.title || doc?.rawDoc?.title);
+  return ratings >= 50 || popularityTier >= 2 || /\b(gone girl|sharp objects|shutter island|the silent patient|the time machine|the war of the worlds)\b/.test(title);
+}
+
+function workNormalizationKey(doc: any): string {
+  const title = normalizeText(doc?.title || doc?.rawDoc?.title)
+    .replace(/\b(audiobook|illustrated|complete|collection|box set|boxed set|omnibus|deluxe edition|annotated)\b/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const subtitle = normalizeText(doc?.subtitle || doc?.rawDoc?.subtitle)
+    .replace(/\b(audiobook|illustrated|complete|collection|box set|boxed set|omnibus|deluxe edition|annotated)\b/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const author = rawAuthorText(doc).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  return `${title}|${subtitle}|${author}`;
+}
+
+function docMetadataQualityScore(doc: any, primaryFamily: RouterFamilyKey): number {
+  const family = inferDocFamily(doc);
+  const desc = normalizeText(doc?.description || doc?.rawDoc?.description || doc?.volumeInfo?.description);
+  const pageCount = Number(doc?.pageCount || doc?.volumeInfo?.pageCount || doc?.rawDoc?.pageCount || 0);
+  const ratings = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || doc?.rawDoc?.ratingsCount || 0);
+  const cover = Boolean(doc?.hasCover || doc?.cover_i || doc?.rawDoc?.cover_i || doc?.volumeInfo?.imageLinks?.thumbnail);
+  let score = 0;
+  if (desc.length >= 120) score += 4;
+  if (pageCount >= 120) score += 3;
+  if (ratings >= 25) score += 3;
+  if (cover) score += 2;
+  if (hasStrongDocAuthority(doc)) score += 3;
+  if (family === primaryFamily) score += 4;
+  else if (family && adjacentFamiliesFor(primaryFamily).has(family)) score += 1;
+  return score;
+}
+
+function collapseDuplicateWorks(docs: any[], primaryFamily: RouterFamilyKey): { docs: any[]; collapsed: number } {
+  const groups = new Map<string, any[]>();
+  for (const doc of docs) {
+    const key = workNormalizationKey(doc);
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(doc);
+  }
+
+  const kept: any[] = [];
+  let collapsed = 0;
+  for (const items of groups.values()) {
+    if (items.length === 1) {
+      kept.push(items[0]);
+      continue;
+    }
+    const sorted = [...items].sort((a, b) =>
+      docMetadataQualityScore(b, primaryFamily) - docMetadataQualityScore(a, primaryFamily) ||
+      candidateScoreValue(b) - candidateScoreValue(a)
+    );
+    kept.push(sorted[0]);
+    collapsed += Math.max(0, sorted.length - 1);
+  }
+  return { docs: kept, collapsed };
+}
+
 
 function rawAuthorText(doc: any): string {
   const value =
@@ -2499,14 +2587,95 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
+  const collapsedWorks = collapseDuplicateWorks(mergedDocs, routerFamily);
+  const dedupedMergedDocs = collapsedWorks.docs;
 
-  debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
+  const familyCountsRaw = dedupedMergedDocs.reduce<Record<string, number>>((acc, doc: any) => {
+    const fam = inferDocFamily(doc) || "unknown";
+    acc[fam] = (acc[fam] || 0) + 1;
+    return acc;
+  }, {});
+  const totalRawCandidates = Math.max(1, dedupedMergedDocs.length);
+  const primaryFamilyRawShare = Number(familyCountsRaw[routerFamily] || 0) / totalRawCandidates;
+  const adjacentFamilies = adjacentFamiliesFor(routerFamily);
+  const nonPrimaryCaps = {
+    adjacent: Math.max(2, Math.floor(totalRawCandidates * 0.3)),
+    unrelated: Math.max(1, Math.floor(totalRawCandidates * 0.1)),
+    unknown: Math.max(1, Math.floor(totalRawCandidates * 0.1)),
+  };
+  let familyCapApplied = false;
+
+  const sourceRawStats = dedupedMergedDocs.reduce<Record<string, { raw: number; missingPage: number; missingDescription: number; wrongFamily: number; lowAuthorityZero: number }>>((acc, doc: any) => {
+    const source = sourceForDoc(doc, "openLibrary");
+    if (!acc[source]) acc[source] = { raw: 0, missingPage: 0, missingDescription: 0, wrongFamily: 0, lowAuthorityZero: 0 };
+    const row = acc[source];
+    row.raw += 1;
+    const desc = normalizeText(doc?.description || doc?.rawDoc?.description || doc?.volumeInfo?.description);
+    const pageCount = Number(doc?.pageCount || doc?.volumeInfo?.pageCount || doc?.rawDoc?.pageCount || 0);
+    const ratings = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || doc?.rawDoc?.ratingsCount || 0);
+    const family = inferDocFamily(doc);
+    if (!desc) row.missingDescription += 1;
+    if (pageCount === 0) row.missingPage += 1;
+    if (!family || (family !== routerFamily && !adjacentFamilies.has(family))) row.wrongFamily += 1;
+    if (ratings === 0 && !hasStrongDocAuthority(doc)) row.lowAuthorityZero += 1;
+    return acc;
+  }, {});
+
+  const sourceHealthBySource = Object.fromEntries(
+    Object.entries(sourceRawStats).map(([source, stats]) => {
+      const raw = Math.max(1, stats.raw);
+      return [
+        source,
+        {
+          raw: stats.raw,
+          missingPageRate: stats.missingPage / raw,
+          missingDescriptionRate: stats.missingDescription / raw,
+          wrongFamilyRate: stats.wrongFamily / raw,
+          lowAuthorityZeroRate: stats.lowAuthorityZero / raw,
+        },
+      ];
+    })
+  );
+
+  const sourcePenaltyApplied = Object.fromEntries(
+    Object.entries(sourceHealthBySource).map(([source, stats]: any) => {
+      const penalize = stats.raw >= 20 && (stats.missingDescriptionRate > 0.6 || stats.wrongFamilyRate > 0.55);
+      return [source, penalize ? 0.5 : 1];
+    })
+  );
+
+  const familyDominanceControlledDocs = dedupedMergedDocs.filter((doc: any) => {
+    const family = inferDocFamily(doc);
+    if (!family) return hasStrongDocAuthority(doc) && candidateScoreValue(doc) >= 0;
+    if (family === routerFamily) return true;
+    if (primaryFamilyRawShare >= 0.55) return true;
+    familyCapApplied = true;
+    if (adjacentFamilies.has(family)) {
+      const keptAdjacent = dedupedMergedDocs.filter((d: any) => {
+        const f = inferDocFamily(d);
+        return f && adjacentFamilies.has(f);
+      }).indexOf(doc);
+      return keptAdjacent < nonPrimaryCaps.adjacent || hasStrongDocAuthority(doc);
+    }
+    const unrelatedIndex = dedupedMergedDocs.filter((d: any) => {
+      const f = inferDocFamily(d);
+      return f && f !== routerFamily && !adjacentFamilies.has(f);
+    }).indexOf(doc);
+    return unrelatedIndex < nonPrimaryCaps.unrelated && hasStrongDocAuthority(doc);
+  }).filter((doc: any) => {
+    const source = sourceForDoc(doc, "openLibrary");
+    const penalty = Number((sourcePenaltyApplied as any)[source] || 1);
+    if (penalty >= 1) return true;
+    return hasStrongDocAuthority(doc) || docMetadataQualityScore(doc, routerFamily) >= 8;
+  });
+
+  debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", familyDominanceControlledDocs);
   debugRouterLog("RAW FETCHED BY SOURCE", aggregatedRawFetched);
 
   // Open Library gets a lightweight Hardcover pass BEFORE filtering. This is
   // enrichment-only: it never drops rows, but it gives filterCandidates earlier
   // authority signals for sparse OL records.
-  const openLibraryPrefilterEnrichedDocs = await enrichOpenLibraryBeforeFiltering(mergedDocs);
+  const openLibraryPrefilterEnrichedDocs = await enrichOpenLibraryBeforeFiltering(familyDominanceControlledDocs);
 
   // Hardcover enrichment is non-blocking and runs AFTER merging.
   const hardcoverEnrichedDocs = await enrichWithHardcover(openLibraryPrefilterEnrichedDocs);
@@ -2520,11 +2689,14 @@ export async function getRecommendations(
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
+  const softFailurePenaltyCount = Number(filterAuditSummary?.reasons?.too_many_soft_failures || 0);
+  const softFailureHardRejectCount = Number(filterAuditSummary?.reasons?.too_many_soft_failures || 0);
 
   // Centralized filtering rule:
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  let anchorRejectedForWeakAlignment = 0;
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
     fetched: 0,
@@ -2552,7 +2724,9 @@ export async function getRecommendations(
       if (!isNytAnchorDoc(doc)) return true;
       const familyMatch = nytAnchorMatchesFamily(doc, routerFamily);
       const toneSimilarity = Number((doc as any)?.nytToneSimilarity || 0);
-      return familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
+      const keep = familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
+      if (!keep) anchorRejectedForWeakAlignment += 1;
+      return keep;
     });
     nytAnchorDebug = {
       ...nytAnchorDebug,
@@ -2816,6 +2990,26 @@ const normalizedCandidates = [
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
 
   const finalRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit);
+  const subtypeDistributionFinal = finalRankedDocs.reduce<Record<string, number>>((acc, doc: any) => {
+    const family = inferDocFamily(doc) || routerFamily || "unknown";
+    const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description, doc?.queryText, doc?.rawDoc?.queryText].filter(Boolean).join(" "));
+    let subtype = "general";
+    if (family === "thriller") {
+      if (/\bwife|husband|marriage|family|neighbor|secret|lying|lie|perfect|missing woman|missing girl\b/.test(text)) subtype = "domestic";
+      else if (/\bpsychological|unreliable narrator|obsession|mind games\b/.test(text)) subtype = "psychological";
+      else if (/\bcrime|detective|fbi|procedural|serial killer\b/.test(text)) subtype = "crime";
+      else if (/\bconspiracy|political|spy\b/.test(text)) subtype = "conspiracy";
+      else if (/\bsurvival|fugitive|chase|escape\b/.test(text)) subtype = "survival_action";
+      else if (/\bhorror|supernatural|haunted|occult\b/.test(text)) subtype = "horror_thriller";
+    }
+    acc[`${family}:${subtype}`] = (acc[`${family}:${subtype}`] || 0) + 1;
+    return acc;
+  }, {});
+  const subtypeCapApplied =
+    routerFamily === "thriller" &&
+    Object.entries(subtypeDistributionFinal).some(([k, v]) =>
+      k.startsWith("thriller:") && Number(v) > Math.max(3, Math.floor(finalLimit * 0.4))
+    );
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
@@ -2927,5 +3121,15 @@ const normalizedCandidates = [
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: getLastFinalRecommenderDebug(),
     debugNytAnchors: nytAnchorDebug,
+    primaryFamilyRawShare,
+    familyCapApplied,
+    sourceHealthBySource,
+    sourcePenaltyApplied,
+    softFailurePenaltyCount,
+    softFailureHardRejectCount,
+    duplicateWorkGroupsCollapsed: collapsedWorks.collapsed,
+    anchorRejectedForWeakAlignment,
+    subtypeDistributionFinal,
+    subtypeCapApplied,
   } as RecommendationResult;
 }

@@ -20,6 +20,22 @@ export type RecommendationResult = {
   debugRawPool?: any[];
   debugFilterAudit?: any[];
   debugFilterAuditSummary?: { kept: number; rejected: number; reasons: Record<string, number>; };
+  primaryFamilyRawShare?: number;
+  familyCapApplied?: boolean;
+  sourceHealthBySource?: Record<string, {
+    raw: number;
+    missingPageRate: number;
+    missingDescriptionRate: number;
+    wrongFamilyRate: number;
+    lowAuthorityZeroRate: number;
+  }>;
+  sourcePenaltyApplied?: Record<string, number>;
+  softFailurePenaltyCount?: number;
+  softFailureHardRejectCount?: number;
+  duplicateWorkGroupsCollapsed?: number;
+  anchorRejectedForWeakAlignment?: number;
+  subtypeDistributionFinal?: Record<string, number>;
+  subtypeCapApplied?: boolean;
   debugFinalRecommender?: {
     inputCount: number;
     dedupedCount: number;
