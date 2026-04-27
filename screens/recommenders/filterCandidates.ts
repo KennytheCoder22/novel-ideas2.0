@@ -1498,7 +1498,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "hard_reject_title",
     "hard_reject_category",
     "literature_without_fiction",
-    "insufficient_length_or_description",
     "weak_series_spam",
     "speculative_off_profile_reference",
     "missing_horror_alignment_hard",
@@ -1512,7 +1511,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "thriller_meta_reference",
     "cozy_mystery_off_profile",
     "missing_or_low_quality_cover",
-    "too_many_soft_failures",
     "below_shape_floor",
     "romance_meta_reference",
     "universal_meta_reference",
@@ -1636,6 +1634,45 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
       diagnostics.passedChecks.push("openlibrary_source_recovery_precheck");
+    }
+
+    if (
+      diagnostics.flags.fictionPositive &&
+      (diagnostics.hasRealLength || diagnostics.hasDescription || diagnostics.pageCount >= 180 || diagnostics.flags.authorAffinity || diagnostics.flags.legitAuthority)
+    ) {
+      const softened = new Set(["insufficient_length_or_description", "too_many_soft_failures"]);
+      const before = diagnostics.rejectReasons.length;
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !softened.has(reason));
+      if (diagnostics.rejectReasons.length !== before) {
+        diagnostics.passedChecks.push("soft_shape_metadata_reject_relaxation");
+      }
+    }
+
+    if (
+      isOpenLibraryLike &&
+      diagnostics.flags.fictionPositive &&
+      (
+        diagnostics.flags.authorAffinity ||
+        diagnostics.flags.legitAuthority ||
+        diagnostics.pageCount >= 160 ||
+        diagnostics.flags.thrillerPositive ||
+        diagnostics.flags.mysteryPositive ||
+        diagnostics.flags.crimePositive ||
+        diagnostics.flags.suspensePositive
+      )
+    ) {
+      const relaxed = new Set([
+        "insufficient_length_or_description",
+        "too_many_soft_failures",
+        "below_shape_floor",
+        "missing_or_low_quality_cover",
+      ]);
+      const before = diagnostics.rejectReasons.length;
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !relaxed.has(reason));
+      if (diagnostics.rejectReasons.length !== before) {
+        diagnostics.passedChecks.push("openlibrary_sparse_metadata_relaxation");
+        diagnostics.passedChecks.push("borderline_rescue_penalty");
+      }
     }
 
     if (isBorderlineRescueCandidate(doc, diagnostics)) {
@@ -1793,6 +1830,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else if (!isOpenLibraryLike && passesCommercialNarrativeFloor(doc, diagnostics)) {
         diagnostics.passedChecks.push("commercial_narrative_shape_bypass");
+      } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && (diagnostics.flags.strongNarrative || diagnostics.pageCount >= 160 || diagnostics.hasDescription)) {
+        diagnostics.passedChecks.push("openlibrary_relaxed_shape_floor");
+        diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else if (diagnostics.pageCount >= 250 && (isBorderlineRescueCandidate(doc, diagnostics) || hasRescueAuthoritySignal(doc, diagnostics))) {
         diagnostics.passedChecks.push("pagecount_shape_floor_override");
         diagnostics.passedChecks.push("borderline_rescue_penalty");

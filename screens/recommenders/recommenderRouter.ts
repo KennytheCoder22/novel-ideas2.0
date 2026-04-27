@@ -2486,6 +2486,19 @@ export async function getRecommendations(
     });
   }
 
+  if (!isHybridMode) {
+    candidateDocs = candidateDocs.map((doc: any) => ({
+      ...doc,
+      queryFamily: routerFamily,
+      primaryLane: routerFamily,
+      diagnostics: {
+        ...(doc?.diagnostics || {}),
+        queryFamily: routerFamily,
+        primaryLane: routerFamily,
+      },
+    }));
+  }
+
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
   );
