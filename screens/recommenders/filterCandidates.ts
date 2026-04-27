@@ -1437,9 +1437,34 @@ function passesCommercialNarrativeFloor(doc: any, diagnostics: FilterDiagnostics
   );
 }
 
+function isBorderlineRescueCandidate(diagnostics: FilterDiagnostics): boolean {
+  const laneSignal =
+    diagnostics.flags.thrillerPositive ||
+    diagnostics.flags.mysteryPositive ||
+    diagnostics.flags.suspensePositive ||
+    diagnostics.flags.crimePositive;
+
+  return Boolean(
+    diagnostics.pageCount >= 250 &&
+    diagnostics.flags.fictionPositive &&
+    laneSignal
+  );
+}
+
+function filterDocIdentity(doc: any): string {
+  return String(
+    doc?.key ||
+    doc?.id ||
+    doc?.cover_edition_key ||
+    doc?.edition_key?.[0] ||
+    `${doc?.title || "unknown"}|${Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author || "unknown"}`
+  );
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
+  const metadataShapeRescueQueue: RecommendationDoc[] = [];
 
   const criticalRejectReasons = new Set([
     "missing_title",
@@ -1464,6 +1489,14 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "universal_meta_reference",
     "no_cover_low_quality_meta",
   ]);
+  const shapeMetadataRelaxableReasons = new Set([
+    "insufficient_length_or_description",
+    "below_shape_floor",
+    "missing_or_low_quality_cover",
+    "too_many_soft_failures",
+    "no_cover_low_quality_meta",
+  ]);
+  const targetPoolMinimum = 8;
 
   for (const doc of inputDocs) {
     const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
@@ -1576,6 +1609,22 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.passedChecks.push("openlibrary_source_recovery_precheck");
     }
 
+    if (isBorderlineRescueCandidate(diagnostics)) {
+      const removed = new Set([
+        "insufficient_length_or_description",
+        "below_shape_floor",
+        "missing_or_low_quality_cover",
+        "too_many_soft_failures",
+        "no_cover_low_quality_meta",
+      ]);
+      const before = diagnostics.rejectReasons.length;
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+      if (diagnostics.rejectReasons.length !== before) {
+        diagnostics.passedChecks.push("borderline_rescue_layer");
+        diagnostics.passedChecks.push("borderline_rescue_penalty");
+      }
+    }
+
     const nonCriticalRejectReasons = new Set([
       "missing_fiction_signal",
       "missing_narrative_signal",
@@ -1619,8 +1668,19 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     }
 
     if (diagnostics.rejectReasons.length > 0) {
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      const metadataOrShapeOnlyReject =
+        diagnostics.rejectReasons.length > 0 &&
+        diagnostics.rejectReasons.every((reason) => shapeMetadataRelaxableReasons.has(reason));
+      if (metadataOrShapeOnlyReject) {
+        diagnostics.passedChecks.push("metadata_shape_relaxation_candidate");
+        diagnostics.kept = false;
+        const withDiagnostics = attachDiagnostics(doc, diagnostics);
+        Object.assign(doc as any, withDiagnostics);
+        metadataShapeRescueQueue.push(withDiagnostics);
+      } else {
+        diagnostics.kept = false;
+        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      }
       continue;
     }
 
@@ -1704,10 +1764,17 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else if (!isOpenLibraryLike && passesCommercialNarrativeFloor(doc, diagnostics)) {
         diagnostics.passedChecks.push("commercial_narrative_shape_bypass");
+      } else if (diagnostics.pageCount >= 250) {
+        diagnostics.passedChecks.push("pagecount_shape_floor_override");
+        diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else {
         diagnostics.rejectReasons.push("below_shape_floor");
         diagnostics.kept = false;
-        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        const withDiagnostics = attachDiagnostics(doc, diagnostics);
+        Object.assign(doc as any, withDiagnostics);
+        if (diagnostics.rejectReasons.every((reason) => shapeMetadataRelaxableReasons.has(reason))) {
+          metadataShapeRescueQueue.push(withDiagnostics);
+        }
         continue;
       }
     } else {
@@ -1718,6 +1785,32 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const withDiagnostics = attachDiagnostics(doc, diagnostics);
     Object.assign(doc as any, withDiagnostics);
     filtered.push(withDiagnostics);
+  }
+
+  if (filtered.length < targetPoolMinimum && metadataShapeRescueQueue.length > 0) {
+    const existingKeys = new Set(filtered.map((doc: any) => filterDocIdentity(doc)));
+    const rankedRescues = [...metadataShapeRescueQueue].sort((a: any, b: any) => {
+      const aRatings = Number(a?.ratingsCount ?? a?.volumeInfo?.ratingsCount ?? 0);
+      const bRatings = Number(b?.ratingsCount ?? b?.volumeInfo?.ratingsCount ?? 0);
+      const aPages = Number(a?.pageCount ?? a?.volumeInfo?.pageCount ?? 0);
+      const bPages = Number(b?.pageCount ?? b?.volumeInfo?.pageCount ?? 0);
+      return bRatings - aRatings || bPages - aPages;
+    });
+
+    for (const rescued of rankedRescues) {
+      if (filtered.length >= targetPoolMinimum) break;
+      const key = filterDocIdentity(rescued);
+      if (existingKeys.has(key)) continue;
+      const diagnostics = buildFilterDiagnostics(rescued, bucketPlan);
+      diagnostics.kept = true;
+      diagnostics.rejectReasons = [];
+      diagnostics.passedChecks.push("relaxed_pool_floor_rescue");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
+      const withDiagnostics = attachDiagnostics(rescued, diagnostics);
+      Object.assign(rescued as any, withDiagnostics);
+      filtered.push(withDiagnostics);
+      existingKeys.add(key);
+    }
   }
 
   // Do not re-admit rejected rows when the pool goes empty. Returning [] keeps

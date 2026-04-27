@@ -340,6 +340,20 @@ function hasStrongNarrativeShapeSignal(doc: any): boolean {
   return hasNarrativeLexicon && (pageCount >= 140 || description.length > 180);
 }
 
+function capRawDocsPerAuthor(docs: any[], queryFamily: string, maxPerAuthor = 2): any[] {
+  const out: any[] = [];
+  const authorCounts = new Map<string, number>();
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.volumeInfo?.authors?.[0]) || "unknown";
+    const key = `${queryFamily}:${author}`;
+    const count = authorCounts.get(key) || 0;
+    if (count >= maxPerAuthor) continue;
+    authorCounts.set(key, count + 1);
+    out.push(doc);
+  }
+  return out;
+}
+
 function enforceEarlyIntakeQualityAndDiversity(docs: any[], queryFamily: string): any[] {
   const primarySeeded = (Array.isArray(docs) ? docs : []).filter((doc) => {
     if (!doc?.title) return false;
@@ -737,8 +751,9 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
 
         rawDocs = [];
       }
+      const rawAuthorCappedDocs = capRawDocsPerAuthor(rawDocs, queryFamily, 2);
 
-      const intakeDocs = enforceEarlyIntakeQualityAndDiversity(rawDocs, queryFamily);
+      const intakeDocs = enforceEarlyIntakeQualityAndDiversity(rawAuthorCappedDocs, queryFamily);
       totalRawFetched += Array.isArray(intakeDocs) ? intakeDocs.length : 0;
       for (const rawDoc of Array.isArray(intakeDocs) ? intakeDocs : []) {
         rawPoolRows.push({
@@ -814,7 +829,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       } catch {
         fallbackDocs = [];
       }
-      const intakeDocs = enforceEarlyIntakeQualityAndDiversity(fallbackDocs, primaryFamily);
+      const intakeDocs = enforceEarlyIntakeQualityAndDiversity(capRawDocsPerAuthor(fallbackDocs, primaryFamily, 2), primaryFamily);
       for (const doc of intakeDocs) {
         const key = String(doc?.key || doc?.id || `${doc?.title || "unknown"}|authority_backfill`);
         if (seenKeys.has(key)) continue;

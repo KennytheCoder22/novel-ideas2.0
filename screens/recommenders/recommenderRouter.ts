@@ -41,6 +41,7 @@ const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
 const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
 const MIN_POOL_FOR_NYT_INJECTION = 14;
 const MAX_NYT_ANCHOR_INJECTIONS = 2;
+const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -145,6 +146,31 @@ function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey)
   return false;
 }
 
+function collectRouterToneTokens(input: RecommenderInput): string[] {
+  const bucketPlan: any = (input as any)?.bucketPlan || {};
+  const fromSignals = Array.isArray(bucketPlan?.signals?.tones) ? bucketPlan.signals.tones : [];
+  const fromQueries = Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 6) : [];
+  const seed = [bucketPlan?.preview, ...fromSignals, ...fromQueries].filter(Boolean).join(" ").toLowerCase();
+  const tokens = seed.match(/\b(gritty|dark|bleak|tense|fast|slow|cozy|warm|emotional|brooding|suspenseful|atmospheric|twisty|literary|romantic|hopeful|intense|violent|haunting)\b/g) || [];
+  return Array.from(new Set(tokens));
+}
+
+function nytAnchorToneSimilarity(doc: RecommendationDoc, toneTokens: string[]): number {
+  if (!toneTokens.length) return 0;
+  const text = [
+    doc?.title,
+    doc?.description,
+    ...(Array.isArray((doc as any)?.subject) ? (doc as any).subject : []),
+    ...(Array.isArray((doc as any)?.subjects) ? (doc as any).subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (!text) return 0;
+  let hits = 0;
+  for (const token of toneTokens) {
+    if (text.includes(token)) hits += 1;
+  }
+  return hits / toneTokens.length;
+}
+
 function isNytAnchorDoc(doc: RecommendationDoc): boolean {
   return Boolean((doc as any)?.nyt || (doc as any)?.commercialSignals?.bestseller) &&
     String((doc as any)?.laneKind || "").toLowerCase() === "anchor";
@@ -197,7 +223,13 @@ async function fetchNytAnchorDocs(
       },
     })) as RecommendationDoc[];
 
-    const familyMatchedDocs = docs.filter((doc) => nytAnchorMatchesFamily(doc, family));
+    const toneTokens = collectRouterToneTokens(input);
+    const familyMatchedDocs = docs.filter((doc) => {
+      const familyMatch = nytAnchorMatchesFamily(doc, family);
+      const toneSimilarity = nytAnchorToneSimilarity(doc, toneTokens);
+      (doc as any).nytToneSimilarity = toneSimilarity;
+      return familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
+    });
 
     return { docs: familyMatchedDocs, debug };
   } catch (error: any) {
@@ -2419,7 +2451,7 @@ export async function getRecommendations(
 
   const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
   const allowNytInjections = shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
-  const nytAnchorResult = await fetchNytAnchorDocs(routingInput, routerFamily);
+  const nytAnchorResult = await fetchNytAnchorDocs(routedInput, routerFamily);
   nytAnchorDebug = { ...nytAnchorResult.debug, allowInjections: allowNytInjections };
 
   if (nytAnchorResult.docs.length) {
@@ -2430,7 +2462,9 @@ export async function getRecommendations(
     candidateDocs = capNytAnchorInjections(mergedBestsellers.docs);
     candidateDocs = candidateDocs.filter((doc) => {
       if (!isNytAnchorDoc(doc)) return true;
-      return nytAnchorMatchesFamily(doc, routerFamily);
+      const familyMatch = nytAnchorMatchesFamily(doc, routerFamily);
+      const toneSimilarity = Number((doc as any)?.nytToneSimilarity || 0);
+      return familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
     });
     nytAnchorDebug = {
       ...nytAnchorDebug,

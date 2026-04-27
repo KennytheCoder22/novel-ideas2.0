@@ -578,6 +578,8 @@ function filterSignalScore(c: Candidate): number {
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_source_recovery_precheck')) score += 5;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_source_recovery')) score += 6;
   if (isOpenLibraryCandidate(c) && passedChecks.includes('openlibrary_thriller_recovery_precheck')) score += 6;
+  if (passedChecks.includes('borderline_rescue_penalty')) score -= 4;
+  if (passedChecks.includes('relaxed_pool_floor_rescue')) score -= 3;
 
   return score;
 }
