@@ -829,17 +829,15 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   const classicAuthorSignal =
     /\b(h\.?g\.?\s*wells|jules verne|mary shelley|isaac asimov|frank herbert|arthur c\.?\s*clarke|philip k\.?\s*dick|iain m\.?\s*banks)\b/.test(author);
-
-  let fictionPositive =
-    (
-      /\b(novel|thriller|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
-        combined
-      ) ||
-      /\b(follows|story of|must survive|must uncover|investigates|disappearance|serial killer|murder case)\b/.test(description) ||
-      classicAuthorSignal
-    ) &&
-    !/\b(reference|guide|criticism|study of|analysis of|companion to|anthology|collection)\b/.test(combined);
-
+let fictionPositive =
+  (
+    /\b(novel|thriller|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
+      combined
+    ) ||
+    /\b(follows|story of|must survive|must uncover|investigates|disappearance|serial killer|murder case)\b/.test(description) ||
+    classicAuthorSignal
+  ) &&
+  !/\b(reference|guide|criticism|study of|analysis of|companion to|anthology|collection)\b/.test(combined);
   let strongNarrative =
     /\b(red dragon|mr\.? mercedes|killing me softly|silence of the lambs|gone girl)\b/.test(title) ||
     /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|survive|escape|killer|serial killer|detective|investigation|disappearance|missing|obsession)\b/.test(description) ||
@@ -1487,6 +1485,57 @@ function hasRescueAuthoritySignal(doc: any, diagnostics: FilterDiagnostics): boo
   );
 }
 
+function hasStrongRescueSignal(diagnostics: FilterDiagnostics): boolean {
+  return Boolean(
+    diagnostics.flags.strongNarrative ||
+    diagnostics.flags.authorAffinity ||
+    diagnostics.flags.legitAuthority ||
+    diagnostics.ratingsCount > 0
+  );
+}
+
+function exceedsRescueCeiling(diagnostics: FilterDiagnostics): boolean {
+  const softSignals = new Set([
+    "too_many_soft_failures",
+    "soft_missing_narrative_signal",
+    "soft_missing_thriller_signal",
+    "low_authority_zero_signal",
+    "missing_narrative_signal",
+  ]);
+  const softHits = [
+    ...(Array.isArray(diagnostics.passedChecks) ? diagnostics.passedChecks : []),
+    ...(Array.isArray(diagnostics.rejectReasons) ? diagnostics.rejectReasons : []),
+  ].filter((flag) => softSignals.has(String(flag)));
+  return softHits.length >= 2;
+}
+
+function canUseRescueLayer(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (!hasStrongRescueSignal(diagnostics)) return false;
+  if (exceedsRescueCeiling(diagnostics)) return false;
+  if (isOpenLibraryLikeDoc(doc) && !(diagnostics.flags.strongNarrative || diagnostics.flags.authorAffinity || diagnostics.flags.legitAuthority)) {
+    return false;
+  }
+  return true;
+}
+
+function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): boolean {
+  const laneSignal =
+    diagnostics.flags.thrillerPositive ||
+    diagnostics.flags.mysteryPositive ||
+    diagnostics.flags.suspensePositive ||
+    diagnostics.flags.crimePositive;
+  return Boolean(
+    diagnostics.pageCount >= 250 &&
+    diagnostics.flags.fictionPositive &&
+    laneSignal &&
+    hasRescueAuthoritySignal(doc, diagnostics) &&
+    canUseRescueLayer(doc, diagnostics)
+  );
+}
+
+  );
+}
+
 function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): boolean {
   const laneSignal =
     diagnostics.flags.thrillerPositive ||
@@ -1537,6 +1586,47 @@ function hasStrongQueryFamilyMatch(diagnostics: FilterDiagnostics): boolean {
     );
   }
   return diagnostics.flags.fictionPositive;
+}
+
+function lanePositiveSignalCount(diagnostics: FilterDiagnostics): number {
+  const family = diagnostics.family;
+  if (family === "thriller") return Number(Boolean(diagnostics.flags.thrillerPositive || diagnostics.flags.crimePositive || diagnostics.flags.suspensePositive));
+  if (family === "mystery") return Number(Boolean(diagnostics.flags.mysteryPositive || diagnostics.flags.crimePositive));
+  if (family === "horror") return Number(Boolean(diagnostics.flags.horrorAligned));
+  if (family === "science_fiction" || family === "speculative") return Number(Boolean(diagnostics.flags.speculativePositive));
+  if (family === "fantasy") return Number(Boolean(diagnostics.flags.speculativePositive));
+  if (family === "romance") return Number(Boolean(diagnostics.flags.romancePositive));
+  if (family === "historical") return Number(Boolean(diagnostics.flags.historicalPositive));
+  return 0;
+}
+
+function hasNonGenericRungMatch(doc: any): boolean {
+  const rung = Number((doc as any)?.queryRung ?? (doc as any)?.rawDoc?.queryRung ?? 999);
+  return Number.isFinite(rung) && rung >= 1 && rung <= 3;
+}
+
+function entrySignalCount(doc: any, diagnostics: FilterDiagnostics): number {
+  let count = 0;
+  if (diagnostics.flags.strongNarrative) count += 1;
+  if (lanePositiveSignalCount(diagnostics) > 0) count += 1;
+  if (diagnostics.flags.legitAuthority) count += 1;
+  if (diagnostics.flags.authorAffinity) count += 1;
+  if (diagnostics.ratingsCount > 0) count += 1;
+  if (hasNonGenericRungMatch(doc)) count += 1;
+  return count;
+}
+
+function rescueMechanismCount(diagnostics: FilterDiagnostics): number {
+  const rescueChecks = new Set([
+    "borderline_rescue_layer",
+    "pagecount_shape_floor_override",
+    "query_match_shape_floor_rescue",
+    "soft_shape_metadata_reject_relaxation",
+    "openlibrary_noncritical_reject_bypass",
+  ]);
+  return (Array.isArray(diagnostics.passedChecks) ? diagnostics.passedChecks : [])
+    .filter((check) => rescueChecks.has(String(check)))
+    .length;
 }
 
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
@@ -1738,6 +1828,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       ]);
       const before = diagnostics.rejectReasons.length;
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+      if (diagnostics.rejectReasons.length !== before && canUseRescueLayer(doc, diagnostics)) {
       if (diagnostics.rejectReasons.length !== before) {
         diagnostics.passedChecks.push("borderline_rescue_layer");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
@@ -1788,8 +1879,11 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.rejectReasons.every((reason) => nonCriticalRejectReasons.has(reason));
 
     if (isWeakSource && onlyNonCriticalRejects) {
-      diagnostics.passedChecks.push("weak_source_noncritical_reject_bypass");
-      diagnostics.rejectReasons = [];
+      const hasNarrativeMiss = diagnostics.rejectReasons.includes("missing_narrative_signal");
+      if (!hasNarrativeMiss || hasStrongRescueSignal(diagnostics)) {
+        diagnostics.passedChecks.push("weak_source_noncritical_reject_bypass");
+        diagnostics.rejectReasons = [];
+      }
     }
 
     if (
@@ -1822,6 +1916,74 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.kept = false;
         Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
       }
+      continue;
+    }
+
+    const zeroRating = diagnostics.ratingsCount === 0;
+    const externalAuthoritySignal =
+      diagnostics.flags.legitAuthority ||
+      diagnostics.flags.authorAffinity ||
+      Boolean((doc as any)?.commercialSignals?.bestseller) ||
+      Number((doc as any)?.commercialSignals?.popularityTier || 0) >= 2 ||
+      hasCanonicalThrillerTitle(diagnostics.title) ||
+      hasCanonicalScienceFictionTitle(diagnostics.title) ||
+      hasCanonicalRomanceTitle(diagnostics.title);
+    const minimumAuthorityFloorMet =
+      !zeroRating ||
+      hasProcurementShape(doc) ||
+      diagnostics.flags.strongNarrative ||
+      externalAuthoritySignal;
+    if (!minimumAuthorityFloorMet) {
+      diagnostics.passedChecks.push("soft_minimum_authority_floor_miss");
+    }
+
+    const hasSoftMissingNarrative = diagnostics.passedChecks.includes("soft_missing_narrative_signal");
+    const lanePositive = lanePositiveSignalCount(diagnostics) > 0;
+    if (
+      hasSoftMissingNarrative &&
+      !diagnostics.flags.legitAuthority &&
+      !diagnostics.flags.authorAffinity &&
+      !(lanePositive && diagnostics.ratingsCount > 0)
+    ) {
+      diagnostics.rejectReasons.push("narrative_strength_required");
+    }
+
+    if (
+      diagnostics.pageCount === 0 &&
+      !diagnostics.flags.legitAuthority &&
+      !diagnostics.flags.authorAffinity
+    ) {
+      diagnostics.rejectReasons.push("insufficient_length_or_description");
+    }
+
+    if (
+      diagnostics.ratingsCount === 0 &&
+      !diagnostics.flags.strongNarrative &&
+      !diagnostics.flags.legitAuthority
+    ) {
+      diagnostics.rejectReasons.push("low_authority_zero_signal");
+    }
+
+    if (
+      !diagnostics.hasDescription &&
+      !diagnostics.flags.legitAuthority &&
+      !diagnostics.flags.authorAffinity
+    ) {
+      diagnostics.rejectReasons.push("insufficient_length_or_description");
+    }
+    const descriptionLengthForFloor = collectDescriptionText(doc).trim().length;
+    if (
+      descriptionLengthForFloor > 0 &&
+      descriptionLengthForFloor < 80 &&
+      !diagnostics.flags.legitAuthority &&
+      !diagnostics.flags.authorAffinity
+    ) {
+      diagnostics.rejectReasons.push("insufficient_length_or_description");
+    }
+
+    if (diagnostics.rejectReasons.length > 0) {
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
       continue;
     }
 
@@ -1909,6 +2071,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && (diagnostics.flags.strongNarrative || diagnostics.pageCount >= 160 || diagnostics.hasDescription)) {
         diagnostics.passedChecks.push("openlibrary_relaxed_shape_floor");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
+      } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && hasStrongQueryFamilyMatch(diagnostics) && canUseRescueLayer(doc, diagnostics)) {
       } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && hasStrongQueryFamilyMatch(diagnostics)) {
         diagnostics.passedChecks.push("query_match_shape_floor_rescue");
         diagnostics.passedChecks.push("borderline_rescue_penalty");
@@ -1930,6 +2093,36 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       }
     } else {
       diagnostics.passedChecks.push("passed_shape_gate");
+    }
+
+    if (rescueMechanismCount(diagnostics) > 1) {
+      diagnostics.rejectReasons.push("too_many_soft_failures");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
+
+    if (entrySignalCount(doc, diagnostics) < 2) {
+      diagnostics.rejectReasons.push("too_many_soft_failures");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
+
+    if (isOpenLibraryLike) {
+      const descriptionLength = collectDescriptionText(doc).trim().length;
+      const laneMatched = lanePositiveSignalCount(diagnostics) > 0;
+      const hasOlMinimumSignal =
+        descriptionLength >= 90 ||
+        diagnostics.flags.authorAffinity ||
+        diagnostics.ratingsCount > 0 ||
+        diagnostics.flags.strongNarrative;
+      if (!hasOlMinimumSignal || !laneMatched) {
+        diagnostics.rejectReasons.push("too_many_soft_failures");
+        diagnostics.kept = false;
+        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        continue;
+      }
     }
     diagnostics.kept = true;
 
@@ -1954,6 +2147,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       if (existingKeys.has(key)) continue;
       const diagnostics = buildFilterDiagnostics(rescued, bucketPlan);
       if (!isBorderlineRescueCandidate(rescued, diagnostics)) continue;
+      if (!canUseRescueLayer(rescued, diagnostics)) continue;
       if (diagnostics.ratingsCount === 0 && !hasRescueAuthoritySignal(rescued, diagnostics)) continue;
       diagnostics.kept = true;
       diagnostics.rejectReasons = [];
