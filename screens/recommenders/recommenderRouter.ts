@@ -117,6 +117,39 @@ function docGenreLooseMatch(doc: any, family: RouterFamilyKey): boolean {
   return /\b(fiction|novel)\b/.test(text);
 }
 
+function looksLikeJunkCandidate(doc: any): boolean {
+  const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description].filter(Boolean).join(" "));
+  if (!text) return true;
+  if (/\b(collection|short stories|stories collection|boxed set|13 novels|10 novels|omnibus)\b/.test(text)) return true;
+  if (/\bspam\b/.test(text)) return true;
+  if (/\bminecraft novel\b/.test(text)) return true;
+  return false;
+}
+
+function candidateSurvivalScore(doc: any, family: RouterFamilyKey, tagCounts: Record<string, number> = {}): number {
+  const text = normalizeText([
+    doc?.title,
+    doc?.description,
+    doc?.rawDoc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+  ].filter(Boolean).join(" "));
+  const genreScore = docGenreLooseMatch(doc, family) ? 4 : 1;
+  const narrativeScore = /\b(novel|fiction|story|thriller|mystery|horror|fantasy|science fiction|romance)\b/.test(text) ? 3 : 0;
+  const ratings = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || 0);
+  const year = rawPublishYear(doc);
+  const popularityScore = ratings > 0 ? Math.min(3, Math.log10(ratings + 1)) : 0;
+  const recencyScore = year >= 2000 ? 1.5 : year >= 1980 ? 1 : 0;
+  const likedTags = Object.entries(tagCounts).filter(([, value]) => Number(value || 0) > 0).map(([tag]) => normalizeText(tag));
+  const dislikedTags = Object.entries(tagCounts).filter(([, value]) => Number(value || 0) < 0).map(([tag]) => normalizeText(tag));
+  let tagScore = 0;
+  for (const tag of likedTags) if (tag && text.includes(tag)) tagScore += 0.8;
+  for (const tag of dislikedTags) if (tag && text.includes(tag)) tagScore -= 0.8;
+  const lanePenalty = normalizeRouterFamilyValue(doc?.queryFamily || doc?.rawDoc?.queryFamily) && !docGenreLooseMatch(doc, family) ? -1 : 0;
+  return genreScore + narrativeScore + popularityScore + recencyScore + tagScore + lanePenalty;
+}
+
 function isOpenLibraryBaselineAcceptable(doc: any, family: RouterFamilyKey): boolean {
   const source = sourceForDoc(doc, "openLibrary");
   if (source !== "openLibrary") return false;
@@ -3131,6 +3164,29 @@ export async function getRecommendations(
     }
     filteredDocs = enforceAuthorMaxTwo(filteredDocs);
   }
+  if (openLibraryRawCount > 0 && filteredDocs.length < 5) {
+    const existing = new Set(filteredDocs.map((doc: any) => candidateKey(doc)));
+    const scoredPool = enrichedDocs
+      .filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary")
+      .filter((doc: any) => !existing.has(candidateKey(doc)))
+      .filter((doc: any) => !looksLikeJunkCandidate(doc))
+      .map((doc: any) => ({ doc, score: candidateSurvivalScore(doc, activeFamily, routingInput.tagCounts || {}) }))
+      .sort((a, b) => b.score - a.score);
+
+    let threshold = 5;
+    while (filteredDocs.length < 5 && threshold >= 1.5) {
+      for (const entry of scoredPool) {
+        if (filteredDocs.length >= 5) break;
+        if (entry.score < threshold) continue;
+        const key = candidateKey(entry.doc);
+        if (!key || existing.has(key)) continue;
+        filteredDocs.push({ ...(entry.doc as any), diagnostics: { ...((entry.doc as any)?.diagnostics || {}), filterKept: true, filterScoredSurvival: true, survivalScore: entry.score } });
+        existing.add(key);
+      }
+      threshold -= 1.25;
+    }
+    filteredDocs = enforceAuthorMaxTwo(filteredDocs);
+  }
   const filterMs = Date.now() - filterStartMs;
   debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
@@ -3356,8 +3412,13 @@ let normalizedCandidates = [
   let fallbackRepeatSuppressedCount = 0;
   let fallbackSelectedTitles: string[] = [];
   let fallbackSelectionMode: "static" | "ranked" | "randomized_score_band" = "ranked";
+  const shouldAllowEmergencyFallback = openLibraryRawCount === 0 || candidateDocs.length === 0;
   if (normalizedCandidates.length === 0) {
-    if (openLibraryCandidates.length >= 3) {
+    if (!shouldAllowEmergencyFallback && openLibraryCandidates.length > 0) {
+      normalizedCandidates = openLibraryCandidates.slice(0, Math.max(5, finalLimit));
+      emergencyFallbackReason = "normalized_empty_using_openlibrary_candidates";
+      fallbackSelectionMode = "ranked";
+    } else if (openLibraryCandidates.length >= 3) {
       normalizedCandidates = openLibraryCandidates.slice(0, Math.max(3, finalLimit));
       emergencyFallbackReason = "normalized_empty_using_openlibrary_candidates";
       fallbackSelectionMode = "ranked";
