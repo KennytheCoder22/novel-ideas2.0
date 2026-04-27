@@ -20,6 +20,9 @@ export type RecommendationResult = {
   debugRawPool?: any[];
   debugFilterAudit?: any[];
   debugFilterAuditSummary?: { kept: number; rejected: number; reasons: Record<string, number>; };
+  declaredActiveFamily?: string;
+  recomputedActiveFamily?: string;
+  familySwitchReason?: string;
   primaryFamilyRawShare?: number;
   familyCapApplied?: boolean;
   sourceHealthBySource?: Record<string, {

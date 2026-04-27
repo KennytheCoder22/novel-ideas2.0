@@ -1686,6 +1686,52 @@ function adjacentFamiliesFor(primary: RouterFamilyKey): Set<RouterFamilyKey> {
   return new Set();
 }
 
+function inferFamilyFromFreeText(text: string): RouterFamilyKey | null {
+  const lower = normalizeText(text);
+  if (/\b(science fiction|sci[-\s]?fi|dystopian|ai|robot|android|alien|interstellar|time travel)\b/.test(lower)) return "science_fiction";
+  if (/\b(speculative|metaphysical|philosophical speculative|alternate reality)\b/.test(lower)) return "speculative";
+  if (/\b(thriller|suspense|crime thriller|serial killer|manhunt)\b/.test(lower)) return "thriller";
+  if (/\b(mystery|detective|whodunit|procedural)\b/.test(lower)) return "mystery";
+  if (/\b(horror|haunted|occult|supernatural|gothic)\b/.test(lower)) return "horror";
+  if (/\b(fantasy|magic|dragon|wizard|quest)\b/.test(lower)) return "fantasy";
+  if (/\b(romance|love story|courtship|regency)\b/.test(lower)) return "romance";
+  if (/\b(historical fiction|period fiction|world war|19th century)\b/.test(lower)) return "historical";
+  return null;
+}
+
+function recomputeActiveFamily(
+  declaredFamily: RouterFamilyKey,
+  rungs: Array<{ query?: string }>,
+  bucketPlan: any,
+  tasteProfile?: any
+): { family: RouterFamilyKey; reason?: string } {
+  const counts: Record<string, number> = {};
+  const texts = [
+    ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query || "") : []),
+    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+    String(bucketPlan?.preview || ""),
+  ].filter(Boolean);
+
+  for (const text of texts) {
+    const f = inferFamilyFromFreeText(String(text));
+    if (f) counts[f] = (counts[f] || 0) + 1;
+  }
+
+  const ideaDensity = Number((tasteProfile as any)?.ideaDensity || (tasteProfile as any)?.axes?.ideaDensity || 0);
+  if (ideaDensity > 0.5) counts.science_fiction = (counts.science_fiction || 0) + 1.5;
+
+  const declaredScore = Number(counts[declaredFamily] || 0);
+  const ranked = Object.entries(counts).sort((a, b) => Number(b[1]) - Number(a[1]));
+  const [topFamilyRaw, topScoreRaw] = ranked[0] || [declaredFamily, declaredScore];
+  const topFamily = normalizeRouterFamilyValue(topFamilyRaw) || declaredFamily;
+  const topScore = Number(topScoreRaw || 0);
+
+  if (topFamily !== declaredFamily && topScore >= Math.max(2, declaredScore + 1.5)) {
+    return { family: topFamily, reason: `signals_dominant:${topFamily}:${topScore.toFixed(1)}>${declaredFamily}:${declaredScore.toFixed(1)}` };
+  }
+  return { family: declaredFamily };
+}
+
 function inferDocFamily(doc: any): RouterFamilyKey | null {
   return normalizeRouterFamilyValue(
     doc?.queryFamily ||
@@ -2429,6 +2475,15 @@ export async function getRecommendations(
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   rungs = rungs.slice(0, 4);
+  const declaredActiveFamily = routerFamily;
+  const recomputedFamilyDecision = recomputeActiveFamily(
+    declaredActiveFamily,
+    rungs as any,
+    bucketPlan,
+    routingInput.tasteProfile
+  );
+  const activeFamily = recomputedFamilyDecision.family;
+  const familySwitchReason = recomputedFamilyDecision.reason;
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
@@ -2444,14 +2499,14 @@ export async function getRecommendations(
   };
 
   for (const rung of rungs) {
-    const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
+    const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || activeFamily;
     const effectiveBucketPlan = {
       ...bucketPlan,
       lane: rungFamily,
       family: rungFamily,
       hybridMode: isHybridMode,
       hybridLaneWeights,
-      primaryLane: routerFamily,
+      primaryLane: activeFamily,
     };
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
@@ -2548,7 +2603,7 @@ export async function getRecommendations(
           queryText: row?.queryText ?? lane.query,
           queryFamily: row?.queryFamily ?? laneFamily,
           hybridLaneWeights,
-          primaryLane: routerFamily,
+          primaryLane: activeFamily,
           laneKind: lane.laneKind,
         };
       });
@@ -2568,7 +2623,7 @@ export async function getRecommendations(
           queryText: lane.query,
           queryFamily: laneFamily,
           hybridLaneWeights,
-          primaryLane: routerFamily,
+          primaryLane: activeFamily,
           laneKind: lane.laneKind,
           diagnostics: {
             ...(doc?.diagnostics || {}),
@@ -2577,7 +2632,7 @@ export async function getRecommendations(
             queryFamily: laneFamily,
             laneKind: lane.laneKind,
             hybridLaneWeights,
-            primaryLane: routerFamily,
+            primaryLane: activeFamily,
           },
         };
       });
@@ -2587,7 +2642,7 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
-  const collapsedWorks = collapseDuplicateWorks(mergedDocs, routerFamily);
+  const collapsedWorks = collapseDuplicateWorks(mergedDocs, activeFamily);
   const dedupedMergedDocs = collapsedWorks.docs;
 
   const familyCountsRaw = dedupedMergedDocs.reduce<Record<string, number>>((acc, doc: any) => {
@@ -2596,8 +2651,8 @@ export async function getRecommendations(
     return acc;
   }, {});
   const totalRawCandidates = Math.max(1, dedupedMergedDocs.length);
-  const primaryFamilyRawShare = Number(familyCountsRaw[routerFamily] || 0) / totalRawCandidates;
-  const adjacentFamilies = adjacentFamiliesFor(routerFamily);
+  const primaryFamilyRawShare = Number(familyCountsRaw[activeFamily] || 0) / totalRawCandidates;
+  const adjacentFamilies = adjacentFamiliesFor(activeFamily);
   const nonPrimaryCaps = {
     adjacent: Math.max(2, Math.floor(totalRawCandidates * 0.3)),
     unrelated: Math.max(1, Math.floor(totalRawCandidates * 0.1)),
@@ -2616,7 +2671,7 @@ export async function getRecommendations(
     const family = inferDocFamily(doc);
     if (!desc) row.missingDescription += 1;
     if (pageCount === 0) row.missingPage += 1;
-    if (!family || (family !== routerFamily && !adjacentFamilies.has(family))) row.wrongFamily += 1;
+    if (!family || (family !== activeFamily && !adjacentFamilies.has(family))) row.wrongFamily += 1;
     if (ratings === 0 && !hasStrongDocAuthority(doc)) row.lowAuthorityZero += 1;
     return acc;
   }, {});
@@ -2647,7 +2702,7 @@ export async function getRecommendations(
   const familyDominanceControlledDocs = dedupedMergedDocs.filter((doc: any) => {
     const family = inferDocFamily(doc);
     if (!family) return hasStrongDocAuthority(doc) && candidateScoreValue(doc) >= 0;
-    if (family === routerFamily) return true;
+    if (family === activeFamily) return true;
     if (primaryFamilyRawShare >= 0.55) return true;
     familyCapApplied = true;
     if (adjacentFamilies.has(family)) {
@@ -2659,14 +2714,14 @@ export async function getRecommendations(
     }
     const unrelatedIndex = dedupedMergedDocs.filter((d: any) => {
       const f = inferDocFamily(d);
-      return f && f !== routerFamily && !adjacentFamilies.has(f);
+      return f && f !== activeFamily && !adjacentFamilies.has(f);
     }).indexOf(doc);
     return unrelatedIndex < nonPrimaryCaps.unrelated && hasStrongDocAuthority(doc);
   }).filter((doc: any) => {
     const source = sourceForDoc(doc, "openLibrary");
     const penalty = Number((sourcePenaltyApplied as any)[source] || 1);
     if (penalty >= 1) return true;
-    return hasStrongDocAuthority(doc) || docMetadataQualityScore(doc, routerFamily) >= 8;
+    return hasStrongDocAuthority(doc) || docMetadataQualityScore(doc, activeFamily) >= 8;
   });
 
   debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", familyDominanceControlledDocs);
@@ -2711,7 +2766,7 @@ export async function getRecommendations(
   const allowNytInjections = !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
   const nytAnchorResult = googleFetchFailureDetected
     ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
-    : await fetchNytAnchorDocs(routedInput, routerFamily);
+    : await fetchNytAnchorDocs(routedInput, activeFamily);
   nytAnchorDebug = { ...nytAnchorResult.debug, allowInjections: allowNytInjections };
 
   if (nytAnchorResult.docs.length) {
@@ -2722,7 +2777,7 @@ export async function getRecommendations(
     candidateDocs = capNytAnchorInjections(mergedBestsellers.docs);
     candidateDocs = candidateDocs.filter((doc) => {
       if (!isNytAnchorDoc(doc)) return true;
-      const familyMatch = nytAnchorMatchesFamily(doc, routerFamily);
+      const familyMatch = nytAnchorMatchesFamily(doc, activeFamily);
       const toneSimilarity = Number((doc as any)?.nytToneSimilarity || 0);
       const keep = familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
       if (!keep) anchorRejectedForWeakAlignment += 1;
@@ -2738,7 +2793,7 @@ export async function getRecommendations(
     debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
   }
 
-  if (!isHybridMode && routerFamily === "thriller") {
+  if (!isHybridMode && activeFamily === "thriller") {
     candidateDocs = candidateDocs.filter((doc: any) => {
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
       return !family || family === "thriller" || family === "mystery";
@@ -2748,12 +2803,12 @@ export async function getRecommendations(
   if (!isHybridMode) {
     candidateDocs = candidateDocs.map((doc: any) => ({
       ...doc,
-      queryFamily: routerFamily,
-      primaryLane: routerFamily,
+      queryFamily: activeFamily,
+      primaryLane: activeFamily,
       diagnostics: {
         ...(doc?.diagnostics || {}),
-        queryFamily: routerFamily,
-        primaryLane: routerFamily,
+        queryFamily: activeFamily,
+        primaryLane: activeFamily,
       },
     }));
   }
@@ -2840,7 +2895,7 @@ const normalizedCandidates = [
   const primaryIntentOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source === "openLibrary");
   const primaryIntentNonOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source !== "openLibrary");
 
-  const thrillerOpenLibraryQuota = routerFamily === "thriller" ? 2 : MIN_OPEN_LIBRARY_BASE_POOL;
+  const thrillerOpenLibraryQuota = activeFamily === "thriller" ? 2 : MIN_OPEN_LIBRARY_BASE_POOL;
 
   let basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
     ? dedupeDocs([
@@ -2871,7 +2926,7 @@ const normalizedCandidates = [
 
   basePool = enforceAuthorDiversity(basePool, 1);
 
-  if (routerFamily !== "thriller") {
+  if (activeFamily !== "thriller") {
     const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
     if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_BASE_POOL) {
       const existing = new Set(basePool.map((c: any) => candidateKey(c)));
@@ -2940,7 +2995,7 @@ const normalizedCandidates = [
   }
 
   function rebalanceRomanceFinalSources(ranked: any[], rankingPoolSource: any[], finalLimitValue: number): any[] {
-    if (routerFamily !== "romance") return ranked.slice(0, finalLimitValue);
+    if (activeFamily !== "romance") return ranked.slice(0, finalLimitValue);
 
     const initial = [...ranked.slice(0, finalLimitValue)];
     const targetOl = Math.min(MIN_ROMANCE_OPEN_LIBRARY_FINAL, finalLimitValue);
@@ -2991,7 +3046,7 @@ const normalizedCandidates = [
 
   const finalRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit);
   const subtypeDistributionFinal = finalRankedDocs.reduce<Record<string, number>>((acc, doc: any) => {
-    const family = inferDocFamily(doc) || routerFamily || "unknown";
+    const family = inferDocFamily(doc) || activeFamily || "unknown";
     const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description, doc?.queryText, doc?.rawDoc?.queryText].filter(Boolean).join(" "));
     let subtype = "general";
     if (family === "thriller") {
@@ -3006,7 +3061,7 @@ const normalizedCandidates = [
     return acc;
   }, {});
   const subtypeCapApplied =
-    routerFamily === "thriller" &&
+    activeFamily === "thriller" &&
     Object.entries(subtypeDistributionFinal).some(([k, v]) =>
       k.startsWith("thriller:") && Number(v) > Math.max(3, Math.floor(finalLimit * 0.4))
     );
@@ -3121,6 +3176,9 @@ const normalizedCandidates = [
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: getLastFinalRecommenderDebug(),
     debugNytAnchors: nytAnchorDebug,
+    declaredActiveFamily,
+    recomputedActiveFamily: activeFamily,
+    familySwitchReason,
     primaryFamilyRawShare,
     familyCapApplied,
     sourceHealthBySource,
