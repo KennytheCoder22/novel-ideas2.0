@@ -42,6 +42,13 @@ const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
 const MIN_POOL_FOR_NYT_INJECTION = 14;
 const MAX_NYT_ANCHOR_INJECTIONS = 2;
 const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
+const GOOGLE_BOOKS_QUERY_TIMEOUT_MS = 4500;
+const OPEN_LIBRARY_QUERY_TIMEOUT_MS = 4000;
+const TOTAL_RECOMMENDATION_BUDGET_MS = 12000;
+const QUERY_CACHE_TTL_MS = 5 * 60 * 1000;
+const MIN_GOOGLE_RAW_BEFORE_OPEN_LIBRARY = 12;
+
+const queryResultCache = new Map<string, { expiresAt: number; result: RecommendationResult }>();
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -65,6 +72,21 @@ function debugDocPreview(label: string, docs: any[], limit = 10): void {
 
 function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
 }
 
 function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
@@ -2261,6 +2283,13 @@ function enrichWithCommercialSignals(docs: RecommendationDoc[]): RecommendationD
 }
 
 async function runEngine(engine: EngineId, input: RecommenderInput): Promise<RecommendationResult> {
+  const queryText = String((input as any)?.query || (input as any)?.bucketPlan?.preview || (input as any)?.bucketPlan?.queries?.[0] || "").toLowerCase().trim();
+  const cacheKey = `${engine}|${input.deckKey}|${(input as any)?.bucketPlan?.family || ""}|${queryText}`;
+  const cached = queryResultCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result;
+  }
+
   if (engine === "googleBooks") {
     debugRouterLog("SENDING QUERIES TO GOOGLE BOOKS", {
       deckKey: (input as any)?.deckKey,
@@ -2268,7 +2297,9 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
       queries: (input as any)?.queries ?? (input as any)?.bucketPlan?.queries,
       query: (input as any)?.query,
     });
-    return getGoogleBooksRecommendations(input);
+    const result = await withTimeout(getGoogleBooksRecommendations(input), GOOGLE_BOOKS_QUERY_TIMEOUT_MS, "google_books_fetch");
+    queryResultCache.set(cacheKey, { expiresAt: Date.now() + QUERY_CACHE_TTL_MS, result });
+    return result;
   }
 
   const domainModeOverride: DomainMode | undefined =
@@ -2284,10 +2315,12 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
       queries: (routedInput as any)?.queries ?? (routedInput as any)?.bucketPlan?.queries,
       query: (routedInput as any)?.query,
     });
-    return getOpenLibraryRecommendations(routedInput);
+    const result = await withTimeout(getOpenLibraryRecommendations(routedInput), OPEN_LIBRARY_QUERY_TIMEOUT_MS, "open_library_fetch");
+    queryResultCache.set(cacheKey, { expiresAt: Date.now() + QUERY_CACHE_TTL_MS, result });
+    return result;
   }
-  if (engine === "kitsu") return getKitsuMangaRecommendations(routedInput);
-  return getGcdGraphicNovelRecommendations(routedInput);
+  if (engine === "kitsu") return withTimeout(getKitsuMangaRecommendations(routedInput), OPEN_LIBRARY_QUERY_TIMEOUT_MS, "kitsu_fetch");
+  return withTimeout(getGcdGraphicNovelRecommendations(routedInput), OPEN_LIBRARY_QUERY_TIMEOUT_MS, "gcd_fetch");
 }
 
 async function fetchBothEngines(
@@ -2347,6 +2380,7 @@ export async function getRecommendations(
   input: RecommenderInput,
   override?: EngineOverride
 ): Promise<RecommendationResult> {
+  const recommendationStartMs = Date.now();
   const routingInput = removeSkippedSwipeEvidenceForRouting(input);
   const preferredEngine = chooseEngine(routingInput, override);
   const baseBucketPlan = buildRouterBucketPlan(routingInput);
@@ -2378,6 +2412,13 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  const fetchMsBySource: Record<string, number> = { googleBooks: 0, openLibrary: 0, kitsu: 0, gcd: 0 };
+  const queryMsByRung: Record<string, number> = {};
+  let openLibrarySkippedReason = "";
+  let cacheHitCount = 0;
+  let fetchErrorCount = 0;
+  let repeatedCandidateCount = 0;
+  let repeatSuppressedCount = 0;
   let rungs = asArray(
     build20QRungs({
       ageBand:
@@ -2499,6 +2540,7 @@ export async function getRecommendations(
   };
 
   for (const rung of rungs) {
+    if (Date.now() - recommendationStartMs > TOTAL_RECOMMENDATION_BUDGET_MS) break;
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || activeFamily;
     const effectiveBucketPlan = {
       ...bucketPlan,
@@ -2510,7 +2552,8 @@ export async function getRecommendations(
     };
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
-    for (const lane of queryLanes) {
+    const laneTasks = queryLanes.map(async (lane: any) => {
+      if (Date.now() - recommendationStartMs > TOTAL_RECOMMENDATION_BUDGET_MS) return null;
       const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || rungFamily;
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
@@ -2540,13 +2583,51 @@ export async function getRecommendations(
         },
       };
 
-      const requests: Array<Promise<RecommendationResult>> = [];
-      if (lane.source === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
-      if (lane.source === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
-      if (includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
-      if (includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      const shouldSkipOpenLibraryByHistory =
+        Number((routingInput as any)?.recentSourceStats?.openLibrary?.finalSelected || 0) === 0 &&
+        Number((routingInput as any)?.recentSourceStats?.openLibrary?.runs || 0) >= 2;
+      const shouldSkipOpenLibraryByGoogle = lane.source === "openLibrary" && aggregatedRawFetched.googleBooks >= MIN_GOOGLE_RAW_BEFORE_OPEN_LIBRARY;
+      if (lane.source === "openLibrary" && (shouldSkipOpenLibraryByHistory || shouldSkipOpenLibraryByGoogle)) {
+        openLibrarySkippedReason = shouldSkipOpenLibraryByHistory ? "recent_zero_contribution" : "google_viable_pool";
+        return null;
+      }
 
+      const requests: Array<Promise<RecommendationResult>> = [];
+      const laneQueryKey = String(laneInput?.bucketPlan?.preview || lane.query || "").toLowerCase().trim();
+      if (lane.source === "googleBooks") {
+        const cacheKey = `googleBooks|${laneInput.deckKey}|${laneFamily}|${laneQueryKey}`;
+        if (queryResultCache.get(cacheKey)?.expiresAt && queryResultCache.get(cacheKey)!.expiresAt > Date.now()) cacheHitCount += 1;
+        const laneStart = Date.now();
+        requests.push(runEngine("googleBooks", laneInput).finally(() => {
+          fetchMsBySource.googleBooks += Date.now() - laneStart;
+        }));
+      }
+      if (lane.source === "openLibrary") {
+        const cacheKey = `openLibrary|${laneInput.deckKey}|${laneFamily}|${laneQueryKey}`;
+        if (queryResultCache.get(cacheKey)?.expiresAt && queryResultCache.get(cacheKey)!.expiresAt > Date.now()) cacheHitCount += 1;
+        const laneStart = Date.now();
+        requests.push(runEngine("openLibrary", laneInput).finally(() => {
+          fetchMsBySource.openLibrary += Date.now() - laneStart;
+        }));
+      }
+      if (includeKitsu && lane.source === "googleBooks") {
+        const laneStart = Date.now();
+        requests.push(getKitsuMangaRecommendations(laneInput).finally(() => {
+          fetchMsBySource.kitsu += Date.now() - laneStart;
+        }));
+      }
+      if (includeGcd && lane.source === "googleBooks") {
+        const laneStart = Date.now();
+        requests.push(getGcdGraphicNovelRecommendations(laneInput).finally(() => {
+          fetchMsBySource.gcd += Date.now() - laneStart;
+        }));
+      }
+
+      const rungKey = `${laneQueryRung ?? "x"}:${lane.query}`;
+      const rungStart = Date.now();
       const results = await Promise.allSettled(requests);
+      queryMsByRung[rungKey] = (queryMsByRung[rungKey] || 0) + (Date.now() - rungStart);
+      fetchErrorCount += results.filter((r) => r.status === "rejected").length;
       let index = 0;
 
       const laneGoogle = lane.source === "googleBooks" && results[index]?.status === "fulfilled"
@@ -2638,7 +2719,9 @@ export async function getRecommendations(
       });
 
       allMergedDocs.push(...taggedDocs);
-    }
+      return { laneGoogle, laneOpenLibrary, laneKitsu, laneGcd };
+    });
+    await Promise.all(laneTasks);
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
@@ -2739,7 +2822,9 @@ export async function getRecommendations(
   // Strict 20Q router:
   // taste comes only from 20Q-derived rungs. NYT is allowed only after filtering
   // as a procurement/commercial anchor, never as query or taste evidence.
+  const filterStartMs = Date.now();
   const filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
+  const filterMs = Date.now() - filterStartMs;
   debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
   const sourceSurvivalBySource = Object.fromEntries(
@@ -3083,6 +3168,7 @@ const normalizedCandidates = [
   // finalRecommender performs the actual preference-aware magic.
   debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPool);
 
+  const rankingStartMs = Date.now();
   const rankedDocs = asArray(finalRecommenderForDeck(rankingPool, input.deckKey, {
     tasteProfile: routingInput.tasteProfile,
     profileOverride: routingInput.profileOverride,
@@ -3096,8 +3182,45 @@ const normalizedCandidates = [
 
   const postFilteredRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
+  const rankingMs = Date.now() - rankingStartMs;
 
-  const finalRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit);
+  const recentIds = new Set((routingInput.priorRecommendedIds || []).map((v) => String(v).toLowerCase().trim()));
+  const recentKeys = new Set((routingInput.priorRecommendedKeys || []).map((v) => String(v).toLowerCase().trim()));
+  const recentAuthors = new Set((routingInput.priorAuthors || []).map((v) => normalizeText(v)));
+  const recentSeries = new Set((routingInput.priorSeriesKeys || []).map((v) => String(v).toLowerCase().trim()));
+  const recentTitleAuthor = new Set(
+    (Array.isArray((routingInput as any)?.priorRecommendedTitleAuthors) ? (routingInput as any).priorRecommendedTitleAuthors : [])
+      .map((v: any) => normalizeText(v))
+  );
+  const recentSubtypes = new Set(
+    (Array.isArray((routingInput as any)?.priorSubtypes) ? (routingInput as any).priorSubtypes : [])
+      .map((v: any) => normalizeText(v))
+  );
+  const withNovelty = postFilteredRankedDocs.map((doc: any) => {
+    const title = normalizeText(doc?.title || doc?.rawDoc?.title);
+    const author = normalizeText(rawAuthorText(doc));
+    const id = String(doc?.id || doc?.rawDoc?.id || "").toLowerCase().trim();
+    const key = String(doc?.key || doc?.rawDoc?.key || "").toLowerCase().trim();
+    const seriesKey = String(doc?.seriesKey || doc?.rawDoc?.seriesKey || "").toLowerCase().trim();
+    const titleAuthorKey = `${title}|${author}`;
+    const repeated =
+      (id && recentIds.has(id)) ||
+      (key && recentKeys.has(key)) ||
+      (seriesKey && recentSeries.has(seriesKey)) ||
+      (author && recentAuthors.has(author)) ||
+      recentTitleAuthor.has(titleAuthorKey);
+    if (repeated) repeatedCandidateCount += 1;
+    const subtype = normalizeText(doc?.subtype || doc?.rawDoc?.subtype || doc?.diagnostics?.subtype || "");
+    const repeatedSubtype = Boolean(subtype && recentSubtypes.has(subtype));
+    const noveltyScore = (repeated ? -20 : 6) + (author && recentAuthors.has(author) ? -8 : 2) + (repeatedSubtype ? -4 : 2);
+    return { ...doc, noveltyScore, repeatedCandidate: repeated, titleAuthorKey };
+  });
+  const repeatFiltered = withNovelty
+    .filter((doc: any) => !doc.repeatedCandidate)
+    .sort((a: any, b: any) => Number(b.noveltyScore || 0) - Number(a.noveltyScore || 0));
+  repeatSuppressedCount = withNovelty.length - repeatFiltered.length;
+  const noveltyRankedPool = repeatFiltered.length >= finalLimit ? repeatFiltered : withNovelty;
+  const finalRankedDocs = rebalanceRomanceFinalSources(noveltyRankedPool, rankingPool, finalLimit);
   const subtypeDistributionFinal = finalRankedDocs.reduce<Record<string, number>>((acc, doc: any) => {
     const family = inferDocFamily(doc) || activeFamily || "unknown";
     const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description, doc?.queryText, doc?.rawDoc?.queryText].filter(Boolean).join(" "));
@@ -3244,5 +3367,15 @@ const normalizedCandidates = [
     anchorRejectedForWeakAlignment,
     subtypeDistributionFinal,
     subtypeCapApplied,
+    totalRecommendationMs: Date.now() - recommendationStartMs,
+    fetchMsBySource,
+    queryMsByRung,
+    filterMs,
+    rankingMs,
+    openLibrarySkippedReason,
+    cacheHitCount,
+    fetchErrorCount,
+    repeatedCandidateCount,
+    repeatSuppressedCount,
   } as RecommendationResult;
 }

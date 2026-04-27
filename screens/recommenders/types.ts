@@ -41,6 +41,16 @@ export type RecommendationResult = {
   anchorRejectedForWeakAlignment?: number;
   subtypeDistributionFinal?: Record<string, number>;
   subtypeCapApplied?: boolean;
+  totalRecommendationMs?: number;
+  fetchMsBySource?: Record<string, number>;
+  queryMsByRung?: Record<string, number>;
+  filterMs?: number;
+  rankingMs?: number;
+  openLibrarySkippedReason?: string;
+  cacheHitCount?: number;
+  fetchErrorCount?: number;
+  repeatedCandidateCount?: number;
+  repeatSuppressedCount?: number;
   debugFinalRecommender?: {
     inputCount: number;
     dedupedCount: number;
