@@ -1112,6 +1112,7 @@ type RouterQueryLane = {
   query: string;
   laneKind: string;
   source: CandidateSource | "all";
+  queryFamily?: RouterFamilyKey;
   queryRung?: number;
 };
 
@@ -1483,14 +1484,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         query,
         laneKind: q.includes("-guide") || q.includes("-reference") || q.includes("-criticism") ? "strict-filtered" : "core",
         source: "googleBooks",
+        queryFamily: family,
         queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     });
 
     if (openLibraryQuery) {
       const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryRung });
-      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
     }
 
     return capRouterQueryLanes(mapped);
@@ -1565,6 +1567,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         query,
         laneKind,
         source: "googleBooks",
+        queryFamily: family,
         queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     })
@@ -1573,8 +1576,8 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
     const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryRung });
-    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
   }
 
   return capRouterQueryLanes(mapped);
@@ -2283,7 +2286,7 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
-      const laneFamily = inferFamilyFromQueryText(String(lane?.query || ""), rungFamily);
+      const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || rungFamily;
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
         : Number.isFinite(Number(rung?.rung))
@@ -2474,6 +2477,13 @@ export async function getRecommendations(
 
     debugRouterLog("NYT PROCUREMENT ANCHORS", nytAnchorDebug);
     debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
+  }
+
+  if (!isHybridMode && routerFamily === "thriller") {
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
+      return !family || family === "thriller" || family === "mystery";
+    });
   }
 
   const googleDocsEnriched = candidateDocs.filter(

@@ -1025,6 +1025,13 @@ if (family === "speculative") {
       diagnostics.rejectReasons.push("thriller_meta_reference");
     }
 
+    const cozyMysteryLeak =
+      /\b(cozy mystery|small town|amateur sleuth|bookshop mystery|bakery mystery|culinary mystery|cat mystery|cat detective|tea shop mystery|knitting mystery|craft mystery)\b/.test(combined) ||
+      /\b(cat got your tongue|murder at .* tea shop|murder at .* bakery)\b/.test(title);
+    if (cozyMysteryLeak && !(suspensePositive || /\b(psychological suspense|psychological thriller)\b/.test(combined))) {
+      diagnostics.rejectReasons.push("cozy_mystery_off_profile");
+    }
+
     const hardcoverRatingsCount = Number((doc as any)?.hardcover?.ratings_count || 0);
     const isOpenLibraryLikeDoc =
       String((doc as any)?.source || "").toLowerCase().includes("openlibrary") ||
@@ -1437,17 +1444,37 @@ function passesCommercialNarrativeFloor(doc: any, diagnostics: FilterDiagnostics
   );
 }
 
-function isBorderlineRescueCandidate(diagnostics: FilterDiagnostics): boolean {
+function hasRescueAuthoritySignal(doc: any, diagnostics: FilterDiagnostics): boolean {
+  return Boolean(
+    diagnostics.flags.legitAuthority ||
+    diagnostics.flags.authorAffinity ||
+    diagnostics.ratingsCount >= 15 ||
+    hasProcurementShape(doc) ||
+    hasCanonicalThrillerTitle(diagnostics.title) ||
+    hasCanonicalScienceFictionTitle(diagnostics.title) ||
+    hasCanonicalRomanceTitle(diagnostics.title)
+  );
+}
+
+function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): boolean {
   const laneSignal =
     diagnostics.flags.thrillerPositive ||
     diagnostics.flags.mysteryPositive ||
     diagnostics.flags.suspensePositive ||
     diagnostics.flags.crimePositive;
+  const strongActiveFamilyMatch =
+    (diagnostics.family === "thriller" &&
+      diagnostics.flags.thrillerPositive &&
+      (diagnostics.flags.suspensePositive || diagnostics.flags.crimePositive || diagnostics.flags.mysteryPositive)) ||
+    (diagnostics.family === "mystery" &&
+      diagnostics.flags.mysteryPositive &&
+      (diagnostics.flags.crimePositive || diagnostics.flags.suspensePositive));
 
   return Boolean(
     diagnostics.pageCount >= 250 &&
     diagnostics.flags.fictionPositive &&
-    laneSignal
+    laneSignal &&
+    (hasRescueAuthoritySignal(doc, diagnostics) || strongActiveFamilyMatch)
   );
 }
 
@@ -1479,9 +1506,11 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "lane_mismatch_thriller",
     "lane_mismatch_romance",
     "lane_mismatch_historical",
+    "lane_mismatch_science_fiction",
     "lane_mismatch_speculative",
     "antique_off_profile_thriller",
     "thriller_meta_reference",
+    "cozy_mystery_off_profile",
     "missing_or_low_quality_cover",
     "too_many_soft_failures",
     "below_shape_floor",
@@ -1609,7 +1638,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.passedChecks.push("openlibrary_source_recovery_precheck");
     }
 
-    if (isBorderlineRescueCandidate(diagnostics)) {
+    if (isBorderlineRescueCandidate(doc, diagnostics)) {
       const removed = new Set([
         "insufficient_length_or_description",
         "below_shape_floor",
@@ -1671,7 +1700,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       const metadataOrShapeOnlyReject =
         diagnostics.rejectReasons.length > 0 &&
         diagnostics.rejectReasons.every((reason) => shapeMetadataRelaxableReasons.has(reason));
-      if (metadataOrShapeOnlyReject) {
+      if (metadataOrShapeOnlyReject && isBorderlineRescueCandidate(doc, diagnostics)) {
         diagnostics.passedChecks.push("metadata_shape_relaxation_candidate");
         diagnostics.kept = false;
         const withDiagnostics = attachDiagnostics(doc, diagnostics);
@@ -1764,7 +1793,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_shape_bypass");
       } else if (!isOpenLibraryLike && passesCommercialNarrativeFloor(doc, diagnostics)) {
         diagnostics.passedChecks.push("commercial_narrative_shape_bypass");
-      } else if (diagnostics.pageCount >= 250) {
+      } else if (diagnostics.pageCount >= 250 && (isBorderlineRescueCandidate(doc, diagnostics) || hasRescueAuthoritySignal(doc, diagnostics))) {
         diagnostics.passedChecks.push("pagecount_shape_floor_override");
         diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else {
@@ -1772,7 +1801,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.kept = false;
         const withDiagnostics = attachDiagnostics(doc, diagnostics);
         Object.assign(doc as any, withDiagnostics);
-        if (diagnostics.rejectReasons.every((reason) => shapeMetadataRelaxableReasons.has(reason))) {
+        if (
+          diagnostics.rejectReasons.every((reason) => shapeMetadataRelaxableReasons.has(reason)) &&
+          isBorderlineRescueCandidate(doc, diagnostics)
+        ) {
           metadataShapeRescueQueue.push(withDiagnostics);
         }
         continue;
@@ -1802,6 +1834,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       const key = filterDocIdentity(rescued);
       if (existingKeys.has(key)) continue;
       const diagnostics = buildFilterDiagnostics(rescued, bucketPlan);
+      if (!isBorderlineRescueCandidate(rescued, diagnostics)) continue;
+      if (diagnostics.ratingsCount === 0 && !hasRescueAuthoritySignal(rescued, diagnostics)) continue;
       diagnostics.kept = true;
       diagnostics.rejectReasons = [];
       diagnostics.passedChecks.push("relaxed_pool_floor_rescue");

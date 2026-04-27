@@ -498,6 +498,25 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
 
   const filterSignals = filterSignalScore(c);
   const isOL = isOpenLibraryCandidate(c);
+  const diagnostics = getFilterDiagnostics(c);
+  const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
+    ? diagnostics.filterPassedChecks
+    : Array.isArray(diagnostics?.passedChecks)
+      ? diagnostics.passedChecks
+      : [];
+  const isRescuedBorderline =
+    passedChecks.includes('borderline_rescue_layer') ||
+    passedChecks.includes('relaxed_pool_floor_rescue') ||
+    passedChecks.includes('pagecount_shape_floor_override');
+  const knownAuthorityForZeroRating =
+    anchorBoost(c) >= 10 ||
+    /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(normalize(c.publisher)) ||
+    Boolean((c.rawDoc as any)?.commercialSignals?.bestseller) ||
+    Boolean((c.rawDoc as any)?.commercialSignals?.hasMainstreamPublisherSignal);
+
+  if (isRescuedBorderline && (c.ratingCount || 0) === 0 && !knownAuthorityForZeroRating) {
+    return { pass: false, reason: 'low_metadata_trust', detail: 'zero-rating rescued item without authority signal' };
+  }
 
   if (trust < 2 && !hasShapeSignal) {
     if (!(isOL && filterSignals >= 4)) {
