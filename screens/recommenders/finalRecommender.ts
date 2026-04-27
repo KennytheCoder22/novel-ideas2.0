@@ -45,6 +45,9 @@ export type ScoreBreakdown = {
   laneBlendScore: number;
   toneScore: number;
   procurementScore: number;
+  groundedRealismScore: number;
+  psychologicalIntensityScore: number;
+  emotionalWeightScore: number;
   finalScore: number;
 };
 
@@ -518,6 +521,21 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     return { pass: false, reason: 'low_metadata_trust', detail: 'zero-rating rescued item without authority signal' };
   }
 
+  const softFailureCount = passedChecks.filter((check) =>
+    check.startsWith('soft_') ||
+    check.includes('borderline_rescue') ||
+    check.includes('metadata_shape_relaxation')
+  ).length;
+  const hasStrongSignals =
+    (c.ratingCount || 0) >= 50 ||
+    anchorBoost(c) >= 10 ||
+    filterSignals >= 10 ||
+    knownTitleBoost(c) > 0 ||
+    classicAuthorBoost(c) > 0;
+  if (softFailureCount >= 3 && !hasStrongSignals) {
+    return { pass: false, reason: 'low_metadata_trust', detail: `compound soft failures=${softFailureCount}` };
+  }
+
   if (trust < 2 && !hasShapeSignal) {
     if (!(isOL && filterSignals >= 4)) {
       return { pass: false, reason: 'low_metadata_trust', detail: `metadataTrust=${trust}` };
@@ -700,6 +718,31 @@ function narrativeScore(c: Candidate): number {
     score += 1.5;
   }
 
+  return score;
+}
+
+function groundedRealismScore(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+  if (/\b(psychological|domestic|relationship|family|marriage|trauma|grief|memory|obsession)\b/.test(text)) score += 4;
+  if (/\b(detective|investigation|crime|legal|procedural|journalist|missing person)\b/.test(text)) score += 3;
+  if (/\b(epic fantasy|dragon|fae|magic school|chosen one|space opera|interstellar empire)\b/.test(text)) score -= 5;
+  return score;
+}
+
+function psychologicalIntensityScore(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+  if (/\b(psychological thriller|mind games|paranoia|gaslighting|unreliable narrator|obsession|cat and mouse)\b/.test(text)) score += 6;
+  else if (/\b(psychological|tension|suspense|intense)\b/.test(text)) score += 3;
+  return score;
+}
+
+function emotionalWeightScore(c: Candidate): number {
+  const text = haystack(c);
+  let score = 0;
+  if (/\b(grief|loss|trauma|regret|family secrets|identity|betrayal|redemption|mourning)\b/.test(text)) score += 4;
+  if (/\b(character-driven|literary|emotionally|intimate)\b/.test(text)) score += 2;
   return score;
 }
 
@@ -1640,6 +1683,9 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const tone = computeToneMatchScore(c, taste);
   const procurement = procurementAvailabilityScore(c);
   const familyAlignment = familyAlignmentPenalty(c, taste);
+  const groundedRealism = groundedRealismScore(c);
+  const psychologicalIntensity = psychologicalIntensityScore(c);
+  const emotionalWeight = emotionalWeightScore(c);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
   const noveltyPenalty = noveltyTitlePenalty(c);
@@ -1660,7 +1706,10 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     laneBlendScore: laneBlend,
     toneScore: tone,
     procurementScore: procurement,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + openLibraryRecoveredBoost,
+    groundedRealismScore: groundedRealism,
+    psychologicalIntensityScore: psychologicalIntensity,
+    emotionalWeightScore: emotionalWeight,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 

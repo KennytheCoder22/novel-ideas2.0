@@ -1234,6 +1234,75 @@ function buildDirectEvidenceLaneWeights(input: RecommenderInput): Record<string,
   return out;
 }
 
+function familyForTagText(text: string): RouterFamilyKey | null {
+  const key = String(text || "").toLowerCase();
+  if (!key) return null;
+  if (/science fiction|sci-fi|sci fi|dystopian|space opera|alien|robot|ai/.test(key)) return "science_fiction";
+  if (/fantasy|magic|dragon|fae|wizard|witch|epic/.test(key)) return "fantasy";
+  if (/horror|haunted|ghost|occult|supernatural|terror|dread/.test(key)) return "horror";
+  if (/thriller|suspense|psychological thriller|serial killer|manhunt|abduction/.test(key)) return "thriller";
+  if (/mystery|detective|investigation|crime|whodunit|procedural/.test(key)) return "mystery";
+  if (/historical|period fiction|victorian|civil war|world war/.test(key)) return "historical";
+  if (/romance|love story|relationship|courtship/.test(key)) return "romance";
+  return null;
+}
+
+function buildUserAffinityLaneMultipliers(input: RecommenderInput): Record<string, number> {
+  const swipeArrays = findSwipeArraysForRouting(input as any);
+  const primarySwipes = swipeArrays.reduce((best, current) => current.length > best.length ? current : best, [] as any[]);
+  if (!primarySwipes.length) return {};
+
+  const scores: Record<string, number> = {};
+  for (const swipe of primarySwipes) {
+    const action = getSwipeActionForRouting(swipe);
+    const tags = collectSwipeTagsForRouting(swipe);
+    const text = [action, ...tags].join(" ");
+    const family = familyForTagText(text);
+    if (!family) continue;
+    const delta =
+      isPositiveSwipeForRouting(swipe) ? 1.35 :
+      isNegativeSwipeForRouting(swipe) ? -1.15 :
+      isSkippedSwipeForRouting(swipe) ? -0.75 :
+      0;
+    if (!delta) continue;
+    scores[family] = (scores[family] || 0) + delta;
+  }
+
+  const multipliers: Record<string, number> = {};
+  for (const [family, score] of Object.entries(scores)) {
+    if (score <= -2) multipliers[family] = 0.45;
+    else if (score < 0) multipliers[family] = 0.72;
+    else if (score >= 2) multipliers[family] = 1.3;
+    else multipliers[family] = 1.08;
+  }
+
+  // Adjacent grounded/psychological boost when fantasy/horror are repeatedly skipped.
+  if ((scores.fantasy || 0) <= -2 || (scores.horror || 0) <= -2) {
+    multipliers.thriller = Math.max(multipliers.thriller || 1, 1.2);
+    multipliers.mystery = Math.max(multipliers.mystery || 1, 1.15);
+    multipliers.historical = Math.max(multipliers.historical || 1, 1.1);
+  }
+
+  return multipliers;
+}
+
+function applyLaneAffinityMultipliers(
+  laneWeights: Record<string, number>,
+  affinityMultipliers: Record<string, number>
+): Record<string, number> {
+  if (!Object.keys(laneWeights || {}).length) return laneWeights;
+  const adjusted: Record<string, number> = {};
+  for (const [family, weight] of Object.entries(laneWeights || {})) {
+    const multiplier = Number(affinityMultipliers?.[family] || 1);
+    adjusted[family] = Math.max(0, Number(weight) * multiplier);
+  }
+  const ranked = Object.entries(adjusted).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const total = ranked.reduce((sum, [, w]) => sum + w, 0) || 1;
+  const out: Record<string, number> = {};
+  for (const [family, w] of ranked) out[family] = Number((w / total).toFixed(3));
+  return out;
+}
+
 function choosePrimaryRouterFamilyFromWeights(
   fallbackFamily: RouterFamilyKey,
   laneWeights: Record<string, number>,
@@ -2140,7 +2209,11 @@ export async function getRecommendations(
   const baseBucketPlan = buildRouterBucketPlan(routingInput);
   const generatedHybridLaneWeights = buildHybridLaneWeights(routingInput, baseBucketPlan);
   const evidenceLaneWeights = buildDirectEvidenceLaneWeights(routingInput);
-  const hybridLaneWeights = mergeEvidenceLaneWeights(generatedHybridLaneWeights, evidenceLaneWeights);
+  const affinityMultipliers = buildUserAffinityLaneMultipliers(input);
+  const hybridLaneWeights = applyLaneAffinityMultipliers(
+    mergeEvidenceLaneWeights(generatedHybridLaneWeights, evidenceLaneWeights),
+    affinityMultipliers
+  );
   const routerFamily = choosePrimaryRouterFamilyFromWeights(
     inferRouterFamily(baseBucketPlan),
     hybridLaneWeights,
