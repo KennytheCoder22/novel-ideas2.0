@@ -1573,6 +1573,47 @@ function hasStrongQueryFamilyMatch(diagnostics: FilterDiagnostics): boolean {
   return diagnostics.flags.fictionPositive;
 }
 
+function lanePositiveSignalCount(diagnostics: FilterDiagnostics): number {
+  const family = diagnostics.family;
+  if (family === "thriller") return Number(Boolean(diagnostics.flags.thrillerPositive || diagnostics.flags.crimePositive || diagnostics.flags.suspensePositive));
+  if (family === "mystery") return Number(Boolean(diagnostics.flags.mysteryPositive || diagnostics.flags.crimePositive));
+  if (family === "horror") return Number(Boolean(diagnostics.flags.horrorAligned));
+  if (family === "science_fiction" || family === "speculative") return Number(Boolean(diagnostics.flags.speculativePositive));
+  if (family === "fantasy") return Number(Boolean(diagnostics.flags.speculativePositive));
+  if (family === "romance") return Number(Boolean(diagnostics.flags.romancePositive));
+  if (family === "historical") return Number(Boolean(diagnostics.flags.historicalPositive));
+  return 0;
+}
+
+function hasNonGenericRungMatch(doc: any): boolean {
+  const rung = Number((doc as any)?.queryRung ?? (doc as any)?.rawDoc?.queryRung ?? 999);
+  return Number.isFinite(rung) && rung >= 1 && rung <= 3;
+}
+
+function entrySignalCount(doc: any, diagnostics: FilterDiagnostics): number {
+  let count = 0;
+  if (diagnostics.flags.strongNarrative) count += 1;
+  if (lanePositiveSignalCount(diagnostics) > 0) count += 1;
+  if (diagnostics.flags.legitAuthority) count += 1;
+  if (diagnostics.flags.authorAffinity) count += 1;
+  if (diagnostics.ratingsCount > 0) count += 1;
+  if (hasNonGenericRungMatch(doc)) count += 1;
+  return count;
+}
+
+function rescueMechanismCount(diagnostics: FilterDiagnostics): number {
+  const rescueChecks = new Set([
+    "borderline_rescue_layer",
+    "pagecount_shape_floor_override",
+    "query_match_shape_floor_rescue",
+    "soft_shape_metadata_reject_relaxation",
+    "openlibrary_noncritical_reject_bypass",
+  ]);
+  return (Array.isArray(diagnostics.passedChecks) ? diagnostics.passedChecks : [])
+    .filter((check) => rescueChecks.has(String(check)))
+    .length;
+}
+
 export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): RecommendationDoc[] {
   const inputDocs = Array.isArray(docs) ? docs : [];
   const filtered: RecommendationDoc[] = [];
@@ -1880,6 +1921,41 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.passedChecks.push("soft_minimum_authority_floor_miss");
     }
 
+    const hasSoftMissingNarrative = diagnostics.passedChecks.includes("soft_missing_narrative_signal");
+    const lanePositive = lanePositiveSignalCount(diagnostics) > 0;
+    if (
+      hasSoftMissingNarrative &&
+      !diagnostics.flags.legitAuthority &&
+      !diagnostics.flags.authorAffinity &&
+      !(lanePositive && diagnostics.ratingsCount > 0)
+    ) {
+      diagnostics.rejectReasons.push("narrative_strength_required");
+    }
+
+    if (
+      diagnostics.pageCount === 0 &&
+      !diagnostics.flags.legitAuthority &&
+      !diagnostics.flags.authorAffinity
+    ) {
+      diagnostics.rejectReasons.push("insufficient_length_or_description");
+    }
+
+    if (
+      diagnostics.ratingsCount === 0 &&
+      !diagnostics.flags.strongNarrative &&
+      !diagnostics.flags.legitAuthority
+    ) {
+      diagnostics.rejectReasons.push("low_authority_zero_signal");
+    }
+
+    if (
+      !diagnostics.hasDescription &&
+      !diagnostics.flags.legitAuthority &&
+      !diagnostics.flags.authorAffinity
+    ) {
+      diagnostics.rejectReasons.push("insufficient_length_or_description");
+    }
+
     const hasNarrativeOrDescription =
       diagnostics.family === "thriller"
         ? (
@@ -1967,6 +2043,43 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       }
     } else {
       diagnostics.passedChecks.push("passed_shape_gate");
+    }
+
+    if (rescueMechanismCount(diagnostics) > 1) {
+      diagnostics.rejectReasons.push("too_many_soft_failures");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
+
+    if (entrySignalCount(doc, diagnostics) < 2) {
+      diagnostics.rejectReasons.push("too_many_soft_failures");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
+
+    if (isOpenLibraryLike) {
+      const author = normalizeText(
+        (doc as any)?.author_name?.[0] ??
+        (doc as any)?.author ??
+        (doc as any)?.authorName ??
+        (doc as any)?.volumeInfo?.authors?.[0]
+      );
+      const hasKnownAuthor = Boolean(author && author !== "unknown");
+      const descriptionLength = collectDescriptionText(doc).trim().length;
+      const laneMatched = lanePositiveSignalCount(diagnostics) > 0;
+      const hasOlMinimumSignal =
+        descriptionLength >= 90 ||
+        hasKnownAuthor ||
+        diagnostics.ratingsCount > 0 ||
+        diagnostics.flags.strongNarrative;
+      if (!hasOlMinimumSignal || !laneMatched) {
+        diagnostics.rejectReasons.push("too_many_soft_failures");
+        diagnostics.kept = false;
+        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        continue;
+      }
     }
     diagnostics.kept = true;
 

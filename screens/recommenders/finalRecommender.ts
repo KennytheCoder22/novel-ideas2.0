@@ -1990,9 +1990,24 @@ function pickFromPool(
   subtypeCounts?: Map<string, number>,
   targetCount = 10
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
-  for (const entry of pool) {
+  for (let i = 0; i < pool.length; i += 1) {
+    const entry = pool[i];
     if (selected.length >= limit) break;
     if (!canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount)) continue;
+    if (subtypeCounts && laneFamilyForCandidate(entry.candidate) === "thriller") {
+      const subtype = thrillerSubtype(entry.candidate);
+      const subtypeSeen = (subtypeCounts.get(subtype) || 0) > 0;
+      const wantsMoreSubtypeDiversity = selected.length < Math.min(6, targetCount - 2);
+      if (subtypeSeen && wantsMoreSubtypeDiversity) {
+        const hasUnseenSubtypeAlternative = pool.slice(i + 1).some((candidateEntry) => {
+          if (laneFamilyForCandidate(candidateEntry.candidate) !== "thriller") return false;
+          if (!canTakeCandidate(candidateEntry.candidate, selected, authorCounts, subtypeCounts, targetCount)) return false;
+          const otherSubtype = thrillerSubtype(candidateEntry.candidate);
+          return (subtypeCounts.get(otherSubtype) || 0) === 0;
+        });
+        if (hasUnseenSubtypeAlternative) continue;
+      }
+    }
 
     selected.push(entry);
     const author = normalize(entry.candidate.author);
@@ -2064,12 +2079,13 @@ function seedHistoricalRungDiversity(
 
 function thrillerSubtype(c: Candidate): string {
   const text = haystack(c);
-  if (/\bdomestic suspense|wife|husband|family secret|perfect marriage|suburban\b/.test(text)) return "domestic_suspense";
+  if (/\bdomestic suspense|wife|husband|marriage|family|neighbor|secret|lying|lie|perfect|missing woman|missing girl|suburban\b/.test(text)) return "domestic_suspense";
   if (/\bpsychological thriller|unreliable narrator|obsession|mind games|gaslighting\b/.test(text)) return "psychological_thriller";
   if (/\bcrime thriller|serial killer|detective|fbi|procedural|manhunt\b/.test(text)) return "crime_thriller";
   if (/\baction thriller|survival thriller|fugitive|chase|escape|on the run\b/.test(text)) return "action_survival_thriller";
   if (/\bhorror thriller|supernatural thriller|occult thriller|haunted\b/.test(text)) return "horror_thriller";
   if (/\bconspiracy thriller|political thriller|spy thriller|cover-up\b/.test(text)) return "conspiracy_thriller";
+  if (/\bmystery thriller|whodunit|cold case|private investigator\b/.test(text)) return "mystery_thriller";
   return "general_thriller";
 }
 
