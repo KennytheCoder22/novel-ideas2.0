@@ -1496,6 +1496,30 @@ function hasStrongRescueSignal(diagnostics: FilterDiagnostics): boolean {
   );
 }
 
+function exceedsRescueCeiling(diagnostics: FilterDiagnostics): boolean {
+  const softSignals = new Set([
+    "too_many_soft_failures",
+    "soft_missing_narrative_signal",
+    "soft_missing_thriller_signal",
+    "low_authority_zero_signal",
+    "missing_narrative_signal",
+  ]);
+  const softHits = [
+    ...(Array.isArray(diagnostics.passedChecks) ? diagnostics.passedChecks : []),
+    ...(Array.isArray(diagnostics.rejectReasons) ? diagnostics.rejectReasons : []),
+  ].filter((flag) => softSignals.has(String(flag)));
+  return softHits.length >= 2;
+}
+
+function canUseRescueLayer(doc: any, diagnostics: FilterDiagnostics): boolean {
+  if (!hasStrongRescueSignal(diagnostics)) return false;
+  if (exceedsRescueCeiling(diagnostics)) return false;
+  if (isOpenLibraryLikeDoc(doc) && !(diagnostics.flags.strongNarrative || diagnostics.flags.authorAffinity || diagnostics.flags.legitAuthority)) {
+    return false;
+  }
+  return true;
+}
+
 function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): boolean {
   const laneSignal =
     diagnostics.flags.thrillerPositive ||
@@ -1507,7 +1531,7 @@ function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): 
     diagnostics.flags.fictionPositive &&
     laneSignal &&
     hasRescueAuthoritySignal(doc, diagnostics) &&
-    hasStrongRescueSignal(diagnostics)
+    canUseRescueLayer(doc, diagnostics)
   );
 }
 
@@ -1748,7 +1772,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       ]);
       const before = diagnostics.rejectReasons.length;
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
-      if (diagnostics.rejectReasons.length !== before && hasStrongRescueSignal(diagnostics)) {
+      if (diagnostics.rejectReasons.length !== before && canUseRescueLayer(doc, diagnostics)) {
         diagnostics.passedChecks.push("borderline_rescue_layer");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
       }
@@ -1922,7 +1946,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && (diagnostics.flags.strongNarrative || diagnostics.pageCount >= 160 || diagnostics.hasDescription)) {
         diagnostics.passedChecks.push("openlibrary_relaxed_shape_floor");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
-      } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && hasStrongQueryFamilyMatch(diagnostics)) {
+      } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && hasStrongQueryFamilyMatch(diagnostics) && canUseRescueLayer(doc, diagnostics)) {
         diagnostics.passedChecks.push("query_match_shape_floor_rescue");
         diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else if (diagnostics.pageCount >= 250 && (isBorderlineRescueCandidate(doc, diagnostics) || hasRescueAuthoritySignal(doc, diagnostics))) {
@@ -1967,7 +1991,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       if (existingKeys.has(key)) continue;
       const diagnostics = buildFilterDiagnostics(rescued, bucketPlan);
       if (!isBorderlineRescueCandidate(rescued, diagnostics)) continue;
-      if (!hasStrongRescueSignal(diagnostics)) continue;
+      if (!canUseRescueLayer(rescued, diagnostics)) continue;
       if (diagnostics.ratingsCount === 0 && !hasRescueAuthoritySignal(rescued, diagnostics)) continue;
       diagnostics.kept = true;
       diagnostics.rejectReasons = [];

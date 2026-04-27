@@ -151,6 +151,13 @@ function isGarbage(doc: any, family: string): boolean {
   if (/\b(anthology|collection of stories|short stories|essays)\b/i.test(text)) return true;
   if (/\b(readings?|reader|companion|guide|reference|bibliography|catalogue?|catalog|survey|history and criticism|literary criticism)\b/i.test(text)) return true;
   if (/\b(readings?\b.*\b(novel|fiction|literature)|century readings?\b.*\bnovel|redefining\b.*\bfiction|(life|women|race|gender|class)\b.*\bin fiction)\b/i.test(title)) return true;
+  if (/\b(new suspense novel|new thriller novel|untitled|unknown title|book \d+|novel \d+)\b/i.test(title)) return true;
+  if (/^\s*(the\s+)?(novel|book|collection|megapack)\s*$/i.test(title)) return true;
+  if (/\b(novel|book|collection|megapack)\b/i.test(title) && title.split(" ").length <= 3) return true;
+
+  const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
+  const firstSentence = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence);
+  if (!firstSentence && ratingsCount === 0) return true;
 
   if (family === "fantasy") {
     const obviousFantasySignal =
@@ -244,7 +251,13 @@ export async function getOpenLibraryRecommendations(
       queryText: d.queryText,
       queryRung: d.queryRung
     }))
-    .filter((doc) => Boolean(doc.title) && (Array.isArray(doc.author_name) ? doc.author_name.length > 0 : true));
+    .filter((doc) => {
+      if (!doc.title) return false;
+      const hasKnownAuthor = Array.isArray(doc.author_name) ? doc.author_name.length > 0 : false;
+      const firstSentence = normalizeText(Array.isArray((doc as any)?.first_sentence) ? (doc as any).first_sentence.join(" ") : (doc as any)?.first_sentence);
+      const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
+      return hasKnownAuthor || firstSentence.length >= 60 || ratingsCount > 0;
+    });
 
   return {
     engineId: "openLibrary",

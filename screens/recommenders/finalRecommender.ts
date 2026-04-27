@@ -946,6 +946,36 @@ function hasStrongNarrativeOrAuthoritySignal(c: Candidate): boolean {
   );
 }
 
+function rescuePenaltyScore(c: Candidate): number {
+  const diagnostics = getFilterDiagnostics(c);
+  const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
+    ? diagnostics.filterPassedChecks
+    : Array.isArray(diagnostics?.passedChecks)
+      ? diagnostics.passedChecks
+      : [];
+  const rescuePenaltyCount = passedChecks.filter((check) => check === "borderline_rescue_penalty").length;
+  const stackedSoft = passedChecks.filter((check) =>
+    check === "soft_missing_narrative_signal" ||
+    check === "soft_missing_thriller_signal" ||
+    check === "soft_minimum_authority_floor_miss"
+  ).length;
+  if (rescuePenaltyCount >= 2) return -8;
+  if (rescuePenaltyCount >= 1 && stackedSoft >= 1) return -6;
+  return rescuePenaltyCount >= 1 ? -3 : 0;
+}
+
+function rankingPriorityBoost(c: Candidate): number {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  const rung = evidenceRank(c);
+  let score = 0;
+  if (flags.strongNarrative) score += 8;
+  if (flags.authorAffinity || flags.legitAuthority) score += 6;
+  if (rung >= 1 && rung <= 3) score += 4;
+  else if (rung === 0) score -= 3;
+  return score;
+}
+
 
 function anchorBoost(c: Candidate): number {
   const text = haystack(c);
@@ -1788,6 +1818,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const confidencePenalty = metadataConfidencePenalty(c) + lowRatingsPenalty(c);
   const seriesFormulaPenalty = formulaSeriesPenalty(c);
   const genericQueryPenalty = genericRungPenalty(c);
+  const rescuePenalty = rescuePenaltyScore(c);
+  const rankingPriority = rankingPriorityBoost(c);
   const axisAlignment = tasteAxisAlignmentBoost(c, taste);
   const classicPenalty = classicDominancePenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
@@ -1829,7 +1861,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 
