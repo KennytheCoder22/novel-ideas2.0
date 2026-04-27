@@ -965,6 +965,9 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     if (isOpenLibraryLikeDoc(doc) && knownClassicSignal) diagnostics.passedChecks.push("soft_sparse_classic_metadata");
     else diagnostics.rejectReasons.push("insufficient_length_or_description");
   }
+  if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative) {
+    diagnostics.rejectReasons.push("narrative_strength_required");
+  }
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
 
   if (family === "horror") {
@@ -1457,11 +1460,17 @@ function passesCommercialNarrativeFloor(doc: any, diagnostics: FilterDiagnostics
 }
 
 function hasRescueAuthoritySignal(doc: any, diagnostics: FilterDiagnostics): boolean {
+  const multiSourcePresence =
+    Number((doc as any)?.sourceCount || 0) >= 2 ||
+    Number((doc as any)?.matchedSourceCount || 0) >= 2 ||
+    (Array.isArray((doc as any)?.sources) && (doc as any).sources.length >= 2) ||
+    (Array.isArray((doc as any)?.sourceMatches) && (doc as any).sourceMatches.length >= 2);
   return Boolean(
     diagnostics.flags.legitAuthority ||
     diagnostics.flags.authorAffinity ||
-    diagnostics.ratingsCount >= 15 ||
+    diagnostics.ratingsCount >= 20 ||
     hasProcurementShape(doc) ||
+    multiSourcePresence ||
     hasCanonicalThrillerTitle(diagnostics.title) ||
     hasCanonicalScienceFictionTitle(diagnostics.title) ||
     hasCanonicalRomanceTitle(diagnostics.title)
@@ -1474,19 +1483,11 @@ function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): 
     diagnostics.flags.mysteryPositive ||
     diagnostics.flags.suspensePositive ||
     diagnostics.flags.crimePositive;
-  const strongActiveFamilyMatch =
-    (diagnostics.family === "thriller" &&
-      diagnostics.flags.thrillerPositive &&
-      (diagnostics.flags.suspensePositive || diagnostics.flags.crimePositive || diagnostics.flags.mysteryPositive)) ||
-    (diagnostics.family === "mystery" &&
-      diagnostics.flags.mysteryPositive &&
-      (diagnostics.flags.crimePositive || diagnostics.flags.suspensePositive));
-
   return Boolean(
     diagnostics.pageCount >= 250 &&
     diagnostics.flags.fictionPositive &&
     laneSignal &&
-    (hasRescueAuthoritySignal(doc, diagnostics) || strongActiveFamilyMatch)
+    hasRescueAuthoritySignal(doc, diagnostics)
   );
 }
 
@@ -1510,6 +1511,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "hard_reject_title",
     "hard_reject_category",
     "anthology_or_collection",
+    "narrative_strength_required",
+    "low_authority_zero_signal",
     "literature_without_fiction",
     "weak_series_spam",
     "speculative_off_profile_reference",
@@ -1683,7 +1686,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !relaxed.has(reason));
       if (diagnostics.rejectReasons.length !== before) {
         diagnostics.passedChecks.push("openlibrary_sparse_metadata_relaxation");
-        diagnostics.passedChecks.push("borderline_rescue_penalty");
+        if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
       }
     }
 
@@ -1699,8 +1702,16 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
       if (diagnostics.rejectReasons.length !== before) {
         diagnostics.passedChecks.push("borderline_rescue_layer");
-        diagnostics.passedChecks.push("borderline_rescue_penalty");
+        if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
       }
+    }
+
+    if (
+      diagnostics.ratingsCount === 0 &&
+      !diagnostics.flags.strongNarrative &&
+      !hasRescueAuthoritySignal(doc, diagnostics)
+    ) {
+      diagnostics.rejectReasons.push("low_authority_zero_signal");
     }
 
     const nonCriticalRejectReasons = new Set([
@@ -1844,10 +1855,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("commercial_narrative_shape_bypass");
       } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && (diagnostics.flags.strongNarrative || diagnostics.pageCount >= 160 || diagnostics.hasDescription)) {
         diagnostics.passedChecks.push("openlibrary_relaxed_shape_floor");
-        diagnostics.passedChecks.push("borderline_rescue_penalty");
+        if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else if (diagnostics.pageCount >= 250 && (isBorderlineRescueCandidate(doc, diagnostics) || hasRescueAuthoritySignal(doc, diagnostics))) {
         diagnostics.passedChecks.push("pagecount_shape_floor_override");
-        diagnostics.passedChecks.push("borderline_rescue_penalty");
+        if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else {
         diagnostics.rejectReasons.push("below_shape_floor");
         diagnostics.kept = false;

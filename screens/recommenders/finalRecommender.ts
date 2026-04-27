@@ -1765,7 +1765,7 @@ function canTakeCandidate(
 ): boolean {
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
-  if (count >= 1) return false;
+  if (count >= 2) return false;
 
   const seriesKey = seriesClusterKey(candidate);
   if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
