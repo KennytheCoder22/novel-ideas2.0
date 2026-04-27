@@ -1487,6 +1487,15 @@ function hasRescueAuthoritySignal(doc: any, diagnostics: FilterDiagnostics): boo
   );
 }
 
+function hasStrongRescueSignal(diagnostics: FilterDiagnostics): boolean {
+  return Boolean(
+    diagnostics.flags.strongNarrative ||
+    diagnostics.flags.authorAffinity ||
+    diagnostics.flags.legitAuthority ||
+    diagnostics.ratingsCount > 0
+  );
+}
+
 function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): boolean {
   const laneSignal =
     diagnostics.flags.thrillerPositive ||
@@ -1497,7 +1506,8 @@ function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): 
     diagnostics.pageCount >= 250 &&
     diagnostics.flags.fictionPositive &&
     laneSignal &&
-    hasRescueAuthoritySignal(doc, diagnostics)
+    hasRescueAuthoritySignal(doc, diagnostics) &&
+    hasStrongRescueSignal(diagnostics)
   );
 }
 
@@ -1738,7 +1748,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       ]);
       const before = diagnostics.rejectReasons.length;
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
-      if (diagnostics.rejectReasons.length !== before) {
+      if (diagnostics.rejectReasons.length !== before && hasStrongRescueSignal(diagnostics)) {
         diagnostics.passedChecks.push("borderline_rescue_layer");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
       }
@@ -1788,8 +1798,11 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.rejectReasons.every((reason) => nonCriticalRejectReasons.has(reason));
 
     if (isWeakSource && onlyNonCriticalRejects) {
-      diagnostics.passedChecks.push("weak_source_noncritical_reject_bypass");
-      diagnostics.rejectReasons = [];
+      const hasNarrativeMiss = diagnostics.rejectReasons.includes("missing_narrative_signal");
+      if (!hasNarrativeMiss || hasStrongRescueSignal(diagnostics)) {
+        diagnostics.passedChecks.push("weak_source_noncritical_reject_bypass");
+        diagnostics.rejectReasons = [];
+      }
     }
 
     if (
@@ -1954,6 +1967,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       if (existingKeys.has(key)) continue;
       const diagnostics = buildFilterDiagnostics(rescued, bucketPlan);
       if (!isBorderlineRescueCandidate(rescued, diagnostics)) continue;
+      if (!hasStrongRescueSignal(diagnostics)) continue;
       if (diagnostics.ratingsCount === 0 && !hasRescueAuthoritySignal(rescued, diagnostics)) continue;
       diagnostics.kept = true;
       diagnostics.rejectReasons = [];

@@ -337,13 +337,14 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\b(a|an)\s+[a-z]+\s+(fbi|detective|crime|mystery|suspense)\s+thriller\b/.test(title) ||
     /\b(book|volume|part)\s*\d+\b/.test(title) ||
     /\b(series|series starter|fbi suspense thriller)\b/.test(text);
+  const repetitiveDomesticPattern = /\b(wife|husband|perfect family|family secret|the secret|the lie|the perfect|missing wife|perfect marriage)\b/.test(title);
   const weakAuthorityThriller =
     /\b(thriller|suspense|crime|mystery|fbi|detective|serial killer|manhunt|abduction)\b/.test(text) &&
     ratings < 25 &&
     !hasCommercialShape &&
     !Boolean((c.rawDoc as any)?.commercialSignals?.bestseller);
-
-  if ((knownFormulaAuthor && ratings < 200) || (formulaicTitle && weakAuthorityThriller)) {
+  const repeatedFormulaSpam = ((knownFormulaAuthor && ratings < 50) || formulaicTitle) && repetitiveDomesticPattern;
+  if (repeatedFormulaSpam && weakAuthorityThriller) {
     return {
       reject: true,
       reason: 'formula_series_spam',
@@ -868,6 +869,20 @@ function lowRatingsPenalty(c: Candidate): number {
   return 0;
 }
 
+function formulaSeriesPenalty(c: Candidate): number {
+  const title = normalize(c.title);
+  const text = haystack(c);
+  const ratings = Number(c.ratingCount || 0);
+  const authority = anchorBoost(c) + knownTitleBoost(c) + classicAuthorBoost(c);
+  let penalty = 0;
+
+  if (/\b(book|volume|part)\s*\d+\b/.test(title) && ratings < 100) penalty -= 6;
+  if (/\b(series|series starter|fbi suspense thriller|domestic suspense thriller)\b/.test(text) && ratings < 75) penalty -= 5;
+  if (/\b(wife|husband|secret|lie|perfect family|perfect marriage)\b/.test(title) && ratings === 0 && authority < 10) penalty -= 7;
+  if (/\b(a|an)\s+[a-z]+\s+(fbi|detective|crime|mystery|suspense)\s+thriller\b/.test(title) && ratings < 50) penalty -= 7;
+  return penalty;
+}
+
 function genericRungPenalty(c: Candidate): number {
   const rung = evidenceRank(c);
   if (rung !== 0) return 0;
@@ -915,6 +930,20 @@ function passesStrongFinalQualityGate(c: Candidate, breakdown: ScoreBreakdown, t
   const tasteAlignmentStrong = breakdown.personalAffinityScore >= 4 || breakdown.toneScore >= 3 || tasteAxisAlignmentBoost(c, taste) >= 4;
   const familyConfidenceStrong = familyAlignmentPenalty(c, taste) >= -2 && (breakdown.laneBlendScore >= 3 || sessionFitScore(c) >= 3);
   return metadataStrong || authorityStrong || titleDescriptionStrong || tasteAlignmentStrong || familyConfidenceStrong;
+}
+
+function hasStrongNarrativeOrAuthoritySignal(c: Candidate): boolean {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  const rung = evidenceRank(c);
+  const strongRung = Number.isFinite(rung) && rung >= 1 && rung <= 3;
+  return Boolean(
+    flags.strongNarrative ||
+    flags.authorAffinity ||
+    flags.legitAuthority ||
+    strongRung ||
+    Number(c.ratingCount || 0) > 0
+  );
 }
 
 
@@ -1757,6 +1786,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
   const noveltyPenalty = noveltyTitlePenalty(c);
   const confidencePenalty = metadataConfidencePenalty(c) + lowRatingsPenalty(c);
+  const seriesFormulaPenalty = formulaSeriesPenalty(c);
   const genericQueryPenalty = genericRungPenalty(c);
   const axisAlignment = tasteAxisAlignmentBoost(c, taste);
   const classicPenalty = classicDominancePenalty(c, taste);
@@ -1799,7 +1829,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + genericQueryPenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 
@@ -1851,7 +1881,9 @@ function seriesClusterKey(candidate: Candidate): string {
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
-  authorCounts: Map<string, number>
+  authorCounts: Map<string, number>,
+  subtypeCounts?: Map<string, number>,
+  targetCount = 10
 ): boolean {
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
@@ -1864,6 +1896,14 @@ function canTakeCandidate(
 
   if (isOpenLibraryCandidate(candidate) && !passesOpenLibrarySelectionFloor(candidate)) {
     return false;
+  }
+
+  const lane = laneFamilyForCandidate(candidate);
+  if (lane === "thriller" && subtypeCounts) {
+    const subtype = thrillerSubtype(candidate);
+    const cap = Math.max(1, Math.floor(targetCount * 0.4));
+    const current = subtypeCounts.get(subtype) || 0;
+    if (selected.length >= 5 && current >= cap) return false;
   }
 
   return !selected.some((entry) => identityKey(entry.candidate) === identityKey(candidate));
@@ -1914,15 +1954,21 @@ function pickFromPool(
   pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   authorCounts: Map<string, number>,
-  limit: number
+  limit: number,
+  subtypeCounts?: Map<string, number>,
+  targetCount = 10
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
   for (const entry of pool) {
     if (selected.length >= limit) break;
-    if (!canTakeCandidate(entry.candidate, selected, authorCounts)) continue;
+    if (!canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount)) continue;
 
     selected.push(entry);
     const author = normalize(entry.candidate.author);
     authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+    if (subtypeCounts && laneFamilyForCandidate(entry.candidate) === "thriller") {
+      const subtype = thrillerSubtype(entry.candidate);
+      subtypeCounts.set(subtype, (subtypeCounts.get(subtype) || 0) + 1);
+    }
   }
 
   return selected;
@@ -1941,7 +1987,9 @@ function seedHistoricalRungDiversity(
   pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   authorCounts: Map<string, number>,
-  limit: number
+  limit: number,
+  subtypeCounts?: Map<string, number>,
+  targetCount = 10
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
   const hasHistorical = pool.some((entry) => isHistoricalCandidate(entry.candidate));
   if (!hasHistorical) return selected;
@@ -1965,7 +2013,7 @@ function seedHistoricalRungDiversity(
     const pick = pool.find((entry) => {
       if (!isHistoricalCandidate(entry.candidate)) return false;
       if (evidenceRank(entry.candidate) !== rung) return false;
-      return canTakeCandidate(entry.candidate, selected, authorCounts);
+      return canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount);
     });
 
     if (!pick) continue;
@@ -1973,9 +2021,24 @@ function seedHistoricalRungDiversity(
     selected.push(pick);
     const author = normalize(pick.candidate.author);
     authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+    if (subtypeCounts && laneFamilyForCandidate(pick.candidate) === "thriller") {
+      const subtype = thrillerSubtype(pick.candidate);
+      subtypeCounts.set(subtype, (subtypeCounts.get(subtype) || 0) + 1);
+    }
   }
 
   return selected;
+}
+
+function thrillerSubtype(c: Candidate): string {
+  const text = haystack(c);
+  if (/\bdomestic suspense|wife|husband|family secret|perfect marriage|suburban\b/.test(text)) return "domestic_suspense";
+  if (/\bpsychological thriller|unreliable narrator|obsession|mind games|gaslighting\b/.test(text)) return "psychological_thriller";
+  if (/\bcrime thriller|serial killer|detective|fbi|procedural|manhunt\b/.test(text)) return "crime_thriller";
+  if (/\baction thriller|survival thriller|fugitive|chase|escape|on the run\b/.test(text)) return "action_survival_thriller";
+  if (/\bhorror thriller|supernatural thriller|occult thriller|haunted\b/.test(text)) return "horror_thriller";
+  if (/\bconspiracy thriller|political thriller|spy thriller|cover-up\b/.test(text)) return "conspiracy_thriller";
+  return "general_thriller";
 }
 
 export function finalRecommenderForDeck(
@@ -1991,6 +2054,9 @@ export function finalRecommenderForDeck(
 
   for (const candidate of deduped) {
     let verdict = passesQuality(candidate);
+    if (!verdict.pass && verdict.reason === 'low_metadata_trust' && hasStrongNarrativeOrAuthoritySignal(candidate)) {
+      verdict = { pass: true };
+    }
 
     if (!verdict.pass && isOpenLibraryCandidate(candidate)) {
       const hardReject = isHardReject(candidate);
@@ -2156,15 +2222,16 @@ export function finalRecommenderForDeck(
 
   const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
+  const thrillerSubtypeCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
   const HIGH_CONFIDENCE_TARGET = 4;
 
-  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS);
+  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
-  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET));
-  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS);
+  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
+  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
-    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE));
+    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   }
 
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
