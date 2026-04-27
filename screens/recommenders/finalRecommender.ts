@@ -1779,6 +1779,36 @@ function canTakeCandidate(
   return !selected.some((entry) => identityKey(entry.candidate) === identityKey(candidate));
 }
 
+function hasMinimumShapeForFallback(c: Candidate): boolean {
+  const descriptionLength = String(c.description || '').trim().length;
+  return Boolean(
+    (c.pageCount || 0) >= 80 ||
+    descriptionLength > 80 ||
+    Boolean(c.hasCover && descriptionLength > 40)
+  );
+}
+
+function isFallbackEligibleCandidate(c: Candidate): boolean {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
+    ? diagnostics.filterPassedChecks
+    : Array.isArray(diagnostics?.passedChecks)
+      ? diagnostics.passedChecks
+      : [];
+  return Boolean(
+    flags.fictionPositive &&
+    hasMinimumShapeForFallback(c) &&
+    passedChecks.includes('passed_content_gate')
+  );
+}
+
+function isTierAStrongNarrativeCandidate(c: Candidate): boolean {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  return Boolean(flags.strongNarrative);
+}
+
 function pickFromPool(
   pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -1928,7 +1958,7 @@ export function finalRecommenderForDeck(
     return hasStrongSignal || hasBibliographicShape;
   });
 
-  const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length >= 5 ? relaxedFallback : qualityPassed.slice(0, 10);
+  const base = qualityPassed.length > 0 ? qualityPassed : relaxedFallback.length >= 5 ? relaxedFallback : relaxedFallback.slice(0, 10);
 
   debugFinalLog("QUALITY FILTER SUMMARY", {
     inputCount: input.length,
@@ -1981,17 +2011,27 @@ export function finalRecommenderForDeck(
     return bHasCover - aHasCover;
   });
 
+  const TIER_B_SCORE_THRESHOLD = 22;
+  const tierA = ordered.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
+  const tierB = ordered.filter((entry) =>
+    !isTierAStrongNarrativeCandidate(entry.candidate) &&
+    isFallbackEligibleCandidate(entry.candidate) &&
+    entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
+  );
+  const displayPool = tierA.length >= 3 ? tierA : [...tierA, ...tierB];
+
   const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
   const HIGH_CONFIDENCE_TARGET = 4;
 
-  seedHistoricalRungDiversity(ordered, selected, authorCounts, MAX_RESULTS);
-  const highConfidencePool = ordered.filter((entry) => isHighConfidenceEntry(entry));
+  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS);
+  const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
   pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET));
-  pickFromPool(ordered, selected, authorCounts, MAX_RESULTS);
+  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS);
 
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
+  debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
   return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
