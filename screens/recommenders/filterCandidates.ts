@@ -841,7 +841,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
     !/\b(reference|guide|criticism|study of|analysis of|companion to|anthology|collection)\b/.test(combined);
 
   let strongNarrative =
-    /\b(thriller|horror|suspense|red dragon|mr\.? mercedes|killing me softly|silence of the lambs|gone girl)\b/.test(title) ||
+    /\b(red dragon|mr\.? mercedes|killing me softly|silence of the lambs|gone girl)\b/.test(title) ||
     /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|survive|escape|killer|serial killer|detective|investigation|disappearance|missing|obsession)\b/.test(description) ||
     classicAuthorSignal;
 
@@ -1752,6 +1752,18 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       !hasRescueAuthoritySignal(doc, diagnostics)
     ) {
       diagnostics.rejectReasons.push("low_authority_zero_signal");
+    }
+
+    if (diagnostics.family === "thriller") {
+      const thrillerSoftRejects = new Set(["narrative_strength_required", "low_authority_zero_signal"]);
+      if (
+        diagnostics.rejectReasons.length > 0 &&
+        diagnostics.rejectReasons.every((reason) => thrillerSoftRejects.has(reason))
+      ) {
+        diagnostics.passedChecks.push("soft_thriller_narrative_strength_required");
+        diagnostics.passedChecks.push("soft_thriller_low_authority_zero_signal");
+        diagnostics.rejectReasons = [];
+      }
     }
 
     const nonCriticalRejectReasons = new Set([

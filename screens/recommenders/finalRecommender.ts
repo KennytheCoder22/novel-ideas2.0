@@ -1683,6 +1683,17 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const tone = computeToneMatchScore(c, taste);
   const procurement = procurementAvailabilityScore(c);
   const familyAlignment = familyAlignmentPenalty(c, taste);
+  const raw: any = c.rawDoc || {};
+  const diagnostics: any = raw?.diagnostics || {};
+  const primaryLane = normalizeFamilyName(raw?.primaryLane || diagnostics?.primaryLane || "");
+  const laneWeights = raw?.hybridLaneWeights || diagnostics?.hybridLaneWeights || {};
+  const laneWeightRanked = Object.values(laneWeights || {}).map((v: any) => Number(v || 0)).filter((v) => v > 0).sort((a, b) => b - a);
+  const isHybridLane = laneWeightRanked.length > 1 && laneWeightRanked[1] >= 0.18;
+  const candidateLane = laneFamilyForCandidate(c);
+  const laneCommitment =
+    primaryLane === "thriller" && !isHybridLane
+      ? (candidateLane === "thriller" ? 10 : candidateLane === "mystery" ? 5 : -12)
+      : 0;
   const groundedRealism = groundedRealismScore(c);
   const psychologicalIntensity = psychologicalIntensityScore(c);
   const emotionalWeight = emotionalWeightScore(c);
@@ -1709,7 +1720,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 
@@ -1807,6 +1818,17 @@ function isTierAStrongNarrativeCandidate(c: Candidate): boolean {
   const diagnostics = getFilterDiagnostics(c);
   const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   return Boolean(flags.strongNarrative);
+}
+
+function laneFamilyForCandidate(c: Candidate): string {
+  return normalizeFamilyName(explicitLaneForCandidate(c));
+}
+
+function isExplicitHybridSession(pool: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>): boolean {
+  const firstRaw: any = pool?.[0]?.candidate?.rawDoc || {};
+  const weights = firstRaw?.hybridLaneWeights || firstRaw?.diagnostics?.hybridLaneWeights || {};
+  const ranked = Object.values(weights || {}).map((v: any) => Number(v || 0)).filter((v) => v > 0).sort((a, b) => b - a);
+  return ranked.length > 1 && ranked[1] >= 0.18;
 }
 
 function pickFromPool(
@@ -2018,7 +2040,26 @@ export function finalRecommenderForDeck(
     isFallbackEligibleCandidate(entry.candidate) &&
     entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
   );
-  const displayPool = tierA.length >= 3 ? tierA : [...tierA, ...tierB];
+  let displayPool = tierA.length >= 3 ? tierA : [...tierA, ...tierB];
+
+  const firstRawForLane: any = displayPool?.[0]?.candidate?.rawDoc || {};
+  const sessionPrimaryLane = normalizeFamilyName(
+    String(firstRawForLane?.primaryLane || firstRawForLane?.diagnostics?.primaryLane || "")
+  );
+  const isHybridSession = isExplicitHybridSession(displayPool);
+  if (sessionPrimaryLane === "thriller" && !isHybridSession) {
+    const primaryLaneEntries = displayPool.filter((entry) => {
+      const lane = laneFamilyForCandidate(entry.candidate);
+      return lane === "thriller" || lane === "mystery";
+    });
+    const fallbackEntries = displayPool.filter((entry) => {
+      const lane = laneFamilyForCandidate(entry.candidate);
+      return lane !== "thriller" && lane !== "mystery";
+    });
+    const PRIMARY_LANE_MIN = 4;
+    const FALLBACK_CAP = primaryLaneEntries.length >= PRIMARY_LANE_MIN ? 0 : 2;
+    displayPool = [...primaryLaneEntries, ...fallbackEntries.slice(0, FALLBACK_CAP)];
+  }
 
   const selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
   const authorCounts = new Map<string, number>();
