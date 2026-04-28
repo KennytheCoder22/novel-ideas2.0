@@ -2302,13 +2302,48 @@ export function finalRecommenderForDeck(
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
     pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   }
-  if (sessionPrimaryLane === "thriller" && selected.length < 5) {
-    const thrillerGuaranteePool = ordered.filter((entry) => {
-      const diagnostics = getFilterDiagnostics(entry.candidate);
+  if (selected.length < 5) {
+    const adjacentFamilies: Record<string, string[]> = {
+      thriller: ["mystery", "horror"],
+      romance: ["historical", "general"],
+      historical: ["romance", "mystery"],
+      fantasy: ["speculative", "science_fiction"],
+      horror: ["thriller", "mystery"],
+      science_fiction: ["speculative", "fantasy"],
+      mystery: ["thriller", "historical"],
+    };
+    const isPromotionEligible = (candidate: Candidate): boolean => {
+      const diagnostics = getFilterDiagnostics(candidate);
       const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
-      return Boolean(flags?.fictionPositive && flags?.strongNarrative);
-    });
-    pickFromPool(thrillerGuaranteePool, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+      const text = haystack(candidate);
+      if (!(flags?.fictionPositive && flags?.strongNarrative)) return false;
+      if (isLikelyNonFictionMeta(candidate)) return false;
+      if (/\b(anthology|collection|reference|guide|handbook|criticism|analysis)\b/.test(text)) return false;
+      return true;
+    };
+    const primaryPromotions = ordered.filter((entry) =>
+      laneFamilyForCandidate(entry.candidate) === sessionPrimaryLane &&
+      isOpenLibraryCandidate(entry.candidate) &&
+      isPromotionEligible(entry.candidate)
+    );
+    pickFromPool(primaryPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+
+    if (selected.length < 5) {
+      const adjacentSet = new Set(adjacentFamilies[sessionPrimaryLane] || []);
+      const adjacentPromotions = ordered.filter((entry) =>
+        adjacentSet.has(laneFamilyForCandidate(entry.candidate)) &&
+        isOpenLibraryCandidate(entry.candidate) &&
+        isPromotionEligible(entry.candidate)
+      );
+      pickFromPool(adjacentPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+    }
+    if (selected.length < 5) {
+      debugFinalLog("FINAL_PROMOTION_REASON", {
+        reason: "minimum_fill_rule",
+        sessionPrimaryLane,
+        selectedCount: selected.length,
+      });
+    }
   }
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);

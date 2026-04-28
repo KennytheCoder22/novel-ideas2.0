@@ -691,7 +691,7 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
       ? "fantasy"
       : /\b(romance|love story|regency|courtship)\b/.test(queryIntentText)
       ? "romance"
-      : /\b(historical fiction|historical novel|period fiction|civil war|world war|19th century)\b/.test(queryIntentText)
+      : /\b(historical fiction|historical novel|period fiction|civil war|world war|19th century|american novel|gilded age|victorian|historical)\b/.test(queryIntentText)
       ? "historical"
       : "";
   const docFamilyRaw = queryIntentFamily || rawFamilyCandidate;
@@ -1111,7 +1111,10 @@ if (family === "speculative") {
   if (family === "romance" && !romancePositive) diagnostics.passedChecks.push("soft_missing_romance_signal");
 
   if (family === "fantasy" && isLaneMismatch(family, combined, diagnostics.flags)) {
-    if (isOpenLibraryLikeDoc(doc) && (diagnostics.flags.strongNarrative || diagnostics.flags.fictionPositive)) {
+    if (diagnostics.flags.fictionPositive && diagnostics.flags.strongNarrative) {
+      diagnostics.passedChecks.push("soft_lane_mismatch_fantasy");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
+    } else if (isOpenLibraryLikeDoc(doc) && (diagnostics.flags.strongNarrative || diagnostics.flags.fictionPositive)) {
       diagnostics.passedChecks.push("soft_lane_mismatch_fantasy");
     } else {
       diagnostics.rejectReasons.push("lane_mismatch_fantasy");
@@ -1131,13 +1134,24 @@ if (family === "speculative") {
       diagnostics.rejectReasons.push("lane_mismatch_thriller");
     } else {
       diagnostics.passedChecks.push("soft_lane_mismatch_thriller");
+      if (fictionPositive && strongNarrative) diagnostics.passedChecks.push("borderline_rescue_penalty");
     }
   }
   if (family === "romance" && isLaneMismatch(family, combined, diagnostics.flags)) {
-    diagnostics.rejectReasons.push("lane_mismatch_romance");
+    if (fictionPositive && strongNarrative) {
+      diagnostics.passedChecks.push("soft_lane_mismatch_romance");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
+    } else {
+      diagnostics.rejectReasons.push("lane_mismatch_romance");
+    }
   }
   if (family === "historical" && isLaneMismatch(family, combined, diagnostics.flags)) {
-    diagnostics.rejectReasons.push("lane_mismatch_historical");
+    if (fictionPositive && strongNarrative) {
+      diagnostics.passedChecks.push("soft_lane_mismatch_historical");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
+    } else {
+      diagnostics.rejectReasons.push("lane_mismatch_historical");
+    }
   }
   if (family === "science_fiction" && isLaneMismatch(family, combined, diagnostics.flags)) {
     if (diagnostics.flags.legitAuthority || diagnostics.flags.authorAffinity || hasCanonicalScienceFictionTitle(title)) {
@@ -1928,12 +1942,28 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       )
     ) {
       diagnostics.passedChecks.push("openlibrary_noncritical_reject_bypass");
+      if (diagnostics.flags.fictionPositive) diagnostics.passedChecks.push("borderline_rescue_penalty");
       diagnostics.rejectReasons = [];
     }
 
     if (diagnostics.rejectReasons.length === 0) {
       diagnostics.passedChecks.push("passed_content_gate");
     }
+
+    const softFailureCountCurrent = diagnostics.passedChecks.filter((check) => check.startsWith("soft_")).length;
+    const usedRescuePath = diagnostics.passedChecks.find((check) => check.startsWith("openlibrary_") || check.includes("rescue")) || "";
+    const softFailurePenaltyOnly =
+      softFailureCountCurrent > 0 &&
+      !diagnostics.rejectReasons.includes("too_many_soft_failures");
+    console.log("[FILTER_SOFT_FAILURE_DIAGNOSTICS]", {
+      title: diagnostics.title,
+      queryFamily: diagnostics.family,
+      filterFamily: diagnostics.family,
+      softFailureCount: softFailureCountCurrent,
+      softFailurePenaltyOnly,
+      hasTooManySoftFailureReject: diagnostics.rejectReasons.includes("too_many_soft_failures"),
+      rescuePath: usedRescuePath || null,
+    });
 
     if (diagnostics.rejectReasons.length > 0) {
       const metadataOrShapeOnlyReject =
