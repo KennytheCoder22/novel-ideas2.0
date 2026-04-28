@@ -52,7 +52,12 @@ function expandOpenLibraryLaneQueries(query: string, family: string): string[] {
   if (family === "fantasy") lanes.push("dark fantasy", "epic fantasy");
   if (family === "speculative") lanes.push("science fiction", "speculative fiction");
   if (family === "romance") lanes.push("romance fiction", "contemporary romance");
-  if (family === "historical") lanes.push("historical fiction", "period fiction");
+  if (family === "historical") lanes.push(
+    "historical fiction novel",
+    "19th century historical fiction novel",
+    "war historical fiction novel",
+    "society historical fiction novel"
+  );
 
   return dedupeQueries(lanes);
 }
@@ -116,6 +121,37 @@ function hasUsableSignal(input: RecommenderInput): boolean {
 
 function buildQueries(input: RecommenderInput): string[] {
   const family = inferFamily(input);
+  const canonicalHistoricalPack = [
+    "historical fiction novel",
+    "19th century historical fiction novel",
+    "war historical fiction novel",
+    "society historical fiction novel",
+  ];
+
+  const historicalIntentText = [
+    input.bucketPlan?.preview,
+    ...(Array.isArray(input.bucketPlan?.queries) ? input.bucketPlan.queries : []),
+    ...(Array.isArray(input.bucketPlan?.rungs) ? input.bucketPlan.rungs.map((r) => String(r?.query || r?.primary || "")) : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  const historicalIntentDetected =
+    family === "historical" ||
+    /\b(historical fiction|historical novel|19th century|period fiction|civil war|world war|gilded age|victorian|war historical fiction|society historical fiction)\b/.test(historicalIntentText);
+
+  if (historicalIntentDetected) {
+    const singleRungQuery = input.bucketPlan?.rungs?.length === 1
+      ? String(input.bucketPlan.rungs[0]?.query || input.bucketPlan.rungs[0]?.primary || "").replace(/^['"]|['"]$/g, "").trim()
+      : "";
+    if (singleRungQuery) {
+      return [singleRungQuery];
+    }
+    const queries = [...canonicalHistoricalPack];
+    if (new Set(queries).size !== 4) {
+      throw new Error("Historical queries collapsed");
+    }
+    console.log("HISTORICAL RUNG QUERIES", queries);
+    return queries;
+  }
+
   if (input.bucketPlan?.rungs?.length) {
     const base = dedupeQueries(input.bucketPlan.rungs.map(rungToOpenLibraryQuery).filter(Boolean));
     const expanded = dedupeQueries(base.flatMap((q) => expandOpenLibraryLaneQueries(q, family)));
@@ -178,6 +214,19 @@ function isGarbage(doc: any, family: string): boolean {
   if (/\b(summary|analysis|study guide|review|criticism|notes|workbook)\b/i.test(text)) return true;
   if (/\b(anthology|collection of stories|short stories|essays)\b/i.test(text)) return true;
   if (/\b(readings?|reader|companion|guide|reference|bibliography|catalogue?|catalog|survey|history and criticism|literary criticism)\b/i.test(text)) return true;
+
+  if (family === "historical") {
+    const primaryOrNonFiction =
+      /\b(history|meditations|tao te ching|art of war|philosophy|biography|letters|primary source|treatise)\b/.test(text);
+    const nonHistoricalBleed =
+      /\b(harry potter|wizard|witch|dragon|magic school|science fiction|time machine|space opera|dystopian)\b/.test(text);
+    const hasHistoricalSetting =
+      /\b(historical fiction|historical novel|19th century|victorian|civil war|world war|regency|gilded age|war|society|monarchy|empire)\b/.test(text);
+    const hasNarrativeShape = /\b(novel|fiction|story|follows|chronicle)\b/.test(text);
+    if (primaryOrNonFiction) return true;
+    if (nonHistoricalBleed && !hasHistoricalSetting) return true;
+    if (!hasHistoricalSetting && !hasNarrativeShape) return true;
+  }
   if (/\b(readings?\b.*\b(novel|fiction|literature)|century readings?\b.*\bnovel|redefining\b.*\bfiction|(life|women|race|gender|class)\b.*\bin fiction)\b/i.test(title)) return true;
   if (/\b(new suspense novel|new thriller novel|untitled|unknown title|book \d+|novel \d+)\b/i.test(title)) return true;
   if (/^\s*(the\s+)?(novel|book|collection|megapack)\s*$/i.test(title)) return true;
@@ -212,7 +261,14 @@ export async function getOpenLibraryRecommendations(
   input: RecommenderInput
 ): Promise<RecommendationResult> {
   const queries = buildQueries(input);
-  const family = inferFamily(input);
+  const family = (() => {
+    const inferred = inferFamily(input);
+    const text = queries.join(" ").toLowerCase();
+    if (inferred === "historical" || /\bhistorical fiction novel|19th century historical fiction novel|war historical fiction novel|society historical fiction novel\b/.test(text)) {
+      return "historical";
+    }
+    return inferred;
+  })();
   const docsRaw: any[] = [];
   let rawFetchedTotal = 0;
   const limit = input.limit || 12;
@@ -264,7 +320,10 @@ export async function getOpenLibraryRecommendations(
         ...d,
         queryText: q,
         queryRung: i,
-        source: "openLibrary"
+        source: "openLibrary",
+        queryFamily: family === "historical" ? "historical" : family,
+        filterFamily: family === "historical" ? "historical" : family,
+        laneKind: family === "historical" ? "historical" : "openlibrary",
       });
     }
 
@@ -295,14 +354,19 @@ export async function getOpenLibraryRecommendations(
       first_sentence: d.first_sentence,
       source: "openLibrary",
       queryText: d.queryText,
-      queryRung: d.queryRung
+      queryRung: d.queryRung,
+      queryFamily: d.queryFamily,
+      filterFamily: d.filterFamily,
+      laneKind: d.laneKind,
     }))
     .filter((doc) => {
       if (!doc.title) return false;
       const hasKnownAuthor = Array.isArray(doc.author_name) ? doc.author_name.length > 0 : false;
       const firstSentence = normalizeText(Array.isArray((doc as any)?.first_sentence) ? (doc as any).first_sentence.join(" ") : (doc as any)?.first_sentence);
       const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
-      return hasKnownAuthor || firstSentence.length >= 60 || ratingsCount > 0;
+      const subjectText = Array.isArray((doc as any)?.subject) ? (doc as any).subject.join(" ").toLowerCase() : "";
+      const historicalSubjectSignal = /\b(historical fiction|historical novel|19th century|victorian|civil war|world war|gilded age)\b/.test(subjectText);
+      return hasKnownAuthor || firstSentence.length >= 60 || ratingsCount > 0 || (family === "historical" && historicalSubjectSignal);
     });
 
   return {
@@ -319,6 +383,9 @@ export async function getOpenLibraryRecommendations(
       source: "openLibrary",
       queryText: d.queryText,
       queryRung: d.queryRung,
+      queryFamily: d.queryFamily,
+      filterFamily: d.filterFamily,
+      laneKind: d.laneKind,
       key: d.key
     }))
   };

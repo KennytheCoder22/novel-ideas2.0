@@ -131,9 +131,100 @@ function inferFamilyFromQueryText(query: string, fallback: RouterFamilyKey): Rou
   if (/\b(psychological horror|survival horror|haunted|horror)\b/.test(q)) return "horror";
   if (/\b(science fiction|dystopian|space opera|speculative)\b/.test(q)) return "science_fiction";
   if (/\b(epic fantasy|dark fantasy|magic fantasy|fantasy)\b/.test(q)) return "fantasy";
-  if (/\b(historical fiction|historical novel|period fiction|19th century|civil war)\b/.test(q)) return "historical";
+  if (/\b(historical fiction|historical novel|period fiction|historical|19th century|victorian|gilded age|civil war|world war|american historical|american novel|western historical)\b/.test(q)) return "historical";
   if (/\b(romance|love story|second chance romance|gothic romance|historical romance)\b/.test(q)) return "romance";
   return fallback;
+}
+
+function inferHistoricalFromQueryText(query: string): boolean {
+  const q = String(query || "").toLowerCase();
+  return /\b(historical fiction novel|historical fiction|19th century|war historical fiction|society historical fiction|civil war|american historical|american novel|gilded age|victorian|western historical)\b/.test(q);
+}
+
+function isMetaReferenceWork(doc: any): boolean {
+  const title = String(doc?.title ?? doc?.rawDoc?.title ?? "").toLowerCase();
+  const categories = [
+    doc?.categories,
+    doc?.subject,
+    doc?.subjects,
+    doc?.genre,
+    doc?.genres,
+    doc?.rawDoc?.categories,
+    doc?.rawDoc?.subject,
+    doc?.rawDoc?.subjects,
+    doc?.rawDoc?.genre,
+    doc?.rawDoc?.genres,
+  ].flatMap((value: any) => (Array.isArray(value) ? value : [value])).filter(Boolean).join(" ").toLowerCase();
+  const description = String(doc?.description ?? doc?.rawDoc?.description ?? "").toLowerCase();
+  const combined = `${title} ${categories} ${description}`.trim();
+
+  return /\b(letter|letters|log|reconsidered|commentary|criticism|analysis|study|studies|guide|companion|readalong|history|lives|meditations|tao te ching|selected works|complete works|collected works|reference|history and criticism|study guide|bibliograph(?:y|ies)|encyclopedia|catalog(?:ue)?|handbook|guide to)\b/.test(combined);
+}
+
+function isScienceFictionMetaCollection(doc: any): boolean {
+  const text = [
+    doc?.title,
+    doc?.description,
+    doc?.subtitle,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.description,
+    doc?.rawDoc?.subtitle,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  return /\b(collection|anthology|hall of fame|selected|complete|stories|short|volume|criticism|essays|language of|guide|companion|baker['’]?s dozen)\b/.test(text);
+}
+
+function scienceFictionNarrativeQualityScore(doc: any): number {
+  const text = [
+    doc?.title,
+    doc?.description,
+    doc?.subtitle,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  const pageCount = Number(doc?.pageCount ?? doc?.rawDoc?.pageCount ?? doc?.rawDoc?.number_of_pages_median ?? 0);
+  let score = 0;
+  if (/\b(novel|book \d+|trilogy|series)\b/.test(text)) score += 2;
+  if (pageCount >= 140) score += 1;
+  if (pageCount > 0 && pageCount < 90) score -= 2;
+  if (/\b(collection|anthology|stories|short stories|essays|criticism|language of|guide|companion|hall of fame)\b/.test(text)) score -= 4;
+  return score;
+}
+
+function isHistoricalPrimaryOrNonNarrative(doc: any): boolean {
+  const text = [
+    doc?.title,
+    doc?.description,
+    doc?.subtitle,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.description,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const banned = /\b(history|meditations|art of war|biography|essays|letters|philosophy|primary source|treatise|herodotus|marcus aurelius)\b/.test(text);
+  const bleed = /\b(harry potter|fantasy|wizard|witch|dragon|magic school|science fiction|time machine|space opera|dystopian)\b/.test(text);
+  const historicalSignal = /\b(historical fiction|historical novel|19th century|victorian|war|monarchy|empire|society|regency|gilded age|civil war)\b/.test(text);
+  const narrativeNovelSignal = /\b(novel|fiction|story of|follows)\b/.test(text);
+  return banned || bleed || (!historicalSignal && !narrativeNovelSignal);
+}
+
+function historicalNarrativeQualityScore(doc: any): number {
+  const text = [
+    doc?.title,
+    doc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  let score = 0;
+  if (/\b(historical fiction|historical novel)\b/.test(text)) score += 3;
+  if (/\b(19th century|war|monarchy|society|victorian|civil war|gilded age)\b/.test(text)) score += 2;
+  if (/\b(classics?|classic literature)\b/.test(text) && !/\b(historical fiction|historical novel)\b/.test(text)) score -= 1;
+  if (/\b(fantasy|science fiction|dystopian|wizard|dragon|space opera)\b/.test(text)) score -= 3;
+  if (/\b(philosophy|meditations|history|biography|essays|letters)\b/.test(text)) score -= 4;
+  return score;
 }
 
 function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey): boolean {
@@ -601,7 +692,7 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   }
 
   if (family === "romance") return quoteIfNeeded(base || preview || "romance novel");
-  if (family === "historical") return quoteIfNeeded(base || preview || "historical fiction novel");
+  if (family === "historical") return (base || preview || "historical fiction novel").trim();
 
   return quoteIfNeeded(base || preview || "fiction");
 }
@@ -1124,6 +1215,7 @@ type RouterQueryLane = {
   laneKind: string;
   source: CandidateSource | "all";
   queryFamily?: RouterFamilyKey;
+  filterFamily?: RouterFamilyKey;
   queryRung?: number;
 };
 
@@ -1481,7 +1573,8 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
   if (family === "science_fiction") return [
     { rung: 80, query: "science fiction novel" },
     { rung: 81, query: "dystopian science fiction novel" },
-    { rung: 82, query: "space opera science fiction" },
+    { rung: 82, query: "space opera science fiction novel" },
+    { rung: 83, query: "survival science fiction novel" },
   ];
   if (family === "romance") return [
     { rung: 90, query: "romance novel" },
@@ -1491,8 +1584,9 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
   ];
   if (family === "historical") return [
     { rung: 100, query: "historical fiction novel" },
-    { rung: 101, query: "period fiction novel" },
-    { rung: 102, query: "family saga historical fiction novel" },
+    { rung: 101, query: "19th century historical fiction novel" },
+    { rung: 102, query: "war historical fiction novel" },
+    { rung: 103, query: "society historical fiction novel" },
   ];
   return [{ rung: 999, query: "fiction novel" }];
 }
@@ -1565,14 +1659,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         laneKind: q.includes("-guide") || q.includes("-reference") || q.includes("-criticism") ? "strict-filtered" : "core",
         source: "googleBooks",
         queryFamily: family,
+        filterFamily: family,
         queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     });
 
     if (openLibraryQuery) {
       const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
-      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
     }
 
     return capRouterQueryLanes(mapped);
@@ -1648,6 +1743,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         laneKind,
         source: "googleBooks",
         queryFamily: family,
+        filterFamily: family,
         queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     })
@@ -1656,15 +1752,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
     const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
-    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
     if (family === "thriller" || family === "mystery" || family === "horror") {
       const simpleFallbackQuery =
         family === "thriller" ? "psychological thriller novel" :
         family === "mystery" ? "detective mystery novel" :
         "psychological horror novel";
       if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
-        mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+        mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
       }
     }
   }
@@ -1683,6 +1779,42 @@ function candidateKey(candidate: any): string {
 function candidateScoreValue(candidate: any): number {
   const raw = Number(candidate?.score ?? candidate?.diagnostics?.postFilterScore ?? candidate?.diagnostics?.preFilterScore ?? 0);
   return Number.isFinite(raw) ? raw : 0;
+}
+
+function normalizeWorkToken(value: unknown): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function collapseCrossRungDuplicates<T extends { title?: string; author?: string; author_name?: string[]; rawDoc?: any; queryRung?: number }>(docs: T[]): T[] {
+  const bestByWork = new Map<string, T>();
+  const rankFor = (doc: any) => Number(doc?.rawDoc?.queryRung ?? doc?.queryRung ?? 999);
+
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const title = normalizeWorkToken(doc?.title ?? doc?.rawDoc?.title);
+    const author = normalizeWorkToken(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author ?? doc?.rawDoc?.author);
+    if (!title) continue;
+    const key = `${title}|${author}`;
+    const existing = bestByWork.get(key);
+    if (!existing) {
+      bestByWork.set(key, doc);
+      continue;
+    }
+    const rungCurrent = rankFor(doc);
+    const rungExisting = rankFor(existing);
+    if (rungCurrent < rungExisting) {
+      bestByWork.set(key, doc);
+      continue;
+    }
+    if (rungCurrent === rungExisting && candidateScoreValue(doc) > candidateScoreValue(existing)) {
+      bestByWork.set(key, doc);
+    }
+  }
+
+  return Array.from(bestByWork.values());
 }
 
 
@@ -2334,16 +2466,100 @@ export async function getRecommendations(
     ];
   }
 
-  if (routerFamily === "historical") {
-    // Historical must keep four independent shelves. Some upstream taste plans can
-    // collapse every rung to the same base query; restore the canonical rung pack here
-    // so each fetch lane carries its own query and rung identity end-to-end.
-    rungs = [
-      { rung: 0, query: "19th century american novel" },
-      { rung: 1, query: "civil war historical fiction novel" },
-      { rung: 2, query: "family saga historical fiction novel" },
-      { rung: 3, query: "literary historical fiction novel" },
-    ];
+  const canonicalFamilyRungs: Record<string, string[]> = {
+    historical: [
+      "historical fiction novel",
+      "19th century historical fiction novel",
+      "war historical fiction novel",
+      "society historical fiction novel",
+    ],
+    thriller: [
+      "psychological thriller novel",
+      "crime thriller novel",
+      "mystery suspense novel",
+      "detective fiction novel",
+    ],
+    mystery: [
+      "psychological thriller novel",
+      "crime thriller novel",
+      "mystery suspense novel",
+      "detective fiction novel",
+    ],
+    horror: [
+      "psychological horror novel",
+      "haunted house horror novel",
+      "supernatural horror novel",
+      "gothic horror novel",
+    ],
+    romance: [
+      "young adult romance novel",
+      "coming of age romance novel",
+      "contemporary romance novel",
+      "school romance novel",
+    ],
+    fantasy: [
+      "epic fantasy novel",
+      "high fantasy novel",
+      "dragon fantasy novel",
+      "quest fantasy novel",
+    ],
+    science_fiction: [
+      "science fiction novel",
+      "dystopian science fiction novel",
+      "space opera science fiction novel",
+      "survival science fiction novel",
+    ],
+  };
+  const canonicalHistoricalQueries = [
+    "historical fiction novel",
+    "19th century historical fiction novel",
+    "war historical fiction novel",
+    "society historical fiction novel",
+  ];
+  if (new Set(canonicalHistoricalQueries).size !== canonicalHistoricalQueries.length) {
+    throw new Error("Duplicate historical queries generated");
+  }
+
+  const historicalIntentInRungs = rungs.some((r: any) =>
+    /\b(historical fiction|historical novel|19th century|war historical fiction|society historical fiction|period fiction|civil war|gilded age|victorian)\b/.test(
+      String(r?.query || r?.primary || "").toLowerCase()
+    )
+  );
+  const lockHistoricalRungs = routerFamily === "historical" || historicalIntentInRungs;
+  if (lockHistoricalRungs) {
+    rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
+  }
+
+  const forcedRungs = canonicalFamilyRungs[routerFamily];
+  if (forcedRungs?.length) {
+    rungs = forcedRungs.map((query, index) => ({ rung: index, query, queryFamily: routerFamily }));
+  }
+
+  const ensureUniqueRungQueries = (rungList: any[], family: RouterFamilyKey) => {
+    const seen = new Set<string>();
+    const fallback = (canonicalFamilyRungs[family] || []).map((q) => String(q || "").trim()).filter(Boolean);
+    return (Array.isArray(rungList) ? rungList : []).map((r: any, index: number) => {
+      const current = String(r?.query || "").trim();
+      const key = normalizeQueryKey(current);
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        return r;
+      }
+      const replacement = fallback.find((q) => {
+        const qKey = normalizeQueryKey(q);
+        return Boolean(qKey) && !seen.has(qKey);
+      }) || `${family.replace("_", " ")} novel ${index + 1}`;
+      seen.add(normalizeQueryKey(replacement));
+      return { ...r, query: replacement };
+    });
+  };
+  rungs = ensureUniqueRungQueries(rungs, routerFamily);
+  if (lockHistoricalRungs) {
+    rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
+    if (new Set(rungs.map((r: any) => r.query)).size !== 4) {
+      throw new Error("Historical queries collapsed");
+    }
+    console.log("HISTORICAL RUNG QUERIES", rungs.map((r: any) => r.query));
   }
 
 
@@ -2361,7 +2577,15 @@ export async function getRecommendations(
     }
   }
 
-  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision" }));
+  if (lockHistoricalRungs) {
+    rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
+    if (new Set(rungs.map((r: any) => r.query)).size !== 4) {
+      throw new Error("Historical queries collapsed");
+    }
+    console.log("HISTORICAL RUNG QUERIES", rungs.map((r: any) => r.query));
+  }
+
+  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision", queryFamily: normalizeRouterFamilyValue((r as any)?.queryFamily) || routerFamily }));
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   rungs = rungs.slice(0, 4);
@@ -2392,13 +2616,30 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
-      const familyFromQuery = inferFamilyFromQueryText(String((lane as any)?.query || (lane as any)?.queryText || ""), rungFamily);
-      const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || familyFromQuery || rungFamily;
+      const laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
+      const inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
+      const laneFamily =
+        routerFamily === "historical" || inferHistoricalFromQueryText(laneQueryText)
+          ? "historical"
+          : normalizeRouterFamilyValue((lane as any)?.queryFamily) ||
+            normalizeRouterFamilyValue((lane as any)?.filterFamily) ||
+            inferredQueryFamily ||
+            rungFamily;
+      const laneFilterFamily =
+        laneFamily === "historical"
+          ? "historical"
+          : normalizeRouterFamilyValue((lane as any)?.filterFamily) || laneFamily;
+      const laneKindResolved =
+        String((lane as any)?.laneKind || "").toLowerCase() === "historical" || laneFamily === "historical" || laneFilterFamily === "historical"
+          ? "historical"
+          : String((lane as any)?.laneKind || "core");
+      const laneQueryFamilyResolved = laneKindResolved === "historical" ? "historical" : laneFamily;
       debugRouterLog("QUERY_FAMILY_BEFORE_FETCH", {
-        query: (lane as any)?.query,
+        query: laneQueryText,
         queryFamily: (lane as any)?.queryFamily || null,
-        inferredQueryFamily: familyFromQuery || null,
+        inferredQueryFamily: inferredQueryFamily || null,
         laneFamily,
+        laneFilterFamily,
       });
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
@@ -2489,44 +2730,75 @@ export async function getRecommendations(
           : Number.isFinite(Number(rung?.rung))
           ? Number(rung.rung)
           : undefined;
-        const rowFamilyFromQuery = inferFamilyFromQueryText(String(row?.queryText ?? lane.query ?? ""), laneFamily);
+        const rowFamilyFromQuery = routerFamily === "historical"
+          ? "historical"
+          : inferFamilyFromQueryText(String(row?.queryText ?? lane.query ?? ""), laneFamily);
+        const rowHistoricalSignal = inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? "")) || laneKindResolved === "historical";
+        const rowQueryFamily =
+          rowHistoricalSignal
+            ? "historical"
+            : normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneQueryFamilyResolved;
+        const rowFilterFamily =
+          rowHistoricalSignal
+            ? "historical"
+            : normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFilterFamily;
 
         return {
           ...row,
           queryRung,
-          queryText: row?.queryText ?? lane.query,
-          queryFamily: normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneFamily,
+          queryText: row?.queryText ?? laneQueryText,
+          queryFamily: rowQueryFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (rowFamilyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
-          filterFamily: normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFamily,
+          laneKind: (rowQueryFamily === "historical" || rowFilterFamily === "historical") ? "historical" : laneKindResolved,
+          filterFamily: rowFilterFamily,
         };
       });
 
       debugRawPool.push(...laneRawPool);
 
       const taggedDocs = laneMergedDocs.map((doc: any) => {
-        const queryRung = Number.isFinite(Number(lane.queryRung))
+        const laneQueryRung = Number.isFinite(Number(lane.queryRung))
           ? Number(lane.queryRung)
           : Number.isFinite(Number(rung?.rung))
           ? Number(rung.rung)
           : undefined;
+        const docQueryText = String(doc?.queryText || "").trim();
+        const docQueryRung = Number.isFinite(Number(doc?.queryRung)) ? Number(doc.queryRung) : undefined;
+        const rowHistoricalSignal =
+          laneKindResolved === "historical" ||
+          inferHistoricalFromQueryText(docQueryText || laneQueryText) ||
+          String(doc?.filterFamily || "").toLowerCase() === "historical" ||
+          String(doc?.laneKind || "").toLowerCase() === "historical";
 
+        const candidateQueryFamily = rowHistoricalSignal
+          ? "historical"
+          : normalizeRouterFamilyValue(doc?.queryFamily) || laneQueryFamilyResolved;
+        const candidateFilterFamily = rowHistoricalSignal
+          ? "historical"
+          : normalizeRouterFamilyValue(doc?.filterFamily) || laneFilterFamily;
+        const candidateLaneKind = rowHistoricalSignal
+          ? "historical"
+          : String(doc?.laneKind || laneKindResolved || "core");
+
+        const queryText = docQueryText || laneQueryText;
+        const queryRung = typeof docQueryRung === "number" ? docQueryRung : laneQueryRung;
         return {
           ...doc,
           queryRung,
-          queryText: lane.query,
-          queryFamily: familyFromQuery || laneFamily,
+          queryText,
+          queryFamily: candidateQueryFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (familyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
+          laneKind: candidateLaneKind,
+          filterFamily: candidateFilterFamily,
           diagnostics: {
             ...(doc?.diagnostics || {}),
             queryRung,
-            queryText: lane.query,
-            queryFamily: familyFromQuery || laneFamily,
-            laneKind: (familyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
-            filterFamily: familyFromQuery || laneFamily,
+            queryText,
+            queryFamily: candidateQueryFamily,
+            laneKind: candidateLaneKind,
+            filterFamily: candidateFilterFamily,
             hybridLaneWeights,
             primaryLane: routerFamily,
           },
@@ -2610,14 +2882,57 @@ export async function getRecommendations(
     });
   }
 
+  if (!isHybridMode && routerFamily === "romance") {
+    const explicitFantasyRomance = /\bfantasy romance\b/.test(
+      [
+        ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+        ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
+        bucketPlan?.preview,
+      ].filter(Boolean).join(" ").toLowerCase()
+    );
+
+    if (!explicitFantasyRomance) {
+      candidateDocs = candidateDocs.filter((doc: any) => {
+        const text = [
+          doc?.title,
+          doc?.description,
+          doc?.genre,
+          ...(Array.isArray(doc?.subject) ? doc.subject : []),
+          ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+          doc?.rawDoc?.title,
+          doc?.rawDoc?.description,
+        ].filter(Boolean).join(" ").toLowerCase();
+        const fantasyHeavy = /\b(epic fantasy|high fantasy|dragon|wizard|witch|fae|sorcery|magic kingdom|quest fantasy)\b/.test(text);
+        const romanceNative = /\b(romance|love story|courtship|relationship|second chance|enemies to lovers|wedding|marriage)\b/.test(text);
+        return !fantasyHeavy || romanceNative;
+      });
+    }
+  }
+
   if (!isHybridMode) {
     candidateDocs = candidateDocs.map((doc: any) => ({
       ...doc,
-      queryFamily: routerFamily,
+      queryFamily:
+        (String(doc?.laneKind || doc?.rawDoc?.laneKind || "").toLowerCase() === "historical" ||
+         String(doc?.filterFamily || doc?.rawDoc?.filterFamily || doc?.diagnostics?.filterFamily || "").toLowerCase() === "historical")
+          ? "historical"
+          : (normalizeRouterFamilyValue(doc?.queryFamily || doc?.rawDoc?.queryFamily || doc?.diagnostics?.queryFamily || routerFamily) || routerFamily),
+      filterFamily:
+        (String(doc?.laneKind || doc?.rawDoc?.laneKind || "").toLowerCase() === "historical")
+          ? "historical"
+          : (normalizeRouterFamilyValue(doc?.filterFamily || doc?.rawDoc?.filterFamily || doc?.diagnostics?.filterFamily || routerFamily) || routerFamily),
       primaryLane: routerFamily,
       diagnostics: {
         ...(doc?.diagnostics || {}),
-        queryFamily: routerFamily,
+        queryFamily:
+          (String(doc?.laneKind || doc?.rawDoc?.laneKind || "").toLowerCase() === "historical" ||
+           String(doc?.filterFamily || doc?.rawDoc?.filterFamily || doc?.diagnostics?.filterFamily || "").toLowerCase() === "historical")
+            ? "historical"
+            : (normalizeRouterFamilyValue(doc?.queryFamily || doc?.rawDoc?.queryFamily || doc?.diagnostics?.queryFamily || routerFamily) || routerFamily),
+        filterFamily:
+          (String(doc?.laneKind || doc?.rawDoc?.laneKind || "").toLowerCase() === "historical")
+            ? "historical"
+            : (normalizeRouterFamilyValue(doc?.filterFamily || doc?.rawDoc?.filterFamily || doc?.diagnostics?.filterFamily || routerFamily) || routerFamily),
         primaryLane: routerFamily,
       },
     }));
@@ -2686,12 +3001,95 @@ function buildRungDiagnostics(candidates: any[]) {
   };
 }
 
-const normalizedCandidates = [
+function enforceHistoricalCandidateMetadata<T extends any>(candidates: T[]): T[] {
+  return (Array.isArray(candidates) ? candidates : []).map((candidate: any) => {
+    const laneKind = String(candidate?.laneKind || candidate?.rawDoc?.laneKind || candidate?.diagnostics?.laneKind || "").toLowerCase();
+    const filterFamily = String(candidate?.filterFamily || candidate?.rawDoc?.filterFamily || candidate?.rawDoc?.diagnostics?.filterFamily || candidate?.diagnostics?.filterFamily || "").toLowerCase();
+    if (laneKind !== "historical" && filterFamily !== "historical") return candidate;
+
+    return {
+      ...candidate,
+      queryFamily: "historical",
+      filterFamily: "historical",
+      laneKind: "historical",
+      rawDoc: {
+        ...(candidate?.rawDoc || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+        laneKind: "historical",
+        queryText: candidate?.queryText ?? candidate?.rawDoc?.queryText,
+        queryRung: Number.isFinite(Number(candidate?.queryRung))
+          ? Number(candidate.queryRung)
+          : candidate?.rawDoc?.queryRung,
+        diagnostics: {
+          ...(candidate?.rawDoc?.diagnostics || {}),
+          queryFamily: "historical",
+          filterFamily: "historical",
+          laneKind: "historical",
+          queryText: candidate?.queryText ?? candidate?.rawDoc?.queryText,
+          queryRung: Number.isFinite(Number(candidate?.queryRung))
+            ? Number(candidate.queryRung)
+            : candidate?.rawDoc?.queryRung,
+        },
+      },
+      diagnostics: {
+        ...(candidate?.diagnostics || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+        laneKind: "historical",
+      },
+    };
+  }) as T[];
+}
+
+const normalizedCandidatesRaw = [
     ...googleCandidates,
     ...openLibraryCandidates,
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeGcd ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
+  const normalizedCandidates = enforceHistoricalCandidateMetadata(collapseCrossRungDuplicates(normalizedCandidatesRaw as any).map((candidate: any) => {
+    const inferredQueryFamily =
+      normalizeRouterFamilyValue(
+        candidate?.queryFamily ||
+        candidate?.rawDoc?.queryFamily ||
+        candidate?.rawDoc?.diagnostics?.queryFamily ||
+        candidate?.rawDoc?.filterFamily ||
+        candidate?.rawDoc?.diagnostics?.filterFamily
+      ) ||
+      inferFamilyFromQueryText(
+        String(candidate?.queryText || candidate?.rawDoc?.queryText || ""),
+        routerFamily
+      ) ||
+      routerFamily;
+
+    const queryFamily = routerFamily === "historical" ? "historical" : inferredQueryFamily;
+    const filterFamily = routerFamily === "historical"
+      ? "historical"
+      : normalizeRouterFamilyValue(candidate?.filterFamily || candidate?.rawDoc?.filterFamily || candidate?.rawDoc?.diagnostics?.filterFamily) || queryFamily;
+    const laneKind = queryFamily === "historical"
+      ? "historical"
+      : (candidate?.laneKind || candidate?.rawDoc?.laneKind || candidate?.rawDoc?.diagnostics?.laneKind);
+
+    return {
+      ...candidate,
+      queryFamily,
+      filterFamily,
+      laneKind,
+      rawDoc: {
+        ...(candidate?.rawDoc || {}),
+        queryFamily,
+        filterFamily,
+        laneKind,
+        diagnostics: {
+          ...(candidate?.rawDoc?.diagnostics || {}),
+          queryFamily,
+          filterFamily,
+          laneKind,
+        },
+      },
+    };
+  }));
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
 
@@ -2721,17 +3119,15 @@ const normalizedCandidates = [
     ] as any);
   }
 
-  if (routerFamily !== "thriller") {
-    const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
-    if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_CANDIDATES) {
-      const existing = new Set(basePool.map((c: any) => candidateKey(c)));
-      for (const candidate of openLibraryNormalizedCandidates) {
-        const key = candidateKey(candidate);
-        if (!key || existing.has(key)) continue;
-        basePool.push(candidate);
-        existing.add(key);
-        if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_CANDIDATES) break;
-      }
+  const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
+  if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_CANDIDATES) {
+    const existing = new Set(basePool.map((c: any) => candidateKey(c)));
+    for (const candidate of openLibraryNormalizedCandidates) {
+      const key = candidateKey(candidate);
+      if (!key || existing.has(key)) continue;
+      basePool.push(candidate);
+      existing.add(key);
+      if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_CANDIDATES) break;
     }
   }
 
@@ -2753,18 +3149,42 @@ const normalizedCandidates = [
   }
 
   const quotaPool = buildLaneQuotaPool(basePool, finalLimit);
-  const rankingPool =
+  const rankingPoolRaw =
     routerFamily === "historical"
       ? ensureHistoricalRungDiversity(quotaPool, finalLimit)
       : ensureRungCoverage(quotaPool, finalLimit);
+  const rankingPool = rankingPoolRaw.map((candidate: any) => {
+    const isHistoricalLane = String(candidate?.laneKind || candidate?.rawDoc?.laneKind || "").toLowerCase() === "historical";
+    if (!isHistoricalLane) return candidate;
+    return {
+      ...candidate,
+      queryFamily: "historical",
+      filterFamily: "historical",
+      rawDoc: {
+        ...(candidate?.rawDoc || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      },
+      diagnostics: {
+        ...(candidate?.diagnostics || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      },
+    };
+  });
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => {
     const filterDiagnostics = c?.rawDoc?.diagnostics?.filterDiagnostics ?? c?.diagnostics?.filterDiagnostics;
+    const resolvedQueryFamily =
+      normalizeRouterFamilyValue(c?.queryFamily || c?.rawDoc?.queryFamily || c?.diagnostics?.queryFamily || c?.rawDoc?.diagnostics?.queryFamily) ||
+      normalizeRouterFamilyValue(c?.filterFamily || c?.rawDoc?.filterFamily || c?.diagnostics?.filterFamily || c?.rawDoc?.diagnostics?.filterFamily) ||
+      (routerFamily === "historical" ? "historical" : routerFamily);
     return {
       title: c.title,
       author: Array.isArray(c.author_name) ? c.author_name[0] : c.author,
       source: c.source,
       score: c.score,
+      queryFamily: resolvedQueryFamily,
       queryText: c?.rawDoc?.queryText ?? c?.queryText,
       queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
       laneKind: c?.rawDoc?.laneKind ?? c?.laneKind ?? c?.diagnostics?.laneKind,
@@ -2823,9 +3243,40 @@ const normalizedCandidates = [
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
   // finalRecommender performs the actual preference-aware magic.
-  debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPool);
+  const rankingPoolForFinal = enforceHistoricalCandidateMetadata(rankingPool.map((c: any) => {
+    const laneKind = String(c?.laneKind || c?.rawDoc?.laneKind || c?.diagnostics?.laneKind || "").toLowerCase();
+    if (laneKind !== "historical") return c;
+    return {
+      ...c,
+      queryFamily: "historical",
+      filterFamily: "historical",
+      rawDoc: {
+        ...(c?.rawDoc || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      },
+      diagnostics: {
+        ...(c?.diagnostics || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      },
+    };
+  }));
+  for (const c of rankingPoolForFinal as any[]) {
+    if (String(c?.laneKind || c?.rawDoc?.laneKind || "").toLowerCase() === "historical") {
+      c.queryFamily = "historical";
+      c.filterFamily = "historical";
+      c.rawDoc = {
+        ...(c?.rawDoc || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      };
+    }
+  }
+  console.log("FINAL QUERY FAMILIES", rankingPoolForFinal.map((c: any) => c?.queryFamily ?? c?.rawDoc?.queryFamily ?? "missing"));
+  debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPoolForFinal);
 
-  const rankedDocs = asArray(finalRecommenderForDeck(rankingPool, input.deckKey, {
+  const rankedDocs = asArray(finalRecommenderForDeck(rankingPoolForFinal, input.deckKey, {
     tasteProfile: routingInput.tasteProfile,
     profileOverride: routingInput.profileOverride,
     priorRecommendedIds: routingInput.priorRecommendedIds,
@@ -2839,16 +3290,63 @@ const normalizedCandidates = [
   const postFilteredRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
 
-  const finalRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit);
+  const narrativeWeightedRankedDocs =
+    routerFamily === "science_fiction"
+      ? [...postFilteredRankedDocs].sort((a: any, b: any) =>
+          (scienceFictionNarrativeQualityScore(b) - scienceFictionNarrativeQualityScore(a)) ||
+          (candidateScoreValue(b) - candidateScoreValue(a))
+        )
+      : routerFamily === "historical"
+      ? [...postFilteredRankedDocs].sort((a: any, b: any) =>
+          (historicalNarrativeQualityScore(b) - historicalNarrativeQualityScore(a)) ||
+          (candidateScoreValue(b) - candidateScoreValue(a))
+        )
+      : postFilteredRankedDocs;
+  const applyHistoricalHardNarrativeFilter =
+    routerFamily === "historical" &&
+    Math.max(narrativeWeightedRankedDocs.length, rankingPoolForFinal.length) >= finalLimit * 2;
+
+  const metaSafeRankedDocs = rebalanceRomanceFinalSources(narrativeWeightedRankedDocs, rankingPoolForFinal, finalLimit)
+    .filter((doc: any) => !isMetaReferenceWork(doc))
+    .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
+    .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc));
+  const finalRankedDocs = (() => {
+    if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
+    const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
+    const refill = rankingPoolForFinal
+      .filter((doc: any) => !isMetaReferenceWork(doc))
+      .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
+      .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc))
+      .filter((doc: any) => {
+        const key = candidateKey(doc);
+        return Boolean(key) && !existing.has(key);
+      });
+    return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+  })();
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
     ...doc,
+    queryFamily:
+      normalizeRouterFamilyValue(
+        doc?.queryFamily ||
+        doc?.rawDoc?.queryFamily ||
+        doc?.diagnostics?.queryFamily ||
+        doc?.rawDoc?.diagnostics?.queryFamily
+      ) || (routerFamily === "historical" ? "historical" : routerFamily),
+    filterFamily:
+      normalizeRouterFamilyValue(
+        doc?.filterFamily ||
+        doc?.rawDoc?.filterFamily ||
+        doc?.diagnostics?.filterFamily ||
+        doc?.rawDoc?.diagnostics?.filterFamily
+      ) || (routerFamily === "historical" ? "historical" : routerFamily),
     source: sourceForDoc(doc, "openLibrary"),
     diagnostics: doc?.diagnostics
       ? {
           ...doc.diagnostics,
+          queryFamily: normalizeRouterFamilyValue(doc.diagnostics.queryFamily || doc?.queryFamily || doc?.rawDoc?.queryFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           source: doc.diagnostics.source || sourceForDoc(doc, "openLibrary"),
           preFilterScore: doc.diagnostics.preFilterScore,
           postFilterScore: doc.diagnostics.postFilterScore,
@@ -2862,18 +3360,19 @@ const normalizedCandidates = [
           filterKept: doc.diagnostics.filterKept ?? doc?.rawDoc?.diagnostics?.filterKept,
           filterRejectReasons: doc.diagnostics.filterRejectReasons ?? doc?.rawDoc?.diagnostics?.filterRejectReasons ?? [],
           filterPassedChecks: doc.diagnostics.filterPassedChecks ?? doc?.rawDoc?.diagnostics?.filterPassedChecks ?? [],
-          filterFamily: doc.diagnostics.filterFamily ?? doc?.rawDoc?.diagnostics?.filterFamily,
+          filterFamily: normalizeRouterFamilyValue(doc.diagnostics.filterFamily ?? doc?.rawDoc?.diagnostics?.filterFamily ?? doc?.filterFamily ?? doc?.rawDoc?.filterFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           filterWantsHorrorTone: doc.diagnostics.filterWantsHorrorTone ?? doc?.rawDoc?.diagnostics?.filterWantsHorrorTone,
           filterFlags: doc.diagnostics.filterFlags ?? doc?.rawDoc?.diagnostics?.filterFlags ?? {},
         }
       : {
           source: sourceForDoc(doc, "openLibrary"),
+          queryFamily: normalizeRouterFamilyValue(doc?.queryFamily || doc?.rawDoc?.queryFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           laneKind: doc?.laneKind ?? doc?.rawDoc?.laneKind,
           filterDiagnostics: doc?.rawDoc?.diagnostics?.filterDiagnostics,
           filterKept: doc?.rawDoc?.diagnostics?.filterKept,
           filterRejectReasons: doc?.rawDoc?.diagnostics?.filterRejectReasons ?? [],
           filterPassedChecks: doc?.rawDoc?.diagnostics?.filterPassedChecks ?? [],
-          filterFamily: doc?.rawDoc?.diagnostics?.filterFamily,
+          filterFamily: normalizeRouterFamilyValue(doc?.rawDoc?.diagnostics?.filterFamily || doc?.filterFamily || doc?.rawDoc?.filterFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           filterWantsHorrorTone: doc?.rawDoc?.diagnostics?.filterWantsHorrorTone,
           filterFlags: doc?.rawDoc?.diagnostics?.filterFlags ?? {},
         },
