@@ -3170,9 +3170,29 @@ const normalizedCandidatesRaw = [
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
   // finalRecommender performs the actual preference-aware magic.
-  debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPool);
+  const rankingPoolForFinal = rankingPool.map((c: any) => {
+    const laneKind = String(c?.laneKind || c?.rawDoc?.laneKind || c?.diagnostics?.laneKind || "").toLowerCase();
+    if (laneKind !== "historical") return c;
+    return {
+      ...c,
+      queryFamily: "historical",
+      filterFamily: "historical",
+      rawDoc: {
+        ...(c?.rawDoc || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      },
+      diagnostics: {
+        ...(c?.diagnostics || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      },
+    };
+  });
+  console.log("FINAL QUERY FAMILIES", rankingPoolForFinal.map((c: any) => c?.queryFamily ?? c?.rawDoc?.queryFamily ?? "missing"));
+  debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPoolForFinal);
 
-  const rankedDocs = asArray(finalRecommenderForDeck(rankingPool, input.deckKey, {
+  const rankedDocs = asArray(finalRecommenderForDeck(rankingPoolForFinal, input.deckKey, {
     tasteProfile: routingInput.tasteProfile,
     profileOverride: routingInput.profileOverride,
     priorRecommendedIds: routingInput.priorRecommendedIds,
@@ -3199,14 +3219,14 @@ const normalizedCandidatesRaw = [
         )
       : postFilteredRankedDocs;
 
-  const metaSafeRankedDocs = rebalanceRomanceFinalSources(narrativeWeightedRankedDocs, rankingPool, finalLimit)
+  const metaSafeRankedDocs = rebalanceRomanceFinalSources(narrativeWeightedRankedDocs, rankingPoolForFinal, finalLimit)
     .filter((doc: any) => !isMetaReferenceWork(doc))
     .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
     .filter((doc: any) => routerFamily !== "historical" || !isHistoricalPrimaryOrNonNarrative(doc));
   const finalRankedDocs = (() => {
     if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
     const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
-    const refill = rankingPool
+    const refill = rankingPoolForFinal
       .filter((doc: any) => !isMetaReferenceWork(doc))
       .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
       .filter((doc: any) => routerFamily !== "historical" || !isHistoricalPrimaryOrNonNarrative(doc))
