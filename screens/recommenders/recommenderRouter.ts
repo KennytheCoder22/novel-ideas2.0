@@ -42,13 +42,6 @@ const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
 const MIN_POOL_FOR_NYT_INJECTION = 14;
 const MAX_NYT_ANCHOR_INJECTIONS = 2;
 const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
-const GOOGLE_BOOKS_QUERY_TIMEOUT_MS = 4500;
-const OPEN_LIBRARY_QUERY_TIMEOUT_MS = 4000;
-const TOTAL_RECOMMENDATION_BUDGET_MS = 12000;
-const QUERY_CACHE_TTL_MS = 5 * 60 * 1000;
-const MIN_GOOGLE_RAW_BEFORE_OPEN_LIBRARY = 12;
-
-const queryResultCache = new Map<string, { expiresAt: number; result: RecommendationResult }>();
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -2891,8 +2884,7 @@ export async function getRecommendations(
       if (sourceEnabled.googleBooks) queryLanes.push({ query: fallbackLaneQuery, laneKind: "core", source: "googleBooks", queryFamily: rungFamily, queryRung: Number((rung as any)?.rung ?? 0) });
     }
 
-    const laneTasks = queryLanes.map(async (lane: any) => {
-      if (Date.now() - recommendationStartMs > TOTAL_RECOMMENDATION_BUDGET_MS) return null;
+    for (const lane of queryLanes) {
       const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || rungFamily;
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
@@ -3333,11 +3325,11 @@ export async function getRecommendations(
   };
 
   const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
-  const googleBooksUnavailable = Number(aggregatedRawFetched.googleBooks || 0) === 0;
-  const allowNytInjections = !googleBooksUnavailable && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
-  const nytAnchorResult = googleBooksUnavailable
+  const googleFetchFailureDetected = Number(aggregatedRawFetched.googleBooks || 0) === 0;
+  const allowNytInjections = !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
+  const nytAnchorResult = googleFetchFailureDetected
     ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
-    : await fetchNytAnchorDocs(routedInput, activeFamily);
+    : await fetchNytAnchorDocs(routedInput, routerFamily);
   nytAnchorDebug = { ...nytAnchorResult.debug, allowInjections: allowNytInjections };
 
   if (nytAnchorResult.docs.length) {
@@ -3348,11 +3340,9 @@ export async function getRecommendations(
     candidateDocs = capNytAnchorInjections(mergedBestsellers.docs);
     candidateDocs = candidateDocs.filter((doc) => {
       if (!isNytAnchorDoc(doc)) return true;
-      const familyMatch = nytAnchorMatchesFamily(doc, activeFamily);
+      const familyMatch = nytAnchorMatchesFamily(doc, routerFamily);
       const toneSimilarity = Number((doc as any)?.nytToneSimilarity || 0);
-      const keep = familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
-      if (!keep) anchorRejectedForWeakAlignment += 1;
-      return keep;
+      return familyMatch || toneSimilarity >= NYT_TONE_SIMILARITY_THRESHOLD;
     });
     nytAnchorDebug = {
       ...nytAnchorDebug,
@@ -3364,22 +3354,22 @@ export async function getRecommendations(
     debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
   }
 
-  if (!isHybridMode && activeFamily === "thriller") {
+  if (!isHybridMode && routerFamily === "thriller") {
     candidateDocs = candidateDocs.filter((doc: any) => {
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
-      return !family || family === "thriller" || family === "mystery" || family === "science_fiction" || family === "speculative";
+      return !family || family === "thriller" || family === "mystery";
     });
   }
 
   if (!isHybridMode) {
     candidateDocs = candidateDocs.map((doc: any) => ({
       ...doc,
-      queryFamily: activeFamily,
-      primaryLane: activeFamily,
+      queryFamily: routerFamily,
+      primaryLane: routerFamily,
       diagnostics: {
         ...(doc?.diagnostics || {}),
-        queryFamily: activeFamily,
-        primaryLane: activeFamily,
+        queryFamily: routerFamily,
+        primaryLane: routerFamily,
       },
     }));
   }

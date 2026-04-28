@@ -65,7 +65,6 @@ const ANCHOR_SCORE_CAP = 10;
 const NEGATIVE_TASTE_MISMATCH_PENALTY = -10;
 const MIN_TASTE_SCORE_FOR_RANKING = -2;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
-const TARGET_MIN_RESULTS_FOR_MEDIUM_POOL = 7;
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after filtering/ranking behavior is confirmed stable.
@@ -413,16 +412,16 @@ function authorityScore(c: Candidate): number {
   const publisher = normalize(c.publisher);
   const mainstreamPublisher = /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|little brown|sourcebooks|berkley|delacorte|orbit|scribner|putnam)\b/.test(publisher);
 
-  let score = 0;
-  if (highAuthoritySignal(c)) score += 7;
-  if (ratings >= 10000) score += 4;
-  else if (ratings >= 3000) score += 3;
-  else if (ratings >= 1000) score += 2;
-  else if (ratings >= 200) score += 1;
-  else if (ratings > 0) score += 0.5;
-  if (ratings === 0 && (canonicalSignal || mainstreamPublisher)) score += 1;
-  if (crossSourcePresence(c) >= 2) score += 3;
-  return score;
+  if (ratings >= 10000) return 8;
+  if (ratings >= 3000) return 6;
+  if (ratings >= 1000) return 5;
+  if (ratings >= 200) return 3;
+  if (ratings >= 50) return 1.5;
+  if (ratings === 0 && (canonicalSignal || mainstreamPublisher)) return -1.5;
+  if (ratings >= 10) return 0;
+  if (ratings > 0) return -5;
+
+  return -7;
 }
 
 function hasFictionSignals(c: Candidate): boolean {
@@ -465,14 +464,10 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     ratings < 25 &&
     !hasCommercialShape &&
     !Boolean((c.rawDoc as any)?.commercialSignals?.bestseller);
-  const repeatedFormulaSpam =
-    ((knownFormulaAuthor && ratings < 50) || formulaicTitle) && repetitiveDomesticPattern;
+  const repeatedFormulaSpam = ((knownFormulaAuthor && ratings < 50) || formulaicTitle) && repetitiveDomesticPattern;
+  if (repeatedFormulaSpam && weakAuthorityThriller) {
 
-  if (
-    (knownFormulaAuthor && ratings < 200) ||
-    (formulaicTitle && weakAuthorityThriller) ||
-    (repeatedFormulaSpam && weakAuthorityThriller)
-  ) {
+  if ((knownFormulaAuthor && ratings < 200) || (formulaicTitle && weakAuthorityThriller)) {
     return {
       reject: true,
       reason: 'formula_series_spam',
@@ -981,6 +976,8 @@ function metadataConfidencePenalty(c: Candidate): number {
   if (trust <= 1 && !hasShape) return -18;
   if (trust <= 2 && ratings < 25 && !hasShape) return -10;
   if (ratings === 0 && desc < 80 && !hasNarrativeSignal && !hasAuthorAffinity) return -14;
+  if (trust <= 1 && !hasShape) return -18;
+  if (trust <= 2 && ratings < 25 && !hasShape) return -10;
   return 0;
 }
 
@@ -992,6 +989,7 @@ function lowRatingsPenalty(c: Candidate): number {
   const hasAffinity = twentyQPersonalAffinityScore(c) >= 3;
   if (ratings === 0 && !hasNarrativeSignal && !hasAffinity) return -18;
   if (ratings === 0) return -14;
+  if (ratings === 0) return -16;
   if (ratings < 10) return -10;
   if (ratings < 30) return -6;
   return 0;
@@ -1076,25 +1074,20 @@ function hasStrongNarrativeOrAuthoritySignal(c: Candidate): boolean {
 
 function rescuePenaltyScore(c: Candidate): number {
   const diagnostics = getFilterDiagnostics(c);
-  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
     ? diagnostics.filterPassedChecks
     : Array.isArray(diagnostics?.passedChecks)
       ? diagnostics.passedChecks
       : [];
   const rescuePenaltyCount = passedChecks.filter((check) => check === "borderline_rescue_penalty").length;
-  const pagecountOverrideCount = passedChecks.filter((check) => check === "pagecount_shape_floor_override").length;
   const stackedSoft = passedChecks.filter((check) =>
     check === "soft_missing_narrative_signal" ||
     check === "soft_missing_thriller_signal" ||
     check === "soft_minimum_authority_floor_miss"
   ).length;
-  const rescueStack = rescuePenaltyCount + pagecountOverrideCount;
-  const protectedRescue = Boolean(flags.strongNarrative && (flags.authorAffinity || flags.legitAuthority));
-  if (protectedRescue) return rescueStack >= 2 ? -2 : 0;
-  if (rescueStack >= 2) return -10;
-  if (rescueStack >= 1 && stackedSoft >= 1) return -8;
-  return rescueStack >= 1 ? -4 : 0;
+  if (rescuePenaltyCount >= 2) return -8;
+  if (rescuePenaltyCount >= 1 && stackedSoft >= 1) return -6;
+  return rescuePenaltyCount >= 1 ? -3 : 0;
 }
 
 function rankingPriorityBoost(c: Candidate): number {
@@ -1102,43 +1095,11 @@ function rankingPriorityBoost(c: Candidate): number {
   const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   const rung = evidenceRank(c);
   let score = 0;
-  if (flags.authorAffinity || flags.legitAuthority || highAuthoritySignal(c)) score += 12;
-  if (flags.strongNarrative) score += 2;
-  if (twentyQPersonalAffinityScore(c) >= 2.5 || computeToneMatchScore(c) >= 2) score += 5;
-  if (laneBlendScore(c) >= 2) score += 4;
+  if (flags.strongNarrative) score += 8;
+  if (flags.authorAffinity || flags.legitAuthority) score += 6;
   if (rung >= 1 && rung <= 3) score += 4;
   else if (rung === 0) score -= 3;
   return score;
-}
-
-function lowSignalPenalty(c: Candidate): number {
-  const diagnostics = getFilterDiagnostics(c);
-  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
-  const descriptionLength = String(c.description || '').trim().length;
-  const title = normalize(c.title);
-  const isOpenLibrary = isOpenLibraryCandidate(c);
-  const genericTitle = /\b(horror|thriller|mystery|novel|book|stories)\b/.test(title) && title.split(' ').length <= 3;
-  let penalty = 0;
-  if (!isOpenLibrary && (c.ratingCount || 0) === 0) penalty -= 5;
-  if (!normalize(c.author) || normalize(c.author) === 'unknown') penalty -= 3;
-  if (genericTitle) penalty -= 3;
-  if (!isOpenLibrary && descriptionLength < 80 && !flags.authorAffinity && !flags.legitAuthority) penalty -= 3;
-  return penalty;
-}
-
-function syntheticTitlePenalty(c: Candidate): number {
-  const text = normalize(`${c.title || ''} ${c.subtitle || ''}`);
-  let penalty = 0;
-  if (/\ba gripping\b|\ba jaw dropping\b|\bheart[- ]stopping\b|\bpage[- ]turner\b/.test(text)) penalty -= 6;
-  if (/\bbook\s*\d+\b|\bin series\b|\binstallment\b/.test(text)) penalty -= 5;
-  if (/\bfrom the bestselling author\b|\bmust[- ]read\b|\bunputdownable\b|\bthriller sensation\b/.test(text)) penalty -= 6;
-  return penalty;
-}
-
-function authorityTier(c: Candidate, breakdown: ScoreBreakdown): number {
-  if (highAuthoritySignal(c) || breakdown.authorityScore >= 30) return 2;
-  if (breakdown.authorityScore >= 15) return 1;
-  return 0;
 }
 
 
@@ -1979,15 +1940,12 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const emotionalWeight = emotionalWeightScore(c);
   const openLibraryRecoveredBoost =
     isOpenLibraryCandidate(c) && passesOpenLibrarySelectionFloor(c) ? 6 : 0;
-  const crossSourceBoost = crossSourcePresence(c) >= 2 ? 6 : 0;
   const noveltyPenalty = noveltyTitlePenalty(c);
   const confidencePenalty = metadataConfidencePenalty(c) + lowRatingsPenalty(c);
   const seriesFormulaPenalty = formulaSeriesPenalty(c);
   const genericQueryPenalty = genericRungPenalty(c);
   const rescuePenalty = rescuePenaltyScore(c);
   const rankingPriority = rankingPriorityBoost(c);
-  const lowSignal = lowSignalPenalty(c);
-  const syntheticPenalty = syntheticTitlePenalty(c);
   const axisAlignment = tasteAxisAlignmentBoost(c, taste);
   const classicPenalty = classicDominancePenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
@@ -2029,7 +1987,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + lowSignal + syntheticPenalty + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + crossSourceBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 
@@ -2101,9 +2060,7 @@ function canTakeCandidate(
   const lane = laneFamilyForCandidate(candidate);
   if (lane === "thriller" && subtypeCounts) {
     const subtype = thrillerSubtype(candidate);
-    const cap = targetCount >= 8
-      ? Math.min(3, Math.max(1, Math.floor(targetCount * 0.4)))
-      : Math.max(1, Math.floor(targetCount * 0.4));
+    const cap = Math.max(1, Math.floor(targetCount * 0.4));
     const current = subtypeCounts.get(subtype) || 0;
     if (selected.length >= 5 && current >= cap) return false;
   }
@@ -2133,6 +2090,12 @@ function isFallbackEligibleCandidate(c: Candidate): boolean {
     hasMinimumShapeForFallback(c) &&
     passedChecks.includes('passed_content_gate')
   );
+}
+
+function isTierAStrongNarrativeCandidate(c: Candidate): boolean {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  return Boolean(flags.strongNarrative);
 }
 
 function laneFamilyForCandidate(c: Candidate): string {
@@ -2253,7 +2216,6 @@ function thrillerSubtype(c: Candidate): string {
   return "general_thriller";
 }
 
-// Top-level export intentionally kept at module scope (post-merge cleanup guard).
 export function finalRecommenderForDeck(
   candidates: Candidate[],
   _deckKey: DeckKey,
@@ -2395,9 +2357,10 @@ export function finalRecommenderForDeck(
   });
 
   const TIER_B_SCORE_THRESHOLD = ordered.length >= 15 ? 14 : 22;
-  const tierA = ordered.filter((entry) => authorityTier(entry.candidate, entry.breakdown) >= 2);
+  const TIER_B_SCORE_THRESHOLD = 22;
+  const tierA = ordered.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
   const tierB = ordered.filter((entry) =>
-    authorityTier(entry.candidate, entry.breakdown) === 1 &&
+    !isTierAStrongNarrativeCandidate(entry.candidate) &&
     isFallbackEligibleCandidate(entry.candidate) &&
     entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
   );
@@ -2441,25 +2404,18 @@ export function finalRecommenderForDeck(
   const thrillerSubtypeCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
   const HIGH_CONFIDENCE_TARGET = 4;
-  const tierAEntries = displayPool.filter((entry) => authorityTier(entry.candidate, entry.breakdown) >= 2);
-  const tierBEntries = displayPool.filter((entry) => authorityTier(entry.candidate, entry.breakdown) === 1);
-  const tierCEntries = displayPool.filter((entry) => authorityTier(entry.candidate, entry.breakdown) === 0);
-  const tierATarget = Math.min(MAX_RESULTS, Math.max(4, Math.ceil(MAX_RESULTS * 0.6)));
-  const tierBTarget = Math.min(MAX_RESULTS - tierATarget, 3);
 
   seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
-  const highConfidencePool = tierAEntries.filter((entry) => isHighConfidenceEntry(entry));
+  const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
   pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
-  pickFromPool(tierAEntries, selected, authorCounts, tierATarget, thrillerSubtypeCounts, MAX_RESULTS);
-  pickFromPool(tierBEntries, selected, authorCounts, Math.min(MAX_RESULTS, tierATarget + tierBTarget), thrillerSubtypeCounts, MAX_RESULTS);
-  if (selected.length < TARGET_MIN_RESULTS_FOR_MEDIUM_POOL) {
-    pickFromPool(tierCEntries, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
-  }
+  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
     pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
-  } else if (selected.length < TARGET_MIN_RESULTS_FOR_MEDIUM_POOL && ordered.length >= 10) {
-    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_FOR_MEDIUM_POOL), thrillerSubtypeCounts, MAX_RESULTS);
   }
+  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS);
+  const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
+  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET));
+  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS);
 
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);

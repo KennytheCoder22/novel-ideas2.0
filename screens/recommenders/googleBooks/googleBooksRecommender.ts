@@ -585,43 +585,10 @@ function toGoogleBooksQuery(query: string): string {
   const q = normalizeStoredQueryText(query);
   if (!q) return "";
   return q
-    .replace(/^"(.*)"$/, "$1")
     .replace(/\s-\w[\w-]*/g, " ")
     .replace(/\s-\"[^\"]+\"/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-const MIN_RESULTS_PER_QUERY = 10;
-const MAX_QUERY_RETRIES = 3;
-const GOOGLE_QUERY_CACHE_TTL_MS = 5 * 60 * 1000;
-let googleQuotaSafeUntil = 0;
-const googleQueryCache = new Map<string, { expiresAt: number; docs: any[] }>();
-
-function simplifyGoogleQuery(query: string): string {
-  return normalizeStoredQueryText(query)
-    .replace(/\b(dark|emotional|character driven|relationship driven|literary|gritty|intense|atmospheric|moody)\b/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function isValidGoogleQuery(query: string): boolean {
-  const q = normalizeStoredQueryText(query);
-  if (!q) return false;
-  if (q === "novel" || q === "book" || q === "fiction") return false;
-  return q.split(" ").length >= 2;
-}
-
-function broaderFallbackForFamily(query: string): string {
-  const q = normalizeStoredQueryText(query);
-  if (/\bthriller\b/.test(q)) return "thriller novel";
-  if (/\bmystery\b/.test(q)) return "mystery novel";
-  if (/\bhorror\b/.test(q)) return "horror novel";
-  if (/\bscience fiction\b|\bsci[- ]?fi\b/.test(q)) return "science fiction novel";
-  if (/\bfantasy\b/.test(q)) return "fantasy novel";
-  if (/\bromance\b/.test(q)) return "romance novel";
-  if (/\bhistorical\b/.test(q)) return "historical fiction novel";
-  return "fiction novel";
 }
 
 function buildToneAwareEngineQueries(query: string, input: RecommenderInput): string[] {
@@ -829,16 +796,45 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
           });
         }
 
-        if (Array.isArray(rawDocs) && rawDocs.length >= MIN_RESULTS_PER_QUERY) break;
-        if (retryIndex < retryQueries.length - 1) {
-          queryWasRetried = true;
-          retryCount += 1;
-          fallbackUsed = "google_retry";
+      try {
+        rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs);
+      } catch (err: any) {
+        // Retry with a simplified payload before declaring source failure.
+        const simplifiedQuery = normalizeStoredQueryText(engineQuery)
+          .replace(/\s-\w[\w-]*/g, " ")
+          .replace(/\s-\"[^\"]+\"/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        if (simplifiedQuery && simplifiedQuery !== normalizeStoredQueryText(engineQuery)) {
+          try {
+            rawDocs = await googleBooksSearch(simplifiedQuery, fetchLimit, timeoutMs);
+          } catch {
+            rawDocs = [];
+          }
         }
-      }
 
-      if (!Array.isArray(rawDocs) || rawDocs.length === 0) {
-        zeroResultCause = fetchFailed ? "fetch_error" : "query";
+        if (!Array.isArray(rawDocs) || rawDocs.length === 0) {
+          console.error("GoogleBooks fetch failed", {
+            engineQuery,
+            simplifiedQuery,
+            queryIndex,
+            builtFromQuery,
+            message: err?.message || String(err || "unknown error"),
+          });
+
+          rawPoolRows.push({
+            title: "[GOOGLE_BOOKS_FETCH_ERROR]",
+            author: undefined,
+            source: "googleBooks",
+            queryText: q,
+            engineQueryText: engineQuery,
+            queryRung: queryIndex,
+            laneKind,
+            error: err?.message || String(err || "unknown error"),
+          });
+
+          rawDocs = [];
+        }
       }
       const rawAuthorCappedDocs = capRawDocsPerAuthor(rawDocs, queryFamily, 2);
 
