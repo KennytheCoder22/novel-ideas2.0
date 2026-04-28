@@ -138,6 +138,12 @@ function buildQueries(input: RecommenderInput): string[] {
     /\b(historical fiction|historical novel|19th century|period fiction|civil war|world war|gilded age|victorian|war historical fiction|society historical fiction)\b/.test(historicalIntentText);
 
   if (historicalIntentDetected) {
+    const singleRungQuery = input.bucketPlan?.rungs?.length === 1
+      ? String(input.bucketPlan.rungs[0]?.query || input.bucketPlan.rungs[0]?.primary || "").trim()
+      : "";
+    if (singleRungQuery) {
+      return [singleRungQuery];
+    }
     const queries = [...canonicalHistoricalPack];
     if (new Set(queries).size !== 4) {
       throw new Error("Historical queries collapsed");
@@ -254,7 +260,7 @@ async function fetchJson(url: string): Promise<{ ok: boolean; status: number; da
 export async function getOpenLibraryRecommendations(
   input: RecommenderInput
 ): Promise<RecommendationResult> {
-  let queries = buildQueries(input);
+  const queries = buildQueries(input);
   const family = (() => {
     const inferred = inferFamily(input);
     const text = queries.join(" ").toLowerCase();
@@ -280,19 +286,6 @@ export async function getOpenLibraryRecommendations(
       builtFromQuery: "",
       items: []
     };
-  }
-
-  if (family === "historical") {
-    const historicalOpenLibraryQueries = [
-      "historical fiction novel",
-      "19th century historical fiction novel",
-      "war historical fiction novel",
-      "society historical fiction novel"
-    ];
-    queries = [...historicalOpenLibraryQueries];
-    if (new Set(historicalOpenLibraryQueries).size !== 4) {
-      throw new Error("Adults Historical Open Library queries collapsed before fetch");
-    }
   }
 
   for (let i = 0; i < queries.length; i++) {
