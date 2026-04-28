@@ -3302,18 +3302,21 @@ const normalizedCandidatesRaw = [
           (candidateScoreValue(b) - candidateScoreValue(a))
         )
       : postFilteredRankedDocs;
+  const applyHistoricalHardNarrativeFilter =
+    routerFamily === "historical" &&
+    Math.max(narrativeWeightedRankedDocs.length, rankingPoolForFinal.length) >= finalLimit * 2;
 
   const metaSafeRankedDocs = rebalanceRomanceFinalSources(narrativeWeightedRankedDocs, rankingPoolForFinal, finalLimit)
     .filter((doc: any) => !isMetaReferenceWork(doc))
     .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
-    .filter((doc: any) => routerFamily !== "historical" || !isHistoricalPrimaryOrNonNarrative(doc));
+    .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc));
   const finalRankedDocs = (() => {
     if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
     const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPoolForFinal
       .filter((doc: any) => !isMetaReferenceWork(doc))
       .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
-      .filter((doc: any) => routerFamily !== "historical" || !isHistoricalPrimaryOrNonNarrative(doc))
+      .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc))
       .filter((doc: any) => {
         const key = candidateKey(doc);
         return Boolean(key) && !existing.has(key);
