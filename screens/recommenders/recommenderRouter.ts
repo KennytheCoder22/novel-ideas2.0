@@ -161,6 +161,38 @@ function isMetaReferenceWork(doc: any): boolean {
   return /\b(letter|letters|log|reconsidered|commentary|criticism|analysis|study|studies|guide|companion|readalong|history|lives|meditations|tao te ching|selected works|complete works|collected works|reference|history and criticism|study guide|bibliograph(?:y|ies)|encyclopedia|catalog(?:ue)?|handbook|guide to)\b/.test(combined);
 }
 
+function isScienceFictionMetaCollection(doc: any): boolean {
+  const text = [
+    doc?.title,
+    doc?.description,
+    doc?.subtitle,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.description,
+    doc?.rawDoc?.subtitle,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  return /\b(collection|anthology|hall of fame|selected|complete|stories|short|volume|criticism|essays|language of|guide|companion|baker['’]?s dozen)\b/.test(text);
+}
+
+function scienceFictionNarrativeQualityScore(doc: any): number {
+  const text = [
+    doc?.title,
+    doc?.description,
+    doc?.subtitle,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  const pageCount = Number(doc?.pageCount ?? doc?.rawDoc?.pageCount ?? doc?.rawDoc?.number_of_pages_median ?? 0);
+  let score = 0;
+  if (/\b(novel|book \d+|trilogy|series)\b/.test(text)) score += 2;
+  if (pageCount >= 140) score += 1;
+  if (pageCount > 0 && pageCount < 90) score -= 2;
+  if (/\b(collection|anthology|stories|short stories|essays|criticism|language of|guide|companion|hall of fame)\b/.test(text)) score -= 4;
+  return score;
+}
+
 function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey): boolean {
   const narrativeText = [doc?.title, doc?.description].filter(Boolean).join(" ").toLowerCase();
   const text = [
@@ -1506,7 +1538,8 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
   if (family === "science_fiction") return [
     { rung: 80, query: "science fiction novel" },
     { rung: 81, query: "dystopian science fiction novel" },
-    { rung: 82, query: "space opera science fiction" },
+    { rung: 82, query: "space opera science fiction novel" },
+    { rung: 83, query: "survival science fiction novel" },
   ];
   if (family === "romance") return [
     { rung: 90, query: "romance novel" },
@@ -1708,6 +1741,42 @@ function candidateKey(candidate: any): string {
 function candidateScoreValue(candidate: any): number {
   const raw = Number(candidate?.score ?? candidate?.diagnostics?.postFilterScore ?? candidate?.diagnostics?.preFilterScore ?? 0);
   return Number.isFinite(raw) ? raw : 0;
+}
+
+function normalizeWorkToken(value: unknown): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function collapseCrossRungDuplicates<T extends { title?: string; author?: string; author_name?: string[]; rawDoc?: any; queryRung?: number }>(docs: T[]): T[] {
+  const bestByWork = new Map<string, T>();
+  const rankFor = (doc: any) => Number(doc?.rawDoc?.queryRung ?? doc?.queryRung ?? 999);
+
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const title = normalizeWorkToken(doc?.title ?? doc?.rawDoc?.title);
+    const author = normalizeWorkToken(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author ?? doc?.rawDoc?.author);
+    if (!title) continue;
+    const key = `${title}|${author}`;
+    const existing = bestByWork.get(key);
+    if (!existing) {
+      bestByWork.set(key, doc);
+      continue;
+    }
+    const rungCurrent = rankFor(doc);
+    const rungExisting = rankFor(existing);
+    if (rungCurrent < rungExisting) {
+      bestByWork.set(key, doc);
+      continue;
+    }
+    if (rungCurrent === rungExisting && candidateScoreValue(doc) > candidateScoreValue(existing)) {
+      bestByWork.set(key, doc);
+    }
+  }
+
+  return Array.from(bestByWork.values());
 }
 
 
@@ -2399,14 +2468,34 @@ export async function getRecommendations(
     science_fiction: [
       "science fiction novel",
       "dystopian science fiction novel",
+      "space opera science fiction novel",
       "survival science fiction novel",
-      "space science fiction novel",
     ],
   };
   const forcedRungs = canonicalFamilyRungs[routerFamily];
   if (forcedRungs?.length) {
     rungs = forcedRungs.map((query, index) => ({ rung: index, query, queryFamily: routerFamily }));
   }
+
+  const ensureUniqueRungQueries = (rungList: any[], family: RouterFamilyKey) => {
+    const seen = new Set<string>();
+    const fallback = (canonicalFamilyRungs[family] || []).map((q) => String(q || "").trim()).filter(Boolean);
+    return (Array.isArray(rungList) ? rungList : []).map((r: any, index: number) => {
+      const current = String(r?.query || "").trim();
+      const key = normalizeQueryKey(current);
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        return r;
+      }
+      const replacement = fallback.find((q) => {
+        const qKey = normalizeQueryKey(q);
+        return Boolean(qKey) && !seen.has(qKey);
+      }) || `${family.replace("_", " ")} novel ${index + 1}`;
+      seen.add(normalizeQueryKey(replacement));
+      return { ...r, query: replacement };
+    });
+  };
+  rungs = ensureUniqueRungQueries(rungs, routerFamily);
 
 
   if (isHybridMode) {
@@ -2781,12 +2870,13 @@ function buildRungDiagnostics(candidates: any[]) {
   };
 }
 
-const normalizedCandidates = [
+const normalizedCandidatesRaw = [
     ...googleCandidates,
     ...openLibraryCandidates,
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeGcd ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
+  const normalizedCandidates = collapseCrossRungDuplicates(normalizedCandidatesRaw as any);
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
 
@@ -2932,13 +3022,23 @@ const normalizedCandidates = [
   const postFilteredRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
 
-  const metaSafeRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit)
-    .filter((doc: any) => !isMetaReferenceWork(doc));
+  const narrativeWeightedRankedDocs =
+    routerFamily === "science_fiction"
+      ? [...postFilteredRankedDocs].sort((a: any, b: any) =>
+          (scienceFictionNarrativeQualityScore(b) - scienceFictionNarrativeQualityScore(a)) ||
+          (candidateScoreValue(b) - candidateScoreValue(a))
+        )
+      : postFilteredRankedDocs;
+
+  const metaSafeRankedDocs = rebalanceRomanceFinalSources(narrativeWeightedRankedDocs, rankingPool, finalLimit)
+    .filter((doc: any) => !isMetaReferenceWork(doc))
+    .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc));
   const finalRankedDocs = (() => {
     if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
     const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPool
       .filter((doc: any) => !isMetaReferenceWork(doc))
+      .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
       .filter((doc: any) => {
         const key = candidateKey(doc);
         return Boolean(key) && !existing.has(key);
