@@ -325,7 +325,7 @@ function isWeakSeriesSpam(title: string, doc: any, hasDescription: boolean, hasR
 
 
 function isHistoricalMetaLiteraryLeak(combined: string): boolean {
-  return /\b(history of the novel|technique and spirit of the .*historical novel|study of the .*novel|studies of the .*novel|criticism|literary criticism|critical survey|companion|guide to|bibliography|catalogue|catalog|handbook|reference|the english historical novel|development of .*novel|novels? and tales?)\b/.test(combined);
+  return /\b(history of the novel|technique and spirit of the .*historical novel|study of the .*novel|studies of the .*novel|criticism|literary criticism|critical survey|companion|guide to|bibliography|catalogue|catalog|handbook|reference|the english historical novel|development of .*novel|novels? and tales?|letters?\b|journal\b|diar(?:y|ies)\b|memoir\b|biograph(?:y|ical)\b|author studies?\b|essays?\b|papers?\b|reader)\b/.test(combined);
 }
 
 function hasHistoricalNarrativeSignal(combined: string): boolean {
@@ -829,6 +829,9 @@ function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
 
   const classicAuthorSignal =
     /\b(h\.?g\.?\s*wells|jules verne|mary shelley|isaac asimov|frank herbert|arthur c\.?\s*clarke|philip k\.?\s*dick|iain m\.?\s*banks)\b/.test(author);
+  const metaNarrativeLeak =
+    /\b(reference|guide|criticism|literary criticism|study of|analysis of|companion to|anthology|collection|history of|bibliography|catalogue?|handbook|reader|letters?\b|journal\b|diar(?:y|ies)\b|memoir\b|biograph(?:y|ical)\b|author studies?\b)\b/.test(combined) &&
+    !/\b(novel|fiction|historical fiction|thriller|mystery|romance|science fiction|fantasy)\b/.test(categories);
 let fictionPositive =
   (
     /\b(novel|thriller|suspense|dystopian|survival|science fiction|fantasy|horror|romance|historical fiction|literary fiction|young adult)\b/.test(
@@ -837,11 +840,12 @@ let fictionPositive =
     /\b(follows|story of|must survive|must uncover|investigates|disappearance|serial killer|murder case)\b/.test(description) ||
     classicAuthorSignal
   ) &&
-  !/\b(reference|guide|criticism|study of|analysis of|companion to|anthology|collection)\b/.test(combined);
+  !metaNarrativeLeak;
   let strongNarrative =
     /\b(red dragon|mr\.? mercedes|killing me softly|silence of the lambs|gone girl)\b/.test(title) ||
     /\b(follows|story of|when .* discovers|must survive|after .* happens|trapped in|haunted by|must confront|investigates|must uncover|survive|escape|killer|serial killer|detective|investigation|disappearance|missing|obsession)\b/.test(description) ||
-    classicAuthorSignal;
+    (classicAuthorSignal && !metaNarrativeLeak);
+  strongNarrative = strongNarrative && !metaNarrativeLeak;
 
   const genericTitle =
     /^\s*novels?\b/.test(title) ||
