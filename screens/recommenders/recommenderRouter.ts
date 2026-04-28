@@ -2510,6 +2510,25 @@ export async function getRecommendations(
       "survival science fiction novel",
     ],
   };
+  const canonicalHistoricalQueries = [
+    "historical fiction novel",
+    "19th century historical fiction novel",
+    "war historical fiction novel",
+    "society historical fiction novel",
+  ];
+  if (new Set(canonicalHistoricalQueries).size !== canonicalHistoricalQueries.length) {
+    throw new Error("Duplicate historical queries generated");
+  }
+
+  const historicalIntentInRungs = rungs.some((r: any) =>
+    /\b(historical fiction|historical novel|19th century|war historical fiction|society historical fiction|period fiction|civil war|gilded age|victorian)\b/.test(
+      String(r?.query || r?.primary || "").toLowerCase()
+    )
+  );
+  if (routerFamily === "historical" || historicalIntentInRungs) {
+    rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
+  }
+
   const forcedRungs = canonicalFamilyRungs[routerFamily];
   if (forcedRungs?.length) {
     rungs = forcedRungs.map((query, index) => ({ rung: index, query, queryFamily: routerFamily }));
