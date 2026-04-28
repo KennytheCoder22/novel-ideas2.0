@@ -2861,11 +2861,27 @@ export async function getRecommendations(
   if (!isHybridMode) {
     candidateDocs = candidateDocs.map((doc: any) => ({
       ...doc,
-      queryFamily: routerFamily,
+      queryFamily:
+        (String(doc?.laneKind || doc?.rawDoc?.laneKind || "").toLowerCase() === "historical" ||
+         String(doc?.filterFamily || doc?.rawDoc?.filterFamily || doc?.diagnostics?.filterFamily || "").toLowerCase() === "historical")
+          ? "historical"
+          : (normalizeRouterFamilyValue(doc?.queryFamily || doc?.rawDoc?.queryFamily || doc?.diagnostics?.queryFamily || routerFamily) || routerFamily),
+      filterFamily:
+        (String(doc?.laneKind || doc?.rawDoc?.laneKind || "").toLowerCase() === "historical")
+          ? "historical"
+          : (normalizeRouterFamilyValue(doc?.filterFamily || doc?.rawDoc?.filterFamily || doc?.diagnostics?.filterFamily || routerFamily) || routerFamily),
       primaryLane: routerFamily,
       diagnostics: {
         ...(doc?.diagnostics || {}),
-        queryFamily: routerFamily,
+        queryFamily:
+          (String(doc?.laneKind || doc?.rawDoc?.laneKind || "").toLowerCase() === "historical" ||
+           String(doc?.filterFamily || doc?.rawDoc?.filterFamily || doc?.diagnostics?.filterFamily || "").toLowerCase() === "historical")
+            ? "historical"
+            : (normalizeRouterFamilyValue(doc?.queryFamily || doc?.rawDoc?.queryFamily || doc?.diagnostics?.queryFamily || routerFamily) || routerFamily),
+        filterFamily:
+          (String(doc?.laneKind || doc?.rawDoc?.laneKind || "").toLowerCase() === "historical")
+            ? "historical"
+            : (normalizeRouterFamilyValue(doc?.filterFamily || doc?.rawDoc?.filterFamily || doc?.diagnostics?.filterFamily || routerFamily) || routerFamily),
         primaryLane: routerFamily,
       },
     }));
@@ -3041,10 +3057,29 @@ const normalizedCandidatesRaw = [
   }
 
   const quotaPool = buildLaneQuotaPool(basePool, finalLimit);
-  const rankingPool =
+  const rankingPoolRaw =
     routerFamily === "historical"
       ? ensureHistoricalRungDiversity(quotaPool, finalLimit)
       : ensureRungCoverage(quotaPool, finalLimit);
+  const rankingPool = rankingPoolRaw.map((candidate: any) => {
+    const isHistoricalLane = String(candidate?.laneKind || candidate?.rawDoc?.laneKind || "").toLowerCase() === "historical";
+    if (!isHistoricalLane) return candidate;
+    return {
+      ...candidate,
+      queryFamily: "historical",
+      filterFamily: "historical",
+      rawDoc: {
+        ...(candidate?.rawDoc || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      },
+      diagnostics: {
+        ...(candidate?.diagnostics || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      },
+    };
+  });
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => {
     const filterDiagnostics = c?.rawDoc?.diagnostics?.filterDiagnostics ?? c?.diagnostics?.filterDiagnostics;
