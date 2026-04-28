@@ -110,6 +110,27 @@ function hasOpenLibraryCoverSignal(doc: any): boolean {
   return Boolean(doc?.cover_i || doc?.cover_edition_key || doc?.edition_key?.length);
 }
 
+function docSignalText(doc: any): string {
+  const title = normalizeText(doc?.title);
+  const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name.join(" ") : doc?.author_name);
+  const subjects = Array.isArray(doc?.subject) ? doc.subject.map(normalizeText).join(" ") : "";
+  const publishers = Array.isArray(doc?.publisher) ? doc.publisher.map(normalizeText).join(" ") : "";
+  const firstSentence = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence);
+  return [title, author, subjects, publishers, firstSentence].filter(Boolean).join(" ");
+}
+
+function hasFamilySignal(doc: any, family: string): boolean {
+  const text = docSignalText(doc);
+  if (!text) return false;
+  if (family === "fantasy") return /\b(fantasy|magic|wizard|witch|dragon|fae|mythic|quest|sorcery|kingdom)\b/.test(text);
+  if (family === "horror") return /\b(horror|haunted|ghost|occult|supernatural|vampire|monster|terror|dread)\b/.test(text);
+  if (family === "thriller") return /\b(thriller|mystery|crime|detective|suspense|murder|investigation|conspiracy)\b/.test(text);
+  if (family === "speculative") return /\b(science fiction|sci fi|speculative|dystopian|space opera|time travel|artificial intelligence|ai)\b/.test(text);
+  if (family === "romance") return /\b(romance|love story|regency romance|romantic)\b/.test(text);
+  if (family === "historical") return /\b(historical fiction|historical novel|period fiction|regency|victorian|world war)\b/.test(text);
+  return true;
+}
+
 function looksLikeNoCoverMetaOpenLibraryCandidate(doc: any): boolean {
   if (hasOpenLibraryCoverSignal(doc)) return false;
 
@@ -138,14 +159,7 @@ function isGarbage(doc: any, family: string): boolean {
   if (!title || !author) return true;
   if (looksLikeNoCoverMetaOpenLibraryCandidate(doc)) return true;
 
-  const text = [
-    title,
-    author,
-    Array.isArray(doc?.subject) ? doc.subject.join(" ") : "",
-    Array.isArray(doc?.publisher) ? doc.publisher.join(" ") : ""
-  ]
-    .map(normalizeText)
-    .join(" ");
+  const text = docSignalText(doc);
 
   if (/\b(summary|analysis|study guide|review|criticism|notes|workbook)\b/i.test(text)) return true;
   if (/\b(anthology|collection of stories|short stories|essays)\b/i.test(text)) return true;
@@ -156,8 +170,19 @@ function isGarbage(doc: any, family: string): boolean {
   if (/\b(novel|book|collection|megapack)\b/i.test(title) && title.split(" ").length <= 3) return true;
 
   const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
+  const editionCount = Number((doc as any)?.edition_count || 0);
   const firstSentence = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence);
   if (!firstSentence && ratingsCount === 0) return true;
+
+  const fictionSignal = /\b(novel|fiction|story|stories)\b/.test(text);
+  const referenceShape = /\b(biography|memoir|autobiography|letters|encyclopedia|dictionary|textbook|curriculum|teacher'?s guide)\b/.test(text);
+  if (referenceShape && !fictionSignal) return true;
+
+  if (family !== "general") {
+    const familySignal = hasFamilySignal(doc, family);
+    const hasAuthority = hasOpenLibraryCoverSignal(doc) || ratingsCount > 0 || editionCount >= 3;
+    if (!familySignal && !hasAuthority && !fictionSignal) return true;
+  }
 
   if (family === "fantasy") {
     const obviousFantasySignal =
@@ -226,6 +251,7 @@ export async function getOpenLibraryRecommendations(
   }
 
   const seenKeys = new Set<string>();
+  const seenTitleAuthors = new Set<string>();
 
   const items: RecommendationDoc[] = docsRaw
     .filter(d => d.title && d.key)
@@ -233,6 +259,12 @@ export async function getOpenLibraryRecommendations(
       const key = String(d.key);
       if (seenKeys.has(key)) return false;
       seenKeys.add(key);
+
+      const titleAuthor = `${normalizeText(d.title)}::${normalizeText(Array.isArray(d.author_name) ? d.author_name[0] : d.author_name)}`;
+      if (titleAuthor !== "::") {
+        if (seenTitleAuthors.has(titleAuthor)) return false;
+        seenTitleAuthors.add(titleAuthor);
+      }
       return true;
     })
     .slice(0, intakeLimit)
