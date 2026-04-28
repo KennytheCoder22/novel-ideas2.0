@@ -593,10 +593,10 @@ function buildHistoricalRungs(_intent: QueryIntent, maxRungs = 4) {
   // Historical is an isolated lane. These rungs are intentionally fixed so
   // downstream tuning cannot collapse them back into repeated primary-query calls.
   const queries = [
-    "19th century american novel",
-    "civil war historical fiction novel",
-    "family saga historical fiction novel",
-    "literary historical fiction novel",
+    "historical fiction novel",
+    "19th century historical fiction novel",
+    "war historical fiction novel",
+    "society historical fiction novel",
   ];
 
   return queries.slice(0, Math.max(1, maxRungs)).map((query, i) => ({

@@ -207,7 +207,8 @@ function isHistoricalPrimaryOrNonNarrative(doc: any): boolean {
   const banned = /\b(history|meditations|art of war|biography|essays|letters|philosophy|primary source|treatise|herodotus|marcus aurelius)\b/.test(text);
   const bleed = /\b(harry potter|fantasy|wizard|witch|dragon|magic school|science fiction|time machine|space opera|dystopian)\b/.test(text);
   const historicalSignal = /\b(historical fiction|historical novel|19th century|victorian|war|monarchy|empire|society|regency|gilded age|civil war)\b/.test(text);
-  return banned || bleed || !historicalSignal;
+  const narrativeNovelSignal = /\b(novel|fiction|story of|follows)\b/.test(text);
+  return banned || bleed || (!historicalSignal && !narrativeNovelSignal);
 }
 
 function historicalNarrativeQualityScore(doc: any): number {

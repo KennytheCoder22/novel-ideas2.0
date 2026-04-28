@@ -52,7 +52,12 @@ function expandOpenLibraryLaneQueries(query: string, family: string): string[] {
   if (family === "fantasy") lanes.push("dark fantasy", "epic fantasy");
   if (family === "speculative") lanes.push("science fiction", "speculative fiction");
   if (family === "romance") lanes.push("romance fiction", "contemporary romance");
-  if (family === "historical") lanes.push("historical fiction", "period fiction");
+  if (family === "historical") lanes.push(
+    "historical fiction novel",
+    "19th century historical fiction novel",
+    "war historical fiction novel",
+    "society historical fiction novel"
+  );
 
   return dedupeQueries(lanes);
 }
@@ -116,6 +121,17 @@ function hasUsableSignal(input: RecommenderInput): boolean {
 
 function buildQueries(input: RecommenderInput): string[] {
   const family = inferFamily(input);
+  const canonicalHistoricalPack = [
+    "historical fiction novel",
+    "19th century historical fiction novel",
+    "war historical fiction novel",
+    "society historical fiction novel",
+  ];
+
+  if (family === "historical") {
+    return canonicalHistoricalPack;
+  }
+
   if (input.bucketPlan?.rungs?.length) {
     const base = dedupeQueries(input.bucketPlan.rungs.map(rungToOpenLibraryQuery).filter(Boolean));
     const expanded = dedupeQueries(base.flatMap((q) => expandOpenLibraryLaneQueries(q, family)));
@@ -178,6 +194,16 @@ function isGarbage(doc: any, family: string): boolean {
   if (/\b(summary|analysis|study guide|review|criticism|notes|workbook)\b/i.test(text)) return true;
   if (/\b(anthology|collection of stories|short stories|essays)\b/i.test(text)) return true;
   if (/\b(readings?|reader|companion|guide|reference|bibliography|catalogue?|catalog|survey|history and criticism|literary criticism)\b/i.test(text)) return true;
+
+  if (family === "historical") {
+    const primaryOrNonFiction =
+      /\b(history|meditations|tao te ching|art of war|philosophy|biography|letters|primary source|treatise)\b/.test(text);
+    const nonHistoricalBleed =
+      /\b(harry potter|wizard|witch|dragon|magic school|science fiction|time machine|space opera|dystopian)\b/.test(text);
+    const hasHistoricalSetting =
+      /\b(historical fiction|historical novel|19th century|victorian|civil war|world war|regency|gilded age|war|society|monarchy|empire)\b/.test(text);
+    if (primaryOrNonFiction || nonHistoricalBleed || !hasHistoricalSetting) return true;
+  }
   if (/\b(readings?\b.*\b(novel|fiction|literature)|century readings?\b.*\bnovel|redefining\b.*\bfiction|(life|women|race|gender|class)\b.*\bin fiction)\b/i.test(title)) return true;
   if (/\b(new suspense novel|new thriller novel|untitled|unknown title|book \d+|novel \d+)\b/i.test(title)) return true;
   if (/^\s*(the\s+)?(novel|book|collection|megapack)\s*$/i.test(title)) return true;
@@ -264,7 +290,10 @@ export async function getOpenLibraryRecommendations(
         ...d,
         queryText: q,
         queryRung: i,
-        source: "openLibrary"
+        source: "openLibrary",
+        queryFamily: family === "historical" ? "historical" : family,
+        filterFamily: family === "historical" ? "historical" : family,
+        laneKind: family === "historical" ? "historical" : "openlibrary",
       });
     }
 
@@ -295,7 +324,10 @@ export async function getOpenLibraryRecommendations(
       first_sentence: d.first_sentence,
       source: "openLibrary",
       queryText: d.queryText,
-      queryRung: d.queryRung
+      queryRung: d.queryRung,
+      queryFamily: d.queryFamily,
+      filterFamily: d.filterFamily,
+      laneKind: d.laneKind,
     }))
     .filter((doc) => {
       if (!doc.title) return false;
@@ -319,6 +351,9 @@ export async function getOpenLibraryRecommendations(
       source: "openLibrary",
       queryText: d.queryText,
       queryRung: d.queryRung,
+      queryFamily: d.queryFamily,
+      filterFamily: d.filterFamily,
+      laneKind: d.laneKind,
       key: d.key
     }))
   };
