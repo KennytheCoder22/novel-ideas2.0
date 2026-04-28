@@ -1232,6 +1232,13 @@ const ROUTER_FAMILIES: RouterFamilyKey[] = [
   "historical",
 ];
 
+const HISTORICAL_OPEN_LIBRARY_QUERY_LANES: ReadonlyArray<RouterQueryLane> = [
+  { query: "historical fiction novel", laneKind: "historical", source: "openLibrary", queryFamily: "historical", filterFamily: "historical", queryRung: 0 },
+  { query: "19th century historical fiction novel", laneKind: "historical", source: "openLibrary", queryFamily: "historical", filterFamily: "historical", queryRung: 1 },
+  { query: "war historical fiction novel", laneKind: "historical", source: "openLibrary", queryFamily: "historical", filterFamily: "historical", queryRung: 2 },
+  { query: "society historical fiction novel", laneKind: "historical", source: "openLibrary", queryFamily: "historical", filterFamily: "historical", queryRung: 3 },
+];
+
 function normalizeRouterFamilyValue(value: unknown): RouterFamilyKey | null {
   const cleaned = String(value || "").toLowerCase().trim();
   if (cleaned === "science_fiction_family") return "science_fiction";
@@ -2613,7 +2620,21 @@ export async function getRecommendations(
       hybridLaneWeights,
       primaryLane: routerFamily,
     };
-    const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
+    let queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
+    const historicalOpenLibraryOverride =
+      normalizeRouterFamilyValue(rungFamily) === "historical" ||
+      routerFamily === "historical";
+    if (historicalOpenLibraryOverride) {
+      queryLanes = HISTORICAL_OPEN_LIBRARY_QUERY_LANES.map((lane) => ({ ...lane }));
+      Object.freeze(queryLanes);
+      console.log("FINAL HISTORICAL QUERY LANES", queryLanes.map((lane) => ({
+        queryText: lane.query,
+        queryRung: lane.queryRung,
+        laneKind: lane.laneKind,
+        queryFamily: lane.queryFamily,
+        source: lane.source,
+      })));
+    }
 
     for (const lane of queryLanes) {
       const laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
@@ -3262,6 +3283,17 @@ const normalizedCandidatesRaw = [
       },
     };
   }));
+  for (const c of rankingPoolForFinal as any[]) {
+    if (String(c?.laneKind || c?.rawDoc?.laneKind || "").toLowerCase() === "historical") {
+      c.queryFamily = "historical";
+      c.filterFamily = "historical";
+      c.rawDoc = {
+        ...(c?.rawDoc || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+      };
+    }
+  }
   console.log("FINAL QUERY FAMILIES", rankingPoolForFinal.map((c: any) => c?.queryFamily ?? c?.rawDoc?.queryFamily ?? "missing"));
   debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPoolForFinal);
 
