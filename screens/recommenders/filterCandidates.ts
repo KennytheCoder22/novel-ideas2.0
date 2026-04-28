@@ -1162,8 +1162,9 @@ if (family === "speculative") {
 
   const softFailCount = diagnostics.passedChecks.filter((check) => check.startsWith("soft_")).length;
   const softFailureRejectThreshold = isOpenLibrarySource ? 4 : 2;
-  if (softFailCount >= softFailureRejectThreshold && !strongNarrative) {
-    diagnostics.rejectReasons.push("too_many_soft_failures");
+  if (softFailCount >= softFailureRejectThreshold) {
+    diagnostics.passedChecks.push("soft_too_many_soft_failures");
+    diagnostics.passedChecks.push("borderline_rescue_penalty");
   }
 
   if (fictionPositive) diagnostics.passedChecks.push("fiction_positive");
@@ -1756,6 +1757,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
         diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
         diagnostics.passedChecks.push("openlibrary_fantasy_recovery_precheck");
+        if (diagnostics.flags.fictionPositive && diagnostics.flags.strongNarrative) {
+          diagnostics.passedChecks.push("borderline_rescue_penalty");
+        }
       }
     }
 
@@ -2130,18 +2134,14 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     const rescueCeiling = isOpenLibraryLike ? 3 : 1;
     if (rescueMechanismCount(diagnostics) > rescueCeiling) {
-      diagnostics.rejectReasons.push("too_many_soft_failures");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      diagnostics.passedChecks.push("soft_too_many_soft_failures");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
     }
 
     const minimumEntrySignals = isOpenLibraryLike ? 1 : 2;
     if (entrySignalCount(doc, diagnostics) < minimumEntrySignals) {
-      diagnostics.rejectReasons.push("too_many_soft_failures");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      diagnostics.passedChecks.push("soft_too_many_soft_failures");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
     }
 
     if (isOpenLibraryLike) {
@@ -2154,10 +2154,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.flags.strongNarrative ||
         (diagnostics.family === "thriller" && diagnostics.flags.fictionPositive);
       if (!hasOlMinimumSignal || !laneMatched) {
-        diagnostics.rejectReasons.push("too_many_soft_failures");
-        diagnostics.kept = false;
-        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-        continue;
+        diagnostics.passedChecks.push("soft_too_many_soft_failures");
+        diagnostics.passedChecks.push("borderline_rescue_penalty");
       }
     }
     diagnostics.kept = true;
