@@ -138,12 +138,12 @@ function buildQueries(input: RecommenderInput): string[] {
     /\b(historical fiction|historical novel|19th century|period fiction|civil war|world war|gilded age|victorian|war historical fiction|society historical fiction)\b/.test(historicalIntentText);
 
   if (historicalIntentDetected) {
-    const rungSeeds = dedupeQueries(
-      (Array.isArray(input.bucketPlan?.rungs) ? input.bucketPlan.rungs : [])
-        .map((r) => String(r?.query || r?.primary || "").trim().toLowerCase())
-        .filter((q) => /\bhistorical fiction novel\b/.test(q))
-    );
-    return dedupeQueries([...rungSeeds, ...canonicalHistoricalPack]).slice(0, 4);
+    const queries = [...canonicalHistoricalPack];
+    if (new Set(queries).size !== 4) {
+      throw new Error("Historical queries collapsed");
+    }
+    console.log("HISTORICAL RUNG QUERIES", queries);
+    return queries;
   }
 
   if (input.bucketPlan?.rungs?.length) {

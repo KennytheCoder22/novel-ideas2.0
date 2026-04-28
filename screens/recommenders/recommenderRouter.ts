@@ -2577,6 +2577,14 @@ export async function getRecommendations(
     }
   }
 
+  if (lockHistoricalRungs) {
+    rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
+    if (new Set(rungs.map((r: any) => r.query)).size !== 4) {
+      throw new Error("Historical queries collapsed");
+    }
+    console.log("HISTORICAL RUNG QUERIES", rungs.map((r: any) => r.query));
+  }
+
   rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision", queryFamily: normalizeRouterFamilyValue((r as any)?.queryFamily) || routerFamily }));
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
