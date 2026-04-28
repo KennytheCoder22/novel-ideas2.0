@@ -138,7 +138,7 @@ function inferFamilyFromQueryText(query: string, fallback: RouterFamilyKey): Rou
 
 function inferHistoricalFromQueryText(query: string): boolean {
   const q = String(query || "").toLowerCase();
-  return /\b(historical fiction|19th century|civil war|american historical|american novel|gilded age|victorian|western historical)\b/.test(q);
+  return /\b(historical fiction novel|historical fiction|19th century|war historical fiction|society historical fiction|civil war|american historical|american novel|gilded age|victorian|western historical)\b/.test(q);
 }
 
 function isMetaReferenceWork(doc: any): boolean {
@@ -190,6 +190,39 @@ function scienceFictionNarrativeQualityScore(doc: any): number {
   if (pageCount >= 140) score += 1;
   if (pageCount > 0 && pageCount < 90) score -= 2;
   if (/\b(collection|anthology|stories|short stories|essays|criticism|language of|guide|companion|hall of fame)\b/.test(text)) score -= 4;
+  return score;
+}
+
+function isHistoricalPrimaryOrNonNarrative(doc: any): boolean {
+  const text = [
+    doc?.title,
+    doc?.description,
+    doc?.subtitle,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.description,
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const banned = /\b(history|meditations|art of war|biography|essays|letters|philosophy|primary source|treatise|herodotus|marcus aurelius)\b/.test(text);
+  const bleed = /\b(harry potter|fantasy|wizard|witch|dragon|magic school|science fiction|time machine|space opera|dystopian)\b/.test(text);
+  const historicalSignal = /\b(historical fiction|historical novel|19th century|victorian|war|monarchy|empire|society|regency|gilded age|civil war)\b/.test(text);
+  return banned || bleed || !historicalSignal;
+}
+
+function historicalNarrativeQualityScore(doc: any): number {
+  const text = [
+    doc?.title,
+    doc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  let score = 0;
+  if (/\b(historical fiction|historical novel)\b/.test(text)) score += 3;
+  if (/\b(19th century|war|monarchy|society|victorian|civil war|gilded age)\b/.test(text)) score += 2;
+  if (/\b(classics?|classic literature)\b/.test(text) && !/\b(historical fiction|historical novel)\b/.test(text)) score -= 1;
+  if (/\b(fantasy|science fiction|dystopian|wizard|dragon|space opera)\b/.test(text)) score -= 3;
+  if (/\b(philosophy|meditations|history|biography|essays|letters)\b/.test(text)) score -= 4;
   return score;
 }
 
@@ -1549,8 +1582,9 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
   ];
   if (family === "historical") return [
     { rung: 100, query: "historical fiction novel" },
-    { rung: 101, query: "period fiction novel" },
-    { rung: 102, query: "family saga historical fiction novel" },
+    { rung: 101, query: "19th century historical fiction novel" },
+    { rung: 102, query: "war historical fiction novel" },
+    { rung: 103, query: "society historical fiction novel" },
   ];
   return [{ rung: 999, query: "fiction novel" }];
 }
@@ -2430,10 +2464,10 @@ export async function getRecommendations(
 
   const canonicalFamilyRungs: Record<string, string[]> = {
     historical: [
-      "historical fiction novel 19th century",
-      "civil war historical fiction novel",
-      "american historical fiction novel society",
-      "coming of age historical fiction novel",
+      "historical fiction novel",
+      "19th century historical fiction novel",
+      "war historical fiction novel",
+      "society historical fiction novel",
     ],
     thriller: [
       "psychological thriller novel",
@@ -2546,7 +2580,7 @@ export async function getRecommendations(
       const laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
       const familyFromQuery = inferFamilyFromQueryText(laneQueryText, rungFamily);
       const laneFamily =
-        inferHistoricalFromQueryText(laneQueryText)
+        routerFamily === "historical" || inferHistoricalFromQueryText(laneQueryText)
           ? "historical"
           : normalizeRouterFamilyValue((lane as any)?.queryFamily) || familyFromQuery || rungFamily;
       debugRouterLog("QUERY_FAMILY_BEFORE_FETCH", {
@@ -2644,17 +2678,21 @@ export async function getRecommendations(
           : Number.isFinite(Number(rung?.rung))
           ? Number(rung.rung)
           : undefined;
-        const rowFamilyFromQuery = inferFamilyFromQueryText(String(row?.queryText ?? lane.query ?? ""), laneFamily);
+        const rowFamilyFromQuery = routerFamily === "historical"
+          ? "historical"
+          : inferFamilyFromQueryText(String(row?.queryText ?? lane.query ?? ""), laneFamily);
 
         return {
           ...row,
           queryRung,
           queryText: row?.queryText ?? lane.query,
-          queryFamily: normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneFamily,
+          queryFamily: routerFamily === "historical"
+            ? "historical"
+            : normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? "")) || (rowFamilyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
-          filterFamily: inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? ""))
+          laneKind: (routerFamily === "historical" || inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? "")) || (rowFamilyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
+          filterFamily: (routerFamily === "historical" || inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? "")))
             ? "historical"
             : normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFamily,
         };
@@ -2673,17 +2711,17 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
-          queryFamily: inferHistoricalFromQueryText(String(lane.query || "")) ? "historical" : (familyFromQuery || laneFamily),
+          queryFamily: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || ""))) ? "historical" : (familyFromQuery || laneFamily),
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (inferHistoricalFromQueryText(String(lane.query || "")) || (familyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
+          laneKind: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || "")) || (familyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
           diagnostics: {
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
-            queryFamily: inferHistoricalFromQueryText(String(lane.query || "")) ? "historical" : (familyFromQuery || laneFamily),
-            laneKind: (inferHistoricalFromQueryText(String(lane.query || "")) || (familyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
-            filterFamily: inferHistoricalFromQueryText(String(lane.query || "")) ? "historical" : (familyFromQuery || laneFamily),
+            queryFamily: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || ""))) ? "historical" : (familyFromQuery || laneFamily),
+            laneKind: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || "")) || (familyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
+            filterFamily: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || ""))) ? "historical" : (familyFromQuery || laneFamily),
             hybridLaneWeights,
             primaryLane: routerFamily,
           },
@@ -3028,17 +3066,24 @@ const normalizedCandidatesRaw = [
           (scienceFictionNarrativeQualityScore(b) - scienceFictionNarrativeQualityScore(a)) ||
           (candidateScoreValue(b) - candidateScoreValue(a))
         )
+      : routerFamily === "historical"
+      ? [...postFilteredRankedDocs].sort((a: any, b: any) =>
+          (historicalNarrativeQualityScore(b) - historicalNarrativeQualityScore(a)) ||
+          (candidateScoreValue(b) - candidateScoreValue(a))
+        )
       : postFilteredRankedDocs;
 
   const metaSafeRankedDocs = rebalanceRomanceFinalSources(narrativeWeightedRankedDocs, rankingPool, finalLimit)
     .filter((doc: any) => !isMetaReferenceWork(doc))
-    .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc));
+    .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
+    .filter((doc: any) => routerFamily !== "historical" || !isHistoricalPrimaryOrNonNarrative(doc));
   const finalRankedDocs = (() => {
     if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
     const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPool
       .filter((doc: any) => !isMetaReferenceWork(doc))
       .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
+      .filter((doc: any) => routerFamily !== "historical" || !isHistoricalPrimaryOrNonNarrative(doc))
       .filter((doc: any) => {
         const key = candidateKey(doc);
         return Boolean(key) && !existing.has(key);
