@@ -3040,11 +3040,16 @@ const normalizedCandidatesRaw = [
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => {
     const filterDiagnostics = c?.rawDoc?.diagnostics?.filterDiagnostics ?? c?.diagnostics?.filterDiagnostics;
+    const resolvedQueryFamily =
+      normalizeRouterFamilyValue(c?.queryFamily || c?.rawDoc?.queryFamily || c?.diagnostics?.queryFamily || c?.rawDoc?.diagnostics?.queryFamily) ||
+      normalizeRouterFamilyValue(c?.filterFamily || c?.rawDoc?.filterFamily || c?.diagnostics?.filterFamily || c?.rawDoc?.diagnostics?.filterFamily) ||
+      (routerFamily === "historical" ? "historical" : routerFamily);
     return {
       title: c.title,
       author: Array.isArray(c.author_name) ? c.author_name[0] : c.author,
       source: c.source,
       score: c.score,
+      queryFamily: resolvedQueryFamily,
       queryText: c?.rawDoc?.queryText ?? c?.queryText,
       queryRung: c?.rawDoc?.queryRung ?? c?.queryRung,
       laneKind: c?.rawDoc?.laneKind ?? c?.laneKind ?? c?.diagnostics?.laneKind,
@@ -3154,10 +3159,25 @@ const normalizedCandidatesRaw = [
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
     ...doc,
+    queryFamily:
+      normalizeRouterFamilyValue(
+        doc?.queryFamily ||
+        doc?.rawDoc?.queryFamily ||
+        doc?.diagnostics?.queryFamily ||
+        doc?.rawDoc?.diagnostics?.queryFamily
+      ) || (routerFamily === "historical" ? "historical" : routerFamily),
+    filterFamily:
+      normalizeRouterFamilyValue(
+        doc?.filterFamily ||
+        doc?.rawDoc?.filterFamily ||
+        doc?.diagnostics?.filterFamily ||
+        doc?.rawDoc?.diagnostics?.filterFamily
+      ) || (routerFamily === "historical" ? "historical" : routerFamily),
     source: sourceForDoc(doc, "openLibrary"),
     diagnostics: doc?.diagnostics
       ? {
           ...doc.diagnostics,
+          queryFamily: normalizeRouterFamilyValue(doc.diagnostics.queryFamily || doc?.queryFamily || doc?.rawDoc?.queryFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           source: doc.diagnostics.source || sourceForDoc(doc, "openLibrary"),
           preFilterScore: doc.diagnostics.preFilterScore,
           postFilterScore: doc.diagnostics.postFilterScore,
@@ -3171,18 +3191,19 @@ const normalizedCandidatesRaw = [
           filterKept: doc.diagnostics.filterKept ?? doc?.rawDoc?.diagnostics?.filterKept,
           filterRejectReasons: doc.diagnostics.filterRejectReasons ?? doc?.rawDoc?.diagnostics?.filterRejectReasons ?? [],
           filterPassedChecks: doc.diagnostics.filterPassedChecks ?? doc?.rawDoc?.diagnostics?.filterPassedChecks ?? [],
-          filterFamily: doc.diagnostics.filterFamily ?? doc?.rawDoc?.diagnostics?.filterFamily,
+          filterFamily: normalizeRouterFamilyValue(doc.diagnostics.filterFamily ?? doc?.rawDoc?.diagnostics?.filterFamily ?? doc?.filterFamily ?? doc?.rawDoc?.filterFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           filterWantsHorrorTone: doc.diagnostics.filterWantsHorrorTone ?? doc?.rawDoc?.diagnostics?.filterWantsHorrorTone,
           filterFlags: doc.diagnostics.filterFlags ?? doc?.rawDoc?.diagnostics?.filterFlags ?? {},
         }
       : {
           source: sourceForDoc(doc, "openLibrary"),
+          queryFamily: normalizeRouterFamilyValue(doc?.queryFamily || doc?.rawDoc?.queryFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           laneKind: doc?.laneKind ?? doc?.rawDoc?.laneKind,
           filterDiagnostics: doc?.rawDoc?.diagnostics?.filterDiagnostics,
           filterKept: doc?.rawDoc?.diagnostics?.filterKept,
           filterRejectReasons: doc?.rawDoc?.diagnostics?.filterRejectReasons ?? [],
           filterPassedChecks: doc?.rawDoc?.diagnostics?.filterPassedChecks ?? [],
-          filterFamily: doc?.rawDoc?.diagnostics?.filterFamily,
+          filterFamily: normalizeRouterFamilyValue(doc?.rawDoc?.diagnostics?.filterFamily || doc?.filterFamily || doc?.rawDoc?.filterFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           filterWantsHorrorTone: doc?.rawDoc?.diagnostics?.filterWantsHorrorTone,
           filterFlags: doc?.rawDoc?.diagnostics?.filterFlags ?? {},
         },
