@@ -1215,6 +1215,7 @@ type RouterQueryLane = {
   laneKind: string;
   source: CandidateSource | "all";
   queryFamily?: RouterFamilyKey;
+  filterFamily?: RouterFamilyKey;
   queryRung?: number;
 };
 
@@ -1658,14 +1659,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         laneKind: q.includes("-guide") || q.includes("-reference") || q.includes("-criticism") ? "strict-filtered" : "core",
         source: "googleBooks",
         queryFamily: family,
+        filterFamily: family,
         queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     });
 
     if (openLibraryQuery) {
       const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
-      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
     }
 
     return capRouterQueryLanes(mapped);
@@ -1741,6 +1743,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         laneKind,
         source: "googleBooks",
         queryFamily: family,
+        filterFamily: family,
         queryRung: Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined,
       } as RouterQueryLane;
     })
@@ -1749,15 +1752,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
     const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
-    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
     if (family === "thriller" || family === "mystery" || family === "horror") {
       const simpleFallbackQuery =
         family === "thriller" ? "psychological thriller novel" :
         family === "mystery" ? "detective mystery novel" :
         "psychological horror novel";
       if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
-        mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
+        mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
       }
     }
   }
@@ -2579,16 +2582,24 @@ export async function getRecommendations(
 
     for (const lane of queryLanes) {
       const laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
-      const familyFromQuery = inferFamilyFromQueryText(laneQueryText, rungFamily);
+      const inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
       const laneFamily =
         routerFamily === "historical" || inferHistoricalFromQueryText(laneQueryText)
           ? "historical"
-          : normalizeRouterFamilyValue((lane as any)?.queryFamily) || familyFromQuery || rungFamily;
+          : normalizeRouterFamilyValue((lane as any)?.queryFamily) ||
+            normalizeRouterFamilyValue((lane as any)?.filterFamily) ||
+            inferredQueryFamily ||
+            rungFamily;
+      const laneFilterFamily =
+        laneFamily === "historical"
+          ? "historical"
+          : normalizeRouterFamilyValue((lane as any)?.filterFamily) || laneFamily;
       debugRouterLog("QUERY_FAMILY_BEFORE_FETCH", {
         query: laneQueryText,
         queryFamily: (lane as any)?.queryFamily || null,
-        inferredQueryFamily: familyFromQuery || null,
+        inferredQueryFamily: inferredQueryFamily || null,
         laneFamily,
+        laneFilterFamily,
       });
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
@@ -2682,20 +2693,25 @@ export async function getRecommendations(
         const rowFamilyFromQuery = routerFamily === "historical"
           ? "historical"
           : inferFamilyFromQueryText(String(row?.queryText ?? lane.query ?? ""), laneFamily);
+        const rowHistoricalSignal = inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? ""));
+        const rowQueryFamily =
+          rowHistoricalSignal
+            ? "historical"
+            : normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneFamily;
+        const rowFilterFamily =
+          rowHistoricalSignal
+            ? "historical"
+            : normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFilterFamily;
 
         return {
           ...row,
           queryRung,
           queryText: row?.queryText ?? lane.query,
-          queryFamily: routerFamily === "historical"
-            ? "historical"
-            : normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneFamily,
+          queryFamily: rowQueryFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (routerFamily === "historical" || inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? "")) || (rowFamilyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
-          filterFamily: (routerFamily === "historical" || inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? "")))
-            ? "historical"
-            : normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFamily,
+          laneKind: (rowQueryFamily === "historical" || rowFilterFamily === "historical") ? "historical" : lane.laneKind,
+          filterFamily: rowFilterFamily,
         };
       });
 
@@ -2712,17 +2728,18 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
-          queryFamily: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || ""))) ? "historical" : (familyFromQuery || laneFamily),
+          queryFamily: laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || "")) || (familyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
+          laneKind: (laneFamily === "historical" || laneFilterFamily === "historical") ? "historical" : lane.laneKind,
+          filterFamily: laneFilterFamily,
           diagnostics: {
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
-            queryFamily: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || ""))) ? "historical" : (familyFromQuery || laneFamily),
-            laneKind: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || "")) || (familyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
-            filterFamily: (routerFamily === "historical" || inferHistoricalFromQueryText(String(lane.query || ""))) ? "historical" : (familyFromQuery || laneFamily),
+            queryFamily: laneFamily,
+            laneKind: (laneFamily === "historical" || laneFilterFamily === "historical") ? "historical" : lane.laneKind,
+            filterFamily: laneFilterFamily,
             hybridLaneWeights,
             primaryLane: routerFamily,
           },
