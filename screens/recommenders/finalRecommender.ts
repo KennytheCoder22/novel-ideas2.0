@@ -538,7 +538,7 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   const coreFictionOverride = Boolean(flags?.fictionPositive && flags?.strongNarrative);
   if (softFailureCount >= 3 && !hasStrongSignals && !coreFictionOverride) {
-    return { pass: false, reason: 'low_metadata_trust', detail: `compound soft failures=${softFailureCount}` };
+    debugFinalLog("SOFT_FAILURE_PENALTY_ONLY", { title: c.title, softFailureCount });
   }
 
   if (trust < 2 && !hasShapeSignal) {

@@ -1121,7 +1121,10 @@ if (family === "speculative") {
     }
   }
   if (family === "mystery" && isLaneMismatch(family, combined, diagnostics.flags)) {
-    diagnostics.rejectReasons.push("lane_mismatch_mystery");
+    if (fictionPositive && strongNarrative) {
+      diagnostics.passedChecks.push("soft_lane_mismatch_mystery");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
+    } else diagnostics.rejectReasons.push("lane_mismatch_mystery");
   }
   if (family === "thriller" && isLaneMismatch(family, combined, diagnostics.flags)) {
     const hasThrillerishSignal =
@@ -1154,20 +1157,29 @@ if (family === "speculative") {
     }
   }
   if (family === "science_fiction" && isLaneMismatch(family, combined, diagnostics.flags)) {
-    if (diagnostics.flags.legitAuthority || diagnostics.flags.authorAffinity || hasCanonicalScienceFictionTitle(title)) {
+    if (fictionPositive && strongNarrative) {
+      diagnostics.passedChecks.push("soft_lane_mismatch_science_fiction");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
+    } else if (diagnostics.flags.legitAuthority || diagnostics.flags.authorAffinity || hasCanonicalScienceFictionTitle(title)) {
       diagnostics.passedChecks.push("soft_lane_mismatch_science_fiction");
     } else {
       diagnostics.rejectReasons.push("lane_mismatch_science_fiction");
     }
   }
   if (family === "speculative" && isLaneMismatch(family, combined, diagnostics.flags)) {
-    diagnostics.rejectReasons.push("lane_mismatch_speculative");
+    if (fictionPositive && strongNarrative) {
+      diagnostics.passedChecks.push("soft_lane_mismatch_speculative");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
+    } else diagnostics.rejectReasons.push("lane_mismatch_speculative");
   }
 
   if (family === "horror" && !horrorAligned) {
     const horrorQueryNative = /\b(psychological horror|survival horror|haunted house horror|horror|haunted|ghost|supernatural|occult|gothic horror)\b/.test(queryIntentText);
     const thrillerOverlapNative = thrillerPositive || suspensePositive || mysteryPositive || crimePositive;
-    if (bucketPlan?.hybridMode && horrorQueryNative && thrillerOverlapNative) {
+    if (fictionPositive && strongNarrative) {
+      diagnostics.passedChecks.push("soft_missing_horror_alignment");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
+    } else if (bucketPlan?.hybridMode && horrorQueryNative && thrillerOverlapNative) {
       diagnostics.passedChecks.push("soft_horror_thriller_overlap");
     } else {
       diagnostics.rejectReasons.push("missing_horror_alignment_hard");

@@ -1151,14 +1151,6 @@ function normalizeRouterFamilyValue(value: unknown): RouterFamilyKey | null {
   return null;
 }
 
-function inferHistoricalFamilyFromQueryText(queryText: unknown): RouterFamilyKey | null {
-  const q = String(queryText || "").toLowerCase();
-  if (/\b(historical|civil war|19th century|american novel|gilded age|victorian)\b/.test(q)) {
-    return "historical";
-  }
-  return null;
-}
-
 function collectHybridSignalText(input: RecommenderInput, bucketPlan: any): string {
   const safeJson = (value: unknown) => {
     try { return JSON.stringify(value || {}); } catch { return ""; }
@@ -2400,12 +2392,12 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
-      const historicalFamilyFromQuery = inferHistoricalFamilyFromQueryText((lane as any)?.query || (lane as any)?.queryText);
-      const laneFamily = historicalFamilyFromQuery || normalizeRouterFamilyValue((lane as any)?.queryFamily) || rungFamily;
+      const familyFromQuery = inferFamilyFromQueryText(String((lane as any)?.query || (lane as any)?.queryText || ""), rungFamily);
+      const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || familyFromQuery || rungFamily;
       debugRouterLog("QUERY_FAMILY_BEFORE_FETCH", {
         query: (lane as any)?.query,
         queryFamily: (lane as any)?.queryFamily || null,
-        inferredQueryFamily: historicalFamilyFromQuery || null,
+        inferredQueryFamily: familyFromQuery || null,
         laneFamily,
       });
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
@@ -2497,17 +2489,17 @@ export async function getRecommendations(
           : Number.isFinite(Number(rung?.rung))
           ? Number(rung.rung)
           : undefined;
-        const rowHistoricalFamily = inferHistoricalFamilyFromQueryText(row?.queryText ?? lane.query);
+        const rowFamilyFromQuery = inferFamilyFromQueryText(String(row?.queryText ?? lane.query ?? ""), laneFamily);
 
         return {
           ...row,
           queryRung,
           queryText: row?.queryText ?? lane.query,
-          queryFamily: rowHistoricalFamily || row?.queryFamily || laneFamily,
+          queryFamily: normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: rowHistoricalFamily || laneFamily === "historical" ? "historical" : lane.laneKind,
-          filterFamily: rowHistoricalFamily || row?.filterFamily || laneFamily,
+          laneKind: (rowFamilyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
+          filterFamily: normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFamily,
         };
       });
 
@@ -2524,17 +2516,17 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
-          queryFamily: historicalFamilyFromQuery || laneFamily,
+          queryFamily: familyFromQuery || laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (historicalFamilyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
+          laneKind: (familyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
           diagnostics: {
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
-            queryFamily: historicalFamilyFromQuery || laneFamily,
-            laneKind: (historicalFamilyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
-            filterFamily: historicalFamilyFromQuery || laneFamily,
+            queryFamily: familyFromQuery || laneFamily,
+            laneKind: (familyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
+            filterFamily: familyFromQuery || laneFamily,
             hybridLaneWeights,
             primaryLane: routerFamily,
           },
