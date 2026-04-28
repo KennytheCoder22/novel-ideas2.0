@@ -37,7 +37,7 @@ const MIN_VISUAL_SIGNAL_FOR_GCD = 2;
 const MIN_RELAXED_FILTER_POOL = 10;
 const MIN_ROUTER_RECOVERY_POOL = 18;
 const MIN_OPEN_LIBRARY_SURVIVORS = 3;
-const MIN_OPEN_LIBRARY_BASE_POOL = 4;
+const MIN_OPEN_LIBRARY_CANDIDATES = 10;
 const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
 const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
 const MIN_POOL_FOR_NYT_INJECTION = 14;
@@ -2694,7 +2694,6 @@ const normalizedCandidates = [
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
-  const nonOpenLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source !== "openLibrary");
 
   const preferredRungs = preferredPrimaryRungs(rungs);
   const primaryIntentCandidates = normalizedCandidates.filter((c: any) =>
@@ -2702,22 +2701,11 @@ const normalizedCandidates = [
   );
 
   const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
-  const primaryIntentOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source === "openLibrary");
-  const primaryIntentNonOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source !== "openLibrary");
 
-  const thrillerOpenLibraryQuota = routerFamily === "thriller" ? 2 : MIN_OPEN_LIBRARY_BASE_POOL;
-
-  let basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
-    ? dedupeDocs([
-        ...primaryIntentOpenLibraryCandidates.slice(0, thrillerOpenLibraryQuota),
-        ...primaryIntentNonOpenLibraryCandidates,
-        ...primaryIntentOpenLibraryCandidates.slice(thrillerOpenLibraryQuota),
-      ] as any)
-    : dedupeDocs([
-        ...openLibraryNormalizedCandidates.slice(0, thrillerOpenLibraryQuota),
-        ...nonOpenLibraryNormalizedCandidates,
-        ...openLibraryNormalizedCandidates.slice(thrillerOpenLibraryQuota),
-      ] as any);
+  let basePool = dedupeDocs([
+    ...primaryIntentCandidates,
+    ...normalizedCandidates,
+  ] as any);
 
   if (basePool.length < finalLimit * 2) {
     const qualitySorted = [...normalizedCandidates].sort((a: any, b: any) => {
@@ -2728,24 +2716,21 @@ const normalizedCandidates = [
     });
 
     basePool = dedupeDocs([
-      ...openLibraryNormalizedCandidates.slice(0, thrillerOpenLibraryQuota),
-      ...enforceAuthorDiversity(qualitySorted, 1),
+      ...basePool,
+      ...qualitySorted,
     ] as any);
-    basePool = enforceLaneDiversity(basePool, 3);
   }
-
-  basePool = enforceAuthorDiversity(basePool, 1);
 
   if (routerFamily !== "thriller") {
     const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
-    if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_BASE_POOL) {
+    if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_CANDIDATES) {
       const existing = new Set(basePool.map((c: any) => candidateKey(c)));
       for (const candidate of openLibraryNormalizedCandidates) {
         const key = candidateKey(candidate);
         if (!key || existing.has(key)) continue;
         basePool.push(candidate);
         existing.add(key);
-        if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_BASE_POOL) break;
+        if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_CANDIDATES) break;
       }
     }
   }
