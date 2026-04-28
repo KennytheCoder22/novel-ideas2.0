@@ -2915,7 +2915,48 @@ const normalizedCandidatesRaw = [
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeGcd ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
-  const normalizedCandidates = collapseCrossRungDuplicates(normalizedCandidatesRaw as any);
+  const normalizedCandidates = collapseCrossRungDuplicates(normalizedCandidatesRaw as any).map((candidate: any) => {
+    const inferredQueryFamily =
+      normalizeRouterFamilyValue(
+        candidate?.queryFamily ||
+        candidate?.rawDoc?.queryFamily ||
+        candidate?.rawDoc?.diagnostics?.queryFamily ||
+        candidate?.rawDoc?.filterFamily ||
+        candidate?.rawDoc?.diagnostics?.filterFamily
+      ) ||
+      inferFamilyFromQueryText(
+        String(candidate?.queryText || candidate?.rawDoc?.queryText || ""),
+        routerFamily
+      ) ||
+      routerFamily;
+
+    const queryFamily = routerFamily === "historical" ? "historical" : inferredQueryFamily;
+    const filterFamily = routerFamily === "historical"
+      ? "historical"
+      : normalizeRouterFamilyValue(candidate?.filterFamily || candidate?.rawDoc?.filterFamily || candidate?.rawDoc?.diagnostics?.filterFamily) || queryFamily;
+    const laneKind = queryFamily === "historical"
+      ? "historical"
+      : (candidate?.laneKind || candidate?.rawDoc?.laneKind || candidate?.rawDoc?.diagnostics?.laneKind);
+
+    return {
+      ...candidate,
+      queryFamily,
+      filterFamily,
+      laneKind,
+      rawDoc: {
+        ...(candidate?.rawDoc || {}),
+        queryFamily,
+        filterFamily,
+        laneKind,
+        diagnostics: {
+          ...(candidate?.rawDoc?.diagnostics || {}),
+          queryFamily,
+          filterFamily,
+          laneKind,
+        },
+      },
+    };
+  });
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
 
