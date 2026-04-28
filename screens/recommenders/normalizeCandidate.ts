@@ -8,6 +8,8 @@ export type Candidate = {
   queryRung?: number;
   queryText?: string;
   queryFamily?: string;
+  filterFamily?: string;
+  laneKind?: string;
   id: string;
   title: string;
   author: string;
@@ -544,6 +546,18 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
   const uniqueSubjects = Array.from(new Set(subjects.map((item) => item.trim()).filter(Boolean)));
   const formatCategory = detectFormatCategory(rawDoc, source, uniqueSubjects);
   const ratings = getRatings(rawDoc);
+  const queryText = getQueryText(rawDoc);
+  const queryRung = getQueryRung(rawDoc);
+  const normalizedQueryFamily = inferQueryFamily(rawDoc);
+  const normalizedFilterFamily = normalizeText((rawDoc as any)?.filterFamily ?? (rawDoc as any)?.diagnostics?.filterFamily).trim() || undefined;
+  const normalizedLaneKind = normalizeText((rawDoc as any)?.laneKind ?? (rawDoc as any)?.diagnostics?.laneKind).trim() || undefined;
+  const historicalSignal =
+    source === 'openLibrary' && (
+      normalizedQueryFamily === 'historical' ||
+      normalizedFilterFamily === 'historical' ||
+      normalizedLaneKind === 'historical' ||
+      /\b(historical fiction novel|19th century historical fiction novel|war historical fiction novel|society historical fiction novel|historical fiction|historical novel|period fiction)\b/.test(cleanQueryText(queryText))
+    );
 
   return {
     id: String((rawDoc as any)?.id || (rawDoc as any)?.key || `${source}:${title}:${authors[0] || 'unknown'}`),
@@ -585,9 +599,11 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
     rawDoc,
     source,
     formatCategory,
-    queryRung: getQueryRung(rawDoc),
-    queryText: getQueryText(rawDoc),
-    queryFamily: inferQueryFamily(rawDoc),
+    queryRung,
+    queryText,
+    queryFamily: historicalSignal ? 'historical' : normalizedQueryFamily,
+    filterFamily: historicalSignal ? 'historical' : normalizedFilterFamily,
+    laneKind: historicalSignal ? 'historical' : normalizedLaneKind,
   };
 }
 

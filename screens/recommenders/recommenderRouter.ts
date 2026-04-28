@@ -2758,19 +2758,35 @@ export async function getRecommendations(
       debugRawPool.push(...laneRawPool);
 
       const taggedDocs = laneMergedDocs.map((doc: any) => {
-        const queryRung = Number.isFinite(Number(lane.queryRung))
+        const laneQueryRung = Number.isFinite(Number(lane.queryRung))
           ? Number(lane.queryRung)
           : Number.isFinite(Number(rung?.rung))
           ? Number(rung.rung)
           : undefined;
+        const docQueryText = String(doc?.queryText || "").trim();
+        const docQueryRung = Number.isFinite(Number(doc?.queryRung)) ? Number(doc.queryRung) : undefined;
+        const rowHistoricalSignal =
+          laneKindResolved === "historical" ||
+          inferHistoricalFromQueryText(docQueryText || laneQueryText) ||
+          String(doc?.filterFamily || "").toLowerCase() === "historical" ||
+          String(doc?.laneKind || "").toLowerCase() === "historical";
 
-        const candidateQueryFamily = laneKindResolved === "historical" ? "historical" : laneQueryFamilyResolved;
-        const candidateFilterFamily = laneKindResolved === "historical" ? "historical" : laneFilterFamily;
-        const candidateLaneKind = laneKindResolved === "historical" ? "historical" : laneKindResolved;
+        const candidateQueryFamily = rowHistoricalSignal
+          ? "historical"
+          : normalizeRouterFamilyValue(doc?.queryFamily) || laneQueryFamilyResolved;
+        const candidateFilterFamily = rowHistoricalSignal
+          ? "historical"
+          : normalizeRouterFamilyValue(doc?.filterFamily) || laneFilterFamily;
+        const candidateLaneKind = rowHistoricalSignal
+          ? "historical"
+          : String(doc?.laneKind || laneKindResolved || "core");
+
+        const queryText = docQueryText || laneQueryText;
+        const queryRung = typeof docQueryRung === "number" ? docQueryRung : laneQueryRung;
         return {
           ...doc,
           queryRung,
-          queryText: laneQueryText,
+          queryText,
           queryFamily: candidateQueryFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
@@ -2779,7 +2795,7 @@ export async function getRecommendations(
           diagnostics: {
             ...(doc?.diagnostics || {}),
             queryRung,
-            queryText: laneQueryText,
+            queryText,
             queryFamily: candidateQueryFamily,
             laneKind: candidateLaneKind,
             filterFamily: candidateFilterFamily,
@@ -2985,13 +3001,54 @@ function buildRungDiagnostics(candidates: any[]) {
   };
 }
 
+function enforceHistoricalCandidateMetadata<T extends any>(candidates: T[]): T[] {
+  return (Array.isArray(candidates) ? candidates : []).map((candidate: any) => {
+    const laneKind = String(candidate?.laneKind || candidate?.rawDoc?.laneKind || candidate?.diagnostics?.laneKind || "").toLowerCase();
+    const filterFamily = String(candidate?.filterFamily || candidate?.rawDoc?.filterFamily || candidate?.rawDoc?.diagnostics?.filterFamily || candidate?.diagnostics?.filterFamily || "").toLowerCase();
+    if (laneKind !== "historical" && filterFamily !== "historical") return candidate;
+
+    return {
+      ...candidate,
+      queryFamily: "historical",
+      filterFamily: "historical",
+      laneKind: "historical",
+      rawDoc: {
+        ...(candidate?.rawDoc || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+        laneKind: "historical",
+        queryText: candidate?.queryText ?? candidate?.rawDoc?.queryText,
+        queryRung: Number.isFinite(Number(candidate?.queryRung))
+          ? Number(candidate.queryRung)
+          : candidate?.rawDoc?.queryRung,
+        diagnostics: {
+          ...(candidate?.rawDoc?.diagnostics || {}),
+          queryFamily: "historical",
+          filterFamily: "historical",
+          laneKind: "historical",
+          queryText: candidate?.queryText ?? candidate?.rawDoc?.queryText,
+          queryRung: Number.isFinite(Number(candidate?.queryRung))
+            ? Number(candidate.queryRung)
+            : candidate?.rawDoc?.queryRung,
+        },
+      },
+      diagnostics: {
+        ...(candidate?.diagnostics || {}),
+        queryFamily: "historical",
+        filterFamily: "historical",
+        laneKind: "historical",
+      },
+    };
+  }) as T[];
+}
+
 const normalizedCandidatesRaw = [
     ...googleCandidates,
     ...openLibraryCandidates,
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeGcd ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
-  const normalizedCandidates = collapseCrossRungDuplicates(normalizedCandidatesRaw as any).map((candidate: any) => {
+  const normalizedCandidates = enforceHistoricalCandidateMetadata(collapseCrossRungDuplicates(normalizedCandidatesRaw as any).map((candidate: any) => {
     const inferredQueryFamily =
       normalizeRouterFamilyValue(
         candidate?.queryFamily ||
@@ -3032,7 +3089,7 @@ const normalizedCandidatesRaw = [
         },
       },
     };
-  });
+  }));
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
 
@@ -3186,7 +3243,7 @@ const normalizedCandidatesRaw = [
   // 20Q philosophy:
   // router gathers a broad but sane shelf;
   // finalRecommender performs the actual preference-aware magic.
-  const rankingPoolForFinal = rankingPool.map((c: any) => {
+  const rankingPoolForFinal = enforceHistoricalCandidateMetadata(rankingPool.map((c: any) => {
     const laneKind = String(c?.laneKind || c?.rawDoc?.laneKind || c?.diagnostics?.laneKind || "").toLowerCase();
     if (laneKind !== "historical") return c;
     return {
@@ -3204,7 +3261,7 @@ const normalizedCandidatesRaw = [
         filterFamily: "historical",
       },
     };
-  });
+  }));
   console.log("FINAL QUERY FAMILIES", rankingPoolForFinal.map((c: any) => c?.queryFamily ?? c?.rawDoc?.queryFamily ?? "missing"));
   debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPoolForFinal);
 

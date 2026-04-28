@@ -254,7 +254,7 @@ async function fetchJson(url: string): Promise<{ ok: boolean; status: number; da
 export async function getOpenLibraryRecommendations(
   input: RecommenderInput
 ): Promise<RecommendationResult> {
-  const queries = buildQueries(input);
+  let queries = buildQueries(input);
   const family = (() => {
     const inferred = inferFamily(input);
     const text = queries.join(" ").toLowerCase();
@@ -280,6 +280,19 @@ export async function getOpenLibraryRecommendations(
       builtFromQuery: "",
       items: []
     };
+  }
+
+  if (family === "historical") {
+    const historicalOpenLibraryQueries = [
+      "historical fiction novel",
+      "19th century historical fiction novel",
+      "war historical fiction novel",
+      "society historical fiction novel"
+    ];
+    queries = [...historicalOpenLibraryQueries];
+    if (new Set(historicalOpenLibraryQueries).size !== 4) {
+      throw new Error("Adults Historical Open Library queries collapsed before fetch");
+    }
   }
 
   for (let i = 0; i < queries.length; i++) {

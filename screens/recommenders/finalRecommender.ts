@@ -316,9 +316,11 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
   const title = normalize(c.title);
   const publisher = normalize(c.publisher);
   const text = haystack(c);
+  const author = typeof c.author === "string" ? c.author : "";
+  const hasAuthor = typeof author === "string" && author.trim().length > 0;
 
   if (!title) return { reject: true, reason: 'missing_title', detail: 'empty title' };
-  if (!normalize(c.author) || normalize(c.author) === 'unknown') {
+  if (!hasAuthor || normalize(c.author) === 'unknown') {
     return { reject: true, reason: 'missing_author', detail: 'missing or unknown author' };
   }
 
