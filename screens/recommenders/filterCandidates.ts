@@ -658,6 +658,7 @@ function isNoCoverLowQualityMetaCandidate(doc: any, diagnostics: FilterDiagnosti
 function buildFilterDiagnostics(doc: any, bucketPlan: any): FilterDiagnostics {
   const title = normalizeText(doc?.title ?? doc?.volumeInfo?.title);
   const categories = collectCategoryText(doc);
+  const subjects = typeof categories === "string" ? categories : "";
   const description = collectDescriptionText(doc);
   const author = normalizeText(
     doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors
