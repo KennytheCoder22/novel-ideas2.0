@@ -494,6 +494,8 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
   }
 
   if (family === "thriller") {
+    if (/\b(psychological thriller|crime thriller|mystery thriller|thriller)\b/.test(combined)) return false;
+
     const thrillerNative =
       flags.thrillerPositive ||
       flags.mysteryPositive ||
@@ -881,6 +883,7 @@ let fictionPositive =
   const authorAffinity = hasAuthorAffinityForFamily(author, family);
   let legitAuthority = hasLegitCommercialAuthority(doc) || classicAuthorSignal;
   const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
+  const isOpenLibrarySource = isOpenLibraryLikeDoc(doc);
 
   if (isOpenLibraryLikeDoc(doc) && family === "science_fiction") {
     fictionPositive = true;
@@ -970,7 +973,8 @@ let fictionPositive =
     /\b(dracula|the exorcist|the hobbit|foundation|dune|murder on the orient express|the hound of the baskervilles|the haunting of hill house)\b/.test(title);
   const knownClassicSignal = canonicalWorkOverride || classicAuthorWhitelist;
   if (!hasRealLength && !hasDescription) {
-    if (isOpenLibraryLikeDoc(doc) && knownClassicSignal) diagnostics.passedChecks.push("soft_sparse_classic_metadata");
+    if (isOpenLibrarySource && knownClassicSignal) diagnostics.passedChecks.push("soft_sparse_classic_metadata");
+    else if (isOpenLibrarySource) diagnostics.passedChecks.push("soft_sparse_openlibrary_metadata");
     else diagnostics.rejectReasons.push("insufficient_length_or_description");
   }
   if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
@@ -1118,7 +1122,8 @@ if (family === "speculative") {
   }
 
   const softFailCount = diagnostics.passedChecks.filter((check) => check.startsWith("soft_")).length;
-  if (softFailCount >= 2 && !strongNarrative) {
+  const softFailureRejectThreshold = isOpenLibrarySource ? 4 : 2;
+  if (softFailCount >= softFailureRejectThreshold && !strongNarrative) {
     diagnostics.rejectReasons.push("too_many_soft_failures");
   }
 
@@ -1932,6 +1937,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (
       diagnostics.pageCount === 0 &&
+      !isOpenLibraryLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
@@ -1940,6 +1946,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (
       diagnostics.ratingsCount === 0 &&
+      !isOpenLibraryLike &&
       !diagnostics.flags.strongNarrative &&
       !diagnostics.flags.legitAuthority
     ) {
@@ -1948,6 +1955,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     if (
       !diagnostics.hasDescription &&
+      !isOpenLibraryLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
@@ -1957,10 +1965,28 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       descriptionLengthForFloor > 0 &&
       descriptionLengthForFloor < 80 &&
+      !isOpenLibraryLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
       diagnostics.rejectReasons.push("insufficient_length_or_description");
+    }
+
+    if (isOpenLibraryLike && diagnostics.family === "thriller" && diagnostics.flags.fictionPositive) {
+      const softened = new Set([
+        "insufficient_length_or_description",
+        "narrative_strength_required",
+        "low_authority_zero_signal",
+        "lane_mismatch_thriller",
+        "too_many_soft_failures",
+        "below_shape_floor",
+      ]);
+      const before = diagnostics.rejectReasons.length;
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !softened.has(reason));
+      if (diagnostics.rejectReasons.length !== before) {
+        diagnostics.passedChecks.push("openlibrary_thriller_fiction_rescue");
+        diagnostics.passedChecks.push("borderline_rescue_penalty");
+      }
     }
 
     if (diagnostics.rejectReasons.length > 0) {
@@ -2058,14 +2084,16 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.passedChecks.push("passed_shape_gate");
     }
 
-    if (rescueMechanismCount(diagnostics) > 1) {
+    const rescueCeiling = isOpenLibraryLike ? 3 : 1;
+    if (rescueMechanismCount(diagnostics) > rescueCeiling) {
       diagnostics.rejectReasons.push("too_many_soft_failures");
       diagnostics.kept = false;
       Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
       continue;
     }
 
-    if (entrySignalCount(doc, diagnostics) < 2) {
+    const minimumEntrySignals = isOpenLibraryLike ? 1 : 2;
+    if (entrySignalCount(doc, diagnostics) < minimumEntrySignals) {
       diagnostics.rejectReasons.push("too_many_soft_failures");
       diagnostics.kept = false;
       Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
@@ -2079,7 +2107,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         descriptionLength >= 90 ||
         diagnostics.flags.authorAffinity ||
         diagnostics.ratingsCount > 0 ||
-        diagnostics.flags.strongNarrative;
+        diagnostics.flags.strongNarrative ||
+        (diagnostics.family === "thriller" && diagnostics.flags.fictionPositive);
       if (!hasOlMinimumSignal || !laneMatched) {
         diagnostics.rejectReasons.push("too_many_soft_failures");
         diagnostics.kept = false;
@@ -2122,6 +2151,24 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       existingKeys.add(key);
     }
   }
+
+  const thrillerDocs = inputDocs.filter((doc: any) =>
+    isOpenLibraryLikeDoc(doc) && String((doc as any)?.diagnostics?.family || "").toLowerCase() === "thriller"
+  );
+  const thrillerKept = thrillerDocs.filter((doc: any) => Boolean((doc as any)?.diagnostics?.kept));
+  const thrillerRejectionBreakdown: Record<string, number> = {};
+  for (const doc of thrillerDocs) {
+    const reasons = Array.isArray((doc as any)?.diagnostics?.rejectReasons)
+      ? (doc as any).diagnostics.rejectReasons
+      : [];
+    for (const reason of reasons) {
+      const key = String(reason || "unknown");
+      thrillerRejectionBreakdown[key] = (thrillerRejectionBreakdown[key] || 0) + 1;
+    }
+  }
+  console.log("[THRILLER_RAW_COUNT]", thrillerDocs.length);
+  console.log("[THRILLER_KEPT_COUNT]", thrillerKept.length);
+  console.log("[THRILLER_REJECTION_BREAKDOWN]", thrillerRejectionBreakdown);
 
   // Do not re-admit rejected rows when the pool goes empty. Returning [] keeps
   // filterCandidates as the single source of truth and prevents universal junk
