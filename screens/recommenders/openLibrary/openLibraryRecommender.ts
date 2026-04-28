@@ -139,7 +139,7 @@ function buildQueries(input: RecommenderInput): string[] {
 
   if (historicalIntentDetected) {
     const singleRungQuery = input.bucketPlan?.rungs?.length === 1
-      ? String(input.bucketPlan.rungs[0]?.query || input.bucketPlan.rungs[0]?.primary || "").trim()
+      ? String(input.bucketPlan.rungs[0]?.query || input.bucketPlan.rungs[0]?.primary || "").replace(/^['"]|['"]$/g, "").trim()
       : "";
     if (singleRungQuery) {
       return [singleRungQuery];

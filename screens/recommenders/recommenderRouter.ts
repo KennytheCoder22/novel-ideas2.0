@@ -692,7 +692,7 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   }
 
   if (family === "romance") return quoteIfNeeded(base || preview || "romance novel");
-  if (family === "historical") return quoteIfNeeded(base || preview || "historical fiction novel");
+  if (family === "historical") return (base || preview || "historical fiction novel").trim();
 
   return quoteIfNeeded(base || preview || "fiction");
 }
