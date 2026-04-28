@@ -590,14 +590,17 @@ function isHistoricalIntent(intent: QueryIntent, base: string): boolean {
 }
 
 function buildHistoricalRungs(_intent: QueryIntent, maxRungs = 4) {
-  // Historical is an isolated lane. These rungs are intentionally fixed so
-  // downstream tuning cannot collapse them back into repeated primary-query calls.
+  // Historical is an isolated lane. Use a hard override with no transformations.
   const queries = [
     "historical fiction novel",
     "19th century historical fiction novel",
     "war historical fiction novel",
     "society historical fiction novel",
   ];
+  if (new Set(queries).size !== 4) {
+    throw new Error("Historical queries collapsed");
+  }
+  console.log("HISTORICAL RUNG QUERIES", queries);
 
   return queries.slice(0, Math.max(1, maxRungs)).map((query, i) => ({
     rung: i,

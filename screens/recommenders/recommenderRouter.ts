@@ -2525,7 +2525,8 @@ export async function getRecommendations(
       String(r?.query || r?.primary || "").toLowerCase()
     )
   );
-  if (routerFamily === "historical" || historicalIntentInRungs) {
+  const lockHistoricalRungs = routerFamily === "historical" || historicalIntentInRungs;
+  if (lockHistoricalRungs) {
     rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
   }
 
@@ -2553,6 +2554,13 @@ export async function getRecommendations(
     });
   };
   rungs = ensureUniqueRungQueries(rungs, routerFamily);
+  if (lockHistoricalRungs) {
+    rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
+    if (new Set(rungs.map((r: any) => r.query)).size !== 4) {
+      throw new Error("Historical queries collapsed");
+    }
+    console.log("HISTORICAL RUNG QUERIES", rungs.map((r: any) => r.query));
+  }
 
 
   if (isHybridMode) {
