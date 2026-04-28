@@ -7,6 +7,7 @@ type CardSelectionContext = {
   cards: SwipeDeckCard[];
   tagCounts: Record<string, number>;
   recentCardKeys?: string[];
+  recentCards?: SwipeDeckCard[];
 };
 
 function normalizeKey(value: unknown): string {
@@ -30,6 +31,17 @@ function cardTags(card: SwipeDeckCard): string[] {
 function tagPrefix(tag: string): string {
   const idx = tag.indexOf(':');
   return idx > 0 ? tag.slice(0, idx).trim().toLowerCase() : 'plain';
+}
+
+function cardMedium(card: SwipeDeckCard): string {
+  const tags = cardTags(card).map((tag) => tag.toLowerCase());
+  if (tags.some((tag) => tag.includes("movie"))) return "movies";
+  if (tags.some((tag) => tag.includes("tv"))) return "tv";
+  if (tags.some((tag) => tag.includes("game"))) return "games";
+  if (tags.some((tag) => tag.includes("podcast"))) return "podcasts";
+  if (tags.some((tag) => tag.includes("anime") || tag.includes("manga"))) return "anime";
+  if (tags.some((tag) => tag.includes("album") || tag.includes("music"))) return "albums";
+  return "books";
 }
 
 function familiarityScore(card: SwipeDeckCard, deckKey: DeckKey): number {
@@ -186,7 +198,7 @@ function selectionMode(tagMagnitude: number): 'discover' | 'probe' | 'exploit' {
 }
 
 export function selectAdaptiveCard(context: CardSelectionContext): SwipeDeckCard | null {
-  const { cards, deckKey, tagCounts, recentCardKeys = [] } = context;
+  const { cards, deckKey, tagCounts, recentCardKeys = [], recentCards = [] } = context;
   if (!cards.length) return null;
 
   const positiveTags = topTagsByDirection(tagCounts, 'positive', 6);
@@ -194,6 +206,12 @@ export function selectAdaptiveCard(context: CardSelectionContext): SwipeDeckCard
   const tagMagnitude = Object.values(tagCounts || {}).reduce((sum, value) => sum + Math.abs(Number(value || 0)), 0);
   const mode = selectionMode(tagMagnitude);
   const balanceTarget = balanceTargetForDeck(deckKey);
+
+  const recentMediumCounts = new Map<string, number>();
+  for (const card of recentCards) {
+    const medium = cardMedium(card);
+    recentMediumCounts.set(medium, (recentMediumCounts.get(medium) || 0) + 1);
+  }
 
   const ranked = cards
     .map((card) => {
@@ -208,8 +226,10 @@ export function selectAdaptiveCard(context: CardSelectionContext): SwipeDeckCard
       const diversity = diversityPenalty(card, recentCardKeys);
       const underexplored = underexploredPrefixBonus(tags, tagCounts);
       const balanceBonus = 0.55 - Math.abs(sophistication - balanceTarget);
+      const medium = cardMedium(card);
+      const mediumRepeatPenalty = Math.max(0, (recentMediumCounts.get(medium) || 0) - 1) * 0.28;
 
-      let score = balanceBonus - diversity - contradiction;
+      let score = balanceBonus - diversity - contradiction - mediumRepeatPenalty;
 
       if (mode === 'discover') {
         score += familiar * 1.15 + diagnostic * 0.95 + underexplored * 1.15 + Math.min(0.55, unseen * 0.14);
