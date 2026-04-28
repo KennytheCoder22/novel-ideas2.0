@@ -884,10 +884,25 @@ let fictionPositive =
   let legitAuthority = hasLegitCommercialAuthority(doc) || classicAuthorSignal;
   const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
   const isOpenLibrarySource = isOpenLibraryLikeDoc(doc);
+  const knownOpenLibraryNarrativeAuthor =
+    /\b(stephen king|shirley jackson|bram stoker|mary shelley|edgar allan poe)\b/.test(author);
 
   if (isOpenLibraryLikeDoc(doc) && family === "science_fiction") {
     fictionPositive = true;
     speculativePositive = true;
+  }
+
+  if (
+    isOpenLibrarySource &&
+    (family === "horror" || family === "thriller" || family === "mystery") &&
+    /\b(fiction|novel|thriller|mystery|crime|suspense|horror|gothic|supernatural|detective)\b/.test(
+      `${title} ${categories} ${subjects}`
+    )
+  ) {
+    fictionPositive = true;
+  }
+  if (isOpenLibrarySource && knownOpenLibraryNarrativeAuthor) {
+    strongNarrative = true;
   }
 
   const diagnostics: FilterDiagnostics = {
@@ -978,7 +993,7 @@ let fictionPositive =
     else diagnostics.rejectReasons.push("insufficient_length_or_description");
   }
   if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
-    diagnostics.rejectReasons.push("narrative_strength_required");
+    diagnostics.passedChecks.push("soft_narrative_strength_required");
   }
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
 
@@ -1829,7 +1844,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       !diagnostics.flags.speculativePositive &&
       !hasRescueAuthoritySignal(doc, diagnostics)
     ) {
-      diagnostics.rejectReasons.push("low_authority_zero_signal");
+      if (isOpenLibraryLike) diagnostics.passedChecks.push("soft_low_authority_zero_signal");
+      else diagnostics.rejectReasons.push("low_authority_zero_signal");
     }
 
     if (diagnostics.family === "thriller") {
@@ -1928,11 +1944,13 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const lanePositive = lanePositiveSignalCount(diagnostics) > 0;
     if (
       hasSoftMissingNarrative &&
+      !diagnostics.flags.fictionPositive &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity &&
       !(lanePositive && diagnostics.ratingsCount > 0)
     ) {
-      diagnostics.rejectReasons.push("narrative_strength_required");
+      if (isOpenLibraryLike) diagnostics.passedChecks.push("soft_narrative_strength_required");
+      else diagnostics.rejectReasons.push("narrative_strength_required");
     }
 
     if (
