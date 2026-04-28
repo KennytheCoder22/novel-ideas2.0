@@ -200,9 +200,20 @@ export async function getOpenLibraryRecommendations(
     const q = queries[i];
     const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
     let docs: any[] = [];
+    console.log("[OPEN_LIBRARY_QUERY]", { query: q, index: i, totalQueries: queries.length });
+    console.log("[OPEN_LIBRARY_URL]", url);
     try {
       const data = await fetchJson(url);
       docs = Array.isArray(data?.docs) ? data.docs : [];
+      console.log("[OPEN_LIBRARY_RAW_COUNT]", { query: q, rawCount: docs.length });
+      console.log(
+        "[OPEN_LIBRARY_FIRST_RESULTS]",
+        docs.slice(0, 5).map((doc: any) => ({
+          title: doc?.title,
+          author: Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name,
+          key: doc?.key,
+        }))
+      );
     } catch (error: any) {
       console.warn("[OPEN_LIBRARY_FETCH_WARNING]", {
         query: q,
