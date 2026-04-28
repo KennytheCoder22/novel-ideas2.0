@@ -344,7 +344,6 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     !hasCommercialShape &&
     !Boolean((c.rawDoc as any)?.commercialSignals?.bestseller);
   const repeatedFormulaSpam = ((knownFormulaAuthor && ratings < 50) || formulaicTitle) && repetitiveDomesticPattern;
-  if (repeatedFormulaSpam && weakAuthorityThriller) {
 
   if ((knownFormulaAuthor && ratings < 200) || (formulaicTitle && weakAuthorityThriller)) {
     return {
@@ -1867,7 +1866,6 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
     finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 
@@ -2233,7 +2231,6 @@ export function finalRecommenderForDeck(
   });
 
   const TIER_B_SCORE_THRESHOLD = ordered.length >= 15 ? 14 : 22;
-  const TIER_B_SCORE_THRESHOLD = 22;
   const tierA = ordered.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
   const tierB = ordered.filter((entry) =>
     !isTierAStrongNarrativeCandidate(entry.candidate) &&
@@ -2288,11 +2285,6 @@ export function finalRecommenderForDeck(
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
     pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   }
-  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS);
-  const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
-  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET));
-  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS);
-
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
