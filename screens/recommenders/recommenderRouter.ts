@@ -544,58 +544,10 @@ function inferRouterFamily(bucketPlan: any): "fantasy" | "horror" | "mystery" | 
 
 
 
-function dedupeNonEmptyQueryPack(values: string[]): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const raw of values) {
-    const query = String(raw || "").replace(/^"+|"+$/g, "").trim();
-    if (!query) continue;
-    const key = query.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(query);
-  }
-  return out;
-}
-
-function buildOpenLibraryQueryPack(rung: any, bucketPlan: any): string[] {
-  const family = inferRouterFamily(bucketPlan);
-  const base = String(rung?.query || "").trim().toLowerCase();
-  const preview = String(bucketPlan?.preview || "").trim().toLowerCase();
-  const seed = base || preview;
-
-  if (family === "thriller" || family === "mystery") {
-    return dedupeNonEmptyQueryPack([
-      seed,
-      "psychological thriller",
-      "suspense fiction",
-      "crime thriller",
-      "mystery thriller",
-      "psychological fiction",
-    ]);
-  }
-
-  if (family === "horror") {
-    return dedupeNonEmptyQueryPack([seed, "psychological horror", "supernatural horror fiction"]);
-  }
-
-  if (family === "science_fiction" || family === "speculative") {
-    return dedupeNonEmptyQueryPack([seed, "science fiction", "speculative fiction"]);
-  }
-
-  if (family === "fantasy") {
-    return dedupeNonEmptyQueryPack([seed, "dark fantasy", "epic fantasy"]);
-  }
-
-  if (family === "romance") {
-    return dedupeNonEmptyQueryPack([seed, "romance fiction", "contemporary romance"]);
-  }
-
-  if (family === "historical") {
-    return dedupeNonEmptyQueryPack([seed, "historical fiction", "period fiction"]);
-  }
-
-  return dedupeNonEmptyQueryPack([seed, "fiction"]);
+function quoteIfNeeded(value: string): string {
+  const cleaned = String(value || "").trim();
+  if (!cleaned) return "";
+  return /^".*"$/.test(cleaned) ? cleaned : `"${cleaned}"`;
 }
 
 function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
@@ -604,54 +556,54 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   const preview = String(bucketPlan?.preview || "").trim().toLowerCase();
 
   if (family === "mystery") {
-    if (base) return base;
-    if (preview.includes("psychological")) return "psychological mystery";
-    if (preview.includes("detective")) return "detective mystery";
-    if (preview.includes("cold case")) return "cold case mystery";
-    return preview || "psychological mystery novel";
+    if (base) return quoteIfNeeded(base);
+    if (preview.includes("psychological")) return quoteIfNeeded("psychological mystery");
+    if (preview.includes("detective")) return quoteIfNeeded("detective mystery");
+    if (preview.includes("cold case")) return quoteIfNeeded("cold case mystery");
+    return quoteIfNeeded(preview || "psychological mystery novel");
   }
 
   if (family === "thriller") {
     // Preserve the actual rung phrasing for Open Library so it can compete on the same intent.
-    if (base) return base;
+    if (base) return quoteIfNeeded(base);
 
     if (rung?.rung === 90) {
-      if (preview.includes("crime")) return "crime thriller";
-      if (preview.includes("psychological")) return "psychological thriller";
-      return "thriller novel";
+      if (preview.includes("crime")) return quoteIfNeeded("crime thriller");
+      if (preview.includes("psychological")) return quoteIfNeeded("psychological thriller");
+      return quoteIfNeeded("thriller novel");
     }
 
-    return preview || "crime thriller novel";
+    return quoteIfNeeded(preview || "crime thriller novel");
   }
 
   if (family === "science_fiction") {
-    if (base) return base;
-    if (preview) return preview;
-    return "science fiction novel";
+    if (base) return quoteIfNeeded(base);
+    if (preview) return quoteIfNeeded(preview);
+    return quoteIfNeeded("science fiction novel");
   }
 
   if (family === "fantasy") {
-    if (base) return base;
-    if (preview) return preview;
-    return "epic fantasy novel";
+    if (base) return quoteIfNeeded(base);
+    if (preview) return quoteIfNeeded(preview);
+    return quoteIfNeeded("epic fantasy novel");
   }
 
   if (family === "horror") {
-    if (base) return base;
-    if (preview) return preview;
-    return "psychological horror novel";
+    if (base) return quoteIfNeeded(base);
+    if (preview) return quoteIfNeeded(preview);
+    return quoteIfNeeded("psychological horror novel");
   }
 
   if (family === "speculative") {
-    if (base) return base;
-    if (preview) return preview;
-    return "science fiction";
+    if (base) return quoteIfNeeded(base);
+    if (preview) return quoteIfNeeded(preview);
+    return quoteIfNeeded("science fiction");
   }
 
-  if (family === "romance") return base || preview || "romance novel";
-  if (family === "historical") return base || preview || "historical fiction novel";
+  if (family === "romance") return quoteIfNeeded(base || preview || "romance novel");
+  if (family === "historical") return quoteIfNeeded(base || preview || "historical fiction novel");
 
-  return base || preview || "fiction";
+  return quoteIfNeeded(base || preview || "fiction");
 }
 
 
@@ -1571,10 +1523,10 @@ function capRouterQueryLanes(lanes: RouterQueryLane[]): RouterQueryLane[] {
   // OL to be cut off before it could run.
   if (openLibraryLanes.length > 0) {
     return [
-      ...googleLanes.slice(0, 2),
-      ...openLibraryLanes.slice(0, 3),
+      ...googleLanes.slice(0, 3),
+      ...openLibraryLanes.slice(0, 1),
       ...otherLanes.slice(0, 1),
-    ].slice(0, 6);
+    ].slice(0, 4);
   }
 
   return [
@@ -1619,16 +1571,8 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
 
     if (openLibraryQuery) {
       const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-      const openLibraryQueryPack = buildOpenLibraryQueryPack({ ...rung, query: openLibraryQuery }, bucketPlan);
-      openLibraryQueryPack.forEach((query, index) => {
-        mapped.push({
-          query,
-          laneKind: index === 0 ? "core" : "ol-backfill",
-          source: "openLibrary",
-          queryFamily: family,
-          queryRung,
-        });
-      });
+      mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
+      mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
     }
 
     return capRouterQueryLanes(mapped);
@@ -1712,17 +1656,8 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
     const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
-    const openLibraryQueryPack = buildOpenLibraryQueryPack({ ...rung, query: openLibraryQuery }, bucketPlan);
-    openLibraryQueryPack.forEach((query, index) => {
-      if (family === "horror" && !isHorrorQuery(query)) return;
-      mapped.push({
-        query,
-        laneKind: index === 0 ? "core" : "ol-backfill",
-        source: "openLibrary",
-        queryFamily: family,
-        queryRung,
-      });
-    });
+    mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, queryRung });
+    mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, queryRung });
     if (family === "thriller" || family === "mystery" || family === "horror") {
       const simpleFallbackQuery =
         family === "thriller" ? "psychological thriller novel" :
@@ -2555,13 +2490,6 @@ export async function getRecommendations(
       });
 
       debugRawPool.push(...laneRawPool);
-      if (lane.source === "openLibrary") {
-        debugRouterLog("RAW_POOL_SIZE_AFTER_OPEN_LIBRARY", {
-          laneQuery: lane.query,
-          added: laneRawPool.length,
-          totalRawPool: debugRawPool.length,
-        });
-      }
 
       const taggedDocs = laneMergedDocs.map((doc: any) => {
         const queryRung = Number.isFinite(Number(lane.queryRung))
