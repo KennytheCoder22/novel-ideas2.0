@@ -77,6 +77,9 @@ function inferQueryFamily(rawDoc: any): string | undefined {
 
   if (explicit && explicit !== 'unknown') return explicit;
 
+  const laneKind = String(rawDoc?.laneKind ?? rawDoc?.diagnostics?.laneKind ?? '').toLowerCase().trim();
+  if (laneKind === 'historical') return 'historical';
+
   const queryText = cleanQueryText(
     rawDoc?.queryText ??
     rawDoc?.diagnostics?.queryText ??
@@ -87,6 +90,7 @@ function inferQueryFamily(rawDoc: any): string | undefined {
   if (/\b(19th century american novel|civil war historical fiction novel|family saga historical fiction novel|literary historical fiction novel|historical fiction|historical novel|period fiction)\b/.test(queryText)) {
     return 'historical';
   }
+  if (/\bhistorical\b/.test(queryText)) return 'historical';
 
   return explicit || undefined;
 }
@@ -624,6 +628,11 @@ export function normalizeCandidates(rawDocs: RecommendationDoc[], source: Candid
           scienceFictionLaneCandidate &&
           (hasCanonicalScienceFictionTitle(String(candidate.title || '').toLowerCase()) ||
             hasCanonicalScienceFictionAuthor(String(candidate.author || '').toLowerCase()));
+
+        const filterKept =
+          candidate?.rawDoc?.diagnostics?.filterKept !== false &&
+          candidate?.rawDoc?.rawDoc?.diagnostics?.filterKept !== false;
+        if (filterKept) return Boolean(candidate.title) && Boolean(candidate.author);
 
         return Boolean(candidate.title) && Boolean(candidate.author) && !isClearlyNotABookCandidate(candidate) && (
           looksLikeFictionCandidate(candidate.rawDoc) ||

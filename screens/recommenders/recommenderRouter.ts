@@ -131,9 +131,29 @@ function inferFamilyFromQueryText(query: string, fallback: RouterFamilyKey): Rou
   if (/\b(psychological horror|survival horror|haunted|horror)\b/.test(q)) return "horror";
   if (/\b(science fiction|dystopian|space opera|speculative)\b/.test(q)) return "science_fiction";
   if (/\b(epic fantasy|dark fantasy|magic fantasy|fantasy)\b/.test(q)) return "fantasy";
-  if (/\b(historical fiction|historical novel|period fiction|19th century|civil war)\b/.test(q)) return "historical";
+  if (/\b(historical fiction|historical novel|period fiction|historical|19th century|victorian|gilded age|civil war|world war)\b/.test(q)) return "historical";
   if (/\b(romance|love story|second chance romance|gothic romance|historical romance)\b/.test(q)) return "romance";
   return fallback;
+}
+
+function isMetaReferenceWork(doc: any): boolean {
+  const title = String(doc?.title ?? doc?.rawDoc?.title ?? "").toLowerCase();
+  const categories = [
+    doc?.categories,
+    doc?.subject,
+    doc?.subjects,
+    doc?.genre,
+    doc?.genres,
+    doc?.rawDoc?.categories,
+    doc?.rawDoc?.subject,
+    doc?.rawDoc?.subjects,
+    doc?.rawDoc?.genre,
+    doc?.rawDoc?.genres,
+  ].flatMap((value: any) => (Array.isArray(value) ? value : [value])).filter(Boolean).join(" ").toLowerCase();
+  const description = String(doc?.description ?? doc?.rawDoc?.description ?? "").toLowerCase();
+  const combined = `${title} ${categories} ${description}`.trim();
+
+  return /\b(reference|companion|criticism|history and criticism|study guide|bibliograph(?:y|ies)|encyclopedia|catalog(?:ue)?|handbook|guide to)\b/.test(combined);
 }
 
 function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey): boolean {
@@ -2721,17 +2741,15 @@ const normalizedCandidates = [
     ] as any);
   }
 
-  if (routerFamily !== "thriller") {
-    const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
-    if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_CANDIDATES) {
-      const existing = new Set(basePool.map((c: any) => candidateKey(c)));
-      for (const candidate of openLibraryNormalizedCandidates) {
-        const key = candidateKey(candidate);
-        if (!key || existing.has(key)) continue;
-        basePool.push(candidate);
-        existing.add(key);
-        if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_CANDIDATES) break;
-      }
+  const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
+  if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_CANDIDATES) {
+    const existing = new Set(basePool.map((c: any) => candidateKey(c)));
+    for (const candidate of openLibraryNormalizedCandidates) {
+      const key = candidateKey(candidate);
+      if (!key || existing.has(key)) continue;
+      basePool.push(candidate);
+      existing.add(key);
+      if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_CANDIDATES) break;
     }
   }
 
@@ -2839,7 +2857,19 @@ const normalizedCandidates = [
   const postFilteredRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
 
-  const finalRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit);
+  const metaSafeRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit)
+    .filter((doc: any) => !isMetaReferenceWork(doc));
+  const finalRankedDocs = (() => {
+    if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
+    const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
+    const refill = rankingPool
+      .filter((doc: any) => !isMetaReferenceWork(doc))
+      .filter((doc: any) => {
+        const key = candidateKey(doc);
+        return Boolean(key) && !existing.has(key);
+      });
+    return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+  })();
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
