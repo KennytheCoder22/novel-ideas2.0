@@ -1746,10 +1746,10 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
 
 function safeDefaultQueriesForFamily(family: RouterFamilyKey | string): string[] {
   const normalized = normalizeRouterFamilyValue(family) || "general";
-  if (normalized === "thriller") return ["psychological thriller novel", "crime thriller novel", "suspense novel"];
+  if (normalized === "thriller") return ["psychological suspense novel", "psychological thriller novel", "suspense novel", "mystery thriller novel"];
   if (normalized === "science_fiction" || normalized === "speculative") return ["science fiction novel", "speculative fiction novel"];
   if (normalized === "fantasy") return ["fantasy novel", "dark fantasy novel"];
-  if (normalized === "horror") return ["horror novel", "psychological horror novel"];
+  if (normalized === "horror") return ["psychological horror novel", "horror novel", "gothic horror novel"];
   return ["psychological suspense novel", "science fiction novel", "fantasy novel", "horror novel"];
 }
 
@@ -2842,6 +2842,11 @@ export async function getRecommendations(
   rungs = rungs
     .map((r: any) => ({ ...r, query: cleanQueryText(r?.query), laneKind: "precision" }))
     .filter((r: any) => Boolean(r?.query));
+  if (!rungs.length) {
+    rungs = rotateQueriesForSession(safeDefaultQueriesForFamily(routerFamily), sessionSalt)
+      .slice(0, 4)
+      .map((query, rung) => ({ rung, query: cleanQueryText(query), laneKind: "precision" }));
+  }
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   rungs = rungs.slice(0, 4);
@@ -2879,7 +2884,12 @@ export async function getRecommendations(
       hybridLaneWeights,
       primaryLane: activeFamily,
     };
-    const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
+    let queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
+    if (!queryLanes.length) {
+      const fallbackLaneQuery = cleanQueryText((rung as any)?.query || safeDefaultQueriesForFamily(rungFamily)[0]);
+      if (sourceEnabled.openLibrary) queryLanes.push({ query: fallbackLaneQuery, laneKind: "core", source: "openLibrary", queryFamily: rungFamily, queryRung: Number((rung as any)?.rung ?? 0) });
+      if (sourceEnabled.googleBooks) queryLanes.push({ query: fallbackLaneQuery, laneKind: "core", source: "googleBooks", queryFamily: rungFamily, queryRung: Number((rung as any)?.rung ?? 0) });
+    }
 
     const laneTasks = queryLanes.map(async (lane: any) => {
       if (Date.now() - recommendationStartMs > TOTAL_RECOMMENDATION_BUDGET_MS) return null;
@@ -2912,9 +2922,7 @@ export async function getRecommendations(
         },
       };
 
-      const shouldSkipOpenLibraryByHistory =
-        Number((routingInput as any)?.recentSourceStats?.openLibrary?.finalSelected || 0) === 0 &&
-        Number((routingInput as any)?.recentSourceStats?.openLibrary?.runs || 0) >= 2;
+      const shouldSkipOpenLibraryByHistory = false;
       const shouldSkipOpenLibraryByGoogle = lane.source === "openLibrary" && aggregatedRawFetched.googleBooks >= MIN_GOOGLE_RAW_BEFORE_OPEN_LIBRARY;
       const shouldSkipOpenLibraryByGoogleFailure = lane.source === "openLibrary" && aggregatedRawFetched.googleBooks === 0 && fetchErrorCount > 0;
       if (lane.source === "openLibrary" && (shouldSkipOpenLibraryByHistory || shouldSkipOpenLibraryByGoogle || shouldSkipOpenLibraryByGoogleFailure)) {
