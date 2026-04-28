@@ -67,6 +67,13 @@ function syncSchema(cfg: any) {
     cfg.decks.enabled[k] = v;
   }
 
+  cfg.recommendations = (cfg.recommendations && typeof cfg.recommendations === "object") ? cfg.recommendations : {};
+  const sourceSettings = resolveRecommendationSourceSettings(cfg);
+  cfg.recommendations.sourceEnabled = sourceSettings.sourceEnabled;
+  if (typeof cfg.recommendations.localLibrarySupported !== "boolean") {
+    cfg.recommendations.localLibrarySupported = false;
+  }
+
   return cfg;
 }
 
@@ -90,9 +97,46 @@ function tryLoadDesktopAdminDraft(): any | null {
 
 type DeckKey = "k2" | "36" | "ms_hs" | "adult";
 type SourceKey = "open_library" | "local_collection";
+type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary";
+type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
 type SwipeCategories = Record<SwipeCategoryKey, boolean>;
+
+const DEFAULT_RECOMMENDATION_SOURCE_ENABLED: RecommendationSourceEnabled = {
+  googleBooks: true,
+  openLibrary: true,
+  localLibrary: false,
+};
+
+function resolveRecommendationSourceSettings(cfg: any): {
+  sourceEnabled: RecommendationSourceEnabled;
+  localLibrarySupported: boolean;
+} {
+  const localLibrarySupported = Boolean(cfg?.recommendations?.localLibrarySupported);
+  const configured = cfg?.recommendations?.sourceEnabled || {};
+  const legacySource = cfg?.recommendations?.source ?? cfg?.recommendation?.source;
+
+  const sourceEnabled: RecommendationSourceEnabled = {
+    googleBooks: configured?.googleBooks !== false,
+    openLibrary: configured?.openLibrary !== false,
+    localLibrary: localLibrarySupported ? configured?.localLibrary !== false : false,
+  };
+
+  if (!cfg?.recommendations?.sourceEnabled && typeof legacySource === "string") {
+    if (legacySource === "local_collection") {
+      sourceEnabled.googleBooks = false;
+      sourceEnabled.openLibrary = false;
+      sourceEnabled.localLibrary = localLibrarySupported;
+    } else if (legacySource === "open_library") {
+      sourceEnabled.googleBooks = true;
+      sourceEnabled.openLibrary = true;
+      sourceEnabled.localLibrary = false;
+    }
+  }
+
+  return { sourceEnabled, localLibrarySupported };
+}
 
 const DEFAULT_SWIPE_CATEGORIES: SwipeCategories = {
   books: true,
@@ -542,7 +586,8 @@ logoDataUrl?: string | null;
   titleTextKey: TitleTextKey;
 
   enabledDecks: Record<string, boolean>;
-  source: SourceKey;
+  sourceEnabled: RecommendationSourceEnabled;
+  localLibrarySupported: boolean;
 
   swipeCategories: SwipeCategories;
   toggleSwipeCategory: (k: SwipeCategoryKey) => void;
@@ -563,7 +608,7 @@ setMainThemeKey: (t: ThemeKey) => void;
   onRemoveLogo: () => void;
 
   toggleDeck: (dk: DeckKey) => void;
-  setSource: (s: SourceKey) => void;
+  setSourceEnabled: (key: RecommendationSourceToggleKey, enabled: boolean) => void;
 
   onExit: () => void;
 
@@ -969,7 +1014,7 @@ setMainThemeKey: (t: ThemeKey) => void;
 <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Recommendation Source</Text>
 
 <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
-  Choose where recommendations come from. Open Library is the privacy-friendly default.
+  Toggle one or more sources. If all are off, recommendations will not run.
 </Text>
 
 <TouchableOpacity
@@ -979,34 +1024,43 @@ setMainThemeKey: (t: ThemeKey) => void;
   <Text style={[styles.infoBtnText, { color: props.theme.muted }]}>What does this mean?</Text>
 </TouchableOpacity>
 
-<View style={styles.rowWrap}>
-  {(["open_library", "local_collection"] as SourceKey[]).map((s) => {
-    const selected = props.source === s;
-    return (
-      <TouchableOpacity
-        key={s}
-        onPress={() => props.setSource(s)}
-        style={[
-          styles.chip,
-          { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
-          selected && { backgroundColor: props.theme.accent, borderColor: props.theme.accentBorder },
-        ]}
-      >
-        <Text
-          style={[
-            styles.chipText,
-            { color: props.theme.text },
-            selected && { color: props.theme.accentTextOn },
-          ]}
-        >
-          {sourceLabel(s)}
-        </Text>
-      </TouchableOpacity>
-    );
-  })}
+<View style={{ gap: 10 }}>
+  <View style={styles.rowBetween}>
+    <Text style={{ color: props.theme.text, fontWeight: "700" }}>Google Books</Text>
+    <Switch
+      value={props.sourceEnabled.googleBooks}
+      onValueChange={(next) => props.setSourceEnabled("googleBooks", next)}
+    />
+  </View>
+  <View style={styles.rowBetween}>
+    <Text style={{ color: props.theme.text, fontWeight: "700" }}>Open Library</Text>
+    <Switch
+      value={props.sourceEnabled.openLibrary}
+      onValueChange={(next) => props.setSourceEnabled("openLibrary", next)}
+    />
+  </View>
+  <View style={styles.rowBetween}>
+    <View>
+      <Text style={{ color: props.theme.text, fontWeight: "700" }}>This library’s collection</Text>
+      {!props.localLibrarySupported ? (
+        <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>Not supported in this build yet.</Text>
+      ) : null}
+    </View>
+    <Switch
+      value={props.sourceEnabled.localLibrary && props.localLibrarySupported}
+      disabled={!props.localLibrarySupported}
+      onValueChange={(next) => props.setSourceEnabled("localLibrary", next)}
+    />
+  </View>
 </View>
 
-{props.source === "local_collection" ? (
+{!props.sourceEnabled.googleBooks && !props.sourceEnabled.openLibrary && !(props.sourceEnabled.localLibrary && props.localLibrarySupported) ? (
+  <Text style={[styles.noteSmall, { color: props.theme.danger, marginTop: 8 }]}>
+    All recommendation sources are disabled. Enable at least one source before running recommendations.
+  </Text>
+) : null}
+
+{props.localLibrarySupported ? (
   <View style={{ marginTop: 10, gap: 10 }}>
     <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
       This mode recommends only titles your library has uploaded. Use the button below to upload or replace your collection.
@@ -1393,7 +1447,13 @@ export default function HomeScreen() {
 
   
   const libraryId = useMemo(() => config?.library?.id ?? "", [config]);
-const source: SourceKey = (config?.recommendation?.source as SourceKey) || "open_library";
+  const recommendationSourceSettings = useMemo(
+    () => resolveRecommendationSourceSettings(config),
+    [config]
+  );
+  const sourceEnabled = recommendationSourceSettings.sourceEnabled;
+  const localLibrarySupported = recommendationSourceSettings.localLibrarySupported;
+  const source: SourceKey = sourceEnabled.openLibrary ? "open_library" : "local_collection";
 
   // Branding state from config (with safe defaults)
   // Back-compat: if older config uses branding.theme, treat it as main color.
@@ -1644,8 +1704,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     setInConfig(["swipe", "categories"], next);
   }
 
-  function setSourceValue(s: SourceKey) {
-    setInConfig(["recommendation", "source"], s);
+  function setSourceEnabledValue(key: RecommendationSourceToggleKey, enabled: boolean) {
+    if (key === "localLibrary" && !localLibrarySupported) return;
+    setInConfig(["recommendations", "sourceEnabled", key], enabled);
   }
 
   function setMainThemeKeyValue(t: ThemeKey) {
@@ -1734,8 +1795,8 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
   }
 
   async function runOpenLibrarySearch() {
-    if (source !== "open_library") {
-      setErrorMsg("Open Library is turned off in Admin. Switch Source to Open Library to search.");
+    if (!sourceEnabled.openLibrary) {
+      setErrorMsg("Open Library is turned off in Admin. Enable Open Library under Recommendation Source to search.");
       return;
     }
 
@@ -1783,7 +1844,8 @@ logoDataUrl={logoDataUrl}
           highlightKey={highlightKey}
           titleTextKey={titleTextKey}
           enabledDecks={enabledDecks}
-          source={source}
+          sourceEnabled={sourceEnabled}
+          localLibrarySupported={localLibrarySupported}
           swipeCategories={swipeCategories}
           toggleSwipeCategory={toggleSwipeCategory}
           adminPinEnabled={adminPinEnabled}
@@ -1799,7 +1861,7 @@ logoDataUrl={logoDataUrl}
           onUploadLogo={uploadLogo}
           onRemoveLogo={removeLogo}
           toggleDeck={toggleDeck}
-          setSource={setSourceValue}
+          setSourceEnabled={setSourceEnabledValue}
           onExit={() => setAdminUnlocked(false)}
           onSaveSettings={saveSettings}
           saveButtonLabel={saveButtonLabel}
@@ -1877,6 +1939,8 @@ logoDataUrl={logoDataUrl}
           <SwipeDeckScreen
             swipeCategories={swipeCategories}
             enabledDecks={enabledDecks}
+            recommendationSourceEnabled={sourceEnabled}
+            localLibrarySupported={localLibrarySupported}
             onOpenSearch={() => {
               setMode("search");
               setTimeout(() => queryInputRef.current?.focus?.(), 50);

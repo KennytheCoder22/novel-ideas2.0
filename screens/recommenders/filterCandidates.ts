@@ -1533,23 +1533,6 @@ function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): 
   );
 }
 
-  );
-}
-
-function isBorderlineRescueCandidate(doc: any, diagnostics: FilterDiagnostics): boolean {
-  const laneSignal =
-    diagnostics.flags.thrillerPositive ||
-    diagnostics.flags.mysteryPositive ||
-    diagnostics.flags.suspensePositive ||
-    diagnostics.flags.crimePositive;
-  return Boolean(
-    diagnostics.pageCount >= 250 &&
-    diagnostics.flags.fictionPositive &&
-    laneSignal &&
-    hasRescueAuthoritySignal(doc, diagnostics)
-  );
-}
-
 function filterDocIdentity(doc: any): string {
   return String(
     doc?.key ||
@@ -1829,7 +1812,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       const before = diagnostics.rejectReasons.length;
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
       if (diagnostics.rejectReasons.length !== before && canUseRescueLayer(doc, diagnostics)) {
-      if (diagnostics.rejectReasons.length !== before) {
         diagnostics.passedChecks.push("borderline_rescue_layer");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
       }
@@ -1987,24 +1969,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       continue;
     }
 
-    const zeroRating = diagnostics.ratingsCount === 0;
-    const externalAuthoritySignal =
-      diagnostics.flags.legitAuthority ||
-      diagnostics.flags.authorAffinity ||
-      Boolean((doc as any)?.commercialSignals?.bestseller) ||
-      Number((doc as any)?.commercialSignals?.popularityTier || 0) >= 2 ||
-      hasCanonicalThrillerTitle(diagnostics.title) ||
-      hasCanonicalScienceFictionTitle(diagnostics.title) ||
-      hasCanonicalRomanceTitle(diagnostics.title);
-    const minimumAuthorityFloorMet =
-      !zeroRating ||
-      hasProcurementShape(doc) ||
-      diagnostics.flags.strongNarrative ||
-      externalAuthoritySignal;
-    if (!minimumAuthorityFloorMet) {
-      diagnostics.passedChecks.push("soft_minimum_authority_floor_miss");
-    }
-
     const hasNarrativeOrDescription =
       diagnostics.family === "thriller"
         ? (
@@ -2072,7 +2036,6 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.passedChecks.push("openlibrary_relaxed_shape_floor");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && hasStrongQueryFamilyMatch(diagnostics) && canUseRescueLayer(doc, diagnostics)) {
-      } else if (isOpenLibraryLike && diagnostics.flags.fictionPositive && hasStrongQueryFamilyMatch(diagnostics)) {
         diagnostics.passedChecks.push("query_match_shape_floor_rescue");
         diagnostics.passedChecks.push("borderline_rescue_penalty");
       } else if (diagnostics.pageCount >= 250 && (isBorderlineRescueCandidate(doc, diagnostics) || hasRescueAuthoritySignal(doc, diagnostics))) {

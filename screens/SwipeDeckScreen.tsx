@@ -111,6 +111,12 @@ type TwentyQObjectiveStatus = TwentyQObjective & {
 type Props = {
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
+  recommendationSourceEnabled?: {
+    googleBooks?: boolean;
+    openLibrary?: boolean;
+    localLibrary?: boolean;
+  };
+  localLibrarySupported?: boolean;
   swipeCategories?: {
     books: boolean;
     movies: boolean;
@@ -977,6 +983,11 @@ export default function SwipeDeckScreen(props: Props) {
   const [deckKey, setDeckKey] = useState<DeckKey>("ms_hs");
 
   const enabledDecks = props.enabledDecks ?? {};
+  const sourceEnabled = {
+    googleBooks: props.recommendationSourceEnabled?.googleBooks !== false,
+    openLibrary: props.recommendationSourceEnabled?.openLibrary !== false,
+    localLibrary: props.localLibrarySupported ? props.recommendationSourceEnabled?.localLibrary !== false : false,
+  };
   const enabledDeckList = useMemo(
     () => (["k2", "36", "ms_hs", "adult"] as DeckKey[]).filter((k) => enabledDecks[k] !== false),
     [enabledDecks]
@@ -1035,6 +1046,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastFilterAudit, setLastFilterAudit] = useState<any[]>([]);
   const [lastFilterAuditSummary, setLastFilterAuditSummary] = useState<any | null>(null);
   const [lastFinalRecommenderDebug, setLastFinalRecommenderDebug] = useState<any | null>(null);
+  const [lastSourceEnabled, setLastSourceEnabled] = useState(sourceEnabled);
+  const [lastSourceSkippedReason, setLastSourceSkippedReason] = useState<string[]>([]);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -1300,6 +1313,8 @@ export default function SwipeDeckScreen(props: Props) {
     setLastFilterAudit([]);
     setLastFilterAuditSummary(null);
     setLastFinalRecommenderDebug(null);
+    setLastSourceEnabled(sourceEnabled);
+    setLastSourceSkippedReason([]);
     setFeedback([]);
     setSessionMoodProfile(null);
     setActiveTasteVector(null);
@@ -1542,6 +1557,15 @@ function handleLeft() {
   }
 
   async function performRecommendationRun(input: RecommenderInput) {
+    const allDisabled = !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary;
+    if (allDisabled) {
+      setRecError("All recommendation sources are disabled in Admin. Enable at least one source.");
+      setRecItems([]);
+      setLastSourceEnabled(sourceEnabled);
+      setLastSourceSkippedReason(["all_sources_disabled"]);
+      return;
+    }
+
     setRecLoading(true);
     setRecError(null);
     setRecItems([]);
@@ -1555,6 +1579,8 @@ function handleLeft() {
         {
           ...inputWithHistory,
           profileOverride: currentLaneOverride,
+          sourceEnabled,
+          localLibrarySupported: Boolean(props.localLibrarySupported),
         },
         "auto"
       );
@@ -1587,6 +1613,8 @@ function handleLeft() {
       setLastFilterAudit(Array.isArray((result as any)?.debugFilterAudit) ? (result as any).debugFilterAudit : []);
       setLastFilterAuditSummary((result as any)?.debugFilterAuditSummary || null);
       setLastFinalRecommenderDebug((result as any)?.debugFinalRecommender || null);
+      setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
+      setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
@@ -2066,6 +2094,12 @@ function handleLeft() {
         return `${label}: raw=${stats?.rawFetched ?? 0}, postFilter=${stats?.postFilterCandidates ?? 0}, final=${stats?.finalSelected ?? 0}`;
       })
       .join("\n");
+    const sourceEnabledSummary = [
+      `sourceEnabled.googleBooks:${Boolean(lastSourceEnabled?.googleBooks)}`,
+      `sourceEnabled.openLibrary:${Boolean(lastSourceEnabled?.openLibrary)}`,
+      `sourceEnabled.localLibrary:${Boolean(lastSourceEnabled?.localLibrary)}`,
+      `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
+    ].join("\n");
 
     const report = [
       "SESSION REPORT",
@@ -2088,6 +2122,9 @@ function handleLeft() {
       "",
       "FETCHER COUNTS",
       sourceCountSummary || "(none)",
+      "",
+      "SOURCE SETTINGS",
+      sourceEnabledSummary,
       "",
       "RAW POOL SUMMARY",
       `count:${rawPoolRows.length}`,
@@ -3060,4 +3097,3 @@ const styles = StyleSheet.create({
   genreSimButtonText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   countsRow: { marginTop: 10 },
 });
-
