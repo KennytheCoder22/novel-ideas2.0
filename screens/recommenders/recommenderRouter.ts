@@ -67,6 +67,250 @@ function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
+function rawPrimaryAuthor(doc: any): string {
+  const fromArray = Array.isArray(doc?.author_name) ? String(doc.author_name[0] || "") : "";
+  return normalizeText(fromArray || doc?.author || doc?.rawDoc?.author || doc?.authorName || "");
+}
+
+function rawPublishYear(doc: any): number {
+  const fromVolume = Number(String(doc?.volumeInfo?.publishedDate || "").slice(0, 4));
+  const year = Number(
+    doc?.first_publish_year ||
+    doc?.publishYear ||
+    doc?.rawDoc?.first_publish_year ||
+    fromVolume ||
+    0
+  );
+  return Number.isFinite(year) ? year : 0;
+}
+
+function classicPublicDomainSignal(doc: any): boolean {
+  const text = normalizeText([doc?.title, rawPrimaryAuthor(doc), doc?.description, doc?.rawDoc?.description].filter(Boolean).join(" "));
+  const year = rawPublishYear(doc);
+  return /\b(h\.?g\.?\s*wells|jules verne|mary shelley|arthur conan doyle|bram stoker)\b/.test(text) || (year > 0 && year < 1950);
+}
+
+function docGenreLooseMatch(doc: any, family: RouterFamilyKey): boolean {
+  const text = normalizeText([
+    doc?.title,
+    doc?.description,
+    doc?.rawDoc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+  ].filter(Boolean).join(" "));
+  if (!text) return false;
+  if (family === "thriller") return /\b(thriller|suspense|crime|killer|manhunt|abduction|conspiracy|fugitive|procedural)\b/.test(text);
+  if (family === "mystery") return /\b(mystery|detective|whodunit|investigation|crime)\b/.test(text);
+  if (family === "horror") return /\b(horror|haunted|occult|ghost|supernatural|dread|nightmare)\b/.test(text);
+  if (family === "science_fiction" || family === "speculative") return /\b(science fiction|sci-fi|speculative|dystopian|space|ai|time travel|alien)\b/.test(text);
+  if (family === "fantasy") return /\b(fantasy|magic|dragon|witch|sorcer|epic fantasy|dark fantasy)\b/.test(text);
+  if (family === "romance") return /\b(romance|love|relationship|forbidden love|second chance)\b/.test(text);
+  if (family === "historical") return /\b(historical|period fiction|victorian|regency|world war|civil war)\b/.test(text);
+  return /\b(fiction|novel)\b/.test(text);
+}
+
+function looksLikeJunkCandidate(doc: any): boolean {
+  const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description].filter(Boolean).join(" "));
+  if (!text) return true;
+  if (/\b(collection|short stories|stories collection|boxed set|13 novels|10 novels|omnibus)\b/.test(text)) return true;
+  if (/\bspam\b/.test(text)) return true;
+  if (/\bminecraft novel\b/.test(text)) return true;
+  return false;
+}
+
+function candidateSurvivalScore(doc: any, family: RouterFamilyKey, tagCounts: Record<string, number> = {}): number {
+  const text = normalizeText([
+    doc?.title,
+    doc?.description,
+    doc?.rawDoc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.categories) ? doc.categories : []),
+  ].filter(Boolean).join(" "));
+  const genreScore = docGenreLooseMatch(doc, family) ? 4 : 1;
+  const narrativeScore = /\b(novel|fiction|story|thriller|mystery|horror|fantasy|science fiction|romance)\b/.test(text) ? 3 : 0;
+  const ratings = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || 0);
+  const year = rawPublishYear(doc);
+  const popularityScore = ratings > 0 ? Math.min(3, Math.log10(ratings + 1)) : 0;
+  const recencyScore = year >= 2000 ? 1.5 : year >= 1980 ? 1 : 0;
+  const likedTags = Object.entries(tagCounts).filter(([, value]) => Number(value || 0) > 0).map(([tag]) => normalizeText(tag));
+  const dislikedTags = Object.entries(tagCounts).filter(([, value]) => Number(value || 0) < 0).map(([tag]) => normalizeText(tag));
+  let tagScore = 0;
+  for (const tag of likedTags) if (tag && text.includes(tag)) tagScore += 0.8;
+  for (const tag of dislikedTags) if (tag && text.includes(tag)) tagScore -= 0.8;
+  const lanePenalty = normalizeRouterFamilyValue(doc?.queryFamily || doc?.rawDoc?.queryFamily) && !docGenreLooseMatch(doc, family) ? -1 : 0;
+  return genreScore + narrativeScore + popularityScore + recencyScore + tagScore + lanePenalty;
+}
+
+function isOpenLibraryBaselineAcceptable(doc: any, family: RouterFamilyKey): boolean {
+  const source = sourceForDoc(doc, "openLibrary");
+  if (source !== "openLibrary") return false;
+  const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description].filter(Boolean).join(" "));
+  if (!text) return false;
+  if (/\b(nonfiction|biography|memoir|criticism|reference|textbook|study guide)\b/.test(text)) return false;
+  if (/\b(anthology|collected works|essays|short stories collection|companion guide|analysis)\b/.test(text)) return false;
+  const fictionPositive = /\b(fiction|novel|story|thriller|mystery|fantasy|horror|romance|speculative|historical)\b/.test(text);
+  const authorKnown = rawPrimaryAuthor(doc) && rawPrimaryAuthor(doc) !== "unknown";
+  return fictionPositive && (docGenreLooseMatch(doc, family) || authorKnown || String(doc?.description || doc?.rawDoc?.description || "").length >= 40);
+}
+
+function enforceAuthorMaxTwo<T extends any>(docs: T[]): T[] {
+  const counts = new Map<string, number>();
+  const out: T[] = [];
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const author = rawPrimaryAuthor(doc) || "__unknown__";
+    const current = counts.get(author) || 0;
+    if (current >= 2) continue;
+    counts.set(author, current + 1);
+    out.push(doc);
+  }
+  return out;
+}
+
+type EmergencyFallbackSeed = {
+  title: string;
+  author: string;
+  year: number;
+  subtype: string;
+  tones: string[];
+};
+
+const EMERGENCY_FALLBACK_LIBRARY: Record<string, EmergencyFallbackSeed[]> = {
+  thriller: [
+    ["Gone Girl","Gillian Flynn",2012,"psychological",["dark","crime"]],["Shutter Island","Dennis Lehane",2003,"psychological",["dark","mystery"]],["The Good Girl","Mary Kubica",2014,"domestic",["dark","crime"]],["The Silent Patient","Alex Michaelides",2019,"psychological",["dark","identity"]],["The Girl on the Train","Paula Hawkins",2015,"domestic",["dark","psychological"]],["Before I Go to Sleep","S. J. Watson",2011,"psychological",["identity","tense"]],["Sharp Objects","Gillian Flynn",2006,"crime",["dark","gritty"]],["I Am Pilgrim","Terry Hayes",2013,"conspiracy",["fast","global"]],["The Chain","Adrian McKinty",2019,"survival_action",["tense","fast"]],["No Exit","Taylor Adams",2017,"survival_action",["fast","winter"]],["The Kind Worth Killing","Peter Swanson",2015,"psychological",["dark","crime"]],["The Reversal","Michael Connelly",2010,"crime",["procedural","realistic"]],["Bluebird, Bluebird","Attica Locke",2017,"crime",["noir","realistic"]],["In the Woods","Tana French",2007,"crime",["literary","psychological"]],["Blacktop Wasteland","S. A. Cosby",2020,"crime",["gritty","realistic"]],["The Dry","Jane Harper",2016,"crime",["atmospheric","mystery"]],["Dark Places","Gillian Flynn",2009,"psychological",["dark","crime"]],["Long Bright River","Liz Moore",2020,"crime",["realistic","character"]],["Razorblade Tears","S. A. Cosby",2021,"crime",["gritty","revenge"]],["The Guest List","Lucy Foley",2020,"domestic",["twisty","ensemble"]],["The Last House Guest","Megan Miranda",2019,"domestic",["suspense","coastal"]],["A Nearly Normal Family","M. T. Edvardsson",2018,"legal",["family","psychological"]],["The Power of the Dog","Don Winslow",2005,"conspiracy",["crime","epic"]],["The Snowman","Jo Nesbø",2007,"crime",["serial killer","dark"]],["The Talented Mr. Ripley","Patricia Highsmith",1955,"psychological",["identity","noir"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  mystery: [
+    ["The Cuckoo's Calling","Robert Galbraith",2013,"detective",["procedural","character"]],["Still Life","Louise Penny",2005,"cozy",["small town","warm"]],["The No. 1 Ladies' Detective Agency","Alexander McCall Smith",1998,"cozy",["warm","character"]],["The Black Echo","Michael Connelly",1992,"detective",["procedural","gritty"]],["Magpie Murders","Anthony Horowitz",2016,"meta",["classic puzzle","literary"]],["Big Little Lies","Liane Moriarty",2014,"domestic",["character","twisty"]],["The Thursday Murder Club","Richard Osman",2020,"cozy",["warm","ensemble"]],["The Sweetness at the Bottom of the Pie","Alan Bradley",2009,"cozy",["historical","voice"]],["Still Missing","Chevy Stevens",2010,"crime",["tense","dark"]],["A Great Deliverance","Elizabeth George",1988,"detective",["procedural","literary"]],["Faceless Killers","Henning Mankell",1991,"detective",["noir","realistic"]],["Case Histories","Kate Atkinson",2004,"detective",["character","literary"]],["The Crossing Places","Elly Griffiths",2009,"detective",["atmospheric","forensic"]],["Murder on the Orient Express","Agatha Christie",1934,"classic puzzle",["cozy","locked room"]],["The Woman in White","Wilkie Collins",1859,"gothic mystery",["classic","atmospheric"]],["Raven Black","Ann Cleeves",2006,"detective",["island","noir"]],["In a Dark, Dark Wood","Ruth Ware",2015,"domestic",["tense","twisty"]],["The Searcher","Tana French",2020,"detective",["character","atmospheric"]],["The Ruin","Dervla McTiernan",2018,"detective",["procedural","dark"]],["What Rose Forgot","Nevada Barr",2019,"cozy",["voice","character"]],["The Janes","Louisa Luna",2018,"crime",["dark","investigation"]],["Hercule Poirot's Christmas","Agatha Christie",1938,"classic puzzle",["holiday","cozy"]],["The Girl with a Clock for a Heart","Peter Swanson",2014,"noir",["dark","twisty"]],["A Rising Man","Abir Mukherjee",2016,"historical mystery",["colonial","procedural"]],["IQ","Joe Ide",2016,"detective",["voice","modern"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  horror: [
+    ["The Shining","Stephen King",1977,"haunted",["dark","psychological"]],["The Haunting of Hill House","Shirley Jackson",1959,"haunted",["gothic","atmospheric"]],["A Head Full of Ghosts","Paul Tremblay",2015,"possession",["psychological","dark"]],["The Fisherman","John Langan",2016,"cosmic",["bleak","literary"]],["Mexican Gothic","Silvia Moreno-Garcia",2020,"gothic",["atmospheric","body horror"]],["Bird Box","Josh Malerman",2014,"apocalyptic",["survival","tense"]],["The Only Good Indians","Stephen Graham Jones",2020,"folk",["dark","identity"]],["The Exorcist","William Peter Blatty",1971,"possession",["religious","dark"]],["The Troop","Nick Cutter",2014,"body horror",["graphic","survival"]],["The Cabin at the End of the World","Paul Tremblay",2018,"home invasion",["apocalyptic","tense"]],["Ghost Story","Peter Straub",1979,"ghost",["winter","atmospheric"]],["The Woman in Black","Susan Hill",1983,"ghost",["gothic","classic"]],["The Ritual","Adam Nevill",2011,"folk",["wilderness","dark"]],["House of Leaves","Mark Z. Danielewski",2000,"experimental",["psychological","meta"]],["The Ruins","Scott Smith",2006,"survival",["body horror","tense"]],["Let the Right One In","John Ajvide Lindqvist",2004,"vampire",["dark","character"]],["NOS4A2","Joe Hill",2013,"supernatural",["dark fantasy","road"]],["My Best Friend's Exorcism","Grady Hendrix",2016,"possession",["retro","character"]],["The Silent Companions","Laura Purcell",2017,"gothic",["historical","haunted"]],["The Drowning Girl","Caitlín R. Kiernan",2012,"psychological",["identity","literary"]],["The Red Tree","Caitlín R. Kiernan",2009,"psychological",["isolation","dark"]],["The Hunger","Alma Katsu",2018,"historical horror",["survival","supernatural"]],["The Terror","Dan Simmons",2007,"historical horror",["expedition","bleak"]],["Horrorstör","Grady Hendrix",2014,"haunted",["dark humor","satire"]],["Come Closer","Sara Gran",2003,"possession",["psychological","minimal"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  fantasy: [
+    ["The Final Empire","Brandon Sanderson",2006,"epic",["adventure","dark"]],["Assassin's Apprentice","Robin Hobb",1995,"character",["dark","court"]],["The Blade Itself","Joe Abercrombie",2006,"grimdark",["dark","character"]],["The Name of the Wind","Patrick Rothfuss",2007,"epic",["lyrical","character"]],["The Lies of Locke Lamora","Scott Lynch",2006,"heist",["adventure","witty"]],["The Priory of the Orange Tree","Samantha Shannon",2019,"epic",["dragon","court"]],["The Fifth Season","N. K. Jemisin",2015,"epic",["dark","idea dense"]],["Uprooted","Naomi Novik",2015,"folk",["romantic","dark"]],["Jade City","Fonda Lee",2017,"urban",["crime","family"]],["Black Sun","Rebecca Roanhorse",2020,"epic",["mythic","dark"]],["The Poppy War","R. F. Kuang",2018,"grimdark",["war","dark"]],["The Bear and the Nightingale","Katherine Arden",2017,"folk",["winter","atmospheric"]],["A Wizard of Earthsea","Ursula K. Le Guin",1968,"coming of age",["philosophical","adventure"]],["The Blacktongue Thief","Christopher Buehlman",2021,"quest",["adventure","voice"]],["The Grace of Kings","Ken Liu",2015,"epic",["strategy","character"]],["The Bone Season","Samantha Shannon",2013,"urban",["dark","identity"]],["The City of Brass","S. A. Chakraborty",2017,"epic",["political","adventure"]],["The Hundred Thousand Kingdoms","N. K. Jemisin",2010,"epic",["court","mythic"]],["A Darker Shade of Magic","V. E. Schwab",2015,"portal",["adventure","dark"]],["The Goblin Emperor","Katherine Addison",2014,"court",["warm","character"]],["The Once and Future Witches","Alix E. Harrow",2020,"historical fantasy",["identity","feminist"]],["The Rage of Dragons","Evan Winter",2017,"epic",["revenge","fast"]],["Kings of the Wyld","Nicholas Eames",2017,"quest",["humor","adventure"]],["The Sword of Kaigen","M. L. Wang",2019,"epic",["family","dark"]],["Nettle & Bone","T. Kingfisher",2022,"dark fairy tale",["quest","character"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  science_fiction: [
+    ["Kindred","Octavia E. Butler",1979,"time travel",["identity","historical"]],["The Left Hand of Darkness","Ursula K. Le Guin",1969,"speculative",["identity","political"]],["The Dispossessed","Ursula K. Le Guin",1974,"speculative",["political","idea dense"]],["Station Eleven","Emily St. John Mandel",2014,"post-apocalyptic",["character","literary"]],["The Three-Body Problem","Cixin Liu",2008,"hard sci-fi",["idea dense","cosmic"]],["Children of Time","Adrian Tchaikovsky",2015,"hard sci-fi",["evolution","idea dense"]],["Ancillary Justice","Ann Leckie",2013,"space opera",["identity","political"]],["Project Hail Mary","Andy Weir",2021,"hard sci-fi",["adventure","problem solving"]],["The Space Between Worlds","Micaiah Johnson",2020,"multiverse",["identity","dark"]],["Parable of the Sower","Octavia E. Butler",1993,"dystopian",["realistic","dark"]],["Never Let Me Go","Kazuo Ishiguro",2005,"speculative",["identity","emotional"]],["Red Mars","Kim Stanley Robinson",1992,"hard sci-fi",["political","idea dense"]],["Hyperion","Dan Simmons",1989,"space opera",["literary","epic"]],["A Memory Called Empire","Arkady Martine",2019,"space opera",["political","identity"]],["The Martian","Andy Weir",2011,"hard sci-fi",["humor","survival"]],["The Ministry for the Future","Kim Stanley Robinson",2020,"climate",["realistic","policy"]],["Sea of Tranquility","Emily St. John Mandel",2022,"time travel",["literary","identity"]],["The Mountain in the Sea","Ray Nayler",2022,"speculative",["idea dense","ecological"]],["The City & the City","China Miéville",2009,"weird",["noir","political"]],["Do Androids Dream of Electric Sheep?","Philip K. Dick",1968,"speculative",["identity","philosophical"]],["Snow Crash","Neal Stephenson",1992,"cyberpunk",["fast","satirical"]],["The Windup Girl","Paolo Bacigalupi",2009,"biopunk",["dark","idea dense"]],["Babel-17","Samuel R. Delany",1966,"space opera",["linguistic","idea dense"]],["Autonomous","Annalee Newitz",2017,"cyberpunk",["identity","political"]],["The Future","Naomi Alderman",2023,"near-future",["dark","satirical"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  historical: [
+    ["The Nightingale","Kristin Hannah",2015,"ww2",["emotional","character"]],["Wolf Hall","Hilary Mantel",2009,"court",["political","literary"]],["The Book Thief","Markus Zusak",2005,"ww2",["emotional","identity"]],["All the Light We Cannot See","Anthony Doerr",2014,"ww2",["literary","character"]],["The Pillars of the Earth","Ken Follett",1989,"medieval",["epic","architectural"]],["Homegoing","Yaa Gyasi",2016,"multi-generational",["identity","literary"]],["The Paris Library","Janet Skeslien Charles",2021,"ww2",["warm","character"]],["The Four Winds","Kristin Hannah",2021,"depression",["family","gritty"]],["A Gentleman in Moscow","Amor Towles",2016,"20th century",["character","warm"]],["The Miniaturist","Jessie Burton",2014,"17th century",["gothic","atmospheric"]],["The Japanese Lover","Isabel Allende",2015,"multi-era",["romantic","character"]],["The Rose Code","Kate Quinn",2021,"ww2",["spy","character"]],["The Alice Network","Kate Quinn",2017,"ww1/ww2",["spy","emotional"]],["The Shadow of the Wind","Carlos Ruiz Zafón",2001,"postwar",["gothic","mystery"]],["The Poisonwood Bible","Barbara Kingsolver",1998,"postcolonial",["literary","family"]],["The Thousand Autumns of Jacob de Zoet","David Mitchell",2010,"18th century",["literary","adventure"]],["Year of Wonders","Geraldine Brooks",2001,"plague",["historical","character"]],["Pachinko","Min Jin Lee",2017,"multi-generational",["identity","family"]],["The Personal Librarian","Marie Benedict",2021,"gilded age",["identity","biographical"]],["The Warm Hands of Ghosts","Katherine Arden",2024,"ww1",["dark","supernatural"]],["Hamnet","Maggie O'Farrell",2020,"elizabethan",["literary","family"]],["Girl with a Pearl Earring","Tracy Chevalier",1999,"17th century",["art","character"]],["The Lincoln Highway","Amor Towles",2021,"1950s",["road","character"]],["Washington Black","Esi Edugyan",2018,"19th century",["adventure","identity"]],["The Great Believers","Rebecca Makkai",2018,"1980s",["literary","emotional"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+  romance: [
+    ["Beach Read","Emily Henry",2020,"contemporary",["warm","witty"]],["Book Lovers","Emily Henry",2022,"contemporary",["witty","character"]],["The Hating Game","Sally Thorne",2016,"workplace",["witty","banter"]],["The Kiss Quotient","Helen Hoang",2018,"contemporary",["warm","character"]],["The Love Hypothesis","Ali Hazelwood",2021,"workplace",["witty","academic"]],["Pride and Prejudice","Jane Austen",1813,"regency",["witty","classic"]],["Persuasion","Jane Austen",1817,"regency",["second chance","classic"]],["Outlander","Diana Gabaldon",1991,"historical",["adventure","emotional"]],["The Duke and I","Julia Quinn",2000,"regency",["witty","society"]],["Bringing Down the Duke","Evie Dunmore",2019,"historical",["political","warm"]],["Red, White & Royal Blue","Casey McQuiston",2019,"contemporary",["witty","political"]],["Get a Life, Chloe Brown","Talia Hibbert",2019,"contemporary",["warm","character"]],["Take a Hint, Dani Brown","Talia Hibbert",2020,"contemporary",["witty","warm"]],["The Flatshare","Beth O'Leary",2019,"contemporary",["warm","character"]],["People We Meet on Vacation","Emily Henry",2021,"friends-to-lovers",["warm","travel"]],["You Deserve Each Other","Sarah Hogle",2020,"second chance",["witty","chaotic"]],["Love on the Brain","Ali Hazelwood",2022,"workplace",["witty","academic"]],["A Court of Mist and Fury","Sarah J. Maas",2016,"fantasy romance",["epic","dark"]],["The Viscount Who Loved Me","Julia Quinn",2000,"regency",["banter","society"]],["The Wall of Winnipeg and Me","Mariana Zapata",2016,"sports",["slow burn","warm"]],["It Happened One Summer","Tessa Bailey",2021,"contemporary",["coastal","witty"]],["The Wedding Date","Jasmine Guillory",2018,"contemporary",["warm","character"]],["Part of Your World","Abby Jimenez",2022,"contemporary",["emotional","small town"]],["The Charm Offensive","Alison Cochrun",2021,"contemporary",["warm","identity"]],["The Dead Romantics","Ashley Poston",2022,"paranormal romance",["warm","grief"]],
+  ].map(([title, author, year, subtype, tones]) => ({ title, author, year, subtype, tones } as EmergencyFallbackSeed)),
+};
+
+function buildEmergencyFallbackDocs(
+  family: RouterFamilyKey,
+  input: RecommenderInput,
+  maxItems = 8
+): {
+  docs: RecommendationDoc[];
+  poolSize: number;
+  afterMemoryCount: number;
+  repeatSuppressed: number;
+  selectedTitles: string[];
+  selectionMode: "static" | "ranked" | "randomized_score_band";
+} {
+  const familyKey = family === "speculative" ? "science_fiction" : family;
+  const seeds = EMERGENCY_FALLBACK_LIBRARY[familyKey] || EMERGENCY_FALLBACK_LIBRARY.thriller;
+  const recentIds = new Set((input.priorRecommendedIds || []).map((v) => normalizeText(v)));
+  const recentKeys = new Set((input.priorRecommendedKeys || []).map((v) => normalizeText(v)));
+  const recentAuthors = new Set((input.priorAuthors || []).map((v) => normalizeText(v)));
+  const recentSeries = new Set((input.priorSeriesKeys || []).map((v) => normalizeText(v)));
+  const axes = (input?.tasteProfile?.axes || {}) as Record<string, number>;
+  const dark = Number(axes.darkness || 0);
+  const realism = Number(axes.realism || 0);
+  const ideaDensity = Number(axes.ideaDensity || 0);
+  const warmth = Number(axes.warmth || 0);
+  const likedTags = normalizeText(Object.entries(input.tagCounts || {}).filter(([, value]) => Number(value || 0) > 0).map(([k]) => k).join(" "));
+  const dislikedTags = normalizeText(Object.entries(input.tagCounts || {}).filter(([, value]) => Number(value || 0) < 0).map(([k]) => k).join(" "));
+
+  const scored = seeds.map((seed, index) => {
+    const key = `emergency:${familyKey}:${normalizeText(seed.title).replace(/[^a-z0-9]+/g, "-")}`;
+    const text = normalizeText(`${seed.title} ${seed.author} ${seed.subtype} ${seed.tones.join(" ")} ${familyKey}`);
+    let score = 30;
+    if (dark > 0.25 && /\b(dark|psychological|noir|grimdark|bleak)\b/.test(text)) score += 4;
+    if (realism > 0.25 && /\b(crime|procedural|realistic|historical|political)\b/.test(text)) score += 4;
+    if (ideaDensity > 0.25 && /\b(speculative|political|philosophical|idea dense|hard sci-fi)\b/.test(text)) score += 4;
+    if (warmth > 0.2 && /\b(warm|character|cozy|emotional)\b/.test(text)) score += 3;
+    if (likedTags && likedTags.split(" ").some((token) => token.length > 3 && text.includes(token))) score += 2;
+    if (dislikedTags && dislikedTags.split(" ").some((token) => token.length > 3 && text.includes(token))) score -= 4;
+    if (classicPublicDomainSignal({ title: seed.title, author_name: [seed.author], first_publish_year: seed.year })) score -= 2;
+    const alreadyShown =
+      recentIds.has(normalizeText(key)) ||
+      recentKeys.has(normalizeText(key)) ||
+      recentAuthors.has(normalizeText(seed.author)) ||
+      recentSeries.has(normalizeText(seed.title));
+    if (alreadyShown) score -= 30;
+    return { seed, key, score, alreadyShown, index };
+  });
+
+  const afterMemory = scored.filter((row) => !row.alreadyShown);
+  const rankingBase = (afterMemory.length >= 5 ? afterMemory : scored).sort((a, b) => b.score - a.score);
+  const picked: typeof rankingBase = [];
+  const authorSeen = new Set<string>();
+  const subtypeSeen = new Set<string>();
+
+  for (const row of rankingBase) {
+    if (picked.length >= Math.max(5, Math.min(8, maxItems))) break;
+    const author = normalizeText(row.seed.author);
+    if (authorSeen.has(author)) continue;
+    if (!subtypeSeen.has(row.seed.subtype) || picked.length >= 5) {
+      picked.push(row);
+      authorSeen.add(author);
+      subtypeSeen.add(row.seed.subtype);
+    }
+  }
+  const topBandScore = picked.length ? picked[0].score : 0;
+  const banded = picked.map((row) => ({ ...row, band: Math.floor((topBandScore - row.score) / 3) }));
+  banded.sort((a, b) => a.band - b.band || (Math.random() < 0.5 ? -1 : 1));
+
+  const docs = banded.map((row) => ({
+    key: row.key,
+    title: row.seed.title,
+    author_name: [row.seed.author],
+    first_publish_year: row.seed.year,
+    subject: [familyKey, row.seed.subtype, ...row.seed.tones],
+    description: `${row.seed.title} by ${row.seed.author}`,
+    source: "openLibrary",
+    laneKind: "emergency_fallback",
+    diagnostics: {
+      source: "openLibrary",
+      fallbackRelaxed: true,
+      emergencyFallback: true,
+      fallbackScore: row.score,
+      filterKept: true,
+      filterPassedChecks: ["emergency_fallback_ranked"],
+      filterRejectReasons: [],
+    },
+  } as any));
+
+  return {
+    docs,
+    poolSize: seeds.length,
+    afterMemoryCount: afterMemory.length,
+    repeatSuppressed: scored.length - afterMemory.length,
+    selectedTitles: docs.map((d: any) => String(d.title || "")),
+    selectionMode: "randomized_score_band",
+  };
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label}_timeout`)), timeoutMs);
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
 function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
   if (Array.isArray(value)) return value as RecommendationDoc[];
   if (value && Array.isArray(value.candidates)) return value.candidates as RecommendationDoc[];
@@ -367,7 +611,7 @@ function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string
   const out: string[] = [];
 
   for (const value of values) {
-    const cleaned = String(value || "").replace(/\s+/g, " ").trim();
+    const cleaned = cleanQueryText(value);
     if (!cleaned) continue;
     const key = cleaned.toLowerCase();
     if (seen.has(key)) continue;
@@ -378,8 +622,15 @@ function dedupeNonEmptyQueries(values: Array<string | undefined | null>): string
   return out;
 }
 
-function normalizeQueryKey(value: unknown): string {
+function cleanQueryText(value: unknown): string {
   return String(value || "")
+    .replace(/^["'\s]+|["'\s]+$/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeQueryKey(value: unknown): string {
+  return cleanQueryText(value)
     .toLowerCase()
     .replace(/["']/g, " ")
     .replace(/\s+/g, " ")
@@ -1486,6 +1737,22 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
   return [{ rung: 999, query: "fiction novel" }];
 }
 
+function safeDefaultQueriesForFamily(family: RouterFamilyKey | string): string[] {
+  const normalized = normalizeRouterFamilyValue(family) || "general";
+  if (normalized === "thriller") return ["psychological suspense novel", "psychological thriller novel", "suspense novel", "mystery thriller novel"];
+  if (normalized === "science_fiction" || normalized === "speculative") return ["science fiction novel", "speculative fiction novel"];
+  if (normalized === "fantasy") return ["fantasy novel", "dark fantasy novel"];
+  if (normalized === "horror") return ["psychological horror novel", "horror novel", "gothic horror novel"];
+  return ["psychological suspense novel", "science fiction novel", "fantasy novel", "horror novel"];
+}
+
+function rotateQueriesForSession(queries: string[], sessionSalt: number): string[] {
+  const cleaned = dedupeNonEmptyQueries((queries || []).map((q) => cleanQueryText(q)));
+  if (cleaned.length <= 1) return cleaned;
+  const shift = Math.abs(Number(sessionSalt || 0)) % cleaned.length;
+  return cleaned.slice(shift).concat(cleaned.slice(0, shift));
+}
+
 function rungNegativeTerms(family: ReturnType<typeof inferRouterFamily>): string {
   const base = [
     "-writers", "-writer", "-writing", "-guide", "-reference", "-bibliography", "-analysis",
@@ -1672,6 +1939,140 @@ function candidateKey(candidate: any): string {
 function candidateScoreValue(candidate: any): number {
   const raw = Number(candidate?.score ?? candidate?.diagnostics?.postFilterScore ?? candidate?.diagnostics?.preFilterScore ?? 0);
   return Number.isFinite(raw) ? raw : 0;
+}
+
+function adjacentFamiliesFor(primary: RouterFamilyKey): Set<RouterFamilyKey> {
+  if (primary === "thriller") return new Set(["mystery", "horror"]);
+  if (primary === "mystery") return new Set(["thriller", "historical"]);
+  if (primary === "horror") return new Set(["thriller", "mystery", "fantasy"]);
+  if (primary === "fantasy") return new Set(["speculative", "historical", "horror"]);
+  if (primary === "science_fiction") return new Set(["speculative", "fantasy", "thriller"]);
+  if (primary === "speculative") return new Set(["science_fiction", "fantasy", "horror"]);
+  if (primary === "romance") return new Set(["historical", "fantasy"]);
+  if (primary === "historical") return new Set(["mystery", "romance", "fantasy"]);
+  return new Set();
+}
+
+function inferFamilyFromFreeText(text: string): RouterFamilyKey | null {
+  const lower = normalizeText(text);
+  if (/\b(science fiction|sci[-\s]?fi|dystopian|ai|robot|android|alien|interstellar|time travel)\b/.test(lower)) return "science_fiction";
+  if (/\b(speculative|metaphysical|philosophical speculative|alternate reality)\b/.test(lower)) return "speculative";
+  if (/\b(thriller|suspense|crime thriller|serial killer|manhunt)\b/.test(lower)) return "thriller";
+  if (/\b(mystery|detective|whodunit|procedural)\b/.test(lower)) return "mystery";
+  if (/\b(horror|haunted|occult|supernatural|gothic)\b/.test(lower)) return "horror";
+  if (/\b(fantasy|magic|dragon|wizard|quest)\b/.test(lower)) return "fantasy";
+  if (/\b(romance|love story|courtship|regency)\b/.test(lower)) return "romance";
+  if (/\b(historical fiction|period fiction|world war|19th century)\b/.test(lower)) return "historical";
+  return null;
+}
+
+function recomputeActiveFamily(
+  declaredFamily: RouterFamilyKey,
+  rungs: Array<{ query?: string }>,
+  bucketPlan: any,
+  tasteProfile?: any
+): { family: RouterFamilyKey; reason?: string } {
+  const counts: Record<string, number> = {};
+  const texts = [
+    ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query || "") : []),
+    ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+    String(bucketPlan?.preview || ""),
+  ].filter(Boolean);
+
+  for (const text of texts) {
+    const f = inferFamilyFromFreeText(String(text));
+    if (f) counts[f] = (counts[f] || 0) + 1;
+  }
+
+  const ideaDensity = Number((tasteProfile as any)?.ideaDensity || (tasteProfile as any)?.axes?.ideaDensity || 0);
+  if (ideaDensity > 0.5) counts.science_fiction = (counts.science_fiction || 0) + 1.5;
+
+  const declaredScore = Number(counts[declaredFamily] || 0);
+  const ranked = Object.entries(counts).sort((a, b) => Number(b[1]) - Number(a[1]));
+  const [topFamilyRaw, topScoreRaw] = ranked[0] || [declaredFamily, declaredScore];
+  const topFamily = normalizeRouterFamilyValue(topFamilyRaw) || declaredFamily;
+  const topScore = Number(topScoreRaw || 0);
+
+  if (topFamily !== declaredFamily && topScore >= Math.max(2, declaredScore + 1.5)) {
+    return { family: topFamily, reason: `signals_dominant:${topFamily}:${topScore.toFixed(1)}>${declaredFamily}:${declaredScore.toFixed(1)}` };
+  }
+  return { family: declaredFamily };
+}
+
+function inferDocFamily(doc: any): RouterFamilyKey | null {
+  return normalizeRouterFamilyValue(
+    doc?.queryFamily ||
+    doc?.diagnostics?.queryFamily ||
+    doc?.rawDoc?.queryFamily ||
+    doc?.diagnostics?.filterFamily ||
+    doc?.rawDoc?.diagnostics?.filterFamily ||
+    doc?.laneKind
+  );
+}
+
+function hasStrongDocAuthority(doc: any): boolean {
+  const ratings = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || doc?.rawDoc?.ratingsCount || 0);
+  const popularityTier = Number(doc?.commercialSignals?.popularityTier || doc?.rawDoc?.commercialSignals?.popularityTier || 0);
+  const title = normalizeText(doc?.title || doc?.rawDoc?.title);
+  return ratings >= 50 || popularityTier >= 2 || /\b(gone girl|sharp objects|shutter island|the silent patient|the time machine|the war of the worlds)\b/.test(title);
+}
+
+function workNormalizationKey(doc: any): string {
+  const title = normalizeText(doc?.title || doc?.rawDoc?.title)
+    .replace(/\b(audiobook|illustrated|complete|collection|box set|boxed set|omnibus|deluxe edition|annotated)\b/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const subtitle = normalizeText(doc?.subtitle || doc?.rawDoc?.subtitle)
+    .replace(/\b(audiobook|illustrated|complete|collection|box set|boxed set|omnibus|deluxe edition|annotated)\b/g, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const author = rawAuthorText(doc).replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  return `${title}|${subtitle}|${author}`;
+}
+
+function docMetadataQualityScore(doc: any, primaryFamily: RouterFamilyKey): number {
+  const family = inferDocFamily(doc);
+  const desc = normalizeText(doc?.description || doc?.rawDoc?.description || doc?.volumeInfo?.description);
+  const pageCount = Number(doc?.pageCount || doc?.volumeInfo?.pageCount || doc?.rawDoc?.pageCount || 0);
+  const ratings = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || doc?.rawDoc?.ratingsCount || 0);
+  const cover = Boolean(doc?.hasCover || doc?.cover_i || doc?.rawDoc?.cover_i || doc?.volumeInfo?.imageLinks?.thumbnail);
+  let score = 0;
+  if (desc.length >= 120) score += 4;
+  if (pageCount >= 120) score += 3;
+  if (ratings >= 25) score += 3;
+  if (cover) score += 2;
+  if (hasStrongDocAuthority(doc)) score += 3;
+  if (family === primaryFamily) score += 4;
+  else if (family && adjacentFamiliesFor(primaryFamily).has(family)) score += 1;
+  return score;
+}
+
+function collapseDuplicateWorks(docs: any[], primaryFamily: RouterFamilyKey): { docs: any[]; collapsed: number } {
+  const groups = new Map<string, any[]>();
+  for (const doc of docs) {
+    const key = workNormalizationKey(doc);
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(doc);
+  }
+
+  const kept: any[] = [];
+  let collapsed = 0;
+  for (const items of groups.values()) {
+    if (items.length === 1) {
+      kept.push(items[0]);
+      continue;
+    }
+    const sorted = [...items].sort((a, b) =>
+      docMetadataQualityScore(b, primaryFamily) - docMetadataQualityScore(a, primaryFamily) ||
+      candidateScoreValue(b) - candidateScoreValue(a)
+    );
+    kept.push(sorted[0]);
+    collapsed += Math.max(0, sorted.length - 1);
+  }
+  return { docs: kept, collapsed };
 }
 
 
@@ -2127,6 +2528,33 @@ function enrichWithCommercialSignals(docs: RecommendationDoc[]): RecommendationD
 }
 
 async function runEngine(engine: EngineId, input: RecommenderInput): Promise<RecommendationResult> {
+  const enabled = {
+    googleBooks: input?.sourceEnabled?.googleBooks !== false,
+    openLibrary: input?.sourceEnabled?.openLibrary !== false,
+    localLibrary: input?.sourceEnabled?.localLibrary !== false,
+  };
+  const skipped =
+    (engine === "googleBooks" && !enabled.googleBooks) ||
+    (engine === "openLibrary" && !enabled.openLibrary);
+  if (skipped) {
+    return {
+      engineId: engine,
+      engineLabel: engine === "googleBooks" ? "Google Books" : "Open Library",
+      deckKey: input.deckKey,
+      domainMode: input.domainModeOverride,
+      builtFromQuery: "",
+      items: [],
+      sourceEnabled: enabled,
+      sourceSkippedReason: { [engine]: "disabled_in_admin" },
+    };
+  }
+  const queryText = String((input as any)?.query || (input as any)?.bucketPlan?.preview || (input as any)?.bucketPlan?.queries?.[0] || "").toLowerCase().trim();
+  const cacheKey = `${engine}|${input.deckKey}|${(input as any)?.bucketPlan?.family || ""}|${queryText}`;
+  const cached = queryResultCache.get(cacheKey);
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result;
+  }
+
   if (engine === "googleBooks") {
     debugRouterLog("SENDING QUERIES TO GOOGLE BOOKS", {
       deckKey: (input as any)?.deckKey,
@@ -2134,7 +2562,9 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
       queries: (input as any)?.queries ?? (input as any)?.bucketPlan?.queries,
       query: (input as any)?.query,
     });
-    return getGoogleBooksRecommendations(input);
+    const result = await withTimeout(getGoogleBooksRecommendations(input), GOOGLE_BOOKS_QUERY_TIMEOUT_MS, "google_books_fetch");
+    queryResultCache.set(cacheKey, { expiresAt: Date.now() + QUERY_CACHE_TTL_MS, result });
+    return result;
   }
 
   const domainModeOverride: DomainMode | undefined =
@@ -2150,10 +2580,12 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
       queries: (routedInput as any)?.queries ?? (routedInput as any)?.bucketPlan?.queries,
       query: (routedInput as any)?.query,
     });
-    return getOpenLibraryRecommendations(routedInput);
+    const result = await withTimeout(getOpenLibraryRecommendations(routedInput), OPEN_LIBRARY_QUERY_TIMEOUT_MS, "open_library_fetch");
+    queryResultCache.set(cacheKey, { expiresAt: Date.now() + QUERY_CACHE_TTL_MS, result });
+    return result;
   }
-  if (engine === "kitsu") return getKitsuMangaRecommendations(routedInput);
-  return getGcdGraphicNovelRecommendations(routedInput);
+  if (engine === "kitsu") return withTimeout(getKitsuMangaRecommendations(routedInput), OPEN_LIBRARY_QUERY_TIMEOUT_MS, "kitsu_fetch");
+  return withTimeout(getGcdGraphicNovelRecommendations(routedInput), OPEN_LIBRARY_QUERY_TIMEOUT_MS, "gcd_fetch");
 }
 
 async function fetchBothEngines(
@@ -2213,6 +2645,29 @@ export async function getRecommendations(
   input: RecommenderInput,
   override?: EngineOverride
 ): Promise<RecommendationResult> {
+  const recommendationStartMs = Date.now();
+  const sessionSalt = recommendationStartMs;
+  const sourceEnabled = {
+    googleBooks: input?.sourceEnabled?.googleBooks !== false,
+    openLibrary: input?.sourceEnabled?.openLibrary !== false,
+    localLibrary: input?.sourceEnabled?.localLibrary !== false,
+  };
+  const sourceSkippedReason: Record<string, string> = {};
+  if (!sourceEnabled.googleBooks) sourceSkippedReason.googleBooks = "disabled_in_admin";
+  if (!sourceEnabled.openLibrary) sourceSkippedReason.openLibrary = "disabled_in_admin";
+  if (!sourceEnabled.localLibrary) sourceSkippedReason.localLibrary = "disabled_in_admin";
+  if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary) {
+    return {
+      engineId: "openLibrary",
+      engineLabel: "No sources enabled",
+      deckKey: input.deckKey,
+      domainMode: input.domainModeOverride,
+      builtFromQuery: "",
+      items: [],
+      sourceEnabled,
+      sourceSkippedReason: { ...sourceSkippedReason, all: "all_sources_disabled" },
+    };
+  }
   const routingInput = removeSkippedSwipeEvidenceForRouting(input);
   const preferredEngine = chooseEngine(routingInput, override);
   const baseBucketPlan = buildRouterBucketPlan(routingInput);
@@ -2244,6 +2699,17 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  const fetchMsBySource: Record<string, number> = { googleBooks: 0, openLibrary: 0, kitsu: 0, gcd: 0 };
+  const queryMsByRung: Record<string, number> = {};
+  let openLibrarySkippedReason = "";
+  let cacheHitCount = 0;
+  let fetchErrorCount = 0;
+  let repeatedCandidateCount = 0;
+  let repeatSuppressedCount = 0;
+  let queryWasRetried = false;
+  let retryCount = 0;
+  let fallbackUsed: "google_retry" | "open_library" | "none" = "none";
+  let zeroResultCause: "query" | "fetch_error" | "filter" | "none" = "none";
   let rungs = asArray(
     build20QRungs({
       ageBand:
@@ -2310,6 +2776,35 @@ export async function getRecommendations(
     ];
   }
 
+  if (!rungs.length) {
+    rungs = rotateQueriesForSession(safeDefaultQueriesForFamily(routerFamily), sessionSalt).map((query, rung) => ({ rung, query: cleanQueryText(query) }));
+  }
+  const hybridSciFiThriller =
+    Number(hybridLaneWeights.science_fiction || 0) >= 0.2 &&
+    Number(hybridLaneWeights.thriller || 0) >= 0.2;
+  if (routerFamily === "thriller" && !hybridSciFiThriller) {
+    const thrillerRotation = rotateQueriesForSession([
+      "psychological thriller novel",
+      "character driven suspense novel",
+      "crime thriller novel",
+      "mystery suspense novel",
+    ], sessionSalt);
+    rungs = dedupeNonEmptyQueries([...(rungs.map((r: any) => r?.query)), ...thrillerRotation])
+      .slice(0, 4)
+      .map((query, rung) => ({ rung, query: cleanQueryText(query) }));
+  }
+
+  if (hybridSciFiThriller) {
+    const mixedQueries = rotateQueriesForSession([
+      "science fiction thriller novel",
+      "speculative suspense novel",
+      "psychological thriller novel",
+      "crime thriller novel",
+      "suspense novel",
+    ], sessionSalt).slice(0, 4);
+    rungs = mixedQueries.map((query, rung) => ({ rung, query: cleanQueryText(query) }));
+  }
+
   if (routerFamily === "historical") {
     // Historical must keep four independent shelves. Some upstream taste plans can
     // collapse every rung to the same base query; restore the canonical rung pack here
@@ -2337,10 +2832,26 @@ export async function getRecommendations(
     }
   }
 
-  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision" }));
+  rungs = rungs
+    .map((r: any) => ({ ...r, query: cleanQueryText(r?.query), laneKind: "precision" }))
+    .filter((r: any) => Boolean(r?.query));
+  if (!rungs.length) {
+    rungs = rotateQueriesForSession(safeDefaultQueriesForFamily(routerFamily), sessionSalt)
+      .slice(0, 4)
+      .map((query, rung) => ({ rung, query: cleanQueryText(query), laneKind: "precision" }));
+  }
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   rungs = rungs.slice(0, 4);
+  const declaredActiveFamily = routerFamily;
+  const recomputedFamilyDecision = recomputeActiveFamily(
+    declaredActiveFamily,
+    rungs as any,
+    bucketPlan,
+    routingInput.tasteProfile
+  );
+  const activeFamily = recomputedFamilyDecision.family;
+  const familySwitchReason = recomputedFamilyDecision.reason;
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
@@ -2356,16 +2867,22 @@ export async function getRecommendations(
   };
 
   for (const rung of rungs) {
-    const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
+    if (Date.now() - recommendationStartMs > TOTAL_RECOMMENDATION_BUDGET_MS) break;
+    const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || activeFamily;
     const effectiveBucketPlan = {
       ...bucketPlan,
       lane: rungFamily,
       family: rungFamily,
       hybridMode: isHybridMode,
       hybridLaneWeights,
-      primaryLane: routerFamily,
+      primaryLane: activeFamily,
     };
-    const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
+    let queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
+    if (!queryLanes.length) {
+      const fallbackLaneQuery = cleanQueryText((rung as any)?.query || safeDefaultQueriesForFamily(rungFamily)[0]);
+      if (sourceEnabled.openLibrary) queryLanes.push({ query: fallbackLaneQuery, laneKind: "core", source: "openLibrary", queryFamily: rungFamily, queryRung: Number((rung as any)?.rung ?? 0) });
+      if (sourceEnabled.googleBooks) queryLanes.push({ query: fallbackLaneQuery, laneKind: "core", source: "googleBooks", queryFamily: rungFamily, queryRung: Number((rung as any)?.rung ?? 0) });
+    }
 
     for (const lane of queryLanes) {
       const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || rungFamily;
@@ -2397,19 +2914,67 @@ export async function getRecommendations(
         },
       };
 
-      const requests: Array<Promise<RecommendationResult>> = [];
-      if (lane.source === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
-      if (lane.source === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
-      if (includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
-      if (includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      const shouldSkipOpenLibraryByHistory = false;
+      const shouldSkipOpenLibraryByGoogle = lane.source === "openLibrary" && aggregatedRawFetched.googleBooks >= MIN_GOOGLE_RAW_BEFORE_OPEN_LIBRARY;
+      const shouldSkipOpenLibraryByGoogleFailure = lane.source === "openLibrary" && aggregatedRawFetched.googleBooks === 0 && fetchErrorCount > 0;
+      if (lane.source === "openLibrary" && (shouldSkipOpenLibraryByHistory || shouldSkipOpenLibraryByGoogle || shouldSkipOpenLibraryByGoogleFailure)) {
+        openLibrarySkippedReason =
+          shouldSkipOpenLibraryByGoogleFailure ? "google_retry_pending" :
+          shouldSkipOpenLibraryByHistory ? "recent_zero_contribution" :
+          "google_viable_pool";
+        return null;
+      }
 
+      const requests: Array<Promise<RecommendationResult>> = [];
+      const laneQueryKey = String(laneInput?.bucketPlan?.preview || lane.query || "").toLowerCase().trim();
+      if (lane.source === "googleBooks") {
+        const cacheKey = `googleBooks|${laneInput.deckKey}|${laneFamily}|${laneQueryKey}`;
+        if (queryResultCache.get(cacheKey)?.expiresAt && queryResultCache.get(cacheKey)!.expiresAt > Date.now()) cacheHitCount += 1;
+        const laneStart = Date.now();
+        requests.push(runEngine("googleBooks", laneInput).finally(() => {
+          fetchMsBySource.googleBooks += Date.now() - laneStart;
+        }));
+      }
+      if (lane.source === "openLibrary") {
+        const cacheKey = `openLibrary|${laneInput.deckKey}|${laneFamily}|${laneQueryKey}`;
+        if (queryResultCache.get(cacheKey)?.expiresAt && queryResultCache.get(cacheKey)!.expiresAt > Date.now()) cacheHitCount += 1;
+        const laneStart = Date.now();
+        requests.push(runEngine("openLibrary", laneInput).finally(() => {
+          fetchMsBySource.openLibrary += Date.now() - laneStart;
+        }));
+      }
+      if (includeKitsu && lane.source === "googleBooks") {
+        const laneStart = Date.now();
+        requests.push(getKitsuMangaRecommendations(laneInput).finally(() => {
+          fetchMsBySource.kitsu += Date.now() - laneStart;
+        }));
+      }
+      if (includeGcd && lane.source === "googleBooks") {
+        const laneStart = Date.now();
+        requests.push(getGcdGraphicNovelRecommendations(laneInput).finally(() => {
+          fetchMsBySource.gcd += Date.now() - laneStart;
+        }));
+      }
+
+      const rungKey = `${laneQueryRung ?? "x"}:${lane.query}`;
+      const rungStart = Date.now();
       const results = await Promise.allSettled(requests);
+      queryMsByRung[rungKey] = (queryMsByRung[rungKey] || 0) + (Date.now() - rungStart);
+      fetchErrorCount += results.filter((r) => r.status === "rejected").length;
       let index = 0;
 
       const laneGoogle = lane.source === "googleBooks" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (lane.source === "googleBooks") index += 1;
+      if (laneGoogle) {
+        queryWasRetried = queryWasRetried || Boolean((laneGoogle as any)?.queryWasRetried);
+        retryCount += Number((laneGoogle as any)?.retryCount || 0);
+        if ((laneGoogle as any)?.fallbackUsed === "google_retry") fallbackUsed = "google_retry";
+        if ((laneGoogle as any)?.zeroResultCause && (laneGoogle as any)?.zeroResultCause !== "none") {
+          zeroResultCause = (laneGoogle as any).zeroResultCause;
+        }
+      }
 
       const laneOpenLibrary = lane.source === "openLibrary" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
@@ -2460,7 +3025,7 @@ export async function getRecommendations(
           queryText: row?.queryText ?? lane.query,
           queryFamily: row?.queryFamily ?? laneFamily,
           hybridLaneWeights,
-          primaryLane: routerFamily,
+          primaryLane: activeFamily,
           laneKind: lane.laneKind,
         };
       });
@@ -2480,7 +3045,7 @@ export async function getRecommendations(
           queryText: lane.query,
           queryFamily: laneFamily,
           hybridLaneWeights,
-          primaryLane: routerFamily,
+          primaryLane: activeFamily,
           laneKind: lane.laneKind,
           diagnostics: {
             ...(doc?.diagnostics || {}),
@@ -2489,24 +3054,107 @@ export async function getRecommendations(
             queryFamily: laneFamily,
             laneKind: lane.laneKind,
             hybridLaneWeights,
-            primaryLane: routerFamily,
+            primaryLane: activeFamily,
           },
         };
       });
 
       allMergedDocs.push(...taggedDocs);
-    }
+      return { laneGoogle, laneOpenLibrary, laneKitsu, laneGcd };
+    });
+    await Promise.all(laneTasks);
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
+  const collapsedWorks = collapseDuplicateWorks(mergedDocs, activeFamily);
+  const dedupedMergedDocs = collapsedWorks.docs;
 
-  debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
+  const familyCountsRaw = dedupedMergedDocs.reduce<Record<string, number>>((acc, doc: any) => {
+    const fam = inferDocFamily(doc) || "unknown";
+    acc[fam] = (acc[fam] || 0) + 1;
+    return acc;
+  }, {});
+  const totalRawCandidates = Math.max(1, dedupedMergedDocs.length);
+  const primaryFamilyRawShare = Number(familyCountsRaw[activeFamily] || 0) / totalRawCandidates;
+  const adjacentFamilies = adjacentFamiliesFor(activeFamily);
+  const nonPrimaryCaps = {
+    adjacent: Math.max(2, Math.floor(totalRawCandidates * 0.3)),
+    unrelated: Math.max(1, Math.floor(totalRawCandidates * 0.1)),
+    unknown: Math.max(1, Math.floor(totalRawCandidates * 0.1)),
+  };
+  let familyCapApplied = false;
+
+  const sourceRawStats = dedupedMergedDocs.reduce<Record<string, { raw: number; missingPage: number; missingDescription: number; wrongFamily: number; lowAuthorityZero: number }>>((acc, doc: any) => {
+    const source = sourceForDoc(doc, "openLibrary");
+    if (!acc[source]) acc[source] = { raw: 0, missingPage: 0, missingDescription: 0, wrongFamily: 0, lowAuthorityZero: 0 };
+    const row = acc[source];
+    row.raw += 1;
+    const desc = normalizeText(doc?.description || doc?.rawDoc?.description || doc?.volumeInfo?.description);
+    const pageCount = Number(doc?.pageCount || doc?.volumeInfo?.pageCount || doc?.rawDoc?.pageCount || 0);
+    const ratings = Number(doc?.ratingsCount || doc?.volumeInfo?.ratingsCount || doc?.rawDoc?.ratingsCount || 0);
+    const family = inferDocFamily(doc);
+    if (!desc) row.missingDescription += 1;
+    if (pageCount === 0) row.missingPage += 1;
+    if (!family || (family !== activeFamily && !adjacentFamilies.has(family))) row.wrongFamily += 1;
+    if (ratings === 0 && !hasStrongDocAuthority(doc)) row.lowAuthorityZero += 1;
+    return acc;
+  }, {});
+
+  const sourceHealthBySource = Object.fromEntries(
+    Object.entries(sourceRawStats).map(([source, stats]) => {
+      const raw = Math.max(1, stats.raw);
+      return [
+        source,
+        {
+          raw: stats.raw,
+          missingPageRate: stats.missingPage / raw,
+          missingDescriptionRate: stats.missingDescription / raw,
+          wrongFamilyRate: stats.wrongFamily / raw,
+          lowAuthorityZeroRate: stats.lowAuthorityZero / raw,
+        },
+      ];
+    })
+  );
+
+  const sourcePenaltyApplied = Object.fromEntries(
+    Object.entries(sourceHealthBySource).map(([source, stats]: any) => {
+      const penalize = stats.raw >= 20 && (stats.missingDescriptionRate > 0.6 || stats.wrongFamilyRate > 0.55);
+      return [source, penalize ? 0.5 : 1];
+    })
+  );
+
+  const familyDominanceControlledDocs = dedupedMergedDocs.filter((doc: any) => {
+    const family = inferDocFamily(doc);
+    if (!family) return hasStrongDocAuthority(doc) && candidateScoreValue(doc) >= 0;
+    if (family === activeFamily) return true;
+    if (primaryFamilyRawShare >= 0.55) return true;
+    familyCapApplied = true;
+    if (adjacentFamilies.has(family)) {
+      const keptAdjacent = dedupedMergedDocs.filter((d: any) => {
+        const f = inferDocFamily(d);
+        return f && adjacentFamilies.has(f);
+      }).indexOf(doc);
+      return keptAdjacent < nonPrimaryCaps.adjacent || hasStrongDocAuthority(doc);
+    }
+    const unrelatedIndex = dedupedMergedDocs.filter((d: any) => {
+      const f = inferDocFamily(d);
+      return f && f !== activeFamily && !adjacentFamilies.has(f);
+    }).indexOf(doc);
+    return unrelatedIndex < nonPrimaryCaps.unrelated && hasStrongDocAuthority(doc);
+  }).filter((doc: any) => {
+    const source = sourceForDoc(doc, "openLibrary");
+    const penalty = Number((sourcePenaltyApplied as any)[source] || 1);
+    if (penalty >= 1) return true;
+    return hasStrongDocAuthority(doc) || docMetadataQualityScore(doc, activeFamily) >= 8;
+  });
+
+  debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", familyDominanceControlledDocs);
   debugRouterLog("RAW FETCHED BY SOURCE", aggregatedRawFetched);
 
   // Open Library gets a lightweight Hardcover pass BEFORE filtering. This is
   // enrichment-only: it never drops rows, but it gives filterCandidates earlier
   // authority signals for sparse OL records.
-  const openLibraryPrefilterEnrichedDocs = await enrichOpenLibraryBeforeFiltering(mergedDocs);
+  const openLibraryPrefilterEnrichedDocs = await enrichOpenLibraryBeforeFiltering(familyDominanceControlledDocs);
 
   // Hardcover enrichment is non-blocking and runs AFTER merging.
   const hardcoverEnrichedDocs = await enrichWithHardcover(openLibraryPrefilterEnrichedDocs);
@@ -2515,16 +3163,158 @@ export async function getRecommendations(
   // Strict 20Q router:
   // taste comes only from 20Q-derived rungs. NYT is allowed only after filtering
   // as a procurement/commercial anchor, never as query or taste evidence.
-  const filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
+  const filterStartMs = Date.now();
+  const openLibraryRawCount = familyDominanceControlledDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary").length;
+  let filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
+  let fallbackRelaxedTriggered = false;
+  if (filteredDocs.length === 0) {
+    const relaxedBucketPlan = {
+      ...bucketPlan,
+      lane: "general",
+      family: "general",
+      queries: rotateQueriesForSession(safeDefaultQueriesForFamily(activeFamily), sessionSalt),
+      preview: rotateQueriesForSession(safeDefaultQueriesForFamily(activeFamily), sessionSalt)[0],
+      relaxedFilterPass: true,
+    };
+    filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, relaxedBucketPlan as any));
+    if (filteredDocs.length > 0) fallbackRelaxedTriggered = true;
+  }
+  if (filteredDocs.length < MIN_RELAXED_FILTER_POOL) {
+    fallbackRelaxedTriggered = true;
+    const existing = new Set(filteredDocs.map((doc: any) => candidateKey(doc)));
+    const relaxedOpenLibraryPool = enrichedDocs
+      .filter((doc: any) => !existing.has(candidateKey(doc)))
+      .filter((doc: any) => isOpenLibraryBaselineAcceptable(doc, activeFamily))
+      .sort((a: any, b: any) => {
+        const aClassicPenalty = classicPublicDomainSignal(a) ? 1 : 0;
+        const bClassicPenalty = classicPublicDomainSignal(b) ? 1 : 0;
+        const aFamily = Number(docGenreLooseMatch(a, activeFamily));
+        const bFamily = Number(docGenreLooseMatch(b, activeFamily));
+        return bFamily - aFamily || aClassicPenalty - bClassicPenalty || candidateScoreValue(b) - candidateScoreValue(a);
+      });
+    for (const doc of relaxedOpenLibraryPool) {
+      if (filteredDocs.length >= MIN_RELAXED_FILTER_POOL) break;
+      const diagnostics = {
+        ...((doc as any)?.diagnostics || {}),
+        filterKept: true,
+        filterFallbackRelaxed: true,
+        fallbackRelaxed: true,
+      };
+      filteredDocs.push({ ...(doc as any), diagnostics });
+      existing.add(candidateKey(doc));
+    }
+    filteredDocs = enforceAuthorMaxTwo(filteredDocs);
+  }
+  if (openLibraryRawCount > 0 && filteredDocs.length < 5) {
+    const existing = new Set(filteredDocs.map((doc: any) => candidateKey(doc)));
+    const scoredPool = enrichedDocs
+      .filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary")
+      .filter((doc: any) => !existing.has(candidateKey(doc)))
+      .filter((doc: any) => !looksLikeJunkCandidate(doc))
+      .map((doc: any) => ({ doc, score: candidateSurvivalScore(doc, activeFamily, routingInput.tagCounts || {}) }))
+      .sort((a, b) => b.score - a.score);
+
+    let threshold = 5;
+    while (filteredDocs.length < 5 && threshold >= 1.5) {
+      for (const entry of scoredPool) {
+        if (filteredDocs.length >= 5) break;
+        if (entry.score < threshold) continue;
+        const key = candidateKey(entry.doc);
+        if (!key || existing.has(key)) continue;
+        filteredDocs.push({ ...(entry.doc as any), diagnostics: { ...((entry.doc as any)?.diagnostics || {}), filterKept: true, filterScoredSurvival: true, survivalScore: entry.score } });
+        existing.add(key);
+      }
+      threshold -= 1.25;
+    }
+    filteredDocs = enforceAuthorMaxTwo(filteredDocs);
+  }
+  const filterMs = Date.now() - filterStartMs;
   debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
+  const sourceSurvivalBySource = Object.fromEntries(
+    Object.entries(aggregatedRawFetched).map(([source, raw]) => {
+      const rawCount = Number(raw || 0);
+      const survived = filteredDocs.filter((doc: any) => sourceForDoc(doc, "openLibrary") === source).length;
+      const survivalRate = rawCount > 0 ? survived / rawCount : 0;
+      return [
+        source,
+        {
+          raw: rawCount,
+          survived,
+          survivalRate,
+        },
+      ];
+    })
+  ) as Record<string, { raw: number; survived: number; survivalRate: number }>;
+  const sourceQualityScoreBySource = Object.fromEntries(
+    Object.entries(sourceSurvivalBySource).map(([source, stats]) => {
+      const qualityScore = Math.max(0, Math.min(1, Number(stats.survivalRate || 0) * 3));
+      return [source, qualityScore];
+    })
+  ) as Record<string, number>;
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
+  const softFailurePenaltyCount = Number(filterAuditSummary?.reasons?.too_many_soft_failures || 0);
+  const softFailureHardRejectCount = Number(filterAuditSummary?.reasons?.too_many_soft_failures || 0);
 
   // Centralized filtering rule:
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  let authorDiversityApplied = false;
+  const lowSurvivalSources = new Set(
+    Object.entries(sourceSurvivalBySource)
+      .filter(([, stats]) => Number(stats.raw || 0) >= 20 && Number(stats.survivalRate || 0) < 0.05)
+      .map(([source]) => source)
+  );
+  if (lowSurvivalSources.size > 0 && candidateDocs.length > 0) {
+    const seenBySource: Record<string, number> = {};
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      const source = sourceForDoc(doc, "openLibrary");
+      if (!lowSurvivalSources.has(source)) return true;
+      const cap = Math.max(2, Math.min(4, Math.ceil(candidateDocs.length * 0.2)));
+      seenBySource[source] = (seenBySource[source] || 0) + 1;
+      return seenBySource[source] <= cap;
+    });
+  }
+  const MIN_CANDIDATE_POOL_TARGET = 12;
+  if (candidateDocs.length < MIN_CANDIDATE_POOL_TARGET && filteredDocs.length > candidateDocs.length) {
+    const existing = new Set(candidateDocs.map((doc: any) => candidateKey(doc)));
+    const rankedBackfill = [...filteredDocs]
+      .filter((doc: any) => !existing.has(candidateKey(doc)))
+      .sort((a: any, b: any) => {
+        const aAuthority = Number(hasStrongDocAuthority(a));
+        const bAuthority = Number(hasStrongDocAuthority(b));
+        const aScore = candidateScoreValue(a);
+        const bScore = candidateScoreValue(b);
+        return bAuthority - aAuthority || bScore - aScore;
+      });
+    for (const doc of rankedBackfill) {
+      if (candidateDocs.length >= MIN_CANDIDATE_POOL_TARGET) break;
+      candidateDocs.push(doc);
+    }
+  }
+  if (candidateDocs.length < MIN_RELAXED_FILTER_POOL) {
+    fallbackRelaxedTriggered = true;
+    const existing = new Set(candidateDocs.map((doc: any) => candidateKey(doc)));
+    const relaxedAdds = enrichedDocs
+      .filter((doc: any) => !existing.has(candidateKey(doc)))
+      .filter((doc: any) => isOpenLibraryBaselineAcceptable(doc, activeFamily))
+      .sort((a: any, b: any) => {
+        const aClassicPenalty = classicPublicDomainSignal(a) ? 1 : 0;
+        const bClassicPenalty = classicPublicDomainSignal(b) ? 1 : 0;
+        return aClassicPenalty - bClassicPenalty || Number(docGenreLooseMatch(b, activeFamily)) - Number(docGenreLooseMatch(a, activeFamily));
+      });
+    for (const doc of relaxedAdds) {
+      if (candidateDocs.length >= MIN_RELAXED_FILTER_POOL) break;
+      candidateDocs.push(doc);
+      existing.add(candidateKey(doc));
+    }
+  }
+  const candidateDocsPreDiversity = candidateDocs.length;
+  candidateDocs = enforceAuthorMaxTwo(candidateDocs);
+  authorDiversityApplied = candidateDocs.length !== candidateDocsPreDiversity;
+  let anchorRejectedForWeakAlignment = 0;
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
     fetched: 0,
@@ -2607,6 +3397,7 @@ export async function getRecommendations(
   const openLibraryCandidates = asArray(normalizeCandidates(openLibraryDocsEnriched, "openLibrary"));
   const kitsuCandidatesRaw = asArray(normalizeCandidates(kitsuDocsEnriched, "kitsu"));
   const gcdCandidates = asArray(normalizeCandidates(gcdDocsEnriched, "gcd"));
+  const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
 
   debugRouterLog("NORMALIZED CANDIDATES BY SOURCE", {
     googleBooks: googleCandidates.length,
@@ -2647,12 +3438,41 @@ function buildRungDiagnostics(candidates: any[]) {
   };
 }
 
-const normalizedCandidates = [
+let normalizedCandidates = [
     ...googleCandidates,
     ...openLibraryCandidates,
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeGcd ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
+  let emergencyFallbackUsed = false;
+  let emergencyFallbackReason = "";
+  let fallbackPoolSize = 0;
+  let fallbackCandidatesAfterMemory = 0;
+  let fallbackRepeatSuppressedCount = 0;
+  let fallbackSelectedTitles: string[] = [];
+  let fallbackSelectionMode: "static" | "ranked" | "randomized_score_band" = "ranked";
+  const shouldAllowEmergencyFallback = openLibraryRawCount === 0 || candidateDocs.length === 0;
+  if (normalizedCandidates.length === 0) {
+    if (!shouldAllowEmergencyFallback && openLibraryCandidates.length > 0) {
+      normalizedCandidates = openLibraryCandidates.slice(0, Math.max(5, finalLimit));
+      emergencyFallbackReason = "normalized_empty_using_openlibrary_candidates";
+      fallbackSelectionMode = "ranked";
+    } else if (openLibraryCandidates.length >= 3) {
+      normalizedCandidates = openLibraryCandidates.slice(0, Math.max(3, finalLimit));
+      emergencyFallbackReason = "normalized_empty_using_openlibrary_candidates";
+      fallbackSelectionMode = "ranked";
+    } else {
+      const fallbackPack = buildEmergencyFallbackDocs(activeFamily, routingInput, Math.max(5, Math.min(8, finalLimit)));
+      emergencyFallbackUsed = true;
+      emergencyFallbackReason = "normalized_candidates_empty";
+      fallbackPoolSize = fallbackPack.poolSize;
+      fallbackCandidatesAfterMemory = fallbackPack.afterMemoryCount;
+      fallbackRepeatSuppressedCount = fallbackPack.repeatSuppressed;
+      fallbackSelectedTitles = fallbackPack.selectedTitles;
+      fallbackSelectionMode = fallbackPack.selectionMode;
+      normalizedCandidates = asArray(normalizeCandidates(fallbackPack.docs, "openLibrary"));
+    }
+  }
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
   const nonOpenLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source !== "openLibrary");
@@ -2662,11 +3482,10 @@ const normalizedCandidates = [
     preferredRungs.has(String(c?.rawDoc?.queryRung ?? c?.queryRung ?? ""))
   );
 
-  const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
   const primaryIntentOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source === "openLibrary");
   const primaryIntentNonOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source !== "openLibrary");
 
-  const thrillerOpenLibraryQuota = routerFamily === "thriller" ? 2 : MIN_OPEN_LIBRARY_BASE_POOL;
+  const thrillerOpenLibraryQuota = activeFamily === "thriller" ? 2 : MIN_OPEN_LIBRARY_BASE_POOL;
 
   let basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
     ? dedupeDocs([
@@ -2697,7 +3516,7 @@ const normalizedCandidates = [
 
   basePool = enforceAuthorDiversity(basePool, 1);
 
-  if (routerFamily !== "thriller") {
+  if (activeFamily !== "thriller") {
     const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
     if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_BASE_POOL) {
       const existing = new Set(basePool.map((c: any) => candidateKey(c)));
@@ -2729,10 +3548,19 @@ const normalizedCandidates = [
   }
 
   const quotaPool = buildLaneQuotaPool(basePool, finalLimit);
-  const rankingPool =
+  let rankingPool =
     routerFamily === "historical"
       ? ensureHistoricalRungDiversity(quotaPool, finalLimit)
       : ensureRungCoverage(quotaPool, finalLimit);
+  if (fallbackRelaxedTriggered) {
+    rankingPool = [...rankingPool].sort((a: any, b: any) => {
+      const aClassic = Number(classicPublicDomainSignal(a));
+      const bClassic = Number(classicPublicDomainSignal(b));
+      const aMatch = Number(docGenreLooseMatch(a, activeFamily));
+      const bMatch = Number(docGenreLooseMatch(b, activeFamily));
+      return aClassic - bClassic || bMatch - aMatch || candidateScoreValue(b) - candidateScoreValue(a);
+    });
+  }
 
   const candidatePoolPreview = rankingPool.slice(0, 50).map((c: any) => {
     const filterDiagnostics = c?.rawDoc?.diagnostics?.filterDiagnostics ?? c?.diagnostics?.filterDiagnostics;
@@ -2766,7 +3594,7 @@ const normalizedCandidates = [
   }
 
   function rebalanceRomanceFinalSources(ranked: any[], rankingPoolSource: any[], finalLimitValue: number): any[] {
-    if (routerFamily !== "romance") return ranked.slice(0, finalLimitValue);
+    if (activeFamily !== "romance") return ranked.slice(0, finalLimitValue);
 
     const initial = [...ranked.slice(0, finalLimitValue)];
     const targetOl = Math.min(MIN_ROMANCE_OPEN_LIBRARY_FINAL, finalLimitValue);
@@ -2801,6 +3629,7 @@ const normalizedCandidates = [
   // finalRecommender performs the actual preference-aware magic.
   debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPool);
 
+  const rankingStartMs = Date.now();
   const rankedDocs = asArray(finalRecommenderForDeck(rankingPool, input.deckKey, {
     tasteProfile: routingInput.tasteProfile,
     profileOverride: routingInput.profileOverride,
@@ -2814,8 +3643,94 @@ const normalizedCandidates = [
 
   const postFilteredRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
+  const rankingMs = Date.now() - rankingStartMs;
 
-  const finalRankedDocs = rebalanceRomanceFinalSources(postFilteredRankedDocs, rankingPool, finalLimit);
+  const recentIds = new Set([
+    ...(routingInput.priorRecommendedIds || []),
+    ...((routingInput as any).shownIds || []),
+  ].map((v) => String(v).toLowerCase().trim()));
+  const recentKeys = new Set([
+    ...(routingInput.priorRecommendedKeys || []),
+    ...((routingInput as any).shownKeys || []),
+  ].map((v) => String(v).toLowerCase().trim()));
+  const recentAuthors = new Set([
+    ...(routingInput.priorAuthors || []),
+    ...((routingInput as any).shownAuthors || []),
+  ].map((v) => normalizeText(v)));
+  const recentSeries = new Set((routingInput.priorSeriesKeys || []).map((v) => String(v).toLowerCase().trim()));
+  const recentTitleAuthor = new Set(
+    (Array.isArray((routingInput as any)?.priorRecommendedTitleAuthors) ? (routingInput as any).priorRecommendedTitleAuthors : [])
+      .map((v: any) => normalizeText(v))
+  );
+  const recentSubtypes = new Set(
+    (Array.isArray((routingInput as any)?.priorSubtypes) ? (routingInput as any).priorSubtypes : [])
+      .map((v: any) => normalizeText(v))
+  );
+  const withNovelty = postFilteredRankedDocs.map((doc: any) => {
+    const title = normalizeText(doc?.title || doc?.rawDoc?.title);
+    const author = normalizeText(rawAuthorText(doc));
+    const id = String(doc?.id || doc?.rawDoc?.id || "").toLowerCase().trim();
+    const key = String(doc?.key || doc?.rawDoc?.key || "").toLowerCase().trim();
+    const seriesKey = String(doc?.seriesKey || doc?.rawDoc?.seriesKey || "").toLowerCase().trim();
+    const titleAuthorKey = `${title}|${author}`;
+    const repeated =
+      (id && recentIds.has(id)) ||
+      (key && recentKeys.has(key)) ||
+      (seriesKey && recentSeries.has(seriesKey)) ||
+      (author && recentAuthors.has(author)) ||
+      recentTitleAuthor.has(titleAuthorKey);
+    if (repeated) repeatedCandidateCount += 1;
+    const subtype = normalizeText(doc?.subtype || doc?.rawDoc?.subtype || doc?.diagnostics?.subtype || "");
+    const repeatedSubtype = Boolean(subtype && recentSubtypes.has(subtype));
+    const noveltyScore = (repeated ? -20 : 6) + (author && recentAuthors.has(author) ? -8 : 2) + (repeatedSubtype ? -4 : 2);
+    return { ...doc, noveltyScore, repeatedCandidate: repeated, titleAuthorKey };
+  });
+  const repeatFiltered = withNovelty
+    .filter((doc: any) => !doc.repeatedCandidate)
+    .sort((a: any, b: any) => Number(b.noveltyScore || 0) - Number(a.noveltyScore || 0));
+  repeatSuppressedCount = withNovelty.length - repeatFiltered.length;
+  const noveltyRankedPool = repeatFiltered.length >= finalLimit ? repeatFiltered : withNovelty;
+  let finalRankedDocs = rebalanceRomanceFinalSources(noveltyRankedPool, rankingPool, finalLimit);
+  if (finalRankedDocs.length === 0) {
+    const relaxedOpenLibraryFinal = rankingPool
+      .filter((doc: any) => sourceForDoc(doc, "openLibrary") === "openLibrary")
+      .slice(0, Math.max(3, finalLimit));
+    if (relaxedOpenLibraryFinal.length >= 3) {
+      finalRankedDocs = relaxedOpenLibraryFinal;
+      fallbackSelectionMode = "ranked";
+      emergencyFallbackReason = emergencyFallbackReason || "relaxed_openlibrary_final";
+    } else {
+      const fallbackPack = buildEmergencyFallbackDocs(activeFamily, routingInput, Math.max(5, Math.min(8, finalLimit)));
+      emergencyFallbackUsed = true;
+      emergencyFallbackReason = emergencyFallbackReason || "final_ranked_empty";
+      fallbackPoolSize = fallbackPack.poolSize;
+      fallbackCandidatesAfterMemory = fallbackPack.afterMemoryCount;
+      fallbackRepeatSuppressedCount = fallbackPack.repeatSuppressed;
+      fallbackSelectedTitles = fallbackPack.selectedTitles;
+      fallbackSelectionMode = fallbackPack.selectionMode;
+      finalRankedDocs = asArray(normalizeCandidates(fallbackPack.docs, "openLibrary")).slice(0, finalLimit);
+    }
+  }
+  const subtypeDistributionFinal = finalRankedDocs.reduce<Record<string, number>>((acc, doc: any) => {
+    const family = inferDocFamily(doc) || activeFamily || "unknown";
+    const text = normalizeText([doc?.title, doc?.description, doc?.rawDoc?.description, doc?.queryText, doc?.rawDoc?.queryText].filter(Boolean).join(" "));
+    let subtype = "general";
+    if (family === "thriller") {
+      if (/\bwife|husband|marriage|family|neighbor|secret|lying|lie|perfect|missing woman|missing girl\b/.test(text)) subtype = "domestic";
+      else if (/\bpsychological|unreliable narrator|obsession|mind games\b/.test(text)) subtype = "psychological";
+      else if (/\bcrime|detective|fbi|procedural|serial killer\b/.test(text)) subtype = "crime";
+      else if (/\bconspiracy|political|spy\b/.test(text)) subtype = "conspiracy";
+      else if (/\bsurvival|fugitive|chase|escape\b/.test(text)) subtype = "survival_action";
+      else if (/\bhorror|supernatural|haunted|occult\b/.test(text)) subtype = "horror_thriller";
+    }
+    acc[`${family}:${subtype}`] = (acc[`${family}:${subtype}`] || 0) + 1;
+    return acc;
+  }, {});
+  const subtypeCapApplied =
+    activeFamily === "thriller" &&
+    Object.entries(subtypeDistributionFinal).some(([k, v]) =>
+      k.startsWith("thriller:") && Number(v) > Math.max(3, Math.floor(finalLimit * 0.4))
+    );
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
@@ -2866,6 +3781,9 @@ const normalizedCandidates = [
     const source = sourceForDoc(doc, "openLibrary");
     rankedCountsBySource[source] = (rankedCountsBySource[source] || 0) + 1;
   }
+  if (fallbackUsed !== "google_retry" && rankedCountsBySource.openLibrary > 0 && rankedCountsBySource.googleBooks === 0) {
+    fallbackUsed = "open_library";
+  }
 
   const engineLabel =
     includeKitsu && includeGcd
@@ -2903,6 +3821,15 @@ const normalizedCandidates = [
       finalSelected: rankedDocsWithDiagnostics.filter((doc: any) => Boolean(doc?.nyt || doc?.rawDoc?.nyt)).length,
     },
   };
+  const candidatePoolCount = rankingPool.length;
+  const filteredOutCount = Math.max(0, enrichedDocs.length - filteredDocs.length);
+  const safeBuiltFromQuery =
+    (google as any)?.builtFromQuery ||
+    (openLibrary as any)?.builtFromQuery ||
+    bucketPlan.preview ||
+    bucketPlan.queries?.[0] ||
+    rungs?.[0]?.query ||
+    safeDefaultQueriesForFamily(activeFamily)[0];
 
   return {
     engineId: preferredEngine,
@@ -2912,12 +3839,7 @@ const normalizedCandidates = [
       routingInput.deckKey === "k2"
         ? (routingInput.domainModeOverride ?? "chapterMiddle")
         : (routingInput.domainModeOverride ?? "default"),
-    builtFromQuery:
-      (google as any)?.builtFromQuery ||
-      (openLibrary as any)?.builtFromQuery ||
-      bucketPlan.preview ||
-      bucketPlan.queries?.[0] ||
-      "",
+    builtFromQuery: safeBuiltFromQuery,
     items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
@@ -2927,5 +3849,49 @@ const normalizedCandidates = [
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: getLastFinalRecommenderDebug(),
     debugNytAnchors: nytAnchorDebug,
+    declaredActiveFamily,
+    recomputedActiveFamily: activeFamily,
+    familySwitchReason,
+    primaryFamilyRawShare,
+    familyCapApplied,
+    sourceHealthBySource,
+    sourcePenaltyApplied,
+    sourceSurvivalBySource,
+    sourceQualityScoreBySource,
+    softFailurePenaltyCount,
+    softFailureHardRejectCount,
+    duplicateWorkGroupsCollapsed: collapsedWorks.collapsed,
+    anchorRejectedForWeakAlignment,
+    subtypeDistributionFinal,
+    subtypeCapApplied,
+    totalRecommendationMs: Date.now() - recommendationStartMs,
+    fetchMsBySource,
+    queryMsByRung,
+    filterMs,
+    rankingMs,
+    openLibrarySkippedReason,
+    cacheHitCount,
+    fetchErrorCount,
+    repeatedCandidateCount,
+    repeatSuppressedCount,
+    openLibraryRawCount,
+    candidatePoolCount,
+    filteredOutCount,
+    fallbackRelaxedTriggered,
+    emergencyFallbackUsed,
+    emergencyFallbackReason,
+    fallbackPoolSize,
+    fallbackCandidatesAfterMemory,
+    fallbackRepeatSuppressedCount,
+    fallbackSelectedTitles,
+    fallbackSelectionMode,
+    sourceEnabled,
+    sourceSkippedReason,
+    authorDiversityApplied,
+    googleBooksUnavailable,
+    queryWasRetried,
+    retryCount,
+    fallbackUsed,
+    zeroResultCause,
   } as RecommendationResult;
 }

@@ -312,6 +312,53 @@ function hasLegitCommercialAuthority(doc: any): boolean {
   );
 }
 
+function crossSourcePresenceCount(doc: any): number {
+  const directSources = Array.isArray((doc as any)?.sources) ? (doc as any).sources : [];
+  const sourceMatches = Array.isArray((doc as any)?.sourceMatches) ? (doc as any).sourceMatches : [];
+  const rawSources = Array.isArray((doc as any)?.rawDoc?.sources) ? (doc as any).rawDoc.sources : [];
+  const explicitSourceCount = Number((doc as any)?.sourceCount || (doc as any)?.matchedSourceCount || 0);
+  const merged = new Set(
+    [...directSources, ...sourceMatches, ...rawSources]
+      .map((s: any) => normalizeText(s))
+      .filter(Boolean)
+  );
+  return Math.max(explicitSourceCount, merged.size);
+}
+
+function isKnownAuthorityAuthor(author: string): boolean {
+  return /\b(gillian flynn|dennis lehane|mary kubica|shirley jackson|thomas harris|stephen king|agatha christie|tana french|michael connelly|ray bradbury|ursula k\.?\s*le guin|isaac asimov|j\.?r\.?r\.?\s*tolkien)\b/.test(author);
+}
+
+function hasHighAuthoritySignal(doc: any, diagnostics: Pick<FilterDiagnostics, "flags" | "pageCount">): boolean {
+  const author = normalizeText(doc?.author_name ?? doc?.authors ?? doc?.author ?? doc?.authorName ?? doc?.volumeInfo?.authors);
+  const multiSource = crossSourcePresenceCount(doc) >= 2;
+  const multiRungSignal =
+    Number((doc as any)?.queryMatchCount || 0) >= 2 ||
+    Number((doc as any)?.matchedQueryCount || 0) >= 2 ||
+    Number((doc as any)?.queryHitCount || 0) >= 2;
+  const laneAlignedNarrative =
+    diagnostics.flags.strongNarrative &&
+    lanePositiveSignalCount(diagnostics as FilterDiagnostics) > 0 &&
+    diagnostics.pageCount >= 160;
+  const familyCoverage = new Set(
+    [
+      doc?.queryFamily,
+      doc?.diagnostics?.queryFamily,
+      doc?.diagnostics?.filterFamily,
+      ...(Array.isArray(doc?.queryFamilies) ? doc.queryFamilies : []),
+    ].map((value) => normalizeText(value)).filter(Boolean)
+  ).size >= 2;
+  return Boolean(
+    diagnostics.flags.authorAffinity ||
+    diagnostics.flags.legitAuthority ||
+    isKnownAuthorityAuthor(author) ||
+    multiSource ||
+    multiRungSignal ||
+    familyCoverage ||
+    laneAlignedNarrative
+  );
+}
+
 function isWeakSeriesSpam(title: string, doc: any, hasDescription: boolean, hasRealLength: boolean): boolean {
   const ratingsCount =
     Number(doc?.ratingsCount) ||
@@ -915,6 +962,10 @@ let fictionPositive =
       suspensePositive,
     },
   };
+  if (hasHighAuthoritySignal(doc, diagnostics)) {
+    diagnostics.flags.legitAuthority = true;
+    legitAuthority = true;
+  }
 
   if (!title) diagnostics.rejectReasons.push("missing_title");
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) diagnostics.rejectReasons.push("hard_reject_title");
@@ -1118,8 +1169,8 @@ if (family === "speculative") {
   }
 
   const softFailCount = diagnostics.passedChecks.filter((check) => check.startsWith("soft_")).length;
-  if (softFailCount >= 2 && !strongNarrative) {
-    diagnostics.rejectReasons.push("too_many_soft_failures");
+  if (softFailCount >= 4 && !strongNarrative && !authorAffinity && !legitAuthority) {
+    diagnostics.passedChecks.push("soft_too_many_soft_failures");
   }
 
   if (fictionPositive) diagnostics.passedChecks.push("fiction_positive");
@@ -1658,6 +1709,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "romance_meta_reference",
     "universal_meta_reference",
     "no_cover_low_quality_meta",
+    "universal_quality_floor_miss",
   ]);
   const shapeMetadataRelaxableReasons = new Set([
     "insufficient_length_or_description",

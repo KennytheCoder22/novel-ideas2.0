@@ -111,6 +111,11 @@ type TwentyQObjectiveStatus = TwentyQObjective & {
 type Props = {
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
+  sourceEnabled?: {
+    googleBooks?: boolean;
+    openLibrary?: boolean;
+    localLibrary?: boolean;
+  };
   swipeCategories?: {
     books: boolean;
     movies: boolean;
@@ -1549,11 +1554,22 @@ function handleLeft() {
     setShowRating(false);
 
     const inputWithHistory = buildRecommendationInputWithHistory(input);
+    const effectiveSourceEnabled = {
+      googleBooks: props.sourceEnabled?.googleBooks !== false,
+      openLibrary: props.sourceEnabled?.openLibrary !== false,
+      localLibrary: props.sourceEnabled?.localLibrary !== false,
+    };
+    if (!effectiveSourceEnabled.googleBooks && !effectiveSourceEnabled.openLibrary && !effectiveSourceEnabled.localLibrary) {
+      setRecError("All recommendation sources are disabled in Admin. Enable at least one source.");
+      setRecLoading(false);
+      return;
+    }
 
     try {
       const result = await getRecommendations(
         {
           ...inputWithHistory,
+          sourceEnabled: effectiveSourceEnabled,
           profileOverride: currentLaneOverride,
         },
         "auto"
@@ -3060,4 +3076,3 @@ const styles = StyleSheet.create({
   genreSimButtonText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   countsRow: { marginTop: 10 },
 });
-

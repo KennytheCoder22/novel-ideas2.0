@@ -20,6 +20,60 @@ export type RecommendationResult = {
   debugRawPool?: any[];
   debugFilterAudit?: any[];
   debugFilterAuditSummary?: { kept: number; rejected: number; reasons: Record<string, number>; };
+  declaredActiveFamily?: string;
+  recomputedActiveFamily?: string;
+  familySwitchReason?: string;
+  primaryFamilyRawShare?: number;
+  familyCapApplied?: boolean;
+  sourceHealthBySource?: Record<string, {
+    raw: number;
+    missingPageRate: number;
+    missingDescriptionRate: number;
+    wrongFamilyRate: number;
+    lowAuthorityZeroRate: number;
+  }>;
+  sourcePenaltyApplied?: Record<string, number>;
+  sourceSurvivalBySource?: Record<string, { raw: number; survived: number; survivalRate: number; }>;
+  sourceQualityScoreBySource?: Record<string, number>;
+  softFailurePenaltyCount?: number;
+  softFailureHardRejectCount?: number;
+  duplicateWorkGroupsCollapsed?: number;
+  anchorRejectedForWeakAlignment?: number;
+  subtypeDistributionFinal?: Record<string, number>;
+  subtypeCapApplied?: boolean;
+  totalRecommendationMs?: number;
+  fetchMsBySource?: Record<string, number>;
+  queryMsByRung?: Record<string, number>;
+  filterMs?: number;
+  rankingMs?: number;
+  openLibrarySkippedReason?: string;
+  cacheHitCount?: number;
+  fetchErrorCount?: number;
+  repeatedCandidateCount?: number;
+  repeatSuppressedCount?: number;
+  openLibraryRawCount?: number;
+  candidatePoolCount?: number;
+  filteredOutCount?: number;
+  fallbackRelaxedTriggered?: boolean;
+  emergencyFallbackUsed?: boolean;
+  emergencyFallbackReason?: string;
+  fallbackPoolSize?: number;
+  fallbackCandidatesAfterMemory?: number;
+  fallbackRepeatSuppressedCount?: number;
+  fallbackSelectedTitles?: string[];
+  fallbackSelectionMode?: "static" | "ranked" | "randomized_score_band";
+  sourceEnabled?: {
+    googleBooks: boolean;
+    openLibrary: boolean;
+    localLibrary: boolean;
+  };
+  sourceSkippedReason?: Record<string, string>;
+  authorDiversityApplied?: boolean;
+  googleBooksUnavailable?: boolean;
+  queryWasRetried?: boolean;
+  retryCount?: number;
+  fallbackUsed?: "google_retry" | "open_library" | "none";
+  zeroResultCause?: "query" | "fetch_error" | "filter" | "none";
   debugFinalRecommender?: {
     inputCount: number;
     dedupedCount: number;
@@ -38,7 +92,7 @@ export type RecommendationResult = {
 export type RecommenderProfileOverride = Record<string, number | undefined>;
 export type StructuredFetchRung = { rung: number; family?: string; primary: string | null; secondary: string | null; themes: string[]; audience: string; query: string; };
 export type BucketPlan = { queries?: string[]; rungs?: StructuredFetchRung[]; bucketId?: string; domainMode?: DomainMode; preview?: string; strategy?: string; signals?: { genres?: string[]; tones?: string[]; textures?: string[]; scenarios?: string[]; }; };
-export type RecommenderInput = { deckKey: DeckKey; tagCounts: TagCounts; tasteProfile?: TasteProfile; limit?: number; timeoutMs?: number; minCandidateFloor?: number; bucketPlan?: BucketPlan; domainModeOverride?: DomainMode; profileOverride?: RecommenderProfileOverride; priorRecommendedIds?: string[]; priorRecommendedKeys?: string[]; priorAuthors?: string[]; priorSeriesKeys?: string[]; priorRejectedIds?: string[]; priorRejectedKeys?: string[]; };
+export type RecommenderInput = { deckKey: DeckKey; tagCounts: TagCounts; tasteProfile?: TasteProfile; limit?: number; timeoutMs?: number; minCandidateFloor?: number; bucketPlan?: BucketPlan; domainModeOverride?: DomainMode; profileOverride?: RecommenderProfileOverride; priorRecommendedIds?: string[]; priorRecommendedKeys?: string[]; priorAuthors?: string[]; priorSeriesKeys?: string[]; priorRejectedIds?: string[]; priorRejectedKeys?: string[]; sourceEnabled?: { googleBooks?: boolean; openLibrary?: boolean; localLibrary?: boolean; }; };
 
 
 export type RungDiagnostics = {

@@ -67,6 +67,24 @@ function syncSchema(cfg: any) {
     cfg.decks.enabled[k] = v;
   }
 
+  cfg.recommendations = (cfg.recommendations && typeof cfg.recommendations === "object") ? cfg.recommendations : {};
+  cfg.recommendation = (cfg.recommendation && typeof cfg.recommendation === "object") ? cfg.recommendation : {};
+  const legacySource = String(cfg?.recommendations?.source || cfg?.recommendation?.source || "open_library");
+  const hasLocalCollectionSupport = Boolean(cfg?.library?.id);
+  const sourceEnabled = (cfg.recommendations.sourceEnabled && typeof cfg.recommendations.sourceEnabled === "object")
+    ? cfg.recommendations.sourceEnabled
+    : {};
+  cfg.recommendations.sourceEnabled = {
+    googleBooks: typeof sourceEnabled.googleBooks === "boolean"
+      ? sourceEnabled.googleBooks
+      : legacySource === "local_collection"
+        ? false
+        : true,
+    openLibrary: typeof sourceEnabled.openLibrary === "boolean" ? sourceEnabled.openLibrary : true,
+    localLibrary: typeof sourceEnabled.localLibrary === "boolean" ? sourceEnabled.localLibrary : hasLocalCollectionSupport,
+  };
+  cfg.recommendation.sourceEnabled = { ...cfg.recommendations.sourceEnabled };
+
   return cfg;
 }
 
@@ -1392,8 +1410,13 @@ export default function HomeScreen() {
   const libraryName = useMemo(() => (config?.branding?.libraryName ?? config?.library?.name ?? ""), [config]);
 
   
-  const libraryId = useMemo(() => config?.library?.id ?? "", [config]);
+const libraryId = useMemo(() => config?.library?.id ?? "", [config]);
 const source: SourceKey = (config?.recommendation?.source as SourceKey) || "open_library";
+const sourceEnabled = {
+  googleBooks: Boolean(config?.recommendations?.sourceEnabled?.googleBooks ?? true),
+  openLibrary: Boolean(config?.recommendations?.sourceEnabled?.openLibrary ?? true),
+  localLibrary: Boolean(config?.recommendations?.sourceEnabled?.localLibrary ?? Boolean(config?.library?.id)),
+};
 
   // Branding state from config (with safe defaults)
   // Back-compat: if older config uses branding.theme, treat it as main color.
@@ -1877,6 +1900,7 @@ logoDataUrl={logoDataUrl}
           <SwipeDeckScreen
             swipeCategories={swipeCategories}
             enabledDecks={enabledDecks}
+            sourceEnabled={sourceEnabled}
             onOpenSearch={() => {
               setMode("search");
               setTimeout(() => queryInputRef.current?.focus?.(), 50);

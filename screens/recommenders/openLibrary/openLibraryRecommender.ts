@@ -182,6 +182,7 @@ export async function getOpenLibraryRecommendations(
   const queries = buildQueries(input);
   const family = inferFamily(input);
   const docsRaw: any[] = [];
+  const attemptedQueries: string[] = [];
   const limit = input.limit || 12;
   const intakeLimit = Math.max(limit * 2, 24);
 
