@@ -2535,6 +2535,26 @@ function enrichWithCommercialSignals(docs: RecommendationDoc[]): RecommendationD
 }
 
 async function runEngine(engine: EngineId, input: RecommenderInput): Promise<RecommendationResult> {
+  const enabled = {
+    googleBooks: input?.sourceEnabled?.googleBooks !== false,
+    openLibrary: input?.sourceEnabled?.openLibrary !== false,
+    localLibrary: input?.sourceEnabled?.localLibrary !== false,
+  };
+  const skipped =
+    (engine === "googleBooks" && !enabled.googleBooks) ||
+    (engine === "openLibrary" && !enabled.openLibrary);
+  if (skipped) {
+    return {
+      engineId: engine,
+      engineLabel: engine === "googleBooks" ? "Google Books" : "Open Library",
+      deckKey: input.deckKey,
+      domainMode: input.domainModeOverride,
+      builtFromQuery: "",
+      items: [],
+      sourceEnabled: enabled,
+      sourceSkippedReason: { [engine]: "disabled_in_admin" },
+    };
+  }
   const queryText = String((input as any)?.query || (input as any)?.bucketPlan?.preview || (input as any)?.bucketPlan?.queries?.[0] || "").toLowerCase().trim();
   const cacheKey = `${engine}|${input.deckKey}|${(input as any)?.bucketPlan?.family || ""}|${queryText}`;
   const cached = queryResultCache.get(cacheKey);
@@ -2634,6 +2654,27 @@ export async function getRecommendations(
 ): Promise<RecommendationResult> {
   const recommendationStartMs = Date.now();
   const sessionSalt = recommendationStartMs;
+  const sourceEnabled = {
+    googleBooks: input?.sourceEnabled?.googleBooks !== false,
+    openLibrary: input?.sourceEnabled?.openLibrary !== false,
+    localLibrary: input?.sourceEnabled?.localLibrary !== false,
+  };
+  const sourceSkippedReason: Record<string, string> = {};
+  if (!sourceEnabled.googleBooks) sourceSkippedReason.googleBooks = "disabled_in_admin";
+  if (!sourceEnabled.openLibrary) sourceSkippedReason.openLibrary = "disabled_in_admin";
+  if (!sourceEnabled.localLibrary) sourceSkippedReason.localLibrary = "disabled_in_admin";
+  if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary) {
+    return {
+      engineId: "openLibrary",
+      engineLabel: "No sources enabled",
+      deckKey: input.deckKey,
+      domainMode: input.domainModeOverride,
+      builtFromQuery: "",
+      items: [],
+      sourceEnabled,
+      sourceSkippedReason: { ...sourceSkippedReason, all: "all_sources_disabled" },
+    };
+  }
   const routingInput = removeSkippedSwipeEvidenceForRouting(input);
   const preferredEngine = chooseEngine(routingInput, override);
   const baseBucketPlan = buildRouterBucketPlan(routingInput);
@@ -3846,6 +3887,8 @@ let normalizedCandidates = [
     fallbackRepeatSuppressedCount,
     fallbackSelectedTitles,
     fallbackSelectionMode,
+    sourceEnabled,
+    sourceSkippedReason,
     authorDiversityApplied,
     googleBooksUnavailable,
     queryWasRetried,

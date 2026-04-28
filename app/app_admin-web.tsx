@@ -186,6 +186,29 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
 
   cfg.theme.mainThemeKey = mainTheme;
   cfg.theme.highlightKey = highlight;
+
+  // Recommendation source toggles (new model) with back-compat for legacy single source selector.
+  cfg.recommendations = (cfg.recommendations && typeof cfg.recommendations === "object") ? cfg.recommendations : {};
+  cfg.recommendation = (cfg.recommendation && typeof cfg.recommendation === "object") ? cfg.recommendation : {};
+  const legacySource = String(cfg?.recommendations?.source || cfg?.recommendation?.source || "open_library");
+  const hasLocalCollectionSupport = Boolean(cfg?.library?.id);
+  const sourceEnabled = (cfg.recommendations.sourceEnabled && typeof cfg.recommendations.sourceEnabled === "object")
+    ? cfg.recommendations.sourceEnabled
+    : {};
+  cfg.recommendations.sourceEnabled = {
+    googleBooks: typeof sourceEnabled.googleBooks === "boolean"
+      ? sourceEnabled.googleBooks
+      : legacySource === "local_collection"
+        ? false
+        : true,
+    openLibrary: typeof sourceEnabled.openLibrary === "boolean"
+      ? sourceEnabled.openLibrary
+      : true,
+    localLibrary: typeof sourceEnabled.localLibrary === "boolean"
+      ? sourceEnabled.localLibrary
+      : hasLocalCollectionSupport,
+  };
+  cfg.recommendation.sourceEnabled = { ...cfg.recommendations.sourceEnabled };
 }
 
 type ThemeKey =
@@ -204,7 +227,7 @@ type HighlightKey = ThemeKey | "white" | "black" | "silver";
 type TitleTextKey = "white" | "black";
 
 type DeckKey = "k2" | "36" | "ms_hs" | "adult";
-type SourceKey = "open_library" | "local_collection";
+type SourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary";
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
 
@@ -216,10 +239,11 @@ function deckLabel(k: DeckKey) {
   return k;
 }
 
-function sourceLabel(s: SourceKey) {
-  if (s === "open_library") return "Google Books";
-  if (s === "local_collection") return "This library’s collection";
-  return s;
+function sourceLabel(s: SourceToggleKey) {
+  if (s === "googleBooks") return "Google Books";
+  if (s === "openLibrary") return "Open Library";
+  if (s === "localLibrary") return "This library’s collection";
+  return String(s);
 }
 
 function themeLabel(t: ThemeKey) {
@@ -751,25 +775,31 @@ export default function AdminWebScreen() {
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Recommendation Source</Text>
-        <View style={styles.rowWrap}>
-          {(["open_library", "local_collection"] as SourceKey[]).map((s) => {
-            const selected = (config?.recommendations?.source || "open_library") === s;
+        <View style={{ gap: 10 }}>
+          {(["googleBooks", "openLibrary", "localLibrary"] as SourceToggleKey[]).map((sourceKey) => {
+            const enabled = Boolean(config?.recommendations?.sourceEnabled?.[sourceKey]);
+            const localSupport = Boolean(config?.library?.id);
+            const disabledBySupport = sourceKey === "localLibrary" && !localSupport;
             return (
-              <TouchableOpacity
-                key={s}
-                onPress={() => setPath(["recommendations", "source"], s)}
-                style={[
-                  styles.chip,
-                  { borderColor: theme.highlightBorder, backgroundColor: theme.inputBg },
-                  selected && { backgroundColor: theme.accent, borderColor: theme.accentBorder },
-                ]}
-              >
-                <Text style={[styles.chipText, { color: theme.text }, selected && { color: theme.accentTextOn }]}>
-                  {sourceLabel(s)}
+              <View key={sourceKey} style={styles.rowBetween}>
+                <Text style={{ color: theme.text, fontWeight: "700", opacity: disabledBySupport ? 0.6 : 1 }}>
+                  {sourceLabel(sourceKey)}
                 </Text>
-              </TouchableOpacity>
+                <Switch
+                  value={enabled}
+                  onValueChange={() => setPath(["recommendations", "sourceEnabled", sourceKey], !enabled)}
+                  disabled={disabledBySupport}
+                />
+              </View>
             );
           })}
+          {!Boolean(config?.recommendations?.sourceEnabled?.googleBooks) &&
+          !Boolean(config?.recommendations?.sourceEnabled?.openLibrary) &&
+          !Boolean(config?.recommendations?.sourceEnabled?.localLibrary) ? (
+            <Text style={[styles.note, { color: theme.danger }]}>
+              At least one recommendation source should be enabled.
+            </Text>
+          ) : null}
         </View>
 
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />

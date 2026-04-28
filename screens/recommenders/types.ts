@@ -62,6 +62,12 @@ export type RecommendationResult = {
   fallbackRepeatSuppressedCount?: number;
   fallbackSelectedTitles?: string[];
   fallbackSelectionMode?: "static" | "ranked" | "randomized_score_band";
+  sourceEnabled?: {
+    googleBooks: boolean;
+    openLibrary: boolean;
+    localLibrary: boolean;
+  };
+  sourceSkippedReason?: Record<string, string>;
   authorDiversityApplied?: boolean;
   googleBooksUnavailable?: boolean;
   queryWasRetried?: boolean;
@@ -86,7 +92,7 @@ export type RecommendationResult = {
 export type RecommenderProfileOverride = Record<string, number | undefined>;
 export type StructuredFetchRung = { rung: number; family?: string; primary: string | null; secondary: string | null; themes: string[]; audience: string; query: string; };
 export type BucketPlan = { queries?: string[]; rungs?: StructuredFetchRung[]; bucketId?: string; domainMode?: DomainMode; preview?: string; strategy?: string; signals?: { genres?: string[]; tones?: string[]; textures?: string[]; scenarios?: string[]; }; };
-export type RecommenderInput = { deckKey: DeckKey; tagCounts: TagCounts; tasteProfile?: TasteProfile; limit?: number; timeoutMs?: number; minCandidateFloor?: number; bucketPlan?: BucketPlan; domainModeOverride?: DomainMode; profileOverride?: RecommenderProfileOverride; priorRecommendedIds?: string[]; priorRecommendedKeys?: string[]; priorAuthors?: string[]; priorSeriesKeys?: string[]; priorRejectedIds?: string[]; priorRejectedKeys?: string[]; };
+export type RecommenderInput = { deckKey: DeckKey; tagCounts: TagCounts; tasteProfile?: TasteProfile; limit?: number; timeoutMs?: number; minCandidateFloor?: number; bucketPlan?: BucketPlan; domainModeOverride?: DomainMode; profileOverride?: RecommenderProfileOverride; priorRecommendedIds?: string[]; priorRecommendedKeys?: string[]; priorAuthors?: string[]; priorSeriesKeys?: string[]; priorRejectedIds?: string[]; priorRejectedKeys?: string[]; sourceEnabled?: { googleBooks?: boolean; openLibrary?: boolean; localLibrary?: boolean; }; };
 
 
 export type RungDiagnostics = {
