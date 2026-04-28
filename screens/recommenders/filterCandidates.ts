@@ -274,6 +274,24 @@ function hasRichRomanceMetadata(subjects: string, description: string): boolean 
   );
 }
 
+function isTitleLikelyAuthorOrMetaStub(title: string): boolean {
+  if (!title) return false;
+  const cleaned = title.trim();
+  const words = cleaned.split(/\s+/).filter(Boolean);
+  const compactTitle = cleaned.toLowerCase();
+  const looksLikePersonName =
+    words.length >= 2 &&
+    words.length <= 3 &&
+    words.every((w) => /^[a-z][a-z'’-]+$/i.test(w)) &&
+    !/\b(the|a|an|of|and|in|for|with|to)\b/i.test(cleaned);
+
+  const metaStub =
+    /\b(readalong|study guide|teachers'? guide|companion|criticism|analysis|reader)\b/.test(compactTitle) ||
+    /^\s*(author|novelist|novelists?|fiction|literature)\b/.test(compactTitle);
+
+  return looksLikePersonName || metaStub;
+}
+
 
 
 
@@ -515,7 +533,10 @@ function isLaneMismatch(family: RouterFamily, combined: string, flags: {
       flags.romancePositive ||
       /\b(second chance|forbidden love|love story|marriage|relationship|courtship|duke|earl|bridgerton|regency|historical romance|gothic romance|fantasy romance|enemies to lovers|slow burn|rom-com|rom com|widow|debutante|matchmaking|spinster|rake|wallflower|wedding|husband|wife|lover|kiss|heart)\b/.test(combined) ||
       hasCanonicalRomanceTitle(combined);
-    return !romanceNative;
+    const fantasyDominantWithoutRomanceCore =
+      /\b(fantasy|magic|magical|wizard|witch|dragon|fae|kingdom|quest|sorcery)\b/.test(combined) &&
+      !/\b(romance|love story|courtship|marriage|wedding|lover|enemies to lovers|second chance|forbidden love)\b/.test(combined);
+    return !romanceNative || fantasyDominantWithoutRomanceCore;
   }
 
   if (family === "historical") {
@@ -882,11 +903,6 @@ let fictionPositive =
   let legitAuthority = hasLegitCommercialAuthority(doc) || classicAuthorSignal;
   const weakSeriesSpam = isWeakSeriesSpam(title, doc, hasDescription, hasRealLength);
 
-  if (isOpenLibraryLikeDoc(doc) && family === "science_fiction") {
-    fictionPositive = true;
-    speculativePositive = true;
-  }
-
   const diagnostics: FilterDiagnostics = {
     kept: false,
     family,
@@ -917,6 +933,7 @@ let fictionPositive =
   };
 
   if (!title) diagnostics.rejectReasons.push("missing_title");
+  if (isTitleLikelyAuthorOrMetaStub(title)) diagnostics.rejectReasons.push("title_author_or_meta_stub");
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) diagnostics.rejectReasons.push("hard_reject_title");
   if (hardRejectCategoryPatterns.some((rx) => rx.test(categories))) diagnostics.rejectReasons.push("hard_reject_category");
   if (hardRejectDescriptionPatterns.some((rx) => rx.test(description))) diagnostics.passedChecks.push("soft_description_meta_signal");
@@ -1641,6 +1658,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     "romance_meta_reference",
     "universal_meta_reference",
     "no_cover_low_quality_meta",
+    "title_author_or_meta_stub",
   ]);
   const shapeMetadataRelaxableReasons = new Set([
     "insufficient_length_or_description",
@@ -2065,7 +2083,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       continue;
     }
 
-    if (entrySignalCount(doc, diagnostics) < 2) {
+    const minimumEntrySignalsRequired =
+      diagnostics.family === "mystery" || diagnostics.family === "horror" ? 1 : 2;
+    if (entrySignalCount(doc, diagnostics) < minimumEntrySignalsRequired) {
       diagnostics.rejectReasons.push("too_many_soft_failures");
       diagnostics.kept = false;
       Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
@@ -2079,7 +2099,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         descriptionLength >= 90 ||
         diagnostics.flags.authorAffinity ||
         diagnostics.ratingsCount > 0 ||
-        diagnostics.flags.strongNarrative;
+        diagnostics.flags.strongNarrative ||
+        (diagnostics.family === "mystery" && diagnostics.flags.mysteryPositive) ||
+        (diagnostics.family === "horror" && diagnostics.flags.horrorAligned);
       if (!hasOlMinimumSignal || !laneMatched) {
         diagnostics.rejectReasons.push("too_many_soft_failures");
         diagnostics.kept = false;
