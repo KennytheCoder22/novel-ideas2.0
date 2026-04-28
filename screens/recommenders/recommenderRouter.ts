@@ -5,6 +5,7 @@ import type {
   DomainMode,
   RecommendationDoc,
   CommercialSignals,
+  RecommendationSourceDiagnostics,
 } from "./types";
 
 import { getGoogleBooksRecommendations } from "./googleBooks/googleBooksRecommender";
@@ -36,7 +37,7 @@ const MIN_VISUAL_SIGNAL_FOR_GCD = 2;
 const MIN_RELAXED_FILTER_POOL = 10;
 const MIN_ROUTER_RECOVERY_POOL = 18;
 const MIN_OPEN_LIBRARY_SURVIVORS = 3;
-const MIN_OPEN_LIBRARY_BASE_POOL = 4;
+const MIN_OPEN_LIBRARY_CANDIDATES = 10;
 const MIN_ROMANCE_OPEN_LIBRARY_FINAL = 2;
 const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
 const MIN_POOL_FOR_NYT_INJECTION = 14;
@@ -71,6 +72,16 @@ function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
   if (Array.isArray(value)) return value as RecommendationDoc[];
   if (value && Array.isArray(value.candidates)) return value.candidates as RecommendationDoc[];
   return [];
+}
+
+function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiagnostics {
+  const config = (input as any)?.sourceEnabled || {};
+  const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
+  return {
+    googleBooks: config?.googleBooks !== false,
+    openLibrary: config?.openLibrary !== false,
+    localLibrary: localLibrarySupported ? config?.localLibrary !== false : false,
+  };
 }
 
 type NytAnchorDebug = {
@@ -2241,6 +2252,19 @@ export async function getRecommendations(
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
+  const sourceEnabled = resolveSourceEnabled(routedInput);
+  const sourceSkippedReason: string[] = [];
+
+  if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
+  if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
+  if (!sourceEnabled.localLibrary) {
+    sourceSkippedReason.push(
+      routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported"
+    );
+  }
+  if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary) {
+    throw new Error("All recommendation sources are disabled. Enable at least one source in Admin.");
+  }
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
@@ -2368,7 +2392,14 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
-      const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || rungFamily;
+      const familyFromQuery = inferFamilyFromQueryText(String((lane as any)?.query || (lane as any)?.queryText || ""), rungFamily);
+      const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || familyFromQuery || rungFamily;
+      debugRouterLog("QUERY_FAMILY_BEFORE_FETCH", {
+        query: (lane as any)?.query,
+        queryFamily: (lane as any)?.queryFamily || null,
+        inferredQueryFamily: familyFromQuery || null,
+        laneFamily,
+      });
       const laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
         : Number.isFinite(Number(rung?.rung))
@@ -2398,38 +2429,43 @@ export async function getRecommendations(
       };
 
       const requests: Array<Promise<RecommendationResult>> = [];
-      if (lane.source === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
-      if (lane.source === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
-      if (includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
-      if (includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      if (sourceEnabled.googleBooks && lane.source === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
+      if (sourceEnabled.openLibrary && lane.source === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
+      if (sourceEnabled.googleBooks && includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
+      if (sourceEnabled.googleBooks && includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
 
       const results = await Promise.allSettled(requests);
+      debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
+        query: (lane as any)?.query,
+        laneFamily,
+        filterFamily: laneFamily,
+      });
       let index = 0;
 
-      const laneGoogle = lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+      const laneGoogle = sourceEnabled.googleBooks && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (lane.source === "googleBooks") index += 1;
+      if (sourceEnabled.googleBooks && lane.source === "googleBooks") index += 1;
 
-      const laneOpenLibrary = lane.source === "openLibrary" && results[index]?.status === "fulfilled"
+      const laneOpenLibrary = sourceEnabled.openLibrary && lane.source === "openLibrary" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (lane.source === "openLibrary") index += 1;
+      if (sourceEnabled.openLibrary && lane.source === "openLibrary") index += 1;
 
-      const laneKitsu = includeKitsu && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+      const laneKitsu = sourceEnabled.googleBooks && includeKitsu && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (includeKitsu && lane.source === "googleBooks") index += 1;
+      if (sourceEnabled.googleBooks && includeKitsu && lane.source === "googleBooks") index += 1;
 
-      const laneGcd = includeGcd && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+      const laneGcd = sourceEnabled.googleBooks && includeGcd && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
 
       const laneMergedDocs = dedupeDocs([
         ...dedupeDocs(extractDocs(laneGoogle, "googleBooks")),
         ...dedupeDocs(extractDocs(laneOpenLibrary, "openLibrary")),
-        ...(includeKitsu && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
-        ...(includeGcd && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneGcd, "gcd")) : []),
+        ...(sourceEnabled.googleBooks && includeKitsu && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
+        ...(sourceEnabled.googleBooks && includeGcd && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneGcd, "gcd")) : []),
       ]);
 
       if (!google && laneGoogle) google = laneGoogle;
@@ -2453,15 +2489,17 @@ export async function getRecommendations(
           : Number.isFinite(Number(rung?.rung))
           ? Number(rung.rung)
           : undefined;
+        const rowFamilyFromQuery = inferFamilyFromQueryText(String(row?.queryText ?? lane.query ?? ""), laneFamily);
 
         return {
           ...row,
           queryRung,
           queryText: row?.queryText ?? lane.query,
-          queryFamily: row?.queryFamily ?? laneFamily,
+          queryFamily: normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: lane.laneKind,
+          laneKind: (rowFamilyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
+          filterFamily: normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFamily,
         };
       });
 
@@ -2478,16 +2516,17 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
-          queryFamily: laneFamily,
+          queryFamily: familyFromQuery || laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: lane.laneKind,
+          laneKind: (familyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
           diagnostics: {
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
-            queryFamily: laneFamily,
-            laneKind: lane.laneKind,
+            queryFamily: familyFromQuery || laneFamily,
+            laneKind: (familyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
+            filterFamily: familyFromQuery || laneFamily,
             hybridLaneWeights,
             primaryLane: routerFamily,
           },
@@ -2655,7 +2694,6 @@ const normalizedCandidates = [
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
-  const nonOpenLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source !== "openLibrary");
 
   const preferredRungs = preferredPrimaryRungs(rungs);
   const primaryIntentCandidates = normalizedCandidates.filter((c: any) =>
@@ -2663,22 +2701,11 @@ const normalizedCandidates = [
   );
 
   const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
-  const primaryIntentOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source === "openLibrary");
-  const primaryIntentNonOpenLibraryCandidates = primaryIntentCandidates.filter((c: any) => c?.source !== "openLibrary");
 
-  const thrillerOpenLibraryQuota = routerFamily === "thriller" ? 2 : MIN_OPEN_LIBRARY_BASE_POOL;
-
-  let basePool = primaryIntentCandidates.length >= Math.max(finalLimit, 6)
-    ? dedupeDocs([
-        ...primaryIntentOpenLibraryCandidates.slice(0, thrillerOpenLibraryQuota),
-        ...primaryIntentNonOpenLibraryCandidates,
-        ...primaryIntentOpenLibraryCandidates.slice(thrillerOpenLibraryQuota),
-      ] as any)
-    : dedupeDocs([
-        ...openLibraryNormalizedCandidates.slice(0, thrillerOpenLibraryQuota),
-        ...nonOpenLibraryNormalizedCandidates,
-        ...openLibraryNormalizedCandidates.slice(thrillerOpenLibraryQuota),
-      ] as any);
+  let basePool = dedupeDocs([
+    ...primaryIntentCandidates,
+    ...normalizedCandidates,
+  ] as any);
 
   if (basePool.length < finalLimit * 2) {
     const qualitySorted = [...normalizedCandidates].sort((a: any, b: any) => {
@@ -2689,24 +2716,21 @@ const normalizedCandidates = [
     });
 
     basePool = dedupeDocs([
-      ...openLibraryNormalizedCandidates.slice(0, thrillerOpenLibraryQuota),
-      ...enforceAuthorDiversity(qualitySorted, 1),
+      ...basePool,
+      ...qualitySorted,
     ] as any);
-    basePool = enforceLaneDiversity(basePool, 3);
   }
-
-  basePool = enforceAuthorDiversity(basePool, 1);
 
   if (routerFamily !== "thriller") {
     const basePoolOpenLibraryCount = basePool.filter((c: any) => c?.source === "openLibrary").length;
-    if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_BASE_POOL) {
+    if (basePoolOpenLibraryCount < MIN_OPEN_LIBRARY_CANDIDATES) {
       const existing = new Set(basePool.map((c: any) => candidateKey(c)));
       for (const candidate of openLibraryNormalizedCandidates) {
         const key = candidateKey(candidate);
         if (!key || existing.has(key)) continue;
         basePool.push(candidate);
         existing.add(key);
-        if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_BASE_POOL) break;
+        if (basePool.filter((c: any) => c?.source === "openLibrary").length >= MIN_OPEN_LIBRARY_CANDIDATES) break;
       }
     }
   }
@@ -2867,14 +2891,13 @@ const normalizedCandidates = [
     rankedCountsBySource[source] = (rankedCountsBySource[source] || 0) + 1;
   }
 
-  const engineLabel =
-    includeKitsu && includeGcd
-      ? "Google Books + Open Library + Kitsu + GCD"
-      : includeKitsu
-      ? "Google Books + Open Library + Kitsu"
-      : includeGcd
-      ? "Google Books + Open Library + GCD"
-      : "Google Books + Open Library";
+  const labelParts: string[] = [];
+  if (sourceEnabled.googleBooks) labelParts.push("Google Books");
+  if (sourceEnabled.openLibrary) labelParts.push("Open Library");
+  if (sourceEnabled.googleBooks && includeKitsu) labelParts.push("Kitsu");
+  if (sourceEnabled.googleBooks && includeGcd) labelParts.push("GCD");
+  if (sourceEnabled.localLibrary) labelParts.push("Local Library");
+  const engineLabel = labelParts.join(" + ") || "No enabled sources";
 
   const debugSourceStats: Record<string, RecommenderDebugSourceStats> = {
     googleBooks: {
@@ -2888,13 +2911,13 @@ const normalizedCandidates = [
       finalSelected: rankedCountsBySource.openLibrary,
     },
     kitsu: {
-      rawFetched: includeKitsu ? aggregatedRawFetched.kitsu : 0,
-      postFilterCandidates: includeKitsu ? kitsuCandidates.length : 0,
+      rawFetched: sourceEnabled.googleBooks && includeKitsu ? aggregatedRawFetched.kitsu : 0,
+      postFilterCandidates: sourceEnabled.googleBooks && includeKitsu ? kitsuCandidates.length : 0,
       finalSelected: rankedCountsBySource.kitsu,
     },
     gcd: {
-      rawFetched: includeGcd ? aggregatedRawFetched.gcd : 0,
-      postFilterCandidates: includeGcd ? gcdCandidates.length : 0,
+      rawFetched: sourceEnabled.googleBooks && includeGcd ? aggregatedRawFetched.gcd : 0,
+      postFilterCandidates: sourceEnabled.googleBooks && includeGcd ? gcdCandidates.length : 0,
       finalSelected: rankedCountsBySource.gcd,
     },
     nyt: {
@@ -2927,5 +2950,7 @@ const normalizedCandidates = [
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: getLastFinalRecommenderDebug(),
     debugNytAnchors: nytAnchorDebug,
+    sourceEnabled,
+    sourceSkippedReason,
   } as RecommendationResult;
 }

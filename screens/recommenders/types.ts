@@ -28,6 +28,8 @@ export type RecommendationResult = {
     rejectionCounts: Record<string, number>;
     rejected: Array<{ id: string; title: string; author: string; source: EngineId; reason: string; detail?: string; }>;
   };
+  sourceEnabled?: RecommendationSourceDiagnostics;
+  sourceSkippedReason?: string[];
   engineId: EngineId;
   engineLabel: string;
   deckKey: DeckKey;
@@ -36,13 +38,24 @@ export type RecommendationResult = {
   items: RecommendationItem[];
 };
 export type RecommenderProfileOverride = Record<string, number | undefined>;
+export type SourceEnabledConfig = {
+  googleBooks?: boolean;
+  openLibrary?: boolean;
+  localLibrary?: boolean;
+};
 export type StructuredFetchRung = { rung: number; family?: string; primary: string | null; secondary: string | null; themes: string[]; audience: string; query: string; };
 export type BucketPlan = { queries?: string[]; rungs?: StructuredFetchRung[]; bucketId?: string; domainMode?: DomainMode; preview?: string; strategy?: string; signals?: { genres?: string[]; tones?: string[]; textures?: string[]; scenarios?: string[]; }; };
-export type RecommenderInput = { deckKey: DeckKey; tagCounts: TagCounts; tasteProfile?: TasteProfile; limit?: number; timeoutMs?: number; minCandidateFloor?: number; bucketPlan?: BucketPlan; domainModeOverride?: DomainMode; profileOverride?: RecommenderProfileOverride; priorRecommendedIds?: string[]; priorRecommendedKeys?: string[]; priorAuthors?: string[]; priorSeriesKeys?: string[]; priorRejectedIds?: string[]; priorRejectedKeys?: string[]; };
+export type RecommenderInput = { deckKey: DeckKey; tagCounts: TagCounts; tasteProfile?: TasteProfile; limit?: number; timeoutMs?: number; minCandidateFloor?: number; bucketPlan?: BucketPlan; domainModeOverride?: DomainMode; profileOverride?: RecommenderProfileOverride; priorRecommendedIds?: string[]; priorRecommendedKeys?: string[]; priorAuthors?: string[]; priorSeriesKeys?: string[]; priorRejectedIds?: string[]; priorRejectedKeys?: string[]; sourceEnabled?: SourceEnabledConfig; localLibrarySupported?: boolean; };
 
 
 export type RungDiagnostics = {
   byRung: Record<string, number>;
   byRungSource: Record<string, Record<string, number>>;
   total: number;
+};
+
+export type RecommendationSourceDiagnostics = {
+  googleBooks: boolean;
+  openLibrary: boolean;
+  localLibrary: boolean;
 };

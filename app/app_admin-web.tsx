@@ -186,6 +186,34 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
 
   cfg.theme.mainThemeKey = mainTheme;
   cfg.theme.highlightKey = highlight;
+
+  cfg.recommendations = (cfg.recommendations && typeof cfg.recommendations === "object") ? cfg.recommendations : {};
+  const localLibrarySupported = Boolean(cfg?.recommendations?.localLibrarySupported);
+  const configured = cfg?.recommendations?.sourceEnabled || {};
+  const legacySource = cfg?.recommendations?.source ?? cfg?.recommendation?.source;
+
+  const sourceEnabled: RecommendationSourceEnabled = {
+    googleBooks: configured?.googleBooks !== false,
+    openLibrary: configured?.openLibrary !== false,
+    localLibrary: localLibrarySupported ? configured?.localLibrary !== false : false,
+  };
+
+  if (!cfg?.recommendations?.sourceEnabled && typeof legacySource === "string") {
+    if (legacySource === "local_collection") {
+      sourceEnabled.googleBooks = false;
+      sourceEnabled.openLibrary = false;
+      sourceEnabled.localLibrary = localLibrarySupported;
+    } else if (legacySource === "open_library") {
+      sourceEnabled.googleBooks = true;
+      sourceEnabled.openLibrary = true;
+      sourceEnabled.localLibrary = false;
+    }
+  }
+
+  cfg.recommendations.sourceEnabled = sourceEnabled;
+  if (typeof cfg.recommendations.localLibrarySupported !== "boolean") {
+    cfg.recommendations.localLibrarySupported = false;
+  }
 }
 
 type ThemeKey =
@@ -204,7 +232,8 @@ type HighlightKey = ThemeKey | "white" | "black" | "silver";
 type TitleTextKey = "white" | "black";
 
 type DeckKey = "k2" | "36" | "ms_hs" | "adult";
-type SourceKey = "open_library" | "local_collection";
+type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary";
+type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
 
@@ -216,9 +245,10 @@ function deckLabel(k: DeckKey) {
   return k;
 }
 
-function sourceLabel(s: SourceKey) {
-  if (s === "open_library") return "Google Books";
-  if (s === "local_collection") return "This library’s collection";
+function sourceLabel(s: RecommendationSourceToggleKey) {
+  if (s === "googleBooks") return "Google Books";
+  if (s === "openLibrary") return "Open Library";
+  if (s === "localLibrary") return "This library’s collection";
   return s;
 }
 
@@ -751,26 +781,41 @@ export default function AdminWebScreen() {
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Recommendation Source</Text>
-        <View style={styles.rowWrap}>
-          {(["open_library", "local_collection"] as SourceKey[]).map((s) => {
-            const selected = (config?.recommendations?.source || "open_library") === s;
+        <Text style={[styles.note, { color: theme.subtext }]}>
+          Toggle one or more sources. If all are off, recommendations will not run.
+        </Text>
+        <View style={{ gap: 10 }}>
+          {(["googleBooks", "openLibrary", "localLibrary"] as RecommendationSourceToggleKey[]).map((sourceKey) => {
+            const localLibrarySupported = Boolean(config?.recommendations?.localLibrarySupported);
+            const disabled = sourceKey === "localLibrary" && !localLibrarySupported;
+            const enabled = sourceKey === "localLibrary"
+              ? Boolean(config?.recommendations?.sourceEnabled?.localLibrary) && localLibrarySupported
+              : Boolean(config?.recommendations?.sourceEnabled?.[sourceKey]);
+
             return (
-              <TouchableOpacity
-                key={s}
-                onPress={() => setPath(["recommendations", "source"], s)}
-                style={[
-                  styles.chip,
-                  { borderColor: theme.highlightBorder, backgroundColor: theme.inputBg },
-                  selected && { backgroundColor: theme.accent, borderColor: theme.accentBorder },
-                ]}
-              >
-                <Text style={[styles.chipText, { color: theme.text }, selected && { color: theme.accentTextOn }]}>
-                  {sourceLabel(s)}
-                </Text>
-              </TouchableOpacity>
+              <View key={sourceKey} style={styles.rowBetween}>
+                <View>
+                  <Text style={{ color: theme.text, fontWeight: "700" }}>{sourceLabel(sourceKey)}</Text>
+                  {sourceKey === "localLibrary" && disabled ? (
+                    <Text style={[styles.note, { color: theme.subtext }]}>Not supported in this build yet.</Text>
+                  ) : null}
+                </View>
+                <Switch
+                  value={enabled}
+                  disabled={disabled}
+                  onValueChange={(next) => setPath(["recommendations", "sourceEnabled", sourceKey], next)}
+                />
+              </View>
             );
           })}
         </View>
+        {!config?.recommendations?.sourceEnabled?.googleBooks &&
+        !config?.recommendations?.sourceEnabled?.openLibrary &&
+        !(Boolean(config?.recommendations?.sourceEnabled?.localLibrary) && Boolean(config?.recommendations?.localLibrarySupported)) ? (
+          <Text style={[styles.note, { color: theme.danger }]}>
+            All recommendation sources are disabled. Enable at least one source.
+          </Text>
+        ) : null}
 
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 

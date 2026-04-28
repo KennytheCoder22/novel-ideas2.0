@@ -23,7 +23,12 @@
     }
   },
   "recommendations": {
-    "source": "open_library"
+    "sourceEnabled": {
+      "googleBooks": true,
+      "openLibrary": true,
+      "localLibrary": false
+    },
+    "localLibrarySupported": false
   },
   "swipe": {
     "categoriesEnabled": {

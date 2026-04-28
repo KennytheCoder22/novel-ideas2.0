@@ -31,6 +31,32 @@ function simplifyOpenLibraryQuery(query: string): string {
     .trim();
 }
 
+function expandOpenLibraryLaneQueries(query: string, family: string): string[] {
+  const cleaned = normalizeText(query);
+  if (!cleaned) return [];
+
+  const lanes: string[] = [cleaned];
+
+  if (family === "thriller") {
+    lanes.push(
+      "psychological thriller",
+      "suspense fiction",
+      "crime fiction",
+      "mystery thriller",
+      "psychological fiction",
+      "character driven thriller"
+    );
+  }
+
+  if (family === "horror") lanes.push("psychological horror", "supernatural horror fiction");
+  if (family === "fantasy") lanes.push("dark fantasy", "epic fantasy");
+  if (family === "speculative") lanes.push("science fiction", "speculative fiction");
+  if (family === "romance") lanes.push("romance fiction", "contemporary romance");
+  if (family === "historical") lanes.push("historical fiction", "period fiction");
+
+  return dedupeQueries(lanes);
+}
+
 function fallbackQueryForFamily(family: string): string {
   if (family === "thriller") return "psychological thriller novel";
   if (family === "horror") return "psychological horror novel";
@@ -92,14 +118,16 @@ function buildQueries(input: RecommenderInput): string[] {
   const family = inferFamily(input);
   if (input.bucketPlan?.rungs?.length) {
     const base = dedupeQueries(input.bucketPlan.rungs.map(rungToOpenLibraryQuery).filter(Boolean));
+    const expanded = dedupeQueries(base.flatMap((q) => expandOpenLibraryLaneQueries(q, family)));
     const simplified = base.map(simplifyOpenLibraryQuery).filter(Boolean);
-    return dedupeQueries([...base, ...simplified, fallbackQueryForFamily(family)]);
+    return dedupeQueries([...expanded, ...simplified, fallbackQueryForFamily(family)]).slice(0, 10);
   }
 
   if (Array.isArray(input.bucketPlan?.queries)) {
     const base = dedupeQueries(input.bucketPlan.queries.map(quoteQuery).filter(Boolean));
+    const expanded = dedupeQueries(base.flatMap((q) => expandOpenLibraryLaneQueries(q, family)));
     const simplified = base.map(simplifyOpenLibraryQuery).filter(Boolean);
-    return dedupeQueries([...base, ...simplified, fallbackQueryForFamily(family)]);
+    return dedupeQueries([...expanded, ...simplified, fallbackQueryForFamily(family)]).slice(0, 10);
   }
 
   return [];
@@ -157,7 +185,11 @@ function isGarbage(doc: any, family: string): boolean {
 
   const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
   const firstSentence = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence);
-  if (!firstSentence && ratingsCount === 0) return true;
+  if (!firstSentence && ratingsCount === 0) {
+    const hasSubjectSignal = Array.isArray(doc?.subject) && doc.subject.length > 0;
+    const hasEditionSignal = Number(doc?.edition_count || 0) >= 2;
+    if (!hasSubjectSignal && !hasEditionSignal && !hasOpenLibraryCoverSignal(doc)) return true;
+  }
 
   if (family === "fantasy") {
     const obviousFantasySignal =
@@ -170,10 +202,10 @@ function isGarbage(doc: any, family: string): boolean {
   return false;
 }
 
-async function fetchJson(url: string): Promise<any> {
+async function fetchJson(url: string): Promise<{ ok: boolean; status: number; data: any }> {
   const res = await fetch(url);
-  if (!res.ok) throw new Error(`OpenLibrary error ${res.status}`);
-  return res.json();
+  const data = await res.json();
+  return { ok: res.ok, status: res.status, data };
 }
 
 export async function getOpenLibraryRecommendations(
@@ -182,8 +214,12 @@ export async function getOpenLibraryRecommendations(
   const queries = buildQueries(input);
   const family = inferFamily(input);
   const docsRaw: any[] = [];
+  let rawFetchedTotal = 0;
   const limit = input.limit || 12;
   const intakeLimit = Math.max(limit * 2, 24);
+  const sourceEnabled = (input as any)?.sourceEnabled || {};
+  console.log("[OPEN_LIBRARY_ENABLED]", { enabled: sourceEnabled?.openLibrary !== false });
+  console.log("[OPEN_LIBRARY_QUERY_LANES]", queries);
 
   if (!hasUsableSignal(input) || !queries.length) {
     return {
@@ -200,9 +236,19 @@ export async function getOpenLibraryRecommendations(
     const q = queries[i];
     const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
     let docs: any[] = [];
+    console.log("[OPEN_LIBRARY_URL]", url);
     try {
-      const data = await fetchJson(url);
-      docs = Array.isArray(data?.docs) ? data.docs : [];
+      const response = await fetchJson(url);
+      console.log("[OPEN_LIBRARY_HTTP_STATUS]", { query: q, status: response.status });
+      if (!response.ok) throw new Error(`OpenLibrary error ${response.status}`);
+      docs = Array.isArray(response.data?.docs) ? response.data.docs : [];
+      rawFetchedTotal += docs.length;
+      console.log("[OPEN_LIBRARY_RAW_COUNT]", { query: q, rawCount: docs.length, accumulatedRawCount: rawFetchedTotal });
+      console.log("[OPEN_LIBRARY_FIRST_3_RESULTS]", docs.slice(0, 3).map((doc: any) => ({
+        title: doc?.title,
+        author: Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name,
+        key: doc?.key,
+      })));
     } catch (error: any) {
       console.warn("[OPEN_LIBRARY_FETCH_WARNING]", {
         query: q,
@@ -266,7 +312,7 @@ export async function getOpenLibraryRecommendations(
     domainMode: "default",
     builtFromQuery: queries[0] || "",
     items: items.map(doc => ({ kind: "open_library", doc })),
-    debugRawFetchedCount: docsRaw.length,
+    debugRawFetchedCount: rawFetchedTotal,
     debugRawPool: docsRaw.slice(0, intakeLimit).map((d) => ({
       title: d.title,
       author: Array.isArray(d.author_name) ? d.author_name[0] : d.author_name,

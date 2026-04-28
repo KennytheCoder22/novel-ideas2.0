@@ -535,8 +535,10 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     filterSignals >= 10 ||
     knownTitleBoost(c) > 0 ||
     classicAuthorBoost(c) > 0;
-  if (softFailureCount >= 3 && !hasStrongSignals) {
-    return { pass: false, reason: 'low_metadata_trust', detail: `compound soft failures=${softFailureCount}` };
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  const coreFictionOverride = Boolean(flags?.fictionPositive && flags?.strongNarrative);
+  if (softFailureCount >= 3 && !hasStrongSignals && !coreFictionOverride) {
+    debugFinalLog("SOFT_FAILURE_PENALTY_ONLY", { title: c.title, softFailureCount });
   }
 
   if (trust < 2 && !hasShapeSignal) {
@@ -966,6 +968,20 @@ function rescuePenaltyScore(c: Candidate): number {
   if (rescuePenaltyCount >= 2) return -8;
   if (rescuePenaltyCount >= 1 && stackedSoft >= 1) return -6;
   return rescuePenaltyCount >= 1 ? -3 : 0;
+}
+
+function softFailurePenaltyScore(c: Candidate): number {
+  const diagnostics = getFilterDiagnostics(c);
+  const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+  if (flags?.fictionPositive && flags?.strongNarrative) return 0;
+  const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
+    ? diagnostics.filterPassedChecks
+    : Array.isArray(diagnostics?.passedChecks)
+      ? diagnostics.passedChecks
+      : [];
+  const softFailures = passedChecks.filter((check) => check.startsWith('soft_')).length;
+  const SOFT_FAILURE_WEIGHT = 1.25;
+  return -Math.min(10, softFailures * SOFT_FAILURE_WEIGHT);
 }
 
 function rankingPriorityBoost(c: Candidate): number {
@@ -1823,6 +1839,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const seriesFormulaPenalty = formulaSeriesPenalty(c);
   const genericQueryPenalty = genericRungPenalty(c);
   const rescuePenalty = rescuePenaltyScore(c);
+  const softFailurePenalty = softFailurePenaltyScore(c);
   const rankingPriority = rankingPriorityBoost(c);
   const axisAlignment = tasteAxisAlignmentBoost(c, taste);
   const classicPenalty = classicDominancePenalty(c, taste);
@@ -1865,7 +1882,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
   };
 }
 
@@ -2284,6 +2301,49 @@ export function finalRecommenderForDeck(
   pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
     pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+  }
+  if (selected.length < 5) {
+    const adjacentFamilies: Record<string, string[]> = {
+      thriller: ["mystery", "horror"],
+      romance: ["historical", "general"],
+      historical: ["romance", "mystery"],
+      fantasy: ["speculative", "science_fiction"],
+      horror: ["thriller", "mystery"],
+      science_fiction: ["speculative", "fantasy"],
+      mystery: ["thriller", "historical"],
+    };
+    const isPromotionEligible = (candidate: Candidate): boolean => {
+      const diagnostics = getFilterDiagnostics(candidate);
+      const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
+      const text = haystack(candidate);
+      if (!(flags?.fictionPositive && flags?.strongNarrative)) return false;
+      if (isLikelyNonFictionMeta(candidate)) return false;
+      if (/\b(anthology|collection|reference|guide|handbook|criticism|analysis)\b/.test(text)) return false;
+      return true;
+    };
+    const primaryPromotions = ordered.filter((entry) =>
+      laneFamilyForCandidate(entry.candidate) === sessionPrimaryLane &&
+      isOpenLibraryCandidate(entry.candidate) &&
+      isPromotionEligible(entry.candidate)
+    );
+    pickFromPool(primaryPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+
+    if (selected.length < 5) {
+      const adjacentSet = new Set(adjacentFamilies[sessionPrimaryLane] || []);
+      const adjacentPromotions = ordered.filter((entry) =>
+        adjacentSet.has(laneFamilyForCandidate(entry.candidate)) &&
+        isOpenLibraryCandidate(entry.candidate) &&
+        isPromotionEligible(entry.candidate)
+      );
+      pickFromPool(adjacentPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+    }
+    if (selected.length < 5) {
+      debugFinalLog("FINAL_PROMOTION_REASON", {
+        reason: "minimum_fill_rule",
+        sessionPrimaryLane,
+        selectedCount: selected.length,
+      });
+    }
   }
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);

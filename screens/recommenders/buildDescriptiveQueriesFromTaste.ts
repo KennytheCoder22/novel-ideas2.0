@@ -1242,12 +1242,13 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
     ...directTasteQueries,
     ...(hypothesisQueries.length ? hypothesisQueries : (fallback.length ? fallback : guaranteed)),
   ]);
-  const queries = finalizeTasteQueries(suppressUnsupportedHistoricalQueries(generatedQueries, input, signals));
+  const queriesBase = finalizeTasteQueries(suppressUnsupportedHistoricalQueries(generatedQueries, input, signals));
+  const queries = queriesBase.length ? queriesBase : ["fiction novel"];
   debugTasteQueries("TASTE-SHAPED", queries);
 
   return {
     queries,
-    preview: queries[0] || directTasteQueries[0] || "",
+    preview: queries[0] || directTasteQueries[0] || "fiction novel",
     strategy: "20q-hypothesis-composer-v13-taste-shaped-query-packs",
     signals: {
       genres: topKeys(signals.genre, 3),
