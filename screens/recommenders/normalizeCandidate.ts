@@ -58,10 +58,10 @@ function inferHistoricalQueryRung(rawDoc: any): number | undefined {
   );
 
   if (!queryText) return undefined;
+  if (/\bhistorical fiction novel 19th century\b/.test(queryText)) return 0;
   if (/\bcivil war historical fiction novel\b/.test(queryText)) return 1;
-  if (/\bfamily saga historical fiction novel\b/.test(queryText)) return 2;
-  if (/\bliterary historical fiction novel\b/.test(queryText)) return 3;
-  if (/\b19th century american novel\b/.test(queryText)) return 0;
+  if (/\bamerican historical fiction novel society\b/.test(queryText)) return 2;
+  if (/\bcoming of age historical fiction novel\b/.test(queryText)) return 3;
 
   return undefined;
 }
@@ -87,7 +87,7 @@ function inferQueryFamily(rawDoc: any): string | undefined {
     rawDoc?.query
   );
 
-  if (/\b(19th century american novel|civil war historical fiction novel|family saga historical fiction novel|literary historical fiction novel|historical fiction|historical novel|period fiction)\b/.test(queryText)) {
+  if (/\b(historical fiction novel 19th century|civil war historical fiction novel|american historical fiction novel society|coming of age historical fiction novel|historical fiction|historical novel|period fiction|19th century|american historical|american novel|gilded age|victorian|western historical)\b/.test(queryText)) {
     return 'historical';
   }
   if (/\bhistorical\b/.test(queryText)) return 'historical';
@@ -616,7 +616,7 @@ export function normalizeCandidates(rawDocs: RecommendationDoc[], source: Candid
 
         const historicalLaneCandidate =
           candidate.queryFamily === 'historical' ||
-          /\b(19th century american novel|civil war historical fiction novel|family saga historical fiction novel|literary historical fiction novel)\b/.test(
+          /\b(historical fiction novel 19th century|civil war historical fiction novel|american historical fiction novel society|coming of age historical fiction novel)\b/.test(
             cleanQueryText(candidate.queryText)
           );
 

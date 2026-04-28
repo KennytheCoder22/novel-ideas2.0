@@ -131,9 +131,14 @@ function inferFamilyFromQueryText(query: string, fallback: RouterFamilyKey): Rou
   if (/\b(psychological horror|survival horror|haunted|horror)\b/.test(q)) return "horror";
   if (/\b(science fiction|dystopian|space opera|speculative)\b/.test(q)) return "science_fiction";
   if (/\b(epic fantasy|dark fantasy|magic fantasy|fantasy)\b/.test(q)) return "fantasy";
-  if (/\b(historical fiction|historical novel|period fiction|historical|19th century|victorian|gilded age|civil war|world war)\b/.test(q)) return "historical";
+  if (/\b(historical fiction|historical novel|period fiction|historical|19th century|victorian|gilded age|civil war|world war|american historical|american novel|western historical)\b/.test(q)) return "historical";
   if (/\b(romance|love story|second chance romance|gothic romance|historical romance)\b/.test(q)) return "romance";
   return fallback;
+}
+
+function inferHistoricalFromQueryText(query: string): boolean {
+  const q = String(query || "").toLowerCase();
+  return /\b(historical fiction|19th century|civil war|american historical|american novel|gilded age|victorian|western historical)\b/.test(q);
 }
 
 function isMetaReferenceWork(doc: any): boolean {
@@ -153,7 +158,7 @@ function isMetaReferenceWork(doc: any): boolean {
   const description = String(doc?.description ?? doc?.rawDoc?.description ?? "").toLowerCase();
   const combined = `${title} ${categories} ${description}`.trim();
 
-  return /\b(reference|companion|criticism|history and criticism|study guide|bibliograph(?:y|ies)|encyclopedia|catalog(?:ue)?|handbook|guide to)\b/.test(combined);
+  return /\b(letter|letters|log|reconsidered|commentary|criticism|analysis|study|studies|guide|companion|readalong|history|lives|meditations|tao te ching|selected works|complete works|collected works|reference|history and criticism|study guide|bibliograph(?:y|ies)|encyclopedia|catalog(?:ue)?|handbook|guide to)\b/.test(combined);
 }
 
 function nytAnchorMatchesFamily(doc: RecommendationDoc, family: RouterFamilyKey): boolean {
@@ -2354,16 +2359,53 @@ export async function getRecommendations(
     ];
   }
 
-  if (routerFamily === "historical") {
-    // Historical must keep four independent shelves. Some upstream taste plans can
-    // collapse every rung to the same base query; restore the canonical rung pack here
-    // so each fetch lane carries its own query and rung identity end-to-end.
-    rungs = [
-      { rung: 0, query: "19th century american novel" },
-      { rung: 1, query: "civil war historical fiction novel" },
-      { rung: 2, query: "family saga historical fiction novel" },
-      { rung: 3, query: "literary historical fiction novel" },
-    ];
+  const canonicalFamilyRungs: Record<string, string[]> = {
+    historical: [
+      "historical fiction novel 19th century",
+      "civil war historical fiction novel",
+      "american historical fiction novel society",
+      "coming of age historical fiction novel",
+    ],
+    thriller: [
+      "psychological thriller novel",
+      "crime thriller novel",
+      "mystery suspense novel",
+      "detective fiction novel",
+    ],
+    mystery: [
+      "psychological thriller novel",
+      "crime thriller novel",
+      "mystery suspense novel",
+      "detective fiction novel",
+    ],
+    horror: [
+      "psychological horror novel",
+      "haunted house horror novel",
+      "supernatural horror novel",
+      "gothic horror novel",
+    ],
+    romance: [
+      "young adult romance novel",
+      "coming of age romance novel",
+      "contemporary romance novel",
+      "school romance novel",
+    ],
+    fantasy: [
+      "epic fantasy novel",
+      "high fantasy novel",
+      "dragon fantasy novel",
+      "quest fantasy novel",
+    ],
+    science_fiction: [
+      "science fiction novel",
+      "dystopian science fiction novel",
+      "survival science fiction novel",
+      "space science fiction novel",
+    ],
+  };
+  const forcedRungs = canonicalFamilyRungs[routerFamily];
+  if (forcedRungs?.length) {
+    rungs = forcedRungs.map((query, index) => ({ rung: index, query, queryFamily: routerFamily }));
   }
 
 
@@ -2381,7 +2423,7 @@ export async function getRecommendations(
     }
   }
 
-  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision" }));
+  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision", queryFamily: normalizeRouterFamilyValue((r as any)?.queryFamily) || routerFamily }));
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   rungs = rungs.slice(0, 4);
@@ -2412,10 +2454,14 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
-      const familyFromQuery = inferFamilyFromQueryText(String((lane as any)?.query || (lane as any)?.queryText || ""), rungFamily);
-      const laneFamily = normalizeRouterFamilyValue((lane as any)?.queryFamily) || familyFromQuery || rungFamily;
+      const laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
+      const familyFromQuery = inferFamilyFromQueryText(laneQueryText, rungFamily);
+      const laneFamily =
+        inferHistoricalFromQueryText(laneQueryText)
+          ? "historical"
+          : normalizeRouterFamilyValue((lane as any)?.queryFamily) || familyFromQuery || rungFamily;
       debugRouterLog("QUERY_FAMILY_BEFORE_FETCH", {
-        query: (lane as any)?.query,
+        query: laneQueryText,
         queryFamily: (lane as any)?.queryFamily || null,
         inferredQueryFamily: familyFromQuery || null,
         laneFamily,
@@ -2518,8 +2564,10 @@ export async function getRecommendations(
           queryFamily: normalizeRouterFamilyValue(row?.queryFamily) || rowFamilyFromQuery || laneFamily,
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (rowFamilyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
-          filterFamily: normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFamily,
+          laneKind: (inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? "")) || (rowFamilyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
+          filterFamily: inferHistoricalFromQueryText(String(row?.queryText ?? lane.query ?? ""))
+            ? "historical"
+            : normalizeRouterFamilyValue(row?.filterFamily) || rowFamilyFromQuery || laneFamily,
         };
       });
 
@@ -2536,17 +2584,17 @@ export async function getRecommendations(
           ...doc,
           queryRung,
           queryText: lane.query,
-          queryFamily: familyFromQuery || laneFamily,
+          queryFamily: inferHistoricalFromQueryText(String(lane.query || "")) ? "historical" : (familyFromQuery || laneFamily),
           hybridLaneWeights,
           primaryLane: routerFamily,
-          laneKind: (familyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
+          laneKind: (inferHistoricalFromQueryText(String(lane.query || "")) || (familyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
           diagnostics: {
             ...(doc?.diagnostics || {}),
             queryRung,
             queryText: lane.query,
-            queryFamily: familyFromQuery || laneFamily,
-            laneKind: (familyFromQuery || laneFamily) === "historical" ? "historical" : lane.laneKind,
-            filterFamily: familyFromQuery || laneFamily,
+            queryFamily: inferHistoricalFromQueryText(String(lane.query || "")) ? "historical" : (familyFromQuery || laneFamily),
+            laneKind: (inferHistoricalFromQueryText(String(lane.query || "")) || (familyFromQuery || laneFamily) === "historical") ? "historical" : lane.laneKind,
+            filterFamily: inferHistoricalFromQueryText(String(lane.query || "")) ? "historical" : (familyFromQuery || laneFamily),
             hybridLaneWeights,
             primaryLane: routerFamily,
           },
@@ -2628,6 +2676,33 @@ export async function getRecommendations(
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
       return !family || family === "thriller" || family === "mystery";
     });
+  }
+
+  if (!isHybridMode && routerFamily === "romance") {
+    const explicitFantasyRomance = /\bfantasy romance\b/.test(
+      [
+        ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+        ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
+        bucketPlan?.preview,
+      ].filter(Boolean).join(" ").toLowerCase()
+    );
+
+    if (!explicitFantasyRomance) {
+      candidateDocs = candidateDocs.filter((doc: any) => {
+        const text = [
+          doc?.title,
+          doc?.description,
+          doc?.genre,
+          ...(Array.isArray(doc?.subject) ? doc.subject : []),
+          ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+          doc?.rawDoc?.title,
+          doc?.rawDoc?.description,
+        ].filter(Boolean).join(" ").toLowerCase();
+        const fantasyHeavy = /\b(epic fantasy|high fantasy|dragon|wizard|witch|fae|sorcery|magic kingdom|quest fantasy)\b/.test(text);
+        const romanceNative = /\b(romance|love story|courtship|relationship|second chance|enemies to lovers|wedding|marriage)\b/.test(text);
+        return !fantasyHeavy || romanceNative;
+      });
+    }
   }
 
   if (!isHybridMode) {
