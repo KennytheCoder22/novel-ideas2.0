@@ -431,6 +431,10 @@ export default function AdminWebScreen() {
   const titleTextKey = (config?.branding?.titleTextColor || config?.theme?.titleTextColor || "white") as TitleTextKey;
 
   const theme = useMemo(() => buildTheme(mainThemeKey, highlightKey), [mainThemeKey, highlightKey]);
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    document.documentElement.style.setProperty("--highlight-color", theme.highlight);
+  }, [theme.highlight]);
 
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
   const libraryId = useMemo(() => slugifyLibraryId(libraryName), [libraryName]);

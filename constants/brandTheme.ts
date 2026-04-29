@@ -14,6 +14,9 @@ export type HighlightKey = ThemeKey | "white" | "black" | "silver";
 // Controls the *banner title* text color ("Novel | Ideas" or the library name).
 // Kept intentionally tiny: the UI exposes explicit Black/White buttons.
 export type TitleTextKey = "white" | "black";
+export const WEB_HIGHLIGHT_CSS_VAR = "--highlight-color";
+export const DEFAULT_HIGHLIGHT_COLOR = "#fbbf24";
+const ADMIN_CONFIG_STORAGE_KEY = "novelideas_admin_config";
 
 type HighlightPreset = { highlight: string; lightBorder: string; highlightTextOn: string };
 
@@ -84,4 +87,26 @@ export function buildTheme(
     highlightBg: hi.highlight,
     highlightText: hi.highlightTextOn,
   };
+}
+
+export function applyWebHighlightColor(highlightColor: string) {
+  if (typeof document === "undefined") return;
+  document.documentElement.style.setProperty(WEB_HIGHLIGHT_CSS_VAR, highlightColor || DEFAULT_HIGHLIGHT_COLOR);
+}
+
+export function initWebHighlightColorFromStorage() {
+  if (typeof document === "undefined" || typeof window === "undefined") return;
+  const raw = window.localStorage.getItem(ADMIN_CONFIG_STORAGE_KEY);
+  if (!raw) {
+    applyWebHighlightColor(DEFAULT_HIGHLIGHT_COLOR);
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    const highlightKey = parsed?.branding?.highlight ?? parsed?.theme?.highlightKey ?? "gold_accent";
+    const color = highlightPreset(highlightKey as HighlightKey)?.highlight ?? DEFAULT_HIGHLIGHT_COLOR;
+    applyWebHighlightColor(color);
+  } catch {
+    applyWebHighlightColor(DEFAULT_HIGHLIGHT_COLOR);
+  }
 }
