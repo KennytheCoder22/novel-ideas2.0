@@ -427,6 +427,9 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\ba\s*l\s*a\s*booklist\b/
     ,/\byear\s*book\b/
     ,/\bbest\s*sellers?\b/
+    ,/\bbest science fiction of the year\b/
+    ,/\bwho really wrote\b/
+    ,/\balien sex\b/
     ,/\bhistorical novels?\b$/
     ,/\bcollected works?\b/
     ,/\btextbook\b/
@@ -2416,6 +2419,13 @@ export function finalRecommenderForDeck(
   buildDebug(input.length, deduped.length, base, rejected);
 
   const { tasteProfile } = _options;
+  const negativeTasteTerms = new Set(
+    [
+      ...Object.keys((tasteProfile as any)?.dislikedTagCounts || {}),
+      ...Object.keys((tasteProfile as any)?.leftTagCounts || {}),
+      ...((tasteProfile as any)?.negativeTags || []),
+    ].map((v) => String(v || "").toLowerCase())
+  );
   const scored = base.map((candidate) => ({
     candidate,
     breakdown: scoreCandidateDetailed(candidate, tasteProfile),
@@ -2471,6 +2481,19 @@ export function finalRecommenderForDeck(
     entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
   );
   let displayPool = tierA.length >= 3 ? tierA : [...tierA, ...tierB];
+  displayPool = displayPool.filter((entry) => {
+    const lane = laneFamilyForCandidate(entry.candidate);
+    const text = haystack(entry.candidate);
+    const diagnostics = getFilterDiagnostics(entry.candidate);
+    const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks) ? diagnostics.filterPassedChecks : Array.isArray(diagnostics?.passedChecks) ? diagnostics.passedChecks : [];
+    const rescueHeavy = passedChecks.filter((check) => String(check).includes("rescue") || String(check).includes("borderline")).length >= 2;
+    if (lane === "fantasy" && (negativeTasteTerms.has("fantasy romance") || negativeTasteTerms.has("cozy fantasy") || negativeTasteTerms.has("fantasy adventure"))) {
+      const hasPositiveFantasyShape = /\b(moral conflict|betrayal|consequence|darkly comic|authored|psychological|adult)\b/.test(text);
+      if (!hasPositiveFantasyShape) return false;
+    }
+    if (rescueHeavy && lane === "fantasy") return false;
+    return true;
+  });
   const minDisplayPool = ordered.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, ordered.length);
   if (displayPool.length < minDisplayPool) {
     const fallback = ordered.filter((entry) =>
@@ -2590,9 +2613,26 @@ export function finalRecommenderForDeck(
   });
   pickFromPool(crossFamilyTopUps, laneBalanced, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   const clusterBalanced = enforceClusterDominanceLimit(laneBalanced, 4);
+  const laneQuality = new Map<string, { total: number; rescueHeavy: number }>();
+  for (const entry of clusterBalanced) {
+    const lane = laneFamilyForCandidate(entry.candidate) || "unknown";
+    const diagnostics = getFilterDiagnostics(entry.candidate);
+    const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks) ? diagnostics.filterPassedChecks : Array.isArray(diagnostics?.passedChecks) ? diagnostics.passedChecks : [];
+    const rescueHeavy = passedChecks.filter((check) => String(check).includes("rescue") || String(check).includes("borderline")).length >= 2;
+    const row = laneQuality.get(lane) || { total: 0, rescueHeavy: 0 };
+    row.total += 1;
+    if (rescueHeavy) row.rescueHeavy += 1;
+    laneQuality.set(lane, row);
+  }
+  const weakLanes = new Set(
+    Array.from(laneQuality.entries())
+      .filter(([, value]) => value.total >= 2 && value.rescueHeavy / value.total > 0.6)
+      .map(([lane]) => lane)
+  );
   const diversityBalanced = (() => {
     const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
     for (const entry of clusterBalanced) {
+      if (weakLanes.has(laneFamilyForCandidate(entry.candidate) || "unknown")) continue;
       const text = haystack(entry.candidate);
       const tooSimilar = out.some((e) => {
         const t = haystack(e.candidate);
