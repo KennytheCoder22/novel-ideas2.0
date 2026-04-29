@@ -23,7 +23,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
-import { buildTheme, type ThemeKey, type HighlightKey } from "../../constants/brandTheme";
+import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey } from "../../constants/brandTheme";
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -1474,6 +1474,9 @@ export default function HomeScreen() {
     () => buildTheme(mainThemeKey, highlightKey, titleTextKey),
     [mainThemeKey, highlightKey, titleTextKey]
   );
+  useEffect(() => {
+    if (Platform.OS === "web") applyWebHighlightColor(theme.highlight);
+  }, [theme.highlight]);
 
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
@@ -1827,7 +1830,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
   }
 
   const saveButtonLabel = hasUnsavedChanges ? "Save Settings" : "Saved";
-  const saveButtonStyle = hasUnsavedChanges ? styles.saveBtnYellow : styles.saveBtnGreen;
+  const saveButtonStyle = hasUnsavedChanges
+    ? { backgroundColor: theme.highlight, borderColor: theme.lightBorder }
+    : styles.saveBtnGreen;
 
   // Admin view takes precedence and is reachable from BOTH swipe + search
   if (adminUnlocked) {
@@ -2110,7 +2115,6 @@ const styles = StyleSheet.create({
     minWidth: 140,
     borderWidth: 1,
   },
-  saveBtnYellow: { backgroundColor: "#fbbf24", borderColor: "#f59e0b" },
   saveBtnGreen: { backgroundColor: "#22c55e", borderColor: "#16a34a" },
   saveBtnText: { color: "#0b1e33", fontWeight: "900" },
 

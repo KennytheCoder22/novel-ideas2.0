@@ -147,7 +147,9 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
   const isTitleTextKey = (v: any): v is TitleTextKey => v === "white" || v === "black";
 
   const mainCandidate = cfg?.branding?.mainTheme ?? cfg?.branding?.theme ?? cfg?.theme?.mainThemeKey;
-  const highlightCandidate = cfg?.branding?.highlight ?? cfg?.theme?.highlightKey;
+  // Default highlight should be Gold unless an explicit branding highlight exists.
+  // Ignore legacy theme.highlightKey for first-load defaults to avoid blue override.
+  const highlightCandidate = cfg?.branding?.highlight;
   const titleTextCandidate = cfg?.branding?.titleTextColor ?? cfg?.theme?.titleTextColor;
 
   // UI default: if nothing is set, treat it as Dark Blue (i.e., the app's built-in default theme).
@@ -376,22 +378,7 @@ function PillButton(props: {
 
 
 export default function AdminWebScreen() {
-  if (Platform.OS !== "web") {
-    return (
-      <View style={{ flex: 1, padding: 18, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "#e5efff", fontSize: 18, fontWeight: "800", marginBottom: 10 }}>
-          Desktop Admin (Web Only)
-        </Text>
-        <Text style={{ color: "#cbd5f5", textAlign: "center", maxWidth: 520 }}>
-          This page is intended for desktop web. Open it in a browser (Expo web build) to edit settings, upload a logo,
-          and generate a QR code to import on your phone.
-        </Text>
-        <TouchableOpacity style={{ marginTop: 18 }} onPress={() => router.back()}>
-          <Text style={{ color: "#93c5fd", fontWeight: "700" }}>Go back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const isWeb = Platform.OS === "web";
 
   const [config, setConfig] = useState<any>(() => {
     const base = deepClone(configFile);
@@ -410,22 +397,44 @@ export default function AdminWebScreen() {
     return base;
   });
   const [showQr, setShowQr] = useState(true);
+  const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
+    try {
+      if (!isWeb || typeof localStorage === "undefined") return 0;
+      const saved = localStorage.getItem("novelideas_local_collection");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.length;
+      }
+      const csv = localStorage.getItem("novelideas_local_collection_csv");
+      if (csv) {
+        const rows = csv.split(/\r?\n/).filter((r) => r.trim().length > 0);
+        return Math.max(0, rows.length - 1);
+      }
+      return 0;
+    } catch {
+      return 0;
+    }
+  });
 
   // Persist draft on web so desktop edits survive refresh.
   useEffect(() => {
-    if (Platform.OS !== "web") return;
+    if (!isWeb) return;
     try {
       localStorage.setItem("novelideas_admin_config", JSON.stringify(config));
     } catch {
       // ignore
     }
-  }, [config]);
+  }, [config, isWeb]);
 
   const mainThemeKey = (config?.branding?.mainTheme || config?.branding?.theme || config?.theme?.mainThemeKey || "dark_blue") as ThemeKey;
   const highlightKey = (config?.branding?.highlight || config?.theme?.highlightKey || "gold_accent") as HighlightKey;
   const titleTextKey = (config?.branding?.titleTextColor || config?.theme?.titleTextColor || "white") as TitleTextKey;
 
   const theme = useMemo(() => buildTheme(mainThemeKey, highlightKey), [mainThemeKey, highlightKey]);
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    document.documentElement.style.setProperty("--highlight-color", theme.highlight);
+  }, [theme.highlight]);
 
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
   const libraryId = useMemo(() => slugifyLibraryId(libraryName), [libraryName]);
@@ -547,6 +556,49 @@ export default function AdminWebScreen() {
     setPath(["branding", "logoDataUrl"], null);
     setPath(["branding", "logoTinyDataUrl"], null);
   };
+
+  const onUploadCollectionWeb = () => {
+    if (!isWeb || typeof document === "undefined" || typeof localStorage === "undefined") {
+      Alert.alert("Upload unavailable", "Collection upload is available on desktop web.");
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,.csv";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const raw = String(reader.result || "");
+          let count = 0;
+          if (file.name.toLowerCase().endsWith(".json")) {
+            const parsed = JSON.parse(raw);
+            const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
+            count = items.length;
+            localStorage.setItem("novelideas_local_collection", JSON.stringify(items));
+          } else {
+            const rows = raw.split(/\r?\n/).filter((r) => r.trim().length > 0);
+            count = Math.max(0, rows.length - 1);
+            localStorage.setItem("novelideas_local_collection_csv", raw);
+          }
+          setUploadedCollectionCount(count);
+          setPath(["recommendations", "localLibrarySupported"], true);
+          setPath(["recommendations", "sourceEnabled", "localLibrary"], true);
+          Alert.alert("Collection uploaded", `${count} items imported.`);
+        } catch {
+          Alert.alert("Upload failed", "Could not parse this file. Please upload valid JSON or CSV.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  if (!isWeb) {
+    return <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}><Text>Desktop Admin (Web Only)</Text></View>;
+  }
 
   const adminPinEnabled = !!config?.admin?.pinEnabled;
   const adminPin = String(config?.admin?.pin || "");
@@ -816,6 +868,15 @@ export default function AdminWebScreen() {
             All recommendation sources are disabled. Enable at least one source.
           </Text>
         ) : null}
+        <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <TouchableOpacity
+            style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
+            onPress={onUploadCollectionWeb}
+          >
+            <Text style={[styles.btnText, { color: theme.text }]}>Upload Collection (CSV/JSON)</Text>
+          </TouchableOpacity>
+          <Text style={{ color: theme.subtext, fontSize: 12 }}>Items: {uploadedCollectionCount}</Text>
+        </View>
 
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 
