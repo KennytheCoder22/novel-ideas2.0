@@ -524,8 +524,11 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     passedChecks.includes('relaxed_pool_floor_rescue') ||
     passedChecks.includes('pagecount_shape_floor_override');
   const rescueBypassCount = passedChecks.filter((check) => /rescue|borderline|override/.test(String(check))).length;
+  if (rescueBypassCount >= 3) {
+    return { pass: false, reason: 'low_metadata_trust', detail: 'multiple rescue/bypass flags' };
+  }
   if (rescueBypassCount >= 2 && !fictionSignals) {
-    return { pass: false, reason: 'low_metadata_trust', detail: 'multiple rescue/bypass flags without strong fiction evidence' };
+    return { pass: false, reason: 'low_metadata_trust', detail: 'multiple rescue/bypass flags without fiction evidence' };
   }
   const knownAuthorityForZeroRating =
     anchorBoost(c) >= 10 ||
