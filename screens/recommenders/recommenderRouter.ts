@@ -2961,6 +2961,13 @@ export async function getRecommendations(
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  const negativeSignals = new Set(
+    [
+      ...Object.keys((routingInput as any)?.dislikedTagCounts || {}),
+      ...Object.keys((routingInput as any)?.leftTagCounts || {}),
+      ...((routingInput as any)?.negativeTags || []),
+    ].map((v) => String(v || "").toLowerCase())
+  );
   if (candidateDocs.length < 15) {
     const expansionPool = enrichedDocs.filter((doc: any) => {
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.filterFamily);
@@ -2971,6 +2978,34 @@ export async function getRecommendations(
     candidateDocs = dedupeDocs([...candidateDocs, ...expansionPool]).slice(0, 40);
     debugRouterLog("POOL_EXPANSION_TRIGGERED", { filteredCount: filteredDocs.length, expandedCount: candidateDocs.length });
   }
+  const fantasySuppressed =
+    negativeSignals.has("fantasy romance") ||
+    negativeSignals.has("cozy fantasy") ||
+    negativeSignals.has("epic fantasy") ||
+    negativeSignals.has("fantasy adventure");
+  if (fantasySuppressed) {
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.filterFamily);
+      if (family !== "fantasy") return true;
+      const text = `${doc?.title || ""} ${doc?.description || ""}`.toLowerCase();
+      return /\b(moral conflict|betrayal|consequence|psychological|identity|darkly comic|adult)\b/.test(text);
+    });
+    debugRouterLog("FANTASY_SUPPRESSION_APPLIED", { countAfter: candidateDocs.length });
+  }
+  candidateDocs = candidateDocs.filter((doc: any) => {
+    const isOpenLibrary = String(doc?.source || doc?.diagnostics?.source || "").toLowerCase().includes("open");
+    if (!isOpenLibrary) return true;
+    const text = `${doc?.title || ""} ${doc?.description || ""}`.toLowerCase();
+    const sparse = !doc?.hasCover && (!doc?.description || String(doc.description).trim().length < 90) && Number(doc?.ratingCount || 0) < 5;
+    const rescueFlags = [
+      ...(doc?.diagnostics?.filterPassedChecks || []),
+      ...(doc?.rawDoc?.diagnostics?.filterPassedChecks || []),
+    ].filter((check: any) => /rescue|borderline|override/.test(String(check))).length;
+    if (sparse && rescueFlags >= 1) return false;
+    if (rescueFlags >= 2) return false;
+    if (/\b(best of|year's best|anthology|collection|journal|magazine|reference)\b/.test(text)) return false;
+    return true;
+  });
   const uniqueQueryTexts = new Set(candidateDocs.map((doc: any) => String(doc?.queryText || doc?.diagnostics?.queryText || "").trim().toLowerCase()).filter(Boolean));
   const uniqueFamilies = new Set(candidateDocs.map((doc: any) => normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.filterFamily)).filter(Boolean));
   if (uniqueQueryTexts.size <= 1 && uniqueFamilies.size <= 1) {
