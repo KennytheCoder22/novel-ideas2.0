@@ -399,9 +399,16 @@ export default function AdminWebScreen() {
     try {
       if (!isWeb || typeof localStorage === "undefined") return 0;
       const saved = localStorage.getItem("novelideas_local_collection");
-      if (!saved) return 0;
-      const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed.length : 0;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.length;
+      }
+      const csv = localStorage.getItem("novelideas_local_collection_csv");
+      if (csv) {
+        const rows = csv.split(/\r?\n/).filter((r) => r.trim().length > 0);
+        return Math.max(0, rows.length - 1);
+      }
+      return 0;
     } catch {
       return 0;
     }
@@ -572,6 +579,7 @@ export default function AdminWebScreen() {
           }
           setUploadedCollectionCount(count);
           setPath(["recommendations", "localLibrarySupported"], true);
+          setPath(["recommendations", "sourceEnabled", "localLibrary"], true);
           Alert.alert("Collection uploaded", `${count} items imported.`);
         } catch {
           Alert.alert("Upload failed", "Could not parse this file. Please upload valid JSON or CSV.");
