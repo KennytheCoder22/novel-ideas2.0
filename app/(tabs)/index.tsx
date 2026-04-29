@@ -1454,6 +1454,13 @@ export default function HomeScreen() {
   const sourceEnabled = recommendationSourceSettings.sourceEnabled;
   const localLibrarySupported = recommendationSourceSettings.localLibrarySupported;
   const source: SourceKey = sourceEnabled.openLibrary ? "open_library" : "local_collection";
+  useEffect(() => {
+    console.log("[SESSION CONFIG]", {
+      sourceEnabled,
+      localLibrarySupported,
+      swipeCategories: config?.swipe?.categories,
+    });
+  }, [sourceEnabled, localLibrarySupported, config?.swipe?.categories]);
 
   // Branding state from config (with safe defaults)
   // Back-compat: if older config uses branding.theme, treat it as main color.
