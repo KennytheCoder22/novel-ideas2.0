@@ -425,6 +425,11 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bperiodical\b/,
     /\btimes literary supplement\b/,
     /\ba\s*l\s*a\s*booklist\b/
+    ,/\byear\s*book\b/
+    ,/\bbest\s*sellers?\b/
+    ,/\bhistorical novels?\b$/
+    ,/\bcollected works?\b/
+    ,/\btextbook\b/
   ];
 
   if (hardRejectTitlePatterns.some((rx) => rx.test(title))) {
@@ -468,6 +473,8 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bgenre fiction\b/,
     /\bfaith-based domestic suspense\b/,
     /\bchristian fiction\b/,
+    /\byear\s*book\b/,
+    /\bbest\s*sellers?\b/,
     /\bforbidden love\b/,
     /\btextbook\b/,
     /\bworkbook\b/,
@@ -2019,6 +2026,37 @@ function attachNearbyAlternativeReason(
   });
 }
 
+function enforceLaneDiversityCap(
+  selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  ordered: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  maxResults: number
+): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
+  const laneCap = Math.max(2, Math.floor(maxResults * 0.4));
+  const laneCounts = new Map<string, number>();
+  const balanced: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
+
+  for (const entry of selected) {
+    const lane = laneFamilyForCandidate(entry.candidate) || "unknown";
+    const count = laneCounts.get(lane) || 0;
+    if (count >= laneCap) continue;
+    laneCounts.set(lane, count + 1);
+    balanced.push(entry);
+  }
+
+  for (const entry of ordered) {
+    if (balanced.length >= maxResults) break;
+    const key = identityKey(entry.candidate);
+    if (balanced.some((b) => identityKey(b.candidate) === key)) continue;
+    const lane = laneFamilyForCandidate(entry.candidate) || "unknown";
+    const count = laneCounts.get(lane) || 0;
+    if (count >= laneCap) continue;
+    laneCounts.set(lane, count + 1);
+    balanced.push(entry);
+  }
+
+  return balanced;
+}
+
 function passesOpenLibrarySelectionFloor(candidate: Candidate): boolean {
   if (!isOpenLibraryCandidate(candidate)) return false;
 
@@ -2468,6 +2506,7 @@ export function finalRecommenderForDeck(
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
-  const selectedDocs = selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+  const laneBalanced = enforceLaneDiversityCap(selected, ordered, MAX_RESULTS);
+  const selectedDocs = laneBalanced.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
   return attachNearbyAlternativeReason(selectedDocs, ordered);
 }

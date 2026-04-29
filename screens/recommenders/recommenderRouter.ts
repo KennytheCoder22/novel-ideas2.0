@@ -2467,11 +2467,10 @@ export async function getRecommendations(
           ? "historical_family"
           : "general_family",
       baseGenre:
-        fallbackRungsForRouterFamily(routerFamily)?.[0]?.query ||
         bucketPlan?.signals?.genres?.[0] ||
         bucketPlan?.queries?.[0] ||
         bucketPlan?.preview ||
-        "fiction",
+        "character driven fiction",
       subgenres: bucketPlan?.queries?.length
         ? bucketPlan.queries
         : (bucketPlan?.signals?.genres || []),
@@ -2575,7 +2574,8 @@ export async function getRecommendations(
       String(r?.query || r?.primary || "").toLowerCase()
     )
   );
-  const lockHistoricalRungs = routerFamily === "historical" || historicalIntentInRungs;
+  const historicalWeight = Number((hybridLaneWeights as any)?.historical || 0);
+  const lockHistoricalRungs = (routerFamily === "historical" || historicalIntentInRungs) && historicalWeight >= 0.55;
   if (lockHistoricalRungs) {
     rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
   }
