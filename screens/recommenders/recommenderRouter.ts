@@ -2684,7 +2684,18 @@ export async function getRecommendations(
   }));
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
-  rungs = rungs.slice(0, 4);
+  const uniqueRungQueries = Array.from(new Set(rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean)));
+  if (uniqueRungQueries.length < 3) {
+    const expansion = [
+      { query: `${routerFamily} isolation survival narrative novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+      { query: `${routerFamily} psychological dread and consequence novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+      { query: `${routerFamily} authored atmospheric tension story novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+    ];
+    for (const entry of expansion) {
+      if (!uniqueRungQueries.includes(entry.query)) rungs.push({ ...entry, rung: 900 + rungs.length });
+    }
+  }
+  rungs = rungs.slice(0, 6);
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
@@ -2932,6 +2943,16 @@ export async function getRecommendations(
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  if (candidateDocs.length < 15) {
+    const expansionPool = enrichedDocs.filter((doc: any) => {
+      const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.filterFamily);
+      if (routerFamily !== "general" && family && family !== routerFamily) return false;
+      const text = String(doc?.title || "") + " " + String(doc?.description || "");
+      return /\b(novel|fiction|story|narrative|mystery|thriller|horror|speculative|literary)\b/i.test(text);
+    });
+    candidateDocs = dedupeDocs([...candidateDocs, ...expansionPool]).slice(0, 40);
+    debugRouterLog("POOL_EXPANSION_TRIGGERED", { filteredCount: filteredDocs.length, expandedCount: candidateDocs.length });
+  }
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
     fetched: 0,
@@ -2971,10 +2992,18 @@ export async function getRecommendations(
     debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
   }
 
-  if (!isHybridMode && routerFamily === "thriller") {
+  if (!isHybridMode && routerFamily !== "general") {
     candidateDocs = candidateDocs.filter((doc: any) => {
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
-      return !family || family === "thriller" || family === "mystery";
+      return !family || family === routerFamily || (routerFamily === "thriller" && family === "mystery");
+    });
+  }
+
+  if (routerFamily === "horror") {
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      const wantsHorrorTone = Boolean(doc?.diagnostics?.filterWantsHorrorTone ?? doc?.rawDoc?.diagnostics?.filterWantsHorrorTone);
+      const horrorAligned = Boolean(doc?.diagnostics?.filterFlags?.horrorAligned ?? doc?.rawDoc?.diagnostics?.filterFlags?.horrorAligned);
+      return !wantsHorrorTone || horrorAligned;
     });
   }
 
