@@ -1552,6 +1552,59 @@ function collectSessionSignals(taste?: TasteProfile): { positive: Map<string, nu
   return { positive, negative, confidence };
 }
 
+function inferSessionPreferenceCluster(taste?: TasteProfile): {
+  preferredTerms: string[];
+  avoidedTerms: string[];
+  preferredFamilies: string[];
+  confidence: number;
+} {
+  const { positive, negative, confidence } = collectSessionSignals(taste);
+  const anyTaste: any = taste || {};
+  const axis = {
+    warmth: Number(anyTaste?.warmth || 0),
+    darkness: Number(anyTaste?.darkness || 0),
+    pacing: Number(anyTaste?.pacing || 0),
+    realism: Number(anyTaste?.realism || 0),
+    ideaDensity: Number(anyTaste?.ideaDensity || 0),
+    characterFocus: Number(anyTaste?.characterFocus || 0),
+    humor: Number(anyTaste?.humor || 0),
+  };
+
+  const preferredTerms = [...positive.entries()]
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 6)
+    .map(([term]) => term);
+  const avoidedTerms = [...negative.entries()]
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 5)
+    .map(([term]) => term);
+
+  if (axis.darkness > 0.25) preferredTerms.push("dark", "psychological", "high stakes");
+  if (axis.darkness < -0.2) avoidedTerms.push("grimdark", "bleak");
+  if (axis.warmth > 0.2) preferredTerms.push("warm", "hopeful", "cozy");
+  if (axis.pacing > 0.22) preferredTerms.push("fast paced", "suspense");
+  if (axis.pacing < -0.2) preferredTerms.push("slow burn", "quiet");
+  if (axis.realism > 0.2) preferredTerms.push("grounded", "realistic");
+  if (axis.realism < -0.2) preferredTerms.push("speculative", "fantastical");
+  if (axis.ideaDensity > 0.2) preferredTerms.push("philosophical", "idea driven");
+  if (axis.characterFocus > 0.2) preferredTerms.push("character driven", "relationships");
+  if (axis.humor > 0.2) preferredTerms.push("funny", "witty");
+
+  const familySignals = [
+    "thriller", "mystery", "horror", "fantasy", "science fiction", "romance", "historical"
+  ];
+  const preferredFamilies = familySignals.filter((family) =>
+    preferredTerms.some((term) => term.includes(family)) && !avoidedTerms.some((term) => term.includes(family))
+  );
+
+  return {
+    preferredTerms: [...new Set(preferredTerms)].slice(0, 10),
+    avoidedTerms: [...new Set(avoidedTerms)].slice(0, 8),
+    preferredFamilies: [...new Set(preferredFamilies)],
+    confidence,
+  };
+}
+
 function candidateTerms(c: Candidate): Set<string> {
   const text = haystack(c);
   const terms = new Set<string>();
@@ -1581,6 +1634,7 @@ function candidateTerms(c: Candidate): Set<string> {
 function twentyQPersonalAffinityScore(c: Candidate, taste?: TasteProfile): number {
   if (!taste) return 0;
   const { positive, negative, confidence } = collectSessionSignals(taste);
+  const cluster = inferSessionPreferenceCluster(taste);
   if (!positive.size && !negative.size) return 0;
   const text = haystack(c);
   const terms = candidateTerms(c);
@@ -1591,6 +1645,12 @@ function twentyQPersonalAffinityScore(c: Candidate, taste?: TasteProfile): numbe
   }
   for (const [term, weight] of negative.entries()) {
     if (term && (terms.has(term) || text.includes(term))) negativeScore += Math.min(5, Math.max(1, Math.abs(weight))) * 1.4;
+  }
+  for (const term of cluster.preferredTerms) {
+    if (term && (terms.has(term) || text.includes(term))) positiveScore += 0.75;
+  }
+  for (const term of cluster.avoidedTerms) {
+    if (term && (terms.has(term) || text.includes(term))) negativeScore += 1.1;
   }
   const anyTaste: any = taste;
   const traits: Array<[string, RegExp]> = [
@@ -1611,7 +1671,8 @@ function twentyQPersonalAffinityScore(c: Candidate, taste?: TasteProfile): numbe
   let laneBonus = 0;
   if (positive.has(lane)) laneBonus += 3;
   if (negative.has(lane)) laneBonus -= 4;
-  return Math.max(-14, Math.min(18, (positiveScore - negativeScore + traitScore + laneBonus) * Math.max(0.35, confidence)));
+  const clusterMatchBoost = cluster.preferredFamilies.some((family) => candidateMatchesFamilyText(c, family)) ? 2.2 : 0;
+  return Math.max(-16, Math.min(22, (positiveScore - negativeScore + traitScore + laneBonus + clusterMatchBoost) * Math.max(0.35, confidence)));
 }
 
 function buildPersonalFitReasons(c: Candidate, taste?: TasteProfile): string[] {
@@ -1891,12 +1952,30 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
 function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfile): RecommendationDoc {
   const rawDoc = ((c.rawDoc || {}) as RecommendationDoc) || ({} as RecommendationDoc);
   const personalFitReasons = buildPersonalFitReasons(c, taste);
+  const cluster = inferSessionPreferenceCluster(taste);
+  const matchedPositive = cluster.preferredTerms.filter((term) => haystack(c).includes(term)).slice(0, 4);
+  const avoidedNegative = cluster.avoidedTerms.filter((term) => !haystack(c).includes(term)).slice(0, 4);
+  const violatedNegative = cluster.avoidedTerms.filter((term) => haystack(c).includes(term)).slice(0, 2);
+  const sourceConfidence = Math.max(
+    0,
+    Math.min(1, (metadataTrust(c) * 0.35 + Math.max(0, authorityScore(c)) * 0.05 + Math.max(0, filterSignalScore(c)) * 0.03))
+  );
   return {
     ...rawDoc,
     preFilterScore: breakdown.finalScore,
     postFilterScore: breakdown.finalScore,
     scoreBreakdown: breakdown,
     personalFitReasons,
+    recommendationDiagnostics: {
+      matchedPositiveSignals: matchedPositive,
+      avoidedNegativeSignals: avoidedNegative,
+      violatedNegativeSignals: violatedNegative,
+      sourceConfidence: Number(sourceConfidence.toFixed(2)),
+      whySelected: [
+        `High multi-signal fit (${breakdown.personalAffinityScore.toFixed(1)} personal affinity, ${breakdown.toneScore.toFixed(1)} tone match)`,
+        `Balanced quality signals (${breakdown.authorityScore.toFixed(1)} authority, ${breakdown.metadataScore.toFixed(1)} metadata)`,
+      ],
+    },
     queryText: (c as any).queryText ?? (rawDoc as any).queryText,
     queryRung: (c as any).queryRung ?? (rawDoc as any).queryRung,
   } as RecommendationDoc;

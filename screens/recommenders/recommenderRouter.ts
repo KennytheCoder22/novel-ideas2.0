@@ -2400,6 +2400,19 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  const tasteAxes: any = (input as any)?.tasteProfile || {};
+  const nonGenreToneHints = [
+    Number(tasteAxes?.warmth || 0) > 0.2 ? "warm hopeful" : "",
+    Number(tasteAxes?.warmth || 0) < -0.2 ? "sharp cynical" : "",
+    Number(tasteAxes?.darkness || 0) > 0.2 ? "dark intense" : "",
+    Number(tasteAxes?.darkness || 0) < -0.2 ? "gentle low-stakes" : "",
+    Number(tasteAxes?.pacing || 0) > 0.2 ? "fast paced" : "",
+    Number(tasteAxes?.pacing || 0) < -0.2 ? "slow burn" : "",
+    Number(tasteAxes?.realism || 0) > 0.2 ? "grounded realistic" : "",
+    Number(tasteAxes?.realism || 0) < -0.2 ? "speculative uncanny" : "",
+    Number(tasteAxes?.ideaDensity || 0) > 0.2 ? "philosophical ideas" : "",
+    Number(tasteAxes?.characterFocus || 0) > 0.2 ? "character driven emotional" : "",
+  ].filter(Boolean);
   let rungs = asArray(
     build20QRungs({
       ageBand:
@@ -2435,7 +2448,7 @@ export async function getRecommendations(
       subgenres: bucketPlan?.queries?.length
         ? bucketPlan.queries
         : (bucketPlan?.signals?.genres || []),
-      tones: bucketPlan?.signals?.tones || [],
+      tones: [...(bucketPlan?.signals?.tones || []), ...nonGenreToneHints],
       themes: bucketPlan?.signals?.scenarios || [],
     })
   );

@@ -800,12 +800,12 @@ function axisValue(vector: TasteVector | null | undefined, axis: TwentyQAxis): n
 function buildTwentyQObjectives(deckKey: DeckKey): TwentyQObjective[] {
   const lane = laneFromDeckKey(deckKey);
   const objectives: TwentyQObjective[] = [
-    { id: "tone-warmth", rung: 1, axis: "warmth", label: "Tone", description: "Resolve whether the reader leans warmer or sharper in tone.", threshold: 0.24 },
-    { id: "tone-darkness", rung: 2, axis: "darkness", label: "Intensity", description: "Resolve how dark or intense the reader wants the experience to feel.", threshold: 0.24 },
-    { id: "drive-pacing", rung: 3, axis: "pacing", label: "Drive", description: "Resolve whether the reader wants a faster or slower-feeling experience.", threshold: 0.24 },
-    { id: "world-reality", rung: 4, axis: "realism", label: "World", description: "Resolve whether the reader leans realistic or more speculative / stylized.", threshold: 0.24 },
-    { id: "mind-idea-density", rung: 5, axis: "ideaDensity", label: "Concept load", description: "Resolve whether the reader wants lighter or denser ideas.", threshold: 0.24 },
-    { id: "focus-character", rung: 6, axis: "characterFocus", label: "Focus", description: "Resolve whether the reader wants more character-centered material.", threshold: 0.24 },
+    { id: "tone-warmth", rung: 1, axis: "warmth", label: "Tone", description: "Clarify warm vs sharp, hopeful vs bleak, and cozy vs unsettling tone signals.", threshold: 0.24 },
+    { id: "tone-darkness", rung: 2, axis: "darkness", label: "Intensity", description: "Clarify gentle vs intense energy and emotionally quiet vs high-stakes preference.", threshold: 0.24 },
+    { id: "drive-pacing", rung: 3, axis: "pacing", label: "Drive", description: "Clarify story momentum and what kind of narrative drive feels best.", threshold: 0.24 },
+    { id: "world-reality", rung: 4, axis: "realism", label: "World", description: "Clarify realistic vs speculative/fantastical vs uncanny world preference.", threshold: 0.24 },
+    { id: "mind-idea-density", rung: 5, axis: "ideaDensity", label: "Concept Load", description: "Clarify accessible vs layered vs philosophical/experimental concept load.", threshold: 0.24 },
+    { id: "focus-character", rung: 6, axis: "characterFocus", label: "Final calibration", description: "Final calibration across character focus and blended appeal before recommendations.", threshold: 0.24 },
   ];
 
   if (lane === "kids") {
@@ -903,7 +903,7 @@ function selectTwentyQCard(args: {
     recentCardKeys.length > 0 ||
     Object.values(tagCounts || {}).some((value) => Number(value || 0) !== 0);
 
-  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys });
+  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys, recentCards: cards.filter((card) => recentCardKeys.includes(cardIdentityKey(card))) });
 
   // First card of a fresh session should not be locked to the strongest
   // diagnostic/20Q card. Use the already shuffled session deck plus the
