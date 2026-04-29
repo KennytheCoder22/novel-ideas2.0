@@ -395,7 +395,17 @@ export default function AdminWebScreen() {
     return base;
   });
   const [showQr, setShowQr] = useState(true);
-  const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(0);
+  const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
+    try {
+      if (!isWeb || typeof localStorage === "undefined") return 0;
+      const saved = localStorage.getItem("novelideas_local_collection");
+      if (!saved) return 0;
+      const parsed = JSON.parse(saved);
+      return Array.isArray(parsed) ? parsed.length : 0;
+    } catch {
+      return 0;
+    }
+  });
 
   // Persist draft on web so desktop edits survive refresh.
   useEffect(() => {
@@ -535,7 +545,10 @@ export default function AdminWebScreen() {
   };
 
   const onUploadCollectionWeb = () => {
-    if (!isWeb) return;
+    if (!isWeb || typeof document === "undefined" || typeof localStorage === "undefined") {
+      Alert.alert("Upload unavailable", "Collection upload is available on desktop web.");
+      return;
+    }
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".json,.csv";
