@@ -1933,6 +1933,23 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     emotionalWeightScore: emotionalWeight,
     finalScore: 0,
   }, taste) ? 0 : -16;
+  const hardNegativeGate = (() => {
+    const text = haystack(c);
+    const anyTaste: any = taste || {};
+    const negativeTerms = [
+      ...Object.keys(anyTaste?.dislikedTagCounts || {}),
+      ...Object.keys(anyTaste?.leftTagCounts || {}),
+      ...(Array.isArray(anyTaste?.negativeTags) ? anyTaste.negativeTags : []),
+      ...(Array.isArray(anyTaste?.dislikedTags) ? anyTaste.dislikedTags : []),
+    ].map((v) => String(v || "").toLowerCase());
+    const horrorBlocked = negativeTerms.some((t) => /horror|spooky|supernatural/.test(t));
+    const romanceBlocked = negativeTerms.some((t) => /romance|sentimental/.test(t));
+    const cozyBlocked = negativeTerms.some((t) => /cozy|comfort/.test(t));
+    if (horrorBlocked && /\bhorror|haunted|supernatural|occult\b/.test(text)) return -50;
+    if (romanceBlocked && /\bromance|love story|courtship|wedding\b/.test(text)) return -40;
+    if (cozyBlocked && /\bcozy|heartwarming|uplifting comfort\b/.test(text)) return -30;
+    return 0;
+  })();
 
   return {
     queryScore,
@@ -2523,20 +2540,3 @@ export function finalRecommenderForDeck(
   const selectedDocs = laneBalanced.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
   return attachNearbyAlternativeReason(selectedDocs, ordered);
 }
-  const hardNegativeGate = (() => {
-    const text = haystack(c);
-    const anyTaste: any = taste || {};
-    const negativeTerms = [
-      ...Object.keys(anyTaste?.dislikedTagCounts || {}),
-      ...Object.keys(anyTaste?.leftTagCounts || {}),
-      ...(Array.isArray(anyTaste?.negativeTags) ? anyTaste.negativeTags : []),
-      ...(Array.isArray(anyTaste?.dislikedTags) ? anyTaste.dislikedTags : []),
-    ].map((v) => String(v || "").toLowerCase());
-    const horrorBlocked = negativeTerms.some((t) => /horror|spooky|supernatural/.test(t));
-    const romanceBlocked = negativeTerms.some((t) => /romance|sentimental/.test(t));
-    const cozyBlocked = negativeTerms.some((t) => /cozy|comfort/.test(t));
-    if (horrorBlocked && /\bhorror|haunted|supernatural|occult\b/.test(text)) return -50;
-    if (romanceBlocked && /\bromance|love story|courtship|wedding\b/.test(text)) return -40;
-    if (cozyBlocked && /\bcozy|heartwarming|uplifting comfort\b/.test(text)) return -30;
-    return 0;
-  })();
