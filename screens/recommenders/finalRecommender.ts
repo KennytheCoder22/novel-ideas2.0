@@ -2608,15 +2608,12 @@ export function finalRecommenderForDeck(
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
-  const laneBalanced = enforceLaneDiversityCap(selected, ordered, MAX_RESULTS);
-  const crossFamilyTopUps = ordered.filter((entry) => {
-    const lane = laneFamilyForCandidate(entry.candidate);
-    if (lane === sessionPrimaryLane) return false;
-    if (isHardReject(entry.candidate).reject) return false;
-    return entry.breakdown.personalAffinityScore >= 1.25 || entry.breakdown.toneScore >= 1.1;
-  });
-  pickFromPool(crossFamilyTopUps, laneBalanced, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
-  const clusterBalanced = enforceClusterDominanceLimit(laneBalanced, 4);
+  const clusterBalanced = selected.filter((entry) => !isHardReject(entry.candidate).reject);
+  const fantasySuppressed =
+    negativeTasteTerms.has("fantasy romance") ||
+    negativeTasteTerms.has("cozy fantasy") ||
+    negativeTasteTerms.has("epic fantasy") ||
+    negativeTasteTerms.has("fantasy adventure");
   const laneQuality = new Map<string, { total: number; rescueHeavy: number }>();
   for (const entry of clusterBalanced) {
     const lane = laneFamilyForCandidate(entry.candidate) || "unknown";
@@ -2637,6 +2634,9 @@ export function finalRecommenderForDeck(
     const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
     for (const entry of clusterBalanced) {
       if (weakLanes.has(laneFamilyForCandidate(entry.candidate) || "unknown")) continue;
+      if (fantasySuppressed && laneFamilyForCandidate(entry.candidate) === "fantasy") {
+        if (entry.breakdown.personalAffinityScore < 2 || entry.breakdown.toneScore < 1.4) continue;
+      }
       const text = haystack(entry.candidate);
       const tooSimilar = out.some((e) => {
         const t = haystack(e.candidate);
@@ -2660,6 +2660,7 @@ export function finalRecommenderForDeck(
   debugFinalLog("CLUSTER CONTRIBUTION BREAKDOWN", clusterBreakdown);
   const selectedDocs = diversityBalanced
     .filter(({ candidate }) => !isHardReject(candidate).reject)
+    .slice(0, MAX_RESULTS)
     .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
   return attachNearbyAlternativeReason(selectedDocs, ordered);
 }
