@@ -1970,6 +1970,8 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
       matchedPositiveSignals: matchedPositive,
       avoidedNegativeSignals: avoidedNegative,
       violatedNegativeSignals: violatedNegative,
+      genreContribution: Number((breakdown.laneBlendScore + breakdown.queryScore).toFixed(2)),
+      toneStyleContribution: Number((breakdown.toneScore + breakdown.personalAffinityScore + breakdown.psychologicalIntensityScore + breakdown.emotionalWeightScore).toFixed(2)),
       sourceConfidence: Number(sourceConfidence.toFixed(2)),
       whySelected: [
         `High multi-signal fit (${breakdown.personalAffinityScore.toFixed(1)} personal affinity, ${breakdown.toneScore.toFixed(1)} tone match)`,
@@ -1979,6 +1981,40 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
     queryText: (c as any).queryText ?? (rawDoc as any).queryText,
     queryRung: (c as any).queryRung ?? (rawDoc as any).queryRung,
   } as RecommendationDoc;
+}
+
+function attachNearbyAlternativeReason(
+  selectedDocs: RecommendationDoc[],
+  ordered: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>
+): RecommendationDoc[] {
+  return selectedDocs.map((doc) => {
+    const docKey = `${normalize((doc as any)?.title)}|${normalize((doc as any)?.author)}`;
+    const current = ordered.find((entry) => identityKey(entry.candidate) === docKey);
+    if (!current) return doc;
+
+    const nearby = ordered.find((entry) =>
+      identityKey(entry.candidate) !== docKey &&
+      Math.abs(current.breakdown.finalScore - entry.breakdown.finalScore) <= 6
+    );
+    if (!nearby) return doc;
+
+    const whyBeat =
+      current.breakdown.personalAffinityScore - nearby.breakdown.personalAffinityScore >= 1.2
+        ? "Beat nearby alternatives on full-session taste alignment."
+        : current.breakdown.toneScore - nearby.breakdown.toneScore >= 1
+        ? "Beat nearby alternatives on tone/style match."
+        : current.breakdown.authorityScore >= nearby.breakdown.authorityScore + 2
+        ? "Beat nearby alternatives on stronger source confidence."
+        : "Beat nearby alternatives on blended fit across signals.";
+
+    return {
+      ...doc,
+      recommendationDiagnostics: {
+        ...((doc as any)?.recommendationDiagnostics || {}),
+        whyBeatNearbyAlternatives: whyBeat,
+      },
+    } as RecommendationDoc;
+  });
 }
 
 function passesOpenLibrarySelectionFloor(candidate: Candidate): boolean {
@@ -2365,8 +2401,8 @@ export function finalRecommenderForDeck(
       const lane = laneFamilyForCandidate(entry.candidate);
       return lane !== "thriller" && lane !== "mystery";
     });
-    const PRIMARY_LANE_MIN = 4;
-    const FALLBACK_CAP = primaryLaneEntries.length >= PRIMARY_LANE_MIN ? 0 : 2;
+    const PRIMARY_LANE_MIN = 2;
+    const FALLBACK_CAP = primaryLaneEntries.length >= PRIMARY_LANE_MIN ? 4 : 5;
     displayPool = [...primaryLaneEntries, ...fallbackEntries.slice(0, FALLBACK_CAP)];
   }
 
@@ -2430,5 +2466,6 @@ export function finalRecommenderForDeck(
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
-  return selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+  const selectedDocs = selected.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+  return attachNearbyAlternativeReason(selectedDocs, ordered);
 }

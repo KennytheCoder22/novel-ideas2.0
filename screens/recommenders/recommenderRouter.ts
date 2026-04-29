@@ -2371,6 +2371,10 @@ export async function getRecommendations(
     hybridLaneWeights,
     routingInput
   );
+  const rankedLaneWeights = Object.entries(hybridLaneWeights || {})
+    .map(([family, weight]) => ({ family: normalizeRouterFamilyValue(family), weight: Number(weight || 0) }))
+    .filter((entry) => entry.family && entry.weight > 0)
+    .sort((a, b) => b.weight - a.weight);
   const isHybridMode = Object.keys(hybridLaneWeights).length > 1;
   const bucketPlan = {
     ...baseBucketPlan,
@@ -2544,7 +2548,7 @@ export async function getRecommendations(
   }
 
   const forcedRungs = canonicalFamilyRungs[routerFamily];
-  if (forcedRungs?.length) {
+  if (forcedRungs?.length && !isHybridMode) {
     rungs = forcedRungs.map((query, index) => ({ rung: index, query, queryFamily: routerFamily }));
   }
 
@@ -2576,16 +2580,16 @@ export async function getRecommendations(
   }
 
 
-  if (isHybridMode) {
+  if (isHybridMode || rankedLaneWeights.length > 1) {
     const existingKeys = new Set(rungs.map((r: any) => normalizeQueryKey(r?.query)));
-    for (const family of Object.keys(hybridLaneWeights)) {
-      const normalizedFamily = normalizeRouterFamilyValue(family);
+    for (const entry of rankedLaneWeights) {
+      const normalizedFamily = normalizeRouterFamilyValue(entry.family);
       if (!normalizedFamily || normalizedFamily === routerFamily) continue;
-      for (const rung of fallbackRungsForRouterFamily(normalizedFamily).slice(0, 2)) {
+      for (const rung of fallbackRungsForRouterFamily(normalizedFamily).slice(0, entry.weight >= 0.28 ? 2 : 1)) {
         const key = normalizeQueryKey(rung.query);
         if (!key || existingKeys.has(key)) continue;
         existingKeys.add(key);
-        rungs.push({ ...rung, hybridFamily: normalizedFamily });
+        rungs.push({ ...rung, hybridFamily: normalizedFamily, laneKind: "taste-cluster" });
       }
     }
   }
