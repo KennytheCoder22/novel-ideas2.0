@@ -1973,6 +1973,8 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
       genreContribution: Number((breakdown.laneBlendScore + breakdown.queryScore).toFixed(2)),
       toneStyleContribution: Number((breakdown.toneScore + breakdown.personalAffinityScore + breakdown.psychologicalIntensityScore + breakdown.emotionalWeightScore).toFixed(2)),
       sourceConfidence: Number(sourceConfidence.toFixed(2)),
+      queryClusterSource:
+        String((c as any)?.laneKind || (c as any)?.rawDoc?.laneKind || (c as any)?.rawDoc?.diagnostics?.laneKind || "unknown"),
       whySelected: [
         `High multi-signal fit (${breakdown.personalAffinityScore.toFixed(1)} personal affinity, ${breakdown.toneScore.toFixed(1)} tone match)`,
         `Balanced quality signals (${breakdown.authorityScore.toFixed(1)} authority, ${breakdown.metadataScore.toFixed(1)} metadata)`,

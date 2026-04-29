@@ -2405,6 +2405,20 @@ export async function getRecommendations(
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
   const tasteAxes: any = (input as any)?.tasteProfile || {};
+  const rawNegatives = [
+    ...Object.keys((input as any)?.dislikedTagCounts || {}),
+    ...Object.keys((input as any)?.leftTagCounts || {}),
+    ...((input as any)?.negativeTags || []),
+    ...((input as any)?.dislikedTags || []),
+  ]
+    .map((v) => String(v || "").toLowerCase())
+    .filter(Boolean);
+  const negativeSuppressionTerms = [
+    rawNegatives.some((t) => /ya|young adult|teen/.test(t)) ? "-young -teen -ya" : "",
+    rawNegatives.some((t) => /romance|sentimental/.test(t)) ? "-romance -sentimental" : "",
+    rawNegatives.some((t) => /pulp|formula|series/.test(t)) ? "-pulp -formulaic -tie-in" : "",
+    rawNegatives.some((t) => /adventure|ensemble/.test(t)) ? "-ensemble -quest" : "",
+  ].filter(Boolean).join(" ");
   const nonGenreToneHints = [
     Number(tasteAxes?.warmth || 0) > 0.2 ? "warm hopeful" : "",
     Number(tasteAxes?.warmth || 0) < -0.2 ? "sharp cynical" : "",
@@ -2417,6 +2431,15 @@ export async function getRecommendations(
     Number(tasteAxes?.ideaDensity || 0) > 0.2 ? "philosophical ideas" : "",
     Number(tasteAxes?.characterFocus || 0) > 0.2 ? "character driven emotional" : "",
   ].filter(Boolean);
+
+  const tasteClusterQueries = [
+    `${Number(tasteAxes?.darkness || 0) > 0.2 ? "dark" : "moody"} ${Number(tasteAxes?.characterFocus || 0) > 0.1 ? "character driven" : ""} moral suspense novel ${negativeSuppressionTerms}`.trim(),
+    `${Number(tasteAxes?.ideaDensity || 0) > 0.2 ? "literary speculative identity novel" : "speculative identity novel"} ${negativeSuppressionTerms}`.trim(),
+    `${Number(tasteAxes?.pacing || 0) < -0.1 ? "slow burn" : "psychological"} eerie mystery novel ${negativeSuppressionTerms}`.trim(),
+    `${Number(tasteAxes?.realism || 0) < -0.1 ? "surreal" : "grounded"} adult emotional fiction novel ${negativeSuppressionTerms}`.trim(),
+    `${Number(tasteAxes?.realism || 0) > 0.1 ? "crime drama moral ambiguity novel" : "moral conflict literary fiction novel"} ${negativeSuppressionTerms}`.trim(),
+  ].map((q) => q.replace(/\s+/g, " ").trim()).filter(Boolean);
+
   let rungs = asArray(
     build20QRungs({
       ageBand:
@@ -2456,6 +2479,16 @@ export async function getRecommendations(
       themes: bucketPlan?.signals?.scenarios || [],
     })
   );
+  if (tasteClusterQueries.length) {
+    const clusterRungs = tasteClusterQueries.slice(0, 5).map((query, index) => ({
+      rung: 700 + index,
+      query,
+      queryFamily: "general",
+      laneKind: "taste-cluster",
+      clusterSource: "session-profile",
+    }));
+    rungs = [...clusterRungs, ...rungs];
+  }
 
   if (!rungs.length && routerFamily === "mystery") {
     rungs = [
@@ -2602,7 +2635,11 @@ export async function getRecommendations(
     console.log("HISTORICAL RUNG QUERIES", rungs.map((r: any) => r.query));
   }
 
-  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision", queryFamily: normalizeRouterFamilyValue((r as any)?.queryFamily) || routerFamily }));
+  rungs = rungs.map((r: any) => ({
+    ...r,
+    laneKind: (r as any)?.laneKind || "precision",
+    queryFamily: normalizeRouterFamilyValue((r as any)?.queryFamily) || "general",
+  }));
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   rungs = rungs.slice(0, 4);
