@@ -133,7 +133,7 @@ function syncSchema(cfg: any) {
   // Legacy (older web configs): theme.mainThemeKey + theme.highlightKey
   cfg.theme = (cfg.theme && typeof cfg.theme === "object") ? cfg.theme : {};
 
-  const themeKeys = ["classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "purple", "slate", "gold_accent"] as const;
+  const themeKeys = ["classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "pink", "purple", "slate", "gold_accent"] as const;
 
 const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly ThemeKey[];
   const highlightKeys = ["white", "black", "silver", ...themeKeys] as const;
@@ -225,6 +225,7 @@ type ThemeKey =
   | "forest_green"
   | "kelly_green"
   | "cardinal_red"
+  | "pink"
   | "purple"
   | "slate"
   | "gold_accent";
@@ -268,6 +269,8 @@ function themeLabel(t: ThemeKey) {
       return "Kelly Green";
     case "cardinal_red":
       return "Cardinal Red";
+    case "pink":
+      return "Pink";
     case "purple":
       return "Purple";
     case "slate":
@@ -312,6 +315,7 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
     sky_blue: { accent: "#38bdf8", accentBorder: "#0284c7", accentTextOn: "#0b1e33" },    forest_green: { accent: "#15803d", accentBorder: "#166534", accentTextOn: "#f9fafb" },
     kelly_green: { accent: "#22c55e", accentBorder: "#16a34a", accentTextOn: "#0b1e33" },
     cardinal_red: { accent: "#ef4444", accentBorder: "#dc2626", accentTextOn: "#0b1e33" },
+    pink: { accent: "#ec4899", accentBorder: "#db2777", accentTextOn: "#0b1e33" },
     purple: { accent: "#a855f7", accentBorder: "#7c3aed", accentTextOn: "#0b1e33" },
     slate: { accent: "#64748b", accentBorder: "#475569", accentTextOn: "#f9fafb" },
     gold_accent: { accent: "#fbbf24", accentBorder: "#f59e0b", accentTextOn: "#1f2933" },
@@ -322,6 +326,7 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
     sky_blue: { highlight: "#38bdf8", highlightBorder: "#0284c7", highlightTextOn: "#0b1e33" },    forest_green: { highlight: "#15803d", highlightBorder: "#166534", highlightTextOn: "#f9fafb" },
     kelly_green: { highlight: "#22c55e", highlightBorder: "#16a34a", highlightTextOn: "#0b1e33" },
     cardinal_red: { highlight: "#ef4444", highlightBorder: "#dc2626", highlightTextOn: "#0b1e33" },
+    pink: { highlight: "#ec4899", highlightBorder: "#db2777", highlightTextOn: "#0b1e33" },
     purple: { highlight: "#a855f7", highlightBorder: "#7c3aed", highlightTextOn: "#0b1e33" },
     slate: { highlight: "#64748b", highlightBorder: "#475569", highlightTextOn: "#f9fafb" },
     gold_accent: { highlight: "#fbbf24", highlightBorder: "#f59e0b", highlightTextOn: "#1f2933" },
@@ -760,7 +765,7 @@ export default function AdminWebScreen() {
         <Text style={[styles.label, { color: theme.muted }]}>Main color</Text>
         <View style={styles.rowWrap}>
           {(
-            ["dark_blue", "classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "purple", "slate", "gold_accent"] as ThemeKey[]
+            ["dark_blue", "classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "pink", "purple", "slate", "gold_accent"] as ThemeKey[]
           ).map((tk) => {
             const selected = mainThemeKey === tk;
             const tkTheme = buildTheme(tk, highlightKey);
@@ -785,7 +790,7 @@ export default function AdminWebScreen() {
         <Text style={[styles.label, { color: theme.muted }]}>Highlight color</Text>
         <View style={styles.rowWrap}>
           {(
-            ["gold_accent", "white", "black", "silver", "classic_blue", "sky_blue", "forest_green", "cardinal_red", "purple", "slate"] as HighlightKey[]
+            ["gold_accent", "white", "black", "silver", "classic_blue", "sky_blue", "forest_green", "cardinal_red", "pink", "purple", "slate"] as HighlightKey[]
           ).map((hk) => {
             const selected = highlightKey === hk;
             const hkTheme = buildTheme(mainThemeKey, hk);

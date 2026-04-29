@@ -5,6 +5,7 @@ export type ThemeKey =
   | "forest_green"
   | "kelly_green"
   | "cardinal_red"
+  | "pink"
   | "purple"
   | "slate"
   | "gold_accent";
@@ -28,6 +29,7 @@ function highlightPreset(h: HighlightKey): HighlightPreset {
     forest_green: { highlight: "#15803d", lightBorder: "#4ade80", highlightTextOn: "#f9fafb" },
     kelly_green: { highlight: "#22c55e", lightBorder: "#86efac", highlightTextOn: "#0b1e33" },
     cardinal_red: { highlight: "#ef4444", lightBorder: "#fca5a5", highlightTextOn: "#0b1e33" },
+    pink: { highlight: "#ec4899", lightBorder: "#f9a8d4", highlightTextOn: "#0b1e33" },
     purple: { highlight: "#a855f7", lightBorder: "#d8b4fe", highlightTextOn: "#0b1e33" },
     slate: { highlight: "#64748b", lightBorder: "#cbd5e1", highlightTextOn: "#f9fafb" },
     gold_accent: { highlight: "#fbbf24", lightBorder: "#fde68a", highlightTextOn: "#1f2933" },
@@ -70,6 +72,7 @@ export function buildTheme(
     forest_green: { accent: "#15803d", accentBorder: "#166534", accentTextOn: "#f9fafb" },
     kelly_green: { accent: "#22c55e", accentBorder: "#16a34a", accentTextOn: "#0b1e33" },
     cardinal_red: { accent: "#ef4444", accentBorder: "#dc2626", accentTextOn: "#0b1e33" },
+    pink: { accent: "#ec4899", accentBorder: "#db2777", accentTextOn: "#0b1e33" },
     purple: { accent: "#a855f7", accentBorder: "#7c3aed", accentTextOn: "#0b1e33" },
     slate: { accent: "#64748b", accentBorder: "#475569", accentTextOn: "#f9fafb" },
     gold_accent: { accent: "#fbbf24", accentBorder: "#f59e0b", accentTextOn: "#1f2933" },

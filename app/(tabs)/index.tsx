@@ -184,6 +184,8 @@ function themeLabel(t: ThemeKey) {
       return "Forest Green";
     case "cardinal_red":
       return "Cardinal Red";
+    case "pink":
+      return "Pink";
     case "purple":
       return "Purple";
     case "slate":
@@ -875,6 +877,7 @@ setMainThemeKey: (t: ThemeKey) => void;
               "sky_blue",
               "forest_green",
               "cardinal_red",
+              "pink",
               "purple",
               "slate",
               "gold_accent",
@@ -924,6 +927,7 @@ setMainThemeKey: (t: ThemeKey) => void;
               "sky_blue",
               "forest_green",
               "cardinal_red",
+              "pink",
               "purple",
               "slate",
             ] as HighlightKey[]
