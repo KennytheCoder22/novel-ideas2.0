@@ -147,7 +147,9 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
   const isTitleTextKey = (v: any): v is TitleTextKey => v === "white" || v === "black";
 
   const mainCandidate = cfg?.branding?.mainTheme ?? cfg?.branding?.theme ?? cfg?.theme?.mainThemeKey;
-  const highlightCandidate = cfg?.branding?.highlight ?? cfg?.theme?.highlightKey;
+  // Default highlight should be Gold unless an explicit branding highlight exists.
+  // Ignore legacy theme.highlightKey for first-load defaults to avoid blue override.
+  const highlightCandidate = cfg?.branding?.highlight;
   const titleTextCandidate = cfg?.branding?.titleTextColor ?? cfg?.theme?.titleTextColor;
 
   // UI default: if nothing is set, treat it as Dark Blue (i.e., the app's built-in default theme).
