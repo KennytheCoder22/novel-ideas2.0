@@ -463,9 +463,6 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bnonfiction\b/,
     /\bbiography\b/,
     /\bmemoir\b/,
-    /\bexplores?\b/,
-    /\bexamines?\b/,
-    /\banalyzes?\b/,
     /\bguide to\b/,
     /\bhow to\b/,
     /\blearn how to\b/,
@@ -477,7 +474,7 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bfaith-based domestic suspense\b/,
     /\bchristian fiction\b/,
     /\byear\s*book\b/,
-    /\bbest\s*sellers?\b/,
+    /\bbest\s*sellers?\b.*\b(anthology|collection|year|guide|reference)\b/,
     /\bforbidden love\b/,
     /\btextbook\b/,
     /\bworkbook\b/,
@@ -526,6 +523,10 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     passedChecks.includes('borderline_rescue_layer') ||
     passedChecks.includes('relaxed_pool_floor_rescue') ||
     passedChecks.includes('pagecount_shape_floor_override');
+  const rescueBypassCount = passedChecks.filter((check) => /rescue|borderline|override/.test(String(check))).length;
+  if (rescueBypassCount >= 2 && !fictionSignals) {
+    return { pass: false, reason: 'low_metadata_trust', detail: 'multiple rescue/bypass flags without strong fiction evidence' };
+  }
   const knownAuthorityForZeroRating =
     anchorBoost(c) >= 10 ||
     /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(normalize(c.publisher)) ||
