@@ -2371,6 +2371,10 @@ export async function getRecommendations(
     hybridLaneWeights,
     routingInput
   );
+  const rankedLaneWeights = Object.entries(hybridLaneWeights || {})
+    .map(([family, weight]) => ({ family: normalizeRouterFamilyValue(family), weight: Number(weight || 0) }))
+    .filter((entry) => entry.family && entry.weight > 0)
+    .sort((a, b) => b.weight - a.weight);
   const isHybridMode = Object.keys(hybridLaneWeights).length > 1;
   const bucketPlan = {
     ...baseBucketPlan,
@@ -2400,6 +2404,58 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  const tasteAxes: any = (input as any)?.tasteProfile || {};
+  const rawNegatives = [
+    ...Object.keys((input as any)?.dislikedTagCounts || {}),
+    ...Object.keys((input as any)?.leftTagCounts || {}),
+    ...((input as any)?.negativeTags || []),
+    ...((input as any)?.dislikedTags || []),
+  ]
+    .map((v) => String(v || "").toLowerCase())
+    .filter(Boolean);
+  const negativeSuppressionTerms = [
+    rawNegatives.some((t) => /ya|young adult|teen/.test(t)) ? "-young -teen -ya" : "",
+    rawNegatives.some((t) => /romance|sentimental/.test(t)) ? "-romance -sentimental" : "",
+    rawNegatives.some((t) => /pulp|formula|series/.test(t)) ? "-pulp -formulaic -tie-in" : "",
+    rawNegatives.some((t) => /adventure|ensemble/.test(t)) ? "-ensemble -quest" : "",
+  ].filter(Boolean).join(" ");
+  const nonGenreToneHints = [
+    Number(tasteAxes?.warmth || 0) > 0.2 ? "warm hopeful" : "",
+    Number(tasteAxes?.warmth || 0) < -0.2 ? "sharp cynical" : "",
+    Number(tasteAxes?.darkness || 0) > 0.2 ? "dark intense" : "",
+    Number(tasteAxes?.darkness || 0) < -0.2 ? "gentle low-stakes" : "",
+    Number(tasteAxes?.pacing || 0) > 0.2 ? "fast paced" : "",
+    Number(tasteAxes?.pacing || 0) < -0.2 ? "slow burn" : "",
+    Number(tasteAxes?.realism || 0) > 0.2 ? "grounded realistic" : "",
+    Number(tasteAxes?.realism || 0) < -0.2 ? "speculative uncanny" : "",
+    Number(tasteAxes?.ideaDensity || 0) > 0.2 ? "philosophical ideas" : "",
+    Number(tasteAxes?.characterFocus || 0) > 0.2 ? "character driven emotional" : "",
+  ].filter(Boolean);
+
+  const tasteVector = {
+    grounded: Number(tasteAxes?.realism || 0) > 0.1 ? 0.7 : 0.35,
+    stylized: Number(tasteAxes?.realism || 0) < -0.1 ? 0.65 : 0.45,
+    intensity: Math.max(0, Number(tasteAxes?.darkness || 0)),
+    pacing: Number(tasteAxes?.pacing || 0),
+    emotionalWeight: Math.max(0, Number(tasteAxes?.characterFocus || 0)),
+    romance: rawNegatives.some((t) => /romance|sentimental/.test(t)) ? 0.05 : 0.3,
+    horror: rawNegatives.some((t) => /horror|spooky|stranger things/.test(t)) ? 0 : 0.25,
+    aestheticDistinctiveness: Number(tasteAxes?.ideaDensity || 0) > 0.15 ? 0.75 : 0.45,
+  };
+  const tasteClusterSeeds = [
+    [tasteVector.grounded > 0.55 ? "grounded" : "stylized", tasteVector.intensity > 0.45 ? "high pressure" : "moderate tension", "character experience driven"],
+    [tasteVector.stylized > 0.55 ? "aesthetic authored" : "clear voice", tasteVector.emotionalWeight > 0.4 ? "emotional core" : "reflective core", "adult fiction"],
+    [tasteVector.pacing > 0.2 ? "fast moving" : "measured pace", tasteVector.aestheticDistinctiveness > 0.6 ? "distinctive tone" : "grounded tone", "identity conflict narrative"],
+    [tasteVector.grounded > 0.55 ? "moral conflict drama" : "slightly surreal psychological drama", "non romantic", "non horror"],
+  ];
+  const tasteClusterQueries = tasteClusterSeeds
+    .map((parts) => `${parts.filter(Boolean).join(" ")} novel ${negativeSuppressionTerms}`.replace(/\s+/g, " ").trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  while (tasteClusterQueries.length < 3) {
+    tasteClusterQueries.push(`character driven distinctive fiction novel ${negativeSuppressionTerms}`.trim());
+  }
+
   let rungs = asArray(
     build20QRungs({
       ageBand:
@@ -2427,18 +2483,27 @@ export async function getRecommendations(
           ? "historical_family"
           : "general_family",
       baseGenre:
-        fallbackRungsForRouterFamily(routerFamily)?.[0]?.query ||
         bucketPlan?.signals?.genres?.[0] ||
         bucketPlan?.queries?.[0] ||
         bucketPlan?.preview ||
-        "fiction",
+        "character driven fiction",
       subgenres: bucketPlan?.queries?.length
         ? bucketPlan.queries
         : (bucketPlan?.signals?.genres || []),
-      tones: bucketPlan?.signals?.tones || [],
+      tones: [...(bucketPlan?.signals?.tones || []), ...nonGenreToneHints],
       themes: bucketPlan?.signals?.scenarios || [],
     })
   );
+  if (tasteClusterQueries.length) {
+    const clusterRungs = tasteClusterQueries.slice(0, 5).map((query, index) => ({
+      rung: 700 + index,
+      query,
+      queryFamily: "general",
+      laneKind: "taste-cluster",
+      clusterSource: "session-profile",
+    }));
+    rungs = [...clusterRungs, ...rungs];
+  }
 
   if (!rungs.length && routerFamily === "mystery") {
     rungs = [
@@ -2525,13 +2590,14 @@ export async function getRecommendations(
       String(r?.query || r?.primary || "").toLowerCase()
     )
   );
-  const lockHistoricalRungs = routerFamily === "historical" || historicalIntentInRungs;
+  const historicalWeight = Number((hybridLaneWeights as any)?.historical || 0);
+  const lockHistoricalRungs = (routerFamily === "historical" || historicalIntentInRungs) && historicalWeight >= 0.55;
   if (lockHistoricalRungs) {
     rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
   }
 
   const forcedRungs = canonicalFamilyRungs[routerFamily];
-  if (forcedRungs?.length) {
+  if (forcedRungs?.length && !isHybridMode) {
     rungs = forcedRungs.map((query, index) => ({ rung: index, query, queryFamily: routerFamily }));
   }
 
@@ -2563,16 +2629,16 @@ export async function getRecommendations(
   }
 
 
-  if (isHybridMode) {
+  if (isHybridMode || rankedLaneWeights.length > 1) {
     const existingKeys = new Set(rungs.map((r: any) => normalizeQueryKey(r?.query)));
-    for (const family of Object.keys(hybridLaneWeights)) {
-      const normalizedFamily = normalizeRouterFamilyValue(family);
+    for (const entry of rankedLaneWeights) {
+      const normalizedFamily = normalizeRouterFamilyValue(entry.family);
       if (!normalizedFamily || normalizedFamily === routerFamily) continue;
-      for (const rung of fallbackRungsForRouterFamily(normalizedFamily).slice(0, 2)) {
+      for (const rung of fallbackRungsForRouterFamily(normalizedFamily).slice(0, entry.weight >= 0.28 ? 2 : 1)) {
         const key = normalizeQueryKey(rung.query);
         if (!key || existingKeys.has(key)) continue;
         existingKeys.add(key);
-        rungs.push({ ...rung, hybridFamily: normalizedFamily });
+        rungs.push({ ...rung, hybridFamily: normalizedFamily, laneKind: "taste-cluster" });
       }
     }
   }
@@ -2585,7 +2651,11 @@ export async function getRecommendations(
     console.log("HISTORICAL RUNG QUERIES", rungs.map((r: any) => r.query));
   }
 
-  rungs = rungs.map((r: any) => ({ ...r, laneKind: "precision", queryFamily: normalizeRouterFamilyValue((r as any)?.queryFamily) || routerFamily }));
+  rungs = rungs.map((r: any) => ({
+    ...r,
+    laneKind: (r as any)?.laneKind || "precision",
+    queryFamily: normalizeRouterFamilyValue((r as any)?.queryFamily) || "general",
+  }));
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   rungs = rungs.slice(0, 4);
