@@ -1933,6 +1933,31 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     emotionalWeightScore: emotionalWeight,
     finalScore: 0,
   }, taste) ? 0 : -16;
+  const hardNegativeGate = (() => {
+    const text = haystack(c);
+    const anyTaste: any = taste || {};
+    const negativeTerms = [
+      ...Object.keys(anyTaste?.dislikedTagCounts || {}),
+      ...Object.keys(anyTaste?.leftTagCounts || {}),
+      ...(Array.isArray(anyTaste?.negativeTags) ? anyTaste.negativeTags : []),
+      ...(Array.isArray(anyTaste?.dislikedTags) ? anyTaste.dislikedTags : []),
+    ].map((v) => String(v || "").toLowerCase());
+    const horrorBlocked = negativeTerms.some((t) => /horror|spooky|supernatural/.test(t));
+    const romanceBlocked = negativeTerms.some((t) => /romance|sentimental/.test(t));
+    const cozyBlocked = negativeTerms.some((t) => /cozy|comfort/.test(t));
+    if (horrorBlocked && /\bhorror|haunted|supernatural|occult\b/.test(text)) return -50;
+    if (romanceBlocked && /\bromance|love story|courtship|wedding\b/.test(text)) return -40;
+    if (cozyBlocked && /\bcozy|heartwarming|uplifting comfort\b/.test(text)) return -30;
+    return 0;
+  })();
+  const softPenalty = (() => {
+    const text = haystack(c);
+    let p = 0;
+    if (/\bromance|love story|relationship drama\b/.test(text)) p -= 0.4;
+    if (/\bslow burn|meditative|lyrical\b/.test(text)) p -= 0.3;
+    if (/\bexperimental|abstract|fragmented\b/.test(text)) p -= 0.2;
+    return p;
+  })();
 
   return {
     queryScore,
@@ -1952,7 +1977,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
@@ -2055,6 +2080,22 @@ function enforceLaneDiversityCap(
   }
 
   return balanced;
+}
+
+function enforceClusterDominanceLimit(
+  selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  maxPerCluster: number
+): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
+  const clusterCounts = new Map<string, number>();
+  const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
+  for (const entry of selected) {
+    const cluster = String((entry.candidate as any)?.rawDoc?.clusterId || (entry.candidate as any)?.clusterId || (entry.candidate as any)?.laneKind || "cluster:general");
+    const count = clusterCounts.get(cluster) || 0;
+    if (count >= maxPerCluster) continue;
+    clusterCounts.set(cluster, count + 1);
+    out.push(entry);
+  }
+  return out;
 }
 
 function passesOpenLibrarySelectionFloor(candidate: Candidate): boolean {
@@ -2378,6 +2419,15 @@ export function finalRecommenderForDeck(
   const rankingSource = tasteRankable.length >= Math.min(10, scored.length)
     ? tasteRankable
     : scored;
+  const dedupedRankingSource = (() => {
+    const byWork = new Map<string, { candidate: Candidate; breakdown: ScoreBreakdown }>();
+    for (const entry of rankingSource) {
+      const key = identityKey(entry.candidate);
+      const existing = byWork.get(key);
+      if (!existing || entry.breakdown.finalScore > existing.breakdown.finalScore) byWork.set(key, entry);
+    }
+    return Array.from(byWork.values());
+  })();
 
   debugFinalLog("RANKING SOURCE SUMMARY", {
     scoredCount: scored.length,
@@ -2385,7 +2435,7 @@ export function finalRecommenderForDeck(
     rankingSourceCount: rankingSource.length,
   });
 
-  const ordered = [...rankingSource].sort((a, b) => {
+  const ordered = [...dedupedRankingSource].sort((a, b) => {
     const scoreDiff = b.breakdown.finalScore - a.breakdown.finalScore;
     if (scoreDiff !== 0) return scoreDiff;
 
@@ -2451,6 +2501,22 @@ export function finalRecommenderForDeck(
   const thrillerSubtypeCounts = new Map<string, number>();
   const MAX_RESULTS = 10;
   const HIGH_CONFIDENCE_TARGET = 4;
+  const clusteredPool = new Map<string, Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>>();
+  for (const entry of displayPool) {
+    const key = String((entry.candidate as any)?.laneKind || (entry.candidate as any)?.rawDoc?.laneKind || (entry.candidate as any)?.queryFamily || "cluster:general");
+    if (!clusteredPool.has(key)) clusteredPool.set(key, []);
+    clusteredPool.get(key)!.push(entry);
+  }
+  for (const bucket of clusteredPool.values()) {
+    bucket.sort((a, b) => b.breakdown.finalScore - a.breakdown.finalScore);
+  }
+
+  for (const [, bucket] of Array.from(clusteredPool.entries()).slice(0, 6)) {
+    const top = bucket[0]?.breakdown?.finalScore ?? -999;
+    const quota = top < 16 ? 1 : 2;
+    if (top < 8) continue;
+    pickFromPool(bucket.slice(0, quota), selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  }
 
   seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
@@ -2507,6 +2573,31 @@ export function finalRecommenderForDeck(
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
   const laneBalanced = enforceLaneDiversityCap(selected, ordered, MAX_RESULTS);
-  const selectedDocs = laneBalanced.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+  const clusterBalanced = enforceClusterDominanceLimit(laneBalanced, 4);
+  const diversityBalanced = (() => {
+    const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
+    for (const entry of clusterBalanced) {
+      const text = haystack(entry.candidate);
+      const tooSimilar = out.some((e) => {
+        const t = haystack(e.candidate);
+        const sharedSetting = /\bisolated|arctic|space|war|small town|boarding school\b/.test(text) && /\bisolated|arctic|space|war|small town|boarding school\b/.test(t);
+        const sharedStructure = /\bcoming of age|investigation|survival|revenge|heist\b/.test(text) && /\bcoming of age|investigation|survival|revenge|heist\b/.test(t);
+        return sharedSetting && sharedStructure;
+      });
+      if (!tooSimilar || out.length < 3) out.push(entry);
+    }
+    return out;
+  })();
+  if (diversityBalanced.length < 3) {
+    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length });
+    return [];
+  }
+  const clusterBreakdown: Record<string, number> = {};
+  for (const entry of diversityBalanced) {
+    const cluster = String((entry.candidate as any)?.rawDoc?.clusterId || (entry.candidate as any)?.clusterId || (entry.candidate as any)?.laneKind || "cluster:general");
+    clusterBreakdown[cluster] = (clusterBreakdown[cluster] || 0) + 1;
+  }
+  debugFinalLog("CLUSTER CONTRIBUTION BREAKDOWN", clusterBreakdown);
+  const selectedDocs = diversityBalanced.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
   return attachNearbyAlternativeReason(selectedDocs, ordered);
 }
