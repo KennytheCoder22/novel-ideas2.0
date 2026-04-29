@@ -2438,23 +2438,42 @@ export async function getRecommendations(
     intensity: Math.max(0, Number(tasteAxes?.darkness || 0)),
     pacing: Number(tasteAxes?.pacing || 0),
     emotionalWeight: Math.max(0, Number(tasteAxes?.characterFocus || 0)),
-    romance: rawNegatives.some((t) => /romance|sentimental/.test(t)) ? 0.05 : 0.3,
-    horror: rawNegatives.some((t) => /horror|spooky|stranger things/.test(t)) ? 0 : 0.25,
+    romance: rawNegatives.some((t) => /romance|sentimental/.test(t)) ? -0.8 : 0.3,
+    horror: rawNegatives.some((t) => /horror|spooky|stranger things/.test(t)) ? -1.0 : 0.25,
+    coziness: rawNegatives.some((t) => /cozy|comfort/.test(t)) ? -0.7 : 0.2,
     aestheticDistinctiveness: Number(tasteAxes?.ideaDensity || 0) > 0.15 ? 0.75 : 0.45,
   };
-  const tasteClusterSeeds = [
-    [tasteVector.grounded > 0.55 ? "grounded" : "stylized", tasteVector.intensity > 0.45 ? "high pressure" : "moderate tension", "character experience driven"],
-    [tasteVector.stylized > 0.55 ? "aesthetic authored" : "clear voice", tasteVector.emotionalWeight > 0.4 ? "emotional core" : "reflective core", "adult fiction"],
-    [tasteVector.pacing > 0.2 ? "fast moving" : "measured pace", tasteVector.aestheticDistinctiveness > 0.6 ? "distinctive tone" : "grounded tone", "identity conflict narrative"],
-    [tasteVector.grounded > 0.55 ? "moral conflict drama" : "slightly surreal psychological drama", "non romantic", "non horror"],
+  const scoredAxes = [
+    { key: "intensity", value: tasteVector.intensity, phrase: tasteVector.intensity > 0.45 ? "high pressure endurance" : "moderate tension" },
+    { key: "structure", value: tasteVector.emotionalWeight, phrase: tasteVector.emotionalWeight > 0.4 ? "character experience driven" : "plot pressure driven" },
+    { key: "setting", value: Math.max(tasteVector.grounded, tasteVector.stylized), phrase: tasteVector.grounded > tasteVector.stylized ? "grounded setting" : "stylized authored setting" },
+    { key: "pace", value: Math.abs(tasteVector.pacing), phrase: tasteVector.pacing > 0.2 ? "fast moving" : "reflective pace" },
+  ].sort((a, b) => b.value - a.value);
+  const strongA = [scoredAxes[0]?.phrase, scoredAxes[1]?.phrase, "moral conflict narrative"].filter(Boolean);
+  const strongB = [scoredAxes[2]?.phrase, scoredAxes[3]?.phrase, "identity under pressure"].filter(Boolean);
+  const exploratory = [
+    tasteVector.stylized > 0.55 ? "slightly surreal" : "atmospheric psychological",
+    tasteVector.pacing > 0.2 ? "slower introspective counterpoint" : "tighter momentum counterpoint",
+    "adult distinct-voice fiction",
   ];
-  const tasteClusterQueries = tasteClusterSeeds
-    .map((parts) => `${parts.filter(Boolean).join(" ")} novel ${negativeSuppressionTerms}`.replace(/\s+/g, " ").trim())
-    .filter(Boolean)
-    .slice(0, 6);
-  while (tasteClusterQueries.length < 3) {
-    tasteClusterQueries.push(`character driven distinctive fiction novel ${negativeSuppressionTerms}`.trim());
+  const rawClusters = [strongA, strongB, exploratory];
+  const dedupedClusters: string[][] = [];
+  for (const cluster of rawClusters) {
+    const set = new Set(cluster.map((p) => String(p).toLowerCase().trim()));
+    const overlaps = dedupedClusters.some((existing) => existing.filter((p) => set.has(String(p).toLowerCase().trim())).length >= 2);
+    if (!overlaps) dedupedClusters.push(cluster);
   }
+  while (dedupedClusters.length < 3) {
+    dedupedClusters.push(["isolated setting", "psychological endurance", "non-romantic tension narrative"]);
+  }
+  const tasteClusterQueries = dedupedClusters.flatMap((parts, clusterIdx) => {
+    const base = `${parts.join(" ")} novel ${negativeSuppressionTerms}`.replace(/\s+/g, " ").trim();
+    const variants = [
+      base,
+      `${parts[0]} ${parts[1]} story of survival and consequence novel ${negativeSuppressionTerms}`.replace(/\s+/g, " ").trim(),
+    ];
+    return variants.slice(0, 2).map((query) => ({ query, clusterId: `c${clusterIdx + 1}` }));
+  });
 
   let rungs = asArray(
     build20QRungs({
@@ -2495,12 +2514,13 @@ export async function getRecommendations(
     })
   );
   if (tasteClusterQueries.length) {
-    const clusterRungs = tasteClusterQueries.slice(0, 5).map((query, index) => ({
+    const clusterRungs = tasteClusterQueries.slice(0, 6).map((entry, index) => ({
       rung: 700 + index,
-      query,
+      query: entry.query,
       queryFamily: "general",
       laneKind: "taste-cluster",
       clusterSource: "session-profile",
+      clusterId: entry.clusterId,
     }));
     rungs = [...clusterRungs, ...rungs];
   }

@@ -2074,6 +2074,22 @@ function enforceLaneDiversityCap(
   return balanced;
 }
 
+function enforceClusterDominanceLimit(
+  selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  maxPerCluster: number
+): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
+  const clusterCounts = new Map<string, number>();
+  const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
+  for (const entry of selected) {
+    const cluster = String((entry.candidate as any)?.rawDoc?.clusterId || (entry.candidate as any)?.clusterId || (entry.candidate as any)?.laneKind || "cluster:general");
+    const count = clusterCounts.get(cluster) || 0;
+    if (count >= maxPerCluster) continue;
+    clusterCounts.set(cluster, count + 1);
+    out.push(entry);
+  }
+  return out;
+}
+
 function passesOpenLibrarySelectionFloor(candidate: Candidate): boolean {
   if (!isOpenLibraryCandidate(candidate)) return false;
 
@@ -2537,6 +2553,13 @@ export function finalRecommenderForDeck(
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
 
   const laneBalanced = enforceLaneDiversityCap(selected, ordered, MAX_RESULTS);
-  const selectedDocs = laneBalanced.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+  const clusterBalanced = enforceClusterDominanceLimit(laneBalanced, 4);
+  const clusterBreakdown: Record<string, number> = {};
+  for (const entry of clusterBalanced) {
+    const cluster = String((entry.candidate as any)?.rawDoc?.clusterId || (entry.candidate as any)?.clusterId || (entry.candidate as any)?.laneKind || "cluster:general");
+    clusterBreakdown[cluster] = (clusterBreakdown[cluster] || 0) + 1;
+  }
+  debugFinalLog("CLUSTER CONTRIBUTION BREAKDOWN", clusterBreakdown);
+  const selectedDocs = clusterBalanced.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
   return attachNearbyAlternativeReason(selectedDocs, ordered);
 }
