@@ -2468,11 +2468,17 @@ export async function getRecommendations(
   }
   const tasteClusterQueries = dedupedClusters.flatMap((parts, clusterIdx) => {
     const base = `${parts.join(" ")} novel ${negativeSuppressionTerms}`.replace(/\s+/g, " ").trim();
-    const variants = [
-      base,
-      `${parts[0]} ${parts[1]} story of survival and consequence novel ${negativeSuppressionTerms}`.replace(/\s+/g, " ").trim(),
+    const retrievalSignals = [
+      "environmental pressure setting",
+      "psychological isolation consequence",
+      "procedural problem-solving under stress",
     ];
-    return variants.slice(0, 2).map((query) => ({ query, clusterId: `c${clusterIdx + 1}` }));
+    const variants = [
+      `${base} ${retrievalSignals[0]}`.replace(/\s+/g, " ").trim(),
+      `${parts[0]} ${parts[1]} story of survival and consequence novel ${negativeSuppressionTerms} ${retrievalSignals[1]}`.replace(/\s+/g, " ").trim(),
+      `${parts[0]} ${parts[2]} narrative novel ${negativeSuppressionTerms} ${retrievalSignals[2]}`.replace(/\s+/g, " ").trim(),
+    ];
+    return variants.slice(0, 3).map((query) => ({ query, clusterId: `c${clusterIdx + 1}` }));
   });
 
   let rungs = asArray(

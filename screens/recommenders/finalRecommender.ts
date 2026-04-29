@@ -1950,6 +1950,14 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     if (cozyBlocked && /\bcozy|heartwarming|uplifting comfort\b/.test(text)) return -30;
     return 0;
   })();
+  const softPenalty = (() => {
+    const text = haystack(c);
+    let p = 0;
+    if (/\bromance|love story|relationship drama\b/.test(text)) p -= 0.4;
+    if (/\bslow burn|meditative|lyrical\b/.test(text)) p -= 0.3;
+    if (/\bexperimental|abstract|fragmented\b/.test(text)) p -= 0.2;
+    return p;
+  })();
 
   return {
     queryScore,
@@ -1969,7 +1977,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
@@ -2411,6 +2419,15 @@ export function finalRecommenderForDeck(
   const rankingSource = tasteRankable.length >= Math.min(10, scored.length)
     ? tasteRankable
     : scored;
+  const dedupedRankingSource = (() => {
+    const byWork = new Map<string, { candidate: Candidate; breakdown: ScoreBreakdown }>();
+    for (const entry of rankingSource) {
+      const key = identityKey(entry.candidate);
+      const existing = byWork.get(key);
+      if (!existing || entry.breakdown.finalScore > existing.breakdown.finalScore) byWork.set(key, entry);
+    }
+    return Array.from(byWork.values());
+  })();
 
   debugFinalLog("RANKING SOURCE SUMMARY", {
     scoredCount: scored.length,
@@ -2418,7 +2435,7 @@ export function finalRecommenderForDeck(
     rankingSourceCount: rankingSource.length,
   });
 
-  const ordered = [...rankingSource].sort((a, b) => {
+  const ordered = [...dedupedRankingSource].sort((a, b) => {
     const scoreDiff = b.breakdown.finalScore - a.breakdown.finalScore;
     if (scoreDiff !== 0) return scoreDiff;
 
@@ -2495,7 +2512,10 @@ export function finalRecommenderForDeck(
   }
 
   for (const [, bucket] of Array.from(clusteredPool.entries()).slice(0, 6)) {
-    pickFromPool(bucket.slice(0, 2), selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+    const top = bucket[0]?.breakdown?.finalScore ?? -999;
+    const quota = top < 16 ? 1 : 2;
+    if (top < 8) continue;
+    pickFromPool(bucket.slice(0, quota), selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   }
 
   seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
@@ -2554,12 +2574,30 @@ export function finalRecommenderForDeck(
 
   const laneBalanced = enforceLaneDiversityCap(selected, ordered, MAX_RESULTS);
   const clusterBalanced = enforceClusterDominanceLimit(laneBalanced, 4);
+  const diversityBalanced = (() => {
+    const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
+    for (const entry of clusterBalanced) {
+      const text = haystack(entry.candidate);
+      const tooSimilar = out.some((e) => {
+        const t = haystack(e.candidate);
+        const sharedSetting = /\bisolated|arctic|space|war|small town|boarding school\b/.test(text) && /\bisolated|arctic|space|war|small town|boarding school\b/.test(t);
+        const sharedStructure = /\bcoming of age|investigation|survival|revenge|heist\b/.test(text) && /\bcoming of age|investigation|survival|revenge|heist\b/.test(t);
+        return sharedSetting && sharedStructure;
+      });
+      if (!tooSimilar || out.length < 3) out.push(entry);
+    }
+    return out;
+  })();
+  if (diversityBalanced.length < 3) {
+    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length });
+    return [];
+  }
   const clusterBreakdown: Record<string, number> = {};
-  for (const entry of clusterBalanced) {
+  for (const entry of diversityBalanced) {
     const cluster = String((entry.candidate as any)?.rawDoc?.clusterId || (entry.candidate as any)?.clusterId || (entry.candidate as any)?.laneKind || "cluster:general");
     clusterBreakdown[cluster] = (clusterBreakdown[cluster] || 0) + 1;
   }
   debugFinalLog("CLUSTER CONTRIBUTION BREAKDOWN", clusterBreakdown);
-  const selectedDocs = clusterBalanced.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+  const selectedDocs = diversityBalanced.map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
   return attachNearbyAlternativeReason(selectedDocs, ordered);
 }
