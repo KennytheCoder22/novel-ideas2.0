@@ -1,6 +1,7 @@
 import {
+  useEffect,
   useMemo,
-    useRef,
+  useRef,
   useState
 } from "react";
 import { router } from "expo-router";
@@ -23,7 +24,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
-import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey } from "../../constants/brandTheme";
+import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey, type TitleTextKey } from "../../constants/brandTheme";
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
