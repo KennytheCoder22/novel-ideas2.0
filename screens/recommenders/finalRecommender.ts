@@ -524,6 +524,9 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     passedChecks.includes('relaxed_pool_floor_rescue') ||
     passedChecks.includes('pagecount_shape_floor_override');
   const rescueBypassCount = passedChecks.filter((check) => /rescue|borderline|override/.test(String(check))).length;
+  if (rescueBypassCount >= 2) {
+    return { pass: false, reason: 'low_metadata_trust', detail: 'rescue/bypass flags present' };
+  }
   if (rescueBypassCount >= 3) {
     return { pass: false, reason: 'low_metadata_trust', detail: 'multiple rescue/bypass flags' };
   }
@@ -538,6 +541,13 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
 
   if (isRescuedBorderline && (c.ratingCount || 0) === 0 && !knownAuthorityForZeroRating) {
     return { pass: false, reason: 'low_metadata_trust', detail: 'zero-rating rescued item without authority signal' };
+  }
+  if (isOL) {
+    const weakGenre = !/\b(horror|thriller|mystery|crime|speculative|fantasy|science fiction|literary|drama|novel)\b/.test(haystack(c));
+    const sparseMeta = !(c.hasCover && String(c.description || "").trim().length >= 90 && (c.pageCount || 0) >= 80);
+    if (weakGenre || sparseMeta) {
+      return { pass: false, reason: 'low_metadata_trust', detail: 'openlibrary strict intake failure' };
+    }
   }
 
   const softFailureCount = passedChecks.filter((check) =>
@@ -2632,11 +2642,25 @@ export function finalRecommenderForDeck(
   );
   const diversityBalanced = (() => {
     const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
+    const laneBuckets = new Map<string, Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>>();
     for (const entry of clusterBalanced) {
       if (weakLanes.has(laneFamilyForCandidate(entry.candidate) || "unknown")) continue;
       if (fantasySuppressed && laneFamilyForCandidate(entry.candidate) === "fantasy") {
         if (entry.breakdown.personalAffinityScore < 2 || entry.breakdown.toneScore < 1.4) continue;
       }
+      const lane = laneFamilyForCandidate(entry.candidate) || "unknown";
+      if (!laneBuckets.has(lane)) laneBuckets.set(lane, []);
+      laneBuckets.get(lane)!.push(entry);
+    }
+    const eligibleLanes = new Set(
+      Array.from(laneBuckets.entries())
+        .filter(([, items]) => items.filter((it) => it.breakdown.personalAffinityScore >= 1.2 && it.breakdown.toneScore >= 0.8).length >= 2)
+        .map(([lane]) => lane)
+    );
+    for (const entry of clusterBalanced) {
+      const lane = laneFamilyForCandidate(entry.candidate) || "unknown";
+      if (!eligibleLanes.has(lane)) continue;
+      if (fantasySuppressed && lane === "fantasy") continue;
       const text = haystack(entry.candidate);
       const tooSimilar = out.some((e) => {
         const t = haystack(e.candidate);
