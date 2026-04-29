@@ -2432,13 +2432,54 @@ export async function getRecommendations(
     Number(tasteAxes?.characterFocus || 0) > 0.2 ? "character driven emotional" : "",
   ].filter(Boolean);
 
-  const tasteClusterQueries = [
-    `${Number(tasteAxes?.darkness || 0) > 0.2 ? "dark" : "moody"} ${Number(tasteAxes?.characterFocus || 0) > 0.1 ? "character driven" : ""} moral suspense novel ${negativeSuppressionTerms}`.trim(),
-    `${Number(tasteAxes?.ideaDensity || 0) > 0.2 ? "literary speculative identity novel" : "speculative identity novel"} ${negativeSuppressionTerms}`.trim(),
-    `${Number(tasteAxes?.pacing || 0) < -0.1 ? "slow burn" : "psychological"} eerie mystery novel ${negativeSuppressionTerms}`.trim(),
-    `${Number(tasteAxes?.realism || 0) < -0.1 ? "surreal" : "grounded"} adult emotional fiction novel ${negativeSuppressionTerms}`.trim(),
-    `${Number(tasteAxes?.realism || 0) > 0.1 ? "crime drama moral ambiguity novel" : "moral conflict literary fiction novel"} ${negativeSuppressionTerms}`.trim(),
-  ].map((q) => q.replace(/\s+/g, " ").trim()).filter(Boolean);
+  const tasteVector = {
+    grounded: Number(tasteAxes?.realism || 0) > 0.1 ? 0.7 : 0.35,
+    stylized: Number(tasteAxes?.realism || 0) < -0.1 ? 0.65 : 0.45,
+    intensity: Math.max(0, Number(tasteAxes?.darkness || 0)),
+    pacing: Number(tasteAxes?.pacing || 0),
+    emotionalWeight: Math.max(0, Number(tasteAxes?.characterFocus || 0)),
+    romance: rawNegatives.some((t) => /romance|sentimental/.test(t)) ? -0.8 : 0.3,
+    horror: rawNegatives.some((t) => /horror|spooky|stranger things/.test(t)) ? -1.0 : 0.25,
+    coziness: rawNegatives.some((t) => /cozy|comfort/.test(t)) ? -0.7 : 0.2,
+    aestheticDistinctiveness: Number(tasteAxes?.ideaDensity || 0) > 0.15 ? 0.75 : 0.45,
+  };
+  const scoredAxes = [
+    { key: "intensity", value: tasteVector.intensity, phrase: tasteVector.intensity > 0.45 ? "high pressure endurance" : "moderate tension" },
+    { key: "structure", value: tasteVector.emotionalWeight, phrase: tasteVector.emotionalWeight > 0.4 ? "character experience driven" : "plot pressure driven" },
+    { key: "setting", value: Math.max(tasteVector.grounded, tasteVector.stylized), phrase: tasteVector.grounded > tasteVector.stylized ? "grounded setting" : "stylized authored setting" },
+    { key: "pace", value: Math.abs(tasteVector.pacing), phrase: tasteVector.pacing > 0.2 ? "fast moving" : "reflective pace" },
+  ].sort((a, b) => b.value - a.value);
+  const strongA = [scoredAxes[0]?.phrase, scoredAxes[1]?.phrase, "moral conflict narrative"].filter(Boolean);
+  const strongB = [scoredAxes[2]?.phrase, scoredAxes[3]?.phrase, "identity under pressure"].filter(Boolean);
+  const exploratory = [
+    tasteVector.stylized > 0.55 ? "slightly surreal" : "atmospheric psychological",
+    tasteVector.pacing > 0.2 ? "slower introspective counterpoint" : "tighter momentum counterpoint",
+    "adult distinct-voice fiction",
+  ];
+  const rawClusters = [strongA, strongB, exploratory];
+  const dedupedClusters: string[][] = [];
+  for (const cluster of rawClusters) {
+    const set = new Set(cluster.map((p) => String(p).toLowerCase().trim()));
+    const overlaps = dedupedClusters.some((existing) => existing.filter((p) => set.has(String(p).toLowerCase().trim())).length >= 2);
+    if (!overlaps) dedupedClusters.push(cluster);
+  }
+  while (dedupedClusters.length < 3) {
+    dedupedClusters.push(["isolated setting", "psychological endurance", "non-romantic tension narrative"]);
+  }
+  const tasteClusterQueries = dedupedClusters.flatMap((parts, clusterIdx) => {
+    const base = `${parts.join(" ")} novel ${negativeSuppressionTerms}`.replace(/\s+/g, " ").trim();
+    const retrievalSignals = [
+      "environmental pressure setting",
+      "psychological isolation consequence",
+      "procedural problem-solving under stress",
+    ];
+    const variants = [
+      `${base} ${retrievalSignals[0]}`.replace(/\s+/g, " ").trim(),
+      `${parts[0]} ${parts[1]} story of survival and consequence novel ${negativeSuppressionTerms} ${retrievalSignals[1]}`.replace(/\s+/g, " ").trim(),
+      `${parts[0]} ${parts[2]} narrative novel ${negativeSuppressionTerms} ${retrievalSignals[2]}`.replace(/\s+/g, " ").trim(),
+    ];
+    return variants.slice(0, 3).map((query) => ({ query, clusterId: `c${clusterIdx + 1}` }));
+  });
 
   let rungs = asArray(
     build20QRungs({
@@ -2479,12 +2520,13 @@ export async function getRecommendations(
     })
   );
   if (tasteClusterQueries.length) {
-    const clusterRungs = tasteClusterQueries.slice(0, 5).map((query, index) => ({
+    const clusterRungs = tasteClusterQueries.slice(0, 6).map((entry, index) => ({
       rung: 700 + index,
-      query,
+      query: entry.query,
       queryFamily: "general",
       laneKind: "taste-cluster",
       clusterSource: "session-profile",
+      clusterId: entry.clusterId,
     }));
     rungs = [...clusterRungs, ...rungs];
   }
@@ -2642,7 +2684,18 @@ export async function getRecommendations(
   }));
 
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
-  rungs = rungs.slice(0, 4);
+  const uniqueRungQueries = Array.from(new Set(rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean)));
+  if (uniqueRungQueries.length < 3) {
+    const expansion = [
+      { query: `${routerFamily} isolation survival narrative novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+      { query: `${routerFamily} psychological dread and consequence novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+      { query: `${routerFamily} authored atmospheric tension story novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+    ];
+    for (const entry of expansion) {
+      if (!uniqueRungQueries.includes(entry.query)) rungs.push({ ...entry, rung: 900 + rungs.length });
+    }
+  }
+  rungs = rungs.slice(0, 6);
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
@@ -2890,6 +2943,16 @@ export async function getRecommendations(
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  if (candidateDocs.length < 15) {
+    const expansionPool = enrichedDocs.filter((doc: any) => {
+      const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.filterFamily);
+      if (routerFamily !== "general" && family && family !== routerFamily) return false;
+      const text = String(doc?.title || "") + " " + String(doc?.description || "");
+      return /\b(novel|fiction|story|narrative|mystery|thriller|horror|speculative|literary)\b/i.test(text);
+    });
+    candidateDocs = dedupeDocs([...candidateDocs, ...expansionPool]).slice(0, 40);
+    debugRouterLog("POOL_EXPANSION_TRIGGERED", { filteredCount: filteredDocs.length, expandedCount: candidateDocs.length });
+  }
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
     fetched: 0,
@@ -2929,10 +2992,18 @@ export async function getRecommendations(
     debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
   }
 
-  if (!isHybridMode && routerFamily === "thriller") {
+  if (!isHybridMode && routerFamily !== "general") {
     candidateDocs = candidateDocs.filter((doc: any) => {
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
-      return !family || family === "thriller" || family === "mystery";
+      return !family || family === routerFamily || (routerFamily === "thriller" && family === "mystery");
+    });
+  }
+
+  if (routerFamily === "horror") {
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      const wantsHorrorTone = Boolean(doc?.diagnostics?.filterWantsHorrorTone ?? doc?.rawDoc?.diagnostics?.filterWantsHorrorTone);
+      const horrorAligned = Boolean(doc?.diagnostics?.filterFlags?.horrorAligned ?? doc?.rawDoc?.diagnostics?.filterFlags?.horrorAligned);
+      return !wantsHorrorTone || horrorAligned;
     });
   }
 
