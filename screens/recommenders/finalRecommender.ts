@@ -2020,6 +2020,8 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
     (typeof (rawDoc as any)?.imageUrl === "string" && (rawDoc as any).imageUrl) ||
     (typeof (rawDoc as any)?.imageLinks?.thumbnail === "string" && (rawDoc as any).imageLinks.thumbnail) ||
     (typeof (rawDoc as any)?.imageLinks?.smallThumbnail === "string" && (rawDoc as any).imageLinks.smallThumbnail) ||
+    (typeof (rawDoc as any)?.volumeInfo?.imageLinks?.thumbnail === "string" && (rawDoc as any).volumeInfo.imageLinks.thumbnail) ||
+    (typeof (rawDoc as any)?.volumeInfo?.imageLinks?.smallThumbnail === "string" && (rawDoc as any).volumeInfo.imageLinks.smallThumbnail) ||
     (typeof (rawDoc as any)?.thumbnail === "string" && (rawDoc as any).thumbnail) ||
     (typeof (rawDoc as any)?.coverImageUrl === "string" && (rawDoc as any).coverImageUrl) ||
     ((rawDoc as any)?.cover_i ? `https://covers.openlibrary.org/b/id/${String((rawDoc as any).cover_i)}-M.jpg` : "") ||

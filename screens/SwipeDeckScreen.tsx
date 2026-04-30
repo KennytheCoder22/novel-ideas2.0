@@ -720,6 +720,8 @@ function recommendationCoverUrl(doc: any): string | null {
   const thumbnail =
     (typeof doc?.imageLinks?.thumbnail === "string" && doc.imageLinks.thumbnail) ||
     (typeof doc?.imageLinks?.smallThumbnail === "string" && doc.imageLinks.smallThumbnail) ||
+    (typeof doc?.volumeInfo?.imageLinks?.thumbnail === "string" && doc.volumeInfo.imageLinks.thumbnail) ||
+    (typeof doc?.volumeInfo?.imageLinks?.smallThumbnail === "string" && doc.volumeInfo.imageLinks.smallThumbnail) ||
     (typeof doc?.thumbnail === "string" && doc.thumbnail) ||
     (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
     (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
