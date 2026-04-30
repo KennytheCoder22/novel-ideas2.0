@@ -384,6 +384,10 @@ function StudentView(props: {
                     borderWidth: 1.5,
                     borderRadius: 999,
                   },
+                  selected && {
+                    backgroundColor: props.theme.highlight,
+                    borderColor: props.theme.lightBorder,
+                  },
                   !enabled && styles.chipDisabled,
                 ]}
               >
@@ -391,6 +395,7 @@ function StudentView(props: {
                   style={[
                     styles.chipText,
                     { color: props.theme.text },
+                    selected && { color: props.theme.highlightTextOn },
                     !enabled && styles.chipTextDisabled,
                   ]}
                 >
@@ -1981,18 +1986,6 @@ logoDataUrl={logoDataUrl}
   // Search mode
   return (
     <View style={[styles.container, { backgroundColor: theme.appBg }]}>
-      <View style={styles.searchTopRow}>
-        <TouchableOpacity
-          style={[
-            styles.smallBtn,
-            { borderColor: theme.lightBorder, backgroundColor: theme.inputBg, minWidth: 120 },
-          ]}
-          onPress={() => setMode("swipe")}
-        >
-          <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={[styles.headerFrame, { backgroundColor: theme.accent, borderColor: theme.highlight }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
@@ -2020,6 +2013,18 @@ logoDataUrl={logoDataUrl}
           </TouchableOpacity>
           <View style={styles.headerRight} />
         </View>
+      </View>
+
+      <View style={styles.searchTopRow}>
+        <TouchableOpacity
+          style={[
+            styles.smallBtn,
+            { borderColor: theme.lightBorder, backgroundColor: theme.inputBg, minWidth: 120 },
+          ]}
+          onPress={() => setMode("swipe")}
+        >
+          <Text style={[styles.smallBtnText, { color: theme.text }]}>Back to Swipe</Text>
+        </TouchableOpacity>
       </View>
 
       <StudentView
