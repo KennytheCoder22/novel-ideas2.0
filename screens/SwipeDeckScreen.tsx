@@ -800,12 +800,12 @@ function axisValue(vector: TasteVector | null | undefined, axis: TwentyQAxis): n
 function buildTwentyQObjectives(deckKey: DeckKey): TwentyQObjective[] {
   const lane = laneFromDeckKey(deckKey);
   const objectives: TwentyQObjective[] = [
-    { id: "tone-warmth", rung: 1, axis: "warmth", label: "Tone", description: "Resolve whether the reader leans warmer or sharper in tone.", threshold: 0.24 },
-    { id: "tone-darkness", rung: 2, axis: "darkness", label: "Intensity", description: "Resolve how dark or intense the reader wants the experience to feel.", threshold: 0.24 },
-    { id: "drive-pacing", rung: 3, axis: "pacing", label: "Drive", description: "Resolve whether the reader wants a faster or slower-feeling experience.", threshold: 0.24 },
-    { id: "world-reality", rung: 4, axis: "realism", label: "World", description: "Resolve whether the reader leans realistic or more speculative / stylized.", threshold: 0.24 },
-    { id: "mind-idea-density", rung: 5, axis: "ideaDensity", label: "Concept load", description: "Resolve whether the reader wants lighter or denser ideas.", threshold: 0.24 },
-    { id: "focus-character", rung: 6, axis: "characterFocus", label: "Focus", description: "Resolve whether the reader wants more character-centered material.", threshold: 0.24 },
+    { id: "tone-warmth", rung: 1, axis: "warmth", label: "Tone", description: "Clarify warm vs sharp, hopeful vs bleak, and cozy vs unsettling tone signals.", threshold: 0.24 },
+    { id: "tone-darkness", rung: 2, axis: "darkness", label: "Intensity", description: "Clarify gentle vs intense energy and emotionally quiet vs high-stakes preference.", threshold: 0.24 },
+    { id: "drive-pacing", rung: 3, axis: "pacing", label: "Drive", description: "Clarify story momentum and what kind of narrative drive feels best.", threshold: 0.24 },
+    { id: "world-reality", rung: 4, axis: "realism", label: "World", description: "Clarify realistic vs speculative/fantastical vs uncanny world preference.", threshold: 0.24 },
+    { id: "mind-idea-density", rung: 5, axis: "ideaDensity", label: "Concept Load", description: "Clarify accessible vs layered vs philosophical/experimental concept load.", threshold: 0.24 },
+    { id: "focus-character", rung: 6, axis: "characterFocus", label: "Final calibration", description: "Final calibration across character focus and blended appeal before recommendations.", threshold: 0.24 },
   ];
 
   if (lane === "kids") {
@@ -903,7 +903,7 @@ function selectTwentyQCard(args: {
     recentCardKeys.length > 0 ||
     Object.values(tagCounts || {}).some((value) => Number(value || 0) !== 0);
 
-  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys });
+  const fallback = selectAdaptiveCard({ deckKey, cards, tagCounts, recentCardKeys, recentCards: cards.filter((card) => recentCardKeys.includes(cardIdentityKey(card))) });
 
   // First card of a fresh session should not be locked to the strongest
   // diagnostic/20Q card. Use the already shuffled session deck plus the
@@ -978,6 +978,7 @@ export default function SwipeDeckScreen(props: Props) {
   const { width: windowWidth, height: windowHeight } = Dimensions.get("window");
   const isSmallScreen = windowWidth < 420 || windowHeight < 750;
   const needsCardOffset = isSmallScreen || (Platform.OS === "web" && windowWidth < 600);
+  const highlightColor = Platform.OS === "web" ? "var(--highlight-color)" : "#e0b84b";
 
   const [cardStageHeight, setCardStageHeight] = useState<number>(0);
   const [deckKey, setDeckKey] = useState<DeckKey>("ms_hs");
@@ -2327,7 +2328,12 @@ function handleLeft() {
               <TouchableOpacity
                 key={k}
                 onPress={() => setDeckKey(k)}
-                style={[styles.deckChip, selected && styles.deckChipSelected]}
+                style={[
+                  styles.deckChip,
+                  { borderColor: highlightColor },
+                  selected && styles.deckChipSelected,
+                  selected && { borderColor: highlightColor },
+                ]}
               >
                 <Text style={[styles.deckChipText, selected && styles.deckChipTextSelected]}>
                   {deckLabel(k, isSmallScreen)}
@@ -2351,7 +2357,7 @@ function handleLeft() {
         <View style={[styles.stage, needsCardOffset && styles.stageTop]}>
           {isDone ? (
             <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 30 }}>
-              <View style={styles.doneCard}>
+              <View style={[styles.doneCard, { borderColor: highlightColor }]}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
                 <Text style={styles.doneSub}>
                   Deck: {deck.deckLabel} • Engine: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
@@ -2379,7 +2385,7 @@ function handleLeft() {
                 {!!recError && !recLoading ? (
                   <View style={{ marginTop: 12 }}>
                     <Text style={styles.smallNote}>{recError}</Text>
-                    <TouchableOpacity style={[styles.btn, styles.btnOutlineGold, { marginTop: 10, alignSelf: "center" }]} onPress={tryAgain}>
+                    <TouchableOpacity style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 10, alignSelf: "center" }]} onPress={tryAgain}>
                       <Text style={styles.btnText}>Try again</Text>
                     </TouchableOpacity>
                   </View>
@@ -2426,16 +2432,16 @@ function handleLeft() {
 
                     <View style={styles.recActions}>
                       <TouchableOpacity
-                        style={[styles.btn, styles.btnOutlineGold]}
+                        style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }]}
                         onPress={isFirstRec ? tryAgain : handleBack}
                       >
                         <Text style={styles.btnText}>{isFirstRec ? "Try Again" : "Back"}</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity style={[styles.btn, styles.btnOutlineGold]} onPress={handleAlreadyRead}>
+                      <TouchableOpacity style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }]} onPress={handleAlreadyRead}>
                         <Text style={styles.btnText}>Already Read It</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.btn, styles.btnOutlineGold]}
+                        style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }]}
                         onPress={handleNext}
                       >
                         <Text style={styles.btnText}>Next</Text>
@@ -2479,13 +2485,13 @@ function handleLeft() {
 
                     <View style={styles.recActions}>
                       <TouchableOpacity
-                        style={[styles.btn, styles.btnOutlineGold]}
+                        style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }]}
                         onPress={handleBack}
                       >
                         <Text style={styles.btnText}>Back</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
-                        style={[styles.btn, styles.btnOutlineGold]}
+                        style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }]}
                         onPress={tryAgain}
                       >
                         <Text style={styles.btnText}>Try Again</Text>
@@ -2495,7 +2501,7 @@ function handleLeft() {
                 ) : null}
 
                 <TouchableOpacity
-                  style={[styles.btn, styles.btnOutlineGold, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
+                  style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
                   onPress={() => (props.onOpenSearch ? props.onOpenSearch() : router.push("/(tabs)/index"))}
                 >
                   <Text style={styles.btnText}>Search on my own</Text>
@@ -2510,6 +2516,7 @@ function handleLeft() {
                     {...panResponder.panHandlers}
                     style={[
                       styles.card,
+                      { borderColor: highlightColor },
                       needsCardOffset && styles.cardOffset,
                       cardFitStyle,
                       { transform: [{ translateX: position.x }, { translateY: position.y }] },
@@ -2536,7 +2543,7 @@ function handleLeft() {
                     )}
 
                     {activeTwentyQObjective ? (
-                      <View style={styles.twentyQBadge}>
+                      <View style={[styles.twentyQBadge, { borderColor: highlightColor }]}>
                         <Text style={styles.twentyQBadgeTitle}>Rung {activeTwentyQObjective.rung}: {activeTwentyQObjective.label}</Text>
                         <Text style={styles.twentyQBadgeText}>{activeTwentyQObjective.description}</Text>
                         <Text style={styles.twentyQBadgeText}>
@@ -2561,6 +2568,7 @@ function handleLeft() {
                       style={({ pressed }) => [
                         styles.btn,
                         styles.btnOutlineGold,
+                        { borderColor: highlightColor },
                         pressed && styles.btnPressedBlue,
                         { marginTop: 12, minWidth: 220 },
                       ]}
@@ -2576,19 +2584,19 @@ function handleLeft() {
                 <>
                   <View style={styles.actionRow}>
                     <Pressable
-                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, pressed && styles.btnPressedBlue]}
+                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, pressed && styles.btnPressedBlue, pressed && { borderColor: highlightColor }]}
                       onPress={() => animateOffscreen("left", handleLeft)}
                     >
                       {({ pressed }) => <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Dislike</Text>}
                     </Pressable>
                     <Pressable
-                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, pressed && styles.btnPressedBlue]}
+                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, pressed && styles.btnPressedBlue, pressed && { borderColor: highlightColor }]}
                       onPress={() => animateOffscreen("down", handleDownNotSure)}
                     >
                       {({ pressed }) => <Text style={[styles.btnText, pressed && styles.btnTextOnPrimary]}>Skip</Text>}
                     </Pressable>
                     <Pressable
-                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, pressed && styles.btnPressedBlue]}
+                      style={({ pressed }) => [styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, pressed && styles.btnPressedBlue, pressed && { borderColor: highlightColor }]}
                       onPress={() =>
                         animateOffscreen("right", () => {
                           if (currentCard) handleRight(currentCard);
@@ -2602,6 +2610,7 @@ function handleLeft() {
                     style={({ pressed }) => [
                       styles.btn,
                       styles.btnOutlineGold,
+                      { borderColor: highlightColor },
                       pressed && styles.btnPressedBlue,
                       { marginTop: 12, minWidth: 220 },
                     ]}
@@ -2615,7 +2624,7 @@ function handleLeft() {
               )}
             </View>
           ) : (
-            <View style={styles.doneCard}>
+            <View style={[styles.doneCard, { borderColor: highlightColor }]}>
               <Text style={styles.doneTitle}>No cards found</Text>
               <Text style={styles.doneSub}>This deck is empty.</Text>
             </View>

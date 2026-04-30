@@ -1,6 +1,7 @@
 import {
+  useEffect,
   useMemo,
-    useRef,
+  useRef,
   useState
 } from "react";
 import { router } from "expo-router";
@@ -23,7 +24,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
-import { buildTheme, type ThemeKey, type HighlightKey } from "../../constants/brandTheme";
+import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey, type TitleTextKey } from "../../constants/brandTheme";
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -183,6 +184,8 @@ function themeLabel(t: ThemeKey) {
       return "Forest Green";
     case "cardinal_red":
       return "Cardinal Red";
+    case "pink":
+      return "Pink";
     case "purple":
       return "Purple";
     case "slate":
@@ -266,32 +269,33 @@ function StudentView(props: {
 
   return (
     <View style={{ width: "100%", maxWidth: 720 }}>
-      {/* Header row with logo (upper left) */}
-      <View style={styles.headerRow}>
-        <View style={styles.headerLeft}>
-          {props.logoDataUrl ? (
-            <Image
-              source={{ uri: props.logoDataUrl }}
-              style={[styles.uploadedLogo, { borderColor: props.theme.lightBorder }]}
-              resizeMode="contain"
-            />
-          ) : (
-            <DefaultBookLogo highlight={props.theme.highlight} />
-          )}
-        </View>
+      {/* Header row with same outlined banner treatment as main page */}
+      <View style={[styles.headerFrame, { backgroundColor: props.theme.accent, borderColor: props.theme.highlight }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            {props.logoDataUrl ? (
+              <Image
+                source={{ uri: props.logoDataUrl }}
+                style={[styles.uploadedLogo, { borderColor: props.theme.lightBorder }]}
+                resizeMode="contain"
+              />
+            ) : (
+              <DefaultBookLogo highlight={props.theme.highlight} />
+            )}
+          </View>
 
-        <TouchableOpacity
-          onPress={props.onTitleTap}
-          style={styles.headerCenter}
-          accessibilityRole="button"
-        >
-          <View style={styles.titleRow}>
+          <TouchableOpacity
+            onPress={props.onTitleTap}
+            style={styles.headerCenter}
+            accessibilityRole="button"
+          >
+            <View style={styles.titleRow}>
 
             {(((props.libraryName) || "").trim().length > 0) ? (
 
               <Text
 
-                style={[styles.title, { color: props.theme.text }]}
+                style={[styles.title, { color: props.theme.titleText }]}
 
                 numberOfLines={1}
 
@@ -307,7 +311,7 @@ function StudentView(props: {
 
               <>
 
-                <Text style={[styles.title, { color: props.theme.text }]}>Novel</Text>
+                <Text style={[styles.title, { color: props.theme.titleText }]} >Novel</Text>
 
                             <View
 
@@ -323,17 +327,18 @@ function StudentView(props: {
 
                             />
 
-                            <Text style={[styles.title, { color: props.theme.text }]}>Ideas</Text>
+                            <Text style={[styles.title, { color: props.theme.titleText }]}>Ideas</Text>
 
               </>
 
             )}
 
           </View>
-          <Text style={[styles.subtitle, { color: props.theme.muted }]}>Book Finder</Text>
-        </TouchableOpacity>
+            <Text style={[styles.subtitle, { color: props.theme.highlight }]}>Book Finder</Text>
+          </TouchableOpacity>
 
-        <View style={styles.headerRight} />
+          <View style={styles.headerRight} />
+        </View>
       </View>
 
       <View
@@ -431,6 +436,16 @@ function StudentView(props: {
             <View style={styles.rowBetween}>
               <TouchableOpacity
                 style={[
+                  styles.smallBtn,
+                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
+                ]}
+                onPress={props.onClear}
+              >
+                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
                   styles.primaryBtn,
                   { backgroundColor: props.theme.accent, borderColor: props.theme.accentBorder },
                 ]}
@@ -439,16 +454,6 @@ function StudentView(props: {
                 <Text style={[styles.primaryBtnText, { color: props.theme.accentTextOn }]}>
                   Search
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.smallBtn,
-                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
-                ]}
-                onPress={props.onClear}
-              >
-                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
               </TouchableOpacity>
             </View>
 
@@ -564,7 +569,6 @@ function StudentView(props: {
           </>
         )}
 
-        <Text style={[styles.hint, { color: props.theme.muted }]}>Tap the title 7 times to open Admin.</Text>
       </View>
     </View>
   );
@@ -874,6 +878,7 @@ setMainThemeKey: (t: ThemeKey) => void;
               "sky_blue",
               "forest_green",
               "cardinal_red",
+              "pink",
               "purple",
               "slate",
               "gold_accent",
@@ -923,6 +928,7 @@ setMainThemeKey: (t: ThemeKey) => void;
               "sky_blue",
               "forest_green",
               "cardinal_red",
+              "pink",
               "purple",
               "slate",
             ] as HighlightKey[]
@@ -1474,6 +1480,9 @@ export default function HomeScreen() {
     () => buildTheme(mainThemeKey, highlightKey, titleTextKey),
     [mainThemeKey, highlightKey, titleTextKey]
   );
+  useEffect(() => {
+    if (Platform.OS === "web") applyWebHighlightColor(theme.highlight);
+  }, [theme.highlight]);
 
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
@@ -1827,7 +1836,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
   }
 
   const saveButtonLabel = hasUnsavedChanges ? "Save Settings" : "Saved";
-  const saveButtonStyle = hasUnsavedChanges ? styles.saveBtnYellow : styles.saveBtnGreen;
+  const saveButtonStyle = hasUnsavedChanges
+    ? { backgroundColor: theme.highlight, borderColor: theme.lightBorder }
+    : styles.saveBtnGreen;
 
   // Admin view takes precedence and is reachable from BOTH swipe + search
   if (adminUnlocked) {
@@ -2110,7 +2121,6 @@ const styles = StyleSheet.create({
     minWidth: 140,
     borderWidth: 1,
   },
-  saveBtnYellow: { backgroundColor: "#fbbf24", borderColor: "#f59e0b" },
   saveBtnGreen: { backgroundColor: "#22c55e", borderColor: "#16a34a" },
   saveBtnText: { color: "#0b1e33", fontWeight: "900" },
 
