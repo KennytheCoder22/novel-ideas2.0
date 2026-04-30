@@ -700,9 +700,74 @@ function cardTagCounts(card: any): TagCounts {
   return {};
 }
 
+function recommendationAuthor(doc: any): string {
+  if (!doc) return "Unknown author";
+  if (Array.isArray(doc.author_name) && doc.author_name.length > 0) return String(doc.author_name[0]);
+  if (Array.isArray(doc.authors) && doc.authors.length > 0) return String(doc.authors[0]);
+  if (typeof doc.author === "string" && doc.author.trim()) return doc.author.trim();
+  return "Unknown author";
+}
+
+function recommendationCoverUrl(doc: any): string | null {
+  if (!doc) return null;
+  const directImage =
+    (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
+    (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
+    "";
+  if (directImage) return directImage.replace(/^http:\/\//, "https://");
+  const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, "L");
+  if (fromCoverId) return fromCoverId;
+  const thumbnail =
+    (typeof doc?.imageLinks?.thumbnail === "string" && doc.imageLinks.thumbnail) ||
+    (typeof doc?.imageLinks?.smallThumbnail === "string" && doc.imageLinks.smallThumbnail) ||
+    (typeof doc?.volumeInfo?.imageLinks?.thumbnail === "string" && doc.volumeInfo.imageLinks.thumbnail) ||
+    (typeof doc?.volumeInfo?.imageLinks?.smallThumbnail === "string" && doc.volumeInfo.imageLinks.smallThumbnail) ||
+    (typeof doc?.thumbnail === "string" && doc.thumbnail) ||
+    (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
+    (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
+    "";
+  return thumbnail ? thumbnail.replace(/^http:\/\//, "https://") : null;
+}
+
 function directTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVector | null {
   if (!card || !(card as any)?.tasteTraits) return null;
   return tasteVectorFromAxes((card as any).tasteTraits);
+}
+
+function semanticTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVector | null {
+  if (!card) return null;
+
+  const semantic = (card as any)?.semantic || {};
+  const derivedTagCounts: TagCounts = {};
+
+  const addTag = (raw: unknown, prefix = "theme") => {
+    const token = String(raw || "").trim().toLowerCase();
+    if (!token) return;
+    const key = token.includes(":") ? token : `${prefix}:${token}`;
+    derivedTagCounts[key] = (derivedTagCounts[key] || 0) + 1;
+  };
+
+  const addTokens = (tokens: unknown, prefix: string) => {
+    if (!Array.isArray(tokens)) return;
+    for (const token of tokens) addTag(token, prefix);
+  };
+
+  addTokens((card as any)?.tags, "theme");
+  addTag((card as any)?.genre, "genre");
+  addTokens(semantic.contentTraits, "theme");
+  addTokens(semantic.toneTraits, "vibe");
+  addTokens(semantic.characterTraits, "theme");
+  addTokens(semantic.storyTraits, "theme");
+  addTokens(semantic.aversionTraits, "theme");
+
+  if (Object.keys(derivedTagCounts).length === 0) return null;
+
+  const inferred = buildTasteProfile({
+    tagCounts: derivedTagCounts,
+    feedback: [] as TasteFeedbackEvent[],
+    itemTraitsById: {},
+  });
+  return tasteVectorFromAxes((inferred as any)?.axes);
 }
 
 function weightedDirectTraitsHistory(
@@ -713,7 +778,7 @@ function weightedDirectTraitsHistory(
 
   return decisionHistory
     .map((entry) => {
-      const direct = directTraitsFromCard(entry.card);
+      const direct = directTraitsFromCard(entry.card) || semanticTraitsFromCard(entry.card);
       if (!direct) return null;
 
       const directionScale = entry.direction === "like" ? 1 : -1;
@@ -2221,7 +2286,7 @@ function handleLeft() {
     if (!currentRec) return "";
     if (currentRec.kind === "open_library") {
       const t = currentRec.doc?.title ?? "";
-      const a = currentRec.doc?.author_name?.[0] ?? "";
+      const a = recommendationAuthor(currentRec.doc);
       return `ol::${t}::${a}`.toLowerCase();
     }
     const t = currentRec.book?.title ?? "";
@@ -2232,12 +2297,13 @@ function handleLeft() {
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      if (!currentRec || currentRec.kind !== "fallback") return;
+      if (!currentRec) return;
       const key = currentRecKey;
       if (!key || recCoverCache[key]) return;
-      const title = currentRec.book?.title;
-      const author = currentRec.book?.author;
+      const title = currentRec.kind === "open_library" ? currentRec.doc?.title : currentRec.book?.title;
+      const author = currentRec.kind === "open_library" ? recommendationAuthor(currentRec.doc) : currentRec.book?.author;
       if (!title) return;
+      if (currentRec.kind === "open_library" && recommendationCoverUrl(currentRec.doc)) return;
       try {
         const found = await lookupOpenLibraryCover(title, author);
         if (cancelled) return;
@@ -2396,7 +2462,7 @@ function handleLeft() {
                     <View style={styles.bigCoverWrap}>
                       {currentRec.kind === "open_library" ? (
                         (() => {
-                          const cover = coverUrlFromCoverId(currentRec.doc.cover_i, "L");
+                          const cover = recommendationCoverUrl(currentRec.doc) || recCoverCache[currentRecKey] || null;
                           return cover ? (
                             <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
                           ) : (
@@ -2420,9 +2486,7 @@ function handleLeft() {
                       </Text>
                       <Text style={styles.recBookAuthor} numberOfLines={1}>
                         {currentRec.kind === "open_library"
-                          ? Array.isArray(currentRec.doc.author_name) && currentRec.doc.author_name.length > 0
-                            ? currentRec.doc.author_name[0]
-                            : "Unknown author"
+                          ? recommendationAuthor(currentRec.doc)
                           : currentRec.book.author ?? "Unknown author"}
                       </Text>
                       <Text style={styles.recCounter}>
