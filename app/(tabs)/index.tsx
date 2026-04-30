@@ -446,17 +446,9 @@ function StudentView(props: {
             {props.results.length > 0 ? (
               <View style={styles.singleResultWrap}>
                 <Text style={[styles.sectionTitle, { color: props.theme.text, marginTop: 6 }]}>Results</Text>
-                <View style={styles.singleResultNav}>
-                  <TouchableOpacity style={[styles.smallBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onPrevResult}>
-                    <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Back</Text>
-                  </TouchableOpacity>
-                  <Text style={[styles.smallNote, { color: props.theme.muted }]}>
-                    {props.currentResultIndex + 1} of {props.results.length}
-                  </Text>
-                  <TouchableOpacity style={[styles.smallBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onNextResult}>
-                    <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Next</Text>
-                  </TouchableOpacity>
-                </View>
+                <Text style={[styles.smallNote, { color: props.theme.muted, textAlign: "center" }]}>
+                  {props.currentResultIndex + 1} of {props.results.length}
+                </Text>
               </View>
             ) : null}
 
@@ -468,13 +460,21 @@ function StudentView(props: {
                 const year = d.first_publish_year ? ` (${d.first_publish_year})` : "";
                 const cover = coverUrlFromCoverId(d.cover_i, "M");
                 return (
-                  <View style={[styles.resultRow, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
-                    {cover ? <Image source={{ uri: cover }} style={styles.cover} resizeMode="cover" /> : <View style={[styles.coverPlaceholder, { borderColor: props.theme.resultBorder }]}><Text style={[styles.coverPlaceholderText, { color: props.theme.muted }]}>No cover</Text></View>}
-                    <View style={styles.resultMeta}>
-                      <Text style={[styles.resultTitle, { color: props.theme.text }]} numberOfLines={2}>{title}<Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text></Text>
-                      <Text style={[styles.resultAuthor, { color: props.theme.subtext }]} numberOfLines={1}>{author}</Text>
-                      <Text style={[styles.resultHint, { color: props.theme.muted }]}>Open Library result</Text>
+                  <View style={styles.resultCarouselRow}>
+                    <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onPrevResult}>
+                      <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Back</Text>
+                    </TouchableOpacity>
+                    <View style={[styles.resultRow, styles.resultRowCompact, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
+                      {cover ? <Image source={{ uri: cover }} style={styles.cover} resizeMode="cover" /> : <View style={[styles.coverPlaceholder, { borderColor: props.theme.resultBorder }]}><Text style={[styles.coverPlaceholderText, { color: props.theme.muted }]}>No cover</Text></View>}
+                      <View style={styles.resultMeta}>
+                        <Text style={[styles.resultTitle, { color: props.theme.text }]} numberOfLines={2}>{title}<Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text></Text>
+                        <Text style={[styles.resultAuthor, { color: props.theme.subtext }]} numberOfLines={1}>{author}</Text>
+                        <Text style={[styles.resultHint, { color: props.theme.muted }]}>Open Library result</Text>
+                      </View>
                     </View>
+                    <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onNextResult}>
+                      <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Next</Text>
+                    </TouchableOpacity>
                   </View>
                 );
               })()
@@ -2152,7 +2152,9 @@ const styles = StyleSheet.create({
 
   resultActions: { marginTop: 10, flexDirection: "row", gap: 10 as any },
   singleResultWrap: { marginTop: 8 },
-  singleResultNav: { marginTop: 6, marginBottom: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  resultCarouselRow: { marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 as any },
+  resultRowCompact: { flex: 1, maxWidth: 520, alignSelf: "center" },
+  resultNavBtn: { minWidth: 90 },
   tinyBtn: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, backgroundColor: "rgba(11, 30, 51, 0.9)" },
   tinyBtnText: { fontWeight: "800", fontSize: 12 },
 
