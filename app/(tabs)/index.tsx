@@ -256,6 +256,7 @@ function StudentView(props: {
   onClear: () => void;
   onTitleTap: () => void;
   queryInputRef: any;
+  showHeader?: boolean;
 }) {
   const enabledList = (["k2", "36", "ms_hs", "adult"] as DeckKey[])
     .filter((k) => !!props.enabledDecks[k])
@@ -269,32 +270,33 @@ function StudentView(props: {
 
   return (
     <View style={{ width: "100%", maxWidth: 720 }}>
-      {/* Header row with logo (upper left) */}
-      <View style={styles.headerRow}>
-        <View style={styles.headerLeft}>
-          {props.logoDataUrl ? (
-            <Image
-              source={{ uri: props.logoDataUrl }}
-              style={[styles.uploadedLogo, { borderColor: props.theme.lightBorder }]}
-              resizeMode="contain"
-            />
-          ) : (
-            <DefaultBookLogo highlight={props.theme.highlight} />
-          )}
-        </View>
+      {props.showHeader !== false ? (
+      <View style={[styles.headerFrame, { backgroundColor: props.theme.accent, borderColor: props.theme.highlight }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            {props.logoDataUrl ? (
+              <Image
+                source={{ uri: props.logoDataUrl }}
+                style={[styles.uploadedLogo, { borderColor: props.theme.lightBorder }]}
+                resizeMode="contain"
+              />
+            ) : (
+              <DefaultBookLogo highlight={props.theme.highlight} />
+            )}
+          </View>
 
-        <TouchableOpacity
-          onPress={props.onTitleTap}
-          style={styles.headerCenter}
-          accessibilityRole="button"
-        >
-          <View style={styles.titleRow}>
+          <TouchableOpacity
+            onPress={props.onTitleTap}
+            style={styles.headerCenter}
+            accessibilityRole="button"
+          >
+            <View style={styles.titleRow}>
 
             {(((props.libraryName) || "").trim().length > 0) ? (
 
               <Text
 
-                style={[styles.title, { color: props.theme.text }]}
+                style={[styles.title, { color: props.theme.titleText }]}
 
                 numberOfLines={1}
 
@@ -310,7 +312,7 @@ function StudentView(props: {
 
               <>
 
-                <Text style={[styles.title, { color: props.theme.text }]}>Novel</Text>
+                <Text style={[styles.title, { color: props.theme.titleText }]} >Novel</Text>
 
                             <View
 
@@ -326,18 +328,20 @@ function StudentView(props: {
 
                             />
 
-                            <Text style={[styles.title, { color: props.theme.text }]}>Ideas</Text>
+                            <Text style={[styles.title, { color: props.theme.titleText }]}>Ideas</Text>
 
               </>
 
             )}
 
           </View>
-          <Text style={[styles.subtitle, { color: props.theme.muted }]}>Book Finder</Text>
-        </TouchableOpacity>
+            <Text style={[styles.subtitle, { color: props.theme.highlight }]}>Book Finder</Text>
+          </TouchableOpacity>
 
-        <View style={styles.headerRight} />
+          <View style={styles.headerRight} />
+        </View>
       </View>
+      ) : null}
 
       <View
         style={[
@@ -380,6 +384,10 @@ function StudentView(props: {
                     borderWidth: 1.5,
                     borderRadius: 999,
                   },
+                  selected && {
+                    backgroundColor: props.theme.highlight,
+                    borderColor: props.theme.lightBorder,
+                  },
                   !enabled && styles.chipDisabled,
                 ]}
               >
@@ -387,6 +395,7 @@ function StudentView(props: {
                   style={[
                     styles.chipText,
                     { color: props.theme.text },
+                    selected && { color: props.theme.highlightTextOn },
                     !enabled && styles.chipTextDisabled,
                   ]}
                 >
@@ -434,6 +443,16 @@ function StudentView(props: {
             <View style={styles.rowBetween}>
               <TouchableOpacity
                 style={[
+                  styles.smallBtn,
+                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
+                ]}
+                onPress={props.onClear}
+              >
+                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
                   styles.primaryBtn,
                   { backgroundColor: props.theme.accent, borderColor: props.theme.accentBorder },
                 ]}
@@ -442,16 +461,6 @@ function StudentView(props: {
                 <Text style={[styles.primaryBtnText, { color: props.theme.accentTextOn }]}>
                   Search
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.smallBtn,
-                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
-                ]}
-                onPress={props.onClear}
-              >
-                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
               </TouchableOpacity>
             </View>
 
@@ -567,7 +576,6 @@ function StudentView(props: {
           </>
         )}
 
-        <Text style={[styles.hint, { color: props.theme.muted }]}>Tap the title 7 times to open Admin.</Text>
       </View>
     </View>
   );
@@ -1977,7 +1985,37 @@ logoDataUrl={logoDataUrl}
 
   // Search mode
   return (
-    <View style={[styles.container, { backgroundColor: theme.appBg }]}>
+    <View style={{ flex: 1, backgroundColor: theme.appBg }}>
+      <View style={[styles.headerFrame, { backgroundColor: theme.accent, borderColor: theme.highlight }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            {logoDataUrl ? (
+              <Image source={{ uri: logoDataUrl }} style={[styles.uploadedLogo, { borderColor: theme.lightBorder }]} resizeMode="contain" />
+            ) : (
+              <DefaultBookLogo highlight={theme.highlight} />
+            )}
+          </View>
+          <TouchableOpacity onPress={handleTitleTap} style={styles.headerCenter} accessibilityRole="button">
+            <View style={styles.titleRow}>
+              {(libraryName || "").trim().length > 0 ? (
+                <Text style={[styles.title, { color: theme.titleText }]} numberOfLines={1} ellipsizeMode="tail">
+                  {libraryName}
+                </Text>
+              ) : (
+                <>
+                  <Text style={[styles.title, { color: theme.titleText }]}>Novel</Text>
+                  <View style={[styles.titleDivider, { borderColor: theme.highlight }]} accessibilityLabel="Title divider" />
+                  <Text style={[styles.title, { color: theme.titleText }]}>Ideas</Text>
+                </>
+              )}
+            </View>
+            <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
+          </TouchableOpacity>
+          <View style={styles.headerRight} />
+        </View>
+      </View>
+
+      <View style={styles.searchStage}>
       <View style={styles.searchTopRow}>
         <TouchableOpacity
           style={[
@@ -2012,7 +2050,9 @@ logoDataUrl={logoDataUrl}
         }}
         onTitleTap={handleTitleTap}
         queryInputRef={queryInputRef}
+        showHeader={false}
       />
+      </View>
     </View>
   );
 }
@@ -2167,9 +2207,15 @@ const styles = StyleSheet.create({
 
   searchTopRow: {
     width: "100%",
-    maxWidth: 720,
     alignItems: "flex-start",
     marginBottom: 10,
+  },
+
+  searchStage: {
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
+    marginTop: 20,
   },
 
   swipeStage: {
