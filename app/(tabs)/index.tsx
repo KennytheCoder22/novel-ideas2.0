@@ -460,21 +460,21 @@ function StudentView(props: {
                 const year = d.first_publish_year ? ` (${d.first_publish_year})` : "";
                 const cover = coverUrlFromCoverId(d.cover_i, "M");
                 return (
-                  <View style={styles.resultCarouselRow}>
-                    <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onPrevResult}>
-                      <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Back</Text>
-                    </TouchableOpacity>
-                    <View style={[styles.resultRow, styles.resultRowCompact, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
-                      {cover ? <Image source={{ uri: cover }} style={styles.cover} resizeMode="cover" /> : <View style={[styles.coverPlaceholder, { borderColor: props.theme.resultBorder }]}><Text style={[styles.coverPlaceholderText, { color: props.theme.muted }]}>No cover</Text></View>}
-                      <View style={styles.resultMeta}>
-                        <Text style={[styles.resultTitle, { color: props.theme.text }]} numberOfLines={2}>{title}<Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text></Text>
-                        <Text style={[styles.resultAuthor, { color: props.theme.subtext }]} numberOfLines={1}>{author}</Text>
-                        <Text style={[styles.resultHint, { color: props.theme.muted }]}>Open Library result</Text>
-                      </View>
+                  <View style={[styles.resultRow, styles.resultRowCompact, styles.resultCardStack, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
+                    {cover ? <Image source={{ uri: cover }} style={styles.coverLarge} resizeMode="cover" /> : <View style={[styles.coverPlaceholder, styles.coverLarge, { borderColor: props.theme.resultBorder }]}><Text style={[styles.coverPlaceholderText, { color: props.theme.muted }]}>No cover</Text></View>}
+                    <View style={styles.resultMetaCentered}>
+                      <Text style={[styles.resultTitle, { color: props.theme.text, textAlign: "center" }]} numberOfLines={2}>{title}<Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text></Text>
+                      <Text style={[styles.resultAuthor, { color: props.theme.subtext, textAlign: "center" }]} numberOfLines={1}>{author}</Text>
+                      <Text style={[styles.resultHint, { color: props.theme.muted, textAlign: "center" }]}>Open Library result</Text>
                     </View>
-                    <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onNextResult}>
-                      <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Next</Text>
-                    </TouchableOpacity>
+                    <View style={styles.resultInternalNav}>
+                      <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onPrevResult}>
+                        <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Back</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onNextResult}>
+                        <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Next</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 );
               })()
@@ -2140,8 +2140,10 @@ const styles = StyleSheet.create({
 
   resultRow: { flexDirection: "row", gap: 14 as any, padding: 14, borderRadius: 16, borderWidth: 1.5, marginBottom: 12, alignItems: "center" },
   resultMeta: { flex: 1, justifyContent: "center" },
+  resultMetaCentered: { width: "100%", alignItems: "center", justifyContent: "center", marginTop: 10 },
 
   cover: { width: 72, height: 108, borderRadius: 10, backgroundColor: "#071526" },
+  coverLarge: { width: 96, height: 144, borderRadius: 12 },
   coverPlaceholder: { width: 72, height: 108, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center", padding: 6 },
   coverPlaceholderText: { fontSize: 10, textAlign: "center", fontWeight: "800" },
 
@@ -2152,8 +2154,9 @@ const styles = StyleSheet.create({
 
   resultActions: { marginTop: 10, flexDirection: "row", gap: 10 as any },
   singleResultWrap: { marginTop: 8 },
-  resultCarouselRow: { marginTop: 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 as any },
-  resultRowCompact: { flex: 1, maxWidth: 520, alignSelf: "center" },
+  resultRowCompact: { width: "100%", maxWidth: 480, alignSelf: "center" },
+  resultCardStack: { marginTop: 8, flexDirection: "column", alignItems: "center", justifyContent: "center" },
+  resultInternalNav: { marginTop: 12, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   resultNavBtn: { minWidth: 90 },
   tinyBtn: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, backgroundColor: "rgba(11, 30, 51, 0.9)" },
   tinyBtnText: { fontWeight: "800", fontSize: 12 },
