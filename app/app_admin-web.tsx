@@ -432,7 +432,7 @@ export default function AdminWebScreen() {
   }, [config, isWeb]);
 
   const mainThemeKey = (config?.branding?.mainTheme || config?.branding?.theme || config?.theme?.mainThemeKey || "dark_blue") as ThemeKey;
-  const highlightKey = (config?.branding?.highlight || config?.theme?.highlightKey || "gold_accent") as HighlightKey;
+  const highlightKey = (config?.branding?.highlight || "gold_accent") as HighlightKey;
   const titleTextKey = (config?.branding?.titleTextColor || config?.theme?.titleTextColor || "white") as TitleTextKey;
 
   const theme = useMemo(() => buildTheme(mainThemeKey, highlightKey), [mainThemeKey, highlightKey]);
@@ -680,14 +680,20 @@ export default function AdminWebScreen() {
                 try {
                   if (Platform.OS === "web") {
                     localStorage.removeItem("novelideas_admin_config");
-                    setConfig(deepClone(configFile));
+                    const base = deepClone(configFile);
+                    syncSchema(base);
+                    setConfig(base);
                     Alert.alert("Reset", "Reverted to defaults (and cleared saved draft).");
                   } else {
-                    setConfig(deepClone(configFile));
+                    const base = deepClone(configFile);
+                    syncSchema(base);
+                    setConfig(base);
                     Alert.alert("Reset", "Reverted to defaults.");
                   }
                 } catch {
-                  setConfig(deepClone(configFile));
+                  const base = deepClone(configFile);
+                  syncSchema(base);
+                  setConfig(base);
                 }
               }}
             >
