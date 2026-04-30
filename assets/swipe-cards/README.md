@@ -1,11 +1,17 @@
 Place local swipe-card images here and register them in `data/swipeCardImageMap.ts`.
 
-Example:
+### Automated population
 
-```ts
-export const SWIPE_CARD_LOCAL_IMAGE_MAP = {
-  "the expanse::prime video": require("../assets/swipe-cards/the-expanse.jpg"),
-};
+Run:
+
+```bash
+node scripts/fetch-swipe-images.mjs
 ```
 
-This allows swipe cards to render without any network lookups.
+This script:
+1. Parses deck files for card titles / wiki titles.
+2. Downloads Wikipedia thumbnails.
+3. Writes local files into this folder.
+4. Rewrites `data/swipeCardImageMap.ts` with the mapped local assets.
+
+This allows swipe cards to render without runtime network lookups.
