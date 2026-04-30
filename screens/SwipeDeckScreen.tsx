@@ -700,6 +700,28 @@ function cardTagCounts(card: any): TagCounts {
   return {};
 }
 
+function recommendationAuthor(doc: any): string {
+  if (!doc) return "Unknown author";
+  if (Array.isArray(doc.author_name) && doc.author_name.length > 0) return String(doc.author_name[0]);
+  if (Array.isArray(doc.authors) && doc.authors.length > 0) return String(doc.authors[0]);
+  if (typeof doc.author === "string" && doc.author.trim()) return doc.author.trim();
+  return "Unknown author";
+}
+
+function recommendationCoverUrl(doc: any): string | null {
+  if (!doc) return null;
+  const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, "L");
+  if (fromCoverId) return fromCoverId;
+  const thumbnail =
+    (typeof doc?.imageLinks?.thumbnail === "string" && doc.imageLinks.thumbnail) ||
+    (typeof doc?.imageLinks?.smallThumbnail === "string" && doc.imageLinks.smallThumbnail) ||
+    (typeof doc?.thumbnail === "string" && doc.thumbnail) ||
+    (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
+    (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
+    "";
+  return thumbnail ? thumbnail.replace(/^http:\/\//, "https://") : null;
+}
+
 function directTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVector | null {
   if (!card || !(card as any)?.tasteTraits) return null;
   return tasteVectorFromAxes((card as any).tasteTraits);
@@ -2432,7 +2454,7 @@ function handleLeft() {
                     <View style={styles.bigCoverWrap}>
                       {currentRec.kind === "open_library" ? (
                         (() => {
-                          const cover = coverUrlFromCoverId(currentRec.doc.cover_i, "L");
+                          const cover = recommendationCoverUrl(currentRec.doc);
                           return cover ? (
                             <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
                           ) : (
@@ -2456,9 +2478,7 @@ function handleLeft() {
                       </Text>
                       <Text style={styles.recBookAuthor} numberOfLines={1}>
                         {currentRec.kind === "open_library"
-                          ? Array.isArray(currentRec.doc.author_name) && currentRec.doc.author_name.length > 0
-                            ? currentRec.doc.author_name[0]
-                            : "Unknown author"
+                          ? recommendationAuthor(currentRec.doc)
                           : currentRec.book.author ?? "Unknown author"}
                       </Text>
                       <Text style={styles.recCounter}>

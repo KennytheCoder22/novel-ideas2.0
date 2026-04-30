@@ -2001,6 +2001,12 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
 
 function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfile): RecommendationDoc {
   const rawDoc = ((c.rawDoc || {}) as RecommendationDoc) || ({} as RecommendationDoc);
+  const authorName =
+    (Array.isArray((rawDoc as any).author_name) && (rawDoc as any).author_name[0]) ||
+    (Array.isArray((rawDoc as any).authors) && (rawDoc as any).authors[0]) ||
+    (typeof (rawDoc as any).author === "string" ? (rawDoc as any).author : "") ||
+    c.author ||
+    "";
   const personalFitReasons = buildPersonalFitReasons(c, taste);
   const cluster = inferSessionPreferenceCluster(taste);
   const matchedPositive = cluster.preferredTerms.filter((term) => haystack(c).includes(term)).slice(0, 4);
@@ -2016,9 +2022,16 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
     author_name:
       Array.isArray((rawDoc as any).author_name) && (rawDoc as any).author_name.length
         ? (rawDoc as any).author_name
-        : c.author
-        ? [c.author]
+        : authorName
+        ? [authorName]
         : (rawDoc as any).author_name,
+    author: authorName || (rawDoc as any).author,
+    authors:
+      Array.isArray((rawDoc as any).authors) && (rawDoc as any).authors.length
+        ? (rawDoc as any).authors
+        : authorName
+        ? [authorName]
+        : (rawDoc as any).authors,
     first_publish_year: c.publicationYear || (rawDoc as any).first_publish_year,
     preFilterScore: breakdown.finalScore,
     postFilterScore: breakdown.finalScore,
