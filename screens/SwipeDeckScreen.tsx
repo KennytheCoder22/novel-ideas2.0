@@ -39,6 +39,7 @@ import type { MoodProfile, SwipeSignal } from "./recommenders/taste/sessionMood"
 import type { RecommenderInput } from "./recommenders/types";
 import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/sophisticationModel";
 import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
+import { localSwipeImageForCard } from "../data/swipeCardImageMap";
 
 const DEFAULT_SWIPE_CATEGORIES = {
   books: true,
@@ -1236,6 +1237,8 @@ export default function SwipeDeckScreen(props: Props) {
 
   const currentSwipeCoverUri = useMemo(() => {
     if (!currentCard) return undefined;
+    const localImage = localSwipeImageForCard(currentCard);
+    if (localImage) return localImage;
     const explicitImage = (currentCard as any)?.imageUri as string | undefined;
     if (explicitImage && explicitImage.trim().length > 0) return explicitImage;
     return swipeCoverCache[currentCardKey];
@@ -2327,7 +2330,11 @@ function handleLeft() {
                     ]}
                   >
                     {currentSwipeCoverUri ? (
-                      <Image source={{ uri: currentSwipeCoverUri }} style={styles.swipeCover} resizeMode="contain" />
+                      <Image
+                        source={typeof currentSwipeCoverUri === "string" ? { uri: currentSwipeCoverUri } : currentSwipeCoverUri}
+                        style={styles.swipeCover}
+                        resizeMode="contain"
+                      />
                     ) : null}
 
                     {((currentCard as any)?.title || (currentCard as any)?.author || (currentCard as any)?.genre) ? (
