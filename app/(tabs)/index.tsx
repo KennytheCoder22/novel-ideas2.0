@@ -1985,7 +1985,7 @@ logoDataUrl={logoDataUrl}
 
   // Search mode
   return (
-    <View style={[styles.container, { backgroundColor: theme.appBg }]}>
+    <View style={{ flex: 1, backgroundColor: theme.appBg }}>
       <View style={[styles.headerFrame, { backgroundColor: theme.accent, borderColor: theme.highlight }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
@@ -2009,12 +2009,13 @@ logoDataUrl={logoDataUrl}
                 </>
               )}
             </View>
-            <Text style={[styles.subtitle, { color: theme.highlight }]}>Book Finder</Text>
+            <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
           </TouchableOpacity>
           <View style={styles.headerRight} />
         </View>
       </View>
 
+      <View style={styles.searchStage}>
       <View style={styles.searchTopRow}>
         <TouchableOpacity
           style={[
@@ -2051,6 +2052,7 @@ logoDataUrl={logoDataUrl}
         queryInputRef={queryInputRef}
         showHeader={false}
       />
+      </View>
     </View>
   );
 }
@@ -2205,9 +2207,15 @@ const styles = StyleSheet.create({
 
   searchTopRow: {
     width: "100%",
-    maxWidth: 720,
     alignItems: "flex-start",
     marginBottom: 10,
+  },
+
+  searchStage: {
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
+    marginTop: 20,
   },
 
   swipeStage: {
