@@ -133,7 +133,7 @@ function syncSchema(cfg: any) {
   // Legacy (older web configs): theme.mainThemeKey + theme.highlightKey
   cfg.theme = (cfg.theme && typeof cfg.theme === "object") ? cfg.theme : {};
 
-  const themeKeys = ["classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "purple", "slate", "gold_accent"] as const;
+  const themeKeys = ["classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "pink", "purple", "slate", "gold_accent"] as const;
 
 const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly ThemeKey[];
   const highlightKeys = ["white", "black", "silver", ...themeKeys] as const;
@@ -147,7 +147,9 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
   const isTitleTextKey = (v: any): v is TitleTextKey => v === "white" || v === "black";
 
   const mainCandidate = cfg?.branding?.mainTheme ?? cfg?.branding?.theme ?? cfg?.theme?.mainThemeKey;
-  const highlightCandidate = cfg?.branding?.highlight ?? cfg?.theme?.highlightKey;
+  // Default highlight should be Gold unless an explicit branding highlight exists.
+  // Ignore legacy theme.highlightKey for first-load defaults to avoid blue override.
+  const highlightCandidate = cfg?.branding?.highlight;
   const titleTextCandidate = cfg?.branding?.titleTextColor ?? cfg?.theme?.titleTextColor;
 
   // UI default: if nothing is set, treat it as Dark Blue (i.e., the app's built-in default theme).
@@ -223,6 +225,7 @@ type ThemeKey =
   | "forest_green"
   | "kelly_green"
   | "cardinal_red"
+  | "pink"
   | "purple"
   | "slate"
   | "gold_accent";
@@ -266,6 +269,8 @@ function themeLabel(t: ThemeKey) {
       return "Kelly Green";
     case "cardinal_red":
       return "Cardinal Red";
+    case "pink":
+      return "Pink";
     case "purple":
       return "Purple";
     case "slate":
@@ -310,6 +315,7 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
     sky_blue: { accent: "#38bdf8", accentBorder: "#0284c7", accentTextOn: "#0b1e33" },    forest_green: { accent: "#15803d", accentBorder: "#166534", accentTextOn: "#f9fafb" },
     kelly_green: { accent: "#22c55e", accentBorder: "#16a34a", accentTextOn: "#0b1e33" },
     cardinal_red: { accent: "#ef4444", accentBorder: "#dc2626", accentTextOn: "#0b1e33" },
+    pink: { accent: "#ec4899", accentBorder: "#db2777", accentTextOn: "#0b1e33" },
     purple: { accent: "#a855f7", accentBorder: "#7c3aed", accentTextOn: "#0b1e33" },
     slate: { accent: "#64748b", accentBorder: "#475569", accentTextOn: "#f9fafb" },
     gold_accent: { accent: "#fbbf24", accentBorder: "#f59e0b", accentTextOn: "#1f2933" },
@@ -320,6 +326,7 @@ function buildTheme(mainThemeKey: ThemeKey, highlightKey: HighlightKey) {
     sky_blue: { highlight: "#38bdf8", highlightBorder: "#0284c7", highlightTextOn: "#0b1e33" },    forest_green: { highlight: "#15803d", highlightBorder: "#166534", highlightTextOn: "#f9fafb" },
     kelly_green: { highlight: "#22c55e", highlightBorder: "#16a34a", highlightTextOn: "#0b1e33" },
     cardinal_red: { highlight: "#ef4444", highlightBorder: "#dc2626", highlightTextOn: "#0b1e33" },
+    pink: { highlight: "#ec4899", highlightBorder: "#db2777", highlightTextOn: "#0b1e33" },
     purple: { highlight: "#a855f7", highlightBorder: "#7c3aed", highlightTextOn: "#0b1e33" },
     slate: { highlight: "#64748b", highlightBorder: "#475569", highlightTextOn: "#f9fafb" },
     gold_accent: { highlight: "#fbbf24", highlightBorder: "#f59e0b", highlightTextOn: "#1f2933" },
@@ -376,22 +383,7 @@ function PillButton(props: {
 
 
 export default function AdminWebScreen() {
-  if (Platform.OS !== "web") {
-    return (
-      <View style={{ flex: 1, padding: 18, justifyContent: "center", alignItems: "center" }}>
-        <Text style={{ color: "#e5efff", fontSize: 18, fontWeight: "800", marginBottom: 10 }}>
-          Desktop Admin (Web Only)
-        </Text>
-        <Text style={{ color: "#cbd5f5", textAlign: "center", maxWidth: 520 }}>
-          This page is intended for desktop web. Open it in a browser (Expo web build) to edit settings, upload a logo,
-          and generate a QR code to import on your phone.
-        </Text>
-        <TouchableOpacity style={{ marginTop: 18 }} onPress={() => router.back()}>
-          <Text style={{ color: "#93c5fd", fontWeight: "700" }}>Go back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  const isWeb = Platform.OS === "web";
 
   const [config, setConfig] = useState<any>(() => {
     const base = deepClone(configFile);
@@ -410,22 +402,44 @@ export default function AdminWebScreen() {
     return base;
   });
   const [showQr, setShowQr] = useState(true);
+  const [uploadedCollectionCount, setUploadedCollectionCount] = useState<number>(() => {
+    try {
+      if (!isWeb || typeof localStorage === "undefined") return 0;
+      const saved = localStorage.getItem("novelideas_local_collection");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.length;
+      }
+      const csv = localStorage.getItem("novelideas_local_collection_csv");
+      if (csv) {
+        const rows = csv.split(/\r?\n/).filter((r) => r.trim().length > 0);
+        return Math.max(0, rows.length - 1);
+      }
+      return 0;
+    } catch {
+      return 0;
+    }
+  });
 
   // Persist draft on web so desktop edits survive refresh.
   useEffect(() => {
-    if (Platform.OS !== "web") return;
+    if (!isWeb) return;
     try {
       localStorage.setItem("novelideas_admin_config", JSON.stringify(config));
     } catch {
       // ignore
     }
-  }, [config]);
+  }, [config, isWeb]);
 
   const mainThemeKey = (config?.branding?.mainTheme || config?.branding?.theme || config?.theme?.mainThemeKey || "dark_blue") as ThemeKey;
-  const highlightKey = (config?.branding?.highlight || config?.theme?.highlightKey || "gold_accent") as HighlightKey;
+  const highlightKey = (config?.branding?.highlight || "gold_accent") as HighlightKey;
   const titleTextKey = (config?.branding?.titleTextColor || config?.theme?.titleTextColor || "white") as TitleTextKey;
 
   const theme = useMemo(() => buildTheme(mainThemeKey, highlightKey), [mainThemeKey, highlightKey]);
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof document === "undefined") return;
+    document.documentElement.style.setProperty("--highlight-color", theme.highlight);
+  }, [theme.highlight]);
 
   const libraryName = String(config?.branding?.libraryName || config?.library?.name || "").trim();
   const libraryId = useMemo(() => slugifyLibraryId(libraryName), [libraryName]);
@@ -548,6 +562,49 @@ export default function AdminWebScreen() {
     setPath(["branding", "logoTinyDataUrl"], null);
   };
 
+  const onUploadCollectionWeb = () => {
+    if (!isWeb || typeof document === "undefined" || typeof localStorage === "undefined") {
+      Alert.alert("Upload unavailable", "Collection upload is available on desktop web.");
+      return;
+    }
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json,.csv";
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const raw = String(reader.result || "");
+          let count = 0;
+          if (file.name.toLowerCase().endsWith(".json")) {
+            const parsed = JSON.parse(raw);
+            const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.items) ? parsed.items : [];
+            count = items.length;
+            localStorage.setItem("novelideas_local_collection", JSON.stringify(items));
+          } else {
+            const rows = raw.split(/\r?\n/).filter((r) => r.trim().length > 0);
+            count = Math.max(0, rows.length - 1);
+            localStorage.setItem("novelideas_local_collection_csv", raw);
+          }
+          setUploadedCollectionCount(count);
+          setPath(["recommendations", "localLibrarySupported"], true);
+          setPath(["recommendations", "sourceEnabled", "localLibrary"], true);
+          Alert.alert("Collection uploaded", `${count} items imported.`);
+        } catch {
+          Alert.alert("Upload failed", "Could not parse this file. Please upload valid JSON or CSV.");
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  if (!isWeb) {
+    return <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}><Text>Desktop Admin (Web Only)</Text></View>;
+  }
+
   const adminPinEnabled = !!config?.admin?.pinEnabled;
   const adminPin = String(config?.admin?.pin || "");
 
@@ -623,14 +680,20 @@ export default function AdminWebScreen() {
                 try {
                   if (Platform.OS === "web") {
                     localStorage.removeItem("novelideas_admin_config");
-                    setConfig(deepClone(configFile));
+                    const base = deepClone(configFile);
+                    syncSchema(base);
+                    setConfig(base);
                     Alert.alert("Reset", "Reverted to defaults (and cleared saved draft).");
                   } else {
-                    setConfig(deepClone(configFile));
+                    const base = deepClone(configFile);
+                    syncSchema(base);
+                    setConfig(base);
                     Alert.alert("Reset", "Reverted to defaults.");
                   }
                 } catch {
-                  setConfig(deepClone(configFile));
+                  const base = deepClone(configFile);
+                  syncSchema(base);
+                  setConfig(base);
                 }
               }}
             >
@@ -708,7 +771,7 @@ export default function AdminWebScreen() {
         <Text style={[styles.label, { color: theme.muted }]}>Main color</Text>
         <View style={styles.rowWrap}>
           {(
-            ["dark_blue", "classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "purple", "slate", "gold_accent"] as ThemeKey[]
+            ["dark_blue", "classic_blue", "sky_blue", "forest_green", "kelly_green", "cardinal_red", "pink", "purple", "slate", "gold_accent"] as ThemeKey[]
           ).map((tk) => {
             const selected = mainThemeKey === tk;
             const tkTheme = buildTheme(tk, highlightKey);
@@ -733,7 +796,7 @@ export default function AdminWebScreen() {
         <Text style={[styles.label, { color: theme.muted }]}>Highlight color</Text>
         <View style={styles.rowWrap}>
           {(
-            ["gold_accent", "white", "black", "silver", "classic_blue", "sky_blue", "forest_green", "cardinal_red", "purple", "slate"] as HighlightKey[]
+            ["gold_accent", "white", "black", "silver", "classic_blue", "sky_blue", "forest_green", "cardinal_red", "pink", "purple", "slate"] as HighlightKey[]
           ).map((hk) => {
             const selected = highlightKey === hk;
             const hkTheme = buildTheme(mainThemeKey, hk);
@@ -816,6 +879,15 @@ export default function AdminWebScreen() {
             All recommendation sources are disabled. Enable at least one source.
           </Text>
         ) : null}
+        <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <TouchableOpacity
+            style={[styles.btn, { borderColor: theme.cardBorder, backgroundColor: theme.inputBg }]}
+            onPress={onUploadCollectionWeb}
+          >
+            <Text style={[styles.btnText, { color: theme.text }]}>Upload Collection (CSV/JSON)</Text>
+          </TouchableOpacity>
+          <Text style={{ color: theme.subtext, fontSize: 12 }}>Items: {uploadedCollectionCount}</Text>
+        </View>
 
         <View style={[styles.divider, { backgroundColor: theme.cardBorder }]} />
 

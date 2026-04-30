@@ -1,6 +1,7 @@
 import {
+  useEffect,
   useMemo,
-    useRef,
+  useRef,
   useState
 } from "react";
 import { router } from "expo-router";
@@ -23,7 +24,7 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
-import { buildTheme, type ThemeKey, type HighlightKey } from "../../constants/brandTheme";
+import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey, type TitleTextKey } from "../../constants/brandTheme";
 
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
@@ -183,6 +184,8 @@ function themeLabel(t: ThemeKey) {
       return "Forest Green";
     case "cardinal_red":
       return "Cardinal Red";
+    case "pink":
+      return "Pink";
     case "purple":
       return "Purple";
     case "slate":
@@ -253,6 +256,7 @@ function StudentView(props: {
   onClear: () => void;
   onTitleTap: () => void;
   queryInputRef: any;
+  showHeader?: boolean;
 }) {
   const enabledList = (["k2", "36", "ms_hs", "adult"] as DeckKey[])
     .filter((k) => !!props.enabledDecks[k])
@@ -266,32 +270,33 @@ function StudentView(props: {
 
   return (
     <View style={{ width: "100%", maxWidth: 720 }}>
-      {/* Header row with logo (upper left) */}
-      <View style={styles.headerRow}>
-        <View style={styles.headerLeft}>
-          {props.logoDataUrl ? (
-            <Image
-              source={{ uri: props.logoDataUrl }}
-              style={[styles.uploadedLogo, { borderColor: props.theme.lightBorder }]}
-              resizeMode="contain"
-            />
-          ) : (
-            <DefaultBookLogo highlight={props.theme.highlight} />
-          )}
-        </View>
+      {props.showHeader !== false ? (
+      <View style={[styles.headerFrame, { backgroundColor: props.theme.accent, borderColor: props.theme.highlight }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            {props.logoDataUrl ? (
+              <Image
+                source={{ uri: props.logoDataUrl }}
+                style={[styles.uploadedLogo, { borderColor: props.theme.lightBorder }]}
+                resizeMode="contain"
+              />
+            ) : (
+              <DefaultBookLogo highlight={props.theme.highlight} />
+            )}
+          </View>
 
-        <TouchableOpacity
-          onPress={props.onTitleTap}
-          style={styles.headerCenter}
-          accessibilityRole="button"
-        >
-          <View style={styles.titleRow}>
+          <TouchableOpacity
+            onPress={props.onTitleTap}
+            style={styles.headerCenter}
+            accessibilityRole="button"
+          >
+            <View style={styles.titleRow}>
 
             {(((props.libraryName) || "").trim().length > 0) ? (
 
               <Text
 
-                style={[styles.title, { color: props.theme.text }]}
+                style={[styles.title, { color: props.theme.titleText }]}
 
                 numberOfLines={1}
 
@@ -307,7 +312,7 @@ function StudentView(props: {
 
               <>
 
-                <Text style={[styles.title, { color: props.theme.text }]}>Novel</Text>
+                <Text style={[styles.title, { color: props.theme.titleText }]} >Novel</Text>
 
                             <View
 
@@ -323,18 +328,20 @@ function StudentView(props: {
 
                             />
 
-                            <Text style={[styles.title, { color: props.theme.text }]}>Ideas</Text>
+                            <Text style={[styles.title, { color: props.theme.titleText }]}>Ideas</Text>
 
               </>
 
             )}
 
           </View>
-          <Text style={[styles.subtitle, { color: props.theme.muted }]}>Book Finder</Text>
-        </TouchableOpacity>
+            <Text style={[styles.subtitle, { color: props.theme.highlight }]}>Book Finder</Text>
+          </TouchableOpacity>
 
-        <View style={styles.headerRight} />
+          <View style={styles.headerRight} />
+        </View>
       </View>
+      ) : null}
 
       <View
         style={[
@@ -377,6 +384,10 @@ function StudentView(props: {
                     borderWidth: 1.5,
                     borderRadius: 999,
                   },
+                  selected && {
+                    backgroundColor: props.theme.highlight,
+                    borderColor: props.theme.lightBorder,
+                  },
                   !enabled && styles.chipDisabled,
                 ]}
               >
@@ -384,6 +395,7 @@ function StudentView(props: {
                   style={[
                     styles.chipText,
                     { color: props.theme.text },
+                    selected && { color: props.theme.highlightTextOn },
                     !enabled && styles.chipTextDisabled,
                   ]}
                 >
@@ -431,6 +443,16 @@ function StudentView(props: {
             <View style={styles.rowBetween}>
               <TouchableOpacity
                 style={[
+                  styles.smallBtn,
+                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
+                ]}
+                onPress={props.onClear}
+              >
+                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
                   styles.primaryBtn,
                   { backgroundColor: props.theme.accent, borderColor: props.theme.accentBorder },
                 ]}
@@ -439,16 +461,6 @@ function StudentView(props: {
                 <Text style={[styles.primaryBtnText, { color: props.theme.accentTextOn }]}>
                   Search
                 </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.smallBtn,
-                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
-                ]}
-                onPress={props.onClear}
-              >
-                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Clear</Text>
               </TouchableOpacity>
             </View>
 
@@ -480,7 +492,7 @@ function StudentView(props: {
                         style={[
                           styles.resultRow,
                           {
-                            borderColor: props.theme.resultBorder,
+                            borderColor: props.theme.highlight,
                             backgroundColor: props.theme.resultBg,
                           },
                         ]}
@@ -505,18 +517,19 @@ function StudentView(props: {
                           </View>
                         )}
 
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.resultTitle, { color: props.theme.text }]}>
+                        <View style={styles.resultMeta}>
+                          <Text style={[styles.resultTitle, { color: props.theme.text }]} numberOfLines={2}>
                             {title}
                             <Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text>
                           </Text>
-                          <Text style={[styles.resultAuthor, { color: props.theme.subtext }]}>
+                          <Text style={[styles.resultAuthor, { color: props.theme.subtext }]} numberOfLines={1}>
                             {author}
                           </Text>
+                          <Text style={[styles.resultHint, { color: props.theme.muted }]}>Open Library result</Text>
 
                           <View style={styles.resultActions}>
                             <TouchableOpacity
-                              style={[styles.tinyBtn, { borderColor: props.theme.accentBorder }]}
+                              style={[styles.tinyBtn, { borderColor: props.theme.highlight }]}
                               onPress={() =>
                                 Alert.alert("Saved (v1)", `Added "${title}" to your list (coming next).`)
                               }
@@ -527,7 +540,7 @@ function StudentView(props: {
                             </TouchableOpacity>
 
                             <TouchableOpacity
-                              style={[styles.tinyBtn, { borderColor: props.theme.accentBorder }]}
+                              style={[styles.tinyBtn, { borderColor: props.theme.highlight }]}
                               onPress={() => Alert.alert("Feedback (v1)", "Ratings + DNF reasons next.")}
                             >
                               <Text style={[styles.tinyBtnText, { color: props.theme.text }]}>
@@ -564,7 +577,6 @@ function StudentView(props: {
           </>
         )}
 
-        <Text style={[styles.hint, { color: props.theme.muted }]}>Tap the title 7 times to open Admin.</Text>
       </View>
     </View>
   );
@@ -874,6 +886,7 @@ setMainThemeKey: (t: ThemeKey) => void;
               "sky_blue",
               "forest_green",
               "cardinal_red",
+              "pink",
               "purple",
               "slate",
               "gold_accent",
@@ -923,6 +936,7 @@ setMainThemeKey: (t: ThemeKey) => void;
               "sky_blue",
               "forest_green",
               "cardinal_red",
+              "pink",
               "purple",
               "slate",
             ] as HighlightKey[]
@@ -1474,6 +1488,9 @@ export default function HomeScreen() {
     () => buildTheme(mainThemeKey, highlightKey, titleTextKey),
     [mainThemeKey, highlightKey, titleTextKey]
   );
+  useEffect(() => {
+    if (Platform.OS === "web") applyWebHighlightColor(theme.highlight);
+  }, [theme.highlight]);
 
   const adminPinEnabled: boolean = !!config?.admin?.pinEnabled;
   const adminPin: string = typeof config?.admin?.pin === "string" ? config.admin.pin : "";
@@ -1827,7 +1844,9 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
   }
 
   const saveButtonLabel = hasUnsavedChanges ? "Save Settings" : "Saved";
-  const saveButtonStyle = hasUnsavedChanges ? styles.saveBtnYellow : styles.saveBtnGreen;
+  const saveButtonStyle = hasUnsavedChanges
+    ? { backgroundColor: theme.highlight, borderColor: theme.lightBorder }
+    : styles.saveBtnGreen;
 
   // Admin view takes precedence and is reachable from BOTH swipe + search
   if (adminUnlocked) {
@@ -1967,7 +1986,37 @@ logoDataUrl={logoDataUrl}
 
   // Search mode
   return (
-    <View style={[styles.container, { backgroundColor: theme.appBg }]}>
+    <View style={{ flex: 1, backgroundColor: theme.appBg }}>
+      <View style={[styles.headerFrame, { backgroundColor: theme.accent, borderColor: theme.highlight }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            {logoDataUrl ? (
+              <Image source={{ uri: logoDataUrl }} style={[styles.uploadedLogo, { borderColor: theme.lightBorder }]} resizeMode="contain" />
+            ) : (
+              <DefaultBookLogo highlight={theme.highlight} />
+            )}
+          </View>
+          <TouchableOpacity onPress={handleTitleTap} style={styles.headerCenter} accessibilityRole="button">
+            <View style={styles.titleRow}>
+              {(libraryName || "").trim().length > 0 ? (
+                <Text style={[styles.title, { color: theme.titleText }]} numberOfLines={1} ellipsizeMode="tail">
+                  {libraryName}
+                </Text>
+              ) : (
+                <>
+                  <Text style={[styles.title, { color: theme.titleText }]}>Novel</Text>
+                  <View style={[styles.titleDivider, { borderColor: theme.highlight }]} accessibilityLabel="Title divider" />
+                  <Text style={[styles.title, { color: theme.titleText }]}>Ideas</Text>
+                </>
+              )}
+            </View>
+            <Text style={[styles.subtitle, { color: theme.muted }]}>Book Finder</Text>
+          </TouchableOpacity>
+          <View style={styles.headerRight} />
+        </View>
+      </View>
+
+      <View style={styles.searchStage}>
       <View style={styles.searchTopRow}>
         <TouchableOpacity
           style={[
@@ -2002,7 +2051,9 @@ logoDataUrl={logoDataUrl}
         }}
         onTitleTap={handleTitleTap}
         queryInputRef={queryInputRef}
+        showHeader={false}
       />
+      </View>
     </View>
   );
 }
@@ -2110,22 +2161,23 @@ const styles = StyleSheet.create({
     minWidth: 140,
     borderWidth: 1,
   },
-  saveBtnYellow: { backgroundColor: "#fbbf24", borderColor: "#f59e0b" },
   saveBtnGreen: { backgroundColor: "#22c55e", borderColor: "#16a34a" },
   saveBtnText: { color: "#0b1e33", fontWeight: "900" },
 
   jsonBox: { marginTop: 8, maxHeight: 280, padding: 10, borderRadius: 12, borderWidth: 1 },
   jsonText: { fontSize: 11, lineHeight: 15 },
 
-  resultRow: { flexDirection: "row", gap: 12 as any, padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 10 },
+  resultRow: { flexDirection: "row", gap: 14 as any, padding: 14, borderRadius: 16, borderWidth: 1.5, marginBottom: 12, alignItems: "center" },
+  resultMeta: { flex: 1, justifyContent: "center" },
 
-  cover: { width: 56, height: 84, borderRadius: 8, backgroundColor: "#071526" },
-  coverPlaceholder: { width: 56, height: 84, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center", padding: 6 },
+  cover: { width: 72, height: 108, borderRadius: 10, backgroundColor: "#071526" },
+  coverPlaceholder: { width: 72, height: 108, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center", padding: 6 },
   coverPlaceholderText: { fontSize: 10, textAlign: "center", fontWeight: "800" },
 
   resultTitle: { fontWeight: "900", fontSize: 14 },
   resultYear: { fontWeight: "700" },
   resultAuthor: { marginTop: 4, fontSize: 12, fontWeight: "700" },
+  resultHint: { marginTop: 4, fontSize: 11, fontWeight: "700" },
 
   resultActions: { marginTop: 10, flexDirection: "row", gap: 10 as any },
   tinyBtn: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, backgroundColor: "rgba(11, 30, 51, 0.9)" },
@@ -2158,9 +2210,15 @@ const styles = StyleSheet.create({
 
   searchTopRow: {
     width: "100%",
-    maxWidth: 720,
     alignItems: "flex-start",
     marginBottom: 10,
+  },
+
+  searchStage: {
+    width: "100%",
+    maxWidth: 720,
+    alignSelf: "center",
+    marginTop: 20,
   },
 
   swipeStage: {
