@@ -705,6 +705,42 @@ function directTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVect
   return tasteVectorFromAxes((card as any).tasteTraits);
 }
 
+function semanticTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVector | null {
+  if (!card) return null;
+
+  const semantic = (card as any)?.semantic || {};
+  const derivedTagCounts: TagCounts = {};
+
+  const addTag = (raw: unknown, prefix = "theme") => {
+    const token = String(raw || "").trim().toLowerCase();
+    if (!token) return;
+    const key = token.includes(":") ? token : `${prefix}:${token}`;
+    derivedTagCounts[key] = (derivedTagCounts[key] || 0) + 1;
+  };
+
+  const addTokens = (tokens: unknown, prefix: string) => {
+    if (!Array.isArray(tokens)) return;
+    for (const token of tokens) addTag(token, prefix);
+  };
+
+  addTokens((card as any)?.tags, "theme");
+  addTag((card as any)?.genre, "genre");
+  addTokens(semantic.contentTraits, "theme");
+  addTokens(semantic.toneTraits, "vibe");
+  addTokens(semantic.characterTraits, "theme");
+  addTokens(semantic.storyTraits, "theme");
+  addTokens(semantic.aversionTraits, "theme");
+
+  if (Object.keys(derivedTagCounts).length === 0) return null;
+
+  const inferred = buildTasteProfile({
+    tagCounts: derivedTagCounts,
+    feedback: [] as TasteFeedbackEvent[],
+    itemTraitsById: {},
+  });
+  return tasteVectorFromAxes((inferred as any)?.axes);
+}
+
 function weightedDirectTraitsHistory(
   history: SwipeHistoryEntry[]
 ): TasteVector[] {
@@ -713,7 +749,7 @@ function weightedDirectTraitsHistory(
 
   return decisionHistory
     .map((entry) => {
-      const direct = directTraitsFromCard(entry.card);
+      const direct = directTraitsFromCard(entry.card) || semanticTraitsFromCard(entry.card);
       if (!direct) return null;
 
       const directionScale = entry.direction === "like" ? 1 : -1;
