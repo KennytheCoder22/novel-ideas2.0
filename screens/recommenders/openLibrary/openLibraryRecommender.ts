@@ -251,10 +251,16 @@ function isGarbage(doc: any, family: string): boolean {
   return false;
 }
 
-async function fetchJson(url: string): Promise<{ ok: boolean; status: number; data: any }> {
-  const res = await fetch(url);
-  const data = await res.json();
-  return { ok: res.ok, status: res.status, data };
+async function fetchJson(url: string, timeoutMs = 3500): Promise<{ ok: boolean; status: number; data: any }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function getOpenLibraryRecommendations(
