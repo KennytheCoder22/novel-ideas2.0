@@ -361,6 +361,17 @@ function deckLabel(key: DeckKey, compact = false) {
   return getDeckLabel(key as any, { compact });
 }
 
+function addTags(counts: TagCounts, tags: string[], delta: number) {
+  const next: TagCounts = { ...counts };
+  for (const t of tags) {
+    if (!t) continue;
+    const value = (next[t] || 0) + delta;
+    if (value === 0) delete next[t];
+    else next[t] = value;
+  }
+  return next;
+}
+
 
 function expandTeenCompanionTags(deckKey: DeckKey, tags: string[]): string[] {
   const base = Array.isArray(tags) ? tags.filter(Boolean) : [];
