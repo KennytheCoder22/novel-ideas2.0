@@ -710,6 +710,11 @@ function recommendationAuthor(doc: any): string {
 
 function recommendationCoverUrl(doc: any): string | null {
   if (!doc) return null;
+  const directImage =
+    (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
+    (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
+    "";
+  if (directImage) return directImage.replace(/^http:\/\//, "https://");
   const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, "L");
   if (fromCoverId) return fromCoverId;
   const thumbnail =

@@ -2016,6 +2016,24 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
     0,
     Math.min(1, (metadataTrust(c) * 0.35 + Math.max(0, authorityScore(c)) * 0.05 + Math.max(0, filterSignalScore(c)) * 0.03))
   );
+  const normalizedImageUrl =
+    (typeof (rawDoc as any)?.imageUrl === "string" && (rawDoc as any).imageUrl) ||
+    (typeof (rawDoc as any)?.imageLinks?.thumbnail === "string" && (rawDoc as any).imageLinks.thumbnail) ||
+    (typeof (rawDoc as any)?.imageLinks?.smallThumbnail === "string" && (rawDoc as any).imageLinks.smallThumbnail) ||
+    (typeof (rawDoc as any)?.thumbnail === "string" && (rawDoc as any).thumbnail) ||
+    (typeof (rawDoc as any)?.coverImageUrl === "string" && (rawDoc as any).coverImageUrl) ||
+    ((rawDoc as any)?.cover_i ? `https://covers.openlibrary.org/b/id/${String((rawDoc as any).cover_i)}-M.jpg` : "") ||
+    "";
+  const sourceId =
+    String(
+      (rawDoc as any)?.sourceId ||
+      (rawDoc as any)?.canonicalId ||
+      (rawDoc as any)?.id ||
+      (rawDoc as any)?.key ||
+      c.id ||
+      ""
+    ).trim() || undefined;
+
   return {
     ...rawDoc,
     title: c.title || (rawDoc as any).title,
@@ -2032,6 +2050,10 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
         : authorName
         ? [authorName]
         : (rawDoc as any).authors,
+    imageUrl: normalizedImageUrl || (rawDoc as any).imageUrl,
+    imageLinks: (rawDoc as any).imageLinks || (normalizedImageUrl ? { thumbnail: normalizedImageUrl } : undefined),
+    sourceId,
+    canonicalId: (rawDoc as any).canonicalId || sourceId,
     first_publish_year: c.publicationYear || (rawDoc as any).first_publish_year,
     preFilterScore: breakdown.finalScore,
     postFilterScore: breakdown.finalScore,
