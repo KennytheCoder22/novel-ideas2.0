@@ -2286,7 +2286,7 @@ function handleLeft() {
     if (!currentRec) return "";
     if (currentRec.kind === "open_library") {
       const t = currentRec.doc?.title ?? "";
-      const a = currentRec.doc?.author_name?.[0] ?? "";
+      const a = recommendationAuthor(currentRec.doc);
       return `ol::${t}::${a}`.toLowerCase();
     }
     const t = currentRec.book?.title ?? "";
@@ -2297,12 +2297,13 @@ function handleLeft() {
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      if (!currentRec || currentRec.kind !== "fallback") return;
+      if (!currentRec) return;
       const key = currentRecKey;
       if (!key || recCoverCache[key]) return;
-      const title = currentRec.book?.title;
-      const author = currentRec.book?.author;
+      const title = currentRec.kind === "open_library" ? currentRec.doc?.title : currentRec.book?.title;
+      const author = currentRec.kind === "open_library" ? recommendationAuthor(currentRec.doc) : currentRec.book?.author;
       if (!title) return;
+      if (currentRec.kind === "open_library" && recommendationCoverUrl(currentRec.doc)) return;
       try {
         const found = await lookupOpenLibraryCover(title, author);
         if (cancelled) return;
@@ -2461,7 +2462,7 @@ function handleLeft() {
                     <View style={styles.bigCoverWrap}>
                       {currentRec.kind === "open_library" ? (
                         (() => {
-                          const cover = recommendationCoverUrl(currentRec.doc);
+                          const cover = recommendationCoverUrl(currentRec.doc) || recCoverCache[currentRecKey] || null;
                           return cover ? (
                             <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
                           ) : (
