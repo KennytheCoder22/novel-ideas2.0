@@ -701,7 +701,7 @@ async function googleBooksSearch(query: string, limit: number, timeoutMs: number
 export async function getGoogleBooksRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
-  const fetchLimit = Math.max(24, Math.min(80, finalLimit * 4));
+  const fetchLimit = Math.max(20, Math.min(48, finalLimit * 3));
   const timeoutMs = Math.max(1000, Math.min(12000, input.timeoutMs ?? 8000));
   const domainMode = deckKeyToDomainMode(deckKey);
 
@@ -712,7 +712,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       ? dedupeQueries(explicitBucketPlan.queries)
       : getBucketQueries(deckKey, input));
 
-  const queriesToTry = planQueries.length ? planQueries : getBucketQueries(deckKey, input);
+  const queriesToTry = (planQueries.length ? planQueries : getBucketQueries(deckKey, input)).slice(0, 4);
   const builtFromQuery = normalizeStoredQueryText(queriesToTry[0] || "");
   const minCandidateFloor = Math.max(10, Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0));
   const collectedDocsRaw: any[] = [];
@@ -726,7 +726,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     const q = normalizeStoredQueryText(queriesToTry[queryIndex]);
     const queryFamily = inferQueryFamilyFromText(q);
     const laneKind = "precision";
-    const engineQueries = buildToneAwareEngineQueries(q, input);
+    const engineQueries = buildToneAwareEngineQueries(q, input).slice(0, 2);
     const queryRawDocs: any[] = [];
 
     for (const engineQuery of engineQueries) {
