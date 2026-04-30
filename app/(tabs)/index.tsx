@@ -256,6 +256,7 @@ function StudentView(props: {
   onClear: () => void;
   onTitleTap: () => void;
   queryInputRef: any;
+  showHeader?: boolean;
 }) {
   const enabledList = (["k2", "36", "ms_hs", "adult"] as DeckKey[])
     .filter((k) => !!props.enabledDecks[k])
@@ -269,7 +270,7 @@ function StudentView(props: {
 
   return (
     <View style={{ width: "100%", maxWidth: 720 }}>
-      {/* Header row with same outlined banner treatment as main page */}
+      {props.showHeader !== false ? (
       <View style={[styles.headerFrame, { backgroundColor: props.theme.accent, borderColor: props.theme.highlight }]}>
         <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
@@ -340,6 +341,7 @@ function StudentView(props: {
           <View style={styles.headerRight} />
         </View>
       </View>
+      ) : null}
 
       <View
         style={[
@@ -1991,6 +1993,35 @@ logoDataUrl={logoDataUrl}
         </TouchableOpacity>
       </View>
 
+      <View style={[styles.headerFrame, { backgroundColor: theme.accent, borderColor: theme.highlight }]}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            {logoDataUrl ? (
+              <Image source={{ uri: logoDataUrl }} style={[styles.uploadedLogo, { borderColor: theme.lightBorder }]} resizeMode="contain" />
+            ) : (
+              <DefaultBookLogo highlight={theme.highlight} />
+            )}
+          </View>
+          <TouchableOpacity onPress={handleTitleTap} style={styles.headerCenter} accessibilityRole="button">
+            <View style={styles.titleRow}>
+              {(libraryName || "").trim().length > 0 ? (
+                <Text style={[styles.title, { color: theme.titleText }]} numberOfLines={1} ellipsizeMode="tail">
+                  {libraryName}
+                </Text>
+              ) : (
+                <>
+                  <Text style={[styles.title, { color: theme.titleText }]}>Novel</Text>
+                  <View style={[styles.titleDivider, { borderColor: theme.highlight }]} accessibilityLabel="Title divider" />
+                  <Text style={[styles.title, { color: theme.titleText }]}>Ideas</Text>
+                </>
+              )}
+            </View>
+            <Text style={[styles.subtitle, { color: theme.highlight }]}>Book Finder</Text>
+          </TouchableOpacity>
+          <View style={styles.headerRight} />
+        </View>
+      </View>
+
       <StudentView
         theme={theme}
         libraryName={libraryName}
@@ -2013,6 +2044,7 @@ logoDataUrl={logoDataUrl}
         }}
         onTitleTap={handleTitleTap}
         queryInputRef={queryInputRef}
+        showHeader={false}
       />
     </View>
   );
