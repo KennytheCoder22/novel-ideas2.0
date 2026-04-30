@@ -39,6 +39,7 @@ import type { MoodProfile, SwipeSignal } from "./recommenders/taste/sessionMood"
 import type { RecommenderInput } from "./recommenders/types";
 import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/sophisticationModel";
 import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
+import { localSwipeImageForCard } from "../data/swipeCardImageMap";
 
 const DEFAULT_SWIPE_CATEGORIES = {
   books: true,
@@ -1230,13 +1231,14 @@ export default function SwipeDeckScreen(props: Props) {
   const [swipeCoverCache, setSwipeCoverCache] = useState<Record<string, string>>({});
 
   const currentCardKey = useMemo(() => {
-    const t = (currentCard as any)?.title ?? "";
-    const a = (currentCard as any)?.author ?? "";
-    return `${t}::${a}`.toLowerCase();
+    if (!currentCard) return "";
+    return cardIdentityKey(currentCard);
   }, [currentCard]);
 
   const currentSwipeCoverUri = useMemo(() => {
     if (!currentCard) return undefined;
+    const localImage = localSwipeImageForCard(currentCard);
+    if (localImage) return localImage;
     const explicitImage = (currentCard as any)?.imageUri as string | undefined;
     if (explicitImage && explicitImage.trim().length > 0) return explicitImage;
     return swipeCoverCache[currentCardKey];
@@ -1247,8 +1249,14 @@ export default function SwipeDeckScreen(props: Props) {
     async function run() {
       if (!currentCard) return;
 
-      const title = (currentCard as any)?.title as string | undefined;
-      const author = (currentCard as any)?.author as string | undefined;
+      const title =
+        ((currentCard as any)?.title as string | undefined) ||
+        ((currentCard as any)?.wikiTitle as string | undefined) ||
+        ((currentCard as any)?.prompt as string | undefined);
+      const author =
+        ((currentCard as any)?.author as string | undefined) ||
+        ((currentCard as any)?.display?.studio as string | undefined) ||
+        ((currentCard as any)?.display?.publisher as string | undefined);
       if (!title || title.trim().length === 0) return;
 
       const wikiTitle = (currentCard as any)?.wikiTitle as string | undefined;
@@ -2322,7 +2330,11 @@ function handleLeft() {
                     ]}
                   >
                     {currentSwipeCoverUri ? (
-                      <Image source={{ uri: currentSwipeCoverUri }} style={styles.swipeCover} resizeMode="contain" />
+                      <Image
+                        source={typeof currentSwipeCoverUri === "string" ? { uri: currentSwipeCoverUri } : currentSwipeCoverUri}
+                        style={styles.swipeCover}
+                        resizeMode="contain"
+                      />
                     ) : null}
 
                     {((currentCard as any)?.title || (currentCard as any)?.author || (currentCard as any)?.genre) ? (
