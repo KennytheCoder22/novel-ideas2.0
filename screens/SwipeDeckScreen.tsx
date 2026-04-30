@@ -1025,14 +1025,21 @@ function selectTwentyQCard(args: {
 function shouldFinishTwentyQSession(args: {
   statuses: TwentyQObjectiveStatus[];
   decisionSwipes: number;
+  rightSwipes: number;
+  leftSwipes: number;
+  tagCounts: TagCounts;
   totalSeenCards: number;
   totalCards: number;
 }): boolean {
-  const { statuses, decisionSwipes, totalSeenCards, totalCards } = args;
+  const { statuses, decisionSwipes, rightSwipes, leftSwipes, tagCounts, totalSeenCards, totalCards } = args;
   const allResolved = statuses.length > 0 && statuses.every((status) => status.resolved);
   const hitDecisionCap = decisionSwipes >= Math.max(statuses.length + 2, 8);
+  const strongSignals = Object.values(tagCounts || {}).filter((value) => Math.abs(Number(value || 0)) >= 1).length;
+  const hasBalancedPreferenceEvidence = rightSwipes >= 3 && leftSwipes >= 3;
+  const hasEnoughSignalBreadth = strongSignals >= 6;
+  const hasSufficientEvidence = hasBalancedPreferenceEvidence && hasEnoughSignalBreadth;
 
-  if (allResolved && decisionSwipes >= MIN_20Q_DECISION_SWIPES) return true;
+  if (allResolved && decisionSwipes >= MIN_20Q_DECISION_SWIPES && hasSufficientEvidence) return true;
   if (hitDecisionCap) return true;
   if (totalSeenCards >= totalCards && decisionSwipes >= MIN_20Q_DECISION_SWIPES) return true;
   return false;
@@ -1400,6 +1407,9 @@ export default function SwipeDeckScreen(props: Props) {
   const isDone = shouldFinishTwentyQSession({
     statuses: twentyQStatuses,
     decisionSwipes,
+    rightSwipes,
+    leftSwipes,
+    tagCounts,
     totalSeenCards,
     totalCards: cards.length,
   });
@@ -1734,7 +1744,7 @@ function handleLeft() {
         tagCounts: tagCountsForQuery,
         tasteProfile: tasteProfileWithMood,
         limit: 10,
-        timeoutMs: 15000,
+        timeoutMs: 9000,
       };
 
       await performRecommendationRun(input);
@@ -1877,7 +1887,7 @@ function handleLeft() {
       tagCounts: syntheticTagCounts,
       tasteProfile: syntheticTasteProfile,
       limit: 10,
-      timeoutMs: 15000,
+      timeoutMs: 9000,
     };
 
     await performRecommendationRun(input);
