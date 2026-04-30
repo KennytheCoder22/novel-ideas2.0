@@ -2001,6 +2001,12 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
 
 function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfile): RecommendationDoc {
   const rawDoc = ((c.rawDoc || {}) as RecommendationDoc) || ({} as RecommendationDoc);
+  const authorName =
+    (Array.isArray((rawDoc as any).author_name) && (rawDoc as any).author_name[0]) ||
+    (Array.isArray((rawDoc as any).authors) && (rawDoc as any).authors[0]) ||
+    (typeof (rawDoc as any).author === "string" ? (rawDoc as any).author : "") ||
+    c.author ||
+    "";
   const personalFitReasons = buildPersonalFitReasons(c, taste);
   const cluster = inferSessionPreferenceCluster(taste);
   const matchedPositive = cluster.preferredTerms.filter((term) => haystack(c).includes(term)).slice(0, 4);
@@ -2010,15 +2016,46 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
     0,
     Math.min(1, (metadataTrust(c) * 0.35 + Math.max(0, authorityScore(c)) * 0.05 + Math.max(0, filterSignalScore(c)) * 0.03))
   );
+  const normalizedImageUrl =
+    (typeof (rawDoc as any)?.imageUrl === "string" && (rawDoc as any).imageUrl) ||
+    (typeof (rawDoc as any)?.imageLinks?.thumbnail === "string" && (rawDoc as any).imageLinks.thumbnail) ||
+    (typeof (rawDoc as any)?.imageLinks?.smallThumbnail === "string" && (rawDoc as any).imageLinks.smallThumbnail) ||
+    (typeof (rawDoc as any)?.volumeInfo?.imageLinks?.thumbnail === "string" && (rawDoc as any).volumeInfo.imageLinks.thumbnail) ||
+    (typeof (rawDoc as any)?.volumeInfo?.imageLinks?.smallThumbnail === "string" && (rawDoc as any).volumeInfo.imageLinks.smallThumbnail) ||
+    (typeof (rawDoc as any)?.thumbnail === "string" && (rawDoc as any).thumbnail) ||
+    (typeof (rawDoc as any)?.coverImageUrl === "string" && (rawDoc as any).coverImageUrl) ||
+    ((rawDoc as any)?.cover_i ? `https://covers.openlibrary.org/b/id/${String((rawDoc as any).cover_i)}-M.jpg` : "") ||
+    "";
+  const sourceId =
+    String(
+      (rawDoc as any)?.sourceId ||
+      (rawDoc as any)?.canonicalId ||
+      (rawDoc as any)?.id ||
+      (rawDoc as any)?.key ||
+      c.id ||
+      ""
+    ).trim() || undefined;
+
   return {
     ...rawDoc,
     title: c.title || (rawDoc as any).title,
     author_name:
       Array.isArray((rawDoc as any).author_name) && (rawDoc as any).author_name.length
         ? (rawDoc as any).author_name
-        : c.author
-        ? [c.author]
+        : authorName
+        ? [authorName]
         : (rawDoc as any).author_name,
+    author: authorName || (rawDoc as any).author,
+    authors:
+      Array.isArray((rawDoc as any).authors) && (rawDoc as any).authors.length
+        ? (rawDoc as any).authors
+        : authorName
+        ? [authorName]
+        : (rawDoc as any).authors,
+    imageUrl: normalizedImageUrl || (rawDoc as any).imageUrl,
+    imageLinks: (rawDoc as any).imageLinks || (normalizedImageUrl ? { thumbnail: normalizedImageUrl } : undefined),
+    sourceId,
+    canonicalId: (rawDoc as any).canonicalId || sourceId,
     first_publish_year: c.publicationYear || (rawDoc as any).first_publish_year,
     preFilterScore: breakdown.finalScore,
     postFilterScore: breakdown.finalScore,
