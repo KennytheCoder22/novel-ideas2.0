@@ -261,16 +261,6 @@ function StudentView(props: {
   queryInputRef: any;
   showHeader?: boolean;
 }) {
-  const enabledList = (["k2", "36", "ms_hs", "adult"] as DeckKey[])
-    .filter((k) => !!props.enabledDecks[k])
-    .map(deckLabel)
-    .join(", ");
-
-  const sourceText =
-    props.source === "open_library"
-      ? "Open Library"
-      : "Local Collection (coming next)";
-
   return (
     <View style={{ width: "100%", maxWidth: 720 }}>
       {props.showHeader !== false ? (
@@ -352,23 +342,7 @@ function StudentView(props: {
           { backgroundColor: props.theme.cardBg, borderColor: props.theme.lightBorder },
         ]}
       >
-        <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Loaded config</Text>
-        <Text style={[styles.text, { color: props.theme.subtext }]}>
-          Library:{" "}
-          <Text style={[styles.bold, { color: props.theme.text }]}>{props.libraryName}</Text>
-        </Text>
-        <Text style={[styles.text, { color: props.theme.subtext }]}>
-          Enabled decks:{" "}
-          <Text style={[styles.bold, { color: props.theme.text }]}>{enabledList || "None"}</Text>
-        </Text>
-        <Text style={[styles.text, { color: props.theme.subtext }]}>
-          Source:{" "}
-          <Text style={[styles.bold, { color: props.theme.text }]}>{sourceText}</Text>
-        </Text>
-
-        <View style={[styles.divider, { backgroundColor: props.theme.cardBorder }]} />
-
-        <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Choose audience</Text>
+        <Text style={[styles.sectionTitle, { color: props.theme.text, marginTop: 0 }]}>Choose audience</Text>
         <View style={styles.rowWrap}>
           {(["k2", "36", "ms_hs", "adult"] as DeckKey[]).map((dk) => {
             const enabled = !!props.enabledDecks[dk];
@@ -2063,10 +2037,10 @@ const styles = StyleSheet.create({
     width: 2,
   },
 
-  card: { borderRadius: 16, padding: 20, borderWidth: 1, width: "100%" },
+  card: { borderRadius: 16, padding: 14, borderWidth: 1, width: "100%" },
 
   adminTitle: { fontSize: 22, fontWeight: "900" },
-  sectionTitle: { marginTop: 14, fontSize: 14, fontWeight: "900" },
+  sectionTitle: { marginTop: 10, fontSize: 14, fontWeight: "900" },
   text: { fontSize: 14, marginTop: 6 },
 
   hint: { marginTop: 12, fontSize: 12 },
@@ -2143,7 +2117,7 @@ const styles = StyleSheet.create({
   resultMetaCentered: { width: "100%", alignItems: "center", justifyContent: "center", marginTop: 10 },
 
   cover: { width: 72, height: 108, borderRadius: 10, backgroundColor: "#071526" },
-  coverLarge: { width: 96, height: 144, borderRadius: 12 },
+  coverLarge: { width: 84, height: 126, borderRadius: 12 },
   coverPlaceholder: { width: 72, height: 108, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center", padding: 6 },
   coverPlaceholderText: { fontSize: 10, textAlign: "center", fontWeight: "800" },
 
@@ -2154,7 +2128,7 @@ const styles = StyleSheet.create({
 
   resultActions: { marginTop: 10, flexDirection: "row", gap: 10 as any },
   singleResultWrap: { marginTop: 8 },
-  resultRowCompact: { width: "100%", maxWidth: 480, alignSelf: "center" },
+  resultRowCompact: { width: "100%", maxWidth: 440, alignSelf: "center" },
   resultCardStack: { marginTop: 8, flexDirection: "column", alignItems: "center", justifyContent: "center" },
   resultInternalNav: { marginTop: 12, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   resultNavBtn: { minWidth: 90 },
