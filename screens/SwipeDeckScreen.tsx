@@ -2341,15 +2341,6 @@ function handleLeft() {
                       <Text style={styles.cardPrompt}>{(currentCard as any)?.prompt ?? (currentCard as any)?.title ?? ""}</Text>
                     )}
 
-                    {activeTwentyQObjective ? (
-                      <View style={[styles.twentyQBadge, { borderColor: highlightColor }]}>
-                        <Text style={styles.twentyQBadgeTitle}>Rung {activeTwentyQObjective.rung}: {activeTwentyQObjective.label}</Text>
-                        <Text style={styles.twentyQBadgeText}>{activeTwentyQObjective.description}</Text>
-                        <Text style={styles.twentyQBadgeText}>
-                          Signal: {activeTwentyQObjective.score > 0 ? "+" : ""}{activeTwentyQObjective.score.toFixed(2)} / {activeTwentyQObjective.threshold.toFixed(2)}
-                        </Text>
-                      </View>
-                    ) : null}
                   </Animated.View>
                 </View>
               </View>
@@ -2518,21 +2509,6 @@ const styles = StyleSheet.create({
   swipeTitle: { fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 3 },
   swipeAuthor: { fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.9)", marginBottom: 4 },
   swipeGenre: { fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.75)" },
-
-  twentyQBadge: {
-    position: "absolute",
-    right: 12,
-    top: 12,
-    width: "48%",
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(7,21,38,0.82)",
-    borderWidth: 1,
-    borderColor: "rgba(224,184,75,0.7)",
-  },
-  twentyQBadgeTitle: { color: "#fff", fontSize: 12, fontWeight: "900" },
-  twentyQBadgeText: { color: "rgba(255,255,255,0.88)", fontSize: 11, marginTop: 4, lineHeight: 14 },
 
   cardPrompt: { color: "#e5efff", fontSize: 26, fontWeight: "900", lineHeight: 32 },
 
