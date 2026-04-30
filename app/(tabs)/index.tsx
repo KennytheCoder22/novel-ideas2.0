@@ -251,23 +251,16 @@ function StudentView(props: {
   setQuery: (q: string) => void;
   loading: boolean;
   results: OLDoc[];
+  currentResultIndex: number;
   errorMsg: string | null;
   onSearch: () => void;
   onClear: () => void;
+  onPrevResult: () => void;
+  onNextResult: () => void;
   onTitleTap: () => void;
   queryInputRef: any;
   showHeader?: boolean;
 }) {
-  const enabledList = (["k2", "36", "ms_hs", "adult"] as DeckKey[])
-    .filter((k) => !!props.enabledDecks[k])
-    .map(deckLabel)
-    .join(", ");
-
-  const sourceText =
-    props.source === "open_library"
-      ? "Open Library"
-      : "Local Collection (coming next)";
-
   return (
     <View style={{ width: "100%", maxWidth: 720 }}>
       {props.showHeader !== false ? (
@@ -349,23 +342,7 @@ function StudentView(props: {
           { backgroundColor: props.theme.cardBg, borderColor: props.theme.lightBorder },
         ]}
       >
-        <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Loaded config</Text>
-        <Text style={[styles.text, { color: props.theme.subtext }]}>
-          Library:{" "}
-          <Text style={[styles.bold, { color: props.theme.text }]}>{props.libraryName}</Text>
-        </Text>
-        <Text style={[styles.text, { color: props.theme.subtext }]}>
-          Enabled decks:{" "}
-          <Text style={[styles.bold, { color: props.theme.text }]}>{enabledList || "None"}</Text>
-        </Text>
-        <Text style={[styles.text, { color: props.theme.subtext }]}>
-          Source:{" "}
-          <Text style={[styles.bold, { color: props.theme.text }]}>{sourceText}</Text>
-        </Text>
-
-        <View style={[styles.divider, { backgroundColor: props.theme.cardBorder }]} />
-
-        <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Choose audience</Text>
+        <Text style={[styles.sectionTitle, { color: props.theme.text, marginTop: 0 }]}>Choose audience</Text>
         <View style={styles.rowWrap}>
           {(["k2", "36", "ms_hs", "adult"] as DeckKey[]).map((dk) => {
             const enabled = !!props.enabledDecks[dk];
@@ -440,6 +417,43 @@ function StudentView(props: {
               autoCapitalize="none"
             />
 
+            {props.results.length > 0 ? (
+              <View style={styles.singleResultWrap}>
+                <Text style={[styles.sectionTitle, { color: props.theme.text, marginTop: 6 }]}>Results</Text>
+                <Text style={[styles.smallNote, { color: props.theme.muted, textAlign: "center" }]}>
+                  {props.currentResultIndex + 1} of {props.results.length}
+                </Text>
+              </View>
+            ) : null}
+
+            {props.results.length > 0 ? (
+              (() => {
+                const d = props.results[props.currentResultIndex] ?? props.results[0];
+                const title = d.title || "Untitled";
+                const author = d.author_name?.[0] || "Unknown author";
+                const year = d.first_publish_year ? ` (${d.first_publish_year})` : "";
+                const cover = coverUrlFromCoverId(d.cover_i, "M");
+                return (
+                  <View style={[styles.resultRow, styles.resultRowCompact, styles.resultCardStack, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
+                    {cover ? <Image source={{ uri: cover }} style={styles.coverLarge} resizeMode="cover" /> : <View style={[styles.coverPlaceholder, styles.coverLarge, { borderColor: props.theme.resultBorder }]}><Text style={[styles.coverPlaceholderText, { color: props.theme.muted }]}>No cover</Text></View>}
+                    <View style={styles.resultMetaCentered}>
+                      <Text style={[styles.resultTitle, { color: props.theme.text, textAlign: "center" }]} numberOfLines={2}>{title}<Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text></Text>
+                      <Text style={[styles.resultAuthor, { color: props.theme.subtext, textAlign: "center" }]} numberOfLines={1}>{author}</Text>
+                      <Text style={[styles.resultHint, { color: props.theme.muted, textAlign: "center" }]}>Open Library result</Text>
+                    </View>
+                    <View style={styles.resultInternalNav}>
+                      <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onPrevResult}>
+                        <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Back</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onNextResult}>
+                        <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Next</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })()
+            ) : null}
+
             <View style={styles.rowBetween}>
               <TouchableOpacity
                 style={[
@@ -475,85 +489,6 @@ function StudentView(props: {
               <Text style={[styles.errorText, { color: "#fecaca" }]}>{props.errorMsg}</Text>
             ) : null}
 
-            {props.results.length > 0 ? (
-              <>
-                <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Results</Text>
-
-                <View style={{ marginTop: 8 }}>
-                  {props.results.map((d, idx) => {
-                    const title = d.title || "Untitled";
-                    const author = d.author_name?.[0] || "Unknown author";
-                    const year = d.first_publish_year ? ` (${d.first_publish_year})` : "";
-                    const cover = coverUrlFromCoverId(d.cover_i, "M");
-
-                    return (
-                      <View
-                        key={`${d.key || title}-${idx}`}
-                        style={[
-                          styles.resultRow,
-                          {
-                            borderColor: props.theme.resultBorder,
-                            backgroundColor: props.theme.resultBg,
-                          },
-                        ]}
-                      >
-                        {cover ? (
-                          <Image source={{ uri: cover }} style={styles.cover} resizeMode="cover" />
-                        ) : (
-                          <View
-                            style={[
-                              styles.coverPlaceholder,
-                              { borderColor: props.theme.resultBorder },
-                            ]}
-                          >
-                            <Text
-                              style={[
-                                styles.coverPlaceholderText,
-                                { color: props.theme.muted },
-                              ]}
-                            >
-                              No cover
-                            </Text>
-                          </View>
-                        )}
-
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.resultTitle, { color: props.theme.text }]}>
-                            {title}
-                            <Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text>
-                          </Text>
-                          <Text style={[styles.resultAuthor, { color: props.theme.subtext }]}>
-                            {author}
-                          </Text>
-
-                          <View style={styles.resultActions}>
-                            <TouchableOpacity
-                              style={[styles.tinyBtn, { borderColor: props.theme.accentBorder }]}
-                              onPress={() =>
-                                Alert.alert("Saved (v1)", `Added "${title}" to your list (coming next).`)
-                              }
-                            >
-                              <Text style={[styles.tinyBtnText, { color: props.theme.text }]}>
-                                Add to list
-                              </Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                              style={[styles.tinyBtn, { borderColor: props.theme.accentBorder }]}
-                              onPress={() => Alert.alert("Feedback (v1)", "Ratings + DNF reasons next.")}
-                            >
-                              <Text style={[styles.tinyBtnText, { color: props.theme.text }]}>
-                                Feedback
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      </View>
-                    );
-                  })}
-                </View>
-              </>
-            ) : null}
           </>
         ) : (
           <>
@@ -1447,6 +1382,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [results, setResults] = useState<OLDoc[]>([]);
+  const [currentResultIndex, setCurrentResultIndex] = useState(0);
 
   // Keep a stable ref to avoid weird focus behavior from accidental remounts.
   const queryInputRef = useRef<TextInput | null>(null);
@@ -1834,9 +1770,11 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
       const data = await resp.json();
       const docs: OLDoc[] = Array.isArray(data?.docs) ? data.docs : [];
       setResults(docs.filter((d) => d?.title).slice(0, maxResults));
+      setCurrentResultIndex(0);
     } catch (err: any) {
       setErrorMsg(err?.message || "Something went wrong contacting Open Library. Try again.");
       setResults([]);
+      setCurrentResultIndex(0);
     } finally {
       setLoading(false);
     }
@@ -2040,14 +1978,22 @@ logoDataUrl={logoDataUrl}
         setQuery={setQuery}
         loading={loading}
         results={results}
+        currentResultIndex={currentResultIndex}
         errorMsg={errorMsg}
         onSearch={runOpenLibrarySearch}
         onClear={() => {
           setQuery("");
           setResults([]);
+          setCurrentResultIndex(0);
           setErrorMsg(null);
           queryInputRef.current?.focus?.();
         }}
+        onPrevResult={() =>
+          setCurrentResultIndex((i) => (results.length > 0 ? (i - 1 + results.length) % results.length : 0))
+        }
+        onNextResult={() =>
+          setCurrentResultIndex((i) => (results.length > 0 ? (i + 1) % results.length : 0))
+        }
         onTitleTap={handleTitleTap}
         queryInputRef={queryInputRef}
         showHeader={false}
@@ -2091,10 +2037,10 @@ const styles = StyleSheet.create({
     width: 2,
   },
 
-  card: { borderRadius: 16, padding: 20, borderWidth: 1, width: "100%" },
+  card: { borderRadius: 16, padding: 14, borderWidth: 1, width: "100%" },
 
   adminTitle: { fontSize: 22, fontWeight: "900" },
-  sectionTitle: { marginTop: 14, fontSize: 14, fontWeight: "900" },
+  sectionTitle: { marginTop: 10, fontSize: 14, fontWeight: "900" },
   text: { fontSize: 14, marginTop: 6 },
 
   hint: { marginTop: 12, fontSize: 12 },
@@ -2166,17 +2112,26 @@ const styles = StyleSheet.create({
   jsonBox: { marginTop: 8, maxHeight: 280, padding: 10, borderRadius: 12, borderWidth: 1 },
   jsonText: { fontSize: 11, lineHeight: 15 },
 
-  resultRow: { flexDirection: "row", gap: 12 as any, padding: 12, borderRadius: 14, borderWidth: 1, marginBottom: 10 },
+  resultRow: { flexDirection: "row", gap: 14 as any, padding: 14, borderRadius: 16, borderWidth: 1.5, marginBottom: 12, alignItems: "center" },
+  resultMeta: { flex: 1, justifyContent: "center" },
+  resultMetaCentered: { width: "100%", alignItems: "center", justifyContent: "center", marginTop: 10 },
 
-  cover: { width: 56, height: 84, borderRadius: 8, backgroundColor: "#071526" },
-  coverPlaceholder: { width: 56, height: 84, borderRadius: 8, borderWidth: 1, alignItems: "center", justifyContent: "center", padding: 6 },
+  cover: { width: 72, height: 108, borderRadius: 10, backgroundColor: "#071526" },
+  coverLarge: { width: 84, height: 126, borderRadius: 12 },
+  coverPlaceholder: { width: 72, height: 108, borderRadius: 10, borderWidth: 1, alignItems: "center", justifyContent: "center", padding: 6 },
   coverPlaceholderText: { fontSize: 10, textAlign: "center", fontWeight: "800" },
 
   resultTitle: { fontWeight: "900", fontSize: 14 },
   resultYear: { fontWeight: "700" },
   resultAuthor: { marginTop: 4, fontSize: 12, fontWeight: "700" },
+  resultHint: { marginTop: 4, fontSize: 11, fontWeight: "700" },
 
   resultActions: { marginTop: 10, flexDirection: "row", gap: 10 as any },
+  singleResultWrap: { marginTop: 8 },
+  resultRowCompact: { width: "100%", maxWidth: 440, alignSelf: "center" },
+  resultCardStack: { marginTop: 8, flexDirection: "column", alignItems: "center", justifyContent: "center" },
+  resultInternalNav: { marginTop: 12, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  resultNavBtn: { minWidth: 90 },
   tinyBtn: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, backgroundColor: "rgba(11, 30, 51, 0.9)" },
   tinyBtnText: { fontWeight: "800", fontSize: 12 },
 
