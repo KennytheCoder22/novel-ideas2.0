@@ -2809,8 +2809,12 @@ export async function getRecommendations(
       };
 
       const requests: Array<Promise<RecommendationResult>> = [];
-      if (sourceEnabled.googleBooks && !googleQuotaExhausted && lane.source === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
-      if (sourceEnabled.openLibrary && lane.source === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
+      const effectiveLaneSource =
+        googleQuotaExhausted && lane.source === "googleBooks" && sourceEnabled.openLibrary
+          ? "openLibrary"
+          : lane.source;
+      if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
+      if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
 
@@ -2822,10 +2826,10 @@ export async function getRecommendations(
       });
       let index = 0;
 
-      const laneGoogle = sourceEnabled.googleBooks && !googleQuotaExhausted && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+      const laneGoogle = sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (sourceEnabled.googleBooks && !googleQuotaExhausted && lane.source === "googleBooks") {
+      if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
         if (results[index]?.status === "rejected" && isGoogleQuotaError((results[index] as PromiseRejectedResult).reason)) {
           googleQuotaExhausted = true;
           sourceSkippedReason.push("googleBooks_quota_exhausted_auto_disabled");
@@ -2834,10 +2838,10 @@ export async function getRecommendations(
         index += 1;
       }
 
-      const laneOpenLibrary = sourceEnabled.openLibrary && lane.source === "openLibrary" && results[index]?.status === "fulfilled"
+      const laneOpenLibrary = sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (sourceEnabled.openLibrary && lane.source === "openLibrary") index += 1;
+      if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") index += 1;
 
       const laneKitsu = sourceEnabled.googleBooks && !googleQuotaExhausted && includeKitsu && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
