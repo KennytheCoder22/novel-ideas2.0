@@ -3,7 +3,9 @@ import { Stack, useRouter } from "expo-router";
 import { Platform, Text, TouchableOpacity, View } from "react-native";
 
 import { getRuntimeLibraryName, subscribeRuntimeLibraryName } from "@/constants/runtimeConfig";
-import { buildTheme, type ThemeKey, type HighlightKey } from "../../constants/brandTheme";
+import { buildTheme, initWebHighlightColorFromStorage, type ThemeKey, type HighlightKey } from "../../constants/brandTheme";
+
+if (Platform.OS === "web") initWebHighlightColorFromStorage();
 
 function HeaderTitle(props: { onPress: () => void }) {
   const [title, setTitle] = useState<string>(() => getRuntimeLibraryName());
