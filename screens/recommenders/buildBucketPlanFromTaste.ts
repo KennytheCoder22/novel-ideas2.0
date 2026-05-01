@@ -333,9 +333,16 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.includes("horror") ||
     descriptiveQueriesLower.some((q) => /horror|haunted|ghost|supernatural|occult|possession/.test(q));
 
-  const isFantasy =
+  const toneBlob = [...toneKeys, ...descriptiveQueriesLower].join(" ");
+  const literaryWhimsicalTone = /\b(whimsical|offbeat|quirky|atmospheric|dreamlike|surreal|philosophical|reflective|contemplative|human|character[-\s]?driven|literary|gentle|tender|warm|melancholic)\b/.test(toneBlob);
+  const groundedHumanTone = /\b(grounded|introspective|emotionally\s+weighty|emotional|morally\s+complex|character[-\s]?driven|human[-\s]?centered|serious|quiet|realist|literary|philosophical)\b/.test(toneBlob);
+
+  const hardFantasyNative = /epic fantasy|high fantasy|dark fantasy|magic|wizard|witch|dragon|fae|fairy|mythic|sword|sorcery|quest fantasy/.test(descriptiveBlob);
+  const fantasySignalPresent =
     genreKeys.includes("fantasy") ||
     descriptiveQueriesLower.some((q) => /fantasy|magic|dragon|wizard|witch|fae|mythic/.test(q));
+  const fantasySuppressedByTone = groundedHumanTone && !hardFantasyNative;
+  const isFantasy = !fantasySuppressedByTone && fantasySignalPresent;
 
   const romanceSignalPresent =
     genreKeys.includes("romance") ||
@@ -358,9 +365,6 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.some((key) => ["crime", "thriller"].includes(key)) ||
     descriptiveQueriesLower.some((q) => /serial killer|missing person|missing child|crime conspiracy|manhunt|fugitive|abduction|spy thriller|legal thriller/.test(q));
 
-  const toneBlob = [...toneKeys, ...descriptiveQueriesLower].join(" ");
-  const literaryWhimsicalTone = /\b(whimsical|offbeat|quirky|atmospheric|dreamlike|surreal|philosophical|reflective|contemplative|human|character[-\s]?driven|literary|gentle|tender|warm|melancholic)\b/.test(toneBlob);
-
   const mysterySuppressedByTone = literaryWhimsicalTone && !hardMysteryNative;
   const isMystery = !mysterySuppressedByTone && mysterySignalPresent && (!romanceSignalPresent || hardMysteryNative);
   const thrillerSuppressedByTone = (hasWarmLowDarkProfile || literaryWhimsicalTone) && !hardThrillerIntent;
@@ -377,13 +381,17 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.includes("historical") ||
     descriptiveQueriesLower.some((q) => /historical fiction|historical romance|period fiction|gilded age|regency|victorian/.test(q));
 
+  const hardScienceFictionNative = /science fiction|space opera|dystopian|cyberpunk|post-apocalyptic|artificial intelligence|\bai\b/.test(descriptiveBlob);
+  const scienceFictionSignalPresent =
+    genreKeys.some((key) => ["science fiction", "dystopian"].includes(key)) ||
+    descriptiveQueriesLower.some((q) => /science fiction|dystopian|space opera|artificial intelligence|\bai\b/.test(q));
+  const scienceFictionSuppressedByTone = groundedHumanTone && !hardScienceFictionNative;
+
   const isScienceFiction =
     !isHorror &&
     !isFantasy &&
-    (
-      genreKeys.some((key) => ["science fiction", "dystopian"].includes(key)) ||
-      descriptiveQueriesLower.some((q) => /science fiction|dystopian|space opera|artificial intelligence|\bai\b/.test(q))
-    );
+    !scienceFictionSuppressedByTone &&
+    scienceFictionSignalPresent;
 
   if (isHorror) {
     family = "horror_family";
