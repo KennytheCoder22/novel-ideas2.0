@@ -2174,16 +2174,16 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       diagnostics.passedChecks.push("passed_shape_gate");
     }
 
-    const rescueCeiling = isOpenLibraryLike ? 3 : 1;
+    const rescueCeiling = isOpenLibraryLike ? 4 : 1;
     if (rescueMechanismCount(diagnostics) > rescueCeiling) {
       diagnostics.passedChecks.push("soft_too_many_soft_failures");
-      diagnostics.passedChecks.push("borderline_rescue_penalty");
+      if (!isOpenLibraryLike) diagnostics.passedChecks.push("borderline_rescue_penalty");
     }
 
     const minimumEntrySignals = isOpenLibraryLike ? 1 : 2;
     if (entrySignalCount(doc, diagnostics) < minimumEntrySignals) {
       diagnostics.passedChecks.push("soft_too_many_soft_failures");
-      diagnostics.passedChecks.push("borderline_rescue_penalty");
+      if (!isOpenLibraryLike) diagnostics.passedChecks.push("borderline_rescue_penalty");
     }
 
     if (isOpenLibraryLike) {
@@ -2197,7 +2197,22 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         (diagnostics.family === "thriller" && diagnostics.flags.fictionPositive);
       if (!hasOlMinimumSignal || !laneMatched) {
         diagnostics.passedChecks.push("soft_too_many_soft_failures");
-        diagnostics.passedChecks.push("borderline_rescue_penalty");
+      }
+    }
+
+    if (isOpenLibraryLike) {
+      const hasContentGate = diagnostics.passedChecks.includes("passed_content_gate");
+      const hasRecoveryPath = diagnostics.passedChecks.some(
+        (check) => check.startsWith("openlibrary_") || check.includes("rescue")
+      );
+      if (hasContentGate && hasRecoveryPath) {
+        diagnostics.passedChecks = diagnostics.passedChecks.filter(
+          (check) =>
+            check !== "soft_too_many_soft_failures" &&
+            check !== "soft_minimum_authority_floor_miss" &&
+            check !== "borderline_rescue_penalty"
+        );
+        diagnostics.passedChecks.push("openlibrary_source_aware_admit");
       }
     }
     diagnostics.kept = true;
