@@ -329,13 +329,15 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     warmthAxis >= 0.2 &&
     darknessAxis <= -0.2;
 
-  const isHorror =
-    genreKeys.includes("horror") ||
-    descriptiveQueriesLower.some((q) => /horror|haunted|ghost|supernatural|occult|possession/.test(q));
-
   const toneBlob = [...toneKeys, ...descriptiveQueriesLower].join(" ");
   const literaryWhimsicalTone = /\b(whimsical|offbeat|quirky|atmospheric|dreamlike|surreal|philosophical|reflective|contemplative|human|character[-\s]?driven|literary|gentle|tender|warm|melancholic)\b/.test(toneBlob);
   const groundedHumanTone = /\b(grounded|introspective|emotionally\s+weighty|emotional|morally\s+complex|character[-\s]?driven|human[-\s]?centered|serious|quiet|realist|literary|philosophical)\b/.test(toneBlob);
+  const hardHorrorNative = /psychological horror|survival horror|haunted|ghost|supernatural|occult|possession|monster|dread/.test(descriptiveBlob);
+  const horrorSignalPresent =
+    genreKeys.includes("horror") ||
+    descriptiveQueriesLower.some((q) => /horror|haunted|ghost|supernatural|occult|possession/.test(q));
+  const horrorSuppressedByTone = (groundedHumanTone || literaryWhimsicalTone) && !hardHorrorNative;
+  const isHorror = !horrorSuppressedByTone && horrorSignalPresent;
 
   const hardFantasyNative = /epic fantasy|high fantasy|dark fantasy|magic|wizard|witch|dragon|fae|fairy|mythic|sword|sorcery|quest fantasy/.test(descriptiveBlob);
   const fantasySignalPresent =
