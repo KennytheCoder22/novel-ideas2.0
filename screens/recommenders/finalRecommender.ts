@@ -2703,6 +2703,11 @@ export function finalRecommenderForDeck(
     if (toneCohesionMode) {
       const toneFitOk = entry.breakdown.toneScore >= 1.25;
       const affinityOk = entry.breakdown.personalAffinityScore >= 0.8;
+      const year = Number(entry.candidate.publicationYear || (entry.candidate.rawDoc as any)?.first_publish_year || 0);
+      const canonDarkClassic = /\b(dracula|frankenstein|poe|raven|yellow wallpaper|turn of the screw|gothic classic)\b/.test(text);
+      const isLikelyPublicDomainClassic = canonDarkClassic || (year > 0 && year < 1955);
+      const exceptionallyStrongFit = entry.breakdown.toneScore >= 3.4 || entry.breakdown.personalAffinityScore >= 4.8;
+      if (isLikelyPublicDomainClassic && !exceptionallyStrongFit) return false;
       if (!toneFitOk && !affinityOk) return false;
     }
     return true;
