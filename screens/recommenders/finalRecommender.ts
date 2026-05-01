@@ -2259,7 +2259,20 @@ function canTakeCandidate(
 ): boolean {
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
-  if (count >= 2) return false;
+  const lane = laneFamilyForCandidate(candidate);
+  const authorCap = lane === "thriller" || lane === "mystery" ? 1 : 2;
+  if (count >= authorCap) return false;
+
+  const laneCounts = selected.reduce((acc, entry) => {
+    const key = laneFamilyForCandidate(entry.candidate) || "general";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const thrillerMysteryCount = Number(laneCounts["thriller"] || 0) + Number(laneCounts["mystery"] || 0);
+  const laneCap = Math.max(2, Math.floor(targetCount * 0.4));
+  if ((lane === "thriller" || lane === "mystery") && selected.length >= 5 && thrillerMysteryCount >= laneCap) {
+    return false;
+  }
 
   const seriesKey = seriesClusterKey(candidate);
   if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
@@ -2270,7 +2283,6 @@ function canTakeCandidate(
     return false;
   }
 
-  const lane = laneFamilyForCandidate(candidate);
   if (lane === "thriller" && subtypeCounts) {
     const subtype = thrillerSubtype(candidate);
     const cap = Math.max(1, Math.floor(targetCount * 0.4));
@@ -2590,6 +2602,16 @@ export function finalRecommenderForDeck(
     entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
   );
   let displayPool = tierA.length >= 3 ? tierA : [...tierA, ...tierB];
+  const toneCohesionMode = (() => {
+    const tasteAny: any = tasteProfile || {};
+    const positiveTerms = [
+      ...Object.keys(tasteAny?.likedTagCounts || {}),
+      ...Object.keys(tasteAny?.rightTagCounts || {}),
+      ...(Array.isArray(tasteAny?.positiveTags) ? tasteAny.positiveTags : []),
+      ...(Array.isArray(tasteAny?.likedTags) ? tasteAny.likedTags : []),
+    ].map((v) => String(v || "").toLowerCase()).join(" ");
+    return /\b(atmospheric|lyrical|surreal|philosophical|human|character[-\s]?driven|emotional|introspective|stylized)\b/.test(positiveTerms);
+  })();
   displayPool = displayPool.filter((entry) => {
     const lane = laneFamilyForCandidate(entry.candidate);
     const text = haystack(entry.candidate);
@@ -2601,6 +2623,11 @@ export function finalRecommenderForDeck(
       if (!hasPositiveFantasyShape) return false;
     }
     if (rescueHeavy && lane === "fantasy") return false;
+    if (toneCohesionMode) {
+      const toneFitOk = entry.breakdown.toneScore >= 1.25;
+      const affinityOk = entry.breakdown.personalAffinityScore >= 0.8;
+      if (!toneFitOk && !affinityOk) return false;
+    }
     return true;
   });
   const minDisplayPool = ordered.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, ordered.length);
