@@ -2597,7 +2597,7 @@ export function finalRecommenderForDeck(
     const bHasCover = b.candidate.hasCover ? 1 : 0;
     return bHasCover - aHasCover;
   });
-  const aiReranker = options?.aiReranker;
+  const aiReranker = _options?.aiReranker;
   const orderedAfterAi = (() => {
     if (typeof aiReranker !== "function" || !ordered.length) return ordered;
     try {
