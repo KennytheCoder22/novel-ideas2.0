@@ -1962,6 +1962,20 @@ function conceptHumanTonePenalty(c: Candidate, taste?: TasteProfile): number {
   return 0;
 }
 
+function plotBiasNoisePenalty(c: Candidate, taste?: TasteProfile): number {
+  const title = normalize(c.title || "");
+  const text = haystack(c);
+  const tasteFit = twentyQPersonalAffinityScore(c, taste);
+  const toneFit = computeToneMatchScore(c, taste);
+  const clickbaitTitle =
+    /\b(trust no one|never lie|do not disturb|the perfect son|the housemaid|behind her eyes|out of control)\b/.test(title) ||
+    /\b(the|a)\s+(perfect|secret|missing|silent|lying)\s+(wife|husband|daughter|son|neighbor)\b/.test(title);
+  const plotHeavy = /\b(page[-\s]?turner|twisty|gripping thriller|domestic suspense|serial killer|fbi|procedural)\b/.test(text);
+  const literaryCounter = /\b(literary|reflective|philosophical|human|character[-\s]?driven|atmospheric|quiet)\b/.test(text);
+  if (clickbaitTitle && plotHeavy && !literaryCounter && toneFit < 2.1 && tasteFit < 2.5) return -16;
+  return 0;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -2011,6 +2025,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const literaryCommercialPenalty = literaryToneVsCommercialThrillerPenalty(c, taste);
   const modernVoicePenalty = modernVoicePreferencePenalty(c, taste);
   const conceptHumanPenalty = conceptHumanTonePenalty(c, taste);
+  const plotNoisePenalty = plotBiasNoisePenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
     queryScore,
     metadataScore,
@@ -2076,7 +2091,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
@@ -2688,6 +2703,11 @@ export function finalRecommenderForDeck(
     if (toneCohesionMode) {
       const toneFitOk = entry.breakdown.toneScore >= 1.25;
       const affinityOk = entry.breakdown.personalAffinityScore >= 0.8;
+      const year = Number(entry.candidate.publicationYear || (entry.candidate.rawDoc as any)?.first_publish_year || 0);
+      const canonDarkClassic = /\b(dracula|frankenstein|poe|raven|yellow wallpaper|turn of the screw|gothic classic)\b/.test(text);
+      const isLikelyPublicDomainClassic = canonDarkClassic || (year > 0 && year < 1955);
+      const exceptionallyStrongFit = entry.breakdown.toneScore >= 3.4 || entry.breakdown.personalAffinityScore >= 4.8;
+      if (isLikelyPublicDomainClassic && !exceptionallyStrongFit) return false;
       if (!toneFitOk && !affinityOk) return false;
     }
     return true;
