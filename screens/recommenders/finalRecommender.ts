@@ -2591,6 +2591,16 @@ export function finalRecommenderForDeck(
     entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
   );
   let displayPool = tierA.length >= 3 ? tierA : [...tierA, ...tierB];
+  const toneCohesionMode = (() => {
+    const tasteAny: any = tasteProfile || {};
+    const positiveTerms = [
+      ...Object.keys(tasteAny?.likedTagCounts || {}),
+      ...Object.keys(tasteAny?.rightTagCounts || {}),
+      ...(Array.isArray(tasteAny?.positiveTags) ? tasteAny.positiveTags : []),
+      ...(Array.isArray(tasteAny?.likedTags) ? tasteAny.likedTags : []),
+    ].map((v) => String(v || "").toLowerCase()).join(" ");
+    return /\b(atmospheric|lyrical|surreal|philosophical|human|character[-\s]?driven|emotional|introspective|stylized)\b/.test(positiveTerms);
+  })();
   displayPool = displayPool.filter((entry) => {
     const lane = laneFamilyForCandidate(entry.candidate);
     const text = haystack(entry.candidate);
@@ -2602,6 +2612,11 @@ export function finalRecommenderForDeck(
       if (!hasPositiveFantasyShape) return false;
     }
     if (rescueHeavy && lane === "fantasy") return false;
+    if (toneCohesionMode) {
+      const toneFitOk = entry.breakdown.toneScore >= 1.25;
+      const affinityOk = entry.breakdown.personalAffinityScore >= 0.8;
+      if (!toneFitOk && !affinityOk) return false;
+    }
     return true;
   });
   const minDisplayPool = ordered.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, ordered.length);
