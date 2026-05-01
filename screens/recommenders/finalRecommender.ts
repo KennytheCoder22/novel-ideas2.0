@@ -495,6 +495,15 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
 function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectReason; detail?: string } {
   const hardReject = isHardReject(c);
   if (hardReject.reject) return { pass: false, reason: hardReject.reason, detail: hardReject.detail };
+  const isOL = isOpenLibraryCandidate(c);
+  const title = normalize(c.title);
+  const author = normalize(c.author);
+  if (isOL && (!author || author === "unknown author")) {
+    return { pass: false, reason: 'low_metadata_trust', detail: 'openlibrary_missing_author' };
+  }
+  if (isOL && (title === "dark fantasy" || title === "science fiction" || title === "fantasy")) {
+    return { pass: false, reason: 'non_fiction_meta', detail: `openlibrary_generic_title:${title}` };
+  }
 
   const fictionSignals = hasFictionSignals(c);
 
@@ -512,7 +521,6 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     Boolean(c.hasCover && descriptionLength > 80);
 
   const filterSignals = filterSignalScore(c);
-  const isOL = isOpenLibraryCandidate(c);
   const diagnostics = getFilterDiagnostics(c);
   const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
     ? diagnostics.filterPassedChecks

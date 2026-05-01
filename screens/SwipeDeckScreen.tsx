@@ -1845,10 +1845,7 @@ function handleLeft() {
           if (item.kind === "open_library") {
             const doc: any = item.doc;
             const title = doc?.title ?? "Untitled";
-            const author =
-              Array.isArray(doc?.author_name) && doc.author_name.length > 0
-                ? doc.author_name[0]
-                : "Unknown author";
+            const author = recommendationAuthor(doc);
             const year = doc?.first_publish_year ? ` (${doc.first_publish_year})` : "";
             return `${i + 1}. ${title} — ${author}${year}`;
           }
