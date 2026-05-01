@@ -523,6 +523,15 @@ function recommendationCoverUrl(doc: any): string | null {
   if (directImage) return directImage.replace(/^http:\/\//, "https://");
   const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, "L");
   if (fromCoverId) return fromCoverId;
+  const coverOlid =
+    (typeof doc?.cover_edition_key === "string" && doc.cover_edition_key.trim()) ||
+    (Array.isArray(doc?.edition_key) && doc.edition_key.length > 0 && typeof doc.edition_key[0] === "string"
+      ? doc.edition_key[0].trim()
+      : "") ||
+    (Array.isArray(doc?.editionKeys) && doc.editionKeys.length > 0 && typeof doc.editionKeys[0] === "string"
+      ? doc.editionKeys[0].trim()
+      : "");
+  if (coverOlid) return `https://covers.openlibrary.org/b/olid/${encodeURIComponent(coverOlid)}-L.jpg`;
   const thumbnail =
     (typeof doc?.imageLinks?.thumbnail === "string" && doc.imageLinks.thumbnail) ||
     (typeof doc?.imageLinks?.smallThumbnail === "string" && doc.imageLinks.smallThumbnail) ||
