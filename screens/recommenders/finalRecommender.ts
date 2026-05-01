@@ -7,6 +7,10 @@ export type FinalRecommenderOptions = {
   lane?: RecommenderLane;
   deckKey?: DeckKey;
   tasteProfile?: TasteProfile;
+  aiReranker?: (input: {
+    tasteProfile?: TasteProfile;
+    candidates: Array<{ id: string; title: string; author: string; summary: string; baseScore: number }>;
+  }) => Array<{ id: string; score: number; reason?: string }>;
 };
 
 export type QualityRejectReason =
@@ -1900,6 +1904,46 @@ function procurementAvailabilityScore(c: Candidate): number {
   return score;
 }
 
+function literaryToneVsCommercialThrillerPenalty(c: Candidate, taste?: TasteProfile): number {
+  const anyTaste: any = taste || {};
+  const positiveTerms = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase());
+  const positiveBlob = positiveTerms.join(" ");
+  const literarySession = /\b(literary|philosophical|atmospheric|reflective|introspective|character[-\s]?driven|human|surreal|thoughtful)\b/.test(positiveBlob);
+  if (!literarySession) return 0;
+
+  const text = haystack(c);
+  const formulaThriller = /\b(domestic suspense|page[-\s]?turner|gripping thriller|twisty|unputdownable|serial killer|procedural|fbi thriller|crime thriller|psychological suspense)\b/.test(text);
+  const literaryCounterSignal = /\b(literary|philosophical|meditative|reflective|character[-\s]?driven|quiet|atmospheric|surreal)\b/.test(text);
+  return formulaThriller && !literaryCounterSignal ? -14 : 0;
+}
+
+function modernVoicePreferencePenalty(c: Candidate, taste?: TasteProfile): number {
+  const anyTaste: any = taste || {};
+  const positiveTerms = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase());
+  const positiveBlob = positiveTerms.join(" ");
+  const modernLyricalSession = /\b(atmospheric|lyrical|stylized|surreal|philosophical|emotionally resonant|thoughtful|eerie|beautiful)\b/.test(positiveBlob);
+  if (!modernLyricalSession) return 0;
+
+  const text = haystack(c);
+  const year = Number(c.publicationYear || (c.rawDoc as any)?.first_publish_year || 0);
+  const isClassicGothic = /\b(gothic|dracula|frankenstein|poe|raven|yellow wallpaper|black cat|heart of darkness)\b/.test(text);
+  const hasModernSignal = year >= 1980 || /\b(contemporary|modern|present-day|new york times bestseller|booker|national book award)\b/.test(text);
+  const highPersonalFit = twentyQPersonalAffinityScore(c, taste) >= 5 || computeToneMatchScore(c, taste) >= 4;
+  if (highPersonalFit || hasModernSignal) return 0;
+  if ((year > 0 && year < 1960) || isClassicGothic) return -10;
+  return 0;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1946,6 +1990,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const rankingPriority = rankingPriorityBoost(c);
   const axisAlignment = tasteAxisAlignmentBoost(c, taste);
   const classicPenalty = classicDominancePenalty(c, taste);
+  const literaryCommercialPenalty = literaryToneVsCommercialThrillerPenalty(c, taste);
+  const modernVoicePenalty = modernVoicePreferencePenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
     queryScore,
     metadataScore,
@@ -2011,7 +2057,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
@@ -2217,7 +2263,20 @@ function canTakeCandidate(
 ): boolean {
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
-  if (count >= 2) return false;
+  const lane = laneFamilyForCandidate(candidate);
+  const authorCap = lane === "thriller" || lane === "mystery" ? 1 : 2;
+  if (count >= authorCap) return false;
+
+  const laneCounts = selected.reduce((acc, entry) => {
+    const key = laneFamilyForCandidate(entry.candidate) || "general";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const thrillerMysteryCount = Number(laneCounts["thriller"] || 0) + Number(laneCounts["mystery"] || 0);
+  const laneCap = Math.max(2, Math.floor(targetCount * 0.4));
+  if ((lane === "thriller" || lane === "mystery") && selected.length >= 5 && thrillerMysteryCount >= laneCap) {
+    return false;
+  }
 
   const seriesKey = seriesClusterKey(candidate);
   if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
@@ -2228,7 +2287,6 @@ function canTakeCandidate(
     return false;
   }
 
-  const lane = laneFamilyForCandidate(candidate);
   if (lane === "thriller" && subtypeCounts) {
     const subtype = thrillerSubtype(candidate);
     const cap = Math.max(1, Math.floor(targetCount * 0.4));
@@ -2539,15 +2597,64 @@ export function finalRecommenderForDeck(
     const bHasCover = b.candidate.hasCover ? 1 : 0;
     return bHasCover - aHasCover;
   });
+  const aiReranker = options?.aiReranker;
+  const orderedAfterAi = (() => {
+    if (typeof aiReranker !== "function" || !ordered.length) return ordered;
+    try {
+      const aiScores = aiReranker({
+        tasteProfile,
+        candidates: ordered.map((entry) => ({
+          id: identityKey(entry.candidate),
+          title: String(entry.candidate.title || ""),
+          author: String(entry.candidate.author || ""),
+          summary: String(entry.candidate.description || ""),
+          baseScore: Number(entry.breakdown.finalScore || 0),
+        })),
+      });
+      const scoreMap = new Map<string, { score: number; reason?: string }>();
+      for (const row of aiScores || []) {
+        if (!row?.id || !Number.isFinite(Number(row?.score))) continue;
+        scoreMap.set(String(row.id), { score: Number(row.score), reason: row.reason });
+      }
+      if (!scoreMap.size) return ordered;
+      const blended = ordered.map((entry) => {
+        const key = identityKey(entry.candidate);
+        const ai = scoreMap.get(key);
+        if (!ai) return entry;
+        const aiBoost = ai.score * 3.2;
+        return {
+          candidate: entry.candidate,
+          breakdown: {
+            ...entry.breakdown,
+            finalScore: Number((entry.breakdown.finalScore + aiBoost).toFixed(4)),
+          },
+        };
+      });
+      return blended.sort((a, b) => b.breakdown.finalScore - a.breakdown.finalScore);
+    } catch (error) {
+      debugFinalLog("AI_RERANK_FALLBACK_TO_DETERMINISTIC", { error: String((error as any)?.message || error) });
+      return ordered;
+    }
+  })();
 
-  const TIER_B_SCORE_THRESHOLD = ordered.length >= 15 ? 14 : 22;
-  const tierA = ordered.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
-  const tierB = ordered.filter((entry) =>
+  const TIER_B_SCORE_THRESHOLD = orderedAfterAi.length >= 15 ? 14 : 22;
+  const tierA = orderedAfterAi.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
+  const tierB = orderedAfterAi.filter((entry) =>
     !isTierAStrongNarrativeCandidate(entry.candidate) &&
     isFallbackEligibleCandidate(entry.candidate) &&
     entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
   );
   let displayPool = tierA.length >= 3 ? tierA : [...tierA, ...tierB];
+  const toneCohesionMode = (() => {
+    const tasteAny: any = tasteProfile || {};
+    const positiveTerms = [
+      ...Object.keys(tasteAny?.likedTagCounts || {}),
+      ...Object.keys(tasteAny?.rightTagCounts || {}),
+      ...(Array.isArray(tasteAny?.positiveTags) ? tasteAny.positiveTags : []),
+      ...(Array.isArray(tasteAny?.likedTags) ? tasteAny.likedTags : []),
+    ].map((v) => String(v || "").toLowerCase()).join(" ");
+    return /\b(atmospheric|lyrical|surreal|philosophical|human|character[-\s]?driven|emotional|introspective|stylized)\b/.test(positiveTerms);
+  })();
   displayPool = displayPool.filter((entry) => {
     const lane = laneFamilyForCandidate(entry.candidate);
     const text = haystack(entry.candidate);
@@ -2559,11 +2666,16 @@ export function finalRecommenderForDeck(
       if (!hasPositiveFantasyShape) return false;
     }
     if (rescueHeavy && lane === "fantasy") return false;
+    if (toneCohesionMode) {
+      const toneFitOk = entry.breakdown.toneScore >= 1.25;
+      const affinityOk = entry.breakdown.personalAffinityScore >= 0.8;
+      if (!toneFitOk && !affinityOk) return false;
+    }
     return true;
   });
-  const minDisplayPool = ordered.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, ordered.length);
+  const minDisplayPool = orderedAfterAi.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, orderedAfterAi.length);
   if (displayPool.length < minDisplayPool) {
-    const fallback = ordered.filter((entry) =>
+    const fallback = orderedAfterAi.filter((entry) =>
       passesStrongFinalQualityGate(entry.candidate, entry.breakdown, tasteProfile) ||
       entry.breakdown.finalScore >= (TIER_B_SCORE_THRESHOLD - 4)
     );
@@ -2621,8 +2733,8 @@ export function finalRecommenderForDeck(
   const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
   pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
   pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
-  if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
-    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+  if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && orderedAfterAi.length >= 15) {
+    pickFromPool(orderedAfterAi, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   }
   if (selected.length < 5) {
     const adjacentFamilies: Record<string, string[]> = {
@@ -2739,5 +2851,5 @@ export function finalRecommenderForDeck(
     .filter(({ candidate }) => !isHardReject(candidate).reject)
     .slice(0, MAX_RESULTS)
     .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
-  return attachNearbyAlternativeReason(selectedDocs, ordered);
+  return attachNearbyAlternativeReason(selectedDocs, orderedAfterAi);
 }
