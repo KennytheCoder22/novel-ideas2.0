@@ -7,6 +7,10 @@ export type FinalRecommenderOptions = {
   lane?: RecommenderLane;
   deckKey?: DeckKey;
   tasteProfile?: TasteProfile;
+  aiReranker?: (input: {
+    tasteProfile?: TasteProfile;
+    candidates: Array<{ id: string; title: string; author: string; summary: string; baseScore: number }>;
+  }) => Array<{ id: string; score: number; reason?: string }>;
 };
 
 export type QualityRejectReason =
@@ -1940,6 +1944,24 @@ function modernVoicePreferencePenalty(c: Candidate, taste?: TasteProfile): numbe
   return 0;
 }
 
+function conceptHumanTonePenalty(c: Candidate, taste?: TasteProfile): number {
+  const anyTaste: any = taste || {};
+  const positiveTerms = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase()).join(" ");
+  const conceptHumanSession = /\b(philosophical|thoughtful|human|character[-\s]?driven|concept|original|emotional|smart|speculative)\b/.test(positiveTerms);
+  if (!conceptHumanSession) return 0;
+  const text = haystack(c);
+  const anthologyDump = /\b(anthology|collected|best of|year's best|dark forces|edited by|horror anthology|stories)\b/.test(text);
+  const randomClassicDump = /\b(dracula|frankenstein|poe|stoker|gothic classic)\b/.test(text);
+  const strongCounterSignal = /\b(literary|philosophical|character[-\s]?driven|speculative|thoughtful|novel)\b/.test(text);
+  if ((anthologyDump || randomClassicDump) && !strongCounterSignal) return -12;
+  return 0;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1988,6 +2010,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const classicPenalty = classicDominancePenalty(c, taste);
   const literaryCommercialPenalty = literaryToneVsCommercialThrillerPenalty(c, taste);
   const modernVoicePenalty = modernVoicePreferencePenalty(c, taste);
+  const conceptHumanPenalty = conceptHumanTonePenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
     queryScore,
     metadataScore,
@@ -2053,7 +2076,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
@@ -2593,10 +2616,49 @@ export function finalRecommenderForDeck(
     const bHasCover = b.candidate.hasCover ? 1 : 0;
     return bHasCover - aHasCover;
   });
+  const aiReranker = _options?.aiReranker;
+  const orderedAfterAi = (() => {
+    if (typeof aiReranker !== "function" || !ordered.length) return ordered;
+    try {
+      const aiScores = aiReranker({
+        tasteProfile,
+        candidates: ordered.map((entry) => ({
+          id: identityKey(entry.candidate),
+          title: String(entry.candidate.title || ""),
+          author: String(entry.candidate.author || ""),
+          summary: String(entry.candidate.description || ""),
+          baseScore: Number(entry.breakdown.finalScore || 0),
+        })),
+      });
+      const scoreMap = new Map<string, { score: number; reason?: string }>();
+      for (const row of aiScores || []) {
+        if (!row?.id || !Number.isFinite(Number(row?.score))) continue;
+        scoreMap.set(String(row.id), { score: Number(row.score), reason: row.reason });
+      }
+      if (!scoreMap.size) return ordered;
+      const blended = ordered.map((entry) => {
+        const key = identityKey(entry.candidate);
+        const ai = scoreMap.get(key);
+        if (!ai) return entry;
+        const aiBoost = ai.score * 3.2;
+        return {
+          candidate: entry.candidate,
+          breakdown: {
+            ...entry.breakdown,
+            finalScore: Number((entry.breakdown.finalScore + aiBoost).toFixed(4)),
+          },
+        };
+      });
+      return blended.sort((a, b) => b.breakdown.finalScore - a.breakdown.finalScore);
+    } catch (error) {
+      debugFinalLog("AI_RERANK_FALLBACK_TO_DETERMINISTIC", { error: String((error as any)?.message || error) });
+      return ordered;
+    }
+  })();
 
-  const TIER_B_SCORE_THRESHOLD = ordered.length >= 15 ? 14 : 22;
-  const tierA = ordered.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
-  const tierB = ordered.filter((entry) =>
+  const TIER_B_SCORE_THRESHOLD = orderedAfterAi.length >= 15 ? 14 : 22;
+  const tierA = orderedAfterAi.filter((entry) => isTierAStrongNarrativeCandidate(entry.candidate));
+  const tierB = orderedAfterAi.filter((entry) =>
     !isTierAStrongNarrativeCandidate(entry.candidate) &&
     isFallbackEligibleCandidate(entry.candidate) &&
     entry.breakdown.finalScore >= TIER_B_SCORE_THRESHOLD
@@ -2630,9 +2692,9 @@ export function finalRecommenderForDeck(
     }
     return true;
   });
-  const minDisplayPool = ordered.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, ordered.length);
+  const minDisplayPool = orderedAfterAi.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, orderedAfterAi.length);
   if (displayPool.length < minDisplayPool) {
-    const fallback = ordered.filter((entry) =>
+    const fallback = orderedAfterAi.filter((entry) =>
       passesStrongFinalQualityGate(entry.candidate, entry.breakdown, tasteProfile) ||
       entry.breakdown.finalScore >= (TIER_B_SCORE_THRESHOLD - 4)
     );
@@ -2690,8 +2752,8 @@ export function finalRecommenderForDeck(
   const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
   pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
   pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
-  if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
-    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+  if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && orderedAfterAi.length >= 15) {
+    pickFromPool(orderedAfterAi, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   }
   if (selected.length < 5) {
     const adjacentFamilies: Record<string, string[]> = {
@@ -2808,5 +2870,5 @@ export function finalRecommenderForDeck(
     .filter(({ candidate }) => !isHardReject(candidate).reject)
     .slice(0, MAX_RESULTS)
     .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
-  return attachNearbyAlternativeReason(selectedDocs, ordered);
+  return attachNearbyAlternativeReason(selectedDocs, orderedAfterAi);
 }
