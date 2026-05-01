@@ -39,7 +39,7 @@ import type { MoodProfile, SwipeSignal } from "./recommenders/taste/sessionMood"
 import type { RecommenderInput } from "./recommenders/types";
 import { estimateReaderSophisticationFromTaste } from "./recommenders/taste/sophisticationModel";
 import { cardIdentityKey, selectAdaptiveCard } from "./swipe/adaptiveCardQueue";
-import { getLocalSwipeCardFallbackUri } from "../assets/swipeCardFallback";
+import { getSwipeCardFallbackImage } from "../assets/swipeCardFallback";
 
 const DEFAULT_SWIPE_CATEGORIES = {
   books: true,
@@ -1404,8 +1404,9 @@ export default function SwipeDeckScreen(props: Props) {
       } catch {
       }
 
-      const localFallbackUri = getLocalSwipeCardFallbackUri(title, author);
-      if (localFallbackUri) {
+      const localFallbackImage = getSwipeCardFallbackImage(deckKey, title);
+      const localFallbackUri = localFallbackImage ? Image.resolveAssetSource(localFallbackImage)?.uri : undefined;
+      if (typeof localFallbackUri === "string" && localFallbackUri.length > 0) {
         setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: localFallbackUri }));
       }
     }

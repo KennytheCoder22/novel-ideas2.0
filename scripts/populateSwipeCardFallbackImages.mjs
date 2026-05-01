@@ -122,11 +122,10 @@ async function main() {
       const filename = `${deck.deckKey === "ms_hs" ? "mshs" : deck.deckKey}__${slug}.jpg`;
       const rel = `./images/${filename}`;
       const abs = path.join(OUT_DIR, filename);
-      mapByDeck[deck.deckKey][card.title] = `require("${rel}")`;
-
       const exists = await fs.access(abs).then(() => true).catch(() => false);
       if (exists && !FORCE) {
         alreadyExisted++;
+        mapByDeck[deck.deckKey][card.title] = `require("${rel}")`;
         continue;
       }
 
@@ -147,6 +146,7 @@ async function main() {
       }
       await fs.writeFile(abs, buf);
       downloaded++;
+      mapByDeck[deck.deckKey][card.title] = `require("${rel}")`;
       console.log(`[downloaded] ${filename}`);
     }
   }
