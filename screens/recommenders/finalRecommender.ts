@@ -1900,6 +1900,24 @@ function procurementAvailabilityScore(c: Candidate): number {
   return score;
 }
 
+function literaryToneVsCommercialThrillerPenalty(c: Candidate, taste?: TasteProfile): number {
+  const anyTaste: any = taste || {};
+  const positiveTerms = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase());
+  const positiveBlob = positiveTerms.join(" ");
+  const literarySession = /\b(literary|philosophical|atmospheric|reflective|introspective|character[-\s]?driven|human|surreal|thoughtful)\b/.test(positiveBlob);
+  if (!literarySession) return 0;
+
+  const text = haystack(c);
+  const formulaThriller = /\b(domestic suspense|page[-\s]?turner|gripping thriller|twisty|unputdownable|serial killer|procedural|fbi thriller|crime thriller|psychological suspense)\b/.test(text);
+  const literaryCounterSignal = /\b(literary|philosophical|meditative|reflective|character[-\s]?driven|quiet|atmospheric|surreal)\b/.test(text);
+  return formulaThriller && !literaryCounterSignal ? -14 : 0;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1946,6 +1964,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const rankingPriority = rankingPriorityBoost(c);
   const axisAlignment = tasteAxisAlignmentBoost(c, taste);
   const classicPenalty = classicDominancePenalty(c, taste);
+  const literaryCommercialPenalty = literaryToneVsCommercialThrillerPenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
     queryScore,
     metadataScore,
@@ -2011,7 +2030,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
