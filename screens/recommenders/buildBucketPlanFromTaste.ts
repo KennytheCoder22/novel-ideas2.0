@@ -321,6 +321,13 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
 
   const descriptiveQueriesLower = (descriptive.queries || []).map((q) => String(q).toLowerCase());
   const descriptiveBlob = descriptiveQueriesLower.join(" ");
+  const warmthAxis = Number((routingInput as any)?.tasteProfile?.axes?.warmth ?? 0);
+  const darknessAxis = Number((routingInput as any)?.tasteProfile?.axes?.darkness ?? 0);
+  const hasWarmLowDarkProfile =
+    Number.isFinite(warmthAxis) &&
+    Number.isFinite(darknessAxis) &&
+    warmthAxis >= 0.2 &&
+    darknessAxis <= -0.2;
 
   const isHorror =
     genreKeys.includes("horror") ||
@@ -346,8 +353,18 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.some((key) => ["crime", "thriller"].includes(key)) ||
     descriptiveQueriesLower.some((q) => /thriller|crime thriller|serial killer|missing person|crime conspiracy|procedural crime thriller|suspense/.test(q));
 
+  const hardThrillerIntent =
+    hardThrillerNative ||
+    genreKeys.some((key) => ["crime", "thriller"].includes(key)) ||
+    descriptiveQueriesLower.some((q) => /serial killer|missing person|missing child|crime conspiracy|manhunt|fugitive|abduction|spy thriller|legal thriller/.test(q));
+
   const isMystery = mysterySignalPresent && (!romanceSignalPresent || hardMysteryNative);
-  const isThriller = !isMystery && thrillerSignalPresent && (!romanceSignalPresent || hardThrillerNative);
+  const thrillerSuppressedByTone = hasWarmLowDarkProfile && !hardThrillerIntent;
+  const isThriller =
+    !thrillerSuppressedByTone &&
+    !isMystery &&
+    thrillerSignalPresent &&
+    (!romanceSignalPresent || hardThrillerNative);
 
   const isRomance = romanceSignalPresent;
 
