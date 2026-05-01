@@ -2288,6 +2288,21 @@ function seriesClusterKey(candidate: Candidate): string {
   return match?.[1]?.trim() || "";
 }
 
+function hasRenderableImage(candidate: Candidate): boolean {
+  const rawDoc: any = (candidate as any)?.rawDoc || {};
+  return Boolean(
+    candidate?.hasCover ||
+    (typeof (candidate as any)?.imageUrl === "string" && (candidate as any).imageUrl.trim()) ||
+    (typeof rawDoc?.imageUrl === "string" && rawDoc.imageUrl.trim()) ||
+    (typeof rawDoc?.coverImageUrl === "string" && rawDoc.coverImageUrl.trim()) ||
+    (typeof rawDoc?.imageLinks?.thumbnail === "string" && rawDoc.imageLinks.thumbnail.trim()) ||
+    (typeof rawDoc?.imageLinks?.smallThumbnail === "string" && rawDoc.imageLinks.smallThumbnail.trim()) ||
+    (typeof rawDoc?.volumeInfo?.imageLinks?.thumbnail === "string" && rawDoc.volumeInfo.imageLinks.thumbnail.trim()) ||
+    (typeof rawDoc?.volumeInfo?.imageLinks?.smallThumbnail === "string" && rawDoc.volumeInfo.imageLinks.smallThumbnail.trim()) ||
+    Boolean(rawDoc?.cover_i)
+  );
+}
+
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -2298,8 +2313,9 @@ function canTakeCandidate(
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
   const lane = laneFamilyForCandidate(candidate);
-  const authorCap = lane === "thriller" || lane === "mystery" ? 1 : 2;
+  const authorCap = 2;
   if (count >= authorCap) return false;
+  if (!hasRenderableImage(candidate)) return false;
 
   const laneCounts = selected.reduce((acc, entry) => {
     const key = laneFamilyForCandidate(entry.candidate) || "general";
