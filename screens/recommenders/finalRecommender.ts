@@ -2263,6 +2263,17 @@ function canTakeCandidate(
   const authorCap = lane === "thriller" || lane === "mystery" ? 1 : 2;
   if (count >= authorCap) return false;
 
+  const laneCounts = selected.reduce((acc, entry) => {
+    const key = laneFamilyForCandidate(entry.candidate) || "general";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const thrillerMysteryCount = Number(laneCounts["thriller"] || 0) + Number(laneCounts["mystery"] || 0);
+  const laneCap = Math.max(2, Math.floor(targetCount * 0.4));
+  if ((lane === "thriller" || lane === "mystery") && selected.length >= 5 && thrillerMysteryCount >= laneCap) {
+    return false;
+  }
+
   const seriesKey = seriesClusterKey(candidate);
   if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
     return false;
