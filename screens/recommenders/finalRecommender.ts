@@ -495,6 +495,15 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
 function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectReason; detail?: string } {
   const hardReject = isHardReject(c);
   if (hardReject.reject) return { pass: false, reason: hardReject.reason, detail: hardReject.detail };
+  const isOL = isOpenLibraryCandidate(c);
+  const title = normalize(c.title);
+  const author = normalize(c.author);
+  if (isOL && (!author || author === "unknown author")) {
+    return { pass: false, reason: 'low_metadata_trust', detail: 'openlibrary_missing_author' };
+  }
+  if (isOL && (title === "dark fantasy" || title === "science fiction" || title === "fantasy")) {
+    return { pass: false, reason: 'non_fiction_meta', detail: `openlibrary_generic_title:${title}` };
+  }
 
   const fictionSignals = hasFictionSignals(c);
 
@@ -512,7 +521,6 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     Boolean(c.hasCover && descriptionLength > 80);
 
   const filterSignals = filterSignalScore(c);
-  const isOL = isOpenLibraryCandidate(c);
   const diagnostics = getFilterDiagnostics(c);
   const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
     ? diagnostics.filterPassedChecks
@@ -979,6 +987,8 @@ function hasStrongNarrativeOrAuthoritySignal(c: Candidate): boolean {
 }
 
 function rescuePenaltyScore(c: Candidate): number {
+  const source = String((c as any)?.source || (c as any)?.rawDoc?.source || "").toLowerCase();
+  const isOpenLibraryLike = source.includes("openlibrary") || source.includes("open_library");
   const diagnostics = getFilterDiagnostics(c);
   const passedChecks: string[] = Array.isArray(diagnostics?.filterPassedChecks)
     ? diagnostics.filterPassedChecks
@@ -991,12 +1001,15 @@ function rescuePenaltyScore(c: Candidate): number {
     check === "soft_missing_thriller_signal" ||
     check === "soft_minimum_authority_floor_miss"
   ).length;
-  if (rescuePenaltyCount >= 2) return -8;
-  if (rescuePenaltyCount >= 1 && stackedSoft >= 1) return -6;
-  return rescuePenaltyCount >= 1 ? -3 : 0;
+  const cappedRescuePenaltyCount = isOpenLibraryLike ? Math.min(1, rescuePenaltyCount) : rescuePenaltyCount;
+  if (cappedRescuePenaltyCount >= 2) return -8;
+  if (cappedRescuePenaltyCount >= 1 && stackedSoft >= 1) return isOpenLibraryLike ? -3 : -6;
+  return cappedRescuePenaltyCount >= 1 ? -3 : 0;
 }
 
 function softFailurePenaltyScore(c: Candidate): number {
+  const source = String((c as any)?.source || (c as any)?.rawDoc?.source || "").toLowerCase();
+  const isOpenLibraryLike = source.includes("openlibrary") || source.includes("open_library");
   const diagnostics = getFilterDiagnostics(c);
   const flags = diagnostics?.filterFlags || diagnostics?.flags || {};
   if (flags?.fictionPositive && flags?.strongNarrative) return 0;
@@ -1006,7 +1019,7 @@ function softFailurePenaltyScore(c: Candidate): number {
       ? diagnostics.passedChecks
       : [];
   const softFailures = passedChecks.filter((check) => check.startsWith('soft_')).length;
-  const SOFT_FAILURE_WEIGHT = 1.25;
+  const SOFT_FAILURE_WEIGHT = isOpenLibraryLike ? 0.5 : 1.25;
   return -Math.min(10, softFailures * SOFT_FAILURE_WEIGHT);
 }
 
