@@ -1944,6 +1944,24 @@ function modernVoicePreferencePenalty(c: Candidate, taste?: TasteProfile): numbe
   return 0;
 }
 
+function conceptHumanTonePenalty(c: Candidate, taste?: TasteProfile): number {
+  const anyTaste: any = taste || {};
+  const positiveTerms = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase()).join(" ");
+  const conceptHumanSession = /\b(philosophical|thoughtful|human|character[-\s]?driven|concept|original|emotional|smart|speculative)\b/.test(positiveTerms);
+  if (!conceptHumanSession) return 0;
+  const text = haystack(c);
+  const anthologyDump = /\b(anthology|collected|best of|year's best|dark forces|edited by|horror anthology|stories)\b/.test(text);
+  const randomClassicDump = /\b(dracula|frankenstein|poe|stoker|gothic classic)\b/.test(text);
+  const strongCounterSignal = /\b(literary|philosophical|character[-\s]?driven|speculative|thoughtful|novel)\b/.test(text);
+  if ((anthologyDump || randomClassicDump) && !strongCounterSignal) return -12;
+  return 0;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1992,6 +2010,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const classicPenalty = classicDominancePenalty(c, taste);
   const literaryCommercialPenalty = literaryToneVsCommercialThrillerPenalty(c, taste);
   const modernVoicePenalty = modernVoicePreferencePenalty(c, taste);
+  const conceptHumanPenalty = conceptHumanTonePenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
     queryScore,
     metadataScore,
@@ -2057,7 +2076,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
