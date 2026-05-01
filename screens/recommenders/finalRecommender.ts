@@ -2298,7 +2298,7 @@ function canTakeCandidate(
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
   const lane = laneFamilyForCandidate(candidate);
-  const authorCap = lane === "thriller" || lane === "mystery" ? 1 : 2;
+  const authorCap = 2;
   if (count >= authorCap) return false;
 
   const laneCounts = selected.reduce((acc, entry) => {
