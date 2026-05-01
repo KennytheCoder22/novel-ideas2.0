@@ -230,8 +230,8 @@ function isFamilyCompatibleQuery(query: string, family: Family): boolean {
   }
   if (family === "romance_family") return /\bromance\b/.test(q);
   if (family === "historical_family") {
-    if (/(science fiction|fantasy|horror|romance|thriller|mystery|detective)/.test(q) && !/historical/.test(q)) return false;
-    return /(historical|period fiction|victorian|edwardian|gilded age|19th century|civil war|world war|regency)/.test(q);
+    if (/\b(science fiction|fantasy|horror|romance|thriller|mystery|detective)\b/.test(q) && !/\bhistorical\b/.test(q)) return false;
+    return /\b(historical|period fiction|victorian|edwardian|gilded age|19th century|civil war|world war|regency)\b/.test(q);
   }
   return true;
 }
@@ -358,8 +358,12 @@ export function buildBucketPlanFromTaste(input: RecommenderInput) {
     genreKeys.some((key) => ["crime", "thriller"].includes(key)) ||
     descriptiveQueriesLower.some((q) => /serial killer|missing person|missing child|crime conspiracy|manhunt|fugitive|abduction|spy thriller|legal thriller/.test(q));
 
-  const isMystery = mysterySignalPresent && (!romanceSignalPresent || hardMysteryNative);
-  const thrillerSuppressedByTone = hasWarmLowDarkProfile && !hardThrillerIntent;
+  const toneBlob = [...toneKeys, ...descriptiveQueriesLower].join(" ");
+  const literaryWhimsicalTone = /\b(whimsical|offbeat|quirky|atmospheric|dreamlike|surreal|philosophical|reflective|contemplative|human|character[-\s]?driven|literary|gentle|tender|warm|melancholic)\b/.test(toneBlob);
+
+  const mysterySuppressedByTone = literaryWhimsicalTone && !hardMysteryNative;
+  const isMystery = !mysterySuppressedByTone && mysterySignalPresent && (!romanceSignalPresent || hardMysteryNative);
+  const thrillerSuppressedByTone = (hasWarmLowDarkProfile || literaryWhimsicalTone) && !hardThrillerIntent;
   const isThriller =
     !thrillerSuppressedByTone &&
     !isMystery &&
