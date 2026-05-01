@@ -130,146 +130,6 @@ type Props = {
   };
 };
 
-type DebugGenreKey =
-  | "fantasy"
-  | "romance"
-  | "horror"
-  | "thriller"
-  | "mystery"
-  | "science_fiction"
-  | "historical";
-
-type DebugGenrePreset = {
-  label: string;
-  rightSwipes: number;
-  leftSwipes: number;
-  downSwipes: number;
-  positiveTags: string[];
-  negativeTags?: string[];
-  keywords: string[];
-};
-
-const DEBUG_GENRE_PRESETS: Record<DebugGenreKey, DebugGenrePreset> = {
-  fantasy: {
-    label: "Fantasy",
-    rightSwipes: 8,
-    leftSwipes: 0,
-    downSwipes: 4,
-    positiveTags: [
-      "fantasy",
-      "dark fantasy",
-      "adventure",
-      "epic",
-      "atmospheric",
-      "mythology",
-      "magic",
-      "authority",
-    ],
-    negativeTags: ["realistic"],
-    keywords: ["fantasy", "magic", "myth", "dragon", "epic", "adventure", "quest"],
-  },
-  romance: {
-    label: "Romance",
-    rightSwipes: 8,
-    leftSwipes: 1,
-    downSwipes: 3,
-    positiveTags: [
-      "romance",
-      "love",
-      "human connection",
-      "character-driven",
-      "warm",
-      "hopeful",
-      "relationship",
-    ],
-    negativeTags: ["dark"],
-    keywords: ["romance", "love", "relationship", "heart", "tender", "rom-com"],
-  },
-  horror: {
-    label: "Horror",
-    rightSwipes: 8,
-    leftSwipes: 0,
-    downSwipes: 5,
-    positiveTags: [
-      "horror",
-      "spooky",
-      "dark",
-      "psychological",
-      "mystery",
-      "survival",
-      "gothic",
-    ],
-    negativeTags: ["cozy"],
-    keywords: ["horror", "haunted", "ghost", "dark", "spooky", "gothic", "survival"],
-  },
-  thriller: {
-    label: "Thriller",
-    rightSwipes: 8,
-    leftSwipes: 0,
-    downSwipes: 4,
-    positiveTags: [
-      "thriller",
-      "mystery",
-      "crime",
-      "psychological",
-      "fast-paced",
-      "dark",
-      "investigation",
-    ],
-    negativeTags: ["cozy"],
-    keywords: ["thriller", "crime", "mystery", "detective", "investigation", "suspense"],
-  },
-  mystery: {
-    label: "Mystery",
-    rightSwipes: 8,
-    leftSwipes: 0,
-    downSwipes: 4,
-    positiveTags: [
-      "mystery",
-      "crime",
-      "investigation",
-      "detective",
-      "psychological",
-      "dark",
-    ],
-    negativeTags: ["romance"],
-    keywords: ["mystery", "crime", "detective", "investigation", "case", "murder"],
-  },
-  science_fiction: {
-    label: "Sci-Fi",
-    rightSwipes: 8,
-    leftSwipes: 0,
-    downSwipes: 4,
-    positiveTags: [
-      "science fiction",
-      "ai",
-      "dystopian",
-      "identity",
-      "technology",
-      "weird",
-      "adventure",
-    ],
-    negativeTags: ["historical"],
-    keywords: ["science fiction", "sci-fi", "ai", "space", "dystopian", "future", "technology"],
-  },
-  historical: {
-    label: "Historical",
-    rightSwipes: 8,
-    leftSwipes: 1,
-    downSwipes: 3,
-    positiveTags: [
-      "historical",
-      "historical fiction",
-      "family",
-      "war",
-      "literary",
-      "atmospheric",
-    ],
-    negativeTags: ["science fiction"],
-    keywords: ["historical", "period", "war", "victorian", "gilded", "family saga"],
-  },
-};
-
 
 function resolveDeckFromModule(mod: any, expectedKey: DeckKey, fallbackLabel: string): SwipeDeck {
   const candidates: any[] = [];
@@ -506,66 +366,11 @@ function addTags(counts: TagCounts, tags: string[], delta: number) {
   const next: TagCounts = { ...counts };
   for (const t of tags) {
     if (!t) continue;
-    const val = (next[t] || 0) + delta;
-    if (val === 0) delete next[t];
-    else next[t] = val;
+    const value = (next[t] || 0) + delta;
+    if (value === 0) delete next[t];
+    else next[t] = value;
   }
   return next;
-}
-
-function buildDebugGenreTagCounts(deckKey: DeckKey, genreKey: DebugGenreKey): TagCounts {
-  const preset = DEBUG_GENRE_PRESETS[genreKey];
-  const counts: TagCounts = {};
-
-  for (const tag of preset.positiveTags) {
-    const normalized = String(tag || "").trim();
-    if (!normalized) continue;
-    counts[normalized.includes(":") ? normalized : normalized.toLowerCase()] =
-      (counts[normalized.includes(":") ? normalized : normalized.toLowerCase()] || 0) + 1;
-  }
-
-  for (const tag of preset.negativeTags || []) {
-    const normalized = String(tag || "").trim().toLowerCase();
-    if (!normalized) continue;
-    counts[normalized] = (counts[normalized] || 0) - 1;
-  }
-
-  if (deckKey === "k2") {
-    counts["audience:kids"] = 8;
-    counts["age:k2"] = 8;
-  } else if (deckKey === "36") {
-    counts["audience:kids"] = 8;
-    counts["age:36"] = 8;
-  } else if (deckKey === "ms_hs") {
-    counts["audience:teen"] = 8;
-    counts["age:mshs"] = 8;
-  } else {
-    counts["audience:adult"] = 8;
-    counts["age:adult"] = 8;
-  }
-
-  return counts;
-}
-
-function buildDebugGenreSwipeHistory(
-  cards: SwipeDeckCard[],
-  genreKey: DebugGenreKey,
-  maxLikes = 8
-): SwipeHistoryEntry[] {
-  const preset = DEBUG_GENRE_PRESETS[genreKey];
-  const keywords = preset.keywords.map((keyword) => keyword.toLowerCase());
-
-  const scored = cards
-    .map((card, index) => {
-      const bag = semanticStringsFromCard(card as any).join(" ");
-      const score = keywords.reduce((sum, keyword) => sum + (bag.includes(keyword) ? 1 : 0), 0);
-      return { card, index, score };
-    })
-    .filter((entry) => entry.score > 0)
-    .sort((a, b) => b.score - a.score || a.index - b.index)
-    .slice(0, maxLikes);
-
-  return scored.map((entry) => ({ direction: "like" as const, card: entry.card }));
 }
 
 
@@ -701,9 +506,74 @@ function cardTagCounts(card: any): TagCounts {
   return {};
 }
 
+function recommendationAuthor(doc: any): string {
+  if (!doc) return "Unknown author";
+  if (Array.isArray(doc.author_name) && doc.author_name.length > 0) return String(doc.author_name[0]);
+  if (Array.isArray(doc.authors) && doc.authors.length > 0) return String(doc.authors[0]);
+  if (typeof doc.author === "string" && doc.author.trim()) return doc.author.trim();
+  return "Unknown author";
+}
+
+function recommendationCoverUrl(doc: any): string | null {
+  if (!doc) return null;
+  const directImage =
+    (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
+    (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
+    "";
+  if (directImage) return directImage.replace(/^http:\/\//, "https://");
+  const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, "L");
+  if (fromCoverId) return fromCoverId;
+  const thumbnail =
+    (typeof doc?.imageLinks?.thumbnail === "string" && doc.imageLinks.thumbnail) ||
+    (typeof doc?.imageLinks?.smallThumbnail === "string" && doc.imageLinks.smallThumbnail) ||
+    (typeof doc?.volumeInfo?.imageLinks?.thumbnail === "string" && doc.volumeInfo.imageLinks.thumbnail) ||
+    (typeof doc?.volumeInfo?.imageLinks?.smallThumbnail === "string" && doc.volumeInfo.imageLinks.smallThumbnail) ||
+    (typeof doc?.thumbnail === "string" && doc.thumbnail) ||
+    (typeof doc?.coverImageUrl === "string" && doc.coverImageUrl) ||
+    (typeof doc?.imageUrl === "string" && doc.imageUrl) ||
+    "";
+  return thumbnail ? thumbnail.replace(/^http:\/\//, "https://") : null;
+}
+
 function directTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVector | null {
   if (!card || !(card as any)?.tasteTraits) return null;
   return tasteVectorFromAxes((card as any).tasteTraits);
+}
+
+function semanticTraitsFromCard(card: SwipeDeckCard | null | undefined): TasteVector | null {
+  if (!card) return null;
+
+  const semantic = (card as any)?.semantic || {};
+  const derivedTagCounts: TagCounts = {};
+
+  const addTag = (raw: unknown, prefix = "theme") => {
+    const token = String(raw || "").trim().toLowerCase();
+    if (!token) return;
+    const key = token.includes(":") ? token : `${prefix}:${token}`;
+    derivedTagCounts[key] = (derivedTagCounts[key] || 0) + 1;
+  };
+
+  const addTokens = (tokens: unknown, prefix: string) => {
+    if (!Array.isArray(tokens)) return;
+    for (const token of tokens) addTag(token, prefix);
+  };
+
+  addTokens((card as any)?.tags, "theme");
+  addTag((card as any)?.genre, "genre");
+  addTokens(semantic.contentTraits, "theme");
+  addTokens(semantic.toneTraits, "vibe");
+  addTokens(semantic.characterTraits, "theme");
+  addTokens(semantic.storyTraits, "theme");
+  addTokens(semantic.aversionTraits, "theme");
+
+  if (Object.keys(derivedTagCounts).length === 0) return null;
+
+  const inferred = buildTasteProfile({
+    tagCounts: derivedTagCounts,
+    feedback: [] as TasteFeedbackEvent[],
+    itemTraitsById: {},
+  });
+  return tasteVectorFromAxes((inferred as any)?.axes);
 }
 
 function weightedDirectTraitsHistory(
@@ -714,7 +584,7 @@ function weightedDirectTraitsHistory(
 
   return decisionHistory
     .map((entry) => {
-      const direct = directTraitsFromCard(entry.card);
+      const direct = directTraitsFromCard(entry.card) || semanticTraitsFromCard(entry.card);
       if (!direct) return null;
 
       const directionScale = entry.direction === "like" ? 1 : -1;
@@ -961,14 +831,21 @@ function selectTwentyQCard(args: {
 function shouldFinishTwentyQSession(args: {
   statuses: TwentyQObjectiveStatus[];
   decisionSwipes: number;
+  rightSwipes: number;
+  leftSwipes: number;
+  tagCounts: TagCounts;
   totalSeenCards: number;
   totalCards: number;
 }): boolean {
-  const { statuses, decisionSwipes, totalSeenCards, totalCards } = args;
+  const { statuses, decisionSwipes, rightSwipes, leftSwipes, tagCounts, totalSeenCards, totalCards } = args;
   const allResolved = statuses.length > 0 && statuses.every((status) => status.resolved);
   const hitDecisionCap = decisionSwipes >= Math.max(statuses.length + 2, 8);
+  const strongSignals = Object.values(tagCounts || {}).filter((value) => Math.abs(Number(value || 0)) >= 1).length;
+  const hasBalancedPreferenceEvidence = rightSwipes >= 3 && leftSwipes >= 3;
+  const hasEnoughSignalBreadth = strongSignals >= 6;
+  const hasSufficientEvidence = hasBalancedPreferenceEvidence && hasEnoughSignalBreadth;
 
-  if (allResolved && decisionSwipes >= MIN_20Q_DECISION_SWIPES) return true;
+  if (allResolved && decisionSwipes >= MIN_20Q_DECISION_SWIPES && hasSufficientEvidence) return true;
   if (hitDecisionCap) return true;
   if (totalSeenCards >= totalCards && decisionSwipes >= MIN_20Q_DECISION_SWIPES) return true;
   return false;
@@ -1032,7 +909,6 @@ export default function SwipeDeckScreen(props: Props) {
   const [autoSearched, setAutoSearched] = useState(false);
 
   const [showRating, setShowRating] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
   const [profileOverridesByLane, setProfileOverridesByLane] = useState<Partial<Record<RecommenderLane, Partial<RecommenderProfile>>>>({});
   const [ratingPreview, setRatingPreview] = useState<0 | 1 | 2 | 3 | 4 | 5>(0);
@@ -1307,7 +1183,6 @@ export default function SwipeDeckScreen(props: Props) {
     setRecIndex(0);
     setAutoSearched(false);
     setShowRating(false);
-    setShowDebug(false);
     setLastSourceCounts(null);
     setLastCandidatePool([]);
     setLastRawPool([]);
@@ -1336,6 +1211,9 @@ export default function SwipeDeckScreen(props: Props) {
   const isDone = shouldFinishTwentyQSession({
     statuses: twentyQStatuses,
     decisionSwipes,
+    rightSwipes,
+    leftSwipes,
+    tagCounts,
     totalSeenCards,
     totalCards: cards.length,
   });
@@ -1679,7 +1557,7 @@ function handleLeft() {
         tagCounts: tagCountsForQuery,
         tasteProfile: tasteProfileWithMood,
         limit: 10,
-        timeoutMs: 15000,
+        timeoutMs: 9000,
       };
 
       await performRecommendationRun(input);
@@ -1701,15 +1579,6 @@ function handleLeft() {
       console.log("[NovelIdeas][REC] auto_run_error", { message: err?.message });
     }
   }
-
-  async function handleRerunExactQuery() {
-    if (!lastRecommendationInput) {
-      Alert.alert("Nothing to re-run yet", "Finish a swipe session first so the original query can be saved.");
-      return;
-    }
-    await performRecommendationRun(lastRecommendationInput);
-  }
-
 
   function handleFreshUserReset() {
     const fresh = initializePersonality(pipelineUserId);
@@ -1760,75 +1629,6 @@ function handleLeft() {
     setSuppressPersonalityLearningForNextRun(true);
     position.setValue({ x: 0, y: 0 });
     setSessionNonce((n) => n + 1);
-  }
-
-  function handleResetPersonality() {
-    handleFreshUserReset();
-  }
-
-  function handleRandomizePersonalitySlightly() {
-    const randomBetween = (min: number, max: number) => Math.random() * (max - min) + min;
-
-    const randomized: PersonalityProfile = {
-      ...initializePersonality(pipelineUserId),
-      vector: {
-        ideaDensity: randomBetween(-0.18, 0.18),
-        darkness: randomBetween(-0.18, 0.18),
-        warmth: randomBetween(-0.18, 0.18),
-        realism: randomBetween(-0.18, 0.18),
-        characterFocus: randomBetween(-0.18, 0.18),
-        pacing: randomBetween(-0.18, 0.18),
-      },
-      confidence: 0.2,
-      sessionCount: 1,
-      lastUpdatedAt: new Date().toISOString(),
-    };
-
-    personalityStoreRef.current[pipelineUserId] = randomized;
-    sessionSwipeStoreRef.current[pipelineSessionId] = [];
-    delete moodStoreRef.current[pipelineSessionId];
-
-    setPersonalityProfileState(randomized);
-    setSessionMoodProfile(null);
-    setActiveTasteVector(null);
-    setActiveTasteWeights(null);
-    setSuppressPersonalityLearningForNextRun(false);
-  }
-
-  async function runDebugGenreSession(genreKey: DebugGenreKey) {
-    const preset = DEBUG_GENRE_PRESETS[genreKey];
-    const syntheticTagCounts = buildDebugGenreTagCounts(deckKey, genreKey);
-    const syntheticSwipeHistory = buildDebugGenreSwipeHistory(cards, genreKey, preset.rightSwipes);
-    const syntheticTasteProfile = buildTasteProfile({
-      tagCounts: syntheticTagCounts,
-      directTraits: weightedDirectTraitsHistory(syntheticSwipeHistory),
-      feedback: [] as TasteFeedbackEvent[],
-      itemTraitsById: {},
-    });
-
-    setTagCounts(syntheticTagCounts);
-    setSwipeHistory(syntheticSwipeHistory);
-    setRightSwipes(preset.rightSwipes);
-    setLeftSwipes(preset.leftSwipes);
-    setDownSwipes(preset.downSwipes);
-    setRecItems([]);
-    setRecIndex(0);
-    setRecError(null);
-    setShowRating(false);
-    setAutoSearched(true);
-
-    const input: RecommenderInput = {
-      deckKey,
-      tagCounts: syntheticTagCounts,
-      tasteProfile: syntheticTasteProfile,
-      limit: 10,
-      timeoutMs: 15000,
-    };
-
-    await performRecommendationRun(input);
-    setLastRecommendationSwipeSummary(
-      `Genre Sim: ${preset.label} • Right:${preset.rightSwipes} • Left:${preset.leftSwipes} • Skip:${preset.downSwipes}`
-    );
   }
 
 
@@ -2231,7 +2031,7 @@ function handleLeft() {
     if (!currentRec) return "";
     if (currentRec.kind === "open_library") {
       const t = currentRec.doc?.title ?? "";
-      const a = currentRec.doc?.author_name?.[0] ?? "";
+      const a = recommendationAuthor(currentRec.doc);
       return `ol::${t}::${a}`.toLowerCase();
     }
     const t = currentRec.book?.title ?? "";
@@ -2242,12 +2042,13 @@ function handleLeft() {
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      if (!currentRec || currentRec.kind !== "fallback") return;
+      if (!currentRec) return;
       const key = currentRecKey;
       if (!key || recCoverCache[key]) return;
-      const title = currentRec.book?.title;
-      const author = currentRec.book?.author;
+      const title = currentRec.kind === "open_library" ? currentRec.doc?.title : currentRec.book?.title;
+      const author = currentRec.kind === "open_library" ? recommendationAuthor(currentRec.doc) : currentRec.book?.author;
       if (!title) return;
+      if (currentRec.kind === "open_library" && recommendationCoverUrl(currentRec.doc)) return;
       try {
         const found = await lookupOpenLibraryCover(title, author);
         if (cancelled) return;
@@ -2406,7 +2207,7 @@ function handleLeft() {
                     <View style={styles.bigCoverWrap}>
                       {currentRec.kind === "open_library" ? (
                         (() => {
-                          const cover = coverUrlFromCoverId(currentRec.doc.cover_i, "L");
+                          const cover = recommendationCoverUrl(currentRec.doc) || recCoverCache[currentRecKey] || null;
                           return cover ? (
                             <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
                           ) : (
@@ -2430,9 +2231,7 @@ function handleLeft() {
                       </Text>
                       <Text style={styles.recBookAuthor} numberOfLines={1}>
                         {currentRec.kind === "open_library"
-                          ? Array.isArray(currentRec.doc.author_name) && currentRec.doc.author_name.length > 0
-                            ? currentRec.doc.author_name[0]
-                            : "Unknown author"
+                          ? recommendationAuthor(currentRec.doc)
                           : currentRec.book.author ?? "Unknown author"}
                       </Text>
                       <Text style={styles.recCounter}>
@@ -2552,15 +2351,6 @@ function handleLeft() {
                       <Text style={styles.cardPrompt}>{(currentCard as any)?.prompt ?? (currentCard as any)?.title ?? ""}</Text>
                     )}
 
-                    {activeTwentyQObjective ? (
-                      <View style={[styles.twentyQBadge, { borderColor: highlightColor }]}>
-                        <Text style={styles.twentyQBadgeTitle}>Rung {activeTwentyQObjective.rung}: {activeTwentyQObjective.label}</Text>
-                        <Text style={styles.twentyQBadgeText}>{activeTwentyQObjective.description}</Text>
-                        <Text style={styles.twentyQBadgeText}>
-                          Signal: {activeTwentyQObjective.score > 0 ? "+" : ""}{activeTwentyQObjective.score.toFixed(2)} / {activeTwentyQObjective.threshold.toFixed(2)}
-                        </Text>
-                      </View>
-                    ) : null}
                   </Animated.View>
                 </View>
               </View>
@@ -2644,54 +2434,12 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
-          {(Object.keys(DEBUG_GENRE_PRESETS) as DebugGenreKey[]).map((genreKey) => (
-            <TouchableOpacity
-              key={`stack-${genreKey}`}
-              style={styles.genreQuickToggle}
-              onPress={() => {
-                void runDebugGenreSession(genreKey);
-              }}
-            >
-              <Text style={styles.debugToggleText}>{DEBUG_GENRE_PRESETS[genreKey].label}</Text>
-            </TouchableOpacity>
-          ))}
-
           <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.rerunToggle} onPress={handleRerunExactQuery}>
-            <Text style={styles.debugToggleText}>Re-run</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.tuneToggle} onPress={() => setShowEqualizer(true)}>
-            <Text style={styles.debugToggleText}>Tune</Text>
-          </TouchableOpacity>
-
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
             <Text style={styles.debugToggleText}>Fresh User</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.clearOverrideToggle}
-            onPress={() =>
-              setProfileOverridesByLane((prev) => {
-                const lane = laneFromDeckKey(deckKey);
-                const next = { ...prev };
-                delete next[lane];
-                return next;
-              })
-            }
-          >
-            <Text style={styles.debugToggleText}>Clear Override</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.randomizeToggle} onPress={handleRandomizePersonalitySlightly}>
-            <Text style={styles.debugToggleText}>Randomize</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.debugToggle} onPress={() => setShowDebug((v) => !v)}>
-            <Text style={styles.debugToggleText}>Debug</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -2705,103 +2453,6 @@ function handleLeft() {
         }}
       />
 
-
-
-
-
-
-      {showDebug && (
-        <View style={styles.debugPanel}>
-          <View style={styles.debugCard}>
-            <View style={styles.debugHeader}>
-              <Text style={styles.debugTitle}>Debug</Text>
-              <TouchableOpacity onPress={() => setShowDebug(false)} style={styles.debugCloseBtn}>
-                <Text style={styles.debugCloseText}>×</Text>
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.debugScroll} contentContainerStyle={styles.debugScrollContent}>
-              <Text style={styles.debugLabel}>Current deck</Text>
-              <Text style={styles.debugValue}>{deckKey}</Text>
-              <Text style={styles.debugValueMuted}>{deckLabel(deckKey)}</Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Current card</Text>
-              <Text style={styles.debugValue}>{currentCard?.title ?? "(none)"}</Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>20Q plan</Text>
-              <Text style={styles.debugValueMuted}>
-                {twentyQStatuses
-                  .map((status) => `R${status.rung}:${status.label}:${status.resolved ? "done" : `${status.score >= 0 ? "+" : ""}${status.score.toFixed(2)}`}`)
-                  .join(" • ")}
-              </Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Card tags (raw)</Text>
-              <Text style={styles.debugValueMuted}>
-                {Array.isArray((currentCard as any)?.tags) && (currentCard as any).tags.length
-                  ? (currentCard as any).tags.join(", ")
-                  : "(none)"}
-              </Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Running TagCounts (top)</Text>
-              <Text style={styles.debugValueMuted}>
-                {Object.keys(tagCounts).length
-                  ? Object.entries(tagCounts)
-                      .sort((a, b) => b[1] - a[1])
-                      .slice(0, 14)
-                      .map(([k, v]) => `${k}:${v}`)
-                      .join(", ")
-                  : "(none)"}
-              </Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Taste profile</Text>
-              <Text style={styles.debugValueMuted}>{tasteProfilePreview || "(flat)"}</Text>
-              <Text style={styles.debugValueMuted}>
-                confidence:{tasteProfileWithMood.confidence.toFixed(2)} • swipes:{tasteProfileWithMood.evidence.swipes} • feedback:{tasteProfileWithMood.evidence.feedbackEvents}
-              </Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Session mood</Text>
-              <Text style={styles.debugValueMuted}>{formatTasteVectorPreview(sessionMoodProfile?.vector)}</Text>
-              <Text style={styles.debugValueMuted}>
-                confidence:{sessionMoodProfile?.confidence?.toFixed(2) ?? "0.00"} • swipes:{sessionMoodProfile?.swipeCount ?? 0}
-              </Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Personality profile</Text>
-              <Text style={styles.debugValueMuted}>{formatTasteVectorPreview(personalityProfileState?.vector)}</Text>
-              <Text style={styles.debugValueMuted}>
-                confidence:{personalityProfileState?.confidence?.toFixed(2) ?? "0.00"} • sessions:{personalityProfileState?.sessionCount ?? 0}
-              </Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Active taste</Text>
-              <Text style={styles.debugValueMuted}>{formatTasteVectorPreview(activeTasteVector)}</Text>
-              <Text style={styles.debugValueMuted}>
-                personality:{activeTasteWeights?.personalityWeight?.toFixed(2) ?? "0.00"} • mood:{activeTasteWeights?.moodWeight?.toFixed(2) ?? "0.00"}
-              </Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Active profile override</Text>
-              <Text style={styles.debugValueMuted}>
-                {currentLaneOverride && Object.keys(currentLaneOverride).length > 0
-                  ? Object.entries(currentLaneOverride)
-                      .map(([k, v]) => `${k}:${v}`)
-                      .join(", ")
-                  : "(none)"}
-              </Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Final query preview</Text>
-              <Text style={styles.debugValueMuted}>{recQuery?.trim() ? recQuery : "(none)"}</Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Saved query time</Text>
-              <Text style={styles.debugValueMuted}>{lastRecommendationTimestamp || "(none)"}</Text>
-
-              <Text style={[styles.debugLabel, { marginTop: 10 }]}>Recommendation memory</Text>
-              <Text style={styles.debugValueMuted}>
-                {(() => {
-                  const history = getRecommendationHistoryBucket(deckKey);
-                  return `shownIds:${history.recommendedIds.size} • shownKeys:${history.recommendedKeys.size} • authors:${history.authors.size} • series:${history.seriesKeys.size} • rejected:${history.rejectedIds.size}`;
-                })()}
-              </Text>
-            </ScrollView>
-          </View>
-        </View>
-      )}
     </SafeAreaView>
   );
 }
@@ -2868,21 +2519,6 @@ const styles = StyleSheet.create({
   swipeTitle: { fontSize: 16, fontWeight: "700", color: "#fff", marginBottom: 3 },
   swipeAuthor: { fontSize: 13, fontWeight: "500", color: "rgba(255,255,255,0.9)", marginBottom: 4 },
   swipeGenre: { fontSize: 12, fontWeight: "500", color: "rgba(255,255,255,0.75)" },
-
-  twentyQBadge: {
-    position: "absolute",
-    right: 12,
-    top: 12,
-    width: "48%",
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderRadius: 14,
-    backgroundColor: "rgba(7,21,38,0.82)",
-    borderWidth: 1,
-    borderColor: "rgba(224,184,75,0.7)",
-  },
-  twentyQBadgeTitle: { color: "#fff", fontSize: 12, fontWeight: "900" },
-  twentyQBadgeText: { color: "rgba(255,255,255,0.88)", fontSize: 11, marginTop: 4, lineHeight: 14 },
 
   cardPrompt: { color: "#e5efff", fontSize: 26, fontWeight: "900", lineHeight: 32 },
 

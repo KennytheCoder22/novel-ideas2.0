@@ -232,8 +232,8 @@ function showSourceInfo() {
 function DefaultBookLogo(props: { highlight: string }) {
   // Simple “open book” drawing using Views (no external assets).
   return (
-    <View style={styles.logoWrap} accessibilityLabel="Default book logo">
-<Image source={require("../../assets/book_logo.png")} style={[styles.bookLogoImg, { tintColor: props.highlight }]} resizeMode="contain" />
+    <View style={[styles.logoWrap, { borderColor: props.highlight }]} accessibilityLabel="Default book logo">
+      <Image source={require("../../assets/book_logo.png")} style={[styles.bookLogoImg, { tintColor: props.highlight }]} resizeMode="contain" />
     </View>
   );
 }
@@ -2013,10 +2013,9 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     zIndex: 10,
     position: "relative",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
     overflow: "hidden",
-    transform: [{ translateY: 0.5 }],
   },
 
   headerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 12 },
@@ -2146,7 +2145,7 @@ const styles = StyleSheet.create({
   logoPreviewBox: { width: 84, height: 84 },
   logoPreviewImage: { width: "100%", height: "100%", borderRadius: 14, borderWidth: 1, backgroundColor: "#071526" },
 
-  logoWrap: { width: 54, height: 54, borderRadius: 12, borderWidth: 1, borderColor: "#223b6b", backgroundColor: "#071526", padding: 5 },
+  logoWrap: { width: 54, height: 54, borderRadius: 12, borderWidth: 1, backgroundColor: "#071526", padding: 5 },
   bookSpine: { position: "absolute", left: "50%", top: 10, bottom: 10, width: 2, borderWidth: 1, borderRadius: 2, transform: [{ translateX: -1 }] },
   bookPages: { flex: 1, flexDirection: "row" },
   bookPage: { flex: 1, borderWidth: 2, borderRadius: 6, backgroundColor: "rgba(255,255,255,0.06)" },

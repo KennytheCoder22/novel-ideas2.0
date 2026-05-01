@@ -251,16 +251,22 @@ function isGarbage(doc: any, family: string): boolean {
   return false;
 }
 
-async function fetchJson(url: string): Promise<{ ok: boolean; status: number; data: any }> {
-  const res = await fetch(url);
-  const data = await res.json();
-  return { ok: res.ok, status: res.status, data };
+async function fetchJson(url: string, timeoutMs = 3500): Promise<{ ok: boolean; status: number; data: any }> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    const data = await res.json();
+    return { ok: res.ok, status: res.status, data };
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function getOpenLibraryRecommendations(
   input: RecommenderInput
 ): Promise<RecommendationResult> {
-  const queries = buildQueries(input);
+  const queries = buildQueries(input).slice(0, 4);
   const family = (() => {
     const inferred = inferFamily(input);
     const text = queries.join(" ").toLowerCase();
@@ -288,30 +294,32 @@ export async function getOpenLibraryRecommendations(
     };
   }
 
-  for (let i = 0; i < queries.length; i++) {
-    const q = queries[i];
-    const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
-    let docs: any[] = [];
-    console.log("[OPEN_LIBRARY_URL]", url);
-    try {
+  const queryTasks = queries.map((q, i) => ({ q, i }));
+  const responses = await Promise.allSettled(
+    queryTasks.map(async ({ q, i }) => {
+      const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
+      console.log("[OPEN_LIBRARY_URL]", url);
       const response = await fetchJson(url);
       console.log("[OPEN_LIBRARY_HTTP_STATUS]", { query: q, status: response.status });
       if (!response.ok) throw new Error(`OpenLibrary error ${response.status}`);
-      docs = Array.isArray(response.data?.docs) ? response.data.docs : [];
-      rawFetchedTotal += docs.length;
-      console.log("[OPEN_LIBRARY_RAW_COUNT]", { query: q, rawCount: docs.length, accumulatedRawCount: rawFetchedTotal });
-      console.log("[OPEN_LIBRARY_FIRST_3_RESULTS]", docs.slice(0, 3).map((doc: any) => ({
-        title: doc?.title,
-        author: Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name,
-        key: doc?.key,
-      })));
-    } catch (error: any) {
-      console.warn("[OPEN_LIBRARY_FETCH_WARNING]", {
-        query: q,
-        error: error?.message || String(error),
-      });
+      const docs = Array.isArray(response.data?.docs) ? response.data.docs : [];
+      return { q, i, docs };
+    })
+  );
+
+  for (const result of responses) {
+    if (result.status !== "fulfilled") {
+      console.warn("[OPEN_LIBRARY_FETCH_WARNING]", { error: result.reason?.message || String(result.reason || "") });
       continue;
     }
+    const { q, i, docs } = result.value;
+    rawFetchedTotal += docs.length;
+    console.log("[OPEN_LIBRARY_RAW_COUNT]", { query: q, rawCount: docs.length, accumulatedRawCount: rawFetchedTotal });
+    console.log("[OPEN_LIBRARY_FIRST_3_RESULTS]", docs.slice(0, 3).map((doc: any) => ({
+      title: doc?.title,
+      author: Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name,
+      key: doc?.key,
+    })));
 
     for (const d of docs) {
       if (isGarbage(d, family)) continue;
