@@ -1830,6 +1830,53 @@ function handleLeft() {
     }).join("\n");
   }
 
+  async function handleCopyCodexReport() {
+    const swipeLines = swipeHistory.length
+      ? swipeHistory.map((entry, index) => {
+          const anyCard: any = entry.card as any;
+          const title = anyCard?.title || anyCard?.prompt || "(untitled)";
+          const author = anyCard?.author ? ` — ${anyCard.author}` : "";
+          return `${index + 1}. ${entry.direction.toUpperCase()} — ${title}${author}`;
+        }).join("\n")
+      : "(none)";
+
+    const recommendationLines = recItems.length
+      ? recItems.map((item, i) => {
+          if (item.kind === "open_library") {
+            const doc: any = item.doc;
+            const title = doc?.title ?? "Untitled";
+            const author =
+              Array.isArray(doc?.author_name) && doc.author_name.length > 0
+                ? doc.author_name[0]
+                : "Unknown author";
+            const year = doc?.first_publish_year ? ` (${doc.first_publish_year})` : "";
+            return `${i + 1}. ${title} — ${author}${year}`;
+          }
+          const title = item.book?.title ?? "Untitled";
+          const author = item.book?.author ?? "Unknown author";
+          const year = item.book?.year ? ` (${item.book.year})` : "";
+          return `${i + 1}. ${title} — ${author}${year}`;
+        }).join("\n")
+      : "(none)";
+
+    const codexReport = [
+      "CODEX SESSION REPORT",
+      `Deck: ${deck.deckLabel}`,
+      `Engine: ${recEngineLabel || "—"}`,
+      `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
+      `20Q Progress: ${resolvedTwentyQCount}/${twentyQObjectives.length}`,
+      "",
+      "SWIPED CARDS",
+      swipeLines,
+      "",
+      "RECOMMENDATIONS",
+      recommendationLines,
+    ].join("\n");
+
+    await Clipboard.setStringAsync(codexReport);
+    Alert.alert("Copied", "Codex report copied to clipboard.");
+  }
+
   async function handleCopyDiagnostics() {
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
@@ -2434,8 +2481,8 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
-          <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
-            <Text style={styles.debugToggleText}>Diagnostics</Text>
+          <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyCodexReport}>
+            <Text style={styles.debugToggleText}>Codex</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
