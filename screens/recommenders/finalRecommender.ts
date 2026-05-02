@@ -1976,6 +1976,27 @@ function plotBiasNoisePenalty(c: Candidate, taste?: TasteProfile): number {
   return 0;
 }
 
+function commercialAuthorClusterPenalty(c: Candidate, taste?: TasteProfile): number {
+  const anyTaste: any = taste || {};
+  const positiveTerms = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase()).join(" ");
+  const layeredSession = /\b(intelligent|layered|concept|stylized|atmospheric|philosophical|literary|character[-\s]?driven|emotional)\b/.test(positiveTerms);
+  if (!layeredSession) return 0;
+
+  const author = normalize(c.author || "");
+  const title = normalize(c.title || "");
+  const isCommercialClusterAuthor = /\b(freida mcfadden|sarah pinborough)\b/.test(author);
+  const genericSuspenseTitle = /\b(never lie|the housemaid|do not disturb|the perfect son|behind her eyes)\b/.test(title);
+  const toneFit = computeToneMatchScore(c, taste);
+  const affinity = twentyQPersonalAffinityScore(c, taste);
+  if ((isCommercialClusterAuthor || genericSuspenseTitle) && toneFit < 2.4 && affinity < 3.1) return -18;
+  return 0;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -2026,6 +2047,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const modernVoicePenalty = modernVoicePreferencePenalty(c, taste);
   const conceptHumanPenalty = conceptHumanTonePenalty(c, taste);
   const plotNoisePenalty = plotBiasNoisePenalty(c, taste);
+  const commercialClusterPenalty = commercialAuthorClusterPenalty(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
     queryScore,
     metadataScore,
@@ -2091,7 +2113,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + commercialClusterPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
