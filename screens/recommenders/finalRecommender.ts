@@ -2282,6 +2282,27 @@ function inferTasteShapeTargets(taste?: TasteProfile): Array<{ facet: string; we
   return weighted.sort((a, b) => b.weight - a.weight).slice(0, 4);
 }
 
+function emotionalConceptualCoherenceScore(
+  candidate: { candidate: Candidate; breakdown: ScoreBreakdown },
+  anchor: { candidate: Candidate; breakdown: ScoreBreakdown }
+): number {
+  const candidateText = haystack(candidate.candidate);
+  const anchorText = haystack(anchor.candidate);
+  let score = 0;
+  const toneDelta = Math.abs((candidate.breakdown.toneScore || 0) - (anchor.breakdown.toneScore || 0));
+  const affinityDelta = Math.abs((candidate.breakdown.personalAffinityScore || 0) - (anchor.breakdown.personalAffinityScore || 0));
+  if (toneDelta <= 1.25) score += 2;
+  if (affinityDelta <= 2.2) score += 2;
+  if (candidateTasteFacet(candidate.candidate) === candidateTasteFacet(anchor.candidate)) score += 1.25;
+
+  const sharedVibe =
+    (/\b(psychological|atmospheric|stylized|speculative|investigation|moral)\b/.test(candidateText) &&
+      /\b(psychological|atmospheric|stylized|speculative|investigation|moral)\b/.test(anchorText));
+  if (sharedVibe) score += 2.5;
+  if (/\b(cozy|uplifting comfort|lighthearted romance)\b/.test(candidateText) && /\b(dark|psychological|tense)\b/.test(anchorText)) score -= 4;
+  return score;
+}
+
 function enforceLaneDiversityCap(
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   ordered: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -3011,6 +3032,17 @@ export function finalRecommenderForDeck(
   if (diversityBalanced.length < 3) {
     debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length });
     return [];
+  }
+  const coherenceAnchor =
+    [...diversityBalanced].sort((a, b) => b.breakdown.finalScore - a.breakdown.finalScore)[0];
+  const coherentBalanced = coherenceAnchor
+    ? diversityBalanced.filter((entry) =>
+        emotionalConceptualCoherenceScore(entry, coherenceAnchor) >= 2.5 ||
+        entry.breakdown.finalScore >= coherenceAnchor.breakdown.finalScore - 2
+      )
+    : diversityBalanced;
+  if (coherentBalanced.length >= 3) {
+    diversityBalanced.splice(0, diversityBalanced.length, ...coherentBalanced);
   }
   const clusterBreakdown: Record<string, number> = {};
   for (const entry of diversityBalanced) {
