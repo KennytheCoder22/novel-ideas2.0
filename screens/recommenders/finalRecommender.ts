@@ -1457,6 +1457,16 @@ function mysterySessionFit(c: Candidate): number {
   return score;
 }
 
+function candidateTasteFacet(c: Candidate): string {
+  const text = haystack(c);
+  if (/\b(investigation|detective|case|whodunit|moral conflict|justice|reckoning)\b/.test(text)) return "investigation_moral";
+  if (/\b(memory|identity|time loop|alternate reality|simulation|erased|speculative|conceptual|philosophical)\b/.test(text)) return "high_concept";
+  if (/\b(atmospheric|stylized|dreamlike|surreal|elevated|literary|cinematic)\b/.test(text)) return "stylized_elevated";
+  if (/\b(psychological|trauma|obsession|paranoia|mind games|unreliable narrator)\b/.test(text)) return "psychological_meaning";
+  if (/\b(domestic suspense|secret wife|secret husband|family secret|lying wife|lying husband|perfect marriage)\b/.test(text)) return "domestic_secret";
+  return "general";
+}
+
 function thrillerSessionFit(c: Candidate): number {
   const text = haystack(c);
   let score = 0;
@@ -2881,6 +2891,7 @@ export function finalRecommenderForDeck(
   const diversityBalanced = (() => {
     const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
     const laneBuckets = new Map<string, Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>>();
+    const facetCounts = new Map<string, number>();
     for (const entry of clusterBalanced) {
       if (weakLanes.has(laneFamilyForCandidate(entry.candidate) || "unknown")) continue;
       if (fantasySuppressed && laneFamilyForCandidate(entry.candidate) === "fantasy") {
@@ -2900,13 +2911,21 @@ export function finalRecommenderForDeck(
       if (!eligibleLanes.has(lane)) continue;
       if (fantasySuppressed && lane === "fantasy") continue;
       const text = haystack(entry.candidate);
+      const facet = candidateTasteFacet(entry.candidate);
+      const existingFacetCount = facetCounts.get(facet) || 0;
+      if (facet === "domestic_secret" && entry.breakdown.personalAffinityScore < 3.5) continue;
+      if (existingFacetCount >= 2 && facet !== "general") continue;
       const tooSimilar = out.some((e) => {
         const t = haystack(e.candidate);
         const sharedSetting = /\bisolated|arctic|space|war|small town|boarding school\b/.test(text) && /\bisolated|arctic|space|war|small town|boarding school\b/.test(t);
         const sharedStructure = /\bcoming of age|investigation|survival|revenge|heist\b/.test(text) && /\bcoming of age|investigation|survival|revenge|heist\b/.test(t);
-        return sharedSetting && sharedStructure;
+        const sharedFacet = candidateTasteFacet(e.candidate) === facet;
+        return (sharedSetting && sharedStructure) || (sharedFacet && facet !== "general");
       });
-      if (!tooSimilar || out.length < 3) out.push(entry);
+      if (!tooSimilar || out.length < 3) {
+        out.push(entry);
+        facetCounts.set(facet, existingFacetCount + 1);
+      }
     }
     return out;
   })();
