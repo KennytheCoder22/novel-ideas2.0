@@ -1213,13 +1213,22 @@ function upstreamTasteShapeQueries(signals: QuerySignals): string[] {
   const hasEmotionalMindspace = themes.some((t) => /\b(relationships|human|grief|family|redemption)\b/.test(t)) || tones.some((t) => /\b(emotional|character[-\s]?driven|atmospheric)\b/.test(t));
   const intentionalTone = tones.some((t) => /\b(stylized|atmospheric|literary|psychological|philosophical)\b/.test(t)) || mood.some((t) => /\b(stylized|grounded|reflective)\b/.test(t));
 
-  if (hasCrimeMindspace) queries.push("psychological investigation novel");
-  if (hasConceptMindspace) queries.push("high concept speculative fiction novel");
+  const groundedCrimeExpression =
+    themes.some((t) => /\b(investigation|justice|institution|corruption|moral)\b/.test(t)) &&
+    tones.some((t) => /\b(psychological|grounded|serious|character[-\s]?driven)\b/.test(t));
+  const conceptualSpeculativeExpression =
+    hasConceptMindspace &&
+    (themes.some((t) => /\b(identity|memory|technology|ethics|consciousness|relationships)\b/.test(t)) || hasEmotionalMindspace);
+  const antiGenericFantasy = !genres.some((g) => /\b(fantasy|epic fantasy|cozy fantasy)\b/.test(g));
+
+  if (hasCrimeMindspace && groundedCrimeExpression) queries.push("grounded psychological investigation novel");
+  if (hasCrimeMindspace && !groundedCrimeExpression) queries.push("character driven crime investigation novel");
+  if (conceptualSpeculativeExpression) queries.push("emotional high concept speculative fiction novel");
+  if (hasConceptMindspace && intentionalTone) queries.push("literary speculative identity novel");
   if (hasEmotionalMindspace) queries.push("emotionally complex character driven novel");
-  if (hasCrimeMindspace && hasConceptMindspace) queries.push("conceptual science fiction crime novel");
-  if (hasConceptMindspace && intentionalTone) queries.push("literary speculative psychological novel");
-  if (hasCrimeMindspace && hasEmotionalMindspace) queries.push("moral tension investigation novel");
+  if (hasCrimeMindspace && hasConceptMindspace) queries.push("grounded conceptual science fiction crime novel");
   if (hasEmotionalMindspace && intentionalTone) queries.push("atmospheric psychologically rich novel");
+  if (!antiGenericFantasy && conceptualSpeculativeExpression) queries.push("speculative emotional science fiction novel");
 
   return dedupe(queries);
 }
