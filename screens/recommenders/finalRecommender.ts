@@ -2303,6 +2303,18 @@ function emotionalConceptualCoherenceScore(
   return score;
 }
 
+function authoredIntentionalityScore(c: Candidate): number {
+  const text = haystack(c);
+  const ratings = Number(c.ratingCount || 0);
+  let score = 0;
+  if (/\b(literary|crafted|stylized|elevated|intentional|precise|controlled|character[-\s]?driven|philosophical|conceptual)\b/.test(text)) score += 4;
+  if (/\b(psychological with depth|moral tension|ethical dilemma|identity|memory|meaning)\b/.test(text)) score += 3;
+  if (ratings >= 200) score += 2;
+  if (/\b(shock|gore|splatter|extreme horror|random violence|disturbing for its own sake)\b/.test(text)) score -= 8;
+  if (/\b(indie horror|microbudget|experimental found footage|camp slasher)\b/.test(text) && ratings < 80) score -= 7;
+  return score;
+}
+
 function enforceLaneDiversityCap(
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   ordered: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -3037,8 +3049,14 @@ export function finalRecommenderForDeck(
     [...diversityBalanced].sort((a, b) => b.breakdown.finalScore - a.breakdown.finalScore)[0];
   const coherentBalanced = coherenceAnchor
     ? diversityBalanced.filter((entry) =>
-        emotionalConceptualCoherenceScore(entry, coherenceAnchor) >= 2.5 ||
-        entry.breakdown.finalScore >= coherenceAnchor.breakdown.finalScore - 2
+        (
+          emotionalConceptualCoherenceScore(entry, coherenceAnchor) >= 2.5 &&
+          authoredIntentionalityScore(entry.candidate) >= -1
+        ) ||
+        (
+          entry.breakdown.finalScore >= coherenceAnchor.breakdown.finalScore - 2 &&
+          authoredIntentionalityScore(entry.candidate) >= 2
+        )
       )
     : diversityBalanced;
   if (coherentBalanced.length >= 3) {
