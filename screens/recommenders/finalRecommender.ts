@@ -2972,16 +2972,39 @@ export function finalRecommenderForDeck(
     );
     let injected = 0;
     for (const { facet } of missingFacets) {
-      if (injected >= 2) break;
+      if (injected >= 1) break;
+      const baselineFloor = diversityBalanced.length
+        ? Math.min(...diversityBalanced.map((entry) => entry.breakdown.finalScore))
+        : 0;
       const replacement = orderedAfterAi.find((entry) =>
         candidateTasteFacet(entry.candidate) === facet &&
         entry.breakdown.personalAffinityScore >= 2.8 &&
         entry.breakdown.toneScore >= 1.6 &&
-        entry.breakdown.finalScore >= 18
+        entry.breakdown.finalScore >= Math.max(18, baselineFloor - 2.5)
       );
       if (!replacement) continue;
       if (diversityBalanced.some((entry) => identityKey(entry.candidate) === identityKey(replacement.candidate))) continue;
-      diversityBalanced.push(replacement);
+      if (diversityBalanced.length >= MAX_RESULTS) {
+        let replaceIndex = -1;
+        let weakestScore = Number.POSITIVE_INFINITY;
+        for (let i = 0; i < diversityBalanced.length; i += 1) {
+          const row = diversityBalanced[i];
+          const facetName = candidateTasteFacet(row.candidate);
+          const isOverrepresented = (existingFacetCounts.get(facetName) || 0) > 1;
+          if (!isOverrepresented) continue;
+          if (row.breakdown.finalScore < weakestScore) {
+            weakestScore = row.breakdown.finalScore;
+            replaceIndex = i;
+          }
+        }
+        if (replaceIndex >= 0 && replacement.breakdown.finalScore >= weakestScore - 1.5) {
+          diversityBalanced.splice(replaceIndex, 1, replacement);
+        } else {
+          continue;
+        }
+      } else {
+        diversityBalanced.push(replacement);
+      }
       injected += 1;
     }
   }
