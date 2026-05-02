@@ -64,10 +64,10 @@ export type FinalRecommenderDebug = {
   rejected: QualityRejectRecord[];
 };
 
-const PERSONAL_AFFINITY_WEIGHT = 2.75;
+const PERSONAL_AFFINITY_WEIGHT = 4.5;
 const ANCHOR_SCORE_CAP = 10;
-const NEGATIVE_TASTE_MISMATCH_PENALTY = -10;
-const MIN_TASTE_SCORE_FOR_RANKING = -2;
+const NEGATIVE_TASTE_MISMATCH_PENALTY = -18;
+const MIN_TASTE_SCORE_FOR_RANKING = 0.75;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
 
 // Temporary validation logging for the taste-shaped query rollout.
@@ -1457,6 +1457,16 @@ function mysterySessionFit(c: Candidate): number {
   return score;
 }
 
+function candidateTasteFacet(c: Candidate): string {
+  const text = haystack(c);
+  if (/\b(investigation|detective|case|whodunit|moral conflict|justice|reckoning)\b/.test(text)) return "investigation_moral";
+  if (/\b(memory|identity|time loop|alternate reality|simulation|erased|speculative|conceptual|philosophical)\b/.test(text)) return "high_concept";
+  if (/\b(atmospheric|stylized|dreamlike|surreal|elevated|literary|cinematic)\b/.test(text)) return "stylized_elevated";
+  if (/\b(psychological|trauma|obsession|paranoia|mind games|unreliable narrator)\b/.test(text)) return "psychological_meaning";
+  if (/\b(domestic suspense|secret wife|secret husband|family secret|lying wife|lying husband|perfect marriage)\b/.test(text)) return "domestic_secret";
+  return "general";
+}
+
 function thrillerSessionFit(c: Candidate): number {
   const text = haystack(c);
   let score = 0;
@@ -1732,6 +1742,36 @@ function buildPersonalFitReasons(c: Candidate, taste?: TasteProfile): string[] {
   return reasons;
 }
 
+function contextualAversionScore(c: Candidate, taste?: TasteProfile): number {
+  if (!taste) return 0;
+  const text = haystack(c);
+  const { negative } = collectSessionSignals(taste);
+  const negativeTerms = Array.from(negative.keys());
+  const negativeBlob = negativeTerms.join(" ");
+
+  const teenAversionSession =
+    /\b(teen|ya|young adult|high school|coming of age|adolescent)\b/.test(negativeBlob);
+  const antiheroAversionSession =
+    /\b(criminal protagonist|mafia|gangster|mob|anti hero|antihero|villain protagonist|morally gray)\b/.test(negativeBlob);
+
+  let score = 0;
+  if (teenAversionSession) {
+    const teenSignal =
+      /\b(young adult|ya novel|teen|high school|prep school|adolescent|coming of age)\b/.test(text);
+    if (teenSignal) score -= 9;
+  }
+
+  if (antiheroAversionSession) {
+    const antiheroSignal =
+      /\b(mafia|mob|cartel|gangster|crime family|hitman|drug lord|heist crew|villain protagonist)\b/.test(text);
+    const moralCounterSignal =
+      /\b(investigation|justice|detective|prosecutor|redemption|consequence|reckoning)\b/.test(text);
+    if (antiheroSignal && !moralCounterSignal) score -= 10;
+  }
+
+  return score;
+}
+
 
 function laneBlendScore(c: Candidate): number {
   const raw: any = (c as any)?.rawDoc || {};
@@ -1976,6 +2016,20 @@ function plotBiasNoisePenalty(c: Candidate, taste?: TasteProfile): number {
   return 0;
 }
 
+function lowIdentityTitlePenalty(c: Candidate, taste?: TasteProfile): number {
+  const title = normalize(c.title || "");
+  const text = haystack(c);
+  const genericDomesticPattern =
+    /^(the|a)\s+(silent|perfect|missing|secret|last|good|wrong|other)\s+(wife|husband|daughter|son|stranger|neighbor|girl|woman)$/.test(title) ||
+    /\b(the|a)\s+[a-z]+\s+(wife|husband|stranger)\b/.test(title);
+  const formulaCopy = /\b(gripping thriller|twisty|page turner|domestic suspense)\b/.test(text);
+  const highFit = twentyQPersonalAffinityScore(c, taste) >= 5.5 || computeToneMatchScore(c, taste) >= 4.2;
+  if (highFit) return 0;
+  if (genericDomesticPattern && formulaCopy) return -14;
+  if (genericDomesticPattern) return -8;
+  return 0;
+}
+
 function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakdown {
   const queryScore = queryMatchScore(c) * 0.35;
   const metadataScore = metadataTrust(c) * 0.75;
@@ -1992,7 +2046,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
-  const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
+  const tasteMismatchPenalty = personalAffinity < -2.5 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
   const procurement = procurementAvailabilityScore(c);
@@ -2026,6 +2080,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const modernVoicePenalty = modernVoicePreferencePenalty(c, taste);
   const conceptHumanPenalty = conceptHumanTonePenalty(c, taste);
   const plotNoisePenalty = plotBiasNoisePenalty(c, taste);
+  const lowIdentityPenalty = lowIdentityTitlePenalty(c, taste);
+  const contextualAversionPenalty = contextualAversionScore(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
     queryScore,
     metadataScore,
@@ -2091,7 +2147,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + lowIdentityPenalty + contextualAversionPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
@@ -2208,6 +2264,22 @@ function attachNearbyAlternativeReason(
       },
     } as RecommendationDoc;
   });
+}
+
+function inferTasteShapeTargets(taste?: TasteProfile): Array<{ facet: string; weight: number }> {
+  const anyTaste: any = taste || {};
+  const positiveBlob = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase()).join(" ");
+  const weighted: Array<{ facet: string; weight: number }> = [];
+  if (/\b(idea|concept|philosophical|speculative|memory|identity)\b/.test(positiveBlob)) weighted.push({ facet: "high_concept", weight: 1.0 });
+  if (/\b(stylized|elevated|atmospheric|cinematic|literary|surreal)\b/.test(positiveBlob)) weighted.push({ facet: "stylized_elevated", weight: 0.9 });
+  if (/\b(psychological|moral|tension)\b/.test(positiveBlob)) weighted.push({ facet: "psychological_meaning", weight: 0.95 });
+  if (/\b(investigation|justice|moral conflict|procedural)\b/.test(positiveBlob)) weighted.push({ facet: "investigation_moral", weight: 0.75 });
+  return weighted.sort((a, b) => b.weight - a.weight).slice(0, 4);
 }
 
 function enforceLaneDiversityCap(
@@ -2773,7 +2845,10 @@ export function finalRecommenderForDeck(
   pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
   pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && orderedAfterAi.length >= 15) {
-    pickFromPool(orderedAfterAi, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+    const tasteAwareBackfill = tasteProfile
+      ? orderedAfterAi.filter((entry) => entry.breakdown.personalAffinityScore >= 0.5 && entry.breakdown.toneScore >= 0.8)
+      : orderedAfterAi;
+    pickFromPool(tasteAwareBackfill, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   }
   if (selected.length < 5) {
     const adjacentFamilies: Record<string, string[]> = {
@@ -2847,6 +2922,7 @@ export function finalRecommenderForDeck(
   const diversityBalanced = (() => {
     const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
     const laneBuckets = new Map<string, Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>>();
+    const facetCounts = new Map<string, number>();
     for (const entry of clusterBalanced) {
       if (weakLanes.has(laneFamilyForCandidate(entry.candidate) || "unknown")) continue;
       if (fantasySuppressed && laneFamilyForCandidate(entry.candidate) === "fantasy") {
@@ -2866,16 +2942,72 @@ export function finalRecommenderForDeck(
       if (!eligibleLanes.has(lane)) continue;
       if (fantasySuppressed && lane === "fantasy") continue;
       const text = haystack(entry.candidate);
+      const facet = candidateTasteFacet(entry.candidate);
+      const existingFacetCount = facetCounts.get(facet) || 0;
+      if (facet === "domestic_secret" && entry.breakdown.personalAffinityScore < 3.5) continue;
+      if (existingFacetCount >= 2 && facet !== "general") continue;
       const tooSimilar = out.some((e) => {
         const t = haystack(e.candidate);
         const sharedSetting = /\bisolated|arctic|space|war|small town|boarding school\b/.test(text) && /\bisolated|arctic|space|war|small town|boarding school\b/.test(t);
         const sharedStructure = /\bcoming of age|investigation|survival|revenge|heist\b/.test(text) && /\bcoming of age|investigation|survival|revenge|heist\b/.test(t);
-        return sharedSetting && sharedStructure;
+        const sharedFacet = candidateTasteFacet(e.candidate) === facet;
+        return (sharedSetting && sharedStructure) || (sharedFacet && facet !== "general");
       });
-      if (!tooSimilar || out.length < 3) out.push(entry);
+      if (!tooSimilar || out.length < 3) {
+        out.push(entry);
+        facetCounts.set(facet, existingFacetCount + 1);
+      }
     }
     return out;
   })();
+  const tasteShapeTargets = inferTasteShapeTargets(tasteProfile);
+  if (tasteShapeTargets.length > 0) {
+    const existingFacetCounts = new Map<string, number>();
+    for (const entry of diversityBalanced) {
+      const facet = candidateTasteFacet(entry.candidate);
+      existingFacetCounts.set(facet, (existingFacetCounts.get(facet) || 0) + 1);
+    }
+    const missingFacets = tasteShapeTargets.filter(({ facet, weight }) =>
+      (existingFacetCounts.get(facet) || 0) === 0 && weight >= 0.8
+    );
+    let injected = 0;
+    for (const { facet } of missingFacets) {
+      if (injected >= 1) break;
+      const baselineFloor = diversityBalanced.length
+        ? Math.min(...diversityBalanced.map((entry) => entry.breakdown.finalScore))
+        : 0;
+      const replacement = orderedAfterAi.find((entry) =>
+        candidateTasteFacet(entry.candidate) === facet &&
+        entry.breakdown.personalAffinityScore >= 2.8 &&
+        entry.breakdown.toneScore >= 1.6 &&
+        entry.breakdown.finalScore >= Math.max(18, baselineFloor - 2.5)
+      );
+      if (!replacement) continue;
+      if (diversityBalanced.some((entry) => identityKey(entry.candidate) === identityKey(replacement.candidate))) continue;
+      if (diversityBalanced.length >= MAX_RESULTS) {
+        let replaceIndex = -1;
+        let weakestScore = Number.POSITIVE_INFINITY;
+        for (let i = 0; i < diversityBalanced.length; i += 1) {
+          const row = diversityBalanced[i];
+          const facetName = candidateTasteFacet(row.candidate);
+          const isOverrepresented = (existingFacetCounts.get(facetName) || 0) > 1;
+          if (!isOverrepresented) continue;
+          if (row.breakdown.finalScore < weakestScore) {
+            weakestScore = row.breakdown.finalScore;
+            replaceIndex = i;
+          }
+        }
+        if (replaceIndex >= 0 && replacement.breakdown.finalScore >= weakestScore - 1.5) {
+          diversityBalanced.splice(replaceIndex, 1, replacement);
+        } else {
+          continue;
+        }
+      } else {
+        diversityBalanced.push(replacement);
+      }
+      injected += 1;
+    }
+  }
   if (diversityBalanced.length < 3) {
     debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length });
     return [];
