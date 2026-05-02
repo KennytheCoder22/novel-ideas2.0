@@ -64,10 +64,10 @@ export type FinalRecommenderDebug = {
   rejected: QualityRejectRecord[];
 };
 
-const PERSONAL_AFFINITY_WEIGHT = 2.75;
+const PERSONAL_AFFINITY_WEIGHT = 4.5;
 const ANCHOR_SCORE_CAP = 10;
-const NEGATIVE_TASTE_MISMATCH_PENALTY = -10;
-const MIN_TASTE_SCORE_FOR_RANKING = -2;
+const NEGATIVE_TASTE_MISMATCH_PENALTY = -18;
+const MIN_TASTE_SCORE_FOR_RANKING = 0.75;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
 
 // Temporary validation logging for the taste-shaped query rollout.
@@ -1992,7 +1992,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
-  const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
+  const tasteMismatchPenalty = personalAffinity < -2.5 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
   const procurement = procurementAvailabilityScore(c);
@@ -2773,7 +2773,10 @@ export function finalRecommenderForDeck(
   pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
   pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && orderedAfterAi.length >= 15) {
-    pickFromPool(orderedAfterAi, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+    const tasteAwareBackfill = tasteProfile
+      ? orderedAfterAi.filter((entry) => entry.breakdown.personalAffinityScore >= 0.5 && entry.breakdown.toneScore >= 0.8)
+      : orderedAfterAi;
+    pickFromPool(tasteAwareBackfill, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   }
   if (selected.length < 5) {
     const adjacentFamilies: Record<string, string[]> = {
