@@ -333,6 +333,47 @@ function cardCategoryFromTags(card: any): "books" | "movies" | "tv" | "games" | 
   return "books";
 }
 
+function clampSignalLevel(value: number): -2 | -1 | 0 | 1 | 2 {
+  const rounded = Math.round(value);
+  if (rounded <= -2) return -2;
+  if (rounded === -1) return -1;
+  if (rounded === 1) return 1;
+  if (rounded >= 2) return 2;
+  return 0;
+}
+
+function ensureCardReasonMetadata(deck: SwipeDeck, card: SwipeDeckCard): SwipeDeckCard {
+  if (card?.signals && card?.reasons) return card;
+  const tags = Array.isArray(card?.tags) ? card.tags.map((t) => String(t || "").toLowerCase()) : [];
+  const textBlob = `${String(card?.genre || "")} ${tags.join(" ")}`.toLowerCase();
+  const expectedAudience = deck.deckKey === "adult" ? "adult" : deck.deckKey === "ms_hs" ? "teen" : "child";
+  const hasAudienceTag = tags.some((t) => t.startsWith("audience:"));
+  const audienceMismatch =
+    (expectedAudience === "adult" && /audience:teen|age:mshs|young adult/.test(textBlob)) ||
+    (expectedAudience !== "adult" && /audience:adult|age:adult/.test(textBlob));
+
+  const signals = {
+    audienceFit: clampSignalLevel(hasAudienceTag ? (audienceMismatch ? -2 : 2) : 0),
+    genreInterest: clampSignalLevel(/fantasy|science fiction|mystery|thriller|romance|horror|historical|comedy/.test(textBlob) ? 1 : 0),
+    toneVibe: clampSignalLevel(/dark|cozy|funny|serious|weird|romantic|intense|atmospheric/.test(textBlob) ? 1 : 0),
+    storyEngine: clampSignalLevel(/mystery|relationship|action|ideas|worldbuilding|humor|character/.test(textBlob) ? 1 : 0),
+    credibilityCraft: clampSignalLevel(card?.isDefault ? 1 : 0),
+  } as const;
+
+  const reasons = {
+    like: [
+      "Suggests interest in this audience/lane fit.",
+      "Points toward the card’s genre and storytelling engine."
+    ],
+    dislike: [
+      "May indicate lower interest in this audience fit, tone, or story engine.",
+      "Points away from similar genre/tone combinations for this session."
+    ],
+  };
+
+  return { ...card, signals, reasons };
+}
+
 function filterDeckCardsByCategory(deck: SwipeDeck, enabled?: any): SwipeDeck {
   const cats = { ...DEFAULT_SWIPE_CATEGORIES, ...(enabled || {}) };
   const cards = Array.isArray((deck as any).cards) ? ((deck as any).cards as any[]) : [];
@@ -348,7 +389,8 @@ function filterDeckCardsByCategory(deck: SwipeDeck, enabled?: any): SwipeDeck {
     if (cat === "podcasts") return !!cats.podcasts;
     return true;
   });
-  return { ...(deck as any), cards: filtered } as SwipeDeck;
+  const withMetadata = filtered.map((card) => ensureCardReasonMetadata(deck, card));
+  return { ...(deck as any), cards: withMetadata } as SwipeDeck;
 }
 
 function getDeckByKey(key: DeckKey): SwipeDeck {

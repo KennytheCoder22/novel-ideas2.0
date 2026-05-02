@@ -64,10 +64,10 @@ export type FinalRecommenderDebug = {
   rejected: QualityRejectRecord[];
 };
 
-const PERSONAL_AFFINITY_WEIGHT = 2.75;
+const PERSONAL_AFFINITY_WEIGHT = 4.5;
 const ANCHOR_SCORE_CAP = 10;
-const NEGATIVE_TASTE_MISMATCH_PENALTY = -10;
-const MIN_TASTE_SCORE_FOR_RANKING = -2;
+const NEGATIVE_TASTE_MISMATCH_PENALTY = -18;
+const MIN_TASTE_SCORE_FOR_RANKING = 0.75;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
 
 // Temporary validation logging for the taste-shaped query rollout.
@@ -1732,6 +1732,36 @@ function buildPersonalFitReasons(c: Candidate, taste?: TasteProfile): string[] {
   return reasons;
 }
 
+function contextualAversionScore(c: Candidate, taste?: TasteProfile): number {
+  if (!taste) return 0;
+  const text = haystack(c);
+  const { negative } = collectSessionSignals(taste);
+  const negativeTerms = Array.from(negative.keys());
+  const negativeBlob = negativeTerms.join(" ");
+
+  const teenAversionSession =
+    /\b(teen|ya|young adult|high school|coming of age|adolescent)\b/.test(negativeBlob);
+  const antiheroAversionSession =
+    /\b(criminal protagonist|mafia|gangster|mob|anti hero|antihero|villain protagonist|morally gray)\b/.test(negativeBlob);
+
+  let score = 0;
+  if (teenAversionSession) {
+    const teenSignal =
+      /\b(young adult|ya novel|teen|high school|prep school|adolescent|coming of age)\b/.test(text);
+    if (teenSignal) score -= 9;
+  }
+
+  if (antiheroAversionSession) {
+    const antiheroSignal =
+      /\b(mafia|mob|cartel|gangster|crime family|hitman|drug lord|heist crew|villain protagonist)\b/.test(text);
+    const moralCounterSignal =
+      /\b(investigation|justice|detective|prosecutor|redemption|consequence|reckoning)\b/.test(text);
+    if (antiheroSignal && !moralCounterSignal) score -= 10;
+  }
+
+  return score;
+}
+
 
 function laneBlendScore(c: Candidate): number {
   const raw: any = (c as any)?.rawDoc || {};
@@ -1992,7 +2022,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
-  const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
+  const tasteMismatchPenalty = personalAffinity < -2.5 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
   const procurement = procurementAvailabilityScore(c);
@@ -2026,6 +2056,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const modernVoicePenalty = modernVoicePreferencePenalty(c, taste);
   const conceptHumanPenalty = conceptHumanTonePenalty(c, taste);
   const plotNoisePenalty = plotBiasNoisePenalty(c, taste);
+  const contextualAversionPenalty = contextualAversionScore(c, taste);
   const qualityGatePenalty = passesStrongFinalQualityGate(c, {
     queryScore,
     metadataScore,
@@ -2091,7 +2122,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + contextualAversionPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
@@ -2773,7 +2804,10 @@ export function finalRecommenderForDeck(
   pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
   pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && orderedAfterAi.length >= 15) {
-    pickFromPool(orderedAfterAi, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+    const tasteAwareBackfill = tasteProfile
+      ? orderedAfterAi.filter((entry) => entry.breakdown.personalAffinityScore >= 0.5 && entry.breakdown.toneScore >= 0.8)
+      : orderedAfterAi;
+    pickFromPool(tasteAwareBackfill, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
   }
   if (selected.length < 5) {
     const adjacentFamilies: Record<string, string[]> = {
