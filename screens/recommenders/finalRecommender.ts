@@ -2266,7 +2266,7 @@ function attachNearbyAlternativeReason(
   });
 }
 
-function inferTasteShapeTargets(taste?: TasteProfile): string[] {
+function inferTasteShapeTargets(taste?: TasteProfile): Array<{ facet: string; weight: number }> {
   const anyTaste: any = taste || {};
   const positiveBlob = [
     ...Object.keys(anyTaste?.likedTagCounts || {}),
@@ -2274,11 +2274,12 @@ function inferTasteShapeTargets(taste?: TasteProfile): string[] {
     ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
     ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
   ].map((v) => String(v || "").toLowerCase()).join(" ");
-  const targets: string[] = [];
-  if (/\b(idea|concept|philosophical|speculative|memory|identity)\b/.test(positiveBlob)) targets.push("high_concept");
-  if (/\b(stylized|elevated|atmospheric|cinematic|literary|surreal)\b/.test(positiveBlob)) targets.push("stylized_elevated");
-  if (/\b(psychological|moral|tension|investigation|justice)\b/.test(positiveBlob)) targets.push("psychological_meaning", "investigation_moral");
-  return Array.from(new Set(targets)).slice(0, 4);
+  const weighted: Array<{ facet: string; weight: number }> = [];
+  if (/\b(idea|concept|philosophical|speculative|memory|identity)\b/.test(positiveBlob)) weighted.push({ facet: "high_concept", weight: 1.0 });
+  if (/\b(stylized|elevated|atmospheric|cinematic|literary|surreal)\b/.test(positiveBlob)) weighted.push({ facet: "stylized_elevated", weight: 0.9 });
+  if (/\b(psychological|moral|tension)\b/.test(positiveBlob)) weighted.push({ facet: "psychological_meaning", weight: 0.95 });
+  if (/\b(investigation|justice|moral conflict|procedural)\b/.test(positiveBlob)) weighted.push({ facet: "investigation_moral", weight: 0.75 });
+  return weighted.sort((a, b) => b.weight - a.weight).slice(0, 4);
 }
 
 function enforceLaneDiversityCap(
@@ -2961,16 +2962,27 @@ export function finalRecommenderForDeck(
   })();
   const tasteShapeTargets = inferTasteShapeTargets(tasteProfile);
   if (tasteShapeTargets.length > 0) {
-    const missingFacets = tasteShapeTargets.filter((facet) => !diversityBalanced.some((entry) => candidateTasteFacet(entry.candidate) === facet));
-    for (const facet of missingFacets) {
+    const existingFacetCounts = new Map<string, number>();
+    for (const entry of diversityBalanced) {
+      const facet = candidateTasteFacet(entry.candidate);
+      existingFacetCounts.set(facet, (existingFacetCounts.get(facet) || 0) + 1);
+    }
+    const missingFacets = tasteShapeTargets.filter(({ facet, weight }) =>
+      (existingFacetCounts.get(facet) || 0) === 0 && weight >= 0.8
+    );
+    let injected = 0;
+    for (const { facet } of missingFacets) {
+      if (injected >= 2) break;
       const replacement = orderedAfterAi.find((entry) =>
         candidateTasteFacet(entry.candidate) === facet &&
-        entry.breakdown.personalAffinityScore >= 2.2 &&
-        entry.breakdown.toneScore >= 1.1
+        entry.breakdown.personalAffinityScore >= 2.8 &&
+        entry.breakdown.toneScore >= 1.6 &&
+        entry.breakdown.finalScore >= 18
       );
       if (!replacement) continue;
       if (diversityBalanced.some((entry) => identityKey(entry.candidate) === identityKey(replacement.candidate))) continue;
       diversityBalanced.push(replacement);
+      injected += 1;
     }
   }
   if (diversityBalanced.length < 3) {
