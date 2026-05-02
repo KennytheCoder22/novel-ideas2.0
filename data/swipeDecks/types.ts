@@ -22,6 +22,20 @@ export type TasteAxis =
   | "ideaDensity";
 
 export type TasteTraits = Partial<Record<TasteAxis, number>>;
+export type SignalLevel = -2 | -1 | 0 | 1 | 2;
+
+export interface SwipeCardSignalMetadata {
+  audienceFit: SignalLevel;
+  genreInterest: SignalLevel;
+  toneVibe: SignalLevel;
+  storyEngine: SignalLevel;
+  credibilityCraft: SignalLevel;
+}
+
+export interface SwipeCardReasonMetadata {
+  like: string[];
+  dislike: string[];
+}
 
 
 /**
@@ -75,6 +89,8 @@ export interface SwipeDeckCard {
   // These values represent how strongly this card signals each taste axis.
   // Recommended range is roughly -1 to 1.
   tasteTraits?: TasteTraits;
+  signals?: SwipeCardSignalMetadata;
+  reasons?: SwipeCardReasonMetadata;
 
   // Optional media/cover metadata used by SwipeDeckScreen
   wikiTitle?: string;
