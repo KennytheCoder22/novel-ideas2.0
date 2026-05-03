@@ -1783,7 +1783,21 @@ function candidateKey(candidate: any): string {
 
 function candidateScoreValue(candidate: any): number {
   const raw = Number(candidate?.score ?? candidate?.diagnostics?.postFilterScore ?? candidate?.diagnostics?.preFilterScore ?? 0);
-  return Number.isFinite(raw) ? raw : 0;
+  const baseScore = Number.isFinite(raw) ? raw : 0;
+
+  // NYT should be a soft credibility signal, never a hard gate.
+  const hasNytSignal = Boolean(candidate?.nyt || candidate?.rawDoc?.nyt);
+  const nytSoftBoost = hasNytSignal ? 0.35 : 0;
+
+  // Suppress low-signal noisy candidates (especially sparse OL rows), but do not hard-filter.
+  const isOpenLibrary = sourceForDoc(candidate, "openLibrary") === "openLibrary";
+  const description = String(candidate?.description || candidate?.rawDoc?.description || "").trim();
+  const hasCover = Boolean(candidate?.hasCover ?? candidate?.rawDoc?.hasCover);
+  const ratingCount = Number(candidate?.ratingCount ?? candidate?.rawDoc?.ratingCount ?? 0);
+  const isLowSignalNoise = isOpenLibrary && !hasCover && description.length < 80 && ratingCount <= 1 && !hasNytSignal;
+  const noisePenalty = isLowSignalNoise ? -0.3 : 0;
+
+  return baseScore + nytSoftBoost + noisePenalty;
 }
 
 function normalizeWorkToken(value: unknown): string {
