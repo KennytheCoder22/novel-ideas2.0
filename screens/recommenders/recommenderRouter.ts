@@ -3123,6 +3123,7 @@ export async function getRecommendations(
 
   const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
   const googleFetchFailureDetected = Number(aggregatedRawFetched.googleBooks || 0) === 0;
+  const googleBooksDegradedMode = googleFetchFailureDetected || Number(aggregatedRawFetched.googleBooks || 0) < 6;
   const allowNytInjections = !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
   const nytAnchorResult = googleFetchFailureDetected
     ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
@@ -3222,6 +3223,24 @@ export async function getRecommendations(
     }));
   }
 
+  if (googleBooksDegradedMode) {
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      if (sourceForDoc(doc, "googleBooks") === "googleBooks") return true;
+      const hasNytSignal = Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller);
+      const description = String(doc?.description || doc?.rawDoc?.description || "").trim();
+      const hasCover = Boolean(doc?.hasCover ?? doc?.rawDoc?.hasCover);
+      const ratingCount = Number(doc?.ratingCount ?? doc?.rawDoc?.ratingCount ?? 0);
+      const hasAuthor = Boolean(String(doc?.author || doc?.rawDoc?.author || (Array.isArray(doc?.author_name) ? doc.author_name[0] : "") || "").trim());
+      const hasNarrativeSpecificity = /\b(character|relationship|identity|grief|moral|consequence|voice|interior|atmospheric|psychological|uncanny|surreal|speculative)\b/i.test(description);
+      const strongOpenLibraryShape = hasCover && description.length >= 140 && ratingCount >= 8 && hasAuthor && hasNarrativeSpecificity;
+      return hasNytSignal || strongOpenLibraryShape;
+    });
+    debugRouterLog("DEGRADED_MODE_OPEN_LIBRARY_TIGHTENED", {
+      enabled: true,
+      googleBooksRawFetched: Number(aggregatedRawFetched.googleBooks || 0),
+      countAfter: candidateDocs.length,
+    });
+  }
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
   );
@@ -3677,6 +3696,9 @@ const normalizedCandidatesRaw = [
     const source = sourceForDoc(doc, "openLibrary");
     rankedCountsBySource[source] = (rankedCountsBySource[source] || 0) + 1;
   }
+  const rankedNytBackedCount = rankedDocsWithDiagnostics.filter((doc: any) =>
+    Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller)
+  ).length;
 
   const labelParts: string[] = [];
   if (sourceEnabled.googleBooks) labelParts.push("Google Books");
@@ -3737,6 +3759,16 @@ const normalizedCandidatesRaw = [
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: getLastFinalRecommenderDebug(),
     debugNytAnchors: nytAnchorDebug,
+    debugFinalSourceComposition: {
+      finalCount: rankedDocsWithDiagnostics.length,
+      bySource: rankedCountsBySource,
+      nytBacked: rankedNytBackedCount,
+      googleBooksDegradedMode,
+      degradedReason: googleBooksDegradedMode
+        ? `googleBooks raw fetched=${Number(aggregatedRawFetched.googleBooks || 0)}`
+        : null,
+      qualityTestValid: !googleBooksDegradedMode,
+    },
     sourceEnabled,
     sourceSkippedReason,
   } as RecommendationResult;
