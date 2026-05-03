@@ -646,10 +646,23 @@ function quoteIfNeeded(value: string): string {
   return /^".*"$/.test(cleaned) ? cleaned : `"${cleaned}"`;
 }
 
+function teenFacetAnchors(seed: string): string[] {
+  const text = String(seed || "").toLowerCase();
+  const anchors = new Set<string>();
+  if (/\b(adventure|journey|quest|survival|team)\b/.test(text)) anchors.add("young adult adventure found family novel");
+  if (/\b(moral|ethic|betrayal|consequence|justice|choice|dilemma)\b/.test(text)) anchors.add("young adult moral dilemma thriller");
+  if (/\b(dystopian|oppression|resistance|inequality|government|social)\b/.test(text)) anchors.add("young adult dystopian social justice novel");
+  if (/\b(supernatural|paranormal|magic|myth|monster|spirit)\b/.test(text)) anchors.add("teen supernatural adventure novel");
+  if (/\b(manga|anime|graphic|shonen|shojo)\b/.test(text)) anchors.add("ya manga anime adjacent fantasy adventure");
+  if (/\b(coming of age|identity|friendship|school|academy|teen|young adult|ya)\b/.test(text)) anchors.add("young adult coming of age speculative novel");
+  return Array.from(anchors);
+}
+
 function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   const family = inferRouterFamily(bucketPlan);
   const base = String(rung?.query || "").trim().toLowerCase();
   const preview = String(bucketPlan?.preview || "").trim().toLowerCase();
+  const teenSpeculativeSignal = /\b(young adult|ya|teen|coming of age|dystopian|supernatural|paranormal|academy|rebellion|survival)\b/.test(`${base} ${preview}`);
 
   if (family === "mystery") {
     if (base) return quoteIfNeeded(base);
@@ -681,18 +694,21 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   if (family === "fantasy") {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
+    if (teenSpeculativeSignal) return quoteIfNeeded("young adult fantasy adventure novel");
     return quoteIfNeeded("epic fantasy novel");
   }
 
   if (family === "horror") {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
+    if (teenSpeculativeSignal) return quoteIfNeeded("young adult dystopian supernatural novel");
     return quoteIfNeeded("psychological horror novel");
   }
 
   if (family === "speculative") {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
+    if (teenSpeculativeSignal) return quoteIfNeeded("young adult speculative dystopian coming of age novel");
     return quoteIfNeeded("science fiction");
   }
 
@@ -1757,13 +1773,22 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
     const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
+    const signalBlob = `${String(rung?.query || "")} ${String(bucketPlan?.preview || "")}`.toLowerCase();
+    const teenSpeculativeSignal = /\b(young adult|ya|teen|coming of age|dystopian|supernatural|paranormal|academy|rebellion|survival)\b/.test(signalBlob);
     mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
     mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+    if (teenSpeculativeSignal) {
+      const teenAnchors = teenFacetAnchors(signalBlob);
+      for (const anchor of teenAnchors.slice(0, 4)) {
+        if (normalizeQueryKey(anchor) === normalizeQueryKey(openLibraryQuery)) continue;
+        mapped.push({ query: quoteIfNeeded(anchor), laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+      }
+    }
     if (family === "thriller" || family === "mystery" || family === "horror") {
       const simpleFallbackQuery =
         family === "thriller" ? "psychological thriller novel" :
         family === "mystery" ? "detective mystery novel" :
-        "psychological horror novel";
+        (teenSpeculativeSignal ? "young adult dystopian supernatural novel" : "psychological horror novel");
       if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
         mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
       }
