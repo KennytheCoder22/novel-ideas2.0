@@ -3681,7 +3681,8 @@ const normalizedCandidatesRaw = [
         return hasNytSignal || (hasCover && description.length >= 140 && ratingCount >= 10 && qualityPrior >= 1.4);
       })
     : qualityPrioritizedRankedDocs;
-  const finalRankedDocs = (() => {
+  let trustAnchorInjectedCount = 0;
+  let finalRankedDocs = (() => {
     if (googleBooksDegradedMode) {
       const degradedLimit = Math.max(4, Math.min(finalLimit, degradedModeQualityScreenedDocs.length));
       return enforceFinalSelectionCoherence(degradedModeQualityScreenedDocs, degradedLimit);
@@ -3701,6 +3702,39 @@ const normalizedCandidatesRaw = [
       .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily));
     return enforceFinalSelectionCoherence(dedupeDocs([...qualityPrioritizedRankedDocs, ...refill] as any), finalLimit) as any[];
   })();
+
+  if (googleBooksDegradedMode && finalRankedDocs.length < finalLimit) {
+    const remainingSlots = Math.max(0, finalLimit - finalRankedDocs.length);
+    const maxTrustAnchors = Math.min(2, remainingSlots);
+    if (maxTrustAnchors > 0) {
+      const existingKeys = new Set(finalRankedDocs.map((doc: any) => candidateKey(doc)));
+      const trustAnchorPool = qualityPrioritizedRankedDocs
+        .filter((doc: any) => Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller))
+        .filter((doc: any) => {
+          const key = candidateKey(doc);
+          return Boolean(key) && !existingKeys.has(key);
+        })
+        .filter((doc: any) => {
+          const resolvedFamily = normalizeRouterFamilyValue(
+            doc?.queryFamily || doc?.rawDoc?.queryFamily || doc?.filterFamily || doc?.rawDoc?.filterFamily
+          );
+          if (routerFamily !== "general" && resolvedFamily && resolvedFamily !== routerFamily) return false;
+          const tasteAlignment = Number(doc?.diagnostics?.tasteAlignment ?? doc?.rawDoc?.diagnostics?.tasteAlignment ?? 0);
+          const qualityPrior = finalQualityPriorScore(doc, routerFamily);
+          return tasteAlignment >= 1.0 && qualityPrior >= 0.8;
+        })
+        .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily))
+        .slice(0, maxTrustAnchors);
+
+      if (trustAnchorPool.length) {
+        trustAnchorInjectedCount = trustAnchorPool.length;
+        finalRankedDocs = enforceFinalSelectionCoherence(
+          dedupeDocs([...finalRankedDocs, ...trustAnchorPool] as any),
+          Math.min(finalLimit, finalRankedDocs.length + trustAnchorPool.length),
+        ) as any[];
+      }
+    }
+  }
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
@@ -3840,6 +3874,7 @@ const normalizedCandidatesRaw = [
         ? `googleBooks raw fetched=${Number(aggregatedRawFetched.googleBooks || 0)}`
         : null,
       reducedOutputForQuality: googleBooksDegradedMode && rankedDocsWithDiagnostics.length < finalLimit,
+      trustAnchorInjectedCount,
       qualityTestValid: !googleBooksDegradedMode,
     },
     sourceEnabled,
