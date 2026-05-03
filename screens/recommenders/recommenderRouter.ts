@@ -1902,6 +1902,28 @@ function enforceFinalSelectionCoherence(docs: any[], limit: number): any[] {
   return kept;
 }
 
+function isContainerOrReferenceTitle(doc: any, allowIfExplicitlyRequested = false, bucketPlanPreview?: string): boolean {
+  if (allowIfExplicitlyRequested) return false;
+  const title = String(doc?.title || doc?.rawDoc?.title || "").toLowerCase();
+  const preview = String(bucketPlanPreview || "").toLowerCase();
+  const explicitlyAsked =
+    /\b(anthology|yearbook|best of|collection|annual|almanac|reference)\b/.test(preview);
+  if (explicitlyAsked) return false;
+  return /\b(bestsellers?|the american year book|year ?book|best science fiction of the year|anthology|annual collection|almanac|companion|encyclopedia|handbook|reference)\b/.test(title);
+}
+
+function isDomesticThrillerDrift(doc: any): boolean {
+  const text = [
+    doc?.title,
+    doc?.description,
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  return /\b(the wife|the husband|the girlfriend|the stranger|domestic suspense|missing wife|marriage secrets|girl on the train|behind closed doors)\b/.test(text);
+}
+
 function collapseCrossRungDuplicates<T extends { title?: string; author?: string; author_name?: string[]; rawDoc?: any; queryRung?: number }>(docs: T[]): T[] {
   const bestByWork = new Map<string, T>();
   const rankFor = (doc: any) => Number(doc?.rawDoc?.queryRung ?? doc?.queryRung ?? 999);
@@ -3249,6 +3271,13 @@ export async function getRecommendations(
     }
   }
 
+  candidateDocs = candidateDocs.filter((doc: any) =>
+    !isContainerOrReferenceTitle(doc, false, bucketPlan?.preview)
+  );
+  if (routerFamily === "science_fiction" || routerFamily === "general" || googleBooksDegradedMode) {
+    candidateDocs = candidateDocs.filter((doc: any) => !isDomesticThrillerDrift(doc));
+  }
+
   if (!isHybridMode) {
     candidateDocs = candidateDocs.map((doc: any) => ({
       ...doc,
@@ -3746,6 +3775,13 @@ const normalizedCandidatesRaw = [
         ) as any[];
       }
     }
+  }
+  finalRankedDocs = finalRankedDocs.filter((doc: any) => !isContainerOrReferenceTitle(doc, false, bucketPlan?.preview));
+  if (routerFamily === "science_fiction" || routerFamily === "general" || googleBooksDegradedMode) {
+    finalRankedDocs = finalRankedDocs.filter((doc: any) => !isDomesticThrillerDrift(doc));
+  }
+  if (googleBooksDegradedMode) {
+    finalRankedDocs = finalRankedDocs.slice(0, degradedMaxOutputTarget);
   }
 
   debugRouterLog("DEGRADED_MODE_FINAL_OUTPUT_TRACE", {
