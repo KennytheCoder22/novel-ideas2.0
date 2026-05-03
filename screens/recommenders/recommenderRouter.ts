@@ -3616,7 +3616,21 @@ const normalizedCandidatesRaw = [
   const qualityPrioritizedRankedDocs = [...metaSafeRankedDocs].sort((a: any, b: any) =>
     finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily)
   );
+  const degradedModeQualityScreenedDocs = googleBooksDegradedMode
+    ? qualityPrioritizedRankedDocs.filter((doc: any) => {
+        const hasNytSignal = Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller);
+        const hasCover = Boolean(doc?.hasCover ?? doc?.rawDoc?.hasCover);
+        const description = String(doc?.description || doc?.rawDoc?.description || "").trim();
+        const ratingCount = Number(doc?.ratingCount ?? doc?.rawDoc?.ratingCount ?? 0);
+        const qualityPrior = finalQualityPriorScore(doc, routerFamily);
+        return hasNytSignal || (hasCover && description.length >= 140 && ratingCount >= 10 && qualityPrior >= 1.4);
+      })
+    : qualityPrioritizedRankedDocs;
   const finalRankedDocs = (() => {
+    if (googleBooksDegradedMode) {
+      const degradedLimit = Math.max(4, Math.min(finalLimit, degradedModeQualityScreenedDocs.length));
+      return degradedModeQualityScreenedDocs.slice(0, degradedLimit);
+    }
     if (qualityPrioritizedRankedDocs.length >= finalLimit) return qualityPrioritizedRankedDocs.slice(0, finalLimit);
     const existing = new Set(qualityPrioritizedRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPoolForFinal
@@ -3760,6 +3774,7 @@ const normalizedCandidatesRaw = [
     debugFinalRecommender: getLastFinalRecommenderDebug(),
     debugNytAnchors: nytAnchorDebug,
     debugFinalSourceComposition: {
+      requestedFinalLimit: finalLimit,
       finalCount: rankedDocsWithDiagnostics.length,
       bySource: rankedCountsBySource,
       nytBacked: rankedNytBackedCount,
@@ -3767,6 +3782,7 @@ const normalizedCandidatesRaw = [
       degradedReason: googleBooksDegradedMode
         ? `googleBooks raw fetched=${Number(aggregatedRawFetched.googleBooks || 0)}`
         : null,
+      reducedOutputForQuality: googleBooksDegradedMode && rankedDocsWithDiagnostics.length < finalLimit,
       qualityTestValid: !googleBooksDegradedMode,
     },
     sourceEnabled,
