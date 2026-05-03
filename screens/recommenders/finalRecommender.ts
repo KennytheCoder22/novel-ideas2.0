@@ -927,6 +927,29 @@ function formulaSeriesPenalty(c: Candidate): number {
   return penalty;
 }
 
+function poolNoisePenalty(c: Candidate, taste?: TasteProfile): number {
+  const text = haystack(c);
+  const title = normalize(c.title || "");
+  const ratings = Number(c.ratingCount || 0);
+  const anyTaste: any = taste || {};
+  const positiveBlob = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase()).join(" ");
+
+  const conceptualSession = /\b(identity|memory|ethics|concept|psychological|literary|atmospheric|investigation|moral)\b/.test(positiveBlob);
+  if (!conceptualSession) return 0;
+
+  let penalty = 0;
+  if (/\b(book|volume|part|chronicles|saga)\s*\d+\b/.test(title) || /\b(series|book one|book two|book three)\b/.test(text)) penalty -= 8;
+  if (/\b(magic system|academy|chosen one|quest to save the world|dragon rider|fae court|shadow kingdom)\b/.test(text)) penalty -= 6;
+  if (/\b(epic fantasy adventure|action packed fantasy|spellbinding series)\b/.test(text)) penalty -= 5;
+  if (ratings < 40 && /\b(fantasy|magic|sorcery|quest)\b/.test(text) && !/\b(literary|psychological|character[-\s]?driven|philosophical)\b/.test(text)) penalty -= 7;
+  return penalty;
+}
+
 function genericRungPenalty(c: Candidate): number {
   const rung = evidenceRank(c);
   if (rung !== 0) return 0;
@@ -2070,6 +2093,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const noveltyPenalty = noveltyTitlePenalty(c);
   const confidencePenalty = metadataConfidencePenalty(c) + lowRatingsPenalty(c);
   const seriesFormulaPenalty = formulaSeriesPenalty(c);
+  const poolNoise = poolNoisePenalty(c, taste);
   const genericQueryPenalty = genericRungPenalty(c);
   const rescuePenalty = rescuePenaltyScore(c);
   const softFailurePenalty = softFailurePenaltyScore(c);
@@ -2147,7 +2171,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + lowIdentityPenalty + contextualAversionPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + poolNoise + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + literaryCommercialPenalty + modernVoicePenalty + conceptHumanPenalty + plotNoisePenalty + lowIdentityPenalty + contextualAversionPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
   };
 }
 
@@ -2313,6 +2337,54 @@ function authoredIntentionalityScore(c: Candidate): number {
   if (/\b(shock|gore|splatter|extreme horror|random violence|disturbing for its own sake)\b/.test(text)) score -= 8;
   if (/\b(indie horror|microbudget|experimental found footage|camp slasher)\b/.test(text) && ratings < 80) score -= 7;
   return score;
+}
+
+function userExplicitlySignalsAuthorOrSeries(taste: TasteProfile | undefined, candidate: Candidate): boolean {
+  const anyTaste: any = taste || {};
+  const terms = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase());
+  const blob = terms.join(" ");
+  const author = normalize(candidate.author || "");
+  const series = seriesClusterKey(candidate);
+  return Boolean((author && blob.includes(author)) || (series && blob.includes(series)));
+}
+
+function applyHardClusterCaps(
+  entries: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  taste?: TasteProfile
+): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
+  const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
+  const authorCounts = new Map<string, number>();
+  const seriesCounts = new Map<string, number>();
+  const publisherPatternCounts = new Map<string, number>();
+
+  for (const entry of entries) {
+    const author = normalize(entry.candidate.author || "");
+    const series = seriesClusterKey(entry.candidate);
+    const publisher = normalize(entry.candidate.publisher || "");
+    const pattern = /\b(bookouture|storm|independently published|amazon digital)\b/.test(publisher)
+      ? "bulk_publisher"
+      : "other";
+    const explicitSignal = userExplicitlySignalsAuthorOrSeries(taste, entry.candidate);
+    const authorCap = explicitSignal ? 3 : 2;
+    const seriesCap = explicitSignal ? 2 : 1;
+    const patternCap = explicitSignal ? 4 : 2;
+
+    if (author && (authorCounts.get(author) || 0) >= authorCap) continue;
+    if (series && (seriesCounts.get(series) || 0) >= seriesCap) continue;
+    if ((publisherPatternCounts.get(pattern) || 0) >= patternCap) continue;
+
+    out.push(entry);
+    if (author) authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+    if (series) seriesCounts.set(series, (seriesCounts.get(series) || 0) + 1);
+    publisherPatternCounts.set(pattern, (publisherPatternCounts.get(pattern) || 0) + 1);
+  }
+
+  return out;
 }
 
 function enforceLaneDiversityCap(
@@ -3061,6 +3133,10 @@ export function finalRecommenderForDeck(
     : diversityBalanced;
   if (coherentBalanced.length >= 3) {
     diversityBalanced.splice(0, diversityBalanced.length, ...coherentBalanced);
+  }
+  const cappedBalanced = applyHardClusterCaps(diversityBalanced, tasteProfile);
+  if (cappedBalanced.length >= 3) {
+    diversityBalanced.splice(0, diversityBalanced.length, ...cappedBalanced);
   }
   const clusterBreakdown: Record<string, number> = {};
   for (const entry of diversityBalanced) {
