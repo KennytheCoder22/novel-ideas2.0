@@ -445,7 +445,14 @@ function StudentView(props: {
                 const title = d.title || "Untitled";
                 const author = d.author_name?.[0] || "Unknown author";
                 const year = d.first_publish_year ? ` (${d.first_publish_year})` : "";
-                const cover = coverUrlFromCoverId(d.cover_i, "M");
+                const cover =
+                  (typeof d?.imageUrl === "string" && d.imageUrl) ||
+                  (typeof d?.coverImageUrl === "string" && d.coverImageUrl) ||
+                  (typeof d?.imageLinks?.thumbnail === "string" && d.imageLinks.thumbnail) ||
+                  (typeof d?.imageLinks?.smallThumbnail === "string" && d.imageLinks.smallThumbnail) ||
+                  (typeof d?.volumeInfo?.imageLinks?.thumbnail === "string" && d.volumeInfo.imageLinks.thumbnail) ||
+                  (typeof d?.volumeInfo?.imageLinks?.smallThumbnail === "string" && d.volumeInfo.imageLinks.smallThumbnail) ||
+                  coverUrlFromCoverId(d.cover_i, "M");
                 return (
                   <View style={styles.singleResultWrap}>
                     <View style={[styles.resultRow, styles.resultRowCompact, styles.resultCardStack, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
