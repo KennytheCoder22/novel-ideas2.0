@@ -1787,17 +1787,56 @@ function candidateScoreValue(candidate: any): number {
 
   // NYT should be a soft credibility signal, never a hard gate.
   const hasNytSignal = Boolean(candidate?.nyt || candidate?.rawDoc?.nyt);
-  const nytSoftBoost = hasNytSignal ? 0.35 : 0;
+  const nytSoftBoost = hasNytSignal ? 1.1 : 0;
 
   // Suppress low-signal noisy candidates (especially sparse OL rows), but do not hard-filter.
   const isOpenLibrary = sourceForDoc(candidate, "openLibrary") === "openLibrary";
   const description = String(candidate?.description || candidate?.rawDoc?.description || "").trim();
   const hasCover = Boolean(candidate?.hasCover ?? candidate?.rawDoc?.hasCover);
   const ratingCount = Number(candidate?.ratingCount ?? candidate?.rawDoc?.ratingCount ?? 0);
-  const isLowSignalNoise = isOpenLibrary && !hasCover && description.length < 80 && ratingCount <= 1 && !hasNytSignal;
-  const noisePenalty = isLowSignalNoise ? -0.3 : 0;
+  const isLowSignalNoise = isOpenLibrary && !hasCover && description.length < 100 && ratingCount <= 2 && !hasNytSignal;
+  const noisePenalty = isLowSignalNoise ? -1.0 : 0;
 
   return baseScore + nytSoftBoost + noisePenalty;
+}
+
+function finalQualityPriorScore(doc: any, routerFamily: RouterFamilyKey): number {
+  const normalizedBase = candidateScoreValue(doc);
+  const hasNytSignal = Boolean(doc?.nyt || doc?.rawDoc?.nyt);
+  const isOpenLibrary = sourceForDoc(doc, "openLibrary") === "openLibrary";
+  const description = String(doc?.description || doc?.rawDoc?.description || "").trim();
+  const hasCover = Boolean(doc?.hasCover ?? doc?.rawDoc?.hasCover);
+  const ratingCount = Number(doc?.ratingCount ?? doc?.rawDoc?.ratingCount ?? 0);
+  const lowSignal = isOpenLibrary && !hasCover && description.length < 120 && ratingCount <= 2;
+
+  const tasteAlignment = Number(doc?.diagnostics?.tasteAlignment ?? doc?.rawDoc?.diagnostics?.tasteAlignment ?? 0);
+  const tasteRescue = tasteAlignment >= 1.9;
+
+  let score = normalizedBase;
+  if (hasNytSignal) score += 1.2;
+  if (lowSignal && !tasteRescue) score -= 1.7;
+
+  const styleText = [
+    doc?.title,
+    doc?.description,
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const quirkyStylish = /\b(quirky|stylish|inventive|surreal|absurdist|dreamlike|atmospheric|experimental|offbeat|darkly comic|uncanny|speculative literary|character[-\s]?driven)\b/.test(styleText);
+  if (quirkyStylish) score += 0.45;
+
+  const broadSciFiSprawl = /\b(space opera|military sci[-\s]?fi|galactic empire|interstellar war|fleet|planetary conquest)\b/.test(styleText);
+  if (broadSciFiSprawl) score -= 0.9;
+
+  const genericThrillerHorror = /\b(generic thriller|serial killer procedural|haunted house anthology|zombie apocalypse|demon hunter|creature feature)\b/.test(styleText);
+  if (routerFamily === "horror" || routerFamily === "thriller" || routerFamily === "science_fiction") {
+    if (genericThrillerHorror) score -= 0.8;
+  }
+
+  return score;
 }
 
 function normalizeWorkToken(value: unknown): string {
@@ -3555,9 +3594,12 @@ const normalizedCandidatesRaw = [
     .filter((doc: any) => !isMetaReferenceWork(doc))
     .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
     .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc));
+  const qualityPrioritizedRankedDocs = [...metaSafeRankedDocs].sort((a: any, b: any) =>
+    finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily)
+  );
   const finalRankedDocs = (() => {
-    if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
-    const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
+    if (qualityPrioritizedRankedDocs.length >= finalLimit) return qualityPrioritizedRankedDocs.slice(0, finalLimit);
+    const existing = new Set(qualityPrioritizedRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPoolForFinal
       .filter((doc: any) => !isMetaReferenceWork(doc))
       .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
@@ -3565,8 +3607,9 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => {
         const key = candidateKey(doc);
         return Boolean(key) && !existing.has(key);
-      });
-    return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+      })
+      .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily));
+    return dedupeDocs([...qualityPrioritizedRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
   })();
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
