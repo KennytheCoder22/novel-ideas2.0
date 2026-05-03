@@ -1871,11 +1871,27 @@ function seriesLikeToken(candidate: any): string {
   return normalizeWorkToken(m?.[1] || "");
 }
 
-function enforceFinalSelectionCoherence(docs: any[], limit: number): any[] {
+function topicalClusterToken(candidate: any): string {
+  const text = [
+    candidate?.title,
+    candidate?.rawDoc?.title,
+    ...(Array.isArray(candidate?.subject) ? candidate.subject : []),
+    ...(Array.isArray(candidate?.subjects) ? candidate.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (/\b(fae|faerie|court of|shadow hunter|dragon rider|magic academy|chosen one)\b/.test(text)) return "fantasy_cluster";
+  if (/\b(vampire|werewolf|demon|witch academy)\b/.test(text)) return "paranormal_cluster";
+  if (/\b(dystopian|post[-\s]?apocalyptic|resistance|rebellion)\b/.test(text)) return "dystopia_cluster";
+  return "";
+}
+
+function enforceFinalSelectionCoherence(docs: any[], limit: number, options?: { maxPerAuthor?: number; maxPerCluster?: number }): any[] {
   const kept: any[] = [];
   const seenWork = new Set<string>();
   const byAuthor = new Map<string, number>();
   const bySeries = new Map<string, number>();
+  const byCluster = new Map<string, number>();
+  const maxPerAuthor = Math.max(1, Number(options?.maxPerAuthor ?? 2));
+  const maxPerCluster = Math.max(1, Number(options?.maxPerCluster ?? 2));
 
   for (const doc of Array.isArray(docs) ? docs : []) {
     const titleToken = normalizeWorkToken(doc?.title ?? doc?.rawDoc?.title);
@@ -1884,13 +1900,19 @@ function enforceFinalSelectionCoherence(docs: any[], limit: number): any[] {
     if (!titleToken || seenWork.has(workKey)) continue;
 
     const authorCount = authorToken ? (byAuthor.get(authorToken) || 0) : 0;
-    if (authorCount >= 2) continue;
+    if (authorCount >= maxPerAuthor) continue;
 
     const seriesToken = seriesLikeToken(doc);
     if (seriesToken) {
       const seriesCount = bySeries.get(seriesToken) || 0;
       if (seriesCount >= 1) continue;
       bySeries.set(seriesToken, seriesCount + 1);
+    }
+    const clusterToken = topicalClusterToken(doc);
+    if (clusterToken) {
+      const clusterCount = byCluster.get(clusterToken) || 0;
+      if (clusterCount >= maxPerCluster) continue;
+      byCluster.set(clusterToken, clusterCount + 1);
     }
 
     seenWork.add(workKey);
@@ -2531,6 +2553,8 @@ export async function getRecommendations(
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
+  const isTeenDeck = routedInput.deckKey === "ms_hs";
+  const isAdultDeck = routedInput.deckKey === "adult";
   const sourceEnabled = resolveSourceEnabled(routedInput);
   const sourceSkippedReason: string[] = [];
   let googleQuotaExhausted = false;
@@ -3274,7 +3298,7 @@ export async function getRecommendations(
   candidateDocs = candidateDocs.filter((doc: any) =>
     !isContainerOrReferenceTitle(doc, false, bucketPlan?.preview)
   );
-  if (routerFamily === "science_fiction" || routerFamily === "general" || googleBooksDegradedMode) {
+  if (isAdultDeck && (routerFamily === "science_fiction" || routerFamily === "general" || googleBooksDegradedMode)) {
     candidateDocs = candidateDocs.filter((doc: any) => !isDomesticThrillerDrift(doc));
   }
 
@@ -3715,10 +3739,16 @@ const normalizedCandidatesRaw = [
   let finalRankedDocs = (() => {
     if (googleBooksDegradedMode) {
       const degradedLimit = Math.max(4, Math.min(degradedMaxOutputTarget, degradedModeQualityScreenedDocs.length));
-      return enforceFinalSelectionCoherence(degradedModeQualityScreenedDocs, degradedLimit);
+      return enforceFinalSelectionCoherence(degradedModeQualityScreenedDocs, degradedLimit, {
+        maxPerAuthor: isTeenDeck ? 1 : 2,
+        maxPerCluster: isTeenDeck ? 1 : 2,
+      });
     }
     if (qualityPrioritizedRankedDocs.length >= finalLimit) {
-      return enforceFinalSelectionCoherence(qualityPrioritizedRankedDocs, finalLimit);
+      return enforceFinalSelectionCoherence(qualityPrioritizedRankedDocs, finalLimit, {
+        maxPerAuthor: isTeenDeck ? 1 : 2,
+        maxPerCluster: isTeenDeck ? 1 : 2,
+      });
     }
     const existing = new Set(qualityPrioritizedRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPoolForFinal
@@ -3730,7 +3760,10 @@ const normalizedCandidatesRaw = [
         return Boolean(key) && !existing.has(key);
       })
       .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily));
-    return enforceFinalSelectionCoherence(dedupeDocs([...qualityPrioritizedRankedDocs, ...refill] as any), finalLimit) as any[];
+    return enforceFinalSelectionCoherence(dedupeDocs([...qualityPrioritizedRankedDocs, ...refill] as any), finalLimit, {
+      maxPerAuthor: isTeenDeck ? 1 : 2,
+      maxPerCluster: isTeenDeck ? 1 : 2,
+    }) as any[];
   })();
 
   if (googleBooksDegradedMode && finalRankedDocs.length < finalLimit) {
@@ -3772,12 +3805,16 @@ const normalizedCandidatesRaw = [
         finalRankedDocs = enforceFinalSelectionCoherence(
           dedupeDocs([...finalRankedDocs, ...trustAnchorPool] as any),
           Math.min(degradedMaxOutputTarget, finalRankedDocs.length + trustAnchorPool.length),
+          {
+            maxPerAuthor: isTeenDeck ? 1 : 2,
+            maxPerCluster: isTeenDeck ? 1 : 2,
+          }
         ) as any[];
       }
     }
   }
   finalRankedDocs = finalRankedDocs.filter((doc: any) => !isContainerOrReferenceTitle(doc, false, bucketPlan?.preview));
-  if (routerFamily === "science_fiction" || routerFamily === "general" || googleBooksDegradedMode) {
+  if (isAdultDeck && (routerFamily === "science_fiction" || routerFamily === "general" || googleBooksDegradedMode)) {
     finalRankedDocs = finalRankedDocs.filter((doc: any) => !isDomesticThrillerDrift(doc));
   }
   if (googleBooksDegradedMode) {
