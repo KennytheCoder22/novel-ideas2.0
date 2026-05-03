@@ -1847,6 +1847,61 @@ function normalizeWorkToken(value: unknown): string {
     .trim();
 }
 
+function normalizedAuthorToken(candidate: any): string {
+  const author =
+    candidate?.author ??
+    candidate?.rawDoc?.author ??
+    (Array.isArray(candidate?.author_name) ? candidate.author_name[0] : candidate?.author_name) ??
+    (Array.isArray(candidate?.rawDoc?.author_name) ? candidate.rawDoc.author_name[0] : candidate?.rawDoc?.author_name) ??
+    "";
+  return normalizeWorkToken(author);
+}
+
+function seriesLikeToken(candidate: any): string {
+  const text = [
+    candidate?.title,
+    candidate?.rawDoc?.title,
+    candidate?.description,
+    candidate?.rawDoc?.description,
+  ].filter(Boolean).join(" ").toLowerCase();
+  const m =
+    text.match(/\b(the [a-z0-9' -]{2,40}\s+(series|chronicles|saga))\b/) ||
+    text.match(/\b(book\s*\d+\s+of\s+the\s+[a-z0-9' -]{2,40})\b/) ||
+    text.match(/\b([a-z0-9' -]{2,40}\s+trilogy)\b/);
+  return normalizeWorkToken(m?.[1] || "");
+}
+
+function enforceFinalSelectionCoherence(docs: any[], limit: number): any[] {
+  const kept: any[] = [];
+  const seenWork = new Set<string>();
+  const byAuthor = new Map<string, number>();
+  const bySeries = new Map<string, number>();
+
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const titleToken = normalizeWorkToken(doc?.title ?? doc?.rawDoc?.title);
+    const authorToken = normalizedAuthorToken(doc);
+    const workKey = `${titleToken}|${authorToken}`;
+    if (!titleToken || seenWork.has(workKey)) continue;
+
+    const authorCount = authorToken ? (byAuthor.get(authorToken) || 0) : 0;
+    if (authorCount >= 2) continue;
+
+    const seriesToken = seriesLikeToken(doc);
+    if (seriesToken) {
+      const seriesCount = bySeries.get(seriesToken) || 0;
+      if (seriesCount >= 1) continue;
+      bySeries.set(seriesToken, seriesCount + 1);
+    }
+
+    seenWork.add(workKey);
+    if (authorToken) byAuthor.set(authorToken, authorCount + 1);
+    kept.push(doc);
+    if (kept.length >= limit) break;
+  }
+
+  return kept;
+}
+
 function collapseCrossRungDuplicates<T extends { title?: string; author?: string; author_name?: string[]; rawDoc?: any; queryRung?: number }>(docs: T[]): T[] {
   const bestByWork = new Map<string, T>();
   const rankFor = (doc: any) => Number(doc?.rawDoc?.queryRung ?? doc?.queryRung ?? 999);
@@ -3626,12 +3681,15 @@ const normalizedCandidatesRaw = [
         return hasNytSignal || (hasCover && description.length >= 140 && ratingCount >= 10 && qualityPrior >= 1.4);
       })
     : qualityPrioritizedRankedDocs;
-  const finalRankedDocs = (() => {
+  let trustAnchorInjectedCount = 0;
+  let finalRankedDocs = (() => {
     if (googleBooksDegradedMode) {
       const degradedLimit = Math.max(4, Math.min(finalLimit, degradedModeQualityScreenedDocs.length));
-      return degradedModeQualityScreenedDocs.slice(0, degradedLimit);
+      return enforceFinalSelectionCoherence(degradedModeQualityScreenedDocs, degradedLimit);
     }
-    if (qualityPrioritizedRankedDocs.length >= finalLimit) return qualityPrioritizedRankedDocs.slice(0, finalLimit);
+    if (qualityPrioritizedRankedDocs.length >= finalLimit) {
+      return enforceFinalSelectionCoherence(qualityPrioritizedRankedDocs, finalLimit);
+    }
     const existing = new Set(qualityPrioritizedRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPoolForFinal
       .filter((doc: any) => !isMetaReferenceWork(doc))
@@ -3642,8 +3700,41 @@ const normalizedCandidatesRaw = [
         return Boolean(key) && !existing.has(key);
       })
       .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily));
-    return dedupeDocs([...qualityPrioritizedRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+    return enforceFinalSelectionCoherence(dedupeDocs([...qualityPrioritizedRankedDocs, ...refill] as any), finalLimit) as any[];
   })();
+
+  if (googleBooksDegradedMode && finalRankedDocs.length < finalLimit) {
+    const remainingSlots = Math.max(0, finalLimit - finalRankedDocs.length);
+    const maxTrustAnchors = Math.min(2, remainingSlots);
+    if (maxTrustAnchors > 0) {
+      const existingKeys = new Set(finalRankedDocs.map((doc: any) => candidateKey(doc)));
+      const trustAnchorPool = qualityPrioritizedRankedDocs
+        .filter((doc: any) => Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller))
+        .filter((doc: any) => {
+          const key = candidateKey(doc);
+          return Boolean(key) && !existingKeys.has(key);
+        })
+        .filter((doc: any) => {
+          const resolvedFamily = normalizeRouterFamilyValue(
+            doc?.queryFamily || doc?.rawDoc?.queryFamily || doc?.filterFamily || doc?.rawDoc?.filterFamily
+          );
+          if (routerFamily !== "general" && resolvedFamily && resolvedFamily !== routerFamily) return false;
+          const tasteAlignment = Number(doc?.diagnostics?.tasteAlignment ?? doc?.rawDoc?.diagnostics?.tasteAlignment ?? 0);
+          const qualityPrior = finalQualityPriorScore(doc, routerFamily);
+          return tasteAlignment >= 1.0 && qualityPrior >= 0.8;
+        })
+        .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily))
+        .slice(0, maxTrustAnchors);
+
+      if (trustAnchorPool.length) {
+        trustAnchorInjectedCount = trustAnchorPool.length;
+        finalRankedDocs = enforceFinalSelectionCoherence(
+          dedupeDocs([...finalRankedDocs, ...trustAnchorPool] as any),
+          Math.min(finalLimit, finalRankedDocs.length + trustAnchorPool.length),
+        ) as any[];
+      }
+    }
+  }
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
@@ -3783,6 +3874,7 @@ const normalizedCandidatesRaw = [
         ? `googleBooks raw fetched=${Number(aggregatedRawFetched.googleBooks || 0)}`
         : null,
       reducedOutputForQuality: googleBooksDegradedMode && rankedDocsWithDiagnostics.length < finalLimit,
+      trustAnchorInjectedCount,
       qualityTestValid: !googleBooksDegradedMode,
     },
     sourceEnabled,
