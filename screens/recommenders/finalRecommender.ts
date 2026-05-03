@@ -2993,6 +2993,23 @@ export function finalRecommenderForDeck(
     }
     return out;
   })();
+  const authoredIntentScores = diversityBalanced
+    .map((entry) => authoredIntentionalityScore(entry.candidate))
+    .filter((score) => Number.isFinite(score));
+  const authoredIntentFloor = authoredIntentScores.length
+    ? Math.max(1.6, Math.min(...authoredIntentScores) - 0.2)
+    : 1.6;
+  const relevanceFloorPasses = (entry: { candidate: Candidate; breakdown: ScoreBreakdown }): boolean => {
+    const text = haystack(entry.candidate);
+    const year = Number(entry.candidate.publicationYear || (entry.candidate.rawDoc as any)?.first_publish_year || 0);
+    const canonicalClassic = /(dracula|frankenstein|poe|raven|conrad|shelley|stoker|lovecraft|gothic classic|nineteenth century|victorian)/.test(text);
+    const modernAtmosphericSignal = /(atmospheric|cinematic|stylized|psychological|moral conflict|social commentary|character[-\s]?driven|emotionally resonant|speculative|existential)/.test(text);
+    const modernEnough = year === 0 || year >= 1980;
+    const exceptionalFit = entry.breakdown.toneScore >= 3.3 || entry.breakdown.personalAffinityScore >= 4.6;
+    if (canonicalClassic && !exceptionalFit) return false;
+    if (!modernEnough && !modernAtmosphericSignal && !exceptionalFit) return false;
+    return true;
+  };
   const tasteShapeTargets = inferTasteShapeTargets(tasteProfile);
   if (tasteShapeTargets.length > 0) {
     const existingFacetCounts = new Map<string, number>();
@@ -3013,7 +3030,9 @@ export function finalRecommenderForDeck(
         candidateTasteFacet(entry.candidate) === facet &&
         entry.breakdown.personalAffinityScore >= 2.8 &&
         entry.breakdown.toneScore >= 1.6 &&
-        entry.breakdown.finalScore >= Math.max(18, baselineFloor - 2.5)
+        entry.breakdown.finalScore >= Math.max(18, baselineFloor - 2.5) &&
+        authoredIntentionalityScore(entry.candidate) >= authoredIntentFloor &&
+        relevanceFloorPasses(entry)
       );
       if (!replacement) continue;
       if (diversityBalanced.some((entry) => identityKey(entry.candidate) === identityKey(replacement.candidate))) continue;
@@ -3061,6 +3080,15 @@ export function finalRecommenderForDeck(
     : diversityBalanced;
   if (coherentBalanced.length >= 3) {
     diversityBalanced.splice(0, diversityBalanced.length, ...coherentBalanced);
+  }
+  const prestigeFloored = diversityBalanced.filter((entry) =>
+    relevanceFloorPasses(entry) && (
+      authoredIntentionalityScore(entry.candidate) >= authoredIntentFloor ||
+      entry.breakdown.finalScore >= (coherenceAnchor?.breakdown.finalScore ?? entry.breakdown.finalScore) - 1.2
+    )
+  );
+  if (prestigeFloored.length >= 3) {
+    diversityBalanced.splice(0, diversityBalanced.length, ...prestigeFloored);
   }
   const clusterBreakdown: Record<string, number> = {};
   for (const entry of diversityBalanced) {
