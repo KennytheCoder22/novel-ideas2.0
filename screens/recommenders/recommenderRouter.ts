@@ -3681,10 +3681,11 @@ const normalizedCandidatesRaw = [
         return hasNytSignal || (hasCover && description.length >= 140 && ratingCount >= 10 && qualityPrior >= 1.4);
       })
     : qualityPrioritizedRankedDocs;
+  const degradedMaxOutputTarget = Math.min(finalLimit, 6);
   let trustAnchorInjectedCount = 0;
   let finalRankedDocs = (() => {
     if (googleBooksDegradedMode) {
-      const degradedLimit = Math.max(4, Math.min(finalLimit, degradedModeQualityScreenedDocs.length));
+      const degradedLimit = Math.max(4, Math.min(degradedMaxOutputTarget, degradedModeQualityScreenedDocs.length));
       return enforceFinalSelectionCoherence(degradedModeQualityScreenedDocs, degradedLimit);
     }
     if (qualityPrioritizedRankedDocs.length >= finalLimit) {
@@ -3704,7 +3705,7 @@ const normalizedCandidatesRaw = [
   })();
 
   if (googleBooksDegradedMode && finalRankedDocs.length < finalLimit) {
-    const remainingSlots = Math.max(0, finalLimit - finalRankedDocs.length);
+    const remainingSlots = Math.max(0, degradedMaxOutputTarget - finalRankedDocs.length);
     const maxTrustAnchors = Math.min(2, remainingSlots);
     if (maxTrustAnchors > 0) {
       const existingKeys = new Set(finalRankedDocs.map((doc: any) => candidateKey(doc)));
@@ -3721,7 +3722,18 @@ const normalizedCandidatesRaw = [
           if (routerFamily !== "general" && resolvedFamily && resolvedFamily !== routerFamily) return false;
           const tasteAlignment = Number(doc?.diagnostics?.tasteAlignment ?? doc?.rawDoc?.diagnostics?.tasteAlignment ?? 0);
           const qualityPrior = finalQualityPriorScore(doc, routerFamily);
-          return tasteAlignment >= 1.0 && qualityPrior >= 0.8;
+          const text = [
+            doc?.title,
+            doc?.description,
+            doc?.rawDoc?.title,
+            doc?.rawDoc?.description,
+            ...(Array.isArray(doc?.subject) ? doc.subject : []),
+            ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+          ].filter(Boolean).join(" ").toLowerCase();
+          const elevatedDarkCrafted =
+            /\b(psychological|literary|stylistic|atmospheric|surreal|uncanny|darkly comic|existential|experimental|offbeat|character[-\s]?driven)\b/.test(text) &&
+            !/\b(cozy mystery|romantasy|booktok romance|small town romance|serial killer procedural|fbi suspense thriller|paranormal romance)\b/.test(text);
+          return tasteAlignment >= 1.25 && qualityPrior >= 1.0 && elevatedDarkCrafted;
         })
         .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily))
         .slice(0, maxTrustAnchors);
@@ -3730,11 +3742,21 @@ const normalizedCandidatesRaw = [
         trustAnchorInjectedCount = trustAnchorPool.length;
         finalRankedDocs = enforceFinalSelectionCoherence(
           dedupeDocs([...finalRankedDocs, ...trustAnchorPool] as any),
-          Math.min(finalLimit, finalRankedDocs.length + trustAnchorPool.length),
+          Math.min(degradedMaxOutputTarget, finalRankedDocs.length + trustAnchorPool.length),
         ) as any[];
       }
     }
   }
+
+  debugRouterLog("DEGRADED_MODE_FINAL_OUTPUT_TRACE", {
+    googleBooksDegradedMode,
+    googleBooksRawFetched: Number(aggregatedRawFetched.googleBooks || 0),
+    requestedFinalLimit: finalLimit,
+    degradedMaxOutputTarget,
+    screenedCount: degradedModeQualityScreenedDocs.length,
+    trustAnchorInjectedCount,
+    finalCount: finalRankedDocs.length,
+  });
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
@@ -3874,6 +3896,7 @@ const normalizedCandidatesRaw = [
         ? `googleBooks raw fetched=${Number(aggregatedRawFetched.googleBooks || 0)}`
         : null,
       reducedOutputForQuality: googleBooksDegradedMode && rankedDocsWithDiagnostics.length < finalLimit,
+      degradedMaxOutputTarget: googleBooksDegradedMode ? degradedMaxOutputTarget : null,
       trustAnchorInjectedCount,
       qualityTestValid: !googleBooksDegradedMode,
     },
