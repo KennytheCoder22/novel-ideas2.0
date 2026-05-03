@@ -3820,6 +3820,44 @@ const normalizedCandidatesRaw = [
   if (googleBooksDegradedMode) {
     finalRankedDocs = finalRankedDocs.slice(0, degradedMaxOutputTarget);
   }
+  if (!finalRankedDocs.length) {
+    const fallbackLimit = Math.max(1, Math.min(finalLimit, googleBooksDegradedMode ? degradedMaxOutputTarget : 6));
+    const baseEligible = qualityPrioritizedRankedDocs.filter((doc: any) =>
+      !isContainerOrReferenceTitle(doc, false, bucketPlan?.preview)
+    );
+    const nonAdultSuppressionEligible = isAdultDeck
+      ? baseEligible.filter((doc: any) => !isDomesticThrillerDrift(doc))
+      : baseEligible;
+
+    // Relaxation ladder:
+    // 1) relax cluster cap, keep author cap strict
+    // 2) relax author + cluster caps
+    // 3) relax coherence caps but keep hard exclusions
+    const ladderStep1 = enforceFinalSelectionCoherence(nonAdultSuppressionEligible, fallbackLimit, {
+      maxPerAuthor: isTeenDeck ? 1 : 2,
+      maxPerCluster: isTeenDeck ? 2 : 2,
+    });
+    const ladderStep2 = ladderStep1.length
+      ? ladderStep1
+      : enforceFinalSelectionCoherence(nonAdultSuppressionEligible, fallbackLimit, {
+          maxPerAuthor: 2,
+          maxPerCluster: 3,
+        });
+    const ladderStep3 = ladderStep2.length
+      ? ladderStep2
+      : dedupeDocs(nonAdultSuppressionEligible as any).slice(0, fallbackLimit);
+    finalRankedDocs = ladderStep3;
+
+    debugRouterLog("FINAL_OUTPUT_RELAXATION_LADDER_APPLIED", {
+      fallbackLimit,
+      step1Count: ladderStep1.length,
+      step2Count: ladderStep2.length,
+      step3Count: ladderStep3.length,
+      finalCount: finalRankedDocs.length,
+      isTeenDeck,
+      googleBooksDegradedMode,
+    });
+  }
 
   debugRouterLog("DEGRADED_MODE_FINAL_OUTPUT_TRACE", {
     googleBooksDegradedMode,
