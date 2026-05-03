@@ -2339,6 +2339,54 @@ function authoredIntentionalityScore(c: Candidate): number {
   return score;
 }
 
+function userExplicitlySignalsAuthorOrSeries(taste: TasteProfile | undefined, candidate: Candidate): boolean {
+  const anyTaste: any = taste || {};
+  const terms = [
+    ...Object.keys(anyTaste?.likedTagCounts || {}),
+    ...Object.keys(anyTaste?.rightTagCounts || {}),
+    ...(Array.isArray(anyTaste?.positiveTags) ? anyTaste.positiveTags : []),
+    ...(Array.isArray(anyTaste?.likedTags) ? anyTaste.likedTags : []),
+  ].map((v) => String(v || "").toLowerCase());
+  const blob = terms.join(" ");
+  const author = normalize(candidate.author || "");
+  const series = seriesClusterKey(candidate);
+  return Boolean((author && blob.includes(author)) || (series && blob.includes(series)));
+}
+
+function applyHardClusterCaps(
+  entries: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
+  taste?: TasteProfile
+): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
+  const out: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> = [];
+  const authorCounts = new Map<string, number>();
+  const seriesCounts = new Map<string, number>();
+  const publisherPatternCounts = new Map<string, number>();
+
+  for (const entry of entries) {
+    const author = normalize(entry.candidate.author || "");
+    const series = seriesClusterKey(entry.candidate);
+    const publisher = normalize(entry.candidate.publisher || "");
+    const pattern = /\b(bookouture|storm|independently published|amazon digital)\b/.test(publisher)
+      ? "bulk_publisher"
+      : "other";
+    const explicitSignal = userExplicitlySignalsAuthorOrSeries(taste, entry.candidate);
+    const authorCap = explicitSignal ? 3 : 2;
+    const seriesCap = explicitSignal ? 2 : 1;
+    const patternCap = explicitSignal ? 4 : 2;
+
+    if (author && (authorCounts.get(author) || 0) >= authorCap) continue;
+    if (series && (seriesCounts.get(series) || 0) >= seriesCap) continue;
+    if ((publisherPatternCounts.get(pattern) || 0) >= patternCap) continue;
+
+    out.push(entry);
+    if (author) authorCounts.set(author, (authorCounts.get(author) || 0) + 1);
+    if (series) seriesCounts.set(series, (seriesCounts.get(series) || 0) + 1);
+    publisherPatternCounts.set(pattern, (publisherPatternCounts.get(pattern) || 0) + 1);
+  }
+
+  return out;
+}
+
 function enforceLaneDiversityCap(
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   ordered: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -3085,6 +3133,10 @@ export function finalRecommenderForDeck(
     : diversityBalanced;
   if (coherentBalanced.length >= 3) {
     diversityBalanced.splice(0, diversityBalanced.length, ...coherentBalanced);
+  }
+  const cappedBalanced = applyHardClusterCaps(diversityBalanced, tasteProfile);
+  if (cappedBalanced.length >= 3) {
+    diversityBalanced.splice(0, diversityBalanced.length, ...cappedBalanced);
   }
   const clusterBreakdown: Record<string, number> = {};
   for (const entry of diversityBalanced) {
