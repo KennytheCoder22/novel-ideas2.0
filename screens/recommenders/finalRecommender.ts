@@ -2993,6 +2993,12 @@ export function finalRecommenderForDeck(
     }
     return out;
   })();
+  const authoredIntentScores = diversityBalanced
+    .map((entry) => authoredIntentionalityScore(entry.candidate))
+    .filter((score) => Number.isFinite(score));
+  const authoredIntentFloor = authoredIntentScores.length
+    ? Math.max(1.6, Math.min(...authoredIntentScores) - 0.2)
+    : 1.6;
   const tasteShapeTargets = inferTasteShapeTargets(tasteProfile);
   if (tasteShapeTargets.length > 0) {
     const existingFacetCounts = new Map<string, number>();
@@ -3013,7 +3019,8 @@ export function finalRecommenderForDeck(
         candidateTasteFacet(entry.candidate) === facet &&
         entry.breakdown.personalAffinityScore >= 2.8 &&
         entry.breakdown.toneScore >= 1.6 &&
-        entry.breakdown.finalScore >= Math.max(18, baselineFloor - 2.5)
+        entry.breakdown.finalScore >= Math.max(18, baselineFloor - 2.5) &&
+        authoredIntentionalityScore(entry.candidate) >= authoredIntentFloor
       );
       if (!replacement) continue;
       if (diversityBalanced.some((entry) => identityKey(entry.candidate) === identityKey(replacement.candidate))) continue;
@@ -3061,6 +3068,13 @@ export function finalRecommenderForDeck(
     : diversityBalanced;
   if (coherentBalanced.length >= 3) {
     diversityBalanced.splice(0, diversityBalanced.length, ...coherentBalanced);
+  }
+  const prestigeFloored = diversityBalanced.filter((entry) =>
+    authoredIntentionalityScore(entry.candidate) >= authoredIntentFloor ||
+    entry.breakdown.finalScore >= (coherenceAnchor?.breakdown.finalScore ?? entry.breakdown.finalScore) - 1.2
+  );
+  if (prestigeFloored.length >= 3) {
+    diversityBalanced.splice(0, diversityBalanced.length, ...prestigeFloored);
   }
   const clusterBreakdown: Record<string, number> = {};
   for (const entry of diversityBalanced) {
