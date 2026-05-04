@@ -1023,7 +1023,11 @@ setMainThemeKey: (t: ThemeKey) => void;
   </View>
 ))}
 
-{!props.sourceEnabled.googleBooks && !props.sourceEnabled.openLibrary && !(props.sourceEnabled.localLibrary && props.localLibrarySupported) ? (
+{!props.sourceEnabled.googleBooks &&
+ !props.sourceEnabled.openLibrary &&
+ !(props.sourceEnabled.localLibrary && props.localLibrarySupported) &&
+ !props.sourceEnabled.kitsu &&
+ !props.sourceEnabled.gcd ? (
   <Text style={[styles.noteSmall, { color: props.theme.danger, marginTop: 8 }]}>
     All recommendation sources are disabled. Enable at least one source before running recommendations.
   </Text>
