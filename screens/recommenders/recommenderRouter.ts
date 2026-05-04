@@ -728,7 +728,7 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
 
 function shouldUseGcd(input: RecommenderInput): boolean {
   const sourceEnabled = resolveSourceEnabled(input);
-  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
+  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey) && hasStrong20QSession(input);
 }
 
 function extractDocs(
