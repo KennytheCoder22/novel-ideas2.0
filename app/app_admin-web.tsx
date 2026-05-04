@@ -198,6 +198,8 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
     googleBooks: configured?.googleBooks !== false,
     openLibrary: configured?.openLibrary !== false,
     localLibrary: localLibrarySupported ? configured?.localLibrary !== false : false,
+    kitsu: configured?.kitsu !== false,
+    gcd: configured?.gcd !== false,
   };
 
   if (!cfg?.recommendations?.sourceEnabled && typeof legacySource === "string") {
@@ -235,7 +237,7 @@ type HighlightKey = ThemeKey | "white" | "black" | "silver";
 type TitleTextKey = "white" | "black";
 
 type DeckKey = "k2" | "36" | "ms_hs" | "adult";
-type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary";
+type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary" | "kitsu" | "gcd";
 type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
@@ -252,6 +254,8 @@ function sourceLabel(s: RecommendationSourceToggleKey) {
   if (s === "googleBooks") return "Google Books";
   if (s === "openLibrary") return "Open Library";
   if (s === "localLibrary") return "This library’s collection";
+  if (s === "kitsu") return "Kitsu (Manga)";
+  if (s === "gcd") return "GCD (Comics)";
   return s;
 }
 
@@ -848,7 +852,7 @@ export default function AdminWebScreen() {
           Toggle one or more sources. If all are off, recommendations will not run.
         </Text>
         <View style={{ gap: 10 }}>
-          {(["googleBooks", "openLibrary", "localLibrary"] as RecommendationSourceToggleKey[]).map((sourceKey) => {
+          {(["googleBooks", "openLibrary", "localLibrary", "kitsu", "gcd"] as RecommendationSourceToggleKey[]).map((sourceKey) => {
             const localLibrarySupported = Boolean(config?.recommendations?.localLibrarySupported);
             const disabled = sourceKey === "localLibrary" && !localLibrarySupported;
             const enabled = sourceKey === "localLibrary"

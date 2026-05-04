@@ -83,6 +83,8 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
     googleBooks: config?.googleBooks !== false,
     openLibrary: config?.openLibrary !== false,
     localLibrary: localLibrarySupported ? config?.localLibrary !== false : false,
+    kitsu: config?.kitsu !== false,
+    gcd: config?.gcd !== false,
   };
 }
 
@@ -720,11 +722,13 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 }
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
-  return isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
+  const sourceEnabled = resolveSourceEnabled(input);
+  return sourceEnabled.kitsu && isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
 }
 
 function shouldUseGcd(input: RecommenderInput): boolean {
-  return isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
+  const sourceEnabled = resolveSourceEnabled(input);
+  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
 }
 
 function extractDocs(
