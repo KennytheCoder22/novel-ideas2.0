@@ -119,8 +119,13 @@ function nytListsForRouterFamily(family: RouterFamilyKey): string[] {
   return ["combined-print-and-e-book-fiction", "hardcover-fiction"];
 }
 
+function isTeenDeckKey(deckKey: unknown): boolean {
+  const key = String(deckKey || "").toLowerCase();
+  return key === "ms_hs" || key === "ms-hs" || key === "mshs" || key === "teen" || key === "teens" || key === "teens_school";
+}
+
 function shouldUseNytAnchors(input: RecommenderInput): boolean {
-  if (input.deckKey !== "adult" && input.deckKey !== "ms_hs") return false;
+  if (input.deckKey !== "adult" && !isTeenDeckKey(input.deckKey)) return false;
   return decisionSwipeCountFromTasteProfile(input) >= MIN_DECISION_SWIPES_FOR_NYT_ANCHORS;
 }
 
@@ -718,11 +723,11 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 }
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
-  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
+  return isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
 }
 
 function shouldUseGcd(input: RecommenderInput): boolean {
-  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
+  return isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
 }
 
 function extractDocs(
@@ -3567,7 +3572,7 @@ const normalizedCandidatesRaw = [
   })();
 
   const finalRankedDocs = (() => {
-    if (input.deckKey !== "ms_hs") return finalRankedDocsBase;
+    if (!isTeenDeckKey(input.deckKey)) return finalRankedDocsBase;
 
     const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
     const darkCap = Math.max(1, Math.floor(poolSize * 0.4)); // hard cap: <=40% dark/survival
@@ -3622,6 +3627,7 @@ const normalizedCandidatesRaw = [
     const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     debugRouterLog("TEEN_MIX_DIAGNOSTICS", {
+      teenDeckKey: input.deckKey,
       removedByStrictAgeFit: Math.max(0, finalRankedDocsBase.length - teenAccessibleStrict.length),
       strictRetained: teenAccessibleStrict.length,
       relaxedRetained: teenAccessible.length,
