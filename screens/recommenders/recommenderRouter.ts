@@ -3552,7 +3552,7 @@ const normalizedCandidatesRaw = [
     .filter((doc: any) => !isMetaReferenceWork(doc))
     .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
     .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc));
-  const finalRankedDocs = (() => {
+  const finalRankedDocsBase = (() => {
     if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
     const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPoolForFinal
@@ -3564,6 +3564,76 @@ const normalizedCandidatesRaw = [
         return Boolean(key) && !existing.has(key);
       });
     return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+  })();
+
+  const finalRankedDocs = (() => {
+    if (input.deckKey !== "ms_hs") return finalRankedDocsBase;
+
+    const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
+    const darkCap = Math.max(1, Math.floor(poolSize * 0.4)); // hard cap: <=40% dark/survival
+    const minEmotional = Math.min(2, finalLimit);
+    const minSpeculative = Math.min(2, Math.max(0, finalLimit - minEmotional));
+
+    const teenAccessibleStrict = finalRankedDocsBase.filter((doc: any) => {
+      const text = `${doc?.title || ""} ${doc?.author || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+      const hasYASignal = /\b(young adult|ya|teen|coming of age|high school|friendship|identity|dystopian|romance|first love|survival|speculative)\b/.test(text);
+      const adultClassicHorror = /\b(dracula|frankenstein|hp lovecraft|edgar allan poe|clive barker|thomas ligotti)\b/.test(text);
+      const hardAdultOnly = /\b(extreme horror|splatterpunk|erotica|serial killer memoir)\b/.test(text);
+      const strongTeenDark = /\b(ya horror|teen horror|young adult horror|survival horror|dystopian)\b/.test(text);
+      if (hardAdultOnly) return false;
+      if (adultClassicHorror && !hasYASignal && !strongTeenDark) return false;
+      return true;
+    });
+
+    const teenAccessible = teenAccessibleStrict.length >= Math.max(6, finalLimit)
+      ? teenAccessibleStrict
+      : finalRankedDocsBase.filter((doc: any) => {
+          const text = `${doc?.title || ""} ${doc?.author || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+          const hardAdultOnly = /\b(extreme horror|splatterpunk|erotica|serial killer memoir)\b/.test(text);
+          return !hardAdultOnly;
+        });
+
+    const pools = {
+      emotional: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
+      speculative: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
+      dark: teenAccessible.filter((d: any) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
+      general: teenAccessible,
+    };
+
+    const out: any[] = [];
+    const seen = new Set<string>();
+    const take = (arr: any[], max: number) => {
+      for (const doc of arr) {
+        const key = candidateKey(doc);
+        if (!key || seen.has(key)) continue;
+        out.push(doc); seen.add(key);
+        if (arr === pools.dark && out.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""}`)).length >= max) break;
+        if (arr !== pools.dark && out.length >= finalLimit) break;
+      }
+    };
+
+    take(pools.emotional, minEmotional);
+    take(pools.speculative, minSpeculative);
+    take(pools.dark, darkCap);
+    take(pools.general, finalLimit);
+
+    const finalTeen = out.slice(0, finalLimit);
+    const darkCount = finalTeen.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    debugRouterLog("TEEN_MIX_DIAGNOSTICS", {
+      removedByStrictAgeFit: Math.max(0, finalRankedDocsBase.length - teenAccessibleStrict.length),
+      strictRetained: teenAccessibleStrict.length,
+      relaxedRetained: teenAccessible.length,
+      finalCount: finalTeen.length,
+      darkCount,
+      darkCap,
+      emotionalCount,
+      speculativeCount,
+      minEmotional,
+      minSpeculative,
+    });
+    return finalTeen;
   })();
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
