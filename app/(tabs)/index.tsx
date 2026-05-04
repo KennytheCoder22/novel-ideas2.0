@@ -98,7 +98,7 @@ function tryLoadDesktopAdminDraft(): any | null {
 
 type DeckKey = "k2" | "36" | "ms_hs" | "adult";
 type SourceKey = "open_library" | "local_collection";
-type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary";
+type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary" | "kitsu" | "gcd";
 type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
@@ -108,10 +108,13 @@ const DEFAULT_RECOMMENDATION_SOURCE_ENABLED: RecommendationSourceEnabled = {
   googleBooks: true,
   openLibrary: true,
   localLibrary: false,
+  kitsu: true,
+  gcd: true,
 };
 
 function resolveRecommendationSourceSettings(cfg: any): {
   sourceEnabled: RecommendationSourceEnabled;
+  deckSourceEnabled: Record<DeckKey, RecommendationSourceEnabled>;
   localLibrarySupported: boolean;
 } {
   const localLibrarySupported = Boolean(cfg?.recommendations?.localLibrarySupported);
@@ -122,6 +125,8 @@ function resolveRecommendationSourceSettings(cfg: any): {
     googleBooks: configured?.googleBooks !== false,
     openLibrary: configured?.openLibrary !== false,
     localLibrary: localLibrarySupported ? configured?.localLibrary !== false : false,
+    kitsu: configured?.kitsu !== false,
+    gcd: configured?.gcd !== false,
   };
 
   if (!cfg?.recommendations?.sourceEnabled && typeof legacySource === "string") {
@@ -555,6 +560,7 @@ setMainThemeKey: (t: ThemeKey) => void;
 
   toggleDeck: (dk: DeckKey) => void;
   setSourceEnabled: (key: RecommendationSourceToggleKey, enabled: boolean) => void;
+  setSourceEnabledForDeck: (deck: DeckKey, key: RecommendationSourceToggleKey, enabled: boolean) => void;
 
   onExit: () => void;
 
@@ -1002,7 +1008,26 @@ setMainThemeKey: (t: ThemeKey) => void;
   </View>
 </View>
 
-{!props.sourceEnabled.googleBooks && !props.sourceEnabled.openLibrary && !(props.sourceEnabled.localLibrary && props.localLibrarySupported) ? (
+<Text style={[styles.label, { color: props.theme.muted, marginTop: 12 }]}>Per age band visual sources</Text>
+{(["k2", "36", "ms_hs", "adult"] as DeckKey[]).map((dk) => (
+  <View key={`visual-${dk}`} style={{ borderWidth: 1, borderColor: props.theme.lightBorder, borderRadius: 10, padding: 10 }}>
+    <Text style={{ color: props.theme.text, fontWeight: "700", marginBottom: 8 }}>{deckLabel(dk)}</Text>
+    <View style={styles.rowBetween}>
+      <Text style={{ color: props.theme.text, fontWeight: "700" }}>Kitsu (Manga)</Text>
+      <Switch value={props.deckSourceEnabled[dk]?.kitsu !== false} onValueChange={(next) => props.setSourceEnabledForDeck(dk, "kitsu", next)} />
+    </View>
+    <View style={styles.rowBetween}>
+      <Text style={{ color: props.theme.text, fontWeight: "700" }}>GCD (Comics)</Text>
+      <Switch value={props.deckSourceEnabled[dk]?.gcd !== false} onValueChange={(next) => props.setSourceEnabledForDeck(dk, "gcd", next)} />
+    </View>
+  </View>
+))}
+
+{!props.sourceEnabled.googleBooks &&
+ !props.sourceEnabled.openLibrary &&
+ !(props.sourceEnabled.localLibrary && props.localLibrarySupported) &&
+ !props.sourceEnabled.kitsu &&
+ !props.sourceEnabled.gcd ? (
   <Text style={[styles.noteSmall, { color: props.theme.danger, marginTop: 8 }]}>
     All recommendation sources are disabled. Enable at least one source before running recommendations.
   </Text>
@@ -1401,6 +1426,12 @@ export default function HomeScreen() {
     [config]
   );
   const sourceEnabled = recommendationSourceSettings.sourceEnabled;
+  const deckSourceEnabled: Record<DeckKey, RecommendationSourceEnabled> = {
+    k2: { ...sourceEnabled, ...(config?.recommendations?.sourceEnabledByDeck?.k2 || {}) },
+    "36": { ...sourceEnabled, ...(config?.recommendations?.sourceEnabledByDeck?.["36"] || {}) },
+    ms_hs: { ...sourceEnabled, ...(config?.recommendations?.sourceEnabledByDeck?.ms_hs || {}) },
+    adult: { ...sourceEnabled, ...(config?.recommendations?.sourceEnabledByDeck?.adult || {}) },
+  };
   const localLibrarySupported = recommendationSourceSettings.localLibrarySupported;
   const source: SourceKey = sourceEnabled.openLibrary ? "open_library" : "local_collection";
 
@@ -1660,6 +1691,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     if (key === "localLibrary" && !localLibrarySupported) return;
     setInConfig(["recommendations", "sourceEnabled", key], enabled);
   }
+  function setSourceEnabledForDeckValue(deckKey: DeckKey, key: RecommendationSourceToggleKey, enabled: boolean) {
+    if (key === "localLibrary" && !localLibrarySupported) return;
+    setInConfig(["recommendations", "sourceEnabledByDeck", deckKey, key], enabled);
+  }
 
   function setMainThemeKeyValue(t: ThemeKey) {
     setInConfig(["branding", "mainTheme"], t);
@@ -1801,6 +1836,7 @@ logoDataUrl={logoDataUrl}
           titleTextKey={titleTextKey}
           enabledDecks={enabledDecks}
           sourceEnabled={sourceEnabled}
+          deckSourceEnabled={deckSourceEnabled}
           localLibrarySupported={localLibrarySupported}
           swipeCategories={swipeCategories}
           toggleSwipeCategory={toggleSwipeCategory}
@@ -1818,6 +1854,7 @@ logoDataUrl={logoDataUrl}
           onRemoveLogo={removeLogo}
           toggleDeck={toggleDeck}
           setSourceEnabled={setSourceEnabledValue}
+          setSourceEnabledForDeck={setSourceEnabledForDeckValue}
           onExit={() => setAdminUnlocked(false)}
           onSaveSettings={saveSettings}
           saveButtonLabel={saveButtonLabel}
@@ -1895,7 +1932,7 @@ logoDataUrl={logoDataUrl}
           <SwipeDeckScreen
             swipeCategories={swipeCategories}
             enabledDecks={enabledDecks}
-            recommendationSourceEnabled={sourceEnabled}
+            recommendationSourceEnabled={deckSourceEnabled[deck] || sourceEnabled}
             localLibrarySupported={localLibrarySupported}
             onOpenSearch={() => {
               setMode("search");

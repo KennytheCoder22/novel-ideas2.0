@@ -109,6 +109,34 @@ function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
   return out.slice(0, 8);
 }
 
+function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
+  return Object.entries(tagCounts || {}).some(([k, v]) => Number(v) > 0 && re.test(normalizeText(k)));
+}
+
+function buildTeenComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
+  const queries: string[] = [];
+  const add = (q: string) => {
+    const n = normalizeText(q);
+    if (n && !queries.includes(n)) queries.push(n);
+  };
+  if (hasFacet(tagCounts, /superhero|heroes|comic/)) add("teen superhero comic series");
+  if (hasFacet(tagCounts, /dystopian|future|rebellion|survival/)) add("teen dystopian graphic novel series");
+  if (hasFacet(tagCounts, /horror|dark|haunted|thriller/)) add("teen horror comics graphic novel");
+  if (hasFacet(tagCounts, /fantasy|magic|myth|monster/)) add("teen fantasy comics graphic novel");
+  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse/)) add("survival comics series");
+  if (!queries.length) add("teen graphic novel series");
+  return queries.slice(0, 6);
+}
+
+function buildGcdRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
+  return queries.map((query, i) => ({
+    rung: i,
+    query,
+    audience: "teen comics",
+    themes: query.split(" ").filter(Boolean).slice(0, 6),
+  }));
+}
+
 async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -232,7 +260,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const fetchLimit = Math.max(8, Math.min(36, Math.max(finalLimit * 2, 12)));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
 
-  if (deckKey !== "ms_hs" || !hasTeenGraphicIntent(input.tagCounts)) {
+  if (deckKey !== "ms_hs") {
     return {
       engineId: "gcd",
       engineLabel: "Grand Comics Database",
@@ -243,8 +271,21 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     };
   }
 
-  const queriesToTry = buildGcdSearchTerms(input.tagCounts);
+  const directQueries = buildGcdSearchTerms(input.tagCounts);
+  const facetQueries = buildTeenComicQueriesFromFacets(input.tagCounts);
+  const queriesToTry = Array.from(new Set([...directQueries, ...facetQueries])).slice(0, 10);
+  const gcdRungs = buildGcdRungs(queriesToTry);
+  const sourceEnabled = (input as any)?.sourceEnabled || {};
+  const gcdOnlyMode =
+    sourceEnabled?.gcd !== false &&
+    sourceEnabled?.googleBooks === false &&
+    sourceEnabled?.openLibrary === false &&
+    sourceEnabled?.localLibrary === false &&
+    sourceEnabled?.kitsu === false;
   if (!queriesToTry.length) {
+    if (gcdOnlyMode) {
+      throw new Error("GCD_ONLY_NO_QUERIES: GCD is the only enabled source but no comic queries were generated.");
+    }
     return {
       engineId: "gcd",
       engineLabel: "Grand Comics Database",
@@ -252,6 +293,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       domainMode,
       builtFromQuery: "",
       items: [],
+      debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
+      debugFilterAudit: [{ source: "gcd", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
+      gcdQueriesGenerated: [],
+      gcdFetchAttempted: false,
+      gcdZeroResultReason: "no_queries_generated",
     };
   }
 
@@ -303,5 +349,25 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     domainMode,
     builtFromQuery,
     items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "gcd", doc })),
+    gcdQueriesGenerated: queriesToTry,
+    gcdFetchAttempted: true,
+    gcdZeroResultReason: docs.length ? null : "no_issue_api_matches",
+    debugRungStats: {
+      byRung: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])),
+      byRungSource: { gcd: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])) },
+      total: docs.length,
+    } as any,
+    debugRawPool: docs.slice(0, fetchLimit),
+    debugFilterAudit: [
+      {
+        source: "gcd",
+        rungs: gcdRungs,
+        generatedQueries: queriesToTry,
+        reason: docs.length ? "results_found" : "no_results_from_generated_queries",
+        detail: docs.length
+          ? `Fetched ${docs.length} docs from GCD.`
+          : "Generated teen-comic queries but GCD returned no issue API matches.",
+      },
+    ],
   };
 }
