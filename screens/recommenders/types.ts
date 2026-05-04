@@ -42,6 +42,8 @@ export type SourceEnabledConfig = {
   googleBooks?: boolean;
   openLibrary?: boolean;
   localLibrary?: boolean;
+  kitsu?: boolean;
+  gcd?: boolean;
 };
 export type StructuredFetchRung = { rung: number; family?: string; primary: string | null; secondary: string | null; themes: string[]; audience: string; query: string; };
 export type BucketPlan = { queries?: string[]; rungs?: StructuredFetchRung[]; bucketId?: string; domainMode?: DomainMode; preview?: string; strategy?: string; signals?: { genres?: string[]; tones?: string[]; textures?: string[]; scenarios?: string[]; }; };
@@ -58,4 +60,6 @@ export type RecommendationSourceDiagnostics = {
   googleBooks: boolean;
   openLibrary: boolean;
   localLibrary: boolean;
+  kitsu: boolean;
+  gcd: boolean;
 };
