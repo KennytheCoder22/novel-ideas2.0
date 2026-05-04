@@ -114,7 +114,6 @@ const DEFAULT_RECOMMENDATION_SOURCE_ENABLED: RecommendationSourceEnabled = {
 
 function resolveRecommendationSourceSettings(cfg: any): {
   sourceEnabled: RecommendationSourceEnabled;
-  deckSourceEnabled: Record<DeckKey, RecommendationSourceEnabled>;
   localLibrarySupported: boolean;
 } {
   const localLibrarySupported = Boolean(cfg?.recommendations?.localLibrarySupported);
