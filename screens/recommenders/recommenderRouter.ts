@@ -3569,7 +3569,12 @@ const normalizedCandidatesRaw = [
   const finalRankedDocs = (() => {
     if (input.deckKey !== "ms_hs") return finalRankedDocsBase;
 
-    const teenAccessible = finalRankedDocsBase.filter((doc: any) => {
+    const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
+    const darkCap = Math.max(1, Math.floor(poolSize * 0.4)); // hard cap: <=40% dark/survival
+    const minEmotional = Math.min(2, finalLimit);
+    const minSpeculative = Math.min(2, Math.max(0, finalLimit - minEmotional));
+
+    const teenAccessibleStrict = finalRankedDocsBase.filter((doc: any) => {
       const text = `${doc?.title || ""} ${doc?.author || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
       const hasYASignal = /\b(young adult|ya|teen|coming of age|high school|friendship|identity|dystopian|romance|first love|survival|speculative)\b/.test(text);
       const adultClassicHorror = /\b(dracula|frankenstein|hp lovecraft|edgar allan poe|clive barker|thomas ligotti)\b/.test(text);
@@ -3580,9 +3585,17 @@ const normalizedCandidatesRaw = [
       return true;
     });
 
+    const teenAccessible = teenAccessibleStrict.length >= Math.max(6, finalLimit)
+      ? teenAccessibleStrict
+      : finalRankedDocsBase.filter((doc: any) => {
+          const text = `${doc?.title || ""} ${doc?.author || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+          const hardAdultOnly = /\b(extreme horror|splatterpunk|erotica|serial killer memoir)\b/.test(text);
+          return !hardAdultOnly;
+        });
+
     const pools = {
-      emotional: teenAccessible.filter((d: any) => /\b(romance|coming of age|friendship|identity|emotional|contemporary)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
-      speculative: teenAccessible.filter((d: any) => /\b(dystopian|science fiction|speculative|future|technology|identity)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
+      emotional: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
+      speculative: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
       dark: teenAccessible.filter((d: any) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
       general: teenAccessible,
     };
@@ -3599,11 +3612,28 @@ const normalizedCandidatesRaw = [
       }
     };
 
-    take(pools.emotional, 99);
-    take(pools.speculative, 99);
-    take(pools.dark, 2);
+    take(pools.emotional, minEmotional);
+    take(pools.speculative, minSpeculative);
+    take(pools.dark, darkCap);
     take(pools.general, finalLimit);
-    return out.slice(0, finalLimit);
+
+    const finalTeen = out.slice(0, finalLimit);
+    const darkCount = finalTeen.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    debugRouterLog("TEEN_MIX_DIAGNOSTICS", {
+      removedByStrictAgeFit: Math.max(0, finalRankedDocsBase.length - teenAccessibleStrict.length),
+      strictRetained: teenAccessibleStrict.length,
+      relaxedRetained: teenAccessible.length,
+      finalCount: finalTeen.length,
+      darkCount,
+      darkCap,
+      emotionalCount,
+      speculativeCount,
+      minEmotional,
+      minSpeculative,
+    });
+    return finalTeen;
   })();
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
