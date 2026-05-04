@@ -119,6 +119,11 @@ function nytListsForRouterFamily(family: RouterFamilyKey): string[] {
   return ["combined-print-and-e-book-fiction", "hardcover-fiction"];
 }
 
+function isTeenDeckKey(deckKey: unknown): boolean {
+  const key = String(deckKey || "").toLowerCase();
+  return key === "ms_hs" || key === "ms-hs" || key === "mshs" || key === "teen" || key === "teens" || key === "teens_school";
+}
+
 function shouldUseNytAnchors(input: RecommenderInput): boolean {
   if (input.deckKey !== "adult" && !isTeenDeckKey(input.deckKey)) return false;
   return decisionSwipeCountFromTasteProfile(input) >= MIN_DECISION_SWIPES_FOR_NYT_ANCHORS;
