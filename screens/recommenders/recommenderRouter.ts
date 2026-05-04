@@ -2620,6 +2620,38 @@ export async function getRecommendations(
       "survival science fiction novel",
     ],
   };
+  if (isTeenDeckKey(input.deckKey)) {
+    canonicalFamilyRungs.thriller = [
+      "young adult school mystery thriller",
+      "young adult fast-paced survival thriller",
+      "young adult identity under pressure thriller",
+      "young adult friendship betrayal mystery",
+    ];
+    canonicalFamilyRungs.mystery = [
+      "young adult paranormal school mystery",
+      "young adult coming of age mystery",
+      "young adult social mystery thriller",
+      "young adult friendship investigation mystery",
+    ];
+    canonicalFamilyRungs.horror = [
+      "teen social horror thriller",
+      "young adult survival horror",
+      "young adult paranormal suspense",
+      "young adult eerie mystery thriller",
+    ];
+    canonicalFamilyRungs.fantasy = [
+      "young adult adventure found family fantasy",
+      "young adult magical school fantasy",
+      "young adult identity quest fantasy",
+      "young adult anime inspired fantasy adventure",
+    ];
+    canonicalFamilyRungs.science_fiction = [
+      "young adult sci-fi adventure",
+      "young adult dystopian identity science fiction",
+      "young adult speculative survival adventure",
+      "young adult future society rebellion",
+    ];
+  }
   const canonicalHistoricalQueries = [
     "historical fiction novel",
     "19th century historical fiction novel",
@@ -2705,11 +2737,17 @@ export async function getRecommendations(
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   const uniqueRungQueries = Array.from(new Set(rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean)));
   if (uniqueRungQueries.length < 3) {
-    const expansion = [
-      { query: `${routerFamily} isolation survival narrative novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
-      { query: `${routerFamily} psychological dread and consequence novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
-      { query: `${routerFamily} authored atmospheric tension story novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
-    ];
+    const expansion = isTeenDeckKey(input.deckKey)
+      ? [
+          { query: "young adult fast-paced survival adventure", queryFamily: routerFamily, laneKind: "cluster-expansion" },
+          { query: "young adult coming of age identity pressure", queryFamily: routerFamily, laneKind: "cluster-expansion" },
+          { query: "young adult friendship stakes speculative thriller", queryFamily: routerFamily, laneKind: "cluster-expansion" },
+        ]
+      : [
+          { query: `${routerFamily} isolation survival narrative novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+          { query: `${routerFamily} psychological dread and consequence novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+          { query: `${routerFamily} authored atmospheric tension story novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
+        ];
     for (const entry of expansion) {
       if (!uniqueRungQueries.includes(entry.query)) rungs.push({ ...entry, rung: 900 + rungs.length });
     }
@@ -2719,6 +2757,11 @@ export async function getRecommendations(
     thriller: ["high-pressure moral suspense novel", "isolation survival thriller novel", "identity-driven conspiracy narrative novel"],
     mystery: ["psychological investigation novel", "isolated case-file mystery novel", "identity-driven detective narrative novel"],
   };
+  if (isTeenDeckKey(input.deckKey)) {
+    familyAngles.horror = ["teen social horror thriller", "young adult survival horror", "young adult eerie identity suspense"];
+    familyAngles.thriller = ["young adult school mystery thriller", "young adult fast-paced survival thriller", "young adult identity conflict thriller"];
+    familyAngles.mystery = ["young adult paranormal school mystery", "young adult friendship investigation mystery", "young adult coming of age mystery"];
+  }
   const requiredAngles = familyAngles[routerFamily] || ["character-driven pressure narrative novel", "isolation consequence story novel", "identity conflict distinct-voice novel"];
   const existingQuerySet = new Set(rungs.map((r: any) => String(r?.query || "").trim().toLowerCase()).filter(Boolean));
   for (const angle of requiredAngles) {
