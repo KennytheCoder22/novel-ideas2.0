@@ -2620,38 +2620,9 @@ export async function getRecommendations(
       "survival science fiction novel",
     ],
   };
-  if (isTeenDeckKey(input.deckKey)) {
-    canonicalFamilyRungs.thriller = [
-      "young adult school mystery thriller",
-      "young adult fast-paced survival thriller",
-      "young adult identity under pressure thriller",
-      "young adult friendship betrayal mystery",
-    ];
-    canonicalFamilyRungs.mystery = [
-      "young adult paranormal school mystery",
-      "young adult coming of age mystery",
-      "young adult social mystery thriller",
-      "young adult friendship investigation mystery",
-    ];
-    canonicalFamilyRungs.horror = [
-      "teen social horror thriller",
-      "young adult survival horror",
-      "young adult paranormal suspense",
-      "young adult eerie mystery thriller",
-    ];
-    canonicalFamilyRungs.fantasy = [
-      "young adult adventure found family fantasy",
-      "young adult magical school fantasy",
-      "young adult identity quest fantasy",
-      "young adult anime inspired fantasy adventure",
-    ];
-    canonicalFamilyRungs.science_fiction = [
-      "young adult sci-fi adventure",
-      "young adult dystopian identity science fiction",
-      "young adult speculative survival adventure",
-      "young adult future society rebellion",
-    ];
-  }
+  const canonicalFamilyRungsResolved = isTeenDeckKey(input.deckKey)
+    ? applyTeenCanonicalRungOverrides(canonicalFamilyRungs)
+    : applyAdultCanonicalRungOverrides(canonicalFamilyRungs);
   const canonicalHistoricalQueries = [
     "historical fiction novel",
     "19th century historical fiction novel",
@@ -2673,14 +2644,14 @@ export async function getRecommendations(
     rungs = canonicalHistoricalQueries.map((query, index) => ({ rung: index, query, queryFamily: "historical" }));
   }
 
-  const forcedRungs = canonicalFamilyRungs[routerFamily];
+  const forcedRungs = canonicalFamilyRungsResolved[routerFamily];
   if (forcedRungs?.length && !isHybridMode) {
     rungs = forcedRungs.map((query, index) => ({ rung: index, query, queryFamily: routerFamily }));
   }
 
   const ensureUniqueRungQueries = (rungList: any[], family: RouterFamilyKey) => {
     const seen = new Set<string>();
-    const fallback = (canonicalFamilyRungs[family] || []).map((q) => String(q || "").trim()).filter(Boolean);
+    const fallback = (canonicalFamilyRungsResolved[family] || []).map((q) => String(q || "").trim()).filter(Boolean);
     return (Array.isArray(rungList) ? rungList : []).map((r: any, index: number) => {
       const current = String(r?.query || "").trim();
       const key = normalizeQueryKey(current);
@@ -2738,11 +2709,7 @@ export async function getRecommendations(
   const uniqueRungQueries = Array.from(new Set(rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean)));
   if (uniqueRungQueries.length < 3) {
     const expansion = isTeenDeckKey(input.deckKey)
-      ? [
-          { query: "young adult fast-paced survival adventure", queryFamily: routerFamily, laneKind: "cluster-expansion" },
-          { query: "young adult coming of age identity pressure", queryFamily: routerFamily, laneKind: "cluster-expansion" },
-          { query: "young adult friendship stakes speculative thriller", queryFamily: routerFamily, laneKind: "cluster-expansion" },
-        ]
+      ? teenExpansionQueries(routerFamily)
       : [
           { query: `${routerFamily} isolation survival narrative novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
           { query: `${routerFamily} psychological dread and consequence novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
