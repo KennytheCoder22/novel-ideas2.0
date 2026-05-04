@@ -116,6 +116,8 @@ type Props = {
     googleBooks?: boolean;
     openLibrary?: boolean;
     localLibrary?: boolean;
+    kitsu?: boolean;
+    gcd?: boolean;
   };
   localLibrarySupported?: boolean;
   swipeCategories?: {
@@ -866,6 +868,8 @@ export default function SwipeDeckScreen(props: Props) {
     googleBooks: props.recommendationSourceEnabled?.googleBooks !== false,
     openLibrary: props.recommendationSourceEnabled?.openLibrary !== false,
     localLibrary: props.localLibrarySupported ? props.recommendationSourceEnabled?.localLibrary !== false : false,
+    kitsu: props.recommendationSourceEnabled?.kitsu !== false,
+    gcd: props.recommendationSourceEnabled?.gcd !== false,
   };
   const enabledDeckList = useMemo(
     () => (["k2", "36", "ms_hs", "adult"] as DeckKey[]).filter((k) => enabledDecks[k] !== false),
@@ -1450,7 +1454,12 @@ function handleLeft() {
   }
 
   async function performRecommendationRun(input: RecommenderInput) {
-    const allDisabled = !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary;
+    const allDisabled =
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !sourceEnabled.kitsu &&
+      !sourceEnabled.gcd;
     if (allDisabled) {
       setRecError("All recommendation sources are disabled in Admin. Enable at least one source.");
       setRecItems([]);

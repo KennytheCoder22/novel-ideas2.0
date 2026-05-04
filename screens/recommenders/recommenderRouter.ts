@@ -728,7 +728,7 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
 
 function shouldUseGcd(input: RecommenderInput): boolean {
   const sourceEnabled = resolveSourceEnabled(input);
-  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
+  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey) && hasStrong20QSession(input);
 }
 
 function extractDocs(
@@ -2418,7 +2418,7 @@ export async function getRecommendations(
       routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported"
     );
   }
-  if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary) {
+  if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.gcd) {
     throw new Error("All recommendation sources are disabled. Enable at least one source in Admin.");
   }
 
@@ -2828,8 +2828,8 @@ export async function getRecommendations(
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
-      if (includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
-      if (includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
+      if (includeGcd) requests.push(getGcdGraphicNovelRecommendations(laneInput));
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
@@ -2856,20 +2856,20 @@ export async function getRecommendations(
         : null;
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") index += 1;
 
-      const laneKitsu = includeKitsu && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+      const laneKitsu = includeKitsu && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (includeKitsu && lane.source === "googleBooks") index += 1;
+      if (includeKitsu) index += 1;
 
-      const laneGcd = includeGcd && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+      const laneGcd = includeGcd && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
 
       const laneMergedDocs = dedupeDocs([
         ...dedupeDocs(extractDocs(laneGoogle, "googleBooks")),
         ...dedupeDocs(extractDocs(laneOpenLibrary, "openLibrary")),
-        ...(includeKitsu && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
-        ...(includeGcd && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneGcd, "gcd")) : []),
+        ...(includeKitsu ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
+        ...(includeGcd ? dedupeDocs(extractDocs(laneGcd, "gcd")) : []),
       ]);
 
       if (!google && laneGoogle) google = laneGoogle;

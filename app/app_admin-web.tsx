@@ -878,7 +878,9 @@ export default function AdminWebScreen() {
         </View>
         {!config?.recommendations?.sourceEnabled?.googleBooks &&
         !config?.recommendations?.sourceEnabled?.openLibrary &&
-        !(Boolean(config?.recommendations?.sourceEnabled?.localLibrary) && Boolean(config?.recommendations?.localLibrarySupported)) ? (
+        !(Boolean(config?.recommendations?.sourceEnabled?.localLibrary) && Boolean(config?.recommendations?.localLibrarySupported)) &&
+        !config?.recommendations?.sourceEnabled?.kitsu &&
+        !config?.recommendations?.sourceEnabled?.gcd ? (
           <Text style={[styles.note, { color: theme.danger }]}>
             All recommendation sources are disabled. Enable at least one source.
           </Text>
