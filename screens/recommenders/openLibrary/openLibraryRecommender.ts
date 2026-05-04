@@ -72,6 +72,12 @@ function fallbackQueryForFamily(family: string): string {
   return "fiction novel";
 }
 
+const KNOWN_AUTHOR_HINTS = [
+  "stephen king", "octavia butler", "ursula k le guin", "margaret atwood", "toni morrison",
+  "cormac mccarthy", "agatha christie", "gillian flynn", "kazuo ishiguro", "donna tartt",
+  "neal stephenson", "george orwell", "ray bradbury", "frank herbert", "jane austen"
+];
+
 
 function inferFamily(input: RecommenderInput): "fantasy" | "horror" | "thriller" | "speculative" | "romance" | "historical" | "general" {
   const text = [
@@ -233,11 +239,13 @@ function isGarbage(doc: any, family: string): boolean {
   if (/\b(novel|book|collection|megapack)\b/i.test(title) && title.split(" ").length <= 3) return true;
 
   const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
+  const editionCount = Number((doc as any)?.edition_count || 0);
+  const hasKnownAuthor = KNOWN_AUTHOR_HINTS.some((name) => author.includes(name));
   const firstSentence = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence);
   if (!firstSentence && ratingsCount === 0) {
     const hasSubjectSignal = Array.isArray(doc?.subject) && doc.subject.length > 0;
-    const hasEditionSignal = Number(doc?.edition_count || 0) >= 2;
-    if (!hasSubjectSignal && !hasEditionSignal && !hasOpenLibraryCoverSignal(doc)) return true;
+    const hasEditionSignal = editionCount >= 2;
+    if (!hasSubjectSignal && !hasEditionSignal && !hasOpenLibraryCoverSignal(doc) && !hasKnownAuthor) return true;
   }
 
   if (family === "fantasy") {
@@ -249,6 +257,16 @@ function isGarbage(doc: any, family: string): boolean {
   }
 
   return false;
+}
+
+function scoreOpenLibraryDoc(doc: any): number {
+  const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
+  const editionCount = Number((doc as any)?.edition_count || 0);
+  const hasCover = hasOpenLibraryCoverSignal(doc) ? 1 : 0;
+  const author = normalizeText(Array.isArray(doc?.author_name) ? doc.author_name[0] : doc?.author_name);
+  const knownAuthor = KNOWN_AUTHOR_HINTS.some((name) => author.includes(name)) ? 1 : 0;
+  const sentenceLen = normalizeText(Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : doc?.first_sentence).length;
+  return (Math.log10(ratingsCount + 1) * 2.2) + (Math.log10(editionCount + 1) * 1.3) + (hasCover * 0.6) + (knownAuthor * 1.4) + (sentenceLen >= 60 ? 0.5 : 0);
 }
 
 async function fetchJson(url: string, timeoutMs = 3500): Promise<{ ok: boolean; status: number; data: any }> {
@@ -348,6 +366,7 @@ export async function getOpenLibraryRecommendations(
       seenKeys.add(key);
       return true;
     })
+    .sort((a, b) => scoreOpenLibraryDoc(b) - scoreOpenLibraryDoc(a))
     .slice(0, intakeLimit)
     .map(d => ({
       key: d.key,
@@ -374,7 +393,8 @@ export async function getOpenLibraryRecommendations(
       const ratingsCount = Number((doc as any)?.ratings_count || (doc as any)?.ratingsCount || 0);
       const subjectText = Array.isArray((doc as any)?.subject) ? (doc as any).subject.join(" ").toLowerCase() : "";
       const historicalSubjectSignal = /\b(historical fiction|historical novel|19th century|victorian|civil war|world war|gilded age)\b/.test(subjectText);
-      return hasKnownAuthor || firstSentence.length >= 60 || ratingsCount > 0 || (family === "historical" && historicalSubjectSignal);
+      const editionCount = Number((doc as any)?.edition_count || 0);
+      return hasKnownAuthor || firstSentence.length >= 40 || ratingsCount > 0 || editionCount >= 2 || (family === "historical" && historicalSubjectSignal);
     });
 
   return {
