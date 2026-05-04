@@ -22,6 +22,8 @@ import { filterCandidates } from "./filterCandidates";
 import { getNytBestsellerBooks } from "../../services/bestsellers/nytClient";
 import { adaptNytBooksToRecommendationDocs } from "../../services/bestsellers/nytAdapter";
 import { mergeBestsellerDocs } from "../../services/bestsellers/bestsellerMatcher";
+import { applyAdultCanonicalRungOverrides, adultExpansionQueries } from "./adultRouter";
+import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey, teenExpansionQueries } from "./teenRouter";
 
 export type EngineOverride = EngineId | "auto";
 
@@ -117,11 +119,6 @@ function nytListsForRouterFamily(family: RouterFamilyKey): string[] {
   }
 
   return ["combined-print-and-e-book-fiction", "hardcover-fiction"];
-}
-
-function isTeenDeckKey(deckKey: unknown): boolean {
-  const key = String(deckKey || "").toLowerCase();
-  return key === "ms_hs" || key === "ms-hs" || key === "mshs" || key === "teen" || key === "teens" || key === "teens_school";
 }
 
 function shouldUseNytAnchors(input: RecommenderInput): boolean {
@@ -2621,36 +2618,9 @@ export async function getRecommendations(
     ],
   };
   if (isTeenDeckKey(input.deckKey)) {
-    canonicalFamilyRungs.thriller = [
-      "young adult school mystery thriller",
-      "young adult fast-paced survival thriller",
-      "young adult identity under pressure thriller",
-      "young adult friendship betrayal mystery",
-    ];
-    canonicalFamilyRungs.mystery = [
-      "young adult paranormal school mystery",
-      "young adult coming of age mystery",
-      "young adult social mystery thriller",
-      "young adult friendship investigation mystery",
-    ];
-    canonicalFamilyRungs.horror = [
-      "teen social horror thriller",
-      "young adult survival horror",
-      "young adult paranormal suspense",
-      "young adult eerie mystery thriller",
-    ];
-    canonicalFamilyRungs.fantasy = [
-      "young adult adventure found family fantasy",
-      "young adult magical school fantasy",
-      "young adult identity quest fantasy",
-      "young adult anime inspired fantasy adventure",
-    ];
-    canonicalFamilyRungs.science_fiction = [
-      "young adult sci-fi adventure",
-      "young adult dystopian identity science fiction",
-      "young adult speculative survival adventure",
-      "young adult future society rebellion",
-    ];
+    applyTeenCanonicalRungOverrides(canonicalFamilyRungs);
+  } else {
+    applyAdultCanonicalRungOverrides(canonicalFamilyRungs);
   }
   const canonicalHistoricalQueries = [
     "historical fiction novel",
@@ -2737,17 +2707,8 @@ export async function getRecommendations(
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   const uniqueRungQueries = Array.from(new Set(rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean)));
   if (uniqueRungQueries.length < 3) {
-    const expansion = isTeenDeckKey(input.deckKey)
-      ? [
-          { query: "young adult fast-paced survival adventure", queryFamily: routerFamily, laneKind: "cluster-expansion" },
-          { query: "young adult coming of age identity pressure", queryFamily: routerFamily, laneKind: "cluster-expansion" },
-          { query: "young adult friendship stakes speculative thriller", queryFamily: routerFamily, laneKind: "cluster-expansion" },
-        ]
-      : [
-          { query: `${routerFamily} isolation survival narrative novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
-          { query: `${routerFamily} psychological dread and consequence novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
-          { query: `${routerFamily} authored atmospheric tension story novel`, queryFamily: routerFamily, laneKind: "cluster-expansion" },
-        ];
+    const teenLaneFamily = isTeenDeckKey(input.deckKey) ? inferTeenLaneFromFacets(input.tagCounts, routerFamily) : routerFamily;
+    const expansion = isTeenDeckKey(input.deckKey) ? teenExpansionQueries(teenLaneFamily) : adultExpansionQueries(routerFamily);
     for (const entry of expansion) {
       if (!uniqueRungQueries.includes(entry.query)) rungs.push({ ...entry, rung: 900 + rungs.length });
     }
@@ -3616,6 +3577,23 @@ const normalizedCandidatesRaw = [
 
   const finalRankedDocs = (() => {
     if (!isTeenDeckKey(input.deckKey)) return finalRankedDocsBase;
+    const teenLaneFamily = inferTeenLaneFromFacets(input.tagCounts, routerFamily);
+    const laneLexicon: Record<string, RegExp> = {
+      thriller: /\b(thriller|suspense|chase|manhunt|crime|conspiracy|survival)\b/i,
+      mystery: /\b(mystery|detective|investigation|clue|whodunit|case)\b/i,
+      horror: /\b(horror|haunted|ghost|occult|monster|dread|nightmare)\b/i,
+      romance: /\b(romance|love|relationship|heartbreak|dating|first love)\b/i,
+      fantasy: /\b(fantasy|magic|dragon|quest|kingdom|fae|sorcer)\b/i,
+      science_fiction: /\b(science fiction|sci-fi|dystopian|future|technology|space|ai)\b/i,
+      historical: /\b(historical|period|victorian|regency|war|empire)\b/i,
+    };
+    const laneRegex = laneLexicon[teenLaneFamily] || laneLexicon[routerFamily] || /\b(young adult|teen)\b/i;
+    const laneScore = (doc: any): number => {
+      const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+      const onLane = laneRegex.test(text) ? 2 : -2;
+      const generic = /\b(fiction|novel|book|story)\b/.test(text) ? -0.5 : 0;
+      return onLane + generic;
+    };
 
     const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
     const darkCap = Math.max(1, Math.floor(poolSize * 0.4)); // hard cap: <=40% dark/survival
@@ -3642,10 +3620,10 @@ const normalizedCandidatesRaw = [
         });
 
     const pools = {
-      emotional: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
-      speculative: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
-      dark: teenAccessible.filter((d: any) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
-      general: teenAccessible,
+      emotional: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).sort((a: any, b: any) => laneScore(b) - laneScore(a)),
+      speculative: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).sort((a: any, b: any) => laneScore(b) - laneScore(a)),
+      dark: teenAccessible.filter((d: any) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).sort((a: any, b: any) => laneScore(b) - laneScore(a)),
+      general: teenAccessible.slice().sort((a: any, b: any) => laneScore(b) - laneScore(a)),
     };
 
     const out: any[] = [];
@@ -3670,6 +3648,7 @@ const normalizedCandidatesRaw = [
     const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     debugRouterLog("TEEN_MIX_DIAGNOSTICS", {
+      teenLaneFamily,
       teenDeckKey: input.deckKey,
       removedByStrictAgeFit: Math.max(0, finalRankedDocsBase.length - teenAccessibleStrict.length),
       strictRetained: teenAccessibleStrict.length,
@@ -3681,6 +3660,7 @@ const normalizedCandidatesRaw = [
       speculativeCount,
       minEmotional,
       minSpeculative,
+      laneAlignedFinal: finalTeen.filter((d) => laneScore(d) > 0).length,
     });
     return finalTeen;
   })();
