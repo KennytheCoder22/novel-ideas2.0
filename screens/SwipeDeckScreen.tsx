@@ -1922,6 +1922,8 @@ function handleLeft() {
       `sourceEnabled.googleBooks:${Boolean(lastSourceEnabled?.googleBooks)}`,
       `sourceEnabled.openLibrary:${Boolean(lastSourceEnabled?.openLibrary)}`,
       `sourceEnabled.localLibrary:${Boolean(lastSourceEnabled?.localLibrary)}`,
+      `sourceEnabled.kitsu:${Boolean(lastSourceEnabled?.kitsu)}`,
+      `sourceEnabled.gcd:${Boolean(lastSourceEnabled?.gcd)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
     ].join("\n");
 

@@ -128,6 +128,15 @@ function buildTeenComicQueriesFromFacets(tagCounts: TagCounts | undefined): stri
   return queries.slice(0, 6);
 }
 
+function buildGcdRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
+  return queries.map((query, i) => ({
+    rung: i,
+    query,
+    audience: "teen comics",
+    themes: query.split(" ").filter(Boolean).slice(0, 6),
+  }));
+}
+
 async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -265,7 +274,18 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const directQueries = buildGcdSearchTerms(input.tagCounts);
   const facetQueries = buildTeenComicQueriesFromFacets(input.tagCounts);
   const queriesToTry = Array.from(new Set([...directQueries, ...facetQueries])).slice(0, 10);
+  const gcdRungs = buildGcdRungs(queriesToTry);
+  const sourceEnabled = (input as any)?.sourceEnabled || {};
+  const gcdOnlyMode =
+    sourceEnabled?.gcd !== false &&
+    sourceEnabled?.googleBooks === false &&
+    sourceEnabled?.openLibrary === false &&
+    sourceEnabled?.localLibrary === false &&
+    sourceEnabled?.kitsu === false;
   if (!queriesToTry.length) {
+    if (gcdOnlyMode) {
+      throw new Error("GCD_ONLY_NO_QUERIES: GCD is the only enabled source but no comic queries were generated.");
+    }
     return {
       engineId: "gcd",
       engineLabel: "Grand Comics Database",
@@ -273,7 +293,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       domainMode,
       builtFromQuery: "",
       items: [],
+      debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
       debugFilterAudit: [{ source: "gcd", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
+      gcdQueriesGenerated: [],
+      gcdFetchAttempted: false,
+      gcdZeroResultReason: "no_queries_generated",
     };
   }
 
@@ -325,10 +349,19 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     domainMode,
     builtFromQuery,
     items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "gcd", doc })),
+    gcdQueriesGenerated: queriesToTry,
+    gcdFetchAttempted: true,
+    gcdZeroResultReason: docs.length ? null : "no_issue_api_matches",
+    debugRungStats: {
+      byRung: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])),
+      byRungSource: { gcd: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])) },
+      total: docs.length,
+    } as any,
     debugRawPool: docs.slice(0, fetchLimit),
     debugFilterAudit: [
       {
         source: "gcd",
+        rungs: gcdRungs,
         generatedQueries: queriesToTry,
         reason: docs.length ? "results_found" : "no_results_from_generated_queries",
         detail: docs.length

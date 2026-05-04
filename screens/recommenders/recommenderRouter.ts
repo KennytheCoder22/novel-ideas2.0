@@ -728,7 +728,7 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
 
 function shouldUseGcd(input: RecommenderInput): boolean {
   const sourceEnabled = resolveSourceEnabled(input);
-  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey) && hasStrong20QSession(input);
+  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey);
 }
 
 function extractDocs(
