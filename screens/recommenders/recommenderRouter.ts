@@ -2824,8 +2824,8 @@ export async function getRecommendations(
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
-      if (sourceEnabled.googleBooks && !googleQuotaExhausted && includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
-      if (sourceEnabled.googleBooks && !googleQuotaExhausted && includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      if (includeKitsu && lane.source === "googleBooks") requests.push(getKitsuMangaRecommendations(laneInput));
+      if (includeGcd && lane.source === "googleBooks") requests.push(getGcdGraphicNovelRecommendations(laneInput));
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
@@ -2852,20 +2852,20 @@ export async function getRecommendations(
         : null;
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") index += 1;
 
-      const laneKitsu = sourceEnabled.googleBooks && !googleQuotaExhausted && includeKitsu && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+      const laneKitsu = includeKitsu && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (sourceEnabled.googleBooks && !googleQuotaExhausted && includeKitsu && lane.source === "googleBooks") index += 1;
+      if (includeKitsu && lane.source === "googleBooks") index += 1;
 
-      const laneGcd = sourceEnabled.googleBooks && !googleQuotaExhausted && includeGcd && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
+      const laneGcd = includeGcd && lane.source === "googleBooks" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
 
       const laneMergedDocs = dedupeDocs([
         ...dedupeDocs(extractDocs(laneGoogle, "googleBooks")),
         ...dedupeDocs(extractDocs(laneOpenLibrary, "openLibrary")),
-        ...(sourceEnabled.googleBooks && includeKitsu && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
-        ...(sourceEnabled.googleBooks && includeGcd && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneGcd, "gcd")) : []),
+        ...(includeKitsu && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
+        ...(includeGcd && lane.source === "googleBooks" ? dedupeDocs(extractDocs(laneGcd, "gcd")) : []),
       ]);
 
       if (!google && laneGoogle) google = laneGoogle;
@@ -3772,8 +3772,8 @@ const normalizedCandidatesRaw = [
   const labelParts: string[] = [];
   if (sourceEnabled.googleBooks) labelParts.push("Google Books");
   if (sourceEnabled.openLibrary) labelParts.push("Open Library");
-  if (sourceEnabled.googleBooks && includeKitsu) labelParts.push("Kitsu");
-  if (sourceEnabled.googleBooks && includeGcd) labelParts.push("GCD");
+  if (includeKitsu) labelParts.push("Kitsu");
+  if (includeGcd) labelParts.push("GCD");
   if (sourceEnabled.localLibrary) labelParts.push("Local Library");
   const engineLabel = labelParts.join(" + ") || "No enabled sources";
 
@@ -3789,13 +3789,13 @@ const normalizedCandidatesRaw = [
       finalSelected: rankedCountsBySource.openLibrary,
     },
     kitsu: {
-      rawFetched: sourceEnabled.googleBooks && includeKitsu ? aggregatedRawFetched.kitsu : 0,
-      postFilterCandidates: sourceEnabled.googleBooks && includeKitsu ? kitsuCandidates.length : 0,
+      rawFetched: includeKitsu ? aggregatedRawFetched.kitsu : 0,
+      postFilterCandidates: includeKitsu ? kitsuCandidates.length : 0,
       finalSelected: rankedCountsBySource.kitsu,
     },
     gcd: {
-      rawFetched: sourceEnabled.googleBooks && includeGcd ? aggregatedRawFetched.gcd : 0,
-      postFilterCandidates: sourceEnabled.googleBooks && includeGcd ? gcdCandidates.length : 0,
+      rawFetched: includeGcd ? aggregatedRawFetched.gcd : 0,
+      postFilterCandidates: includeGcd ? gcdCandidates.length : 0,
       finalSelected: rankedCountsBySource.gcd,
     },
     nyt: {
