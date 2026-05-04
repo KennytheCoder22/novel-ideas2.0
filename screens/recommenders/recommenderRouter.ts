@@ -646,10 +646,23 @@ function quoteIfNeeded(value: string): string {
   return /^".*"$/.test(cleaned) ? cleaned : `"${cleaned}"`;
 }
 
+function teenFacetAnchors(seed: string): string[] {
+  const text = String(seed || "").toLowerCase();
+  const anchors = new Set<string>();
+  if (/\b(adventure|journey|quest|survival|team)\b/.test(text)) anchors.add("young adult adventure found family novel");
+  if (/\b(moral|ethic|betrayal|consequence|justice|choice|dilemma)\b/.test(text)) anchors.add("young adult moral dilemma thriller");
+  if (/\b(dystopian|oppression|resistance|inequality|government|social)\b/.test(text)) anchors.add("young adult dystopian social justice novel");
+  if (/\b(supernatural|paranormal|magic|myth|monster|spirit)\b/.test(text)) anchors.add("teen supernatural adventure novel");
+  if (/\b(manga|anime|graphic|shonen|shojo)\b/.test(text)) anchors.add("ya manga anime adjacent fantasy adventure");
+  if (/\b(coming of age|identity|friendship|school|academy|teen|young adult|ya)\b/.test(text)) anchors.add("young adult coming of age speculative novel");
+  return Array.from(anchors);
+}
+
 function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   const family = inferRouterFamily(bucketPlan);
   const base = String(rung?.query || "").trim().toLowerCase();
   const preview = String(bucketPlan?.preview || "").trim().toLowerCase();
+  const teenSpeculativeSignal = /\b(young adult|ya|teen|coming of age|dystopian|supernatural|paranormal|academy|rebellion|survival)\b/.test(`${base} ${preview}`);
 
   if (family === "mystery") {
     if (base) return quoteIfNeeded(base);
@@ -681,18 +694,21 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   if (family === "fantasy") {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
+    if (teenSpeculativeSignal) return quoteIfNeeded("young adult fantasy adventure novel");
     return quoteIfNeeded("epic fantasy novel");
   }
 
   if (family === "horror") {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
+    if (teenSpeculativeSignal) return quoteIfNeeded("young adult dystopian supernatural novel");
     return quoteIfNeeded("psychological horror novel");
   }
 
   if (family === "speculative") {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
+    if (teenSpeculativeSignal) return quoteIfNeeded("young adult speculative dystopian coming of age novel");
     return quoteIfNeeded("science fiction");
   }
 
@@ -700,6 +716,21 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   if (family === "historical") return (base || preview || "historical fiction novel").trim();
 
   return quoteIfNeeded(base || preview || "fiction");
+}
+
+function coarseRecoveryQueryForFamily(family: RouterFamilyKey, preview: string): string {
+  const p = String(preview || "").toLowerCase();
+  if (family === "thriller") return "psychological thriller novel";
+  if (family === "mystery") return "literary mystery novel";
+  if (family === "horror") return "atmospheric psychological horror novel";
+  if (family === "science_fiction") return /\b(ethical|moral|identity|ai|technology)\b/.test(p)
+    ? "literary science fiction moral dilemma novel"
+    : "character driven science fiction novel";
+  if (family === "speculative") return "literary speculative fiction novel";
+  if (family === "fantasy") return "character driven fantasy adventure novel";
+  if (family === "romance") return "character driven romance novel";
+  if (family === "historical") return "literary historical fiction novel";
+  return "literary character driven novel";
 }
 
 
@@ -1757,13 +1788,29 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const openLibraryQuery = openLibraryQueryForRung(rung, bucketPlan);
   if (openLibraryQuery && !(family === "horror" && !isHorrorQuery(openLibraryQuery))) {
     const queryRung = Number.isFinite(Number(rung?.rung)) ? Number(rung.rung) : undefined;
+    const signalBlob = `${String(rung?.query || "")} ${String(bucketPlan?.preview || "")}`.toLowerCase();
+    const teenSpeculativeSignal = /\b(young adult|ya|teen|coming of age|dystopian|supernatural|paranormal|academy|rebellion|survival)\b/.test(signalBlob);
     mapped.push({ query: openLibraryQuery, laneKind: "core", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
     mapped.push({ query: openLibraryQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+    const coarseFallbackQuery = coarseRecoveryQueryForFamily(
+      family as RouterFamilyKey,
+      `${String(rung?.query || "")} ${String(bucketPlan?.preview || "")}`
+    );
+    if (coarseFallbackQuery && normalizeQueryKey(coarseFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
+      mapped.push({ query: coarseFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+    }
+    if (teenSpeculativeSignal) {
+      const teenAnchors = teenFacetAnchors(signalBlob);
+      for (const anchor of teenAnchors.slice(0, 4)) {
+        if (normalizeQueryKey(anchor) === normalizeQueryKey(openLibraryQuery)) continue;
+        mapped.push({ query: quoteIfNeeded(anchor), laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+      }
+    }
     if (family === "thriller" || family === "mystery" || family === "horror") {
       const simpleFallbackQuery =
         family === "thriller" ? "psychological thriller novel" :
         family === "mystery" ? "detective mystery novel" :
-        "psychological horror novel";
+        (teenSpeculativeSignal ? "young adult dystopian supernatural novel" : "psychological horror novel");
       if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
         mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
       }
@@ -1783,7 +1830,60 @@ function candidateKey(candidate: any): string {
 
 function candidateScoreValue(candidate: any): number {
   const raw = Number(candidate?.score ?? candidate?.diagnostics?.postFilterScore ?? candidate?.diagnostics?.preFilterScore ?? 0);
-  return Number.isFinite(raw) ? raw : 0;
+  const baseScore = Number.isFinite(raw) ? raw : 0;
+
+  // NYT should be a soft credibility signal, never a hard gate.
+  const hasNytSignal = Boolean(candidate?.nyt || candidate?.rawDoc?.nyt);
+  const nytSoftBoost = hasNytSignal ? 1.1 : 0;
+
+  // Suppress low-signal noisy candidates (especially sparse OL rows), but do not hard-filter.
+  const isOpenLibrary = sourceForDoc(candidate, "openLibrary") === "openLibrary";
+  const description = String(candidate?.description || candidate?.rawDoc?.description || "").trim();
+  const hasCover = Boolean(candidate?.hasCover ?? candidate?.rawDoc?.hasCover);
+  const ratingCount = Number(candidate?.ratingCount ?? candidate?.rawDoc?.ratingCount ?? 0);
+  const isLowSignalNoise = isOpenLibrary && !hasCover && description.length < 100 && ratingCount <= 2 && !hasNytSignal;
+  const noisePenalty = isLowSignalNoise ? -1.0 : 0;
+
+  return baseScore + nytSoftBoost + noisePenalty;
+}
+
+function finalQualityPriorScore(doc: any, routerFamily: RouterFamilyKey): number {
+  const normalizedBase = candidateScoreValue(doc);
+  const hasNytSignal = Boolean(doc?.nyt || doc?.rawDoc?.nyt);
+  const isOpenLibrary = sourceForDoc(doc, "openLibrary") === "openLibrary";
+  const description = String(doc?.description || doc?.rawDoc?.description || "").trim();
+  const hasCover = Boolean(doc?.hasCover ?? doc?.rawDoc?.hasCover);
+  const ratingCount = Number(doc?.ratingCount ?? doc?.rawDoc?.ratingCount ?? 0);
+  const lowSignal = isOpenLibrary && !hasCover && description.length < 120 && ratingCount <= 2;
+
+  const tasteAlignment = Number(doc?.diagnostics?.tasteAlignment ?? doc?.rawDoc?.diagnostics?.tasteAlignment ?? 0);
+  const tasteRescue = tasteAlignment >= 1.9;
+
+  let score = normalizedBase;
+  if (hasNytSignal) score += 1.2;
+  if (lowSignal && !tasteRescue) score -= 1.7;
+
+  const styleText = [
+    doc?.title,
+    doc?.description,
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+
+  const quirkyStylish = /\b(quirky|stylish|inventive|surreal|absurdist|dreamlike|atmospheric|experimental|offbeat|darkly comic|uncanny|speculative literary|character[-\s]?driven)\b/.test(styleText);
+  if (quirkyStylish) score += 0.45;
+
+  const broadSciFiSprawl = /\b(space opera|military sci[-\s]?fi|galactic empire|interstellar war|fleet|planetary conquest)\b/.test(styleText);
+  if (broadSciFiSprawl) score -= 0.9;
+
+  const genericThrillerHorror = /\b(generic thriller|serial killer procedural|haunted house anthology|zombie apocalypse|demon hunter|creature feature)\b/.test(styleText);
+  if (routerFamily === "horror" || routerFamily === "thriller" || routerFamily === "science_fiction") {
+    if (genericThrillerHorror) score -= 0.8;
+  }
+
+  return score;
 }
 
 function normalizeWorkToken(value: unknown): string {
@@ -1792,6 +1892,105 @@ function normalizeWorkToken(value: unknown): string {
     .replace(/[^a-z0-9]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function normalizedAuthorToken(candidate: any): string {
+  const author =
+    candidate?.author ??
+    candidate?.rawDoc?.author ??
+    (Array.isArray(candidate?.author_name) ? candidate.author_name[0] : candidate?.author_name) ??
+    (Array.isArray(candidate?.rawDoc?.author_name) ? candidate.rawDoc.author_name[0] : candidate?.rawDoc?.author_name) ??
+    "";
+  return normalizeWorkToken(author);
+}
+
+function seriesLikeToken(candidate: any): string {
+  const text = [
+    candidate?.title,
+    candidate?.rawDoc?.title,
+    candidate?.description,
+    candidate?.rawDoc?.description,
+  ].filter(Boolean).join(" ").toLowerCase();
+  const m =
+    text.match(/\b(the [a-z0-9' -]{2,40}\s+(series|chronicles|saga))\b/) ||
+    text.match(/\b(book\s*\d+\s+of\s+the\s+[a-z0-9' -]{2,40})\b/) ||
+    text.match(/\b([a-z0-9' -]{2,40}\s+trilogy)\b/);
+  return normalizeWorkToken(m?.[1] || "");
+}
+
+function topicalClusterToken(candidate: any): string {
+  const text = [
+    candidate?.title,
+    candidate?.rawDoc?.title,
+    ...(Array.isArray(candidate?.subject) ? candidate.subject : []),
+    ...(Array.isArray(candidate?.subjects) ? candidate.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  if (/\b(fae|faerie|court of|shadow hunter|dragon rider|magic academy|chosen one)\b/.test(text)) return "fantasy_cluster";
+  if (/\b(vampire|werewolf|demon|witch academy)\b/.test(text)) return "paranormal_cluster";
+  if (/\b(dystopian|post[-\s]?apocalyptic|resistance|rebellion)\b/.test(text)) return "dystopia_cluster";
+  return "";
+}
+
+function enforceFinalSelectionCoherence(docs: any[], limit: number, options?: { maxPerAuthor?: number; maxPerCluster?: number }): any[] {
+  const kept: any[] = [];
+  const seenWork = new Set<string>();
+  const byAuthor = new Map<string, number>();
+  const bySeries = new Map<string, number>();
+  const byCluster = new Map<string, number>();
+  const maxPerAuthor = Math.max(1, Number(options?.maxPerAuthor ?? 2));
+  const maxPerCluster = Math.max(1, Number(options?.maxPerCluster ?? 2));
+
+  for (const doc of Array.isArray(docs) ? docs : []) {
+    const titleToken = normalizeWorkToken(doc?.title ?? doc?.rawDoc?.title);
+    const authorToken = normalizedAuthorToken(doc);
+    const workKey = `${titleToken}|${authorToken}`;
+    if (!titleToken || seenWork.has(workKey)) continue;
+
+    const authorCount = authorToken ? (byAuthor.get(authorToken) || 0) : 0;
+    if (authorCount >= maxPerAuthor) continue;
+
+    const seriesToken = seriesLikeToken(doc);
+    if (seriesToken) {
+      const seriesCount = bySeries.get(seriesToken) || 0;
+      if (seriesCount >= 1) continue;
+      bySeries.set(seriesToken, seriesCount + 1);
+    }
+    const clusterToken = topicalClusterToken(doc);
+    if (clusterToken) {
+      const clusterCount = byCluster.get(clusterToken) || 0;
+      if (clusterCount >= maxPerCluster) continue;
+      byCluster.set(clusterToken, clusterCount + 1);
+    }
+
+    seenWork.add(workKey);
+    if (authorToken) byAuthor.set(authorToken, authorCount + 1);
+    kept.push(doc);
+    if (kept.length >= limit) break;
+  }
+
+  return kept;
+}
+
+function isContainerOrReferenceTitle(doc: any, allowIfExplicitlyRequested = false, bucketPlanPreview?: string): boolean {
+  if (allowIfExplicitlyRequested) return false;
+  const title = String(doc?.title || doc?.rawDoc?.title || "").toLowerCase();
+  const preview = String(bucketPlanPreview || "").toLowerCase();
+  const explicitlyAsked =
+    /\b(anthology|yearbook|best of|collection|annual|almanac|reference)\b/.test(preview);
+  if (explicitlyAsked) return false;
+  return /\b(bestsellers?|the american year book|year ?book|best science fiction of the year|anthology|annual collection|almanac|companion|encyclopedia|handbook|reference)\b/.test(title);
+}
+
+function isDomesticThrillerDrift(doc: any): boolean {
+  const text = [
+    doc?.title,
+    doc?.description,
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.description,
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+  ].filter(Boolean).join(" ").toLowerCase();
+  return /\b(the wife|the husband|the girlfriend|the stranger|domestic suspense|missing wife|marriage secrets|girl on the train|behind closed doors)\b/.test(text);
 }
 
 function collapseCrossRungDuplicates<T extends { title?: string; author?: string; author_name?: string[]; rawDoc?: any; queryRung?: number }>(docs: T[]): T[] {
@@ -2401,6 +2600,8 @@ export async function getRecommendations(
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
+  const isTeenDeck = routedInput.deckKey === "ms_hs";
+  const isAdultDeck = routedInput.deckKey === "adult";
   const sourceEnabled = resolveSourceEnabled(routedInput);
   const sourceSkippedReason: string[] = [];
   let googleQuotaExhausted = false;
@@ -3070,6 +3271,7 @@ export async function getRecommendations(
 
   const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
   const googleFetchFailureDetected = Number(aggregatedRawFetched.googleBooks || 0) === 0;
+  const googleBooksDegradedMode = googleFetchFailureDetected || Number(aggregatedRawFetched.googleBooks || 0) < 6;
   const allowNytInjections = !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
   const nytAnchorResult = googleFetchFailureDetected
     ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
@@ -3140,6 +3342,13 @@ export async function getRecommendations(
     }
   }
 
+  candidateDocs = candidateDocs.filter((doc: any) =>
+    !isContainerOrReferenceTitle(doc, false, bucketPlan?.preview)
+  );
+  if (isAdultDeck && (routerFamily === "science_fiction" || routerFamily === "general" || googleBooksDegradedMode)) {
+    candidateDocs = candidateDocs.filter((doc: any) => !isDomesticThrillerDrift(doc));
+  }
+
   if (!isHybridMode) {
     candidateDocs = candidateDocs.map((doc: any) => ({
       ...doc,
@@ -3169,6 +3378,24 @@ export async function getRecommendations(
     }));
   }
 
+  if (googleBooksDegradedMode) {
+    candidateDocs = candidateDocs.filter((doc: any) => {
+      if (sourceForDoc(doc, "googleBooks") === "googleBooks") return true;
+      const hasNytSignal = Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller);
+      const description = String(doc?.description || doc?.rawDoc?.description || "").trim();
+      const hasCover = Boolean(doc?.hasCover ?? doc?.rawDoc?.hasCover);
+      const ratingCount = Number(doc?.ratingCount ?? doc?.rawDoc?.ratingCount ?? 0);
+      const hasAuthor = Boolean(String(doc?.author || doc?.rawDoc?.author || (Array.isArray(doc?.author_name) ? doc.author_name[0] : "") || "").trim());
+      const hasNarrativeSpecificity = /\b(character|relationship|identity|grief|moral|consequence|voice|interior|atmospheric|psychological|uncanny|surreal|speculative)\b/i.test(description);
+      const strongOpenLibraryShape = hasCover && description.length >= 140 && ratingCount >= 8 && hasAuthor && hasNarrativeSpecificity;
+      return hasNytSignal || strongOpenLibraryShape;
+    });
+    debugRouterLog("DEGRADED_MODE_OPEN_LIBRARY_TIGHTENED", {
+      enabled: true,
+      googleBooksRawFetched: Number(aggregatedRawFetched.googleBooks || 0),
+      countAfter: candidateDocs.length,
+    });
+  }
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
   );
@@ -3541,9 +3768,36 @@ const normalizedCandidatesRaw = [
     .filter((doc: any) => !isMetaReferenceWork(doc))
     .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
     .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc));
-  const finalRankedDocs = (() => {
-    if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
-    const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
+  const qualityPrioritizedRankedDocs = [...metaSafeRankedDocs].sort((a: any, b: any) =>
+    finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily)
+  );
+  const degradedModeQualityScreenedDocs = googleBooksDegradedMode
+    ? qualityPrioritizedRankedDocs.filter((doc: any) => {
+        const hasNytSignal = Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller);
+        const hasCover = Boolean(doc?.hasCover ?? doc?.rawDoc?.hasCover);
+        const description = String(doc?.description || doc?.rawDoc?.description || "").trim();
+        const ratingCount = Number(doc?.ratingCount ?? doc?.rawDoc?.ratingCount ?? 0);
+        const qualityPrior = finalQualityPriorScore(doc, routerFamily);
+        return hasNytSignal || (hasCover && description.length >= 140 && ratingCount >= 10 && qualityPrior >= 1.4);
+      })
+    : qualityPrioritizedRankedDocs;
+  const degradedMaxOutputTarget = Math.min(finalLimit, 6);
+  let trustAnchorInjectedCount = 0;
+  let finalRankedDocs = (() => {
+    if (googleBooksDegradedMode) {
+      const degradedLimit = Math.max(4, Math.min(degradedMaxOutputTarget, degradedModeQualityScreenedDocs.length));
+      return enforceFinalSelectionCoherence(degradedModeQualityScreenedDocs, degradedLimit, {
+        maxPerAuthor: isTeenDeck ? 1 : 2,
+        maxPerCluster: isTeenDeck ? 1 : 2,
+      });
+    }
+    if (qualityPrioritizedRankedDocs.length >= finalLimit) {
+      return enforceFinalSelectionCoherence(qualityPrioritizedRankedDocs, finalLimit, {
+        maxPerAuthor: isTeenDeck ? 1 : 2,
+        maxPerCluster: isTeenDeck ? 1 : 2,
+      });
+    }
+    const existing = new Set(qualityPrioritizedRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPoolForFinal
       .filter((doc: any) => !isMetaReferenceWork(doc))
       .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
@@ -3551,9 +3805,116 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => {
         const key = candidateKey(doc);
         return Boolean(key) && !existing.has(key);
-      });
-    return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+      })
+      .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily));
+    return enforceFinalSelectionCoherence(dedupeDocs([...qualityPrioritizedRankedDocs, ...refill] as any), finalLimit, {
+      maxPerAuthor: isTeenDeck ? 1 : 2,
+      maxPerCluster: isTeenDeck ? 1 : 2,
+    }) as any[];
   })();
+
+  if (googleBooksDegradedMode && finalRankedDocs.length < finalLimit) {
+    const remainingSlots = Math.max(0, degradedMaxOutputTarget - finalRankedDocs.length);
+    const maxTrustAnchors = Math.min(2, remainingSlots);
+    if (maxTrustAnchors > 0) {
+      const existingKeys = new Set(finalRankedDocs.map((doc: any) => candidateKey(doc)));
+      const trustAnchorPool = qualityPrioritizedRankedDocs
+        .filter((doc: any) => Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller))
+        .filter((doc: any) => {
+          const key = candidateKey(doc);
+          return Boolean(key) && !existingKeys.has(key);
+        })
+        .filter((doc: any) => {
+          const resolvedFamily = normalizeRouterFamilyValue(
+            doc?.queryFamily || doc?.rawDoc?.queryFamily || doc?.filterFamily || doc?.rawDoc?.filterFamily
+          );
+          if (routerFamily !== "general" && resolvedFamily && resolvedFamily !== routerFamily) return false;
+          const tasteAlignment = Number(doc?.diagnostics?.tasteAlignment ?? doc?.rawDoc?.diagnostics?.tasteAlignment ?? 0);
+          const qualityPrior = finalQualityPriorScore(doc, routerFamily);
+          const text = [
+            doc?.title,
+            doc?.description,
+            doc?.rawDoc?.title,
+            doc?.rawDoc?.description,
+            ...(Array.isArray(doc?.subject) ? doc.subject : []),
+            ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+          ].filter(Boolean).join(" ").toLowerCase();
+          const elevatedDarkCrafted =
+            /\b(psychological|literary|stylistic|atmospheric|surreal|uncanny|darkly comic|existential|experimental|offbeat|character[-\s]?driven)\b/.test(text) &&
+            !/\b(cozy mystery|romantasy|booktok romance|small town romance|serial killer procedural|fbi suspense thriller|paranormal romance)\b/.test(text);
+          return tasteAlignment >= 1.25 && qualityPrior >= 1.0 && elevatedDarkCrafted;
+        })
+        .sort((a: any, b: any) => finalQualityPriorScore(b, routerFamily) - finalQualityPriorScore(a, routerFamily))
+        .slice(0, maxTrustAnchors);
+
+      if (trustAnchorPool.length) {
+        trustAnchorInjectedCount = trustAnchorPool.length;
+        finalRankedDocs = enforceFinalSelectionCoherence(
+          dedupeDocs([...finalRankedDocs, ...trustAnchorPool] as any),
+          Math.min(degradedMaxOutputTarget, finalRankedDocs.length + trustAnchorPool.length),
+          {
+            maxPerAuthor: isTeenDeck ? 1 : 2,
+            maxPerCluster: isTeenDeck ? 1 : 2,
+          }
+        ) as any[];
+      }
+    }
+  }
+  finalRankedDocs = finalRankedDocs.filter((doc: any) => !isContainerOrReferenceTitle(doc, false, bucketPlan?.preview));
+  if (isAdultDeck && (routerFamily === "science_fiction" || routerFamily === "general" || googleBooksDegradedMode)) {
+    finalRankedDocs = finalRankedDocs.filter((doc: any) => !isDomesticThrillerDrift(doc));
+  }
+  if (googleBooksDegradedMode) {
+    finalRankedDocs = finalRankedDocs.slice(0, degradedMaxOutputTarget);
+  }
+  if (!finalRankedDocs.length) {
+    const fallbackLimit = Math.max(1, Math.min(finalLimit, googleBooksDegradedMode ? degradedMaxOutputTarget : 6));
+    const baseEligible = qualityPrioritizedRankedDocs.filter((doc: any) =>
+      !isContainerOrReferenceTitle(doc, false, bucketPlan?.preview)
+    );
+    const nonAdultSuppressionEligible = isAdultDeck
+      ? baseEligible.filter((doc: any) => !isDomesticThrillerDrift(doc))
+      : baseEligible;
+
+    // Relaxation ladder:
+    // 1) relax cluster cap, keep author cap strict
+    // 2) relax author + cluster caps
+    // 3) relax coherence caps but keep hard exclusions
+    const ladderStep1 = enforceFinalSelectionCoherence(nonAdultSuppressionEligible, fallbackLimit, {
+      maxPerAuthor: isTeenDeck ? 1 : 2,
+      maxPerCluster: isTeenDeck ? 2 : 2,
+    });
+    const ladderStep2 = ladderStep1.length
+      ? ladderStep1
+      : enforceFinalSelectionCoherence(nonAdultSuppressionEligible, fallbackLimit, {
+          maxPerAuthor: 2,
+          maxPerCluster: 3,
+        });
+    const ladderStep3 = ladderStep2.length
+      ? ladderStep2
+      : dedupeDocs(nonAdultSuppressionEligible as any).slice(0, fallbackLimit);
+    finalRankedDocs = ladderStep3;
+
+    debugRouterLog("FINAL_OUTPUT_RELAXATION_LADDER_APPLIED", {
+      fallbackLimit,
+      step1Count: ladderStep1.length,
+      step2Count: ladderStep2.length,
+      step3Count: ladderStep3.length,
+      finalCount: finalRankedDocs.length,
+      isTeenDeck,
+      googleBooksDegradedMode,
+    });
+  }
+
+  debugRouterLog("DEGRADED_MODE_FINAL_OUTPUT_TRACE", {
+    googleBooksDegradedMode,
+    googleBooksRawFetched: Number(aggregatedRawFetched.googleBooks || 0),
+    requestedFinalLimit: finalLimit,
+    degradedMaxOutputTarget,
+    screenedCount: degradedModeQualityScreenedDocs.length,
+    trustAnchorInjectedCount,
+    finalCount: finalRankedDocs.length,
+  });
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
@@ -3620,6 +3981,9 @@ const normalizedCandidatesRaw = [
     const source = sourceForDoc(doc, "openLibrary");
     rankedCountsBySource[source] = (rankedCountsBySource[source] || 0) + 1;
   }
+  const rankedNytBackedCount = rankedDocsWithDiagnostics.filter((doc: any) =>
+    Boolean(doc?.nyt || doc?.rawDoc?.nyt || doc?.commercialSignals?.bestseller || doc?.rawDoc?.commercialSignals?.bestseller)
+  ).length;
 
   const labelParts: string[] = [];
   if (sourceEnabled.googleBooks) labelParts.push("Google Books");
@@ -3680,6 +4044,20 @@ const normalizedCandidatesRaw = [
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: getLastFinalRecommenderDebug(),
     debugNytAnchors: nytAnchorDebug,
+    debugFinalSourceComposition: {
+      requestedFinalLimit: finalLimit,
+      finalCount: rankedDocsWithDiagnostics.length,
+      bySource: rankedCountsBySource,
+      nytBacked: rankedNytBackedCount,
+      googleBooksDegradedMode,
+      degradedReason: googleBooksDegradedMode
+        ? `googleBooks raw fetched=${Number(aggregatedRawFetched.googleBooks || 0)}`
+        : null,
+      reducedOutputForQuality: googleBooksDegradedMode && rankedDocsWithDiagnostics.length < finalLimit,
+      degradedMaxOutputTarget: googleBooksDegradedMode ? degradedMaxOutputTarget : null,
+      trustAnchorInjectedCount,
+      qualityTestValid: !googleBooksDegradedMode,
+    },
     sourceEnabled,
     sourceSkippedReason,
   } as RecommendationResult;
