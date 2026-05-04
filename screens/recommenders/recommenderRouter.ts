@@ -3588,11 +3588,24 @@ const normalizedCandidatesRaw = [
       historical: /\b(historical|period|victorian|regency|war|empire)\b/i,
     };
     const laneRegex = laneLexicon[teenLaneFamily] || laneLexicon[routerFamily] || /\b(young adult|teen)\b/i;
+    const facetTokens = Object.entries(input.tagCounts || {})
+      .filter(([, v]) => Number(v || 0) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .map(([k]) => String(k).toLowerCase())
+      .slice(0, 20);
+    const facetPattern = facetTokens.length
+      ? new RegExp(`\\b(${facetTokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "gi")
+      : null;
+    const classicAdultCanonPattern = /\b(dracula|frankenstein|hp lovecraft|edgar allan poe|thomas ligotti|dante|homer|virgil|milton|dickens|tolstoy|dostoevsky)\b/i;
+    const anthologyMetaPattern = /\b(anthology|collected|selected works|stories by|essays|criticism|companion|guide|analysis|history of|reader|handbook)\b/i;
+    const genericTitlePattern = /^(the novel|untitled|book \d+|volume \d+|stories|collected stories)$/i;
     const laneScore = (doc: any): number => {
       const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
       const onLane = laneRegex.test(text) ? 2 : -2;
       const generic = /\b(fiction|novel|book|story)\b/.test(text) ? -0.5 : 0;
-      return onLane + generic;
+      const facetMatches = facetPattern ? (text.match(facetPattern) || []).length : 0;
+      const classicPenalty = classicAdultCanonPattern.test(text) && !/\b(young adult|ya|teen|retelling|adaptation)\b/i.test(text) ? -2.5 : 0;
+      return onLane + generic + (facetMatches * 0.45) + classicPenalty;
     };
 
     const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
@@ -3643,7 +3656,32 @@ const normalizedCandidatesRaw = [
     take(pools.dark, darkCap);
     take(pools.general, finalLimit);
 
-    const finalTeen = out.slice(0, finalLimit);
+    const authorSeen = new Map<string, number>();
+    const finalTeen = out
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const text = `${title} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`;
+        if (!title || genericTitlePattern.test(title)) return false;
+        if (anthologyMetaPattern.test(text)) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => laneScore(b) - laneScore(a))
+      .filter((doc: any) => {
+        const author = String(doc?.author || doc?.author_name?.[0] || doc?.rawDoc?.author || "").trim().toLowerCase();
+        if (!author) return true;
+        const seen = authorSeen.get(author) || 0;
+        if (seen >= 1) return false;
+        authorSeen.set(author, seen + 1);
+        return true;
+      })
+      .slice(0, finalLimit)
+      .map((doc: any) => ({
+        ...doc,
+        title: doc?.title || doc?.rawDoc?.title,
+        author_name: Array.isArray(doc?.author_name)
+          ? doc.author_name
+          : (doc?.author ? [doc.author] : (Array.isArray(doc?.rawDoc?.author_name) ? doc.rawDoc.author_name : [])),
+      }));
     const darkCount = finalTeen.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
