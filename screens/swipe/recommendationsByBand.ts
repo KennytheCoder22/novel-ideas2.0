@@ -114,6 +114,7 @@ export function buildFinalQueryForDeck(deckKey: string, tagCounts: TagCounts): s
     return enforceAnchorQueryTeen(buildFinalQueryTeen(tagCounts), tagCounts);
   if (deckKey === "adult") return enforceAnchorQueryAdult(buildFinalQueryAdult(tagCounts), tagCounts);
 
-  // Default: treat unknown keys as teen (safest middle ground and avoids kids-only filters).
-  return enforceAnchorQueryTeen(buildFinalQueryTeen(tagCounts), tagCounts);
+  // Unknown deck keys should not silently fall through into another age band.
+  // Return an empty query so callers can fail-safe to curated fallback cards for that deck only.
+  return "";
 }

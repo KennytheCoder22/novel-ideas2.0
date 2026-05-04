@@ -104,10 +104,44 @@ function injectGenreAnchors(query: string, tagCounts: TagCounts): string {
   return `${base} ${anchors.join(" ")}`.trim();
 }
 
+function buildAdultAnchorBranches(tagCounts: TagCounts): string[] {
+  const buckets: Record<string, string[]> = {
+    genre: [],
+    theme: [],
+    tone: [],
+    topic: [],
+  };
+
+  const entries = Object.entries(tagCounts || {})
+    .filter(([, v]) => Number(v) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]));
+
+  for (const [k] of entries) {
+    const [prefix, raw] = String(k).split(":");
+    const key = String(prefix || "").trim().toLowerCase();
+    const value = String(raw || "").trim().toLowerCase().replace(/_/g, " ");
+    if (!value) continue;
+    if (!(key in buckets)) continue;
+    if (["adult", "fiction", "novel"].includes(value)) continue;
+    if (buckets[key].includes(value)) continue;
+    buckets[key].push(value);
+  }
+
+  const branches: string[] = [];
+  for (const g of buckets.genre.slice(0, 2)) branches.push(`subject:${g} fiction novel`);
+  for (const t of buckets.theme.slice(0, 1)) branches.push(`${t} fiction novel`);
+  for (const t of buckets.tone.slice(0, 1)) branches.push(`${t} fiction novel`);
+  for (const t of buckets.topic.slice(0, 1)) branches.push(`${t} fiction novel`);
+
+  return Array.from(new Set(branches.map((b) => b.trim()).filter(Boolean))).slice(0, 4);
+}
+
 export function buildFinalQueryAdult(tagCounts: TagCounts): string {
   const cleaned = stripAgeMarkers(tagCounts);
   const guardrail = pickAdultGuardrail(cleaned);
   const swipeTerms = buildSwipeTermsQueryFromTagCounts(cleaned, tagToKeywordsAdult).trim();
   const baseQuery = swipeTerms ? `${guardrail} ${swipeTerms}`.trim() : guardrail;
-  return injectGenreAnchors(baseQuery, cleaned);
+  const anchored = injectGenreAnchors(baseQuery, cleaned);
+  const branches = buildAdultAnchorBranches(cleaned);
+  return branches.length ? `${anchored} || ${branches.join(" || ")}` : anchored;
 }
