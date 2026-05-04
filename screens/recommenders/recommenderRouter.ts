@@ -119,8 +119,13 @@ function nytListsForRouterFamily(family: RouterFamilyKey): string[] {
   return ["combined-print-and-e-book-fiction", "hardcover-fiction"];
 }
 
+function isTeenDeckKey(deckKey: unknown): boolean {
+  const key = String(deckKey || "").toLowerCase();
+  return key === "ms_hs" || key === "ms-hs" || key === "mshs" || key === "teen" || key === "teens" || key === "teens_school";
+}
+
 function shouldUseNytAnchors(input: RecommenderInput): boolean {
-  if (input.deckKey !== "adult" && input.deckKey !== "ms_hs") return false;
+  if (input.deckKey !== "adult" && !isTeenDeckKey(input.deckKey)) return false;
   return decisionSwipeCountFromTasteProfile(input) >= MIN_DECISION_SWIPES_FOR_NYT_ANCHORS;
 }
 
@@ -718,11 +723,11 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 }
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
-  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
+  return isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
 }
 
 function shouldUseGcd(input: RecommenderInput): boolean {
-  return input.deckKey === "ms_hs" && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
+  return isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_GCD && hasStrong20QSession(input);
 }
 
 function extractDocs(
@@ -3022,13 +3027,11 @@ export async function getRecommendations(
     const isOpenLibrary = String(doc?.source || doc?.diagnostics?.source || "").toLowerCase().includes("open");
     if (!isOpenLibrary) return true;
     const text = `${doc?.title || ""} ${doc?.description || ""}`.toLowerCase();
-    const sparse = !doc?.hasCover && (!doc?.description || String(doc.description).trim().length < 90) && Number(doc?.ratingCount || 0) < 5;
-    const rescueFlags = [
-      ...(doc?.diagnostics?.filterPassedChecks || []),
-      ...(doc?.rawDoc?.diagnostics?.filterPassedChecks || []),
-    ].filter((check: any) => /rescue|borderline|override/.test(String(check))).length;
-    if (sparse && rescueFlags >= 1) return false;
-    if (rescueFlags >= 2) return false;
+    const ratings = Number(doc?.ratingCount || doc?.rawDoc?.ratings_count || doc?.rawDoc?.ratingsCount || 0);
+    const editions = Number(doc?.editionCount || doc?.edition_count || doc?.rawDoc?.edition_count || 0);
+    const hasAuthor = Boolean(doc?.author || (Array.isArray(doc?.author_name) && doc.author_name.length));
+    const sparse = !doc?.hasCover && (!doc?.description || String(doc.description).trim().length < 35) && ratings <= 0 && editions <= 1;
+    if (sparse && !hasAuthor) return false;
     if (/\b(best of|year's best|anthology|collection|journal|magazine|reference)\b/.test(text)) return false;
     return true;
   });
@@ -3082,10 +3085,22 @@ export async function getRecommendations(
     debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
   }
 
+  const retainedFamilies = (() => {
+    const out = new Set<string>([routerFamily]);
+    const weighted = Object.entries(hybridLaneWeights || {})
+      .filter(([, weight]) => Number(weight) >= 0.24)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 2)
+      .map(([family]) => String(family));
+    for (const family of weighted) out.add(family);
+    if (routerFamily === "thriller") out.add("mystery");
+    return out;
+  })();
+
   if (!isHybridMode && routerFamily !== "general") {
     candidateDocs = candidateDocs.filter((doc: any) => {
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
-      return !family || family === routerFamily || (routerFamily === "thriller" && family === "mystery");
+      return !family || retainedFamilies.has(family);
     });
   }
 
@@ -3152,6 +3167,23 @@ export async function getRecommendations(
       },
     }));
   }
+
+  const authorityScore = (doc: any): number => {
+    const ratings = Number(doc?.ratingCount || doc?.rawDoc?.ratings_count || doc?.rawDoc?.ratingsCount || 0);
+    const avg = Number(doc?.averageRating || doc?.rawDoc?.average_rating || doc?.rawDoc?.ratings_average || 0);
+    const editions = Number(doc?.editionCount || doc?.edition_count || doc?.rawDoc?.edition_count || 0);
+    const hasCover = doc?.hasCover || doc?.cover_i || doc?.rawDoc?.cover_i ? 1 : 0;
+    const text = `${doc?.title || ""} ${doc?.description || ""} ${doc?.author || ""}`.toLowerCase();
+    const canonical = /\b(dune|beloved|frankenstein|the road|handmaid|gone girl|dragon tattoo|1984|brave new world|never let me go)\b/.test(text) ? 1 : 0;
+    const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.filterFamily);
+    const laneBoost = retainedFamilies.has(String(family || "")) ? 0.6 : 0;
+    return (Math.log10(ratings + 1) * 1.8) + (avg >= 4 ? 0.8 : 0) + (Math.log10(editions + 1) * 1.2) + (hasCover * 0.4) + (canonical * 1.0) + laneBoost;
+  };
+
+  candidateDocs = candidateDocs
+    .slice()
+    .sort((a: any, b: any) => authorityScore(b) - authorityScore(a))
+    .slice(0, 120);
 
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
@@ -3525,7 +3557,7 @@ const normalizedCandidatesRaw = [
     .filter((doc: any) => !isMetaReferenceWork(doc))
     .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
     .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc));
-  const finalRankedDocs = (() => {
+  const finalRankedDocsBase = (() => {
     if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
     const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
     const refill = rankingPoolForFinal
@@ -3537,6 +3569,77 @@ const normalizedCandidatesRaw = [
         return Boolean(key) && !existing.has(key);
       });
     return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+  })();
+
+  const finalRankedDocs = (() => {
+    if (!isTeenDeckKey(input.deckKey)) return finalRankedDocsBase;
+
+    const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
+    const darkCap = Math.max(1, Math.floor(poolSize * 0.4)); // hard cap: <=40% dark/survival
+    const minEmotional = Math.min(2, finalLimit);
+    const minSpeculative = Math.min(2, Math.max(0, finalLimit - minEmotional));
+
+    const teenAccessibleStrict = finalRankedDocsBase.filter((doc: any) => {
+      const text = `${doc?.title || ""} ${doc?.author || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+      const hasYASignal = /\b(young adult|ya|teen|coming of age|high school|friendship|identity|dystopian|romance|first love|survival|speculative)\b/.test(text);
+      const adultClassicHorror = /\b(dracula|frankenstein|hp lovecraft|edgar allan poe|clive barker|thomas ligotti)\b/.test(text);
+      const hardAdultOnly = /\b(extreme horror|splatterpunk|erotica|serial killer memoir)\b/.test(text);
+      const strongTeenDark = /\b(ya horror|teen horror|young adult horror|survival horror|dystopian)\b/.test(text);
+      if (hardAdultOnly) return false;
+      if (adultClassicHorror && !hasYASignal && !strongTeenDark) return false;
+      return true;
+    });
+
+    const teenAccessible = teenAccessibleStrict.length >= Math.max(6, finalLimit)
+      ? teenAccessibleStrict
+      : finalRankedDocsBase.filter((doc: any) => {
+          const text = `${doc?.title || ""} ${doc?.author || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+          const hardAdultOnly = /\b(extreme horror|splatterpunk|erotica|serial killer memoir)\b/.test(text);
+          return !hardAdultOnly;
+        });
+
+    const pools = {
+      emotional: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
+      speculative: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
+      dark: teenAccessible.filter((d: any) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
+      general: teenAccessible,
+    };
+
+    const out: any[] = [];
+    const seen = new Set<string>();
+    const take = (arr: any[], max: number) => {
+      for (const doc of arr) {
+        const key = candidateKey(doc);
+        if (!key || seen.has(key)) continue;
+        out.push(doc); seen.add(key);
+        if (arr === pools.dark && out.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""}`)).length >= max) break;
+        if (arr !== pools.dark && out.length >= finalLimit) break;
+      }
+    };
+
+    take(pools.emotional, minEmotional);
+    take(pools.speculative, minSpeculative);
+    take(pools.dark, darkCap);
+    take(pools.general, finalLimit);
+
+    const finalTeen = out.slice(0, finalLimit);
+    const darkCount = finalTeen.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    debugRouterLog("TEEN_MIX_DIAGNOSTICS", {
+      teenDeckKey: input.deckKey,
+      removedByStrictAgeFit: Math.max(0, finalRankedDocsBase.length - teenAccessibleStrict.length),
+      strictRetained: teenAccessibleStrict.length,
+      relaxedRetained: teenAccessible.length,
+      finalCount: finalTeen.length,
+      darkCount,
+      darkCap,
+      emotionalCount,
+      speculativeCount,
+      minEmotional,
+      minSpeculative,
+    });
+    return finalTeen;
   })();
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
