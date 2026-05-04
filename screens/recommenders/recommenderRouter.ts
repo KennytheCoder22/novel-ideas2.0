@@ -3022,13 +3022,11 @@ export async function getRecommendations(
     const isOpenLibrary = String(doc?.source || doc?.diagnostics?.source || "").toLowerCase().includes("open");
     if (!isOpenLibrary) return true;
     const text = `${doc?.title || ""} ${doc?.description || ""}`.toLowerCase();
-    const sparse = !doc?.hasCover && (!doc?.description || String(doc.description).trim().length < 90) && Number(doc?.ratingCount || 0) < 5;
-    const rescueFlags = [
-      ...(doc?.diagnostics?.filterPassedChecks || []),
-      ...(doc?.rawDoc?.diagnostics?.filterPassedChecks || []),
-    ].filter((check: any) => /rescue|borderline|override/.test(String(check))).length;
-    if (sparse && rescueFlags >= 1) return false;
-    if (rescueFlags >= 2) return false;
+    const ratings = Number(doc?.ratingCount || doc?.rawDoc?.ratings_count || doc?.rawDoc?.ratingsCount || 0);
+    const editions = Number(doc?.editionCount || doc?.edition_count || doc?.rawDoc?.edition_count || 0);
+    const hasAuthor = Boolean(doc?.author || (Array.isArray(doc?.author_name) && doc.author_name.length));
+    const sparse = !doc?.hasCover && (!doc?.description || String(doc.description).trim().length < 35) && ratings <= 0 && editions <= 1;
+    if (sparse && !hasAuthor) return false;
     if (/\b(best of|year's best|anthology|collection|journal|magazine|reference)\b/.test(text)) return false;
     return true;
   });
@@ -3082,10 +3080,22 @@ export async function getRecommendations(
     debugDocPreview("CANDIDATE POOL AFTER NYT PROCUREMENT ANCHORS", candidateDocs);
   }
 
+  const retainedFamilies = (() => {
+    const out = new Set<string>([routerFamily]);
+    const weighted = Object.entries(hybridLaneWeights || {})
+      .filter(([, weight]) => Number(weight) >= 0.24)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .slice(0, 2)
+      .map(([family]) => String(family));
+    for (const family of weighted) out.add(family);
+    if (routerFamily === "thriller") out.add("mystery");
+    return out;
+  })();
+
   if (!isHybridMode && routerFamily !== "general") {
     candidateDocs = candidateDocs.filter((doc: any) => {
       const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.rawDoc?.queryFamily);
-      return !family || family === routerFamily || (routerFamily === "thriller" && family === "mystery");
+      return !family || retainedFamilies.has(family);
     });
   }
 
@@ -3152,6 +3162,23 @@ export async function getRecommendations(
       },
     }));
   }
+
+  const authorityScore = (doc: any): number => {
+    const ratings = Number(doc?.ratingCount || doc?.rawDoc?.ratings_count || doc?.rawDoc?.ratingsCount || 0);
+    const avg = Number(doc?.averageRating || doc?.rawDoc?.average_rating || doc?.rawDoc?.ratings_average || 0);
+    const editions = Number(doc?.editionCount || doc?.edition_count || doc?.rawDoc?.edition_count || 0);
+    const hasCover = doc?.hasCover || doc?.cover_i || doc?.rawDoc?.cover_i ? 1 : 0;
+    const text = `${doc?.title || ""} ${doc?.description || ""} ${doc?.author || ""}`.toLowerCase();
+    const canonical = /\b(dune|beloved|frankenstein|the road|handmaid|gone girl|dragon tattoo|1984|brave new world|never let me go)\b/.test(text) ? 1 : 0;
+    const family = normalizeRouterFamilyValue(doc?.queryFamily || doc?.diagnostics?.queryFamily || doc?.filterFamily);
+    const laneBoost = retainedFamilies.has(String(family || "")) ? 0.6 : 0;
+    return (Math.log10(ratings + 1) * 1.8) + (avg >= 4 ? 0.8 : 0) + (Math.log10(editions + 1) * 1.2) + (hasCover * 0.4) + (canonical * 1.0) + laneBoost;
+  };
+
+  candidateDocs = candidateDocs
+    .slice()
+    .sort((a: any, b: any) => authorityScore(b) - authorityScore(a))
+    .slice(0, 120);
 
   const googleDocsEnriched = candidateDocs.filter(
     (doc: any) => sourceForDoc(doc, "googleBooks") === "googleBooks"
