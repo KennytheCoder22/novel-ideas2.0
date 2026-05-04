@@ -23,7 +23,7 @@ import { getNytBestsellerBooks } from "../../services/bestsellers/nytClient";
 import { adaptNytBooksToRecommendationDocs } from "../../services/bestsellers/nytAdapter";
 import { mergeBestsellerDocs } from "../../services/bestsellers/bestsellerMatcher";
 import { applyAdultCanonicalRungOverrides, adultExpansionQueries } from "./adultRouter";
-import { applyTeenCanonicalRungOverrides, isTeenDeckKey, teenExpansionQueries } from "./teenRouter";
+import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey, teenExpansionQueries } from "./teenRouter";
 
 export type EngineOverride = EngineId | "auto";
 
@@ -2707,7 +2707,8 @@ export async function getRecommendations(
   // Performance guardrail: avoid exploding fetch fan-out on broad hybrid sessions.
   const uniqueRungQueries = Array.from(new Set(rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean)));
   if (uniqueRungQueries.length < 3) {
-    const expansion = isTeenDeckKey(input.deckKey) ? teenExpansionQueries(routerFamily) : adultExpansionQueries(routerFamily);
+    const teenLaneFamily = isTeenDeckKey(input.deckKey) ? inferTeenLaneFromFacets(input.tagCounts, routerFamily) : routerFamily;
+    const expansion = isTeenDeckKey(input.deckKey) ? teenExpansionQueries(teenLaneFamily) : adultExpansionQueries(routerFamily);
     for (const entry of expansion) {
       if (!uniqueRungQueries.includes(entry.query)) rungs.push({ ...entry, rung: 900 + rungs.length });
     }
@@ -3576,6 +3577,36 @@ const normalizedCandidatesRaw = [
 
   const finalRankedDocs = (() => {
     if (!isTeenDeckKey(input.deckKey)) return finalRankedDocsBase;
+    const teenLaneFamily = inferTeenLaneFromFacets(input.tagCounts, routerFamily);
+    const laneLexicon: Record<string, RegExp> = {
+      thriller: /\b(thriller|suspense|chase|manhunt|crime|conspiracy|survival)\b/i,
+      mystery: /\b(mystery|detective|investigation|clue|whodunit|case)\b/i,
+      horror: /\b(horror|haunted|ghost|occult|monster|dread|nightmare)\b/i,
+      romance: /\b(romance|love|relationship|heartbreak|dating|first love)\b/i,
+      fantasy: /\b(fantasy|magic|dragon|quest|kingdom|fae|sorcer)\b/i,
+      science_fiction: /\b(science fiction|sci-fi|dystopian|future|technology|space|ai)\b/i,
+      historical: /\b(historical|period|victorian|regency|war|empire)\b/i,
+    };
+    const laneRegex = laneLexicon[teenLaneFamily] || laneLexicon[routerFamily] || /\b(young adult|teen)\b/i;
+    const facetTokens = Object.entries(input.tagCounts || {})
+      .filter(([, v]) => Number(v || 0) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .map(([k]) => String(k).toLowerCase())
+      .slice(0, 20);
+    const facetPattern = facetTokens.length
+      ? new RegExp(`\\b(${facetTokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "gi")
+      : null;
+    const classicAdultCanonPattern = /\b(dracula|frankenstein|hp lovecraft|edgar allan poe|thomas ligotti|dante|homer|virgil|milton|dickens|tolstoy|dostoevsky)\b/i;
+    const anthologyMetaPattern = /\b(anthology|collected|selected works|stories by|essays|criticism|companion|guide|analysis|history of|reader|handbook)\b/i;
+    const genericTitlePattern = /^(the novel|untitled|book \d+|volume \d+|stories|collected stories)$/i;
+    const laneScore = (doc: any): number => {
+      const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+      const onLane = laneRegex.test(text) ? 2 : -2;
+      const generic = /\b(fiction|novel|book|story)\b/.test(text) ? -0.5 : 0;
+      const facetMatches = facetPattern ? (text.match(facetPattern) || []).length : 0;
+      const classicPenalty = classicAdultCanonPattern.test(text) && !/\b(young adult|ya|teen|retelling|adaptation)\b/i.test(text) ? -2.5 : 0;
+      return onLane + generic + (facetMatches * 0.45) + classicPenalty;
+    };
 
     const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
     const darkCap = Math.max(1, Math.floor(poolSize * 0.4)); // hard cap: <=40% dark/survival
@@ -3602,10 +3633,10 @@ const normalizedCandidatesRaw = [
         });
 
     const pools = {
-      emotional: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
-      speculative: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
-      dark: teenAccessible.filter((d: any) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)),
-      general: teenAccessible,
+      emotional: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).sort((a: any, b: any) => laneScore(b) - laneScore(a)),
+      speculative: teenAccessible.filter((d: any) => /\b(young adult|ya|teen|dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).sort((a: any, b: any) => laneScore(b) - laneScore(a)),
+      dark: teenAccessible.filter((d: any) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).sort((a: any, b: any) => laneScore(b) - laneScore(a)),
+      general: teenAccessible.slice().sort((a: any, b: any) => laneScore(b) - laneScore(a)),
     };
 
     const out: any[] = [];
@@ -3625,11 +3656,37 @@ const normalizedCandidatesRaw = [
     take(pools.dark, darkCap);
     take(pools.general, finalLimit);
 
-    const finalTeen = out.slice(0, finalLimit);
+    const authorSeen = new Map<string, number>();
+    const finalTeen = out
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const text = `${title} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`;
+        if (!title || genericTitlePattern.test(title)) return false;
+        if (anthologyMetaPattern.test(text)) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => laneScore(b) - laneScore(a))
+      .filter((doc: any) => {
+        const author = String(doc?.author || doc?.author_name?.[0] || doc?.rawDoc?.author || "").trim().toLowerCase();
+        if (!author) return true;
+        const seen = authorSeen.get(author) || 0;
+        if (seen >= 1) return false;
+        authorSeen.set(author, seen + 1);
+        return true;
+      })
+      .slice(0, finalLimit)
+      .map((doc: any) => ({
+        ...doc,
+        title: doc?.title || doc?.rawDoc?.title,
+        author_name: Array.isArray(doc?.author_name)
+          ? doc.author_name
+          : (doc?.author ? [doc.author] : (Array.isArray(doc?.rawDoc?.author_name) ? doc.rawDoc.author_name : [])),
+      }));
     const darkCount = finalTeen.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     debugRouterLog("TEEN_MIX_DIAGNOSTICS", {
+      teenLaneFamily,
       teenDeckKey: input.deckKey,
       removedByStrictAgeFit: Math.max(0, finalRankedDocsBase.length - teenAccessibleStrict.length),
       strictRetained: teenAccessibleStrict.length,
@@ -3641,6 +3698,7 @@ const normalizedCandidatesRaw = [
       speculativeCount,
       minEmotional,
       minSpeculative,
+      laneAlignedFinal: finalTeen.filter((d) => laneScore(d) > 0).length,
     });
     return finalTeen;
   })();
