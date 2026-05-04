@@ -1250,6 +1250,8 @@ export default function SwipeDeckScreen(props: Props) {
 
       const title = (currentCard as any)?.title as string | undefined;
       const author = (currentCard as any)?.author as string | undefined;
+      const tags = Array.isArray((currentCard as any)?.tags) ? (currentCard as any).tags.map((t: any) => String(t).toLowerCase()) : [];
+      const nonBookMediaCard = tags.some((t: string) => t === "media:tv" || t === "media:movie" || t === "media:game");
       if (!title || title.trim().length === 0) return;
 
       const wikiTitle = (currentCard as any)?.wikiTitle as string | undefined;
@@ -1272,14 +1274,16 @@ export default function SwipeDeckScreen(props: Props) {
 
       if (swipeCoverCache[currentCardKey]) return;
 
-      try {
-        const found = await lookupOpenLibraryCover(title, author);
-        if (cancelled) return;
-        if (found?.coverUrl) {
-          setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: found.coverUrl! }));
-          return;
+      if (!nonBookMediaCard) {
+        try {
+          const found = await lookupOpenLibraryCover(title, author);
+          if (cancelled) return;
+          if (found?.coverUrl) {
+            setSwipeCoverCache((prev) => ({ ...prev, [currentCardKey]: found.coverUrl! }));
+            return;
+          }
+        } catch {
         }
-      } catch {
       }
 
       const localFallbackImage = getSwipeCardFallbackImage(deckKey, title);
