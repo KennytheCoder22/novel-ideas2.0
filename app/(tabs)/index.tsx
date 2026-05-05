@@ -422,43 +422,6 @@ function StudentView(props: {
               autoCapitalize="none"
             />
 
-            {props.results.length > 0 ? (
-              <View style={styles.singleResultWrap}>
-                <Text style={[styles.sectionTitle, { color: props.theme.text, marginTop: 6 }]}>Results</Text>
-                <Text style={[styles.smallNote, { color: props.theme.muted, textAlign: "center" }]}>
-                  {props.currentResultIndex + 1} of {props.results.length}
-                </Text>
-              </View>
-            ) : null}
-
-            {props.results.length > 0 ? (
-              (() => {
-                const d = props.results[props.currentResultIndex] ?? props.results[0];
-                const title = d.title || "Untitled";
-                const author = d.author_name?.[0] || "Unknown author";
-                const year = d.first_publish_year ? ` (${d.first_publish_year})` : "";
-                const cover = coverUrlFromCoverId(d.cover_i, "M");
-                return (
-                  <View style={[styles.resultRow, styles.resultRowCompact, styles.resultCardStack, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
-                    {cover ? <Image source={{ uri: cover }} style={styles.coverLarge} resizeMode="cover" /> : <View style={[styles.coverPlaceholder, styles.coverLarge, { borderColor: props.theme.resultBorder }]}><Text style={[styles.coverPlaceholderText, { color: props.theme.muted }]}>No cover</Text></View>}
-                    <View style={styles.resultMetaCentered}>
-                      <Text style={[styles.resultTitle, { color: props.theme.text, textAlign: "center" }]} numberOfLines={2}>{title}<Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text></Text>
-                      <Text style={[styles.resultAuthor, { color: props.theme.subtext, textAlign: "center" }]} numberOfLines={1}>{author}</Text>
-                      <Text style={[styles.resultHint, { color: props.theme.muted, textAlign: "center" }]}>Open Library result</Text>
-                    </View>
-                    <View style={styles.resultInternalNav}>
-                      <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onPrevResult}>
-                        <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Back</Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onNextResult}>
-                        <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Next</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })()
-            ) : null}
-
             <View style={styles.rowBetween}>
               <TouchableOpacity
                 style={[
@@ -472,16 +435,57 @@ function StudentView(props: {
 
               <TouchableOpacity
                 style={[
-                  styles.primaryBtn,
-                  { backgroundColor: props.theme.accent, borderColor: props.theme.accentBorder },
+                  styles.smallBtn,
+                  { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg },
                 ]}
                 onPress={props.onSearch}
               >
-                <Text style={[styles.primaryBtnText, { color: props.theme.accentTextOn }]}>
-                  Search
-                </Text>
+                <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Search</Text>
               </TouchableOpacity>
             </View>
+
+            {props.results.length > 0 ? (
+              (() => {
+                const d = props.results[props.currentResultIndex] ?? props.results[0];
+                const title = d.title || "Untitled";
+                const author = d.author_name?.[0] || "Unknown author";
+                const year = d.first_publish_year ? ` (${d.first_publish_year})` : "";
+                const cover =
+                  (typeof d?.imageUrl === "string" && d.imageUrl) ||
+                  (typeof d?.coverImageUrl === "string" && d.coverImageUrl) ||
+                  (typeof d?.imageLinks?.thumbnail === "string" && d.imageLinks.thumbnail) ||
+                  (typeof d?.imageLinks?.smallThumbnail === "string" && d.imageLinks.smallThumbnail) ||
+                  (typeof d?.volumeInfo?.imageLinks?.thumbnail === "string" && d.volumeInfo.imageLinks.thumbnail) ||
+                  (typeof d?.volumeInfo?.imageLinks?.smallThumbnail === "string" && d.volumeInfo.imageLinks.smallThumbnail) ||
+                  coverUrlFromCoverId(d.cover_i, "M");
+                return (
+                  <View style={styles.singleResultWrap}>
+                    <View style={[styles.resultRow, styles.resultRowCompact, styles.resultCardStack, { borderColor: props.theme.highlight, backgroundColor: props.theme.resultBg }]}>
+                      <View style={styles.resultHeaderRow}>
+                        <Text style={[styles.sectionTitle, { color: props.theme.text }]}>Results</Text>
+                        <Text style={[styles.smallNote, { color: props.theme.muted }]}>
+                          {props.currentResultIndex + 1} of {props.results.length}
+                        </Text>
+                      </View>
+                      {cover ? <Image source={{ uri: cover }} style={styles.coverLarge} resizeMode="cover" /> : <View style={[styles.coverPlaceholder, styles.coverLarge, { borderColor: props.theme.resultBorder }]}><Text style={[styles.coverPlaceholderText, { color: props.theme.muted }]}>No cover</Text></View>}
+                      <View style={styles.resultMetaCentered}>
+                        <Text style={[styles.resultTitle, { color: props.theme.text, textAlign: "center" }]} numberOfLines={2}>{title}<Text style={[styles.resultYear, { color: props.theme.muted }]}>{year}</Text></Text>
+                        <Text style={[styles.resultAuthor, { color: props.theme.subtext, textAlign: "center" }]} numberOfLines={1}>{author}</Text>
+                        <Text style={[styles.resultHint, { color: props.theme.muted, textAlign: "center" }]}>Open Library result</Text>
+                      </View>
+                    </View>
+                    <View style={styles.resultExternalNav}>
+                      <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onPrevResult}>
+                        <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Back</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={[styles.smallBtn, styles.resultNavBtn, { borderColor: props.theme.lightBorder, backgroundColor: props.theme.inputBg }]} onPress={props.onNextResult}>
+                        <Text style={[styles.smallBtnText, { color: props.theme.text }]}>Next</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                );
+              })()
+            ) : null}
 
             {props.loading ? (
               <View style={{ marginTop: 14, alignItems: "center" }}>
@@ -2163,10 +2167,11 @@ const styles = StyleSheet.create({
   resultHint: { marginTop: 4, fontSize: 11, fontWeight: "700" },
 
   resultActions: { marginTop: 10, flexDirection: "row", gap: 10 as any },
-  singleResultWrap: { marginTop: 8 },
+  singleResultWrap: { marginTop: 10 },
   resultRowCompact: { width: "100%", maxWidth: 440, alignSelf: "center" },
   resultCardStack: { marginTop: 8, flexDirection: "column", alignItems: "center", justifyContent: "center" },
-  resultInternalNav: { marginTop: 12, width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  resultHeaderRow: { width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 10 },
+  resultExternalNav: { marginTop: 2, width: "100%", maxWidth: 440, alignSelf: "center", flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   resultNavBtn: { minWidth: 90 },
   tinyBtn: { paddingVertical: 8, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1, backgroundColor: "rgba(11, 30, 51, 0.9)" },
   tinyBtnText: { fontWeight: "800", fontSize: 12 },

@@ -525,6 +525,15 @@ function recommendationCoverUrl(doc: any): string | null {
   if (directImage) return directImage.replace(/^http:\/\//, "https://");
   const fromCoverId = coverUrlFromCoverId(doc.cover_i || doc.coverId, "L");
   if (fromCoverId) return fromCoverId;
+  const coverOlid =
+    (typeof doc?.cover_edition_key === "string" && doc.cover_edition_key.trim()) ||
+    (Array.isArray(doc?.edition_key) && doc.edition_key.length > 0 && typeof doc.edition_key[0] === "string"
+      ? doc.edition_key[0].trim()
+      : "") ||
+    (Array.isArray(doc?.editionKeys) && doc.editionKeys.length > 0 && typeof doc.editionKeys[0] === "string"
+      ? doc.editionKeys[0].trim()
+      : "");
+  if (coverOlid) return `https://covers.openlibrary.org/b/olid/${encodeURIComponent(coverOlid)}-L.jpg`;
   const thumbnail =
     (typeof doc?.imageLinks?.thumbnail === "string" && doc.imageLinks.thumbnail) ||
     (typeof doc?.imageLinks?.smallThumbnail === "string" && doc.imageLinks.smallThumbnail) ||
@@ -1861,6 +1870,50 @@ function handleLeft() {
     }).join("\n");
   }
 
+  async function handleCopyCodexReport() {
+    const swipeLines = swipeHistory.length
+      ? swipeHistory.map((entry, index) => {
+          const anyCard: any = entry.card as any;
+          const title = anyCard?.title || anyCard?.prompt || "(untitled)";
+          const author = anyCard?.author ? ` — ${anyCard.author}` : "";
+          return `${index + 1}. ${entry.direction.toUpperCase()} — ${title}${author}`;
+        }).join("\n")
+      : "(none)";
+
+    const recommendationLines = recItems.length
+      ? recItems.map((item, i) => {
+          if (item.kind === "open_library") {
+            const doc: any = item.doc;
+            const title = doc?.title ?? "Untitled";
+            const author = recommendationAuthor(doc);
+            const year = doc?.first_publish_year ? ` (${doc.first_publish_year})` : "";
+            return `${i + 1}. ${title} — ${author}${year}`;
+          }
+          const title = item.book?.title ?? "Untitled";
+          const author = item.book?.author ?? "Unknown author";
+          const year = item.book?.year ? ` (${item.book.year})` : "";
+          return `${i + 1}. ${title} — ${author}${year}`;
+        }).join("\n")
+      : "(none)";
+
+    const codexReport = [
+      "CODEX SESSION REPORT",
+      `Deck: ${deck.deckLabel}`,
+      `Engine: ${recEngineLabel || "—"}`,
+      `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
+      `20Q Progress: ${resolvedTwentyQCount}/${twentyQObjectives.length}`,
+      "",
+      "SWIPED CARDS",
+      swipeLines,
+      "",
+      "RECOMMENDATIONS",
+      recommendationLines,
+    ].join("\n");
+
+    await Clipboard.setStringAsync(codexReport);
+    Alert.alert("Copied", "Codex report copied to clipboard.");
+  }
+
   async function handleCopyDiagnostics() {
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
@@ -2101,7 +2154,6 @@ function handleLeft() {
       const title = currentRec.kind === "open_library" ? currentRec.doc?.title : currentRec.book?.title;
       const author = currentRec.kind === "open_library" ? recommendationAuthor(currentRec.doc) : currentRec.book?.author;
       if (!title) return;
-      if (currentRec.kind === "open_library" && recommendationCoverUrl(currentRec.doc)) return;
       try {
         const found = await lookupOpenLibraryCover(title, author);
         if (cancelled) return;
@@ -2260,7 +2312,7 @@ function handleLeft() {
                     <View style={styles.bigCoverWrap}>
                       {currentRec.kind === "open_library" ? (
                         (() => {
-                          const cover = recommendationCoverUrl(currentRec.doc) || recCoverCache[currentRecKey] || null;
+                          const cover = recCoverCache[currentRecKey] || recommendationCoverUrl(currentRec.doc) || null;
                           return cover ? (
                             <Image source={{ uri: cover }} style={styles.bigCover} resizeMode="contain" />
                           ) : (
@@ -2487,8 +2539,8 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
-          <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
-            <Text style={styles.debugToggleText}>Diagnostics</Text>
+          <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyCodexReport}>
+            <Text style={styles.debugToggleText}>Codex</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
