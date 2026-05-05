@@ -2443,6 +2443,7 @@ export async function getRecommendations(
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
   const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
+  const comicVineEnvVarPresent = comicVineKeyDetected;
   const comicVineEnabledRuntime = Boolean(comicVineKeyDetected && sourceEnabled.gcd);
   if ((routedInput as any)?.sourceEnabled?.gcd !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
     sourceSkippedReason.push("gcd_disabled_in_production");
@@ -3949,6 +3950,7 @@ const normalizedCandidatesRaw = [
     debugGcdDispatchTrace: {
       sourceEnabledGcd: Boolean(sourceEnabled.gcd),
       includeGcd: Boolean(includeGcd),
+      comicVineEnvVarPresent,
       comicVineKeyDetected,
       comicVineEnabledRuntime,
       buildGcdFacetRungsCalled: Boolean(buildGcdFacetRungsCalled),

@@ -1931,6 +1931,7 @@ function handleLeft() {
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comics-diagnostics-v2"}`,
       `debugGcdDispatchTrace.sourceEnabledGcd:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledGcd)}`,
+      `debugGcdDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugGcdDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
       `debugGcdDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnabledRuntime)}`,
       `buildGcdFacetRungsCalled:${Boolean(lastDebugGcdDispatchTrace?.buildGcdFacetRungsCalled)}`,
