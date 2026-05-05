@@ -39,6 +39,8 @@ export type RecommendationResult = {
     mainRungQueriesLength: number;
     gcdFetchAttempted: boolean;
     gcdQueryTexts?: string[];
+    gcdRungsBuilt?: string[];
+    gcdQueriesActuallyFetched?: string[];
     gcdFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
   };
   engineId: EngineId;

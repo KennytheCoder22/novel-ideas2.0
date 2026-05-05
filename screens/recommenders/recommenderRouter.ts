@@ -2797,6 +2797,8 @@ export async function getRecommendations(
     gcd: 0,
   };
   const gcdQueryTexts = new Set<string>();
+  const gcdRungsBuilt = new Set<string>();
+  const gcdQueriesActuallyFetched = new Set<string>();
   const gcdFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
 
   for (const rung of rungs) {
@@ -2914,6 +2916,8 @@ export async function getRecommendations(
         const query = String(lane.query || "").trim();
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
+          for (const queryText of (value?.gcdRungsBuilt || [])) gcdRungsBuilt.add(String(queryText || "").trim());
+          for (const queryText of (value?.gcdQueriesActuallyFetched || [])) gcdQueriesActuallyFetched.add(String(queryText || "").trim());
           gcdFetchResults.push({
             query,
             status: "ok",
@@ -3916,6 +3920,8 @@ const normalizedCandidatesRaw = [
       mainRungQueriesLength: Number(mainRungQueriesLength),
       gcdFetchAttempted: Boolean(gcdFetchAttempted),
       gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
+      gcdRungsBuilt: Array.from(gcdRungsBuilt).filter(Boolean),
+      gcdQueriesActuallyFetched: Array.from(gcdQueriesActuallyFetched).filter(Boolean),
       gcdFetchResults,
     },
   } as RecommendationResult;

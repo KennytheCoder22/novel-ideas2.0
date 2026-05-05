@@ -236,6 +236,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
       debugFilterAudit: [{ source: "gcd", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
       gcdQueriesGenerated: [],
+      gcdRungsBuilt: [],
+      gcdQueriesActuallyFetched: [],
       gcdFetchAttempted: false,
       gcdZeroResultReason: "no_queries_generated",
     };
@@ -245,9 +247,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
   const gcdFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
+  const gcdQueriesActuallyFetched: string[] = [];
+  const gcdRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
+    gcdQueriesActuallyFetched.push(q);
     const searchUrl = buildSearchUrl(q);
 
     let issueUrls: string[] = [];
@@ -306,6 +311,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "gcd", doc })),
     debugRawFetchedCount: docs.length,
     gcdQueriesGenerated: queriesToTry,
+    gcdRungsBuilt,
+    gcdQueriesActuallyFetched,
     gcdQueryTexts: queriesToTry,
     gcdFetchResults,
     gcdFetchAttempted: true,
