@@ -728,7 +728,7 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
 
 function shouldUseGcd(input: RecommenderInput): boolean {
   const sourceEnabled = resolveSourceEnabled(input);
-  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey);
+  return sourceEnabled.gcd;
 }
 
 function extractDocs(
@@ -2413,6 +2413,7 @@ export async function getRecommendations(
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
+  if (!sourceEnabled.gcd) sourceSkippedReason.push("gcd_disabled_by_admin");
   if (!sourceEnabled.localLibrary) {
     sourceSkippedReason.push(
       routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported"
@@ -2424,6 +2425,7 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
     ...Object.keys((input as any)?.dislikedTagCounts || {}),
@@ -2973,6 +2975,10 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
+  if (sourceEnabled.gcd && includeGcd && aggregatedRawFetched.gcd === 0) {
+    sourceSkippedReason.push("gcd_enabled_but_not_queried");
+  }
+
   if (googleQuotaExhausted) sourceEnabled.googleBooks = false;
 
   debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
