@@ -80,7 +80,8 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
   const gcdEnabledByAdmin = config?.gcd !== false;
-  const gcdEnabled = process.env.NODE_ENV === "production" ? false : gcdEnabledByAdmin;
+  const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
+  const gcdEnabled = process.env.NODE_ENV === "production" ? (comicVineKeyDetected && gcdEnabledByAdmin) : gcdEnabledByAdmin;
   return {
     googleBooks: config?.googleBooks !== false,
     openLibrary: config?.openLibrary !== false,
@@ -2441,7 +2442,9 @@ export async function getRecommendations(
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
-  if ((routedInput as any)?.sourceEnabled?.gcd !== false && process.env.NODE_ENV === "production") {
+  const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
+  const comicVineEnabledRuntime = Boolean(comicVineKeyDetected && sourceEnabled.gcd);
+  if ((routedInput as any)?.sourceEnabled?.gcd !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
     sourceSkippedReason.push("gcd_disabled_in_production");
   } else if (!sourceEnabled.gcd) {
     sourceSkippedReason.push("gcd_disabled_by_admin");
@@ -2461,7 +2464,7 @@ export async function getRecommendations(
   if (!hasRunnableSource) {
     throw new Error("No enabled recommendation sources");
   }
-  const debugRouterVersion = "router-gcd-diagnostics-v1";
+  const debugRouterVersion = "router-comics-diagnostics-v2";
   if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
@@ -3073,6 +3076,7 @@ export async function getRecommendations(
 
   const mergedDocs = dedupeDocs(allMergedDocs);
   const gcdFetchAttempted = includeGcd && mainRungQueriesLength > 0;
+  const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && gcdFetchAttempted);
   if (sourceEnabled.gcd && includeGcd && aggregatedRawFetched.gcd === 0) {
     const missingProxy = gcdFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_GCD_PROXY_URL"));
     sourceSkippedReason.push(missingProxy ? "gcd_proxy_missing" : "gcd_enabled_but_not_queried");
@@ -3945,10 +3949,13 @@ const normalizedCandidatesRaw = [
     debugGcdDispatchTrace: {
       sourceEnabledGcd: Boolean(sourceEnabled.gcd),
       includeGcd: Boolean(includeGcd),
+      comicVineKeyDetected,
+      comicVineEnabledRuntime,
       buildGcdFacetRungsCalled: Boolean(buildGcdFacetRungsCalled),
       gcdRungsLength: Number(gcdFacetRungs.length),
       mainRungQueriesLength: Number(mainRungQueriesLength),
       gcdFetchAttempted: Boolean(gcdFetchAttempted),
+      comicVineFetchAttempted,
       gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
       gcdRungsBuilt: Array.from(gcdRungsBuilt).filter(Boolean),
       gcdQueriesActuallyFetched: Array.from(gcdQueriesActuallyFetched).filter(Boolean),
