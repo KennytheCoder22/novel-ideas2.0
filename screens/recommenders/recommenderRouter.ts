@@ -731,6 +731,32 @@ function shouldUseGcd(input: RecommenderInput): boolean {
   return sourceEnabled.gcd;
 }
 
+
+function buildGcdFacetRungs(tagCounts: RecommenderInput["tagCounts"] | undefined): Array<{ rung: number; query: string; queryFamily: RouterFamilyKey; laneKind: string; source: EngineId }> {
+  const tags = Object.entries(tagCounts || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tag]) => String(tag || "").toLowerCase());
+  const has = (re: RegExp) => tags.some((tag) => re.test(tag));
+  const queries: string[] = [];
+  const add = (q: string) => {
+    const n = String(q || "").trim().toLowerCase();
+    if (n && !queries.includes(n)) queries.push(n);
+  };
+
+  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("horror comics");
+  if (has(/mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
+  if (has(/survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
+  if (has(/dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
+  if (has(/teen|young adult|school|coming of age/)) add("teen graphic novel");
+  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
+  if (!queries.length) {
+    add("teen graphic novel");
+    add("horror comics");
+    add("dark mystery comics");
+  }
+
+  return queries.slice(0, 6).map((query, index) => ({ rung: 600 + index, query, queryFamily: "general", laneKind: "gcd-facet", source: "gcd" }));
+}
 function extractDocs(
   result: RecommendationResult | null | undefined,
   fallbackSource: CandidateSource
@@ -2553,6 +2579,12 @@ export async function getRecommendations(
     rungs = [...clusterRungs, ...rungs];
   }
 
+
+  const gcdFacetRungs = includeGcd ? buildGcdFacetRungs(routedInput.tagCounts) : [];
+  if (gcdFacetRungs.length) {
+    rungs = [...gcdFacetRungs, ...rungs];
+  }
+
   if (!rungs.length && routerFamily === "mystery") {
     rungs = [
       { rung: 0, query: "psychological suspense novel" },
@@ -2743,6 +2775,11 @@ export async function getRecommendations(
     return q && arr.findIndex((x: any) => String(x?.query || "").trim().toLowerCase() === q) === index;
   });
   rungs = rungs.slice(0, 9);
+
+  const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
+  if (sourceEnabled.gcd && rungQueries.length === 0) {
+    throw new Error("GCD_ENABLED_WITHOUT_RUNG_QUERIES: sourceEnabled.gcd=true but no rung queries were built.");
+  }
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
