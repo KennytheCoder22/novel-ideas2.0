@@ -725,8 +725,21 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 }
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
+  return resolveKitsuEligibility(input).eligible;
+}
+
+function resolveKitsuEligibility(input: RecommenderInput): { eligible: boolean; likedAnimeMangaCount: number; skippedAnimeMangaCount: number } {
   const sourceEnabled = resolveSourceEnabled(input);
-  return sourceEnabled.kitsu;
+  if (!sourceEnabled.kitsu) return { eligible: false, likedAnimeMangaCount: 0, skippedAnimeMangaCount: 0 };
+  const likedTagCounts = ((input as any)?.likedTagCounts || {}) as Record<string, number>;
+  const skippedTagCounts = ((input as any)?.skippedTagCounts || {}) as Record<string, number>;
+  const animeRe = /(media:anime|topic:manga|format:manga|format:graphic novel|format:graphic_novel|genre:anime|genre:manga)/;
+  const mediaLikeRe = /(media:book|media:movie|media:tv|media:game|media:podcast|media:youtube)/;
+  const likedAnimeMangaCount = Object.entries(likedTagCounts).reduce((n, [k, v]) => n + (animeRe.test(String(k).toLowerCase()) ? Number(v || 0) : 0), 0);
+  const skippedAnimeMangaCount = Object.entries(skippedTagCounts).reduce((n, [k, v]) => n + (animeRe.test(String(k).toLowerCase()) ? Number(v || 0) : 0), 0);
+  const likedNonAnimeMediaCount = Object.entries(likedTagCounts).reduce((n, [k, v]) => n + (mediaLikeRe.test(String(k).toLowerCase()) && !animeRe.test(String(k).toLowerCase()) ? Number(v || 0) : 0), 0);
+  const eligible = likedAnimeMangaCount > 0 && likedAnimeMangaCount >= likedNonAnimeMediaCount;
+  return { eligible, likedAnimeMangaCount, skippedAnimeMangaCount };
 }
 
 function buildKitsuRungs(tagCounts: RecommenderInput["tagCounts"] | undefined): Array<{ rung: number; query: string; source: EngineId }> {
@@ -2479,7 +2492,9 @@ export async function getRecommendations(
     throw new Error("No enabled recommendation sources");
   }
 
-  const includeKitsu = shouldUseKitsu(routedInput);
+  const kitsuEligibility = resolveKitsuEligibility(routedInput);
+  const includeKitsu = kitsuEligibility.eligible;
+  if (sourceEnabled.kitsu && !includeKitsu) sourceSkippedReason.push("kitsuSkippedReason:no_positive_anime_manga_signal");
   const includeGcd = shouldUseGcd(routedInput);
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeGcd;
   if (!hasRunnableSource) {
@@ -3975,6 +3990,9 @@ const normalizedCandidatesRaw = [
       comicVineEnvVarPresent,
       comicVineKeyDetected,
       comicVineEnabledRuntime,
+      kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
+      likedAnimeMangaCount: Number(kitsuEligibility.likedAnimeMangaCount || 0),
+      skippedAnimeMangaCount: Number(kitsuEligibility.skippedAnimeMangaCount || 0),
       buildGcdFacetRungsCalled: Boolean(buildGcdFacetRungsCalled),
       kitsuRungsLength: Number(kitsuRungs.length),
       gcdRungsLength: Number(gcdFacetRungs.length),

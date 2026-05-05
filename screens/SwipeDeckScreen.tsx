@@ -1124,6 +1124,18 @@ export default function SwipeDeckScreen(props: Props) {
     const targetDeckKey = baseInput.deckKey || deckKey;
     const history = getRecommendationHistoryBucket(targetDeckKey);
 
+    const likedTagCounts: Record<string, number> = {};
+    const skippedTagCounts: Record<string, number> = {};
+    for (const entry of swipeHistory) {
+      const tags = Array.isArray((entry as any)?.card?.tags) ? (entry as any).card.tags : [];
+      for (const rawTag of tags) {
+        const tag = String(rawTag || "").trim().toLowerCase();
+        if (!tag) continue;
+        if (entry.direction === "like") likedTagCounts[tag] = Number(likedTagCounts[tag] || 0) + 1;
+        if (entry.direction === "skip") skippedTagCounts[tag] = Number(skippedTagCounts[tag] || 0) + 1;
+      }
+    }
+
     return {
       ...baseInput,
       priorRecommendedIds: uniqueMemoryValues(baseInput.priorRecommendedIds, Array.from(history.recommendedIds)),
@@ -1132,6 +1144,8 @@ export default function SwipeDeckScreen(props: Props) {
       priorSeriesKeys: uniqueMemoryValues(baseInput.priorSeriesKeys, Array.from(history.seriesKeys)),
       priorRejectedIds: uniqueMemoryValues(baseInput.priorRejectedIds, Array.from(history.rejectedIds)),
       priorRejectedKeys: uniqueMemoryValues(baseInput.priorRejectedKeys, Array.from(history.rejectedKeys)),
+      ...(likedTagCounts ? { likedTagCounts } : {}),
+      ...(skippedTagCounts ? { skippedTagCounts } : {}),
     };
   }
 
@@ -1934,6 +1948,9 @@ function handleLeft() {
       `debugGcdDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugGcdDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
       `debugGcdDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnabledRuntime)}`,
+      `kitsuEligibleFromSwipes:${Boolean(lastDebugGcdDispatchTrace?.kitsuEligibleFromSwipes)}`,
+      `likedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.likedAnimeMangaCount || 0)}`,
+      `skippedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.skippedAnimeMangaCount || 0)}`,
       `kitsuRungsLength:${Number(lastDebugGcdDispatchTrace?.kitsuRungsLength || 0)}`,
       `buildGcdFacetRungsCalled:${Boolean(lastDebugGcdDispatchTrace?.buildGcdFacetRungsCalled)}`,
       `gcdRungsLength:${Number(lastDebugGcdDispatchTrace?.gcdRungsLength || 0)}`,

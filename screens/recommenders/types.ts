@@ -38,6 +38,9 @@ export type RecommendationResult = {
     comicVineEnvVarPresent?: boolean;
     comicVineKeyDetected?: boolean;
     comicVineEnabledRuntime?: boolean;
+    kitsuEligibleFromSwipes?: boolean;
+    likedAnimeMangaCount?: number;
+    skippedAnimeMangaCount?: number;
     buildGcdFacetRungsCalled: boolean;
     kitsuRungsLength?: number;
     gcdRungsLength: number;
