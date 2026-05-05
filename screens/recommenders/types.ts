@@ -35,10 +35,17 @@ export type RecommendationResult = {
   debugGcdDispatchTrace?: {
     sourceEnabledGcd: boolean;
     includeGcd: boolean;
+    comicVineEnvVarPresent?: boolean;
+    comicVineKeyDetected?: boolean;
+    comicVineEnabledRuntime?: boolean;
     buildGcdFacetRungsCalled: boolean;
+    kitsuRungsLength?: number;
     gcdRungsLength: number;
     mainRungQueriesLength: number;
+    kitsuFetchAttempted?: boolean;
     gcdFetchAttempted: boolean;
+    comicVineFetchAttempted?: boolean;
+    kitsuQueryTexts?: string[];
     gcdQueryTexts?: string[];
     gcdRungsBuilt?: string[];
     gcdQueriesActuallyFetched?: string[];
