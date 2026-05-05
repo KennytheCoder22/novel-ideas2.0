@@ -7,8 +7,11 @@
 
 import type { RecommenderInput, RecommendationResult, RecommendationDoc } from "../types";
 import type { TagCounts } from "../../swipe/openLibraryFromTags";
+import { Platform } from "react-native";
 
 const GCD_BASE = "https://www.comics.org";
+const GCD_PROXY_BASE = process.env.EXPO_PUBLIC_GCD_PROXY_URL || "";
+let gcdAdapterHealthCache: { ok: boolean; message: string; checkedAt: number } | null = null;
 
 function normalizeText(value: any): string {
   return String(value || "")
@@ -90,7 +93,8 @@ async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<str
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, {
+    const finalUrl = GCD_PROXY_BASE ? `${GCD_PROXY_BASE}?url=${encodeURIComponent(url)}` : url;
+    const resp = await fetch(finalUrl, {
       signal: controller.signal,
       headers: {
         Accept: "text/html,application/json;q=0.9,*/*;q=0.8",
@@ -107,7 +111,8 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, {
+    const finalUrl = GCD_PROXY_BASE ? `${GCD_PROXY_BASE}?url=${encodeURIComponent(url)}` : url;
+    const resp = await fetch(finalUrl, {
       signal: controller.signal,
       headers: {
         Accept: "application/json",
@@ -247,6 +252,12 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
 }
 
 export async function getGcdGraphicNovelRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
+  if (Platform.OS === "web" && !GCD_PROXY_BASE) {
+    throw new Error("GCD_ADAPTER_FAILURE: web runtime requires EXPO_PUBLIC_GCD_PROXY_URL for GCD fetches (direct browser fetch blocked by CORS/network policy).");
+  }
+  if (gcdAdapterHealthCache && !gcdAdapterHealthCache.ok && Date.now() - gcdAdapterHealthCache.checkedAt < 5 * 60 * 1000) {
+    throw new Error(gcdAdapterHealthCache.message);
+  }
   const deckKey = input.deckKey;
   const domainMode: RecommendationResult["domainMode"] = "default";
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
@@ -336,8 +347,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         .filter((row) => knownGoodProbeQueries.includes(String(row.query || "").toLowerCase()))
         .map((row) => `${row.query}:${row.status}:raw=${row.rawCount}${row.error ? `:${row.error}` : ""}`)
         .join(" | ");
-      throw new Error(`GCD_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`);
+      const adapterError = `GCD_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`;
+      gcdAdapterHealthCache = { ok: false, message: adapterError, checkedAt: Date.now() };
+      throw new Error(adapterError);
     }
+    gcdAdapterHealthCache = { ok: true, message: "ok", checkedAt: Date.now() };
   }
 
   return {

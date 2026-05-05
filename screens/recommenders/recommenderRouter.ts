@@ -2938,11 +2938,13 @@ export async function getRecommendations(
           }
         } else if (gcdResult?.status === "rejected") {
           const reason: any = (gcdResult as PromiseRejectedResult).reason;
+          const errorMessage = String(reason?.message || reason || "gcd_fetch_failed");
+          const adapterFailure = errorMessage.includes("GCD_ADAPTER_FAILURE");
           gcdFetchResults.push({
-            query,
+            query: adapterFailure ? "gcd_adapter" : query,
             status: "error",
             rawCount: 0,
-            error: String(reason?.message || reason || "gcd_fetch_failed"),
+            error: errorMessage,
           });
         } else {
           gcdFetchResults.push({ query, status: "skipped", rawCount: 0, error: "gcd_not_dispatched" });
