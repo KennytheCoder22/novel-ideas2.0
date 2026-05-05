@@ -2800,6 +2800,7 @@ export async function getRecommendations(
   const gcdRungsBuilt = new Set<string>();
   const gcdQueriesActuallyFetched = new Set<string>();
   const gcdFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
+  let gcdAdapterFailed = false;
 
   for (const rung of rungs) {
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
@@ -2875,7 +2876,7 @@ export async function getRecommendations(
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
-      if (includeGcd) requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      if (includeGcd && !gcdAdapterFailed) requests.push(getGcdGraphicNovelRecommendations(laneInput));
       if (includeGcd) gcdQueryTexts.add(String(lane.query || "").trim());
 
       const results = await Promise.allSettled(requests);
@@ -2913,7 +2914,7 @@ export async function getRecommendations(
         : null;
       if (includeGcd) {
         const gcdResult = results[index];
-        const query = String(lane.query || "").trim();
+        const query = "gcd_adapter";
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
           for (const queryText of (value?.gcdQueryTexts || [])) gcdQueryTexts.add(String(queryText || "").trim());
@@ -2938,6 +2939,7 @@ export async function getRecommendations(
           }
         } else if (gcdResult?.status === "rejected") {
           const reason: any = (gcdResult as PromiseRejectedResult).reason;
+          gcdAdapterFailed = true;
           gcdFetchResults.push({
             query,
             status: "error",
@@ -3059,7 +3061,8 @@ export async function getRecommendations(
   const mergedDocs = dedupeDocs(allMergedDocs);
   const gcdFetchAttempted = includeGcd && mainRungQueriesLength > 0;
   if (sourceEnabled.gcd && includeGcd && aggregatedRawFetched.gcd === 0) {
-    sourceSkippedReason.push("gcd_enabled_but_not_queried");
+    const missingProxy = gcdFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_GCD_PROXY_URL"));
+    sourceSkippedReason.push(missingProxy ? "gcd_proxy_missing" : "gcd_enabled_but_not_queried");
   }
 
   if (googleQuotaExhausted) sourceEnabled.googleBooks = false;
