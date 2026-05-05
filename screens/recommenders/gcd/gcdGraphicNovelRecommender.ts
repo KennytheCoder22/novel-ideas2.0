@@ -9,6 +9,16 @@ import type { RecommenderInput, RecommendationResult, RecommendationDoc } from "
 import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
 const GCD_BASE = "https://www.comics.org";
+const GCD_PROXY_URL = String(process.env.EXPO_PUBLIC_GCD_PROXY_URL || "").trim();
+let hasLoggedProbeProxyUrl = false;
+
+function buildProxyUrl(targetUrl: string): string {
+  if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
+  if (GCD_PROXY_URL.includes("{url}")) return GCD_PROXY_URL.replace("{url}", encodeURIComponent(targetUrl));
+  if (GCD_PROXY_URL.endsWith("?") || GCD_PROXY_URL.endsWith("=")) return `${GCD_PROXY_URL}${encodeURIComponent(targetUrl)}`;
+  if (GCD_PROXY_URL.includes("?")) return `${GCD_PROXY_URL}&url=${encodeURIComponent(targetUrl)}`;
+  return `${GCD_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
+}
 
 function normalizeText(value: any): string {
   return String(value || "")
@@ -90,7 +100,7 @@ async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<str
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, {
+    const resp = await fetch(buildProxyUrl(url), {
       signal: controller.signal,
       headers: {
         Accept: "text/html,application/json;q=0.9,*/*;q=0.8",
@@ -107,7 +117,7 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, {
+    const resp = await fetch(buildProxyUrl(url), {
       signal: controller.signal,
       headers: {
         Accept: "application/json",
@@ -246,12 +256,28 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
   return { rawCount: Math.max(0, docs.length - docsBeforeQuery), error: queryError };
 }
 
+async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
+  const probeQuery = "batman";
+  const probeUrl = buildProxyUrl(buildSearchUrl(probeQuery));
+  if (!hasLoggedProbeProxyUrl) {
+    hasLoggedProbeProxyUrl = true;
+    console.log("[GCD DEBUG] Proxied probe URL", probeUrl);
+  }
+  const probeDocs: RecommendationDoc[] = [];
+  const probeSeen = new Set<string>();
+  const { rawCount, error } = await fetchDocsForQuery(probeQuery, -1, timeoutMs, 6, probeDocs, probeSeen);
+  if (rawCount <= 0) {
+    throw new Error(`GCD_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${error || "none"}`);
+  }
+}
+
 export async function getGcdGraphicNovelRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
   const domainMode: RecommendationResult["domainMode"] = "default";
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
   const fetchLimit = Math.max(8, Math.min(36, Math.max(finalLimit * 2, 12)));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
+  await runGcdAdapterPreflight(timeoutMs);
 
   const directQueries = buildGcdSearchTerms(input.tagCounts);
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
