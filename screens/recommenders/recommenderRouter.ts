@@ -12,6 +12,8 @@ import { getGoogleBooksRecommendations } from "./googleBooks/googleBooksRecommen
 import { getOpenLibraryRecommendations } from "./openLibrary/openLibraryRecommender";
 import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
 import { getGcdGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
+
+const ROUTER_DIAGNOSTIC_MARKER = "router-gcd-path-a4b23dd";
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck, getLastFinalRecommenderDebug } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
@@ -2451,6 +2453,9 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  let gcdFacetRungsCalled = false;
+  let gcdFacetRungCount = 0;
+  let gcdFetchAttemptedRouter = false;
   if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
@@ -2580,7 +2585,9 @@ export async function getRecommendations(
   }
 
 
+  gcdFacetRungsCalled = includeGcd;
   const gcdFacetRungs = includeGcd ? buildGcdFacetRungs(routedInput.tagCounts) : [];
+  gcdFacetRungCount = gcdFacetRungs.length;
   if (gcdFacetRungs.length) {
     rungs = [...gcdFacetRungs, ...rungs];
   }
@@ -2868,7 +2875,10 @@ export async function getRecommendations(
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
-      if (includeGcd) requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      if (includeGcd) {
+        gcdFetchAttemptedRouter = true;
+        requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      }
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
@@ -3877,5 +3887,14 @@ const normalizedCandidatesRaw = [
     debugNytAnchors: nytAnchorDebug,
     sourceEnabled,
     sourceSkippedReason,
+    debugRouterVersion: ROUTER_DIAGNOSTIC_MARKER,
+    debugGcdDispatchTrace: {
+      sourceEnabledGcd: Boolean(sourceEnabled.gcd),
+      buildGcdFacetRungsCalled: gcdFacetRungsCalled,
+      gcdRungsLength: gcdFacetRungCount,
+      mainRungQueriesLength: rungQueries.length,
+      gcdFetchAttempted: gcdFetchAttemptedRouter,
+      gcdRawFetched: aggregatedRawFetched.gcd,
+    },
   } as RecommendationResult;
 }
