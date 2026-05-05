@@ -79,12 +79,14 @@ function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
 function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiagnostics {
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
+  const gcdEnabledByAdmin = config?.gcd !== false;
+  const gcdEnabled = process.env.NODE_ENV === "production" ? false : gcdEnabledByAdmin;
   return {
     googleBooks: config?.googleBooks !== false,
     openLibrary: config?.openLibrary !== false,
     localLibrary: localLibrarySupported ? config?.localLibrary !== false : false,
     kitsu: config?.kitsu !== false,
-    gcd: config?.gcd !== false,
+    gcd: gcdEnabled,
   };
 }
 
@@ -728,7 +730,6 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
 
 function shouldUseGcd(input: RecommenderInput): boolean {
   const sourceEnabled = resolveSourceEnabled(input);
-  if (process.env.NODE_ENV === "production") return false;
   return sourceEnabled.gcd;
 }
 
@@ -2440,18 +2441,26 @@ export async function getRecommendations(
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
-  if (!sourceEnabled.gcd) sourceSkippedReason.push("gcd_disabled_by_admin");
+  if ((routedInput as any)?.sourceEnabled?.gcd !== false && process.env.NODE_ENV === "production") {
+    sourceSkippedReason.push("gcd_disabled_in_production");
+  } else if (!sourceEnabled.gcd) {
+    sourceSkippedReason.push("gcd_disabled_by_admin");
+  }
   if (!sourceEnabled.localLibrary) {
     sourceSkippedReason.push(
       routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported"
     );
   }
   if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.gcd) {
-    throw new Error("All recommendation sources are disabled. Enable at least one source in Admin.");
+    throw new Error("No enabled recommendation sources");
   }
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeGcd;
+  if (!hasRunnableSource) {
+    throw new Error("No enabled recommendation sources");
+  }
   const debugRouterVersion = "router-gcd-diagnostics-v1";
   if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};

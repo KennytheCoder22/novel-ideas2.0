@@ -1463,7 +1463,7 @@ function handleLeft() {
       !sourceEnabled.kitsu &&
       !sourceEnabled.gcd;
     if (allDisabled) {
-      setRecError("All recommendation sources are disabled in Admin. Enable at least one source.");
+      setRecError("No enabled recommendation sources");
       setRecItems([]);
       setLastSourceEnabled(sourceEnabled);
       setLastSourceSkippedReason(["all_sources_disabled"]);
