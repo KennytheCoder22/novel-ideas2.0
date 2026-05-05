@@ -869,7 +869,7 @@ export default function SwipeDeckScreen(props: Props) {
     openLibrary: props.recommendationSourceEnabled?.openLibrary !== false,
     localLibrary: props.localLibrarySupported ? props.recommendationSourceEnabled?.localLibrary !== false : false,
     kitsu: props.recommendationSourceEnabled?.kitsu !== false,
-    gcd: props.recommendationSourceEnabled?.gcd !== false,
+    gcd: process.env.NODE_ENV === "production" ? false : props.recommendationSourceEnabled?.gcd !== false,
   };
   const enabledDeckList = useMemo(
     () => (["k2", "36", "ms_hs", "adult"] as DeckKey[]).filter((k) => enabledDecks[k] !== false),
@@ -1463,10 +1463,16 @@ function handleLeft() {
       !sourceEnabled.kitsu &&
       !sourceEnabled.gcd;
     if (allDisabled) {
-      setRecError("All recommendation sources are disabled in Admin. Enable at least one source.");
+      const skipped = ["all_sources_disabled"];
+      if (props.recommendationSourceEnabled?.gcd !== false && process.env.NODE_ENV === "production") {
+        skipped.push("gcd_disabled_in_production");
+      }
+      setRecError("No enabled recommendation sources");
       setRecItems([]);
       setLastSourceEnabled(sourceEnabled);
-      setLastSourceSkippedReason(["all_sources_disabled"]);
+      setLastSourceSkippedReason(skipped);
+      setLastDebugRouterVersion("router-gcd-diagnostics-v1");
+      setLastDebugGcdDispatchTrace({ sourceEnabledGcd: Boolean(sourceEnabled.gcd) });
       return;
     }
 
@@ -2157,6 +2163,8 @@ function handleLeft() {
     { key: "kitsu", label: "Kitsu" },
     { key: "gcd", label: "GCD" },
   ];
+  const noRunnableSources = recError === "No enabled recommendation sources";
+
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: "#071526" }]}>
@@ -2203,35 +2211,42 @@ function handleLeft() {
                   Deck: {deck.deckLabel} • Engine: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
                 </Text>
 
-                {recQuery ? (
-                  <Text style={styles.smallNote}>
-                    Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
-                  </Text>
+                {noRunnableSources ? (
+                  <View style={{ marginTop: 12, alignItems: "center" }}>
+                    <Text style={styles.smallNote}>No enabled recommendation sources</Text>
+                    <Text style={styles.smallNote}>debugRouterVersion: {lastDebugRouterVersion || "router-gcd-diagnostics-v1"}</Text>
+                  </View>
                 ) : (
-                  <Text style={styles.smallNote}>Building your recommendations…</Text>
-                )}
+                  <>
+                    {recQuery ? (
+                      <Text style={styles.smallNote}>
+                        Search query: <Text style={{ fontWeight: "900" }}>{recQuery}</Text>
+                      </Text>
+                    ) : (
+                      <Text style={styles.smallNote}>Building your recommendations…</Text>
+                    )}
 
-                {lastRecommendationTimestamp ? (
-                  <Text style={styles.smallNote}>Saved query time: {lastRecommendationTimestamp}</Text>
-                ) : null}
+                    {lastRecommendationTimestamp ? (
+                      <Text style={styles.smallNote}>Saved query time: {lastRecommendationTimestamp}</Text>
+                    ) : null}
 
-                {recLoading ? (
-                  <View style={{ marginTop: 14, alignItems: "center" }}>
-                    <ActivityIndicator />
-                    <Text style={styles.smallNote}>Finding a good match…</Text>
-                  </View>
-                ) : null}
+                    {recLoading ? (
+                      <View style={{ marginTop: 14, alignItems: "center" }}>
+                        <ActivityIndicator />
+                        <Text style={styles.smallNote}>Finding a good match…</Text>
+                      </View>
+                    ) : null}
 
-                {!!recError && !recLoading ? (
-                  <View style={{ marginTop: 12 }}>
-                    <Text style={styles.smallNote}>{recError}</Text>
-                    <TouchableOpacity style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 10, alignSelf: "center" }]} onPress={tryAgain}>
-                      <Text style={styles.btnText}>Try again</Text>
-                    </TouchableOpacity>
-                  </View>
-                ) : null}
+                    {!!recError && !recLoading ? (
+                      <View style={{ marginTop: 12 }}>
+                        <Text style={styles.smallNote}>{recError}</Text>
+                        <TouchableOpacity style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 10, alignSelf: "center" }]} onPress={tryAgain}>
+                          <Text style={styles.btnText}>Try again</Text>
+                        </TouchableOpacity>
+                      </View>
+                    ) : null}
 
-                {recItems.length > 0 && !recLoading && currentRec ? (
+                    {recItems.length > 0 && !recLoading && currentRec ? (
                   <View style={styles.recCard}>
                     <View style={styles.bigCoverWrap}>
                       {currentRec.kind === "open_library" ? (
@@ -2314,7 +2329,7 @@ function handleLeft() {
                   </View>
                 ) : null}
 
-                {recItems.length > 0 && !recLoading && recDone ? (
+                    {recItems.length > 0 && !recLoading && recDone ? (
                   <View style={styles.recCard}>
                     <View style={styles.recMeta}>
                       <Text style={styles.recBookTitle}>You’ve reached the end of your recommendations.</Text>
@@ -2336,7 +2351,9 @@ function handleLeft() {
                       </TouchableOpacity>
                     </View>
                   </View>
-                ) : null}
+                    ) : null}
+                  </>
+                )}
 
                 <TouchableOpacity
                   style={[styles.btn, styles.btnOutlineGold, { borderColor: highlightColor }, { marginTop: 14, minWidth: 220, alignSelf: "center" }]}
