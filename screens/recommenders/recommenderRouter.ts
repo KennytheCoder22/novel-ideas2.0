@@ -728,9 +728,35 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
 
 function shouldUseGcd(input: RecommenderInput): boolean {
   const sourceEnabled = resolveSourceEnabled(input);
-  return sourceEnabled.gcd && isTeenDeckKey(input.deckKey);
+  return sourceEnabled.gcd;
 }
 
+
+function buildGcdFacetRungs(tagCounts: RecommenderInput["tagCounts"] | undefined): Array<{ rung: number; query: string; queryFamily: RouterFamilyKey; laneKind: string; source: EngineId }> {
+  const tags = Object.entries(tagCounts || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tag]) => String(tag || "").toLowerCase());
+  const has = (re: RegExp) => tags.some((tag) => re.test(tag));
+  const queries: string[] = [];
+  const add = (q: string) => {
+    const n = String(q || "").trim().toLowerCase();
+    if (n && !queries.includes(n)) queries.push(n);
+  };
+
+  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("horror comics");
+  if (has(/mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
+  if (has(/survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
+  if (has(/dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
+  if (has(/teen|young adult|school|coming of age/)) add("teen graphic novel");
+  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
+  if (!queries.length) {
+    add("teen graphic novel");
+    add("horror comics");
+    add("dark mystery comics");
+  }
+
+  return queries.slice(0, 6).map((query, index) => ({ rung: 600 + index, query, queryFamily: "general", laneKind: "gcd-facet", source: "gcd" }));
+}
 function extractDocs(
   result: RecommendationResult | null | undefined,
   fallbackSource: CandidateSource
@@ -2413,6 +2439,7 @@ export async function getRecommendations(
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
+  if (!sourceEnabled.gcd) sourceSkippedReason.push("gcd_disabled_by_admin");
   if (!sourceEnabled.localLibrary) {
     sourceSkippedReason.push(
       routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported"
@@ -2424,6 +2451,7 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
     ...Object.keys((input as any)?.dislikedTagCounts || {}),
@@ -2549,6 +2577,12 @@ export async function getRecommendations(
       clusterId: entry.clusterId,
     }));
     rungs = [...clusterRungs, ...rungs];
+  }
+
+
+  const gcdFacetRungs = includeGcd ? buildGcdFacetRungs(routedInput.tagCounts) : [];
+  if (gcdFacetRungs.length) {
+    rungs = [...gcdFacetRungs, ...rungs];
   }
 
   if (!rungs.length && routerFamily === "mystery") {
@@ -2741,6 +2775,11 @@ export async function getRecommendations(
     return q && arr.findIndex((x: any) => String(x?.query || "").trim().toLowerCase() === q) === index;
   });
   rungs = rungs.slice(0, 9);
+
+  const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
+  if (sourceEnabled.gcd && rungQueries.length === 0) {
+    throw new Error("GCD_ENABLED_WITHOUT_RUNG_QUERIES: sourceEnabled.gcd=true but no rung queries were built.");
+  }
 
   let google: RecommendationResult | null = null;
   let openLibrary: RecommendationResult | null = null;
@@ -2973,6 +3012,10 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
+  if (sourceEnabled.gcd && includeGcd && aggregatedRawFetched.gcd === 0) {
+    sourceSkippedReason.push("gcd_enabled_but_not_queried");
+  }
+
   if (googleQuotaExhausted) sourceEnabled.googleBooks = false;
 
   debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
