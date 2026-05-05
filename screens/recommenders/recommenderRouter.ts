@@ -2451,6 +2451,7 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  const debugRouterVersion = "router-gcd-diagnostics-v1";
   if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
@@ -2580,6 +2581,7 @@ export async function getRecommendations(
   }
 
 
+  const buildGcdFacetRungsCalled = includeGcd;
   const gcdFacetRungs = includeGcd ? buildGcdFacetRungs(routedInput.tagCounts) : [];
   if (gcdFacetRungs.length) {
     rungs = [...gcdFacetRungs, ...rungs];
@@ -2777,6 +2779,7 @@ export async function getRecommendations(
   rungs = rungs.slice(0, 9);
 
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
+  const mainRungQueriesLength = rungQueries.length;
   if (sourceEnabled.gcd && rungQueries.length === 0) {
     throw new Error("GCD_ENABLED_WITHOUT_RUNG_QUERIES: sourceEnabled.gcd=true but no rung queries were built.");
   }
@@ -3012,6 +3015,7 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
+  const gcdFetchAttempted = includeGcd && mainRungQueriesLength > 0;
   if (sourceEnabled.gcd && includeGcd && aggregatedRawFetched.gcd === 0) {
     sourceSkippedReason.push("gcd_enabled_but_not_queried");
   }
@@ -3877,5 +3881,14 @@ const normalizedCandidatesRaw = [
     debugNytAnchors: nytAnchorDebug,
     sourceEnabled,
     sourceSkippedReason,
+    debugRouterVersion,
+    debugGcdDispatchTrace: {
+      sourceEnabledGcd: Boolean(sourceEnabled.gcd),
+      includeGcd: Boolean(includeGcd),
+      buildGcdFacetRungsCalled: Boolean(buildGcdFacetRungsCalled),
+      gcdRungsLength: Number(gcdFacetRungs.length),
+      mainRungQueriesLength: Number(mainRungQueriesLength),
+      gcdFetchAttempted: Boolean(gcdFetchAttempted),
+    },
   } as RecommendationResult;
 }
