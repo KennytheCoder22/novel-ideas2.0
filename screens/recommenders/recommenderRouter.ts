@@ -80,7 +80,8 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
   const gcdEnabledByAdmin = config?.gcd !== false;
-  const gcdEnabled = process.env.NODE_ENV === "production" ? false : gcdEnabledByAdmin;
+  const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
+  const gcdEnabled = process.env.NODE_ENV === "production" ? (comicVineKeyDetected && gcdEnabledByAdmin) : gcdEnabledByAdmin;
   return {
     googleBooks: config?.googleBooks !== false,
     openLibrary: config?.openLibrary !== false,
@@ -724,8 +725,41 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 }
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
+  return resolveKitsuEligibility(input).eligible;
+}
+
+function resolveKitsuEligibility(input: RecommenderInput): { eligible: boolean; likedAnimeMangaCount: number; skippedAnimeMangaCount: number } {
   const sourceEnabled = resolveSourceEnabled(input);
-  return sourceEnabled.kitsu && isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
+  if (!sourceEnabled.kitsu) return { eligible: false, likedAnimeMangaCount: 0, skippedAnimeMangaCount: 0 };
+  const likedTagCounts = ((input as any)?.likedTagCounts || {}) as Record<string, number>;
+  const skippedTagCounts = ((input as any)?.skippedTagCounts || {}) as Record<string, number>;
+  const animeRe = /(media:anime|topic:manga|format:manga|format:graphic novel|format:graphic_novel|genre:anime|genre:manga)/;
+  const mediaLikeRe = /(media:book|media:movie|media:tv|media:game|media:podcast|media:youtube)/;
+  const likedAnimeMangaCount = Object.entries(likedTagCounts).reduce((n, [k, v]) => n + (animeRe.test(String(k).toLowerCase()) ? Number(v || 0) : 0), 0);
+  const skippedAnimeMangaCount = Object.entries(skippedTagCounts).reduce((n, [k, v]) => n + (animeRe.test(String(k).toLowerCase()) ? Number(v || 0) : 0), 0);
+  const likedNonAnimeMediaCount = Object.entries(likedTagCounts).reduce((n, [k, v]) => n + (mediaLikeRe.test(String(k).toLowerCase()) && !animeRe.test(String(k).toLowerCase()) ? Number(v || 0) : 0), 0);
+  const eligible = likedAnimeMangaCount > 0 && likedAnimeMangaCount >= likedNonAnimeMediaCount;
+  return { eligible, likedAnimeMangaCount, skippedAnimeMangaCount };
+}
+
+function buildKitsuRungs(tagCounts: RecommenderInput["tagCounts"] | undefined): Array<{ rung: number; query: string; source: EngineId }> {
+  const tags = Object.entries(tagCounts || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tag]) => String(tag || "").toLowerCase());
+  const has = (re: RegExp) => tags.some((tag) => re.test(tag));
+  const queries: string[] = [];
+  const add = (q: string) => {
+    const n = String(q || "").trim().toLowerCase();
+    if (n && !queries.includes(n)) queries.push(n);
+  };
+  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("horror anime");
+  if (has(/dark|noir|grim|bleak/)) add("dark anime");
+  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural anime");
+  if (has(/dystopian|future|rebellion|authoritarian|apocalypse|post apocalyptic/)) add("dystopian anime");
+  if (has(/action|battle|adventure|combat|war|survival/)) add("action anime");
+  add("anime");
+  add("popular anime");
+  return queries.slice(0, 6).map((query, index) => ({ rung: 500 + index, query, source: "kitsu" }));
 }
 
 function shouldUseGcd(input: RecommenderInput): boolean {
@@ -2441,7 +2475,10 @@ export async function getRecommendations(
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
-  if ((routedInput as any)?.sourceEnabled?.gcd !== false && process.env.NODE_ENV === "production") {
+  const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
+  const comicVineEnvVarPresent = comicVineKeyDetected;
+  const comicVineEnabledRuntime = Boolean(comicVineKeyDetected && sourceEnabled.gcd);
+  if ((routedInput as any)?.sourceEnabled?.gcd !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
     sourceSkippedReason.push("gcd_disabled_in_production");
   } else if (!sourceEnabled.gcd) {
     sourceSkippedReason.push("gcd_disabled_by_admin");
@@ -2455,13 +2492,15 @@ export async function getRecommendations(
     throw new Error("No enabled recommendation sources");
   }
 
-  const includeKitsu = shouldUseKitsu(routedInput);
+  const kitsuEligibility = resolveKitsuEligibility(routedInput);
+  const includeKitsu = kitsuEligibility.eligible;
+  if (sourceEnabled.kitsu && !includeKitsu) sourceSkippedReason.push("kitsuSkippedReason:no_positive_anime_manga_signal");
   const includeGcd = shouldUseGcd(routedInput);
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeGcd;
   if (!hasRunnableSource) {
     throw new Error("No enabled recommendation sources");
   }
-  const debugRouterVersion = "router-gcd-diagnostics-v1";
+  const debugRouterVersion = "router-comics-diagnostics-v2";
   if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
@@ -2593,6 +2632,7 @@ export async function getRecommendations(
 
   const buildGcdFacetRungsCalled = includeGcd;
   const gcdFacetRungs = includeGcd ? buildGcdFacetRungs(routedInput.tagCounts) : [];
+  const kitsuRungs = includeKitsu ? buildKitsuRungs(routedInput.tagCounts) : [];
   if (gcdFacetRungs.length) {
     rungs = [...gcdFacetRungs, ...rungs];
   }
@@ -3073,6 +3113,8 @@ export async function getRecommendations(
 
   const mergedDocs = dedupeDocs(allMergedDocs);
   const gcdFetchAttempted = includeGcd && mainRungQueriesLength > 0;
+  const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && gcdFetchAttempted);
+  const kitsuFetchAttempted = Boolean(includeKitsu);
   if (sourceEnabled.gcd && includeGcd && aggregatedRawFetched.gcd === 0) {
     const missingProxy = gcdFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_GCD_PROXY_URL"));
     sourceSkippedReason.push(missingProxy ? "gcd_proxy_missing" : "gcd_enabled_but_not_queried");
@@ -3883,7 +3925,7 @@ const normalizedCandidatesRaw = [
   if (sourceEnabled.googleBooks) labelParts.push("Google Books");
   if (sourceEnabled.openLibrary) labelParts.push("Open Library");
   if (includeKitsu) labelParts.push("Kitsu");
-  if (includeGcd) labelParts.push("GCD");
+  if (includeGcd) labelParts.push("ComicVine");
   if (sourceEnabled.localLibrary) labelParts.push("Local Library");
   const engineLabel = labelParts.join(" + ") || "No enabled sources";
 
@@ -3945,10 +3987,20 @@ const normalizedCandidatesRaw = [
     debugGcdDispatchTrace: {
       sourceEnabledGcd: Boolean(sourceEnabled.gcd),
       includeGcd: Boolean(includeGcd),
+      comicVineEnvVarPresent,
+      comicVineKeyDetected,
+      comicVineEnabledRuntime,
+      kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
+      likedAnimeMangaCount: Number(kitsuEligibility.likedAnimeMangaCount || 0),
+      skippedAnimeMangaCount: Number(kitsuEligibility.skippedAnimeMangaCount || 0),
       buildGcdFacetRungsCalled: Boolean(buildGcdFacetRungsCalled),
+      kitsuRungsLength: Number(kitsuRungs.length),
       gcdRungsLength: Number(gcdFacetRungs.length),
       mainRungQueriesLength: Number(mainRungQueriesLength),
+      kitsuFetchAttempted,
       gcdFetchAttempted: Boolean(gcdFetchAttempted),
+      comicVineFetchAttempted,
+      kitsuQueryTexts: kitsuRungs.map((r) => r.query),
       gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
       gcdRungsBuilt: Array.from(gcdRungsBuilt).filter(Boolean),
       gcdQueriesActuallyFetched: Array.from(gcdQueriesActuallyFetched).filter(Boolean),

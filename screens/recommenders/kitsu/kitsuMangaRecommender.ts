@@ -79,16 +79,22 @@ function buildKitsuQueries(tagCounts: TagCounts | undefined): string[] {
     queries.push(v);
   };
 
-  const topTags = topPositiveTags(tagCounts, 25);
-  for (const tag of topTags) {
-    add(tagToKitsuQuery(tag));
-  }
+  const tags = Object.entries(tagCounts || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tag]) => normalizeText(tag));
+  const has = (re: RegExp) => tags.some((tag) => re.test(tag));
 
-  // Minimal literal fallback only if direct manga/comics evidence exists
-  // but no other usable query token was produced.
-  if (!queries.length && hasTeenMangaIntent(tagCounts)) {
-    add("manga");
-  }
+  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("horror anime");
+  if (has(/dark|noir|grim|bleak/)) add("dark anime");
+  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural anime");
+  if (has(/dystopian|future|rebellion|authoritarian|apocalypse|post apocalyptic/)) add("dystopian anime");
+  if (has(/action|battle|adventure|combat|war|survival/)) add("action anime");
+
+  const topTags = topPositiveTags(tagCounts, 25);
+  for (const tag of topTags) add(tagToKitsuQuery(tag));
+
+  add("anime");
+  add("popular anime");
 
   return queries.slice(0, 6);
 }
@@ -146,6 +152,7 @@ function kitsuMangaToDoc(item: any, queryText: string, queryRung: number): Recom
 
   const averageRating = Math.max(0, Math.min(5, safeNumber(attrs?.averageRating, 0) / 20));
   const ratingCount = safeNumber(attrs?.userCount, 0);
+  const popularityRank = safeNumber(attrs?.popularityRank, 999999);
 
   return {
     key: `kitsu:${item.id}`,
@@ -171,7 +178,33 @@ function kitsuMangaToDoc(item: any, queryText: string, queryRung: number): Recom
         thumbnail: attrs?.posterImage?.small || attrs?.posterImage?.tiny || attrs?.posterImage?.medium,
       },
     },
+    kitsuSubtype: subtype || undefined,
+    kitsuRatingCount: ratingCount,
+    kitsuPopularityRank: popularityRank,
   } as any;
+}
+
+function facetMatchesForDoc(doc: RecommendationDoc, tagCounts: TagCounts | undefined): number {
+  const tags = Object.entries(tagCounts || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tag]) => normalizeText(tag));
+  const text = normalizeText([doc?.title, doc?.description, ...(Array.isArray(doc?.subject) ? doc.subject : [])].join(" "));
+  const cues: Array<{ re: RegExp; token: string }> = [
+    { re: /horror|dark|haunted|terror|ghost|occult/, token: "dark" },
+    { re: /mystery|crime|detective|noir|investigation/, token: "mystery" },
+    { re: /supernatural|paranormal|magic|myth|monster|vampire/, token: "supernatural" },
+    { re: /dystopian|future|rebellion|authoritarian|apocalypse/, token: "dystopian" },
+    { re: /action|battle|adventure|combat|war|survival/, token: "action" },
+  ];
+  return cues.reduce((acc, cue) => (tags.some((t) => cue.re.test(t)) && text.includes(cue.token) ? acc + 1 : acc), 0);
+}
+
+function shouldKeepKitsuDoc(doc: RecommendationDoc, tagCounts: TagCounts | undefined): boolean {
+  const subtype = normalizeText((doc as any)?.kitsuSubtype);
+  const tags = Object.entries(tagCounts || {}).map(([k]) => normalizeText(k));
+  const explicitlyWantsNovel = tags.some((t) => /\bnovel|light novel\b/.test(t));
+  if (subtype === "novel" && !explicitlyWantsNovel) return false;
+  return true;
 }
 
 export async function getKitsuMangaRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
@@ -229,6 +262,8 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     for (const item of items) {
       const doc = kitsuMangaToDoc(item, q, i);
       if (!doc?.title) continue;
+      if (!shouldKeepKitsuDoc(doc, input.tagCounts)) continue;
+      (doc as any).kitsuFacetMatches = facetMatchesForDoc(doc, input.tagCounts);
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
@@ -239,6 +274,14 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     if (docs.length >= fetchLimit) break;
     if (i === 0 && docs.length >= Math.max(6, finalLimit)) break;
   }
+
+  docs.sort((a: any, b: any) => {
+    const facetDelta = Number(b?.kitsuFacetMatches || 0) - Number(a?.kitsuFacetMatches || 0);
+    if (facetDelta !== 0) return facetDelta;
+    const ratingCountDelta = Number(b?.kitsuRatingCount || 0) - Number(a?.kitsuRatingCount || 0);
+    if (ratingCountDelta !== 0) return ratingCountDelta;
+    return Number(a?.kitsuPopularityRank || 999999) - Number(b?.kitsuPopularityRank || 999999);
+  });
 
   return {
     engineId: "kitsu",

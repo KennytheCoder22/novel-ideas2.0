@@ -1124,6 +1124,18 @@ export default function SwipeDeckScreen(props: Props) {
     const targetDeckKey = baseInput.deckKey || deckKey;
     const history = getRecommendationHistoryBucket(targetDeckKey);
 
+    const likedTagCounts: Record<string, number> = {};
+    const skippedTagCounts: Record<string, number> = {};
+    for (const entry of swipeHistory) {
+      const tags = Array.isArray((entry as any)?.card?.tags) ? (entry as any).card.tags : [];
+      for (const rawTag of tags) {
+        const tag = String(rawTag || "").trim().toLowerCase();
+        if (!tag) continue;
+        if (entry.direction === "like") likedTagCounts[tag] = Number(likedTagCounts[tag] || 0) + 1;
+        if (entry.direction === "skip") skippedTagCounts[tag] = Number(skippedTagCounts[tag] || 0) + 1;
+      }
+    }
+
     return {
       ...baseInput,
       priorRecommendedIds: uniqueMemoryValues(baseInput.priorRecommendedIds, Array.from(history.recommendedIds)),
@@ -1132,6 +1144,8 @@ export default function SwipeDeckScreen(props: Props) {
       priorSeriesKeys: uniqueMemoryValues(baseInput.priorSeriesKeys, Array.from(history.seriesKeys)),
       priorRejectedIds: uniqueMemoryValues(baseInput.priorRejectedIds, Array.from(history.rejectedIds)),
       priorRejectedKeys: uniqueMemoryValues(baseInput.priorRejectedKeys, Array.from(history.rejectedKeys)),
+      ...(likedTagCounts ? { likedTagCounts } : {}),
+      ...(skippedTagCounts ? { skippedTagCounts } : {}),
     };
   }
 
@@ -1519,7 +1533,7 @@ function handleLeft() {
       setLastFinalRecommenderDebug((result as any)?.debugFinalRecommender || null);
       setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
-      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "");
+      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comics-diagnostics-v2");
       setLastDebugGcdDispatchTrace((result as any)?.debugGcdDispatchTrace || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
@@ -1929,12 +1943,22 @@ function handleLeft() {
       `sourceEnabled.kitsu:${Boolean(lastSourceEnabled?.kitsu)}`,
       `sourceEnabled.gcd:${Boolean(lastSourceEnabled?.gcd)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
-      `debugRouterVersion:${lastDebugRouterVersion || "(none)"}`,
+      `debugRouterVersion:${lastDebugRouterVersion || "router-comics-diagnostics-v2"}`,
       `debugGcdDispatchTrace.sourceEnabledGcd:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledGcd)}`,
+      `debugGcdDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
+      `debugGcdDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
+      `debugGcdDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnabledRuntime)}`,
+      `kitsuEligibleFromSwipes:${Boolean(lastDebugGcdDispatchTrace?.kitsuEligibleFromSwipes)}`,
+      `likedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.likedAnimeMangaCount || 0)}`,
+      `skippedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.skippedAnimeMangaCount || 0)}`,
+      `kitsuRungsLength:${Number(lastDebugGcdDispatchTrace?.kitsuRungsLength || 0)}`,
       `buildGcdFacetRungsCalled:${Boolean(lastDebugGcdDispatchTrace?.buildGcdFacetRungsCalled)}`,
       `gcdRungsLength:${Number(lastDebugGcdDispatchTrace?.gcdRungsLength || 0)}`,
       `mainRungQueriesLength:${Number(lastDebugGcdDispatchTrace?.mainRungQueriesLength || 0)}`,
+      `kitsuFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.kitsuFetchAttempted)}`,
       `gcdFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.gcdFetchAttempted)}`,
+      `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
+      `kitsuQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.kitsuQueryTexts) && lastDebugGcdDispatchTrace.kitsuQueryTexts.length ? lastDebugGcdDispatchTrace.kitsuQueryTexts.join(" | ") : "(none)"}`,
       `gcdQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.gcdQueryTexts) && lastDebugGcdDispatchTrace.gcdQueryTexts.length ? lastDebugGcdDispatchTrace.gcdQueryTexts.join(" | ") : "(none)"}`,
       `gcdRungsBuilt:${Array.isArray(lastDebugGcdDispatchTrace?.gcdRungsBuilt) && lastDebugGcdDispatchTrace.gcdRungsBuilt.length ? lastDebugGcdDispatchTrace.gcdRungsBuilt.join(" | ") : "(none)"}`,
       `gcdQueriesActuallyFetched:${Array.isArray(lastDebugGcdDispatchTrace?.gcdQueriesActuallyFetched) && lastDebugGcdDispatchTrace.gcdQueriesActuallyFetched.length ? lastDebugGcdDispatchTrace.gcdQueriesActuallyFetched.join(" | ") : "(none)"}`,
@@ -2155,7 +2179,7 @@ function handleLeft() {
     { key: "googleBooks", label: "Google Books" },
     { key: "openLibrary", label: "Open Library" },
     { key: "kitsu", label: "Kitsu" },
-    { key: "gcd", label: "GCD" },
+    { key: "gcd", label: "ComicVine" },
   ];
 
   return (
