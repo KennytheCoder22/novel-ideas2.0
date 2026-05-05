@@ -2451,6 +2451,7 @@ export async function getRecommendations(
 
   const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
+  const debugRouterVersion = "router-gcd-diagnostics-v1";
   if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
@@ -2580,6 +2581,7 @@ export async function getRecommendations(
   }
 
 
+  const buildGcdFacetRungsCalled = includeGcd;
   const gcdFacetRungs = includeGcd ? buildGcdFacetRungs(routedInput.tagCounts) : [];
   if (gcdFacetRungs.length) {
     rungs = [...gcdFacetRungs, ...rungs];
@@ -2777,6 +2779,7 @@ export async function getRecommendations(
   rungs = rungs.slice(0, 9);
 
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
+  const mainRungQueriesLength = rungQueries.length;
   if (sourceEnabled.gcd && rungQueries.length === 0) {
     throw new Error("GCD_ENABLED_WITHOUT_RUNG_QUERIES: sourceEnabled.gcd=true but no rung queries were built.");
   }
@@ -2793,6 +2796,10 @@ export async function getRecommendations(
     kitsu: 0,
     gcd: 0,
   };
+  const gcdQueryTexts = new Set<string>();
+  const gcdRungsBuilt = new Set<string>();
+  const gcdQueriesActuallyFetched = new Set<string>();
+  const gcdFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
 
   for (const rung of rungs) {
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
@@ -2869,6 +2876,7 @@ export async function getRecommendations(
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
       if (includeGcd) requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      if (includeGcd) gcdQueryTexts.add(String(lane.query || "").trim());
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
@@ -2903,6 +2911,31 @@ export async function getRecommendations(
       const laneGcd = includeGcd && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
+      if (includeGcd) {
+        const gcdResult = results[index];
+        const query = String(lane.query || "").trim();
+        if (gcdResult?.status === "fulfilled") {
+          const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
+          for (const queryText of (value?.gcdRungsBuilt || [])) gcdRungsBuilt.add(String(queryText || "").trim());
+          for (const queryText of (value?.gcdQueriesActuallyFetched || [])) gcdQueriesActuallyFetched.add(String(queryText || "").trim());
+          gcdFetchResults.push({
+            query,
+            status: "ok",
+            rawCount: Number(value?.debugRawFetchedCount ?? countResultItems(value)),
+            error: null,
+          });
+        } else if (gcdResult?.status === "rejected") {
+          const reason: any = (gcdResult as PromiseRejectedResult).reason;
+          gcdFetchResults.push({
+            query,
+            status: "error",
+            rawCount: 0,
+            error: String(reason?.message || reason || "gcd_fetch_failed"),
+          });
+        } else {
+          gcdFetchResults.push({ query, status: "skipped", rawCount: 0, error: "gcd_not_dispatched" });
+        }
+      }
 
       const laneMergedDocs = dedupeDocs([
         ...dedupeDocs(extractDocs(laneGoogle, "googleBooks")),
@@ -3012,6 +3045,7 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
+  const gcdFetchAttempted = includeGcd && mainRungQueriesLength > 0;
   if (sourceEnabled.gcd && includeGcd && aggregatedRawFetched.gcd === 0) {
     sourceSkippedReason.push("gcd_enabled_but_not_queried");
   }
@@ -3877,5 +3911,18 @@ const normalizedCandidatesRaw = [
     debugNytAnchors: nytAnchorDebug,
     sourceEnabled,
     sourceSkippedReason,
+    debugRouterVersion,
+    debugGcdDispatchTrace: {
+      sourceEnabledGcd: Boolean(sourceEnabled.gcd),
+      includeGcd: Boolean(includeGcd),
+      buildGcdFacetRungsCalled: Boolean(buildGcdFacetRungsCalled),
+      gcdRungsLength: Number(gcdFacetRungs.length),
+      mainRungQueriesLength: Number(mainRungQueriesLength),
+      gcdFetchAttempted: Boolean(gcdFetchAttempted),
+      gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
+      gcdRungsBuilt: Array.from(gcdRungsBuilt).filter(Boolean),
+      gcdQueriesActuallyFetched: Array.from(gcdQueriesActuallyFetched).filter(Boolean),
+      gcdFetchResults,
+    },
   } as RecommendationResult;
 }

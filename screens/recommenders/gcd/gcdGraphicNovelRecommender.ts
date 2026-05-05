@@ -39,74 +39,27 @@ function hasTeenGraphicIntent(tagCounts: TagCounts | undefined): boolean {
   return getDirectGraphicSignalWeight(tagCounts) > 0;
 }
 
-function topPositiveTags(tagCounts: TagCounts | undefined, limit: number): string[] {
-  return Object.entries(tagCounts || {})
-    .filter(([, count]) => Number(count) > 0)
-    .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .map(([tag]) => tag)
-    .slice(0, limit);
-}
-
-function tagToGcdQuery(tag: string): string | null {
-  const normalized = normalizeText(tag);
-  const bare = normalized.includes(":") ? normalized.split(":").slice(1).join(":").trim() : normalized;
-
-  if (!bare) return null;
-
-  // Direct format/topic signals
-  if (
-    normalized === "format:graphic novel" ||
-    normalized === "format:graphic_novel" ||
-    normalized === "topic:graphic novel" ||
-    normalized === "topic:graphic novels"
-  ) {
-    return "graphic novel";
-  }
-
-  if (
-    normalized === "format:comic" ||
-    normalized === "format:comics" ||
-    normalized === "topic:comics"
-  ) {
-    return "comic";
-  }
-
-  // Literal downstream translations only
-  if (normalized.startsWith("genre:")) return bare;
-  if (normalized.startsWith("topic:")) return bare;
-  if (normalized.startsWith("theme:")) return bare;
-  if (normalized.startsWith("setting:")) return bare;
-  if (normalized.startsWith("archetype:")) return bare;
-  if (normalized.startsWith("vibe:")) return bare;
-  if (normalized.startsWith("mood:")) return bare;
-  if (normalized.startsWith("format:")) return bare;
-
-  return null;
-}
-
 function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-
-  const add = (q: string | null | undefined) => {
-    const trimmed = normalizeText(q);
-    if (!trimmed || seen.has(trimmed)) return;
-    seen.add(trimmed);
-    out.push(trimmed);
-  };
-
-  const positive = topPositiveTags(tagCounts, 25);
-  for (const tag of positive) {
-    add(tagToGcdQuery(tag));
-  }
-
-  // Minimal literal fallback only when direct comics/graphic evidence exists
-  // but no other usable token was produced.
-  if (!out.length && hasTeenGraphicIntent(tagCounts)) {
-    add("graphic novel");
-  }
-
-  return out.slice(0, 8);
+  const broadBaseline = [
+    "horror",
+    "dark",
+    "supernatural",
+    "fantasy",
+    "mystery",
+    "survival",
+    "teen",
+    "manga",
+    "graphic novel",
+  ];
+  const mappedFromFacets: string[] = [];
+  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) mappedFromFacets.push("horror", "dark", "supernatural");
+  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) mappedFromFacets.push("mystery");
+  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) mappedFromFacets.push("survival");
+  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) mappedFromFacets.push("supernatural", "fantasy");
+  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) mappedFromFacets.push("teen");
+  if (hasFacet(tagCounts, /manga|anime|japan/)) mappedFromFacets.push("manga");
+  if (hasTeenGraphicIntent(tagCounts)) mappedFromFacets.push("graphic novel");
+  return Array.from(new Set([...mappedFromFacets, ...broadBaseline])).slice(0, 12);
 }
 
 function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
@@ -115,25 +68,15 @@ function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
-  const add = (q: string) => {
-    const n = normalizeText(q);
-    if (n && !queries.includes(n)) queries.push(n);
-  };
-
-  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) add("horror comics");
-  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
-  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
-  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
-  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) add("teen graphic novel");
-  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
-
-  if (!queries.length) {
-    add("teen graphic novel");
-    add("horror comics");
-    add("dark mystery comics");
-  }
-
-  return queries.slice(0, 6);
+  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("horror", "supernatural");
+  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("mystery");
+  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("survival");
+  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("fantasy");
+  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("teen");
+  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("supernatural", "fantasy");
+  if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("manga");
+  if (hasTeenGraphicIntent(tagCounts)) queries.push("graphic novel");
+  return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 10);
 }
 
 function buildGcdRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
@@ -293,6 +236,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
       debugFilterAudit: [{ source: "gcd", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
       gcdQueriesGenerated: [],
+      gcdRungsBuilt: [],
+      gcdQueriesActuallyFetched: [],
       gcdFetchAttempted: false,
       gcdZeroResultReason: "no_queries_generated",
     };
@@ -301,27 +246,38 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
+  const gcdFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
+  const gcdQueriesActuallyFetched: string[] = [];
+  const gcdRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
+    gcdQueriesActuallyFetched.push(q);
     const searchUrl = buildSearchUrl(q);
 
     let issueUrls: string[] = [];
+    let queryError: string | null = null;
     try {
       const html = await fetchTextWithTimeout(searchUrl, timeoutMs);
       issueUrls = extractIssueApiUrls(html, fetchLimit);
-    } catch {
+    } catch (err: any) {
       issueUrls = [];
+      queryError = String(err?.message || err || "search_fetch_failed");
     }
 
-    if (!issueUrls.length) continue;
+    if (!issueUrls.length) {
+      gcdFetchResults.push({ query: q, status: queryError ? "error" : "no_matches", rawCount: 0, error: queryError });
+      continue;
+    }
     if (!docs.length) builtFromQuery = q;
+    const docsBeforeQuery = docs.length;
 
     for (const issueUrl of issueUrls) {
       let issue: any;
       try {
         issue = await fetchJsonWithTimeout(issueUrl, timeoutMs);
-      } catch {
+      } catch (err: any) {
+        queryError = queryError || String(err?.message || err || "issue_fetch_failed");
         continue;
       }
 
@@ -334,6 +290,13 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       docs.push(doc);
       if (docs.length >= fetchLimit) break;
     }
+    const queryRawCount = Math.max(0, docs.length - docsBeforeQuery);
+    gcdFetchResults.push({
+      query: q,
+      status: queryRawCount > 0 ? "ok" : queryError ? "error" : "no_matches",
+      rawCount: queryRawCount,
+      error: queryError,
+    });
 
     if (docs.length >= fetchLimit) break;
     if (i === 0 && docs.length >= Math.max(4, finalLimit)) break;
@@ -346,7 +309,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     domainMode,
     builtFromQuery,
     items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "gcd", doc })),
+    debugRawFetchedCount: docs.length,
     gcdQueriesGenerated: queriesToTry,
+    gcdRungsBuilt,
+    gcdQueriesActuallyFetched,
+    gcdQueryTexts: queriesToTry,
+    gcdFetchResults,
     gcdFetchAttempted: true,
     gcdZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {
