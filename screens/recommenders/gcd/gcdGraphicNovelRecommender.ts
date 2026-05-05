@@ -39,74 +39,26 @@ function hasTeenGraphicIntent(tagCounts: TagCounts | undefined): boolean {
   return getDirectGraphicSignalWeight(tagCounts) > 0;
 }
 
-function topPositiveTags(tagCounts: TagCounts | undefined, limit: number): string[] {
-  return Object.entries(tagCounts || {})
-    .filter(([, count]) => Number(count) > 0)
-    .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .map(([tag]) => tag)
-    .slice(0, limit);
-}
-
-function tagToGcdQuery(tag: string): string | null {
-  const normalized = normalizeText(tag);
-  const bare = normalized.includes(":") ? normalized.split(":").slice(1).join(":").trim() : normalized;
-
-  if (!bare) return null;
-
-  // Direct format/topic signals
-  if (
-    normalized === "format:graphic novel" ||
-    normalized === "format:graphic_novel" ||
-    normalized === "topic:graphic novel" ||
-    normalized === "topic:graphic novels"
-  ) {
-    return "graphic novel";
-  }
-
-  if (
-    normalized === "format:comic" ||
-    normalized === "format:comics" ||
-    normalized === "topic:comics"
-  ) {
-    return "comic";
-  }
-
-  // Literal downstream translations only
-  if (normalized.startsWith("genre:")) return bare;
-  if (normalized.startsWith("topic:")) return bare;
-  if (normalized.startsWith("theme:")) return bare;
-  if (normalized.startsWith("setting:")) return bare;
-  if (normalized.startsWith("archetype:")) return bare;
-  if (normalized.startsWith("vibe:")) return bare;
-  if (normalized.startsWith("mood:")) return bare;
-  if (normalized.startsWith("format:")) return bare;
-
-  return null;
-}
-
 function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
+  const anchors: string[] = [];
+  const isDark = hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/);
+  const isMystery = hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/);
+  const isSurvival = hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/);
+  const isSupernatural = hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/);
+  const isTeen = hasFacet(tagCounts, /teen|young adult|school|coming of age/);
+  const isManga = hasFacet(tagCounts, /manga|anime|japan/);
 
-  const add = (q: string | null | undefined) => {
-    const trimmed = normalizeText(q);
-    if (!trimmed || seen.has(trimmed)) return;
-    seen.add(trimmed);
-    out.push(trimmed);
-  };
+  if (isDark && isTeen) anchors.push("batman");
+  if (isDark && !isTeen) anchors.push("hellboy");
+  if (isMystery) anchors.push("batman");
+  if (isSurvival) anchors.push("walking dead");
+  if (isSupernatural) anchors.push("hellboy");
+  if (isManga) anchors.push("naruto");
+  if (isTeen) anchors.push("ms. marvel");
+  if (hasTeenGraphicIntent(tagCounts)) anchors.push("spider-man");
 
-  const positive = topPositiveTags(tagCounts, 25);
-  for (const tag of positive) {
-    add(tagToGcdQuery(tag));
-  }
-
-  // Minimal literal fallback only when direct comics/graphic evidence exists
-  // but no other usable token was produced.
-  if (!out.length && hasTeenGraphicIntent(tagCounts)) {
-    add("graphic novel");
-  }
-
-  return out.slice(0, 8);
+  const baselineAnchors = ["batman", "spider-man", "superman", "saga", "walking dead", "ms. marvel"];
+  return Array.from(new Set([...anchors, ...baselineAnchors])).slice(0, 10);
 }
 
 function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
@@ -115,25 +67,14 @@ function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
-  const add = (q: string) => {
-    const n = normalizeText(q);
-    if (n && !queries.includes(n)) queries.push(n);
-  };
-
-  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) add("horror comics");
-  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
-  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
-  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
-  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) add("teen graphic novel");
-  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
-
-  if (!queries.length) {
-    add("teen graphic novel");
-    add("horror comics");
-    add("dark mystery comics");
-  }
-
-  return queries.slice(0, 6);
+  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("hellboy");
+  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("batman");
+  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("walking dead");
+  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("saga");
+  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
+  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
+  if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
+  return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 8);
 }
 
 function buildGcdRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
@@ -180,9 +121,13 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
 }
 
 function extractIssueApiUrls(html: string, limit: number): string[] {
-  const matches = Array.from(
+  const directApiMatches = Array.from(
     String(html || "").matchAll(/https:\/\/www\.comics\.org\/api\/issue\/\d+\/\?format=json/g)
   ).map((m) => m[0]);
+  const issuePathMatches = Array.from(
+    String(html || "").matchAll(/\/issue\/(\d+)\/?/g)
+  ).map((m) => `https://www.comics.org/api/issue/${m[1]}/?format=json`);
+  const matches = [...directApiMatches, ...issuePathMatches];
 
   const unique: string[] = [];
   const seen = new Set<string>();
@@ -261,6 +206,46 @@ function buildSearchUrl(query: string): string {
   return `${GCD_BASE}/search/advanced/process/?target=issue&method=icontains&logic=False&title=${encoded}`;
 }
 
+function buildSearchUrls(query: string): string[] {
+  const encoded = encodeURIComponent(query);
+  return [
+    buildSearchUrl(query),
+    `${GCD_BASE}/search/quick/?q=${encoded}`,
+  ];
+}
+
+async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
+  let queryError: string | null = null;
+  let matchedIssueUrls: string[] = [];
+  for (const searchUrl of buildSearchUrls(query)) {
+    try {
+      const html = await fetchTextWithTimeout(searchUrl, timeoutMs);
+      matchedIssueUrls = extractIssueApiUrls(html, fetchLimit);
+      if (matchedIssueUrls.length) break;
+    } catch (err: any) {
+      queryError = String(err?.message || err || "search_fetch_failed");
+    }
+  }
+  if (!matchedIssueUrls.length) return { rawCount: 0, error: queryError };
+
+  const docsBeforeQuery = docs.length;
+  for (const issueUrl of matchedIssueUrls) {
+    try {
+      const issue = await fetchJsonWithTimeout(issueUrl, timeoutMs);
+      const doc = gcdIssueToDoc(issue, query, queryRung);
+      if (!doc?.title) continue;
+      const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      docs.push(doc);
+      if (docs.length >= fetchLimit) break;
+    } catch (err: any) {
+      queryError = queryError || String(err?.message || err || "issue_fetch_failed");
+    }
+  }
+  return { rawCount: Math.max(0, docs.length - docsBeforeQuery), error: queryError };
+}
+
 export async function getGcdGraphicNovelRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
   const domainMode: RecommendationResult["domainMode"] = "default";
@@ -293,6 +278,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
       debugFilterAudit: [{ source: "gcd", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
       gcdQueriesGenerated: [],
+      gcdRungsBuilt: [],
+      gcdQueriesActuallyFetched: [],
       gcdFetchAttempted: false,
       gcdZeroResultReason: "no_queries_generated",
     };
@@ -301,42 +288,56 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
+  const gcdFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
+  const gcdQueriesActuallyFetched: string[] = [];
+  const gcdRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
-    const searchUrl = buildSearchUrl(q);
-
-    let issueUrls: string[] = [];
-    try {
-      const html = await fetchTextWithTimeout(searchUrl, timeoutMs);
-      issueUrls = extractIssueApiUrls(html, fetchLimit);
-    } catch {
-      issueUrls = [];
+    gcdQueriesActuallyFetched.push(q);
+    const hadDocsBeforeQuery = docs.length > 0;
+    const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+    if (!rawCount) {
+      gcdFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount: 0, error });
+      continue;
     }
-
-    if (!issueUrls.length) continue;
-    if (!docs.length) builtFromQuery = q;
-
-    for (const issueUrl of issueUrls) {
-      let issue: any;
-      try {
-        issue = await fetchJsonWithTimeout(issueUrl, timeoutMs);
-      } catch {
-        continue;
-      }
-
-      const doc = gcdIssueToDoc(issue, q, i);
-      if (!doc?.title) continue;
-
-      const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-      docs.push(doc);
-      if (docs.length >= fetchLimit) break;
-    }
+    if (!hadDocsBeforeQuery) builtFromQuery = q;
+    gcdFetchResults.push({
+      query: q,
+      status: rawCount > 0 ? "ok" : error ? "error" : "no_matches",
+      rawCount,
+      error,
+    });
 
     if (docs.length >= fetchLimit) break;
     if (i === 0 && docs.length >= Math.max(4, finalLimit)) break;
+  }
+
+  if (docs.length === 0) {
+    const knownGoodProbeQueries = ["batman", "spider-man", "superman", "saga", "walking dead", "ms. marvel"];
+    let probeFoundAny = false;
+    for (const q of knownGoodProbeQueries) {
+      if (gcdQueriesActuallyFetched.includes(q)) continue;
+      gcdQueriesActuallyFetched.push(q);
+      let issueUrls: string[] = [];
+      const probe = await fetchDocsForQuery(q, 999, timeoutMs, fetchLimit, docs, seen);
+      issueUrls = probe.rawCount > 0 ? ["found"] : [];
+      if (probe.rawCount > 0) probeFoundAny = true;
+      gcdFetchResults.push({
+        query: q,
+        status: probe.rawCount > 0 ? "ok" : probe.error ? "error" : "no_matches",
+        rawCount: probe.rawCount,
+        error: probe.error,
+      });
+      if (issueUrls.length > 0) break;
+    }
+    if (!probeFoundAny) {
+      const probeSummary = gcdFetchResults
+        .filter((row) => knownGoodProbeQueries.includes(String(row.query || "").toLowerCase()))
+        .map((row) => `${row.query}:${row.status}:raw=${row.rawCount}${row.error ? `:${row.error}` : ""}`)
+        .join(" | ");
+      throw new Error(`GCD_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`);
+    }
   }
 
   return {
@@ -346,7 +347,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     domainMode,
     builtFromQuery,
     items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "gcd", doc })),
+    debugRawFetchedCount: docs.length,
     gcdQueriesGenerated: queriesToTry,
+    gcdRungsBuilt,
+    gcdQueriesActuallyFetched,
+    gcdQueryTexts: queriesToTry,
+    gcdFetchResults,
     gcdFetchAttempted: true,
     gcdZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {
