@@ -113,18 +113,26 @@ function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
   return Object.entries(tagCounts || {}).some(([k, v]) => Number(v) > 0 && re.test(normalizeText(k)));
 }
 
-function buildTeenComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
+function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
   const add = (q: string) => {
     const n = normalizeText(q);
     if (n && !queries.includes(n)) queries.push(n);
   };
-  if (hasFacet(tagCounts, /superhero|heroes|comic/)) add("teen superhero comic series");
-  if (hasFacet(tagCounts, /dystopian|future|rebellion|survival/)) add("teen dystopian graphic novel series");
-  if (hasFacet(tagCounts, /horror|dark|haunted|thriller/)) add("teen horror comics graphic novel");
-  if (hasFacet(tagCounts, /fantasy|magic|myth|monster/)) add("teen fantasy comics graphic novel");
-  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse/)) add("survival comics series");
-  if (!queries.length) add("teen graphic novel series");
+
+  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) add("horror comics");
+  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
+  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
+  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
+  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) add("teen graphic novel");
+  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
+
+  if (!queries.length) {
+    add("teen graphic novel");
+    add("horror comics");
+    add("dark mystery comics");
+  }
+
   return queries.slice(0, 6);
 }
 
@@ -260,19 +268,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const fetchLimit = Math.max(8, Math.min(36, Math.max(finalLimit * 2, 12)));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
 
-  if (deckKey !== "ms_hs") {
-    return {
-      engineId: "gcd",
-      engineLabel: "Grand Comics Database",
-      deckKey,
-      domainMode,
-      builtFromQuery: "",
-      items: [],
-    };
-  }
-
   const directQueries = buildGcdSearchTerms(input.tagCounts);
-  const facetQueries = buildTeenComicQueriesFromFacets(input.tagCounts);
+  const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
   const queriesToTry = Array.from(new Set([...directQueries, ...facetQueries])).slice(0, 10);
   const gcdRungs = buildGcdRungs(queriesToTry);
   const sourceEnabled = (input as any)?.sourceEnabled || {};
