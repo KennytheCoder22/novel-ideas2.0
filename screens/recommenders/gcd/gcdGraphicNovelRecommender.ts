@@ -9,6 +9,12 @@ import type { RecommenderInput, RecommendationResult, RecommendationDoc } from "
 import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
 const GCD_BASE = "https://www.comics.org";
+const GCD_PROXY_URL = String(process.env.EXPO_PUBLIC_GCD_PROXY_URL || "").trim();
+
+function buildProxyUrl(targetUrl: string): string {
+  if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
+  return `${GCD_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
+}
 
 function normalizeText(value: any): string {
   return String(value || "")
@@ -90,7 +96,7 @@ async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<str
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, {
+    const resp = await fetch(buildProxyUrl(url), {
       signal: controller.signal,
       headers: {
         Accept: "text/html,application/json;q=0.9,*/*;q=0.8",
@@ -107,7 +113,7 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(url, {
+    const resp = await fetch(buildProxyUrl(url), {
       signal: controller.signal,
       headers: {
         Accept: "application/json",
