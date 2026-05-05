@@ -40,26 +40,25 @@ function hasTeenGraphicIntent(tagCounts: TagCounts | undefined): boolean {
 }
 
 function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
-  const broadBaseline = [
-    "horror",
-    "dark",
-    "supernatural",
-    "fantasy",
-    "mystery",
-    "survival",
-    "teen",
-    "manga",
-    "graphic novel",
-  ];
-  const mappedFromFacets: string[] = [];
-  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) mappedFromFacets.push("horror", "dark", "supernatural");
-  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) mappedFromFacets.push("mystery");
-  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) mappedFromFacets.push("survival");
-  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) mappedFromFacets.push("supernatural", "fantasy");
-  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) mappedFromFacets.push("teen");
-  if (hasFacet(tagCounts, /manga|anime|japan/)) mappedFromFacets.push("manga");
-  if (hasTeenGraphicIntent(tagCounts)) mappedFromFacets.push("graphic novel");
-  return Array.from(new Set([...mappedFromFacets, ...broadBaseline])).slice(0, 12);
+  const anchors: string[] = [];
+  const isDark = hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/);
+  const isMystery = hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/);
+  const isSurvival = hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/);
+  const isSupernatural = hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/);
+  const isTeen = hasFacet(tagCounts, /teen|young adult|school|coming of age/);
+  const isManga = hasFacet(tagCounts, /manga|anime|japan/);
+
+  if (isDark && isTeen) anchors.push("batman");
+  if (isDark && !isTeen) anchors.push("hellboy");
+  if (isMystery) anchors.push("batman");
+  if (isSurvival) anchors.push("walking dead");
+  if (isSupernatural) anchors.push("hellboy");
+  if (isManga) anchors.push("naruto");
+  if (isTeen) anchors.push("ms. marvel");
+  if (hasTeenGraphicIntent(tagCounts)) anchors.push("spider-man");
+
+  const baselineAnchors = ["batman", "spider-man", "superman", "saga", "walking dead", "ms. marvel"];
+  return Array.from(new Set([...anchors, ...baselineAnchors])).slice(0, 10);
 }
 
 function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
@@ -68,15 +67,14 @@ function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
-  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("horror", "supernatural");
-  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("mystery");
-  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("survival");
-  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("fantasy");
-  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("teen");
-  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("supernatural", "fantasy");
-  if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("manga");
-  if (hasTeenGraphicIntent(tagCounts)) queries.push("graphic novel");
-  return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 10);
+  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("hellboy");
+  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("batman");
+  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("walking dead");
+  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("saga");
+  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
+  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
+  if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
+  return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 8);
 }
 
 function buildGcdRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
@@ -123,9 +121,13 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
 }
 
 function extractIssueApiUrls(html: string, limit: number): string[] {
-  const matches = Array.from(
+  const directApiMatches = Array.from(
     String(html || "").matchAll(/https:\/\/www\.comics\.org\/api\/issue\/\d+\/\?format=json/g)
   ).map((m) => m[0]);
+  const issuePathMatches = Array.from(
+    String(html || "").matchAll(/\/issue\/(\d+)\/?/g)
+  ).map((m) => `https://www.comics.org/api/issue/${m[1]}/?format=json`);
+  const matches = [...directApiMatches, ...issuePathMatches];
 
   const unique: string[] = [];
   const seen = new Set<string>();
@@ -204,6 +206,46 @@ function buildSearchUrl(query: string): string {
   return `${GCD_BASE}/search/advanced/process/?target=issue&method=icontains&logic=False&title=${encoded}`;
 }
 
+function buildSearchUrls(query: string): string[] {
+  const encoded = encodeURIComponent(query);
+  return [
+    buildSearchUrl(query),
+    `${GCD_BASE}/search/quick/?q=${encoded}`,
+  ];
+}
+
+async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
+  let queryError: string | null = null;
+  let matchedIssueUrls: string[] = [];
+  for (const searchUrl of buildSearchUrls(query)) {
+    try {
+      const html = await fetchTextWithTimeout(searchUrl, timeoutMs);
+      matchedIssueUrls = extractIssueApiUrls(html, fetchLimit);
+      if (matchedIssueUrls.length) break;
+    } catch (err: any) {
+      queryError = String(err?.message || err || "search_fetch_failed");
+    }
+  }
+  if (!matchedIssueUrls.length) return { rawCount: 0, error: queryError };
+
+  const docsBeforeQuery = docs.length;
+  for (const issueUrl of matchedIssueUrls) {
+    try {
+      const issue = await fetchJsonWithTimeout(issueUrl, timeoutMs);
+      const doc = gcdIssueToDoc(issue, query, queryRung);
+      if (!doc?.title) continue;
+      const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
+      if (seen.has(dedupeKey)) continue;
+      seen.add(dedupeKey);
+      docs.push(doc);
+      if (docs.length >= fetchLimit) break;
+    } catch (err: any) {
+      queryError = queryError || String(err?.message || err || "issue_fetch_failed");
+    }
+  }
+  return { rawCount: Math.max(0, docs.length - docsBeforeQuery), error: queryError };
+}
+
 export async function getGcdGraphicNovelRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
   const domainMode: RecommendationResult["domainMode"] = "default";
@@ -253,53 +295,49 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     gcdQueriesActuallyFetched.push(q);
-    const searchUrl = buildSearchUrl(q);
-
-    let issueUrls: string[] = [];
-    let queryError: string | null = null;
-    try {
-      const html = await fetchTextWithTimeout(searchUrl, timeoutMs);
-      issueUrls = extractIssueApiUrls(html, fetchLimit);
-    } catch (err: any) {
-      issueUrls = [];
-      queryError = String(err?.message || err || "search_fetch_failed");
-    }
-
-    if (!issueUrls.length) {
-      gcdFetchResults.push({ query: q, status: queryError ? "error" : "no_matches", rawCount: 0, error: queryError });
+    const hadDocsBeforeQuery = docs.length > 0;
+    const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+    if (!rawCount) {
+      gcdFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount: 0, error });
       continue;
     }
-    if (!docs.length) builtFromQuery = q;
-    const docsBeforeQuery = docs.length;
-
-    for (const issueUrl of issueUrls) {
-      let issue: any;
-      try {
-        issue = await fetchJsonWithTimeout(issueUrl, timeoutMs);
-      } catch (err: any) {
-        queryError = queryError || String(err?.message || err || "issue_fetch_failed");
-        continue;
-      }
-
-      const doc = gcdIssueToDoc(issue, q, i);
-      if (!doc?.title) continue;
-
-      const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
-      if (seen.has(dedupeKey)) continue;
-      seen.add(dedupeKey);
-      docs.push(doc);
-      if (docs.length >= fetchLimit) break;
-    }
-    const queryRawCount = Math.max(0, docs.length - docsBeforeQuery);
+    if (!hadDocsBeforeQuery) builtFromQuery = q;
     gcdFetchResults.push({
       query: q,
-      status: queryRawCount > 0 ? "ok" : queryError ? "error" : "no_matches",
-      rawCount: queryRawCount,
-      error: queryError,
+      status: rawCount > 0 ? "ok" : error ? "error" : "no_matches",
+      rawCount,
+      error,
     });
 
     if (docs.length >= fetchLimit) break;
     if (i === 0 && docs.length >= Math.max(4, finalLimit)) break;
+  }
+
+  if (docs.length === 0) {
+    const knownGoodProbeQueries = ["batman", "spider-man", "superman", "saga", "walking dead", "ms. marvel"];
+    let probeFoundAny = false;
+    for (const q of knownGoodProbeQueries) {
+      if (gcdQueriesActuallyFetched.includes(q)) continue;
+      gcdQueriesActuallyFetched.push(q);
+      let issueUrls: string[] = [];
+      const probe = await fetchDocsForQuery(q, 999, timeoutMs, fetchLimit, docs, seen);
+      issueUrls = probe.rawCount > 0 ? ["found"] : [];
+      if (probe.rawCount > 0) probeFoundAny = true;
+      gcdFetchResults.push({
+        query: q,
+        status: probe.rawCount > 0 ? "ok" : probe.error ? "error" : "no_matches",
+        rawCount: probe.rawCount,
+        error: probe.error,
+      });
+      if (issueUrls.length > 0) break;
+    }
+    if (!probeFoundAny) {
+      const probeSummary = gcdFetchResults
+        .filter((row) => knownGoodProbeQueries.includes(String(row.query || "").toLowerCase()))
+        .map((row) => `${row.query}:${row.status}:raw=${row.rawCount}${row.error ? `:${row.error}` : ""}`)
+        .join(" | ");
+      throw new Error(`GCD_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`);
+    }
   }
 
   return {

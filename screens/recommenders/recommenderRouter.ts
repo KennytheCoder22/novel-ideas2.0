@@ -2916,14 +2916,26 @@ export async function getRecommendations(
         const query = String(lane.query || "").trim();
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
+          for (const queryText of (value?.gcdQueryTexts || [])) gcdQueryTexts.add(String(queryText || "").trim());
           for (const queryText of (value?.gcdRungsBuilt || [])) gcdRungsBuilt.add(String(queryText || "").trim());
           for (const queryText of (value?.gcdQueriesActuallyFetched || [])) gcdQueriesActuallyFetched.add(String(queryText || "").trim());
-          gcdFetchResults.push({
-            query,
-            status: "ok",
-            rawCount: Number(value?.debugRawFetchedCount ?? countResultItems(value)),
-            error: null,
-          });
+          if (Array.isArray(value?.gcdFetchResults) && value.gcdFetchResults.length) {
+            for (const row of value.gcdFetchResults) {
+              gcdFetchResults.push({
+                query: String(row?.query || query || "").trim(),
+                status: String(row?.status || "ok"),
+                rawCount: Number(row?.rawCount || 0),
+                error: row?.error ? String(row.error) : null,
+              });
+            }
+          } else {
+            gcdFetchResults.push({
+              query,
+              status: "ok",
+              rawCount: Number(value?.debugRawFetchedCount ?? countResultItems(value)),
+              error: null,
+            });
+          }
         } else if (gcdResult?.status === "rejected") {
           const reason: any = (gcdResult as PromiseRejectedResult).reason;
           gcdFetchResults.push({
