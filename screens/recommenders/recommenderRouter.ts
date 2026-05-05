@@ -2796,6 +2796,8 @@ export async function getRecommendations(
     kitsu: 0,
     gcd: 0,
   };
+  const gcdQueryTexts = new Set<string>();
+  const gcdFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
 
   for (const rung of rungs) {
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
@@ -2872,6 +2874,7 @@ export async function getRecommendations(
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
       if (includeGcd) requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      if (includeGcd) gcdQueryTexts.add(String(lane.query || "").trim());
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
@@ -2906,6 +2909,29 @@ export async function getRecommendations(
       const laneGcd = includeGcd && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
+      if (includeGcd) {
+        const gcdResult = results[index];
+        const query = String(lane.query || "").trim();
+        if (gcdResult?.status === "fulfilled") {
+          const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
+          gcdFetchResults.push({
+            query,
+            status: "ok",
+            rawCount: Number(value?.debugRawFetchedCount ?? countResultItems(value)),
+            error: null,
+          });
+        } else if (gcdResult?.status === "rejected") {
+          const reason: any = (gcdResult as PromiseRejectedResult).reason;
+          gcdFetchResults.push({
+            query,
+            status: "error",
+            rawCount: 0,
+            error: String(reason?.message || reason || "gcd_fetch_failed"),
+          });
+        } else {
+          gcdFetchResults.push({ query, status: "skipped", rawCount: 0, error: "gcd_not_dispatched" });
+        }
+      }
 
       const laneMergedDocs = dedupeDocs([
         ...dedupeDocs(extractDocs(laneGoogle, "googleBooks")),
@@ -3889,6 +3915,8 @@ const normalizedCandidatesRaw = [
       gcdRungsLength: Number(gcdFacetRungs.length),
       mainRungQueriesLength: Number(mainRungQueriesLength),
       gcdFetchAttempted: Boolean(gcdFetchAttempted),
+      gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
+      gcdFetchResults,
     },
   } as RecommendationResult;
 }

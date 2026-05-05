@@ -1935,6 +1935,8 @@ function handleLeft() {
       `gcdRungsLength:${Number(lastDebugGcdDispatchTrace?.gcdRungsLength || 0)}`,
       `mainRungQueriesLength:${Number(lastDebugGcdDispatchTrace?.mainRungQueriesLength || 0)}`,
       `gcdFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.gcdFetchAttempted)}`,
+      `gcdQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.gcdQueryTexts) && lastDebugGcdDispatchTrace.gcdQueryTexts.length ? lastDebugGcdDispatchTrace.gcdQueryTexts.join(" | ") : "(none)"}`,
+      `gcdFetchResults:${Array.isArray(lastDebugGcdDispatchTrace?.gcdFetchResults) && lastDebugGcdDispatchTrace.gcdFetchResults.length ? lastDebugGcdDispatchTrace.gcdFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
     ].join("\n");
 
     const report = [
