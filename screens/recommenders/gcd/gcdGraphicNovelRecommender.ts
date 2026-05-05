@@ -301,27 +301,35 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
+  const gcdFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const searchUrl = buildSearchUrl(q);
 
     let issueUrls: string[] = [];
+    let queryError: string | null = null;
     try {
       const html = await fetchTextWithTimeout(searchUrl, timeoutMs);
       issueUrls = extractIssueApiUrls(html, fetchLimit);
-    } catch {
+    } catch (err: any) {
       issueUrls = [];
+      queryError = String(err?.message || err || "search_fetch_failed");
     }
 
-    if (!issueUrls.length) continue;
+    if (!issueUrls.length) {
+      gcdFetchResults.push({ query: q, status: queryError ? "error" : "no_matches", rawCount: 0, error: queryError });
+      continue;
+    }
     if (!docs.length) builtFromQuery = q;
+    const docsBeforeQuery = docs.length;
 
     for (const issueUrl of issueUrls) {
       let issue: any;
       try {
         issue = await fetchJsonWithTimeout(issueUrl, timeoutMs);
-      } catch {
+      } catch (err: any) {
+        queryError = queryError || String(err?.message || err || "issue_fetch_failed");
         continue;
       }
 
@@ -334,6 +342,13 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       docs.push(doc);
       if (docs.length >= fetchLimit) break;
     }
+    const queryRawCount = Math.max(0, docs.length - docsBeforeQuery);
+    gcdFetchResults.push({
+      query: q,
+      status: queryRawCount > 0 ? "ok" : queryError ? "error" : "no_matches",
+      rawCount: queryRawCount,
+      error: queryError,
+    });
 
     if (docs.length >= fetchLimit) break;
     if (i === 0 && docs.length >= Math.max(4, finalLimit)) break;
@@ -346,7 +361,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     domainMode,
     builtFromQuery,
     items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "gcd", doc })),
+    debugRawFetchedCount: docs.length,
     gcdQueriesGenerated: queriesToTry,
+    gcdQueryTexts: queriesToTry,
+    gcdFetchResults,
     gcdFetchAttempted: true,
     gcdZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {

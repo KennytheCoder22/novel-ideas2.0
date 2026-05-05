@@ -30,6 +30,17 @@ export type RecommendationResult = {
   };
   sourceEnabled?: RecommendationSourceDiagnostics;
   sourceSkippedReason?: string[];
+  debugRouterVersion?: string;
+  debugGcdDispatchTrace?: {
+    sourceEnabledGcd: boolean;
+    includeGcd: boolean;
+    buildGcdFacetRungsCalled: boolean;
+    gcdRungsLength: number;
+    mainRungQueriesLength: number;
+    gcdFetchAttempted: boolean;
+    gcdQueryTexts?: string[];
+    gcdFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
+  };
   engineId: EngineId;
   engineLabel: string;
   deckKey: DeckKey;
