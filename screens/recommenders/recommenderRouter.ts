@@ -728,6 +728,7 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
 
 function shouldUseGcd(input: RecommenderInput): boolean {
   const sourceEnabled = resolveSourceEnabled(input);
+  if (process.env.NODE_ENV === "production") return false;
   return sourceEnabled.gcd;
 }
 
@@ -2801,6 +2802,7 @@ export async function getRecommendations(
   const gcdQueriesActuallyFetched = new Set<string>();
   const gcdFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
   let gcdAdapterFailed = false;
+  let gcdAdapterStatus: RecommendationResult["gcdAdapterStatus"] = includeGcd ? "ok" : "disabled";
 
   for (const rung of rungs) {
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
@@ -2940,11 +2942,13 @@ export async function getRecommendations(
         } else if (gcdResult?.status === "rejected") {
           const reason: any = (gcdResult as PromiseRejectedResult).reason;
           gcdAdapterFailed = true;
+          const reasonText = String(reason?.message || reason || "gcd_fetch_failed");
+          gcdAdapterStatus = reasonText.includes("403") ? "proxy_403" : "proxy_error";
           gcdFetchResults.push({
             query,
             status: "error",
             rawCount: 0,
-            error: String(reason?.message || reason || "gcd_fetch_failed"),
+            error: reasonText,
           });
         } else {
           gcdFetchResults.push({ query, status: "skipped", rawCount: 0, error: "gcd_not_dispatched" });
@@ -3064,6 +3068,7 @@ export async function getRecommendations(
     const missingProxy = gcdFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_GCD_PROXY_URL"));
     sourceSkippedReason.push(missingProxy ? "gcd_proxy_missing" : "gcd_enabled_but_not_queried");
   }
+  if (gcdAdapterStatus === "proxy_403") sourceSkippedReason.push("gcd_preflight_proxy_403");
 
   if (googleQuotaExhausted) sourceEnabled.googleBooks = false;
 
@@ -3926,6 +3931,7 @@ const normalizedCandidatesRaw = [
     debugNytAnchors: nytAnchorDebug,
     sourceEnabled,
     sourceSkippedReason,
+    gcdAdapterStatus,
     debugRouterVersion,
     debugGcdDispatchTrace: {
       sourceEnabledGcd: Boolean(sourceEnabled.gcd),

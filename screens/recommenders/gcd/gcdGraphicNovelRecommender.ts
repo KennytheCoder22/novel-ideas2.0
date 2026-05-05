@@ -380,6 +380,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     gcdQueryTexts: queriesToTry,
     gcdFetchResults,
     gcdFetchAttempted: true,
+    gcdAdapterStatus: "ok",
     gcdZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {
       byRung: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])),

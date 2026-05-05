@@ -14,6 +14,7 @@ export type CommercialSignals = {
 export type RecommendationDoc = { key?: string; id?: string; title?: string; author_name?: string[]; first_publish_year?: number; cover_i?: number | string; subject?: string[]; subtitle?: string; description?: string; edition_count?: number; language?: string[]; ebook_access?: string; commercialSignals?: CommercialSignals; };
 export type RecommendationItem = { kind: "open_library"; doc: RecommendationDoc; };
 export type RecommendationResult = {
+  gcdAdapterStatus?: "ok" | "proxy_403" | "proxy_error" | "disabled";
   debugRungStats?: RungDiagnostics;
   debugSourceStats?: Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number; }>;
   debugCandidatePool?: any[];
