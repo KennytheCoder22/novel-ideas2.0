@@ -2876,6 +2876,7 @@ export async function getRecommendations(
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
       if (includeGcd) requests.push(getGcdGraphicNovelRecommendations(laneInput));
+      if (includeGcd) gcdQueryTexts.add(String(lane.query || "").trim());
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
