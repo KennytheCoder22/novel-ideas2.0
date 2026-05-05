@@ -255,7 +255,7 @@ function sourceLabel(s: RecommendationSourceToggleKey) {
   if (s === "openLibrary") return "Open Library";
   if (s === "localLibrary") return "This library’s collection";
   if (s === "kitsu") return "Kitsu (Manga)";
-  if (s === "gcd") return "GCD (Comics)";
+  if (s === "gcd") return "ComicVine (Comics)";
   return s;
 }
 

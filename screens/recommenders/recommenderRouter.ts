@@ -3883,7 +3883,7 @@ const normalizedCandidatesRaw = [
   if (sourceEnabled.googleBooks) labelParts.push("Google Books");
   if (sourceEnabled.openLibrary) labelParts.push("Open Library");
   if (includeKitsu) labelParts.push("Kitsu");
-  if (includeGcd) labelParts.push("GCD");
+  if (includeGcd) labelParts.push("ComicVine");
   if (sourceEnabled.localLibrary) labelParts.push("Local Library");
   const engineLabel = labelParts.join(" + ") || "No enabled sources";
 

@@ -2155,7 +2155,7 @@ function handleLeft() {
     { key: "googleBooks", label: "Google Books" },
     { key: "openLibrary", label: "Open Library" },
     { key: "kitsu", label: "Kitsu" },
-    { key: "gcd", label: "GCD" },
+    { key: "gcd", label: "ComicVine" },
   ];
 
   return (

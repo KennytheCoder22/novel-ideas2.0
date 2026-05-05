@@ -10,6 +10,8 @@ import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
 const GCD_BASE = "https://www.comics.org";
 const GCD_PROXY_URL = String(process.env.EXPO_PUBLIC_GCD_PROXY_URL || "").trim();
+const COMIC_VINE_API_KEY = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
+const COMIC_VINE_BASE = "https://comicvine.gamespot.com/api";
 let hasLoggedProbeProxyUrl = false;
 
 function buildProxyUrl(targetUrl: string): string {
@@ -211,6 +213,48 @@ function gcdIssueToDoc(issue: any, queryText: string, queryRung: number): Recomm
   } as any;
 }
 
+function comicVineIssueToDoc(issue: any, queryText: string, queryRung: number): RecommendationDoc | null {
+  const volumeName = String(issue?.volume?.name || "").trim();
+  const issueName = String(issue?.name || "").trim();
+  const issueNumber = String(issue?.issue_number || "").trim();
+  const title = issueName || (volumeName && issueNumber ? `${volumeName} #${issueNumber}` : volumeName);
+  if (!title) return null;
+  const subjects = Array.from(new Set(["graphic novel", "comics", volumeName].filter(Boolean)));
+  return {
+    key: `gcd:comicvine:${issue?.id || issue?.api_detail_url || title}`,
+    title,
+    author_name: [String(issue?.person_credits?.[0]?.name || "ComicVine")],
+    first_publish_year: parseYear(issue?.cover_date || issue?.store_date),
+    cover_i: issue?.image?.small_url || issue?.image?.thumb_url,
+    subject: subjects,
+    edition_count: 1,
+    publisher: String(issue?.volume?.publisher?.name || "ComicVine"),
+    source: "gcd",
+    queryRung,
+    queryText,
+    subtitle: String(issue?.deck || "").trim() || undefined,
+    description: String(issue?.description || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() || undefined,
+    averageRating: 0,
+    ratingsCount: 0,
+    pageCount: safeNumber(issue?.page_count, 0),
+    volumeInfo: {
+      categories: subjects,
+      imageLinks: { thumbnail: issue?.image?.small_url || issue?.image?.thumb_url },
+    },
+  } as any;
+}
+
+function buildComicVineSearchUrl(query: string): string {
+  const params = new URLSearchParams({
+    api_key: COMIC_VINE_API_KEY,
+    format: "json",
+    resources: "issue",
+    query,
+    limit: "20",
+  });
+  return `${COMIC_VINE_BASE}/search/?${params.toString()}`;
+}
+
 function buildSearchUrl(query: string): string {
   const encoded = encodeURIComponent(query);
   return `${GCD_BASE}/search/advanced/process/?target=issue&method=icontains&logic=False&title=${encoded}`;
@@ -225,6 +269,31 @@ function buildSearchUrls(query: string): string[] {
 }
 
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
+  if (COMIC_VINE_API_KEY) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(buildComicVineSearchUrl(query), { signal: controller.signal, headers: { Accept: "application/json" } });
+      if (!resp.ok) throw new Error(`ComicVine error: ${resp.status}`);
+      const payload = await resp.json();
+      const results = Array.isArray(payload?.results) ? payload.results : [];
+      const before = docs.length;
+      for (const issue of results) {
+        const doc = comicVineIssueToDoc(issue, query, queryRung);
+        if (!doc?.title) continue;
+        const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        docs.push(doc);
+        if (docs.length >= fetchLimit) break;
+      }
+      return { rawCount: Math.max(0, docs.length - before), error: null };
+    } catch (err: any) {
+      return { rawCount: 0, error: String(err?.message || err || "comicvine_search_failed") };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
   let queryError: string | null = null;
   let matchedIssueUrls: string[] = [];
   for (const searchUrl of buildSearchUrls(query)) {
@@ -258,8 +327,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
 
 async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
   const probeQuery = "batman";
-  const probeUrl = buildProxyUrl(buildSearchUrl(probeQuery));
-  if (!hasLoggedProbeProxyUrl) {
+  const probeUrl = COMIC_VINE_API_KEY ? buildComicVineSearchUrl(probeQuery) : buildProxyUrl(buildSearchUrl(probeQuery));
+  if (!hasLoggedProbeProxyUrl && !COMIC_VINE_API_KEY) {
     hasLoggedProbeProxyUrl = true;
     console.log("[GCD DEBUG] Proxied probe URL", probeUrl);
   }
@@ -296,7 +365,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     }
     return {
       engineId: "gcd",
-      engineLabel: "Grand Comics Database",
+      engineLabel: COMIC_VINE_API_KEY ? "ComicVine" : "Grand Comics Database",
       deckKey,
       domainMode,
       builtFromQuery: "",
@@ -368,7 +437,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
 
   return {
     engineId: "gcd",
-    engineLabel: "Grand Comics Database",
+    engineLabel: COMIC_VINE_API_KEY ? "ComicVine" : "Grand Comics Database",
     deckKey,
     domainMode,
     builtFromQuery,
