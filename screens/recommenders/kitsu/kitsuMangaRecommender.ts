@@ -79,16 +79,22 @@ function buildKitsuQueries(tagCounts: TagCounts | undefined): string[] {
     queries.push(v);
   };
 
-  const topTags = topPositiveTags(tagCounts, 25);
-  for (const tag of topTags) {
-    add(tagToKitsuQuery(tag));
-  }
+  const tags = Object.entries(tagCounts || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tag]) => normalizeText(tag));
+  const has = (re: RegExp) => tags.some((tag) => re.test(tag));
 
-  // Minimal literal fallback only if direct manga/comics evidence exists
-  // but no other usable query token was produced.
-  if (!queries.length && hasTeenMangaIntent(tagCounts)) {
-    add("manga");
-  }
+  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("horror anime");
+  if (has(/dark|noir|grim|bleak/)) add("dark anime");
+  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural anime");
+  if (has(/dystopian|future|rebellion|authoritarian|apocalypse|post apocalyptic/)) add("dystopian anime");
+  if (has(/action|battle|adventure|combat|war|survival/)) add("action anime");
+
+  const topTags = topPositiveTags(tagCounts, 25);
+  for (const tag of topTags) add(tagToKitsuQuery(tag));
+
+  add("anime");
+  add("popular anime");
 
   return queries.slice(0, 6);
 }

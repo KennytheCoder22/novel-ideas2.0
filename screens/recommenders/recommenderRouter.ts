@@ -726,7 +726,27 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
   const sourceEnabled = resolveSourceEnabled(input);
-  return sourceEnabled.kitsu && isTeenDeckKey(input.deckKey) && teenVisualSignalWeight(input.tagCounts) >= MIN_VISUAL_SIGNAL_FOR_KITSU && hasStrong20QSession(input);
+  return sourceEnabled.kitsu;
+}
+
+function buildKitsuRungs(tagCounts: RecommenderInput["tagCounts"] | undefined): Array<{ rung: number; query: string; source: EngineId }> {
+  const tags = Object.entries(tagCounts || {})
+    .filter(([, count]) => Number(count) > 0)
+    .map(([tag]) => String(tag || "").toLowerCase());
+  const has = (re: RegExp) => tags.some((tag) => re.test(tag));
+  const queries: string[] = [];
+  const add = (q: string) => {
+    const n = String(q || "").trim().toLowerCase();
+    if (n && !queries.includes(n)) queries.push(n);
+  };
+  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("horror anime");
+  if (has(/dark|noir|grim|bleak/)) add("dark anime");
+  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural anime");
+  if (has(/dystopian|future|rebellion|authoritarian|apocalypse|post apocalyptic/)) add("dystopian anime");
+  if (has(/action|battle|adventure|combat|war|survival/)) add("action anime");
+  add("anime");
+  add("popular anime");
+  return queries.slice(0, 6).map((query, index) => ({ rung: 500 + index, query, source: "kitsu" }));
 }
 
 function shouldUseGcd(input: RecommenderInput): boolean {
@@ -2597,6 +2617,7 @@ export async function getRecommendations(
 
   const buildGcdFacetRungsCalled = includeGcd;
   const gcdFacetRungs = includeGcd ? buildGcdFacetRungs(routedInput.tagCounts) : [];
+  const kitsuRungs = includeKitsu ? buildKitsuRungs(routedInput.tagCounts) : [];
   if (gcdFacetRungs.length) {
     rungs = [...gcdFacetRungs, ...rungs];
   }
@@ -3078,6 +3099,7 @@ export async function getRecommendations(
   const mergedDocs = dedupeDocs(allMergedDocs);
   const gcdFetchAttempted = includeGcd && mainRungQueriesLength > 0;
   const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && gcdFetchAttempted);
+  const kitsuFetchAttempted = Boolean(includeKitsu);
   if (sourceEnabled.gcd && includeGcd && aggregatedRawFetched.gcd === 0) {
     const missingProxy = gcdFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_GCD_PROXY_URL"));
     sourceSkippedReason.push(missingProxy ? "gcd_proxy_missing" : "gcd_enabled_but_not_queried");
@@ -3954,10 +3976,13 @@ const normalizedCandidatesRaw = [
       comicVineKeyDetected,
       comicVineEnabledRuntime,
       buildGcdFacetRungsCalled: Boolean(buildGcdFacetRungsCalled),
+      kitsuRungsLength: Number(kitsuRungs.length),
       gcdRungsLength: Number(gcdFacetRungs.length),
       mainRungQueriesLength: Number(mainRungQueriesLength),
+      kitsuFetchAttempted,
       gcdFetchAttempted: Boolean(gcdFetchAttempted),
       comicVineFetchAttempted,
+      kitsuQueryTexts: kitsuRungs.map((r) => r.query),
       gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
       gcdRungsBuilt: Array.from(gcdRungsBuilt).filter(Boolean),
       gcdQueriesActuallyFetched: Array.from(gcdQueriesActuallyFetched).filter(Boolean),
