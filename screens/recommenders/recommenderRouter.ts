@@ -2539,9 +2539,9 @@ export async function getRecommendations(
   const comicVineEnvVarPresent = comicVineKeyDetected;
   const comicVineEnabledRuntime = Boolean(comicVineKeyDetected && sourceEnabled.comicVine);
   if ((routedInput as any)?.sourceEnabled?.comicVine !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
-    sourceSkippedReason.push("gcd_disabled_in_production");
+    sourceSkippedReason.push("comicvine_disabled_in_production");
   } else if (!sourceEnabled.comicVine) {
-    sourceSkippedReason.push("gcd_disabled_by_admin");
+    sourceSkippedReason.push("comicvine_disabled_by_admin");
   }
   if (!sourceEnabled.localLibrary) {
     sourceSkippedReason.push(
@@ -2921,7 +2921,7 @@ export async function getRecommendations(
     kitsu: 0,
     comicVine: 0,
   };
-  const gcdQueryTexts = new Set<string>();
+  const comicVineQueryTexts = new Set<string>();
   const comicVineRungsBuilt = new Set<string>();
   const comicVineQueriesActuallyFetched = new Set<string>();
   const comicVineFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
@@ -3003,7 +3003,7 @@ export async function getRecommendations(
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
       if (includeComicVine && !comicVineAdapterFailed) requests.push(getComicVineGraphicNovelRecommendations(laneInput));
-      if (includeComicVine) gcdQueryTexts.add("gcd_adapter");
+      if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
@@ -3040,10 +3040,10 @@ export async function getRecommendations(
         : null;
       if (includeComicVine) {
         const gcdResult = results[index];
-        const query = "gcd_adapter";
+        const query = "comicvine_adapter";
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
-          for (const queryText of (value?.comicVineQueryTexts || [])) gcdQueryTexts.add(String(queryText || "").trim());
+          for (const queryText of (value?.comicVineQueryTexts || [])) comicVineQueryTexts.add(String(queryText || "").trim());
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
           for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
           if (Array.isArray(value?.comicVineFetchResults) && value.comicVineFetchResults.length) {
@@ -3187,14 +3187,14 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
-  const gcdFetchAttempted = includeComicVine && mainRungQueriesLength > 0;
-  const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && gcdFetchAttempted);
+  const comicVineFetchAttemptedFlag = includeComicVine && mainRungQueriesLength > 0;
+  const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && comicVineFetchAttemptedFlag);
   const kitsuFetchAttempted = Boolean(includeKitsu);
   if (sourceEnabled.comicVine && includeComicVine && aggregatedRawFetched.comicVine === 0) {
     const missingProxy = comicVineFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_COMICVINE_PROXY_URL"));
-    sourceSkippedReason.push(missingProxy ? "gcd_proxy_missing" : "gcd_enabled_but_not_queried");
+    sourceSkippedReason.push(missingProxy ? "comicvine_proxy_missing" : "comicvine_enabled_but_not_queried");
   }
-  if (comicVineAdapterStatus === "proxy_403") sourceSkippedReason.push("gcd_preflight_proxy_403");
+  if (comicVineAdapterStatus === "proxy_403") sourceSkippedReason.push("comicvine_preflight_proxy_403");
 
   if (googleQuotaExhausted) sourceEnabled.googleBooks = false;
 
@@ -3454,7 +3454,7 @@ export async function getRecommendations(
     googleBooks: googleCandidates.length,
     openLibrary: openLibraryCandidates.length,
     kitsu: kitsuCandidatesRaw.length,
-    comicVine: gcdCandidates.length,
+    comicVine: comicVineCandidates.length,
   });
 
   // Light dedupe for visual shelves.
@@ -4092,7 +4092,7 @@ const normalizedCandidatesRaw = [
     },
     comicVine: {
       rawFetched: includeComicVine ? aggregatedRawFetched.comicVine : 0,
-      postFilterCandidates: includeComicVine ? gcdCandidates.length : 0,
+      postFilterCandidates: includeComicVine ? comicVineCandidates.length : 0,
       finalSelected: rankedCountsBySource.comicVine,
     },
     nyt: {
@@ -4145,12 +4145,12 @@ const normalizedCandidatesRaw = [
       comicVineRungsLength: Number(comicVineFacetRungs.length),
       mainRungQueriesLength: Number(mainRungQueriesLength),
       kitsuFetchAttempted,
-      gcdFetchAttempted: Boolean(gcdFetchAttempted),
+      comicVineFetchAttempted: Boolean(comicVineFetchAttemptedFlag),
       comicVineFetchAttempted,
       kitsuQueryTexts: kitsuRungs.map((r) => r.query),
       kitsuFacetMatchScore: kitsuCandidates.map((c: any) => Number(c?.kitsuFacetMatchScore || 0)),
       kitsuIncludedBecause: kitsuCandidates.map((c: any) => String(c?.kitsuIncludedBecause || "")),
-      gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
+      comicVineQueryTexts: Array.from(comicVineQueryTexts).filter(Boolean),
       comicVineRungsBuilt: Array.from(comicVineRungsBuilt).filter(Boolean),
       comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched).filter(Boolean),
       comicVineFetchResults,
