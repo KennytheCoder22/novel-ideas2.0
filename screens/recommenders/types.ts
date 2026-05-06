@@ -34,10 +34,19 @@ export type RecommendationResult = {
   debugRouterVersion?: string;
   debugGcdDispatchTrace?: {
     sourceEnabledComicVine: boolean;
+    traceSource?: "router" | "fallback" | "report-default";
     includeGcd: boolean;
     comicVineEnvVarPresent?: boolean;
     comicVineKeyDetected?: boolean;
     comicVineEnabledRuntime?: boolean;
+    runtimePlatform?: "client" | "server";
+    runtimeEnvironment?: "client_like" | "server_like";
+    comicVineEnvKeyLength?: number;
+    comicVineProxyUrl?: string;
+    normalizedComicVineProxyUrl?: string;
+    comicVineProxyConfigured?: boolean;
+    comicVineProxyHealthStatus?: "ok" | "failed" | "unknown";
+    comicVineProxyErrorBody?: string;
     kitsuEligibleFromSwipes?: boolean;
     likedAnimeMangaCount?: number;
     skippedAnimeMangaCount?: number;

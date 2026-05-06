@@ -1533,8 +1533,16 @@ function handleLeft() {
       setLastFinalRecommenderDebug((result as any)?.debugFinalRecommender || null);
       setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
-      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comics-diagnostics-v2");
-      setLastDebugGcdDispatchTrace((result as any)?.debugGcdDispatchTrace || null);
+      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comicvine-proxy-default-v1");
+      const incomingTrace = (result as any)?.debugGcdDispatchTrace;
+      const fallbackTrace = {
+        traceSource: "fallback" as const,
+        sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
+        comicVineProxyUrl: "/api/comicvine",
+        normalizedComicVineProxyUrl: "/api/comicvine",
+        comicVineProxyConfigured: Boolean(sourceEnabled?.comicVine),
+      };
+      setLastDebugGcdDispatchTrace(incomingTrace ? { ...incomingTrace, traceSource: incomingTrace?.traceSource || "router" } : fallbackTrace);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
@@ -1944,7 +1952,10 @@ function handleLeft() {
       })
       .join("\n");
     const preFatalDispatchState = (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState || null;
-    const reportBuiltQuery = recQuery || (typeof preFatalDispatchState?.builtQuery === "string" ? preFatalDispatchState.builtQuery : "");
+    const reportBuiltQuery =
+      recQuery ||
+      (typeof preFatalDispatchState?.builtQuery === "string" ? preFatalDispatchState.builtQuery : "") ||
+      (Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) ? String(lastDebugGcdDispatchTrace.comicVineQueryTexts[0] || "") : "");
     const reportQueryFamily =
       inferQueryFamily(reportBuiltQuery) !== "unknown"
         ? inferQueryFamily(reportBuiltQuery)
@@ -1957,11 +1968,20 @@ function handleLeft() {
       `sourceEnabled.kitsu:${Boolean(lastSourceEnabled?.kitsu)}`,
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
-      `debugRouterVersion:${lastDebugRouterVersion || "router-comics-diagnostics-v2"}`,
+      `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
+      `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugComicVineDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
       `debugComicVineDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnabledRuntime)}`,
+      `debugComicVineDispatchTrace.runtimePlatform:${String(lastDebugGcdDispatchTrace?.runtimePlatform || "unknown")}`,
+      `debugComicVineDispatchTrace.runtimeEnvironment:${String(lastDebugGcdDispatchTrace?.runtimeEnvironment || "unknown")}`,
+      `debugComicVineDispatchTrace.comicVineEnvKeyLength:${Number(lastDebugGcdDispatchTrace?.comicVineEnvKeyLength || 0)}`,
+      `debugComicVineDispatchTrace.comicVineProxyUrl:${String(lastDebugGcdDispatchTrace?.comicVineProxyUrl || "(none)")}`,
+      `debugComicVineDispatchTrace.normalizedComicVineProxyUrl:${String(lastDebugGcdDispatchTrace?.normalizedComicVineProxyUrl || "(none)")}`,
+      `debugComicVineDispatchTrace.comicVineProxyConfigured:${Boolean(lastDebugGcdDispatchTrace?.comicVineProxyConfigured)}`,
+      `debugComicVineDispatchTrace.comicVineProxyHealthStatus:${String(lastDebugGcdDispatchTrace?.comicVineProxyHealthStatus || "unknown")}`,
+      `debugComicVineDispatchTrace.comicVineProxyErrorBody:${String(lastDebugGcdDispatchTrace?.comicVineProxyErrorBody || "(none)")}`,
       `kitsuEligibleFromSwipes:${Boolean(lastDebugGcdDispatchTrace?.kitsuEligibleFromSwipes)}`,
       `likedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.likedAnimeMangaCount || 0)}`,
       `skippedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.skippedAnimeMangaCount || 0)}`,
@@ -1970,7 +1990,6 @@ function handleLeft() {
       `comicVineRungsLength:${Number(lastDebugGcdDispatchTrace?.comicVineRungsLength || 0)}`,
       `mainRungQueriesLength:${Number(lastDebugGcdDispatchTrace?.mainRungQueriesLength || 0)}`,
       `kitsuFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.kitsuFetchAttempted)}`,
-      `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
       `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
       `kitsuQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.kitsuQueryTexts) && lastDebugGcdDispatchTrace.kitsuQueryTexts.length ? lastDebugGcdDispatchTrace.kitsuQueryTexts.join(" | ") : "(none)"}`,
       `comicVineQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) && lastDebugGcdDispatchTrace.comicVineQueryTexts.length ? lastDebugGcdDispatchTrace.comicVineQueryTexts.join(" | ") : "(none)"}`,
