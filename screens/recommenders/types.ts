@@ -1,5 +1,5 @@
 // /screens/recommenders/types.ts
-export type EngineId = "googleBooks" | "openLibrary" | "kitsu" | "gcd";
+export type EngineId = "googleBooks" | "openLibrary" | "kitsu" | "comicVine";
 export type DomainMode = "default" | "picture" | "earlyReader" | "chapterMiddle";
 export type DeckKey = "k2" | "36" | "ms_hs" | "adult";
 export type TagCounts = Record<string, number>;
@@ -33,7 +33,7 @@ export type RecommendationResult = {
   sourceSkippedReason?: string[];
   debugRouterVersion?: string;
   debugGcdDispatchTrace?: {
-    sourceEnabledGcd: boolean;
+    sourceEnabledComicVine: boolean;
     includeGcd: boolean;
     comicVineEnvVarPresent?: boolean;
     comicVineKeyDetected?: boolean;
@@ -41,17 +41,17 @@ export type RecommendationResult = {
     kitsuEligibleFromSwipes?: boolean;
     likedAnimeMangaCount?: number;
     skippedAnimeMangaCount?: number;
-    buildGcdFacetRungsCalled: boolean;
+    buildComicVineFacetRungsCalled: boolean;
     kitsuRungsLength?: number;
-    gcdRungsLength: number;
+    comicVineRungsLength: number;
     mainRungQueriesLength: number;
     kitsuFetchAttempted?: boolean;
     gcdFetchAttempted: boolean;
     comicVineFetchAttempted?: boolean;
     kitsuQueryTexts?: string[];
     gcdQueryTexts?: string[];
-    gcdRungsBuilt?: string[];
-    gcdQueriesActuallyFetched?: string[];
+    comicVineRungsBuilt?: string[];
+    comicVineQueriesActuallyFetched?: string[];
     gcdFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
   };
   engineId: EngineId;
@@ -67,7 +67,7 @@ export type SourceEnabledConfig = {
   openLibrary?: boolean;
   localLibrary?: boolean;
   kitsu?: boolean;
-  gcd?: boolean;
+  comicVine?: boolean;
 };
 export type StructuredFetchRung = { rung: number; family?: string; primary: string | null; secondary: string | null; themes: string[]; audience: string; query: string; };
 export type BucketPlan = { queries?: string[]; rungs?: StructuredFetchRung[]; bucketId?: string; domainMode?: DomainMode; preview?: string; strategy?: string; signals?: { genres?: string[]; tones?: string[]; textures?: string[]; scenarios?: string[]; }; };
@@ -85,5 +85,5 @@ export type RecommendationSourceDiagnostics = {
   openLibrary: boolean;
   localLibrary: boolean;
   kitsu: boolean;
-  gcd: boolean;
+  comicVine: boolean;
 };
