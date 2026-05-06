@@ -3468,7 +3468,7 @@ export async function getRecommendations(
     googleBooks: googleCandidates.length,
     openLibrary: openLibraryCandidates.length,
     kitsu: kitsuCandidatesRaw.length,
-    comicVine: comicVineCandidates.length,
+    comicVine: gcdCandidates.length,
   });
 
   // Light dedupe for visual shelves.
@@ -4106,7 +4106,7 @@ const normalizedCandidatesRaw = [
     },
     comicVine: {
       rawFetched: includeComicVine ? aggregatedRawFetched.comicVine : 0,
-      postFilterCandidates: includeComicVine ? comicVineCandidates.length : 0,
+      postFilterCandidates: includeComicVine ? gcdCandidates.length : 0,
       finalSelected: rankedCountsBySource.comicVine,
     },
     nyt: {
@@ -4114,6 +4114,40 @@ const normalizedCandidatesRaw = [
       postFilterCandidates: nytAnchorDebug.matched + nytAnchorDebug.injected,
       finalSelected: rankedDocsWithDiagnostics.filter((doc: any) => Boolean(doc?.nyt || doc?.rawDoc?.nyt)).length,
     },
+  };
+  const comicVineDispatchTrace = {
+    sourceEnabledComicVine: Boolean(sourceEnabled.comicVine === true),
+    traceSource: "router" as const,
+    includeComicVine: Boolean(includeComicVine),
+    comicVineEnvVarPresent,
+    comicVineKeyDetected,
+    comicVineEnabledRuntime,
+    runtimePlatform: typeof globalThis !== "undefined" && (globalThis as any)?.navigator ? "client" : "server",
+    runtimeEnvironment: typeof globalThis !== "undefined" && (globalThis as any)?.navigator ? "client_like" : "server_like",
+    comicVineEnvKeyLength: 0,
+    comicVineProxyUrl,
+    normalizedComicVineProxyUrl,
+    comicVineProxyConfigured: Boolean(comicVineProxyUrl),
+    comicVineProxyHealthStatus: proxyHealthStatus,
+    comicVineProxyErrorBody: proxyHealthError ? String(proxyHealthError) : undefined,
+    kitsuAlwaysFetch: Boolean(sourceEnabled.kitsu),
+    kitsuBridgeMode: Boolean(Number(kitsuEligibility.likedAnimeMangaCount || 0) <= 0),
+    kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
+    likedAnimeMangaCount: Number(kitsuEligibility.likedAnimeMangaCount || 0),
+    skippedAnimeMangaCount: Number(kitsuEligibility.skippedAnimeMangaCount || 0),
+    buildComicVineFacetRungsCalled: Boolean(buildComicVineFacetRungsCalled),
+    kitsuRungsLength: Number(kitsuRungs.length),
+    comicVineRungsLength: Number(comicVineFacetRungs.length),
+    mainRungQueriesLength: Number(mainRungQueriesLength),
+    kitsuFetchAttempted,
+    comicVineFetchAttempted,
+    kitsuQueryTexts: kitsuRungs.map((r) => r.query),
+    kitsuFacetMatchScore: kitsuCandidates.map((c: any) => Number(c?.kitsuFacetMatchScore || 0)),
+    kitsuIncludedBecause: kitsuCandidates.map((c: any) => String(c?.kitsuIncludedBecause || "")),
+    comicVineQueryTexts: Array.from(comicVineQueryTexts).filter(Boolean),
+    comicVineRungsBuilt: Array.from(comicVineRungsBuilt).filter(Boolean),
+    comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched).filter(Boolean),
+    comicVineFetchResults,
   };
 
   return {
@@ -4152,7 +4186,7 @@ const normalizedCandidatesRaw = [
       "debugSourceStats",
       "builtFromQuery",
     ],
-    debugGcdDispatchTrace: debugComicVineDispatchTrace,
-    debugComicVineDispatchTrace,
+    debugGcdDispatchTrace: comicVineDispatchTrace,
+    debugComicVineDispatchTrace: comicVineDispatchTrace,
   } as RecommendationResult;
 }
