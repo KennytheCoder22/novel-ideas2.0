@@ -32,9 +32,9 @@ export type RecommendationResult = {
   sourceEnabled?: RecommendationSourceDiagnostics;
   sourceSkippedReason?: string[];
   debugRouterVersion?: string;
-  debugGcdDispatchTrace?: {
+  debugComicDispatchTrace?: {
     sourceEnabledGcd: boolean;
-    includeGcd: boolean;
+    includeComicVine: boolean;
     comicVineEnvVarPresent?: boolean;
     comicVineKeyDetected?: boolean;
     comicVineEnabledRuntime?: boolean;
@@ -46,13 +46,12 @@ export type RecommendationResult = {
     gcdRungsLength: number;
     mainRungQueriesLength: number;
     kitsuFetchAttempted?: boolean;
-    gcdFetchAttempted: boolean;
-    comicVineFetchAttempted?: boolean;
+    comicVineFetchAttempted: boolean;
     kitsuQueryTexts?: string[];
-    gcdQueryTexts?: string[];
+    comicVineQueryTexts?: string[];
     gcdRungsBuilt?: string[];
     gcdQueriesActuallyFetched?: string[];
-    gcdFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
+    comicVineFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
   };
   engineId: EngineId;
   engineLabel: string;

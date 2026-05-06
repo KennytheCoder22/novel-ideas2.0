@@ -336,7 +336,7 @@ async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
   const probeSeen = new Set<string>();
   const { rawCount, error } = await fetchDocsForQuery(probeQuery, -1, timeoutMs, 6, probeDocs, probeSeen);
   if (rawCount <= 0) {
-    throw new Error(`GCD_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${error || "none"}`);
+    throw new Error(`COMICVINE_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${error || "none"}`);
   }
 }
 
@@ -361,7 +361,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     sourceEnabled?.kitsu === false;
   if (!queriesToTry.length) {
     if (gcdOnlyMode) {
-      throw new Error("GCD_ONLY_NO_QUERIES: GCD is the only enabled source but no comic queries were generated.");
+      throw new Error("COMICVINE_ONLY_NO_QUERIES: GCD is the only enabled source but no comic queries were generated.");
     }
     return {
       engineId: "gcd",
@@ -371,7 +371,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       builtFromQuery: "",
       items: [],
       debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
-      debugFilterAudit: [{ source: "gcd", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
+      debugFilterAudit: [{ source: "gcd", reason: "no_queries_generated", detail: "No ComicVine queries could be generated from tag counts." }],
       gcdQueriesGenerated: [],
       gcdRungsBuilt: [],
       gcdQueriesActuallyFetched: [],
@@ -431,7 +431,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         .filter((row) => knownGoodProbeQueries.includes(String(row.query || "").toLowerCase()))
         .map((row) => `${row.query}:${row.status}:raw=${row.rawCount}${row.error ? `:${row.error}` : ""}`)
         .join(" | ");
-      throw new Error(`GCD_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`);
+      throw new Error(`COMICVINE_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`);
     }
   }
 
@@ -464,8 +464,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         generatedQueries: queriesToTry,
         reason: docs.length ? "results_found" : "no_results_from_generated_queries",
         detail: docs.length
-          ? `Fetched ${docs.length} docs from GCD.`
-          : "Generated teen-comic queries but GCD returned no issue API matches.",
+          ? `Fetched ${docs.length} docs from ComicVine.`
+          : "Generated teen-comic queries but ComicVine returned no issue API matches.",
       },
     ],
   };
