@@ -2537,9 +2537,10 @@ export async function getRecommendations(
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
   const comicVineProxyUrlRaw = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL ?? "").trim();
-  const comicVineProxyUrl = comicVineProxyUrlRaw && comicVineProxyUrlRaw !== "undefined" && comicVineProxyUrlRaw !== "null"
+  const normalizedComicVineProxyUrl = comicVineProxyUrlRaw && comicVineProxyUrlRaw !== "undefined" && comicVineProxyUrlRaw !== "null"
     ? comicVineProxyUrlRaw
     : "/api/comicvine";
+  const comicVineProxyUrl = "/api/comicvine";
   const comicVineKeyDetected = false;
   const comicVineEnvVarPresent = false;
   const comicVineEnabledRuntime = Boolean(sourceEnabled.comicVine === true && comicVineProxyUrl);
@@ -4147,6 +4148,7 @@ const normalizedCandidatesRaw = [
       runtimeEnvironment: typeof globalThis !== "undefined" && (globalThis as any)?.navigator ? "client_like" : "server_like",
       comicVineEnvKeyLength: 0,
       comicVineProxyUrl: comicVineProxyUrl,
+      normalizedComicVineProxyUrl,
       comicVineProxyConfigured: Boolean(comicVineProxyUrl),
       comicVineProxyHealthStatus: proxyHealthStatus,
       comicVineProxyErrorBody: proxyHealthError ? String(proxyHealthError) : undefined,

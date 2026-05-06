@@ -42,6 +42,7 @@ export type RecommendationResult = {
     runtimeEnvironment?: "client_like" | "server_like";
     comicVineEnvKeyLength?: number;
     comicVineProxyUrl?: string;
+    normalizedComicVineProxyUrl?: string;
     comicVineProxyConfigured?: boolean;
     comicVineProxyHealthStatus?: "ok" | "failed" | "unknown";
     comicVineProxyErrorBody?: string;

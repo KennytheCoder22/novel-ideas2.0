@@ -1969,6 +1969,7 @@ function handleLeft() {
       `debugComicVineDispatchTrace.runtimeEnvironment:${String(lastDebugGcdDispatchTrace?.runtimeEnvironment || "unknown")}`,
       `debugComicVineDispatchTrace.comicVineEnvKeyLength:${Number(lastDebugGcdDispatchTrace?.comicVineEnvKeyLength || 0)}`,
       `debugComicVineDispatchTrace.comicVineProxyUrl:${String(lastDebugGcdDispatchTrace?.comicVineProxyUrl || "(none)")}`,
+      `debugComicVineDispatchTrace.normalizedComicVineProxyUrl:${String(lastDebugGcdDispatchTrace?.normalizedComicVineProxyUrl || "(none)")}`,
       `debugComicVineDispatchTrace.comicVineProxyConfigured:${Boolean(lastDebugGcdDispatchTrace?.comicVineProxyConfigured)}`,
       `debugComicVineDispatchTrace.comicVineProxyHealthStatus:${String(lastDebugGcdDispatchTrace?.comicVineProxyHealthStatus || "unknown")}`,
       `debugComicVineDispatchTrace.comicVineProxyErrorBody:${String(lastDebugGcdDispatchTrace?.comicVineProxyErrorBody || "(none)")}`,
