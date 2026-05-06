@@ -38,6 +38,10 @@ export type RecommendationResult = {
     comicVineEnvVarPresent?: boolean;
     comicVineKeyDetected?: boolean;
     comicVineEnabledRuntime?: boolean;
+    runtimePlatform?: "client" | "server";
+    runtimeEnvironment?: "client_like" | "server_like";
+    comicVineEnvKeyLength?: number;
+    comicVineProxyConfigured?: boolean;
     kitsuEligibleFromSwipes?: boolean;
     likedAnimeMangaCount?: number;
     skippedAnimeMangaCount?: number;

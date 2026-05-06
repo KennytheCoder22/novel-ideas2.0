@@ -1944,7 +1944,10 @@ function handleLeft() {
       })
       .join("\n");
     const preFatalDispatchState = (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState || null;
-    const reportBuiltQuery = recQuery || (typeof preFatalDispatchState?.builtQuery === "string" ? preFatalDispatchState.builtQuery : "");
+    const reportBuiltQuery =
+      recQuery ||
+      (typeof preFatalDispatchState?.builtQuery === "string" ? preFatalDispatchState.builtQuery : "") ||
+      (Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) ? String(lastDebugGcdDispatchTrace.comicVineQueryTexts[0] || "") : "");
     const reportQueryFamily =
       inferQueryFamily(reportBuiltQuery) !== "unknown"
         ? inferQueryFamily(reportBuiltQuery)
@@ -1962,6 +1965,10 @@ function handleLeft() {
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugComicVineDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
       `debugComicVineDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnabledRuntime)}`,
+      `debugComicVineDispatchTrace.runtimePlatform:${String(lastDebugGcdDispatchTrace?.runtimePlatform || "unknown")}`,
+      `debugComicVineDispatchTrace.runtimeEnvironment:${String(lastDebugGcdDispatchTrace?.runtimeEnvironment || "unknown")}`,
+      `debugComicVineDispatchTrace.comicVineEnvKeyLength:${Number(lastDebugGcdDispatchTrace?.comicVineEnvKeyLength || 0)}`,
+      `debugComicVineDispatchTrace.comicVineProxyConfigured:${Boolean(lastDebugGcdDispatchTrace?.comicVineProxyConfigured)}`,
       `kitsuEligibleFromSwipes:${Boolean(lastDebugGcdDispatchTrace?.kitsuEligibleFromSwipes)}`,
       `likedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.likedAnimeMangaCount || 0)}`,
       `skippedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.skippedAnimeMangaCount || 0)}`,
@@ -1970,7 +1977,6 @@ function handleLeft() {
       `comicVineRungsLength:${Number(lastDebugGcdDispatchTrace?.comicVineRungsLength || 0)}`,
       `mainRungQueriesLength:${Number(lastDebugGcdDispatchTrace?.mainRungQueriesLength || 0)}`,
       `kitsuFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.kitsuFetchAttempted)}`,
-      `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
       `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
       `kitsuQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.kitsuQueryTexts) && lastDebugGcdDispatchTrace.kitsuQueryTexts.length ? lastDebugGcdDispatchTrace.kitsuQueryTexts.join(" | ") : "(none)"}`,
       `comicVineQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) && lastDebugGcdDispatchTrace.comicVineQueryTexts.length ? lastDebugGcdDispatchTrace.comicVineQueryTexts.join(" | ") : "(none)"}`,

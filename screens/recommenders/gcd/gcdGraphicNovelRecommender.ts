@@ -10,8 +10,7 @@ import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
 const GCD_BASE = "https://www.comics.org";
 const GCD_PROXY_URL = String(process.env.EXPO_PUBLIC_GCD_PROXY_URL || "").trim();
-const COMIC_VINE_API_KEY = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
-const COMIC_VINE_BASE = "https://comicvine.gamespot.com/api";
+const COMIC_VINE_PROXY_URL = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL || "/api/comicvine").trim();
 let hasLoggedProbeProxyUrl = false;
 
 function buildProxyUrl(targetUrl: string): string {
@@ -244,15 +243,11 @@ function comicVineIssueToDoc(issue: any, queryText: string, queryRung: number): 
   } as any;
 }
 
-function buildComicVineSearchUrl(query: string): string {
-  const params = new URLSearchParams({
-    api_key: COMIC_VINE_API_KEY,
-    format: "json",
-    resources: "issue",
-    query,
-    limit: "20",
-  });
-  return `${COMIC_VINE_BASE}/search/?${params.toString()}`;
+function buildComicVineProxySearchUrl(query: string, limit = 20): string {
+  if (!COMIC_VINE_PROXY_URL) throw new Error("COMICVINE_PROXY_MISSING: EXPO_PUBLIC_COMICVINE_PROXY_URL is not configured.");
+  const normalizedBase = COMIC_VINE_PROXY_URL.includes("?") ? COMIC_VINE_PROXY_URL : `${COMIC_VINE_PROXY_URL}?`;
+  const separator = normalizedBase.endsWith("?") || normalizedBase.endsWith("&") ? "" : "&";
+  return `${normalizedBase}${separator}q=${encodeURIComponent(query)}&limit=${encodeURIComponent(String(limit))}`;
 }
 
 function buildSearchUrl(query: string): string {
@@ -269,66 +264,35 @@ function buildSearchUrls(query: string): string[] {
 }
 
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
-  if (COMIC_VINE_API_KEY) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const resp = await fetch(buildComicVineSearchUrl(query), { signal: controller.signal, headers: { Accept: "application/json" } });
-      if (!resp.ok) throw new Error(`ComicVine error: ${resp.status}`);
-      const payload = await resp.json();
-      const results = Array.isArray(payload?.results) ? payload.results : [];
-      const before = docs.length;
-      for (const issue of results) {
-        const doc = comicVineIssueToDoc(issue, query, queryRung);
-        if (!doc?.title) continue;
-        const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
-        if (seen.has(dedupeKey)) continue;
-        seen.add(dedupeKey);
-        docs.push(doc);
-        if (docs.length >= fetchLimit) break;
-      }
-      return { rawCount: Math.max(0, docs.length - before), error: null };
-    } catch (err: any) {
-      return { rawCount: 0, error: String(err?.message || err || "comicvine_search_failed") };
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-  let queryError: string | null = null;
-  let matchedIssueUrls: string[] = [];
-  for (const searchUrl of buildSearchUrls(query)) {
-    try {
-      const html = await fetchTextWithTimeout(searchUrl, timeoutMs);
-      matchedIssueUrls = extractIssueApiUrls(html, fetchLimit);
-      if (matchedIssueUrls.length) break;
-    } catch (err: any) {
-      queryError = String(err?.message || err || "search_fetch_failed");
-    }
-  }
-  if (!matchedIssueUrls.length) return { rawCount: 0, error: queryError };
-
-  const docsBeforeQuery = docs.length;
-  for (const issueUrl of matchedIssueUrls) {
-    try {
-      const issue = await fetchJsonWithTimeout(issueUrl, timeoutMs);
-      const doc = gcdIssueToDoc(issue, query, queryRung);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(buildComicVineProxySearchUrl(query, 20), { signal: controller.signal, headers: { Accept: "application/json" } });
+    if (!resp.ok) throw new Error(`ComicVine error: ${resp.status}`);
+    const payload = await resp.json();
+    const results = Array.isArray(payload?.results) ? payload.results : [];
+    const before = docs.length;
+    for (const issue of results) {
+      const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (!doc?.title) continue;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
       docs.push(doc);
       if (docs.length >= fetchLimit) break;
-    } catch (err: any) {
-      queryError = queryError || String(err?.message || err || "issue_fetch_failed");
     }
+    return { rawCount: Math.max(0, docs.length - before), error: null };
+  } catch (err: any) {
+    return { rawCount: 0, error: String(err?.message || err || "comicvine_search_failed") };
+  } finally {
+    clearTimeout(timer);
   }
-  return { rawCount: Math.max(0, docs.length - docsBeforeQuery), error: queryError };
 }
 
 async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
   const probeQuery = "batman";
-  const probeUrl = COMIC_VINE_API_KEY ? buildComicVineSearchUrl(probeQuery) : buildProxyUrl(buildSearchUrl(probeQuery));
-  if (!hasLoggedProbeProxyUrl && !COMIC_VINE_API_KEY) {
+  const probeUrl = buildComicVineProxySearchUrl(probeQuery);
+  if (!hasLoggedProbeProxyUrl) {
     hasLoggedProbeProxyUrl = true;
     console.log("[GCD DEBUG] Proxied probe URL", probeUrl);
   }
@@ -365,7 +329,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     }
     return {
       engineId: "gcd",
-      engineLabel: COMIC_VINE_API_KEY ? "ComicVine" : "Grand Comics Database",
+      engineLabel: "ComicVine",
       deckKey,
       domainMode,
       builtFromQuery: "",
@@ -437,7 +401,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
 
   return {
     engineId: "gcd",
-    engineLabel: COMIC_VINE_API_KEY ? "ComicVine" : "Grand Comics Database",
+    engineLabel: "ComicVine",
     deckKey,
     domainMode,
     builtFromQuery,
