@@ -4173,6 +4173,15 @@ const normalizedCandidatesRaw = [
     sourceSkippedReason,
     comicVineAdapterStatus,
     debugRouterVersion,
+    routerResultTracePresent: true,
+    routerResultKeys: [
+      "debugComicVineDispatchTrace",
+      "debugGcdDispatchTrace",
+      "sourceEnabled",
+      "debugRouterVersion",
+      "debugSourceStats",
+      "builtFromQuery",
+    ],
     debugGcdDispatchTrace: debugComicVineDispatchTrace,
     debugComicVineDispatchTrace,
   } as RecommendationResult;

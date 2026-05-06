@@ -64,6 +64,8 @@ export type RecommendationResult = {
     gcdFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
   };
   debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
+  routerResultTracePresent?: boolean;
+  routerResultKeys?: string[];
   engineId: EngineId;
   engineLabel: string;
   deckKey: DeckKey;

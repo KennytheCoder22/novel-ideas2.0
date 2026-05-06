@@ -932,6 +932,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastSourceSkippedReason, setLastSourceSkippedReason] = useState<string[]>([]);
   const [lastDebugRouterVersion, setLastDebugRouterVersion] = useState<string>("");
   const [lastDebugGcdDispatchTrace, setLastDebugGcdDispatchTrace] = useState<any | null>(null);
+  const [lastRouterResultTracePresent, setLastRouterResultTracePresent] = useState<boolean>(false);
+  const [lastRouterResultKeys, setLastRouterResultKeys] = useState<string[]>([]);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -1534,6 +1536,8 @@ function handleLeft() {
       setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
       setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comicvine-proxy-default-v1");
+      setLastRouterResultTracePresent(Boolean((result as any)?.routerResultTracePresent));
+      setLastRouterResultKeys(Object.keys((result as any) || {}));
       const incomingTrace = (result as any)?.debugComicVineDispatchTrace || (result as any)?.debugGcdDispatchTrace;
       const fallbackTrace = {
         traceSource: "fallback" as const,
@@ -1969,6 +1973,8 @@ function handleLeft() {
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
+      `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,
+      `routerResultKeys:${lastRouterResultKeys.length ? lastRouterResultKeys.join(", ") : "(none)"}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
       `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
