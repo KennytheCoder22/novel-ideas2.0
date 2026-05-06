@@ -725,6 +725,10 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 }
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
+  return resolveKitsuEligibility(input).eligible;
+}
+
+function resolveKitsuEligibility(input: RecommenderInput): { eligible: boolean; likedAnimeMangaCount: number; skippedAnimeMangaCount: number } {
   const sourceEnabled = resolveSourceEnabled(input);
   return sourceEnabled.kitsu;
 }
