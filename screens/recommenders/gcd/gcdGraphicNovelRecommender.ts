@@ -438,3 +438,5 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ],
   };
 }
+
+export const getComicVineGraphicNovelRecommendations = getGcdGraphicNovelRecommendations;

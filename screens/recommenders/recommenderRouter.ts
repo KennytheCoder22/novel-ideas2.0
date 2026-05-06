@@ -27,6 +27,10 @@ import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey
 
 export type EngineOverride = EngineId | "auto";
 
+if (typeof getComicVineGraphicNovelRecommendations !== "function") {
+  throw new Error("COMICVINE_RECOMMENDER_IMPORT_INVALID: getComicVineGraphicNovelRecommendations must be a function.");
+}
+
 type RecommenderDebugSourceStats = {
   rawFetched: number;
   postFilterCandidates: number;
