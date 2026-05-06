@@ -2578,7 +2578,7 @@ export async function getRecommendations(
       sourceSkippedReason,
     });
   }
-  const debugRouterVersion = "router-comics-diagnostics-v2";
+  const debugRouterVersion = "router-comicvine-proxy-default-v1";
   if (sourceEnabled.comicVine && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [

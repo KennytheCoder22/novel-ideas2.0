@@ -1533,7 +1533,7 @@ function handleLeft() {
       setLastFinalRecommenderDebug((result as any)?.debugFinalRecommender || null);
       setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
-      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comics-diagnostics-v2");
+      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comicvine-proxy-default-v1");
       setLastDebugGcdDispatchTrace((result as any)?.debugGcdDispatchTrace || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
@@ -1960,7 +1960,7 @@ function handleLeft() {
       `sourceEnabled.kitsu:${Boolean(lastSourceEnabled?.kitsu)}`,
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
-      `debugRouterVersion:${lastDebugRouterVersion || "router-comics-diagnostics-v2"}`,
+      `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugComicVineDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
