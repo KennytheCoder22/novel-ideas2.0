@@ -27,6 +27,10 @@ import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey
 
 export type EngineOverride = EngineId | "auto";
 
+if (typeof getComicVineGraphicNovelRecommendations !== "function") {
+  throw new Error("COMICVINE_RECOMMENDER_IMPORT_INVALID: getComicVineGraphicNovelRecommendations must be a function.");
+}
+
 type RecommenderDebugSourceStats = {
   rawFetched: number;
   postFilterCandidates: number;
@@ -80,8 +84,10 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
   const gcdEnabledByAdmin = config?.comicVine !== false;
-  const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
+  const comicVineApiKey = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
+  const comicVineKeyDetected = Boolean(comicVineApiKey);
   const gcdEnabled = process.env.NODE_ENV === "production" ? (comicVineKeyDetected && gcdEnabledByAdmin) : gcdEnabledByAdmin;
+
   return {
     googleBooks: config?.googleBooks !== false,
     openLibrary: config?.openLibrary !== false,
@@ -2535,9 +2541,14 @@ export async function getRecommendations(
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
-  const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
-  const comicVineEnvVarPresent = comicVineKeyDetected;
-  const comicVineEnabledRuntime = Boolean(comicVineKeyDetected && sourceEnabled.comicVine);
+  const comicVineProxyUrlRaw = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL ?? "").trim();
+  const normalizedComicVineProxyUrl = comicVineProxyUrlRaw && comicVineProxyUrlRaw !== "undefined" && comicVineProxyUrlRaw !== "null"
+    ? comicVineProxyUrlRaw
+    : "/api/comicvine";
+  const comicVineProxyUrl = "/api/comicvine";
+  const comicVineKeyDetected = false;
+  const comicVineEnvVarPresent = false;
+  const comicVineEnabledRuntime = Boolean(sourceEnabled.comicVine === true && comicVineProxyUrl);
   if ((routedInput as any)?.sourceEnabled?.comicVine !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
     sourceSkippedReason.push("comicvine_disabled_in_production");
   } else if (!sourceEnabled.comicVine) {
@@ -2573,7 +2584,7 @@ export async function getRecommendations(
       sourceSkippedReason,
     });
   }
-  const debugRouterVersion = "router-comics-diagnostics-v2";
+  const debugRouterVersion = "router-comicvine-proxy-default-v1";
   if (sourceEnabled.comicVine && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
@@ -3189,6 +3200,9 @@ export async function getRecommendations(
   const mergedDocs = dedupeDocs(allMergedDocs);
   const comicVineFetchAttemptedFlag = includeComicVine && mainRungQueriesLength > 0;
   const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && comicVineFetchAttemptedFlag);
+  const proxyHealthError = comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
+  const proxyHealthStatus: "ok" | "failed" | "unknown" =
+    !includeComicVine ? "unknown" : proxyHealthError ? "failed" : "ok";
   const kitsuFetchAttempted = Boolean(includeKitsu);
   if (sourceEnabled.comicVine && includeComicVine && aggregatedRawFetched.comicVine === 0) {
     const missingProxy = comicVineFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_COMICVINE_PROXY_URL"));
@@ -3454,7 +3468,7 @@ export async function getRecommendations(
     googleBooks: googleCandidates.length,
     openLibrary: openLibraryCandidates.length,
     kitsu: kitsuCandidatesRaw.length,
-    comicVine: comicVineCandidates.length,
+    comicVine: gcdCandidates.length,
   });
 
   // Light dedupe for visual shelves.
@@ -4092,7 +4106,7 @@ const normalizedCandidatesRaw = [
     },
     comicVine: {
       rawFetched: includeComicVine ? aggregatedRawFetched.comicVine : 0,
-      postFilterCandidates: includeComicVine ? comicVineCandidates.length : 0,
+      postFilterCandidates: includeComicVine ? gcdCandidates.length : 0,
       finalSelected: rankedCountsBySource.comicVine,
     },
     nyt: {
@@ -4129,31 +4143,16 @@ const normalizedCandidatesRaw = [
     sourceSkippedReason,
     comicVineAdapterStatus,
     debugRouterVersion,
-    debugGcdDispatchTrace: {
-      sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
-      includeComicVine: Boolean(includeComicVine),
-      comicVineEnvVarPresent,
-      comicVineKeyDetected,
-      comicVineEnabledRuntime,
-      kitsuAlwaysFetch: Boolean(sourceEnabled.kitsu),
-      kitsuBridgeMode: Boolean(Number(kitsuEligibility.likedAnimeMangaCount || 0) <= 0),
-      kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
-      likedAnimeMangaCount: Number(kitsuEligibility.likedAnimeMangaCount || 0),
-      skippedAnimeMangaCount: Number(kitsuEligibility.skippedAnimeMangaCount || 0),
-      buildComicVineFacetRungsCalled: Boolean(buildComicVineFacetRungsCalled),
-      kitsuRungsLength: Number(kitsuRungs.length),
-      comicVineRungsLength: Number(comicVineFacetRungs.length),
-      mainRungQueriesLength: Number(mainRungQueriesLength),
-      kitsuFetchAttempted,
-      comicVineFetchAttempted: Boolean(comicVineFetchAttemptedFlag),
-      comicVineFetchAttempted,
-      kitsuQueryTexts: kitsuRungs.map((r) => r.query),
-      kitsuFacetMatchScore: kitsuCandidates.map((c: any) => Number(c?.kitsuFacetMatchScore || 0)),
-      kitsuIncludedBecause: kitsuCandidates.map((c: any) => String(c?.kitsuIncludedBecause || "")),
-      comicVineQueryTexts: Array.from(comicVineQueryTexts).filter(Boolean),
-      comicVineRungsBuilt: Array.from(comicVineRungsBuilt).filter(Boolean),
-      comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched).filter(Boolean),
-      comicVineFetchResults,
-    },
+    routerResultTracePresent: true,
+    routerResultKeys: [
+      "debugComicVineDispatchTrace",
+      "debugGcdDispatchTrace",
+      "sourceEnabled",
+      "debugRouterVersion",
+      "debugSourceStats",
+      "builtFromQuery",
+    ],
+    debugGcdDispatchTrace: debugComicVineDispatchTrace,
+    debugComicVineDispatchTrace,
   } as RecommendationResult;
 }
