@@ -39,6 +39,8 @@ export type RecommendationResult = {
     comicVineKeyDetected?: boolean;
     comicVineEnabledRuntime?: boolean;
     kitsuEligibleFromSwipes?: boolean;
+    kitsuAlwaysFetch?: boolean;
+    kitsuBridgeMode?: boolean;
     likedAnimeMangaCount?: number;
     skippedAnimeMangaCount?: number;
     buildGcdFacetRungsCalled: boolean;
@@ -49,6 +51,8 @@ export type RecommendationResult = {
     gcdFetchAttempted: boolean;
     comicVineFetchAttempted?: boolean;
     kitsuQueryTexts?: string[];
+    kitsuFacetMatchScore?: number[];
+    kitsuIncludedBecause?: string[];
     gcdQueryTexts?: string[];
     gcdRungsBuilt?: string[];
     gcdQueriesActuallyFetched?: string[];

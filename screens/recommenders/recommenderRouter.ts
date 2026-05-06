@@ -730,6 +730,11 @@ function shouldUseKitsu(input: RecommenderInput): boolean {
 
 function resolveKitsuEligibility(input: RecommenderInput): { eligible: boolean; likedAnimeMangaCount: number; skippedAnimeMangaCount: number } {
   const sourceEnabled = resolveSourceEnabled(input);
+  return sourceEnabled.kitsu;
+}
+
+function resolveKitsuEligibility(input: RecommenderInput): { eligible: boolean; likedAnimeMangaCount: number; skippedAnimeMangaCount: number } {
+  const sourceEnabled = resolveSourceEnabled(input);
   if (!sourceEnabled.kitsu) return { eligible: false, likedAnimeMangaCount: 0, skippedAnimeMangaCount: 0 };
   const likedTagCounts = ((input as any)?.likedTagCounts || {}) as Record<string, number>;
   const skippedTagCounts = ((input as any)?.skippedTagCounts || {}) as Record<string, number>;
@@ -2493,8 +2498,7 @@ export async function getRecommendations(
   }
 
   const kitsuEligibility = resolveKitsuEligibility(routedInput);
-  const includeKitsu = kitsuEligibility.eligible;
-  if (sourceEnabled.kitsu && !includeKitsu) sourceSkippedReason.push("kitsuSkippedReason:no_positive_anime_manga_signal");
+  const includeKitsu = shouldUseKitsu(routedInput);
   const includeGcd = shouldUseGcd(routedInput);
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeGcd;
   if (!hasRunnableSource) {
@@ -2928,7 +2932,6 @@ export async function getRecommendations(
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
       if (includeGcd && !gcdAdapterFailed) requests.push(getGcdGraphicNovelRecommendations(laneInput));
-      if (includeGcd) gcdQueryTexts.add("gcd_adapter");
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
@@ -3372,13 +3375,26 @@ export async function getRecommendations(
     gcd: gcdCandidates.length,
   });
 
-  // Light dedupe for visual shelves.
+  const kitsuBridgeMode = Number(kitsuEligibility.likedAnimeMangaCount || 0) <= 0;
+  // Light dedupe for visual shelves + bridge-mode inclusion threshold.
   const seenTitles = new Set<string>();
   const kitsuCandidates = kitsuCandidatesRaw.filter((c) => {
     const title = (c.title || "").toLowerCase().trim();
     if (!title || seenTitles.has(title)) return false;
     seenTitles.add(title);
-    return true;
+    const facetScore = Number(c?.rawDoc?.kitsuFacetMatches ?? c?.kitsuFacetMatches ?? 0);
+    const ratingCount = Number(c?.rawDoc?.kitsuRatingCount ?? c?.ratingCount ?? 0);
+    const popularityRank = Number(c?.rawDoc?.kitsuPopularityRank ?? 999999);
+    const subtype = String(c?.rawDoc?.kitsuSubtype || "").toLowerCase();
+    let score = facetScore * 2 + Math.log10(Math.max(1, ratingCount));
+    if (popularityRank <= 500) score += 1.2;
+    else if (popularityRank <= 2000) score += 0.5;
+    if (!subtype) score -= 0.6;
+    if (subtype === "novel") score -= 1.5;
+    (c as any).kitsuFacetMatchScore = score;
+    (c as any).kitsuIncludedBecause = kitsuBridgeMode ? "bridge_mode_strong_facet_match" : "anime_manga_signal_present";
+    if (kitsuBridgeMode) return score >= 2.4 && facetScore >= 1;
+    return score >= 0.8;
   });
 
   
@@ -3991,6 +4007,8 @@ const normalizedCandidatesRaw = [
       comicVineKeyDetected,
       comicVineEnabledRuntime,
       kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
+      kitsuAlwaysFetch: Boolean(sourceEnabled.kitsu),
+      kitsuBridgeMode: Boolean(kitsuBridgeMode),
       likedAnimeMangaCount: Number(kitsuEligibility.likedAnimeMangaCount || 0),
       skippedAnimeMangaCount: Number(kitsuEligibility.skippedAnimeMangaCount || 0),
       buildGcdFacetRungsCalled: Boolean(buildGcdFacetRungsCalled),
@@ -4001,6 +4019,8 @@ const normalizedCandidatesRaw = [
       gcdFetchAttempted: Boolean(gcdFetchAttempted),
       comicVineFetchAttempted,
       kitsuQueryTexts: kitsuRungs.map((r) => r.query),
+      kitsuFacetMatchScore: kitsuCandidates.slice(0, 12).map((c: any) => Number(c?.kitsuFacetMatchScore ?? 0)),
+      kitsuIncludedBecause: kitsuCandidates.slice(0, 12).map((c: any) => String(c?.kitsuIncludedBecause || "")),
       gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
       gcdRungsBuilt: Array.from(gcdRungsBuilt).filter(Boolean),
       gcdQueriesActuallyFetched: Array.from(gcdQueriesActuallyFetched).filter(Boolean),

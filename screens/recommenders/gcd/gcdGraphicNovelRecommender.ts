@@ -89,6 +89,23 @@ function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[]
   return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 8);
 }
 
+function buildComicVineQueriesFromSemantics(tagCounts: TagCounts | undefined): string[] {
+  const queries: string[] = [];
+  const add = (q: string) => {
+    const n = normalizeText(q);
+    if (n && !queries.includes(n)) queries.push(n);
+  };
+  if (hasFacet(tagCounts, /buffy|vampire|supernatural|teen horror/)) add("buffy comics");
+  if (hasFacet(tagCounts, /stranger things|teen mystery|supernatural mystery/)) add("stranger things comics");
+  if (hasFacet(tagCounts, /dark|horror|spooky|terror|occult/)) add("something is killing the children");
+  if (hasFacet(tagCounts, /dark|horror|spooky|terror|occult/)) add("harrow county");
+  if (hasFacet(tagCounts, /mystery|detective|noir|psychological/)) add("locke and key");
+  if (hasFacet(tagCounts, /supernatural|occult|magic/)) add("hellblazer");
+  add("teen horror comics");
+  add("supernatural mystery comics");
+  return queries.slice(0, 10);
+}
+
 function buildGcdRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
   return queries.map((query, i) => ({
     rung: i,
@@ -273,9 +290,13 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const resp = await fetch(buildComicVineSearchUrl(query), { signal: controller.signal, headers: { Accept: "application/json" } });
+      const targetUrl = buildComicVineSearchUrl(query);
+      const proxiedUrl = buildProxyUrl(targetUrl);
+      console.log("[COMICVINE DEBUG] outbound", JSON.stringify({ query, targetUrl, proxiedUrl }));
+      const resp = await fetch(proxiedUrl, { signal: controller.signal, headers: { Accept: "application/json" } });
       if (!resp.ok) throw new Error(`ComicVine error: ${resp.status}`);
       const payload = await resp.json();
+      console.log("[COMICVINE DEBUG] response", JSON.stringify({ query, status: resp.status, resultCount: Array.isArray(payload?.results) ? payload.results.length : 0 }));
       const results = Array.isArray(payload?.results) ? payload.results : [];
       const before = docs.length;
       for (const issue of results) {
@@ -348,8 +369,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
   await runGcdAdapterPreflight(timeoutMs);
 
-  const directQueries = buildGcdSearchTerms(input.tagCounts);
-  const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
+  const directQueries = COMIC_VINE_API_KEY ? buildComicVineQueriesFromSemantics(input.tagCounts) : buildGcdSearchTerms(input.tagCounts);
+  const facetQueries = COMIC_VINE_API_KEY ? [] : buildComicQueriesFromFacets(input.tagCounts);
   const queriesToTry = Array.from(new Set([...directQueries, ...facetQueries])).slice(0, 10);
   const gcdRungs = buildGcdRungs(queriesToTry);
   const sourceEnabled = (input as any)?.sourceEnabled || {};
