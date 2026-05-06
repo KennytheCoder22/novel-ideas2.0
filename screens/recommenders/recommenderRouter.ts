@@ -91,6 +91,23 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
   };
 }
 
+
+function buildSourceOrigins(config: any): Record<string, string> {
+  return {
+    googleBooks: config?.googleBooks === false ? "explicit_disable" : "default_enabled",
+    openLibrary: config?.openLibrary === false ? "explicit_disable" : "default_enabled",
+    localLibrary: config?.localLibrary === false ? "explicit_disable" : "default_enabled_or_unsupported",
+    kitsu: config?.kitsu === false ? "explicit_disable" : "default_enabled",
+    gcdToggle: config?.gcd === false ? "explicit_disable" : "default_enabled",
+  };
+}
+
+function throwSourceFatal(message: string, payload: Record<string, any>): never {
+  const err: any = new Error(message);
+  err.recommenderDiagnostics = payload;
+  throw err;
+}
+
 function isGoogleQuotaError(reason: unknown): boolean {
   const text = String((reason as any)?.message || reason || "").toLowerCase();
   return text.includes("quota") || text.includes("daily limit") || text.includes("rate limit") || text.includes("429");
@@ -2532,7 +2549,14 @@ export async function getRecommendations(
     );
   }
   if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.gcd) {
-    throw new Error("No enabled recommendation sources");
+    throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED", {
+      sourceEnabled,
+      sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
+      routerFamily,
+      builtQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
+      deckKey: routedInput.deckKey,
+      sourceSkippedReason,
+    });
   }
 
   const kitsuEligibility = resolveKitsuEligibility(routedInput);
@@ -2540,7 +2564,14 @@ export async function getRecommendations(
   const includeGcd = shouldUseGcd(routedInput);
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeGcd;
   if (!hasRunnableSource) {
-    throw new Error("No enabled recommendation sources");
+    throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED_AFTER_SYNTHESIS", {
+      sourceEnabled,
+      sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
+      routerFamily,
+      builtQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
+      deckKey: routedInput.deckKey,
+      sourceSkippedReason,
+    });
   }
   const debugRouterVersion = "router-comics-diagnostics-v2";
   if (sourceEnabled.gcd && !includeGcd) sourceSkippedReason.push("gcd_not_queried_by_router_gate");

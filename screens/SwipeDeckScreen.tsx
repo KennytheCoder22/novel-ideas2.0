@@ -1551,7 +1551,14 @@ function handleLeft() {
         );
       }
     } catch (err: any) {
-      console.log("[NovelIdeas][REC] router_error", { message: err?.message });
+      const diag = (err as any)?.recommenderDiagnostics || null;
+      console.log("[NovelIdeas][REC] router_error", { message: err?.message, diagnostics: diag });
+      if (diag) {
+        if (typeof diag?.builtQuery === "string") setRecQuery(diag.builtQuery);
+        if (diag?.sourceEnabled) setLastSourceEnabled(diag.sourceEnabled);
+        if (Array.isArray(diag?.sourceSkippedReason)) setLastSourceSkippedReason(diag.sourceSkippedReason);
+        setLastDebugGcdDispatchTrace((prev) => ({ ...(prev || {}), preFatalDispatchState: diag }));
+      }
       setRecItems([]);
       setRecError(err?.message || "Recommendation engine could not be reached (network blocked).");
     } finally {
@@ -1936,6 +1943,13 @@ function handleLeft() {
         return `${label}: raw=${stats?.rawFetched ?? 0}, postFilter=${stats?.postFilterCandidates ?? 0}, final=${stats?.finalSelected ?? 0}`;
       })
       .join("\n");
+    const preFatalDispatchState = (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState || null;
+    const reportBuiltQuery = recQuery || (typeof preFatalDispatchState?.builtQuery === "string" ? preFatalDispatchState.builtQuery : "");
+    const reportQueryFamily =
+      inferQueryFamily(reportBuiltQuery) !== "unknown"
+        ? inferQueryFamily(reportBuiltQuery)
+        : (typeof preFatalDispatchState?.routerFamily === "string" ? preFatalDispatchState.routerFamily : "unknown");
+
     const sourceEnabledSummary = [
       `sourceEnabled.googleBooks:${Boolean(lastSourceEnabled?.googleBooks)}`,
       `sourceEnabled.openLibrary:${Boolean(lastSourceEnabled?.openLibrary)}`,
@@ -1974,12 +1988,12 @@ function handleLeft() {
       `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
       `20Q Progress: ${resolvedTwentyQCount}/${twentyQObjectives.length}`,
       `Current 20Q Objective: ${activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung} • ${activeTwentyQObjective.label}` : "complete"}`,
-      `Active query family: ${inferQueryFamily(recQuery)}`,
+      `Active query family: ${reportQueryFamily}`,
       "",
       "SWIPE HISTORY",
       swipeHistoryLines,
       "",
-      `Built Query: ${recQuery || "(none)"}`,
+      `Built Query: ${reportBuiltQuery || "(none)"}`,
       "",
       "RUNG QUERIES",
       rungQueryLines,
