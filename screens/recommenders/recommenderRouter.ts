@@ -80,7 +80,8 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
   const gcdEnabledByAdmin = config?.comicVine !== false;
-  const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
+  const comicVineApiKey = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
+  const comicVineKeyDetected = Boolean(comicVineApiKey);
   const gcdEnabled = process.env.NODE_ENV === "production" ? (comicVineKeyDetected && gcdEnabledByAdmin) : gcdEnabledByAdmin;
   return {
     googleBooks: config?.googleBooks !== false,
@@ -2535,7 +2536,8 @@ export async function getRecommendations(
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
-  const comicVineKeyDetected = Boolean(String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim());
+  const comicVineApiKey = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
+  const comicVineKeyDetected = Boolean(comicVineApiKey);
   const comicVineEnvVarPresent = comicVineKeyDetected;
   const comicVineEnabledRuntime = Boolean(comicVineKeyDetected && sourceEnabled.comicVine);
   if ((routedInput as any)?.sourceEnabled?.comicVine !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
@@ -4135,6 +4137,10 @@ const normalizedCandidatesRaw = [
       comicVineEnvVarPresent,
       comicVineKeyDetected,
       comicVineEnabledRuntime,
+      runtimePlatform: typeof globalThis !== "undefined" && (globalThis as any)?.navigator ? "client" : "server",
+      runtimeEnvironment: comicVineEnvVarPresent ? "client_like" : "server_like",
+      comicVineEnvKeyLength: Number((comicVineApiKey || "").length),
+      comicVineProxyConfigured: Boolean((globalThis as any)?.__COMIC_VINE_PROXY__ || process?.env?.EXPO_PUBLIC_COMIC_VINE_PROXY_URL || process?.env?.COMIC_VINE_PROXY_URL),
       kitsuAlwaysFetch: Boolean(sourceEnabled.kitsu),
       kitsuBridgeMode: Boolean(Number(kitsuEligibility.likedAnimeMangaCount || 0) <= 0),
       kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
@@ -4145,7 +4151,6 @@ const normalizedCandidatesRaw = [
       comicVineRungsLength: Number(comicVineFacetRungs.length),
       mainRungQueriesLength: Number(mainRungQueriesLength),
       kitsuFetchAttempted,
-      comicVineFetchAttempted: Boolean(comicVineFetchAttemptedFlag),
       comicVineFetchAttempted,
       kitsuQueryTexts: kitsuRungs.map((r) => r.query),
       kitsuFacetMatchScore: kitsuCandidates.map((c: any) => Number(c?.kitsuFacetMatchScore || 0)),
