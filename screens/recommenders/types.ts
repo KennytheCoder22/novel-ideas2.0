@@ -34,6 +34,7 @@ export type RecommendationResult = {
   debugRouterVersion?: string;
   debugGcdDispatchTrace?: {
     sourceEnabledComicVine: boolean;
+    traceSource?: "router" | "fallback" | "report-default";
     includeGcd: boolean;
     comicVineEnvVarPresent?: boolean;
     comicVineKeyDetected?: boolean;
@@ -62,6 +63,9 @@ export type RecommendationResult = {
     comicVineQueriesActuallyFetched?: string[];
     gcdFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
   };
+  debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
+  routerResultTracePresent?: boolean;
+  routerResultKeys?: string[];
   engineId: EngineId;
   engineLabel: string;
   deckKey: DeckKey;

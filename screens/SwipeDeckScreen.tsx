@@ -932,6 +932,12 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastSourceSkippedReason, setLastSourceSkippedReason] = useState<string[]>([]);
   const [lastDebugRouterVersion, setLastDebugRouterVersion] = useState<string>("");
   const [lastDebugGcdDispatchTrace, setLastDebugGcdDispatchTrace] = useState<any | null>(null);
+  const [lastRouterResultTracePresent, setLastRouterResultTracePresent] = useState<boolean>(false);
+  const [lastRouterResultKeys, setLastRouterResultKeys] = useState<string[]>([]);
+  const [recommendFunctionCalled, setRecommendFunctionCalled] = useState<boolean>(false);
+  const [recommendFunctionError, setRecommendFunctionError] = useState<string>("");
+  const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
+  const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -1491,6 +1497,10 @@ function handleLeft() {
     setShowRating(false);
 
     const inputWithHistory = buildRecommendationInputWithHistory(input);
+    setRecommendFunctionCalled(true);
+    setRecommendFunctionError("");
+    setRecommendFunctionReturned(false);
+    setRecommendationResultWasPersisted(false);
 
     try {
       const result = await getRecommendations(
@@ -1502,6 +1512,7 @@ function handleLeft() {
         },
         "auto"
       );
+      setRecommendFunctionReturned(true);
 
       console.log("[NovelIdeas] Recommendation source", {
         engineId: (result as any)?.engineId,
@@ -1534,7 +1545,17 @@ function handleLeft() {
       setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
       setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comicvine-proxy-default-v1");
-      setLastDebugGcdDispatchTrace((result as any)?.debugGcdDispatchTrace || null);
+      setLastRouterResultTracePresent(Boolean((result as any)?.routerResultTracePresent));
+      setLastRouterResultKeys(Object.keys((result as any) || {}));
+      const incomingTrace = (result as any)?.debugComicVineDispatchTrace || (result as any)?.debugGcdDispatchTrace;
+      const fallbackTrace = {
+        traceSource: "fallback" as const,
+        sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
+        comicVineProxyUrl: "/api/comicvine",
+        normalizedComicVineProxyUrl: "/api/comicvine",
+        comicVineProxyConfigured: Boolean(sourceEnabled?.comicVine),
+      };
+      setLastDebugGcdDispatchTrace(incomingTrace ? { ...incomingTrace, traceSource: incomingTrace?.traceSource || "router" } : fallbackTrace);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
@@ -1542,6 +1563,7 @@ function handleLeft() {
       const normalizedItems = normalizeRecommendationItems(result.items);
       if (normalizedItems.length > 0) {
         rememberRecommendations(input.deckKey, normalizedItems);
+        setRecommendationResultWasPersisted(true);
         setRecItems(normalizedItems);
         setRecError(null);
       } else {
@@ -1551,6 +1573,7 @@ function handleLeft() {
         );
       }
     } catch (err: any) {
+      setRecommendFunctionError(String(err?.message || err || "recommendation_call_failed"));
       const diag = (err as any)?.recommenderDiagnostics || null;
       console.log("[NovelIdeas][REC] router_error", { message: err?.message, diagnostics: diag });
       if (diag) {
@@ -1961,7 +1984,14 @@ function handleLeft() {
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
+      `recommendFunctionCalled:${Boolean(recommendFunctionCalled)}`,
+      `recommendFunctionReturned:${Boolean(recommendFunctionReturned)}`,
+      `recommendationResultWasPersisted:${Boolean(recommendationResultWasPersisted)}`,
+      `recommendFunctionError:${recommendFunctionError || "(none)"}`,
+      `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,
+      `routerResultKeys:${lastRouterResultKeys.length ? lastRouterResultKeys.join(", ") : "(none)"}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
+      `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugComicVineDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
       `debugComicVineDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnabledRuntime)}`,
@@ -1988,6 +2018,9 @@ function handleLeft() {
       `comicVineQueriesActuallyFetched:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueriesActuallyFetched) && lastDebugGcdDispatchTrace.comicVineQueriesActuallyFetched.length ? lastDebugGcdDispatchTrace.comicVineQueriesActuallyFetched.join(" | ") : "(none)"}`,
       `comicVineFetchResults:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineFetchResults) && lastDebugGcdDispatchTrace.comicVineFetchResults.length ? lastDebugGcdDispatchTrace.comicVineFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
     ].join("\n");
+    if (Boolean(lastSourceEnabled?.comicVine) && String(lastDebugGcdDispatchTrace?.traceSource || "report-default") === "report-default") {
+      console.warn("ROUTER_TRACE_MISSING_FROM_RESULT_STATE");
+    }
 
     const report = [
       "SESSION REPORT",
