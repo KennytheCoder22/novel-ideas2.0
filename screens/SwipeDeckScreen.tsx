@@ -934,6 +934,10 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastDebugGcdDispatchTrace, setLastDebugGcdDispatchTrace] = useState<any | null>(null);
   const [lastRouterResultTracePresent, setLastRouterResultTracePresent] = useState<boolean>(false);
   const [lastRouterResultKeys, setLastRouterResultKeys] = useState<string[]>([]);
+  const [recommendFunctionCalled, setRecommendFunctionCalled] = useState<boolean>(false);
+  const [recommendFunctionError, setRecommendFunctionError] = useState<string>("");
+  const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
+  const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -1493,6 +1497,10 @@ function handleLeft() {
     setShowRating(false);
 
     const inputWithHistory = buildRecommendationInputWithHistory(input);
+    setRecommendFunctionCalled(true);
+    setRecommendFunctionError("");
+    setRecommendFunctionReturned(false);
+    setRecommendationResultWasPersisted(false);
 
     try {
       const result = await getRecommendations(
@@ -1504,6 +1512,7 @@ function handleLeft() {
         },
         "auto"
       );
+      setRecommendFunctionReturned(true);
 
       console.log("[NovelIdeas] Recommendation source", {
         engineId: (result as any)?.engineId,
@@ -1554,6 +1563,7 @@ function handleLeft() {
       const normalizedItems = normalizeRecommendationItems(result.items);
       if (normalizedItems.length > 0) {
         rememberRecommendations(input.deckKey, normalizedItems);
+        setRecommendationResultWasPersisted(true);
         setRecItems(normalizedItems);
         setRecError(null);
       } else {
@@ -1563,6 +1573,7 @@ function handleLeft() {
         );
       }
     } catch (err: any) {
+      setRecommendFunctionError(String(err?.message || err || "recommendation_call_failed"));
       const diag = (err as any)?.recommenderDiagnostics || null;
       console.log("[NovelIdeas][REC] router_error", { message: err?.message, diagnostics: diag });
       if (diag) {
@@ -1973,6 +1984,10 @@ function handleLeft() {
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
+      `recommendFunctionCalled:${Boolean(recommendFunctionCalled)}`,
+      `recommendFunctionReturned:${Boolean(recommendFunctionReturned)}`,
+      `recommendationResultWasPersisted:${Boolean(recommendationResultWasPersisted)}`,
+      `recommendFunctionError:${recommendFunctionError || "(none)"}`,
       `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,
       `routerResultKeys:${lastRouterResultKeys.length ? lastRouterResultKeys.join(", ") : "(none)"}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
