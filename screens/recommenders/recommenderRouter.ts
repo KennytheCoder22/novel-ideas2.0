@@ -725,7 +725,8 @@ function teenVisualSignalWeight(tagCounts: RecommenderInput["tagCounts"] | undef
 }
 
 function shouldUseKitsu(input: RecommenderInput): boolean {
-  return resolveKitsuEligibility(input).eligible;
+  const sourceEnabled = resolveSourceEnabled(input);
+  return sourceEnabled.kitsu;
 }
 
 function resolveKitsuEligibility(input: RecommenderInput): { eligible: boolean; likedAnimeMangaCount: number; skippedAnimeMangaCount: number } {
@@ -740,6 +741,37 @@ function resolveKitsuEligibility(input: RecommenderInput): { eligible: boolean; 
   const likedNonAnimeMediaCount = Object.entries(likedTagCounts).reduce((n, [k, v]) => n + (mediaLikeRe.test(String(k).toLowerCase()) && !animeRe.test(String(k).toLowerCase()) ? Number(v || 0) : 0), 0);
   const eligible = likedAnimeMangaCount > 0 && likedAnimeMangaCount >= likedNonAnimeMediaCount;
   return { eligible, likedAnimeMangaCount, skippedAnimeMangaCount };
+}
+
+function kitsuFacetMatchScore(candidate: any, input: RecommenderInput): { score: number; reasons: string[]; weakOverlap: boolean } {
+  const text = `${candidate?.title || ""} ${candidate?.description || ""} ${candidate?.rawDoc?.description || ""} ${(candidate?.subjects || []).join(" ")} ${(candidate?.tags || []).join(" ")}`.toLowerCase();
+  const likedTags = Object.entries((((input as any)?.likedTagCounts || {}) as Record<string, number>))
+    .filter(([, v]) => Number(v || 0) > 0)
+    .map(([k]) => String(k || "").toLowerCase());
+  const candidateTerms = [
+    { key: "dark", re: /dark|grim|bleak|brooding|violent/ },
+    { key: "fast-paced", re: /fast|action|battle|intense|high stakes/ },
+    { key: "friendship", re: /friendship|friends|found family|companionship/ },
+    { key: "survival", re: /survival|apocalypse|endurance|last stand/ },
+    { key: "mystery", re: /mystery|detective|investigation|secrets?/ },
+    { key: "school", re: /school|academy|classroom|high school|student/ },
+    { key: "identity", re: /identity|self|belonging|outsider|transformation/ },
+    { key: "hopeful", re: /hopeful|uplifting|inspiring|optimistic/ },
+  ];
+  let score = 0;
+  const reasons: string[] = [];
+  for (const term of candidateTerms) {
+    const tagSignal = likedTags.some((t) => term.re.test(t));
+    const textSignal = term.re.test(text);
+    if (tagSignal && textSignal) {
+      score += 2.2;
+      reasons.push(`facet:${term.key}`);
+    } else if (textSignal) {
+      score += 0.9;
+    }
+  }
+  const weakOverlap = reasons.length === 0;
+  return { score, reasons, weakOverlap };
 }
 
 function buildKitsuRungs(tagCounts: RecommenderInput["tagCounts"] | undefined): Array<{ rung: number; query: string; source: EngineId }> {
@@ -760,6 +792,17 @@ function buildKitsuRungs(tagCounts: RecommenderInput["tagCounts"] | undefined): 
   add("anime");
   add("popular anime");
   return queries.slice(0, 6).map((query, index) => ({ rung: 500 + index, query, source: "kitsu" }));
+}
+
+function dedupeRungs<T extends { query?: string }>(rungs: T[]): T[] {
+  const seen = new Set<string>();
+  return rungs.filter((r) => {
+    const q = String(r?.query || "").trim().toLowerCase().replace(/\s+/g, " ");
+    if (!q) return false;
+    if (seen.has(q)) return false;
+    seen.add(q);
+    return true;
+  });
 }
 
 function shouldUseGcd(input: RecommenderInput): boolean {
@@ -2493,8 +2536,7 @@ export async function getRecommendations(
   }
 
   const kitsuEligibility = resolveKitsuEligibility(routedInput);
-  const includeKitsu = kitsuEligibility.eligible;
-  if (sourceEnabled.kitsu && !includeKitsu) sourceSkippedReason.push("kitsuSkippedReason:no_positive_anime_manga_signal");
+  const includeKitsu = sourceEnabled.kitsu;
   const includeGcd = shouldUseGcd(routedInput);
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeGcd;
   if (!hasRunnableSource) {
@@ -2636,6 +2678,8 @@ export async function getRecommendations(
   if (gcdFacetRungs.length) {
     rungs = [...gcdFacetRungs, ...rungs];
   }
+
+  rungs = dedupeRungs(rungs as any);
 
   if (!rungs.length && routerFamily === "mystery") {
     rungs = [
@@ -3188,7 +3232,17 @@ export async function getRecommendations(
     const hasAuthor = Boolean(doc?.author || (Array.isArray(doc?.author_name) && doc.author_name.length));
     const sparse = !doc?.hasCover && (!doc?.description || String(doc.description).trim().length < 35) && ratings <= 0 && editions <= 1;
     if (sparse && !hasAuthor) return false;
-    if (/\b(best of|year's best|anthology|collection|journal|magazine|reference)\b/.test(text)) return false;
+    if (/\b(best of|year's best|anthology|collection|journal|magazine|reference|library of congress subject headings|poetics of|principles of psychology|catalog|criticism|companion|study guide|handbook)\b/.test(text)) return false;
+    return true;
+  });
+  candidateDocs = candidateDocs.filter((doc: any) => {
+    const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+    if (/\b(huckleberry finn|anne of green gables|moby dick|les misérables|les miserables)\b/.test(text)) {
+      const source = String(doc?.source || "").toLowerCase();
+      const onLane = /\b(young adult|ya|teen|dark fantasy|survival|dystopian|mystery|thriller|horror)\b/.test(text);
+      if (source.includes("open") && !onLane) return false;
+    }
+    if (/\b(library of congress subject headings|catalogue?|bibliograph|literary criticism|reader's guide|teachers? guide|study of)\b/.test(text)) return false;
     return true;
   });
   const uniqueQueryTexts = new Set(candidateDocs.map((doc: any) => String(doc?.queryText || doc?.diagnostics?.queryText || "").trim().toLowerCase()).filter(Boolean));
@@ -3374,11 +3428,27 @@ export async function getRecommendations(
 
   // Light dedupe for visual shelves.
   const seenTitles = new Set<string>();
+  const kitsuBridgeMode = Number(kitsuEligibility.likedAnimeMangaCount || 0) <= 0;
+  const kitsuInclusionThreshold = kitsuBridgeMode ? 6.2 : 4.2;
   const kitsuCandidates = kitsuCandidatesRaw.filter((c) => {
     const title = (c.title || "").toLowerCase().trim();
     if (!title || seenTitles.has(title)) return false;
     seenTitles.add(title);
-    return true;
+    const facet = kitsuFacetMatchScore(c, routedInput);
+    const subtype = String(c?.rawDoc?.kitsuSubtype || c?.kitsuSubtype || "").toLowerCase();
+    const popularityRank = Number(c?.rawDoc?.kitsuPopularityRank || c?.kitsuPopularityRank || 999999);
+    const ratingCount = Number(c?.rawDoc?.kitsuRatingCount || c?.kitsuRatingCount || 0);
+    let score = facet.score;
+    if (Number(kitsuEligibility.likedAnimeMangaCount || 0) > 0) score += Math.min(2, Number(kitsuEligibility.likedAnimeMangaCount || 0) * 0.25);
+    if (!subtype) score -= 2.5;
+    if (subtype === "novel") score -= 6;
+    if (facet.weakOverlap) score -= 2.2;
+    if (popularityRank > 25000) score -= 1.5;
+    if (ratingCount < 40) score -= 1.2;
+    (c as any).kitsuFacetMatchScore = score;
+    (c as any).kitsuIncludedBecause = facet.reasons.length ? facet.reasons.join(",") : "no_strong_facet_overlap";
+    (c as any).kitsuBridgeMode = kitsuBridgeMode;
+    return score >= kitsuInclusionThreshold;
   });
 
   
@@ -3727,8 +3797,52 @@ const normalizedCandidatesRaw = [
     return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
   })();
 
+  const applyAuthorSeriesCaps = (docs: any[]): any[] => {
+    const authorCap = 1;
+    const seriesCap = 1;
+    const authorSeen = new Map<string, number>();
+    const seriesSeen = new Map<string, number>();
+    return docs.filter((doc: any) => {
+      const author = String(doc?.author || doc?.author_name?.[0] || doc?.rawDoc?.author || "").trim().toLowerCase();
+      const series = String(doc?.seriesKey || doc?.rawDoc?.seriesKey || doc?.rawDoc?.series || "").trim().toLowerCase();
+      if (author) {
+        const count = authorSeen.get(author) || 0;
+        if (count >= authorCap) return false;
+        authorSeen.set(author, count + 1);
+      }
+      if (series) {
+        const count = seriesSeen.get(series) || 0;
+        if (count >= seriesCap) return false;
+        seriesSeen.set(series, count + 1);
+      }
+      return true;
+    });
+  };
+
+  const laneAndFacetRescore = (doc: any): number => {
+    const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
+    const teenFit = isTeenDeckKey(input.deckKey) && /\b(young adult|ya|teen|high school|coming of age)\b/.test(text) ? 2.5 : 0;
+    const lanePatterns: Record<string, RegExp> = {
+      mystery: /\b(mystery|detective|investigation|whodunit|case)\b/,
+      thriller: /\b(thriller|suspense|manhunt|conspiracy|cat and mouse)\b/,
+      horror: /\b(horror|haunted|occult|monster|nightmare|dread)\b/,
+      fantasy: /\b(fantasy|magic|quest|kingdom|sorcer|dragon)\b/,
+      science_fiction: /\b(science fiction|sci-fi|future|dystopian|space|technology|ai)\b/,
+      historical: /\b(historical|period|victorian|regency|war|empire)\b/,
+      romance: /\b(romance|love|relationship|heartbreak|first love)\b/,
+      general: /\b(novel|fiction|story|character)\b/,
+      speculative: /\b(speculative|uncanny|surreal|alternate world)\b/,
+    };
+    const lanePattern = lanePatterns[routerFamily] || lanePatterns.general;
+    const laneFit = lanePattern.test(text) ? 2.4 : -1.2;
+    const facetHits = (text.match(/\b(dark|fast paced|friendship|survival|mystery|school|identity|hopeful)\b/g) || []).length;
+    return teenFit + laneFit + (facetHits * 0.5) + (candidateScoreValue(doc) * 0.2);
+  };
+
   const finalRankedDocs = (() => {
-    if (!isTeenDeckKey(input.deckKey)) return finalRankedDocsBase;
+    if (!isTeenDeckKey(input.deckKey)) {
+      return applyAuthorSeriesCaps([...finalRankedDocsBase].sort((a: any, b: any) => laneAndFacetRescore(b) - laneAndFacetRescore(a))).slice(0, finalLimit);
+    }
     const teenLaneFamily = inferTeenLaneFromFacets(input.tagCounts, routerFamily);
     const laneLexicon: Record<string, RegExp> = {
       thriller: /\b(thriller|suspense|chase|manhunt|crime|conspiracy|survival)\b/i,
@@ -3809,7 +3923,7 @@ const normalizedCandidatesRaw = [
     take(pools.general, finalLimit);
 
     const authorSeen = new Map<string, number>();
-    const finalTeen = out
+    const finalTeen = applyAuthorSeriesCaps(out)
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         const text = `${title} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`;
@@ -3990,6 +4104,8 @@ const normalizedCandidatesRaw = [
       comicVineEnvVarPresent,
       comicVineKeyDetected,
       comicVineEnabledRuntime,
+      kitsuAlwaysFetch: Boolean(sourceEnabled.kitsu),
+      kitsuBridgeMode: Boolean(Number(kitsuEligibility.likedAnimeMangaCount || 0) <= 0),
       kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
       likedAnimeMangaCount: Number(kitsuEligibility.likedAnimeMangaCount || 0),
       skippedAnimeMangaCount: Number(kitsuEligibility.skippedAnimeMangaCount || 0),
@@ -4001,6 +4117,8 @@ const normalizedCandidatesRaw = [
       gcdFetchAttempted: Boolean(gcdFetchAttempted),
       comicVineFetchAttempted,
       kitsuQueryTexts: kitsuRungs.map((r) => r.query),
+      kitsuFacetMatchScore: kitsuCandidates.map((c: any) => Number(c?.kitsuFacetMatchScore || 0)),
+      kitsuIncludedBecause: kitsuCandidates.map((c: any) => String(c?.kitsuIncludedBecause || "")),
       gcdQueryTexts: Array.from(gcdQueryTexts).filter(Boolean),
       gcdRungsBuilt: Array.from(gcdRungsBuilt).filter(Boolean),
       gcdQueriesActuallyFetched: Array.from(gcdQueriesActuallyFetched).filter(Boolean),
