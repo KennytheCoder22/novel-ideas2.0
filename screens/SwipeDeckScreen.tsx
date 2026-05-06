@@ -1955,6 +1955,8 @@ function handleLeft() {
       `debugComicDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugComicDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugComicDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugComicDispatchTrace?.comicVineKeyDetected)}`,
       `debugComicDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugComicDispatchTrace?.comicVineEnabledRuntime)}`,
+      `debugComicDispatchTrace.comicVineGating:${JSON.stringify(lastDebugComicDispatchTrace?.sourceResolutionDiagnostics?.comicVineGating || {})}`,
+      `debugComicDispatchTrace.sourceOrigins:${JSON.stringify(lastDebugComicDispatchTrace?.sourceResolutionDiagnostics?.sourceOrigins || {})}`,
       `kitsuEligibleFromSwipes:${Boolean(lastDebugComicDispatchTrace?.kitsuEligibleFromSwipes)}`,
       `likedAnimeMangaCount:${Number(lastDebugComicDispatchTrace?.likedAnimeMangaCount || 0)}`,
       `skippedAnimeMangaCount:${Number(lastDebugComicDispatchTrace?.skippedAnimeMangaCount || 0)}`,

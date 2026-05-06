@@ -91,6 +91,34 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
   };
 }
 
+function buildSourceResolutionDiagnostics(input: RecommenderInput) {
+  const config = (input as any)?.sourceEnabled || {};
+  const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
+  const comicVineKeyRaw = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
+  const comicVineKeyDetected = Boolean(comicVineKeyRaw);
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    configRaw: config,
+    localLibrarySupported,
+    isProduction,
+    sourceOrigins: {
+      googleBooks: config?.googleBooks === false ? "explicit_disable" : "default_enabled",
+      openLibrary: config?.openLibrary === false ? "explicit_disable" : "default_enabled",
+      localLibrary: !localLibrarySupported ? "unsupported" : (config?.localLibrary === false ? "explicit_disable" : "default_enabled"),
+      kitsu: config?.kitsu === false ? "explicit_disable" : "default_enabled",
+      gcdToggle: config?.gcd === false ? "explicit_disable" : "default_enabled",
+    },
+    comicVineGating: {
+      envVarName: "EXPO_PUBLIC_COMICVINE_API_KEY",
+      envVarPresent: comicVineKeyDetected,
+      nodeEnv: process.env.NODE_ENV || "unknown",
+      gatingRule: isProduction ? "requires_env_var_and_toggle" : "toggle_only",
+      toggleEnabledByConfig: config?.gcd !== false,
+      resolvedEnabled: isProduction ? (comicVineKeyDetected && config?.gcd !== false) : (config?.gcd !== false),
+    },
+  };
+}
+
 function isGoogleQuotaError(reason: unknown): boolean {
   const text = String((reason as any)?.message || reason || "").toLowerCase();
   return text.includes("quota") || text.includes("daily limit") || text.includes("rate limit") || text.includes("429");
@@ -2366,6 +2394,7 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
 
   const routedInput: RecommenderInput =
     domainModeOverride === input.domainModeOverride ? input : { ...input, domainModeOverride };
+  const sourceResolutionDiagnostics = buildSourceResolutionDiagnostics(routedInput);
 
   if (engine === "openLibrary") {
     debugRouterLog("SENDING QUERIES TO OPEN LIBRARY", {
@@ -2488,18 +2517,13 @@ export async function getRecommendations(
       routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported"
     );
   }
-  if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.gcd) {
-    throw new Error("No enabled recommendation sources");
-  }
-
   const kitsuEligibility = computeKitsuEligibilityFromInput(routedInput);
   const includeKitsu = kitsuEligibility.eligible;
   if (sourceEnabled.kitsu && !includeKitsu) sourceSkippedReason.push("kitsuSkippedReason:no_positive_anime_manga_signal");
   const includeComicVine = shouldUseGcd(routedInput);
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine;
-  if (!hasRunnableSource) {
-    throw new Error("No enabled recommendation sources");
-  }
+  // Do not abort query synthesis when sources are disabled; defer source-fatal checks until after
+  // bucket/rung generation diagnostics are captured.
   const debugRouterVersion = "router-comics-diagnostics-v2";
   if (sourceEnabled.gcd && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
@@ -2830,8 +2854,24 @@ export async function getRecommendations(
 
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
   const mainRungQueriesLength = rungQueries.length;
+  const builtQueryCandidate = String(
+    bucketPlan.preview ||
+    bucketPlan.queries?.[0] ||
+    rungs[0]?.query ||
+    ""
+  ).trim();
+  const completed20Q = hasStrong20QSession(routedInput);
+  if (completed20Q && !builtQueryCandidate) {
+    throw new Error(
+      `SESSION_FATAL_QUERY_SYNTHESIS_EMPTY_AFTER_20Q: family=${routerFamily} completed20Q=${completed20Q} sourceEnabled=${JSON.stringify(sourceEnabled)} gating=${JSON.stringify(sourceResolutionDiagnostics?.comicVineGating || {})}`
+    );
+  }
+  if (!hasRunnableSource) {
+    throw new Error(
+      `SESSION_FATAL_ALL_SOURCES_DISABLED_AFTER_SYNTHESIS: family=${routerFamily} builtQuery=${builtQueryCandidate || "(none)"} sourceEnabled=${JSON.stringify(sourceEnabled)} origins=${JSON.stringify(sourceResolutionDiagnostics?.sourceOrigins || {})}`
+    );
+  }
   if (sourceEnabled.gcd && rungQueries.length === 0) {
-    const completed20Q = hasStrong20QSession(routedInput);
     throw new Error(
       `COMICVINE_ENABLED_WITHOUT_RUNG_QUERIES: family=${routerFamily} completed20Q=${completed20Q} sourceEnabled=${JSON.stringify(sourceEnabled)}`
     );
@@ -4006,6 +4046,7 @@ const normalizedCandidatesRaw = [
       gcdRungsBuilt: Array.from(gcdRungsBuilt).filter(Boolean),
       gcdQueriesActuallyFetched: Array.from(gcdQueriesActuallyFetched).filter(Boolean),
       comicVineFetchResults,
+      sourceResolutionDiagnostics,
     },
   } as RecommendationResult;
 }
