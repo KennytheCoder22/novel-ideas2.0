@@ -4,8 +4,8 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const target = String(searchParams.get("url") || "").trim();
     if (!target) return Response.json({ error: "Missing url param" }, { status: 400 });
-    if (!/^https:\/\/www\.comics\.org\//i.test(target)) {
-      return Response.json({ error: "Target must be https://www.comics.org/*" }, { status: 400 });
+    if (!/^https:\/\/(www\.comics\.org|comicvine\.gamespot\.com)\//i.test(target)) {
+      return Response.json({ error: "Target must be https://www.comics.org/* or https://comicvine.gamespot.com/*" }, { status: 400 });
     }
 
     const upstream = await fetch(target, {
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     });
 
     const body = await upstream.text();
-    console.log("[GCD PROXY]", JSON.stringify({ status: upstream.status, target, ms: Date.now() - start }));
+    console.log("[GCD PROXY]", JSON.stringify({ status: upstream.status, target, ms: Date.now() - start, bodySnippet: body.slice(0, 180) }));
 
     return new Response(body, {
       status: upstream.status,

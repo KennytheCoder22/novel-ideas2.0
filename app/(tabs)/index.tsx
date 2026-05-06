@@ -1017,7 +1017,7 @@ setMainThemeKey: (t: ThemeKey) => void;
       <Switch value={props.deckSourceEnabled[dk]?.kitsu !== false} onValueChange={(next) => props.setSourceEnabledForDeck(dk, "kitsu", next)} />
     </View>
     <View style={styles.rowBetween}>
-      <Text style={{ color: props.theme.text, fontWeight: "700" }}>GCD (Comics)</Text>
+      <Text style={{ color: props.theme.text, fontWeight: "700" }}>ComicVine (Comics)</Text>
       <Switch value={props.deckSourceEnabled[dk]?.gcd !== false} onValueChange={(next) => props.setSourceEnabledForDeck(dk, "gcd", next)} />
     </View>
   </View>
