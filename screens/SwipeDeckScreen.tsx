@@ -931,7 +931,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastSourceEnabled, setLastSourceEnabled] = useState(sourceEnabled);
   const [lastSourceSkippedReason, setLastSourceSkippedReason] = useState<string[]>([]);
   const [lastDebugRouterVersion, setLastDebugRouterVersion] = useState<string>("");
-  const [lastDebugGcdDispatchTrace, setLastDebugGcdDispatchTrace] = useState<any | null>(null);
+  const [lastDebugComicDispatchTrace, setLastDebugComicDispatchTrace] = useState<any | null>(null);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -1534,7 +1534,7 @@ function handleLeft() {
       setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
       setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comics-diagnostics-v2");
-      setLastDebugGcdDispatchTrace((result as any)?.debugGcdDispatchTrace || null);
+      setLastDebugComicDispatchTrace((result as any)?.debugComicDispatchTrace || (result as any)?.debugGcdDispatchTrace || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
@@ -1936,33 +1936,43 @@ function handleLeft() {
         return `${label}: raw=${stats?.rawFetched ?? 0}, postFilter=${stats?.postFilterCandidates ?? 0}, final=${stats?.finalSelected ?? 0}`;
       })
       .join("\n");
+    const legacyGcdFallbackActive = Boolean(
+      lastDebugComicDispatchTrace &&
+      !Array.isArray(lastDebugComicDispatchTrace?.comicVineQueryTexts) &&
+      (Array.isArray(lastDebugComicDispatchTrace?.gcdQueryTexts) || Array.isArray(lastDebugComicDispatchTrace?.gcdFetchResults))
+    );
+
     const sourceEnabledSummary = [
       `sourceEnabled.googleBooks:${Boolean(lastSourceEnabled?.googleBooks)}`,
       `sourceEnabled.openLibrary:${Boolean(lastSourceEnabled?.openLibrary)}`,
       `sourceEnabled.localLibrary:${Boolean(lastSourceEnabled?.localLibrary)}`,
       `sourceEnabled.kitsu:${Boolean(lastSourceEnabled?.kitsu)}`,
-      `sourceEnabled.gcd:${Boolean(lastSourceEnabled?.gcd)}`,
+      `sourceEnabled.comicVine(toggle:gcd):${Boolean(lastSourceEnabled?.gcd)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comics-diagnostics-v2"}`,
-      `debugGcdDispatchTrace.sourceEnabledGcd:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledGcd)}`,
-      `debugGcdDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
-      `debugGcdDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
-      `debugGcdDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnabledRuntime)}`,
-      `kitsuEligibleFromSwipes:${Boolean(lastDebugGcdDispatchTrace?.kitsuEligibleFromSwipes)}`,
-      `likedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.likedAnimeMangaCount || 0)}`,
-      `skippedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.skippedAnimeMangaCount || 0)}`,
-      `kitsuRungsLength:${Number(lastDebugGcdDispatchTrace?.kitsuRungsLength || 0)}`,
-      `buildGcdFacetRungsCalled:${Boolean(lastDebugGcdDispatchTrace?.buildGcdFacetRungsCalled)}`,
-      `gcdRungsLength:${Number(lastDebugGcdDispatchTrace?.gcdRungsLength || 0)}`,
-      `mainRungQueriesLength:${Number(lastDebugGcdDispatchTrace?.mainRungQueriesLength || 0)}`,
-      `kitsuFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.kitsuFetchAttempted)}`,
-      `gcdFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.gcdFetchAttempted)}`,
-      `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
-      `kitsuQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.kitsuQueryTexts) && lastDebugGcdDispatchTrace.kitsuQueryTexts.length ? lastDebugGcdDispatchTrace.kitsuQueryTexts.join(" | ") : "(none)"}`,
-      `gcdQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.gcdQueryTexts) && lastDebugGcdDispatchTrace.gcdQueryTexts.length ? lastDebugGcdDispatchTrace.gcdQueryTexts.join(" | ") : "(none)"}`,
-      `gcdRungsBuilt:${Array.isArray(lastDebugGcdDispatchTrace?.gcdRungsBuilt) && lastDebugGcdDispatchTrace.gcdRungsBuilt.length ? lastDebugGcdDispatchTrace.gcdRungsBuilt.join(" | ") : "(none)"}`,
-      `gcdQueriesActuallyFetched:${Array.isArray(lastDebugGcdDispatchTrace?.gcdQueriesActuallyFetched) && lastDebugGcdDispatchTrace.gcdQueriesActuallyFetched.length ? lastDebugGcdDispatchTrace.gcdQueriesActuallyFetched.join(" | ") : "(none)"}`,
-      `gcdFetchResults:${Array.isArray(lastDebugGcdDispatchTrace?.gcdFetchResults) && lastDebugGcdDispatchTrace.gcdFetchResults.length ? lastDebugGcdDispatchTrace.gcdFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
+      `debugComicDispatchTrace.sourceEnabledGcd:${Boolean(lastDebugComicDispatchTrace?.sourceEnabledGcd)}`,
+      `debugComicDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugComicDispatchTrace?.comicVineEnvVarPresent)}`,
+      `debugComicDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugComicDispatchTrace?.comicVineKeyDetected)}`,
+      `debugComicDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugComicDispatchTrace?.comicVineEnabledRuntime)}`,
+      `kitsuEligibleFromSwipes:${Boolean(lastDebugComicDispatchTrace?.kitsuEligibleFromSwipes)}`,
+      `likedAnimeMangaCount:${Number(lastDebugComicDispatchTrace?.likedAnimeMangaCount || 0)}`,
+      `skippedAnimeMangaCount:${Number(lastDebugComicDispatchTrace?.skippedAnimeMangaCount || 0)}`,
+      `kitsuRungsLength:${Number(lastDebugComicDispatchTrace?.kitsuRungsLength || 0)}`,
+      `buildGcdFacetRungsCalled:${Boolean(lastDebugComicDispatchTrace?.buildGcdFacetRungsCalled)}`,
+      `gcdRungsLength:${Number(lastDebugComicDispatchTrace?.gcdRungsLength || 0)}`,
+      `mainRungQueriesLength:${Number(lastDebugComicDispatchTrace?.mainRungQueriesLength || 0)}`,
+      `kitsuFetchAttempted:${Boolean(lastDebugComicDispatchTrace?.kitsuFetchAttempted)}`,
+      `comicVineFetchAttempted:${Boolean(lastDebugComicDispatchTrace?.comicVineFetchAttempted)}`,
+      `kitsuQueryTexts:${Array.isArray(lastDebugComicDispatchTrace?.kitsuQueryTexts) && lastDebugComicDispatchTrace.kitsuQueryTexts.length ? lastDebugComicDispatchTrace.kitsuQueryTexts.join(" | ") : "(none)"}`,
+      `comicVineQueryTexts:${Array.isArray(lastDebugComicDispatchTrace?.comicVineQueryTexts) && lastDebugComicDispatchTrace.comicVineQueryTexts.length ? lastDebugComicDispatchTrace.comicVineQueryTexts.join(" | ") : "(none)"}`,
+      `gcdRungsBuilt:${Array.isArray(lastDebugComicDispatchTrace?.gcdRungsBuilt) && lastDebugComicDispatchTrace.gcdRungsBuilt.length ? lastDebugComicDispatchTrace.gcdRungsBuilt.join(" | ") : "(none)"}`,
+      `gcdQueriesActuallyFetched:${Array.isArray(lastDebugComicDispatchTrace?.gcdQueriesActuallyFetched) && lastDebugComicDispatchTrace.gcdQueriesActuallyFetched.length ? lastDebugComicDispatchTrace.gcdQueriesActuallyFetched.join(" | ") : "(none)"}`,
+      `comicVineFetchResults:${Array.isArray(lastDebugComicDispatchTrace?.comicVineFetchResults) && lastDebugComicDispatchTrace.comicVineFetchResults.length ? lastDebugComicDispatchTrace.comicVineFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
+      ...(legacyGcdFallbackActive ? [
+        `legacyGcdFallbackActive:true`,
+        `legacy.gcdQueryTexts:${Array.isArray(lastDebugComicDispatchTrace?.gcdQueryTexts) && lastDebugComicDispatchTrace.gcdQueryTexts.length ? lastDebugComicDispatchTrace.gcdQueryTexts.join(" | ") : "(none)"}`,
+        `legacy.gcdFetchResults:${Array.isArray(lastDebugComicDispatchTrace?.gcdFetchResults) && lastDebugComicDispatchTrace.gcdFetchResults.length ? lastDebugComicDispatchTrace.gcdFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
+      ] : []),
     ].join("\n");
 
     const report = [
