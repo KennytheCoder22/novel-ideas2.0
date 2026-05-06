@@ -83,40 +83,6 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
   const comicVineApiKey = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
   const comicVineKeyDetected = Boolean(comicVineApiKey);
   const gcdEnabled = process.env.NODE_ENV === "production" ? (comicVineKeyDetected && gcdEnabledByAdmin) : gcdEnabledByAdmin;
-  const debugComicVineDispatchTrace = {
-    sourceEnabledComicVine: Boolean(sourceEnabled.comicVine === true),
-    traceSource: "router" as const,
-    includeComicVine: Boolean(includeComicVine),
-    comicVineEnvVarPresent,
-    comicVineKeyDetected,
-    comicVineEnabledRuntime,
-    runtimePlatform: typeof globalThis !== "undefined" && (globalThis as any)?.navigator ? "client" : "server",
-    runtimeEnvironment: typeof globalThis !== "undefined" && (globalThis as any)?.navigator ? "client_like" : "server_like",
-    comicVineEnvKeyLength: 0,
-    comicVineProxyUrl: comicVineProxyUrl,
-    normalizedComicVineProxyUrl,
-    comicVineProxyConfigured: Boolean(comicVineProxyUrl),
-    comicVineProxyHealthStatus: proxyHealthStatus,
-    comicVineProxyErrorBody: proxyHealthError ? String(proxyHealthError) : undefined,
-    kitsuAlwaysFetch: Boolean(sourceEnabled.kitsu),
-    kitsuBridgeMode: Boolean(Number(kitsuEligibility.likedAnimeMangaCount || 0) <= 0),
-    kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
-    likedAnimeMangaCount: Number(kitsuEligibility.likedAnimeMangaCount || 0),
-    skippedAnimeMangaCount: Number(kitsuEligibility.skippedAnimeMangaCount || 0),
-    buildComicVineFacetRungsCalled: Boolean(buildComicVineFacetRungsCalled),
-    kitsuRungsLength: Number(kitsuRungs.length),
-    comicVineRungsLength: Number(comicVineFacetRungs.length),
-    mainRungQueriesLength: Number(mainRungQueriesLength),
-    kitsuFetchAttempted,
-    comicVineFetchAttempted,
-    kitsuQueryTexts: kitsuRungs.map((r) => r.query),
-    kitsuFacetMatchScore: kitsuCandidates.map((c: any) => Number(c?.kitsuFacetMatchScore || 0)),
-    kitsuIncludedBecause: kitsuCandidates.map((c: any) => String(c?.kitsuIncludedBecause || "")),
-    comicVineQueryTexts: Array.from(comicVineQueryTexts).filter(Boolean),
-    comicVineRungsBuilt: Array.from(comicVineRungsBuilt).filter(Boolean),
-    comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched).filter(Boolean),
-    comicVineFetchResults,
-  };
 
   return {
     googleBooks: config?.googleBooks !== false,
