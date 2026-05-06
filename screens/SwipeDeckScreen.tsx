@@ -1533,7 +1533,7 @@ function handleLeft() {
       setLastFinalRecommenderDebug((result as any)?.debugFinalRecommender || null);
       setLastSourceEnabled((result as any)?.sourceEnabled || sourceEnabled);
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
-      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comics-diagnostics-v2");
+      setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comicvine-proxy-default-v1");
       setLastDebugGcdDispatchTrace((result as any)?.debugGcdDispatchTrace || null);
       setLastRecommendationInput(input);
       setLastRecommendationTimestamp(new Date().toISOString());
@@ -1944,7 +1944,10 @@ function handleLeft() {
       })
       .join("\n");
     const preFatalDispatchState = (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState || null;
-    const reportBuiltQuery = recQuery || (typeof preFatalDispatchState?.builtQuery === "string" ? preFatalDispatchState.builtQuery : "");
+    const reportBuiltQuery =
+      recQuery ||
+      (typeof preFatalDispatchState?.builtQuery === "string" ? preFatalDispatchState.builtQuery : "") ||
+      (Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) ? String(lastDebugGcdDispatchTrace.comicVineQueryTexts[0] || "") : "");
     const reportQueryFamily =
       inferQueryFamily(reportBuiltQuery) !== "unknown"
         ? inferQueryFamily(reportBuiltQuery)
@@ -1957,7 +1960,7 @@ function handleLeft() {
       `sourceEnabled.kitsu:${Boolean(lastSourceEnabled?.kitsu)}`,
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
-      `debugRouterVersion:${lastDebugRouterVersion || "router-comics-diagnostics-v2"}`,
+      `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugComicVineDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
@@ -1965,7 +1968,11 @@ function handleLeft() {
       `debugComicVineDispatchTrace.runtimePlatform:${String(lastDebugGcdDispatchTrace?.runtimePlatform || "unknown")}`,
       `debugComicVineDispatchTrace.runtimeEnvironment:${String(lastDebugGcdDispatchTrace?.runtimeEnvironment || "unknown")}`,
       `debugComicVineDispatchTrace.comicVineEnvKeyLength:${Number(lastDebugGcdDispatchTrace?.comicVineEnvKeyLength || 0)}`,
+      `debugComicVineDispatchTrace.comicVineProxyUrl:${String(lastDebugGcdDispatchTrace?.comicVineProxyUrl || "(none)")}`,
+      `debugComicVineDispatchTrace.normalizedComicVineProxyUrl:${String(lastDebugGcdDispatchTrace?.normalizedComicVineProxyUrl || "(none)")}`,
       `debugComicVineDispatchTrace.comicVineProxyConfigured:${Boolean(lastDebugGcdDispatchTrace?.comicVineProxyConfigured)}`,
+      `debugComicVineDispatchTrace.comicVineProxyHealthStatus:${String(lastDebugGcdDispatchTrace?.comicVineProxyHealthStatus || "unknown")}`,
+      `debugComicVineDispatchTrace.comicVineProxyErrorBody:${String(lastDebugGcdDispatchTrace?.comicVineProxyErrorBody || "(none)")}`,
       `kitsuEligibleFromSwipes:${Boolean(lastDebugGcdDispatchTrace?.kitsuEligibleFromSwipes)}`,
       `likedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.likedAnimeMangaCount || 0)}`,
       `skippedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.skippedAnimeMangaCount || 0)}`,
