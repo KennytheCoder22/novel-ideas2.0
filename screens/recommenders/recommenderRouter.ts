@@ -98,10 +98,12 @@ function buildSourceResolutionDiagnostics(input: RecommenderInput) {
   const comicVineKeyDetected = Boolean(comicVineKeyRaw);
   const isProduction = process.env.NODE_ENV === "production";
   return {
+    diagnosticsVersion: "source-origin-v1",
     configRaw: config,
     localLibrarySupported,
     isProduction,
     sourceOrigins: {
+      diagnosticsVersion: "source-origin-v1",
       googleBooks: config?.googleBooks === false ? "explicit_disable" : "default_enabled",
       openLibrary: config?.openLibrary === false ? "explicit_disable" : "default_enabled",
       localLibrary: !localLibrarySupported ? "unsupported" : (config?.localLibrary === false ? "explicit_disable" : "default_enabled"),
@@ -109,6 +111,7 @@ function buildSourceResolutionDiagnostics(input: RecommenderInput) {
       gcdToggle: config?.gcd === false ? "explicit_disable" : "default_enabled",
     },
     comicVineGating: {
+      diagnosticsVersion: "source-origin-v1",
       envVarName: "EXPO_PUBLIC_COMICVINE_API_KEY",
       envVarPresent: comicVineKeyDetected,
       nodeEnv: process.env.NODE_ENV || "unknown",
@@ -2394,7 +2397,6 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
 
   const routedInput: RecommenderInput =
     domainModeOverride === input.domainModeOverride ? input : { ...input, domainModeOverride };
-  const sourceResolutionDiagnostics = buildSourceResolutionDiagnostics(routedInput);
 
   if (engine === "openLibrary") {
     debugRouterLog("SENDING QUERIES TO OPEN LIBRARY", {
@@ -2498,6 +2500,7 @@ export async function getRecommendations(
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
+  const sourceResolutionDiagnostics = buildSourceResolutionDiagnostics(routedInput);
   const sourceEnabled = resolveSourceEnabled(routedInput);
   const sourceSkippedReason: string[] = [];
   let googleQuotaExhausted = false;
