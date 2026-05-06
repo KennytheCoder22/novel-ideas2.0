@@ -304,7 +304,7 @@ async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
   const probeSeen = new Set<string>();
   const { rawCount, error } = await fetchDocsForQuery(probeQuery, -1, timeoutMs, 6, probeDocs, probeSeen);
   if (rawCount <= 0) {
-    throw new Error(`GCD_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${error || "none"}`);
+    throw new Error(`COMICVINE_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${error || "none"}`);
   }
 }
 

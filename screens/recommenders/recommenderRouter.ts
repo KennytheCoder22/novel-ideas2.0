@@ -3468,7 +3468,7 @@ export async function getRecommendations(
     googleBooks: googleCandidates.length,
     openLibrary: openLibraryCandidates.length,
     kitsu: kitsuCandidatesRaw.length,
-    comicVine: comicVineCandidates.length,
+    comicVine: gcdCandidates.length,
   });
 
   // Light dedupe for visual shelves.
@@ -4106,7 +4106,7 @@ const normalizedCandidatesRaw = [
     },
     comicVine: {
       rawFetched: includeComicVine ? aggregatedRawFetched.comicVine : 0,
-      postFilterCandidates: includeComicVine ? comicVineCandidates.length : 0,
+      postFilterCandidates: includeComicVine ? gcdCandidates.length : 0,
       finalSelected: rankedCountsBySource.comicVine,
     },
     nyt: {
