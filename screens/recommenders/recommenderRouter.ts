@@ -2536,10 +2536,13 @@ export async function getRecommendations(
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
   if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
-  const comicVineProxyUrl = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL || "/api/comicvine").trim();
+  const comicVineProxyUrlRaw = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL ?? "").trim();
+  const comicVineProxyUrl = comicVineProxyUrlRaw && comicVineProxyUrlRaw !== "undefined" && comicVineProxyUrlRaw !== "null"
+    ? comicVineProxyUrlRaw
+    : "/api/comicvine";
   const comicVineKeyDetected = false;
   const comicVineEnvVarPresent = false;
-  const comicVineEnabledRuntime = Boolean(sourceEnabled.comicVine && comicVineProxyUrl);
+  const comicVineEnabledRuntime = Boolean(sourceEnabled.comicVine === true && comicVineProxyUrl);
   if ((routedInput as any)?.sourceEnabled?.comicVine !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
     sourceSkippedReason.push("comicvine_disabled_in_production");
   } else if (!sourceEnabled.comicVine) {
@@ -4135,7 +4138,7 @@ const normalizedCandidatesRaw = [
     comicVineAdapterStatus,
     debugRouterVersion,
     debugGcdDispatchTrace: {
-      sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
+      sourceEnabledComicVine: Boolean(sourceEnabled.comicVine === true),
       includeComicVine: Boolean(includeComicVine),
       comicVineEnvVarPresent,
       comicVineKeyDetected,

@@ -10,7 +10,11 @@ import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
 const GCD_BASE = "https://www.comics.org";
 const GCD_PROXY_URL = String(process.env.EXPO_PUBLIC_GCD_PROXY_URL || "").trim();
-const COMIC_VINE_PROXY_URL = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL || "/api/comicvine").trim();
+const COMIC_VINE_PROXY_URL_RAW = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL ?? "").trim();
+const COMIC_VINE_PROXY_URL =
+  COMIC_VINE_PROXY_URL_RAW && COMIC_VINE_PROXY_URL_RAW !== "undefined" && COMIC_VINE_PROXY_URL_RAW !== "null"
+    ? COMIC_VINE_PROXY_URL_RAW
+    : "/api/comicvine";
 let hasLoggedProbeProxyUrl = false;
 
 function buildProxyUrl(targetUrl: string): string {
