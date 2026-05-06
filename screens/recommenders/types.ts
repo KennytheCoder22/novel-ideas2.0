@@ -41,7 +41,10 @@ export type RecommendationResult = {
     runtimePlatform?: "client" | "server";
     runtimeEnvironment?: "client_like" | "server_like";
     comicVineEnvKeyLength?: number;
+    comicVineProxyUrl?: string;
     comicVineProxyConfigured?: boolean;
+    comicVineProxyHealthStatus?: "ok" | "failed" | "unknown";
+    comicVineProxyErrorBody?: string;
     kitsuEligibleFromSwipes?: boolean;
     likedAnimeMangaCount?: number;
     skippedAnimeMangaCount?: number;

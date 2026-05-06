@@ -3191,6 +3191,9 @@ export async function getRecommendations(
   const mergedDocs = dedupeDocs(allMergedDocs);
   const comicVineFetchAttemptedFlag = includeComicVine && mainRungQueriesLength > 0;
   const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && comicVineFetchAttemptedFlag);
+  const proxyHealthError = comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
+  const proxyHealthStatus: "ok" | "failed" | "unknown" =
+    !includeComicVine ? "unknown" : proxyHealthError ? "failed" : "ok";
   const kitsuFetchAttempted = Boolean(includeKitsu);
   if (sourceEnabled.comicVine && includeComicVine && aggregatedRawFetched.comicVine === 0) {
     const missingProxy = comicVineFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_COMICVINE_PROXY_URL"));
@@ -4140,7 +4143,10 @@ const normalizedCandidatesRaw = [
       runtimePlatform: typeof globalThis !== "undefined" && (globalThis as any)?.navigator ? "client" : "server",
       runtimeEnvironment: typeof globalThis !== "undefined" && (globalThis as any)?.navigator ? "client_like" : "server_like",
       comicVineEnvKeyLength: 0,
+      comicVineProxyUrl: comicVineProxyUrl,
       comicVineProxyConfigured: Boolean(comicVineProxyUrl),
+      comicVineProxyHealthStatus: proxyHealthStatus,
+      comicVineProxyErrorBody: proxyHealthError ? String(proxyHealthError) : undefined,
       kitsuAlwaysFetch: Boolean(sourceEnabled.kitsu),
       kitsuBridgeMode: Boolean(Number(kitsuEligibility.likedAnimeMangaCount || 0) <= 0),
       kitsuEligibleFromSwipes: Boolean(kitsuEligibility.eligible),
