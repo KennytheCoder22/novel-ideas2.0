@@ -1971,7 +1971,6 @@ function handleLeft() {
       `mainRungQueriesLength:${Number(lastDebugGcdDispatchTrace?.mainRungQueriesLength || 0)}`,
       `kitsuFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.kitsuFetchAttempted)}`,
       `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
-      `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
       `kitsuQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.kitsuQueryTexts) && lastDebugGcdDispatchTrace.kitsuQueryTexts.length ? lastDebugGcdDispatchTrace.kitsuQueryTexts.join(" | ") : "(none)"}`,
       `comicVineQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) && lastDebugGcdDispatchTrace.comicVineQueryTexts.length ? lastDebugGcdDispatchTrace.comicVineQueryTexts.join(" | ") : "(none)"}`,
       `comicVineRungsBuilt:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineRungsBuilt) && lastDebugGcdDispatchTrace.comicVineRungsBuilt.length ? lastDebugGcdDispatchTrace.comicVineRungsBuilt.join(" | ") : "(none)"}`,
