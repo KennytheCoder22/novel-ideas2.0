@@ -3287,6 +3287,22 @@ export async function getRecommendations(
     candidateDocs = dedupeDocs([...candidateDocs, ...diversificationBackfill]).slice(0, 60);
     debugRouterLog("DIVERSIFICATION_BACKFILL_APPLIED", { afterCount: candidateDocs.length });
   }
+  if (!candidateDocs.length) {
+    const reflectiveRecoveryPool = enrichedDocs.filter((doc: any) => {
+      const text = `${doc?.title || ""} ${doc?.description || ""} ${(Array.isArray(doc?.subject) ? doc.subject.join(" ") : "")}`.toLowerCase();
+      const isNarrative = /\b(novel|fiction|story|narrative|literary)\b/.test(text);
+      if (!isNarrative) return false;
+      const antiSeries = !/\b(book\s*\d+|volume\s*\d+|series|chronicles|saga)\b/.test(text);
+      const reflectiveTone = /\b(character[-\s]?driven|introspective|reflective|philosophical|atmospheric|melancholic|quiet|human|identity|moral|grief|emotional)\b/.test(text);
+      const franchiseHeavy = /\b(star wars|warhammer|dungeons?\s*&\s*dragons|marvel|dc comics)\b/.test(text);
+      return antiSeries && reflectiveTone && !franchiseHeavy;
+    });
+    candidateDocs = dedupeDocs(reflectiveRecoveryPool).slice(0, 40);
+    debugRouterLog("ZERO_POOL_REFLECTIVE_RECOVERY_APPLIED", {
+      recoveredCount: candidateDocs.length,
+      sourceCount: enrichedDocs.length,
+    });
+  }
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
     fetched: 0,

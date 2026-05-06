@@ -1201,6 +1201,38 @@ function guaranteedGenreFallbacks(signals: QuerySignals): string[] {
   return [];
 }
 
+function upstreamTasteShapeQueries(signals: QuerySignals): string[] {
+  const genres = topKeys(signals.genre, 4);
+  const themes = topKeys(signals.theme, 4);
+  const tones = topKeys(signals.tone, 4);
+  const mood = topKeys(signals.world, 3);
+  const queries: string[] = [];
+
+  const hasCrimeMindspace = genres.some((g) => /\b(crime|mystery|thriller|detective)\b/.test(g)) || themes.some((t) => /\b(investigation|justice|moral)\b/.test(t));
+  const hasConceptMindspace = genres.some((g) => /\b(science fiction|speculative|dystopian)\b/.test(g)) || themes.some((t) => /\b(identity|memory|technology|ethics|consciousness)\b/.test(t));
+  const hasEmotionalMindspace = themes.some((t) => /\b(relationships|human|grief|family|redemption)\b/.test(t)) || tones.some((t) => /\b(emotional|character[-\s]?driven|atmospheric)\b/.test(t));
+  const intentionalTone = tones.some((t) => /\b(stylized|atmospheric|literary|psychological|philosophical)\b/.test(t)) || mood.some((t) => /\b(stylized|grounded|reflective)\b/.test(t));
+
+  const groundedCrimeExpression =
+    themes.some((t) => /\b(investigation|justice|institution|corruption|moral)\b/.test(t)) &&
+    tones.some((t) => /\b(psychological|grounded|serious|character[-\s]?driven)\b/.test(t));
+  const conceptualSpeculativeExpression =
+    hasConceptMindspace &&
+    (themes.some((t) => /\b(identity|memory|technology|ethics|consciousness|relationships)\b/.test(t)) || hasEmotionalMindspace);
+  const antiGenericFantasy = !genres.some((g) => /\b(fantasy|epic fantasy|cozy fantasy)\b/.test(g));
+
+  if (hasCrimeMindspace && groundedCrimeExpression) queries.push("grounded psychological investigation novel");
+  if (hasCrimeMindspace && !groundedCrimeExpression) queries.push("character driven crime investigation novel");
+  if (conceptualSpeculativeExpression) queries.push("emotional high concept speculative fiction novel");
+  if (hasConceptMindspace && intentionalTone) queries.push("literary speculative identity novel");
+  if (hasEmotionalMindspace) queries.push("emotionally complex character driven novel");
+  if (hasCrimeMindspace && hasConceptMindspace) queries.push("grounded conceptual science fiction crime novel");
+  if (hasEmotionalMindspace && intentionalTone) queries.push("atmospheric psychologically rich novel");
+  if (!antiGenericFantasy && conceptualSpeculativeExpression) queries.push("speculative emotional science fiction novel");
+
+  return dedupe(queries);
+}
+
 export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const signals = extractQuerySignals(input);
 
@@ -1235,9 +1267,11 @@ export function buildDescriptiveQueriesFromTaste(input: RecommenderInput) {
   const directTasteQueries = tasteShapedQueries(input, signals);
   const axisDrivenQueries = axisToneAwareQueries(input, signals);
   const hypothesisQueries = queryPacks.flatMap((pack) => compactQueryPack(pack, signals));
+  const upstreamShapeQueries = upstreamTasteShapeQueries(signals);
   const fallback = fallbackQueries(signals);
   const guaranteed = guaranteedGenreFallbacks(signals);
   const generatedQueries = dedupe([
+    ...upstreamShapeQueries,
     ...axisDrivenQueries,
     ...directTasteQueries,
     ...(hypothesisQueries.length ? hypothesisQueries : (fallback.length ? fallback : guaranteed)),
