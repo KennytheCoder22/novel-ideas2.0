@@ -1480,7 +1480,7 @@ function handleLeft() {
       setRecError("No enabled recommendation sources");
       setRecItems([]);
       setLastSourceEnabled(sourceEnabled);
-      setLastSourceSkippedReason(["all_sources_disabled"]);
+      setLastSourceSkippedReason(["SESSION_FAILURE: all fetchers disabled before routing"]);
       return;
     }
 
@@ -1948,6 +1948,7 @@ function handleLeft() {
       `sourceEnabled.localLibrary:${Boolean(lastSourceEnabled?.localLibrary)}`,
       `sourceEnabled.kitsu:${Boolean(lastSourceEnabled?.kitsu)}`,
       `sourceEnabled.comicVine(toggle:gcd):${Boolean(lastSourceEnabled?.gcd)}`,
+      `sourceEnabled.raw:${JSON.stringify(lastSourceEnabled || {})}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comics-diagnostics-v2"}`,
       `debugComicDispatchTrace.sourceEnabledGcd:${Boolean(lastDebugComicDispatchTrace?.sourceEnabledGcd)}`,
@@ -1975,6 +1976,23 @@ function handleLeft() {
       ] : []),
     ].join("\n");
 
+    const sessionFailureReasons: string[] = [];
+    const allFetchersDisabledAtRuntime =
+      !lastSourceEnabled?.googleBooks &&
+      !lastSourceEnabled?.openLibrary &&
+      !lastSourceEnabled?.localLibrary &&
+      !lastSourceEnabled?.kitsu &&
+      !lastSourceEnabled?.gcd;
+    if (allFetchersDisabledAtRuntime) {
+      sessionFailureReasons.push("all_fetchers_disabled_at_runtime");
+    }
+    if (resolvedTwentyQCount >= twentyQObjectives.length && !recQuery) {
+      sessionFailureReasons.push("query_synthesis_failed_built_query_none_after_completed_20q");
+    }
+    if (resolvedTwentyQCount >= twentyQObjectives.length && Number(lastDebugComicDispatchTrace?.mainRungQueriesLength || 0) === 0) {
+      sessionFailureReasons.push("no_rung_queries_built_after_completed_20q");
+    }
+
     const report = [
       "SESSION REPORT",
       `Deck: ${deck.deckLabel}`,
@@ -1999,6 +2017,9 @@ function handleLeft() {
       "",
       "SOURCE SETTINGS",
       sourceEnabledSummary,
+      "",
+      "SESSION FAILURE",
+      sessionFailureReasons.length ? sessionFailureReasons.join("\n") : "(none)",
       "",
       "RAW POOL SUMMARY",
       `count:${rawPoolRows.length}`,

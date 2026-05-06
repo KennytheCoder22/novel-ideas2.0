@@ -2831,7 +2831,10 @@ export async function getRecommendations(
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
   const mainRungQueriesLength = rungQueries.length;
   if (sourceEnabled.gcd && rungQueries.length === 0) {
-    throw new Error("COMICVINE_ENABLED_WITHOUT_RUNG_QUERIES: sourceEnabled.gcd=true but no rung queries were built.");
+    const completed20Q = hasStrong20QSession(routedInput);
+    throw new Error(
+      `COMICVINE_ENABLED_WITHOUT_RUNG_QUERIES: family=${routerFamily} completed20Q=${completed20Q} sourceEnabled=${JSON.stringify(sourceEnabled)}`
+    );
   }
 
   let google: RecommendationResult | null = null;
