@@ -562,18 +562,47 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   const queryFamily = String((c as any)?.queryFamily || (c as any)?.rawDoc?.queryFamily || diagnostics?.queryFamily || "unknown").toLowerCase();
   const queryText = String((c as any)?.queryText || (c as any)?.rawDoc?.queryText || diagnostics?.queryText || "").toLowerCase();
   const genreText = haystack(c);
+  const rawLexicalOverlapCount = Number((c as any)?.diagnostics?.rawLexicalOverlapCount || 0);
+  const semanticOverlapCount = Number((c as any)?.diagnostics?.semanticOverlapCount || 0);
+  const activeTasteOverlapCount = Number((c as any)?.diagnostics?.activeTasteOverlapCount || 0);
+  const rawMatches = Number((c as any)?.diagnostics?.rawMatches ?? (rawLexicalOverlapCount + semanticOverlapCount + activeTasteOverlapCount));
+  const explicitGenreMatch = /horror|thriller|mystery|suspense|psychological|dystopian|speculative|supernatural/.test(genreText);
+  const explicitQueryGenreMatch = /horror|thriller|mystery|suspense|psychological|dystopian|speculative|supernatural/.test(queryText);
+  const titleQueryOverlap = Boolean((c.title || "").toLowerCase().split(/\W+/).filter((t) => t.length > 3).some((t) => queryText.includes(t)));
+  const activeFamilyMatch = queryFamily !== "unknown";
+  const requiredPositiveSignals = [
+    diagnostics?.flags?.thrillerPositive,
+    diagnostics?.flags?.mysteryPositive,
+    diagnostics?.flags?.suspensePositive,
+    diagnostics?.flags?.horrorAligned,
+    diagnostics?.flags?.speculativePositive,
+    titleQueryOverlap,
+    activeTasteOverlapCount > 0,
+    activeFamilyMatch,
+  ].filter(Boolean).length;
   const strongSemanticSignals = [
-    /horror|thriller|mystery|suspense|psychological|dystopian/.test(genreText),
-    /horror|thriller|mystery|suspense|psychological|dystopian/.test(queryText),
+    explicitGenreMatch,
+    explicitQueryGenreMatch,
     queryFamily !== "unknown",
     Number(filterSignals || 0) >= 10,
     Number((c as any)?.diagnostics?.tasteAlignment || 0) > 0.5,
     String(c.description || "").trim().length >= 80,
   ].filter(Boolean).length;
   if (source === "comicvine") {
+    if (queryFamily === "unknown" && rawMatches <= 0 && requiredPositiveSignals === 0) {
+      return { pass: false, reason: "unknown_query_family_finalist", detail: `rawMatches=${rawMatches} requiredPositiveSignals=${requiredPositiveSignals}` };
+    }
+    const hasSoftFailureTriplet =
+      passedChecks.includes("soft_missing_science_fiction_signal") &&
+      passedChecks.includes("soft_lane_mismatch_science_fiction") &&
+      passedChecks.includes("soft_too_many_soft_failures");
+    if (hasSoftFailureTriplet && rawMatches < 2 && !explicitGenreMatch) {
+      return { pass: false, reason: "weak_comicvine_semantic_alignment", detail: "soft-failure triplet without raw or explicit genre support" };
+    }
     const weakUnknownFamily = queryFamily === "unknown";
     const genericTeenQuery = /teen\s+graphic\s+novel\s+graphic\s+novel/.test(queryText);
-    if (genericTeenQuery || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2) {
+    const structuralOnlySignals = requiredPositiveSignals < 2;
+    if (genericTeenQuery || structuralOnlySignals || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2 || (rawMatches === 0 && weakUnknownFamily && requiredPositiveSignals === 0)) {
       return { pass: false, reason: 'weak_comicvine_semantic_alignment', detail: `signals=${strongSemanticSignals} family=${queryFamily} query=${queryText}` };
     }
   }
