@@ -63,6 +63,12 @@ export type RecommendationResult = {
     comicVineRungsBuilt?: string[];
     comicVineQueriesActuallyFetched?: string[];
     gcdFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
+    comicVineResolvedSeedQuery?: string;
+    comicVineFallbackReason?: string;
+    comicVineUsedFallbackQuery?: boolean;
+    comicVinePositiveQueries?: string[];
+    comicVineExcludedTermsAppliedInFilterOnly?: boolean;
+    comicVineQueryTooLong?: boolean;
   };
   debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
   routerResultTracePresent?: boolean;

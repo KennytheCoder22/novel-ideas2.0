@@ -2943,6 +2943,12 @@ export async function getRecommendations(
   const comicVineFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
+  let comicVineResolvedSeedQuery = "";
+  let comicVineFallbackReason = "none";
+  let comicVineUsedFallbackQuery = false;
+  let comicVinePositiveQueries: string[] = [];
+  let comicVineExcludedTermsAppliedInFilterOnly = false;
+  let comicVineQueryTooLong = false;
 
   for (const rung of rungs) {
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
@@ -3060,6 +3066,12 @@ export async function getRecommendations(
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
           for (const queryText of (value?.comicVineQueryTexts || [])) comicVineQueryTexts.add(String(queryText || "").trim());
+          if (!comicVineResolvedSeedQuery && typeof value?.comicVineResolvedSeedQuery === "string") comicVineResolvedSeedQuery = value.comicVineResolvedSeedQuery;
+          if (typeof value?.comicVineFallbackReason === "string") comicVineFallbackReason = value.comicVineFallbackReason;
+          if (typeof value?.comicVineUsedFallbackQuery === "boolean") comicVineUsedFallbackQuery = value.comicVineUsedFallbackQuery;
+          if (Array.isArray(value?.comicVinePositiveQueries)) comicVinePositiveQueries = value.comicVinePositiveQueries.map((q:any)=>String(q||"").trim()).filter(Boolean);
+          if (typeof value?.comicVineExcludedTermsAppliedInFilterOnly === "boolean") comicVineExcludedTermsAppliedInFilterOnly = value.comicVineExcludedTermsAppliedInFilterOnly;
+          if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
           for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
           if (Array.isArray(value?.comicVineFetchResults) && value.comicVineFetchResults.length) {
@@ -4145,6 +4157,12 @@ const normalizedCandidatesRaw = [
     comicVineRungsBuilt: Array.from(comicVineRungsBuilt),
     comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched),
     gcdFetchResults: comicVineFetchResults,
+    comicVineResolvedSeedQuery,
+    comicVineFallbackReason,
+    comicVineUsedFallbackQuery,
+    comicVinePositiveQueries,
+    comicVineExcludedTermsAppliedInFilterOnly,
+    comicVineQueryTooLong,
   };
 
   return {
