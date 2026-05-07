@@ -4013,28 +4013,45 @@ const normalizedCandidatesRaw = [
     const darkCount = finalTeen.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    const finalTeenOrFallback = finalTeen.length > 0
+      ? finalTeen
+      : finalRankedDocsBase
+          .filter((doc: any) => {
+            const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
+            const desc = String(doc?.description || doc?.rawDoc?.description || "").trim();
+            if (!title || genericTitlePattern.test(title)) return false;
+            return desc.length >= 40;
+          })
+          .slice(0, finalLimit);
     debugRouterLog("TEEN_MIX_DIAGNOSTICS", {
       teenLaneFamily,
       teenDeckKey: input.deckKey,
       removedByStrictAgeFit: Math.max(0, finalRankedDocsBase.length - teenAccessibleStrict.length),
       strictRetained: teenAccessibleStrict.length,
       relaxedRetained: teenAccessible.length,
-      finalCount: finalTeen.length,
+      finalCount: finalTeenOrFallback.length,
       darkCount,
       darkCap,
       emotionalCount,
       speculativeCount,
       minEmotional,
       minSpeculative,
-      laneAlignedFinal: finalTeen.filter((d) => laneScore(d) > 0).length,
+      laneAlignedFinal: finalTeenOrFallback.filter((d) => laneScore(d) > 0).length,
+      usedFinalFallback: finalTeen.length === 0,
     });
-    return finalTeen;
+    return finalTeenOrFallback;
   })();
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
     ...doc,
+    finalScore: Number(doc?.score ?? doc?.diagnostics?.postFilterScore ?? 0),
+    comicVineRelevanceScore: Number(doc?.diagnostics?.queryAlignment ?? 0),
+    titleMatchScore: Number((doc?.diagnostics as any)?.titleMatchScore ?? 0),
+    descriptionMatchScore: Number((doc?.diagnostics as any)?.descriptionMatchScore ?? 0),
+    tasteMatchScore: Number(doc?.diagnostics?.tasteAlignment ?? 0),
+    reasonAccepted: String((doc?.diagnostics as any)?.reasonAccepted || "final_recommender_kept"),
     queryFamily:
       normalizeRouterFamilyValue(
         doc?.queryFamily ||
@@ -4060,6 +4077,12 @@ const normalizedCandidatesRaw = [
           rejectionReason: doc.diagnostics.rejectionReason,
           tasteAlignment: doc.diagnostics.tasteAlignment,
           queryAlignment: doc.diagnostics.queryAlignment,
+          finalScore: Number(doc?.score ?? doc.diagnostics.postFilterScore ?? 0),
+          comicVineRelevanceScore: Number(doc.diagnostics.queryAlignment ?? 0),
+          titleMatchScore: Number((doc.diagnostics as any)?.titleMatchScore ?? 0),
+          descriptionMatchScore: Number((doc.diagnostics as any)?.descriptionMatchScore ?? 0),
+          tasteMatchScore: Number(doc.diagnostics.tasteAlignment ?? 0),
+          reasonAccepted: String((doc.diagnostics as any)?.reasonAccepted || "final_recommender_kept"),
           rungBoost: doc.diagnostics.rungBoost,
           commercialBoost: (doc.diagnostics as any).commercialBoost,
           laneKind: doc.diagnostics.laneKind ?? doc.laneKind ?? doc.rawDoc?.laneKind,
@@ -4165,6 +4188,20 @@ const normalizedCandidatesRaw = [
     comicVineQueryTooLong,
   };
 
+
+  const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
+  const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
+  const teenPostPassInputLength = finalRankedDocsBase.length;
+  const teenPostPassOutputLength = finalRankedDocs.length;
+  const renderedTopRecommendationsLength = rankedDocsWithDiagnostics.length;
+  const droppedBeforeRenderReason =
+    finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
+      ? (teenPostPassInputLength === 0
+          ? "no_postfilter_candidates"
+          : teenPostPassOutputLength === 0
+          ? "teen_postpass_eliminated_all"
+          : "render_mapping_empty_after_final")
+      : "none";
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -4186,7 +4223,12 @@ const normalizedCandidatesRaw = [
     debugRungStats: buildRungDiagnostics(normalizedCandidates),
     debugFilterAudit: filterAuditRows,
     debugFilterAuditSummary: filterAuditSummary,
-    debugFinalRecommender: getLastFinalRecommenderDebug(),
+    debugFinalRecommender: finalDebugSnapshot,
+    finalAcceptedDocsLength,
+    renderedTopRecommendationsLength,
+    teenPostPassInputLength,
+    teenPostPassOutputLength,
+    droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     sourceEnabled,
     sourceSkippedReason,

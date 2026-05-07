@@ -919,6 +919,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [feedback, setFeedback] = useState<RecFeedback[]>([]);
 
   const [lastRecommendationInput, setLastRecommendationInput] = useState<RecommenderInput | null>(null);
+  const [lastRecommendationResult, setLastRecommendationResult] = useState<any | null>(null);
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
@@ -1559,6 +1560,7 @@ function handleLeft() {
       };
       setLastDebugGcdDispatchTrace(incomingTrace ? { ...incomingTrace, traceSource: incomingTrace?.traceSource || "router" } : fallbackTrace);
       setLastRecommendationInput(input);
+      setLastRecommendationResult(result as any);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
 
@@ -1789,7 +1791,7 @@ function handleLeft() {
         compactFieldBlock("candidateRung", candidate?.queryRung),
         compactFieldBlock("candidateScore", typeof candidate?.score === "number" ? candidate.score.toFixed(3) : ""),
         compactFieldBlock("rawMatches", matchingRawRows.length),
-        ...formatDiagnosticObject(diagnostics, ["source", "preFilterScore", "postFilterScore", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
+        ...formatDiagnosticObject(diagnostics, ["source", "preFilterScore", "postFilterScore", "finalScore", "comicVineRelevanceScore", "titleMatchScore", "descriptionMatchScore", "tasteMatchScore", "reasonAccepted", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
         ...formatDiagnosticObject(candidate, ["queryText", "queryRung", "laneKind", "score", "baseIntent", "queryFamily", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]),
       ].filter(Boolean);
 
@@ -1993,6 +1995,11 @@ function handleLeft() {
       `recommendFunctionError:${recommendFunctionError || "(none)"}`,
       `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,
       `routerResultKeys:${lastRouterResultKeys.length ? lastRouterResultKeys.join(", ") : "(none)"}`,
+      `finalAcceptedDocsLength:${Number((lastRecommendationResult as any)?.finalAcceptedDocsLength || 0)}`,
+      `renderedTopRecommendationsLength:${Number((lastRecommendationResult as any)?.renderedTopRecommendationsLength || 0)}`,
+      `teenPostPassInputLength:${Number((lastRecommendationResult as any)?.teenPostPassInputLength || 0)}`,
+      `teenPostPassOutputLength:${Number((lastRecommendationResult as any)?.teenPostPassOutputLength || 0)}`,
+      `droppedBeforeRenderReason:${String((lastRecommendationResult as any)?.droppedBeforeRenderReason || "none")}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
       `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,

@@ -71,6 +71,11 @@ export type RecommendationResult = {
     comicVineQueryTooLong?: boolean;
   };
   debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
+  finalAcceptedDocsLength?: number;
+  renderedTopRecommendationsLength?: number;
+  teenPostPassInputLength?: number;
+  teenPostPassOutputLength?: number;
+  droppedBeforeRenderReason?: string;
   routerResultTracePresent?: boolean;
   routerResultKeys?: string[];
   engineId: EngineId;
