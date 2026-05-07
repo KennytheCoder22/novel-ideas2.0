@@ -2546,6 +2546,15 @@ export function finalRecommenderForDeck(
       if (!hasPositiveFantasyShape) return false;
     }
     if (rescueHeavy && lane === "fantasy") return false;
+    const source = String(entry.candidate?.source || entry.candidate?.rawDoc?.source || "").toLowerCase();
+    if (source === "comicvine" && rescueHeavy) {
+      const strongSemanticSignal =
+        /\b(psychological|survival|thriller|mystery|horror|dystopian|suspense)\b/.test(text) ||
+        Number(entry.breakdown?.familyAlignment || 0) > 1.5 ||
+        Number(entry.breakdown?.laneCommitment || 0) > 1.5 ||
+        Number(entry.breakdown?.tasteMismatchPenalty || 0) >= -1;
+      if (!strongSemanticSignal) return false;
+    }
     return true;
   });
   const minDisplayPool = ordered.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, ordered.length);

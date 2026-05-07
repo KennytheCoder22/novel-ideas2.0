@@ -4238,7 +4238,13 @@ const normalizedCandidatesRaw = [
   const rankedDocsLength = rankedDocs.length;
   const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
-  const renderedTopRecommendationsLength = rankedDocsWithDiagnostics.length;
+  const teenPostPassOutputTitles = finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const finalItems = rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc }));
+  const finalItemsLength = finalItems.length;
+  const finalItemsTitles = finalItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
+  const returnedItemsLength = finalItems.length;
+  const returnedItemsTitles = finalItemsTitles;
+  const renderedTopRecommendationsLength = finalItemsLength;
   if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
     console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, acceptedTitles });
   }
@@ -4264,7 +4270,7 @@ const normalizedCandidatesRaw = [
       bucketPlan.preview ||
       bucketPlan.queries?.[0] ||
       "",
-    items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
+    items: finalItems,
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
     debugRawPool,
@@ -4274,6 +4280,11 @@ const normalizedCandidatesRaw = [
     debugFinalRecommender: finalDebugSnapshot,
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength,
+    teenPostPassOutputTitles,
+    finalItemsLength,
+    finalItemsTitles,
+    returnedItemsLength,
+    returnedItemsTitles,
     teenPostPassInputLength,
     teenPostPassOutputLength,
     teenPostPassInputSource,

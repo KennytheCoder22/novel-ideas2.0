@@ -73,6 +73,11 @@ export type RecommendationResult = {
   debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
   finalAcceptedDocsLength?: number;
   renderedTopRecommendationsLength?: number;
+  teenPostPassOutputTitles?: string[];
+  finalItemsLength?: number;
+  finalItemsTitles?: string[];
+  returnedItemsLength?: number;
+  returnedItemsTitles?: string[];
   teenPostPassInputLength?: number;
   teenPostPassOutputLength?: number;
   droppedBeforeRenderReason?: string;
