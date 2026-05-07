@@ -4043,7 +4043,7 @@ const normalizedCandidatesRaw = [
   })();
 
 
-  const teenPostPassInputDocs = finalRankedDocsBase.length ? finalRankedDocsBase : rankedDocs;
+  let teenPostPassInputDocs = finalRankedDocsBase.length ? [...finalRankedDocsBase] : [...rankedDocs];
   if (finalRankedDocs.length === 0 && rankedDocs.length > 0) {
     finalRankedDocs = rankedDocs
       .filter((doc: any) => {
@@ -4201,6 +4201,31 @@ const normalizedCandidatesRaw = [
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
   const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
+
+  if (
+    finalAcceptedDocsLength > 0 &&
+    teenPostPassInputDocs.length === 0
+  ) {
+    console.error(
+      "POSTPASS_INPUT_DERIVED_FROM_WRONG_SOURCE",
+      {
+        finalAcceptedDocsLength,
+        rankedDocsLength: rankedDocs?.length,
+        finalRankedDocsBaseLength: finalRankedDocsBase?.length,
+        candidatePoolLength: candidatePoolPreview?.length,
+      }
+    );
+  }
+
+  if (
+    teenPostPassInputDocs.length === 0 &&
+    finalRankedDocsBase.length > 0
+  ) {
+    teenPostPassInputDocs = [...finalRankedDocsBase];
+  }
+  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
+  const finalRankedDocsBaseLength = finalRankedDocsBase.length;
+  const rankedDocsLength = rankedDocs.length;
   const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
   const renderedTopRecommendationsLength = rankedDocsWithDiagnostics.length;
@@ -4238,6 +4263,9 @@ const normalizedCandidatesRaw = [
     renderedTopRecommendationsLength,
     teenPostPassInputLength,
     teenPostPassOutputLength,
+    teenPostPassInputSource,
+    finalRankedDocsBaseLength,
+    rankedDocsLength,
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     sourceEnabled,

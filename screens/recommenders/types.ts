@@ -76,6 +76,9 @@ export type RecommendationResult = {
   teenPostPassInputLength?: number;
   teenPostPassOutputLength?: number;
   droppedBeforeRenderReason?: string;
+  teenPostPassInputSource?: string;
+  finalRankedDocsBaseLength?: number;
+  rankedDocsLength?: number;
   routerResultTracePresent?: boolean;
   routerResultKeys?: string[];
   engineId: EngineId;
