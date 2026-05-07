@@ -2545,7 +2545,7 @@ export async function getRecommendations(
   const normalizedComicVineProxyUrl = comicVineProxyUrlRaw && comicVineProxyUrlRaw !== "undefined" && comicVineProxyUrlRaw !== "null"
     ? comicVineProxyUrlRaw
     : "/api/comicvine";
-  const comicVineProxyUrl = "/api/comicvine";
+  const comicVineProxyUrl = normalizedComicVineProxyUrl || "/api/comicvine";
   const comicVineKeyDetected = false;
   const comicVineEnvVarPresent = false;
   const comicVineEnabledRuntime = Boolean(sourceEnabled.comicVine === true && comicVineProxyUrl);
@@ -2574,6 +2574,10 @@ export async function getRecommendations(
   const includeKitsu = sourceEnabled.kitsu;
   const includeComicVine = shouldUseComicVine(routedInput);
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine;
+
+  if (routedInput.deckKey === "ms_hs" && sourceEnabled.comicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu) {
+    debugRouterLog("COMICVINE_ONLY_SMOKE_PATH", { deckKey: routedInput.deckKey, includeComicVine });
+  }
   if (!hasRunnableSource) {
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED_AFTER_SYNTHESIS", {
       sourceEnabled,
@@ -2585,6 +2589,7 @@ export async function getRecommendations(
     });
   }
   const debugRouterVersion = "router-comicvine-proxy-default-v1";
+  const deploymentRuntimeMarker = "comicvine-proxy-phase" as const;
   if (sourceEnabled.comicVine && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
@@ -2938,6 +2943,12 @@ export async function getRecommendations(
   const comicVineFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
+  let comicVineResolvedSeedQuery = "";
+  let comicVineFallbackReason = "none";
+  let comicVineUsedFallbackQuery = false;
+  let comicVinePositiveQueries: string[] = [];
+  let comicVineExcludedTermsAppliedInFilterOnly = false;
+  let comicVineQueryTooLong = false;
 
   for (const rung of rungs) {
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
@@ -3055,6 +3066,12 @@ export async function getRecommendations(
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
           for (const queryText of (value?.comicVineQueryTexts || [])) comicVineQueryTexts.add(String(queryText || "").trim());
+          if (!comicVineResolvedSeedQuery && typeof value?.comicVineResolvedSeedQuery === "string") comicVineResolvedSeedQuery = value.comicVineResolvedSeedQuery;
+          if (typeof value?.comicVineFallbackReason === "string") comicVineFallbackReason = value.comicVineFallbackReason;
+          if (typeof value?.comicVineUsedFallbackQuery === "boolean") comicVineUsedFallbackQuery = value.comicVineUsedFallbackQuery;
+          if (Array.isArray(value?.comicVinePositiveQueries)) comicVinePositiveQueries = value.comicVinePositiveQueries.map((q:any)=>String(q||"").trim()).filter(Boolean);
+          if (typeof value?.comicVineExcludedTermsAppliedInFilterOnly === "boolean") comicVineExcludedTermsAppliedInFilterOnly = value.comicVineExcludedTermsAppliedInFilterOnly;
+          if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
           for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
           if (Array.isArray(value?.comicVineFetchResults) && value.comicVineFetchResults.length) {
@@ -3996,28 +4013,45 @@ const normalizedCandidatesRaw = [
     const darkCount = finalTeen.filter((d) => /\b(horror|survival|haunted|thriller|dark)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const emotionalCount = finalTeen.filter((d) => /\b(romance|coming of age|friendship|identity|emotional|contemporary|high school)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
     const speculativeCount = finalTeen.filter((d) => /\b(dystopian|science fiction|speculative|future|technology|identity|rebellion)\b/i.test(`${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`)).length;
+    const finalTeenOrFallback = finalTeen.length > 0
+      ? finalTeen
+      : finalRankedDocsBase
+          .filter((doc: any) => {
+            const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
+            const desc = String(doc?.description || doc?.rawDoc?.description || "").trim();
+            if (!title || genericTitlePattern.test(title)) return false;
+            return desc.length >= 40;
+          })
+          .slice(0, finalLimit);
     debugRouterLog("TEEN_MIX_DIAGNOSTICS", {
       teenLaneFamily,
       teenDeckKey: input.deckKey,
       removedByStrictAgeFit: Math.max(0, finalRankedDocsBase.length - teenAccessibleStrict.length),
       strictRetained: teenAccessibleStrict.length,
       relaxedRetained: teenAccessible.length,
-      finalCount: finalTeen.length,
+      finalCount: finalTeenOrFallback.length,
       darkCount,
       darkCap,
       emotionalCount,
       speculativeCount,
       minEmotional,
       minSpeculative,
-      laneAlignedFinal: finalTeen.filter((d) => laneScore(d) > 0).length,
+      laneAlignedFinal: finalTeenOrFallback.filter((d) => laneScore(d) > 0).length,
+      usedFinalFallback: finalTeen.length === 0,
     });
-    return finalTeen;
+    return finalTeenOrFallback;
   })();
 
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
     ...doc,
+    finalScore: Number(doc?.score ?? doc?.diagnostics?.postFilterScore ?? 0),
+    comicVineRelevanceScore: Number(doc?.diagnostics?.queryAlignment ?? 0),
+    titleMatchScore: Number((doc?.diagnostics as any)?.titleMatchScore ?? 0),
+    descriptionMatchScore: Number((doc?.diagnostics as any)?.descriptionMatchScore ?? 0),
+    tasteMatchScore: Number(doc?.diagnostics?.tasteAlignment ?? 0),
+    reasonAccepted: String((doc?.diagnostics as any)?.reasonAccepted || "final_recommender_kept"),
     queryFamily:
       normalizeRouterFamilyValue(
         doc?.queryFamily ||
@@ -4043,6 +4077,12 @@ const normalizedCandidatesRaw = [
           rejectionReason: doc.diagnostics.rejectionReason,
           tasteAlignment: doc.diagnostics.tasteAlignment,
           queryAlignment: doc.diagnostics.queryAlignment,
+          finalScore: Number(doc?.score ?? doc.diagnostics.postFilterScore ?? 0),
+          comicVineRelevanceScore: Number(doc.diagnostics.queryAlignment ?? 0),
+          titleMatchScore: Number((doc.diagnostics as any)?.titleMatchScore ?? 0),
+          descriptionMatchScore: Number((doc.diagnostics as any)?.descriptionMatchScore ?? 0),
+          tasteMatchScore: Number(doc.diagnostics.tasteAlignment ?? 0),
+          reasonAccepted: String((doc.diagnostics as any)?.reasonAccepted || "final_recommender_kept"),
           rungBoost: doc.diagnostics.rungBoost,
           commercialBoost: (doc.diagnostics as any).commercialBoost,
           laneKind: doc.diagnostics.laneKind ?? doc.laneKind ?? doc.rawDoc?.laneKind,
@@ -4116,6 +4156,38 @@ const normalizedCandidatesRaw = [
     },
   };
 
+  const comicVineDispatchTrace = {
+    sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
+    traceSource: "router" as const,
+    includeGcd: Boolean(includeComicVine),
+    comicVineEnvVarPresent,
+    comicVineKeyDetected,
+    comicVineEnabledRuntime,
+    runtimePlatform: "client" as const,
+    runtimeEnvironment: "client_like" as const,
+    comicVineEnvKeyLength: 0,
+    comicVineProxyUrl,
+    normalizedComicVineProxyUrl,
+    comicVineProxyConfigured: Boolean(comicVineProxyUrl),
+    comicVineProxyHealthStatus: proxyHealthStatus,
+    comicVineProxyErrorBody: proxyHealthError || undefined,
+    buildComicVineFacetRungsCalled,
+    comicVineRungsLength: comicVineFacetRungs.length,
+    mainRungQueriesLength,
+    gcdFetchAttempted: comicVineFetchAttempted,
+    comicVineFetchAttempted,
+    comicVineQueryTexts: Array.from(comicVineQueryTexts),
+    comicVineRungsBuilt: Array.from(comicVineRungsBuilt),
+    comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched),
+    gcdFetchResults: comicVineFetchResults,
+    comicVineResolvedSeedQuery,
+    comicVineFallbackReason,
+    comicVineUsedFallbackQuery,
+    comicVinePositiveQueries,
+    comicVineExcludedTermsAppliedInFilterOnly,
+    comicVineQueryTooLong,
+  };
+
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -4144,15 +4216,17 @@ const normalizedCandidatesRaw = [
     comicVineAdapterStatus,
     debugRouterVersion,
     routerResultTracePresent: true,
-    routerResultKeys: [
-      "debugComicVineDispatchTrace",
-      "debugGcdDispatchTrace",
-      "sourceEnabled",
-      "debugRouterVersion",
-      "debugSourceStats",
-      "builtFromQuery",
-    ],
-    debugGcdDispatchTrace: debugComicVineDispatchTrace,
-    debugComicVineDispatchTrace,
+    routerResultKeys: Object.keys({
+      debugComicVineDispatchTrace: true,
+      debugGcdDispatchTrace: true,
+      sourceEnabled: true,
+      debugRouterVersion: true,
+      debugSourceStats: true,
+      builtFromQuery: true,
+      routerResultTracePresent: true,
+    }),
+    debugGcdDispatchTrace: comicVineDispatchTrace,
+    debugComicVineDispatchTrace: comicVineDispatchTrace,
+    deploymentRuntimeMarker,
   } as RecommendationResult;
 }
