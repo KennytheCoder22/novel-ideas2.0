@@ -849,10 +849,10 @@ function buildComicVineFacetRungs(tagCounts: RecommenderInput["tagCounts"] | und
   if (has(/mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
   if (has(/survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
   if (has(/dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
-  if (has(/teen|young adult|school|coming of age/)) add("teen graphic novel");
+  if (has(/teen|young adult|school|coming of age/)) add("supernatural teen mystery comics");
   if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
   if (!queries.length) {
-    add("teen graphic novel");
+    add("supernatural teen mystery comics");
     add("horror comics");
     add("dark mystery comics");
   }
@@ -2631,13 +2631,13 @@ export async function getRecommendations(
     aestheticDistinctiveness: Number(tasteAxes?.ideaDensity || 0) > 0.15 ? 0.75 : 0.45,
   };
   const scoredAxes = [
-    { key: "intensity", value: tasteVector.intensity, phrase: tasteVector.intensity > 0.45 ? "high pressure endurance" : "moderate tension" },
-    { key: "structure", value: tasteVector.emotionalWeight, phrase: tasteVector.emotionalWeight > 0.4 ? "character experience driven" : "plot pressure driven" },
-    { key: "setting", value: Math.max(tasteVector.grounded, tasteVector.stylized), phrase: tasteVector.grounded > tasteVector.stylized ? "grounded setting" : "stylized authored setting" },
-    { key: "pace", value: Math.abs(tasteVector.pacing), phrase: tasteVector.pacing > 0.2 ? "fast moving" : "reflective pace" },
+    { key: "intensity", value: tasteVector.intensity, phrase: tasteVector.intensity > 0.45 ? "high stakes thriller" : "suspense mystery" },
+    { key: "structure", value: tasteVector.emotionalWeight, phrase: tasteVector.emotionalWeight > 0.4 ? "character driven thriller" : "investigative mystery" },
+    { key: "setting", value: Math.max(tasteVector.grounded, tasteVector.stylized), phrase: tasteVector.grounded > tasteVector.stylized ? "grounded suspense setting" : "supernatural suspense setting" },
+    { key: "pace", value: Math.abs(tasteVector.pacing), phrase: tasteVector.pacing > 0.2 ? "fast paced thriller" : "slow burn mystery" },
   ].sort((a, b) => b.value - a.value);
-  const strongA = [scoredAxes[0]?.phrase, scoredAxes[1]?.phrase, "moral conflict narrative"].filter(Boolean);
-  const strongB = [scoredAxes[2]?.phrase, scoredAxes[3]?.phrase, "identity under pressure"].filter(Boolean);
+  const strongA = [scoredAxes[0]?.phrase, scoredAxes[1]?.phrase, "crime suspense stakes"].filter(Boolean);
+  const strongB = [scoredAxes[2]?.phrase, scoredAxes[3]?.phrase, "psychological suspense"].filter(Boolean);
   const exploratory = [
     tasteVector.stylized > 0.55 ? "slightly surreal" : "atmospheric psychological",
     tasteVector.pacing > 0.2 ? "slower introspective counterpoint" : "tighter momentum counterpoint",
@@ -2662,7 +2662,7 @@ export async function getRecommendations(
     ];
     const variants = [
       `${base} ${retrievalSignals[0]}`.replace(/\s+/g, " ").trim(),
-      `${parts[0]} ${parts[1]} story of survival and consequence novel ${negativeSuppressionTerms} ${retrievalSignals[1]}`.replace(/\s+/g, " ").trim(),
+      `${parts[0]} ${parts[1]} survival consequence graphic novel ${negativeSuppressionTerms} ${retrievalSignals[1]}`.replace(/\s+/g, " ").trim(),
       `${parts[0]} ${parts[2]} narrative novel ${negativeSuppressionTerms} ${retrievalSignals[2]}`.replace(/\s+/g, " ").trim(),
     ];
     return variants.slice(0, 3).map((query) => ({ query, clusterId: `c${clusterIdx + 1}` }));
