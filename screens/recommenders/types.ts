@@ -32,6 +32,7 @@ export type RecommendationResult = {
   sourceEnabled?: RecommendationSourceDiagnostics;
   sourceSkippedReason?: string[];
   debugRouterVersion?: string;
+  deploymentRuntimeMarker?: string;
   debugGcdDispatchTrace?: {
     sourceEnabledComicVine: boolean;
     traceSource?: "router" | "fallback" | "report-default";

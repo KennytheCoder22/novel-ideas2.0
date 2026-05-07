@@ -933,6 +933,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastDebugRouterVersion, setLastDebugRouterVersion] = useState<string>("");
   const [lastDebugGcdDispatchTrace, setLastDebugGcdDispatchTrace] = useState<any | null>(null);
   const [lastRouterResultTracePresent, setLastRouterResultTracePresent] = useState<boolean>(false);
+  const [lastDeploymentRuntimeMarker, setLastDeploymentRuntimeMarker] = useState<string>("comicvine-proxy-phase");
   const [lastRouterResultKeys, setLastRouterResultKeys] = useState<string[]>([]);
   const [recommendFunctionCalled, setRecommendFunctionCalled] = useState<boolean>(false);
   const [recommendFunctionError, setRecommendFunctionError] = useState<string>("");
@@ -1546,7 +1547,8 @@ function handleLeft() {
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
       setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comicvine-proxy-default-v1");
       setLastRouterResultTracePresent(Boolean((result as any)?.routerResultTracePresent));
-      setLastRouterResultKeys(Object.keys((result as any) || {}));
+      setLastRouterResultKeys(Array.isArray((result as any)?.routerResultKeys) ? (result as any).routerResultKeys : Object.keys((result as any) || {}));
+      setLastDeploymentRuntimeMarker(typeof (result as any)?.deploymentRuntimeMarker === "string" ? (result as any).deploymentRuntimeMarker : "comicvine-proxy-phase");
       const incomingTrace = (result as any)?.debugComicVineDispatchTrace || (result as any)?.debugGcdDispatchTrace;
       const fallbackTrace = {
         traceSource: "fallback" as const,
@@ -1984,6 +1986,7 @@ function handleLeft() {
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
+      `deploymentRuntimeMarker:${lastDeploymentRuntimeMarker || "comicvine-proxy-phase"}`,
       `recommendFunctionCalled:${Boolean(recommendFunctionCalled)}`,
       `recommendFunctionReturned:${Boolean(recommendFunctionReturned)}`,
       `recommendationResultWasPersisted:${Boolean(recommendationResultWasPersisted)}`,
