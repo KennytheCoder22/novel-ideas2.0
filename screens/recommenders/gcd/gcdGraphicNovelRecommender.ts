@@ -33,6 +33,33 @@ function normalizeText(value: any): string {
     .trim();
 }
 
+
+function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQueries: string[]; queryTooLong: boolean; excludedTermsAppliedInFilterOnly: boolean } {
+  const tokens = String(raw || "").toLowerCase().split(/\s+/).filter(Boolean);
+  const excluded = new Set(["true","crime","cozy","humorous","spy","conspiracy","writers","writer","writing","guide","reference","bibliography","analysis","criticism","review","summary","workbook","anthology"]);
+  const positive: string[] = [];
+  for (const t of tokens) {
+    if (t.startsWith("-")) continue;
+    const c = t.replace(/[^a-z0-9]/g, "");
+    if (!c || excluded.has(c)) continue;
+    positive.push(c);
+  }
+  const deduped = Array.from(new Set(positive));
+  const concise = deduped.slice(0, 6).join(" ").trim();
+  const queryTooLong = tokens.length > 12 || String(raw || "").length > 90;
+  const cleaned = concise;
+  const positiveQueries = Array.from(new Set([
+    cleaned && `${cleaned} graphic novel`,
+    cleaned && `${cleaned} comic`,
+    cleaned && `${cleaned}`,
+    "psychological suspense graphic novel",
+    "mystery thriller comic",
+    "dystopian thriller graphic novel",
+    "dark mystery graphic novel",
+    "survival suspense comic",
+  ].filter(Boolean) as string[]));
+  return { cleaned, positiveQueries, queryTooLong, excludedTermsAppliedInFilterOnly: true };
+}
 function safeNumber(value: any, fallback = 0): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -319,13 +346,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const bucketPreview = String((input as any)?.bucketPlan?.preview || "").trim();
   const bucketQueries = Array.isArray((input as any)?.bucketPlan?.queries) ? (input as any).bucketPlan.queries.map((q:any)=>String(q||"" ).trim()).filter(Boolean) : [];
   const querySeed = bucketPreview || bucketQueries[0] || "";
-  const normalizedSeed = normalizeText(querySeed);
+  const seedClean = cleanComicVineSeedQuery(querySeed);
+  const normalizedSeed = normalizeText(seedClean.cleaned);
   const superheroSignal = /batman|dc|marvel|superhero|spider\s?man|superman/.test(normalizedSeed);
-  const baseFromSeed = normalizedSeed ? [
-    `${normalizedSeed} graphic novel`,
-    `${normalizedSeed} comic`,
-    normalizedSeed,
-  ] : [];
+  const baseFromSeed = seedClean.positiveQueries;
   const directQueries = superheroSignal ? buildGcdSearchTerms(input.tagCounts) : [];
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
   const fallbackQueries = superheroSignal ? ["batman"] : ["psychological suspense graphic novel","dystopian thriller graphic novel","character driven sci fi comic","dark ya suspense comic"];
@@ -333,6 +357,9 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
+  const comicVinePositiveQueries = baseFromSeed;
+  const comicVineExcludedTermsAppliedInFilterOnly = seedClean.excludedTermsAppliedInFilterOnly;
+  const comicVineQueryTooLong = seedClean.queryTooLong;
   const gcdRungs = buildComicVineRungs(queriesToTry);
   const sourceEnabled = (input as any)?.sourceEnabled || {};
   const comicVineOnlyMode =
@@ -362,6 +389,9 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       comicVineResolvedSeedQuery,
       comicVineFallbackReason,
       comicVineUsedFallbackQuery,
+      comicVinePositiveQueries,
+      comicVineExcludedTermsAppliedInFilterOnly,
+      comicVineQueryTooLong,
     };
   }
 

@@ -66,6 +66,9 @@ export type RecommendationResult = {
     comicVineResolvedSeedQuery?: string;
     comicVineFallbackReason?: string;
     comicVineUsedFallbackQuery?: boolean;
+    comicVinePositiveQueries?: string[];
+    comicVineExcludedTermsAppliedInFilterOnly?: boolean;
+    comicVineQueryTooLong?: boolean;
   };
   debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
   routerResultTracePresent?: boolean;
