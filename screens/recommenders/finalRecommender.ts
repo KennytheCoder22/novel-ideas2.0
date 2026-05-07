@@ -586,7 +586,6 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     descriptionMeaningfulOverlap,
     rawMatches >= 1,
     swipeFranchiseSignal,
-    activeFamilyMatch,
   ].filter(Boolean).length;
   const structuralPositiveCount = [
     diagnostics?.flags?.fictionPositive,
@@ -2843,7 +2842,9 @@ export function finalRecommenderForDeck(
     const hasTitleOverlap = meaningfulQueryTokens.some((t) => titleText.includes(t));
     const hasDescriptionOverlap = meaningfulQueryTokens.some((t) => descriptionText.includes(t));
     const missingScores = !Number.isFinite(Number(preFilterScore)) || !Number.isFinite(Number(postFilterScore));
-    const shouldReject = queryFamily === "unknown" && rawMatches <= 0 && missingScores && !hasTitleOverlap && !hasDescriptionOverlap;
+    const franchiseSignal = Boolean((doc as any)?.diagnostics?.franchiseSwipeSignal || (doc as any)?.rawDoc?.diagnostics?.franchiseSwipeSignal);
+    const hasSemanticOverlap = hasTitleOverlap || hasDescriptionOverlap || rawMatches >= 1 || franchiseSignal;
+    const shouldReject = rawMatches <= 0 && !hasSemanticOverlap;
     if (shouldReject) {
       console.error("COMICVINE_BAD_FINALIST_LEAK", {
         title: (doc as any)?.title,
@@ -2852,9 +2853,17 @@ export function finalRecommenderForDeck(
         preFilterScore,
         postFilterScore,
         queryText,
+        missingScores,
       });
       return false;
     }
+    (doc as any).diagnostics = {
+      ...((doc as any).diagnostics || {}),
+      comicVineSemanticPositiveCount: Number((doc as any)?.diagnostics?.comicVineSemanticPositiveCount || 0),
+      comicVineStructuralPositiveCount: Number((doc as any)?.diagnostics?.comicVineStructuralPositiveCount || 0),
+      comicVineAdmissionPath: "final_unavoidable_guard_pass",
+      comicVineWeakAlignmentBlocked: false,
+    };
     return true;
   });
   return attachNearbyAlternativeReason(finalGuardedDocs, ordered);
