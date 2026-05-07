@@ -3901,7 +3901,7 @@ const normalizedCandidatesRaw = [
     return teenFit + laneFit + (facetHits * 0.5) + (candidateScoreValue(doc) * 0.2);
   };
 
-  const finalRankedDocs = (() => {
+  let finalRankedDocs = (() => {
     if (!isTeenDeckKey(input.deckKey)) {
       return applyAuthorSeriesCaps([...finalRankedDocsBase].sort((a: any, b: any) => laneAndFacetRescore(b) - laneAndFacetRescore(a))).slice(0, finalLimit);
     }
@@ -4042,6 +4042,16 @@ const normalizedCandidatesRaw = [
     return finalTeenOrFallback;
   })();
 
+
+  const teenPostPassInputDocs = finalRankedDocsBase.length ? finalRankedDocsBase : rankedDocs;
+  if (finalRankedDocs.length === 0 && rankedDocs.length > 0) {
+    finalRankedDocs = rankedDocs
+      .filter((doc: any) => {
+        const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
+        return Boolean(title) && !genericTitlePattern.test(title);
+      })
+      .slice(0, finalLimit);
+  }
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
   const rankedDocsWithDiagnostics = finalRankedDocs.map((doc: any) => ({
@@ -4191,7 +4201,7 @@ const normalizedCandidatesRaw = [
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
   const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
-  const teenPostPassInputLength = finalRankedDocsBase.length;
+  const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
   const renderedTopRecommendationsLength = rankedDocsWithDiagnostics.length;
   const droppedBeforeRenderReason =
