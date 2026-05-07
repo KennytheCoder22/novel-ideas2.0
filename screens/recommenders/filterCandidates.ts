@@ -11,6 +11,10 @@ type FilterDiagnostics = {
   ratingsCount: number;
   hasDescription: boolean;
   hasRealLength: boolean;
+  rawLexicalOverlapCount?: number;
+  semanticOverlapCount?: number;
+  activeTasteOverlapCount?: number;
+  rawMatches?: number;
   passedChecks: string[];
   rejectReasons: string[];
   flags: {
@@ -928,6 +932,10 @@ let fictionPositive =
     ratingsCount,
     hasDescription,
     hasRealLength,
+    rawLexicalOverlapCount: 0,
+    semanticOverlapCount: 0,
+    activeTasteOverlapCount: 0,
+    rawMatches: 0,
     passedChecks: [],
     rejectReasons: [],
     flags: {
@@ -1200,6 +1208,26 @@ if (family === "speculative") {
     diagnostics.passedChecks.push("author_affinity_horror_recovery");
   }
   if (hasRealLength || hasDescription) diagnostics.passedChecks.push("minimum_shape");
+
+  const queryTokens = new Set(queryIntentText.split(/[^a-z0-9]+/).filter((t) => t.length > 3));
+  const titleTokens = new Set(title.split(/[^a-z0-9]+/).filter((t) => t.length > 3));
+  const lexicalOverlapCount = Array.from(titleTokens).filter((token) => queryTokens.has(token)).length;
+  const semanticOverlapCount = [
+    thrillerPositive,
+    mysteryPositive,
+    suspensePositive,
+    horrorAligned,
+    speculativePositive,
+  ].filter(Boolean).length;
+  const activeTasteOverlapCount = [
+    authorAffinity,
+    legitAuthority,
+    fictionPositive && strongNarrative,
+  ].filter(Boolean).length;
+  diagnostics.rawLexicalOverlapCount = lexicalOverlapCount;
+  diagnostics.semanticOverlapCount = semanticOverlapCount;
+  diagnostics.activeTasteOverlapCount = activeTasteOverlapCount;
+  diagnostics.rawMatches = lexicalOverlapCount + semanticOverlapCount + activeTasteOverlapCount;
 
   return diagnostics;
 }
