@@ -92,7 +92,7 @@ function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[]
   return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 8);
 }
 
-function buildGcdRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
+function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
   return queries.map((query, i) => ({
     rung: i,
     query,
@@ -190,7 +190,7 @@ function gcdIssueToDoc(issue: any, queryText: string, queryRung: number): Recomm
   );
 
   return {
-    key: issue?.api_url || `gcd:${issue?.series || issue?.series_name || title}`,
+    key: issue?.api_url || `comicvine:${issue?.series || issue?.series_name || title}`,
     title,
     author_name: storyFeatures.length ? [storyFeatures[0]] : ["Grand Comics Database"],
     first_publish_year: parseYear(issue?.key_date || issue?.publication_date),
@@ -199,7 +199,7 @@ function gcdIssueToDoc(issue: any, queryText: string, queryRung: number): Recomm
     edition_count: safeNumber(issue?.page_count, 0) > 0 ? 1 : 0,
     publisher: issue?.indicia_publisher || issue?.brand_emblem || "Grand Comics Database",
     language: undefined,
-    source: "gcd",
+    source: "comicVine",
     queryRung,
     queryText,
     subtitle: String(issue?.descriptor || "").trim() || undefined,
@@ -224,7 +224,7 @@ function comicVineIssueToDoc(issue: any, queryText: string, queryRung: number): 
   if (!title) return null;
   const subjects = Array.from(new Set(["graphic novel", "comics", volumeName].filter(Boolean)));
   return {
-    key: `gcd:comicvine:${issue?.id || issue?.api_detail_url || title}`,
+    key: `comicvine:comicvine:${issue?.id || issue?.api_detail_url || title}`,
     title,
     author_name: [String(issue?.person_credits?.[0]?.name || "ComicVine")],
     first_publish_year: parseYear(issue?.cover_date || issue?.store_date),
@@ -232,7 +232,7 @@ function comicVineIssueToDoc(issue: any, queryText: string, queryRung: number): 
     subject: subjects,
     edition_count: 1,
     publisher: String(issue?.volume?.publisher?.name || "ComicVine"),
-    source: "gcd",
+    source: "comicVine",
     queryRung,
     queryText,
     subtitle: String(issue?.deck || "").trim() || undefined,
@@ -294,7 +294,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
 }
 
 async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
-  const probeQuery = "batman";
+  const probeQuery = "saga";
   const probeUrl = buildComicVineProxySearchUrl(probeQuery);
   if (!hasLoggedProbeProxyUrl) {
     hasLoggedProbeProxyUrl = true;
@@ -316,56 +316,73 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
   await runGcdAdapterPreflight(timeoutMs);
 
-  const directQueries = buildGcdSearchTerms(input.tagCounts);
+  const bucketPreview = String((input as any)?.bucketPlan?.preview || "").trim();
+  const bucketQueries = Array.isArray((input as any)?.bucketPlan?.queries) ? (input as any).bucketPlan.queries.map((q:any)=>String(q||"" ).trim()).filter(Boolean) : [];
+  const querySeed = bucketPreview || bucketQueries[0] || "";
+  const normalizedSeed = normalizeText(querySeed);
+  const superheroSignal = /batman|dc|marvel|superhero|spider\s?man|superman/.test(normalizedSeed);
+  const baseFromSeed = normalizedSeed ? [
+    `${normalizedSeed} graphic novel`,
+    `${normalizedSeed} comic`,
+    normalizedSeed,
+  ] : [];
+  const directQueries = superheroSignal ? buildGcdSearchTerms(input.tagCounts) : [];
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
-  const queriesToTry = Array.from(new Set([...directQueries, ...facetQueries])).slice(0, 10);
-  const gcdRungs = buildGcdRungs(queriesToTry);
+  const fallbackQueries = superheroSignal ? ["batman"] : ["psychological suspense graphic novel","dystopian thriller graphic novel","character driven sci fi comic","dark ya suspense comic"];
+  const queriesToTry = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>String(q||"").trim()).filter(Boolean))).slice(0, 10);
+  const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
+  const comicVineUsedFallbackQuery = !querySeed;
+  const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
+  const gcdRungs = buildComicVineRungs(queriesToTry);
   const sourceEnabled = (input as any)?.sourceEnabled || {};
-  const gcdOnlyMode =
-    sourceEnabled?.gcd !== false &&
+  const comicVineOnlyMode =
+    sourceEnabled?.comicVine !== false &&
     sourceEnabled?.googleBooks === false &&
     sourceEnabled?.openLibrary === false &&
     sourceEnabled?.localLibrary === false &&
     sourceEnabled?.kitsu === false;
   if (!queriesToTry.length) {
-    if (gcdOnlyMode) {
+    if (comicVineOnlyMode) {
       throw new Error("GCD_ONLY_NO_QUERIES: GCD is the only enabled source but no comic queries were generated.");
     }
     return {
-      engineId: "gcd",
+      engineId: "comicVine",
       engineLabel: "ComicVine",
       deckKey,
       domainMode,
       builtFromQuery: "",
       items: [],
       debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
-      debugFilterAudit: [{ source: "gcd", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
-      gcdQueriesGenerated: [],
-      gcdRungsBuilt: [],
-      gcdQueriesActuallyFetched: [],
-      gcdFetchAttempted: false,
-      gcdZeroResultReason: "no_queries_generated",
+      debugFilterAudit: [{ source: "comicVine", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
+      comicVineQueriesGenerated: [],
+      comicVineRungsBuilt: [],
+      comicVineQueriesActuallyFetched: [],
+      comicVineFetchAttempted: false,
+      comicVineZeroResultReason: "no_queries_generated",
+      comicVineResolvedSeedQuery,
+      comicVineFallbackReason,
+      comicVineUsedFallbackQuery,
     };
   }
 
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
-  const gcdFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
-  const gcdQueriesActuallyFetched: string[] = [];
-  const gcdRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
+  const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
+  const comicVineQueriesActuallyFetched: string[] = [];
+  const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
-    gcdQueriesActuallyFetched.push(q);
+    comicVineQueriesActuallyFetched.push(q);
     const hadDocsBeforeQuery = docs.length > 0;
     const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
     if (!rawCount) {
-      gcdFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount: 0, error });
+      comicVineFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount: 0, error });
       continue;
     }
     if (!hadDocsBeforeQuery) builtFromQuery = q;
-    gcdFetchResults.push({
+    comicVineFetchResults.push({
       query: q,
       status: rawCount > 0 ? "ok" : error ? "error" : "no_matches",
       rawCount,
@@ -377,16 +394,16 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
 
   if (docs.length === 0) {
-    const knownGoodProbeQueries = ["batman", "spider-man", "superman", "saga", "walking dead", "ms. marvel"];
+    const knownGoodProbeQueries = ["saga", "sandman", "monstress", "paper girls", "watchmen"];
     let probeFoundAny = false;
     for (const q of knownGoodProbeQueries) {
-      if (gcdQueriesActuallyFetched.includes(q)) continue;
-      gcdQueriesActuallyFetched.push(q);
+      if (comicVineQueriesActuallyFetched.includes(q)) continue;
+      comicVineQueriesActuallyFetched.push(q);
       let issueUrls: string[] = [];
       const probe = await fetchDocsForQuery(q, 999, timeoutMs, fetchLimit, docs, seen);
       issueUrls = probe.rawCount > 0 ? ["found"] : [];
       if (probe.rawCount > 0) probeFoundAny = true;
-      gcdFetchResults.push({
+      comicVineFetchResults.push({
         query: q,
         status: probe.rawCount > 0 ? "ok" : probe.error ? "error" : "no_matches",
         rawCount: probe.rawCount,
@@ -395,39 +412,39 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       if (issueUrls.length > 0) break;
     }
     if (!probeFoundAny) {
-      const probeSummary = gcdFetchResults
+      const probeSummary = comicVineFetchResults
         .filter((row) => knownGoodProbeQueries.includes(String(row.query || "").toLowerCase()))
         .map((row) => `${row.query}:${row.status}:raw=${row.rawCount}${row.error ? `:${row.error}` : ""}`)
         .join(" | ");
-      throw new Error(`GCD_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`);
+      throw new Error(`COMICVINE_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`);
     }
   }
 
   return {
-    engineId: "gcd",
+    engineId: "comicVine",
     engineLabel: "ComicVine",
     deckKey,
     domainMode,
     builtFromQuery,
-    items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "gcd", doc })),
+    items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "open_library", doc })),
     debugRawFetchedCount: docs.length,
-    gcdQueriesGenerated: queriesToTry,
-    gcdRungsBuilt,
-    gcdQueriesActuallyFetched,
-    gcdQueryTexts: queriesToTry,
-    gcdFetchResults,
-    gcdFetchAttempted: true,
+    comicVineQueriesGenerated: queriesToTry,
+    comicVineRungsBuilt,
+    comicVineQueriesActuallyFetched,
+    comicVineQueryTexts: queriesToTry,
+    comicVineFetchResults,
+    comicVineFetchAttempted: true,
     gcdAdapterStatus: "ok",
-    gcdZeroResultReason: docs.length ? null : "no_issue_api_matches",
+    comicVineZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {
       byRung: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])),
-      byRungSource: { gcd: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])) },
+      byRungSource: { comicVine: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])) },
       total: docs.length,
     } as any,
     debugRawPool: docs.slice(0, fetchLimit),
     debugFilterAudit: [
       {
-        source: "gcd",
+        source: "comicVine",
         rungs: gcdRungs,
         generatedQueries: queriesToTry,
         reason: docs.length ? "results_found" : "no_results_from_generated_queries",
