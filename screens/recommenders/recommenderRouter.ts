@@ -4188,6 +4188,20 @@ const normalizedCandidatesRaw = [
     comicVineQueryTooLong,
   };
 
+
+  const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
+  const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
+  const teenPostPassInputLength = finalRankedDocsBase.length;
+  const teenPostPassOutputLength = finalRankedDocs.length;
+  const renderedTopRecommendationsLength = rankedDocsWithDiagnostics.length;
+  const droppedBeforeRenderReason =
+    finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
+      ? (teenPostPassInputLength === 0
+          ? "no_postfilter_candidates"
+          : teenPostPassOutputLength === 0
+          ? "teen_postpass_eliminated_all"
+          : "render_mapping_empty_after_final")
+      : "none";
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -4209,7 +4223,12 @@ const normalizedCandidatesRaw = [
     debugRungStats: buildRungDiagnostics(normalizedCandidates),
     debugFilterAudit: filterAuditRows,
     debugFilterAuditSummary: filterAuditSummary,
-    debugFinalRecommender: getLastFinalRecommenderDebug(),
+    debugFinalRecommender: finalDebugSnapshot,
+    finalAcceptedDocsLength,
+    renderedTopRecommendationsLength,
+    teenPostPassInputLength,
+    teenPostPassOutputLength,
+    droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     sourceEnabled,
     sourceSkippedReason,
