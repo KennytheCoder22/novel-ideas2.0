@@ -4082,8 +4082,8 @@ const normalizedCandidatesRaw = [
           ...doc.diagnostics,
           queryFamily: normalizeRouterFamilyValue(doc.diagnostics.queryFamily || doc?.queryFamily || doc?.rawDoc?.queryFamily) || (routerFamily === "historical" ? "historical" : routerFamily),
           source: doc.diagnostics.source || sourceForDoc(doc, "openLibrary"),
-          preFilterScore: doc.diagnostics.preFilterScore,
-          postFilterScore: doc.diagnostics.postFilterScore,
+          preFilterScore: Number(doc.diagnostics.preFilterScore ?? doc?.score ?? 0),
+          postFilterScore: Number(doc.diagnostics.postFilterScore ?? doc?.score ?? 0),
           rejectionReason: doc.diagnostics.rejectionReason,
           tasteAlignment: doc.diagnostics.tasteAlignment,
           queryAlignment: doc.diagnostics.queryAlignment,
@@ -4201,6 +4201,12 @@ const normalizedCandidatesRaw = [
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
   const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
+  const acceptedTitles = Array.isArray(finalDebugSnapshot?.acceptedTitles) ? finalDebugSnapshot.acceptedTitles.map((t:any)=>String(t||"" ).trim()).filter(Boolean) : [];
+  const finalAcceptedDocsSourceArray = rankingPoolForFinal.filter((doc: any) => acceptedTitles.includes(String(doc?.title || doc?.rawDoc?.title || "").trim()));
+  if (finalRankedDocsBase.length === 0 && finalAcceptedDocsLength > 0 && finalAcceptedDocsSourceArray.length > 0) {
+    finalRankedDocs = finalAcceptedDocsSourceArray.slice(0, finalLimit);
+    teenPostPassInputDocs = [...finalAcceptedDocsSourceArray];
+  }
 
   if (
     finalAcceptedDocsLength > 0 &&
@@ -4223,12 +4229,35 @@ const normalizedCandidatesRaw = [
   ) {
     teenPostPassInputDocs = [...finalRankedDocsBase];
   }
-  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
+  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : (finalAcceptedDocsSourceArray.length > 0 ? "finalAcceptedDocsSourceArray" : "rankedDocs");
+  const finalAcceptedDocsSource = finalAcceptedDocsSourceArray.length > 0 ? "finalRecommenderAcceptedTitles" : "none";
+  const finalAcceptedDocsTitles = finalAcceptedDocsSourceArray.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const finalRankedDocsBaseTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
   const rankedDocsLength = rankedDocs.length;
   const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
-  const renderedTopRecommendationsLength = rankedDocsWithDiagnostics.length;
+  const teenPostPassOutputTitles = finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const teenPostPassOutput = finalRankedDocs.map((doc:any)=>({ kind: "open_library", doc }));
+  const finalItems = rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc }));
+  const outputItems =
+    finalItems.length > 0
+      ? finalItems
+      : teenPostPassOutput.length > 0
+        ? teenPostPassOutput
+        : [];
+  if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
+    console.error("POSTPASS_OUTPUT_DROPPED_BEFORE_RETURN", { teenPostPassOutputLength, teenPostPassOutputTitles });
+  }
+  const finalItemsLength = outputItems.length;
+  const finalItemsTitles = outputItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
+  const returnedItemsLength = outputItems.length;
+  const returnedItemsTitles = finalItemsTitles;
+  const renderedTopRecommendationsLength = outputItems.length;
+  if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
+    console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, acceptedTitles });
+  }
   const droppedBeforeRenderReason =
     finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
       ? (teenPostPassInputLength === 0
@@ -4251,7 +4280,7 @@ const normalizedCandidatesRaw = [
       bucketPlan.preview ||
       bucketPlan.queries?.[0] ||
       "",
-    items: rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc })),
+    items: outputItems,
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
     debugRawPool,
@@ -4261,11 +4290,20 @@ const normalizedCandidatesRaw = [
     debugFinalRecommender: finalDebugSnapshot,
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength,
+    teenPostPassOutputTitles,
+    finalItemsLength,
+    finalItemsTitles,
+    returnedItemsLength,
+    returnedItemsTitles,
     teenPostPassInputLength,
     teenPostPassOutputLength,
     teenPostPassInputSource,
     finalRankedDocsBaseLength,
     rankedDocsLength,
+    finalAcceptedDocsSource,
+    finalAcceptedDocsTitles,
+    finalRankedDocsBaseTitles,
+    rankedDocsTitles,
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     sourceEnabled,

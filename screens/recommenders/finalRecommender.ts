@@ -55,6 +55,7 @@ export type FinalRecommenderDebug = {
   inputCount: number;
   dedupedCount: number;
   acceptedCount: number;
+  acceptedTitles: string[];
   rejectedCount: number;
   rejectionCounts: Record<string, number>;
   rejected: QualityRejectRecord[];
@@ -90,6 +91,7 @@ let lastFinalRecommenderDebug: FinalRecommenderDebug = {
   inputCount: 0,
   dedupedCount: 0,
   acceptedCount: 0,
+  acceptedTitles: [],
   rejectedCount: 0,
   rejectionCounts: {},
   rejected: [],
@@ -555,6 +557,26 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     check.includes('borderline_rescue') ||
     check.includes('metadata_shape_relaxation')
   ).length;
+
+  const source = String(c.source || (c as any)?.rawDoc?.source || "").toLowerCase();
+  const queryFamily = String((c as any)?.queryFamily || (c as any)?.rawDoc?.queryFamily || diagnostics?.queryFamily || "unknown").toLowerCase();
+  const queryText = String((c as any)?.queryText || (c as any)?.rawDoc?.queryText || diagnostics?.queryText || "").toLowerCase();
+  const genreText = haystack(c);
+  const strongSemanticSignals = [
+    /horror|thriller|mystery|suspense|psychological|dystopian/.test(genreText),
+    /horror|thriller|mystery|suspense|psychological|dystopian/.test(queryText),
+    queryFamily !== "unknown",
+    Number(filterSignals || 0) >= 10,
+    Number((c as any)?.diagnostics?.tasteAlignment || 0) > 0.5,
+    String(c.description || "").trim().length >= 80,
+  ].filter(Boolean).length;
+  if (source === "comicvine") {
+    const weakUnknownFamily = queryFamily === "unknown";
+    const genericTeenQuery = /teen\s+graphic\s+novel\s+graphic\s+novel/.test(queryText);
+    if (genericTeenQuery || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2) {
+      return { pass: false, reason: 'weak_comicvine_semantic_alignment', detail: `signals=${strongSemanticSignals} family=${queryFamily} query=${queryText}` };
+    }
+  }
   const hasStrongSignals =
     (c.ratingCount || 0) >= 50 ||
     anchorBoost(c) >= 10 ||
@@ -662,6 +684,7 @@ function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidat
     inputCount,
     dedupedCount,
     acceptedCount: accepted.length,
+    acceptedTitles: accepted.map((c:any)=>String(c?.title || c?.rawDoc?.title || "").trim()).filter(Boolean),
     rejectedCount: rejected.length,
     rejectionCounts,
     rejected,
@@ -2543,6 +2566,16 @@ export function finalRecommenderForDeck(
       if (!hasPositiveFantasyShape) return false;
     }
     if (rescueHeavy && lane === "fantasy") return false;
+    const source = String(entry.candidate?.source || entry.candidate?.rawDoc?.source || "").toLowerCase();
+    if (source === "comicvine" && rescueHeavy) {
+      const semanticSignals = [
+        /\b(psychological|survival|thriller|mystery|horror|dystopian|suspense)\b/.test(text),
+        Number(entry.breakdown?.familyAlignment || 0) > 1.5,
+        Number(entry.breakdown?.laneCommitment || 0) > 1.5,
+        Number(entry.breakdown?.tasteMismatchPenalty || 0) >= -1,
+      ].filter(Boolean).length;
+      if (semanticSignals < 2) return false;
+    }
     return true;
   });
   const minDisplayPool = ordered.length >= 15 ? TARGET_MIN_RESULTS_WHEN_VIABLE : Math.min(6, ordered.length);
