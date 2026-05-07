@@ -2829,5 +2829,33 @@ export function finalRecommenderForDeck(
     .filter(({ candidate }) => !isHardReject(candidate).reject)
     .slice(0, MAX_RESULTS)
     .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
-  return attachNearbyAlternativeReason(selectedDocs, ordered);
+  const finalGuardedDocs = selectedDocs.filter((doc) => {
+    const source = String((doc as any)?.source || (doc as any)?.diagnostics?.source || "").toLowerCase();
+    if (source !== "comicvine") return true;
+    const queryFamily = String((doc as any)?.queryFamily || (doc as any)?.diagnostics?.queryFamily || "unknown").toLowerCase();
+    const rawMatches = Number((doc as any)?.diagnostics?.rawMatches ?? 0);
+    const preFilterScore = (doc as any)?.preFilterScore ?? (doc as any)?.diagnostics?.preFilterScore;
+    const postFilterScore = (doc as any)?.postFilterScore ?? (doc as any)?.diagnostics?.postFilterScore;
+    const queryText = String((doc as any)?.queryText || (doc as any)?.diagnostics?.queryText || "").toLowerCase();
+    const meaningfulQueryTokens = queryText.split(/[^a-z0-9]+/).filter((t) => t.length > 3 && !["graphic", "novel", "comic", "comics", "teen", "story"].includes(t));
+    const titleText = String((doc as any)?.title || "").toLowerCase();
+    const descriptionText = String((doc as any)?.description || "").toLowerCase();
+    const hasTitleOverlap = meaningfulQueryTokens.some((t) => titleText.includes(t));
+    const hasDescriptionOverlap = meaningfulQueryTokens.some((t) => descriptionText.includes(t));
+    const missingScores = !Number.isFinite(Number(preFilterScore)) || !Number.isFinite(Number(postFilterScore));
+    const shouldReject = queryFamily === "unknown" && rawMatches <= 0 && missingScores && !hasTitleOverlap && !hasDescriptionOverlap;
+    if (shouldReject) {
+      console.error("COMICVINE_BAD_FINALIST_LEAK", {
+        title: (doc as any)?.title,
+        queryFamily,
+        rawMatches,
+        preFilterScore,
+        postFilterScore,
+        queryText,
+      });
+      return false;
+    }
+    return true;
+  });
+  return attachNearbyAlternativeReason(finalGuardedDocs, ordered);
 }
