@@ -4201,12 +4201,9 @@ const normalizedCandidatesRaw = [
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
   const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
-  const acceptedTitles = Array.isArray(finalDebugSnapshot?.acceptedTitles) ? finalDebugSnapshot.acceptedTitles.map((t:any)=>String(t||"" ).trim()).filter(Boolean) : [];
-  const finalAcceptedDocsSourceArray = rankingPoolForFinal.filter((doc: any) => acceptedTitles.includes(String(doc?.title || doc?.rawDoc?.title || "").trim()));
-  if (finalRankedDocsBase.length === 0 && finalAcceptedDocsLength > 0 && finalAcceptedDocsSourceArray.length > 0) {
-    finalRankedDocs = finalAcceptedDocsSourceArray.slice(0, finalLimit);
-    teenPostPassInputDocs = [...finalAcceptedDocsSourceArray];
-  }
+  const finalRejectedTitles = Array.isArray(finalDebugSnapshot?.rejected)
+    ? finalDebugSnapshot.rejected.map((row: any) => String(row?.title || "").trim()).filter(Boolean)
+    : [];
 
   if (
     finalAcceptedDocsLength > 0 &&
@@ -4229,9 +4226,9 @@ const normalizedCandidatesRaw = [
   ) {
     teenPostPassInputDocs = [...finalRankedDocsBase];
   }
-  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : (finalAcceptedDocsSourceArray.length > 0 ? "finalAcceptedDocsSourceArray" : "rankedDocs");
-  const finalAcceptedDocsSource = finalAcceptedDocsSourceArray.length > 0 ? "finalRecommenderAcceptedTitles" : "none";
-  const finalAcceptedDocsTitles = finalAcceptedDocsSourceArray.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
+  const finalAcceptedDocsSource = "finalRankedDocsBase";
+  const finalAcceptedDocsTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
@@ -4239,14 +4236,8 @@ const normalizedCandidatesRaw = [
   const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
   const teenPostPassOutputTitles = finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
-  const teenPostPassOutput = finalRankedDocs.map((doc:any)=>({ kind: "open_library", doc }));
   const finalItems = rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc }));
-  const outputItems =
-    finalItems.length > 0
-      ? finalItems
-      : teenPostPassOutput.length > 0
-        ? teenPostPassOutput
-        : [];
+  const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
     console.error("POSTPASS_OUTPUT_DROPPED_BEFORE_RETURN", { teenPostPassOutputLength, teenPostPassOutputTitles });
   }
@@ -4256,8 +4247,14 @@ const normalizedCandidatesRaw = [
   const returnedItemsTitles = finalItemsTitles;
   const renderedTopRecommendationsLength = outputItems.length;
   if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
-    console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, acceptedTitles });
+    console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, finalAcceptedDocsTitles });
   }
+  const finalAcceptedDocIds = finalRankedDocsBase.map((doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim()).filter(Boolean);
+  const finalRejectedDocIds = Array.isArray(finalDebugSnapshot?.rejected)
+    ? finalDebugSnapshot.rejected.map((row: any) => String(row?.id || row?.title || "").trim()).filter(Boolean)
+    : [];
+  const returnedDocIds = outputItems.map((it: any) => String(it?.doc?.sourceId || it?.doc?.canonicalId || it?.doc?.id || it?.doc?.key || it?.doc?.title || "").trim()).filter(Boolean);
+  const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
   const droppedBeforeRenderReason =
     finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
       ? (teenPostPassInputLength === 0
@@ -4295,6 +4292,10 @@ const normalizedCandidatesRaw = [
     finalItemsTitles,
     returnedItemsLength,
     returnedItemsTitles,
+    finalAcceptedDocIds,
+    finalRejectedDocIds,
+    returnedDocIds,
+    renderLeakDetected,
     teenPostPassInputLength,
     teenPostPassOutputLength,
     teenPostPassInputSource,
