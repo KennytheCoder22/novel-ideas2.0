@@ -55,6 +55,7 @@ export type FinalRecommenderDebug = {
   inputCount: number;
   dedupedCount: number;
   acceptedCount: number;
+  acceptedTitles: string[];
   rejectedCount: number;
   rejectionCounts: Record<string, number>;
   rejected: QualityRejectRecord[];
@@ -90,6 +91,7 @@ let lastFinalRecommenderDebug: FinalRecommenderDebug = {
   inputCount: 0,
   dedupedCount: 0,
   acceptedCount: 0,
+  acceptedTitles: [],
   rejectedCount: 0,
   rejectionCounts: {},
   rejected: [],
@@ -662,6 +664,7 @@ function buildDebug(inputCount: number, dedupedCount: number, accepted: Candidat
     inputCount,
     dedupedCount,
     acceptedCount: accepted.length,
+    acceptedTitles: accepted.map((c:any)=>String(c?.title || c?.rawDoc?.title || "").trim()).filter(Boolean),
     rejectedCount: rejected.length,
     rejectionCounts,
     rejected,
