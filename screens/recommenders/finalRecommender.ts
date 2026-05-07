@@ -557,6 +557,26 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     check.includes('borderline_rescue') ||
     check.includes('metadata_shape_relaxation')
   ).length;
+
+  const source = String(c.source || (c as any)?.rawDoc?.source || "").toLowerCase();
+  const queryFamily = String((c as any)?.queryFamily || (c as any)?.rawDoc?.queryFamily || diagnostics?.queryFamily || "unknown").toLowerCase();
+  const queryText = String((c as any)?.queryText || (c as any)?.rawDoc?.queryText || diagnostics?.queryText || "").toLowerCase();
+  const genreText = haystack(c);
+  const strongSemanticSignals = [
+    /horror|thriller|mystery|suspense|psychological|dystopian/.test(genreText),
+    /horror|thriller|mystery|suspense|psychological|dystopian/.test(queryText),
+    queryFamily !== "unknown",
+    Number(filterSignals || 0) >= 10,
+    Number((c as any)?.diagnostics?.tasteAlignment || 0) > 0.5,
+    String(c.description || "").trim().length >= 80,
+  ].filter(Boolean).length;
+  if (source === "comicvine") {
+    const weakUnknownFamily = queryFamily === "unknown";
+    const genericTeenQuery = /teen\s+graphic\s+novel\s+graphic\s+novel/.test(queryText);
+    if (genericTeenQuery || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2) {
+      return { pass: false, reason: 'weak_comicvine_semantic_alignment', detail: `signals=${strongSemanticSignals} family=${queryFamily} query=${queryText}` };
+    }
+  }
   const hasStrongSignals =
     (c.ratingCount || 0) >= 50 ||
     anchorBoost(c) >= 10 ||
