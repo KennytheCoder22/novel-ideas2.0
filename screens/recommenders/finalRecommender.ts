@@ -2548,12 +2548,13 @@ export function finalRecommenderForDeck(
     if (rescueHeavy && lane === "fantasy") return false;
     const source = String(entry.candidate?.source || entry.candidate?.rawDoc?.source || "").toLowerCase();
     if (source === "comicvine" && rescueHeavy) {
-      const strongSemanticSignal =
-        /\b(psychological|survival|thriller|mystery|horror|dystopian|suspense)\b/.test(text) ||
-        Number(entry.breakdown?.familyAlignment || 0) > 1.5 ||
-        Number(entry.breakdown?.laneCommitment || 0) > 1.5 ||
-        Number(entry.breakdown?.tasteMismatchPenalty || 0) >= -1;
-      if (!strongSemanticSignal) return false;
+      const semanticSignals = [
+        /\b(psychological|survival|thriller|mystery|horror|dystopian|suspense)\b/.test(text),
+        Number(entry.breakdown?.familyAlignment || 0) > 1.5,
+        Number(entry.breakdown?.laneCommitment || 0) > 1.5,
+        Number(entry.breakdown?.tasteMismatchPenalty || 0) >= -1,
+      ].filter(Boolean).length;
+      if (semanticSignals < 2) return false;
     }
     return true;
   });

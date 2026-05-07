@@ -4239,12 +4239,22 @@ const normalizedCandidatesRaw = [
   const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
   const teenPostPassOutputTitles = finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const teenPostPassOutput = finalRankedDocs.map((doc:any)=>({ kind: "open_library", doc }));
   const finalItems = rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc }));
-  const finalItemsLength = finalItems.length;
-  const finalItemsTitles = finalItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
-  const returnedItemsLength = finalItems.length;
+  const outputItems =
+    finalItems.length > 0
+      ? finalItems
+      : teenPostPassOutput.length > 0
+        ? teenPostPassOutput
+        : [];
+  if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
+    console.error("POSTPASS_OUTPUT_DROPPED_BEFORE_RETURN", { teenPostPassOutputLength, teenPostPassOutputTitles });
+  }
+  const finalItemsLength = outputItems.length;
+  const finalItemsTitles = outputItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
+  const returnedItemsLength = outputItems.length;
   const returnedItemsTitles = finalItemsTitles;
-  const renderedTopRecommendationsLength = finalItemsLength;
+  const renderedTopRecommendationsLength = outputItems.length;
   if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
     console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, acceptedTitles });
   }
@@ -4270,7 +4280,7 @@ const normalizedCandidatesRaw = [
       bucketPlan.preview ||
       bucketPlan.queries?.[0] ||
       "",
-    items: finalItems,
+    items: outputItems,
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
     debugRawPool,
