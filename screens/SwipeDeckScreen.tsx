@@ -919,6 +919,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [feedback, setFeedback] = useState<RecFeedback[]>([]);
 
   const [lastRecommendationInput, setLastRecommendationInput] = useState<RecommenderInput | null>(null);
+  const [lastRecommendationResult, setLastRecommendationResult] = useState<any | null>(null);
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
@@ -933,6 +934,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastDebugRouterVersion, setLastDebugRouterVersion] = useState<string>("");
   const [lastDebugGcdDispatchTrace, setLastDebugGcdDispatchTrace] = useState<any | null>(null);
   const [lastRouterResultTracePresent, setLastRouterResultTracePresent] = useState<boolean>(false);
+  const [lastDeploymentRuntimeMarker, setLastDeploymentRuntimeMarker] = useState<string>("comicvine-proxy-phase");
   const [lastRouterResultKeys, setLastRouterResultKeys] = useState<string[]>([]);
   const [recommendFunctionCalled, setRecommendFunctionCalled] = useState<boolean>(false);
   const [recommendFunctionError, setRecommendFunctionError] = useState<string>("");
@@ -1546,7 +1548,8 @@ function handleLeft() {
       setLastSourceSkippedReason(Array.isArray((result as any)?.sourceSkippedReason) ? (result as any).sourceSkippedReason : []);
       setLastDebugRouterVersion(typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "router-comicvine-proxy-default-v1");
       setLastRouterResultTracePresent(Boolean((result as any)?.routerResultTracePresent));
-      setLastRouterResultKeys(Object.keys((result as any) || {}));
+      setLastRouterResultKeys(Array.isArray((result as any)?.routerResultKeys) ? (result as any).routerResultKeys : Object.keys((result as any) || {}));
+      setLastDeploymentRuntimeMarker(typeof (result as any)?.deploymentRuntimeMarker === "string" ? (result as any).deploymentRuntimeMarker : "comicvine-proxy-phase");
       const incomingTrace = (result as any)?.debugComicVineDispatchTrace || (result as any)?.debugGcdDispatchTrace;
       const fallbackTrace = {
         traceSource: "fallback" as const,
@@ -1557,6 +1560,7 @@ function handleLeft() {
       };
       setLastDebugGcdDispatchTrace(incomingTrace ? { ...incomingTrace, traceSource: incomingTrace?.traceSource || "router" } : fallbackTrace);
       setLastRecommendationInput(input);
+      setLastRecommendationResult(result as any);
       setLastRecommendationTimestamp(new Date().toISOString());
       setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
 
@@ -1787,7 +1791,7 @@ function handleLeft() {
         compactFieldBlock("candidateRung", candidate?.queryRung),
         compactFieldBlock("candidateScore", typeof candidate?.score === "number" ? candidate.score.toFixed(3) : ""),
         compactFieldBlock("rawMatches", matchingRawRows.length),
-        ...formatDiagnosticObject(diagnostics, ["source", "preFilterScore", "postFilterScore", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
+        ...formatDiagnosticObject(diagnostics, ["source", "preFilterScore", "postFilterScore", "finalScore", "comicVineRelevanceScore", "titleMatchScore", "descriptionMatchScore", "tasteMatchScore", "reasonAccepted", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
         ...formatDiagnosticObject(candidate, ["queryText", "queryRung", "laneKind", "score", "baseIntent", "queryFamily", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]),
       ].filter(Boolean);
 
@@ -1984,12 +1988,21 @@ function handleLeft() {
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
+      `deploymentRuntimeMarker:${lastDeploymentRuntimeMarker || "comicvine-proxy-phase"}`,
       `recommendFunctionCalled:${Boolean(recommendFunctionCalled)}`,
       `recommendFunctionReturned:${Boolean(recommendFunctionReturned)}`,
       `recommendationResultWasPersisted:${Boolean(recommendationResultWasPersisted)}`,
       `recommendFunctionError:${recommendFunctionError || "(none)"}`,
       `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,
       `routerResultKeys:${lastRouterResultKeys.length ? lastRouterResultKeys.join(", ") : "(none)"}`,
+      `finalAcceptedDocsLength:${Number((lastRecommendationResult as any)?.finalAcceptedDocsLength || 0)}`,
+      `renderedTopRecommendationsLength:${Number((lastRecommendationResult as any)?.renderedTopRecommendationsLength || 0)}`,
+      `teenPostPassInputLength:${Number((lastRecommendationResult as any)?.teenPostPassInputLength || 0)}`,
+      `teenPostPassOutputLength:${Number((lastRecommendationResult as any)?.teenPostPassOutputLength || 0)}`,
+      `teenPostPassInputSource:${String((lastRecommendationResult as any)?.teenPostPassInputSource || "unknown")}`,
+      `finalRankedDocsBaseLength:${Number((lastRecommendationResult as any)?.finalRankedDocsBaseLength || 0)}`,
+      `rankedDocsLength:${Number((lastRecommendationResult as any)?.rankedDocsLength || 0)}`,
+      `droppedBeforeRenderReason:${String((lastRecommendationResult as any)?.droppedBeforeRenderReason || "none")}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
       `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
@@ -2012,6 +2025,12 @@ function handleLeft() {
       `mainRungQueriesLength:${Number(lastDebugGcdDispatchTrace?.mainRungQueriesLength || 0)}`,
       `kitsuFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.kitsuFetchAttempted)}`,
       `comicVineFetchAttempted:${Boolean(lastDebugGcdDispatchTrace?.comicVineFetchAttempted)}`,
+      `comicVineResolvedSeedQuery:${String(lastDebugGcdDispatchTrace?.comicVineResolvedSeedQuery || "(none)")}`,
+      `comicVineFallbackReason:${String(lastDebugGcdDispatchTrace?.comicVineFallbackReason || "none")}`,
+      `comicVineUsedFallbackQuery:${Boolean(lastDebugGcdDispatchTrace?.comicVineUsedFallbackQuery)}`,
+      `comicVineExcludedTermsAppliedInFilterOnly:${Boolean(lastDebugGcdDispatchTrace?.comicVineExcludedTermsAppliedInFilterOnly)}`,
+      `comicVineQueryTooLong:${Boolean(lastDebugGcdDispatchTrace?.comicVineQueryTooLong)}`,
+      `comicVinePositiveQueries:${Array.isArray(lastDebugGcdDispatchTrace?.comicVinePositiveQueries) && lastDebugGcdDispatchTrace.comicVinePositiveQueries.length ? lastDebugGcdDispatchTrace.comicVinePositiveQueries.join(" | ") : "(none)"}`,
       `kitsuQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.kitsuQueryTexts) && lastDebugGcdDispatchTrace.kitsuQueryTexts.length ? lastDebugGcdDispatchTrace.kitsuQueryTexts.join(" | ") : "(none)"}`,
       `comicVineQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) && lastDebugGcdDispatchTrace.comicVineQueryTexts.length ? lastDebugGcdDispatchTrace.comicVineQueryTexts.join(" | ") : "(none)"}`,
       `comicVineRungsBuilt:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineRungsBuilt) && lastDebugGcdDispatchTrace.comicVineRungsBuilt.length ? lastDebugGcdDispatchTrace.comicVineRungsBuilt.join(" | ") : "(none)"}`,

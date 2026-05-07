@@ -32,6 +32,7 @@ export type RecommendationResult = {
   sourceEnabled?: RecommendationSourceDiagnostics;
   sourceSkippedReason?: string[];
   debugRouterVersion?: string;
+  deploymentRuntimeMarker?: string;
   debugGcdDispatchTrace?: {
     sourceEnabledComicVine: boolean;
     traceSource?: "router" | "fallback" | "report-default";
@@ -62,8 +63,22 @@ export type RecommendationResult = {
     comicVineRungsBuilt?: string[];
     comicVineQueriesActuallyFetched?: string[];
     gcdFetchResults?: Array<{ query: string; status: string; rawCount: number; error: string | null }>;
+    comicVineResolvedSeedQuery?: string;
+    comicVineFallbackReason?: string;
+    comicVineUsedFallbackQuery?: boolean;
+    comicVinePositiveQueries?: string[];
+    comicVineExcludedTermsAppliedInFilterOnly?: boolean;
+    comicVineQueryTooLong?: boolean;
   };
   debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
+  finalAcceptedDocsLength?: number;
+  renderedTopRecommendationsLength?: number;
+  teenPostPassInputLength?: number;
+  teenPostPassOutputLength?: number;
+  droppedBeforeRenderReason?: string;
+  teenPostPassInputSource?: string;
+  finalRankedDocsBaseLength?: number;
+  rankedDocsLength?: number;
   routerResultTracePresent?: boolean;
   routerResultKeys?: string[];
   engineId: EngineId;
