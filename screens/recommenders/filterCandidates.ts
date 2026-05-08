@@ -2044,6 +2044,12 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       Boolean(strictHit) ||
       /\b(hellboy|seed of destruction|omnibus|in hell|locke\s*&\s*key|paper girls|sweet tooth)\b/.test(normalizedComicTitle);
     const likelyTranslatedEdition = /\b(und die|der|die|les|el|la)\b/.test(String(diagnostics.title || "").toLowerCase());
+    if (/^runaways\s+.*\bsaga\b/.test(normalizedComicTitle)) {
+      diagnostics.rejectReasons.push("comicvine_invalid_runaways_saga_variant");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
     if (canonicalComicSignal) {
       diagnostics.passedChecks.push("comicvine_canonical_series_signal");
       (diagnostics as any).comicVineCanonicalMatchReason = strictHit ? strictHit.reason : "broad_known_series_signal";
