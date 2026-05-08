@@ -2322,7 +2322,10 @@ function normalizedSeriesKey(candidate: Candidate): string {
     .replace(/[^a-z0-9\s:&]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return rawTitle.split(':')[0]?.trim() || rawTitle;
+  const root = rawTitle.split(':')[0]?.trim() || rawTitle;
+  if (/^(saga|saga #\d+|saga vol\.?\s*\d+|saga volume\s+\d+)$/.test(root)) return "saga";
+  if (/^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(root)) return "sandman";
+  return root;
 }
 
 function comicTitle(candidate: Candidate): string {
@@ -2374,13 +2377,30 @@ function entryPointBoost(candidate: Candidate): number {
 
 function canonicalAnchorTitleBoost(candidate: Candidate): number {
   const title = normalize(String(candidate.title || ""));
-  const anchors = [
-    'the sandman', 'sandman', 'saga', 'hellboy', 'locke & key', 'y: the last man', 'gideon falls', 'department of truth', 'something is killing the children'
+  const strictAnchors: Array<{ key: string; pattern: RegExp }> = [
+    { key: "saga", pattern: /^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
+    { key: "sandman", pattern: /^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
   ];
-  for (const anchor of anchors) {
+  for (const rule of strictAnchors) {
+    if (title === rule.key || rule.pattern.test(title)) {
+      if (title === rule.key || title === `the ${rule.key}`) return 12;
+      if (/\s+#1$|\s+vol\.?\s*1$|\s+volume\s+1$/.test(title)) return 10;
+      return 6;
+    }
+  }
+
+  const broadAnchors = [
+    "hellboy",
+    "locke & key",
+    "y: the last man",
+    "gideon falls",
+    "department of truth",
+    "something is killing the children",
+  ];
+  for (const anchor of broadAnchors) {
     const a = normalize(anchor);
     if (title === a) return 12;
-    if (title.startsWith(a + ' #1') || title.startsWith(a + ' vol 1') || title.startsWith(a + ' volume 1')) return 10;
+    if (title.startsWith(a + " #1") || title.startsWith(a + " vol 1") || title.startsWith(a + " volume 1")) return 10;
     if (title.startsWith(a)) return 6;
   }
   return 0;

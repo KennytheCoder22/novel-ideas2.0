@@ -77,9 +77,9 @@ function asArray<T>(value: T[] | null | undefined): T[] {
 function finalSeriesKeyForRender(doc: any): string {
   const title = String(doc?.title || doc?.rawDoc?.title || "").toLowerCase();
   if (/locke\s*&\s*key/.test(title)) return "locke-and-key";
-  if (/\bsaga\b/.test(title)) return "saga";
+  if (/^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(title)) return "saga";
   if (/\bhellboy\b/.test(title)) return "hellboy";
-  if (/\bsandman\b/.test(title)) return "sandman";
+  if (/^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(title)) return "sandman";
   if (/y\s*:?\s*the\s+last\s+man/.test(title)) return "y-the-last-man";
   if (/department\s+of\s+truth/.test(title)) return "department-of-truth";
   if (/gideon\s+falls/.test(title)) return "gideon-falls";
