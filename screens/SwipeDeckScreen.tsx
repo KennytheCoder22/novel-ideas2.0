@@ -1553,12 +1553,25 @@ function handleLeft() {
       const incomingTrace = (result as any)?.debugComicVineDispatchTrace || (result as any)?.debugGcdDispatchTrace;
       const fallbackTrace = {
         traceSource: "fallback" as const,
+        traceObjectSource: "reportFallback" as const,
         sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
         comicVineProxyUrl: "/api/comicvine",
         normalizedComicVineProxyUrl: "/api/comicvine",
         comicVineProxyConfigured: Boolean(sourceEnabled?.comicVine),
       };
-      setLastDebugGcdDispatchTrace(incomingTrace ? { ...incomingTrace, traceSource: incomingTrace?.traceSource || "router" } : fallbackTrace);
+      const resolvedTrace = incomingTrace ? { ...incomingTrace, traceSource: incomingTrace?.traceSource || "router" } : fallbackTrace;
+      if (
+        Array.isArray((resolvedTrace as any)?.gcdFetchResults) &&
+        (resolvedTrace as any).gcdFetchResults.some((row: any) => Number(row?.rawCount || 0) > 0) &&
+        Number((resolvedTrace as any)?.rawNormalizationInputCount || 0) === 0
+      ) {
+        console.error("TRACE_PROPAGATION_MISMATCH", {
+          traceObjectSource: (resolvedTrace as any)?.traceObjectSource || "unknown",
+          rawNormalizationInputCount: (resolvedTrace as any)?.rawNormalizationInputCount,
+          gcdFetchResults: (resolvedTrace as any)?.gcdFetchResults,
+        });
+      }
+      setLastDebugGcdDispatchTrace(resolvedTrace);
       setLastRecommendationInput(input);
       setLastRecommendationResult(result as any);
       setLastRecommendationTimestamp(new Date().toISOString());
@@ -2037,6 +2050,7 @@ function handleLeft() {
       `droppedBeforeRenderReason:${String((lastRecommendationResult as any)?.droppedBeforeRenderReason || "none")}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
       `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
+      `debugComicVineDispatchTrace.traceObjectSource:${String(lastDebugGcdDispatchTrace?.traceObjectSource || "reportFallback")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugComicVineDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
       `debugComicVineDispatchTrace.comicVineEnabledRuntime:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnabledRuntime)}`,

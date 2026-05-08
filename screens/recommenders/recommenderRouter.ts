@@ -4218,6 +4218,7 @@ const normalizedCandidatesRaw = [
   const comicVineDispatchTrace = {
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
     traceSource: "router" as const,
+    traceObjectSource: hasComicVineSuccess || comicVineFetchResults.length > 0 ? ("adapter" as const) : ("routerFallback" as const),
     includeGcd: Boolean(includeComicVine),
     comicVineEnvVarPresent,
     comicVineKeyDetected,
