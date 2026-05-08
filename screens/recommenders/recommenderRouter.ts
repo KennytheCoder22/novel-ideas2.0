@@ -3261,9 +3261,14 @@ export async function getRecommendations(
   const mergedDocs = dedupeDocs(allMergedDocs);
   const comicVineFetchAttemptedFlag = includeComicVine && mainRungQueriesLength > 0;
   const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && comicVineFetchAttemptedFlag);
-  const proxyHealthError = comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
+  const hasComicVineSuccess = comicVineFetchResults.some((row) => Number(row?.rawCount || 0) > 0 || String(row?.status || "").toLowerCase() === "ok");
+  const proxyHealthError = hasComicVineSuccess
+    ? null
+    : comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
   const proxyHealthStatus: "ok" | "failed" | "unknown" =
-    !includeComicVine ? "unknown" : proxyHealthError ? "failed" : "ok";
+    !includeComicVine ? "unknown" : hasComicVineSuccess ? "ok" : proxyHealthError ? "failed" : "ok";
+  const adapterSuccessReached = hasComicVineSuccess;
+  const adapterFailureStateOverwritten = hasComicVineSuccess && comicVineFetchResults.some((row) => Boolean(row?.error));
   const kitsuFetchAttempted = Boolean(includeKitsu);
   if (sourceEnabled.comicVine && includeComicVine && aggregatedRawFetched.comicVine === 0) {
     const missingProxy = comicVineFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_COMICVINE_PROXY_URL"));
@@ -4225,6 +4230,8 @@ const normalizedCandidatesRaw = [
     comicVineProxyConfigured: Boolean(comicVineProxyUrl),
     comicVineProxyHealthStatus: proxyHealthStatus,
     comicVineProxyErrorBody: proxyHealthError || undefined,
+    adapterSuccessReached,
+    adapterFailureStateOverwritten,
     buildComicVineFacetRungsCalled,
     comicVineRungsLength: comicVineFacetRungs.length,
     mainRungQueriesLength,
@@ -4242,6 +4249,11 @@ const normalizedCandidatesRaw = [
     rawResultsPerQuery: comicVineRawResultsPerQuery,
     survivingCandidatesPerQuery: comicVineSurvivingCandidatesPerQuery,
     keptAfterFilterPerQuery: comicVineKeptAfterFilterPerQuery,
+    rawNormalizationInputCount,
+    rawNormalizationAcceptedCount,
+    rawNormalizationRejectedCount,
+    rawNormalizationRejectedReasons,
+    rawNormalizationRejectedExamples,
     entityQueriesGenerated: comicVineEntityQueriesGenerated,
     descriptorQueriesGenerated: comicVineDescriptorQueriesGenerated,
     franchiseConfidenceScores: comicVineFranchiseConfidenceScores,

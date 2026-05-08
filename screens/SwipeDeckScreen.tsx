@@ -2048,6 +2048,8 @@ function handleLeft() {
       `debugComicVineDispatchTrace.comicVineProxyConfigured:${Boolean(lastDebugGcdDispatchTrace?.comicVineProxyConfigured)}`,
       `debugComicVineDispatchTrace.comicVineProxyHealthStatus:${String(lastDebugGcdDispatchTrace?.comicVineProxyHealthStatus || "unknown")}`,
       `debugComicVineDispatchTrace.comicVineProxyErrorBody:${String(lastDebugGcdDispatchTrace?.comicVineProxyErrorBody || "(none)")}`,
+      `adapterSuccessReached:${Boolean(lastDebugGcdDispatchTrace?.adapterSuccessReached)}`,
+      `adapterFailureStateOverwritten:${Boolean(lastDebugGcdDispatchTrace?.adapterFailureStateOverwritten)}`,
       `kitsuEligibleFromSwipes:${Boolean(lastDebugGcdDispatchTrace?.kitsuEligibleFromSwipes)}`,
       `likedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.likedAnimeMangaCount || 0)}`,
       `skippedAnimeMangaCount:${Number(lastDebugGcdDispatchTrace?.skippedAnimeMangaCount || 0)}`,
