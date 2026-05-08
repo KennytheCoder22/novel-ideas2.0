@@ -330,6 +330,11 @@ function rawIssueRejectReason(issue: any): string | null {
 }
 
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>, rawDiag: any) {
+  if (!rawDiag || typeof rawDiag !== "object") {
+    throw new Error("COMICVINE_ADAPTER_DIAGNOSTICS_UNINITIALIZED: rawDiag must be initialized before fetch.");
+  }
+  rawDiag.diagnosticsInitialized = true;
+  rawDiag.rawNormalizationStarted = true;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -341,10 +346,11 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     for (const issue of results) {
       const rejectReason = rawIssueRejectReason(issue);
       if (rejectReason) {
-        rawDiag.rawRejectedBeforeNormalizationCount += 1;
+        rawDiag.rawRejectedBeforeNormalizationCount = Number(rawDiag.rawRejectedBeforeNormalizationCount || 0) + 1;
+        rawDiag.preNormalizationRejectCount = Number(rawDiag.preNormalizationRejectCount || 0) + 1;
         rawDiag.rawRejectedBeforeNormalizationReasons[rejectReason] = (rawDiag.rawRejectedBeforeNormalizationReasons[rejectReason] || 0) + 1;
-        if (rejectReason === "metadata_shell_title") rawDiag.rawMetadataShellCount += 1;
-        if (rejectReason === "issue_fragment_no_narrative") rawDiag.rawIssueFragmentCount += 1;
+        if (rejectReason === "metadata_shell_title") rawDiag.rawMetadataShellCount = Number(rawDiag.rawMetadataShellCount || 0) + 1;
+        if (rejectReason === "issue_fragment_no_narrative") rawDiag.rawIssueFragmentCount = Number(rawDiag.rawIssueFragmentCount || 0) + 1;
         continue;
       }
       const doc = comicVineIssueToDoc(issue, query, queryRung);
@@ -353,11 +359,13 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
       docs.push(doc);
-      rawDiag.rawNarrativeQualifiedCount += 1;
+      rawDiag.rawNarrativeQualifiedCount = Number(rawDiag.rawNarrativeQualifiedCount || 0) + 1;
       if (docs.length >= fetchLimit) break;
     }
+    rawDiag.rawNormalizationCompleted = true;
     return { rawCount: Math.max(0, docs.length - before), error: null };
   } catch (err: any) {
+    rawDiag.rawNormalizationCompleted = true;
     return { rawCount: 0, error: String(err?.message || err || "comicvine_search_failed") };
   } finally {
     clearTimeout(timer);
@@ -373,7 +381,18 @@ async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
   }
   const probeDocs: RecommendationDoc[] = [];
   const probeSeen = new Set<string>();
-  const { rawCount, error } = await fetchDocsForQuery(probeQuery, -1, timeoutMs, 6, probeDocs, probeSeen);
+  const preflightRawDiagnostics = {
+    diagnosticsInitialized: true,
+    rawNormalizationStarted: false,
+    rawNormalizationCompleted: false,
+    preNormalizationRejectCount: 0,
+    rawRejectedBeforeNormalizationCount: 0,
+    rawRejectedBeforeNormalizationReasons: {} as Record<string, number>,
+    rawMetadataShellCount: 0,
+    rawIssueFragmentCount: 0,
+    rawNarrativeQualifiedCount: 0,
+  };
+  const { rawCount, error } = await fetchDocsForQuery(probeQuery, -1, timeoutMs, 6, probeDocs, probeSeen, preflightRawDiagnostics);
   if (rawCount <= 0) {
     throw new Error(`COMICVINE_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${error || "none"}`);
   }
@@ -466,12 +485,25 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       descriptorQueriesGenerated,
       franchiseConfidenceScores,
       franchiseSuppressedReasons,
+      diagnosticsInitialized: true,
+      rawNormalizationStarted: false,
+      rawNormalizationCompleted: false,
+      preNormalizationRejectCount: 0,
+      rawRejectedBeforeNormalizationCount: 0,
+      rawRejectedBeforeNormalizationReasons: {},
+      rawMetadataShellCount: 0,
+      rawIssueFragmentCount: 0,
+      rawNarrativeQualifiedCount: 0,
     };
   }
 
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   const rawPreNormalizationDiagnostics = {
+    diagnosticsInitialized: true,
+    rawNormalizationStarted: false,
+    rawNormalizationCompleted: false,
+    preNormalizationRejectCount: 0,
     rawRejectedBeforeNormalizationCount: 0,
     rawRejectedBeforeNormalizationReasons: {} as Record<string, number>,
     rawMetadataShellCount: 0,
