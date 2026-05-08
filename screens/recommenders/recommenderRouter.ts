@@ -83,10 +83,8 @@ function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
 function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiagnostics {
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
-  const gcdEnabledByAdmin = config?.comicVine !== false;
-  const comicVineApiKey = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
-  const comicVineKeyDetected = Boolean(comicVineApiKey);
-  const gcdEnabled = process.env.NODE_ENV === "production" ? (comicVineKeyDetected && gcdEnabledByAdmin) : gcdEnabledByAdmin;
+  const gcdEnabledByAdmin = config?.comicVine !== false && config?.gcd !== false;
+  const gcdEnabled = gcdEnabledByAdmin;
 
   return {
     googleBooks: config?.googleBooks !== false,
@@ -2943,6 +2941,7 @@ export async function getRecommendations(
   const comicVineFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
+  let comicVineDispatchedOnce = false;
   let comicVineResolvedSeedQuery = "";
   let comicVineFallbackReason = "none";
   let comicVineUsedFallbackQuery = false;
@@ -3024,7 +3023,11 @@ export async function getRecommendations(
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
-      if (includeComicVine && !comicVineAdapterFailed) requests.push(getComicVineGraphicNovelRecommendations(laneInput));
+      const shouldDispatchComicVineForLane = includeComicVine && !comicVineAdapterFailed && !comicVineDispatchedOnce;
+      if (shouldDispatchComicVineForLane) {
+        requests.push(getComicVineGraphicNovelRecommendations(routedInput));
+        comicVineDispatchedOnce = true;
+      }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
 
       const results = await Promise.allSettled(requests);
@@ -3057,10 +3060,10 @@ export async function getRecommendations(
         : null;
       if (includeKitsu) index += 1;
 
-      const laneComicVine = includeComicVine && results[index]?.status === "fulfilled"
+      const laneComicVine = comicVineDispatchedOnce && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (includeComicVine) {
+      if (comicVineDispatchedOnce) {
         const gcdResult = results[index];
         const query = "comicvine_adapter";
         if (gcdResult?.status === "fulfilled") {
@@ -3111,7 +3114,7 @@ export async function getRecommendations(
         ...dedupeDocs(extractDocs(laneGoogle, "googleBooks")),
         ...dedupeDocs(extractDocs(laneOpenLibrary, "openLibrary")),
         ...(includeKitsu ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
-        ...(includeComicVine ? dedupeDocs(extractDocs(laneComicVine, "comicVine")) : []),
+        ...(laneComicVine ? dedupeDocs(extractDocs(laneComicVine, "comicVine")) : []),
       ]);
 
       if (!google && laneGoogle) google = laneGoogle;

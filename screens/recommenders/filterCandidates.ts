@@ -2022,6 +2022,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       continue;
     }
 
+    const sourceText = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+    const isComicVineLike = sourceText.includes("comicvine") || sourceText.includes("comicvine");
+    const knownComicSeries = /\b(hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y\s*:?\s*the last man|gideon falls|department of truth|sweet tooth|paper girls|invincible|watchmen)\b/.test(String(diagnostics.title || "").toLowerCase());
+
     const zeroRating = diagnostics.ratingsCount === 0;
     const externalAuthoritySignal =
       diagnostics.flags.legitAuthority ||
@@ -2056,6 +2060,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       diagnostics.pageCount === 0 &&
       !isOpenLibraryLike &&
+      !isComicVineLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
@@ -2065,6 +2070,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       diagnostics.ratingsCount === 0 &&
       !isOpenLibraryLike &&
+      !isComicVineLike &&
       !diagnostics.flags.strongNarrative &&
       !diagnostics.flags.legitAuthority
     ) {
@@ -2074,6 +2080,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       !diagnostics.hasDescription &&
       !isOpenLibraryLike &&
+      !isComicVineLike &&
+      !knownComicSeries &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
@@ -2084,6 +2092,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       descriptionLengthForFloor > 0 &&
       descriptionLengthForFloor < 80 &&
       !isOpenLibraryLike &&
+      !isComicVineLike &&
+      !knownComicSeries &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {

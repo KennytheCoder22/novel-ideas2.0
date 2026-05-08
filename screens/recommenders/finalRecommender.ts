@@ -541,7 +541,7 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     Boolean((c.rawDoc as any)?.commercialSignals?.bestseller) ||
     Boolean((c.rawDoc as any)?.commercialSignals?.hasMainstreamPublisherSignal);
 
-  if (isRescuedBorderline && (c.ratingCount || 0) === 0 && !knownAuthorityForZeroRating) {
+  if (source !== "comicvine" && isRescuedBorderline && (c.ratingCount || 0) === 0 && !knownAuthorityForZeroRating) {
     return { pass: false, reason: 'low_metadata_trust', detail: 'zero-rating rescued item without authority signal' };
   }
   if (isOL) {
@@ -610,9 +610,11 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     Number((c as any)?.diagnostics?.tasteAlignment || 0) > 0.5,
     String(c.description || "").trim().length >= 80,
   ].filter(Boolean).length;
+  const knownComicVineSeries = /\b(hellboy|saga|sweet tooth|sandman|watchmen|invincible|locke\s*&\s*key|department of truth|gideon falls|black hammer|monstress|y\s*:?\s*the last man)\b/.test(String(c.title || "").toLowerCase());
+  const comicVineAuthoritySignal = knownComicVineSeries || /\b(dc|marvel|image|dark horse|vertigo|boom|idw)\b/.test(String(c.publisher || c.rawDoc?.publisher || "").toLowerCase()) || Boolean(c.hasCover) || String(c.description || "").trim().length >= 40;
   if (source === "comicvine") {
     const lacksActiveFamilySemantic = !activeFamilyMatch || !(diagnostics?.flags?.thrillerPositive || diagnostics?.flags?.mysteryPositive || diagnostics?.flags?.suspensePositive || diagnostics?.flags?.speculativePositive);
-    if (rawMatches <= 0 && !titleMeaningfulOverlap && !descriptionMeaningfulOverlap && lacksActiveFamilySemantic && !swipeFranchiseSignal) {
+    if (rawMatches <= 0 && !titleMeaningfulOverlap && !descriptionMeaningfulOverlap && lacksActiveFamilySemantic && !swipeFranchiseSignal && !comicVineAuthoritySignal) {
       (c as any).diagnostics.comicVineAdmissionPath = "blocked_raw0_no_semantic_alignment";
       (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
       return { pass: false, reason: "weak_comicvine_semantic_alignment", detail: "hard-block rawMatches<=0 and no meaningful alignment" };
@@ -621,13 +623,13 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
       passedChecks.includes("soft_missing_science_fiction_signal") &&
       passedChecks.includes("soft_lane_mismatch_science_fiction") &&
       passedChecks.includes("soft_too_many_soft_failures");
-    if (hasSoftFailureTriplet && rawMatches < 2 && !explicitGenreMatch) {
+    if (hasSoftFailureTriplet && rawMatches < 2 && !explicitGenreMatch && !comicVineAuthoritySignal) {
       return { pass: false, reason: "weak_comicvine_semantic_alignment", detail: "soft-failure triplet without raw or explicit genre support" };
     }
     const weakUnknownFamily = queryFamily === "unknown";
     const genericTeenQuery = /teen\s+graphic\s+novel\s+graphic\s+novel/.test(queryText);
     const structuralOnlySignals = semanticPositiveCount < 1;
-    if (genericTeenQuery || structuralOnlySignals || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2 || (rawMatches === 0 && weakUnknownFamily && semanticPositiveCount === 0)) {
+    if ((genericTeenQuery || structuralOnlySignals || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2 || (rawMatches === 0 && weakUnknownFamily && semanticPositiveCount === 0)) && !comicVineAuthoritySignal) {
       (c as any).diagnostics.comicVineAdmissionPath = "blocked_weak_alignment";
       (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
       return { pass: false, reason: 'weak_comicvine_semantic_alignment', detail: `signals=${strongSemanticSignals} family=${queryFamily} query=${queryText}` };
@@ -669,7 +671,7 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   }
 
   if (source === "comicvine") {
-    const hasComicVineAcceptSignal = rawMatches >= 1 || titleMeaningfulOverlap || descriptionMeaningfulOverlap || swipeFranchiseSignal;
+    const hasComicVineAcceptSignal = rawMatches >= 1 || titleMeaningfulOverlap || descriptionMeaningfulOverlap || swipeFranchiseSignal || comicVineAuthoritySignal;
     if (!hasComicVineAcceptSignal) {
       (c as any).diagnostics.comicVineAdmissionPath = "blocked_missing_accept_signal";
       (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
