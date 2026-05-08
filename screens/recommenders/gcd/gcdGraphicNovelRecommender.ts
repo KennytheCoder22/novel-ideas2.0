@@ -69,8 +69,10 @@ function computeQuerySpecificityScore(query: string): number {
 function isGenericComicVineQuery(query: string): boolean {
   const q = normalizeText(query);
   const tokens = q.split(/\s+/).filter(Boolean);
-  const allGeneric = tokens.length > 0 && tokens.every((t) => /^(graphic|novel|comic|comics|dark|horror|mystery|fantasy|thriller|teen)$/.test(t));
-  return allGeneric || computeQuerySpecificityScore(q) <= 1;
+  const allGeneric = tokens.length > 0 && tokens.every((t) => /^(graphic|novel|comic|comics|dark|horror|mystery|fantasy|thriller|teen|survival)$/.test(t));
+  const lexicalSludge = /\b(setting|stakes|identity|under pressure|story of|novel graphic novel)\b/.test(q);
+  const survivalGeneric = /\bsurvival comics? graphic novel\b/.test(q);
+  return allGeneric || lexicalSludge || survivalGeneric || computeQuerySpecificityScore(q) <= 1;
 }
 function safeNumber(value: any, fallback = 0): number {
   const n = Number(value);
@@ -121,12 +123,13 @@ function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
-  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("hellboy");
+  const explicitHellboyEvidence = hasFacet(tagCounts, /hellboy|mignola|b\.p\.r\.d|bprd/);
+  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/) && explicitHellboyEvidence) queries.push("hellboy");
   if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("batman");
   if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("walking dead");
   if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("saga");
   if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
-  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
+  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/) && explicitHellboyEvidence) queries.push("hellboy");
   if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
   return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 8);
 }

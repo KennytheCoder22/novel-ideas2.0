@@ -2028,6 +2028,10 @@ function handleLeft() {
       `rankedDocsLength:${Number((lastRecommendationResult as any)?.rankedDocsLength || 0)}`,
       `finalAcceptedDocsSource:${String((lastRecommendationResult as any)?.finalAcceptedDocsSource || "none")}`,
       `finalAcceptedDocsTitles:${Array.isArray((lastRecommendationResult as any)?.finalAcceptedDocsTitles) && (lastRecommendationResult as any).finalAcceptedDocsTitles.length ? (lastRecommendationResult as any).finalAcceptedDocsTitles.join(" | ") : "(none)"}`,
+      `candidatePoolPreFinalCount:${Number((lastRecommendationResult as any)?.candidatePoolPreFinalCount || 0)}`,
+      `rejectedBeforeFinalCount:${Number((lastRecommendationResult as any)?.rejectedBeforeFinalCount || 0)}`,
+      `rejectedBeforeFinalReasons:${(lastRecommendationResult as any)?.rejectedBeforeFinalReasons ? JSON.stringify((lastRecommendationResult as any).rejectedBeforeFinalReasons) : "(none)"}`,
+      `genericTitleRejectedCount:${Number((lastRecommendationResult as any)?.genericTitleRejectedCount || 0)}`,
       `finalRankedDocsBaseTitles:${Array.isArray((lastRecommendationResult as any)?.finalRankedDocsBaseTitles) && (lastRecommendationResult as any).finalRankedDocsBaseTitles.length ? (lastRecommendationResult as any).finalRankedDocsBaseTitles.join(" | ") : "(none)"}`,
       `rankedDocsTitles:${Array.isArray((lastRecommendationResult as any)?.rankedDocsTitles) && (lastRecommendationResult as any).rankedDocsTitles.length ? (lastRecommendationResult as any).rankedDocsTitles.join(" | ") : "(none)"}`,
       `droppedBeforeRenderReason:${String((lastRecommendationResult as any)?.droppedBeforeRenderReason || "none")}`,
@@ -2063,6 +2067,7 @@ function handleLeft() {
       `comicVineQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) && lastDebugGcdDispatchTrace.comicVineQueryTexts.length ? lastDebugGcdDispatchTrace.comicVineQueryTexts.join(" | ") : "(none)"}`,
       `comicVineRungsBuilt:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineRungsBuilt) && lastDebugGcdDispatchTrace.comicVineRungsBuilt.length ? lastDebugGcdDispatchTrace.comicVineRungsBuilt.join(" | ") : "(none)"}`,
       `comicVineQueriesActuallyFetched:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueriesActuallyFetched) && lastDebugGcdDispatchTrace.comicVineQueriesActuallyFetched.length ? lastDebugGcdDispatchTrace.comicVineQueriesActuallyFetched.join(" | ") : "(none)"}`,
+      `comicVineQueryDiagnostics:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryDiagnostics) && lastDebugGcdDispatchTrace.comicVineQueryDiagnostics.length ? lastDebugGcdDispatchTrace.comicVineQueryDiagnostics.map((row:any)=>`${row?.query || "(query)"} src=${row?.queryGeneratedFrom || "?"} spec=${Number(row?.querySpecificityScore || 0)} generic=${Boolean(row?.queryWasGeneric)} suppress=${row?.querySuppressedReason || "none"}`).join(" || ") : "(none)"}`,
       `comicVineFetchResults:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineFetchResults) && lastDebugGcdDispatchTrace.comicVineFetchResults.length ? lastDebugGcdDispatchTrace.comicVineFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
     ].join("\n");
     if (Boolean(lastSourceEnabled?.comicVine) && String(lastDebugGcdDispatchTrace?.traceSource || "report-default") === "report-default") {
