@@ -3923,7 +3923,8 @@ const normalizedCandidatesRaw = [
     const lanePattern = lanePatterns[routerFamily] || lanePatterns.general;
     const laneFit = lanePattern.test(text) ? 2.4 : -1.2;
     const facetHits = (text.match(/\b(dark|fast paced|friendship|survival|mystery|school|identity|hopeful)\b/g) || []).length;
-    return teenFit + laneFit + (facetHits * 0.5) + (candidateScoreValue(doc) * 0.2);
+    const finalScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? candidateScoreValue(doc));
+    return (finalScore * 6) + teenFit + laneFit + (facetHits * 0.5);
   };
 
   let finalRankedDocs = (() => {
@@ -3958,7 +3959,8 @@ const normalizedCandidatesRaw = [
       const generic = /\b(fiction|novel|book|story)\b/.test(text) ? -0.5 : 0;
       const facetMatches = facetPattern ? (text.match(facetPattern) || []).length : 0;
       const classicPenalty = classicAdultCanonPattern.test(text) && !/\b(young adult|ya|teen|retelling|adaptation)\b/i.test(text) ? -2.5 : 0;
-      return onLane + generic + (facetMatches * 0.45) + classicPenalty;
+      const finalScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? candidateScoreValue(doc));
+      return (finalScore * 6) + onLane + generic + (facetMatches * 0.45) + classicPenalty;
     };
 
     const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
