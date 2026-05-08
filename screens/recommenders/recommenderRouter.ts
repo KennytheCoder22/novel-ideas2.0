@@ -2951,6 +2951,10 @@ export async function getRecommendations(
   let comicVineRawResultsPerQuery: any[] = [];
   let comicVineSurvivingCandidatesPerQuery: any[] = [];
   let comicVineKeptAfterFilterPerQuery: any[] = [];
+  let comicVineEntityQueriesGenerated: string[] = [];
+  let comicVineDescriptorQueriesGenerated: string[] = [];
+  let comicVineFranchiseConfidenceScores: Record<string, number> = {};
+  let comicVineFranchiseSuppressedReasons: string[] = [];
   let comicVineExcludedTermsAppliedInFilterOnly = false;
   let comicVineQueryTooLong = false;
 
@@ -3078,6 +3082,10 @@ export async function getRecommendations(
           if (Array.isArray(value?.rawResultsPerQuery)) comicVineRawResultsPerQuery = value.rawResultsPerQuery;
           if (Array.isArray(value?.survivingCandidatesPerQuery)) comicVineSurvivingCandidatesPerQuery = value.survivingCandidatesPerQuery;
           if (Array.isArray(value?.keptAfterFilterPerQuery)) comicVineKeptAfterFilterPerQuery = value.keptAfterFilterPerQuery;
+          if (Array.isArray(value?.entityQueriesGenerated)) comicVineEntityQueriesGenerated = value.entityQueriesGenerated;
+          if (Array.isArray(value?.descriptorQueriesGenerated)) comicVineDescriptorQueriesGenerated = value.descriptorQueriesGenerated;
+          if (value?.franchiseConfidenceScores && typeof value.franchiseConfidenceScores === "object") comicVineFranchiseConfidenceScores = value.franchiseConfidenceScores;
+          if (Array.isArray(value?.franchiseSuppressedReasons)) comicVineFranchiseSuppressedReasons = value.franchiseSuppressedReasons;
           if (typeof value?.comicVineExcludedTermsAppliedInFilterOnly === "boolean") comicVineExcludedTermsAppliedInFilterOnly = value.comicVineExcludedTermsAppliedInFilterOnly;
           if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
@@ -4206,6 +4214,10 @@ const normalizedCandidatesRaw = [
     rawResultsPerQuery: comicVineRawResultsPerQuery,
     survivingCandidatesPerQuery: comicVineSurvivingCandidatesPerQuery,
     keptAfterFilterPerQuery: comicVineKeptAfterFilterPerQuery,
+    entityQueriesGenerated: comicVineEntityQueriesGenerated,
+    descriptorQueriesGenerated: comicVineDescriptorQueriesGenerated,
+    franchiseConfidenceScores: comicVineFranchiseConfidenceScores,
+    franchiseSuppressedReasons: comicVineFranchiseSuppressedReasons,
     comicVineExcludedTermsAppliedInFilterOnly,
     comicVineQueryTooLong,
   };

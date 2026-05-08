@@ -316,7 +316,20 @@ function buildSearchUrls(query: string): string[] {
   ];
 }
 
-async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
+function rawIssueRejectReason(issue: any): string | null {
+  const title = String(issue?.name || issue?.volume?.name || "").trim();
+  const description = String(issue?.description || issue?.deck || "").replace(/<[^>]+>/g, " ").trim();
+  const pageCount = safeNumber(issue?.page_count, 0);
+  const ratingsCount = safeNumber(issue?.ratingsCount, 0);
+  if (!description) return "empty_description";
+  if (pageCount === 0 && ratingsCount === 0) return "no_pages_no_ratings";
+  if (/^(tpb|ogn|gn|graphic novel|part \d+|book [a-z0-9]+)/i.test(title)) return "metadata_shell_title";
+  if (/#\d{1,4}$/.test(title) && description.length < 80) return "issue_fragment_no_narrative";
+  if (/\b(translated|edition|edición|édition)\b/i.test(title) && description.length < 80) return "translated_shell_no_narrative";
+  return null;
+}
+
+async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>, rawDiag: any) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -326,12 +339,21 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const results = Array.isArray(payload?.results) ? payload.results : [];
     const before = docs.length;
     for (const issue of results) {
+      const rejectReason = rawIssueRejectReason(issue);
+      if (rejectReason) {
+        rawDiag.rawRejectedBeforeNormalizationCount += 1;
+        rawDiag.rawRejectedBeforeNormalizationReasons[rejectReason] = (rawDiag.rawRejectedBeforeNormalizationReasons[rejectReason] || 0) + 1;
+        if (rejectReason === "metadata_shell_title") rawDiag.rawMetadataShellCount += 1;
+        if (rejectReason === "issue_fragment_no_narrative") rawDiag.rawIssueFragmentCount += 1;
+        continue;
+      }
       const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (!doc?.title) continue;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
       docs.push(doc);
+      rawDiag.rawNarrativeQualifiedCount += 1;
       if (docs.length >= fetchLimit) break;
     }
     return { rawCount: Math.max(0, docs.length - before), error: null };
@@ -376,6 +398,15 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
   const fallbackQueries = superheroSignal ? ["batman"] : ["monstress", "paper girls", "locke and key", "sweet tooth"];
   const queryCandidates = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>String(q||"").trim()).filter(Boolean)));
+  const franchiseConfidenceScores = {
+    batman: hasFacet(input.tagCounts, /batman|gotham|dc comics|bruce wayne/) ? 1 : 0,
+    walking_dead: hasFacet(input.tagCounts, /walking dead|zombie apocalypse|undead survival/) ? 1 : 0,
+    spider_man: hasFacet(input.tagCounts, /spider[- ]?man|peter parker|miles morales/) ? 1 : 0,
+    ms_marvel: hasFacet(input.tagCounts, /ms\. marvel|kamala khan/) ? 1 : 0,
+  };
+  const franchiseSuppressedReasons = Object.entries(franchiseConfidenceScores)
+    .filter(([, score]) => Number(score) < 1)
+    .map(([key]) => `${key}:below_confidence_threshold`);
   const queryDiagnostics = queryCandidates.map((query) => {
     const querySpecificityScore = computeQuerySpecificityScore(query);
     const queryWasGeneric = isGenericComicVineQuery(query);
@@ -390,6 +421,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   });
   const nonGenericQueries = queryDiagnostics.filter((row) => !row.queryWasGeneric).map((row) => row.query);
   const queriesToTry = (nonGenericQueries.length ? nonGenericQueries : queryCandidates).slice(0, 10);
+  const entityQueriesGenerated = queryDiagnostics.filter((row) => row.querySpecificityScore >= 3 && /\b(and|&|girls|tooth|key|monstress|children|dead|batman|marvel|spider)\b/i.test(row.query)).map((row) => row.query);
+  const descriptorQueriesGenerated = queryDiagnostics.filter((row) => row.queryWasGeneric || row.querySpecificityScore < 3).map((row) => row.query);
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
@@ -429,11 +462,22 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       comicVineExcludedTermsAppliedInFilterOnly,
       comicVineQueryTooLong,
       comicVineQueryDiagnostics: queryDiagnostics,
+      entityQueriesGenerated,
+      descriptorQueriesGenerated,
+      franchiseConfidenceScores,
+      franchiseSuppressedReasons,
     };
   }
 
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
+  const rawPreNormalizationDiagnostics = {
+    rawRejectedBeforeNormalizationCount: 0,
+    rawRejectedBeforeNormalizationReasons: {} as Record<string, number>,
+    rawMetadataShellCount: 0,
+    rawIssueFragmentCount: 0,
+    rawNarrativeQualifiedCount: 0,
+  };
   let builtFromQuery = queriesToTry[0] || "";
   const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
   const comicVineQueriesActuallyFetched: string[] = [];
@@ -443,7 +487,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     const q = queriesToTry[i];
     comicVineQueriesActuallyFetched.push(q);
     const hadDocsBeforeQuery = docs.length > 0;
-    const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+    const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen, rawPreNormalizationDiagnostics);
     if (!rawCount) {
       comicVineFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount: 0, error });
       continue;
@@ -467,7 +511,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       if (comicVineQueriesActuallyFetched.includes(q)) continue;
       comicVineQueriesActuallyFetched.push(q);
       let issueUrls: string[] = [];
-      const probe = await fetchDocsForQuery(q, 999, timeoutMs, fetchLimit, docs, seen);
+      const probe = await fetchDocsForQuery(q, 999, timeoutMs, fetchLimit, docs, seen, rawPreNormalizationDiagnostics);
       issueUrls = probe.rawCount > 0 ? ["found"] : [];
       if (probe.rawCount > 0) probeFoundAny = true;
       comicVineFetchResults.push({
@@ -508,9 +552,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineFetchResults,
     comicVineFetchAttempted: true,
     comicVineQueryDiagnostics: queryDiagnostics,
+    entityQueriesGenerated,
+    descriptorQueriesGenerated,
+    franchiseConfidenceScores,
+    franchiseSuppressedReasons,
     rawResultsPerQuery,
     survivingCandidatesPerQuery,
     keptAfterFilterPerQuery,
+    ...rawPreNormalizationDiagnostics,
     gcdAdapterStatus: "ok",
     comicVineZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {
