@@ -338,10 +338,19 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    console.log("COMICVINE_PROXY_FETCH_START", { query, queryRung });
     const resp = await fetch(buildComicVineProxySearchUrl(query, 20), { signal: controller.signal, headers: { Accept: "application/json" } });
+    console.log("COMICVINE_PROXY_FETCH_RESPONSE", { query, status: resp.status, ok: resp.ok });
     if (!resp.ok) throw new Error(`ComicVine error: ${resp.status}`);
     const payload = await resp.json();
+    console.log("COMICVINE_PROXY_PARSE_COMPLETE", {
+      query,
+      payloadKeys: payload && typeof payload === "object" ? Object.keys(payload) : [],
+      resultsLength: Array.isArray(payload?.results) ? payload.results.length : 0,
+      firstResultTitle: Array.isArray(payload?.results) && payload.results[0] ? String(payload.results[0]?.name || payload.results[0]?.volume?.name || "") : "",
+    });
     const results = Array.isArray(payload?.results) ? payload.results : [];
+    console.log("COMICVINE_RAW_RESULT_COUNT", { query, rawCount: results.length });
     const before = docs.length;
     for (const issue of results) {
       const rejectReason = rawIssueRejectReason(issue);
@@ -363,6 +372,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       if (docs.length >= fetchLimit) break;
     }
     rawDiag.rawNormalizationCompleted = true;
+    console.log("COMICVINE_NORMALIZATION_COMPLETE", { query, added: Math.max(0, docs.length - before), totalDocs: docs.length });
     return { rawCount: Math.max(0, docs.length - before), error: null };
   } catch (err: any) {
     rawDiag.rawNormalizationCompleted = true;
@@ -405,6 +415,7 @@ async function runGcdAdapterPreflight(timeoutMs: number): Promise<{ status: "ok"
 }
 
 export async function getGcdGraphicNovelRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
+  console.log("COMICVINE_ADAPTER_ENTER", { deckKey: input.deckKey, limit: input.limit });
   const deckKey = input.deckKey;
   const domainMode: RecommendationResult["domainMode"] = "default";
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
@@ -435,7 +446,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const queryDiagnostics = queryCandidates.map((query) => {
     const querySpecificityScore = computeQuerySpecificityScore(query);
     const queryWasGeneric = isGenericComicVineQuery(query);
-    return {
+    const returnPayload = {
       query,
       queryGeneratedFrom: baseFromSeed.includes(query) ? "seed" : facetQueries.includes(query) ? "facet" : directQueries.includes(query) ? "swipe-evidence" : "fallback",
       queryFamily: String((input as any)?.bucketPlan?.lane || "general"),
@@ -446,6 +457,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   });
   const nonGenericQueries = queryDiagnostics.filter((row) => !row.queryWasGeneric).map((row) => row.query);
   const queriesToTry = (nonGenericQueries.length ? nonGenericQueries : queryCandidates).slice(0, 10);
+  console.log("COMICVINE_QUERY_BUILD_COMPLETE", { queryCount: queriesToTry.length, queriesToTry });
   const entityQueriesGenerated = queryDiagnostics.filter((row) => row.querySpecificityScore >= 3 && /\b(and|&|girls|tooth|key|monstress|children|dead|batman|marvel|spider)\b/i.test(row.query)).map((row) => row.query);
   const descriptorQueriesGenerated = queryDiagnostics.filter((row) => row.queryWasGeneric || row.querySpecificityScore < 3).map((row) => row.query);
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
@@ -505,6 +517,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       rawIssueFragmentCount: 0,
       rawNarrativeQualifiedCount: 0,
     };
+    console.log("COMICVINE_ADAPTER_RETURN", { keys: Object.keys(returnPayload), items: 0 });
+    return returnPayload;
   }
 
   const docs: RecommendationDoc[] = [];
@@ -579,7 +593,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const rawResultsPerQuery = comicVineFetchResults.map((row) => ({ query: row.query, rawCount: row.rawCount }));
   const keptAfterFilterPerQuery = survivingCandidatesPerQuery.map((row) => ({ query: row.query, keptCount: row.survivingCandidates }));
 
-  return {
+  const returnPayload = {
     engineId: "comicVine",
     engineLabel: "ComicVine",
     deckKey,
@@ -626,6 +640,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       },
     ],
   };
+  if (queriesToTry.length > 0 && (!returnPayload.comicVineQueryTexts || returnPayload.comicVineQueryTexts.length === 0) && (!returnPayload.comicVineFetchResults || returnPayload.comicVineFetchResults.length === 0) && (!returnPayload.items || returnPayload.items.length === 0) && (!returnPayload.debugRawPool || returnPayload.debugRawPool.length === 0)) {
+    throw new Error("COMICVINE_ADAPTER_EMPTY_RETURN_SHAPE");
+  }
+  console.log("COMICVINE_ADAPTER_RETURN", { keys: Object.keys(returnPayload), items: returnPayload.items.length });
+  return returnPayload;
 }
 
 export const getComicVineGraphicNovelRecommendations = getGcdGraphicNovelRecommendations;

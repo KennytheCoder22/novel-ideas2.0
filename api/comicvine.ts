@@ -38,6 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const outboundUrl = `${COMIC_VINE_BASE}/search/?${params.toString()}`;
 
     const resp = await fetch(outboundUrl, { headers: { Accept: "application/json" } });
+    console.log("COMICVINE_PROXY_FETCH_RESPONSE", { status: resp.status, ok: resp.ok, query: q });
     if (!resp.ok) {
       const outboundErrorBody = await resp.text().catch(() => "");
       return res.status(resp.status).json({
@@ -52,6 +53,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const payload = await resp.json();
+    console.log("COMICVINE_PROXY_PARSE_COMPLETE", {
+      parsedTopLevelKeys: payload && typeof payload === "object" ? Object.keys(payload) : [],
+      resultsLength: Array.isArray(payload?.results) ? payload.results.length : 0,
+      firstResultTitle: Array.isArray(payload?.results) && payload.results[0] ? String(payload.results[0]?.name || payload.results[0]?.volume?.name || "") : "",
+    });
     return res.status(200).json({
       ok: true,
       results: Array.isArray(payload?.results) ? payload.results : [],
