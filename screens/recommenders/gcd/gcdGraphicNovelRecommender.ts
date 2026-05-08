@@ -361,8 +361,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q));
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
-  const prioritizedQueries = [...anchorQueries.slice(0, MAX_COMICVINE_ANCHORS), ...otherQueries, ...genericQueries];
-  const queriesToTry = prioritizedQueries.slice(0, Math.max(10, MAX_COMICVINE_ANCHORS));
+  const baseAnchors = anchorQueries.slice(0, MAX_COMICVINE_ANCHORS);
+  const collectionFollowups = baseAnchors.flatMap((q) => [`${q} vol 1`, `${q} omnibus`, `${q} deluxe edition`, `${q} master edition`]);
+  const prioritizedQueries = [...baseAnchors, ...collectionFollowups, ...otherQueries, ...genericQueries];
+  const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(16, MAX_COMICVINE_ANCHORS));
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
@@ -421,7 +423,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const fetchBudget = queriesToTry.length;
   let genericBudgetConsumed = 0;
 
-  const maxQueriesToFetch = Math.min(MAX_COMICVINE_ANCHORS, queriesToTry.length);
+  const maxQueriesToFetch = Math.min(MAX_COMICVINE_ANCHORS + 4, queriesToTry.length);
   for (let i = 0; i < maxQueriesToFetch; i += 1) {
     const q = stripDanglingQuotes(queriesToTry[i]);
     if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
