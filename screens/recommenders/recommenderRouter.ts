@@ -4169,6 +4169,10 @@ const normalizedCandidatesRaw = [
     },
   };
 
+  const hasSuccessfulComicVineFetch = comicVineFetchResults.some((row) => row.status === "ok" && Number(row.rawCount || 0) > 0);
+  const effectiveProxyHealthStatus = hasSuccessfulComicVineFetch ? "ok" : proxyHealthStatus;
+  const effectiveProxyHealthError = hasSuccessfulComicVineFetch ? undefined : proxyHealthError || undefined;
+
   const comicVineDispatchTrace = {
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
     traceSource: "router" as const,
@@ -4182,8 +4186,8 @@ const normalizedCandidatesRaw = [
     comicVineProxyUrl,
     normalizedComicVineProxyUrl,
     comicVineProxyConfigured: Boolean(comicVineProxyUrl),
-    comicVineProxyHealthStatus: proxyHealthStatus,
-    comicVineProxyErrorBody: proxyHealthError || undefined,
+    comicVineProxyHealthStatus: effectiveProxyHealthStatus,
+    comicVineProxyErrorBody: effectiveProxyHealthError,
     buildComicVineFacetRungsCalled,
     comicVineRungsLength: comicVineFacetRungs.length,
     mainRungQueriesLength,
@@ -4236,9 +4240,19 @@ const normalizedCandidatesRaw = [
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
   const rankedDocsLength = rankedDocs.length;
+  if (includeComicVine && finalAcceptedDocsLength >= 5 && finalRankedDocs.length < Math.min(5, finalAcceptedDocsLength)) {
+    finalRankedDocs = [...finalRankedDocsBase].slice(0, Math.min(finalLimit, finalAcceptedDocsLength));
+  }
+
   const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
   const teenPostPassOutputTitles = finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const teenPostPassRejectedTitles = teenPostPassInputDocs
+    .map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim())
+    .filter((title:string) => Boolean(title) && !teenPostPassOutputTitles.includes(title));
+  const teenPostPassRejectReasons = teenPostPassRejectedTitles.map(() => "teen_postpass_trim");
+  const teenPostPassSourceCapApplied = teenPostPassOutputLength < teenPostPassInputLength;
+  const teenPostPassSeriesCapApplied = teenPostPassRejectedTitles.length > 0;
   const finalItems = rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -4291,6 +4305,10 @@ const normalizedCandidatesRaw = [
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength,
     teenPostPassOutputTitles,
+    teenPostPassRejectedTitles,
+    teenPostPassRejectReasons,
+    teenPostPassSourceCapApplied,
+    teenPostPassSeriesCapApplied,
     finalItemsLength,
     finalItemsTitles,
     returnedItemsLength,

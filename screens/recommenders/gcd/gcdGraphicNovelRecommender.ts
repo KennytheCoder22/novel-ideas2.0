@@ -294,7 +294,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(buildComicVineProxySearchUrl(query, 20), { signal: controller.signal, headers: { Accept: "application/json" } });
+    const queryLimit = Math.max(5, Math.min(20, fetchLimit));
+    const resp = await fetch(buildComicVineProxySearchUrl(query, queryLimit), { signal: controller.signal, headers: { Accept: "application/json" } });
     if (!resp.ok) throw new Error(`ComicVine error: ${resp.status}`);
     const payload = await resp.json();
     const results = Array.isArray(payload?.results) ? payload.results : [];
@@ -305,7 +306,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       const normalizedTitle = normalizeText(doc.title);
       if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) continue;
       if (/^die\s+/i.test(String(doc.title || ""))) continue;
-      if (/[^ -]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) continue;
+      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) continue;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
@@ -339,7 +340,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const deckKey = input.deckKey;
   const domainMode: RecommendationResult["domainMode"] = "default";
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
-  const fetchLimit = Math.max(8, Math.min(36, Math.max(finalLimit * 2, 12)));
+  const perAnchorFetchLimit = 10;
+  const fetchLimit = Math.max(40, Math.min(160, MAX_COMICVINE_ANCHORS * perAnchorFetchLimit));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
   await runGcdAdapterPreflight(timeoutMs);
 
@@ -419,7 +421,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const fetchBudget = queriesToTry.length;
   let genericBudgetConsumed = 0;
 
-  for (let i = 0; i < queriesToTry.length; i += 1) {
+  const maxQueriesToFetch = Math.min(MAX_COMICVINE_ANCHORS, queriesToTry.length);
+  for (let i = 0; i < maxQueriesToFetch; i += 1) {
     const q = stripDanglingQuotes(queriesToTry[i]);
     if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
     comicVineQueriesActuallyFetched.push(q);
@@ -437,8 +440,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       error,
     });
 
-    if (docs.length >= fetchLimit) break;
-    // Do not early-exit after first anchor; fetch multiple anchors for diversity.
+    // Continue through anchor budget for diversity; do not stop after early successes.
   }
 
   if (docs.length === 0) {
