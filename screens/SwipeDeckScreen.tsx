@@ -2079,6 +2079,11 @@ function handleLeft() {
       `comicVinePreflightProbeQuery:${String(lastDebugGcdDispatchTrace?.comicVinePreflightProbeQuery || "(none)")}`,
       `comicVinePreflightRawCount:${Number(lastDebugGcdDispatchTrace?.comicVinePreflightRawCount || 0)}`,
       `comicVinePreflightError:${String(lastDebugGcdDispatchTrace?.comicVinePreflightError || "none")}`,
+      `rawNormalizationInputCount:${Number(lastDebugGcdDispatchTrace?.rawNormalizationInputCount || 0)}`,
+      `rawNormalizationAcceptedCount:${Number(lastDebugGcdDispatchTrace?.rawNormalizationAcceptedCount || 0)}`,
+      `rawNormalizationRejectedCount:${Number(lastDebugGcdDispatchTrace?.rawNormalizationRejectedCount || 0)}`,
+      `rawNormalizationRejectedReasons:${lastDebugGcdDispatchTrace?.rawNormalizationRejectedReasons ? JSON.stringify(lastDebugGcdDispatchTrace.rawNormalizationRejectedReasons) : "(none)"}`,
+      `rawNormalizationRejectedExamples:${lastDebugGcdDispatchTrace?.rawNormalizationRejectedExamples ? JSON.stringify(lastDebugGcdDispatchTrace.rawNormalizationRejectedExamples) : "(none)"}`,
       `comicVineFetchResults:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineFetchResults) && lastDebugGcdDispatchTrace.comicVineFetchResults.length ? lastDebugGcdDispatchTrace.comicVineFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
     ].join("\n");
     if (Boolean(lastSourceEnabled?.comicVine) && String(lastDebugGcdDispatchTrace?.traceSource || "report-default") === "report-default") {

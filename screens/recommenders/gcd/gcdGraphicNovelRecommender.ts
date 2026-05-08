@@ -340,12 +340,35 @@ function rawIssueRejectReason(issue: any): string | null {
   return null;
 }
 
+function summarizeRawIssue(issue: any, reason: string) {
+  const title = String(issue?.name || issue?.volume?.name || "").trim();
+  const description = String(issue?.description || issue?.deck || "").replace(/<[^>]+>/g, " ").trim();
+  return {
+    title,
+    resourceType: String(issue?.resource_type || issue?.type || "unknown"),
+    objectType: String(issue?.object_type || "unknown"),
+    hasDescription: Boolean(description),
+    descriptionLength: description.length,
+    issueNumber: String(issue?.issue_number || "").trim(),
+    volumeName: String(issue?.volume?.name || "").trim(),
+    issueName: String(issue?.name || "").trim(),
+    pageCount: safeNumber(issue?.page_count, 0),
+    ratingsCount: safeNumber(issue?.ratingsCount, 0),
+    rejectionReason: reason,
+  };
+}
+
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>, rawDiag: any) {
   if (!rawDiag || typeof rawDiag !== "object") {
     throw new Error("COMICVINE_ADAPTER_DIAGNOSTICS_UNINITIALIZED: rawDiag must be initialized before fetch.");
   }
   rawDiag.diagnosticsInitialized = true;
   rawDiag.rawNormalizationStarted = true;
+  rawDiag.rawNormalizationInputCount = Number(rawDiag.rawNormalizationInputCount || 0);
+  rawDiag.rawNormalizationAcceptedCount = Number(rawDiag.rawNormalizationAcceptedCount || 0);
+  rawDiag.rawNormalizationRejectedCount = Number(rawDiag.rawNormalizationRejectedCount || 0);
+  rawDiag.rawNormalizationRejectedReasons = rawDiag.rawNormalizationRejectedReasons || {};
+  rawDiag.rawNormalizationRejectedExamples = rawDiag.rawNormalizationRejectedExamples || {};
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -361,6 +384,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       firstResultTitle: Array.isArray(payload?.results) && payload.results[0] ? String(payload.results[0]?.name || payload.results[0]?.volume?.name || "") : "",
     });
     const results = Array.isArray(payload?.results) ? payload.results : [];
+    rawDiag.rawNormalizationInputCount += results.length;
     console.log("COMICVINE_RAW_RESULT_COUNT", { query, rawCount: results.length });
     const before = docs.length;
     for (const issue of results) {
@@ -371,6 +395,12 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         rawDiag.rawRejectedBeforeNormalizationReasons[rejectReason] = (rawDiag.rawRejectedBeforeNormalizationReasons[rejectReason] || 0) + 1;
         if (rejectReason === "metadata_shell_title") rawDiag.rawMetadataShellCount = Number(rawDiag.rawMetadataShellCount || 0) + 1;
         if (rejectReason === "issue_fragment_no_narrative") rawDiag.rawIssueFragmentCount = Number(rawDiag.rawIssueFragmentCount || 0) + 1;
+        rawDiag.rawNormalizationRejectedCount += 1;
+        rawDiag.rawNormalizationRejectedReasons[rejectReason] = (rawDiag.rawNormalizationRejectedReasons[rejectReason] || 0) + 1;
+        const example = summarizeRawIssue(issue, rejectReason);
+        const examples = rawDiag.rawNormalizationRejectedExamples[rejectReason] || [];
+        if (examples.length < 3) examples.push(example);
+        rawDiag.rawNormalizationRejectedExamples[rejectReason] = examples;
         continue;
       }
       const doc = comicVineIssueToDoc(issue, query, queryRung);
@@ -380,6 +410,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       seen.add(dedupeKey);
       docs.push(doc);
       rawDiag.rawNarrativeQualifiedCount = Number(rawDiag.rawNarrativeQualifiedCount || 0) + 1;
+      rawDiag.rawNormalizationAcceptedCount += 1;
       if (docs.length >= fetchLimit) break;
     }
     rawDiag.rawNormalizationCompleted = true;
@@ -412,6 +443,11 @@ async function runGcdAdapterPreflight(timeoutMs: number): Promise<{ status: "ok"
     rawMetadataShellCount: 0,
     rawIssueFragmentCount: 0,
     rawNarrativeQualifiedCount: 0,
+    rawNormalizationInputCount: 0,
+    rawNormalizationAcceptedCount: 0,
+    rawNormalizationRejectedCount: 0,
+    rawNormalizationRejectedReasons: {} as Record<string, number>,
+    rawNormalizationRejectedExamples: {} as Record<string, any[]>,
   };
   const { rawCount, error } = await fetchDocsForQuery(probeQuery, -1, timeoutMs, 6, probeDocs, probeSeen, preflightRawDiagnostics);
   const normalizedError = error ? String(error) : null;
@@ -530,6 +566,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       rawMetadataShellCount: 0,
       rawIssueFragmentCount: 0,
       rawNarrativeQualifiedCount: 0,
+      rawNormalizationInputCount: 0,
+      rawNormalizationAcceptedCount: 0,
+      rawNormalizationRejectedCount: 0,
+      rawNormalizationRejectedReasons: {},
+      rawNormalizationRejectedExamples: {},
     };
     console.log("COMICVINE_ADAPTER_RETURN", { keys: Object.keys(returnPayload), items: 0 });
     return returnPayload;
@@ -547,6 +588,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     rawMetadataShellCount: 0,
     rawIssueFragmentCount: 0,
     rawNarrativeQualifiedCount: 0,
+    rawNormalizationInputCount: 0,
+    rawNormalizationAcceptedCount: 0,
+    rawNormalizationRejectedCount: 0,
+    rawNormalizationRejectedReasons: {} as Record<string, number>,
+    rawNormalizationRejectedExamples: {} as Record<string, any[]>,
   };
   let builtFromQuery = queriesToTry[0] || "";
   const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];

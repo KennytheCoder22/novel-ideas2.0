@@ -2959,6 +2959,11 @@ export async function getRecommendations(
   let comicVinePreflightProbeQuery = "";
   let comicVinePreflightRawCount = 0;
   let comicVinePreflightError: string | null = null;
+  let rawNormalizationInputCount = 0;
+  let rawNormalizationAcceptedCount = 0;
+  let rawNormalizationRejectedCount = 0;
+  let rawNormalizationRejectedReasons: Record<string, number> = {};
+  let rawNormalizationRejectedExamples: Record<string, any[]> = {};
   let comicVineExcludedTermsAppliedInFilterOnly = false;
   let comicVineQueryTooLong = false;
 
@@ -3094,6 +3099,21 @@ export async function getRecommendations(
           if (typeof value?.comicVinePreflightProbeQuery === "string") comicVinePreflightProbeQuery = value.comicVinePreflightProbeQuery;
           if (typeof value?.comicVinePreflightRawCount === "number") comicVinePreflightRawCount = value.comicVinePreflightRawCount;
           if (typeof value?.comicVinePreflightError === "string" || value?.comicVinePreflightError === null) comicVinePreflightError = value.comicVinePreflightError;
+          rawNormalizationInputCount += Number(value?.rawNormalizationInputCount || 0);
+          rawNormalizationAcceptedCount += Number(value?.rawNormalizationAcceptedCount || 0);
+          rawNormalizationRejectedCount += Number(value?.rawNormalizationRejectedCount || 0);
+          if (value?.rawNormalizationRejectedReasons && typeof value.rawNormalizationRejectedReasons === "object") {
+            for (const [reason, count] of Object.entries(value.rawNormalizationRejectedReasons)) {
+              rawNormalizationRejectedReasons[reason] = (rawNormalizationRejectedReasons[reason] || 0) + Number(count || 0);
+            }
+          }
+          if (value?.rawNormalizationRejectedExamples && typeof value.rawNormalizationRejectedExamples === "object") {
+            for (const [reason, rows] of Object.entries(value.rawNormalizationRejectedExamples)) {
+              const existing = rawNormalizationRejectedExamples[reason] || [];
+              const incoming = Array.isArray(rows) ? rows : [];
+              rawNormalizationRejectedExamples[reason] = [...existing, ...incoming].slice(0, 3);
+            }
+          }
           if (typeof value?.comicVineExcludedTermsAppliedInFilterOnly === "boolean") comicVineExcludedTermsAppliedInFilterOnly = value.comicVineExcludedTermsAppliedInFilterOnly;
           if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
@@ -4230,6 +4250,11 @@ const normalizedCandidatesRaw = [
     comicVinePreflightProbeQuery,
     comicVinePreflightRawCount,
     comicVinePreflightError,
+    rawNormalizationInputCount,
+    rawNormalizationAcceptedCount,
+    rawNormalizationRejectedCount,
+    rawNormalizationRejectedReasons,
+    rawNormalizationRejectedExamples,
     comicVineExcludedTermsAppliedInFilterOnly,
     comicVineQueryTooLong,
   };
