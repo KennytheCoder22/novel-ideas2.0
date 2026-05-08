@@ -4257,6 +4257,18 @@ const normalizedCandidatesRaw = [
     : [];
   const returnedDocIds = outputItems.map((it: any) => String(it?.doc?.sourceId || it?.doc?.canonicalId || it?.doc?.id || it?.doc?.key || it?.doc?.title || "").trim()).filter(Boolean);
   const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
+  const candidatePoolPreFinalCount = rankingPoolForFinal.length;
+  const rejectedBeforeFinalCount = Array.isArray(finalDebugSnapshot?.rejected) ? finalDebugSnapshot.rejected.length : 0;
+  const rejectedBeforeFinalReasons = Array.isArray(finalDebugSnapshot?.rejected)
+    ? finalDebugSnapshot.rejected.reduce((acc: Record<string, number>, row: any) => {
+        const reason = String(row?.reason || "unknown");
+        acc[reason] = (acc[reason] || 0) + 1;
+        return acc;
+      }, {})
+    : {};
+  const genericTitleRejectedCount = Array.isArray(finalDebugSnapshot?.rejected)
+    ? finalDebugSnapshot.rejected.filter((row: any) => /generic/i.test(String(row?.reason || "")) || /graphic novel/i.test(String(row?.title || ""))).length
+    : 0;
   const finalSummaryAcceptedArrayLength = outputItems.length;
   const finalSummaryAcceptedTitles = finalItemsTitles;
   const finalSummaryRejectedCount = Array.isArray(finalDebugSnapshot?.rejected) ? finalDebugSnapshot.rejected.length : Number(finalDebugSnapshot?.rejectedCount || 0);
@@ -4312,6 +4324,10 @@ const normalizedCandidatesRaw = [
     finalRejectedDocIds,
     returnedDocIds,
     renderLeakDetected,
+    candidatePoolPreFinalCount,
+    rejectedBeforeFinalCount,
+    rejectedBeforeFinalReasons,
+    genericTitleRejectedCount,
     teenPostPassInputLength,
     teenPostPassOutputLength,
     teenPostPassInputSource,

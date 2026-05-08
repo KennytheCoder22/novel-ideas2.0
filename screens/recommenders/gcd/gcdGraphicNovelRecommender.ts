@@ -52,15 +52,25 @@ function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQuerie
     cleaned && `${cleaned} graphic novel`,
     cleaned && `${cleaned} comic`,
     cleaned && `${cleaned}`,
-    "psychological suspense graphic novel",
-    "mystery thriller comic",
-    "dystopian thriller graphic novel",
-    "dark mystery graphic novel",
-    "survival suspense comic",
   ].filter(Boolean) as string[]))
     .map((q) => String(q || "").replace(/graphic novel\s+graphic novel/gi, "graphic novel").trim())
     .filter((q) => !/^teen\s+graphic\s+novel\s+graphic\s+novel$/i.test(q));
   return { cleaned, positiveQueries, queryTooLong, excludedTermsAppliedInFilterOnly: true };
+}
+
+function computeQuerySpecificityScore(query: string): number {
+  const q = normalizeText(query);
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const generic = new Set(["graphic", "novel", "comic", "comics", "dark", "horror", "mystery", "fantasy", "thriller", "teen"]);
+  const specificTokens = tokens.filter((t) => !generic.has(t) && t.length > 3).length;
+  return specificTokens * 2 + Math.min(tokens.length, 6) - tokens.filter((t) => generic.has(t)).length;
+}
+
+function isGenericComicVineQuery(query: string): boolean {
+  const q = normalizeText(query);
+  const tokens = q.split(/\s+/).filter(Boolean);
+  const allGeneric = tokens.length > 0 && tokens.every((t) => /^(graphic|novel|comic|comics|dark|horror|mystery|fantasy|thriller|teen)$/.test(t));
+  return allGeneric || computeQuerySpecificityScore(q) <= 1;
 }
 function safeNumber(value: any, fallback = 0): number {
   const n = Number(value);
@@ -354,8 +364,22 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const baseFromSeed = seedClean.positiveQueries;
   const directQueries = superheroSignal ? buildGcdSearchTerms(input.tagCounts) : [];
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
-  const fallbackQueries = superheroSignal ? ["batman"] : ["psychological suspense graphic novel","mystery thriller comic","dystopian thriller graphic novel","dark mystery graphic novel","survival suspense comic"];
-  const queriesToTry = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>String(q||"").trim()).filter(Boolean))).slice(0, 10);
+  const fallbackQueries = superheroSignal ? ["batman"] : ["monstress", "paper girls", "locke and key", "sweet tooth"];
+  const queryCandidates = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>String(q||"").trim()).filter(Boolean)));
+  const queryDiagnostics = queryCandidates.map((query) => {
+    const querySpecificityScore = computeQuerySpecificityScore(query);
+    const queryWasGeneric = isGenericComicVineQuery(query);
+    return {
+      query,
+      queryGeneratedFrom: baseFromSeed.includes(query) ? "seed" : facetQueries.includes(query) ? "facet" : directQueries.includes(query) ? "swipe-evidence" : "fallback",
+      queryFamily: String((input as any)?.bucketPlan?.lane || "general"),
+      querySpecificityScore,
+      queryWasGeneric,
+      querySuppressedReason: queryWasGeneric ? "low_specificity" : "none",
+    };
+  });
+  const nonGenericQueries = queryDiagnostics.filter((row) => !row.queryWasGeneric).map((row) => row.query);
+  const queriesToTry = (nonGenericQueries.length ? nonGenericQueries : queryCandidates).slice(0, 10);
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
@@ -394,6 +418,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       comicVinePositiveQueries,
       comicVineExcludedTermsAppliedInFilterOnly,
       comicVineQueryTooLong,
+      comicVineQueryDiagnostics: queryDiagnostics,
     };
   }
 
@@ -466,6 +491,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueryTexts: queriesToTry,
     comicVineFetchResults,
     comicVineFetchAttempted: true,
+    comicVineQueryDiagnostics: queryDiagnostics,
     gcdAdapterStatus: "ok",
     comicVineZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {
