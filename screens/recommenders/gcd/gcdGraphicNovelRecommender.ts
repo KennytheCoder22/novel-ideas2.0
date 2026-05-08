@@ -75,6 +75,17 @@ function isGenericComicVineQuery(query: string): boolean {
   const descriptorOnly = tokens.filter((t) => /^(mystery|horror|thriller|comic|comics|graphic|novel|fiction|dark|police|procedural)$/.test(t)).length >= Math.max(2, tokens.length - 1);
   return allGeneric || lexicalSludge || survivalGeneric || descriptorOnly || computeQuerySpecificityScore(q) <= 1;
 }
+
+function ensureQueryDiagnostic(row: any, fallbackQuery = "") {
+  return {
+    query: String(row?.query || fallbackQuery || "").trim(),
+    queryGeneratedFrom: String(row?.queryGeneratedFrom || "unknown"),
+    queryFamily: String(row?.queryFamily || "unknown"),
+    querySpecificityScore: Number(row?.querySpecificityScore || 0),
+    queryWasGeneric: Boolean(row?.queryWasGeneric ?? false),
+    querySuppressedReason: String(row?.querySuppressedReason || "missing_diagnostic_record"),
+  };
+}
 function safeNumber(value: any, fallback = 0): number {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -446,17 +457,20 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const queryDiagnostics = queryCandidates.map((query) => {
     const querySpecificityScore = computeQuerySpecificityScore(query);
     const queryWasGeneric = isGenericComicVineQuery(query);
-    const returnPayload = {
+    return ensureQueryDiagnostic({
       query,
       queryGeneratedFrom: baseFromSeed.includes(query) ? "seed" : facetQueries.includes(query) ? "facet" : directQueries.includes(query) ? "swipe-evidence" : "fallback",
       queryFamily: String((input as any)?.bucketPlan?.lane || "general"),
       querySpecificityScore,
       queryWasGeneric,
       querySuppressedReason: queryWasGeneric ? "low_specificity" : "none",
-    };
+    }, query);
   });
-  const nonGenericQueries = queryDiagnostics.filter((row) => !row.queryWasGeneric).map((row) => row.query);
+  const nonGenericQueries = queryDiagnostics.filter((row) => !ensureQueryDiagnostic(row).queryWasGeneric).map((row) => ensureQueryDiagnostic(row).query);
   const queriesToTry = (nonGenericQueries.length ? nonGenericQueries : queryCandidates).slice(0, 10);
+  if (queriesToTry.length !== queryDiagnostics.length) {
+    console.warn("QUERY_DIAGNOSTIC_LENGTH_MISMATCH", { queryTextsLength: queriesToTry.length, queryDiagnosticsLength: queryDiagnostics.length });
+  }
   console.log("COMICVINE_QUERY_BUILD_COMPLETE", { queryCount: queriesToTry.length, queriesToTry });
   const entityQueriesGenerated = queryDiagnostics.filter((row) => row.querySpecificityScore >= 3 && /\b(and|&|girls|tooth|key|monstress|children|dead|batman|marvel|spider)\b/i.test(row.query)).map((row) => row.query);
   const descriptorQueriesGenerated = queryDiagnostics.filter((row) => row.queryWasGeneric || row.querySpecificityScore < 3).map((row) => row.query);
