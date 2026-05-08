@@ -849,10 +849,10 @@ function buildComicVineFacetRungs(tagCounts: RecommenderInput["tagCounts"] | und
   if (has(/mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
   if (has(/survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
   if (has(/dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
-  if (has(/teen|young adult|school|coming of age/)) add("teen graphic novel");
+  if (has(/teen|young adult|school|coming of age/)) add("supernatural teen mystery comics");
   if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
   if (!queries.length) {
-    add("teen graphic novel");
+    add("supernatural teen mystery comics");
     add("horror comics");
     add("dark mystery comics");
   }
@@ -2631,13 +2631,13 @@ export async function getRecommendations(
     aestheticDistinctiveness: Number(tasteAxes?.ideaDensity || 0) > 0.15 ? 0.75 : 0.45,
   };
   const scoredAxes = [
-    { key: "intensity", value: tasteVector.intensity, phrase: tasteVector.intensity > 0.45 ? "high pressure endurance" : "moderate tension" },
-    { key: "structure", value: tasteVector.emotionalWeight, phrase: tasteVector.emotionalWeight > 0.4 ? "character experience driven" : "plot pressure driven" },
-    { key: "setting", value: Math.max(tasteVector.grounded, tasteVector.stylized), phrase: tasteVector.grounded > tasteVector.stylized ? "grounded setting" : "stylized authored setting" },
-    { key: "pace", value: Math.abs(tasteVector.pacing), phrase: tasteVector.pacing > 0.2 ? "fast moving" : "reflective pace" },
+    { key: "intensity", value: tasteVector.intensity, phrase: tasteVector.intensity > 0.45 ? "high stakes thriller" : "suspense mystery" },
+    { key: "structure", value: tasteVector.emotionalWeight, phrase: tasteVector.emotionalWeight > 0.4 ? "character driven thriller" : "investigative mystery" },
+    { key: "setting", value: Math.max(tasteVector.grounded, tasteVector.stylized), phrase: tasteVector.grounded > tasteVector.stylized ? "grounded suspense setting" : "supernatural suspense setting" },
+    { key: "pace", value: Math.abs(tasteVector.pacing), phrase: tasteVector.pacing > 0.2 ? "fast paced thriller" : "slow burn mystery" },
   ].sort((a, b) => b.value - a.value);
-  const strongA = [scoredAxes[0]?.phrase, scoredAxes[1]?.phrase, "moral conflict narrative"].filter(Boolean);
-  const strongB = [scoredAxes[2]?.phrase, scoredAxes[3]?.phrase, "identity under pressure"].filter(Boolean);
+  const strongA = [scoredAxes[0]?.phrase, scoredAxes[1]?.phrase, "crime suspense stakes"].filter(Boolean);
+  const strongB = [scoredAxes[2]?.phrase, scoredAxes[3]?.phrase, "psychological suspense"].filter(Boolean);
   const exploratory = [
     tasteVector.stylized > 0.55 ? "slightly surreal" : "atmospheric psychological",
     tasteVector.pacing > 0.2 ? "slower introspective counterpoint" : "tighter momentum counterpoint",
@@ -2662,7 +2662,7 @@ export async function getRecommendations(
     ];
     const variants = [
       `${base} ${retrievalSignals[0]}`.replace(/\s+/g, " ").trim(),
-      `${parts[0]} ${parts[1]} story of survival and consequence novel ${negativeSuppressionTerms} ${retrievalSignals[1]}`.replace(/\s+/g, " ").trim(),
+      `${parts[0]} ${parts[1]} survival consequence graphic novel ${negativeSuppressionTerms} ${retrievalSignals[1]}`.replace(/\s+/g, " ").trim(),
       `${parts[0]} ${parts[2]} narrative novel ${negativeSuppressionTerms} ${retrievalSignals[2]}`.replace(/\s+/g, " ").trim(),
     ];
     return variants.slice(0, 3).map((query) => ({ query, clusterId: `c${clusterIdx + 1}` }));
@@ -4200,22 +4200,19 @@ const normalizedCandidatesRaw = [
 
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
-  const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
-  const acceptedTitles = Array.isArray(finalDebugSnapshot?.acceptedTitles) ? finalDebugSnapshot.acceptedTitles.map((t:any)=>String(t||"" ).trim()).filter(Boolean) : [];
-  const finalAcceptedDocsSourceArray = rankingPoolForFinal.filter((doc: any) => acceptedTitles.includes(String(doc?.title || doc?.rawDoc?.title || "").trim()));
-  if (finalRankedDocsBase.length === 0 && finalAcceptedDocsLength > 0 && finalAcceptedDocsSourceArray.length > 0) {
-    finalRankedDocs = finalAcceptedDocsSourceArray.slice(0, finalLimit);
-    teenPostPassInputDocs = [...finalAcceptedDocsSourceArray];
-  }
+  const finalAcceptedScalarCount = Number(finalDebugSnapshot?.acceptedCount || 0);
+  const finalRejectedTitles = Array.isArray(finalDebugSnapshot?.rejected)
+    ? finalDebugSnapshot.rejected.map((row: any) => String(row?.title || "").trim()).filter(Boolean)
+    : [];
 
   if (
-    finalAcceptedDocsLength > 0 &&
+    finalAcceptedScalarCount > 0 &&
     teenPostPassInputDocs.length === 0
   ) {
     console.error(
       "POSTPASS_INPUT_DERIVED_FROM_WRONG_SOURCE",
       {
-        finalAcceptedDocsLength,
+        finalAcceptedScalarCount,
         rankedDocsLength: rankedDocs?.length,
         finalRankedDocsBaseLength: finalRankedDocsBase?.length,
         candidatePoolLength: candidatePoolPreview?.length,
@@ -4229,9 +4226,11 @@ const normalizedCandidatesRaw = [
   ) {
     teenPostPassInputDocs = [...finalRankedDocsBase];
   }
-  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : (finalAcceptedDocsSourceArray.length > 0 ? "finalAcceptedDocsSourceArray" : "rankedDocs");
-  const finalAcceptedDocsSource = finalAcceptedDocsSourceArray.length > 0 ? "finalRecommenderAcceptedTitles" : "none";
-  const finalAcceptedDocsTitles = finalAcceptedDocsSourceArray.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
+  const finalAcceptedDocsSource = "finalRankedDocsBase";
+  const finalAcceptedDocsArrayTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const finalAcceptedDocsArrayLength = finalRankedDocsBase.length;
+  const finalAcceptedDocsLength = finalAcceptedDocsArrayLength;
   const finalRankedDocsBaseTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
@@ -4239,14 +4238,8 @@ const normalizedCandidatesRaw = [
   const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
   const teenPostPassOutputTitles = finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
-  const teenPostPassOutput = finalRankedDocs.map((doc:any)=>({ kind: "open_library", doc }));
   const finalItems = rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc }));
-  const outputItems =
-    finalItems.length > 0
-      ? finalItems
-      : teenPostPassOutput.length > 0
-        ? teenPostPassOutput
-        : [];
+  const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
     console.error("POSTPASS_OUTPUT_DROPPED_BEFORE_RETURN", { teenPostPassOutputLength, teenPostPassOutputTitles });
   }
@@ -4255,11 +4248,17 @@ const normalizedCandidatesRaw = [
   const returnedItemsLength = outputItems.length;
   const returnedItemsTitles = finalItemsTitles;
   const renderedTopRecommendationsLength = outputItems.length;
-  if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
-    console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, acceptedTitles });
+  if (finalAcceptedScalarCount > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
+    console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedScalarCount, finalAcceptedDocsSource, finalAcceptedDocsArrayTitles });
   }
+  const finalAcceptedDocIds = finalRankedDocsBase.map((doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim()).filter(Boolean);
+  const finalRejectedDocIds = Array.isArray(finalDebugSnapshot?.rejected)
+    ? finalDebugSnapshot.rejected.map((row: any) => String(row?.id || row?.title || "").trim()).filter(Boolean)
+    : [];
+  const returnedDocIds = outputItems.map((it: any) => String(it?.doc?.sourceId || it?.doc?.canonicalId || it?.doc?.id || it?.doc?.key || it?.doc?.title || "").trim()).filter(Boolean);
+  const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
   const droppedBeforeRenderReason =
-    finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
+    finalAcceptedDocsArrayLength > 0 && renderedTopRecommendationsLength === 0
       ? (teenPostPassInputLength === 0
           ? "no_postfilter_candidates"
           : teenPostPassOutputLength === 0
@@ -4295,13 +4294,20 @@ const normalizedCandidatesRaw = [
     finalItemsTitles,
     returnedItemsLength,
     returnedItemsTitles,
+    finalAcceptedScalarCount,
+    finalAcceptedDocsArrayLength,
+    finalAcceptedDocsArrayTitles,
+    finalAcceptedDocIds,
+    finalRejectedDocIds,
+    returnedDocIds,
+    renderLeakDetected,
     teenPostPassInputLength,
     teenPostPassOutputLength,
     teenPostPassInputSource,
     finalRankedDocsBaseLength,
     rankedDocsLength,
     finalAcceptedDocsSource,
-    finalAcceptedDocsTitles,
+    finalAcceptedDocsTitles: finalAcceptedDocsArrayTitles,
     finalRankedDocsBaseTitles,
     rankedDocsTitles,
     droppedBeforeRenderReason,
@@ -4323,5 +4329,6 @@ const normalizedCandidatesRaw = [
     debugGcdDispatchTrace: comicVineDispatchTrace,
     debugComicVineDispatchTrace: comicVineDispatchTrace,
     deploymentRuntimeMarker,
+    recommendationPersistSkippedReason: outputItems.length > 0 ? "none" : "no_items",
   } as RecommendationResult;
 }

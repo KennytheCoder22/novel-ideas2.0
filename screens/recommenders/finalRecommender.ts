@@ -562,20 +562,77 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   const queryFamily = String((c as any)?.queryFamily || (c as any)?.rawDoc?.queryFamily || diagnostics?.queryFamily || "unknown").toLowerCase();
   const queryText = String((c as any)?.queryText || (c as any)?.rawDoc?.queryText || diagnostics?.queryText || "").toLowerCase();
   const genreText = haystack(c);
+  const rawLexicalOverlapCount = Number((c as any)?.diagnostics?.rawLexicalOverlapCount || 0);
+  const semanticOverlapCount = Number((c as any)?.diagnostics?.semanticOverlapCount || 0);
+  const activeTasteOverlapCount = Number((c as any)?.diagnostics?.activeTasteOverlapCount || 0);
+  const rawMatches = Number((c as any)?.diagnostics?.rawMatches ?? (rawLexicalOverlapCount + semanticOverlapCount + activeTasteOverlapCount));
+  const meaningfulQueryTokens = new Set(queryText.split(/[^a-z0-9]+/).filter((t) => t.length > 3 && !["graphic", "novel", "comic", "comics", "teen", "story"].includes(t)));
+  const titleTokens = new Set(String(c.title || "").toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 3));
+  const descriptionText = String(c.description || "").toLowerCase();
+  const titleMeaningfulOverlap = Array.from(titleTokens).some((t) => meaningfulQueryTokens.has(t));
+  const descriptionMeaningfulOverlap = Array.from(meaningfulQueryTokens).some((t) => descriptionText.includes(t));
+  const swipeFranchiseSignal = Boolean((c as any)?.diagnostics?.franchiseSwipeSignal || (c as any)?.rawDoc?.diagnostics?.franchiseSwipeSignal);
+  const explicitGenreMatch = /horror|thriller|mystery|suspense|psychological|dystopian|speculative|supernatural/.test(genreText);
+  const explicitQueryGenreMatch = /horror|thriller|mystery|suspense|psychological|dystopian|speculative|supernatural/.test(queryText);
+  const titleQueryOverlap = Boolean((c.title || "").toLowerCase().split(/\W+/).filter((t) => t.length > 3).some((t) => queryText.includes(t)));
+  const activeFamilyMatch = queryFamily !== "unknown";
+  const semanticPositiveCount = [
+    diagnostics?.flags?.thrillerPositive,
+    diagnostics?.flags?.mysteryPositive,
+    diagnostics?.flags?.suspensePositive,
+    diagnostics?.flags?.horrorAligned,
+    diagnostics?.flags?.speculativePositive,
+    titleMeaningfulOverlap,
+    descriptionMeaningfulOverlap,
+    rawMatches >= 1,
+    swipeFranchiseSignal,
+  ].filter(Boolean).length;
+  const structuralPositiveCount = [
+    diagnostics?.flags?.fictionPositive,
+    diagnostics?.flags?.strongNarrative,
+    diagnostics?.flags?.legitAuthority,
+    passedChecks.includes("minimum_shape"),
+    passedChecks.includes("passed_content_gate"),
+    passedChecks.includes("passed_shape_gate"),
+  ].filter(Boolean).length;
+  (c as any).diagnostics = {
+    ...((c as any).diagnostics || {}),
+    comicVineSemanticPositiveCount: semanticPositiveCount,
+    comicVineStructuralPositiveCount: structuralPositiveCount,
+    comicVineAdmissionPath: "pending",
+    comicVineWeakAlignmentBlocked: false,
+  };
   const strongSemanticSignals = [
-    /horror|thriller|mystery|suspense|psychological|dystopian/.test(genreText),
-    /horror|thriller|mystery|suspense|psychological|dystopian/.test(queryText),
+    explicitGenreMatch,
+    explicitQueryGenreMatch,
     queryFamily !== "unknown",
     Number(filterSignals || 0) >= 10,
     Number((c as any)?.diagnostics?.tasteAlignment || 0) > 0.5,
     String(c.description || "").trim().length >= 80,
   ].filter(Boolean).length;
   if (source === "comicvine") {
+    const lacksActiveFamilySemantic = !activeFamilyMatch || !(diagnostics?.flags?.thrillerPositive || diagnostics?.flags?.mysteryPositive || diagnostics?.flags?.suspensePositive || diagnostics?.flags?.speculativePositive);
+    if (rawMatches <= 0 && !titleMeaningfulOverlap && !descriptionMeaningfulOverlap && lacksActiveFamilySemantic && !swipeFranchiseSignal) {
+      (c as any).diagnostics.comicVineAdmissionPath = "blocked_raw0_no_semantic_alignment";
+      (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
+      return { pass: false, reason: "weak_comicvine_semantic_alignment", detail: "hard-block rawMatches<=0 and no meaningful alignment" };
+    }
+    const hasSoftFailureTriplet =
+      passedChecks.includes("soft_missing_science_fiction_signal") &&
+      passedChecks.includes("soft_lane_mismatch_science_fiction") &&
+      passedChecks.includes("soft_too_many_soft_failures");
+    if (hasSoftFailureTriplet && rawMatches < 2 && !explicitGenreMatch) {
+      return { pass: false, reason: "weak_comicvine_semantic_alignment", detail: "soft-failure triplet without raw or explicit genre support" };
+    }
     const weakUnknownFamily = queryFamily === "unknown";
     const genericTeenQuery = /teen\s+graphic\s+novel\s+graphic\s+novel/.test(queryText);
-    if (genericTeenQuery || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2) {
+    const structuralOnlySignals = semanticPositiveCount < 1;
+    if (genericTeenQuery || structuralOnlySignals || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2 || (rawMatches === 0 && weakUnknownFamily && semanticPositiveCount === 0)) {
+      (c as any).diagnostics.comicVineAdmissionPath = "blocked_weak_alignment";
+      (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
       return { pass: false, reason: 'weak_comicvine_semantic_alignment', detail: `signals=${strongSemanticSignals} family=${queryFamily} query=${queryText}` };
     }
+    (c as any).diagnostics.comicVineAdmissionPath = "passed_semantic_gate";
   }
   const hasStrongSignals =
     (c.ratingCount || 0) >= 50 ||
@@ -611,6 +668,15 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     }
   }
 
+  if (source === "comicvine") {
+    const hasComicVineAcceptSignal = rawMatches >= 1 || titleMeaningfulOverlap || descriptionMeaningfulOverlap || swipeFranchiseSignal;
+    if (!hasComicVineAcceptSignal) {
+      (c as any).diagnostics.comicVineAdmissionPath = "blocked_missing_accept_signal";
+      (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
+      return { pass: false, reason: "weak_comicvine_semantic_alignment", detail: "missing comicvine semantic acceptance signal" };
+    }
+    (c as any).diagnostics.comicVineAdmissionPath = "accepted_semantic_signal";
+  }
   return { pass: true };
 }
 
@@ -2082,6 +2148,12 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
     first_publish_year: c.publicationYear || (rawDoc as any).first_publish_year,
     preFilterScore: breakdown.finalScore,
     postFilterScore: breakdown.finalScore,
+    diagnostics: {
+      ...((rawDoc as any)?.diagnostics || {}),
+      ...((c as any)?.diagnostics || {}),
+      preFilterScore: breakdown.finalScore,
+      postFilterScore: breakdown.finalScore,
+    },
     scoreBreakdown: breakdown,
     personalFitReasons,
     recommendationDiagnostics: {
@@ -2756,5 +2828,43 @@ export function finalRecommenderForDeck(
     .filter(({ candidate }) => !isHardReject(candidate).reject)
     .slice(0, MAX_RESULTS)
     .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
-  return attachNearbyAlternativeReason(selectedDocs, ordered);
+  const finalGuardedDocs = selectedDocs.filter((doc) => {
+    const source = String((doc as any)?.source || (doc as any)?.diagnostics?.source || "").toLowerCase();
+    if (source !== "comicvine") return true;
+    const queryFamily = String((doc as any)?.queryFamily || (doc as any)?.diagnostics?.queryFamily || "unknown").toLowerCase();
+    const rawMatches = Number((doc as any)?.diagnostics?.rawMatches ?? 0);
+    const preFilterScore = (doc as any)?.preFilterScore ?? (doc as any)?.diagnostics?.preFilterScore;
+    const postFilterScore = (doc as any)?.postFilterScore ?? (doc as any)?.diagnostics?.postFilterScore;
+    const queryText = String((doc as any)?.queryText || (doc as any)?.diagnostics?.queryText || "").toLowerCase();
+    const meaningfulQueryTokens = queryText.split(/[^a-z0-9]+/).filter((t) => t.length > 3 && !["graphic", "novel", "comic", "comics", "teen", "story"].includes(t));
+    const titleText = String((doc as any)?.title || "").toLowerCase();
+    const descriptionText = String((doc as any)?.description || "").toLowerCase();
+    const hasTitleOverlap = meaningfulQueryTokens.some((t) => titleText.includes(t));
+    const hasDescriptionOverlap = meaningfulQueryTokens.some((t) => descriptionText.includes(t));
+    const missingScores = !Number.isFinite(Number(preFilterScore)) || !Number.isFinite(Number(postFilterScore));
+    const franchiseSignal = Boolean((doc as any)?.diagnostics?.franchiseSwipeSignal || (doc as any)?.rawDoc?.diagnostics?.franchiseSwipeSignal);
+    const hasSemanticOverlap = hasTitleOverlap || hasDescriptionOverlap || rawMatches >= 1 || franchiseSignal;
+    const shouldReject = rawMatches <= 0 && !hasSemanticOverlap;
+    if (shouldReject) {
+      console.error("COMICVINE_BAD_FINALIST_LEAK", {
+        title: (doc as any)?.title,
+        queryFamily,
+        rawMatches,
+        preFilterScore,
+        postFilterScore,
+        queryText,
+        missingScores,
+      });
+      return false;
+    }
+    (doc as any).diagnostics = {
+      ...((doc as any).diagnostics || {}),
+      comicVineSemanticPositiveCount: Number((doc as any)?.diagnostics?.comicVineSemanticPositiveCount || 0),
+      comicVineStructuralPositiveCount: Number((doc as any)?.diagnostics?.comicVineStructuralPositiveCount || 0),
+      comicVineAdmissionPath: "final_unavoidable_guard_pass",
+      comicVineWeakAlignmentBlocked: false,
+    };
+    return true;
+  });
+  return attachNearbyAlternativeReason(finalGuardedDocs, ordered);
 }
