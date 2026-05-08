@@ -1995,6 +1995,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const issuePenalty = issueFragmentPenalty(c);
   const foreignPenalty = foreignEditionPenalty(c);
   const entryBoost = entryPointBoost(c);
+  const canonicalBoost = canonicalAnchorTitleBoost(c);
+  const sidePenalty = sideStoryPenalty(c);
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
@@ -2090,7 +2092,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty + entryBoost,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty + entryBoost + canonicalBoost + sidePenalty,
   };
 }
 
@@ -2323,7 +2325,7 @@ function issueFragmentPenalty(candidate: Candidate): number {
 
 function foreignEditionPenalty(candidate: Candidate): number {
   const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
-  if (/\b(und die|der|die|ausgabe|édition|edicion|edición|tomo|band)\b/.test(text)) return -8;
+  if (/\b(kompendium|und|die|der|ausgabe|édition|edicion|edición|tomo|band|au mexique|semya|la isla)\b/.test(text) || /[čćžšđñáéíóúàèìòù]/.test(text)) return -14;
   return 0;
 }
 
@@ -2338,6 +2340,26 @@ function entryPointBoost(candidate: Candidate): number {
   return boost;
 }
 
+
+function canonicalAnchorTitleBoost(candidate: Candidate): number {
+  const title = normalize(String(candidate.title || ""));
+  const anchors = [
+    'the sandman', 'sandman', 'saga', 'hellboy', 'locke & key', 'y: the last man', 'gideon falls', 'department of truth', 'something is killing the children'
+  ];
+  for (const anchor of anchors) {
+    const a = normalize(anchor);
+    if (title === a) return 12;
+    if (title.startsWith(a + ' #1') || title.startsWith(a + ' vol 1') || title.startsWith(a + ' volume 1')) return 10;
+    if (title.startsWith(a)) return 6;
+  }
+  return 0;
+}
+
+function sideStoryPenalty(candidate: Candidate): number {
+  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  if (/\b(special|winter special|being human|bones of giants|small world|in pale battalions go|hell & gone|dream hunters|universe special|junior|giant robot)\b/.test(text)) return -12;
+  return 0;
+}
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
