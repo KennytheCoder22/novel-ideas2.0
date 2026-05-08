@@ -2045,6 +2045,12 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
+    collectionEditionBoost: collectionBoost,
+    issueFragmentPenalty: issuePenalty,
+    foreignEditionPenalty: foreignPenalty,
+    entryPointBoost: entryBoost,
+    canonicalAnchorTitleBoost: canonicalBoost,
+    sideStoryPenalty: sidePenalty,
     finalScore: 0,
   }, taste) ? 0 : -16;
   const hardNegativeGate = (() => {
@@ -2092,6 +2098,12 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
+    collectionEditionBoost: collectionBoost,
+    issueFragmentPenalty: issuePenalty,
+    foreignEditionPenalty: foreignPenalty,
+    entryPointBoost: entryBoost,
+    canonicalAnchorTitleBoost: canonicalBoost,
+    sideStoryPenalty: sidePenalty,
     finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty + entryBoost + canonicalBoost + sidePenalty,
   };
 }

@@ -3879,17 +3879,9 @@ const normalizedCandidatesRaw = [
     .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
     .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc));
   const finalRankedDocsBase = (() => {
-    if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
-    const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
-    const refill = rankingPoolForFinal
-      .filter((doc: any) => !isMetaReferenceWork(doc))
-      .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
-      .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc))
-      .filter((doc: any) => {
-        const key = candidateKey(doc);
-        return Boolean(key) && !existing.has(key);
-      });
-    return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+    // Use finalRecommender-ranked docs as authoritative source for render selection.
+    // Avoid refilling from raw ranking pool, which can reintroduce weak representatives.
+    return metaSafeRankedDocs.slice(0, Math.max(finalLimit, 12));
   })();
 
   const applyAuthorSeriesCaps = (docs: any[]): any[] => {
@@ -4294,6 +4286,23 @@ const normalizedCandidatesRaw = [
   }
   const finalItemsLength = outputItems.length;
   const finalItemsTitles = outputItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
+  const comicVineFinalScoreByTitle = finalRenderDocs
+    .filter((doc:any)=>String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
+    .map((doc:any)=>({ title: String(doc?.title || ""), finalScore: Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) }));
+  const comicVineScoreBreakdownByTitle = finalRenderDocs
+    .filter((doc:any)=>String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
+    .map((doc:any)=>({
+      title: String(doc?.title || ""),
+      canonicalAnchorTitleBoost: Number((doc?.diagnostics as any)?.canonicalAnchorTitleBoost ?? 0),
+      entryPointBoost: Number((doc?.diagnostics as any)?.entryPointBoost ?? 0),
+      sideStoryPenalty: Number((doc?.diagnostics as any)?.sideStoryPenalty ?? 0),
+      foreignEditionPenalty: Number((doc?.diagnostics as any)?.foreignEditionPenalty ?? 0),
+      issueFragmentPenalty: Number((doc?.diagnostics as any)?.issueFragmentPenalty ?? 0),
+      collectionEditionBoost: Number((doc?.diagnostics as any)?.collectionEditionBoost ?? 0),
+      finalScore: Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0),
+    }));
+  const finalSortFieldUsed = "finalScore";
+  const finalSortSource = "finalRecommenderForDeck";
   const returnedItemsLength = outputItems.length;
   const returnedItemsTitles = finalItemsTitles;
   const renderedTopRecommendationsLength = outputItems.length;
@@ -4375,6 +4384,12 @@ const normalizedCandidatesRaw = [
     teenPostPassInputSource,
     finalRankedDocsBaseLength,
     rankedDocsLength,
+    finalRankedDocsLength: finalRankedDocs.length,
+    finalRankedDocsTitles: finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean),
+    comicVineFinalScoreByTitle,
+    comicVineScoreBreakdownByTitle,
+    finalSortFieldUsed,
+    finalSortSource,
     finalAcceptedDocsSource,
     finalAcceptedDocsTitles,
     finalRankedDocsBaseTitles,
