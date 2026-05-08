@@ -83,10 +83,8 @@ function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
 function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiagnostics {
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
-  const gcdEnabledByAdmin = config?.comicVine !== false;
-  const comicVineApiKey = String(process.env.EXPO_PUBLIC_COMICVINE_API_KEY || "").trim();
-  const comicVineKeyDetected = Boolean(comicVineApiKey);
-  const gcdEnabled = process.env.NODE_ENV === "production" ? (comicVineKeyDetected && gcdEnabledByAdmin) : gcdEnabledByAdmin;
+  const gcdEnabledByAdmin = config?.comicVine !== false && config?.gcd !== false;
+  const gcdEnabled = gcdEnabledByAdmin;
 
   return {
     googleBooks: config?.googleBooks !== false,
