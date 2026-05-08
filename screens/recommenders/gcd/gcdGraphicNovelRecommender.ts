@@ -425,13 +425,17 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
   const baseAnchors = anchorQueries.slice(0, MAX_COMICVINE_ANCHORS);
   const followupTemplates = ["vol 1", "omnibus", "deluxe edition", "master edition"];
+  const MAX_FOLLOWUPS_PER_ANCHOR = 2;
   const followupQueriesBuilt: string[] = [];
-  for (const template of followupTemplates) {
-    for (const anchor of baseAnchors) {
+  for (const anchor of baseAnchors) {
+    for (const template of followupTemplates.slice(0, MAX_FOLLOWUPS_PER_ANCHOR)) {
       followupQueriesBuilt.push(`${anchor} ${template}`);
     }
   }
-  const prioritizedQueries = [...baseAnchors, ...followupQueriesBuilt, ...otherQueries, ...genericQueries];
+  // Anti-monoculture ordering: round-robin anchor + first followup before deeper followups.
+  const followupsTier1 = baseAnchors.map((a) => `${a} vol 1`);
+  const followupsTier2 = baseAnchors.map((a) => `${a} omnibus`);
+  const prioritizedQueries = [...baseAnchors, ...followupsTier1, ...otherQueries, ...followupsTier2, ...genericQueries];
   const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(24, MAX_COMICVINE_ANCHORS));
   const comicVineResolvedSeedQuery = anchorSelection.anchors[0] || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = false;
@@ -501,10 +505,20 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   let genericBudgetConsumed = 0;
 
   const baseAnchorBudget = Math.min(MAX_COMICVINE_ANCHORS, baseAnchors.length);
-  const followupBudget = Math.min(baseAnchors.length * 2, queriesToTry.length - baseAnchorBudget);
+  const followupBudget = Math.min(baseAnchors.length * MAX_FOLLOWUPS_PER_ANCHOR, queriesToTry.length - baseAnchorBudget);
   const maxQueriesToFetch = Math.min(baseAnchorBudget + followupBudget, queriesToTry.length);
+  const MAX_ANCHOR_SHARE = 0.35;
+  const queryCountsByAnchor: Record<string, number> = Object.fromEntries(baseAnchors.map((a) => [a, 0]));
   for (let i = 0; i < maxQueriesToFetch; i += 1) {
     const q = stripDanglingQuotes(queriesToTry[i]);
+    const qAnchor = baseAnchors.find((a) => q === a || q.startsWith(a + " "));
+    if (qAnchor) {
+      const nextCount = (queryCountsByAnchor[qAnchor] || 0) + 1;
+      const projectedShare = nextCount / Math.max(1, comicVineQueriesActuallyFetched.length + 1);
+      const hasDiversifiedEnough = Object.values(queryCountsByAnchor).filter((n) => n > 0).length >= 3;
+      if (hasDiversifiedEnough && projectedShare > MAX_ANCHOR_SHARE) continue;
+      queryCountsByAnchor[qAnchor] = nextCount;
+    }
     if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
     comicVineQueriesActuallyFetched.push(q);
     if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);
