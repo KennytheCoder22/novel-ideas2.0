@@ -2955,6 +2955,10 @@ export async function getRecommendations(
   let comicVineDescriptorQueriesGenerated: string[] = [];
   let comicVineFranchiseConfidenceScores: Record<string, number> = {};
   let comicVineFranchiseSuppressedReasons: string[] = [];
+  let comicVinePreflightStatus = "unknown";
+  let comicVinePreflightProbeQuery = "";
+  let comicVinePreflightRawCount = 0;
+  let comicVinePreflightError: string | null = null;
   let comicVineExcludedTermsAppliedInFilterOnly = false;
   let comicVineQueryTooLong = false;
 
@@ -3086,6 +3090,10 @@ export async function getRecommendations(
           if (Array.isArray(value?.descriptorQueriesGenerated)) comicVineDescriptorQueriesGenerated = value.descriptorQueriesGenerated;
           if (value?.franchiseConfidenceScores && typeof value.franchiseConfidenceScores === "object") comicVineFranchiseConfidenceScores = value.franchiseConfidenceScores;
           if (Array.isArray(value?.franchiseSuppressedReasons)) comicVineFranchiseSuppressedReasons = value.franchiseSuppressedReasons;
+          if (typeof value?.comicVinePreflightStatus === "string") comicVinePreflightStatus = value.comicVinePreflightStatus;
+          if (typeof value?.comicVinePreflightProbeQuery === "string") comicVinePreflightProbeQuery = value.comicVinePreflightProbeQuery;
+          if (typeof value?.comicVinePreflightRawCount === "number") comicVinePreflightRawCount = value.comicVinePreflightRawCount;
+          if (typeof value?.comicVinePreflightError === "string" || value?.comicVinePreflightError === null) comicVinePreflightError = value.comicVinePreflightError;
           if (typeof value?.comicVineExcludedTermsAppliedInFilterOnly === "boolean") comicVineExcludedTermsAppliedInFilterOnly = value.comicVineExcludedTermsAppliedInFilterOnly;
           if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
@@ -4218,6 +4226,10 @@ const normalizedCandidatesRaw = [
     descriptorQueriesGenerated: comicVineDescriptorQueriesGenerated,
     franchiseConfidenceScores: comicVineFranchiseConfidenceScores,
     franchiseSuppressedReasons: comicVineFranchiseSuppressedReasons,
+    comicVinePreflightStatus,
+    comicVinePreflightProbeQuery,
+    comicVinePreflightRawCount,
+    comicVinePreflightError,
     comicVineExcludedTermsAppliedInFilterOnly,
     comicVineQueryTooLong,
   };

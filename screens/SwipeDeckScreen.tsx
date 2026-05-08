@@ -2075,6 +2075,10 @@ function handleLeft() {
       `descriptorQueriesGenerated:${Array.isArray(lastDebugGcdDispatchTrace?.descriptorQueriesGenerated) && lastDebugGcdDispatchTrace.descriptorQueriesGenerated.length ? lastDebugGcdDispatchTrace.descriptorQueriesGenerated.join(" | ") : "(none)"}`,
       `franchiseConfidenceScores:${lastDebugGcdDispatchTrace?.franchiseConfidenceScores ? JSON.stringify(lastDebugGcdDispatchTrace.franchiseConfidenceScores) : "(none)"}`,
       `franchiseSuppressedReasons:${Array.isArray(lastDebugGcdDispatchTrace?.franchiseSuppressedReasons) && lastDebugGcdDispatchTrace.franchiseSuppressedReasons.length ? lastDebugGcdDispatchTrace.franchiseSuppressedReasons.join(" | ") : "(none)"}`,
+      `comicVinePreflightStatus:${String(lastDebugGcdDispatchTrace?.comicVinePreflightStatus || "unknown")}`,
+      `comicVinePreflightProbeQuery:${String(lastDebugGcdDispatchTrace?.comicVinePreflightProbeQuery || "(none)")}`,
+      `comicVinePreflightRawCount:${Number(lastDebugGcdDispatchTrace?.comicVinePreflightRawCount || 0)}`,
+      `comicVinePreflightError:${String(lastDebugGcdDispatchTrace?.comicVinePreflightError || "none")}`,
       `comicVineFetchResults:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineFetchResults) && lastDebugGcdDispatchTrace.comicVineFetchResults.length ? lastDebugGcdDispatchTrace.comicVineFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
     ].join("\n");
     if (Boolean(lastSourceEnabled?.comicVine) && String(lastDebugGcdDispatchTrace?.traceSource || "report-default") === "report-default") {

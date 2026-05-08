@@ -372,7 +372,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
   }
 }
 
-async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
+async function runGcdAdapterPreflight(timeoutMs: number): Promise<{ status: "ok" | "probe_no_results"; probeQuery: string; rawCount: number; error: string | null }> {
   const probeQuery = "saga";
   const probeUrl = buildComicVineProxySearchUrl(probeQuery);
   if (!hasLoggedProbeProxyUrl) {
@@ -393,9 +393,15 @@ async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
     rawNarrativeQualifiedCount: 0,
   };
   const { rawCount, error } = await fetchDocsForQuery(probeQuery, -1, timeoutMs, 6, probeDocs, probeSeen, preflightRawDiagnostics);
-  if (rawCount <= 0) {
-    throw new Error(`COMICVINE_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${error || "none"}`);
+  const normalizedError = error ? String(error) : null;
+  const hasFatalError = Boolean(normalizedError && normalizedError !== "none");
+  if (hasFatalError) {
+    throw new Error(`COMICVINE_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${normalizedError}`);
   }
+  if (rawCount <= 0) {
+    return { status: "probe_no_results", probeQuery, rawCount, error: null };
+  }
+  return { status: "ok", probeQuery, rawCount, error: null };
 }
 
 export async function getGcdGraphicNovelRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
@@ -404,7 +410,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
   const fetchLimit = Math.max(8, Math.min(36, Math.max(finalLimit * 2, 12)));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
-  await runGcdAdapterPreflight(timeoutMs);
+  const preflight = await runGcdAdapterPreflight(timeoutMs);
 
   const bucketPreview = String((input as any)?.bucketPlan?.preview || "").trim();
   const bucketQueries = Array.isArray((input as any)?.bucketPlan?.queries) ? (input as any).bucketPlan.queries.map((q:any)=>String(q||"" ).trim()).filter(Boolean) : [];
@@ -480,6 +486,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       comicVinePositiveQueries,
       comicVineExcludedTermsAppliedInFilterOnly,
       comicVineQueryTooLong,
+      comicVinePreflightStatus: preflight.status,
+      comicVinePreflightProbeQuery: preflight.probeQuery,
+      comicVinePreflightRawCount: preflight.rawCount,
+      comicVinePreflightError: preflight.error,
       comicVineQueryDiagnostics: queryDiagnostics,
       entityQueriesGenerated,
       descriptorQueriesGenerated,
@@ -583,6 +593,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueryTexts: queriesToTry,
     comicVineFetchResults,
     comicVineFetchAttempted: true,
+    comicVinePreflightStatus: preflight.status,
+    comicVinePreflightProbeQuery: preflight.probeQuery,
+    comicVinePreflightRawCount: preflight.rawCount,
+    comicVinePreflightError: preflight.error,
     comicVineQueryDiagnostics: queryDiagnostics,
     entityQueriesGenerated,
     descriptorQueriesGenerated,
