@@ -4257,6 +4257,16 @@ const normalizedCandidatesRaw = [
     : [];
   const returnedDocIds = outputItems.map((it: any) => String(it?.doc?.sourceId || it?.doc?.canonicalId || it?.doc?.id || it?.doc?.key || it?.doc?.title || "").trim()).filter(Boolean);
   const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
+  const finalSummaryAcceptedArrayLength = outputItems.length;
+  const finalSummaryAcceptedTitles = finalItemsTitles;
+  const finalSummaryRejectedCount = Array.isArray(finalDebugSnapshot?.rejected) ? finalDebugSnapshot.rejected.length : Number(finalDebugSnapshot?.rejectedCount || 0);
+  const debugFinalRecommenderResolved = {
+    ...(finalDebugSnapshot || {}),
+    acceptedCount: finalSummaryAcceptedArrayLength,
+    finalSummaryAcceptedArrayLength,
+    finalSummaryAcceptedTitles,
+    finalSummaryRejectedCount,
+  };
   const droppedBeforeRenderReason =
     finalAcceptedDocsArrayLength > 0 && renderedTopRecommendationsLength === 0
       ? (teenPostPassInputLength === 0
@@ -4286,7 +4296,7 @@ const normalizedCandidatesRaw = [
     debugRungStats: buildRungDiagnostics(normalizedCandidates),
     debugFilterAudit: filterAuditRows,
     debugFilterAuditSummary: filterAuditSummary,
-    debugFinalRecommender: finalDebugSnapshot,
+    debugFinalRecommender: debugFinalRecommenderResolved,
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength,
     teenPostPassOutputTitles,
@@ -4294,9 +4304,10 @@ const normalizedCandidatesRaw = [
     finalItemsTitles,
     returnedItemsLength,
     returnedItemsTitles,
+    finalSummaryAcceptedTitles,
     finalAcceptedScalarCount,
-    finalAcceptedDocsArrayLength,
-    finalAcceptedDocsArrayTitles,
+    finalAcceptedDocsArrayLength: finalSummaryAcceptedArrayLength,
+    finalAcceptedDocsArrayTitles: finalSummaryAcceptedTitles,
     finalAcceptedDocIds,
     finalRejectedDocIds,
     returnedDocIds,
@@ -4307,7 +4318,7 @@ const normalizedCandidatesRaw = [
     finalRankedDocsBaseLength,
     rankedDocsLength,
     finalAcceptedDocsSource,
-    finalAcceptedDocsTitles: finalAcceptedDocsArrayTitles,
+    finalAcceptedDocsTitles: finalSummaryAcceptedTitles,
     finalRankedDocsBaseTitles,
     rankedDocsTitles,
     droppedBeforeRenderReason,
