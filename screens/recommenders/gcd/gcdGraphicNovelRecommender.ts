@@ -18,7 +18,7 @@ const COMIC_VINE_PROXY_URL =
 let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
 
-type AnchorLane = "superhero" | "dark_fantasy" | "mixed";
+type AnchorLane = "facet_weighted";
 
 function buildProxyUrl(targetUrl: string): string {
   if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
@@ -106,7 +106,7 @@ function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
 }
 
 
-function topSwipeSignals(tagCounts: TagCounts | undefined, limit = 12): string[] {
+function topSwipeSignals(tagCounts: TagCounts | undefined, limit = 16): string[] {
   return Object.entries(tagCounts || {})
     .filter(([, v]) => Number(v) > 0)
     .sort((a, b) => Number(b[1]) - Number(a[1]))
@@ -116,43 +116,57 @@ function topSwipeSignals(tagCounts: TagCounts | undefined, limit = 12): string[]
 
 function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   lane: AnchorLane;
-  mode: "tag_profile" | "mixed_profile";
+  mode: "story_facet_weighted";
   anchors: string[];
   reasonsByAnchor: Record<string, string[]>;
   suppressedDefaults: string[];
   topSignals: string[];
 } {
   const signals = topSwipeSignals(tagCounts);
-  const superheroScore = signals.filter((s) => /superhero|marvel|dc|spider|batman|smallville|guardians|coming of age|teen/.test(s)).length + (hasFacet(tagCounts, /superhero|marvel|dc|spider|batman|smallville|guardians|comic/) ? 3 : 0);
-  const darkScore = signals.filter((s) => /horror|occult|haunted|dark fantasy|terror|ghost/.test(s)).length;
-  const lane: AnchorLane = superheroScore >= Math.max(3, darkScore + 1) ? "superhero" : superheroScore > 0 ? "mixed" : "dark_fantasy";
-  const rows: Array<{ anchor: string; reason: string }> = [];
-  const add = (anchor: string, reason: string) => rows.push({ anchor, reason });
-  if (lane !== "dark_fantasy") {
-    add("batman", "liked Batman/DC crime-hero signals");
-    add("spider-man", "liked Spider-Verse/Marvel hero signals");
-    add("miles morales", "spider-verse and teen-hero momentum");
-    add("ultimate spider-man", "marvel + coming-of-age superhero signals");
-    add("teen titans", "teen hero team signals");
-    add("young justice", "dc teen team signals");
-    add("ms. marvel", "teen coming-of-age superhero signals");
-    add("runaways", "teen superhero ensemble signals");
-    add("invincible", "superhero action/comic-native signal");
-    add("guardians of the galaxy", "cosmic team sci-fi adventure signal");
-    add("scott pilgrim", "action comedy graphic-novel signal");
-  }
-  if (lane !== "superhero") {
-    add("hellboy", "dark/supernatural comic signal");
-    add("locke & key", "dark fantasy + mystery comic signal");
-    add("the sandman", "literary dark fantasy comic signal");
-    add("saga", "space-opera comic signal");
-  }
-  const reasonsByAnchor: Record<string, string[]> = {};
-  for (const r of rows) reasonsByAnchor[r.anchor] = [...(reasonsByAnchor[r.anchor] || []), r.reason];
-  const anchors = Array.from(new Set(rows.map((r) => r.anchor))).slice(0, MAX_COMICVINE_ANCHORS);
+  const signalText = signals.join(" ");
+  const storyFacets: Array<{ facet: string; re: RegExp }> = [
+    { facet: "coming-of-age", re: /coming of age|teen|young adult|school|identity|growing up/ },
+    { facet: "found family", re: /found family|team|crew|friends|community|belonging/ },
+    { facet: "dark supernatural mystery", re: /dark|supernatural|occult|mystery|haunted|monster|witch|paranormal/ },
+    { facet: "humor action", re: /funny|humor|comedy|action|energetic|quirky/ },
+    { facet: "dystopian sci-fi identity", re: /cyberpunk|dystopian|science fiction|future|ai|rebellion|space/ },
+    { facet: "fantasy adventure", re: /fantasy|magic|myth|quest|adventure|dungeons/ },
+    { facet: "crime noir psychological", re: /crime|detective|noir|moral|psychological|gritty/ },
+    { facet: "superhero", re: /superhero|marvel|dc|spider|batman|smallville|guardians/ },
+  ];
+  const facetWeights: Record<string, number> = {};
+  for (const row of storyFacets) facetWeights[row.facet] = row.re.test(signalText) ? 1 : 0;
+
+  const anchorProfiles: Array<{ anchor: string; facets: string[] }> = [
+    { anchor: "ms. marvel", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
+    { anchor: "spider-man", facets: ["coming-of-age", "humor action", "outsider identity", "superhero"] },
+    { anchor: "miles morales", facets: ["coming-of-age", "humor action", "superhero"] },
+    { anchor: "batman", facets: ["crime noir psychological", "mystery", "superhero"] },
+    { anchor: "teen titans", facets: ["coming-of-age", "found family", "superhero"] },
+    { anchor: "young justice", facets: ["coming-of-age", "found family", "superhero"] },
+    { anchor: "runaways", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
+    { anchor: "guardians of the galaxy", facets: ["found family", "dystopian sci-fi identity", "humor action", "superhero"] },
+    { anchor: "invincible", facets: ["coming-of-age", "psychological", "superhero"] },
+    { anchor: "scott pilgrim", facets: ["coming-of-age", "humor action", "found family"] },
+    { anchor: "locke & key", facets: ["dark supernatural mystery", "coming-of-age", "found family"] },
+    { anchor: "the sandman", facets: ["dark supernatural mystery", "melancholy", "psychological"] },
+    { anchor: "hellboy", facets: ["dark supernatural mystery", "humor action"] },
+    { anchor: "something is killing the children", facets: ["dark supernatural mystery", "coming-of-age"] },
+    { anchor: "saga", facets: ["dystopian sci-fi identity", "found family", "humor action"] },
+  ];
+
+  const scored = anchorProfiles.map((p) => {
+    const overlap = p.facets.filter((f) => facetWeights[f] > 0);
+    const score = overlap.length + (overlap.includes("superhero") ? 0.25 : 0);
+    return { ...p, overlap, score };
+  }).sort((a, b) => b.score - a.score);
+
+  const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
+  const anchors = selected.map((r) => r.anchor);
+  const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
   const defaults = ["hellboy", "locke & key", "the sandman", "saga"];
-  const suppressedDefaults = defaults.filter((a) => lane === "superhero" && !anchors.includes(a));
-  return { lane, mode: lane === "mixed" ? "mixed_profile" : "tag_profile", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
+  const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
+  return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
@@ -522,7 +536,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
 
   if (docs.length === 0) {
-    const knownGoodProbeQueries = anchorSelection.lane === "superhero" ? ["batman", "spider-man", "miles morales", "ms. marvel", "invincible", "guardians of the galaxy"] : ["saga", "sandman", "monstress", "paper girls", "watchmen"];
+    const knownGoodProbeQueries = ["batman", "spider-man", "ms. marvel", "locke & key", "saga", "guardians of the galaxy"];
     let probeFoundAny = false;
     for (const q of knownGoodProbeQueries) {
       if (comicVineQueriesActuallyFetched.includes(q)) continue;
