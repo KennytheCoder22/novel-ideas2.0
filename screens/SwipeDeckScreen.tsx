@@ -938,6 +938,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRouterResultKeys, setLastRouterResultKeys] = useState<string[]>([]);
   const [recommendFunctionCalled, setRecommendFunctionCalled] = useState<boolean>(false);
   const [recommendFunctionError, setRecommendFunctionError] = useState<string>("");
+  const [recommendFunctionErrorStack, setRecommendFunctionErrorStack] = useState<string>("");
+  const [recommendFunctionErrorPhase, setRecommendFunctionErrorPhase] = useState<string>("");
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
 
@@ -1501,10 +1503,16 @@ function handleLeft() {
     const inputWithHistory = buildRecommendationInputWithHistory(input);
     setRecommendFunctionCalled(true);
     setRecommendFunctionError("");
+    setRecommendFunctionErrorStack("");
+    setRecommendFunctionErrorPhase("init");
     setRecommendFunctionReturned(false);
     setRecommendationResultWasPersisted(false);
 
     try {
+      setRecommendFunctionErrorPhase("build taste profile");
+      setRecommendFunctionErrorPhase("normalize lane weights");
+      setRecommendFunctionErrorPhase("build ComicVine rungs");
+      setRecommendFunctionErrorPhase("dispatch ComicVine");
       const result = await getRecommendations(
         {
           ...inputWithHistory,
@@ -1515,6 +1523,9 @@ function handleLeft() {
         "auto"
       );
       setRecommendFunctionReturned(true);
+      setRecommendFunctionErrorPhase("filter candidates");
+      setRecommendFunctionErrorPhase("final recommender");
+      setRecommendFunctionErrorPhase("teen post-pass");
 
       console.log("[NovelIdeas] Recommendation source", {
         engineId: (result as any)?.engineId,
@@ -1578,6 +1589,8 @@ function handleLeft() {
       }
     } catch (err: any) {
       setRecommendFunctionError(String(err?.message || err || "recommendation_call_failed"));
+      setRecommendFunctionErrorStack(String(err?.stack || ""));
+      setRecommendFunctionErrorPhase((prev) => prev || "unknown");
       const diag = (err as any)?.recommenderDiagnostics || null;
       console.log("[NovelIdeas][REC] router_error", { message: err?.message, diagnostics: diag });
       if (diag) {
@@ -1993,6 +2006,10 @@ function handleLeft() {
       `recommendFunctionReturned:${Boolean(recommendFunctionReturned)}`,
       `recommendationResultWasPersisted:${Boolean(recommendationResultWasPersisted)}`,
       `recommendFunctionError:${recommendFunctionError || "(none)"}`,
+      `comicVineFinalScoreByTitle:${JSON.stringify((lastRecommendationResult as any)?.comicVineFinalScoreByTitle || [])}`,
+      `comicVineScoreBreakdownByTitle:${JSON.stringify((lastRecommendationResult as any)?.comicVineScoreBreakdownByTitle || [])}`,
+      `recommendFunctionErrorPhase:${recommendFunctionErrorPhase || "(none)"}`,
+      `recommendFunctionErrorStack:${recommendFunctionErrorStack || "(none)"}`,
       `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,
       `routerResultKeys:${lastRouterResultKeys.length ? lastRouterResultKeys.join(", ") : "(none)"}`,
       `finalAcceptedDocsLength:${Number((lastRecommendationResult as any)?.finalAcceptedDocsLength || 0)}`,

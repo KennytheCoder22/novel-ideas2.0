@@ -535,6 +535,7 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   if (rescueBypassCount >= 2 && !fictionSignals) {
     return { pass: false, reason: 'low_metadata_trust', detail: 'multiple rescue/bypass flags without fiction evidence' };
   }
+  const source = String(c.source || (c as any)?.rawDoc?.source || "").toLowerCase();
   const knownAuthorityForZeroRating =
     anchorBoost(c) >= 10 ||
     /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(normalize(c.publisher)) ||
@@ -558,7 +559,6 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     check.includes('metadata_shape_relaxation')
   ).length;
 
-  const source = String(c.source || (c as any)?.rawDoc?.source || "").toLowerCase();
   const queryFamily = String((c as any)?.queryFamily || (c as any)?.rawDoc?.queryFamily || diagnostics?.queryFamily || "unknown").toLowerCase();
   const queryText = String((c as any)?.queryText || (c as any)?.rawDoc?.queryText || diagnostics?.queryText || "").toLowerCase();
   const genreText = haystack(c);
@@ -1820,8 +1820,8 @@ function laneBlendScore(c: Candidate): number {
 
   const text = haystack(c);
   const softOverlap = Object.entries(weights).some(([family, rawWeight]) => {
-    const w = Number(rawWeight || 0);
-    if (w < 0.16) return false;
+    const weightValue = Number(rawWeight || 0);
+    if (weightValue < 0.16) return false;
     if (family === "thriller") return /thriller|suspense|crime|serial killer|missing|fbi|procedural/.test(text);
     if (family === "mystery") return /mystery|detective|investigation|case|whodunit|cold case/.test(text);
     if (family === "horror") return /horror|haunted|ghost|supernatural|occult|terror|dread/.test(text);
@@ -1991,6 +1991,13 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
+  const collectionBoost = collectionEditionBoost(c);
+  const issuePenalty = issueFragmentPenalty(c);
+  const foreignPenalty = foreignEditionPenalty(c);
+  const entryBoost = entryPointBoost(c);
+  const canonicalBoost = canonicalAnchorTitleBoost(c);
+  const sidePenalty = sideStoryPenalty(c);
+  const laterCollectionPenalty = laterCollectionVolumePenalty(c);
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
@@ -2039,6 +2046,12 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
+    collectionEditionBoost: collectionBoost,
+    issueFragmentPenalty: issuePenalty,
+    foreignEditionPenalty: foreignPenalty,
+    entryPointBoost: entryBoost,
+    canonicalAnchorTitleBoost: canonicalBoost,
+    sideStoryPenalty: sidePenalty,
     finalScore: 0,
   }, taste) ? 0 : -16;
   const hardNegativeGate = (() => {
@@ -2086,7 +2099,13 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    collectionEditionBoost: collectionBoost,
+    issueFragmentPenalty: issuePenalty,
+    foreignEditionPenalty: foreignPenalty,
+    entryPointBoost: entryBoost,
+    canonicalAnchorTitleBoost: canonicalBoost,
+    sideStoryPenalty: sidePenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty + entryBoost + canonicalBoost + sidePenalty + laterCollectionPenalty,
   };
 }
 
@@ -2155,6 +2174,13 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
       ...((c as any)?.diagnostics || {}),
       preFilterScore: breakdown.finalScore,
       postFilterScore: breakdown.finalScore,
+      collectionEditionBoost: Number((breakdown as any).collectionEditionBoost || 0),
+      issueFragmentPenalty: Number((breakdown as any).issueFragmentPenalty || 0),
+      foreignEditionPenalty: Number((breakdown as any).foreignEditionPenalty || 0),
+      entryPointBoost: Number((breakdown as any).entryPointBoost || 0),
+      canonicalAnchorTitleBoost: Number((breakdown as any).canonicalAnchorTitleBoost || 0),
+      sideStoryPenalty: Number((breakdown as any).sideStoryPenalty || 0),
+      finalScore: Number(breakdown.finalScore || 0),
     },
     scoreBreakdown: breakdown,
     personalFitReasons,
@@ -2289,6 +2315,117 @@ function seriesClusterKey(candidate: Candidate): string {
   return match?.[1]?.trim() || "";
 }
 
+
+function normalizedSeriesKey(candidate: Candidate): string {
+  const rawTitle = normalize(candidate.title)
+    .replace(/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|vol\.?\s*\d+|volume\s*\d+|book\s*\d+|#\s*\d+)\b/g, " ")
+    .replace(/[^a-z0-9\s:&]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const root = rawTitle.split(':')[0]?.trim() || rawTitle;
+  if (/^(saga|saga #\d+|saga vol\.?\s*\d+|saga volume\s+\d+)$/.test(root)) return "saga";
+  if (/^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(root)) return "sandman";
+  return root;
+}
+
+function comicTitle(candidate: Candidate): string {
+  return String(
+    candidate?.title ||
+    (candidate as any)?.rawDoc?.title ||
+    (candidate as any)?.rawDoc?.name ||
+    (candidate as any)?.rawDoc?.volumeName ||
+    (candidate as any)?.rawDoc?.displayTitle ||
+    ""
+  );
+}
+
+function collectionEditionBoost(candidate: Candidate): number {
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  if (/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|tpb|volume\s*1|vol\.?\s*1)\b/.test(text)) return 8;
+  return 0;
+}
+
+function issueFragmentPenalty(candidate: Candidate): number {
+  const title = comicTitle(candidate);
+  const text = normalize(title);
+  const issueMatch = title.match(/#\s*(\d+)/);
+  const issueNumber = issueMatch ? Number(issueMatch[1]) : 0;
+  const isIssueLike = issueNumber > 0 || /\bissue\s*\d+\b/.test(text);
+  const hasCollectionSignal = /\b(master edition|deluxe|treasury|omnibus|compendium|volume|vol\.|tpb|hardcover collection)\b/.test(text);
+  if (!isIssueLike || hasCollectionSignal) return 0;
+  if (issueNumber <= 1) return -2;
+  return -10;
+}
+
+function foreignEditionPenalty(candidate: Candidate): number {
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  if (/\b(kompendium|und|die|der|ausgabe|édition|edicion|edición|tomo|band|au mexique|semya|la isla)\b/.test(text) || /[čćžšđñáéíóúàèìòù]/.test(text)) return -14;
+  return 0;
+}
+
+
+function entryPointBoost(candidate: Candidate): number {
+  const title = comicTitle(candidate);
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  let boost = 0;
+  if (/\b(vol\.?\s*1|volume\s*1|book\s*1|issue\s*1)\b/.test(text)) boost += 6;
+  if (/#\s*1\b/.test(title)) boost += 5;
+  if (/\b(master edition\s*#?\s*1|deluxe edition\s*#?\s*1|omnibus\s*vol\.?\s*1|compendium\s*#?\s*1)\b/.test(text)) boost += 7;
+  return boost;
+}
+
+
+function canonicalAnchorTitleBoost(candidate: Candidate): number {
+  const title = normalize(String(candidate.title || ""));
+  const strictAnchors: Array<{ key: string; pattern: RegExp }> = [
+    { key: "saga", pattern: /^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
+    { key: "sandman", pattern: /^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
+  ];
+  for (const rule of strictAnchors) {
+    if (title === rule.key || rule.pattern.test(title)) {
+      if (title === rule.key || title === `the ${rule.key}`) return 12;
+      if (/\s+#1$|\s+vol\.?\s*1$|\s+volume\s+1$/.test(title)) return 10;
+      return 6;
+    }
+  }
+
+  const broadAnchors = [
+    "hellboy",
+    "locke & key",
+    "y: the last man",
+    "gideon falls",
+    "department of truth",
+    "something is killing the children",
+  ];
+  for (const anchor of broadAnchors) {
+    const a = normalize(anchor);
+    if (title === a) return 12;
+    if (title.startsWith(a + " #1") || title.startsWith(a + " vol 1") || title.startsWith(a + " volume 1")) return 10;
+    if (title.startsWith(a)) return 6;
+  }
+  return 0;
+}
+
+function sideStoryPenalty(candidate: Candidate): number {
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  if (/\b(special|winter special|being human|bones of giants|small world|in pale battalions go|hell & gone|dream hunters|universe special|sandman universe|dollar comics|junior|giant robot)\b/.test(text)) return -16;
+  return 0;
+}
+
+function laterCollectionVolumePenalty(candidate: Candidate): number {
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  const patterns = [
+    /(master edition|deluxe edition|treasury edition|compendium)\s*#\s*(\d+)/,
+    /(omnibus|volume|vol\.?|book)\s*(\d+)/,
+  ];
+  for (const rx of patterns) {
+    const m = text.match(rx);
+    if (!m) continue;
+    const n = Number(m[2] || 0);
+    if (n >= 2) return -14;
+  }
+  return 0;
+}
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -2300,9 +2437,12 @@ function canTakeCandidate(
   const count = authorCounts.get(author) || 0;
   if (count >= 2) return false;
 
-  const seriesKey = seriesClusterKey(candidate);
-  if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
-    return false;
+  const seriesKey = normalizedSeriesKey(candidate) || seriesClusterKey(candidate);
+  const source = String(candidate.source || candidate.rawDoc?.source || "").toLowerCase();
+  const perSeriesCap = source === "comicvine" ? 2 : 1;
+  if (seriesKey) {
+    const sameSeriesCount = selected.filter((entry) => (normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate)) === seriesKey).length;
+    if (sameSeriesCount >= perSeriesCap) return false;
   }
 
   if (isOpenLibraryCandidate(candidate) && !passesOpenLibrarySelectionFloor(candidate)) {
@@ -2817,8 +2957,11 @@ export function finalRecommenderForDeck(
     return out;
   })();
   if (diversityBalanced.length < 3) {
-    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length });
-    return [];
+    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length, fallback: "ordered_scored_docs" });
+    const fallbackDocs = ordered
+      .slice(0, Math.min(MAX_RESULTS, Math.max(5, ordered.length)))
+      .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+    return attachNearbyAlternativeReason(fallbackDocs, ordered);
   }
   const clusterBreakdown: Record<string, number> = {};
   for (const entry of diversityBalanced) {

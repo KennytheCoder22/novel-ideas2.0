@@ -74,6 +74,36 @@ function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
+function finalSeriesKeyForRender(doc: any): string {
+  const title = String(doc?.title || doc?.rawDoc?.title || "").toLowerCase();
+  if (/locke\s*&\s*key/.test(title)) return "locke-and-key";
+  if (/^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(title)) return "saga";
+  if (/\bhellboy\b/.test(title)) return "hellboy";
+  if (/^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(title)) return "sandman";
+  if (/y\s*:?\s*the\s+last\s+man/.test(title)) return "y-the-last-man";
+  if (/department\s+of\s+truth/.test(title)) return "department-of-truth";
+  if (/gideon\s+falls/.test(title)) return "gideon-falls";
+  if (/something\s+is\s+killing\s+the\s+children/.test(title)) return "something-is-killing-the-children";
+  return title.split(':')[0].replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function applyFinalSeriesCap(docs: any[], perSeriesCap: number): { kept: any[]; dropped: Array<{ title: string; reason: string; seriesKey: string }>; counts: Record<string, number> } {
+  const counts: Record<string, number> = {};
+  const kept: any[] = [];
+  const dropped: Array<{ title: string; reason: string; seriesKey: string }> = [];
+  for (const doc of docs) {
+    const seriesKey = finalSeriesKeyForRender(doc);
+    const current = counts[seriesKey] || 0;
+    if (seriesKey && current >= perSeriesCap) {
+      dropped.push({ title: String(doc?.title || doc?.rawDoc?.title || ""), reason: `series_cap_${perSeriesCap}`, seriesKey });
+      continue;
+    }
+    counts[seriesKey] = current + 1;
+    kept.push(doc);
+  }
+  return { kept, dropped, counts };
+}
+
 function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
   if (Array.isArray(value)) return value as RecommendationDoc[];
   if (value && Array.isArray(value.candidates)) return value.candidates as RecommendationDoc[];
@@ -1536,10 +1566,10 @@ function applyLaneAffinityMultipliers(
     const multiplier = Number(affinityMultipliers?.[family] || 1);
     adjusted[family] = Math.max(0, Number(weight) * multiplier);
   }
-  const ranked = Object.entries(adjusted).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const total = ranked.reduce((sum, [, w]) => sum + w, 0) || 1;
+  const ranked = Object.entries(adjusted).filter(([, weightValue]) => weightValue > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const total = ranked.reduce((sum, [, weightValue]) => sum + weightValue, 0) || 1;
   const out: Record<string, number> = {};
-  for (const [family, w] of ranked) out[family] = Number((w / total).toFixed(3));
+  for (const [family, weightValue] of ranked) out[family] = Number((weightValue / total).toFixed(3));
   return out;
 }
 
@@ -2941,6 +2971,7 @@ export async function getRecommendations(
   const comicVineFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
+  let comicVineDispatchedOnce = false;
   let comicVineResolvedSeedQuery = "";
   let comicVineFallbackReason = "none";
   let comicVineUsedFallbackQuery = false;
@@ -3022,7 +3053,11 @@ export async function getRecommendations(
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
-      if (includeComicVine && !comicVineAdapterFailed) requests.push(getComicVineGraphicNovelRecommendations(laneInput));
+      const shouldDispatchComicVineForLane = includeComicVine && !comicVineAdapterFailed && !comicVineDispatchedOnce;
+      if (shouldDispatchComicVineForLane) {
+        requests.push(getComicVineGraphicNovelRecommendations(routedInput));
+        comicVineDispatchedOnce = true;
+      }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
 
       const results = await Promise.allSettled(requests);
@@ -3055,10 +3090,10 @@ export async function getRecommendations(
         : null;
       if (includeKitsu) index += 1;
 
-      const laneComicVine = includeComicVine && results[index]?.status === "fulfilled"
+      const laneComicVine = comicVineDispatchedOnce && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (includeComicVine) {
+      if (comicVineDispatchedOnce) {
         const gcdResult = results[index];
         const query = "comicvine_adapter";
         if (gcdResult?.status === "fulfilled") {
@@ -3109,7 +3144,7 @@ export async function getRecommendations(
         ...dedupeDocs(extractDocs(laneGoogle, "googleBooks")),
         ...dedupeDocs(extractDocs(laneOpenLibrary, "openLibrary")),
         ...(includeKitsu ? dedupeDocs(extractDocs(laneKitsu, "kitsu")) : []),
-        ...(includeComicVine ? dedupeDocs(extractDocs(laneComicVine, "comicVine")) : []),
+        ...(laneComicVine ? dedupeDocs(extractDocs(laneComicVine, "comicVine")) : []),
       ]);
 
       if (!google && laneGoogle) google = laneGoogle;
@@ -3844,17 +3879,9 @@ const normalizedCandidatesRaw = [
     .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
     .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc));
   const finalRankedDocsBase = (() => {
-    if (metaSafeRankedDocs.length >= finalLimit) return metaSafeRankedDocs.slice(0, finalLimit);
-    const existing = new Set(metaSafeRankedDocs.map((doc: any) => candidateKey(doc)));
-    const refill = rankingPoolForFinal
-      .filter((doc: any) => !isMetaReferenceWork(doc))
-      .filter((doc: any) => routerFamily !== "science_fiction" || !isScienceFictionMetaCollection(doc))
-      .filter((doc: any) => !applyHistoricalHardNarrativeFilter || !isHistoricalPrimaryOrNonNarrative(doc))
-      .filter((doc: any) => {
-        const key = candidateKey(doc);
-        return Boolean(key) && !existing.has(key);
-      });
-    return dedupeDocs([...metaSafeRankedDocs, ...refill] as any).slice(0, finalLimit) as any[];
+    // Use finalRecommender-ranked docs as authoritative source for render selection.
+    // Avoid refilling from raw ranking pool, which can reintroduce weak representatives.
+    return metaSafeRankedDocs.slice(0, Math.max(finalLimit, 12));
   })();
 
   const applyAuthorSeriesCaps = (docs: any[]): any[] => {
@@ -3896,7 +3923,8 @@ const normalizedCandidatesRaw = [
     const lanePattern = lanePatterns[routerFamily] || lanePatterns.general;
     const laneFit = lanePattern.test(text) ? 2.4 : -1.2;
     const facetHits = (text.match(/\b(dark|fast paced|friendship|survival|mystery|school|identity|hopeful)\b/g) || []).length;
-    return teenFit + laneFit + (facetHits * 0.5) + (candidateScoreValue(doc) * 0.2);
+    const finalScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? candidateScoreValue(doc));
+    return (finalScore * 6) + teenFit + laneFit + (facetHits * 0.5);
   };
 
   let finalRankedDocs = (() => {
@@ -3931,7 +3959,8 @@ const normalizedCandidatesRaw = [
       const generic = /\b(fiction|novel|book|story)\b/.test(text) ? -0.5 : 0;
       const facetMatches = facetPattern ? (text.match(facetPattern) || []).length : 0;
       const classicPenalty = classicAdultCanonPattern.test(text) && !/\b(young adult|ya|teen|retelling|adaptation)\b/i.test(text) ? -2.5 : 0;
-      return onLane + generic + (facetMatches * 0.45) + classicPenalty;
+      const finalScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? candidateScoreValue(doc));
+      return (finalScore * 6) + onLane + generic + (facetMatches * 0.45) + classicPenalty;
     };
 
     const poolSize = Math.max(finalLimit, finalRankedDocsBase.length);
@@ -4164,6 +4193,10 @@ const normalizedCandidatesRaw = [
     },
   };
 
+  const hasSuccessfulComicVineFetch = comicVineFetchResults.some((row) => row.status === "ok" && Number(row.rawCount || 0) > 0);
+  const effectiveProxyHealthStatus = hasSuccessfulComicVineFetch ? "ok" : proxyHealthStatus;
+  const effectiveProxyHealthError = hasSuccessfulComicVineFetch ? undefined : proxyHealthError || undefined;
+
   const comicVineDispatchTrace = {
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
     traceSource: "router" as const,
@@ -4177,8 +4210,8 @@ const normalizedCandidatesRaw = [
     comicVineProxyUrl,
     normalizedComicVineProxyUrl,
     comicVineProxyConfigured: Boolean(comicVineProxyUrl),
-    comicVineProxyHealthStatus: proxyHealthStatus,
-    comicVineProxyErrorBody: proxyHealthError || undefined,
+    comicVineProxyHealthStatus: effectiveProxyHealthStatus,
+    comicVineProxyErrorBody: effectiveProxyHealthError,
     buildComicVineFacetRungsCalled,
     comicVineRungsLength: comicVineFacetRungs.length,
     mainRungQueriesLength,
@@ -4231,16 +4264,47 @@ const normalizedCandidatesRaw = [
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
   const rankedDocsLength = rankedDocs.length;
+  if (includeComicVine && finalAcceptedDocsLength >= 5 && finalRankedDocs.length < Math.min(5, finalAcceptedDocsLength)) {
+    finalRankedDocs = [...finalRankedDocsBase].slice(0, Math.min(finalLimit, finalAcceptedDocsLength));
+  }
+
   const teenPostPassInputLength = teenPostPassInputDocs.length;
   const teenPostPassOutputLength = finalRankedDocs.length;
   const teenPostPassOutputTitles = finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
-  const finalItems = rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc }));
+  const teenPostPassRejectedTitles = teenPostPassInputDocs
+    .map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim())
+    .filter((title:string) => Boolean(title) && !teenPostPassOutputTitles.includes(title));
+  const teenPostPassRejectReasons = teenPostPassRejectedTitles.map(() => "teen_postpass_trim");
+  const teenPostPassSourceCapApplied = teenPostPassOutputLength < teenPostPassInputLength;
+  const teenPostPassSeriesCapApplied = teenPostPassRejectedTitles.length > 0;
+  const finalRenderDocsBase = finalRankedDocs.length ? finalRankedDocs : rankedDocsWithDiagnostics;
+  const finalSeriesCap = includeComicVine ? 2 : 3;
+  const finalSeriesCapResult = applyFinalSeriesCap(finalRenderDocsBase, finalSeriesCap);
+  const finalRenderDocs = finalSeriesCapResult.kept;
+  const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
     console.error("POSTPASS_OUTPUT_DROPPED_BEFORE_RETURN", { teenPostPassOutputLength, teenPostPassOutputTitles });
   }
   const finalItemsLength = outputItems.length;
   const finalItemsTitles = outputItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
+  const comicVineFinalScoreByTitle = finalRenderDocs
+    .filter((doc:any)=>String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
+    .map((doc:any)=>({ title: String(doc?.title || ""), finalScore: Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) }));
+  const comicVineScoreBreakdownByTitle = finalRenderDocs
+    .filter((doc:any)=>String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
+    .map((doc:any)=>({
+      title: String(doc?.title || ""),
+      canonicalAnchorTitleBoost: Number((doc?.diagnostics as any)?.canonicalAnchorTitleBoost ?? 0),
+      entryPointBoost: Number((doc?.diagnostics as any)?.entryPointBoost ?? 0),
+      sideStoryPenalty: Number((doc?.diagnostics as any)?.sideStoryPenalty ?? 0),
+      foreignEditionPenalty: Number((doc?.diagnostics as any)?.foreignEditionPenalty ?? 0),
+      issueFragmentPenalty: Number((doc?.diagnostics as any)?.issueFragmentPenalty ?? 0),
+      collectionEditionBoost: Number((doc?.diagnostics as any)?.collectionEditionBoost ?? 0),
+      finalScore: Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0),
+    }));
+  const finalSortFieldUsed = "finalScore";
+  const finalSortSource = "finalRecommenderForDeck";
   const returnedItemsLength = outputItems.length;
   const returnedItemsTitles = finalItemsTitles;
   const renderedTopRecommendationsLength = outputItems.length;
@@ -4252,10 +4316,22 @@ const normalizedCandidatesRaw = [
     ? finalDebugSnapshot.rejected.map((row: any) => String(row?.id || row?.title || "").trim()).filter(Boolean)
     : [];
   const returnedDocIds = outputItems.map((it: any) => String(it?.doc?.sourceId || it?.doc?.canonicalId || it?.doc?.id || it?.doc?.key || it?.doc?.title || "").trim()).filter(Boolean);
+  const finalItemsRejectedTitles = teenPostPassRejectedTitles;
+  const finalItemsRejectReasons = teenPostPassRejectReasons;
+  const finalSeriesKeys = finalRenderDocs.map((doc:any) => finalSeriesKeyForRender(doc));
+  const finalSeriesCounts = finalSeriesCapResult.counts;
+  const finalRenderSeriesCapApplied = teenPostPassSeriesCapApplied || finalSeriesCapResult.dropped.length > 0;
+  const finalRenderSourceCapApplied = teenPostPassSourceCapApplied;
+  const finalRenderDuplicateCollapseApplied = finalAcceptedDocsLength > renderedTopRecommendationsLength;
+  const finalSeriesCapDroppedTitles = finalSeriesCapResult.dropped.map((row) => row.title);
+  const finalSeriesCapDroppedReasons = finalSeriesCapResult.dropped.map((row) => row.reason);
   const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
+  const finalHandoffEmptyReason = finalAcceptedDocsLength > 0 && rankedDocsLength === 0 ? "final_recommender_handoff_empty" : "none";
   const droppedBeforeRenderReason =
     finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
-      ? (teenPostPassInputLength === 0
+      ? (finalHandoffEmptyReason !== "none"
+          ? finalHandoffEmptyReason
+          : teenPostPassInputLength === 0
           ? "no_postfilter_candidates"
           : teenPostPassOutputLength === 0
           ? "teen_postpass_eliminated_all"
@@ -4286,6 +4362,20 @@ const normalizedCandidatesRaw = [
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength,
     teenPostPassOutputTitles,
+    teenPostPassRejectedTitles,
+    teenPostPassRejectReasons,
+    teenPostPassSourceCapApplied,
+    teenPostPassSeriesCapApplied,
+    finalItemsRejectedTitles,
+    finalItemsRejectReasons,
+    finalRenderSeriesCapApplied,
+    finalRenderSourceCapApplied,
+    finalRenderDuplicateCollapseApplied,
+    finalSeriesKeys,
+    finalSeriesCounts,
+    finalSeriesCap,
+    finalSeriesCapDroppedTitles,
+    finalSeriesCapDroppedReasons,
     finalItemsLength,
     finalItemsTitles,
     returnedItemsLength,
@@ -4299,6 +4389,19 @@ const normalizedCandidatesRaw = [
     teenPostPassInputSource,
     finalRankedDocsBaseLength,
     rankedDocsLength,
+    finalRankedDocsLength: finalRankedDocs.length,
+    finalRankedDocsTitles: finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean),
+    comicVineFinalScoreByTitle,
+    comicVineScoreBreakdownByTitle,
+    finalSortFieldUsed,
+    finalSortSource,
+    finalRecommenderReturnedKeys: Object.keys(finalDebugSnapshot || {}),
+    finalRecommenderRankedDocsLength: rankedDocsLength,
+    finalRecommenderAcceptedDocsLength: finalAcceptedDocsLength,
+    finalRecommenderAcceptedTitles: finalAcceptedDocsTitles,
+    routerReceivedRankedDocsLength: rankedDocsLength,
+    routerReceivedRankedDocsTitles: rankedDocsTitles,
+    finalHandoffEmptyReason,
     finalAcceptedDocsSource,
     finalAcceptedDocsTitles,
     finalRankedDocsBaseTitles,

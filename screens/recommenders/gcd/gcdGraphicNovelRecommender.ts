@@ -16,6 +16,7 @@ const COMIC_VINE_PROXY_URL =
     ? COMIC_VINE_PROXY_URL_RAW
     : "/api/comicvine";
 let hasLoggedProbeProxyUrl = false;
+const MAX_COMICVINE_ANCHORS = 8;
 
 function buildProxyUrl(targetUrl: string): string {
   if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
@@ -293,7 +294,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const resp = await fetch(buildComicVineProxySearchUrl(query, 20), { signal: controller.signal, headers: { Accept: "application/json" } });
+    const queryLimit = Math.max(5, Math.min(20, fetchLimit));
+    const resp = await fetch(buildComicVineProxySearchUrl(query, queryLimit), { signal: controller.signal, headers: { Accept: "application/json" } });
     if (!resp.ok) throw new Error(`ComicVine error: ${resp.status}`);
     const payload = await resp.json();
     const results = Array.isArray(payload?.results) ? payload.results : [];
@@ -303,6 +305,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       if (!doc?.title) continue;
       const normalizedTitle = normalizeText(doc.title);
       if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) continue;
+      if (/^die\s+/i.test(String(doc.title || ""))) continue;
+      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) continue;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
@@ -336,7 +340,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const deckKey = input.deckKey;
   const domainMode: RecommendationResult["domainMode"] = "default";
   const finalLimit = Math.max(1, Math.min(40, input.limit ?? 12));
-  const fetchLimit = Math.max(8, Math.min(36, Math.max(finalLimit * 2, 12)));
+  const perAnchorFetchLimit = 10;
+  const fetchLimit = Math.max(40, Math.min(160, MAX_COMICVINE_ANCHORS * perAnchorFetchLimit));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
   await runGcdAdapterPreflight(timeoutMs);
 
@@ -356,7 +361,16 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q));
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
-  const queriesToTry = [...anchorQueries, ...otherQueries, ...genericQueries].slice(0, 10);
+  const baseAnchors = anchorQueries.slice(0, MAX_COMICVINE_ANCHORS);
+  const followupTemplates = ["vol 1", "omnibus", "deluxe edition", "master edition"];
+  const followupQueriesBuilt: string[] = [];
+  for (const template of followupTemplates) {
+    for (const anchor of baseAnchors) {
+      followupQueriesBuilt.push(`${anchor} ${template}`);
+    }
+  }
+  const prioritizedQueries = [...baseAnchors, ...followupQueriesBuilt, ...otherQueries, ...genericQueries];
+  const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(24, MAX_COMICVINE_ANCHORS));
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
@@ -410,15 +424,28 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
+  const followupFetched: string[] = [];
+  const followupDropped: Array<{ query: string; reason: string }> = [];
+  const baseAnchorsFetched: string[] = [];
+  const followupBudgetByAnchor: Record<string, number> = Object.fromEntries(baseAnchors.map((a) => [a, 0]));
   const selectedAnchorsForFetch = queriesToTry.filter((q) => knownAnchorPattern.test(q));
   const droppedAnchors = anchorQueries.filter((q) => !selectedAnchorsForFetch.includes(q));
   const fetchBudget = queriesToTry.length;
   let genericBudgetConsumed = 0;
 
-  for (let i = 0; i < queriesToTry.length; i += 1) {
+  const baseAnchorBudget = Math.min(MAX_COMICVINE_ANCHORS, baseAnchors.length);
+  const followupBudget = Math.min(baseAnchors.length * 2, queriesToTry.length - baseAnchorBudget);
+  const maxQueriesToFetch = Math.min(baseAnchorBudget + followupBudget, queriesToTry.length);
+  for (let i = 0; i < maxQueriesToFetch; i += 1) {
     const q = stripDanglingQuotes(queriesToTry[i]);
     if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
     comicVineQueriesActuallyFetched.push(q);
+    if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);
+    if (!baseAnchors.includes(q) && followupQueriesBuilt.includes(q)) {
+      followupFetched.push(q);
+      const owner = baseAnchors.find((a) => q.startsWith(a + " "));
+      if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
+    }
     const hadDocsBeforeQuery = docs.length > 0;
     const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
     if (!rawCount) {
@@ -433,8 +460,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       error,
     });
 
-    if (docs.length >= fetchLimit) break;
-    if (i === 0 && docs.length >= Math.max(4, finalLimit)) break;
+    // Continue through anchor budget for diversity; do not stop after early successes.
+  }
+
+  const fetchedSet = new Set(comicVineQueriesActuallyFetched);
+  for (const q of followupQueriesBuilt) {
+    if (!fetchedSet.has(q)) followupDropped.push({ query: q, reason: "followup_budget_exhausted_or_truncated" });
   }
 
   if (docs.length === 0) {
@@ -443,6 +474,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     for (const q of knownGoodProbeQueries) {
       if (comicVineQueriesActuallyFetched.includes(q)) continue;
       comicVineQueriesActuallyFetched.push(q);
+    if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);
+    if (!baseAnchors.includes(q) && followupQueriesBuilt.includes(q)) {
+      followupFetched.push(q);
+      const owner = baseAnchors.find((a) => q.startsWith(a + " "));
+      if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
+    }
       let issueUrls: string[] = [];
       const probe = await fetchDocsForQuery(q, 999, timeoutMs, fetchLimit, docs, seen);
       issueUrls = probe.rawCount > 0 ? ["found"] : [];
@@ -475,6 +512,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueriesGenerated: queriesToTry,
     comicVineRungsBuilt,
     comicVineQueriesActuallyFetched,
+    comicVineBaseAnchorsFetched: baseAnchorsFetched,
+    comicVineFollowupQueriesBuilt: followupQueriesBuilt,
+    comicVineFollowupQueriesFetched: followupFetched,
+    comicVineFollowupQueriesDropped: followupDropped.map((row) => row.query),
+    comicVineFollowupDropReasons: followupDropped,
+    comicVineFollowupBudgetByAnchor: followupBudgetByAnchor,
     comicVineAnchorQueriesBuilt: anchorQueries,
     comicVineAnchorQueriesSelectedForFetch: selectedAnchorsForFetch,
     comicVineAnchorQueriesDropped: droppedAnchors,
