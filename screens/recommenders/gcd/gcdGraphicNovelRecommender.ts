@@ -72,7 +72,8 @@ function isGenericComicVineQuery(query: string): boolean {
   const allGeneric = tokens.length > 0 && tokens.every((t) => /^(graphic|novel|comic|comics|dark|horror|mystery|fantasy|thriller|teen|survival)$/.test(t));
   const lexicalSludge = /\b(setting|stakes|identity|under pressure|story of|novel graphic novel)\b/.test(q);
   const survivalGeneric = /\bsurvival comics? graphic novel\b/.test(q);
-  return allGeneric || lexicalSludge || survivalGeneric || computeQuerySpecificityScore(q) <= 1;
+  const descriptorOnly = tokens.filter((t) => /^(mystery|horror|thriller|comic|comics|graphic|novel|fiction|dark|police|procedural)$/.test(t)).length >= Math.max(2, tokens.length - 1);
+  return allGeneric || lexicalSludge || survivalGeneric || descriptorOnly || computeQuerySpecificityScore(q) <= 1;
 }
 function safeNumber(value: any, fallback = 0): number {
   const n = Number(value);
@@ -104,17 +105,18 @@ function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
   const isTeen = hasFacet(tagCounts, /teen|young adult|school|coming of age/);
   const isManga = hasFacet(tagCounts, /manga|anime|japan/);
 
-  if (isDark && isTeen) anchors.push("batman");
-  if (isDark && !isTeen) anchors.push("hellboy");
-  if (isMystery) anchors.push("batman");
-  if (isSurvival) anchors.push("walking dead");
-  if (isSupernatural) anchors.push("hellboy");
+  const batmanEvidence = hasFacet(tagCounts, /batman|gotham|dc comics|bruce wayne/);
+  const hellboyEvidence = hasFacet(tagCounts, /hellboy|mignola|b\.p\.r\.d|bprd/);
+  const walkingDeadEvidence = hasFacet(tagCounts, /walking dead|zombie apocalypse|undead survival/);
+  if (isDark && isTeen && batmanEvidence) anchors.push("batman");
+  if (isDark && !isTeen && hellboyEvidence) anchors.push("hellboy");
+  if (isMystery && batmanEvidence) anchors.push("batman");
+  if (isSurvival && walkingDeadEvidence) anchors.push("walking dead");
+  if (isSupernatural && hellboyEvidence) anchors.push("hellboy");
   if (isManga) anchors.push("naruto");
-  if (isTeen) anchors.push("ms. marvel");
-  if (hasTeenGraphicIntent(tagCounts)) anchors.push("spider-man");
-
-  const baselineAnchors = ["batman", "spider-man", "superman", "saga", "walking dead", "ms. marvel"];
-  return Array.from(new Set([...anchors, ...baselineAnchors])).slice(0, 10);
+  if (isTeen && hasFacet(tagCounts, /ms\. marvel|kamala khan/)) anchors.push("ms. marvel");
+  if (hasTeenGraphicIntent(tagCounts) && hasFacet(tagCounts, /spider[- ]?man|peter parker|miles morales/)) anchors.push("spider-man");
+  return Array.from(new Set(anchors)).slice(0, 10);
 }
 
 function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
@@ -206,6 +208,11 @@ function parseYear(value: any): number | undefined {
 function gcdIssueToDoc(issue: any, queryText: string, queryRung: number): RecommendationDoc | null {
   const title = String(issue?.series_name || issue?.title || issue?.descriptor || "").trim();
   if (!title) return null;
+  const descriptor = String(issue?.descriptor || "").trim();
+  const spamIssueRun = /#\d{1,4}$/.test(title) || /issue\s+#?\d{1,4}$/i.test(title);
+  const bareGeneric = /^(a )?graphic novel$/i.test(title) || /^graphic novel\s*#?\d*$/i.test(title);
+  const weakCollectedEdition = !/\b(vol\.?|volume|omnibus|tpb|trade paperback|book \d+)\b/i.test(`${title} ${descriptor}`);
+  if ((spamIssueRun || bareGeneric) && weakCollectedEdition) return null;
 
   const storySet = Array.isArray(issue?.story_set) ? issue.story_set : [];
   const storyGenres = storySet
@@ -479,6 +486,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       throw new Error(`COMICVINE_ADAPTER_FAILURE: known-good probes returned no raw results. ${probeSummary}`);
     }
   }
+  const survivingCandidatesPerQuery = comicVineQueriesActuallyFetched.map((query) => ({
+    query,
+    survivingCandidates: docs.filter((doc: any) => String(doc?.queryText || "").toLowerCase() === String(query || "").toLowerCase()).length,
+  }));
+  const rawResultsPerQuery = comicVineFetchResults.map((row) => ({ query: row.query, rawCount: row.rawCount }));
+  const keptAfterFilterPerQuery = survivingCandidatesPerQuery.map((row) => ({ query: row.query, keptCount: row.survivingCandidates }));
 
   return {
     engineId: "comicVine",
@@ -495,6 +508,9 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineFetchResults,
     comicVineFetchAttempted: true,
     comicVineQueryDiagnostics: queryDiagnostics,
+    rawResultsPerQuery,
+    survivingCandidatesPerQuery,
+    keptAfterFilterPerQuery,
     gcdAdapterStatus: "ok",
     comicVineZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {

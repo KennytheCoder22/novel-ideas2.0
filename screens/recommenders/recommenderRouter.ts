@@ -2948,6 +2948,9 @@ export async function getRecommendations(
   let comicVineUsedFallbackQuery = false;
   let comicVinePositiveQueries: string[] = [];
   let comicVineQueryDiagnostics: any[] = [];
+  let comicVineRawResultsPerQuery: any[] = [];
+  let comicVineSurvivingCandidatesPerQuery: any[] = [];
+  let comicVineKeptAfterFilterPerQuery: any[] = [];
   let comicVineExcludedTermsAppliedInFilterOnly = false;
   let comicVineQueryTooLong = false;
 
@@ -3072,6 +3075,9 @@ export async function getRecommendations(
           if (typeof value?.comicVineUsedFallbackQuery === "boolean") comicVineUsedFallbackQuery = value.comicVineUsedFallbackQuery;
           if (Array.isArray(value?.comicVinePositiveQueries)) comicVinePositiveQueries = value.comicVinePositiveQueries.map((q:any)=>String(q||"").trim()).filter(Boolean);
           if (Array.isArray(value?.comicVineQueryDiagnostics)) comicVineQueryDiagnostics = value.comicVineQueryDiagnostics;
+          if (Array.isArray(value?.rawResultsPerQuery)) comicVineRawResultsPerQuery = value.rawResultsPerQuery;
+          if (Array.isArray(value?.survivingCandidatesPerQuery)) comicVineSurvivingCandidatesPerQuery = value.survivingCandidatesPerQuery;
+          if (Array.isArray(value?.keptAfterFilterPerQuery)) comicVineKeptAfterFilterPerQuery = value.keptAfterFilterPerQuery;
           if (typeof value?.comicVineExcludedTermsAppliedInFilterOnly === "boolean") comicVineExcludedTermsAppliedInFilterOnly = value.comicVineExcludedTermsAppliedInFilterOnly;
           if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
@@ -4197,6 +4203,9 @@ const normalizedCandidatesRaw = [
     comicVineUsedFallbackQuery,
     comicVinePositiveQueries,
     comicVineQueryDiagnostics,
+    rawResultsPerQuery: comicVineRawResultsPerQuery,
+    survivingCandidatesPerQuery: comicVineSurvivingCandidatesPerQuery,
+    keptAfterFilterPerQuery: comicVineKeptAfterFilterPerQuery,
     comicVineExcludedTermsAppliedInFilterOnly,
     comicVineQueryTooLong,
   };
