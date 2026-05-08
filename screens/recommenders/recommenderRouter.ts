@@ -4253,7 +4253,8 @@ const normalizedCandidatesRaw = [
   const teenPostPassRejectReasons = teenPostPassRejectedTitles.map(() => "teen_postpass_trim");
   const teenPostPassSourceCapApplied = teenPostPassOutputLength < teenPostPassInputLength;
   const teenPostPassSeriesCapApplied = teenPostPassRejectedTitles.length > 0;
-  const finalItems = rankedDocsWithDiagnostics.map((doc) => ({ kind: "open_library", doc }));
+  const finalRenderDocs = finalRankedDocs.length ? finalRankedDocs : rankedDocsWithDiagnostics;
+  const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
     console.error("POSTPASS_OUTPUT_DROPPED_BEFORE_RETURN", { teenPostPassOutputLength, teenPostPassOutputTitles });
@@ -4271,6 +4272,11 @@ const normalizedCandidatesRaw = [
     ? finalDebugSnapshot.rejected.map((row: any) => String(row?.id || row?.title || "").trim()).filter(Boolean)
     : [];
   const returnedDocIds = outputItems.map((it: any) => String(it?.doc?.sourceId || it?.doc?.canonicalId || it?.doc?.id || it?.doc?.key || it?.doc?.title || "").trim()).filter(Boolean);
+  const finalItemsRejectedTitles = teenPostPassRejectedTitles;
+  const finalItemsRejectReasons = teenPostPassRejectReasons;
+  const finalRenderSeriesCapApplied = teenPostPassSeriesCapApplied;
+  const finalRenderSourceCapApplied = teenPostPassSourceCapApplied;
+  const finalRenderDuplicateCollapseApplied = finalAcceptedDocsLength > renderedTopRecommendationsLength;
   const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
   const droppedBeforeRenderReason =
     finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
@@ -4309,6 +4315,11 @@ const normalizedCandidatesRaw = [
     teenPostPassRejectReasons,
     teenPostPassSourceCapApplied,
     teenPostPassSeriesCapApplied,
+    finalItemsRejectedTitles,
+    finalItemsRejectReasons,
+    finalRenderSeriesCapApplied,
+    finalRenderSourceCapApplied,
+    finalRenderDuplicateCollapseApplied,
     finalItemsLength,
     finalItemsTitles,
     returnedItemsLength,

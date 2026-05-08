@@ -1991,6 +1991,8 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
+  const collectionBoost = collectionEditionBoost(c);
+  const issuePenalty = issueFragmentPenalty(c);
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
@@ -2086,7 +2088,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty,
   };
 }
 
@@ -2289,6 +2291,28 @@ function seriesClusterKey(candidate: Candidate): string {
   return match?.[1]?.trim() || "";
 }
 
+
+function normalizedSeriesKey(candidate: Candidate): string {
+  const rawTitle = normalize(candidate.title)
+    .replace(/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|vol\.?\s*\d+|volume\s*\d+|book\s*\d+|#\s*\d+)\b/g, " ")
+    .replace(/[^a-z0-9\s:&]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return rawTitle.split(':')[0]?.trim() || rawTitle;
+}
+
+function collectionEditionBoost(candidate: Candidate): number {
+  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  if (/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|tpb|volume\s*1|vol\.?\s*1)\b/.test(text)) return 8;
+  return 0;
+}
+
+function issueFragmentPenalty(candidate: Candidate): number {
+  const text = normalize(`${candidate.title || ''}`);
+  const isIssueLike = /#\s*\d+\b/.test(String(candidate.title || '')) || /\bissue\s*\d+\b/.test(text);
+  const hasCollectionSignal = /\b(master edition|deluxe|treasury|omnibus|compendium|volume|vol\.)\b/.test(text);
+  return isIssueLike && !hasCollectionSignal ? -6 : 0;
+}
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -2300,9 +2324,12 @@ function canTakeCandidate(
   const count = authorCounts.get(author) || 0;
   if (count >= 2) return false;
 
-  const seriesKey = seriesClusterKey(candidate);
-  if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
-    return false;
+  const seriesKey = normalizedSeriesKey(candidate) || seriesClusterKey(candidate);
+  const source = String(candidate.source || candidate.rawDoc?.source || "").toLowerCase();
+  const perSeriesCap = source === "comicvine" ? 2 : 1;
+  if (seriesKey) {
+    const sameSeriesCount = selected.filter((entry) => (normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate)) === seriesKey).length;
+    if (sameSeriesCount >= perSeriesCap) return false;
   }
 
   if (isOpenLibraryCandidate(candidate) && !passesOpenLibrarySelectionFloor(candidate)) {
