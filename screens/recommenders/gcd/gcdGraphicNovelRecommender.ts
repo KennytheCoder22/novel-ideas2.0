@@ -25,6 +25,10 @@ function buildProxyUrl(targetUrl: string): string {
   return `${GCD_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
 }
 
+function stripDanglingQuotes(value: string): string {
+  return String(value || "").replace(/^["'“”‘’`]+/, "").replace(/["'“”‘’`]+$/, "").trim();
+}
+
 function normalizeText(value: any): string {
   return String(value || "")
     .toLowerCase()
@@ -35,31 +39,20 @@ function normalizeText(value: any): string {
 
 
 function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQueries: string[]; queryTooLong: boolean; excludedTermsAppliedInFilterOnly: boolean } {
-  const tokens = String(raw || "").toLowerCase().split(/\s+/).filter(Boolean);
-  const excluded = new Set(["true","crime","cozy","humorous","spy","conspiracy","writers","writer","writing","guide","reference","bibliography","analysis","criticism","review","summary","workbook","anthology"]);
-  const positive: string[] = [];
-  for (const t of tokens) {
-    if (t.startsWith("-")) continue;
-    const c = t.replace(/[^a-z0-9]/g, "");
-    if (!c || excluded.has(c)) continue;
-    positive.push(c);
-  }
-  const deduped = Array.from(new Set(positive));
-  const concise = deduped.slice(0, 6).join(" ").trim();
+  const normalized = normalizeText(raw);
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const excluded = new Set(["graphic","novel","comics","comic","fiction","narrative","setting","stakes","slow","burn","consequence","true","crime","cozy","humorous","spy","conspiracy","writers","writer","writing","guide","reference","bibliography","analysis","criticism","review","summary","workbook","anthology"]);
+  const positive = tokens.filter((t) => !excluded.has(t) && t.length > 2).slice(0, 5);
+  const cleaned = Array.from(new Set(positive)).join(' ').trim();
   const queryTooLong = tokens.length > 12 || String(raw || "").length > 90;
-  const cleaned = concise;
+  const franchiseAnchors = [
+    "hellboy", "locke & key", "the sandman", "something is killing the children", "saga", "y: the last man",
+    "batman black mirror", "gideon falls", "department of truth", "sweet tooth", "invincible", "black hammer", "monstress"
+  ];
   const positiveQueries = Array.from(new Set([
-    cleaned && `${cleaned} graphic novel`,
-    cleaned && `${cleaned} comic`,
-    cleaned && `${cleaned}`,
-    "psychological suspense graphic novel",
-    "mystery thriller comic",
-    "dystopian thriller graphic novel",
-    "dark mystery graphic novel",
-    "survival suspense comic",
-  ].filter(Boolean) as string[]))
-    .map((q) => String(q || "").replace(/graphic novel\s+graphic novel/gi, "graphic novel").trim())
-    .filter((q) => !/^teen\s+graphic\s+novel\s+graphic\s+novel$/i.test(q));
+    cleaned,
+    ...franchiseAnchors,
+  ].filter(Boolean) as string[]));
   return { cleaned, positiveQueries, queryTooLong, excludedTermsAppliedInFilterOnly: true };
 }
 function safeNumber(value: any, fallback = 0): number {
@@ -308,6 +301,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (!doc?.title) continue;
+      const normalizedTitle = normalizeText(doc.title);
+      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) continue;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
@@ -354,8 +349,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const baseFromSeed = seedClean.positiveQueries;
   const directQueries = superheroSignal ? buildGcdSearchTerms(input.tagCounts) : [];
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
-  const fallbackQueries = superheroSignal ? ["batman"] : ["psychological suspense graphic novel","mystery thriller comic","dystopian thriller graphic novel","dark mystery graphic novel","survival suspense comic"];
-  const queriesToTry = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>String(q||"").trim()).filter(Boolean))).slice(0, 10);
+  const fallbackQueries = superheroSignal ? ["batman", "hellboy", "the sandman"] : ["sweet tooth", "saga", "y: the last man", "descender", "east of west", "black science", "paper girls", "something is killing the children"];
+  const allQueries = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
+  const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
+  const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$/i;
+  const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q));
+  const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
+  const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
+  const queriesToTry = [...anchorQueries, ...otherQueries, ...genericQueries].slice(0, 10);
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
@@ -384,6 +385,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
       debugFilterAudit: [{ source: "comicVine", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
       comicVineQueriesGenerated: [],
+      comicVineAnchorQueriesBuilt: anchorQueries,
+      comicVineAnchorQueriesSelectedForFetch: [],
+      comicVineAnchorQueriesDropped: anchorQueries,
+      comicVineAnchorDropReasons: anchorQueries.map((q) => ({ query: q, reason: "no_queries_generated" })),
+      comicVineFetchBudget: 0,
+      comicVineFetchBudgetConsumedByGenericQueries: 0,
       comicVineRungsBuilt: [],
       comicVineQueriesActuallyFetched: [],
       comicVineFetchAttempted: false,
@@ -403,9 +410,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
+  const selectedAnchorsForFetch = queriesToTry.filter((q) => knownAnchorPattern.test(q));
+  const droppedAnchors = anchorQueries.filter((q) => !selectedAnchorsForFetch.includes(q));
+  const fetchBudget = queriesToTry.length;
+  let genericBudgetConsumed = 0;
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
-    const q = queriesToTry[i];
+    const q = stripDanglingQuotes(queriesToTry[i]);
+    if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
     comicVineQueriesActuallyFetched.push(q);
     const hadDocsBeforeQuery = docs.length > 0;
     const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
@@ -463,6 +475,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueriesGenerated: queriesToTry,
     comicVineRungsBuilt,
     comicVineQueriesActuallyFetched,
+    comicVineAnchorQueriesBuilt: anchorQueries,
+    comicVineAnchorQueriesSelectedForFetch: selectedAnchorsForFetch,
+    comicVineAnchorQueriesDropped: droppedAnchors,
+    comicVineAnchorDropReasons: droppedAnchors.map((q) => ({ query: q, reason: "fetch_budget_limited" })),
+    comicVineFetchBudget: fetchBudget,
+    comicVineFetchBudgetConsumedByGenericQueries: genericBudgetConsumed,
     comicVineQueryTexts: queriesToTry,
     comicVineFetchResults,
     comicVineFetchAttempted: true,
