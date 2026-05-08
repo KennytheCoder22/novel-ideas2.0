@@ -366,22 +366,27 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const payload = await resp.json();
     const results = Array.isArray(payload?.results) ? payload.results : [];
     const before = docs.length;
+    const rejectedReasons: Record<string, number> = {};
+    const topTitles: string[] = [];
+    const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
-      if (!doc?.title) continue;
+      if (!doc?.title) { countReject("missing_title"); continue; }
+      if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
-      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) continue;
-      if (/^die\s+/i.test(String(doc.title || ""))) continue;
-      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) continue;
+      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); continue; }
+      if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); continue; }
+      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); continue; }
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
-      if (seen.has(dedupeKey)) continue;
+      if (seen.has(dedupeKey)) { countReject("deduped"); continue; }
       seen.add(dedupeKey);
       docs.push(doc);
       if (docs.length >= fetchLimit) break;
     }
-    return { rawCount: Math.max(0, docs.length - before), error: null };
+    const acceptedCount = Math.max(0, docs.length - before);
+    return { rawCount: results.length, acceptedCount, rejectedCount: Math.max(0, results.length - acceptedCount), topTitles, rejectedReasons, error: null };
   } catch (err: any) {
-    return { rawCount: 0, error: String(err?.message || err || "comicvine_search_failed") };
+    return { rawCount: 0, acceptedCount: 0, rejectedCount: 0, topTitles: [], rejectedReasons: {}, error: String(err?.message || err || "comicvine_search_failed") };
   } finally {
     clearTimeout(timer);
   }
@@ -492,7 +497,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
-  const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
+  const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; acceptedCount: number; rejectedCount: number; topTitles: string[]; rejectedReasons: Record<string, number>; error: string | null }> = [];
+  const comicVineRawCountByQuery: Record<string, number> = {};
+  const comicVineAcceptedCountByQuery: Record<string, number> = {};
+  const comicVineRejectedCountByQuery: Record<string, number> = {};
+  const comicVineTopTitlesByQuery: Record<string, string[]> = {};
+  const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
   const followupFetched: string[] = [];
@@ -528,9 +538,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
     }
     const hadDocsBeforeQuery = docs.length > 0;
-    const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
-    if (!rawCount) {
-      comicVineFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount: 0, error });
+    const { rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+    comicVineRawCountByQuery[q] = rawCount;
+    comicVineAcceptedCountByQuery[q] = acceptedCount;
+    comicVineRejectedCountByQuery[q] = rejectedCount;
+    comicVineTopTitlesByQuery[q] = topTitles;
+    comicVineAdapterDropReasonsByQuery[q] = rejectedReasons;
+    if (!acceptedCount) {
+      comicVineFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
       continue;
     }
     if (!hadDocsBeforeQuery) builtFromQuery = q;
@@ -538,6 +553,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       query: q,
       status: rawCount > 0 ? "ok" : error ? "error" : "no_matches",
       rawCount,
+      acceptedCount,
+      rejectedCount,
+      topTitles,
+      rejectedReasons,
       error,
     });
 
@@ -607,6 +626,13 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineFetchBudgetConsumedByGenericQueries: genericBudgetConsumed,
     comicVineQueryTexts: queriesToTry,
     comicVineFetchResults,
+    comicVineRawCountByQuery,
+    comicVineAcceptedCountByQuery,
+    comicVineRejectedCountByQuery,
+    comicVineTopTitlesByQuery,
+    comicVineAdapterDropReasonsByQuery,
+    comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
+    comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,
     gcdAdapterStatus: "ok",
     comicVineZeroResultReason: docs.length ? null : "no_issue_api_matches",
