@@ -2174,6 +2174,13 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
       ...((c as any)?.diagnostics || {}),
       preFilterScore: breakdown.finalScore,
       postFilterScore: breakdown.finalScore,
+      collectionEditionBoost: Number((breakdown as any).collectionEditionBoost || 0),
+      issueFragmentPenalty: Number((breakdown as any).issueFragmentPenalty || 0),
+      foreignEditionPenalty: Number((breakdown as any).foreignEditionPenalty || 0),
+      entryPointBoost: Number((breakdown as any).entryPointBoost || 0),
+      canonicalAnchorTitleBoost: Number((breakdown as any).canonicalAnchorTitleBoost || 0),
+      sideStoryPenalty: Number((breakdown as any).sideStoryPenalty || 0),
+      finalScore: Number(breakdown.finalScore || 0),
     },
     scoreBreakdown: breakdown,
     personalFitReasons,
@@ -2318,14 +2325,25 @@ function normalizedSeriesKey(candidate: Candidate): string {
   return rawTitle.split(':')[0]?.trim() || rawTitle;
 }
 
+function comicTitle(candidate: Candidate): string {
+  return String(
+    candidate?.title ||
+    (candidate as any)?.rawDoc?.title ||
+    (candidate as any)?.rawDoc?.name ||
+    (candidate as any)?.rawDoc?.volumeName ||
+    (candidate as any)?.rawDoc?.displayTitle ||
+    ""
+  );
+}
+
 function collectionEditionBoost(candidate: Candidate): number {
-  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
   if (/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|tpb|volume\s*1|vol\.?\s*1)\b/.test(text)) return 8;
   return 0;
 }
 
 function issueFragmentPenalty(candidate: Candidate): number {
-  const title = String(candidate.title || "");
+  const title = comicTitle(candidate);
   const text = normalize(title);
   const issueMatch = title.match(/#\s*(\d+)/);
   const issueNumber = issueMatch ? Number(issueMatch[1]) : 0;
@@ -2337,15 +2355,15 @@ function issueFragmentPenalty(candidate: Candidate): number {
 }
 
 function foreignEditionPenalty(candidate: Candidate): number {
-  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
   if (/\b(kompendium|und|die|der|ausgabe|édition|edicion|edición|tomo|band|au mexique|semya|la isla)\b/.test(text) || /[čćžšđñáéíóúàèìòù]/.test(text)) return -14;
   return 0;
 }
 
 
 function entryPointBoost(candidate: Candidate): number {
-  const title = String(candidate.title || "");
-  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  const title = comicTitle(candidate);
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
   let boost = 0;
   if (/\b(vol\.?\s*1|volume\s*1|book\s*1|issue\s*1)\b/.test(text)) boost += 6;
   if (/#\s*1\b/.test(title)) boost += 5;
@@ -2369,13 +2387,13 @@ function canonicalAnchorTitleBoost(candidate: Candidate): number {
 }
 
 function sideStoryPenalty(candidate: Candidate): number {
-  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
   if (/\b(special|winter special|being human|bones of giants|small world|in pale battalions go|hell & gone|dream hunters|universe special|sandman universe|dollar comics|junior|giant robot)\b/.test(text)) return -16;
   return 0;
 }
 
 function laterCollectionVolumePenalty(candidate: Candidate): number {
-  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
   const patterns = [
     /(master edition|deluxe edition|treasury edition|compendium)\s*#\s*(\d+)/,
     /(omnibus|volume|vol\.?|book)\s*(\d+)/,
