@@ -535,6 +535,7 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   if (rescueBypassCount >= 2 && !fictionSignals) {
     return { pass: false, reason: 'low_metadata_trust', detail: 'multiple rescue/bypass flags without fiction evidence' };
   }
+  const source = String(c.source || (c as any)?.rawDoc?.source || "").toLowerCase();
   const knownAuthorityForZeroRating =
     anchorBoost(c) >= 10 ||
     /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(normalize(c.publisher)) ||
@@ -558,7 +559,6 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     check.includes('metadata_shape_relaxation')
   ).length;
 
-  const source = String(c.source || (c as any)?.rawDoc?.source || "").toLowerCase();
   const queryFamily = String((c as any)?.queryFamily || (c as any)?.rawDoc?.queryFamily || diagnostics?.queryFamily || "unknown").toLowerCase();
   const queryText = String((c as any)?.queryText || (c as any)?.rawDoc?.queryText || diagnostics?.queryText || "").toLowerCase();
   const genreText = haystack(c);
