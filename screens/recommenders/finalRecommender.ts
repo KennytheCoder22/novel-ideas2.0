@@ -55,6 +55,10 @@ export type FinalRecommenderDebug = {
   inputCount: number;
   dedupedCount: number;
   acceptedCount: number;
+  preGuardAcceptedCount?: number;
+  provisionalAcceptedCount?: number;
+  finalSummaryAcceptedArrayLength?: number;
+  finalSummaryRejectedCount?: number;
   acceptedTitles: string[];
   rejectedCount: number;
   rejectionCounts: Record<string, number>;
@@ -2866,5 +2870,16 @@ export function finalRecommenderForDeck(
     };
     return true;
   });
+  const finalGuardRejectedCount = Math.max(0, selectedDocs.length - finalGuardedDocs.length);
+  lastFinalRecommenderDebug = {
+    ...lastFinalRecommenderDebug,
+    preGuardAcceptedCount: selectedDocs.length,
+    provisionalAcceptedCount: selectedDocs.length,
+    acceptedCount: finalGuardedDocs.length,
+    acceptedTitles: finalGuardedDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean),
+    finalSummaryAcceptedArrayLength: finalGuardedDocs.length,
+    finalSummaryRejectedCount: rejected.length + finalGuardRejectedCount,
+    rejectedCount: rejected.length + finalGuardRejectedCount,
+  };
   return attachNearbyAlternativeReason(finalGuardedDocs, ordered);
 }
