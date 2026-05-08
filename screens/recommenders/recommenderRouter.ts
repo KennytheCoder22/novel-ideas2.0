@@ -74,6 +74,36 @@ function asArray<T>(value: T[] | null | undefined): T[] {
   return Array.isArray(value) ? value : [];
 }
 
+function finalSeriesKeyForRender(doc: any): string {
+  const title = String(doc?.title || doc?.rawDoc?.title || "").toLowerCase();
+  if (/locke\s*&\s*key/.test(title)) return "locke-and-key";
+  if (/\bsaga\b/.test(title)) return "saga";
+  if (/\bhellboy\b/.test(title)) return "hellboy";
+  if (/\bsandman\b/.test(title)) return "sandman";
+  if (/y\s*:?\s*the\s+last\s+man/.test(title)) return "y-the-last-man";
+  if (/department\s+of\s+truth/.test(title)) return "department-of-truth";
+  if (/gideon\s+falls/.test(title)) return "gideon-falls";
+  if (/something\s+is\s+killing\s+the\s+children/.test(title)) return "something-is-killing-the-children";
+  return title.split(':')[0].replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function applyFinalSeriesCap(docs: any[], perSeriesCap: number): { kept: any[]; dropped: Array<{ title: string; reason: string; seriesKey: string }>; counts: Record<string, number> } {
+  const counts: Record<string, number> = {};
+  const kept: any[] = [];
+  const dropped: Array<{ title: string; reason: string; seriesKey: string }> = [];
+  for (const doc of docs) {
+    const seriesKey = finalSeriesKeyForRender(doc);
+    const current = counts[seriesKey] || 0;
+    if (seriesKey && current >= perSeriesCap) {
+      dropped.push({ title: String(doc?.title || doc?.rawDoc?.title || ""), reason: `series_cap_${perSeriesCap}`, seriesKey });
+      continue;
+    }
+    counts[seriesKey] = current + 1;
+    kept.push(doc);
+  }
+  return { kept, dropped, counts };
+}
+
 function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
   if (Array.isArray(value)) return value as RecommendationDoc[];
   if (value && Array.isArray(value.candidates)) return value.candidates as RecommendationDoc[];
@@ -4253,7 +4283,10 @@ const normalizedCandidatesRaw = [
   const teenPostPassRejectReasons = teenPostPassRejectedTitles.map(() => "teen_postpass_trim");
   const teenPostPassSourceCapApplied = teenPostPassOutputLength < teenPostPassInputLength;
   const teenPostPassSeriesCapApplied = teenPostPassRejectedTitles.length > 0;
-  const finalRenderDocs = finalRankedDocs.length ? finalRankedDocs : rankedDocsWithDiagnostics;
+  const finalRenderDocsBase = finalRankedDocs.length ? finalRankedDocs : rankedDocsWithDiagnostics;
+  const finalSeriesCap = includeComicVine ? 2 : 3;
+  const finalSeriesCapResult = applyFinalSeriesCap(finalRenderDocsBase, finalSeriesCap);
+  const finalRenderDocs = finalSeriesCapResult.kept;
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -4274,9 +4307,13 @@ const normalizedCandidatesRaw = [
   const returnedDocIds = outputItems.map((it: any) => String(it?.doc?.sourceId || it?.doc?.canonicalId || it?.doc?.id || it?.doc?.key || it?.doc?.title || "").trim()).filter(Boolean);
   const finalItemsRejectedTitles = teenPostPassRejectedTitles;
   const finalItemsRejectReasons = teenPostPassRejectReasons;
-  const finalRenderSeriesCapApplied = teenPostPassSeriesCapApplied;
+  const finalSeriesKeys = finalRenderDocs.map((doc:any) => finalSeriesKeyForRender(doc));
+  const finalSeriesCounts = finalSeriesCapResult.counts;
+  const finalRenderSeriesCapApplied = teenPostPassSeriesCapApplied || finalSeriesCapResult.dropped.length > 0;
   const finalRenderSourceCapApplied = teenPostPassSourceCapApplied;
   const finalRenderDuplicateCollapseApplied = finalAcceptedDocsLength > renderedTopRecommendationsLength;
+  const finalSeriesCapDroppedTitles = finalSeriesCapResult.dropped.map((row) => row.title);
+  const finalSeriesCapDroppedReasons = finalSeriesCapResult.dropped.map((row) => row.reason);
   const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
   const droppedBeforeRenderReason =
     finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
@@ -4320,6 +4357,11 @@ const normalizedCandidatesRaw = [
     finalRenderSeriesCapApplied,
     finalRenderSourceCapApplied,
     finalRenderDuplicateCollapseApplied,
+    finalSeriesKeys,
+    finalSeriesCounts,
+    finalSeriesCap,
+    finalSeriesCapDroppedTitles,
+    finalSeriesCapDroppedReasons,
     finalItemsLength,
     finalItemsTitles,
     returnedItemsLength,

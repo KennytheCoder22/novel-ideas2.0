@@ -1993,6 +1993,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
   const collectionBoost = collectionEditionBoost(c);
   const issuePenalty = issueFragmentPenalty(c);
+  const foreignPenalty = foreignEditionPenalty(c);
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
@@ -2088,7 +2089,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty,
   };
 }
 
@@ -2308,11 +2309,23 @@ function collectionEditionBoost(candidate: Candidate): number {
 }
 
 function issueFragmentPenalty(candidate: Candidate): number {
-  const text = normalize(`${candidate.title || ''}`);
-  const isIssueLike = /#\s*\d+\b/.test(String(candidate.title || '')) || /\bissue\s*\d+\b/.test(text);
-  const hasCollectionSignal = /\b(master edition|deluxe|treasury|omnibus|compendium|volume|vol\.)\b/.test(text);
-  return isIssueLike && !hasCollectionSignal ? -6 : 0;
+  const title = String(candidate.title || "");
+  const text = normalize(title);
+  const issueMatch = title.match(/#\s*(\d+)/);
+  const issueNumber = issueMatch ? Number(issueMatch[1]) : 0;
+  const isIssueLike = issueNumber > 0 || /\bissue\s*\d+\b/.test(text);
+  const hasCollectionSignal = /\b(master edition|deluxe|treasury|omnibus|compendium|volume|vol\.|tpb|hardcover collection)\b/.test(text);
+  if (!isIssueLike || hasCollectionSignal) return 0;
+  if (issueNumber <= 1) return -2;
+  return -10;
 }
+
+function foreignEditionPenalty(candidate: Candidate): number {
+  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  if (/\b(und die|der|die|ausgabe|édition|edicion|edición|tomo|band)\b/.test(text)) return -8;
+  return 0;
+}
+
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
