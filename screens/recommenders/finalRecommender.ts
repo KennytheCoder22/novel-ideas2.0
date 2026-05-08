@@ -2903,8 +2903,11 @@ export function finalRecommenderForDeck(
     return out;
   })();
   if (diversityBalanced.length < 3) {
-    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length });
-    return [];
+    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length, fallback: "ordered_scored_docs" });
+    const fallbackDocs = ordered
+      .slice(0, Math.min(MAX_RESULTS, Math.max(5, ordered.length)))
+      .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+    return attachNearbyAlternativeReason(fallbackDocs, ordered);
   }
   const clusterBreakdown: Record<string, number> = {};
   for (const entry of diversityBalanced) {

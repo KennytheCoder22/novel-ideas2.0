@@ -4324,9 +4324,12 @@ const normalizedCandidatesRaw = [
   const finalSeriesCapDroppedTitles = finalSeriesCapResult.dropped.map((row) => row.title);
   const finalSeriesCapDroppedReasons = finalSeriesCapResult.dropped.map((row) => row.reason);
   const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
+  const finalHandoffEmptyReason = finalAcceptedDocsLength > 0 && rankedDocsLength === 0 ? "final_recommender_handoff_empty" : "none";
   const droppedBeforeRenderReason =
     finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
-      ? (teenPostPassInputLength === 0
+      ? (finalHandoffEmptyReason !== "none"
+          ? finalHandoffEmptyReason
+          : teenPostPassInputLength === 0
           ? "no_postfilter_candidates"
           : teenPostPassOutputLength === 0
           ? "teen_postpass_eliminated_all"
@@ -4390,6 +4393,13 @@ const normalizedCandidatesRaw = [
     comicVineScoreBreakdownByTitle,
     finalSortFieldUsed,
     finalSortSource,
+    finalRecommenderReturnedKeys: Object.keys(finalDebugSnapshot || {}),
+    finalRecommenderRankedDocsLength: rankedDocsLength,
+    finalRecommenderAcceptedDocsLength: finalAcceptedDocsLength,
+    finalRecommenderAcceptedTitles: finalAcceptedDocsTitles,
+    routerReceivedRankedDocsLength: rankedDocsLength,
+    routerReceivedRankedDocsTitles: rankedDocsTitles,
+    finalHandoffEmptyReason,
     finalAcceptedDocsSource,
     finalAcceptedDocsTitles,
     finalRankedDocsBaseTitles,
