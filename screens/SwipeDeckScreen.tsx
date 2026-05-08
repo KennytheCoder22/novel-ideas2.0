@@ -1864,6 +1864,22 @@ function handleLeft() {
 
   function formatFinalRecommenderDebug(debug: any) {
     if (!debug || typeof debug !== "object") return "(none)";
+    const acceptedCountFromArray = Number(
+      debug?.finalSummaryAcceptedArrayLength ??
+      debug?.acceptedCount ??
+      0
+    );
+    const provisionalAcceptedCount = Number(
+      debug?.provisionalAcceptedCount ??
+      debug?.preGuardAcceptedCount ??
+      debug?.acceptedCount ??
+      0
+    );
+    const finalSummaryRejectedCount = Number(
+      debug?.finalSummaryRejectedCount ??
+      debug?.rejectedCount ??
+      0
+    );
     const rejectionCounts = debug?.rejectionCounts && typeof debug.rejectionCounts === "object"
       ? Object.entries(debug.rejectionCounts)
           .sort((a: any, b: any) => Number(b[1]) - Number(a[1]) || String(a[0]).localeCompare(String(b[0])))
@@ -1874,8 +1890,11 @@ function handleLeft() {
     return [
       `inputCount:${debug?.inputCount ?? 0}`,
       `dedupedCount:${debug?.dedupedCount ?? 0}`,
-      `acceptedCount:${debug?.acceptedCount ?? 0}`,
-      `rejectedCount:${debug?.rejectedCount ?? 0}`,
+      `acceptedCount:${acceptedCountFromArray}`,
+      `provisionalAcceptedCount:${provisionalAcceptedCount}`,
+      `finalSummaryAcceptedArrayLength:${Number(debug?.finalSummaryAcceptedArrayLength ?? acceptedCountFromArray)}`,
+      `rejectedCount:${finalSummaryRejectedCount}`,
+      `finalSummaryRejectedCount:${finalSummaryRejectedCount}`,
       `rejectionCounts:${rejectionCounts || "(none)"}`,
     ].join("\n");
   }
