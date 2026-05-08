@@ -1994,6 +1994,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const collectionBoost = collectionEditionBoost(c);
   const issuePenalty = issueFragmentPenalty(c);
   const foreignPenalty = foreignEditionPenalty(c);
+  const entryBoost = entryPointBoost(c);
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
@@ -2089,7 +2090,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty + entryBoost,
   };
 }
 
@@ -2324,6 +2325,17 @@ function foreignEditionPenalty(candidate: Candidate): number {
   const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
   if (/\b(und die|der|die|ausgabe|édition|edicion|edición|tomo|band)\b/.test(text)) return -8;
   return 0;
+}
+
+
+function entryPointBoost(candidate: Candidate): number {
+  const title = String(candidate.title || "");
+  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  let boost = 0;
+  if (/\b(vol\.?\s*1|volume\s*1|book\s*1|issue\s*1)\b/.test(text)) boost += 6;
+  if (/#\s*1\b/.test(title)) boost += 5;
+  if (/\b(master edition\s*#?\s*1|deluxe edition\s*#?\s*1|omnibus\s*vol\.?\s*1|compendium\s*#?\s*1)\b/.test(text)) boost += 7;
+  return boost;
 }
 
 function canTakeCandidate(

@@ -362,9 +362,15 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
   const baseAnchors = anchorQueries.slice(0, MAX_COMICVINE_ANCHORS);
-  const collectionFollowups = baseAnchors.flatMap((q) => [`${q} vol 1`, `${q} omnibus`, `${q} deluxe edition`, `${q} master edition`]);
-  const prioritizedQueries = [...baseAnchors, ...collectionFollowups, ...otherQueries, ...genericQueries];
-  const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(16, MAX_COMICVINE_ANCHORS));
+  const followupTemplates = ["vol 1", "omnibus", "deluxe edition", "master edition"];
+  const followupQueriesBuilt: string[] = [];
+  for (const template of followupTemplates) {
+    for (const anchor of baseAnchors) {
+      followupQueriesBuilt.push(`${anchor} ${template}`);
+    }
+  }
+  const prioritizedQueries = [...baseAnchors, ...followupQueriesBuilt, ...otherQueries, ...genericQueries];
+  const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(24, MAX_COMICVINE_ANCHORS));
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
@@ -418,16 +424,28 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
+  const followupFetched: string[] = [];
+  const followupDropped: Array<{ query: string; reason: string }> = [];
+  const baseAnchorsFetched: string[] = [];
+  const followupBudgetByAnchor: Record<string, number> = Object.fromEntries(baseAnchors.map((a) => [a, 0]));
   const selectedAnchorsForFetch = queriesToTry.filter((q) => knownAnchorPattern.test(q));
   const droppedAnchors = anchorQueries.filter((q) => !selectedAnchorsForFetch.includes(q));
   const fetchBudget = queriesToTry.length;
   let genericBudgetConsumed = 0;
 
-  const maxQueriesToFetch = Math.min(MAX_COMICVINE_ANCHORS + 4, queriesToTry.length);
+  const baseAnchorBudget = Math.min(MAX_COMICVINE_ANCHORS, baseAnchors.length);
+  const followupBudget = Math.min(baseAnchors.length * 2, queriesToTry.length - baseAnchorBudget);
+  const maxQueriesToFetch = Math.min(baseAnchorBudget + followupBudget, queriesToTry.length);
   for (let i = 0; i < maxQueriesToFetch; i += 1) {
     const q = stripDanglingQuotes(queriesToTry[i]);
     if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
     comicVineQueriesActuallyFetched.push(q);
+    if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);
+    if (!baseAnchors.includes(q) && followupQueriesBuilt.includes(q)) {
+      followupFetched.push(q);
+      const owner = baseAnchors.find((a) => q.startsWith(a + " "));
+      if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
+    }
     const hadDocsBeforeQuery = docs.length > 0;
     const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
     if (!rawCount) {
@@ -445,12 +463,23 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     // Continue through anchor budget for diversity; do not stop after early successes.
   }
 
+  const fetchedSet = new Set(comicVineQueriesActuallyFetched);
+  for (const q of followupQueriesBuilt) {
+    if (!fetchedSet.has(q)) followupDropped.push({ query: q, reason: "followup_budget_exhausted_or_truncated" });
+  }
+
   if (docs.length === 0) {
     const knownGoodProbeQueries = ["saga", "sandman", "monstress", "paper girls", "watchmen"];
     let probeFoundAny = false;
     for (const q of knownGoodProbeQueries) {
       if (comicVineQueriesActuallyFetched.includes(q)) continue;
       comicVineQueriesActuallyFetched.push(q);
+    if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);
+    if (!baseAnchors.includes(q) && followupQueriesBuilt.includes(q)) {
+      followupFetched.push(q);
+      const owner = baseAnchors.find((a) => q.startsWith(a + " "));
+      if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
+    }
       let issueUrls: string[] = [];
       const probe = await fetchDocsForQuery(q, 999, timeoutMs, fetchLimit, docs, seen);
       issueUrls = probe.rawCount > 0 ? ["found"] : [];
@@ -483,6 +512,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueriesGenerated: queriesToTry,
     comicVineRungsBuilt,
     comicVineQueriesActuallyFetched,
+    comicVineBaseAnchorsFetched: baseAnchorsFetched,
+    comicVineFollowupQueriesBuilt: followupQueriesBuilt,
+    comicVineFollowupQueriesFetched: followupFetched,
+    comicVineFollowupQueriesDropped: followupDropped.map((row) => row.query),
+    comicVineFollowupDropReasons: followupDropped,
+    comicVineFollowupBudgetByAnchor: followupBudgetByAnchor,
     comicVineAnchorQueriesBuilt: anchorQueries,
     comicVineAnchorQueriesSelectedForFetch: selectedAnchorsForFetch,
     comicVineAnchorQueriesDropped: droppedAnchors,
