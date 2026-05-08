@@ -1820,8 +1820,8 @@ function laneBlendScore(c: Candidate): number {
 
   const text = haystack(c);
   const softOverlap = Object.entries(weights).some(([family, rawWeight]) => {
-    const w = Number(rawWeight || 0);
-    if (w < 0.16) return false;
+    const weightValue = Number(rawWeight || 0);
+    if (weightValue < 0.16) return false;
     if (family === "thriller") return /thriller|suspense|crime|serial killer|missing|fbi|procedural/.test(text);
     if (family === "mystery") return /mystery|detective|investigation|case|whodunit|cold case/.test(text);
     if (family === "horror") return /horror|haunted|ghost|supernatural|occult|terror|dread/.test(text);
