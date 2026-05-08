@@ -35,31 +35,20 @@ function normalizeText(value: any): string {
 
 
 function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQueries: string[]; queryTooLong: boolean; excludedTermsAppliedInFilterOnly: boolean } {
-  const tokens = String(raw || "").toLowerCase().split(/\s+/).filter(Boolean);
-  const excluded = new Set(["true","crime","cozy","humorous","spy","conspiracy","writers","writer","writing","guide","reference","bibliography","analysis","criticism","review","summary","workbook","anthology"]);
-  const positive: string[] = [];
-  for (const t of tokens) {
-    if (t.startsWith("-")) continue;
-    const c = t.replace(/[^a-z0-9]/g, "");
-    if (!c || excluded.has(c)) continue;
-    positive.push(c);
-  }
-  const deduped = Array.from(new Set(positive));
-  const concise = deduped.slice(0, 6).join(" ").trim();
+  const normalized = normalizeText(raw);
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  const excluded = new Set(["graphic","novel","comics","comic","fiction","narrative","setting","stakes","slow","burn","consequence","true","crime","cozy","humorous","spy","conspiracy","writers","writer","writing","guide","reference","bibliography","analysis","criticism","review","summary","workbook","anthology"]);
+  const positive = tokens.filter((t) => !excluded.has(t) && t.length > 2).slice(0, 5);
+  const cleaned = Array.from(new Set(positive)).join(' ').trim();
   const queryTooLong = tokens.length > 12 || String(raw || "").length > 90;
-  const cleaned = concise;
+  const franchiseAnchors = [
+    "hellboy", "locke & key", "the sandman", "something is killing the children", "saga", "y: the last man",
+    "batman black mirror", "gideon falls", "department of truth", "sweet tooth", "invincible", "black hammer", "monstress"
+  ];
   const positiveQueries = Array.from(new Set([
-    cleaned && `${cleaned} graphic novel`,
-    cleaned && `${cleaned} comic`,
-    cleaned && `${cleaned}`,
-    "psychological suspense graphic novel",
-    "mystery thriller comic",
-    "dystopian thriller graphic novel",
-    "dark mystery graphic novel",
-    "survival suspense comic",
-  ].filter(Boolean) as string[]))
-    .map((q) => String(q || "").replace(/graphic novel\s+graphic novel/gi, "graphic novel").trim())
-    .filter((q) => !/^teen\s+graphic\s+novel\s+graphic\s+novel$/i.test(q));
+    cleaned,
+    ...franchiseAnchors,
+  ].filter(Boolean) as string[]));
   return { cleaned, positiveQueries, queryTooLong, excludedTermsAppliedInFilterOnly: true };
 }
 function safeNumber(value: any, fallback = 0): number {
@@ -308,6 +297,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (!doc?.title) continue;
+      const normalizedTitle = normalizeText(doc.title);
+      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) continue;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
       seen.add(dedupeKey);
@@ -354,7 +345,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const baseFromSeed = seedClean.positiveQueries;
   const directQueries = superheroSignal ? buildGcdSearchTerms(input.tagCounts) : [];
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
-  const fallbackQueries = superheroSignal ? ["batman"] : ["psychological suspense graphic novel","mystery thriller comic","dystopian thriller graphic novel","dark mystery graphic novel","survival suspense comic"];
+  const fallbackQueries = superheroSignal ? ["batman", "hellboy", "the sandman"] : ["sweet tooth", "saga", "y: the last man", "descender", "east of west", "black science", "paper girls", "something is killing the children"];
   const queriesToTry = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>String(q||"").trim()).filter(Boolean))).slice(0, 10);
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
