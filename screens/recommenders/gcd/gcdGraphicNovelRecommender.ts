@@ -16,6 +16,7 @@ const COMIC_VINE_PROXY_URL =
     ? COMIC_VINE_PROXY_URL_RAW
     : "/api/comicvine";
 let hasLoggedProbeProxyUrl = false;
+const MAX_COMICVINE_ANCHORS = 8;
 
 function buildProxyUrl(targetUrl: string): string {
   if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
@@ -358,7 +359,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q));
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
-  const queriesToTry = [...anchorQueries, ...otherQueries, ...genericQueries].slice(0, 10);
+  const prioritizedQueries = [...anchorQueries.slice(0, MAX_COMICVINE_ANCHORS), ...otherQueries, ...genericQueries];
+  const queriesToTry = prioritizedQueries.slice(0, Math.max(10, MAX_COMICVINE_ANCHORS));
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
@@ -436,7 +438,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     });
 
     if (docs.length >= fetchLimit) break;
-    if (i === 0 && docs.length >= Math.max(4, finalLimit)) break;
+    // Do not early-exit after first anchor; fetch multiple anchors for diversity.
   }
 
   if (docs.length === 0) {

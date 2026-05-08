@@ -1010,8 +1010,10 @@ let fictionPositive =
     /\b(dracula|the exorcist|the hobbit|foundation|dune|murder on the orient express|the hound of the baskervilles|the haunting of hill house)\b/.test(title);
   const knownClassicSignal = canonicalWorkOverride || classicAuthorWhitelist;
   if (!hasRealLength && !hasDescription) {
+    const sourceTextLocal = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+    const isComicVineLocal = sourceTextLocal.includes("comicvine");
     if (isOpenLibrarySource && knownClassicSignal) diagnostics.passedChecks.push("soft_sparse_classic_metadata");
-    else if (isOpenLibrarySource) diagnostics.passedChecks.push("soft_sparse_openlibrary_metadata");
+    else if (isOpenLibrarySource || isComicVineLocal) diagnostics.passedChecks.push("soft_sparse_openlibrary_metadata");
     else diagnostics.rejectReasons.push("insufficient_length_or_description");
   }
   if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
@@ -2027,6 +2029,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const knownComicSeries = /\b(hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y\s*:?\s*the last man|gideon falls|department of truth|sweet tooth|paper girls|invincible|watchmen)\b/.test(String(diagnostics.title || "").toLowerCase());
 
     const zeroRating = diagnostics.ratingsCount === 0;
+    const canonicalComicSignal = /\b(hellboy|seed of destruction|omnibus|in hell|locke\s*&\s*key|sandman|saga|paper girls|sweet tooth)\b/.test(String(diagnostics.title || "").toLowerCase());
+    const likelyTranslatedEdition = /\b(und die|der|die|les|el|la)\b/.test(String(diagnostics.title || "").toLowerCase());
+    if (canonicalComicSignal) diagnostics.passedChecks.push("comicvine_canonical_series_signal");
+    if (likelyTranslatedEdition) diagnostics.passedChecks.push("comicvine_translated_edition_penalty");
     const externalAuthoritySignal =
       diagnostics.flags.legitAuthority ||
       diagnostics.flags.authorAffinity ||
