@@ -2325,6 +2325,7 @@ function normalizedSeriesKey(candidate: Candidate): string {
   const root = rawTitle.split(':')[0]?.trim() || rawTitle;
   if (/^(saga|saga #\d+|saga vol\.?\s*\d+|saga volume\s+\d+)$/.test(root)) return "saga";
   if (/^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(root)) return "sandman";
+  if (/^runaways($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(root)) return "runaways";
   return root;
 }
 
@@ -2380,6 +2381,7 @@ function canonicalAnchorTitleBoost(candidate: Candidate): number {
   const strictAnchors: Array<{ key: string; pattern: RegExp }> = [
     { key: "saga", pattern: /^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
     { key: "sandman", pattern: /^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
+    { key: "runaways", pattern: /^runaways($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
   ];
   for (const rule of strictAnchors) {
     if (title === rule.key || rule.pattern.test(title)) {

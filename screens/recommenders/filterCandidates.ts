@@ -2028,12 +2028,34 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     const sourceText = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
     const isComicVineLike = sourceText.includes("comicvine") || sourceText.includes("comicvine");
-    const knownComicSeries = /\b(hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y\s*:?\s*the last man|gideon falls|department of truth|sweet tooth|paper girls|invincible|watchmen)\b/.test(String(diagnostics.title || "").toLowerCase());
+    const normalizedComicTitle = String(diagnostics.title || "").toLowerCase().trim();
+    const strictCanonicalRules: Array<{ anchor: string; rule: RegExp; reason: string }> = [
+      { anchor: "saga", rule: /^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/, reason: "strict_root_or_issue_or_volume" },
+      { anchor: "sandman", rule: /^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/, reason: "strict_root_or_issue_or_volume" },
+      { anchor: "runaways", rule: /^runaways($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/, reason: "strict_root_or_issue_or_volume" },
+    ];
+    const strictHit = strictCanonicalRules.find((row) => row.rule.test(normalizedComicTitle));
+    const knownComicSeries =
+      Boolean(strictHit) ||
+      /\b(hellboy|locke\s*&\s*key|something is killing the children|y\s*:?\s*the last man|gideon falls|department of truth|sweet tooth|paper girls|invincible|watchmen)\b/.test(normalizedComicTitle);
 
     const zeroRating = diagnostics.ratingsCount === 0;
-    const canonicalComicSignal = /\b(hellboy|seed of destruction|omnibus|in hell|locke\s*&\s*key|sandman|saga|paper girls|sweet tooth)\b/.test(String(diagnostics.title || "").toLowerCase());
+    const canonicalComicSignal =
+      Boolean(strictHit) ||
+      /\b(hellboy|seed of destruction|omnibus|in hell|locke\s*&\s*key|paper girls|sweet tooth)\b/.test(normalizedComicTitle);
     const likelyTranslatedEdition = /\b(und die|der|die|les|el|la)\b/.test(String(diagnostics.title || "").toLowerCase());
-    if (canonicalComicSignal) diagnostics.passedChecks.push("comicvine_canonical_series_signal");
+    if (/^runaways\s+.*\bsaga\b/.test(normalizedComicTitle)) {
+      diagnostics.rejectReasons.push("comicvine_invalid_runaways_saga_variant");
+      diagnostics.kept = false;
+      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+      continue;
+    }
+    if (canonicalComicSignal) {
+      diagnostics.passedChecks.push("comicvine_canonical_series_signal");
+      (diagnostics as any).comicVineCanonicalMatchReason = strictHit ? strictHit.reason : "broad_known_series_signal";
+      (diagnostics as any).comicVineCanonicalMatchRule = strictHit ? String(strictHit.rule) : "broad_known_series_regex";
+      (diagnostics as any).comicVineCanonicalMatchAnchor = strictHit?.anchor || "mixed";
+    }
     if (likelyTranslatedEdition) diagnostics.passedChecks.push("comicvine_translated_edition_penalty");
     const externalAuthoritySignal =
       diagnostics.flags.legitAuthority ||

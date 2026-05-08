@@ -18,6 +18,8 @@ const COMIC_VINE_PROXY_URL =
 let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
 
+type AnchorLane = "facet_weighted";
+
 function buildProxyUrl(targetUrl: string): string {
   if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
   if (GCD_PROXY_URL.includes("{url}")) return GCD_PROXY_URL.replace("{url}", encodeURIComponent(targetUrl));
@@ -101,6 +103,70 @@ function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
 
 function hasFacet(tagCounts: TagCounts | undefined, re: RegExp): boolean {
   return Object.entries(tagCounts || {}).some(([k, v]) => Number(v) > 0 && re.test(normalizeText(k)));
+}
+
+
+function topSwipeSignals(tagCounts: TagCounts | undefined, limit = 16): string[] {
+  return Object.entries(tagCounts || {})
+    .filter(([, v]) => Number(v) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, limit)
+    .map(([k]) => normalizeText(k));
+}
+
+function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
+  lane: AnchorLane;
+  mode: "story_facet_weighted";
+  anchors: string[];
+  reasonsByAnchor: Record<string, string[]>;
+  suppressedDefaults: string[];
+  topSignals: string[];
+} {
+  const signals = topSwipeSignals(tagCounts);
+  const signalText = signals.join(" ");
+  const storyFacets: Array<{ facet: string; re: RegExp }> = [
+    { facet: "coming-of-age", re: /coming of age|teen|young adult|school|identity|growing up/ },
+    { facet: "found family", re: /found family|team|crew|friends|community|belonging/ },
+    { facet: "dark supernatural mystery", re: /dark|supernatural|occult|mystery|haunted|monster|witch|paranormal/ },
+    { facet: "humor action", re: /funny|humor|comedy|action|energetic|quirky/ },
+    { facet: "dystopian sci-fi identity", re: /cyberpunk|dystopian|science fiction|future|ai|rebellion|space/ },
+    { facet: "fantasy adventure", re: /fantasy|magic|myth|quest|adventure|dungeons/ },
+    { facet: "crime noir psychological", re: /crime|detective|noir|moral|psychological|gritty/ },
+    { facet: "superhero", re: /superhero|marvel|dc|spider|batman|smallville|guardians/ },
+  ];
+  const facetWeights: Record<string, number> = {};
+  for (const row of storyFacets) facetWeights[row.facet] = row.re.test(signalText) ? 1 : 0;
+
+  const anchorProfiles: Array<{ anchor: string; facets: string[] }> = [
+    { anchor: "ms. marvel", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
+    { anchor: "spider-man", facets: ["coming-of-age", "humor action", "outsider identity", "superhero"] },
+    { anchor: "miles morales", facets: ["coming-of-age", "humor action", "superhero"] },
+    { anchor: "batman", facets: ["crime noir psychological", "mystery", "superhero"] },
+    { anchor: "teen titans", facets: ["coming-of-age", "found family", "superhero"] },
+    { anchor: "young justice", facets: ["coming-of-age", "found family", "superhero"] },
+    { anchor: "runaways", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
+    { anchor: "guardians of the galaxy", facets: ["found family", "dystopian sci-fi identity", "humor action", "superhero"] },
+    { anchor: "invincible", facets: ["coming-of-age", "psychological", "superhero"] },
+    { anchor: "scott pilgrim", facets: ["coming-of-age", "humor action", "found family"] },
+    { anchor: "locke & key", facets: ["dark supernatural mystery", "coming-of-age", "found family"] },
+    { anchor: "the sandman", facets: ["dark supernatural mystery", "melancholy", "psychological"] },
+    { anchor: "hellboy", facets: ["dark supernatural mystery", "humor action"] },
+    { anchor: "something is killing the children", facets: ["dark supernatural mystery", "coming-of-age"] },
+    { anchor: "saga", facets: ["dystopian sci-fi identity", "found family", "humor action"] },
+  ];
+
+  const scored = anchorProfiles.map((p) => {
+    const overlap = p.facets.filter((f) => facetWeights[f] > 0);
+    const score = overlap.length + (overlap.includes("superhero") ? 0.25 : 0);
+    return { ...p, overlap, score };
+  }).sort((a, b) => b.score - a.score);
+
+  const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
+  const anchors = selected.map((r) => r.anchor);
+  const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
+  const defaults = ["hellboy", "locke & key", "the sandman", "saga"];
+  const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
+  return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
@@ -300,22 +366,27 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const payload = await resp.json();
     const results = Array.isArray(payload?.results) ? payload.results : [];
     const before = docs.length;
+    const rejectedReasons: Record<string, number> = {};
+    const topTitles: string[] = [];
+    const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
-      if (!doc?.title) continue;
+      if (!doc?.title) { countReject("missing_title"); continue; }
+      if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
-      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) continue;
-      if (/^die\s+/i.test(String(doc.title || ""))) continue;
-      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) continue;
+      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); continue; }
+      if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); continue; }
+      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); continue; }
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
-      if (seen.has(dedupeKey)) continue;
+      if (seen.has(dedupeKey)) { countReject("deduped"); continue; }
       seen.add(dedupeKey);
       docs.push(doc);
       if (docs.length >= fetchLimit) break;
     }
-    return { rawCount: Math.max(0, docs.length - before), error: null };
+    const acceptedCount = Math.max(0, docs.length - before);
+    return { rawCount: results.length, acceptedCount, rejectedCount: Math.max(0, results.length - acceptedCount), topTitles, rejectedReasons, error: null };
   } catch (err: any) {
-    return { rawCount: 0, error: String(err?.message || err || "comicvine_search_failed") };
+    return { rawCount: 0, acceptedCount: 0, rejectedCount: 0, topTitles: [], rejectedReasons: {}, error: String(err?.message || err || "comicvine_search_failed") };
   } finally {
     clearTimeout(timer);
   }
@@ -349,32 +420,32 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const bucketQueries = Array.isArray((input as any)?.bucketPlan?.queries) ? (input as any).bucketPlan.queries.map((q:any)=>String(q||"" ).trim()).filter(Boolean) : [];
   const querySeed = bucketPreview || bucketQueries[0] || "";
   const seedClean = cleanComicVineSeedQuery(querySeed);
-  const normalizedSeed = normalizeText(seedClean.cleaned);
-  const superheroSignal = /batman|dc|marvel|superhero|spider\s?man|superman/.test(normalizedSeed);
-  const baseFromSeed = seedClean.positiveQueries;
-  const directQueries = superheroSignal ? buildGcdSearchTerms(input.tagCounts) : [];
+  const anchorSelection = selectComicVineAnchors(input.tagCounts);
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
-  const fallbackQueries = superheroSignal ? ["batman", "hellboy", "the sandman"] : ["sweet tooth", "saga", "y: the last man", "descender", "east of west", "black science", "paper girls", "something is killing the children"];
-  const allQueries = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
+  const allQueries = Array.from(new Set([...anchorSelection.anchors, ...facetQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
   const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
   const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$/i;
-  const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q));
+  const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q) || anchorSelection.anchors.includes(q));
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
   const baseAnchors = anchorQueries.slice(0, MAX_COMICVINE_ANCHORS);
   const followupTemplates = ["vol 1", "omnibus", "deluxe edition", "master edition"];
+  const MAX_FOLLOWUPS_PER_ANCHOR = 2;
   const followupQueriesBuilt: string[] = [];
-  for (const template of followupTemplates) {
-    for (const anchor of baseAnchors) {
+  for (const anchor of baseAnchors) {
+    for (const template of followupTemplates.slice(0, MAX_FOLLOWUPS_PER_ANCHOR)) {
       followupQueriesBuilt.push(`${anchor} ${template}`);
     }
   }
-  const prioritizedQueries = [...baseAnchors, ...followupQueriesBuilt, ...otherQueries, ...genericQueries];
+  // Anti-monoculture ordering: round-robin anchor + first followup before deeper followups.
+  const followupsTier1 = baseAnchors.map((a) => `${a} vol 1`);
+  const followupsTier2 = baseAnchors.map((a) => `${a} omnibus`);
+  const prioritizedQueries = [...baseAnchors, ...followupsTier1, ...otherQueries, ...followupsTier2, ...genericQueries];
   const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(24, MAX_COMICVINE_ANCHORS));
-  const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
-  const comicVineUsedFallbackQuery = !querySeed;
-  const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
-  const comicVinePositiveQueries = baseFromSeed;
+  const comicVineResolvedSeedQuery = anchorSelection.anchors[0] || queriesToTry[0] || "";
+  const comicVineUsedFallbackQuery = false;
+  const comicVineFallbackReason = "tag_profile_anchor_selection";
+  const comicVinePositiveQueries = anchorSelection.anchors;
   const comicVineExcludedTermsAppliedInFilterOnly = seedClean.excludedTermsAppliedInFilterOnly;
   const comicVineQueryTooLong = seedClean.queryTooLong;
   const gcdRungs = buildComicVineRungs(queriesToTry);
@@ -415,13 +486,23 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       comicVinePositiveQueries,
       comicVineExcludedTermsAppliedInFilterOnly,
       comicVineQueryTooLong,
+      comicVineAnchorSelectionMode: anchorSelection.mode,
+      comicVineAnchorReasonsByAnchor: anchorSelection.reasonsByAnchor,
+      comicVineTopSwipeSignals: anchorSelection.topSignals,
+      comicVineSuppressedDefaultAnchors: anchorSelection.suppressedDefaults,
+      comicVineActiveAnchorLane: anchorSelection.lane,
     };
   }
 
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
-  const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
+  const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; acceptedCount: number; rejectedCount: number; topTitles: string[]; rejectedReasons: Record<string, number>; error: string | null }> = [];
+  const comicVineRawCountByQuery: Record<string, number> = {};
+  const comicVineAcceptedCountByQuery: Record<string, number> = {};
+  const comicVineRejectedCountByQuery: Record<string, number> = {};
+  const comicVineTopTitlesByQuery: Record<string, string[]> = {};
+  const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
   const followupFetched: string[] = [];
@@ -434,10 +515,20 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   let genericBudgetConsumed = 0;
 
   const baseAnchorBudget = Math.min(MAX_COMICVINE_ANCHORS, baseAnchors.length);
-  const followupBudget = Math.min(baseAnchors.length * 2, queriesToTry.length - baseAnchorBudget);
+  const followupBudget = Math.min(baseAnchors.length * MAX_FOLLOWUPS_PER_ANCHOR, queriesToTry.length - baseAnchorBudget);
   const maxQueriesToFetch = Math.min(baseAnchorBudget + followupBudget, queriesToTry.length);
+  const MAX_ANCHOR_SHARE = 0.35;
+  const queryCountsByAnchor: Record<string, number> = Object.fromEntries(baseAnchors.map((a) => [a, 0]));
   for (let i = 0; i < maxQueriesToFetch; i += 1) {
     const q = stripDanglingQuotes(queriesToTry[i]);
+    const qAnchor = baseAnchors.find((a) => q === a || q.startsWith(a + " "));
+    if (qAnchor) {
+      const nextCount = (queryCountsByAnchor[qAnchor] || 0) + 1;
+      const projectedShare = nextCount / Math.max(1, comicVineQueriesActuallyFetched.length + 1);
+      const hasDiversifiedEnough = Object.values(queryCountsByAnchor).filter((n) => n > 0).length >= 3;
+      if (hasDiversifiedEnough && projectedShare > MAX_ANCHOR_SHARE) continue;
+      queryCountsByAnchor[qAnchor] = nextCount;
+    }
     if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
     comicVineQueriesActuallyFetched.push(q);
     if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);
@@ -447,9 +538,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
     }
     const hadDocsBeforeQuery = docs.length > 0;
-    const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
-    if (!rawCount) {
-      comicVineFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount: 0, error });
+    const { rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+    comicVineRawCountByQuery[q] = rawCount;
+    comicVineAcceptedCountByQuery[q] = acceptedCount;
+    comicVineRejectedCountByQuery[q] = rejectedCount;
+    comicVineTopTitlesByQuery[q] = topTitles;
+    comicVineAdapterDropReasonsByQuery[q] = rejectedReasons;
+    if (!acceptedCount) {
+      comicVineFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
       continue;
     }
     if (!hadDocsBeforeQuery) builtFromQuery = q;
@@ -457,6 +553,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       query: q,
       status: rawCount > 0 ? "ok" : error ? "error" : "no_matches",
       rawCount,
+      acceptedCount,
+      rejectedCount,
+      topTitles,
+      rejectedReasons,
       error,
     });
 
@@ -469,7 +569,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
 
   if (docs.length === 0) {
-    const knownGoodProbeQueries = ["saga", "sandman", "monstress", "paper girls", "watchmen"];
+    const knownGoodProbeQueries = ["batman", "spider-man", "ms. marvel", "locke & key", "saga", "guardians of the galaxy"];
     let probeFoundAny = false;
     for (const q of knownGoodProbeQueries) {
       if (comicVineQueriesActuallyFetched.includes(q)) continue;
@@ -526,6 +626,13 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineFetchBudgetConsumedByGenericQueries: genericBudgetConsumed,
     comicVineQueryTexts: queriesToTry,
     comicVineFetchResults,
+    comicVineRawCountByQuery,
+    comicVineAcceptedCountByQuery,
+    comicVineRejectedCountByQuery,
+    comicVineTopTitlesByQuery,
+    comicVineAdapterDropReasonsByQuery,
+    comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
+    comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,
     gcdAdapterStatus: "ok",
     comicVineZeroResultReason: docs.length ? null : "no_issue_api_matches",

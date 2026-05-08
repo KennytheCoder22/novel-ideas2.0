@@ -80,6 +80,7 @@ function finalSeriesKeyForRender(doc: any): string {
   if (/^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(title)) return "saga";
   if (/\bhellboy\b/.test(title)) return "hellboy";
   if (/^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(title)) return "sandman";
+  if (/^runaways($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(title)) return "runaways";
   if (/y\s*:?\s*the\s+last\s+man/.test(title)) return "y-the-last-man";
   if (/department\s+of\s+truth/.test(title)) return "department-of-truth";
   if (/gideon\s+falls/.test(title)) return "gideon-falls";
@@ -2969,6 +2970,11 @@ export async function getRecommendations(
   const comicVineRungsBuilt = new Set<string>();
   const comicVineQueriesActuallyFetched = new Set<string>();
   const comicVineFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
+  const comicVineRawCountByQuery: Record<string, number> = {};
+  const comicVineAcceptedCountByQuery: Record<string, number> = {};
+  const comicVineRejectedCountByQuery: Record<string, number> = {};
+  const comicVineTopTitlesByQuery: Record<string, string[]> = {};
+  const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
   let comicVineDispatchedOnce = false;
@@ -3116,6 +3122,11 @@ export async function getRecommendations(
                 error: row?.error ? String(row.error) : null,
               });
             }
+            Object.assign(comicVineRawCountByQuery, value?.comicVineRawCountByQuery || {});
+            Object.assign(comicVineAcceptedCountByQuery, value?.comicVineAcceptedCountByQuery || {});
+            Object.assign(comicVineRejectedCountByQuery, value?.comicVineRejectedCountByQuery || {});
+            Object.assign(comicVineTopTitlesByQuery, value?.comicVineTopTitlesByQuery || {});
+            Object.assign(comicVineAdapterDropReasonsByQuery, value?.comicVineAdapterDropReasonsByQuery || {});
           } else {
             comicVineFetchResults.push({
               query,
@@ -4221,6 +4232,14 @@ const normalizedCandidatesRaw = [
     comicVineRungsBuilt: Array.from(comicVineRungsBuilt),
     comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched),
     gcdFetchResults: comicVineFetchResults,
+    comicVineFetchResults,
+    comicVineRawCountByQuery,
+    comicVineAcceptedCountByQuery,
+    comicVineRejectedCountByQuery,
+    comicVineTopTitlesByQuery,
+    comicVineAdapterDropReasonsByQuery,
+    comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
+    comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineResolvedSeedQuery,
     comicVineFallbackReason,
     comicVineUsedFallbackQuery,
