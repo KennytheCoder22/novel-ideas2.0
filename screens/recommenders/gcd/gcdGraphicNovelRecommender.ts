@@ -25,6 +25,10 @@ function buildProxyUrl(targetUrl: string): string {
   return `${GCD_PROXY_URL}?url=${encodeURIComponent(targetUrl)}`;
 }
 
+function stripDanglingQuotes(value: string): string {
+  return String(value || "").replace(/^["'“”‘’`]+/, "").replace(/["'“”‘’`]+$/, "").trim();
+}
+
 function normalizeText(value: any): string {
   return String(value || "")
     .toLowerCase()
@@ -346,7 +350,13 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const directQueries = superheroSignal ? buildGcdSearchTerms(input.tagCounts) : [];
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
   const fallbackQueries = superheroSignal ? ["batman", "hellboy", "the sandman"] : ["sweet tooth", "saga", "y: the last man", "descender", "east of west", "black science", "paper girls", "something is killing the children"];
-  const queriesToTry = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>String(q||"").trim()).filter(Boolean))).slice(0, 10);
+  const allQueries = Array.from(new Set([...baseFromSeed, ...facetQueries, ...directQueries, ...fallbackQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
+  const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
+  const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$/i;
+  const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q));
+  const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
+  const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
+  const queriesToTry = [...anchorQueries, ...otherQueries, ...genericQueries].slice(0, 10);
   const comicVineResolvedSeedQuery = querySeed || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = !querySeed;
   const comicVineFallbackReason = querySeed ? "none" : "missing_seed_query";
@@ -375,6 +385,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       debugRungStats: { byRung: {}, byRungSource: {}, total: 0 } as any,
       debugFilterAudit: [{ source: "comicVine", reason: "no_queries_generated", detail: "No GCD queries could be generated from tag counts." }],
       comicVineQueriesGenerated: [],
+      comicVineAnchorQueriesBuilt: anchorQueries,
+      comicVineAnchorQueriesSelectedForFetch: [],
+      comicVineAnchorQueriesDropped: anchorQueries,
+      comicVineAnchorDropReasons: anchorQueries.map((q) => ({ query: q, reason: "no_queries_generated" })),
+      comicVineFetchBudget: 0,
+      comicVineFetchBudgetConsumedByGenericQueries: 0,
       comicVineRungsBuilt: [],
       comicVineQueriesActuallyFetched: [],
       comicVineFetchAttempted: false,
@@ -394,9 +410,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; error: string | null }> = [];
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
+  const selectedAnchorsForFetch = queriesToTry.filter((q) => knownAnchorPattern.test(q));
+  const droppedAnchors = anchorQueries.filter((q) => !selectedAnchorsForFetch.includes(q));
+  const fetchBudget = queriesToTry.length;
+  let genericBudgetConsumed = 0;
 
   for (let i = 0; i < queriesToTry.length; i += 1) {
-    const q = queriesToTry[i];
+    const q = stripDanglingQuotes(queriesToTry[i]);
+    if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
     comicVineQueriesActuallyFetched.push(q);
     const hadDocsBeforeQuery = docs.length > 0;
     const { rawCount, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
@@ -454,6 +475,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueriesGenerated: queriesToTry,
     comicVineRungsBuilt,
     comicVineQueriesActuallyFetched,
+    comicVineAnchorQueriesBuilt: anchorQueries,
+    comicVineAnchorQueriesSelectedForFetch: selectedAnchorsForFetch,
+    comicVineAnchorQueriesDropped: droppedAnchors,
+    comicVineAnchorDropReasons: droppedAnchors.map((q) => ({ query: q, reason: "fetch_budget_limited" })),
+    comicVineFetchBudget: fetchBudget,
+    comicVineFetchBudgetConsumedByGenericQueries: genericBudgetConsumed,
     comicVineQueryTexts: queriesToTry,
     comicVineFetchResults,
     comicVineFetchAttempted: true,
