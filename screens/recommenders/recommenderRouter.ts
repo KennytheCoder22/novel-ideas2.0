@@ -1536,10 +1536,10 @@ function applyLaneAffinityMultipliers(
     const multiplier = Number(affinityMultipliers?.[family] || 1);
     adjusted[family] = Math.max(0, Number(weight) * multiplier);
   }
-  const ranked = Object.entries(adjusted).filter(([, w]) => w > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
-  const total = ranked.reduce((sum, [, w]) => sum + w, 0) || 1;
+  const ranked = Object.entries(adjusted).filter(([, weightValue]) => weightValue > 0).sort((a, b) => b[1] - a[1]).slice(0, 3);
+  const total = ranked.reduce((sum, [, weightValue]) => sum + weightValue, 0) || 1;
   const out: Record<string, number> = {};
-  for (const [family, w] of ranked) out[family] = Number((w / total).toFixed(3));
+  for (const [family, weightValue] of ranked) out[family] = Number((weightValue / total).toFixed(3));
   return out;
 }
 
