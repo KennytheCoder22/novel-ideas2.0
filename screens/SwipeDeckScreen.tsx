@@ -2006,6 +2006,8 @@ function handleLeft() {
       `recommendFunctionReturned:${Boolean(recommendFunctionReturned)}`,
       `recommendationResultWasPersisted:${Boolean(recommendationResultWasPersisted)}`,
       `recommendFunctionError:${recommendFunctionError || "(none)"}`,
+      `comicVineFinalScoreByTitle:${JSON.stringify((lastRecommendationResult as any)?.comicVineFinalScoreByTitle || [])}`,
+      `comicVineScoreBreakdownByTitle:${JSON.stringify((lastRecommendationResult as any)?.comicVineScoreBreakdownByTitle || [])}`,
       `recommendFunctionErrorPhase:${recommendFunctionErrorPhase || "(none)"}`,
       `recommendFunctionErrorStack:${recommendFunctionErrorStack || "(none)"}`,
       `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,

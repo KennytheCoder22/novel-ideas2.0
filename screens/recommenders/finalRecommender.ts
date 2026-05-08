@@ -1997,6 +1997,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const entryBoost = entryPointBoost(c);
   const canonicalBoost = canonicalAnchorTitleBoost(c);
   const sidePenalty = sideStoryPenalty(c);
+  const laterCollectionPenalty = laterCollectionVolumePenalty(c);
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
@@ -2104,7 +2105,7 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     entryPointBoost: entryBoost,
     canonicalAnchorTitleBoost: canonicalBoost,
     sideStoryPenalty: sidePenalty,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty + entryBoost + canonicalBoost + sidePenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty + entryBoost + canonicalBoost + sidePenalty + laterCollectionPenalty,
   };
 }
 
@@ -2369,7 +2370,22 @@ function canonicalAnchorTitleBoost(candidate: Candidate): number {
 
 function sideStoryPenalty(candidate: Candidate): number {
   const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
-  if (/\b(special|winter special|being human|bones of giants|small world|in pale battalions go|hell & gone|dream hunters|universe special|junior|giant robot)\b/.test(text)) return -12;
+  if (/\b(special|winter special|being human|bones of giants|small world|in pale battalions go|hell & gone|dream hunters|universe special|sandman universe|dollar comics|junior|giant robot)\b/.test(text)) return -16;
+  return 0;
+}
+
+function laterCollectionVolumePenalty(candidate: Candidate): number {
+  const text = normalize(`${candidate.title || ''} ${candidate.subtitle || ''}`);
+  const patterns = [
+    /(master edition|deluxe edition|treasury edition|compendium)\s*#\s*(\d+)/,
+    /(omnibus|volume|vol\.?|book)\s*(\d+)/,
+  ];
+  for (const rx of patterns) {
+    const m = text.match(rx);
+    if (!m) continue;
+    const n = Number(m[2] || 0);
+    if (n >= 2) return -14;
+  }
   return 0;
 }
 function canTakeCandidate(
