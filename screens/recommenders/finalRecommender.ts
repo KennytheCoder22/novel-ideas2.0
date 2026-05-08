@@ -535,13 +535,14 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   if (rescueBypassCount >= 2 && !fictionSignals) {
     return { pass: false, reason: 'low_metadata_trust', detail: 'multiple rescue/bypass flags without fiction evidence' };
   }
+  const source = String(c.source || (c as any)?.rawDoc?.source || "").toLowerCase();
   const knownAuthorityForZeroRating =
     anchorBoost(c) >= 10 ||
     /\b(penguin|random house|knopf|doubleday|viking|harper|macmillan|tor|simon\s*&?\s*schuster|hachette|st\.? martin|ballantine|minotaur|mysterious press)\b/.test(normalize(c.publisher)) ||
     Boolean((c.rawDoc as any)?.commercialSignals?.bestseller) ||
     Boolean((c.rawDoc as any)?.commercialSignals?.hasMainstreamPublisherSignal);
 
-  if (isRescuedBorderline && (c.ratingCount || 0) === 0 && !knownAuthorityForZeroRating) {
+  if (source !== "comicvine" && isRescuedBorderline && (c.ratingCount || 0) === 0 && !knownAuthorityForZeroRating) {
     return { pass: false, reason: 'low_metadata_trust', detail: 'zero-rating rescued item without authority signal' };
   }
   if (isOL) {
@@ -558,7 +559,6 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     check.includes('metadata_shape_relaxation')
   ).length;
 
-  const source = String(c.source || (c as any)?.rawDoc?.source || "").toLowerCase();
   const queryFamily = String((c as any)?.queryFamily || (c as any)?.rawDoc?.queryFamily || diagnostics?.queryFamily || "unknown").toLowerCase();
   const queryText = String((c as any)?.queryText || (c as any)?.rawDoc?.queryText || diagnostics?.queryText || "").toLowerCase();
   const genreText = haystack(c);
@@ -610,9 +610,11 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
     Number((c as any)?.diagnostics?.tasteAlignment || 0) > 0.5,
     String(c.description || "").trim().length >= 80,
   ].filter(Boolean).length;
+  const knownComicVineSeries = /\b(hellboy|saga|sweet tooth|sandman|watchmen|invincible|locke\s*&\s*key|department of truth|gideon falls|black hammer|monstress|y\s*:?\s*the last man)\b/.test(String(c.title || "").toLowerCase());
+  const comicVineAuthoritySignal = knownComicVineSeries || /\b(dc|marvel|image|dark horse|vertigo|boom|idw)\b/.test(String(c.publisher || c.rawDoc?.publisher || "").toLowerCase()) || Boolean(c.hasCover) || String(c.description || "").trim().length >= 40;
   if (source === "comicvine") {
     const lacksActiveFamilySemantic = !activeFamilyMatch || !(diagnostics?.flags?.thrillerPositive || diagnostics?.flags?.mysteryPositive || diagnostics?.flags?.suspensePositive || diagnostics?.flags?.speculativePositive);
-    if (rawMatches <= 0 && !titleMeaningfulOverlap && !descriptionMeaningfulOverlap && lacksActiveFamilySemantic && !swipeFranchiseSignal) {
+    if (rawMatches <= 0 && !titleMeaningfulOverlap && !descriptionMeaningfulOverlap && lacksActiveFamilySemantic && !swipeFranchiseSignal && !comicVineAuthoritySignal) {
       (c as any).diagnostics.comicVineAdmissionPath = "blocked_raw0_no_semantic_alignment";
       (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
       return { pass: false, reason: "weak_comicvine_semantic_alignment", detail: "hard-block rawMatches<=0 and no meaningful alignment" };
@@ -621,13 +623,13 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
       passedChecks.includes("soft_missing_science_fiction_signal") &&
       passedChecks.includes("soft_lane_mismatch_science_fiction") &&
       passedChecks.includes("soft_too_many_soft_failures");
-    if (hasSoftFailureTriplet && rawMatches < 2 && !explicitGenreMatch) {
+    if (hasSoftFailureTriplet && rawMatches < 2 && !explicitGenreMatch && !comicVineAuthoritySignal) {
       return { pass: false, reason: "weak_comicvine_semantic_alignment", detail: "soft-failure triplet without raw or explicit genre support" };
     }
     const weakUnknownFamily = queryFamily === "unknown";
     const genericTeenQuery = /teen\s+graphic\s+novel\s+graphic\s+novel/.test(queryText);
     const structuralOnlySignals = semanticPositiveCount < 1;
-    if (genericTeenQuery || structuralOnlySignals || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2 || (rawMatches === 0 && weakUnknownFamily && semanticPositiveCount === 0)) {
+    if ((genericTeenQuery || structuralOnlySignals || (weakUnknownFamily && strongSemanticSignals < 3) || strongSemanticSignals < 2 || (rawMatches === 0 && weakUnknownFamily && semanticPositiveCount === 0)) && !comicVineAuthoritySignal) {
       (c as any).diagnostics.comicVineAdmissionPath = "blocked_weak_alignment";
       (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
       return { pass: false, reason: 'weak_comicvine_semantic_alignment', detail: `signals=${strongSemanticSignals} family=${queryFamily} query=${queryText}` };
@@ -669,7 +671,7 @@ function passesQuality(c: Candidate): { pass: boolean; reason?: QualityRejectRea
   }
 
   if (source === "comicvine") {
-    const hasComicVineAcceptSignal = rawMatches >= 1 || titleMeaningfulOverlap || descriptionMeaningfulOverlap || swipeFranchiseSignal;
+    const hasComicVineAcceptSignal = rawMatches >= 1 || titleMeaningfulOverlap || descriptionMeaningfulOverlap || swipeFranchiseSignal || comicVineAuthoritySignal;
     if (!hasComicVineAcceptSignal) {
       (c as any).diagnostics.comicVineAdmissionPath = "blocked_missing_accept_signal";
       (c as any).diagnostics.comicVineWeakAlignmentBlocked = true;
@@ -1818,8 +1820,8 @@ function laneBlendScore(c: Candidate): number {
 
   const text = haystack(c);
   const softOverlap = Object.entries(weights).some(([family, rawWeight]) => {
-    const w = Number(rawWeight || 0);
-    if (w < 0.16) return false;
+    const weightValue = Number(rawWeight || 0);
+    if (weightValue < 0.16) return false;
     if (family === "thriller") return /thriller|suspense|crime|serial killer|missing|fbi|procedural/.test(text);
     if (family === "mystery") return /mystery|detective|investigation|case|whodunit|cold case/.test(text);
     if (family === "horror") return /horror|haunted|ghost|supernatural|occult|terror|dread/.test(text);
@@ -1989,6 +1991,13 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
   const sessionFit = sessionFitScore(c);
   const personalAffinity = twentyQPersonalAffinityScore(c, taste);
   const weightedPersonalAffinity = personalAffinity * PERSONAL_AFFINITY_WEIGHT;
+  const collectionBoost = collectionEditionBoost(c);
+  const issuePenalty = issueFragmentPenalty(c);
+  const foreignPenalty = foreignEditionPenalty(c);
+  const entryBoost = entryPointBoost(c);
+  const canonicalBoost = canonicalAnchorTitleBoost(c);
+  const sidePenalty = sideStoryPenalty(c);
+  const laterCollectionPenalty = laterCollectionVolumePenalty(c);
   const tasteMismatchPenalty = personalAffinity < -4 ? NEGATIVE_TASTE_MISMATCH_PENALTY : 0;
   const laneBlend = laneBlendScore(c);
   const tone = computeToneMatchScore(c, taste);
@@ -2037,6 +2046,12 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
+    collectionEditionBoost: collectionBoost,
+    issueFragmentPenalty: issuePenalty,
+    foreignEditionPenalty: foreignPenalty,
+    entryPointBoost: entryBoost,
+    canonicalAnchorTitleBoost: canonicalBoost,
+    sideStoryPenalty: sidePenalty,
     finalScore: 0,
   }, taste) ? 0 : -16;
   const hardNegativeGate = (() => {
@@ -2084,7 +2099,13 @@ function scoreCandidateDetailed(c: Candidate, taste?: TasteProfile): ScoreBreakd
     groundedRealismScore: groundedRealism,
     psychologicalIntensityScore: psychologicalIntensity,
     emotionalWeightScore: emotionalWeight,
-    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty,
+    collectionEditionBoost: collectionBoost,
+    issueFragmentPenalty: issuePenalty,
+    foreignEditionPenalty: foreignPenalty,
+    entryPointBoost: entryBoost,
+    canonicalAnchorTitleBoost: canonicalBoost,
+    sideStoryPenalty: sidePenalty,
+    finalScore: queryScore + metadataScore + authority + authorityRankBoost + behavior + narrative + rankingPriority + penalties + familyAlignment + laneCommitment + genericPenalty + overfit + noveltyPenalty + confidencePenalty + seriesFormulaPenalty + genericQueryPenalty + rescuePenalty + softFailurePenalty + axisAlignment + classicPenalty + qualityGatePenalty + anchor + filterSignals + sessionFit + weightedPersonalAffinity + tasteMismatchPenalty + laneBlend + tone + procurement + groundedRealism + psychologicalIntensity + emotionalWeight + openLibraryRecoveredBoost + hardNegativeGate + softPenalty + collectionBoost + issuePenalty + foreignPenalty + entryBoost + canonicalBoost + sidePenalty + laterCollectionPenalty,
   };
 }
 
@@ -2153,6 +2174,13 @@ function withScores(c: Candidate, breakdown: ScoreBreakdown, taste?: TasteProfil
       ...((c as any)?.diagnostics || {}),
       preFilterScore: breakdown.finalScore,
       postFilterScore: breakdown.finalScore,
+      collectionEditionBoost: Number((breakdown as any).collectionEditionBoost || 0),
+      issueFragmentPenalty: Number((breakdown as any).issueFragmentPenalty || 0),
+      foreignEditionPenalty: Number((breakdown as any).foreignEditionPenalty || 0),
+      entryPointBoost: Number((breakdown as any).entryPointBoost || 0),
+      canonicalAnchorTitleBoost: Number((breakdown as any).canonicalAnchorTitleBoost || 0),
+      sideStoryPenalty: Number((breakdown as any).sideStoryPenalty || 0),
+      finalScore: Number(breakdown.finalScore || 0),
     },
     scoreBreakdown: breakdown,
     personalFitReasons,
@@ -2287,6 +2315,117 @@ function seriesClusterKey(candidate: Candidate): string {
   return match?.[1]?.trim() || "";
 }
 
+
+function normalizedSeriesKey(candidate: Candidate): string {
+  const rawTitle = normalize(candidate.title)
+    .replace(/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|vol\.?\s*\d+|volume\s*\d+|book\s*\d+|#\s*\d+)\b/g, " ")
+    .replace(/[^a-z0-9\s:&]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const root = rawTitle.split(':')[0]?.trim() || rawTitle;
+  if (/^(saga|saga #\d+|saga vol\.?\s*\d+|saga volume\s+\d+)$/.test(root)) return "saga";
+  if (/^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/.test(root)) return "sandman";
+  return root;
+}
+
+function comicTitle(candidate: Candidate): string {
+  return String(
+    candidate?.title ||
+    (candidate as any)?.rawDoc?.title ||
+    (candidate as any)?.rawDoc?.name ||
+    (candidate as any)?.rawDoc?.volumeName ||
+    (candidate as any)?.rawDoc?.displayTitle ||
+    ""
+  );
+}
+
+function collectionEditionBoost(candidate: Candidate): number {
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  if (/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|tpb|volume\s*1|vol\.?\s*1)\b/.test(text)) return 8;
+  return 0;
+}
+
+function issueFragmentPenalty(candidate: Candidate): number {
+  const title = comicTitle(candidate);
+  const text = normalize(title);
+  const issueMatch = title.match(/#\s*(\d+)/);
+  const issueNumber = issueMatch ? Number(issueMatch[1]) : 0;
+  const isIssueLike = issueNumber > 0 || /\bissue\s*\d+\b/.test(text);
+  const hasCollectionSignal = /\b(master edition|deluxe|treasury|omnibus|compendium|volume|vol\.|tpb|hardcover collection)\b/.test(text);
+  if (!isIssueLike || hasCollectionSignal) return 0;
+  if (issueNumber <= 1) return -2;
+  return -10;
+}
+
+function foreignEditionPenalty(candidate: Candidate): number {
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  if (/\b(kompendium|und|die|der|ausgabe|édition|edicion|edición|tomo|band|au mexique|semya|la isla)\b/.test(text) || /[čćžšđñáéíóúàèìòù]/.test(text)) return -14;
+  return 0;
+}
+
+
+function entryPointBoost(candidate: Candidate): number {
+  const title = comicTitle(candidate);
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  let boost = 0;
+  if (/\b(vol\.?\s*1|volume\s*1|book\s*1|issue\s*1)\b/.test(text)) boost += 6;
+  if (/#\s*1\b/.test(title)) boost += 5;
+  if (/\b(master edition\s*#?\s*1|deluxe edition\s*#?\s*1|omnibus\s*vol\.?\s*1|compendium\s*#?\s*1)\b/.test(text)) boost += 7;
+  return boost;
+}
+
+
+function canonicalAnchorTitleBoost(candidate: Candidate): number {
+  const title = normalize(String(candidate.title || ""));
+  const strictAnchors: Array<{ key: string; pattern: RegExp }> = [
+    { key: "saga", pattern: /^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
+    { key: "sandman", pattern: /^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/ },
+  ];
+  for (const rule of strictAnchors) {
+    if (title === rule.key || rule.pattern.test(title)) {
+      if (title === rule.key || title === `the ${rule.key}`) return 12;
+      if (/\s+#1$|\s+vol\.?\s*1$|\s+volume\s+1$/.test(title)) return 10;
+      return 6;
+    }
+  }
+
+  const broadAnchors = [
+    "hellboy",
+    "locke & key",
+    "y: the last man",
+    "gideon falls",
+    "department of truth",
+    "something is killing the children",
+  ];
+  for (const anchor of broadAnchors) {
+    const a = normalize(anchor);
+    if (title === a) return 12;
+    if (title.startsWith(a + " #1") || title.startsWith(a + " vol 1") || title.startsWith(a + " volume 1")) return 10;
+    if (title.startsWith(a)) return 6;
+  }
+  return 0;
+}
+
+function sideStoryPenalty(candidate: Candidate): number {
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  if (/\b(special|winter special|being human|bones of giants|small world|in pale battalions go|hell & gone|dream hunters|universe special|sandman universe|dollar comics|junior|giant robot)\b/.test(text)) return -16;
+  return 0;
+}
+
+function laterCollectionVolumePenalty(candidate: Candidate): number {
+  const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
+  const patterns = [
+    /(master edition|deluxe edition|treasury edition|compendium)\s*#\s*(\d+)/,
+    /(omnibus|volume|vol\.?|book)\s*(\d+)/,
+  ];
+  for (const rx of patterns) {
+    const m = text.match(rx);
+    if (!m) continue;
+    const n = Number(m[2] || 0);
+    if (n >= 2) return -14;
+  }
+  return 0;
+}
 function canTakeCandidate(
   candidate: Candidate,
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
@@ -2298,9 +2437,12 @@ function canTakeCandidate(
   const count = authorCounts.get(author) || 0;
   if (count >= 2) return false;
 
-  const seriesKey = seriesClusterKey(candidate);
-  if (seriesKey && selected.some((entry) => seriesClusterKey(entry.candidate) === seriesKey)) {
-    return false;
+  const seriesKey = normalizedSeriesKey(candidate) || seriesClusterKey(candidate);
+  const source = String(candidate.source || candidate.rawDoc?.source || "").toLowerCase();
+  const perSeriesCap = source === "comicvine" ? 2 : 1;
+  if (seriesKey) {
+    const sameSeriesCount = selected.filter((entry) => (normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate)) === seriesKey).length;
+    if (sameSeriesCount >= perSeriesCap) return false;
   }
 
   if (isOpenLibraryCandidate(candidate) && !passesOpenLibrarySelectionFloor(candidate)) {
@@ -2815,8 +2957,11 @@ export function finalRecommenderForDeck(
     return out;
   })();
   if (diversityBalanced.length < 3) {
-    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length });
-    return [];
+    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length, fallback: "ordered_scored_docs" });
+    const fallbackDocs = ordered
+      .slice(0, Math.min(MAX_RESULTS, Math.max(5, ordered.length)))
+      .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
+    return attachNearbyAlternativeReason(fallbackDocs, ordered);
   }
   const clusterBreakdown: Record<string, number> = {};
   for (const entry of diversityBalanced) {

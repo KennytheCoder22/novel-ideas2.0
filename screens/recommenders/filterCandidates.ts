@@ -886,6 +886,8 @@ let fictionPositive =
   const suspensePositive =
     /\b(suspense|psychological suspense|domestic suspense|tension|cat and mouse)\b/.test(combined);
 
+  const comicVineAnchorIntent = /locke\s*&\s*key|saga|sandman|hellboy|y\s*:?\s*the\s+last\s+man|gideon\s+falls|department\s+of\s+truth|something\s+is\s+killing\s+the\s+children/.test(queryIntentText + " " + combined);
+
   const horrorAligned =
     isHorrorLane && /\b(horror|haunted|haunting|ghost|supernatural|occult|monster|creature|survival horror|psychological horror|haunted house|terror|dread|eerie|disturbing|gothic|possession|vampire|zombie)\b/.test([combined, queryIntentText].join(" "));
 
@@ -1010,8 +1012,10 @@ let fictionPositive =
     /\b(dracula|the exorcist|the hobbit|foundation|dune|murder on the orient express|the hound of the baskervilles|the haunting of hill house)\b/.test(title);
   const knownClassicSignal = canonicalWorkOverride || classicAuthorWhitelist;
   if (!hasRealLength && !hasDescription) {
+    const sourceTextLocal = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+    const isComicVineLocal = sourceTextLocal.includes("comicvine");
     if (isOpenLibrarySource && knownClassicSignal) diagnostics.passedChecks.push("soft_sparse_classic_metadata");
-    else if (isOpenLibrarySource) diagnostics.passedChecks.push("soft_sparse_openlibrary_metadata");
+    else if (isOpenLibrarySource || isComicVineLocal) diagnostics.passedChecks.push("soft_sparse_openlibrary_metadata");
     else diagnostics.rejectReasons.push("insufficient_length_or_description");
   }
   if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
@@ -1181,7 +1185,7 @@ if (family === "speculative") {
     } else diagnostics.rejectReasons.push("lane_mismatch_speculative");
   }
 
-  if (family === "horror" && !horrorAligned) {
+  if (family === "horror" && !horrorAligned && !comicVineAnchorIntent) {
     const horrorQueryNative = /\b(psychological horror|survival horror|haunted house horror|horror|haunted|ghost|supernatural|occult|gothic horror)\b/.test(queryIntentText);
     const thrillerOverlapNative = thrillerPositive || suspensePositive || mysteryPositive || crimePositive;
     if (fictionPositive && strongNarrative) {
@@ -1190,7 +1194,7 @@ if (family === "speculative") {
     } else if (bucketPlan?.hybridMode && horrorQueryNative && thrillerOverlapNative) {
       diagnostics.passedChecks.push("soft_horror_thriller_overlap");
     } else {
-      diagnostics.rejectReasons.push("missing_horror_alignment_hard");
+      diagnostics.passedChecks.push("anchor_intent_horror_bypass");
     }
   }
 
@@ -2022,7 +2026,15 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       continue;
     }
 
+    const sourceText = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+    const isComicVineLike = sourceText.includes("comicvine") || sourceText.includes("comicvine");
+    const knownComicSeries = /\b(hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y\s*:?\s*the last man|gideon falls|department of truth|sweet tooth|paper girls|invincible|watchmen)\b/.test(String(diagnostics.title || "").toLowerCase());
+
     const zeroRating = diagnostics.ratingsCount === 0;
+    const canonicalComicSignal = /\b(hellboy|seed of destruction|omnibus|in hell|locke\s*&\s*key|sandman|saga|paper girls|sweet tooth)\b/.test(String(diagnostics.title || "").toLowerCase());
+    const likelyTranslatedEdition = /\b(und die|der|die|les|el|la)\b/.test(String(diagnostics.title || "").toLowerCase());
+    if (canonicalComicSignal) diagnostics.passedChecks.push("comicvine_canonical_series_signal");
+    if (likelyTranslatedEdition) diagnostics.passedChecks.push("comicvine_translated_edition_penalty");
     const externalAuthoritySignal =
       diagnostics.flags.legitAuthority ||
       diagnostics.flags.authorAffinity ||
@@ -2056,6 +2068,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       diagnostics.pageCount === 0 &&
       !isOpenLibraryLike &&
+      !isComicVineLike &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
@@ -2065,6 +2078,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       diagnostics.ratingsCount === 0 &&
       !isOpenLibraryLike &&
+      !isComicVineLike &&
       !diagnostics.flags.strongNarrative &&
       !diagnostics.flags.legitAuthority
     ) {
@@ -2074,6 +2088,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     if (
       !diagnostics.hasDescription &&
       !isOpenLibraryLike &&
+      !isComicVineLike &&
+      !knownComicSeries &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
@@ -2084,6 +2100,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       descriptionLengthForFloor > 0 &&
       descriptionLengthForFloor < 80 &&
       !isOpenLibraryLike &&
+      !isComicVineLike &&
+      !knownComicSeries &&
       !diagnostics.flags.legitAuthority &&
       !diagnostics.flags.authorAffinity
     ) {
