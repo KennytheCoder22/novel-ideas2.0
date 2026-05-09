@@ -427,6 +427,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     };
     const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
     const queryAnchorAlias = buildAnchorAliasRegex(query);
+    const aliasFallbackDocs: RecommendationDoc[] = [];
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (sampleTitles.length < 8 && doc?.title) sampleTitles.push(String(doc.title));
@@ -442,6 +443,9 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
         countReject("comicvine_anchor_alias_mismatch");
         pushRejectedSample("comicvine_anchor_alias_mismatch");
+        if (!/coloring book|guide|handbook|companion|anthology|omnibus/i.test(normalizedTitle)) {
+          aliasFallbackDocs.push(doc);
+        }
         continue;
       }
       if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
@@ -455,6 +459,20 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       docs.push(doc);
       stageCounts.comicVineFinalAcceptedCount += 1;
       if (docs.length >= fetchLimit) break;
+    }
+    if ((docs.length - before) === 0 && aliasFallbackDocs.length > 0 && results.length > 0) {
+      for (const fallbackDoc of aliasFallbackDocs.slice(0, 3)) {
+        const dedupeKey = String(fallbackDoc.key || `${fallbackDoc.title}|${fallbackDoc.author_name?.[0] || ""}`).toLowerCase();
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        (fallbackDoc as any).diagnostics = {
+          ...((fallbackDoc as any).diagnostics || {}),
+          comicVineAliasFallbackAccepted: true,
+        };
+        docs.push(fallbackDoc);
+        stageCounts.comicVineFinalAcceptedCount += 1;
+        stageCounts.comicVineContentAcceptedCount += 1;
+      }
     }
     const acceptedCount = Math.max(0, docs.length - before);
     return {
