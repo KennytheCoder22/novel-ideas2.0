@@ -2064,10 +2064,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       Boolean(superheroHit);
     const likelyTranslatedEdition = /\b(und die|der|die|les|el|la)\b/.test(String(diagnostics.title || "").toLowerCase());
     if (/^runaways\s+.*\bsaga\b/.test(normalizedComicTitle)) {
-      diagnostics.rejectReasons.push("comicvine_invalid_runaways_saga_variant");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      diagnostics.passedChecks.push("comicvine_runaways_saga_variant_soft_penalty");
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => reason !== "comicvine_invalid_runaways_saga_variant");
+      (diagnostics as any).comicVineRunawaysSagaVariant = true;
     }
     if (canonicalComicSignal) {
       diagnostics.passedChecks.push("comicvine_canonical_series_signal");
