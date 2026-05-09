@@ -1733,9 +1733,9 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
     { rung: 53, query: "psychological mystery novel" },
   ];
   if (family === "horror") return [
-    { rung: 60, query: "psychological horror novel" },
-    { rung: 61, query: "haunted house horror novel" },
-    { rung: 62, query: "survival horror novel" },
+    { rung: 60, query: "psychological horror graphic novel" },
+    { rung: 61, query: "haunted house horror graphic novel" },
+    { rung: 62, query: "survival horror graphic novel" },
   ];
   if (family === "fantasy") return [
     { rung: 70, query: "epic fantasy novel" },
@@ -2807,10 +2807,10 @@ export async function getRecommendations(
       "detective fiction novel",
     ],
     horror: [
-      "psychological horror novel",
-      "haunted house horror novel",
-      "supernatural horror novel",
-      "gothic horror novel",
+      "psychological horror graphic novel",
+      "haunted house horror graphic novel",
+      "supernatural horror graphic novel",
+      "gothic horror graphic novel",
     ],
     romance: [
       "young adult romance novel",

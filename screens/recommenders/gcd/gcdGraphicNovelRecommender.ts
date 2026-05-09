@@ -178,7 +178,20 @@ function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[]
   if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
   if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
   if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
-  return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 8);
+  const defaults = [
+    "locke & key",
+    "the sandman",
+    "saga",
+    "paper girls",
+    "something is killing the children",
+    "gideon falls",
+    "department of truth",
+    "sweet tooth",
+    "runaways",
+    "invincible",
+  ];
+  for (const q of defaults) queries.push(q);
+  return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 12);
 }
 
 function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
