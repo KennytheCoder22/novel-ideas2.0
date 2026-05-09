@@ -368,25 +368,50 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const before = docs.length;
     const rejectedReasons: Record<string, number> = {};
     const topTitles: string[] = [];
+    const stageCounts = {
+      comicVineApiResultCount: results.length,
+      comicVinePostNormalizationCount: 0,
+      comicVineCanonicalAcceptedCount: 0,
+      comicVineContentAcceptedCount: 0,
+      comicVineFinalAcceptedCount: 0,
+    };
     const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (!doc?.title) { countReject("missing_title"); continue; }
+      stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
+      if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
       if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); continue; }
       if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); continue; }
       if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); continue; }
+      stageCounts.comicVineContentAcceptedCount += 1;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) { countReject("deduped"); continue; }
       seen.add(dedupeKey);
       docs.push(doc);
+      stageCounts.comicVineFinalAcceptedCount += 1;
       if (docs.length >= fetchLimit) break;
     }
     const acceptedCount = Math.max(0, docs.length - before);
-    return { rawCount: results.length, acceptedCount, rejectedCount: Math.max(0, results.length - acceptedCount), topTitles, rejectedReasons, error: null };
+    return { rawCount: results.length, acceptedCount, rejectedCount: Math.max(0, results.length - acceptedCount), topTitles, rejectedReasons, stageCounts, error: null };
   } catch (err: any) {
-    return { rawCount: 0, acceptedCount: 0, rejectedCount: 0, topTitles: [], rejectedReasons: {}, error: String(err?.message || err || "comicvine_search_failed") };
+    return {
+      rawCount: 0,
+      acceptedCount: 0,
+      rejectedCount: 0,
+      topTitles: [],
+      rejectedReasons: {},
+      stageCounts: {
+        comicVineApiResultCount: 0,
+        comicVinePostNormalizationCount: 0,
+        comicVineCanonicalAcceptedCount: 0,
+        comicVineContentAcceptedCount: 0,
+        comicVineFinalAcceptedCount: 0,
+      },
+      error: String(err?.message || err || "comicvine_search_failed"),
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -499,6 +524,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   let builtFromQuery = queriesToTry[0] || "";
   const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; acceptedCount: number; rejectedCount: number; topTitles: string[]; rejectedReasons: Record<string, number>; error: string | null }> = [];
   const comicVineRawCountByQuery: Record<string, number> = {};
+  const comicVineApiResultCountByQuery: Record<string, number> = {};
+  const comicVinePostNormalizationCountByQuery: Record<string, number> = {};
+  const comicVineCanonicalAcceptedCountByQuery: Record<string, number> = {};
+  const comicVineContentAcceptedCountByQuery: Record<string, number> = {};
+  const comicVineFinalAcceptedCountByQuery: Record<string, number> = {};
   const comicVineAcceptedCountByQuery: Record<string, number> = {};
   const comicVineRejectedCountByQuery: Record<string, number> = {};
   const comicVineTopTitlesByQuery: Record<string, string[]> = {};
@@ -538,8 +568,13 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
     }
     const hadDocsBeforeQuery = docs.length > 0;
-    const { rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+    const { rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, stageCounts, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
     comicVineRawCountByQuery[q] = rawCount;
+    comicVineApiResultCountByQuery[q] = Number(stageCounts?.comicVineApiResultCount || rawCount || 0);
+    comicVinePostNormalizationCountByQuery[q] = Number(stageCounts?.comicVinePostNormalizationCount || 0);
+    comicVineCanonicalAcceptedCountByQuery[q] = Number(stageCounts?.comicVineCanonicalAcceptedCount || 0);
+    comicVineContentAcceptedCountByQuery[q] = Number(stageCounts?.comicVineContentAcceptedCount || 0);
+    comicVineFinalAcceptedCountByQuery[q] = Number(stageCounts?.comicVineFinalAcceptedCount || acceptedCount || 0);
     comicVineAcceptedCountByQuery[q] = acceptedCount;
     comicVineRejectedCountByQuery[q] = rejectedCount;
     comicVineTopTitlesByQuery[q] = topTitles;
@@ -627,6 +662,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueryTexts: queriesToTry,
     comicVineFetchResults,
     comicVineRawCountByQuery,
+    comicVineApiResultCountByQuery,
+    comicVinePostNormalizationCountByQuery,
+    comicVineCanonicalAcceptedCountByQuery,
+    comicVineContentAcceptedCountByQuery,
+    comicVineFinalAcceptedCountByQuery,
     comicVineAcceptedCountByQuery,
     comicVineRejectedCountByQuery,
     comicVineTopTitlesByQuery,
