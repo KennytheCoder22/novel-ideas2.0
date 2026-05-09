@@ -2452,7 +2452,8 @@ function canTakeCandidate(
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   authorCounts: Map<string, number>,
   subtypeCounts?: Map<string, number>,
-  targetCount = 10
+  targetCount = 10,
+  strictSeriesOrdering = true
 ): boolean {
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
@@ -2464,13 +2465,15 @@ function canTakeCandidate(
     const sameSeriesEntries = selected.filter((entry) => (normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate)) === seriesKey);
     const sameSeriesCount = sameSeriesEntries.length;
     if (sameSeriesCount >= perSeriesCap) return false;
-    const currentOrdinal = seriesOrdinal(candidate);
-    const hasNumberOne = sameSeriesEntries.some((entry) => seriesOrdinal(entry.candidate) === 1);
-    if (sameSeriesCount === 0) {
-      if (currentOrdinal !== null && currentOrdinal !== 1) return false;
-    } else if (sameSeriesCount === 1) {
-      if (!hasNumberOne) return false;
-      if (currentOrdinal !== 2) return false;
+    if (strictSeriesOrdering) {
+      const currentOrdinal = seriesOrdinal(candidate);
+      const hasNumberOne = sameSeriesEntries.some((entry) => seriesOrdinal(entry.candidate) === 1);
+      if (sameSeriesCount === 0) {
+        if (currentOrdinal !== null && currentOrdinal !== 1) return false;
+      } else if (sameSeriesCount === 1) {
+        if (!hasNumberOne) return false;
+        if (currentOrdinal !== 2) return false;
+      }
     }
   }
 
@@ -2536,12 +2539,13 @@ function pickFromPool(
   authorCounts: Map<string, number>,
   limit: number,
   subtypeCounts?: Map<string, number>,
-  targetCount = 10
+  targetCount = 10,
+  strictSeriesOrdering = true
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
   for (let i = 0; i < pool.length; i += 1) {
     const entry = pool[i];
     if (selected.length >= limit) break;
-    if (!canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount)) continue;
+    if (!canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount, strictSeriesOrdering)) continue;
     if (subtypeCounts && laneFamilyForCandidate(entry.candidate) === "thriller") {
       const subtype = thrillerSubtype(entry.candidate);
       const subtypeSeen = (subtypeCounts.get(subtype) || 0) > 0;
@@ -2549,7 +2553,7 @@ function pickFromPool(
       if (subtypeSeen && wantsMoreSubtypeDiversity) {
         const hasUnseenSubtypeAlternative = pool.slice(i + 1).some((candidateEntry) => {
           if (laneFamilyForCandidate(candidateEntry.candidate) !== "thriller") return false;
-          if (!canTakeCandidate(candidateEntry.candidate, selected, authorCounts, subtypeCounts, targetCount)) return false;
+          if (!canTakeCandidate(candidateEntry.candidate, selected, authorCounts, subtypeCounts, targetCount, strictSeriesOrdering)) return false;
           const otherSubtype = thrillerSubtype(candidateEntry.candidate);
           return (subtypeCounts.get(otherSubtype) || 0) === 0;
         });
@@ -2584,7 +2588,8 @@ function seedHistoricalRungDiversity(
   authorCounts: Map<string, number>,
   limit: number,
   subtypeCounts?: Map<string, number>,
-  targetCount = 10
+  targetCount = 10,
+  strictSeriesOrdering = true
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
   const hasHistorical = pool.some((entry) => isHistoricalCandidate(entry.candidate));
   if (!hasHistorical) return selected;
@@ -2608,7 +2613,7 @@ function seedHistoricalRungDiversity(
     const pick = pool.find((entry) => {
       if (!isHistoricalCandidate(entry.candidate)) return false;
       if (evidenceRank(entry.candidate) !== rung) return false;
-      return canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount);
+      return canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount, strictSeriesOrdering);
     });
 
     if (!pick) continue;
@@ -2874,15 +2879,15 @@ export function finalRecommenderForDeck(
     const top = bucket[0]?.breakdown?.finalScore ?? -999;
     const quota = top < 16 ? 1 : 2;
     if (top < 8) continue;
-    pickFromPool(bucket.slice(0, quota), selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+    pickFromPool(bucket.slice(0, quota), selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS, true);
   }
 
-  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS, true);
   const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
-  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
-  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS, true);
+  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS, true);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
-    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS, false);
   }
   if (selected.length < 5) {
     const adjacentFamilies: Record<string, string[]> = {
@@ -2908,7 +2913,7 @@ export function finalRecommenderForDeck(
       isOpenLibraryCandidate(entry.candidate) &&
       isPromotionEligible(entry.candidate)
     );
-    pickFromPool(primaryPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+    pickFromPool(primaryPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS, false);
 
     if (selected.length < 5) {
       const adjacentSet = new Set(adjacentFamilies[sessionPrimaryLane] || []);
@@ -2917,7 +2922,7 @@ export function finalRecommenderForDeck(
         isOpenLibraryCandidate(entry.candidate) &&
         isPromotionEligible(entry.candidate)
       );
-      pickFromPool(adjacentPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+      pickFromPool(adjacentPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS, false);
     }
     if (selected.length < 5) {
       debugFinalLog("FINAL_PROMOTION_REASON", {
