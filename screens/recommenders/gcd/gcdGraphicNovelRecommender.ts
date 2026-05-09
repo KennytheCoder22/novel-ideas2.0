@@ -362,6 +362,22 @@ function comicVineIssueToDoc(issue: any, queryText: string, queryRung: number): 
   } as any;
 }
 
+function isLikelyGraphicNovelCollection(issue: any, doc: RecommendationDoc): boolean {
+  const title = normalizeText(String(doc?.title || ""));
+  const deck = normalizeText(String(issue?.deck || doc?.subtitle || ""));
+  const description = normalizeText(String(issue?.description || doc?.description || ""));
+  const format = normalizeText(String(issue?.format || issue?.issue_type || ""));
+  const text = `${title} ${deck} ${description} ${format}`.trim();
+  if (!text) return false;
+  if (/\b(trade paperback|tpb|hardcover|hc|ogn|graphic novel|collected|collection|omnibus|compendium|deluxe|master edition|treasury edition|book one|book 1|vol\.?\s*\d+|volume\s*\d+)\b/.test(text)) {
+    return true;
+  }
+  if (/#\s*\d+\b/.test(title) && !/\b(collected|collection|omnibus|compendium|master edition|treasury edition|tpb|hc|ogn)\b/.test(text)) {
+    return false;
+  }
+  return /\bgraphic novel\b/.test(text);
+}
+
 function buildComicVineProxySearchUrl(query: string, limit = 20): string {
   if (!COMIC_VINE_PROXY_URL) throw new Error("COMICVINE_PROXY_MISSING: EXPO_PUBLIC_COMICVINE_PROXY_URL is not configured.");
   const normalizedBase = COMIC_VINE_PROXY_URL.includes("?") ? COMIC_VINE_PROXY_URL : `${COMIC_VINE_PROXY_URL}?`;
@@ -437,6 +453,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         if (rejectedSampleReasons.length < 8) rejectedSampleReasons.push({ title, reason });
       };
       if (!doc?.title) { countReject("missing_title"); continue; }
+      if (!isLikelyGraphicNovelCollection(issue, doc)) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
