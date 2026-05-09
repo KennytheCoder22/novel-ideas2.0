@@ -547,7 +547,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
-  const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; acceptedCount: number; rejectedCount: number; topTitles: string[]; rejectedReasons: Record<string, number>; error: string | null }> = [];
+  const comicVineFetchResults: Array<{ query: string; status: "ok" | "api_empty" | "post_normalization_empty" | "canonical_empty" | "content_empty" | "final_empty" | "error"; rawCount: number; acceptedCount: number; rejectedCount: number; topTitles: string[]; rejectedReasons: Record<string, number>; error: string | null }> = [];
   const comicVineRawCountByQuery: Record<string, number> = {};
   const comicVineApiResultCountByQuery: Record<string, number> = {};
   const comicVinePostNormalizationCountByQuery: Record<string, number> = {};
@@ -561,6 +561,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVineRejectedSampleTitlesByQuery: Record<string, string[]> = {};
   const comicVineRejectedSampleReasonsByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
+  const comicVineRescueCandidatesByQuery: Record<string, RecommendationDoc[]> = {};
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
   const followupFetched: string[] = [];
@@ -610,14 +611,45 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineRejectedSampleTitlesByQuery[q] = rejectedSampleTitles;
     comicVineRejectedSampleReasonsByQuery[q] = rejectedSampleReasons;
     comicVineAdapterDropReasonsByQuery[q] = rejectedReasons;
+    const stageStatus =
+      error ? "error"
+      : rawCount <= 0 ? "api_empty"
+      : comicVinePostNormalizationCountByQuery[q] <= 0 ? "post_normalization_empty"
+      : comicVineCanonicalAcceptedCountByQuery[q] <= 0 ? "canonical_empty"
+      : comicVineContentAcceptedCountByQuery[q] <= 0 ? "content_empty"
+      : comicVineFinalAcceptedCountByQuery[q] <= 0 ? "final_empty"
+      : "ok";
     if (!acceptedCount) {
-      comicVineFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
+      comicVineFetchResults.push({ query: q, status: stageStatus, rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
+      if (rawCount > 0) {
+        const rescue = sampleTitles.slice(0, 2).map((title, idx) => ({
+          key: `comicvine-rescue:${q}:${idx}:${title}`.toLowerCase(),
+          title,
+          source: "comicvine_rescue",
+          sourceId: `comicvine-rescue:${q}:${idx}`,
+          author_name: [],
+          ratings_average: 0,
+          ratings_count: 0,
+          first_publish_year: undefined,
+          subject: ["comics", "graphic novel"],
+          language: "en",
+          query,
+          queryRung: i,
+          diagnostics: {
+            comicvine_raw_rescue: true,
+            rescueReason: "no_normalized_candidates_from_high_affinity_anchor",
+            rawQuery: q,
+            rawCount,
+          } as any,
+        } as RecommendationDoc));
+        comicVineRescueCandidatesByQuery[q] = rescue;
+      }
       continue;
     }
     if (!hadDocsBeforeQuery) builtFromQuery = q;
     comicVineFetchResults.push({
       query: q,
-      status: rawCount > 0 ? "ok" : error ? "error" : "no_matches",
+      status: stageStatus,
       rawCount,
       acceptedCount,
       rejectedCount,
@@ -632,6 +664,16 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const fetchedSet = new Set(comicVineQueriesActuallyFetched);
   for (const q of followupQueriesBuilt) {
     if (!fetchedSet.has(q)) followupDropped.push({ query: q, reason: "followup_budget_exhausted_or_truncated" });
+  }
+
+  if (docs.length === 0) {
+    const rescueQueries = Object.keys(comicVineRescueCandidatesByQuery).slice(0, 2);
+    for (const rq of rescueQueries) {
+      for (const candidate of comicVineRescueCandidatesByQuery[rq] || []) {
+        if (docs.length >= 2) break;
+        docs.push(candidate);
+      }
+    }
   }
 
   if (docs.length === 0) {
@@ -705,6 +747,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineRejectedSampleTitlesByQuery,
     comicVineRejectedSampleReasonsByQuery,
     comicVineAdapterDropReasonsByQuery,
+    comicVineRescueCandidatesByQuery,
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,

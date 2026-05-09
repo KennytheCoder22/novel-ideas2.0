@@ -4369,9 +4369,13 @@ const normalizedCandidatesRaw = [
   const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
   const finalHandoffEmptyReason = finalAcceptedDocsLength > 0 && rankedDocsLength === 0 ? "final_recommender_handoff_empty" : "none";
   const droppedBeforeRenderReason =
-    finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
+    renderedTopRecommendationsLength === 0
       ? (finalHandoffEmptyReason !== "none"
           ? finalHandoffEmptyReason
+          : includeComicVine && aggregatedRawFetched.comicVine > 0
+          ? "comicvine_all_candidates_rejected_after_fetch"
+          : finalAcceptedDocsLength <= 0
+          ? "no_candidates_survived_filtering"
           : teenPostPassInputLength === 0
           ? "no_postfilter_candidates"
           : teenPostPassOutputLength === 0
