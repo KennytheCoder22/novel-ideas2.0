@@ -1728,7 +1728,7 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
     { rung: 42, query: "serial killer investigation thriller novel" },
   ];
   if (family === "mystery") return [
-    { rung: 50, query: "psychological suspense novel" },
+    { rung: 50, query: "psychological suspense graphic novel" },
     { rung: 51, query: "detective mystery novel" },
     { rung: 52, query: "police procedural mystery novel" },
     { rung: 53, query: "psychological mystery novel" },
@@ -1877,7 +1877,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "mystery" && /murder|investigation|detective/.test(lowered) ? "detective mystery novel" : "",
     family === "mystery" && /murder|investigation|police|procedural/.test(lowered) ? "police procedural mystery novel" : "",
     family === "mystery" && !/private investigator/.test(lowered) ? "private investigator mystery novel" : "",
-    family === "thriller" && /psychological/.test(lowered) ? "psychological suspense novel" : "",
+    family === "thriller" && /psychological/.test(lowered) ? "psychological suspense graphic novel" : "",
     thrillerAllowsDomestic ? "domestic suspense novel" : "",
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 5) : []),
   ]);
@@ -2764,7 +2764,7 @@ export async function getRecommendations(
 
   if (!rungs.length && routerFamily === "mystery") {
     rungs = [
-      { rung: 0, query: "psychological suspense novel" },
+      { rung: 0, query: "psychological suspense graphic novel" },
       { rung: 1, query: "detective mystery novel" },
       { rung: 2, query: "police procedural mystery novel" },
       { rung: 3, query: "psychological mystery novel" },
