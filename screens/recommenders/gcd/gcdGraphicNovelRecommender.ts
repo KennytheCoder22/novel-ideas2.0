@@ -457,6 +457,16 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
+      if (/^(tpb|hc|sc|gn|ogn|vol\.?\s*\d+|book\s*\d+|chapter\s*\d+|issue\s*\d+|part\s*\d+)$/i.test(normalizedTitle)) {
+        countReject("generic_format_title");
+        pushRejectedSample("generic_format_title");
+        continue;
+      }
+      if (normalizedTitle.split(/\s+/).filter(Boolean).length <= 1 && normalizedTitle.length < 8) {
+        countReject("too_short_title");
+        pushRejectedSample("too_short_title");
+        continue;
+      }
       if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
         countReject("comicvine_anchor_alias_mismatch");
         pushRejectedSample("comicvine_anchor_alias_mismatch");
