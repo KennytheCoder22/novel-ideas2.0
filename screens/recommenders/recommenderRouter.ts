@@ -3880,10 +3880,7 @@ const normalizedCandidatesRaw = [
     for (const docs of grouped.values()) {
       const ranked = [...docs]
         .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false)
-        .sort((a: any, b: any) =>
-          (laneAndFacetRescore(b) - laneAndFacetRescore(a)) ||
-          (candidateScoreValue(b) - candidateScoreValue(a))
-        )
+        .sort((a: any, b: any) => candidateScoreValue(b) - candidateScoreValue(a))
         .slice(0, perSourceCap);
       out.push(...ranked);
     }
