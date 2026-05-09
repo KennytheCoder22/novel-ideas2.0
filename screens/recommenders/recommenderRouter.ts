@@ -3868,16 +3868,52 @@ const normalizedCandidatesRaw = [
   console.log("FINAL QUERY FAMILIES", rankingPoolForFinal.map((c: any) => c?.queryFamily ?? c?.rawDoc?.queryFamily ?? "missing"));
   debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPoolForFinal);
 
-  const rankedDocs = asArray(finalRecommenderForDeck(rankingPoolForFinal, input.deckKey, {
-    tasteProfile: routingInput.tasteProfile,
-    profileOverride: routingInput.profileOverride,
-    priorRecommendedIds: routingInput.priorRecommendedIds,
-    priorRecommendedKeys: routingInput.priorRecommendedKeys,
-    priorAuthors: routingInput.priorAuthors,
-    priorSeriesKeys: routingInput.priorSeriesKeys,
-    priorRejectedIds: routingInput.priorRejectedIds,
-    priorRejectedKeys: routingInput.priorRejectedKeys,
-  }));
+  const sourceLayerRankedDocs = (() => {
+    const perSourceCap = Math.max(finalLimit * 3, 18);
+    const grouped = new Map<string, any[]>();
+    for (const doc of rankingPoolForFinal as any[]) {
+      const source = sourceForDoc(doc, "unknown");
+      if (!grouped.has(source)) grouped.set(source, []);
+      grouped.get(source)!.push(doc);
+    }
+    const out: any[] = [];
+    for (const docs of grouped.values()) {
+      const ranked = [...docs]
+        .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false)
+        .sort((a: any, b: any) =>
+          (laneAndFacetRescore(b) - laneAndFacetRescore(a)) ||
+          (candidateScoreValue(b) - candidateScoreValue(a))
+        )
+        .slice(0, perSourceCap);
+      out.push(...ranked);
+    }
+    return dedupeDocs(out as any);
+  })();
+
+  const activeRecommenderSources = new Set(
+    sourceLayerRankedDocs
+      .map((doc: any) => sourceForDoc(doc, "unknown"))
+      .filter((s: string) => s !== "unknown")
+  );
+  const shouldRunFinalRecommender = activeRecommenderSources.size > 1;
+  debugRouterLog("PRE_FINAL_SOURCE_LAYER", {
+    sourceLayerCount: sourceLayerRankedDocs.length,
+    activeRecommenderSources: [...activeRecommenderSources],
+    shouldRunFinalRecommender,
+  });
+
+  const rankedDocs = shouldRunFinalRecommender
+    ? asArray(finalRecommenderForDeck(sourceLayerRankedDocs, input.deckKey, {
+        tasteProfile: routingInput.tasteProfile,
+        profileOverride: routingInput.profileOverride,
+        priorRecommendedIds: routingInput.priorRecommendedIds,
+        priorRecommendedKeys: routingInput.priorRecommendedKeys,
+        priorAuthors: routingInput.priorAuthors,
+        priorSeriesKeys: routingInput.priorSeriesKeys,
+        priorRejectedIds: routingInput.priorRejectedIds,
+        priorRejectedKeys: routingInput.priorRejectedKeys,
+      }))
+    : sourceLayerRankedDocs;
 
   const postFilteredRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
