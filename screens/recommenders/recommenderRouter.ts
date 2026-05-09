@@ -4297,8 +4297,30 @@ const normalizedCandidatesRaw = [
   const teenPostPassSourceCapApplied = teenPostPassOutputLength < teenPostPassInputLength;
   const teenPostPassSeriesCapApplied = teenPostPassRejectedTitles.length > 0;
   const finalRenderDocsBase = finalRankedDocs.length ? finalRankedDocs : rankedDocsWithDiagnostics;
+  const applyCrossFranchiseSaturationPenalty = (docsIn: any[]): any[] => {
+    const franchiseCounts: Record<string, number> = {};
+    return [...docsIn]
+      .map((doc) => {
+        const key = finalSeriesKeyForRender(doc);
+        const count = (franchiseCounts[key] || 0) + 1;
+        franchiseCounts[key] = count;
+        const saturationPenalty = count <= 2 ? 0 : (count - 2) * 3.25;
+        const boostedScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty;
+        return {
+          ...doc,
+          score: boostedScore,
+          diagnostics: {
+            ...(doc?.diagnostics || {}),
+            crossFranchiseSaturationPenalty: saturationPenalty,
+            finalScoreAfterSaturation: boostedScore,
+          },
+        };
+      })
+      .sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0));
+  };
+  const saturatedFinalRenderDocsBase = includeComicVine ? applyCrossFranchiseSaturationPenalty(finalRenderDocsBase) : finalRenderDocsBase;
   const finalSeriesCap = includeComicVine ? 2 : 3;
-  const finalSeriesCapResult = applyFinalSeriesCap(finalRenderDocsBase, finalSeriesCap);
+  const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
   const finalRenderDocs = finalSeriesCapResult.kept;
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
