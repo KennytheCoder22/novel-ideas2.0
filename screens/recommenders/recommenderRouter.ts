@@ -4365,7 +4365,7 @@ const normalizedCandidatesRaw = [
     sourceEnabled.openLibrary === false &&
     sourceEnabled.localLibrary === false &&
     includeKitsu === false;
-  const finalSeriesCap = includeComicVine ? (comicVineOnlyMode ? 1 : 2) : 3;
+  const finalSeriesCap = includeComicVine ? (comicVineOnlyMode ? 2 : 2) : 3;
   const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
   let finalRenderDocs = finalSeriesCapResult.kept;
   if (includeComicVine && finalRenderDocs.length >= 2) {
@@ -4382,8 +4382,15 @@ const normalizedCandidatesRaw = [
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   let outputItems = finalItems;
   if (comicVineOnlyMode) {
-    const target = Math.max(8, Math.min(10, finalLimit));
-    outputItems = finalItems.slice(0, Math.max(target, outputItems.length));
+    const target = 8;
+    const fillerPool = saturatedFinalRenderDocsBase.filter((doc:any) => !finalRenderDocs.includes(doc));
+    const expanded = [...finalRenderDocs];
+    for (const doc of fillerPool) {
+      if (expanded.length >= 10) break;
+      expanded.push(doc);
+      if (expanded.length >= target) break;
+    }
+    outputItems = expanded.slice(0, 10).map((doc:any) => ({ kind: "open_library", doc }));
   }
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
     console.error("POSTPASS_OUTPUT_DROPPED_BEFORE_RETURN", { teenPostPassOutputLength, teenPostPassOutputTitles });

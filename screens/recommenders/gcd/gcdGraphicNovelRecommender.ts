@@ -667,7 +667,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
           const rescue = rescueEligibleTitles.map((title, idx) => ({
           key: `comicvine-rescue:${q}:${idx}:${title}`.toLowerCase(),
           title,
-          source: "comicvine_rescue",
+          source: "comicVine",
           sourceId: `comicvine-rescue:${q}:${idx}`,
           author_name: [],
           ratings_average: 0,
