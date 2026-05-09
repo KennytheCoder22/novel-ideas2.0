@@ -2974,7 +2974,11 @@ export async function getRecommendations(
   const comicVineAcceptedCountByQuery: Record<string, number> = {};
   const comicVineRejectedCountByQuery: Record<string, number> = {};
   const comicVineTopTitlesByQuery: Record<string, string[]> = {};
+  const comicVineSampleTitlesByQuery: Record<string, string[]> = {};
+  const comicVineRejectedSampleTitlesByQuery: Record<string, string[]> = {};
+  const comicVineRejectedSampleReasonsByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
+  const comicVineRescueRejectedTitlesByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
   let comicVineDispatchedOnce = false;
@@ -3126,7 +3130,11 @@ export async function getRecommendations(
             Object.assign(comicVineAcceptedCountByQuery, value?.comicVineAcceptedCountByQuery || {});
             Object.assign(comicVineRejectedCountByQuery, value?.comicVineRejectedCountByQuery || {});
             Object.assign(comicVineTopTitlesByQuery, value?.comicVineTopTitlesByQuery || {});
+            Object.assign(comicVineSampleTitlesByQuery, value?.comicVineSampleTitlesByQuery || {});
+            Object.assign(comicVineRejectedSampleTitlesByQuery, value?.comicVineRejectedSampleTitlesByQuery || {});
+            Object.assign(comicVineRejectedSampleReasonsByQuery, value?.comicVineRejectedSampleReasonsByQuery || {});
             Object.assign(comicVineAdapterDropReasonsByQuery, value?.comicVineAdapterDropReasonsByQuery || {});
+            Object.assign(comicVineRescueRejectedTitlesByQuery, value?.comicVineRescueRejectedTitlesByQuery || {});
           } else {
             comicVineFetchResults.push({
               query,
@@ -4237,7 +4245,15 @@ const normalizedCandidatesRaw = [
     comicVineAcceptedCountByQuery,
     comicVineRejectedCountByQuery,
     comicVineTopTitlesByQuery,
+    comicVineSampleTitlesByQuery,
+    comicVineRejectedSampleTitlesByQuery,
+    comicVineRejectedSampleReasonsByQuery,
+    comicVineSampleDiagnosticsVisible:
+      Object.keys(comicVineSampleTitlesByQuery).length > 0 ||
+      Object.keys(comicVineRejectedSampleTitlesByQuery).length > 0 ||
+      Object.keys(comicVineRejectedSampleReasonsByQuery).length > 0,
     comicVineAdapterDropReasonsByQuery,
+    comicVineRescueRejectedTitlesByQuery,
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineResolvedSeedQuery,
@@ -4297,11 +4313,78 @@ const normalizedCandidatesRaw = [
   const teenPostPassSourceCapApplied = teenPostPassOutputLength < teenPostPassInputLength;
   const teenPostPassSeriesCapApplied = teenPostPassRejectedTitles.length > 0;
   const finalRenderDocsBase = finalRankedDocs.length ? finalRankedDocs : rankedDocsWithDiagnostics;
-  const finalSeriesCap = includeComicVine ? 2 : 3;
-  const finalSeriesCapResult = applyFinalSeriesCap(finalRenderDocsBase, finalSeriesCap);
-  const finalRenderDocs = finalSeriesCapResult.kept;
+  const applyCrossFranchiseSaturationPenalty = (docsIn: any[]): any[] => {
+    const franchiseCounts: Record<string, number> = {};
+    return [...docsIn]
+      .map((doc) => {
+        const key = finalSeriesKeyForRender(doc);
+        const count = (franchiseCounts[key] || 0) + 1;
+        franchiseCounts[key] = count;
+        const saturationPenalty = count <= 2 ? 0 : (count - 2) * 3.25;
+        const title = String(doc?.title || doc?.rawDoc?.title || "").toLowerCase();
+        const laterCollectionPenalty =
+          /locke\s*&\s*key/.test(title) && (/master edition\s*#?\s*[2-9]/.test(title) || /vol(?:ume)?\.?\s*[2-9]/.test(title))
+            ? 7.25
+            : 0;
+        const entryPointBoost =
+          /locke\s*&\s*key/.test(title) && (/master edition\s*#?\s*1/.test(title) || /treasury edition\s*#?\s*1/.test(title) || /vol(?:ume)?\.?\s*1/.test(title))
+            ? 3.75
+            : 0;
+        const hellboyRootBoost = /\bhellboy\s*#?\s*1\b/.test(title) ? 3.5 : 0;
+        const hellboyLocalizedPenalty = /\bhellboy\b/.test(title) && /\b(kompendium|kompendiume|kompendio)\b/.test(title) ? 3.25 : 0;
+        const hellboySideArcPenalty = /\bhellboy\b/.test(title) && /:\s*(being human|weird tales|short stories|anthology)/.test(title) ? 2.25 : 0;
+        const boostedScore =
+          Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) -
+          saturationPenalty -
+          laterCollectionPenalty -
+          hellboyLocalizedPenalty -
+          hellboySideArcPenalty +
+          entryPointBoost +
+          hellboyRootBoost;
+        return {
+          ...doc,
+          score: boostedScore,
+          diagnostics: {
+            ...(doc?.diagnostics || {}),
+            crossFranchiseSaturationPenalty: saturationPenalty,
+            laterCollectionPenalty,
+            entryPointBoost,
+            hellboyRootBoost,
+            hellboyLocalizedPenalty,
+            hellboySideArcPenalty,
+            finalScoreAfterSaturation: boostedScore,
+          },
+        };
+      })
+      .sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0));
+  };
+  const saturatedFinalRenderDocsBase = includeComicVine ? applyCrossFranchiseSaturationPenalty(finalRenderDocsBase) : finalRenderDocsBase;
+  const comicVineOnlyMode =
+    includeComicVine &&
+    sourceEnabled.googleBooks === false &&
+    sourceEnabled.openLibrary === false &&
+    sourceEnabled.localLibrary === false &&
+    includeKitsu === false;
+  const finalSeriesCap = includeComicVine ? (comicVineOnlyMode ? 1 : 2) : 3;
+  const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
+  let finalRenderDocs = finalSeriesCapResult.kept;
+  if (includeComicVine && finalRenderDocs.length >= 2) {
+    const franchiseSet = new Set(finalRenderDocs.map((doc:any) => finalSeriesKeyForRender(doc)));
+    if (franchiseSet.size === 1) {
+      let rescueAlternative = saturatedFinalRenderDocsBase.find((doc:any) => {
+        const different = finalSeriesKeyForRender(doc) !== finalSeriesKeyForRender(finalRenderDocs[0]);
+        const rescued = Boolean((doc?.diagnostics as any)?.comicvine_raw_rescue || (doc?.rawDoc?.diagnostics as any)?.comicvine_raw_rescue);
+        return different && rescued;
+      });
+      if (rescueAlternative) finalRenderDocs = [finalRenderDocs[0], rescueAlternative];
+    }
+  }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
-  const outputItems = finalItems;
+  let outputItems = finalItems;
+  if (comicVineOnlyMode) {
+    const target = Math.max(8, Math.min(10, finalLimit));
+    outputItems = finalItems.slice(0, Math.max(target, outputItems.length));
+  }
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
     console.error("POSTPASS_OUTPUT_DROPPED_BEFORE_RETURN", { teenPostPassOutputLength, teenPostPassOutputTitles });
   }
@@ -4347,9 +4430,13 @@ const normalizedCandidatesRaw = [
   const renderLeakDetected = finalRejectedTitles.some((title: string) => finalItemsTitles.includes(title));
   const finalHandoffEmptyReason = finalAcceptedDocsLength > 0 && rankedDocsLength === 0 ? "final_recommender_handoff_empty" : "none";
   const droppedBeforeRenderReason =
-    finalAcceptedDocsLength > 0 && renderedTopRecommendationsLength === 0
+    renderedTopRecommendationsLength === 0
       ? (finalHandoffEmptyReason !== "none"
           ? finalHandoffEmptyReason
+          : includeComicVine && aggregatedRawFetched.comicVine > 0
+          ? "comicvine_all_candidates_rejected_after_fetch"
+          : finalAcceptedDocsLength <= 0
+          ? "no_candidates_survived_filtering"
           : teenPostPassInputLength === 0
           ? "no_postfilter_candidates"
           : teenPostPassOutputLength === 0
@@ -4371,6 +4458,10 @@ const normalizedCandidatesRaw = [
       bucketPlan.queries?.[0] ||
       "",
     items: outputItems,
+    comicVineSampleTitlesByQuery,
+    comicVineRejectedSampleTitlesByQuery,
+    comicVineRejectedSampleReasonsByQuery,
+    comicVineRescueRejectedTitlesByQuery,
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
     debugRawPool,

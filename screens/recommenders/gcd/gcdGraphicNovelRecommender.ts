@@ -356,6 +356,27 @@ function buildSearchUrls(query: string): string[] {
   ];
 }
 
+function buildAnchorAliasRegex(query: string): RegExp | null {
+  const q = normalizeText(query);
+  const aliasMap: Array<{ anchor: RegExp; aliases: string[] }> = [
+    { anchor: /spider/, aliases: ["spider man", "spiderman", "peter parker", "miles morales", "ultimate spider man", "amazing spider man", "spider man life story", "spider man blue"] },
+    { anchor: /ms marvel|kamala/, aliases: ["ms marvel", "kamala khan", "magnificent ms marvel"] },
+    { anchor: /teen titans|titans/, aliases: ["teen titans", "new teen titans", "titans", "teen titans academy"] },
+    { anchor: /young justice/, aliases: ["young justice"] },
+    { anchor: /guardians/, aliases: ["guardians of the galaxy", "guardians"] },
+    { anchor: /locke.*key/, aliases: ["locke key", "locke & key"] },
+  ];
+  const row = aliasMap.find((r) => r.anchor.test(q));
+  if (!row) return null;
+  return new RegExp(`\\b(${row.aliases.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]*")).join("|")})\\b`, "i");
+}
+function inferAnchorFamily(query: string): string {
+  const q = normalizeText(query);
+  if (/spider|ms marvel|teen titans|young justice|guardians|hellboy/.test(q)) return "superhero_identity";
+  if (/locke.*key/.test(q)) return "supernatural_family_mystery";
+  return "graphic_novel";
+}
+
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -368,25 +389,79 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const before = docs.length;
     const rejectedReasons: Record<string, number> = {};
     const topTitles: string[] = [];
+    const sampleTitles: string[] = [];
+    const rejectedSampleTitles: string[] = [];
+    const rejectedSampleReasons: Array<{ title: string; reason: string }> = [];
+    const stageCounts = {
+      comicVineApiResultCount: results.length,
+      comicVinePostNormalizationCount: 0,
+      comicVineCanonicalAcceptedCount: 0,
+      comicVineContentAcceptedCount: 0,
+      comicVineFinalAcceptedCount: 0,
+    };
     const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
+    const queryAnchorAlias = buildAnchorAliasRegex(query);
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
+      if (sampleTitles.length < 8 && doc?.title) sampleTitles.push(String(doc.title));
+      const pushRejectedSample = (reason: string) => {
+        const title = String(doc?.title || issue?.name || issue?.volume?.name || "").trim() || "(untitled)";
+        if (rejectedSampleTitles.length < 8) rejectedSampleTitles.push(title);
+        if (rejectedSampleReasons.length < 8) rejectedSampleReasons.push({ title, reason });
+      };
       if (!doc?.title) { countReject("missing_title"); continue; }
+      stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
-      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); continue; }
-      if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); continue; }
-      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); continue; }
+      if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
+        countReject("comicvine_anchor_alias_mismatch");
+        pushRejectedSample("comicvine_anchor_alias_mismatch");
+        continue;
+      }
+      if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
+      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); pushRejectedSample("trivial_title"); continue; }
+      if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); pushRejectedSample("bad_prefix_die"); continue; }
+      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); pushRejectedSample("non_ascii_filtered"); continue; }
+      stageCounts.comicVineContentAcceptedCount += 1;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
-      if (seen.has(dedupeKey)) { countReject("deduped"); continue; }
+      if (seen.has(dedupeKey)) { countReject("deduped"); pushRejectedSample("deduped"); continue; }
       seen.add(dedupeKey);
       docs.push(doc);
+      stageCounts.comicVineFinalAcceptedCount += 1;
       if (docs.length >= fetchLimit) break;
     }
     const acceptedCount = Math.max(0, docs.length - before);
-    return { rawCount: results.length, acceptedCount, rejectedCount: Math.max(0, results.length - acceptedCount), topTitles, rejectedReasons, error: null };
+    return {
+      rawCount: results.length,
+      acceptedCount,
+      rejectedCount: Math.max(0, results.length - acceptedCount),
+      topTitles,
+      sampleTitles,
+      rejectedSampleTitles,
+      rejectedSampleReasons,
+      rejectedReasons,
+      stageCounts,
+      error: null,
+    };
   } catch (err: any) {
-    return { rawCount: 0, acceptedCount: 0, rejectedCount: 0, topTitles: [], rejectedReasons: {}, error: String(err?.message || err || "comicvine_search_failed") };
+    return {
+      rawCount: 0,
+      acceptedCount: 0,
+      rejectedCount: 0,
+      topTitles: [],
+      sampleTitles: [],
+      rejectedSampleTitles: [],
+      rejectedSampleReasons: [],
+      rejectedReasons: {},
+      stageCounts: {
+        comicVineApiResultCount: 0,
+        comicVinePostNormalizationCount: 0,
+        comicVineCanonicalAcceptedCount: 0,
+        comicVineContentAcceptedCount: 0,
+        comicVineFinalAcceptedCount: 0,
+      },
+      error: String(err?.message || err || "comicvine_search_failed"),
+    };
   } finally {
     clearTimeout(timer);
   }
@@ -429,7 +504,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
   const baseAnchors = anchorQueries.slice(0, MAX_COMICVINE_ANCHORS);
-  const followupTemplates = ["vol 1", "omnibus", "deluxe edition", "master edition"];
+  const followupTemplates = ["vol 1", "year one", "book 1", "origin", "complete collection", "deluxe edition", "omnibus"];
   const MAX_FOLLOWUPS_PER_ANCHOR = 2;
   const followupQueriesBuilt: string[] = [];
   for (const anchor of baseAnchors) {
@@ -439,8 +514,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
   // Anti-monoculture ordering: round-robin anchor + first followup before deeper followups.
   const followupsTier1 = baseAnchors.map((a) => `${a} vol 1`);
-  const followupsTier2 = baseAnchors.map((a) => `${a} omnibus`);
-  const prioritizedQueries = [...baseAnchors, ...followupsTier1, ...otherQueries, ...followupsTier2, ...genericQueries];
+  const followupsTier2 = baseAnchors.flatMap((a) => [`${a} year one`, `${a} book 1`, `${a} origin`]);
+  const followupsTier3 = baseAnchors.map((a) => `${a} complete collection`);
+  const followupsTier4 = baseAnchors.map((a) => `${a} omnibus`);
+  const prioritizedQueries = [...baseAnchors, ...followupsTier1, ...followupsTier2, ...otherQueries, ...followupsTier3, ...followupsTier4, ...genericQueries];
   const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(24, MAX_COMICVINE_ANCHORS));
   const comicVineResolvedSeedQuery = anchorSelection.anchors[0] || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = false;
@@ -497,12 +574,22 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
-  const comicVineFetchResults: Array<{ query: string; status: "ok" | "no_matches" | "error"; rawCount: number; acceptedCount: number; rejectedCount: number; topTitles: string[]; rejectedReasons: Record<string, number>; error: string | null }> = [];
+  const comicVineFetchResults: Array<{ query: string; status: "ok" | "api_empty" | "post_normalization_empty" | "canonical_empty" | "content_empty" | "final_empty" | "error"; rawCount: number; acceptedCount: number; rejectedCount: number; topTitles: string[]; rejectedReasons: Record<string, number>; error: string | null }> = [];
   const comicVineRawCountByQuery: Record<string, number> = {};
+  const comicVineApiResultCountByQuery: Record<string, number> = {};
+  const comicVinePostNormalizationCountByQuery: Record<string, number> = {};
+  const comicVineCanonicalAcceptedCountByQuery: Record<string, number> = {};
+  const comicVineContentAcceptedCountByQuery: Record<string, number> = {};
+  const comicVineFinalAcceptedCountByQuery: Record<string, number> = {};
   const comicVineAcceptedCountByQuery: Record<string, number> = {};
   const comicVineRejectedCountByQuery: Record<string, number> = {};
   const comicVineTopTitlesByQuery: Record<string, string[]> = {};
+  const comicVineSampleTitlesByQuery: Record<string, string[]> = {};
+  const comicVineRejectedSampleTitlesByQuery: Record<string, string[]> = {};
+  const comicVineRejectedSampleReasonsByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
+  const comicVineRescueCandidatesByQuery: Record<string, RecommendationDoc[]> = {};
+  const comicVineRescueRejectedTitlesByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
   const followupFetched: string[] = [];
@@ -521,51 +608,145 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const queryCountsByAnchor: Record<string, number> = Object.fromEntries(baseAnchors.map((a) => [a, 0]));
   for (let i = 0; i < maxQueriesToFetch; i += 1) {
     const q = stripDanglingQuotes(queriesToTry[i]);
-    const qAnchor = baseAnchors.find((a) => q === a || q.startsWith(a + " "));
-    if (qAnchor) {
-      const nextCount = (queryCountsByAnchor[qAnchor] || 0) + 1;
-      const projectedShare = nextCount / Math.max(1, comicVineQueriesActuallyFetched.length + 1);
-      const hasDiversifiedEnough = Object.values(queryCountsByAnchor).filter((n) => n > 0).length >= 3;
-      if (hasDiversifiedEnough && projectedShare > MAX_ANCHOR_SHARE) continue;
-      queryCountsByAnchor[qAnchor] = nextCount;
-    }
-    if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
-    comicVineQueriesActuallyFetched.push(q);
-    if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);
-    if (!baseAnchors.includes(q) && followupQueriesBuilt.includes(q)) {
-      followupFetched.push(q);
-      const owner = baseAnchors.find((a) => q.startsWith(a + " "));
-      if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
-    }
-    const hadDocsBeforeQuery = docs.length > 0;
-    const { rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+    try {
+      const qAnchor = baseAnchors.find((a) => q === a || q.startsWith(a + " "));
+      if (qAnchor) {
+        const nextCount = (queryCountsByAnchor[qAnchor] || 0) + 1;
+        const projectedShare = nextCount / Math.max(1, comicVineQueriesActuallyFetched.length + 1);
+        const hasDiversifiedEnough = Object.values(queryCountsByAnchor).filter((n) => n > 0).length >= 3;
+        if (hasDiversifiedEnough && projectedShare > MAX_ANCHOR_SHARE) continue;
+        queryCountsByAnchor[qAnchor] = nextCount;
+      }
+      if (genericPattern.test(normalizeText(q))) genericBudgetConsumed += 1;
+      comicVineQueriesActuallyFetched.push(q);
+      if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);
+      if (!baseAnchors.includes(q) && followupQueriesBuilt.includes(q)) {
+        followupFetched.push(q);
+        const owner = baseAnchors.find((a) => q.startsWith(a + " "));
+        if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
+      }
+      const hadDocsBeforeQuery = docs.length > 0;
+      const { rawCount, acceptedCount, rejectedCount, topTitles, sampleTitles, rejectedSampleTitles, rejectedSampleReasons, rejectedReasons, stageCounts, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
     comicVineRawCountByQuery[q] = rawCount;
+    comicVineApiResultCountByQuery[q] = Number(stageCounts?.comicVineApiResultCount || rawCount || 0);
+    comicVinePostNormalizationCountByQuery[q] = Number(stageCounts?.comicVinePostNormalizationCount || 0);
+    comicVineCanonicalAcceptedCountByQuery[q] = Number(stageCounts?.comicVineCanonicalAcceptedCount || 0);
+    comicVineContentAcceptedCountByQuery[q] = Number(stageCounts?.comicVineContentAcceptedCount || 0);
+    comicVineFinalAcceptedCountByQuery[q] = Number(stageCounts?.comicVineFinalAcceptedCount || acceptedCount || 0);
     comicVineAcceptedCountByQuery[q] = acceptedCount;
     comicVineRejectedCountByQuery[q] = rejectedCount;
     comicVineTopTitlesByQuery[q] = topTitles;
+    comicVineSampleTitlesByQuery[q] = sampleTitles;
+    comicVineRejectedSampleTitlesByQuery[q] = rejectedSampleTitles;
+    comicVineRejectedSampleReasonsByQuery[q] = rejectedSampleReasons;
     comicVineAdapterDropReasonsByQuery[q] = rejectedReasons;
-    if (!acceptedCount) {
-      comicVineFetchResults.push({ query: q, status: error ? "error" : "no_matches", rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
-      continue;
-    }
-    if (!hadDocsBeforeQuery) builtFromQuery = q;
-    comicVineFetchResults.push({
+    const stageStatus =
+      error ? "error"
+      : rawCount <= 0 ? "api_empty"
+      : comicVinePostNormalizationCountByQuery[q] <= 0 ? "post_normalization_empty"
+      : comicVineCanonicalAcceptedCountByQuery[q] <= 0 ? "canonical_empty"
+      : comicVineContentAcceptedCountByQuery[q] <= 0 ? "content_empty"
+      : comicVineFinalAcceptedCountByQuery[q] <= 0 ? "final_empty"
+      : "ok";
+      if (!acceptedCount) {
+        comicVineFetchResults.push({ query: q, status: stageStatus, rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
+        if (rawCount > 0) {
+          const anchorAlias = buildAnchorAliasRegex(q);
+          const rescueEligibleTitles = sampleTitles
+            .filter((title) => (anchorAlias ? anchorAlias.test(normalizeText(title)) : true))
+            .sort((a, b) => {
+              const rank = (t: string) => (/#\s*1\b|vol(?:ume)?\.?\s*1\b|year one|origin|book 1|master edition\s*#?\s*1|treasury edition\s*#?\s*1/.test(normalizeText(t)) ? 2 : 0);
+              return rank(b) - rank(a);
+            })
+            .slice(0, 2);
+          const rescueRejectedTitles = sampleTitles
+            .filter((title) => !(anchorAlias ? anchorAlias.test(normalizeText(title)) : true))
+            .slice(0, 8)
+            .map((title) => ({ title, reason: "anchor_alias_mismatch" }));
+          if (rescueRejectedTitles.length) comicVineRescueRejectedTitlesByQuery[q] = rescueRejectedTitles;
+          const rescue = rescueEligibleTitles.map((title, idx) => ({
+          key: `comicvine-rescue:${q}:${idx}:${title}`.toLowerCase(),
+          title,
+          source: "comicvine_rescue",
+          sourceId: `comicvine-rescue:${q}:${idx}`,
+          author_name: [],
+          ratings_average: 0,
+          ratings_count: 0,
+          first_publish_year: undefined,
+          subject: ["comics", "graphic novel"],
+          language: "en",
+          query: q,
+          queryText: q,
+          queryFamily: inferAnchorFamily(q),
+          queryRung: i,
+          preFilterScore: 0.35,
+          postFilterScore: 0.3,
+          finalScore: 0.25,
+          sourceFamily: "comicvine",
+          normalizedAnchor: normalizeText(q),
+          diagnostics: {
+            comicvine_raw_rescue: true,
+            rescueReason: "content_empty_high_affinity_anchor",
+            originalQuery: q,
+            comicVineRescueAnchorMatch: anchorAlias ? "alias_match" : "not_required",
+            comicVineRescueAnchorMismatchReason: null,
+            rawCount,
+            stageStatus,
+          } as any,
+          } as RecommendationDoc));
+          comicVineRescueCandidatesByQuery[q] = rescue;
+          const preferred = rescue[0];
+          if (preferred && docs.length < fetchLimit) {
+            const rescueKey = String(preferred.key || "").toLowerCase();
+            if (rescueKey && !seen.has(rescueKey)) {
+              seen.add(rescueKey);
+              docs.push(preferred);
+            }
+          }
+        }
+        continue;
+      }
+      if (!hadDocsBeforeQuery) builtFromQuery = q;
+      comicVineFetchResults.push({
       query: q,
-      status: rawCount > 0 ? "ok" : error ? "error" : "no_matches",
+      status: stageStatus,
       rawCount,
       acceptedCount,
       rejectedCount,
       topTitles,
       rejectedReasons,
       error,
-    });
+      });
 
-    // Continue through anchor budget for diversity; do not stop after early successes.
+      // Continue through anchor budget for diversity; do not stop after early successes.
+    } catch (err: any) {
+      comicVineFetchResults.push({
+        query: q,
+        status: "error",
+        rawCount: 0,
+        acceptedCount: 0,
+        rejectedCount: 0,
+        topTitles: [],
+        rejectedReasons: {},
+        error: String(err?.message || err || "comicvine_query_dispatch_failed"),
+      });
+      continue;
+    }
   }
 
   const fetchedSet = new Set(comicVineQueriesActuallyFetched);
   for (const q of followupQueriesBuilt) {
     if (!fetchedSet.has(q)) followupDropped.push({ query: q, reason: "followup_budget_exhausted_or_truncated" });
+  }
+
+  if (docs.length === 0) {
+    const rescueQueries = Object.keys(comicVineRescueCandidatesByQuery).slice(0, 2);
+    for (const rq of rescueQueries) {
+      for (const candidate of comicVineRescueCandidatesByQuery[rq] || []) {
+        if (docs.length >= 2) break;
+        docs.push(candidate);
+      }
+    }
   }
 
   if (docs.length === 0) {
@@ -627,10 +808,20 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueryTexts: queriesToTry,
     comicVineFetchResults,
     comicVineRawCountByQuery,
+    comicVineApiResultCountByQuery,
+    comicVinePostNormalizationCountByQuery,
+    comicVineCanonicalAcceptedCountByQuery,
+    comicVineContentAcceptedCountByQuery,
+    comicVineFinalAcceptedCountByQuery,
     comicVineAcceptedCountByQuery,
     comicVineRejectedCountByQuery,
     comicVineTopTitlesByQuery,
+    comicVineSampleTitlesByQuery,
+    comicVineRejectedSampleTitlesByQuery,
+    comicVineRejectedSampleReasonsByQuery,
     comicVineAdapterDropReasonsByQuery,
+    comicVineRescueCandidatesByQuery,
+    comicVineRescueRejectedTitlesByQuery,
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,
