@@ -2340,6 +2340,25 @@ function comicTitle(candidate: Candidate): string {
   );
 }
 
+function seriesOrdinal(candidate: Candidate): number | null {
+  const text = normalize(`${comicTitle(candidate)} ${(candidate as any)?.subtitle || ""}`);
+  const numericMatch =
+    text.match(/(?:#|vol\.?|volume|book|issue)\s*(\d{1,3})\b/) ||
+    text.match(/\b(\d{1,3})\b/);
+  if (numericMatch) {
+    const n = Number(numericMatch[1] || 0);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  const wordOrdinals: Array<[RegExp, number]> = [
+    [/\bbook one\b/, 1],
+    [/\bbook two\b/, 2],
+  ];
+  for (const [pattern, n] of wordOrdinals) {
+    if (pattern.test(text)) return n;
+  }
+  return null;
+}
+
 function collectionEditionBoost(candidate: Candidate): number {
   const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
   if (/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|tpb|volume\s*1|vol\.?\s*1)\b/.test(text)) return 8;
@@ -2440,11 +2459,19 @@ function canTakeCandidate(
   if (count >= 2) return false;
 
   const seriesKey = normalizedSeriesKey(candidate) || seriesClusterKey(candidate);
-  const source = String(candidate.source || candidate.rawDoc?.source || "").toLowerCase();
-  const perSeriesCap = source === "comicvine" ? 2 : 1;
+  const perSeriesCap = 2;
   if (seriesKey) {
-    const sameSeriesCount = selected.filter((entry) => (normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate)) === seriesKey).length;
+    const sameSeriesEntries = selected.filter((entry) => (normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate)) === seriesKey);
+    const sameSeriesCount = sameSeriesEntries.length;
     if (sameSeriesCount >= perSeriesCap) return false;
+    const currentOrdinal = seriesOrdinal(candidate);
+    const hasNumberOne = sameSeriesEntries.some((entry) => seriesOrdinal(entry.candidate) === 1);
+    if (sameSeriesCount === 0) {
+      if (currentOrdinal !== null && currentOrdinal !== 1) return false;
+    } else if (sameSeriesCount === 1) {
+      if (!hasNumberOne) return false;
+      if (currentOrdinal !== 2) return false;
+    }
   }
 
   if (isOpenLibraryCandidate(candidate) && !passesOpenLibrarySelectionFloor(candidate)) {
