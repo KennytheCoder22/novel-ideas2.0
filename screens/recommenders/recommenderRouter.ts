@@ -2765,9 +2765,9 @@ export async function getRecommendations(
   if (!rungs.length && routerFamily === "mystery") {
     rungs = [
       { rung: 0, query: "psychological suspense graphic novel" },
-      { rung: 1, query: "detective mystery novel" },
-      { rung: 2, query: "police procedural mystery novel" },
-      { rung: 3, query: "psychological mystery novel" },
+      { rung: 1, query: "detective mystery graphic novel" },
+      { rung: 2, query: "police procedural mystery graphic novel" },
+      { rung: 3, query: "psychological mystery graphic novel" },
     ];
   }
 
@@ -2796,16 +2796,16 @@ export async function getRecommendations(
       "society historical fiction novel",
     ],
     thriller: [
-      "psychological thriller novel",
-      "crime thriller novel",
-      "mystery suspense novel",
-      "detective fiction novel",
+      "psychological thriller graphic novel",
+      "crime thriller graphic novel",
+      "mystery suspense graphic novel",
+      "detective fiction graphic novel",
     ],
     mystery: [
-      "psychological thriller novel",
-      "crime thriller novel",
-      "mystery suspense novel",
-      "detective fiction novel",
+      "psychological thriller graphic novel",
+      "crime thriller graphic novel",
+      "mystery suspense graphic novel",
+      "detective fiction graphic novel",
     ],
     horror: [
       "psychological horror graphic novel",
