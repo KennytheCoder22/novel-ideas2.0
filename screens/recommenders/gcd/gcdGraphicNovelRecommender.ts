@@ -370,6 +370,12 @@ function buildAnchorAliasRegex(query: string): RegExp | null {
   if (!row) return null;
   return new RegExp(`\\b(${row.aliases.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]*")).join("|")})\\b`, "i");
 }
+function inferAnchorFamily(query: string): string {
+  const q = normalizeText(query);
+  if (/spider|ms marvel|teen titans|young justice|guardians|hellboy/.test(q)) return "superhero_identity";
+  if (/locke.*key/.test(q)) return "supernatural_family_mystery";
+  return "graphic_novel";
+}
 
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
   const controller = new AbortController();
@@ -646,7 +652,13 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         comicVineFetchResults.push({ query: q, status: stageStatus, rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
         if (rawCount > 0) {
           const anchorAlias = buildAnchorAliasRegex(q);
-          const rescueEligibleTitles = sampleTitles.filter((title) => (anchorAlias ? anchorAlias.test(normalizeText(title)) : true)).slice(0, 2);
+          const rescueEligibleTitles = sampleTitles
+            .filter((title) => (anchorAlias ? anchorAlias.test(normalizeText(title)) : true))
+            .sort((a, b) => {
+              const rank = (t: string) => (/#\s*1\b|vol(?:ume)?\.?\s*1\b|year one|origin|book 1|master edition\s*#?\s*1|treasury edition\s*#?\s*1/.test(normalizeText(t)) ? 2 : 0);
+              return rank(b) - rank(a);
+            })
+            .slice(0, 2);
           const rescueRejectedTitles = sampleTitles
             .filter((title) => !(anchorAlias ? anchorAlias.test(normalizeText(title)) : true))
             .slice(0, 8)
@@ -664,7 +676,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
           subject: ["comics", "graphic novel"],
           language: "en",
           query: q,
+          queryText: q,
+          queryFamily: inferAnchorFamily(q),
           queryRung: i,
+          preFilterScore: 0.35,
+          postFilterScore: 0.3,
+          finalScore: 0.25,
+          sourceFamily: "comicvine",
+          normalizedAnchor: normalizeText(q),
           diagnostics: {
             comicvine_raw_rescue: true,
             rescueReason: "content_empty_high_affinity_anchor",

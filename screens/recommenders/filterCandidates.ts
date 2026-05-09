@@ -2102,6 +2102,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         const before = diagnostics.rejectReasons.length;
         diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !soften.has(reason));
         if (diagnostics.rejectReasons.length !== before) diagnostics.passedChecks.push("comicvine_sparse_metadata_tolerated");
+        (diagnostics as any).lowConfidenceNarrative = true;
       }
     }
     if (isComicVineRescue) {

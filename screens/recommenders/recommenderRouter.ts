@@ -4370,23 +4370,6 @@ const normalizedCandidatesRaw = [
         const rescued = Boolean((doc?.diagnostics as any)?.comicvine_raw_rescue || (doc?.rawDoc?.diagnostics as any)?.comicvine_raw_rescue);
         return different && rescued;
       });
-      if (!rescueAlternative) {
-        const fallbackQuery = Object.keys(comicVineSampleTitlesByQuery).find((q) => !/locke\s*&\s*key/i.test(q) && Number(comicVineRawCountByQuery[q] || 0) > 0);
-        const fallbackTitle = fallbackQuery ? String((comicVineSampleTitlesByQuery[fallbackQuery] || [])[0] || "").trim() : "";
-        if (fallbackQuery && fallbackTitle) {
-          rescueAlternative = {
-            key: `router-rescue:${fallbackQuery}:${fallbackTitle}`.toLowerCase(),
-            title: fallbackTitle,
-            source: "comicvine_rescue",
-            score: -4.5,
-            diagnostics: {
-              comicvine_raw_rescue: true,
-              rescueReason: "router_monoculture_breaker_fallback",
-              originalQuery: fallbackQuery,
-            },
-          };
-        }
-      }
       if (rescueAlternative) finalRenderDocs = [finalRenderDocs[0], rescueAlternative];
     }
   }
