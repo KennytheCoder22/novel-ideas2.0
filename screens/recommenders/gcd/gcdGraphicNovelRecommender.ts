@@ -171,25 +171,38 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
+  const hasSciFiFacet = hasFacet(tagCounts, /science fiction|sci-fi|dystopian|future|space|ai|cyberpunk|technology|robot/);
   if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("hellboy");
   if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("batman");
   if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("walking dead");
   if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("saga");
+  if (hasSciFiFacet) queries.push("paper girls", "descender", "black science", "saga");
   if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
   if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
   if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
-  const defaults = [
-    "locke & key",
-    "the sandman",
-    "saga",
-    "paper girls",
-    "something is killing the children",
-    "gideon falls",
-    "department of truth",
-    "sweet tooth",
-    "runaways",
-    "invincible",
-  ];
+  const defaults = hasSciFiFacet
+    ? [
+        "paper girls",
+        "descender",
+        "black science",
+        "saga",
+        "invincible",
+        "young justice",
+        "teen titans",
+        "runaways",
+      ]
+    : [
+        "locke & key",
+        "the sandman",
+        "saga",
+        "paper girls",
+        "something is killing the children",
+        "gideon falls",
+        "department of truth",
+        "sweet tooth",
+        "runaways",
+        "invincible",
+      ];
   for (const q of defaults) queries.push(q);
   return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 12);
 }
