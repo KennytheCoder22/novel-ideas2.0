@@ -4366,15 +4366,20 @@ const normalizedCandidatesRaw = [
   const finalSeriesCap = includeComicVine ? 2 : 3;
   const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
   let finalRenderDocs = finalSeriesCapResult.kept;
-  if (includeComicVine && finalRenderDocs.length >= 2) {
-    const franchiseSet = new Set(finalRenderDocs.map((doc:any) => finalSeriesKeyForRender(doc)));
-    if (franchiseSet.size === 1) {
-      let rescueAlternative = saturatedFinalRenderDocsBase.find((doc:any) => {
-        const different = finalSeriesKeyForRender(doc) !== finalSeriesKeyForRender(finalRenderDocs[0]);
-        const rescued = Boolean((doc?.diagnostics as any)?.comicvine_raw_rescue || (doc?.rawDoc?.diagnostics as any)?.comicvine_raw_rescue);
-        return different && rescued;
-      });
-      if (rescueAlternative) finalRenderDocs = [finalRenderDocs[0], rescueAlternative];
+  if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
+    const seriesCounts = new Map<string, number>();
+    for (const doc of finalRenderDocs) {
+      const key = finalSeriesKeyForRender(doc);
+      seriesCounts.set(key, (seriesCounts.get(key) || 0) + 1);
+    }
+    for (const doc of saturatedFinalRenderDocsBase) {
+      if (finalRenderDocs.length >= Math.min(finalLimit, TARGET_MIN_RESULTS_WHEN_VIABLE)) break;
+      const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim().toLowerCase();
+      if (!id || finalRenderDocs.some((existing: any) => String(existing?.sourceId || existing?.canonicalId || existing?.id || existing?.key || existing?.title || "").trim().toLowerCase() === id)) continue;
+      const seriesKey = finalSeriesKeyForRender(doc);
+      if ((seriesCounts.get(seriesKey) || 0) >= finalSeriesCap) continue;
+      finalRenderDocs.push(doc);
+      seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
     }
   }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
