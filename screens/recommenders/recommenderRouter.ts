@@ -2978,6 +2978,7 @@ export async function getRecommendations(
   const comicVineRejectedSampleTitlesByQuery: Record<string, string[]> = {};
   const comicVineRejectedSampleReasonsByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
+  const comicVineRescueRejectedTitlesByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
   let comicVineDispatchedOnce = false;
@@ -3133,6 +3134,7 @@ export async function getRecommendations(
             Object.assign(comicVineRejectedSampleTitlesByQuery, value?.comicVineRejectedSampleTitlesByQuery || {});
             Object.assign(comicVineRejectedSampleReasonsByQuery, value?.comicVineRejectedSampleReasonsByQuery || {});
             Object.assign(comicVineAdapterDropReasonsByQuery, value?.comicVineAdapterDropReasonsByQuery || {});
+            Object.assign(comicVineRescueRejectedTitlesByQuery, value?.comicVineRescueRejectedTitlesByQuery || {});
           } else {
             comicVineFetchResults.push({
               query,
@@ -4251,6 +4253,7 @@ const normalizedCandidatesRaw = [
       Object.keys(comicVineRejectedSampleTitlesByQuery).length > 0 ||
       Object.keys(comicVineRejectedSampleReasonsByQuery).length > 0,
     comicVineAdapterDropReasonsByQuery,
+    comicVineRescueRejectedTitlesByQuery,
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineResolvedSeedQuery,

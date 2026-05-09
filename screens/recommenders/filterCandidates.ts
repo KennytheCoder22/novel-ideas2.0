@@ -2105,6 +2105,16 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       }
     }
     if (isComicVineRescue) {
+      const rescueQuery = normalizeText(String((doc as any)?.query || ""));
+      const rescueTitle = normalizeText(String(diagnostics.title || ""));
+      const spiderQuery = /spider/.test(rescueQuery);
+      const spiderTitle = /\b(spider[\s-]?man|spiderman|peter parker|miles morales|ultimate spider[\s-]?man|amazing spider[\s-]?man)\b/.test(rescueTitle);
+      if (spiderQuery && !spiderTitle) {
+        diagnostics.rejectReasons.push("comicvine_rescue_anchor_mismatch");
+        diagnostics.kept = false;
+        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        continue;
+      }
       const keepReasons = new Set(["comicvine_invalid_runaways_saga_variant", "hard_reject_title", "hard_reject_category"]);
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((r) => keepReasons.has(r));
       diagnostics.passedChecks.push("comicvine_rescue_passthrough");

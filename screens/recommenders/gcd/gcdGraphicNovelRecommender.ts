@@ -356,6 +356,21 @@ function buildSearchUrls(query: string): string[] {
   ];
 }
 
+function buildAnchorAliasRegex(query: string): RegExp | null {
+  const q = normalizeText(query);
+  const aliasMap: Array<{ anchor: RegExp; aliases: string[] }> = [
+    { anchor: /spider/, aliases: ["spider man", "spiderman", "peter parker", "miles morales", "ultimate spider man", "amazing spider man", "spider man life story", "spider man blue"] },
+    { anchor: /ms marvel|kamala/, aliases: ["ms marvel", "kamala khan", "magnificent ms marvel"] },
+    { anchor: /teen titans|titans/, aliases: ["teen titans", "new teen titans", "titans", "teen titans academy"] },
+    { anchor: /young justice/, aliases: ["young justice"] },
+    { anchor: /guardians/, aliases: ["guardians of the galaxy", "guardians"] },
+    { anchor: /locke.*key/, aliases: ["locke key", "locke & key"] },
+  ];
+  const row = aliasMap.find((r) => r.anchor.test(q));
+  if (!row) return null;
+  return new RegExp(`\\b(${row.aliases.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]*")).join("|")})\\b`, "i");
+}
+
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -562,6 +577,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVineRejectedSampleReasonsByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
   const comicVineRescueCandidatesByQuery: Record<string, RecommendationDoc[]> = {};
+  const comicVineRescueRejectedTitlesByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineQueriesActuallyFetched: string[] = [];
   const comicVineRungsBuilt = gcdRungs.map((r) => String(r.query || "").trim()).filter(Boolean);
   const followupFetched: string[] = [];
@@ -623,7 +639,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       if (!acceptedCount) {
         comicVineFetchResults.push({ query: q, status: stageStatus, rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
         if (rawCount > 0) {
-          const rescue = sampleTitles.slice(0, 2).map((title, idx) => ({
+          const anchorAlias = buildAnchorAliasRegex(q);
+          const rescueEligibleTitles = sampleTitles.filter((title) => (anchorAlias ? anchorAlias.test(normalizeText(title)) : true)).slice(0, 2);
+          const rescueRejectedTitles = sampleTitles
+            .filter((title) => !(anchorAlias ? anchorAlias.test(normalizeText(title)) : true))
+            .slice(0, 8)
+            .map((title) => ({ title, reason: "anchor_alias_mismatch" }));
+          if (rescueRejectedTitles.length) comicVineRescueRejectedTitlesByQuery[q] = rescueRejectedTitles;
+          const rescue = rescueEligibleTitles.map((title, idx) => ({
           key: `comicvine-rescue:${q}:${idx}:${title}`.toLowerCase(),
           title,
           source: "comicvine_rescue",
@@ -640,6 +663,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
             comicvine_raw_rescue: true,
             rescueReason: "content_empty_high_affinity_anchor",
             originalQuery: q,
+            comicVineRescueAnchorMatch: anchorAlias ? "alias_match" : "not_required",
+            comicVineRescueAnchorMismatchReason: null,
             rawCount,
             stageStatus,
           } as any,
@@ -763,6 +788,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineRejectedSampleReasonsByQuery,
     comicVineAdapterDropReasonsByQuery,
     comicVineRescueCandidatesByQuery,
+    comicVineRescueRejectedTitlesByQuery,
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,
