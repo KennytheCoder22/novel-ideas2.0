@@ -2932,6 +2932,23 @@ export function finalRecommenderForDeck(
       });
     }
   }
+  if (selected.length < 8) {
+    const seriesCounts = new Map<string, number>();
+    for (const entry of selected) {
+      const seriesKey = normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate);
+      if (!seriesKey) continue;
+      seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
+    }
+    for (const entry of ordered) {
+      if (selected.length >= 8) break;
+      if (selected.some((existing) => identityKey(existing.candidate) === identityKey(entry.candidate))) continue;
+      if (isHardReject(entry.candidate).reject) continue;
+      const seriesKey = normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate);
+      if (seriesKey && (seriesCounts.get(seriesKey) || 0) >= 2) continue;
+      selected.push(entry);
+      if (seriesKey) seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
+    }
+  }
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
   debugFinalPreview("DISPLAY POOL AFTER TIER GATE", displayPool);
   debugFinalPreview("SELECTED FINAL AFTER AUTHOR/SERIES CAPS", selected);
