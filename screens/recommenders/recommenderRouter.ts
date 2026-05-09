@@ -746,7 +746,7 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   if (family === "horror") {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
-    return quoteIfNeeded("psychological horror novel");
+    return quoteIfNeeded("psychological horror graphic novel");
   }
 
   if (family === "speculative") {
@@ -1868,7 +1868,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "science_fiction" && /emotional|speculative/.test(lowered) ? "emotional speculative fiction novel" : "",
     family === "fantasy" && /dark/.test(lowered) ? "dark fantasy novel" : "",
     family === "fantasy" && /magic|wizard|witch/.test(lowered) ? "magic fantasy novel" : "",
-    family === "horror" && /psychological/.test(lowered) ? "psychological horror novel" : "",
+    family === "horror" && /psychological/.test(lowered) ? "psychological horror graphic novel" : "",
     family === "horror" && /haunted|ghost/.test(lowered) ? "haunted house horror novel" : "",
     family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
     family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
@@ -1930,7 +1930,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
       const simpleFallbackQuery =
         family === "thriller" ? "psychological thriller novel" :
         family === "mystery" ? "detective mystery novel" :
-        "psychological horror novel";
+        "psychological horror graphic novel";
       if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
         mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
       }
@@ -2928,7 +2928,7 @@ export async function getRecommendations(
     }
   }
   const familyAngles: Record<string, string[]> = {
-    horror: ["psychological horror novel", "isolation survival horror novel", "identity-driven unsettling narrative novel"],
+    horror: ["psychological horror graphic novel", "isolation survival horror graphic novel", "identity-driven unsettling graphic novel"],
     thriller: ["high-pressure moral suspense novel", "isolation survival thriller novel", "identity-driven conspiracy narrative novel"],
     mystery: ["psychological investigation novel", "isolated case-file mystery novel", "identity-driven detective narrative novel"],
   };
