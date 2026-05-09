@@ -2028,6 +2028,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     const sourceText = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
     const isComicVineLike = sourceText.includes("comicvine") || sourceText.includes("comicvine");
+    const isComicVineRescue = sourceText.includes("comicvine_rescue");
     const normalizedComicTitle = String(diagnostics.title || "").toLowerCase().trim();
     const strictCanonicalRules: Array<{ anchor: string; rule: RegExp; reason: string }> = [
       { anchor: "saga", rule: /^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/, reason: "strict_root_or_issue_or_volume" },
@@ -2043,6 +2044,14 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     ];
     const strictHit = strictCanonicalRules.find((row) => row.rule.test(normalizedComicTitle));
     const superheroHit = superheroCanonicalProfiles.find((row) => row.alias.test(normalizedComicTitle));
+    const superheroConfidence = superheroHit
+      ? Math.min(
+          1,
+          0.55 +
+            (/vol\.?\s*1|volume\s+1|year one|life story|blue|origin|book 1/.test(normalizedComicTitle) ? 0.25 : 0) +
+            (/amazing|ultimate|miles morales|magnificent/.test(normalizedComicTitle) ? 0.2 : 0)
+        )
+      : 0;
     const knownComicSeries =
       Boolean(strictHit) ||
       /\b(hellboy|locke\s*&\s*key|something is killing the children|y\s*:?\s*the last man|gideon falls|department of truth|sweet tooth|paper girls|invincible|watchmen)\b/.test(normalizedComicTitle) ||
@@ -2066,6 +2075,51 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       (diagnostics as any).comicVineCanonicalMatchRule = strictHit ? String(strictHit.rule) : (superheroHit ? String(superheroHit.alias) : "broad_known_series_regex");
       (diagnostics as any).comicVineCanonicalMatchAnchor = strictHit?.anchor || superheroHit?.anchor || "mixed";
       if (superheroHit?.family) diagnostics.family = superheroHit.family as any;
+    }
+    const comicSemanticFacets = {
+      superhero: superheroHit ? Number(superheroConfidence.toFixed(2)) : 0,
+      coming_of_age: /young justice|ms\.?\s*marvel|kamala khan|teen titans/.test(normalizedComicTitle) ? 0.65 : 0.2,
+      ensemble: /guardians|titans|runaways|justice/.test(normalizedComicTitle) ? 0.7 : 0.25,
+      sci_fi: /guardians|ultimate|clone|space|future/.test(normalizedComicTitle) ? 0.45 : 0.15,
+      mystery: /blue|noir|detective|shadow/.test(normalizedComicTitle) ? 0.25 : 0.05,
+    };
+    (diagnostics as any).semanticFacetWeights = comicSemanticFacets;
+    if (superheroConfidence >= 0.7) diagnostics.passedChecks.push("comicvine_weighted_superhero_confidence");
+    if (isComicVineLike && (superheroHit || /\b(comics?|graphic novel)\b/.test(normalizedComicTitle))) {
+      const comicFriendlyRemovals = new Set(["weak_series_spam", "anthology_or_collection"]);
+      const before = diagnostics.rejectReasons.length;
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !comicFriendlyRemovals.has(reason));
+      if (diagnostics.rejectReasons.length !== before) diagnostics.passedChecks.push("comicvine_collection_relaxed");
+      if (/omnibus|deluxe edition|complete collection|vol\.?\s*1|volume\s+1|year one|book 1|origin/.test(normalizedComicTitle)) {
+        diagnostics.passedChecks.push("comicvine_onboarding_entrypoint_signal");
+      }
+      const comicNarrativeConfidence =
+        superheroConfidence >= 0.6 ||
+        diagnostics.passedChecks.includes("comicvine_canonical_series_signal") ||
+        /vol\.?\s*1|volume\s+1|year one|book 1|origin|no normal|life story/.test(normalizedComicTitle);
+      if (comicNarrativeConfidence) {
+        const soften = new Set(["narrative_strength_required", "insufficient_length_or_description", "below_shape_floor"]);
+        const before = diagnostics.rejectReasons.length;
+        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !soften.has(reason));
+        if (diagnostics.rejectReasons.length !== before) diagnostics.passedChecks.push("comicvine_sparse_metadata_tolerated");
+        (diagnostics as any).lowConfidenceNarrative = true;
+      }
+    }
+    if (isComicVineRescue) {
+      const rescueQuery = normalizeText(String((doc as any)?.query || ""));
+      const rescueTitle = normalizeText(String(diagnostics.title || ""));
+      const spiderQuery = /spider/.test(rescueQuery);
+      const spiderTitle = /\b(spider[\s-]?man|spiderman|peter parker|miles morales|ultimate spider[\s-]?man|amazing spider[\s-]?man)\b/.test(rescueTitle);
+      if (spiderQuery && !spiderTitle) {
+        diagnostics.rejectReasons.push("comicvine_rescue_anchor_mismatch");
+        diagnostics.kept = false;
+        Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
+        continue;
+      }
+      const keepReasons = new Set(["comicvine_invalid_runaways_saga_variant", "hard_reject_title", "hard_reject_category"]);
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((r) => keepReasons.has(r));
+      diagnostics.passedChecks.push("comicvine_rescue_passthrough");
+      diagnostics.family = (superheroHit?.family as any) || diagnostics.family;
     }
     if (likelyTranslatedEdition) diagnostics.passedChecks.push("comicvine_translated_edition_penalty");
     const externalAuthoritySignal =
@@ -2236,6 +2290,12 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       } else if (diagnostics.pageCount >= 250 && (isBorderlineRescueCandidate(doc, diagnostics) || hasRescueAuthoritySignal(doc, diagnostics))) {
         diagnostics.passedChecks.push("pagecount_shape_floor_override");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
+      } else if (
+        isComicVineLike &&
+        /\b(hellboy|locke\s*&\s*key|spider[\s-]?man|ms\.?\s*marvel|guardians|teen titans|young justice)\b/.test(normalizedComicTitle) &&
+        /(#\s*1\b|vol(?:ume)?\.?\s*1\b|book\s*1\b|master edition\s*#?\s*1\b|treasury edition\s*#?\s*1\b)/.test(normalizedComicTitle)
+      ) {
+        diagnostics.passedChecks.push("comicvine_canonical_entrypoint_shape_override");
       } else {
         diagnostics.rejectReasons.push("below_shape_floor");
         diagnostics.kept = false;
