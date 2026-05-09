@@ -874,16 +874,20 @@ function buildComicVineFacetRungs(tagCounts: RecommenderInput["tagCounts"] | und
     if (n && !queries.includes(n)) queries.push(n);
   };
 
-  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("horror comics");
-  if (has(/mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
-  if (has(/survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
-  if (has(/dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
-  if (has(/teen|young adult|school|coming of age/)) add("supernatural teen mystery comics");
-  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
+  if (has(/psychological|suspense|thriller|mystery|crime|detective|noir|investigation/)) {
+    add("psychological suspense graphic novel");
+    add("psychological thriller graphic novel");
+  }
+  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("dark horror graphic novel");
+  if (has(/mystery|crime|detective|noir|investigation/)) add("dark mystery graphic novel");
+  if (has(/survival|post apocalyptic|apocalypse|wilderness/)) add("survival graphic novel");
+  if (has(/dystopian|future|rebellion|authoritarian/)) add("dystopian graphic novel");
+  if (has(/teen|young adult|school|coming of age/)) add("teen psychological graphic novel");
+  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural graphic novel");
   if (!queries.length) {
-    add("supernatural teen mystery comics");
-    add("horror comics");
-    add("dark mystery comics");
+    add("psychological suspense graphic novel");
+    add("dark mystery graphic novel");
+    add("supernatural graphic novel");
   }
 
   return queries.slice(0, 6).map((query, index) => ({ rung: 600 + index, query, queryFamily: "general", laneKind: "comicvine-facet", source: "comicVine" }));
