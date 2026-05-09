@@ -2289,6 +2289,12 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       } else if (diagnostics.pageCount >= 250 && (isBorderlineRescueCandidate(doc, diagnostics) || hasRescueAuthoritySignal(doc, diagnostics))) {
         diagnostics.passedChecks.push("pagecount_shape_floor_override");
         if (hasRescueAuthoritySignal(doc, diagnostics)) diagnostics.passedChecks.push("borderline_rescue_penalty");
+      } else if (
+        isComicVineLike &&
+        /\b(hellboy|locke\s*&\s*key|spider[\s-]?man|ms\.?\s*marvel|guardians|teen titans|young justice)\b/.test(normalizedComicTitle) &&
+        /(#\s*1\b|vol(?:ume)?\.?\s*1\b|book\s*1\b|master edition\s*#?\s*1\b|treasury edition\s*#?\s*1\b)/.test(normalizedComicTitle)
+      ) {
+        diagnostics.passedChecks.push("comicvine_canonical_entrypoint_shape_override");
       } else {
         diagnostics.rejectReasons.push("below_shape_floor");
         diagnostics.kept = false;

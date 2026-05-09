@@ -4330,7 +4330,17 @@ const normalizedCandidatesRaw = [
           /locke\s*&\s*key/.test(title) && (/master edition\s*#?\s*1/.test(title) || /treasury edition\s*#?\s*1/.test(title) || /vol(?:ume)?\.?\s*1/.test(title))
             ? 2.25
             : 0;
-        const boostedScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty - laterCollectionPenalty + entryPointBoost;
+        const hellboyRootBoost = /\bhellboy\s*#?\s*1\b/.test(title) ? 3.5 : 0;
+        const hellboyLocalizedPenalty = /\bhellboy\b/.test(title) && /\b(kompendium|kompendiume|kompendio)\b/.test(title) ? 3.25 : 0;
+        const hellboySideArcPenalty = /\bhellboy\b/.test(title) && /:\s*(being human|weird tales|short stories|anthology)/.test(title) ? 2.25 : 0;
+        const boostedScore =
+          Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) -
+          saturationPenalty -
+          laterCollectionPenalty -
+          hellboyLocalizedPenalty -
+          hellboySideArcPenalty +
+          entryPointBoost +
+          hellboyRootBoost;
         return {
           ...doc,
           score: boostedScore,
@@ -4339,6 +4349,9 @@ const normalizedCandidatesRaw = [
             crossFranchiseSaturationPenalty: saturationPenalty,
             laterCollectionPenalty,
             entryPointBoost,
+            hellboyRootBoost,
+            hellboyLocalizedPenalty,
+            hellboySideArcPenalty,
             finalScoreAfterSaturation: boostedScore,
           },
         };

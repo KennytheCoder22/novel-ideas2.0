@@ -394,6 +394,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       comicVineFinalAcceptedCount: 0,
     };
     const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
+    const queryAnchorAlias = buildAnchorAliasRegex(query);
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (sampleTitles.length < 8 && doc?.title) sampleTitles.push(String(doc.title));
@@ -406,6 +407,11 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
+      if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
+        countReject("comicvine_anchor_alias_mismatch");
+        pushRejectedSample("comicvine_anchor_alias_mismatch");
+        continue;
+      }
       if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
       if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); pushRejectedSample("trivial_title"); continue; }
       if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); pushRejectedSample("bad_prefix_die"); continue; }
