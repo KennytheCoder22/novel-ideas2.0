@@ -2034,15 +2034,25 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       { anchor: "sandman", rule: /^(the\s+)?sandman($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/, reason: "strict_root_or_issue_or_volume" },
       { anchor: "runaways", rule: /^runaways($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/, reason: "strict_root_or_issue_or_volume" },
     ];
+    const superheroCanonicalProfiles: Array<{ anchor: string; alias: RegExp; reason: string; family: string }> = [
+      { anchor: "spider-man", alias: /\b(spider[\s-]?man|amazing spider[\s-]?man|ultimate spider[\s-]?man|miles morales[:\s-]+spider[\s-]?man|spider[\s-]?man:\s*blue)\b/, reason: "superhero_alias_bundle", family: "superhero_identity" },
+      { anchor: "ms-marvel", alias: /\b(ms\.?\s*marvel|the magnificent ms\.?\s*marvel|kamala khan)\b/, reason: "superhero_alias_bundle", family: "superhero_identity" },
+      { anchor: "teen-titans", alias: /\b(teen titans|new teen titans|titans|teen titans academy)\b/, reason: "superhero_alias_bundle", family: "superhero_identity" },
+      { anchor: "guardians", alias: /\b(guardians of the galaxy|guardians)\b/, reason: "superhero_alias_bundle", family: "ensemble_space_adventure" },
+      { anchor: "young-justice", alias: /\b(young justice)\b/, reason: "superhero_alias_bundle", family: "emotional_coming_of_age" },
+    ];
     const strictHit = strictCanonicalRules.find((row) => row.rule.test(normalizedComicTitle));
+    const superheroHit = superheroCanonicalProfiles.find((row) => row.alias.test(normalizedComicTitle));
     const knownComicSeries =
       Boolean(strictHit) ||
-      /\b(hellboy|locke\s*&\s*key|something is killing the children|y\s*:?\s*the last man|gideon falls|department of truth|sweet tooth|paper girls|invincible|watchmen)\b/.test(normalizedComicTitle);
+      /\b(hellboy|locke\s*&\s*key|something is killing the children|y\s*:?\s*the last man|gideon falls|department of truth|sweet tooth|paper girls|invincible|watchmen)\b/.test(normalizedComicTitle) ||
+      Boolean(superheroHit);
 
     const zeroRating = diagnostics.ratingsCount === 0;
     const canonicalComicSignal =
       Boolean(strictHit) ||
-      /\b(hellboy|seed of destruction|omnibus|in hell|locke\s*&\s*key|paper girls|sweet tooth)\b/.test(normalizedComicTitle);
+      /\b(hellboy|seed of destruction|omnibus|in hell|locke\s*&\s*key|paper girls|sweet tooth)\b/.test(normalizedComicTitle) ||
+      Boolean(superheroHit);
     const likelyTranslatedEdition = /\b(und die|der|die|les|el|la)\b/.test(String(diagnostics.title || "").toLowerCase());
     if (/^runaways\s+.*\bsaga\b/.test(normalizedComicTitle)) {
       diagnostics.rejectReasons.push("comicvine_invalid_runaways_saga_variant");
@@ -2052,9 +2062,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     }
     if (canonicalComicSignal) {
       diagnostics.passedChecks.push("comicvine_canonical_series_signal");
-      (diagnostics as any).comicVineCanonicalMatchReason = strictHit ? strictHit.reason : "broad_known_series_signal";
-      (diagnostics as any).comicVineCanonicalMatchRule = strictHit ? String(strictHit.rule) : "broad_known_series_regex";
-      (diagnostics as any).comicVineCanonicalMatchAnchor = strictHit?.anchor || "mixed";
+      (diagnostics as any).comicVineCanonicalMatchReason = strictHit ? strictHit.reason : (superheroHit?.reason || "broad_known_series_signal");
+      (diagnostics as any).comicVineCanonicalMatchRule = strictHit ? String(strictHit.rule) : (superheroHit ? String(superheroHit.alias) : "broad_known_series_regex");
+      (diagnostics as any).comicVineCanonicalMatchAnchor = strictHit?.anchor || superheroHit?.anchor || "mixed";
+      if (superheroHit?.family) diagnostics.family = superheroHit.family as any;
     }
     if (likelyTranslatedEdition) diagnostics.passedChecks.push("comicvine_translated_edition_penalty");
     const externalAuthoritySignal =
