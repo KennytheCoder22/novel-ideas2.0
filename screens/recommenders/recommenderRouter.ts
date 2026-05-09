@@ -4246,6 +4246,10 @@ const normalizedCandidatesRaw = [
     comicVineSampleTitlesByQuery,
     comicVineRejectedSampleTitlesByQuery,
     comicVineRejectedSampleReasonsByQuery,
+    comicVineSampleDiagnosticsVisible:
+      Object.keys(comicVineSampleTitlesByQuery).length > 0 ||
+      Object.keys(comicVineRejectedSampleTitlesByQuery).length > 0 ||
+      Object.keys(comicVineRejectedSampleReasonsByQuery).length > 0,
     comicVineAdapterDropReasonsByQuery,
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
@@ -4341,7 +4345,18 @@ const normalizedCandidatesRaw = [
   const saturatedFinalRenderDocsBase = includeComicVine ? applyCrossFranchiseSaturationPenalty(finalRenderDocsBase) : finalRenderDocsBase;
   const finalSeriesCap = includeComicVine ? 2 : 3;
   const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
-  const finalRenderDocs = finalSeriesCapResult.kept;
+  let finalRenderDocs = finalSeriesCapResult.kept;
+  if (includeComicVine && finalRenderDocs.length >= 2) {
+    const franchiseSet = new Set(finalRenderDocs.map((doc:any) => finalSeriesKeyForRender(doc)));
+    if (franchiseSet.size === 1) {
+      const rescueAlternative = saturatedFinalRenderDocsBase.find((doc:any) => {
+        const different = finalSeriesKeyForRender(doc) !== finalSeriesKeyForRender(finalRenderDocs[0]);
+        const rescued = Boolean((doc?.diagnostics as any)?.comicvine_raw_rescue || (doc?.rawDoc?.diagnostics as any)?.comicvine_raw_rescue);
+        return different && rescued;
+      });
+      if (rescueAlternative) finalRenderDocs = [finalRenderDocs[0], rescueAlternative];
+    }
+  }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {

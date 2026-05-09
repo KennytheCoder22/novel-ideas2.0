@@ -2028,6 +2028,7 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
     const sourceText = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
     const isComicVineLike = sourceText.includes("comicvine") || sourceText.includes("comicvine");
+    const isComicVineRescue = sourceText.includes("comicvine_rescue");
     const normalizedComicTitle = String(diagnostics.title || "").toLowerCase().trim();
     const strictCanonicalRules: Array<{ anchor: string; rule: RegExp; reason: string }> = [
       { anchor: "saga", rule: /^saga($|\s+#\d+|\s+vol\.?\s*\d+|\s+volume\s+\d+)/, reason: "strict_root_or_issue_or_volume" },
@@ -2102,6 +2103,12 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
         diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !soften.has(reason));
         if (diagnostics.rejectReasons.length !== before) diagnostics.passedChecks.push("comicvine_sparse_metadata_tolerated");
       }
+    }
+    if (isComicVineRescue) {
+      const keepReasons = new Set(["comicvine_invalid_runaways_saga_variant", "hard_reject_title", "hard_reject_category"]);
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((r) => keepReasons.has(r));
+      diagnostics.passedChecks.push("comicvine_rescue_passthrough");
+      diagnostics.family = (superheroHit?.family as any) || diagnostics.family;
     }
     if (likelyTranslatedEdition) diagnostics.passedChecks.push("comicvine_translated_edition_penalty");
     const externalAuthoritySignal =
