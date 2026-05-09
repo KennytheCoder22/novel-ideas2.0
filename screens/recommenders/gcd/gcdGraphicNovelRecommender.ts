@@ -638,9 +638,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
           queryRung: i,
           diagnostics: {
             comicvine_raw_rescue: true,
-            rescueReason: "no_normalized_candidates_from_high_affinity_anchor",
-            rawQuery: q,
+            rescueReason: "content_empty_high_affinity_anchor",
+            originalQuery: q,
             rawCount,
+            stageStatus,
           } as any,
           } as RecommendationDoc));
           comicVineRescueCandidatesByQuery[q] = rescue;

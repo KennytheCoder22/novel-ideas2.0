@@ -2092,6 +2092,16 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       if (/omnibus|deluxe edition|complete collection|vol\.?\s*1|volume\s+1|year one|book 1|origin/.test(normalizedComicTitle)) {
         diagnostics.passedChecks.push("comicvine_onboarding_entrypoint_signal");
       }
+      const comicNarrativeConfidence =
+        superheroConfidence >= 0.6 ||
+        diagnostics.passedChecks.includes("comicvine_canonical_series_signal") ||
+        /vol\.?\s*1|volume\s+1|year one|book 1|origin|no normal|life story/.test(normalizedComicTitle);
+      if (comicNarrativeConfidence) {
+        const soften = new Set(["narrative_strength_required", "insufficient_length_or_description", "below_shape_floor"]);
+        const before = diagnostics.rejectReasons.length;
+        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !soften.has(reason));
+        if (diagnostics.rejectReasons.length !== before) diagnostics.passedChecks.push("comicvine_sparse_metadata_tolerated");
+      }
     }
     if (likelyTranslatedEdition) diagnostics.passedChecks.push("comicvine_translated_edition_penalty");
     const externalAuthoritySignal =

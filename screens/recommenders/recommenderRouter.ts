@@ -2974,6 +2974,9 @@ export async function getRecommendations(
   const comicVineAcceptedCountByQuery: Record<string, number> = {};
   const comicVineRejectedCountByQuery: Record<string, number> = {};
   const comicVineTopTitlesByQuery: Record<string, string[]> = {};
+  const comicVineSampleTitlesByQuery: Record<string, string[]> = {};
+  const comicVineRejectedSampleTitlesByQuery: Record<string, string[]> = {};
+  const comicVineRejectedSampleReasonsByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
@@ -3126,6 +3129,9 @@ export async function getRecommendations(
             Object.assign(comicVineAcceptedCountByQuery, value?.comicVineAcceptedCountByQuery || {});
             Object.assign(comicVineRejectedCountByQuery, value?.comicVineRejectedCountByQuery || {});
             Object.assign(comicVineTopTitlesByQuery, value?.comicVineTopTitlesByQuery || {});
+            Object.assign(comicVineSampleTitlesByQuery, value?.comicVineSampleTitlesByQuery || {});
+            Object.assign(comicVineRejectedSampleTitlesByQuery, value?.comicVineRejectedSampleTitlesByQuery || {});
+            Object.assign(comicVineRejectedSampleReasonsByQuery, value?.comicVineRejectedSampleReasonsByQuery || {});
             Object.assign(comicVineAdapterDropReasonsByQuery, value?.comicVineAdapterDropReasonsByQuery || {});
           } else {
             comicVineFetchResults.push({
@@ -4237,6 +4243,9 @@ const normalizedCandidatesRaw = [
     comicVineAcceptedCountByQuery,
     comicVineRejectedCountByQuery,
     comicVineTopTitlesByQuery,
+    comicVineSampleTitlesByQuery,
+    comicVineRejectedSampleTitlesByQuery,
+    comicVineRejectedSampleReasonsByQuery,
     comicVineAdapterDropReasonsByQuery,
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
@@ -4305,13 +4314,24 @@ const normalizedCandidatesRaw = [
         const count = (franchiseCounts[key] || 0) + 1;
         franchiseCounts[key] = count;
         const saturationPenalty = count <= 2 ? 0 : (count - 2) * 3.25;
-        const boostedScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty;
+        const title = String(doc?.title || doc?.rawDoc?.title || "").toLowerCase();
+        const laterCollectionPenalty =
+          /locke\s*&\s*key/.test(title) && (/master edition\s*#?\s*[2-9]/.test(title) || /vol(?:ume)?\.?\s*[2-9]/.test(title))
+            ? 4.5
+            : 0;
+        const entryPointBoost =
+          /locke\s*&\s*key/.test(title) && (/master edition\s*#?\s*1/.test(title) || /treasury edition\s*#?\s*1/.test(title) || /vol(?:ume)?\.?\s*1/.test(title))
+            ? 2.25
+            : 0;
+        const boostedScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty - laterCollectionPenalty + entryPointBoost;
         return {
           ...doc,
           score: boostedScore,
           diagnostics: {
             ...(doc?.diagnostics || {}),
             crossFranchiseSaturationPenalty: saturationPenalty,
+            laterCollectionPenalty,
+            entryPointBoost,
             finalScoreAfterSaturation: boostedScore,
           },
         };
