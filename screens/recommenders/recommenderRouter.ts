@@ -4324,11 +4324,11 @@ const normalizedCandidatesRaw = [
         const title = String(doc?.title || doc?.rawDoc?.title || "").toLowerCase();
         const laterCollectionPenalty =
           /locke\s*&\s*key/.test(title) && (/master edition\s*#?\s*[2-9]/.test(title) || /vol(?:ume)?\.?\s*[2-9]/.test(title))
-            ? 4.5
+            ? 7.25
             : 0;
         const entryPointBoost =
           /locke\s*&\s*key/.test(title) && (/master edition\s*#?\s*1/.test(title) || /treasury edition\s*#?\s*1/.test(title) || /vol(?:ume)?\.?\s*1/.test(title))
-            ? 2.25
+            ? 3.75
             : 0;
         const hellboyRootBoost = /\bhellboy\s*#?\s*1\b/.test(title) ? 3.5 : 0;
         const hellboyLocalizedPenalty = /\bhellboy\b/.test(title) && /\b(kompendium|kompendiume|kompendio)\b/.test(title) ? 3.25 : 0;
@@ -4365,11 +4365,28 @@ const normalizedCandidatesRaw = [
   if (includeComicVine && finalRenderDocs.length >= 2) {
     const franchiseSet = new Set(finalRenderDocs.map((doc:any) => finalSeriesKeyForRender(doc)));
     if (franchiseSet.size === 1) {
-      const rescueAlternative = saturatedFinalRenderDocsBase.find((doc:any) => {
+      let rescueAlternative = saturatedFinalRenderDocsBase.find((doc:any) => {
         const different = finalSeriesKeyForRender(doc) !== finalSeriesKeyForRender(finalRenderDocs[0]);
         const rescued = Boolean((doc?.diagnostics as any)?.comicvine_raw_rescue || (doc?.rawDoc?.diagnostics as any)?.comicvine_raw_rescue);
         return different && rescued;
       });
+      if (!rescueAlternative) {
+        const fallbackQuery = Object.keys(comicVineSampleTitlesByQuery).find((q) => !/locke\s*&\s*key/i.test(q) && Number(comicVineRawCountByQuery[q] || 0) > 0);
+        const fallbackTitle = fallbackQuery ? String((comicVineSampleTitlesByQuery[fallbackQuery] || [])[0] || "").trim() : "";
+        if (fallbackQuery && fallbackTitle) {
+          rescueAlternative = {
+            key: `router-rescue:${fallbackQuery}:${fallbackTitle}`.toLowerCase(),
+            title: fallbackTitle,
+            source: "comicvine_rescue",
+            score: -4.5,
+            diagnostics: {
+              comicvine_raw_rescue: true,
+              rescueReason: "router_monoculture_breaker_fallback",
+              originalQuery: fallbackQuery,
+            },
+          };
+        }
+      }
       if (rescueAlternative) finalRenderDocs = [finalRenderDocs[0], rescueAlternative];
     }
   }
@@ -4448,6 +4465,10 @@ const normalizedCandidatesRaw = [
       bucketPlan.queries?.[0] ||
       "",
     items: outputItems,
+    comicVineSampleTitlesByQuery,
+    comicVineRejectedSampleTitlesByQuery,
+    comicVineRejectedSampleReasonsByQuery,
+    comicVineRescueRejectedTitlesByQuery,
     debugSourceStats,
     debugCandidatePool: candidatePoolPreview,
     debugRawPool,
