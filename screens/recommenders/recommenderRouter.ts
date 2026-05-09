@@ -4390,6 +4390,32 @@ const normalizedCandidatesRaw = [
       expanded.push(doc);
       if (expanded.length >= target) break;
     }
+    if (expanded.length < target) {
+      for (const doc of rankedDocsWithDiagnostics) {
+        if (expanded.length >= 10) break;
+        const key = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
+        if (expanded.some((d:any) => String(d?.sourceId || d?.key || d?.title || "").toLowerCase() === key)) continue;
+        expanded.push(doc);
+        if (expanded.length >= target) break;
+      }
+    }
+    if (expanded.length < target) {
+      for (const doc of rawPoolWithDiagnostics) {
+        if (expanded.length >= 10) break;
+        const key = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
+        if (!key) continue;
+        if (expanded.some((d:any) => String(d?.sourceId || d?.key || d?.title || "").toLowerCase() === key)) continue;
+        expanded.push({
+          ...doc,
+          diagnostics: {
+            ...(doc?.diagnostics || {}),
+            comicvine_raw_rescue: true,
+            rescueReason: "comicvine_only_minimum_fill",
+          },
+        });
+        if (expanded.length >= target) break;
+      }
+    }
     outputItems = expanded.slice(0, 10).map((doc:any) => ({ kind: "open_library", doc }));
   }
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
