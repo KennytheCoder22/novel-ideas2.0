@@ -3008,9 +3008,10 @@ export function finalRecommenderForDeck(
     return out;
   })();
   if (diversityBalanced.length < 3) {
-    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length, fallback: "ordered_scored_docs" });
-    const fallbackDocs = ordered
-      .slice(0, Math.min(MAX_RESULTS, Math.max(5, ordered.length)))
+    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length, fallback: "cluster_balanced_docs" });
+    const fallbackEntries = clusterBalanced.length ? clusterBalanced : ordered;
+    const fallbackDocs = fallbackEntries
+      .slice(0, MAX_RESULTS)
       .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
     return attachNearbyAlternativeReason(fallbackDocs, ordered);
   }
@@ -3062,5 +3063,17 @@ export function finalRecommenderForDeck(
     };
     return true;
   });
-  return attachNearbyAlternativeReason(finalGuardedDocs, ordered);
+  if (finalGuardedDocs.length >= TARGET_MIN_RESULTS_WHEN_VIABLE) {
+    return attachNearbyAlternativeReason(finalGuardedDocs, ordered);
+  }
+  const filled = [...finalGuardedDocs];
+  for (const { candidate, breakdown } of ordered) {
+    if (filled.length >= TARGET_MIN_RESULTS_WHEN_VIABLE) break;
+    const doc = withScores(candidate, breakdown, tasteProfile);
+    const docId = identityKey(doc as any);
+    if (filled.some((existing) => identityKey(existing as any) === docId)) continue;
+    if (isHardReject(doc as any).reject) continue;
+    filled.push(doc);
+  }
+  return attachNearbyAlternativeReason(filled.slice(0, MAX_RESULTS), ordered);
 }
