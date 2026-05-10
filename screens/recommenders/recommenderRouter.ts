@@ -3690,7 +3690,16 @@ const normalizedCandidatesRaw = [
     preferredRungs.has(String(c?.rawDoc?.queryRung ?? c?.queryRung ?? ""))
   );
 
-  const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
+  const requestedLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
+  const comicVineOnlyModeForLimit =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  const finalLimit = comicVineOnlyModeForLimit
+    ? Math.max(requestedLimit, TARGET_MIN_RESULTS_WHEN_VIABLE)
+    : requestedLimit;
 
   let basePool = dedupeDocs([
     ...primaryIntentCandidates,
