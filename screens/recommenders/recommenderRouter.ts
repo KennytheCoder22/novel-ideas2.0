@@ -49,7 +49,7 @@ const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
 const MIN_POOL_FOR_NYT_INJECTION = 14;
 const MAX_NYT_ANCHOR_INJECTIONS = 2;
 const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
-const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
+const TARGET_MIN_RESULTS_WHEN_VIABLE = 10;
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -4550,13 +4550,7 @@ const normalizedCandidatesRaw = [
     !includeKitsu;
   const finalSeriesCap =
     comicVineOnlyModeForFinalSeriesCap
-      ? (
-          distinctSeriesInFinalPool >= 4
-            ? 1
-            : distinctSeriesInFinalPool <= 2
-            ? 4
-            : 2
-        )
+      ? 2
       : includeComicVine
       ? 2
       : 3;
@@ -4580,6 +4574,36 @@ const normalizedCandidatesRaw = [
       finalRenderDocs.push(doc);
       seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
     }
+  }
+  const isComicVineDoc = (doc: any): boolean => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine");
+  const hasUsableCover = (doc: any): boolean => Boolean(doc?.cover_i || doc?.rawDoc?.cover_i || doc?.volumeInfo?.imageLinks?.thumbnail || doc?.rawDoc?.volumeInfo?.imageLinks?.thumbnail);
+  const hasGenericPlaceholderTitle = (doc: any): boolean => {
+    const t = String(doc?.title || doc?.rawDoc?.title || "").trim().toLowerCase();
+    return !t || /^(book\s*(one|1)|untitled|unknown|issue\s*#?\d+)$/i.test(t);
+  };
+  if (comicVineOnlyModeForFinalSeriesCap) {
+    const comicVineOnly = finalRenderDocs.filter((doc: any) => isComicVineDoc(doc) && !hasGenericPlaceholderTitle(doc));
+    const seen = new Set(comicVineOnly.map((doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim().toLowerCase()));
+    const comicVineTopUpPool = dedupeDocs([
+      ...saturatedFinalRenderDocsBase,
+      ...comicVineDocsEnriched,
+      ...gcdCandidates,
+    ] as any)
+      .filter((doc: any) => isComicVineDoc(doc) && !hasGenericPlaceholderTitle(doc))
+      .sort((a: any, b: any) => {
+        const coverDelta = Number(hasUsableCover(b)) - Number(hasUsableCover(a));
+        if (coverDelta !== 0) return coverDelta;
+        return Number(b?.score ?? b?.diagnostics?.finalScore ?? 0) - Number(a?.score ?? a?.diagnostics?.finalScore ?? 0);
+      });
+    for (const doc of comicVineTopUpPool) {
+      if (comicVineOnly.length >= finalLimit) break;
+      const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim().toLowerCase();
+      if (!id || seen.has(id)) continue;
+      comicVineOnly.push(doc);
+      seen.add(id);
+    }
+    // No synthetic spotlight filler: keep recommendations tied to fetched ComicVine docs only.
+    finalRenderDocs = comicVineOnly.slice(0, finalLimit);
   }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;

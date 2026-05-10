@@ -1,7 +1,9 @@
 // /screens/recommenders/gcd/gcdGraphicNovelRecommender.ts
 //
-// Grand Comics Database recommender (20Q-aligned).
-// Teen-only auxiliary engine for comics / graphic novel sessions.
+// ComicVine-first comics recommender (20Q-aligned).
+// UX-facing recommendation/discovery engine for comics / graphic novel sessions.
+// GCD is intentionally treated as optional secondary metadata enrichment over time
+// (creator credits, publication accuracy, reprint lineage, bibliographic depth).
 // Thin fetcher only: literal signal gating, literal query translation,
 // no hardcoded fallback inventory, no manual reranking, no hidden shaping.
 
@@ -17,8 +19,27 @@ const COMIC_VINE_PROXY_URL =
     : "/api/comicvine";
 let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
+const COMICVINE_CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12h cache guidance for API variability/rate limits
+const GCD_ENRICHMENT_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7d cache guidance for slower bibliographic enrichment
 
 type AnchorLane = "facet_weighted";
+
+const FACET_PUBLISHERS: Record<string, string[]> = {
+  superhero: ["marvel comics", "dc comics"],
+  indie_genre: ["image comics", "dark horse comics", "boom studios", "idw publishing", "skybound entertainment", "dynamite entertainment", "valiant comics"],
+  literary_alternative: ["fantagraphics", "drawn & quarterly", "top shelf productions", "silver sprocket", "nbm graphic novels", "selfmadehero"],
+  ya_library: ["scholastic graphix", "first second books", "oni press"],
+  licensed_franchise: ["titan comics", "idw publishing", "dynamite entertainment", "udon entertainment", "humanoids"],
+  horror: ["vault comics", "ablaze publishing", "aftershock comics", "black mask studios", "behemoth comics", "source point press"],
+  sci_fi_fantasy: ["humanoids", "titan comics", "vault comics", "ablaze publishing", "mad cave studios", "dark horse comics", "image comics"],
+  humor: ["ahoy comics", "archie comics", "silver sprocket"],
+  digital_originals: ["comixology originals"],
+};
+
+// Client-side guidance constants to keep ComicVine as the responsive primary layer
+// while allowing slower GCD enrichment jobs to run less frequently.
+void COMICVINE_CACHE_TTL_MS;
+void GCD_ENRICHMENT_CACHE_TTL_MS;
 
 function buildProxyUrl(targetUrl: string): string {
   if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
@@ -48,10 +69,11 @@ function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQuerie
   const positive = tokens.filter((t) => !excluded.has(t) && t.length > 2).slice(0, 5);
   const cleaned = Array.from(new Set(positive)).join(' ').trim();
   const queryTooLong = tokens.length > 12 || String(raw || "").length > 90;
-  const franchiseAnchors = [
-    "hellboy", "the sandman", "something is killing the children", "saga", "y: the last man",
-    "batman black mirror", "gideon falls", "department of truth", "sweet tooth", "invincible", "black hammer", "monstress"
-  ];
+  const franchiseAnchors = Array.from(new Set([
+    ...FACET_PUBLISHERS.superhero,
+    ...FACET_PUBLISHERS.indie_genre.slice(0, 4),
+    ...FACET_PUBLISHERS.sci_fi_fantasy.slice(0, 3),
+  ]));
   const positiveQueries = Array.from(new Set([
     cleaned,
     ...franchiseAnchors,
@@ -88,16 +110,20 @@ function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
   const isTeen = hasFacet(tagCounts, /teen|young adult|school|coming of age/);
   const isManga = hasFacet(tagCounts, /manga|anime|japan/);
 
-  if (isDark && isTeen) anchors.push("batman");
-  if (isDark && !isTeen) anchors.push("hellboy");
-  if (isMystery) anchors.push("batman");
-  if (isSurvival) anchors.push("walking dead");
-  if (isSupernatural) anchors.push("hellboy");
-  if (isManga) anchors.push("naruto");
-  if (isTeen) anchors.push("ms. marvel");
-  if (hasTeenGraphicIntent(tagCounts)) anchors.push("spider-man");
+  if (isDark && isTeen) anchors.push("dc comics");
+  if (isDark && !isTeen) anchors.push("dark horse comics");
+  if (isMystery) anchors.push("dc comics");
+  if (isSurvival) anchors.push("image comics");
+  if (isSupernatural) anchors.push("dark horse comics");
+  if (isManga) anchors.push("kodansha");
+  if (isTeen) anchors.push("marvel");
+  if (hasTeenGraphicIntent(tagCounts)) anchors.push("marvel");
 
-  const baselineAnchors = ["batman", "spider-man", "superman", "saga", "walking dead", "ms. marvel"];
+  const baselineAnchors = Array.from(new Set([
+    ...FACET_PUBLISHERS.superhero,
+    ...FACET_PUBLISHERS.indie_genre.slice(0, 4),
+    ...FACET_PUBLISHERS.horror.slice(0, 2),
+  ]));
   return Array.from(new Set([...anchors, ...baselineAnchors])).slice(0, 10);
 }
 
@@ -138,22 +164,17 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   for (const row of storyFacets) facetWeights[row.facet] = row.re.test(signalText) ? 1 : 0;
 
   const anchorProfiles: Array<{ anchor: string; facets: string[] }> = [
-    { anchor: "ms. marvel", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
-    { anchor: "spider-man", facets: ["coming-of-age", "humor action", "outsider identity", "superhero"] },
-    { anchor: "miles morales", facets: ["coming-of-age", "humor action", "superhero"] },
-    { anchor: "batman", facets: ["crime noir psychological", "mystery", "superhero"] },
-    { anchor: "teen titans", facets: ["coming-of-age", "found family", "superhero"] },
-    { anchor: "young justice", facets: ["coming-of-age", "found family", "superhero"] },
-    { anchor: "runaways", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
-    { anchor: "guardians of the galaxy", facets: ["found family", "dystopian sci-fi identity", "humor action", "superhero"] },
-    { anchor: "invincible", facets: ["coming-of-age", "psychological", "superhero"] },
-    { anchor: "scott pilgrim", facets: ["coming-of-age", "humor action", "found family"] },
-    { anchor: "the sandman", facets: ["dark supernatural mystery", "melancholy", "psychological"] },
-    { anchor: "hellboy", facets: ["dark supernatural mystery", "humor action"] },
-    { anchor: "something is killing the children", facets: ["dark supernatural mystery", "coming-of-age"] },
-    { anchor: "saga", facets: ["dystopian sci-fi identity", "found family", "humor action"] },
+    { anchor: "marvel", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
+    { anchor: "dc comics", facets: ["crime noir psychological", "dark supernatural mystery", "superhero"] },
+    { anchor: "image comics", facets: ["dystopian sci-fi identity", "found family", "dark supernatural mystery"] },
+    { anchor: "dark horse comics", facets: ["dark supernatural mystery", "crime noir psychological", "fantasy adventure"] },
+    { anchor: "boom studios", facets: ["coming-of-age", "dark supernatural mystery", "fantasy adventure"] },
+    { anchor: "idw publishing", facets: ["humor action", "fantasy adventure", "dystopian sci-fi identity"] },
+    { anchor: "vertigo", facets: ["dark supernatural mystery", "psychological", "fantasy adventure"] },
+    { anchor: "valiant comics", facets: ["superhero", "dystopian sci-fi identity", "humor action"] },
   ];
 
+  
   const scored = anchorProfiles.map((p) => {
     const overlap = p.facets.filter((f) => facetWeights[f] > 0);
     const score = overlap.length + (overlap.includes("superhero") ? 0.25 : 0);
@@ -163,7 +184,10 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
   const anchors = selected.map((r) => r.anchor);
   const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
-  const defaults = ["hellboy", "the sandman", "saga", "batman"];
+  const defaults = Array.from(new Set([
+    ...FACET_PUBLISHERS.superhero,
+    ...FACET_PUBLISHERS.indie_genre.slice(0, 2),
+  ]));
   const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
   return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
@@ -171,37 +195,26 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
   const hasSciFiFacet = hasFacet(tagCounts, /science fiction|sci-fi|dystopian|future|space|ai|cyberpunk|technology|robot/);
-  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("hellboy");
-  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("batman");
-  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("walking dead");
-  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("saga");
-  if (hasSciFiFacet) queries.push("paper girls", "descender", "black science", "saga");
-  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
-  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
-  if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
+  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("dark horse comics");
+  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("dc comics");
+  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("image comics");
+  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("image comics");
+  if (hasSciFiFacet) queries.push("image comics", "idw publishing", "dark horse comics", "boom studios");
+  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("marvel", "dc comics");
+  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("dark horse comics");
+  if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("kodansha");
   const defaults = hasSciFiFacet
-    ? [
-        "paper girls",
-        "descender",
-        "black science",
-        "saga",
-        "invincible",
-        "young justice",
-        "teen titans",
-        "runaways",
-      ]
-    : [
-        "locke & key",
-        "the sandman",
-        "saga",
-        "paper girls",
-        "something is killing the children",
-        "gideon falls",
-        "department of truth",
-        "sweet tooth",
-        "runaways",
-        "invincible",
-      ];
+    ? Array.from(new Set([
+        ...FACET_PUBLISHERS.sci_fi_fantasy,
+        ...FACET_PUBLISHERS.indie_genre.slice(0, 3),
+        ...FACET_PUBLISHERS.superhero,
+      ]))
+    : Array.from(new Set([
+        ...FACET_PUBLISHERS.superhero,
+        ...FACET_PUBLISHERS.indie_genre,
+        ...FACET_PUBLISHERS.ya_library,
+        ...FACET_PUBLISHERS.literary_alternative.slice(0, 2),
+      ]));
   for (const q of defaults) queries.push(q);
   return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 12);
 }
@@ -411,6 +424,12 @@ function buildAnchorAliasRegex(query: string): RegExp | null {
   if (!row) return null;
   return new RegExp(`\\b(${row.aliases.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]*")).join("|")})\\b`, "i");
 }
+function isPublisherAnchorQuery(query: string): boolean {
+  const q = normalizeText(query);
+  const all = Array.from(new Set(Object.values(FACET_PUBLISHERS).flat().map((p) => normalizeText(p))));
+  return all.some((name) => q === name || q.startsWith(name + " "));
+}
+
 function inferAnchorFamily(query: string): string {
   const q = normalizeText(query);
   if (/spider|ms marvel|teen titans|young justice|guardians|hellboy/.test(q)) return "superhero_identity";
@@ -442,6 +461,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     };
     const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
     const queryAnchorAlias = buildAnchorAliasRegex(query);
+    const publisherAnchorQuery = isPublisherAnchorQuery(query);
     const aliasFallbackDocs: RecommendationDoc[] = [];
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
@@ -452,11 +472,11 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         if (rejectedSampleReasons.length < 8) rejectedSampleReasons.push({ title, reason });
       };
       if (!doc?.title) { countReject("missing_title"); continue; }
-      if (!isLikelyGraphicNovelCollection(issue, doc)) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
+      if (!publisherAnchorQuery && !isLikelyGraphicNovelCollection(issue, doc)) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
-      if (/^(tpb|hc|sc|gn|ogn|vol\.?\s*\d+|book\s*\d+|chapter\s*\d+|issue\s*\d+|part\s*\d+)$/i.test(normalizedTitle)) {
+      if (/^(tpb|hc|sc|gn|ogn|vol\.?\s*\d+|book\s*\d+|chapter\s*\d+|part\s*\d+)$/i.test(normalizedTitle)) {
         countReject("generic_format_title");
         pushRejectedSample("generic_format_title");
         continue;
@@ -466,7 +486,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         pushRejectedSample("too_short_title");
         continue;
       }
-      if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
+      if (!publisherAnchorQuery && queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
         countReject("comicvine_anchor_alias_mismatch");
         pushRejectedSample("comicvine_anchor_alias_mismatch");
         if (!/coloring book|guide|handbook|companion|anthology|omnibus/i.test(normalizedTitle)) {
@@ -475,6 +495,21 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         continue;
       }
       if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
+      if (publisherAnchorQuery) {
+        if (/coloring book|guide|handbook|companion|checklist|poster|trading card|sketchbook/i.test(normalizedTitle)) {
+          countReject("non_story_publisher_result");
+          pushRejectedSample("non_story_publisher_result");
+          continue;
+        }
+        stageCounts.comicVineContentAcceptedCount += 1;
+        const key = String(doc.key || doc.title || "").toLowerCase();
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          docs.push({ ...doc, sourceFamily: "comicvine", diagnostics: { ...(doc as any)?.diagnostics, publisherAnchorQuery: true } } as any);
+          stageCounts.comicVineFinalAcceptedCount += 1;
+        }
+        continue;
+      }
       if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); pushRejectedSample("trivial_title"); continue; }
       if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); pushRejectedSample("bad_prefix_die"); continue; }
       if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); pushRejectedSample("non_ascii_filtered"); continue; }

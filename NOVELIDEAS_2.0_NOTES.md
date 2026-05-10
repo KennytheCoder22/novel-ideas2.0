@@ -24,3 +24,10 @@ This pass focuses on making the existing app behave more like an adaptive recomm
 ## Intended effect
 
 The app should now feel less like a fixed card shuffle and more like a targeted taste-profiling session, while still respecting the existing deck boundaries.
+
+
+## Comics integration source policy
+
+- **ComicVine is the primary comics recommendation/discovery source.** It is optimized for relationship-driven exploration (characters, teams, arcs, universes, themes, and visual cover context), which maps directly to swipe cards, similarity matching, and "if you liked X, try Y" behavior.
+- **GCD is a secondary enrichment layer.** It should be used to enrich cached ComicVine-driven entities with creator-credit precision, publication chronology, reprint links, and long-tail bibliographic fidelity.
+- **Caching strategy should be aggressive.** Treat ComicVine responses as cache-first to absorb rate-limit/stability variability; run GCD enrichment asynchronously and persistently to improve long-term metadata independence.

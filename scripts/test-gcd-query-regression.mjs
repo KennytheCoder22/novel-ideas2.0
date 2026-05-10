@@ -2,7 +2,7 @@ import fs from 'fs';
 
 const src = fs.readFileSync('screens/recommenders/gcd/gcdGraphicNovelRecommender.ts', 'utf8');
 
-const requiredTerms = ['"batman"','"spider-man"','"superman"','"saga"','"walking dead"','"ms. marvel"'];
+const requiredTerms = ['"marvel comics"','"dc comics"','"image comics"','"dark horse comics"','"scholastic graphix"','"humanoids"','"comixology originals"'];
 const missing = requiredTerms.filter((t) => !src.includes(t));
 if (missing.length) {
   console.error('Missing required broad GCD terms:', missing.join(', '));
