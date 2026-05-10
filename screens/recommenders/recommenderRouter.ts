@@ -3942,8 +3942,15 @@ const normalizedCandidatesRaw = [
   })();
 
   const applyAuthorSeriesCaps = (docs: any[]): any[] => {
-    const authorCap = 1;
-    const seriesCap = 1;
+    const comicVineOnlyMode =
+      includeComicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu;
+    const sparseSingleSourcePool = comicVineOnlyMode && docs.length <= Math.max(finalLimit, 8);
+    const authorCap = sparseSingleSourcePool ? 2 : 1;
+    const seriesCap = sparseSingleSourcePool ? 2 : 1;
     const authorSeen = new Map<string, number>();
     const seriesSeen = new Map<string, number>();
     return docs.filter((doc: any) => {

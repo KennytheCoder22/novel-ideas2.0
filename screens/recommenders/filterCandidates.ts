@@ -1021,6 +1021,10 @@ let fictionPositive =
   if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
     diagnostics.passedChecks.push("soft_narrative_strength_required");
   }
+  const genericSeriesOnlyTitle =
+    /^(book|volume|vol\.?|issue|part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)$/i.test(title) ||
+    /^vol\.?\s*\d+:\s*[^\p{L}\p{N}]*$/iu.test(title);
+  if (genericSeriesOnlyTitle) diagnostics.rejectReasons.push("weak_series_spam");
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
 
   if (family === "horror") {
