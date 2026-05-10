@@ -206,6 +206,31 @@ function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[]
   return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 12);
 }
 
+function buildSessionFitComicVineQueries(tagCounts: TagCounts | undefined, cleanedSeed: string): string[] {
+  const queries: string[] = [];
+  const add = (q: string) => {
+    const normalized = stripDanglingQuotes(String(q || "").trim().toLowerCase());
+    if (normalized && !queries.includes(normalized)) queries.push(normalized);
+  };
+  if (cleanedSeed) add(`${cleanedSeed} graphic novel`);
+  add("teen graphic novel");
+  if (hasFacet(tagCounts, /thriller|suspense|mystery|crime|detective|psychological/)) {
+    add("teen thriller graphic novel");
+    add("psychological graphic novel");
+    add("mystery thriller comic");
+  }
+  if (hasFacet(tagCounts, /dystopian|future|science fiction|sci-fi|survival|rebellion/)) {
+    add("dystopian graphic novel");
+    add("science fiction graphic novel");
+  }
+  if (hasFacet(tagCounts, /dark|horror|spooky|paranormal|supernatural/)) {
+    add("dark fantasy graphic novel");
+    add("supernatural thriller comic");
+  }
+  if (hasFacet(tagCounts, /fantasy|adventure|epic/)) add("fantasy adventure graphic novel");
+  return queries.slice(0, 10);
+}
+
 function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
   return queries.map((query, i) => ({
     rung: i,
@@ -567,7 +592,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const seedClean = cleanComicVineSeedQuery(querySeed);
   const anchorSelection = selectComicVineAnchors(input.tagCounts);
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
-  const allQueries = Array.from(new Set([...anchorSelection.anchors, ...facetQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
+  const sessionFitQueries = buildSessionFitComicVineQueries(input.tagCounts, seedClean.cleaned);
+  const allQueries = Array.from(new Set([...sessionFitQueries, ...anchorSelection.anchors, ...facetQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
   const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
   const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$/i;
   const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q) || anchorSelection.anchors.includes(q));
@@ -585,7 +611,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   // Prefer title + format intent. Avoid ordinal followups that frequently return "Volume X / Book One" artifacts.
   const formatFollowups = baseAnchors.map((a) => `${a} graphic novel`);
   const secondaryFormatFollowups = baseAnchors.map((a) => `${a} tpb`);
-  const prioritizedQueries = [...baseAnchors, ...formatFollowups, ...otherQueries, ...secondaryFormatFollowups, ...genericQueries];
+  const prioritizedQueries = [...sessionFitQueries, ...baseAnchors, ...formatFollowups, ...otherQueries, ...secondaryFormatFollowups, ...genericQueries];
   const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(24, MAX_COMICVINE_ANCHORS));
   const comicVineResolvedSeedQuery = anchorSelection.anchors[0] || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = false;
