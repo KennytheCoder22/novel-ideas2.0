@@ -4476,6 +4476,25 @@ const normalizedCandidatesRaw = [
           ? "teen_postpass_eliminated_all"
           : "render_mapping_empty_after_final")
       : "none";
+  const builtFromQueryRaw =
+    (google as any)?.builtFromQuery ||
+    (openLibrary as any)?.builtFromQuery ||
+    bucketPlan.preview ||
+    bucketPlan.queries?.[0] ||
+    "";
+  const comicVineOnlyMode =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  const builtFromQuery = comicVineOnlyMode
+    ? String(builtFromQueryRaw)
+        .replace(/\bpsychological suspense novel\b/gi, "psychological suspense graphic novel")
+        .replace(/\bpsychological thriller novel\b/gi, "psychological thriller graphic novel")
+        .replace(/\bpsychological mystery novel\b/gi, "psychological mystery graphic novel")
+        .replace(/\bmystery suspense novel\b/gi, "mystery suspense graphic novel")
+    : builtFromQueryRaw;
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -4484,12 +4503,7 @@ const normalizedCandidatesRaw = [
       routingInput.deckKey === "k2"
         ? (routingInput.domainModeOverride ?? "chapterMiddle")
         : (routingInput.domainModeOverride ?? "default"),
-    builtFromQuery:
-      (google as any)?.builtFromQuery ||
-      (openLibrary as any)?.builtFromQuery ||
-      bucketPlan.preview ||
-      bucketPlan.queries?.[0] ||
-      "",
+    builtFromQuery,
     items: outputItems,
     comicVineSampleTitlesByQuery,
     comicVineRejectedSampleTitlesByQuery,
