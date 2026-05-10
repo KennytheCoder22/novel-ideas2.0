@@ -2340,6 +2340,25 @@ function comicTitle(candidate: Candidate): string {
   );
 }
 
+function seriesOrdinal(candidate: Candidate): number | null {
+  const text = normalize(`${comicTitle(candidate)} ${(candidate as any)?.subtitle || ""}`);
+  const numericMatch =
+    text.match(/(?:#|vol\.?|volume|book|issue)\s*(\d{1,3})\b/) ||
+    text.match(/\b(\d{1,3})\b/);
+  if (numericMatch) {
+    const n = Number(numericMatch[1] || 0);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  const wordOrdinals: Array<[RegExp, number]> = [
+    [/\bbook one\b/, 1],
+    [/\bbook two\b/, 2],
+  ];
+  for (const [pattern, n] of wordOrdinals) {
+    if (pattern.test(text)) return n;
+  }
+  return null;
+}
+
 function collectionEditionBoost(candidate: Candidate): number {
   const text = normalize(`${comicTitle(candidate)} ${candidate.subtitle || ""}`);
   if (/\b(master edition|deluxe edition|treasury edition|omnibus|compendium|hardcover collection|tpb|volume\s*1|vol\.?\s*1)\b/.test(text)) return 8;
@@ -2433,18 +2452,29 @@ function canTakeCandidate(
   selected: Array<{ candidate: Candidate; breakdown: ScoreBreakdown }>,
   authorCounts: Map<string, number>,
   subtypeCounts?: Map<string, number>,
-  targetCount = 10
+  targetCount = 10,
+  strictSeriesOrdering = true
 ): boolean {
   const author = normalize(candidate.author);
   const count = authorCounts.get(author) || 0;
   if (count >= 2) return false;
 
   const seriesKey = normalizedSeriesKey(candidate) || seriesClusterKey(candidate);
-  const source = String(candidate.source || candidate.rawDoc?.source || "").toLowerCase();
-  const perSeriesCap = source === "comicvine" ? 2 : 1;
+  const perSeriesCap = 2;
   if (seriesKey) {
-    const sameSeriesCount = selected.filter((entry) => (normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate)) === seriesKey).length;
+    const sameSeriesEntries = selected.filter((entry) => (normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate)) === seriesKey);
+    const sameSeriesCount = sameSeriesEntries.length;
     if (sameSeriesCount >= perSeriesCap) return false;
+    if (strictSeriesOrdering) {
+      const currentOrdinal = seriesOrdinal(candidate);
+      const hasNumberOne = sameSeriesEntries.some((entry) => seriesOrdinal(entry.candidate) === 1);
+      if (sameSeriesCount === 0) {
+        if (currentOrdinal !== null && currentOrdinal !== 1) return false;
+      } else if (sameSeriesCount === 1) {
+        if (!hasNumberOne) return false;
+        if (currentOrdinal !== 2) return false;
+      }
+    }
   }
 
   if (isOpenLibraryCandidate(candidate) && !passesOpenLibrarySelectionFloor(candidate)) {
@@ -2509,12 +2539,13 @@ function pickFromPool(
   authorCounts: Map<string, number>,
   limit: number,
   subtypeCounts?: Map<string, number>,
-  targetCount = 10
+  targetCount = 10,
+  strictSeriesOrdering = true
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
   for (let i = 0; i < pool.length; i += 1) {
     const entry = pool[i];
     if (selected.length >= limit) break;
-    if (!canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount)) continue;
+    if (!canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount, strictSeriesOrdering)) continue;
     if (subtypeCounts && laneFamilyForCandidate(entry.candidate) === "thriller") {
       const subtype = thrillerSubtype(entry.candidate);
       const subtypeSeen = (subtypeCounts.get(subtype) || 0) > 0;
@@ -2522,7 +2553,7 @@ function pickFromPool(
       if (subtypeSeen && wantsMoreSubtypeDiversity) {
         const hasUnseenSubtypeAlternative = pool.slice(i + 1).some((candidateEntry) => {
           if (laneFamilyForCandidate(candidateEntry.candidate) !== "thriller") return false;
-          if (!canTakeCandidate(candidateEntry.candidate, selected, authorCounts, subtypeCounts, targetCount)) return false;
+          if (!canTakeCandidate(candidateEntry.candidate, selected, authorCounts, subtypeCounts, targetCount, strictSeriesOrdering)) return false;
           const otherSubtype = thrillerSubtype(candidateEntry.candidate);
           return (subtypeCounts.get(otherSubtype) || 0) === 0;
         });
@@ -2557,7 +2588,8 @@ function seedHistoricalRungDiversity(
   authorCounts: Map<string, number>,
   limit: number,
   subtypeCounts?: Map<string, number>,
-  targetCount = 10
+  targetCount = 10,
+  strictSeriesOrdering = true
 ): Array<{ candidate: Candidate; breakdown: ScoreBreakdown }> {
   const hasHistorical = pool.some((entry) => isHistoricalCandidate(entry.candidate));
   if (!hasHistorical) return selected;
@@ -2581,7 +2613,7 @@ function seedHistoricalRungDiversity(
     const pick = pool.find((entry) => {
       if (!isHistoricalCandidate(entry.candidate)) return false;
       if (evidenceRank(entry.candidate) !== rung) return false;
-      return canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount);
+      return canTakeCandidate(entry.candidate, selected, authorCounts, subtypeCounts, targetCount, strictSeriesOrdering);
     });
 
     if (!pick) continue;
@@ -2847,15 +2879,15 @@ export function finalRecommenderForDeck(
     const top = bucket[0]?.breakdown?.finalScore ?? -999;
     const quota = top < 16 ? 1 : 2;
     if (top < 8) continue;
-    pickFromPool(bucket.slice(0, quota), selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+    pickFromPool(bucket.slice(0, quota), selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS, true);
   }
 
-  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  seedHistoricalRungDiversity(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS, true);
   const highConfidencePool = displayPool.filter((entry) => isHighConfidenceEntry(entry));
-  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS);
-  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS);
+  pickFromPool(highConfidencePool, selected, authorCounts, Math.min(MAX_RESULTS, HIGH_CONFIDENCE_TARGET), thrillerSubtypeCounts, MAX_RESULTS, true);
+  pickFromPool(displayPool, selected, authorCounts, MAX_RESULTS, thrillerSubtypeCounts, MAX_RESULTS, true);
   if (selected.length < TARGET_MIN_RESULTS_WHEN_VIABLE && ordered.length >= 15) {
-    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS);
+    pickFromPool(ordered, selected, authorCounts, Math.min(MAX_RESULTS, TARGET_MIN_RESULTS_WHEN_VIABLE), thrillerSubtypeCounts, MAX_RESULTS, false);
   }
   if (selected.length < 5) {
     const adjacentFamilies: Record<string, string[]> = {
@@ -2881,7 +2913,7 @@ export function finalRecommenderForDeck(
       isOpenLibraryCandidate(entry.candidate) &&
       isPromotionEligible(entry.candidate)
     );
-    pickFromPool(primaryPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+    pickFromPool(primaryPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS, false);
 
     if (selected.length < 5) {
       const adjacentSet = new Set(adjacentFamilies[sessionPrimaryLane] || []);
@@ -2890,7 +2922,7 @@ export function finalRecommenderForDeck(
         isOpenLibraryCandidate(entry.candidate) &&
         isPromotionEligible(entry.candidate)
       );
-      pickFromPool(adjacentPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS);
+      pickFromPool(adjacentPromotions, selected, authorCounts, 5, thrillerSubtypeCounts, MAX_RESULTS, false);
     }
     if (selected.length < 5) {
       debugFinalLog("FINAL_PROMOTION_REASON", {
@@ -2898,6 +2930,23 @@ export function finalRecommenderForDeck(
         sessionPrimaryLane,
         selectedCount: selected.length,
       });
+    }
+  }
+  if (selected.length < 8) {
+    const seriesCounts = new Map<string, number>();
+    for (const entry of selected) {
+      const seriesKey = normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate);
+      if (!seriesKey) continue;
+      seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
+    }
+    for (const entry of ordered) {
+      if (selected.length >= 8) break;
+      if (selected.some((existing) => identityKey(existing.candidate) === identityKey(entry.candidate))) continue;
+      if (isHardReject(entry.candidate).reject) continue;
+      const seriesKey = normalizedSeriesKey(entry.candidate) || seriesClusterKey(entry.candidate);
+      if (seriesKey && (seriesCounts.get(seriesKey) || 0) >= 2) continue;
+      selected.push(entry);
+      if (seriesKey) seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
     }
   }
   debugFinalPreview("ORDERED TOP BEFORE AUTHOR/SERIES CAPS", ordered);
@@ -2959,9 +3008,10 @@ export function finalRecommenderForDeck(
     return out;
   })();
   if (diversityBalanced.length < 3) {
-    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length, fallback: "ordered_scored_docs" });
-    const fallbackDocs = ordered
-      .slice(0, Math.min(MAX_RESULTS, Math.max(5, ordered.length)))
+    debugFinalLog("INSUFFICIENT_SIGNAL_STATE", { selectedAfterDiversity: diversityBalanced.length, fallback: "cluster_balanced_docs" });
+    const fallbackEntries = clusterBalanced.length ? clusterBalanced : ordered;
+    const fallbackDocs = fallbackEntries
+      .slice(0, MAX_RESULTS)
       .map(({ candidate, breakdown }) => withScores(candidate, breakdown, tasteProfile));
     return attachNearbyAlternativeReason(fallbackDocs, ordered);
   }
@@ -3013,5 +3063,17 @@ export function finalRecommenderForDeck(
     };
     return true;
   });
-  return attachNearbyAlternativeReason(finalGuardedDocs, ordered);
+  if (finalGuardedDocs.length >= TARGET_MIN_RESULTS_WHEN_VIABLE) {
+    return attachNearbyAlternativeReason(finalGuardedDocs, ordered);
+  }
+  const filled = [...finalGuardedDocs];
+  for (const { candidate, breakdown } of ordered) {
+    if (filled.length >= TARGET_MIN_RESULTS_WHEN_VIABLE) break;
+    const doc = withScores(candidate, breakdown, tasteProfile);
+    const docId = identityKey(doc as any);
+    if (filled.some((existing) => identityKey(existing as any) === docId)) continue;
+    if (isHardReject(doc as any).reject) continue;
+    filled.push(doc);
+  }
+  return attachNearbyAlternativeReason(filled.slice(0, MAX_RESULTS), ordered);
 }
