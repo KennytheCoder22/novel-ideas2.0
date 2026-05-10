@@ -58,8 +58,7 @@ function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQuerie
   const cleaned = Array.from(new Set(positive)).join(' ').trim();
   const queryTooLong = tokens.length > 12 || String(raw || "").length > 90;
   const franchiseAnchors = [
-    "hellboy", "the sandman", "something is killing the children", "saga", "y: the last man",
-    "batman black mirror", "gideon falls", "department of truth", "sweet tooth", "invincible", "black hammer", "monstress"
+    "marvel", "dc comics", "dark horse comics", "image comics", "boom studios", "idw publishing", "vertigo", "valiant comics"
   ];
   const positiveQueries = Array.from(new Set([
     cleaned,
@@ -97,16 +96,16 @@ function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
   const isTeen = hasFacet(tagCounts, /teen|young adult|school|coming of age/);
   const isManga = hasFacet(tagCounts, /manga|anime|japan/);
 
-  if (isDark && isTeen) anchors.push("batman");
-  if (isDark && !isTeen) anchors.push("hellboy");
-  if (isMystery) anchors.push("batman");
-  if (isSurvival) anchors.push("walking dead");
-  if (isSupernatural) anchors.push("hellboy");
-  if (isManga) anchors.push("naruto");
-  if (isTeen) anchors.push("ms. marvel");
-  if (hasTeenGraphicIntent(tagCounts)) anchors.push("spider-man");
+  if (isDark && isTeen) anchors.push("dc comics");
+  if (isDark && !isTeen) anchors.push("dark horse comics");
+  if (isMystery) anchors.push("dc comics");
+  if (isSurvival) anchors.push("image comics");
+  if (isSupernatural) anchors.push("dark horse comics");
+  if (isManga) anchors.push("kodansha");
+  if (isTeen) anchors.push("marvel");
+  if (hasTeenGraphicIntent(tagCounts)) anchors.push("marvel");
 
-  const baselineAnchors = ["batman", "spider-man", "superman", "saga", "walking dead", "ms. marvel"];
+  const baselineAnchors = ["marvel", "dc comics", "dark horse comics", "image comics", "boom studios", "idw publishing"];
   return Array.from(new Set([...anchors, ...baselineAnchors])).slice(0, 10);
 }
 
@@ -147,22 +146,17 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   for (const row of storyFacets) facetWeights[row.facet] = row.re.test(signalText) ? 1 : 0;
 
   const anchorProfiles: Array<{ anchor: string; facets: string[] }> = [
-    { anchor: "ms. marvel", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
-    { anchor: "spider-man", facets: ["coming-of-age", "humor action", "outsider identity", "superhero"] },
-    { anchor: "miles morales", facets: ["coming-of-age", "humor action", "superhero"] },
-    { anchor: "batman", facets: ["crime noir psychological", "mystery", "superhero"] },
-    { anchor: "teen titans", facets: ["coming-of-age", "found family", "superhero"] },
-    { anchor: "young justice", facets: ["coming-of-age", "found family", "superhero"] },
-    { anchor: "runaways", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
-    { anchor: "guardians of the galaxy", facets: ["found family", "dystopian sci-fi identity", "humor action", "superhero"] },
-    { anchor: "invincible", facets: ["coming-of-age", "psychological", "superhero"] },
-    { anchor: "scott pilgrim", facets: ["coming-of-age", "humor action", "found family"] },
-    { anchor: "the sandman", facets: ["dark supernatural mystery", "melancholy", "psychological"] },
-    { anchor: "hellboy", facets: ["dark supernatural mystery", "humor action"] },
-    { anchor: "something is killing the children", facets: ["dark supernatural mystery", "coming-of-age"] },
-    { anchor: "saga", facets: ["dystopian sci-fi identity", "found family", "humor action"] },
+    { anchor: "marvel", facets: ["coming-of-age", "found family", "humor action", "superhero"] },
+    { anchor: "dc comics", facets: ["crime noir psychological", "dark supernatural mystery", "superhero"] },
+    { anchor: "image comics", facets: ["dystopian sci-fi identity", "found family", "dark supernatural mystery"] },
+    { anchor: "dark horse comics", facets: ["dark supernatural mystery", "crime noir psychological", "fantasy adventure"] },
+    { anchor: "boom studios", facets: ["coming-of-age", "dark supernatural mystery", "fantasy adventure"] },
+    { anchor: "idw publishing", facets: ["humor action", "fantasy adventure", "dystopian sci-fi identity"] },
+    { anchor: "vertigo", facets: ["dark supernatural mystery", "psychological", "fantasy adventure"] },
+    { anchor: "valiant comics", facets: ["superhero", "dystopian sci-fi identity", "humor action"] },
   ];
 
+  
   const scored = anchorProfiles.map((p) => {
     const overlap = p.facets.filter((f) => facetWeights[f] > 0);
     const score = overlap.length + (overlap.includes("superhero") ? 0.25 : 0);
@@ -172,7 +166,7 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
   const anchors = selected.map((r) => r.anchor);
   const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
-  const defaults = ["hellboy", "the sandman", "saga", "batman"];
+  const defaults = ["marvel", "dc comics", "dark horse comics", "image comics"];
   const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
   return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
@@ -180,36 +174,36 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
   const hasSciFiFacet = hasFacet(tagCounts, /science fiction|sci-fi|dystopian|future|space|ai|cyberpunk|technology|robot/);
-  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("hellboy");
-  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("batman");
-  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("walking dead");
-  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("saga");
-  if (hasSciFiFacet) queries.push("paper girls", "descender", "black science", "saga");
-  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
-  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
-  if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
+  if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("dark horse comics");
+  if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("dc comics");
+  if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("image comics");
+  if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("image comics");
+  if (hasSciFiFacet) queries.push("image comics", "idw publishing", "dark horse comics", "boom studios");
+  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("marvel", "dc comics");
+  if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("dark horse comics");
+  if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("kodansha");
   const defaults = hasSciFiFacet
     ? [
-        "paper girls",
-        "descender",
-        "black science",
-        "saga",
-        "invincible",
-        "young justice",
-        "teen titans",
-        "runaways",
+        "image comics",
+        "idw publishing",
+        "dark horse comics",
+        "boom studios",
+        "marvel",
+        "dc comics",
+        "vertigo",
+        "valiant comics",
       ]
     : [
-        "locke & key",
-        "the sandman",
-        "saga",
-        "paper girls",
-        "something is killing the children",
-        "gideon falls",
-        "department of truth",
-        "sweet tooth",
-        "runaways",
-        "invincible",
+        "marvel",
+        "dc comics",
+        "dark horse comics",
+        "image comics",
+        "boom studios",
+        "idw publishing",
+        "vertigo",
+        "valiant comics",
+        "kodansha",
+        "viz media",
       ];
   for (const q of defaults) queries.push(q);
   return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 12);
