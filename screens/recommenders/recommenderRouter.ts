@@ -4486,7 +4486,7 @@ const normalizedCandidatesRaw = [
     !sourceEnabled.localLibrary &&
     !includeKitsu;
   const finalSeriesCap =
-    comicVineOnlyModeForFinalSeriesCap && distinctSeriesInFinalPool >= 2
+    comicVineOnlyModeForFinalSeriesCap && distinctSeriesInFinalPool >= 4
       ? 1
       : includeComicVine
       ? 2
