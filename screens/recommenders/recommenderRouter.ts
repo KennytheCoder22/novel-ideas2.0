@@ -3690,7 +3690,16 @@ const normalizedCandidatesRaw = [
     preferredRungs.has(String(c?.rawDoc?.queryRung ?? c?.queryRung ?? ""))
   );
 
-  const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
+  const requestedLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
+  const comicVineOnlyModeForLimit =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  const finalLimit = comicVineOnlyModeForLimit
+    ? Math.max(requestedLimit, TARGET_MIN_RESULTS_WHEN_VIABLE)
+    : requestedLimit;
 
   let basePool = dedupeDocs([
     ...primaryIntentCandidates,
@@ -3992,7 +4001,89 @@ const normalizedCandidatesRaw = [
     const finalScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? candidateScoreValue(doc));
     return (finalScore * 6) + teenFit + laneFit + (facetHits * 0.5);
   };
+  let finalSelectionMode: "source_only" | "source_plus_embeddings" | "source_plus_ai_rerank" | "multi_source_blend" = "multi_source_blend";
+  let tasteProfileText = "";
+  const candidateProfileTextById: Record<string, string> = {};
+  const embeddingSimilarityById: Record<string, number> = {};
+  const aiSelectionReasonById: Record<string, string> = {};
+  const aiSelectionBucketById: Record<string, "central_fit" | "adjacent_fit" | "exploratory_fit" | "comfort_fit" | "surprising_fit"> = {};
+  const aiGuardrailRejectedIds: string[] = [];
+  let aiRerankInputCount = 0;
+  let aiRerankOutput: Array<{ id: string; bucket: string; reason: string; similarity: number }> = [];
 
+  const buildTasteCloud = (docs: any[], limit: number): any[] => {
+    const isGenericSeriesOnlyTitle = (doc: any): boolean => {
+      const title = String(doc?.title || doc?.rawDoc?.title || "").trim().toLowerCase();
+      return /^(book|volume|vol\.?|issue|part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)$/.test(title);
+    };
+    const facetTokens = Object.entries(input.tagCounts || {})
+      .filter(([, v]) => Number(v || 0) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .map(([k]) => String(k).toLowerCase())
+      .slice(0, 12);
+    tasteProfileText = `User taste signals: ${facetTokens.join(", ") || "general teen-friendly stories with emotional and genre balance"}.`;
+    const tokenSet = new Set(facetTokens);
+    const scoreSemanticFit = (doc: any): number => {
+      const txt = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")} ${doc?.diagnostics?.reasonAccepted || ""}`.toLowerCase();
+      if (!tokenSet.size) return 0;
+      let matches = 0;
+      for (const token of tokenSet) if (txt.includes(token)) matches += 1;
+      return matches / tokenSet.size;
+    };
+    const sortedAll = [...docs].sort((a: any, b: any) => (laneAndFacetRescore(b) + scoreSemanticFit(b)) - (laneAndFacetRescore(a) + scoreSemanticFit(a)));
+    const sorted = sortedAll.filter((doc: any) => !isGenericSeriesOnlyTitle(doc));
+    const working = sorted.length > 0 ? sorted : sortedAll;
+    const seen = new Set<string>();
+    const takeFirst = (arr: any[]) => {
+      for (const doc of arr) {
+        const key = candidateKey(doc);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        return doc;
+      }
+      return null;
+    };
+    const textOf = (d: any) => `${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`.toLowerCase();
+    const central = working;
+    const adjacent = working.filter((d: any) => /\b(mystery|thriller|science fiction|fantasy|horror|survival)\b/.test(textOf(d)));
+    const emotional = working.filter((d: any) => /\b(friendship|identity|family|coming of age|emotional|human connection)\b/.test(textOf(d)));
+    const tone = working.filter((d: any) => /\b(dark|hopeful|warm|atmospheric|spooky|quirky)\b/.test(textOf(d)));
+    const exploratory = working.filter((d: any) => !/\b(vol\.?\s*\d+|issue\s*\d+|book\s*\d+)\b/i.test(String(d?.title || "")));
+    const surprising = [...working].reverse();
+    const bucketed: Array<{ bucket: "central_fit" | "adjacent_fit" | "exploratory_fit" | "comfort_fit" | "surprising_fit"; doc: any | null }> = [
+      { bucket: "central_fit", doc: takeFirst(central) },
+      { bucket: "adjacent_fit", doc: takeFirst(adjacent) },
+      { bucket: "exploratory_fit", doc: takeFirst(exploratory) },
+      { bucket: "comfort_fit", doc: takeFirst(emotional.length ? emotional : tone) },
+      { bucket: "surprising_fit", doc: takeFirst(surprising) },
+    ];
+    const picks = bucketed.map((row) => row.doc).filter(Boolean) as any[];
+    for (const row of bucketed) {
+      const doc = row.doc;
+      if (!doc) continue;
+      const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim();
+      const profile = `${doc?.title || ""} | ${doc?.source || doc?.rawDoc?.source || ""} | ${(doc?.subjects || []).join(", ")} | ${doc?.description || ""} | ${doc?.seriesKey || ""}`;
+      candidateProfileTextById[id] = profile;
+      embeddingSimilarityById[id] = Number(scoreSemanticFit(doc).toFixed(4));
+      aiSelectionBucketById[id] = row.bucket;
+      aiSelectionReasonById[id] = `Selected for ${row.bucket} using semantic-fit + deterministic lane score.`;
+    }
+    for (const doc of working) {
+      if (picks.length >= limit) break;
+      const key = candidateKey(doc);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      picks.push(doc);
+    }
+    aiRerankInputCount = working.length;
+    aiRerankOutput = picks.slice(0, limit).map((doc: any) => {
+      const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim();
+      return { id, bucket: aiSelectionBucketById[id] || "central_fit", reason: aiSelectionReasonById[id] || "selected", similarity: Number(embeddingSimilarityById[id] || 0) };
+    });
+    return picks.slice(0, limit);
+  };
+
+  const genericTitlePattern = /^(the novel|untitled|book \d+|volume \d+|stories|collected stories)$/i;
   let finalRankedDocs = (() => {
     if (!isTeenDeckKey(input.deckKey)) {
       return applyAuthorSeriesCaps([...finalRankedDocsBase].sort((a: any, b: any) => laneAndFacetRescore(b) - laneAndFacetRescore(a))).slice(0, finalLimit);
@@ -4018,7 +4109,6 @@ const normalizedCandidatesRaw = [
       : null;
     const classicAdultCanonPattern = /\b(dracula|frankenstein|hp lovecraft|edgar allan poe|thomas ligotti|dante|homer|virgil|milton|dickens|tolstoy|dostoevsky)\b/i;
     const anthologyMetaPattern = /\b(anthology|collected|selected works|stories by|essays|criticism|companion|guide|analysis|history of|reader|handbook)\b/i;
-    const genericTitlePattern = /^(the novel|untitled|book \d+|volume \d+|stories|collected stories)$/i;
     const laneScore = (doc: any): number => {
       const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
       const onLane = laneRegex.test(text) ? 2 : -2;
@@ -4142,6 +4232,18 @@ const normalizedCandidatesRaw = [
     });
     return finalTeenOrFallback;
   })();
+  const comicVineOnlyModeForTasteCloud =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  if (comicVineOnlyModeForTasteCloud && finalRankedDocsBase.length > 0) {
+    finalSelectionMode = "source_plus_embeddings";
+    finalRankedDocs = buildTasteCloud(finalRankedDocsBase, finalLimit);
+  } else if (!comicVineOnlyModeForTasteCloud) {
+    finalSelectionMode = "multi_source_blend";
+  }
 
 
   let teenPostPassInputDocs = finalRankedDocsBase.length ? [...finalRankedDocsBase] : [...rankedDocs];
@@ -4414,7 +4516,29 @@ const normalizedCandidatesRaw = [
       .sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0));
   };
   const saturatedFinalRenderDocsBase = includeComicVine ? applyCrossFranchiseSaturationPenalty(finalRenderDocsBase) : finalRenderDocsBase;
-  const finalSeriesCap = includeComicVine ? 2 : 3;
+  const distinctSeriesInFinalPool = new Set(
+    saturatedFinalRenderDocsBase
+      .map((doc: any) => finalSeriesKeyForRender(doc))
+      .filter((key: string) => Boolean(key))
+  ).size;
+  const comicVineOnlyModeForFinalSeriesCap =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  const finalSeriesCap =
+    comicVineOnlyModeForFinalSeriesCap
+      ? (
+          distinctSeriesInFinalPool >= 4
+            ? 1
+            : distinctSeriesInFinalPool <= 2
+            ? 4
+            : 2
+        )
+      : includeComicVine
+      ? 2
+      : 3;
   const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
   let finalRenderDocs = finalSeriesCapResult.kept;
   if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
@@ -4428,7 +4552,10 @@ const normalizedCandidatesRaw = [
       const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim().toLowerCase();
       if (!id || finalRenderDocs.some((existing: any) => String(existing?.sourceId || existing?.canonicalId || existing?.id || existing?.key || existing?.title || "").trim().toLowerCase() === id)) continue;
       const seriesKey = finalSeriesKeyForRender(doc);
-      if ((seriesCounts.get(seriesKey) || 0) >= finalSeriesCap) continue;
+      if ((seriesCounts.get(seriesKey) || 0) >= finalSeriesCap) {
+        aiGuardrailRejectedIds.push(id);
+        continue;
+      }
       finalRenderDocs.push(doc);
       seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
     }
@@ -4535,6 +4662,15 @@ const normalizedCandidatesRaw = [
     debugFilterAudit: filterAuditRows,
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: finalDebugSnapshot,
+    tasteProfileText,
+    candidateProfileTextById,
+    embeddingSimilarityById,
+    aiRerankInputCount,
+    aiRerankOutput,
+    aiSelectionReasonById,
+    aiSelectionBucketById,
+    aiGuardrailRejectedIds,
+    finalSelectionMode,
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength,
     teenPostPassOutputTitles,
