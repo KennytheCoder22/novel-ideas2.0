@@ -2423,9 +2423,13 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const comicVineSoftFallback = inputDocs
       .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
       .filter((doc: any) => {
-        const reasons = Array.isArray(doc?.diagnostics?.rejectReasons) ? doc.diagnostics.rejectReasons : [];
-        const onlyWeakSeriesSpam = reasons.length > 0 && reasons.every((r: string) => r === "weak_series_spam");
-        return onlyWeakSeriesSpam;
+        const reasons = Array.isArray(doc?.diagnostics?.rejectReasons)
+          ? doc.diagnostics.rejectReasons
+          : (Array.isArray(doc?.diagnostics?.filterRejectReasons) ? doc.diagnostics.filterRejectReasons : []);
+        const normalized = reasons.map((r: string) => String(r || "").trim()).filter(Boolean);
+        const allowed = new Set(["weak_series_spam", "lane_mismatch_horror", "lane_mismatch_fantasy", "lane_mismatch_science_fiction"]);
+        const noHardRejects = normalized.length > 0 && normalized.every((r: string) => allowed.has(r));
+        return noHardRejects;
       })
       .slice(0, 2)
       .map((doc: any) => ({
@@ -2435,7 +2439,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
           kept: true,
           filterKept: true,
           rejectReasons: [],
+          filterRejectReasons: [],
           passedChecks: [...(Array.isArray(doc?.diagnostics?.passedChecks) ? doc.diagnostics.passedChecks : []), "comicvine_emergency_sparse_rescue"],
+          filterPassedChecks: [...(Array.isArray(doc?.diagnostics?.filterPassedChecks) ? doc.diagnostics.filterPassedChecks : []), "comicvine_emergency_sparse_rescue"],
         },
       }));
     if (comicVineSoftFallback.length > 0) return comicVineSoftFallback as RecommendationDoc[];
