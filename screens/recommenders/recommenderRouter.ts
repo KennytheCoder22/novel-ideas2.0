@@ -4238,9 +4238,13 @@ const normalizedCandidatesRaw = [
     !sourceEnabled.openLibrary &&
     !sourceEnabled.localLibrary &&
     !includeKitsu;
-  if (comicVineOnlyModeForTasteCloud && finalRankedDocsBase.length > 0) {
+  const deterministicGuardedPool = finalRankedDocsBase.filter((doc: any) => {
+    const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
+    return Boolean(title) && !genericTitlePattern.test(title);
+  });
+  if (comicVineOnlyModeForTasteCloud && deterministicGuardedPool.length > 0) {
     finalSelectionMode = "source_plus_embeddings";
-    finalRankedDocs = buildTasteCloud(finalRankedDocsBase, finalLimit);
+    finalRankedDocs = buildTasteCloud(deterministicGuardedPool, finalLimit);
   } else if (!comicVineOnlyModeForTasteCloud) {
     finalSelectionMode = "multi_source_blend";
   }
@@ -4454,7 +4458,7 @@ const normalizedCandidatesRaw = [
   }
   const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
   const finalAcceptedDocsSource = "finalRankedDocsBase";
-  const finalAcceptedDocsTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const finalAcceptedDocsTitles = deterministicGuardedPool.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
