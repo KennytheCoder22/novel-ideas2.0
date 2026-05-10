@@ -324,6 +324,10 @@ function isWeakSeriesSpam(title: string, doc: any, hasDescription: boolean, hasR
     0;
   const sequelPattern = /\b(book|volume|vol\.?|part)\s*\d+\b|\bseries\b/i.test(title);
   const veryWeakAuthority = ratingsCount < 50 && !hasLegitCommercialAuthority(doc);
+  const sourceText = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+  const isComicVine = sourceText.includes("comicvine");
+  const hasMeaningfulSubtitle = /\b(vol\.?|volume|book|part)\s*\d+\s*[:\-]\s*[\p{L}\p{N}]{3,}/iu.test(title);
+  if (isComicVine && hasMeaningfulSubtitle) return false;
   return sequelPattern && veryWeakAuthority && !(hasDescription && hasRealLength);
 }
 
