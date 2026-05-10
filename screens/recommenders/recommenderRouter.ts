@@ -4602,29 +4602,7 @@ const normalizedCandidatesRaw = [
       comicVineOnly.push(doc);
       seen.add(id);
     }
-    if (comicVineOnly.length < finalLimit) {
-      const emergencyTitles = [
-        "Marvel Comics Spotlight", "DC Comics Spotlight", "Image Comics Spotlight", "Dark Horse Comics Spotlight",
-        "Boom Studios Spotlight", "IDW Publishing Spotlight", "Vault Comics Spotlight", "Humanoids Spotlight",
-        "Scholastic Graphix Spotlight", "Comixology Originals Spotlight"
-      ];
-      for (const title of emergencyTitles) {
-        if (comicVineOnly.length >= finalLimit) break;
-        const id = `comicvine-emergency:${title}`.toLowerCase();
-        if (seen.has(id)) continue;
-        comicVineOnly.push({
-          key: id,
-          sourceId: id,
-          title,
-          source: "comicVine",
-          subject: ["graphic novel", "comics"],
-          queryText: "comicvine_emergency_fill",
-          queryRung: 999,
-          diagnostics: { emergencyComicVineFill: true },
-        } as any);
-        seen.add(id);
-      }
-    }
+    // No synthetic spotlight filler: keep recommendations tied to fetched ComicVine docs only.
     finalRenderDocs = comicVineOnly.slice(0, finalLimit);
   }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));

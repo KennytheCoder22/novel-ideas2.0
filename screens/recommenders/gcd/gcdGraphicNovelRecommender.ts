@@ -495,6 +495,21 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         continue;
       }
       if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
+      if (publisherAnchorQuery) {
+        if (/coloring book|guide|handbook|companion|checklist|poster|trading card|sketchbook/i.test(normalizedTitle)) {
+          countReject("non_story_publisher_result");
+          pushRejectedSample("non_story_publisher_result");
+          continue;
+        }
+        stageCounts.comicVineContentAcceptedCount += 1;
+        const key = String(doc.key || doc.title || "").toLowerCase();
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          docs.push({ ...doc, sourceFamily: "comicvine", diagnostics: { ...(doc as any)?.diagnostics, publisherAnchorQuery: true } } as any);
+          stageCounts.comicVineFinalAcceptedCount += 1;
+        }
+        continue;
+      }
       if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); pushRejectedSample("trivial_title"); continue; }
       if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); pushRejectedSample("bad_prefix_die"); continue; }
       if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); pushRejectedSample("non_ascii_filtered"); continue; }
