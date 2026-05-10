@@ -2419,9 +2419,27 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
   console.log("[THRILLER_KEPT_COUNT]", thrillerKept.length);
   console.log("[THRILLER_REJECTION_BREAKDOWN]", thrillerRejectionBreakdown);
 
-  // Do not re-admit rejected rows when the pool goes empty. Returning [] keeps
-  // filterCandidates as the single source of truth and prevents universal junk
-  // from bypassing diagnostics.
+  if (filtered.length === 0) {
+    const comicVineSoftFallback = inputDocs
+      .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
+      .filter((doc: any) => {
+        const reasons = Array.isArray(doc?.diagnostics?.rejectReasons) ? doc.diagnostics.rejectReasons : [];
+        const onlyWeakSeriesSpam = reasons.length > 0 && reasons.every((r: string) => r === "weak_series_spam");
+        return onlyWeakSeriesSpam;
+      })
+      .slice(0, 2)
+      .map((doc: any) => ({
+        ...doc,
+        diagnostics: {
+          ...(doc?.diagnostics || {}),
+          kept: true,
+          filterKept: true,
+          rejectReasons: [],
+          passedChecks: [...(Array.isArray(doc?.diagnostics?.passedChecks) ? doc.diagnostics.passedChecks : []), "comicvine_emergency_sparse_rescue"],
+        },
+      }));
+    if (comicVineSoftFallback.length > 0) return comicVineSoftFallback as RecommendationDoc[];
+  }
   return filtered;
 }
 
