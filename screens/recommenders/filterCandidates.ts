@@ -1026,6 +1026,17 @@ let fictionPositive =
     /^vol\.?\s*\d+:\s*[^\p{L}\p{N}]*$/iu.test(title);
   if (genericSeriesOnlyTitle) diagnostics.rejectReasons.push("weak_series_spam");
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
+  const sourceTextLocal = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+  const isComicVineLocal = sourceTextLocal.includes("comicvine");
+  if (
+    isComicVineLocal &&
+    genericSeriesOnlyTitle &&
+    /\b(vol\.?\s*\d+|volume\s+\d+|book\s+\d+|year one)\b/.test(queryIntentText) &&
+    !diagnostics.rejectReasons.includes("anthology_or_collection")
+  ) {
+    diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => reason !== "weak_series_spam");
+    diagnostics.passedChecks.push("comicvine_generic_series_title_softened");
+  }
 
   if (family === "horror") {
     if (!horrorAligned) diagnostics.passedChecks.push("soft_missing_horror_alignment");
