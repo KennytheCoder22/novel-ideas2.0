@@ -49,7 +49,7 @@ function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQuerie
   const cleaned = Array.from(new Set(positive)).join(' ').trim();
   const queryTooLong = tokens.length > 12 || String(raw || "").length > 90;
   const franchiseAnchors = [
-    "hellboy", "locke & key", "the sandman", "something is killing the children", "saga", "y: the last man",
+    "hellboy", "the sandman", "something is killing the children", "saga", "y: the last man",
     "batman black mirror", "gideon falls", "department of truth", "sweet tooth", "invincible", "black hammer", "monstress"
   ];
   const positiveQueries = Array.from(new Set([
@@ -164,7 +164,7 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
   const anchors = selected.map((r) => r.anchor);
   const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
-  const defaults = ["hellboy", "locke & key", "the sandman", "saga"];
+  const defaults = ["hellboy", "the sandman", "saga", "batman"];
   const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
   return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
