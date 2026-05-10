@@ -3949,25 +3949,19 @@ const normalizedCandidatesRaw = [
       !sourceEnabled.localLibrary &&
       !includeKitsu;
     const sparseSingleSourcePool = comicVineOnlyMode && docs.length <= Math.max(finalLimit, 8);
-    const authorCap = sparseSingleSourcePool ? 2 : 1;
+    const authorTitleCap = 1;
     const seriesCap = sparseSingleSourcePool ? 2 : 1;
-    const authorSeen = new Map<string, number>();
-    const teenComicVineOnlySparseMode =
-      includeComicVine &&
-      !sourceEnabled.googleBooks &&
-      !sourceEnabled.openLibrary &&
-      !sourceEnabled.localLibrary &&
-      !includeKitsu &&
-      teenAccessible.length <= Math.max(finalLimit * 2, 10);
-    const teenAuthorCap = teenComicVineOnlySparseMode ? 2 : 1;
+    const authorTitleSeen = new Map<string, number>();
     const seriesSeen = new Map<string, number>();
     return docs.filter((doc: any) => {
       const author = String(doc?.author || doc?.author_name?.[0] || doc?.rawDoc?.author || "").trim().toLowerCase();
+      const title = String(doc?.title || doc?.rawDoc?.title || "").trim().toLowerCase();
       const series = String(doc?.seriesKey || doc?.rawDoc?.seriesKey || doc?.rawDoc?.series || "").trim().toLowerCase();
-      if (author) {
-        const count = authorSeen.get(author) || 0;
-        if (count >= authorCap) return false;
-        authorSeen.set(author, count + 1);
+      if (author && title) {
+        const authorTitleKey = `${author}::${title}`;
+        const count = authorTitleSeen.get(authorTitleKey) || 0;
+        if (count >= authorTitleCap) return false;
+        authorTitleSeen.set(authorTitleKey, count + 1);
       }
       if (series) {
         const count = seriesSeen.get(series) || 0;
@@ -4084,6 +4078,14 @@ const normalizedCandidatesRaw = [
     take(pools.general, finalLimit);
 
     const authorSeen = new Map<string, number>();
+    const teenComicVineOnlySparseMode =
+      includeComicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu &&
+      teenAccessible.length <= Math.max(finalLimit * 2, 10);
+    const teenAuthorCap = teenComicVineOnlySparseMode ? 2 : 1;
     const finalTeen = applyAuthorSeriesCaps(out)
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
