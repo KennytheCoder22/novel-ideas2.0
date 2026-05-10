@@ -320,13 +320,14 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
   const text = haystack(c);
   const author = typeof c.author === "string" ? c.author : "";
   const hasAuthor = typeof author === "string" && author.trim().length > 0;
+  const source = normalize(c.source);
+  const comicLikeSource = /\bcomicvine|comicvine_rescue\b/.test(source);
+  const comicLikeItem = /\b(graphic novel|comic|manga)\b/.test(text);
 
   if (!title) return { reject: true, reason: 'missing_title', detail: 'empty title' };
-  if (!hasAuthor || normalize(c.author) === 'unknown') {
+  if ((!hasAuthor || normalize(c.author) === 'unknown') && !(comicLikeSource || comicLikeItem)) {
     return { reject: true, reason: 'missing_author', detail: 'missing or unknown author' };
   }
-
-  const source = normalize(c.source);
   const publicationYear = Number(c.publicationYear || (c.rawDoc as any)?.first_publish_year || 0);
   const ratings = Number(c.ratingCount || 0);
   const canonicalStrength = anchorBoost(c);
