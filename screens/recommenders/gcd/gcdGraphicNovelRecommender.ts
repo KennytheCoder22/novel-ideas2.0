@@ -24,6 +24,18 @@ const GCD_ENRICHMENT_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7d cache guidanc
 
 type AnchorLane = "facet_weighted";
 
+const FACET_PUBLISHERS: Record<string, string[]> = {
+  superhero: ["marvel comics", "dc comics"],
+  indie_genre: ["image comics", "dark horse comics", "boom studios", "idw publishing", "skybound entertainment", "dynamite entertainment", "valiant comics"],
+  literary_alternative: ["fantagraphics", "drawn & quarterly", "top shelf productions", "silver sprocket", "nbm graphic novels", "selfmadehero"],
+  ya_library: ["scholastic graphix", "first second books", "oni press"],
+  licensed_franchise: ["titan comics", "idw publishing", "dynamite entertainment", "udon entertainment", "humanoids"],
+  horror: ["vault comics", "ablaze publishing", "aftershock comics", "black mask studios", "behemoth comics", "source point press"],
+  sci_fi_fantasy: ["humanoids", "titan comics", "vault comics", "ablaze publishing", "mad cave studios", "dark horse comics", "image comics"],
+  humor: ["ahoy comics", "archie comics", "silver sprocket"],
+  digital_originals: ["comixology originals"],
+};
+
 // Client-side guidance constants to keep ComicVine as the responsive primary layer
 // while allowing slower GCD enrichment jobs to run less frequently.
 void COMICVINE_CACHE_TTL_MS;
@@ -57,9 +69,11 @@ function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQuerie
   const positive = tokens.filter((t) => !excluded.has(t) && t.length > 2).slice(0, 5);
   const cleaned = Array.from(new Set(positive)).join(' ').trim();
   const queryTooLong = tokens.length > 12 || String(raw || "").length > 90;
-  const franchiseAnchors = [
-    "marvel", "dc comics", "dark horse comics", "image comics", "boom studios", "idw publishing", "vertigo", "valiant comics"
-  ];
+  const franchiseAnchors = Array.from(new Set([
+    ...FACET_PUBLISHERS.superhero,
+    ...FACET_PUBLISHERS.indie_genre.slice(0, 4),
+    ...FACET_PUBLISHERS.sci_fi_fantasy.slice(0, 3),
+  ]));
   const positiveQueries = Array.from(new Set([
     cleaned,
     ...franchiseAnchors,
@@ -105,7 +119,11 @@ function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
   if (isTeen) anchors.push("marvel");
   if (hasTeenGraphicIntent(tagCounts)) anchors.push("marvel");
 
-  const baselineAnchors = ["marvel", "dc comics", "dark horse comics", "image comics", "boom studios", "idw publishing"];
+  const baselineAnchors = Array.from(new Set([
+    ...FACET_PUBLISHERS.superhero,
+    ...FACET_PUBLISHERS.indie_genre.slice(0, 4),
+    ...FACET_PUBLISHERS.horror.slice(0, 2),
+  ]));
   return Array.from(new Set([...anchors, ...baselineAnchors])).slice(0, 10);
 }
 
@@ -166,7 +184,10 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
   const anchors = selected.map((r) => r.anchor);
   const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
-  const defaults = ["marvel", "dc comics", "dark horse comics", "image comics"];
+  const defaults = Array.from(new Set([
+    ...FACET_PUBLISHERS.superhero,
+    ...FACET_PUBLISHERS.indie_genre.slice(0, 2),
+  ]));
   const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
   return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
@@ -183,28 +204,17 @@ function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[]
   if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("dark horse comics");
   if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("kodansha");
   const defaults = hasSciFiFacet
-    ? [
-        "image comics",
-        "idw publishing",
-        "dark horse comics",
-        "boom studios",
-        "marvel",
-        "dc comics",
-        "vertigo",
-        "valiant comics",
-      ]
-    : [
-        "marvel",
-        "dc comics",
-        "dark horse comics",
-        "image comics",
-        "boom studios",
-        "idw publishing",
-        "vertigo",
-        "valiant comics",
-        "kodansha",
-        "viz media",
-      ];
+    ? Array.from(new Set([
+        ...FACET_PUBLISHERS.sci_fi_fantasy,
+        ...FACET_PUBLISHERS.indie_genre.slice(0, 3),
+        ...FACET_PUBLISHERS.superhero,
+      ]))
+    : Array.from(new Set([
+        ...FACET_PUBLISHERS.superhero,
+        ...FACET_PUBLISHERS.indie_genre,
+        ...FACET_PUBLISHERS.ya_library,
+        ...FACET_PUBLISHERS.literary_alternative.slice(0, 2),
+      ]));
   for (const q of defaults) queries.push(q);
   return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 12);
 }
