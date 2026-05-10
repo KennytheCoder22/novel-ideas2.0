@@ -4044,6 +4044,7 @@ const normalizedCandidatesRaw = [
     return picks.slice(0, limit);
   };
 
+  const genericTitlePattern = /^(the novel|untitled|book \d+|volume \d+|stories|collected stories)$/i;
   let finalRankedDocs = (() => {
     if (!isTeenDeckKey(input.deckKey)) {
       return applyAuthorSeriesCaps([...finalRankedDocsBase].sort((a: any, b: any) => laneAndFacetRescore(b) - laneAndFacetRescore(a))).slice(0, finalLimit);
@@ -4069,7 +4070,6 @@ const normalizedCandidatesRaw = [
       : null;
     const classicAdultCanonPattern = /\b(dracula|frankenstein|hp lovecraft|edgar allan poe|thomas ligotti|dante|homer|virgil|milton|dickens|tolstoy|dostoevsky)\b/i;
     const anthologyMetaPattern = /\b(anthology|collected|selected works|stories by|essays|criticism|companion|guide|analysis|history of|reader|handbook)\b/i;
-    const genericTitlePattern = /^(the novel|untitled|book \d+|volume \d+|stories|collected stories)$/i;
     const laneScore = (doc: any): number => {
       const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
       const onLane = laneRegex.test(text) ? 2 : -2;
