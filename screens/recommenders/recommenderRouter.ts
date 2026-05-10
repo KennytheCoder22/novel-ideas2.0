@@ -4002,7 +4002,13 @@ const normalizedCandidatesRaw = [
     return (finalScore * 6) + teenFit + laneFit + (facetHits * 0.5);
   };
   const buildTasteCloud = (docs: any[], limit: number): any[] => {
-    const sorted = [...docs].sort((a: any, b: any) => laneAndFacetRescore(b) - laneAndFacetRescore(a));
+    const isGenericSeriesOnlyTitle = (doc: any): boolean => {
+      const title = String(doc?.title || doc?.rawDoc?.title || "").trim().toLowerCase();
+      return /^(book|volume|vol\.?|issue|part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)$/.test(title);
+    };
+    const sortedAll = [...docs].sort((a: any, b: any) => laneAndFacetRescore(b) - laneAndFacetRescore(a));
+    const sorted = sortedAll.filter((doc: any) => !isGenericSeriesOnlyTitle(doc));
+    const working = sorted.length > 0 ? sorted : sortedAll;
     const seen = new Set<string>();
     const takeFirst = (arr: any[]) => {
       for (const doc of arr) {
@@ -4014,12 +4020,12 @@ const normalizedCandidatesRaw = [
       return null;
     };
     const textOf = (d: any) => `${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`.toLowerCase();
-    const central = sorted;
-    const adjacent = sorted.filter((d: any) => /\b(mystery|thriller|science fiction|fantasy|horror|survival)\b/.test(textOf(d)));
-    const emotional = sorted.filter((d: any) => /\b(friendship|identity|family|coming of age|emotional|human connection)\b/.test(textOf(d)));
-    const tone = sorted.filter((d: any) => /\b(dark|hopeful|warm|atmospheric|spooky|quirky)\b/.test(textOf(d)));
-    const exploratory = sorted.filter((d: any) => !/\b(vol\.?\s*\d+|issue\s*\d+|book\s*\d+)\b/i.test(String(d?.title || "")));
-    const surprising = [...sorted].reverse();
+    const central = working;
+    const adjacent = working.filter((d: any) => /\b(mystery|thriller|science fiction|fantasy|horror|survival)\b/.test(textOf(d)));
+    const emotional = working.filter((d: any) => /\b(friendship|identity|family|coming of age|emotional|human connection)\b/.test(textOf(d)));
+    const tone = working.filter((d: any) => /\b(dark|hopeful|warm|atmospheric|spooky|quirky)\b/.test(textOf(d)));
+    const exploratory = working.filter((d: any) => !/\b(vol\.?\s*\d+|issue\s*\d+|book\s*\d+)\b/i.test(String(d?.title || "")));
+    const surprising = [...working].reverse();
     const picks = [
       takeFirst(central),
       takeFirst(adjacent),
@@ -4028,7 +4034,7 @@ const normalizedCandidatesRaw = [
       takeFirst(tone),
       takeFirst(surprising),
     ].filter(Boolean) as any[];
-    for (const doc of sorted) {
+    for (const doc of working) {
       if (picks.length >= limit) break;
       const key = candidateKey(doc);
       if (!key || seen.has(key)) continue;
