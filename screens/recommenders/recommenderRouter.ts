@@ -4472,8 +4472,13 @@ const normalizedCandidatesRaw = [
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
   const rankedDocsLength = rankedDocs.length;
-  if (includeComicVine && finalAcceptedDocsLength >= 5 && finalRankedDocs.length < Math.min(5, finalAcceptedDocsLength)) {
-    finalRankedDocs = [...finalRankedDocsBase].slice(0, Math.min(finalLimit, finalAcceptedDocsLength));
+  const comicVineTargetFloor = Math.min(finalLimit, Math.max(2, TARGET_MIN_RESULTS_WHEN_VIABLE));
+  if (
+    includeComicVine &&
+    finalRankedDocsBase.length > 0 &&
+    finalRankedDocs.length < Math.min(comicVineTargetFloor, finalRankedDocsBase.length)
+  ) {
+    finalRankedDocs = [...finalRankedDocsBase].slice(0, Math.min(finalLimit, finalRankedDocsBase.length));
   }
 
   const teenPostPassInputLength = teenPostPassInputDocs.length;

@@ -2425,7 +2425,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
   const comicVineDocsInPool = inputDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"));
   const isComicVineOnlyPool = comicVineDocsInPool.length > 0 && comicVineDocsInPool.length === inputDocs.length;
-  if (isComicVineOnlyPool && filtered.length > 0 && filtered.length < 2) {
+  const COMICVINE_MIN_VIABLE_CANDIDATES = 8;
+  if (isComicVineOnlyPool && filtered.length > 0 && filtered.length < COMICVINE_MIN_VIABLE_CANDIDATES) {
     const existingKeys = new Set(filtered.map((doc: any) => filterDocIdentity(doc)));
     const sparseTopUp = comicVineDocsInPool
       .filter((doc: any) => !existingKeys.has(filterDocIdentity(doc)))
@@ -2434,9 +2435,10 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
           ? doc.diagnostics.rejectReasons
           : (Array.isArray(doc?.diagnostics?.filterRejectReasons) ? doc.diagnostics.filterRejectReasons : []);
         const normalized = reasons.map((r: string) => String(r || "").trim()).filter(Boolean);
-        return normalized.length > 0 && normalized.every((r: string) => r === "weak_series_spam");
+        const allowed = new Set(["weak_series_spam", "lane_mismatch_horror", "lane_mismatch_fantasy", "lane_mismatch_science_fiction", "lane_mismatch_mystery"]);
+        return normalized.length > 0 && normalized.every((r: string) => allowed.has(r));
       })
-      .slice(0, 2 - filtered.length)
+      .slice(0, COMICVINE_MIN_VIABLE_CANDIDATES - filtered.length)
       .map((doc: any) => ({
         ...doc,
         diagnostics: {
