@@ -4511,6 +4511,7 @@ const normalizedCandidatesRaw = [
         .replace(/\bpsychological thriller novel\b/gi, "psychological thriller graphic novel")
         .replace(/\bpsychological mystery novel\b/gi, "psychological mystery graphic novel")
         .replace(/\bmystery suspense novel\b/gi, "mystery suspense graphic novel")
+        .replace(/\bpsychological horror novel\b/gi, "psychological horror graphic novel")
         .replace(/\bdark fantasy novel\b/gi, "dark fantasy graphic novel")
     : builtFromQueryRaw;
   return {
