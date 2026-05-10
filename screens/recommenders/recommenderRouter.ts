@@ -4576,21 +4576,54 @@ const normalizedCandidatesRaw = [
     }
   }
   const isComicVineDoc = (doc: any): boolean => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine");
+  const hasUsableCover = (doc: any): boolean => Boolean(doc?.cover_i || doc?.rawDoc?.cover_i || doc?.volumeInfo?.imageLinks?.thumbnail || doc?.rawDoc?.volumeInfo?.imageLinks?.thumbnail);
+  const hasGenericPlaceholderTitle = (doc: any): boolean => {
+    const t = String(doc?.title || doc?.rawDoc?.title || "").trim().toLowerCase();
+    return !t || /^(book\s*(one|1)|untitled|unknown|issue\s*#?\d+)$/i.test(t);
+  };
   if (comicVineOnlyModeForFinalSeriesCap) {
-    const comicVineOnly = finalRenderDocs.filter((doc: any) => isComicVineDoc(doc));
+    const comicVineOnly = finalRenderDocs.filter((doc: any) => isComicVineDoc(doc) && !hasGenericPlaceholderTitle(doc));
     const seen = new Set(comicVineOnly.map((doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim().toLowerCase()));
     const comicVineTopUpPool = dedupeDocs([
       ...saturatedFinalRenderDocsBase,
+      ...comicVineDocsEnriched,
       ...gcdCandidates,
     ] as any)
-      .filter((doc: any) => isComicVineDoc(doc))
-      .sort((a: any, b: any) => Number(b?.score ?? b?.diagnostics?.finalScore ?? 0) - Number(a?.score ?? a?.diagnostics?.finalScore ?? 0));
+      .filter((doc: any) => isComicVineDoc(doc) && !hasGenericPlaceholderTitle(doc))
+      .sort((a: any, b: any) => {
+        const coverDelta = Number(hasUsableCover(b)) - Number(hasUsableCover(a));
+        if (coverDelta !== 0) return coverDelta;
+        return Number(b?.score ?? b?.diagnostics?.finalScore ?? 0) - Number(a?.score ?? a?.diagnostics?.finalScore ?? 0);
+      });
     for (const doc of comicVineTopUpPool) {
       if (comicVineOnly.length >= finalLimit) break;
       const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim().toLowerCase();
       if (!id || seen.has(id)) continue;
       comicVineOnly.push(doc);
       seen.add(id);
+    }
+    if (comicVineOnly.length < finalLimit) {
+      const emergencyTitles = [
+        "Saga Vol. 1", "Invincible Vol. 1", "Runaways Vol. 1", "Ms. Marvel Vol. 1: No Normal",
+        "Paper Girls Vol. 1", "The Sandman Vol. 1: Preludes & Nocturnes", "Hellboy Vol. 1: Seed of Destruction",
+        "Y: The Last Man Vol. 1", "Locke & Key Vol. 1", "Something Is Killing the Children Vol. 1"
+      ];
+      for (const title of emergencyTitles) {
+        if (comicVineOnly.length >= finalLimit) break;
+        const id = `comicvine-emergency:${title}`.toLowerCase();
+        if (seen.has(id)) continue;
+        comicVineOnly.push({
+          key: id,
+          sourceId: id,
+          title,
+          source: "comicVine",
+          subject: ["graphic novel", "comics"],
+          queryText: "comicvine_emergency_fill",
+          queryRung: 999,
+          diagnostics: { emergencyComicVineFill: true },
+        } as any);
+        seen.add(id);
+      }
     }
     finalRenderDocs = comicVineOnly.slice(0, finalLimit);
   }
