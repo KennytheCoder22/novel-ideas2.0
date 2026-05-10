@@ -4604,9 +4604,9 @@ const normalizedCandidatesRaw = [
     }
     if (comicVineOnly.length < finalLimit) {
       const emergencyTitles = [
-        "Saga Vol. 1", "Invincible Vol. 1", "Runaways Vol. 1", "Ms. Marvel Vol. 1: No Normal",
-        "Paper Girls Vol. 1", "The Sandman Vol. 1: Preludes & Nocturnes", "Hellboy Vol. 1: Seed of Destruction",
-        "Y: The Last Man Vol. 1", "Locke & Key Vol. 1", "Something Is Killing the Children Vol. 1"
+        "Marvel Comics Spotlight", "DC Comics Spotlight", "Image Comics Spotlight", "Dark Horse Comics Spotlight",
+        "Boom Studios Spotlight", "IDW Publishing Spotlight", "Vault Comics Spotlight", "Humanoids Spotlight",
+        "Scholastic Graphix Spotlight", "Comixology Originals Spotlight"
       ];
       for (const title of emergencyTitles) {
         if (comicVineOnly.length >= finalLimit) break;

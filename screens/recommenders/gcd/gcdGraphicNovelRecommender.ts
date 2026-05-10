@@ -424,6 +424,12 @@ function buildAnchorAliasRegex(query: string): RegExp | null {
   if (!row) return null;
   return new RegExp(`\\b(${row.aliases.map((a) => a.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]*")).join("|")})\\b`, "i");
 }
+function isPublisherAnchorQuery(query: string): boolean {
+  const q = normalizeText(query);
+  const all = Array.from(new Set(Object.values(FACET_PUBLISHERS).flat().map((p) => normalizeText(p))));
+  return all.some((name) => q === name || q.startsWith(name + " "));
+}
+
 function inferAnchorFamily(query: string): string {
   const q = normalizeText(query);
   if (/spider|ms marvel|teen titans|young justice|guardians|hellboy/.test(q)) return "superhero_identity";
@@ -455,6 +461,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     };
     const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
     const queryAnchorAlias = buildAnchorAliasRegex(query);
+    const publisherAnchorQuery = isPublisherAnchorQuery(query);
     const aliasFallbackDocs: RecommendationDoc[] = [];
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
@@ -465,11 +472,11 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         if (rejectedSampleReasons.length < 8) rejectedSampleReasons.push({ title, reason });
       };
       if (!doc?.title) { countReject("missing_title"); continue; }
-      if (!isLikelyGraphicNovelCollection(issue, doc)) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
+      if (!publisherAnchorQuery && !isLikelyGraphicNovelCollection(issue, doc)) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
-      if (/^(tpb|hc|sc|gn|ogn|vol\.?\s*\d+|book\s*\d+|chapter\s*\d+|issue\s*\d+|part\s*\d+)$/i.test(normalizedTitle)) {
+      if (/^(tpb|hc|sc|gn|ogn|vol\.?\s*\d+|book\s*\d+|chapter\s*\d+|part\s*\d+)$/i.test(normalizedTitle)) {
         countReject("generic_format_title");
         pushRejectedSample("generic_format_title");
         continue;
@@ -479,7 +486,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         pushRejectedSample("too_short_title");
         continue;
       }
-      if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
+      if (!publisherAnchorQuery && queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
         countReject("comicvine_anchor_alias_mismatch");
         pushRejectedSample("comicvine_anchor_alias_mismatch");
         if (!/coloring book|guide|handbook|companion|anthology|omnibus/i.test(normalizedTitle)) {
