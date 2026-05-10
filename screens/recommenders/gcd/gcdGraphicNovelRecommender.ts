@@ -19,6 +19,22 @@ let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
 
 type AnchorLane = "facet_weighted";
+type CuratedFallback = { title: string; tags: string[]; year?: number };
+
+const CURATED_TEEN_GRAPHIC_NOVEL_FALLBACK: CuratedFallback[] = [
+  { title: "Nimona", tags: ["fantasy", "adventure", "humor", "identity"] },
+  { title: "The Woods", tags: ["dystopian", "survival", "mystery", "teen"] },
+  { title: "Paper Girls", tags: ["science fiction", "mystery", "adventure", "friendship"] },
+  { title: "Runaways", tags: ["teen", "superhero", "family", "identity"] },
+  { title: "Ms. Marvel", tags: ["teen", "superhero", "school", "identity"] },
+  { title: "Something is Killing the Children", tags: ["horror", "dark", "mystery", "survival"] },
+  { title: "Locke & Key", tags: ["horror", "mystery", "dark", "family"] },
+  { title: "The Sandman", tags: ["dark", "fantasy", "psychological"] },
+  { title: "Monstress", tags: ["dark fantasy", "epic", "war"] },
+  { title: "Saga", tags: ["science fiction", "fantasy", "family", "adventure"] },
+  { title: "Y: The Last Man", tags: ["dystopian", "survival", "thriller"] },
+  { title: "Sweet Tooth", tags: ["dystopian", "survival", "dark", "family"] },
+];
 
 function buildProxyUrl(targetUrl: string): string {
   if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
@@ -238,6 +254,34 @@ function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: st
     audience: "teen comics",
     themes: query.split(" ").filter(Boolean).slice(0, 6),
   }));
+}
+
+function buildCuratedFallbackDocs(tagCounts: TagCounts | undefined, limit: number): RecommendationDoc[] {
+  const signalText = topSwipeSignals(tagCounts, 30).join(" ");
+  const scored = CURATED_TEEN_GRAPHIC_NOVEL_FALLBACK.map((entry) => {
+    const score = entry.tags.reduce((acc, tag) => (signalText.includes(tag) ? acc + 1 : acc), 0);
+    return { entry, score };
+  })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+  return scored.map(({ entry }, index) => ({
+    key: `comicvine-curated:${normalizeText(entry.title)}:${index}`,
+    title: entry.title,
+    author_name: ["Unknown"],
+    source: "comicVine",
+    sourceId: `comicvine-curated:${index}`,
+    first_publish_year: entry.year,
+    ratings_average: 0,
+    ratings_count: 0,
+    subject: ["graphic novel", "comics", ...entry.tags],
+    language: "en",
+    queryText: "comicvine_curated_fallback",
+    queryRung: 999,
+    preFilterScore: 0.55,
+    postFilterScore: 0.55,
+    finalScore: 0.55,
+    diagnostics: { curatedFallback: true, curatedTags: entry.tags },
+  } as RecommendationDoc));
 }
 
 async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<string> {
@@ -832,6 +876,19 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         if (docs.length >= 2) break;
         docs.push(candidate);
       }
+    }
+  }
+
+  if (docs.length < 10) {
+    const needed = 10 - docs.length;
+    const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
+    const seenTitles = new Set(docs.map((d) => normalizeText(d.title)));
+    for (const doc of curated) {
+      if (docs.length >= 10) break;
+      const normalizedTitle = normalizeText(doc.title);
+      if (seenTitles.has(normalizedTitle)) continue;
+      seenTitles.add(normalizedTitle);
+      docs.push(doc);
     }
   }
 
