@@ -19,21 +19,21 @@ let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
 
 type AnchorLane = "facet_weighted";
-type CuratedFallback = { title: string; tags: string[]; publisher: string; year?: number };
+type CuratedFallback = { title: string; tags: string[]; publisher: string; facets: string[]; year?: number };
 
 const CURATED_TEEN_GRAPHIC_NOVEL_FALLBACK: CuratedFallback[] = [
-  { title: "Nimona", tags: ["fantasy", "adventure", "humor", "identity"], publisher: "Oni Press" },
-  { title: "The Woods", tags: ["dystopian", "survival", "mystery", "teen"], publisher: "Boom! Studios" },
-  { title: "Paper Girls", tags: ["science fiction", "mystery", "adventure", "friendship"], publisher: "Image Comics" },
-  { title: "Runaways", tags: ["teen", "superhero", "family", "identity"], publisher: "Marvel Comics" },
-  { title: "Ms. Marvel", tags: ["teen", "superhero", "school", "identity"], publisher: "Marvel Comics" },
-  { title: "Something is Killing the Children", tags: ["horror", "dark", "mystery", "survival"], publisher: "Boom! Studios" },
-  { title: "Locke & Key", tags: ["horror", "mystery", "dark", "family"], publisher: "IDW Publishing" },
-  { title: "The Sandman", tags: ["dark", "fantasy", "psychological"], publisher: "DC Comics" },
-  { title: "Monstress", tags: ["dark fantasy", "epic", "war"], publisher: "Image Comics" },
-  { title: "Saga", tags: ["science fiction", "fantasy", "family", "adventure"], publisher: "Image Comics" },
-  { title: "Y: The Last Man", tags: ["dystopian", "survival", "thriller"], publisher: "DC Comics" },
-  { title: "Sweet Tooth", tags: ["dystopian", "survival", "dark", "family"], publisher: "DC Comics" },
+  { title: "Ms. Marvel", tags: ["teen", "superhero", "school", "identity"], publisher: "Marvel Comics", facets: ["superhero", "ya_library"] },
+  { title: "Runaways", tags: ["teen", "superhero", "family", "identity"], publisher: "Marvel Comics", facets: ["superhero", "ya_library"] },
+  { title: "Batman: The Court of Owls", tags: ["dark", "mystery", "crime"], publisher: "DC Comics", facets: ["superhero", "horror"] },
+  { title: "The Sandman", tags: ["dark", "fantasy", "psychological"], publisher: "DC Comics", facets: ["literary_alt", "horror"] },
+  { title: "Saga", tags: ["science fiction", "fantasy", "family", "adventure"], publisher: "Image Comics", facets: ["scifi_fantasy", "indie_genre"] },
+  { title: "Paper Girls", tags: ["science fiction", "mystery", "adventure", "friendship"], publisher: "Image Comics", facets: ["scifi_fantasy", "indie_genre"] },
+  { title: "Monstress", tags: ["dark fantasy", "epic", "war"], publisher: "Image Comics", facets: ["scifi_fantasy", "indie_genre"] },
+  { title: "Something is Killing the Children", tags: ["horror", "dark", "mystery", "survival"], publisher: "Boom! Studios", facets: ["horror", "indie_genre"] },
+  { title: "Lumberjanes", tags: ["friendship", "adventure", "humor"], publisher: "Boom! Studios", facets: ["ya_library", "humor"] },
+  { title: "Locke & Key", tags: ["horror", "mystery", "dark", "family"], publisher: "IDW Publishing", facets: ["horror", "licensed"] },
+  { title: "Nimona", tags: ["fantasy", "adventure", "humor", "identity"], publisher: "Oni Press", facets: ["ya_library", "humor"] },
+  { title: "The Woods", tags: ["dystopian", "survival", "mystery", "teen"], publisher: "Boom! Studios", facets: ["horror", "scifi_fantasy"] },
 ];
 
 function buildProxyUrl(targetUrl: string): string {
@@ -258,8 +258,20 @@ function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: st
 
 function buildCuratedFallbackDocs(tagCounts: TagCounts | undefined, limit: number): RecommendationDoc[] {
   const signalText = topSwipeSignals(tagCounts, 30).join(" ");
+  const activeFacetWeights: Record<string, number> = {
+    superhero: /\bsuperheroes?|marvel|dc\b/.test(signalText) ? 2 : 0,
+    indie_genre: /\bdark|mystery|thriller|adventure|survival\b/.test(signalText) ? 2 : 1,
+    literary_alt: /\bpsychological|drama|identity\b/.test(signalText) ? 1 : 0,
+    ya_library: /\bteen|school|friendship|family\b/.test(signalText) ? 2 : 0,
+    licensed: /\bfilm|series|tv\b/.test(signalText) ? 1 : 0,
+    horror: /\bhorror|spooky|dark|gothic\b/.test(signalText) ? 2 : 0,
+    scifi_fantasy: /\bscience fiction|fantasy|dystopian|time travel\b/.test(signalText) ? 2 : 0,
+    humor: /\bhumor|comedy|quirky|playful\b/.test(signalText) ? 1 : 0,
+  };
   const scored = CURATED_TEEN_GRAPHIC_NOVEL_FALLBACK.map((entry) => {
-    const score = entry.tags.reduce((acc, tag) => (signalText.includes(tag) ? acc + 1 : acc), 0);
+    const tagScore = entry.tags.reduce((acc, tag) => (signalText.includes(tag) ? acc + 1 : acc), 0);
+    const facetScore = entry.facets.reduce((acc, facet) => acc + Number(activeFacetWeights[facet] || 0), 0);
+    const score = tagScore + facetScore;
     return { entry, score };
   })
     .sort((a, b) => b.score - a.score)
@@ -276,7 +288,7 @@ function buildCuratedFallbackDocs(tagCounts: TagCounts | undefined, limit: numbe
     ratings_count: 0,
     subject: ["graphic novel", "comics", ...entry.tags],
     language: "en",
-    queryText: "comicvine_curated_fallback",
+    queryText: "comicvine_publisher_facet_fallback",
     queryRung: 999,
     preFilterScore: 0.55,
     postFilterScore: 0.55,
