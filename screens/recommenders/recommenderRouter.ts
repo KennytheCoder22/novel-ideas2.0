@@ -4252,12 +4252,21 @@ const normalizedCandidatesRaw = [
 
   let teenPostPassInputDocs = finalRankedDocsBase.length ? [...finalRankedDocsBase] : [...rankedDocs];
   if (finalRankedDocs.length === 0 && rankedDocs.length > 0) {
-    finalRankedDocs = rankedDocs
+    const genericFilteredFallback = rankedDocs
       .filter((doc: any) => {
         const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
         return Boolean(title) && !genericTitlePattern.test(title);
       })
       .slice(0, finalLimit);
+    finalRankedDocs = genericFilteredFallback.length > 0
+      ? genericFilteredFallback
+      : rankedDocs.slice(0, Math.min(finalLimit, 2)).map((doc: any) => ({
+          ...doc,
+          diagnostics: {
+            ...(doc?.diagnostics || {}),
+            sparseGenericFallbackUsed: true,
+          },
+        }));
   }
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
