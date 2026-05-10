@@ -574,20 +574,18 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
   const baseAnchors = anchorQueries.slice(0, MAX_COMICVINE_ANCHORS);
-  const followupTemplates = ["vol 1", "year one", "book 1", "origin", "complete collection", "deluxe edition", "omnibus"];
-  const MAX_FOLLOWUPS_PER_ANCHOR = 2;
+  const followupTemplates = ["graphic novel", "tpb", "collected edition", "deluxe edition"];
+  const MAX_FOLLOWUPS_PER_ANCHOR = 1;
   const followupQueriesBuilt: string[] = [];
   for (const anchor of baseAnchors) {
     for (const template of followupTemplates.slice(0, MAX_FOLLOWUPS_PER_ANCHOR)) {
       followupQueriesBuilt.push(`${anchor} ${template}`);
     }
   }
-  // Anti-monoculture ordering: round-robin anchor + first followup before deeper followups.
-  const followupsTier1 = baseAnchors.map((a) => `${a} vol 1`);
-  const followupsTier2 = baseAnchors.flatMap((a) => [`${a} year one`, `${a} book 1`, `${a} origin`]);
-  const followupsTier3 = baseAnchors.map((a) => `${a} complete collection`);
-  const followupsTier4 = baseAnchors.map((a) => `${a} omnibus`);
-  const prioritizedQueries = [...baseAnchors, ...followupsTier1, ...followupsTier2, ...otherQueries, ...followupsTier3, ...followupsTier4, ...genericQueries];
+  // Prefer title + format intent. Avoid ordinal followups that frequently return "Volume X / Book One" artifacts.
+  const formatFollowups = baseAnchors.map((a) => `${a} graphic novel`);
+  const secondaryFormatFollowups = baseAnchors.map((a) => `${a} tpb`);
+  const prioritizedQueries = [...baseAnchors, ...formatFollowups, ...otherQueries, ...secondaryFormatFollowups, ...genericQueries];
   const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(24, MAX_COMICVINE_ANCHORS));
   const comicVineResolvedSeedQuery = anchorSelection.anchors[0] || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = false;
