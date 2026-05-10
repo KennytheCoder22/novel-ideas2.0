@@ -1021,7 +1021,22 @@ let fictionPositive =
   if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
     diagnostics.passedChecks.push("soft_narrative_strength_required");
   }
+  const genericSeriesOnlyTitle =
+    /^(book|volume|vol\.?|issue|part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)$/i.test(title) ||
+    /^vol\.?\s*\d+:\s*[^\p{L}\p{N}]*$/iu.test(title);
+  if (genericSeriesOnlyTitle) diagnostics.rejectReasons.push("weak_series_spam");
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
+  const sourceTextLocal = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+  const isComicVineLocal = sourceTextLocal.includes("comicvine");
+  if (
+    isComicVineLocal &&
+    genericSeriesOnlyTitle &&
+    /\b(vol\.?\s*\d+|volume\s+\d+|book\s+\d+|year one)\b/.test(queryIntentText) &&
+    !diagnostics.rejectReasons.includes("anthology_or_collection")
+  ) {
+    diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => reason !== "weak_series_spam");
+    diagnostics.passedChecks.push("comicvine_generic_series_title_softened");
+  }
 
   if (family === "horror") {
     if (!horrorAligned) diagnostics.passedChecks.push("soft_missing_horror_alignment");
@@ -2064,10 +2079,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       Boolean(superheroHit);
     const likelyTranslatedEdition = /\b(und die|der|die|les|el|la)\b/.test(String(diagnostics.title || "").toLowerCase());
     if (/^runaways\s+.*\bsaga\b/.test(normalizedComicTitle)) {
-      diagnostics.rejectReasons.push("comicvine_invalid_runaways_saga_variant");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      diagnostics.passedChecks.push("comicvine_runaways_saga_variant_soft_penalty");
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => reason !== "comicvine_invalid_runaways_saga_variant");
+      (diagnostics as any).comicVineRunawaysSagaVariant = true;
     }
     if (canonicalComicSignal) {
       diagnostics.passedChecks.push("comicvine_canonical_series_signal");

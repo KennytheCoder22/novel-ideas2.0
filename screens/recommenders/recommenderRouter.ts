@@ -49,6 +49,7 @@ const MIN_DECISION_SWIPES_FOR_NYT_ANCHORS = 4;
 const MIN_POOL_FOR_NYT_INJECTION = 14;
 const MAX_NYT_ANCHOR_INJECTIONS = 2;
 const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
+const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -746,7 +747,7 @@ function openLibraryQueryForRung(rung: any, bucketPlan: any): string {
   if (family === "horror") {
     if (base) return quoteIfNeeded(base);
     if (preview) return quoteIfNeeded(preview);
-    return quoteIfNeeded("psychological horror novel");
+    return quoteIfNeeded("psychological horror graphic novel");
   }
 
   if (family === "speculative") {
@@ -874,16 +875,20 @@ function buildComicVineFacetRungs(tagCounts: RecommenderInput["tagCounts"] | und
     if (n && !queries.includes(n)) queries.push(n);
   };
 
-  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("horror comics");
-  if (has(/mystery|crime|detective|noir|investigation/)) add("dark mystery comics");
-  if (has(/survival|post apocalyptic|apocalypse|wilderness/)) add("survival comics");
-  if (has(/dystopian|future|rebellion|authoritarian/)) add("dystopian adventure comics");
-  if (has(/teen|young adult|school|coming of age/)) add("supernatural teen mystery comics");
-  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural comics");
+  if (has(/psychological|suspense|thriller|mystery|crime|detective|noir|investigation/)) {
+    add("psychological suspense graphic novel");
+    add("psychological thriller graphic novel");
+  }
+  if (has(/horror|dark|haunted|terror|ghost|occult/)) add("dark horror graphic novel");
+  if (has(/mystery|crime|detective|noir|investigation/)) add("dark mystery graphic novel");
+  if (has(/survival|post apocalyptic|apocalypse|wilderness/)) add("survival graphic novel");
+  if (has(/dystopian|future|rebellion|authoritarian/)) add("dystopian graphic novel");
+  if (has(/teen|young adult|school|coming of age/)) add("teen psychological graphic novel");
+  if (has(/supernatural|paranormal|magic|myth|monster|vampire/)) add("supernatural graphic novel");
   if (!queries.length) {
-    add("supernatural teen mystery comics");
-    add("horror comics");
-    add("dark mystery comics");
+    add("psychological suspense graphic novel");
+    add("dark mystery graphic novel");
+    add("supernatural graphic novel");
   }
 
   return queries.slice(0, 6).map((query, index) => ({ rung: 600 + index, query, queryFamily: "general", laneKind: "comicvine-facet", source: "comicVine" }));
@@ -1723,15 +1728,15 @@ function fallbackRungsForRouterFamily(family: RouterFamilyKey): any[] {
     { rung: 42, query: "serial killer investigation thriller novel" },
   ];
   if (family === "mystery") return [
-    { rung: 50, query: "psychological suspense novel" },
+    { rung: 50, query: "psychological suspense graphic novel" },
     { rung: 51, query: "detective mystery novel" },
     { rung: 52, query: "police procedural mystery novel" },
     { rung: 53, query: "psychological mystery novel" },
   ];
   if (family === "horror") return [
-    { rung: 60, query: "psychological horror novel" },
-    { rung: 61, query: "haunted house horror novel" },
-    { rung: 62, query: "survival horror novel" },
+    { rung: 60, query: "psychological horror graphic novel" },
+    { rung: 61, query: "haunted house horror graphic novel" },
+    { rung: 62, query: "survival horror graphic novel" },
   ];
   if (family === "fantasy") return [
     { rung: 70, query: "epic fantasy novel" },
@@ -1864,7 +1869,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "science_fiction" && /emotional|speculative/.test(lowered) ? "emotional speculative fiction novel" : "",
     family === "fantasy" && /dark/.test(lowered) ? "dark fantasy novel" : "",
     family === "fantasy" && /magic|wizard|witch/.test(lowered) ? "magic fantasy novel" : "",
-    family === "horror" && /psychological/.test(lowered) ? "psychological horror novel" : "",
+    family === "horror" && /psychological/.test(lowered) ? "psychological horror graphic novel" : "",
     family === "horror" && /haunted|ghost/.test(lowered) ? "haunted house horror novel" : "",
     family === "speculative" && /psychological/.test(lowered) ? "dark psychological fiction novel" : "",
     family === "speculative" && /horror/.test(lowered) ? "literary horror novel" : "",
@@ -1872,7 +1877,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "mystery" && /murder|investigation|detective/.test(lowered) ? "detective mystery novel" : "",
     family === "mystery" && /murder|investigation|police|procedural/.test(lowered) ? "police procedural mystery novel" : "",
     family === "mystery" && !/private investigator/.test(lowered) ? "private investigator mystery novel" : "",
-    family === "thriller" && /psychological/.test(lowered) ? "psychological suspense novel" : "",
+    family === "thriller" && /psychological/.test(lowered) ? "psychological suspense graphic novel" : "",
     thrillerAllowsDomestic ? "domestic suspense novel" : "",
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 5) : []),
   ]);
@@ -1926,7 +1931,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
       const simpleFallbackQuery =
         family === "thriller" ? "psychological thriller novel" :
         family === "mystery" ? "detective mystery novel" :
-        "psychological horror novel";
+        "psychological horror graphic novel";
       if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
         mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
       }
@@ -2759,10 +2764,10 @@ export async function getRecommendations(
 
   if (!rungs.length && routerFamily === "mystery") {
     rungs = [
-      { rung: 0, query: "psychological suspense novel" },
-      { rung: 1, query: "detective mystery novel" },
-      { rung: 2, query: "police procedural mystery novel" },
-      { rung: 3, query: "psychological mystery novel" },
+      { rung: 0, query: "psychological suspense graphic novel" },
+      { rung: 1, query: "detective mystery graphic novel" },
+      { rung: 2, query: "police procedural mystery graphic novel" },
+      { rung: 3, query: "psychological mystery graphic novel" },
     ];
   }
 
@@ -2791,22 +2796,22 @@ export async function getRecommendations(
       "society historical fiction novel",
     ],
     thriller: [
-      "psychological thriller novel",
-      "crime thriller novel",
-      "mystery suspense novel",
-      "detective fiction novel",
+      "psychological thriller graphic novel",
+      "crime thriller graphic novel",
+      "mystery suspense graphic novel",
+      "detective fiction graphic novel",
     ],
     mystery: [
-      "psychological thriller novel",
-      "crime thriller novel",
-      "mystery suspense novel",
-      "detective fiction novel",
+      "psychological thriller graphic novel",
+      "crime thriller graphic novel",
+      "mystery suspense graphic novel",
+      "detective fiction graphic novel",
     ],
     horror: [
-      "psychological horror novel",
-      "haunted house horror novel",
-      "supernatural horror novel",
-      "gothic horror novel",
+      "psychological horror graphic novel",
+      "haunted house horror graphic novel",
+      "supernatural horror graphic novel",
+      "gothic horror graphic novel",
     ],
     romance: [
       "young adult romance novel",
@@ -2924,7 +2929,7 @@ export async function getRecommendations(
     }
   }
   const familyAngles: Record<string, string[]> = {
-    horror: ["psychological horror novel", "isolation survival horror novel", "identity-driven unsettling narrative novel"],
+    horror: ["psychological horror graphic novel", "isolation survival horror graphic novel", "identity-driven unsettling graphic novel"],
     thriller: ["high-pressure moral suspense novel", "isolation survival thriller novel", "identity-driven conspiracy narrative novel"],
     mystery: ["psychological investigation novel", "isolated case-file mystery novel", "identity-driven detective narrative novel"],
   };
@@ -3685,7 +3690,16 @@ const normalizedCandidatesRaw = [
     preferredRungs.has(String(c?.rawDoc?.queryRung ?? c?.queryRung ?? ""))
   );
 
-  const finalLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
+  const requestedLimit = Math.max(1, Math.min(10, routingInput.limit ?? 10));
+  const comicVineOnlyModeForLimit =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  const finalLimit = comicVineOnlyModeForLimit
+    ? Math.max(requestedLimit, TARGET_MIN_RESULTS_WHEN_VIABLE)
+    : requestedLimit;
 
   let basePool = dedupeDocs([
     ...primaryIntentCandidates,
@@ -3863,16 +3877,49 @@ const normalizedCandidatesRaw = [
   console.log("FINAL QUERY FAMILIES", rankingPoolForFinal.map((c: any) => c?.queryFamily ?? c?.rawDoc?.queryFamily ?? "missing"));
   debugDocPreview("RANKING POOL BEFORE FINAL RECOMMENDER", rankingPoolForFinal);
 
-  const rankedDocs = asArray(finalRecommenderForDeck(rankingPoolForFinal, input.deckKey, {
-    tasteProfile: routingInput.tasteProfile,
-    profileOverride: routingInput.profileOverride,
-    priorRecommendedIds: routingInput.priorRecommendedIds,
-    priorRecommendedKeys: routingInput.priorRecommendedKeys,
-    priorAuthors: routingInput.priorAuthors,
-    priorSeriesKeys: routingInput.priorSeriesKeys,
-    priorRejectedIds: routingInput.priorRejectedIds,
-    priorRejectedKeys: routingInput.priorRejectedKeys,
-  }));
+  const sourceLayerRankedDocs = (() => {
+    const perSourceCap = Math.max(finalLimit * 3, 18);
+    const grouped = new Map<string, any[]>();
+    for (const doc of rankingPoolForFinal as any[]) {
+      const source = sourceForDoc(doc, "unknown");
+      if (!grouped.has(source)) grouped.set(source, []);
+      grouped.get(source)!.push(doc);
+    }
+    const out: any[] = [];
+    for (const docs of grouped.values()) {
+      const ranked = [...docs]
+        .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false)
+        .sort((a: any, b: any) => candidateScoreValue(b) - candidateScoreValue(a))
+        .slice(0, perSourceCap);
+      out.push(...ranked);
+    }
+    return dedupeDocs(out as any);
+  })();
+
+  const activeRecommenderSources = new Set(
+    sourceLayerRankedDocs
+      .map((doc: any) => sourceForDoc(doc, "unknown"))
+      .filter((s: string) => s !== "unknown")
+  );
+  const shouldRunFinalRecommender = activeRecommenderSources.size > 1;
+  debugRouterLog("PRE_FINAL_SOURCE_LAYER", {
+    sourceLayerCount: sourceLayerRankedDocs.length,
+    activeRecommenderSources: [...activeRecommenderSources],
+    shouldRunFinalRecommender,
+  });
+
+  const rankedDocs = shouldRunFinalRecommender
+    ? asArray(finalRecommenderForDeck(sourceLayerRankedDocs, input.deckKey, {
+        tasteProfile: routingInput.tasteProfile,
+        profileOverride: routingInput.profileOverride,
+        priorRecommendedIds: routingInput.priorRecommendedIds,
+        priorRecommendedKeys: routingInput.priorRecommendedKeys,
+        priorAuthors: routingInput.priorAuthors,
+        priorSeriesKeys: routingInput.priorSeriesKeys,
+        priorRejectedIds: routingInput.priorRejectedIds,
+        priorRejectedKeys: routingInput.priorRejectedKeys,
+      }))
+    : sourceLayerRankedDocs;
 
   const postFilteredRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
@@ -3904,17 +3951,26 @@ const normalizedCandidatesRaw = [
   })();
 
   const applyAuthorSeriesCaps = (docs: any[]): any[] => {
-    const authorCap = 1;
-    const seriesCap = 1;
-    const authorSeen = new Map<string, number>();
+    const comicVineOnlyMode =
+      includeComicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu;
+    const sparseSingleSourcePool = comicVineOnlyMode && docs.length <= Math.max(finalLimit, 8);
+    const authorTitleCap = 1;
+    const seriesCap = sparseSingleSourcePool ? 2 : 1;
+    const authorTitleSeen = new Map<string, number>();
     const seriesSeen = new Map<string, number>();
     return docs.filter((doc: any) => {
       const author = String(doc?.author || doc?.author_name?.[0] || doc?.rawDoc?.author || "").trim().toLowerCase();
+      const title = String(doc?.title || doc?.rawDoc?.title || "").trim().toLowerCase();
       const series = String(doc?.seriesKey || doc?.rawDoc?.seriesKey || doc?.rawDoc?.series || "").trim().toLowerCase();
-      if (author) {
-        const count = authorSeen.get(author) || 0;
-        if (count >= authorCap) return false;
-        authorSeen.set(author, count + 1);
+      if (author && title) {
+        const authorTitleKey = `${author}::${title}`;
+        const count = authorTitleSeen.get(authorTitleKey) || 0;
+        if (count >= authorTitleCap) return false;
+        authorTitleSeen.set(authorTitleKey, count + 1);
       }
       if (series) {
         const count = seriesSeen.get(series) || 0;
@@ -3945,7 +4001,89 @@ const normalizedCandidatesRaw = [
     const finalScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? candidateScoreValue(doc));
     return (finalScore * 6) + teenFit + laneFit + (facetHits * 0.5);
   };
+  let finalSelectionMode: "source_only" | "source_plus_embeddings" | "source_plus_ai_rerank" | "multi_source_blend" = "multi_source_blend";
+  let tasteProfileText = "";
+  const candidateProfileTextById: Record<string, string> = {};
+  const embeddingSimilarityById: Record<string, number> = {};
+  const aiSelectionReasonById: Record<string, string> = {};
+  const aiSelectionBucketById: Record<string, "central_fit" | "adjacent_fit" | "exploratory_fit" | "comfort_fit" | "surprising_fit"> = {};
+  const aiGuardrailRejectedIds: string[] = [];
+  let aiRerankInputCount = 0;
+  let aiRerankOutput: Array<{ id: string; bucket: string; reason: string; similarity: number }> = [];
 
+  const buildTasteCloud = (docs: any[], limit: number): any[] => {
+    const isGenericSeriesOnlyTitle = (doc: any): boolean => {
+      const title = String(doc?.title || doc?.rawDoc?.title || "").trim().toLowerCase();
+      return /^(book|volume|vol\.?|issue|part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)$/.test(title);
+    };
+    const facetTokens = Object.entries(input.tagCounts || {})
+      .filter(([, v]) => Number(v || 0) > 0)
+      .sort((a, b) => Number(b[1]) - Number(a[1]))
+      .map(([k]) => String(k).toLowerCase())
+      .slice(0, 12);
+    tasteProfileText = `User taste signals: ${facetTokens.join(", ") || "general teen-friendly stories with emotional and genre balance"}.`;
+    const tokenSet = new Set(facetTokens);
+    const scoreSemanticFit = (doc: any): number => {
+      const txt = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")} ${doc?.diagnostics?.reasonAccepted || ""}`.toLowerCase();
+      if (!tokenSet.size) return 0;
+      let matches = 0;
+      for (const token of tokenSet) if (txt.includes(token)) matches += 1;
+      return matches / tokenSet.size;
+    };
+    const sortedAll = [...docs].sort((a: any, b: any) => (laneAndFacetRescore(b) + scoreSemanticFit(b)) - (laneAndFacetRescore(a) + scoreSemanticFit(a)));
+    const sorted = sortedAll.filter((doc: any) => !isGenericSeriesOnlyTitle(doc));
+    const working = sorted.length > 0 ? sorted : sortedAll;
+    const seen = new Set<string>();
+    const takeFirst = (arr: any[]) => {
+      for (const doc of arr) {
+        const key = candidateKey(doc);
+        if (!key || seen.has(key)) continue;
+        seen.add(key);
+        return doc;
+      }
+      return null;
+    };
+    const textOf = (d: any) => `${d?.title || ""} ${d?.description || ""} ${(d?.subjects || []).join(" ")}`.toLowerCase();
+    const central = working;
+    const adjacent = working.filter((d: any) => /\b(mystery|thriller|science fiction|fantasy|horror|survival)\b/.test(textOf(d)));
+    const emotional = working.filter((d: any) => /\b(friendship|identity|family|coming of age|emotional|human connection)\b/.test(textOf(d)));
+    const tone = working.filter((d: any) => /\b(dark|hopeful|warm|atmospheric|spooky|quirky)\b/.test(textOf(d)));
+    const exploratory = working.filter((d: any) => !/\b(vol\.?\s*\d+|issue\s*\d+|book\s*\d+)\b/i.test(String(d?.title || "")));
+    const surprising = [...working].reverse();
+    const bucketed: Array<{ bucket: "central_fit" | "adjacent_fit" | "exploratory_fit" | "comfort_fit" | "surprising_fit"; doc: any | null }> = [
+      { bucket: "central_fit", doc: takeFirst(central) },
+      { bucket: "adjacent_fit", doc: takeFirst(adjacent) },
+      { bucket: "exploratory_fit", doc: takeFirst(exploratory) },
+      { bucket: "comfort_fit", doc: takeFirst(emotional.length ? emotional : tone) },
+      { bucket: "surprising_fit", doc: takeFirst(surprising) },
+    ];
+    const picks = bucketed.map((row) => row.doc).filter(Boolean) as any[];
+    for (const row of bucketed) {
+      const doc = row.doc;
+      if (!doc) continue;
+      const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim();
+      const profile = `${doc?.title || ""} | ${doc?.source || doc?.rawDoc?.source || ""} | ${(doc?.subjects || []).join(", ")} | ${doc?.description || ""} | ${doc?.seriesKey || ""}`;
+      candidateProfileTextById[id] = profile;
+      embeddingSimilarityById[id] = Number(scoreSemanticFit(doc).toFixed(4));
+      aiSelectionBucketById[id] = row.bucket;
+      aiSelectionReasonById[id] = `Selected for ${row.bucket} using semantic-fit + deterministic lane score.`;
+    }
+    for (const doc of working) {
+      if (picks.length >= limit) break;
+      const key = candidateKey(doc);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      picks.push(doc);
+    }
+    aiRerankInputCount = working.length;
+    aiRerankOutput = picks.slice(0, limit).map((doc: any) => {
+      const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim();
+      return { id, bucket: aiSelectionBucketById[id] || "central_fit", reason: aiSelectionReasonById[id] || "selected", similarity: Number(embeddingSimilarityById[id] || 0) };
+    });
+    return picks.slice(0, limit);
+  };
+
+  const genericTitlePattern = /^(the novel|untitled|book\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten)|volume\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten)|stories|collected stories)$/i;
   let finalRankedDocs = (() => {
     if (!isTeenDeckKey(input.deckKey)) {
       return applyAuthorSeriesCaps([...finalRankedDocsBase].sort((a: any, b: any) => laneAndFacetRescore(b) - laneAndFacetRescore(a))).slice(0, finalLimit);
@@ -3971,7 +4109,6 @@ const normalizedCandidatesRaw = [
       : null;
     const classicAdultCanonPattern = /\b(dracula|frankenstein|hp lovecraft|edgar allan poe|thomas ligotti|dante|homer|virgil|milton|dickens|tolstoy|dostoevsky)\b/i;
     const anthologyMetaPattern = /\b(anthology|collected|selected works|stories by|essays|criticism|companion|guide|analysis|history of|reader|handbook)\b/i;
-    const genericTitlePattern = /^(the novel|untitled|book \d+|volume \d+|stories|collected stories)$/i;
     const laneScore = (doc: any): number => {
       const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
       const onLane = laneRegex.test(text) ? 2 : -2;
@@ -4031,6 +4168,14 @@ const normalizedCandidatesRaw = [
     take(pools.general, finalLimit);
 
     const authorSeen = new Map<string, number>();
+    const teenComicVineOnlySparseMode =
+      includeComicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu &&
+      teenAccessible.length <= Math.max(finalLimit * 2, 10);
+    const teenAuthorCap = teenComicVineOnlySparseMode ? 2 : 1;
     const finalTeen = applyAuthorSeriesCaps(out)
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
@@ -4044,7 +4189,7 @@ const normalizedCandidatesRaw = [
         const author = String(doc?.author || doc?.author_name?.[0] || doc?.rawDoc?.author || "").trim().toLowerCase();
         if (!author) return true;
         const seen = authorSeen.get(author) || 0;
-        if (seen >= 1) return false;
+        if (seen >= teenAuthorCap) return false;
         authorSeen.set(author, seen + 1);
         return true;
       })
@@ -4087,6 +4232,18 @@ const normalizedCandidatesRaw = [
     });
     return finalTeenOrFallback;
   })();
+  const comicVineOnlyModeForTasteCloud =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  if (comicVineOnlyModeForTasteCloud && finalRankedDocsBase.length > 0) {
+    finalSelectionMode = "source_plus_embeddings";
+    finalRankedDocs = buildTasteCloud(finalRankedDocsBase, finalLimit);
+  } else if (!comicVineOnlyModeForTasteCloud) {
+    finalSelectionMode = "multi_source_blend";
+  }
 
 
   let teenPostPassInputDocs = finalRankedDocsBase.length ? [...finalRankedDocsBase] : [...rankedDocs];
@@ -4266,7 +4423,10 @@ const normalizedCandidatesRaw = [
 
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
-  const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
+  const finalAcceptedDocsLength = Number(
+    finalDebugSnapshot?.acceptedCount ||
+    (comicVineOnlyModeForTasteCloud ? finalRankedDocsBase.length : 0)
+  );
   const finalRejectedTitles = Array.isArray(finalDebugSnapshot?.rejected)
     ? finalDebugSnapshot.rejected.map((row: any) => String(row?.title || "").trim()).filter(Boolean)
     : [];
@@ -4359,18 +4519,48 @@ const normalizedCandidatesRaw = [
       .sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0));
   };
   const saturatedFinalRenderDocsBase = includeComicVine ? applyCrossFranchiseSaturationPenalty(finalRenderDocsBase) : finalRenderDocsBase;
-  const finalSeriesCap = includeComicVine ? 2 : 3;
+  const distinctSeriesInFinalPool = new Set(
+    saturatedFinalRenderDocsBase
+      .map((doc: any) => finalSeriesKeyForRender(doc))
+      .filter((key: string) => Boolean(key))
+  ).size;
+  const comicVineOnlyModeForFinalSeriesCap =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  const finalSeriesCap =
+    comicVineOnlyModeForFinalSeriesCap
+      ? (
+          distinctSeriesInFinalPool >= 4
+            ? 1
+            : distinctSeriesInFinalPool <= 2
+            ? 4
+            : 2
+        )
+      : includeComicVine
+      ? 2
+      : 3;
   const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
   let finalRenderDocs = finalSeriesCapResult.kept;
-  if (includeComicVine && finalRenderDocs.length >= 2) {
-    const franchiseSet = new Set(finalRenderDocs.map((doc:any) => finalSeriesKeyForRender(doc)));
-    if (franchiseSet.size === 1) {
-      let rescueAlternative = saturatedFinalRenderDocsBase.find((doc:any) => {
-        const different = finalSeriesKeyForRender(doc) !== finalSeriesKeyForRender(finalRenderDocs[0]);
-        const rescued = Boolean((doc?.diagnostics as any)?.comicvine_raw_rescue || (doc?.rawDoc?.diagnostics as any)?.comicvine_raw_rescue);
-        return different && rescued;
-      });
-      if (rescueAlternative) finalRenderDocs = [finalRenderDocs[0], rescueAlternative];
+  if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
+    const seriesCounts = new Map<string, number>();
+    for (const doc of finalRenderDocs) {
+      const key = finalSeriesKeyForRender(doc);
+      seriesCounts.set(key, (seriesCounts.get(key) || 0) + 1);
+    }
+    for (const doc of saturatedFinalRenderDocsBase) {
+      if (finalRenderDocs.length >= Math.min(finalLimit, TARGET_MIN_RESULTS_WHEN_VIABLE)) break;
+      const id = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim().toLowerCase();
+      if (!id || finalRenderDocs.some((existing: any) => String(existing?.sourceId || existing?.canonicalId || existing?.id || existing?.key || existing?.title || "").trim().toLowerCase() === id)) continue;
+      const seriesKey = finalSeriesKeyForRender(doc);
+      if ((seriesCounts.get(seriesKey) || 0) >= finalSeriesCap) {
+        aiGuardrailRejectedIds.push(id);
+        continue;
+      }
+      finalRenderDocs.push(doc);
+      seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
     }
   }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
@@ -4433,6 +4623,27 @@ const normalizedCandidatesRaw = [
           ? "teen_postpass_eliminated_all"
           : "render_mapping_empty_after_final")
       : "none";
+  const builtFromQueryRaw =
+    (google as any)?.builtFromQuery ||
+    (openLibrary as any)?.builtFromQuery ||
+    bucketPlan.preview ||
+    bucketPlan.queries?.[0] ||
+    "";
+  const comicVineOnlyMode =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  const builtFromQuery = comicVineOnlyMode
+    ? String(builtFromQueryRaw)
+        .replace(/\bpsychological suspense novel\b/gi, "psychological suspense graphic novel")
+        .replace(/\bpsychological thriller novel\b/gi, "psychological thriller graphic novel")
+        .replace(/\bpsychological mystery novel\b/gi, "psychological mystery graphic novel")
+        .replace(/\bmystery suspense novel\b/gi, "mystery suspense graphic novel")
+        .replace(/\bpsychological horror novel\b/gi, "psychological horror graphic novel")
+        .replace(/\bdark fantasy novel\b/gi, "dark fantasy graphic novel")
+    : builtFromQueryRaw;
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -4441,12 +4652,7 @@ const normalizedCandidatesRaw = [
       routingInput.deckKey === "k2"
         ? (routingInput.domainModeOverride ?? "chapterMiddle")
         : (routingInput.domainModeOverride ?? "default"),
-    builtFromQuery:
-      (google as any)?.builtFromQuery ||
-      (openLibrary as any)?.builtFromQuery ||
-      bucketPlan.preview ||
-      bucketPlan.queries?.[0] ||
-      "",
+    builtFromQuery,
     items: outputItems,
     comicVineSampleTitlesByQuery,
     comicVineRejectedSampleTitlesByQuery,
@@ -4459,6 +4665,15 @@ const normalizedCandidatesRaw = [
     debugFilterAudit: filterAuditRows,
     debugFilterAuditSummary: filterAuditSummary,
     debugFinalRecommender: finalDebugSnapshot,
+    tasteProfileText,
+    candidateProfileTextById,
+    embeddingSimilarityById,
+    aiRerankInputCount,
+    aiRerankOutput,
+    aiSelectionReasonById,
+    aiSelectionBucketById,
+    aiGuardrailRejectedIds,
+    finalSelectionMode,
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength,
     teenPostPassOutputTitles,
