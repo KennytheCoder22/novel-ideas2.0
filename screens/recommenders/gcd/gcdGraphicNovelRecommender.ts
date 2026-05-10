@@ -148,7 +148,6 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
     { anchor: "guardians of the galaxy", facets: ["found family", "dystopian sci-fi identity", "humor action", "superhero"] },
     { anchor: "invincible", facets: ["coming-of-age", "psychological", "superhero"] },
     { anchor: "scott pilgrim", facets: ["coming-of-age", "humor action", "found family"] },
-    { anchor: "locke & key", facets: ["dark supernatural mystery", "coming-of-age", "found family"] },
     { anchor: "the sandman", facets: ["dark supernatural mystery", "melancholy", "psychological"] },
     { anchor: "hellboy", facets: ["dark supernatural mystery", "humor action"] },
     { anchor: "something is killing the children", facets: ["dark supernatural mystery", "coming-of-age"] },
