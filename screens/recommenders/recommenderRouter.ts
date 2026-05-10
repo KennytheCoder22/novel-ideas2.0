@@ -4459,7 +4459,23 @@ const normalizedCandidatesRaw = [
       .sort((a, b) => Number(b?.score || 0) - Number(a?.score || 0));
   };
   const saturatedFinalRenderDocsBase = includeComicVine ? applyCrossFranchiseSaturationPenalty(finalRenderDocsBase) : finalRenderDocsBase;
-  const finalSeriesCap = includeComicVine ? 2 : 3;
+  const distinctSeriesInFinalPool = new Set(
+    saturatedFinalRenderDocsBase
+      .map((doc: any) => finalSeriesKeyForRender(doc))
+      .filter((key: string) => Boolean(key))
+  ).size;
+  const comicVineOnlyModeForFinalSeriesCap =
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu;
+  const finalSeriesCap =
+    comicVineOnlyModeForFinalSeriesCap && distinctSeriesInFinalPool >= 2
+      ? 1
+      : includeComicVine
+      ? 2
+      : 3;
   const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
   let finalRenderDocs = finalSeriesCapResult.kept;
   if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
