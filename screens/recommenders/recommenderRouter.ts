@@ -4083,7 +4083,7 @@ const normalizedCandidatesRaw = [
     return picks.slice(0, limit);
   };
 
-  const genericTitlePattern = /^(the novel|untitled|book \d+|volume \d+|stories|collected stories)$/i;
+  const genericTitlePattern = /^(the novel|untitled|book\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten)|volume\s*(\d+|one|two|three|four|five|six|seven|eight|nine|ten)|stories|collected stories)$/i;
   let finalRankedDocs = (() => {
     if (!isTeenDeckKey(input.deckKey)) {
       return applyAuthorSeriesCaps([...finalRankedDocsBase].sort((a: any, b: any) => laneAndFacetRescore(b) - laneAndFacetRescore(a))).slice(0, finalLimit);
@@ -4238,9 +4238,13 @@ const normalizedCandidatesRaw = [
     !sourceEnabled.openLibrary &&
     !sourceEnabled.localLibrary &&
     !includeKitsu;
-  if (comicVineOnlyModeForTasteCloud && finalRankedDocsBase.length > 0) {
+  const deterministicGuardedPool = finalRankedDocsBase.filter((doc: any) => {
+    const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
+    return Boolean(title) && !genericTitlePattern.test(title);
+  });
+  if (comicVineOnlyModeForTasteCloud && deterministicGuardedPool.length > 0) {
     finalSelectionMode = "source_plus_embeddings";
-    finalRankedDocs = buildTasteCloud(finalRankedDocsBase, finalLimit);
+    finalRankedDocs = buildTasteCloud(deterministicGuardedPool, finalLimit);
   } else if (!comicVineOnlyModeForTasteCloud) {
     finalSelectionMode = "multi_source_blend";
   }
@@ -4248,12 +4252,21 @@ const normalizedCandidatesRaw = [
 
   let teenPostPassInputDocs = finalRankedDocsBase.length ? [...finalRankedDocsBase] : [...rankedDocs];
   if (finalRankedDocs.length === 0 && rankedDocs.length > 0) {
-    finalRankedDocs = rankedDocs
+    const genericFilteredFallback = rankedDocs
       .filter((doc: any) => {
         const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
         return Boolean(title) && !genericTitlePattern.test(title);
       })
       .slice(0, finalLimit);
+    finalRankedDocs = genericFilteredFallback.length > 0
+      ? genericFilteredFallback
+      : rankedDocs.slice(0, Math.min(finalLimit, 2)).map((doc: any) => ({
+          ...doc,
+          diagnostics: {
+            ...(doc?.diagnostics || {}),
+            sparseGenericFallbackUsed: true,
+          },
+        }));
   }
   debugDocPreview("FINAL OUTPUT", finalRankedDocs, finalLimit);
 
@@ -4423,7 +4436,10 @@ const normalizedCandidatesRaw = [
 
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
-  const finalAcceptedDocsLength = Number(finalDebugSnapshot?.acceptedCount || 0);
+  const finalAcceptedDocsLength = Number(
+    finalDebugSnapshot?.acceptedCount ||
+    (comicVineOnlyModeForTasteCloud ? finalRankedDocsBase.length : 0)
+  );
   const finalRejectedTitles = Array.isArray(finalDebugSnapshot?.rejected)
     ? finalDebugSnapshot.rejected.map((row: any) => String(row?.title || "").trim()).filter(Boolean)
     : [];
@@ -4451,7 +4467,7 @@ const normalizedCandidatesRaw = [
   }
   const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
   const finalAcceptedDocsSource = "finalRankedDocsBase";
-  const finalAcceptedDocsTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const finalAcceptedDocsTitles = deterministicGuardedPool.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
