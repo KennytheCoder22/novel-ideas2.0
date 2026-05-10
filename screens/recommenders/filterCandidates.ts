@@ -324,6 +324,10 @@ function isWeakSeriesSpam(title: string, doc: any, hasDescription: boolean, hasR
     0;
   const sequelPattern = /\b(book|volume|vol\.?|part)\s*\d+\b|\bseries\b/i.test(title);
   const veryWeakAuthority = ratingsCount < 50 && !hasLegitCommercialAuthority(doc);
+  const sourceText = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+  const isComicVine = sourceText.includes("comicvine");
+  const hasMeaningfulSubtitle = /\b(vol\.?|volume|book|part)\s*\d+\s*[:\-]\s*[\p{L}\p{N}]{3,}/iu.test(title);
+  if (isComicVine && hasMeaningfulSubtitle) return false;
   return sequelPattern && veryWeakAuthority && !(hasDescription && hasRealLength);
 }
 
@@ -1021,7 +1025,23 @@ let fictionPositive =
   if (/\b(character[- ]driven|psychological)\b/.test(queryIntentText) && !strongNarrative && !fictionPositive && !speculativePositive) {
     diagnostics.passedChecks.push("soft_narrative_strength_required");
   }
+  const genericSeriesOnlyTitle =
+    /^(book|volume|vol\.?|issue|part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)$/i.test(title) ||
+    /^vol\.?\s*\d+:\s*[^\p{L}\p{N}]*$/iu.test(title);
+  if (genericSeriesOnlyTitle) diagnostics.rejectReasons.push("weak_series_spam");
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
+  const sourceTextLocal = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
+  const isComicVineLocal = sourceTextLocal.includes("comicvine");
+  if (
+    isComicVineLocal &&
+    genericSeriesOnlyTitle &&
+    /\b(vol\.?\s*\d+|volume\s+\d+|book\s+\d+|year one)\b/.test(queryIntentText) &&
+    !/^(book|volume|vol\.?|issue|part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)$/i.test(title) &&
+    !diagnostics.rejectReasons.includes("anthology_or_collection")
+  ) {
+    diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => reason !== "weak_series_spam");
+    diagnostics.passedChecks.push("comicvine_generic_series_title_softened");
+  }
 
   if (family === "horror") {
     if (!horrorAligned) diagnostics.passedChecks.push("soft_missing_horror_alignment");
@@ -2064,10 +2084,9 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
       Boolean(superheroHit);
     const likelyTranslatedEdition = /\b(und die|der|die|les|el|la)\b/.test(String(diagnostics.title || "").toLowerCase());
     if (/^runaways\s+.*\bsaga\b/.test(normalizedComicTitle)) {
-      diagnostics.rejectReasons.push("comicvine_invalid_runaways_saga_variant");
-      diagnostics.kept = false;
-      Object.assign(doc as any, attachDiagnostics(doc, diagnostics));
-      continue;
+      diagnostics.passedChecks.push("comicvine_runaways_saga_variant_soft_penalty");
+      diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => reason !== "comicvine_invalid_runaways_saga_variant");
+      (diagnostics as any).comicVineRunawaysSagaVariant = true;
     }
     if (canonicalComicSignal) {
       diagnostics.passedChecks.push("comicvine_canonical_series_signal");
@@ -2404,9 +2423,64 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
   console.log("[THRILLER_KEPT_COUNT]", thrillerKept.length);
   console.log("[THRILLER_REJECTION_BREAKDOWN]", thrillerRejectionBreakdown);
 
-  // Do not re-admit rejected rows when the pool goes empty. Returning [] keeps
-  // filterCandidates as the single source of truth and prevents universal junk
-  // from bypassing diagnostics.
+  const comicVineDocsInPool = inputDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"));
+  const isComicVineOnlyPool = comicVineDocsInPool.length > 0 && comicVineDocsInPool.length === inputDocs.length;
+  const COMICVINE_MIN_VIABLE_CANDIDATES = 8;
+  if (isComicVineOnlyPool && filtered.length > 0 && filtered.length < COMICVINE_MIN_VIABLE_CANDIDATES) {
+    const existingKeys = new Set(filtered.map((doc: any) => filterDocIdentity(doc)));
+    const sparseTopUp = comicVineDocsInPool
+      .filter((doc: any) => !existingKeys.has(filterDocIdentity(doc)))
+      .filter((doc: any) => {
+        const reasons = Array.isArray(doc?.diagnostics?.rejectReasons)
+          ? doc.diagnostics.rejectReasons
+          : (Array.isArray(doc?.diagnostics?.filterRejectReasons) ? doc.diagnostics.filterRejectReasons : []);
+        const normalized = reasons.map((r: string) => String(r || "").trim()).filter(Boolean);
+        const allowed = new Set(["weak_series_spam", "lane_mismatch_horror", "lane_mismatch_fantasy", "lane_mismatch_science_fiction", "lane_mismatch_mystery"]);
+        return normalized.length > 0 && normalized.every((r: string) => allowed.has(r));
+      })
+      .slice(0, COMICVINE_MIN_VIABLE_CANDIDATES - filtered.length)
+      .map((doc: any) => ({
+        ...doc,
+        diagnostics: {
+          ...(doc?.diagnostics || {}),
+          kept: true,
+          filterKept: true,
+          rejectReasons: [],
+          filterRejectReasons: [],
+          passedChecks: [...(Array.isArray(doc?.diagnostics?.passedChecks) ? doc.diagnostics.passedChecks : []), "comicvine_sparse_topup_rescue"],
+          filterPassedChecks: [...(Array.isArray(doc?.diagnostics?.filterPassedChecks) ? doc.diagnostics.filterPassedChecks : []), "comicvine_sparse_topup_rescue"],
+        },
+      }));
+    if (sparseTopUp.length > 0) return [...filtered, ...sparseTopUp] as RecommendationDoc[];
+  }
+
+  if (filtered.length === 0) {
+    const comicVineSoftFallback = inputDocs
+      .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
+      .filter((doc: any) => {
+        const reasons = Array.isArray(doc?.diagnostics?.rejectReasons)
+          ? doc.diagnostics.rejectReasons
+          : (Array.isArray(doc?.diagnostics?.filterRejectReasons) ? doc.diagnostics.filterRejectReasons : []);
+        const normalized = reasons.map((r: string) => String(r || "").trim()).filter(Boolean);
+        const allowed = new Set(["weak_series_spam", "lane_mismatch_horror", "lane_mismatch_fantasy", "lane_mismatch_science_fiction"]);
+        const noHardRejects = normalized.length > 0 && normalized.every((r: string) => allowed.has(r));
+        return noHardRejects;
+      })
+      .slice(0, 2)
+      .map((doc: any) => ({
+        ...doc,
+        diagnostics: {
+          ...(doc?.diagnostics || {}),
+          kept: true,
+          filterKept: true,
+          rejectReasons: [],
+          filterRejectReasons: [],
+          passedChecks: [...(Array.isArray(doc?.diagnostics?.passedChecks) ? doc.diagnostics.passedChecks : []), "comicvine_emergency_sparse_rescue"],
+          filterPassedChecks: [...(Array.isArray(doc?.diagnostics?.filterPassedChecks) ? doc.diagnostics.filterPassedChecks : []), "comicvine_emergency_sparse_rescue"],
+        },
+      }));
+    if (comicVineSoftFallback.length > 0) return comicVineSoftFallback as RecommendationDoc[];
+  }
   return filtered;
 }
 

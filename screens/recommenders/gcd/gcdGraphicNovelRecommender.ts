@@ -49,7 +49,7 @@ function cleanComicVineSeedQuery(raw: string): { cleaned: string; positiveQuerie
   const cleaned = Array.from(new Set(positive)).join(' ').trim();
   const queryTooLong = tokens.length > 12 || String(raw || "").length > 90;
   const franchiseAnchors = [
-    "hellboy", "locke & key", "the sandman", "something is killing the children", "saga", "y: the last man",
+    "hellboy", "the sandman", "something is killing the children", "saga", "y: the last man",
     "batman black mirror", "gideon falls", "department of truth", "sweet tooth", "invincible", "black hammer", "monstress"
   ];
   const positiveQueries = Array.from(new Set([
@@ -148,7 +148,6 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
     { anchor: "guardians of the galaxy", facets: ["found family", "dystopian sci-fi identity", "humor action", "superhero"] },
     { anchor: "invincible", facets: ["coming-of-age", "psychological", "superhero"] },
     { anchor: "scott pilgrim", facets: ["coming-of-age", "humor action", "found family"] },
-    { anchor: "locke & key", facets: ["dark supernatural mystery", "coming-of-age", "found family"] },
     { anchor: "the sandman", facets: ["dark supernatural mystery", "melancholy", "psychological"] },
     { anchor: "hellboy", facets: ["dark supernatural mystery", "humor action"] },
     { anchor: "something is killing the children", facets: ["dark supernatural mystery", "coming-of-age"] },
@@ -164,21 +163,47 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
   const anchors = selected.map((r) => r.anchor);
   const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
-  const defaults = ["hellboy", "locke & key", "the sandman", "saga"];
+  const defaults = ["hellboy", "the sandman", "saga", "batman"];
   const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
   return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
   const queries: string[] = [];
+  const hasSciFiFacet = hasFacet(tagCounts, /science fiction|sci-fi|dystopian|future|space|ai|cyberpunk|technology|robot/);
   if (hasFacet(tagCounts, /horror|dark|haunted|terror|ghost|occult/)) queries.push("hellboy");
   if (hasFacet(tagCounts, /mystery|crime|detective|noir|investigation/)) queries.push("batman");
   if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("walking dead");
   if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("saga");
+  if (hasSciFiFacet) queries.push("paper girls", "descender", "black science", "saga");
   if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
   if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
   if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
-  return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 8);
+  const defaults = hasSciFiFacet
+    ? [
+        "paper girls",
+        "descender",
+        "black science",
+        "saga",
+        "invincible",
+        "young justice",
+        "teen titans",
+        "runaways",
+      ]
+    : [
+        "locke & key",
+        "the sandman",
+        "saga",
+        "paper girls",
+        "something is killing the children",
+        "gideon falls",
+        "department of truth",
+        "sweet tooth",
+        "runaways",
+        "invincible",
+      ];
+  for (const q of defaults) queries.push(q);
+  return Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean))).slice(0, 12);
 }
 
 function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
@@ -336,6 +361,22 @@ function comicVineIssueToDoc(issue: any, queryText: string, queryRung: number): 
   } as any;
 }
 
+function isLikelyGraphicNovelCollection(issue: any, doc: RecommendationDoc): boolean {
+  const title = normalizeText(String(doc?.title || ""));
+  const deck = normalizeText(String(issue?.deck || doc?.subtitle || ""));
+  const description = normalizeText(String(issue?.description || doc?.description || ""));
+  const format = normalizeText(String(issue?.format || issue?.issue_type || ""));
+  const text = `${title} ${deck} ${description} ${format}`.trim();
+  if (!text) return false;
+  if (/\b(trade paperback|tpb|hardcover|hc|ogn|graphic novel|collected|collection|omnibus|compendium|deluxe|master edition|treasury edition|book one|book 1|vol\.?\s*\d+|volume\s*\d+)\b/.test(text)) {
+    return true;
+  }
+  if (/#\s*\d+\b/.test(title) && !/\b(collected|collection|omnibus|compendium|master edition|treasury edition|tpb|hc|ogn)\b/.test(text)) {
+    return false;
+  }
+  return /\bgraphic novel\b/.test(text);
+}
+
 function buildComicVineProxySearchUrl(query: string, limit = 20): string {
   if (!COMIC_VINE_PROXY_URL) throw new Error("COMICVINE_PROXY_MISSING: EXPO_PUBLIC_COMICVINE_PROXY_URL is not configured.");
   const normalizedBase = COMIC_VINE_PROXY_URL.includes("?") ? COMIC_VINE_PROXY_URL : `${COMIC_VINE_PROXY_URL}?`;
@@ -401,6 +442,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     };
     const countReject = (key: string) => { rejectedReasons[key] = (rejectedReasons[key] || 0) + 1; };
     const queryAnchorAlias = buildAnchorAliasRegex(query);
+    const aliasFallbackDocs: RecommendationDoc[] = [];
     for (const issue of results) {
       const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (sampleTitles.length < 8 && doc?.title) sampleTitles.push(String(doc.title));
@@ -410,12 +452,26 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         if (rejectedSampleReasons.length < 8) rejectedSampleReasons.push({ title, reason });
       };
       if (!doc?.title) { countReject("missing_title"); continue; }
+      if (!isLikelyGraphicNovelCollection(issue, doc)) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
+      if (/^(tpb|hc|sc|gn|ogn|vol\.?\s*\d+|book\s*\d+|chapter\s*\d+|issue\s*\d+|part\s*\d+)$/i.test(normalizedTitle)) {
+        countReject("generic_format_title");
+        pushRejectedSample("generic_format_title");
+        continue;
+      }
+      if (normalizedTitle.split(/\s+/).filter(Boolean).length <= 1 && normalizedTitle.length < 8) {
+        countReject("too_short_title");
+        pushRejectedSample("too_short_title");
+        continue;
+      }
       if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
         countReject("comicvine_anchor_alias_mismatch");
         pushRejectedSample("comicvine_anchor_alias_mismatch");
+        if (!/coloring book|guide|handbook|companion|anthology|omnibus/i.test(normalizedTitle)) {
+          aliasFallbackDocs.push(doc);
+        }
         continue;
       }
       if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
@@ -429,6 +485,20 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       docs.push(doc);
       stageCounts.comicVineFinalAcceptedCount += 1;
       if (docs.length >= fetchLimit) break;
+    }
+    if ((docs.length - before) === 0 && aliasFallbackDocs.length > 0 && results.length > 0) {
+      for (const fallbackDoc of aliasFallbackDocs.slice(0, 3)) {
+        const dedupeKey = String(fallbackDoc.key || `${fallbackDoc.title}|${fallbackDoc.author_name?.[0] || ""}`).toLowerCase();
+        if (seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        (fallbackDoc as any).diagnostics = {
+          ...((fallbackDoc as any).diagnostics || {}),
+          comicVineAliasFallbackAccepted: true,
+        };
+        docs.push(fallbackDoc);
+        stageCounts.comicVineFinalAcceptedCount += 1;
+        stageCounts.comicVineContentAcceptedCount += 1;
+      }
     }
     const acceptedCount = Math.max(0, docs.length - before);
     return {
