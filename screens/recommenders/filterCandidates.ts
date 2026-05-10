@@ -1032,6 +1032,7 @@ let fictionPositive =
     isComicVineLocal &&
     genericSeriesOnlyTitle &&
     /\b(vol\.?\s*\d+|volume\s+\d+|book\s+\d+|year one)\b/.test(queryIntentText) &&
+    !/^(book|volume|vol\.?|issue|part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)$/i.test(title) &&
     !diagnostics.rejectReasons.includes("anthology_or_collection")
   ) {
     diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => reason !== "weak_series_spam");
