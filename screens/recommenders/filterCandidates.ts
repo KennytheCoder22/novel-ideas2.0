@@ -2423,6 +2423,35 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
   console.log("[THRILLER_KEPT_COUNT]", thrillerKept.length);
   console.log("[THRILLER_REJECTION_BREAKDOWN]", thrillerRejectionBreakdown);
 
+  const comicVineDocsInPool = inputDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"));
+  const isComicVineOnlyPool = comicVineDocsInPool.length > 0 && comicVineDocsInPool.length === inputDocs.length;
+  if (isComicVineOnlyPool && filtered.length > 0 && filtered.length < 2) {
+    const existingKeys = new Set(filtered.map((doc: any) => filterDocIdentity(doc)));
+    const sparseTopUp = comicVineDocsInPool
+      .filter((doc: any) => !existingKeys.has(filterDocIdentity(doc)))
+      .filter((doc: any) => {
+        const reasons = Array.isArray(doc?.diagnostics?.rejectReasons)
+          ? doc.diagnostics.rejectReasons
+          : (Array.isArray(doc?.diagnostics?.filterRejectReasons) ? doc.diagnostics.filterRejectReasons : []);
+        const normalized = reasons.map((r: string) => String(r || "").trim()).filter(Boolean);
+        return normalized.length > 0 && normalized.every((r: string) => r === "weak_series_spam");
+      })
+      .slice(0, 2 - filtered.length)
+      .map((doc: any) => ({
+        ...doc,
+        diagnostics: {
+          ...(doc?.diagnostics || {}),
+          kept: true,
+          filterKept: true,
+          rejectReasons: [],
+          filterRejectReasons: [],
+          passedChecks: [...(Array.isArray(doc?.diagnostics?.passedChecks) ? doc.diagnostics.passedChecks : []), "comicvine_sparse_topup_rescue"],
+          filterPassedChecks: [...(Array.isArray(doc?.diagnostics?.filterPassedChecks) ? doc.diagnostics.filterPassedChecks : []), "comicvine_sparse_topup_rescue"],
+        },
+      }));
+    if (sparseTopUp.length > 0) return [...filtered, ...sparseTopUp] as RecommendationDoc[];
+  }
+
   if (filtered.length === 0) {
     const comicVineSoftFallback = inputDocs
       .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
