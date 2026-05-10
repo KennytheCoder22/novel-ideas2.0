@@ -19,21 +19,21 @@ let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
 
 type AnchorLane = "facet_weighted";
-type CuratedFallback = { title: string; tags: string[]; year?: number };
+type CuratedFallback = { title: string; tags: string[]; publisher: string; year?: number };
 
 const CURATED_TEEN_GRAPHIC_NOVEL_FALLBACK: CuratedFallback[] = [
-  { title: "Nimona", tags: ["fantasy", "adventure", "humor", "identity"] },
-  { title: "The Woods", tags: ["dystopian", "survival", "mystery", "teen"] },
-  { title: "Paper Girls", tags: ["science fiction", "mystery", "adventure", "friendship"] },
-  { title: "Runaways", tags: ["teen", "superhero", "family", "identity"] },
-  { title: "Ms. Marvel", tags: ["teen", "superhero", "school", "identity"] },
-  { title: "Something is Killing the Children", tags: ["horror", "dark", "mystery", "survival"] },
-  { title: "Locke & Key", tags: ["horror", "mystery", "dark", "family"] },
-  { title: "The Sandman", tags: ["dark", "fantasy", "psychological"] },
-  { title: "Monstress", tags: ["dark fantasy", "epic", "war"] },
-  { title: "Saga", tags: ["science fiction", "fantasy", "family", "adventure"] },
-  { title: "Y: The Last Man", tags: ["dystopian", "survival", "thriller"] },
-  { title: "Sweet Tooth", tags: ["dystopian", "survival", "dark", "family"] },
+  { title: "Nimona", tags: ["fantasy", "adventure", "humor", "identity"], publisher: "Oni Press" },
+  { title: "The Woods", tags: ["dystopian", "survival", "mystery", "teen"], publisher: "Boom! Studios" },
+  { title: "Paper Girls", tags: ["science fiction", "mystery", "adventure", "friendship"], publisher: "Image Comics" },
+  { title: "Runaways", tags: ["teen", "superhero", "family", "identity"], publisher: "Marvel Comics" },
+  { title: "Ms. Marvel", tags: ["teen", "superhero", "school", "identity"], publisher: "Marvel Comics" },
+  { title: "Something is Killing the Children", tags: ["horror", "dark", "mystery", "survival"], publisher: "Boom! Studios" },
+  { title: "Locke & Key", tags: ["horror", "mystery", "dark", "family"], publisher: "IDW Publishing" },
+  { title: "The Sandman", tags: ["dark", "fantasy", "psychological"], publisher: "DC Comics" },
+  { title: "Monstress", tags: ["dark fantasy", "epic", "war"], publisher: "Image Comics" },
+  { title: "Saga", tags: ["science fiction", "fantasy", "family", "adventure"], publisher: "Image Comics" },
+  { title: "Y: The Last Man", tags: ["dystopian", "survival", "thriller"], publisher: "DC Comics" },
+  { title: "Sweet Tooth", tags: ["dystopian", "survival", "dark", "family"], publisher: "DC Comics" },
 ];
 
 function buildProxyUrl(targetUrl: string): string {
@@ -269,6 +269,7 @@ function buildCuratedFallbackDocs(tagCounts: TagCounts | undefined, limit: numbe
     title: entry.title,
     author_name: ["Unknown"],
     source: "comicVine",
+    publisher: entry.publisher,
     sourceId: `comicvine-curated:${index}`,
     first_publish_year: entry.year,
     ratings_average: 0,

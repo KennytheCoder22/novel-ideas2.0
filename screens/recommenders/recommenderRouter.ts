@@ -4582,34 +4582,35 @@ const normalizedCandidatesRaw = [
     }
   }
   if (comicVineOnlyModeForFinalSeriesCap && finalRenderDocs.length < 10) {
-    const emergencyTitles = [
-      "Nimona",
-      "Paper Girls",
-      "Runaways",
-      "Ms. Marvel",
-      "Something is Killing the Children",
-      "Locke & Key",
-      "The Sandman",
-      "Saga",
-      "Y: The Last Man",
-      "Sweet Tooth",
-      "Monstress",
-      "The Woods",
+    const emergencyTitles: Array<{ title: string; publisher: string }> = [
+      { title: "Nimona", publisher: "Oni Press" },
+      { title: "Paper Girls", publisher: "Image Comics" },
+      { title: "Runaways", publisher: "Marvel Comics" },
+      { title: "Ms. Marvel", publisher: "Marvel Comics" },
+      { title: "Something is Killing the Children", publisher: "Boom! Studios" },
+      { title: "Locke & Key", publisher: "IDW Publishing" },
+      { title: "The Sandman", publisher: "DC Comics" },
+      { title: "Saga", publisher: "Image Comics" },
+      { title: "Y: The Last Man", publisher: "DC Comics" },
+      { title: "Sweet Tooth", publisher: "DC Comics" },
+      { title: "Monstress", publisher: "Image Comics" },
+      { title: "The Woods", publisher: "Boom! Studios" },
     ];
     const seen = new Set(
       finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim().toLowerCase()).filter(Boolean)
     );
-    for (const title of emergencyTitles) {
+    for (const row of emergencyTitles) {
       if (finalRenderDocs.length >= 10) break;
-      const key = String(title).trim().toLowerCase();
+      const key = String(row.title).trim().toLowerCase();
       if (!key || seen.has(key)) continue;
       seen.add(key);
       finalRenderDocs.push({
         key: `comicvine-router-emergency:${key}`,
         sourceId: `comicvine-router-emergency:${key}`,
-        title,
+        title: row.title,
         author_name: ["Unknown"],
         source: "comicVine",
+        publisher: row.publisher,
         subject: ["graphic novel", "comics", "teen"],
         language: "en",
         score: 0.5,
