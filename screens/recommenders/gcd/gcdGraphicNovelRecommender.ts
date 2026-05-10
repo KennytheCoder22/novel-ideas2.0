@@ -1,7 +1,9 @@
 // /screens/recommenders/gcd/gcdGraphicNovelRecommender.ts
 //
-// Grand Comics Database recommender (20Q-aligned).
-// Teen-only auxiliary engine for comics / graphic novel sessions.
+// ComicVine-first comics recommender (20Q-aligned).
+// UX-facing recommendation/discovery engine for comics / graphic novel sessions.
+// GCD is intentionally treated as optional secondary metadata enrichment over time
+// (creator credits, publication accuracy, reprint lineage, bibliographic depth).
 // Thin fetcher only: literal signal gating, literal query translation,
 // no hardcoded fallback inventory, no manual reranking, no hidden shaping.
 
@@ -17,8 +19,15 @@ const COMIC_VINE_PROXY_URL =
     : "/api/comicvine";
 let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
+const COMICVINE_CACHE_TTL_MS = 1000 * 60 * 60 * 12; // 12h cache guidance for API variability/rate limits
+const GCD_ENRICHMENT_CACHE_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7d cache guidance for slower bibliographic enrichment
 
 type AnchorLane = "facet_weighted";
+
+// Client-side guidance constants to keep ComicVine as the responsive primary layer
+// while allowing slower GCD enrichment jobs to run less frequently.
+void COMICVINE_CACHE_TTL_MS;
+void GCD_ENRICHMENT_CACHE_TTL_MS;
 
 function buildProxyUrl(targetUrl: string): string {
   if (!GCD_PROXY_URL) throw new Error("GCD_PROXY_MISSING: EXPO_PUBLIC_GCD_PROXY_URL is not configured.");
