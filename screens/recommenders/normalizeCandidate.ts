@@ -1,6 +1,6 @@
 import type { RecommendationDoc } from './types';
 
-export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'gcd';
+export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'comicVine';
 
 export type FormatCategory = 'manga' | 'graphic_novel' | 'comic' | 'prose';
 
@@ -521,7 +521,7 @@ function detectFormatCategory(
   const subjectText = subjects.join(' ').toLowerCase();
 
   if (source === 'kitsu') return 'manga';
-  if (source === 'gcd') return 'comic';
+  if (source === 'comicVine') return 'comic';
   if (subjectText.includes('manga')) return 'manga';
   if (subjectText.includes('graphic novel') || subjectText.includes('graphic novels')) return 'graphic_novel';
   if (subjectText.includes('comic') || subjectText.includes('comics')) return 'comic';

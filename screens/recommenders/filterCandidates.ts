@@ -1032,6 +1032,19 @@ let fictionPositive =
   if (weakSeriesSpam) diagnostics.rejectReasons.push("weak_series_spam");
   const sourceTextLocal = String((doc as any)?.source || (doc as any)?.rawDoc?.source || "").toLowerCase();
   const isComicVineLocal = sourceTextLocal.includes("comicvine");
+  const comicVineMetaArtifactTitle =
+    isComicVineLocal &&
+    /\b(free comic book day|preview|insider|coming attractions|encyclopedia|the covers|summer blast|halloween fright fest|studios?|publishing)\b/.test(title);
+  const comicVinePublisherIssueSpam =
+    isComicVineLocal &&
+    /^(boom!?|boom! studios|image comics|dark horse comics|idw(?::|\s+publishing)?|dc comics|marvel|valiant)\b/i.test(title) &&
+    /#\s*\d+\b/.test(title);
+  const comicVineBareMetaShape =
+    isComicVineLocal &&
+    /^(volume|vol\.?|book|issue|chapter)\s+\d+\b/i.test(title);
+  if (comicVineMetaArtifactTitle || comicVinePublisherIssueSpam || comicVineBareMetaShape) {
+    diagnostics.rejectReasons.push("comicvine_meta_artifact");
+  }
   if (
     isComicVineLocal &&
     genericSeriesOnlyTitle &&

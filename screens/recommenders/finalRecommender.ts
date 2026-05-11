@@ -320,13 +320,19 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
   const text = haystack(c);
   const author = typeof c.author === "string" ? c.author : "";
   const hasAuthor = typeof author === "string" && author.trim().length > 0;
+  const source = normalize(c.source);
+  const comicLikeSource = /\bcomicvine|comicvine_rescue\b/.test(source);
+  const comicLikeItem = /\b(graphic novel|comic|manga)\b/.test(text);
+  const allowedPublisherPattern =
+    /\b(marvel comics|dc comics|image comics|dark horse comics|boom!?\s*studios|idw publishing|skybound entertainment|dynamite entertainment|valiant comics|vault comics|aftershock comics|mad cave studios|ablaze publishing|black mask studios|scout comics|behemoth comics|red 5 comics|tko studios|ahoy comics|source point press|scholastic graphix|first second books|oni press|fantagraphics|drawn\s*&\s*quarterly|top shelf productions|silver sprocket|nbm graphic novels|selfmadehero|titan comics|udon entertainment|humanoids|archie comics|rebellion|2000 ad|antarctic press|comixology originals)\b/;
 
   if (!title) return { reject: true, reason: 'missing_title', detail: 'empty title' };
-  if (!hasAuthor || normalize(c.author) === 'unknown') {
+  if ((comicLikeSource || comicLikeItem) && !allowedPublisherPattern.test(publisher)) {
+    return { reject: true, reason: 'low_metadata_trust', detail: `publisher not in allowlist: ${c.publisher || "(missing)"}` };
+  }
+  if ((!hasAuthor || normalize(c.author) === 'unknown') && !(comicLikeSource || comicLikeItem)) {
     return { reject: true, reason: 'missing_author', detail: 'missing or unknown author' };
   }
-
-  const source = normalize(c.source);
   const publicationYear = Number(c.publicationYear || (c.rawDoc as any)?.first_publish_year || 0);
   const ratings = Number(c.ratingCount || 0);
   const canonicalStrength = anchorBoost(c);

@@ -25,6 +25,12 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## Project-specific notes
+
+- API proxy endpoints live in `app/api/**/+api.ts`.
+- Swipe deck data is stored in `data/swipeDecks/` as both `.ts` and `.json` files.
+- Runtime and theme settings are centralized under `constants/`.
+
 ## Get a fresh project
 
 When you're ready, run:
