@@ -448,11 +448,17 @@ function isLikelyGraphicNovelCollection(issue: any, doc: RecommendationDoc): boo
   const deck = normalizeText(String(issue?.deck || doc?.subtitle || ""));
   const description = normalizeText(String(issue?.description || doc?.description || ""));
   const format = normalizeText(String(issue?.format || issue?.issue_type || ""));
+  const volume = normalizeText(String(issue?.volume?.name || ""));
+  const publisher = normalizeText(String(issue?.volume?.publisher?.name || doc?.publisher || ""));
+  const issueNumber = Number(String(issue?.issue_number || "").trim());
   const text = `${title} ${deck} ${description} ${format}`.trim();
   if (!text) return false;
   if (/\b(trade paperback|tpb|hardcover|hc|ogn|graphic novel|collected|collection|omnibus|compendium|deluxe|master edition|treasury edition|book one|book 1|vol\.?\s*\d+|volume\s*\d+)\b/.test(text)) {
     return true;
   }
+  const knownComicPublisher = /\b(marvel|dc|image|dark horse|boom|idw|oni press|vertigo)\b/.test(publisher);
+  const canonicalSeriesSignal = /\b(saga|runaways|sandman|paper girls|nimona|locke\s*&\s*key|ms\.?\s*marvel|teen titans|y:\s*the last man|something is killing the children)\b/.test(`${title} ${volume}`);
+  if ((issueNumber === 1 || issueNumber === 0) && (canonicalSeriesSignal || knownComicPublisher)) return true;
   if (/#\s*\d+\b/.test(title) && !/\b(collected|collection|omnibus|compendium|master edition|treasury edition|tpb|hc|ogn)\b/.test(text)) {
     return false;
   }
