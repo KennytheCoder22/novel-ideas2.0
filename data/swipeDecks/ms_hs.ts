@@ -903,7 +903,14 @@ const msHsDeck: SwipeDeck = {
     ...CANON_MSHS_MOVIES,
     ...CANON_MSHS_GAMES,
     ...CANON_MSHS_ANIME,
-  ],
+  ].map((card: any) => {
+    const tags = Array.isArray(card?.tags) ? [...card.tags] : [];
+    const hasComicVineUsefulTag = tags.some((tag: string) =>
+      /^(publisher:|source_universe:|facet:|format:graphic_novel)/i.test(String(tag || ""))
+    );
+    if (!hasComicVineUsefulTag) tags.push("facet:indie_genre");
+    return { ...card, tags: Array.from(new Set(tags)) };
+  }),
 };
 
 export default msHsDeck;
