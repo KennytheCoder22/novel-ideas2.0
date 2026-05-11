@@ -4851,6 +4851,22 @@ const normalizedCandidatesRaw = [
       .replace(/\s+/g, " ")
       .trim();
   };
+  const editionFamilyKey = (title: string): string => {
+    const t = String(title || "").toLowerCase();
+    if (/\b(vol(?:ume)?\.?\s*1|book\s*1|year one|origin)\b/.test(t)) return "entry_point";
+    if (/\b(compendium|omnibus)\b/.test(t)) return "compendium";
+    if (/\b(deluxe|absolute|library edition)\b/.test(t)) return "deluxe";
+    if (/\b(tpb|trade paperback|collection|collected|graphic novel)\b/.test(t)) return "collected";
+    if (/\b(vol(?:ume)?\.?\s*\d+|book\s*\d+)\b/.test(t)) return "later_volume";
+    return "base";
+  };
+  const canonicalRecommendationKey = (title: string): string => {
+    const series = canonicalSeriesKey(title);
+    const edition = editionFamilyKey(title);
+    // Allow multiple useful collected entry families while still collapsing issue soup.
+    if (["entry_point", "compendium", "deluxe", "collected"].includes(edition)) return `${series}::${edition}`;
+    return `${series}::base`;
+  };
   const isIssueFragmentTitle = (title: string): boolean => /#\s*\d+\b|\b(issue|no\.?|number)\s*\d+\b/i.test(String(title || ""));
   const isEntryPointTitle = (title: string): boolean => /\b(vol(?:ume)?\.?\s*1|book\s*1|tpb|trade paperback|collection|collected|omnibus|deluxe|year one|origin)\b/i.test(String(title || ""));
 
@@ -4858,7 +4874,7 @@ const normalizedCandidatesRaw = [
     const groups = new Map<string, any[]>();
     for (const item of outputItemsNoMixedFallback) {
       const title = String(item?.doc?.title || item?.title || "").trim();
-      const key = canonicalSeriesKey(title) || title.toLowerCase();
+      const key = canonicalRecommendationKey(title) || title.toLowerCase();
       const existing = groups.get(key) || [];
       existing.push(item);
       groups.set(key, existing);
@@ -4914,13 +4930,13 @@ const normalizedCandidatesRaw = [
   let preferredCollectedEditionSelectedCount = 0;
   const seriesCollapsedWithBackfill = (() => {
     const out = [...seriesCollapsedOutputItems];
-    const seenSeries = new Set(out.map((item: any) => canonicalSeriesKey(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const seenSeries = new Set(out.map((item: any) => canonicalRecommendationKey(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
     for (const item of rankedBackfillItems) {
       if (out.length >= 10) break;
       const title = String(item?.doc?.title || item?.title || "");
       if (!title) continue;
       if (isIssueFragmentTitle(title) && !isEntryPointTitle(title)) { issueFragmentRejectedCount += 1; continue; }
-      const key = canonicalSeriesKey(title);
+      const key = canonicalRecommendationKey(title);
       if (!key || seenSeries.has(key)) continue;
       seenSeries.add(key);
       if (isEntryPointTitle(title)) preferredCollectedEditionSelectedCount += 1;
