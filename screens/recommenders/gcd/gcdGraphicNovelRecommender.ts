@@ -913,6 +913,19 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
 
   if (docs.length === 0) {
+    const needed = 10 - docs.length;
+    const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
+    const seenTitles = new Set(docs.map((d) => normalizeText(d.title)));
+    for (const doc of curated) {
+      if (docs.length >= 10) break;
+      const normalizedTitle = normalizeText(doc.title);
+      if (seenTitles.has(normalizedTitle)) continue;
+      seenTitles.add(normalizedTitle);
+      docs.push(doc);
+    }
+  }
+
+  if (docs.length === 0) {
     const knownGoodProbeQueries = ["batman", "spider-man", "ms. marvel", "locke & key", "saga", "guardians of the galaxy"];
     let probeFoundAny = false;
     for (const q of knownGoodProbeQueries) {
