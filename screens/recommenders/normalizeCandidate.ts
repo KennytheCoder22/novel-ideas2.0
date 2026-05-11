@@ -610,7 +610,10 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
 export function normalizeCandidates(rawDocs: RecommendationDoc[], source: CandidateSource): Candidate[] {
   return (Array.isArray(rawDocs) ? rawDocs : [])
     .map((rawDoc) => normalizeCandidate(rawDoc, source))
-    .filter((candidate) => !isClearlyNotABookCandidate(candidate))
+    .filter((candidate) => {
+      if (candidate.source === 'comicVine') return true;
+      return !isClearlyNotABookCandidate(candidate);
+    })
     // Keep sparse/no-cover candidates in the candidate pool.
     // finalRecommender should decide whether they fit the user's taste strongly enough.
     .filter((candidate) => {
