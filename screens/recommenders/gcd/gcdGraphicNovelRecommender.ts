@@ -938,6 +938,15 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     }
   }
 
+  const dispatchFailures = comicVineFetchResults.filter((row) => String(row?.error || "").includes("comicvine_not_dispatched")).length;
+  const adapterSkippedRows = comicVineFetchResults.filter((row) => String(row?.query || "").includes("comicvine_adapter")).length;
+  const comicVineDispatchFailureDetected = dispatchFailures > 0 || adapterSkippedRows > 0;
+  const pipelineBreakdownStage = comicVineDispatchFailureDetected
+    ? "dispatch"
+    : docs.length === 0
+    ? "fetch_or_normalization"
+    : "none";
+
   return {
     engineId: "comicVine",
     engineLabel: "ComicVine",
@@ -981,6 +990,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,
+    comicVineDispatchFailureDetected,
+    comicVinePipelineBreakdownStage: pipelineBreakdownStage,
     gcdAdapterStatus: "ok",
     comicVineZeroResultReason: docs.length ? null : "no_issue_api_matches",
     debugRungStats: {
