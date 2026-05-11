@@ -4726,6 +4726,29 @@ const normalizedCandidatesRaw = [
         .replace(/\bpsychological horror novel\b/gi, "psychological horror graphic novel")
         .replace(/\bdark fantasy novel\b/gi, "dark fantasy graphic novel")
     : builtFromQueryRaw;
+
+  const fetchedRawCount = Number(aggregatedRawFetched.comicVine || 0);
+  const normalizedCount = Number(comicVinePipelineTraceCounts?.normalized || 0);
+  const candidateCount = Number(gcdCandidates.length || 0);
+  const filteredCount = Number(normalizedCandidates.length || 0);
+  const rankedCount = Number(rankedDocsLength || 0);
+  const renderedCount = Number(outputItems.length || 0);
+  const healthyRawCollapsedPipelineFailure =
+    includeComicVine &&
+    fetchedRawCount >= 60 &&
+    (candidateCount <= 3 || rankedCount === 0);
+  const hardPipelineFailure = Boolean(comicVinePipelineFailureDetected || healthyRawCollapsedPipelineFailure);
+
+  const fallbackItems = outputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").includes("fallback") || String(item?.doc?.queryText || "") === "comicvine_publisher_facet_fallback");
+  const nonFallbackItems = outputItems.filter((item: any) => !fallbackItems.includes(item));
+  const mixedFallbackOutput = fallbackItems.length > 0 && nonFallbackItems.length > 0;
+  const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
+  const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
+  const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
+
+  if (hardPipelineFailure) {
+    sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
+  }
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -4735,7 +4758,7 @@ const normalizedCandidatesRaw = [
         ? (routingInput.domainModeOverride ?? "chapterMiddle")
         : (routingInput.domainModeOverride ?? "default"),
     builtFromQuery,
-    items: outputItems,
+    items: finalOutputItems,
     comicVineSampleTitlesByQuery,
     comicVineRejectedSampleTitlesByQuery,
     comicVineRejectedSampleReasonsByQuery,
@@ -4757,7 +4780,7 @@ const normalizedCandidatesRaw = [
     aiGuardrailRejectedIds,
     finalSelectionMode,
     finalAcceptedDocsLength,
-    renderedTopRecommendationsLength,
+    renderedTopRecommendationsLength: finalOutputItems.length,
     teenPostPassOutputTitles,
     teenPostPassRejectedTitles,
     teenPostPassRejectReasons,
@@ -4775,8 +4798,8 @@ const normalizedCandidatesRaw = [
     finalSeriesCapDroppedReasons,
     finalItemsLength,
     finalItemsTitles,
-    returnedItemsLength,
-    returnedItemsTitles,
+    returnedItemsLength: finalOutputItems.length,
+    returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
     finalAcceptedDocIds,
     finalRejectedDocIds,
     returnedDocIds,
@@ -4817,6 +4840,14 @@ const normalizedCandidatesRaw = [
     comicVinePipelineTraceCounts,
     comicVinePipelineFailureDetected,
     comicVinePipelineFailureReason,
+    fetchedRawCount,
+    normalizedCount,
+    candidateCount,
+    filteredCount,
+    rankedCount,
+    renderedCount: finalOutputItems.length,
+    mixedFallbackOutput,
+    suppressTopRecommendations,
     debugRouterVersion,
     routerResultTracePresent: true,
     routerResultKeys: Object.keys({
