@@ -899,7 +899,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     }
   }
 
-  if (docs.length === 0) {
+  const realComicVineDocCount = docs.filter((doc) => String((doc as any)?.source || "").toLowerCase() === "comicvine").length;
+  const rescueOnlyPool = docs.length > 0 && realComicVineDocCount === 0;
+
+  if (docs.length === 0 || rescueOnlyPool) {
     const needed = 10 - docs.length;
     const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
     const seenTitles = new Set(docs.map((d) => normalizeText(d.title)));
