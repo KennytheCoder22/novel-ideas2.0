@@ -943,7 +943,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
 
   const queryDerivedCountBeforeTopUp = docs.length;
-  if (docs.length < 10) {
+  const totalRawAcrossQueries = Object.values(comicVineRawCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const totalNormalizedAcrossQueries = Object.values(comicVinePostNormalizationCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const totalCanonicalAcrossQueries = Object.values(comicVineCanonicalAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const totalContentAcrossQueries = Object.values(comicVineContentAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const totalFinalAcrossQueries = Object.values(comicVineFinalAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const highRawLowCandidatePipelineFailure = totalRawAcrossQueries >= 60 && queryDerivedCountBeforeTopUp <= 3;
+
+  if (!highRawLowCandidatePipelineFailure && docs.length < 10) {
     const needed = 10 - docs.length;
     const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
     const seenTitles = new Set(docs.map((d) => normalizeText(d.title)));
@@ -969,6 +976,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const fallbackCount = docs.filter((d: any) => String(d?.queryText || "") === "comicvine_publisher_facet_fallback" || String(d?.source || "").includes("fallback")).length;
   const queryDerivedCount = Math.max(0, docs.length - fallbackCount);
   const fallbackOnlyResult = docs.length > 0 && queryDerivedCount === 0;
+  const fallbackHeavyResult = docs.length > 0 && fallbackCount >= Math.ceil(docs.length * 0.6);
 
   if (docs.length === 0) {
     const knownGoodProbeQueries = ["batman", "spider-man", "ms. marvel", "locke & key", "saga", "guardians of the galaxy"];
@@ -1055,6 +1063,24 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,
+    comicVinePipelineTraceCounts: {
+      raw: totalRawAcrossQueries,
+      normalized: totalNormalizedAcrossQueries,
+      canonical: totalCanonicalAcrossQueries,
+      content: totalContentAcrossQueries,
+      final: totalFinalAcrossQueries,
+      rendered: docs.length,
+      queryDerived: queryDerivedCount,
+      fallback: fallbackCount,
+    },
+    comicVinePipelineFailureDetected: highRawLowCandidatePipelineFailure || fallbackOnlyResult || fallbackHeavyResult,
+    comicVinePipelineFailureReason: highRawLowCandidatePipelineFailure
+      ? "RAW_HIGH_CANDIDATE_TINY"
+      : fallbackOnlyResult
+      ? "FALLBACK_ONLY_RESULTS"
+      : fallbackHeavyResult
+      ? "FALLBACK_HEAVY_RESULTS"
+      : "",
     comicVineQueryDerivedCount: queryDerivedCount,
     comicVineFallbackCount: fallbackCount,
     comicVineFallbackOnlyResult: fallbackOnlyResult,

@@ -4388,6 +4388,9 @@ const normalizedCandidatesRaw = [
   const effectiveProxyHealthError = hasSuccessfulComicVineFetch ? undefined : proxyHealthError || undefined;
   const comicVineQueryDerivedCount = Number((comicVine as any)?.comicVineQueryDerivedCount || 0);
   const comicVineFallbackCount = Number((comicVine as any)?.comicVineFallbackCount || 0);
+  const comicVinePipelineTraceCounts = (comicVine as any)?.comicVinePipelineTraceCounts || {};
+  const comicVinePipelineFailureDetected = Boolean((comicVine as any)?.comicVinePipelineFailureDetected);
+  const comicVinePipelineFailureReason = String((comicVine as any)?.comicVinePipelineFailureReason || "");
   const comicVineFallbackOnlyResult = Boolean((comicVine as any)?.comicVineFallbackOnlyResult);
   const comicVineFallbackLeakageWarning = String((comicVine as any)?.comicVineFallbackLeakageWarning || "");
   const comicVineRecommendationSetMode = String((comicVine as any)?.comicVineRecommendationSetMode || "unknown");
@@ -4445,7 +4448,15 @@ const normalizedCandidatesRaw = [
     comicVineFallbackLeakageWarning,
     comicVineRecommendationSetMode,
     comicVineNormalRecommendationSet,
+    comicVinePipelineTraceCounts,
+    comicVinePipelineFailureDetected,
+    comicVinePipelineFailureReason,
   };
+
+  if (comicVinePipelineFailureDetected) {
+    sourceSkippedReason.push(`comicvine_pipeline_failure:${comicVinePipelineFailureReason || "unknown"}`);
+    if (comicVineAdapterStatus === "ok") comicVineAdapterStatus = "proxy_error";
+  }
 
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
@@ -4803,6 +4814,9 @@ const normalizedCandidatesRaw = [
     comicVineFallbackLeakageWarning,
     comicVineRecommendationSetMode,
     comicVineNormalRecommendationSet,
+    comicVinePipelineTraceCounts,
+    comicVinePipelineFailureDetected,
+    comicVinePipelineFailureReason,
     debugRouterVersion,
     routerResultTracePresent: true,
     routerResultKeys: Object.keys({
