@@ -4854,8 +4854,45 @@ const normalizedCandidatesRaw = [
     }
     return chosen;
   })();
+  const seriesCollapseBeforeCount = outputItemsNoMixedFallback.length;
+  const seriesCollapseAfterCount = seriesCollapsedOutputItems.length;
+
+  const rankedBackfillItems = (rankedDocs || [])
+    .map((doc: any) => ({ kind: "open_library", doc }))
+    .filter((item: any) => !String(item?.doc?.source || "").includes("fallback"))
+    .sort((a: any, b: any) => {
+      const ta = String(a?.doc?.title || "");
+      const tb = String(b?.doc?.title || "");
+      const aEntry = isEntryPointTitle(ta) ? 1 : 0;
+      const bEntry = isEntryPointTitle(tb) ? 1 : 0;
+      if (aEntry !== bEntry) return bEntry - aEntry;
+      const aIssue = isIssueFragmentTitle(ta) ? 1 : 0;
+      const bIssue = isIssueFragmentTitle(tb) ? 1 : 0;
+      if (aIssue !== bIssue) return aIssue - bIssue;
+      return (Number(b?.doc?.score || 0) - Number(a?.doc?.score || 0));
+    });
+
+  let issueFragmentRejectedCount = 0;
+  let preferredCollectedEditionSelectedCount = 0;
+  const seriesCollapsedWithBackfill = (() => {
+    const out = [...seriesCollapsedOutputItems];
+    const seenSeries = new Set(out.map((item: any) => canonicalSeriesKey(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    for (const item of rankedBackfillItems) {
+      if (out.length >= 10) break;
+      const title = String(item?.doc?.title || item?.title || "");
+      if (!title) continue;
+      if (isIssueFragmentTitle(title) && !isEntryPointTitle(title)) { issueFragmentRejectedCount += 1; continue; }
+      const key = canonicalSeriesKey(title);
+      if (!key || seenSeries.has(key)) continue;
+      seenSeries.add(key);
+      if (isEntryPointTitle(title)) preferredCollectedEditionSelectedCount += 1;
+      out.push(item);
+    }
+    return out;
+  })();
   const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
-  const finalOutputItems = suppressTopRecommendations ? [] : seriesCollapsedOutputItems;
+  const finalOutputItems = suppressTopRecommendations ? [] : seriesCollapsedWithBackfill;
+  const seriesCollapseUnderfilled = !suppressTopRecommendations && seriesCollapseAfterCount < 10;
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
@@ -4960,6 +4997,12 @@ const normalizedCandidatesRaw = [
     mixedFallbackOutput,
     suppressTopRecommendations,
     queryFamilyDriftDetected,
+    seriesCollapseBeforeCount,
+    seriesCollapseAfterCount,
+    seriesCollapseUnderfilled,
+    SERIES_COLLAPSE_UNDERFILLED: seriesCollapseUnderfilled ? `before=${seriesCollapseBeforeCount}, after=${seriesCollapseAfterCount}` : "",
+    ISSUE_FRAGMENT_REJECTED: issueFragmentRejectedCount,
+    PREFERRED_COLLECTED_EDITION_SELECTED: preferredCollectedEditionSelectedCount,
     comicVineNormalizationDropCount,
     comicVineNormalizationDroppedTitles,
     comicVineCandidateCollapseDetected,
