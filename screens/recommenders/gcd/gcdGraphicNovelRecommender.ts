@@ -608,11 +608,16 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
       if (/^(tpb|hc|sc|gn|ogn|vol\.?\s*\d+|book\s*\d+|chapter\s*\d+|issue\s*\d+|part\s*\d+)$/i.test(normalizedTitle)) {
-        countReject("generic_format_title");
-        pushRejectedSample("generic_format_title");
-        continue;
+        const volumeName = String(issue?.volume?.name || "").trim();
+        if (volumeName && /\b(vol\.?\s*\d+|book\s*\d+|tpb|gn|ogn)\b/i.test(normalizedTitle)) {
+          doc.title = `${volumeName} ${String(doc.title || "").trim()}`.trim();
+        } else {
+          countReject("generic_format_title");
+          pushRejectedSample("generic_format_title");
+          continue;
+        }
       }
-      if (normalizedTitle.split(/\s+/).filter(Boolean).length <= 1 && normalizedTitle.length < 8) {
+      if (normalizedTitle.split(/\s+/).filter(Boolean).length <= 1 && normalizedTitle.length < 8 && !/\b(vol\.?\s*\d+|book\s*\d+)\b/i.test(String(doc?.title || ""))) {
         countReject("too_short_title");
         pushRejectedSample("too_short_title");
         continue;
