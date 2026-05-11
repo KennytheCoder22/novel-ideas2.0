@@ -1512,6 +1512,16 @@ function buildDirectEvidenceLaneWeights(input: RecommenderInput): Record<string,
   return out;
 }
 
+function getBroadProfileTagCounts(input: RecommenderInput): RecommenderInput["tagCounts"] {
+  const personality = ((input as any)?.tasteProfile?.tagCounts && typeof (input as any).tasteProfile.tagCounts === "object")
+    ? (input as any).tasteProfile.tagCounts
+    : null;
+  const running = ((input as any)?.tasteProfile?.runningTagCounts && typeof (input as any).tasteProfile.runningTagCounts === "object")
+    ? (input as any).tasteProfile.runningTagCounts
+    : null;
+  return (personality || running || input.tagCounts || {}) as RecommenderInput["tagCounts"];
+}
+
 function familyForTagText(text: string): RouterFamilyKey | null {
   const key = String(text || "").toLowerCase();
   if (!key) return null;
@@ -2479,7 +2489,11 @@ async function runEngine(engine: EngineId, input: RecommenderInput): Promise<Rec
     return getOpenLibraryRecommendations(routedInput);
   }
   if (engine === "kitsu") return getKitsuMangaRecommendations(routedInput);
-  return getComicVineGraphicNovelRecommendations(routedInput);
+  const comicVineRetrievalInput: RecommenderInput = {
+    ...routedInput,
+    tagCounts: getBroadProfileTagCounts(routedInput),
+  };
+  return getComicVineGraphicNovelRecommendations(comicVineRetrievalInput);
 }
 
 async function fetchBothEngines(
@@ -2500,7 +2514,13 @@ async function fetchBothEngines(
   const includeComicVine = shouldUseComicVine(input);
 
   if (includeKitsu) requests.push(getKitsuMangaRecommendations(input));
-  if (includeComicVine) requests.push(getComicVineGraphicNovelRecommendations(input));
+  if (includeComicVine) {
+    const comicVineRetrievalInput: RecommenderInput = {
+      ...input,
+      tagCounts: getBroadProfileTagCounts(input),
+    };
+    requests.push(getComicVineGraphicNovelRecommendations(comicVineRetrievalInput));
+  }
 
   const results = await Promise.allSettled(requests);
 
@@ -3073,7 +3093,11 @@ export async function getRecommendations(
       const shouldDispatchComicVineForLane = includeComicVine && !comicVineAdapterFailed && !comicVineDispatchedOnce;
       const comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       if (shouldDispatchComicVineForLane) {
-        requests.push(getComicVineGraphicNovelRecommendations(routedInput));
+        const comicVineRetrievalInput: RecommenderInput = {
+          ...laneInput,
+          tagCounts: getBroadProfileTagCounts(laneInput),
+        };
+        requests.push(getComicVineGraphicNovelRecommendations(comicVineRetrievalInput));
         comicVineDispatchedOnce = true;
       }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
