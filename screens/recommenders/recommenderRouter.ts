@@ -4515,6 +4515,11 @@ const normalizedCandidatesRaw = [
     comicVinePipelineFailureReason,
   };
 
+  const queryFamilyDriftDetected = routerFamily === "science_fiction" && Array.from(comicVineRungsBuilt).some((q) => /horror|haunted|occult|supernatural|dark fantasy/.test(String(q || "").toLowerCase()));
+  if (queryFamilyDriftDetected) {
+    sourceSkippedReason.push("QUERY_FAMILY_DRIFT:science_fiction_to_horror_or_dark_fantasy_queries");
+  }
+
   if (comicVinePipelineFailureDetected) {
     sourceSkippedReason.push(`comicvine_pipeline_failure:${comicVinePipelineFailureReason || "unknown"}`);
     if (comicVineAdapterStatus === "ok") comicVineAdapterStatus = "proxy_error";
@@ -4911,6 +4916,7 @@ const normalizedCandidatesRaw = [
     renderedCount: finalOutputItems.length,
     mixedFallbackOutput,
     suppressTopRecommendations,
+    queryFamilyDriftDetected,
     comicVineNormalizationDropCount,
     comicVineNormalizationDroppedTitles,
     comicVineCandidateCollapseDetected,

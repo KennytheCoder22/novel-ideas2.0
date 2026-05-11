@@ -247,6 +247,13 @@ function buildSessionFitComicVineQueries(tagCounts: TagCounts | undefined, clean
   return queries.slice(0, 10);
 }
 
+function inferPrimaryRetrievalFamily(tagCounts: TagCounts | undefined): "science_fiction" | "other" {
+  const signalText = topSwipeSignals(tagCounts, 40).join(" ");
+  const sciFiHits = Number(/science fiction|sci-fi|dystopian|space|future|ai|cyberpunk|robot|time travel/.test(signalText));
+  const horrorHits = Number(/horror|spooky|haunted|occult|paranormal|ghost/.test(signalText));
+  return sciFiHits >= horrorHits ? "science_fiction" : "other";
+}
+
 function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
   return queries.map((query, i) => ({
     rung: i,
@@ -694,9 +701,27 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const bucketQueries = Array.isArray((input as any)?.bucketPlan?.queries) ? (input as any).bucketPlan.queries.map((q:any)=>String(q||"" ).trim()).filter(Boolean) : [];
   const querySeed = bucketPreview || bucketQueries[0] || "";
   const seedClean = cleanComicVineSeedQuery(querySeed);
+  const primaryFamily = inferPrimaryRetrievalFamily(input.tagCounts);
   const anchorSelection = selectComicVineAnchors(input.tagCounts);
-  const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
-  const sessionFitQueries = buildSessionFitComicVineQueries(input.tagCounts, seedClean.cleaned);
+  let facetQueries = buildComicQueriesFromFacets(input.tagCounts);
+  let sessionFitQueries = buildSessionFitComicVineQueries(input.tagCounts, seedClean.cleaned);
+  if (primaryFamily === "science_fiction") {
+    const sciFiQueryPattern = /science fiction|sci-fi|dystopian|space|future|cyberpunk|ai|time travel|paper girls|descender|black science|saga|guardians of the galaxy|runaways|young justice|teen titans|ms\. marvel|spider-man/i;
+    const driftedFacetQueries = facetQueries.filter((q) => !sciFiQueryPattern.test(String(q || "")));
+    const driftedSessionQueries = sessionFitQueries.filter((q) => !sciFiQueryPattern.test(String(q || "")));
+    facetQueries = facetQueries.filter((q) => sciFiQueryPattern.test(String(q || "")));
+    sessionFitQueries = sessionFitQueries.filter((q) => sciFiQueryPattern.test(String(q || "")));
+    if (driftedFacetQueries.length || driftedSessionQueries.length) {
+      console.warn("QUERY_FAMILY_DRIFT", {
+        activeFamily: "science_fiction",
+        droppedFacetQueries: driftedFacetQueries,
+        droppedSessionQueries: driftedSessionQueries,
+      });
+    }
+    for (const q of ["science fiction graphic novel", "dystopian graphic novel", "paper girls", "descender", "black science", "saga"]) {
+      if (!sessionFitQueries.includes(q)) sessionFitQueries.push(q);
+    }
+  }
   const allQueries = Array.from(new Set([...sessionFitQueries, ...anchorSelection.anchors, ...facetQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
   const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
   const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$/i;
