@@ -4811,8 +4811,51 @@ const normalizedCandidatesRaw = [
   const nonFallbackItems = outputItems.filter((item: any) => !fallbackItems.includes(item));
   const mixedFallbackOutput = fallbackItems.length > 0 && nonFallbackItems.length > 0;
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
+
+  const canonicalSeriesKey = (title: string): string => {
+    const t = String(title || "").toLowerCase().trim();
+    return t
+      .replace(/\s+#\s*\d+\b/g, "")
+      .replace(/\b(issue|no\.?|number)\s*\d+\b/g, "")
+      .replace(/\bvol(?:ume)?\.?\s*\d+\b/g, "")
+      .replace(/\bbook\s*\d+\b/g, "")
+      .replace(/[:\-]\s*graphic novel\s*#\s*\d+\b/g, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  };
+  const isIssueFragmentTitle = (title: string): boolean => /#\s*\d+\b|\b(issue|no\.?|number)\s*\d+\b/i.test(String(title || ""));
+  const isEntryPointTitle = (title: string): boolean => /\b(vol(?:ume)?\.?\s*1|book\s*1|tpb|trade paperback|collection|collected|omnibus|deluxe|year one|origin)\b/i.test(String(title || ""));
+
+  const seriesCollapsedOutputItems = (() => {
+    const groups = new Map<string, any[]>();
+    for (const item of outputItemsNoMixedFallback) {
+      const title = String(item?.doc?.title || item?.title || "").trim();
+      const key = canonicalSeriesKey(title) || title.toLowerCase();
+      const existing = groups.get(key) || [];
+      existing.push(item);
+      groups.set(key, existing);
+    }
+    const chosen: any[] = [];
+    for (const [, group] of groups) {
+      const sorted = [...group].sort((a: any, b: any) => {
+        const ta = String(a?.doc?.title || a?.title || "");
+        const tb = String(b?.doc?.title || b?.title || "");
+        const aEntry = isEntryPointTitle(ta) ? 1 : 0;
+        const bEntry = isEntryPointTitle(tb) ? 1 : 0;
+        if (aEntry !== bEntry) return bEntry - aEntry;
+        const aIssue = isIssueFragmentTitle(ta) ? 1 : 0;
+        const bIssue = isIssueFragmentTitle(tb) ? 1 : 0;
+        if (aIssue !== bIssue) return aIssue - bIssue;
+        const as = Number(a?.doc?.score ?? a?.doc?.finalScore ?? 0);
+        const bs = Number(b?.doc?.score ?? b?.doc?.finalScore ?? 0);
+        return bs - as;
+      });
+      chosen.push(sorted[0]);
+    }
+    return chosen;
+  })();
   const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
-  const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
+  const finalOutputItems = suppressTopRecommendations ? [] : seriesCollapsedOutputItems;
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
