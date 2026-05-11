@@ -3069,6 +3069,7 @@ export async function getRecommendations(
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
       const shouldDispatchComicVineForLane = includeComicVine && !comicVineAdapterFailed && !comicVineDispatchedOnce;
+      const comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       if (shouldDispatchComicVineForLane) {
         requests.push(getComicVineGraphicNovelRecommendations(routedInput));
         comicVineDispatchedOnce = true;
@@ -3105,10 +3106,10 @@ export async function getRecommendations(
         : null;
       if (includeKitsu) index += 1;
 
-      const laneComicVine = comicVineDispatchedOnce && results[index]?.status === "fulfilled"
+      const laneComicVine = comicVineDispatchedOnThisLane && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (comicVineDispatchedOnce) {
+      if (comicVineDispatchedOnThisLane) {
         const gcdResult = results[index];
         const query = "comicvine_adapter";
         if (gcdResult?.status === "fulfilled") {
@@ -3159,8 +3160,6 @@ export async function getRecommendations(
             rawCount: 0,
             error: reasonText,
           });
-        } else {
-          comicVineFetchResults.push({ query, status: "skipped", rawCount: 0, error: "comicvine_not_dispatched" });
         }
       }
 
