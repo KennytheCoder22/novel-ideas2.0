@@ -4878,14 +4878,24 @@ const normalizedCandidatesRaw = [
         const bs = Number(b?.doc?.score ?? b?.doc?.finalScore ?? 0);
         return bs - as;
       });
-      chosen.push(sorted[0]);
+      const selected = { ...sorted[0] };
+      const selectedTitle = String(selected?.doc?.title || selected?.title || "");
+      if (isIssueFragmentTitle(selectedTitle) && !isEntryPointTitle(selectedTitle)) {
+        const canonicalTitle = canonicalSeriesKey(selectedTitle)
+          .split(" ")
+          .map((w) => w ? (w[0].toUpperCase() + w.slice(1)) : w)
+          .join(" ")
+          .trim();
+        if (selected?.doc) selected.doc = { ...selected.doc, title: canonicalTitle || selectedTitle };
+      }
+      chosen.push(selected);
     }
     return chosen;
   })();
   const seriesCollapseBeforeCount = outputItemsNoMixedFallback.length;
   const seriesCollapseAfterCount = seriesCollapsedOutputItems.length;
 
-  const rankedBackfillItems = (rankedDocs || [])
+  const rankedBackfillItems = ([...(rankedDocs || []), ...(normalizedCandidates || [])])
     .map((doc: any) => ({ kind: "open_library", doc }))
     .filter((item: any) => !String(item?.doc?.source || "").includes("fallback"))
     .sort((a: any, b: any) => {
