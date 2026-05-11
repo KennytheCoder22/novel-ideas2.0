@@ -3703,6 +3703,34 @@ const normalizedCandidatesRaw = [
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeComicVine ? gcdCandidatesWithRescue : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
+  const filteredKeptCount = candidateDocs.filter((doc: any) => doc?.diagnostics?.filterKept !== false).length;
+  const candidatePromotionFailure = filteredKeptCount > 0 && normalizedCandidatesRaw.length === 0;
+  if (candidatePromotionFailure) {
+    debugRouterLog("CANDIDATE_PROMOTION_FAILURE", {
+      filteredKeptCount,
+      normalizedCandidatesRawCount: normalizedCandidatesRaw.length,
+      reason: "filter_kept_items_not_promoted_to_candidates",
+    });
+    const promotedFromKept = candidateDocs
+      .filter((doc: any) => doc?.diagnostics?.filterKept !== false)
+      .slice(0, 120)
+      .map((doc: any) => ({
+        key: String(doc?.key || doc?.sourceId || doc?.title || "").toLowerCase(),
+        title: String(doc?.title || "").replace(/\s+#\s*\d+\b/i, "").trim(),
+        author: Array.isArray(doc?.author_name) ? String(doc.author_name[0] || "") : String(doc?.author || ""),
+        source: String(doc?.source || "comicVine"),
+        genre: "graphic novel",
+        genres: ["graphic novel", "comics"],
+        description: String(doc?.description || doc?.subtitle || ""),
+        rating: Number(doc?.ratings_average || 0),
+        ratingCount: Number(doc?.ratings_count || 0),
+        queryText: String(doc?.queryText || ""),
+        queryRung: Number(doc?.queryRung || 0),
+        queryFamily: String(doc?.queryFamily || "unknown"),
+        rawDoc: { ...doc, promotedFromFilterKept: true },
+      }));
+    normalizedCandidatesRaw.push(...promotedFromKept);
+  }
   const normalizedCandidates = enforceHistoricalCandidateMetadata(collapseCrossRungDuplicates(normalizedCandidatesRaw as any).map((candidate: any) => {
     const inferredQueryFamily =
       normalizeRouterFamilyValue(
@@ -5007,6 +5035,8 @@ const normalizedCandidatesRaw = [
     comicVineNormalizationDroppedTitles,
     comicVineCandidateCollapseDetected,
     normalizedCandidateCollapseFailure,
+    candidatePromotionFailure,
+    filteredKeptCount,
     debugRouterVersion,
     routerResultTracePresent: true,
     routerResultKeys: Object.keys({
