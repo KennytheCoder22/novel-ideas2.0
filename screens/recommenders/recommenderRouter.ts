@@ -1352,6 +1352,8 @@ function looksLikeOpenLibraryPrecisionCandidate(doc: any, bucketPlan: any): bool
 }
 
 function sourceForDoc(doc: any, fallbackSource: CandidateSource): CandidateSource {
+  const normalizedSource = String(doc?.source || "").trim().toLowerCase();
+  if (normalizedSource === "comicvine_rescue") return "comicVine" as CandidateSource;
   return doc?.source === "googleBooks" ||
     doc?.source === "openLibrary" ||
     doc?.source === "kitsu" ||
