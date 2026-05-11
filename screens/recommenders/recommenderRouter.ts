@@ -3336,6 +3336,10 @@ export async function getRecommendations(
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  candidateDocs = candidateDocs.filter((doc: any) => {
+    const weakSeriesSpam = Boolean(doc?.diagnostics?.weakSeriesSpam || doc?.rawDoc?.diagnostics?.weakSeriesSpam || doc?.flags?.weakSeriesSpam);
+    return !weakSeriesSpam;
+  });
   const negativeSignals = new Set(
     [
       ...Object.keys((routingInput as any)?.dislikedTagCounts || {}),
@@ -4944,7 +4948,7 @@ const normalizedCandidatesRaw = [
     }
     return out;
   })();
-  const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
+  const suppressTopRecommendations = hardPipelineFailure;
   const finalOutputItems = suppressTopRecommendations ? [] : seriesCollapsedWithBackfill;
   const seriesCollapseUnderfilled = !suppressTopRecommendations && seriesCollapseAfterCount < 10;
 
