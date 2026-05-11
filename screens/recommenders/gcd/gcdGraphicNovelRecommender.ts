@@ -458,6 +458,7 @@ function isLikelyGraphicNovelCollection(issue: any, doc: RecommendationDoc): boo
   }
   const knownComicPublisher = /\b(marvel|dc|image|dark horse|boom|idw|oni press|vertigo)\b/.test(publisher);
   const canonicalSeriesSignal = /\b(saga|runaways|sandman|paper girls|nimona|locke\s*&\s*key|ms\.?\s*marvel|teen titans|y:\s*the last man|something is killing the children)\b/.test(`${title} ${volume}`);
+  if (canonicalSeriesSignal) return true;
   if ((issueNumber === 1 || issueNumber === 0) && (canonicalSeriesSignal || knownComicPublisher)) return true;
   if (/#\s*\d+\b/.test(title) && !/\b(collected|collection|omnibus|compendium|master edition|treasury edition|tpb|hc|ogn)\b/.test(text)) {
     return false;
