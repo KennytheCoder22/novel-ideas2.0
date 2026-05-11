@@ -1,6 +1,6 @@
 import type { RecommendationDoc } from './types';
 
-export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'gcd';
+export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'comicVine';
 
 export type FormatCategory = 'manga' | 'graphic_novel' | 'comic' | 'prose';
 
@@ -521,7 +521,7 @@ function detectFormatCategory(
   const subjectText = subjects.join(' ').toLowerCase();
 
   if (source === 'kitsu') return 'manga';
-  if (source === 'gcd') return 'comic';
+  if (source === 'comicVine') return 'comic';
   if (subjectText.includes('manga')) return 'manga';
   if (subjectText.includes('graphic novel') || subjectText.includes('graphic novels')) return 'graphic_novel';
   if (subjectText.includes('comic') || subjectText.includes('comics')) return 'comic';
@@ -610,7 +610,10 @@ export function normalizeCandidate(rawDoc: RecommendationDoc, source: CandidateS
 export function normalizeCandidates(rawDocs: RecommendationDoc[], source: CandidateSource): Candidate[] {
   return (Array.isArray(rawDocs) ? rawDocs : [])
     .map((rawDoc) => normalizeCandidate(rawDoc, source))
-    .filter((candidate) => !isClearlyNotABookCandidate(candidate))
+    .filter((candidate) => {
+      if (candidate.source === 'comicVine') return true;
+      return !isClearlyNotABookCandidate(candidate);
+    })
     // Keep sparse/no-cover candidates in the candidate pool.
     // finalRecommender should decide whether they fit the user's taste strongly enough.
     .filter((candidate) => {
