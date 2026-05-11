@@ -273,10 +273,26 @@ function buildCuratedFallbackDocs(tagCounts: TagCounts | undefined, limit: numbe
     const facetScore = entry.facets.reduce((acc, facet) => acc + Number(activeFacetWeights[facet] || 0), 0);
     const score = tagScore + facetScore;
     return { entry, score };
-  })
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit);
-  return scored.map(({ entry }, index) => ({
+  }).sort((a, b) => b.score - a.score);
+
+  // Librarian mode: keep the pool broad and avoid collapse onto one facet.
+  const selected: Array<{ entry: CuratedFallback; score: number }> = [];
+  const facetCounts: Record<string, number> = {};
+  const MAX_PER_FACET = 3;
+  for (const row of scored) {
+    if (selected.length >= limit) break;
+    const wouldOverConcentrate = row.entry.facets.every((facet) => Number(facetCounts[facet] || 0) >= MAX_PER_FACET);
+    if (wouldOverConcentrate) continue;
+    selected.push(row);
+    for (const facet of row.entry.facets) facetCounts[facet] = Number(facetCounts[facet] || 0) + 1;
+  }
+  for (const row of scored) {
+    if (selected.length >= limit) break;
+    if (selected.includes(row)) continue;
+    selected.push(row);
+  }
+
+  return selected.map(({ entry }, index) => ({
     key: `comicvine-curated:${normalizeText(entry.title)}:${index}`,
     title: entry.title,
     author_name: ["Unknown"],
@@ -293,8 +309,32 @@ function buildCuratedFallbackDocs(tagCounts: TagCounts | undefined, limit: numbe
     preFilterScore: 0.55,
     postFilterScore: 0.55,
     finalScore: 0.55,
+    score: 0.55,
     diagnostics: { curatedFallback: true, curatedTags: entry.tags },
   } as RecommendationDoc));
+}
+
+function interleaveQueries(lanes: string[][], max: number): string[] {
+  const normalizedLanes = lanes.map((lane) => lane.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean));
+  const used = new Set<string>();
+  const out: string[] = [];
+  let cursor = 0;
+  while (out.length < max) {
+    let addedThisRound = false;
+    for (const lane of normalizedLanes) {
+      if (cursor >= lane.length) continue;
+      const q = lane[cursor];
+      if (!used.has(q)) {
+        used.add(q);
+        out.push(q);
+        addedThisRound = true;
+        if (out.length >= max) break;
+      }
+    }
+    if (!addedThisRound) break;
+    cursor += 1;
+  }
+  return out;
 }
 
 async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<string> {
@@ -675,8 +715,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   // Prefer title + format intent. Avoid ordinal followups that frequently return "Volume X / Book One" artifacts.
   const formatFollowups = baseAnchors.map((a) => `${a} graphic novel`);
   const secondaryFormatFollowups = baseAnchors.map((a) => `${a} tpb`);
-  const prioritizedQueries = [...sessionFitQueries, ...baseAnchors, ...formatFollowups, ...otherQueries, ...secondaryFormatFollowups, ...genericQueries];
-  const queriesToTry = Array.from(new Set(prioritizedQueries.map((q) => stripDanglingQuotes(String(q || "")).trim()).filter(Boolean))).slice(0, Math.max(24, MAX_COMICVINE_ANCHORS));
+  // Build a broad pool first (session-fit + anchors + facets) instead of over-optimizing one lane.
+  const queriesToTry = interleaveQueries(
+    [sessionFitQueries, baseAnchors, otherQueries, formatFollowups, secondaryFormatFollowups, genericQueries],
+    Math.max(30, MAX_COMICVINE_ANCHORS * 3)
+  );
   const comicVineResolvedSeedQuery = anchorSelection.anchors[0] || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = false;
   const comicVineFallbackReason = "tag_profile_anchor_selection";
@@ -899,7 +942,15 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     }
   }
 
-  if (docs.length < 10) {
+  const queryDerivedCountBeforeTopUp = docs.length;
+  const totalRawAcrossQueries = Object.values(comicVineRawCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const totalNormalizedAcrossQueries = Object.values(comicVinePostNormalizationCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const totalCanonicalAcrossQueries = Object.values(comicVineCanonicalAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const totalContentAcrossQueries = Object.values(comicVineContentAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const totalFinalAcrossQueries = Object.values(comicVineFinalAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
+  const highRawLowCandidatePipelineFailure = totalRawAcrossQueries >= 60 && queryDerivedCountBeforeTopUp <= 3;
+
+  if (!highRawLowCandidatePipelineFailure && docs.length < 10) {
     const needed = 10 - docs.length;
     const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
     const seenTitles = new Set(docs.map((d) => normalizeText(d.title)));
@@ -908,9 +959,24 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       const normalizedTitle = normalizeText(doc.title);
       if (seenTitles.has(normalizedTitle)) continue;
       seenTitles.add(normalizedTitle);
-      docs.push(doc);
+      docs.push({
+        ...doc,
+        source: "comicvine_fallback" as any,
+        queryFamily: "fallback" as any,
+        diagnostics: {
+          ...(doc as any).diagnostics,
+          fallbackKind: "publisher_facet_curated",
+          fallbackEmergencyFill: true,
+          fallbackInjectedBecause: "insufficient_query_derived_results",
+        },
+      } as RecommendationDoc);
     }
   }
+
+  const fallbackCount = docs.filter((d: any) => String(d?.queryText || "") === "comicvine_publisher_facet_fallback" || String(d?.source || "").includes("fallback")).length;
+  const queryDerivedCount = Math.max(0, docs.length - fallbackCount);
+  const fallbackOnlyResult = docs.length > 0 && queryDerivedCount === 0;
+  const fallbackHeavyResult = docs.length > 0 && fallbackCount >= Math.ceil(docs.length * 0.6);
 
   if (docs.length === 0) {
     const knownGoodProbeQueries = ["batman", "spider-man", "ms. marvel", "locke & key", "saga", "guardians of the galaxy"];
@@ -997,6 +1063,34 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,
+    comicVinePipelineTraceCounts: {
+      raw: totalRawAcrossQueries,
+      normalized: totalNormalizedAcrossQueries,
+      canonical: totalCanonicalAcrossQueries,
+      content: totalContentAcrossQueries,
+      final: totalFinalAcrossQueries,
+      rendered: docs.length,
+      queryDerived: queryDerivedCount,
+      fallback: fallbackCount,
+    },
+    comicVinePipelineFailureDetected: highRawLowCandidatePipelineFailure || fallbackOnlyResult || fallbackHeavyResult,
+    comicVinePipelineFailureReason: highRawLowCandidatePipelineFailure
+      ? "RAW_HIGH_CANDIDATE_TINY"
+      : fallbackOnlyResult
+      ? "FALLBACK_ONLY_RESULTS"
+      : fallbackHeavyResult
+      ? "FALLBACK_HEAVY_RESULTS"
+      : "",
+    comicVineQueryDerivedCount: queryDerivedCount,
+    comicVineFallbackCount: fallbackCount,
+    comicVineFallbackOnlyResult: fallbackOnlyResult,
+    comicVineFallbackLeakageWarning: fallbackOnlyResult
+      ? "FALLBACK_ONLY_RESULTS: No query-derived ComicVine candidates survived; returning emergency fill titles."
+      : fallbackCount >= 8
+      ? "FALLBACK_HEAVY_RESULTS: Most returned items are emergency fill titles."
+      : "",
+    comicVineRecommendationSetMode: fallbackOnlyResult ? "fallback_only" : (fallbackCount > 0 ? "mixed_with_fallback" : "query_derived"),
+    comicVineNormalRecommendationSet: !fallbackOnlyResult,
     comicVineDispatchFailureDetected,
     comicVinePipelineBreakdownStage: pipelineBreakdownStage,
     gcdAdapterStatus: "ok",

@@ -3538,12 +3538,50 @@ export async function getRecommendations(
   const openLibraryCandidates = asArray(normalizeCandidates(openLibraryDocsEnriched, "openLibrary"));
   const kitsuCandidatesRaw = asArray(normalizeCandidates(kitsuDocsEnriched, "kitsu"));
   const gcdCandidates = asArray(normalizeCandidates(comicVineDocsEnriched, "comicVine"));
+  const comicVineNormalizationDropCount = Math.max(0, comicVineDocsEnriched.length - gcdCandidates.length);
+  const comicVineNormalizationDroppedTitles = comicVineDocsEnriched
+    .filter((doc: any) => {
+      const t = String(doc?.title || "").trim().toLowerCase();
+      return t && !gcdCandidates.some((c: any) => String(c?.title || "").trim().toLowerCase() === t);
+    })
+    .map((doc: any) => ({ title: String(doc?.title || "(untitled)"), reason: "dropped_in_normalizeCandidates" }))
+    .slice(0, 60);
+
+  let gcdCandidatesWithRescue = gcdCandidates;
+  const comicVineCandidateCollapseDetected = comicVineDocsEnriched.length >= 40 && gcdCandidates.length <= 3;
+  if (comicVineCandidateCollapseDetected) {
+    const normalizedTitles = new Set(gcdCandidates.map((c: any) => String(c?.title || "").trim().toLowerCase()).filter(Boolean));
+    const rescued = comicVineDocsEnriched
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        return title.length > 0 && !normalizedTitles.has(title.toLowerCase());
+      })
+      .slice(0, 120)
+      .map((doc: any) => ({
+        key: String(doc?.key || doc?.sourceId || doc?.title || "").toLowerCase(),
+        title: String(doc?.title || "").trim(),
+        author: Array.isArray(doc?.author_name) ? String(doc.author_name[0] || "") : String(doc?.author || ""),
+        source: "comicVine",
+        genre: "graphic novel",
+        genres: ["graphic novel", "comics"],
+        rating: Number(doc?.ratings_average || 0),
+        ratingCount: Number(doc?.ratings_count || 0),
+        pageCount: Number(doc?.pageCount || 0),
+        description: String(doc?.description || doc?.subtitle || ""),
+        queryText: String(doc?.queryText || ""),
+        queryRung: Number(doc?.queryRung || 0),
+        queryFamily: String(doc?.queryFamily || "unknown"),
+        rawDoc: { ...doc, normalizationRescue: true, normalizationRescueReason: "candidate_collapse_fail_open" },
+      }))
+      .filter((c: any) => c.title.length > 0);
+    gcdCandidatesWithRescue = [...gcdCandidates, ...rescued];
+  }
 
   debugRouterLog("NORMALIZED CANDIDATES BY SOURCE", {
     googleBooks: googleCandidates.length,
     openLibrary: openLibraryCandidates.length,
     kitsu: kitsuCandidatesRaw.length,
-    comicVine: gcdCandidates.length,
+    comicVine: gcdCandidatesWithRescue.length,
   });
 
   // Light dedupe for visual shelves.
@@ -3639,7 +3677,7 @@ const normalizedCandidatesRaw = [
     ...googleCandidates,
     ...openLibraryCandidates,
     ...(includeKitsu ? kitsuCandidates : []),
-    ...(includeComicVine ? gcdCandidates : []),
+    ...(includeComicVine ? gcdCandidatesWithRescue : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
   const normalizedCandidates = enforceHistoricalCandidateMetadata(collapseCrossRungDuplicates(normalizedCandidatesRaw as any).map((candidate: any) => {
     const inferredQueryFamily =
@@ -4373,7 +4411,7 @@ const normalizedCandidatesRaw = [
     },
     comicVine: {
       rawFetched: includeComicVine ? aggregatedRawFetched.comicVine : 0,
-      postFilterCandidates: includeComicVine ? gcdCandidates.length : 0,
+      postFilterCandidates: includeComicVine ? gcdCandidatesWithRescue.length : 0,
       finalSelected: rankedCountsBySource.comicVine,
     },
     nyt: {
@@ -4386,6 +4424,15 @@ const normalizedCandidatesRaw = [
   const hasSuccessfulComicVineFetch = comicVineFetchResults.some((row) => row.status === "ok" && Number(row.rawCount || 0) > 0);
   const effectiveProxyHealthStatus = hasSuccessfulComicVineFetch ? "ok" : proxyHealthStatus;
   const effectiveProxyHealthError = hasSuccessfulComicVineFetch ? undefined : proxyHealthError || undefined;
+  const comicVineQueryDerivedCount = Number((comicVine as any)?.comicVineQueryDerivedCount || 0);
+  const comicVineFallbackCount = Number((comicVine as any)?.comicVineFallbackCount || 0);
+  const comicVinePipelineTraceCounts = (comicVine as any)?.comicVinePipelineTraceCounts || {};
+  const comicVinePipelineFailureDetected = Boolean((comicVine as any)?.comicVinePipelineFailureDetected);
+  const comicVinePipelineFailureReason = String((comicVine as any)?.comicVinePipelineFailureReason || "");
+  const comicVineFallbackOnlyResult = Boolean((comicVine as any)?.comicVineFallbackOnlyResult);
+  const comicVineFallbackLeakageWarning = String((comicVine as any)?.comicVineFallbackLeakageWarning || "");
+  const comicVineRecommendationSetMode = String((comicVine as any)?.comicVineRecommendationSetMode || "unknown");
+  const comicVineNormalRecommendationSet = Boolean((comicVine as any)?.comicVineNormalRecommendationSet);
 
   const comicVineDispatchTrace = {
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
@@ -4433,7 +4480,21 @@ const normalizedCandidatesRaw = [
     comicVinePositiveQueries,
     comicVineExcludedTermsAppliedInFilterOnly,
     comicVineQueryTooLong,
+    comicVineQueryDerivedCount,
+    comicVineFallbackCount,
+    comicVineFallbackOnlyResult,
+    comicVineFallbackLeakageWarning,
+    comicVineRecommendationSetMode,
+    comicVineNormalRecommendationSet,
+    comicVinePipelineTraceCounts,
+    comicVinePipelineFailureDetected,
+    comicVinePipelineFailureReason,
   };
+
+  if (comicVinePipelineFailureDetected) {
+    sourceSkippedReason.push(`comicvine_pipeline_failure:${comicVinePipelineFailureReason || "unknown"}`);
+    if (comicVineAdapterStatus === "ok") comicVineAdapterStatus = "proxy_error";
+  }
 
 
   const finalDebugSnapshot: any = getLastFinalRecommenderDebug() || {};
@@ -4703,6 +4764,30 @@ const normalizedCandidatesRaw = [
         .replace(/\bpsychological horror novel\b/gi, "psychological horror graphic novel")
         .replace(/\bdark fantasy novel\b/gi, "dark fantasy graphic novel")
     : builtFromQueryRaw;
+
+  const fetchedRawCount = Number(aggregatedRawFetched.comicVine || 0);
+  const normalizedCount = Number(comicVinePipelineTraceCounts?.normalized || 0);
+  const candidateCount = Number(gcdCandidatesWithRescue.length || 0);
+  const filteredCount = Number(normalizedCandidates.length || 0);
+  const rankedCount = Number(rankedDocsLength || 0);
+  const renderedCount = Number(outputItems.length || 0);
+  const healthyRawCollapsedPipelineFailure =
+    includeComicVine &&
+    fetchedRawCount >= 60 &&
+    (candidateCount <= 3 || rankedCount === 0);
+  const normalizedCandidateCollapseFailure = includeComicVine && normalizedCount >= 100 && candidateCount <= 5;
+  const hardPipelineFailure = Boolean(comicVinePipelineFailureDetected || healthyRawCollapsedPipelineFailure || normalizedCandidateCollapseFailure);
+
+  const fallbackItems = outputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").includes("fallback") || String(item?.doc?.queryText || "") === "comicvine_publisher_facet_fallback");
+  const nonFallbackItems = outputItems.filter((item: any) => !fallbackItems.includes(item));
+  const mixedFallbackOutput = fallbackItems.length > 0 && nonFallbackItems.length > 0;
+  const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
+  const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
+  const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
+
+  if (hardPipelineFailure) {
+    sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
+  }
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -4712,7 +4797,7 @@ const normalizedCandidatesRaw = [
         ? (routingInput.domainModeOverride ?? "chapterMiddle")
         : (routingInput.domainModeOverride ?? "default"),
     builtFromQuery,
-    items: outputItems,
+    items: finalOutputItems,
     comicVineSampleTitlesByQuery,
     comicVineRejectedSampleTitlesByQuery,
     comicVineRejectedSampleReasonsByQuery,
@@ -4734,7 +4819,7 @@ const normalizedCandidatesRaw = [
     aiGuardrailRejectedIds,
     finalSelectionMode,
     finalAcceptedDocsLength,
-    renderedTopRecommendationsLength,
+    renderedTopRecommendationsLength: finalOutputItems.length,
     teenPostPassOutputTitles,
     teenPostPassRejectedTitles,
     teenPostPassRejectReasons,
@@ -4752,8 +4837,8 @@ const normalizedCandidatesRaw = [
     finalSeriesCapDroppedReasons,
     finalItemsLength,
     finalItemsTitles,
-    returnedItemsLength,
-    returnedItemsTitles,
+    returnedItemsLength: finalOutputItems.length,
+    returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
     finalAcceptedDocIds,
     finalRejectedDocIds,
     returnedDocIds,
@@ -4785,6 +4870,27 @@ const normalizedCandidatesRaw = [
     sourceEnabled,
     sourceSkippedReason,
     comicVineAdapterStatus,
+    comicVineQueryDerivedCount,
+    comicVineFallbackCount,
+    comicVineFallbackOnlyResult,
+    comicVineFallbackLeakageWarning,
+    comicVineRecommendationSetMode,
+    comicVineNormalRecommendationSet,
+    comicVinePipelineTraceCounts,
+    comicVinePipelineFailureDetected,
+    comicVinePipelineFailureReason,
+    fetchedRawCount,
+    normalizedCount,
+    candidateCount,
+    filteredCount,
+    rankedCount,
+    renderedCount: finalOutputItems.length,
+    mixedFallbackOutput,
+    suppressTopRecommendations,
+    comicVineNormalizationDropCount,
+    comicVineNormalizationDroppedTitles,
+    comicVineCandidateCollapseDetected,
+    normalizedCandidateCollapseFailure,
     debugRouterVersion,
     routerResultTracePresent: true,
     routerResultKeys: Object.keys({
