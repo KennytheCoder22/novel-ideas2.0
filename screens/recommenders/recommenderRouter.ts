@@ -4582,7 +4582,10 @@ const normalizedCandidatesRaw = [
       seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
     }
   }
-  if (comicVineOnlyModeForFinalSeriesCap && finalRenderDocs.length < 10) {
+  const realComicVineDocsCount = finalRenderDocs.filter(
+    (doc: any) => !(doc?.diagnostics as any)?.comicvineRouterEmergencyFallback
+  ).length;
+  if (comicVineOnlyModeForFinalSeriesCap && finalRenderDocs.length < 10 && realComicVineDocsCount === 0) {
     const emergencyTitles: Array<{ title: string; publisher: string }> = [
       { title: "Nimona", publisher: "Oni Press" },
       { title: "Paper Girls", publisher: "Image Comics" },
