@@ -4386,6 +4386,12 @@ const normalizedCandidatesRaw = [
   const hasSuccessfulComicVineFetch = comicVineFetchResults.some((row) => row.status === "ok" && Number(row.rawCount || 0) > 0);
   const effectiveProxyHealthStatus = hasSuccessfulComicVineFetch ? "ok" : proxyHealthStatus;
   const effectiveProxyHealthError = hasSuccessfulComicVineFetch ? undefined : proxyHealthError || undefined;
+  const comicVineQueryDerivedCount = Number((comicVine as any)?.comicVineQueryDerivedCount || 0);
+  const comicVineFallbackCount = Number((comicVine as any)?.comicVineFallbackCount || 0);
+  const comicVineFallbackOnlyResult = Boolean((comicVine as any)?.comicVineFallbackOnlyResult);
+  const comicVineFallbackLeakageWarning = String((comicVine as any)?.comicVineFallbackLeakageWarning || "");
+  const comicVineRecommendationSetMode = String((comicVine as any)?.comicVineRecommendationSetMode || "unknown");
+  const comicVineNormalRecommendationSet = Boolean((comicVine as any)?.comicVineNormalRecommendationSet);
 
   const comicVineDispatchTrace = {
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
@@ -4433,6 +4439,12 @@ const normalizedCandidatesRaw = [
     comicVinePositiveQueries,
     comicVineExcludedTermsAppliedInFilterOnly,
     comicVineQueryTooLong,
+    comicVineQueryDerivedCount,
+    comicVineFallbackCount,
+    comicVineFallbackOnlyResult,
+    comicVineFallbackLeakageWarning,
+    comicVineRecommendationSetMode,
+    comicVineNormalRecommendationSet,
   };
 
 
@@ -4785,6 +4797,12 @@ const normalizedCandidatesRaw = [
     sourceEnabled,
     sourceSkippedReason,
     comicVineAdapterStatus,
+    comicVineQueryDerivedCount,
+    comicVineFallbackCount,
+    comicVineFallbackOnlyResult,
+    comicVineFallbackLeakageWarning,
+    comicVineRecommendationSetMode,
+    comicVineNormalRecommendationSet,
     debugRouterVersion,
     routerResultTracePresent: true,
     routerResultKeys: Object.keys({

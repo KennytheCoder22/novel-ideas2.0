@@ -942,6 +942,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     }
   }
 
+  const queryDerivedCountBeforeTopUp = docs.length;
   if (docs.length < 10) {
     const needed = 10 - docs.length;
     const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
@@ -951,9 +952,23 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       const normalizedTitle = normalizeText(doc.title);
       if (seenTitles.has(normalizedTitle)) continue;
       seenTitles.add(normalizedTitle);
-      docs.push(doc);
+      docs.push({
+        ...doc,
+        source: "comicvine_fallback" as any,
+        queryFamily: "fallback" as any,
+        diagnostics: {
+          ...(doc as any).diagnostics,
+          fallbackKind: "publisher_facet_curated",
+          fallbackEmergencyFill: true,
+          fallbackInjectedBecause: "insufficient_query_derived_results",
+        },
+      } as RecommendationDoc);
     }
   }
+
+  const fallbackCount = docs.filter((d: any) => String(d?.queryText || "") === "comicvine_publisher_facet_fallback" || String(d?.source || "").includes("fallback")).length;
+  const queryDerivedCount = Math.max(0, docs.length - fallbackCount);
+  const fallbackOnlyResult = docs.length > 0 && queryDerivedCount === 0;
 
   if (docs.length === 0) {
     const knownGoodProbeQueries = ["batman", "spider-man", "ms. marvel", "locke & key", "saga", "guardians of the galaxy"];
@@ -1040,6 +1055,16 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineZeroResultQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) === 0),
     comicVineSuccessfulQueries: Object.keys(comicVineAcceptedCountByQuery).filter((q) => Number(comicVineAcceptedCountByQuery[q] || 0) > 0),
     comicVineFetchAttempted: true,
+    comicVineQueryDerivedCount: queryDerivedCount,
+    comicVineFallbackCount: fallbackCount,
+    comicVineFallbackOnlyResult: fallbackOnlyResult,
+    comicVineFallbackLeakageWarning: fallbackOnlyResult
+      ? "FALLBACK_ONLY_RESULTS: No query-derived ComicVine candidates survived; returning emergency fill titles."
+      : fallbackCount >= 8
+      ? "FALLBACK_HEAVY_RESULTS: Most returned items are emergency fill titles."
+      : "",
+    comicVineRecommendationSetMode: fallbackOnlyResult ? "fallback_only" : (fallbackCount > 0 ? "mixed_with_fallback" : "query_derived"),
+    comicVineNormalRecommendationSet: !fallbackOnlyResult,
     comicVineDispatchFailureDetected,
     comicVinePipelineBreakdownStage: pipelineBreakdownStage,
     gcdAdapterStatus: "ok",
