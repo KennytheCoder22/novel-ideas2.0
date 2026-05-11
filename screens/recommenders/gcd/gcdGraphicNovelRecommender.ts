@@ -575,7 +575,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       stageCounts.comicVineFinalAcceptedCount += 1;
       if (docs.length >= fetchLimit) break;
     }
-    if ((docs.length - before) === 0 && aliasFallbackDocs.length > 0 && results.length > 0) {
+    if ((docs.length - before) === 0 && aliasFallbackDocs.length > 0 && results.length > 0 && !queryAnchorAlias) {
       for (const fallbackDoc of aliasFallbackDocs.slice(0, 3)) {
         const dedupeKey = String(fallbackDoc.key || `${fallbackDoc.title}|${fallbackDoc.author_name?.[0] || ""}`).toLowerCase();
         if (seen.has(dedupeKey)) continue;
@@ -900,19 +900,6 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
 
   if (docs.length < 10) {
-    const needed = 10 - docs.length;
-    const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
-    const seenTitles = new Set(docs.map((d) => normalizeText(d.title)));
-    for (const doc of curated) {
-      if (docs.length >= 10) break;
-      const normalizedTitle = normalizeText(doc.title);
-      if (seenTitles.has(normalizedTitle)) continue;
-      seenTitles.add(normalizedTitle);
-      docs.push(doc);
-    }
-  }
-
-  if (docs.length === 0) {
     const needed = 10 - docs.length;
     const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
     const seenTitles = new Set(docs.map((d) => normalizeText(d.title)));
