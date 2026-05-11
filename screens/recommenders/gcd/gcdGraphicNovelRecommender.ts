@@ -344,6 +344,17 @@ function interleaveQueries(lanes: string[][], max: number): string[] {
   return out;
 }
 
+function buildDiversityRescueQueries(tagCounts: TagCounts | undefined, primaryFamily: "science_fiction" | "other"): string[] {
+  const base = primaryFamily === "science_fiction"
+    ? ["amulet", "nimona", "ms. marvel", "descender", "runaways", "miles morales", "bone", "the last kids on earth", "paper girls graphic novel", "saga volume 1"]
+    : ["nimona", "amulet", "bone", "runaways", "ms. marvel", "scott pilgrim", "locke & key", "paper girls", "saga", "young justice"];
+  const queries = new Set(base.map((q) => q.toLowerCase()));
+  if (hasFacet(tagCounts, /survival|dystopian|adventure/)) queries.add("dystopian graphic novel");
+  if (hasFacet(tagCounts, /fantasy|myth|magic/)) queries.add("fantasy adventure graphic novel");
+  if (hasFacet(tagCounts, /science fiction|sci-fi|future|space|ai/)) queries.add("science fiction graphic novel");
+  return Array.from(queries).slice(0, 16);
+}
+
 async function fetchTextWithTimeout(url: string, timeoutMs: number): Promise<string> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -949,6 +960,22 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         error: String(err?.message || err || "comicvine_query_dispatch_failed"),
       });
       continue;
+    }
+  }
+
+  const canonicalSeriesKey = (title: string): string => String(title || "").toLowerCase().replace(/\s+#\s*\d+\b/g, "").replace(/\b(issue|no\.?|number)\s*\d+\b/g, "").trim();
+  const distinctSeriesCount = new Set(docs.map((d: any) => canonicalSeriesKey(String(d?.title || ""))).filter(Boolean)).size;
+  if (distinctSeriesCount < 10) {
+    const rescueQueries = buildDiversityRescueQueries(input.tagCounts, primaryFamily).filter((q) => !comicVineQueriesActuallyFetched.includes(q));
+    for (const q of rescueQueries) {
+      if (docs.length >= fetchLimit) break;
+      comicVineQueriesActuallyFetched.push(q);
+      const before = docs.length;
+      const { rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error } = await fetchDocsForQuery(q, 800, timeoutMs, fetchLimit, docs, seen);
+      comicVineFetchResults.push({ query: q, status: error ? "error" : acceptedCount > 0 ? "ok" : (rawCount > 0 ? "content_empty" : "api_empty"), rawCount, acceptedCount, rejectedCount, topTitles, rejectedReasons, error });
+      if (acceptedCount > 0 && before === 0) builtFromQuery = q;
+      const newDistinct = new Set(docs.map((d: any) => canonicalSeriesKey(String(d?.title || ""))).filter(Boolean)).size;
+      if (newDistinct >= 10) break;
     }
   }
 
