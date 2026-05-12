@@ -17,6 +17,10 @@ const COMIC_VINE_PROXY_URL =
     : "/api/comicvine";
 let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
+const PROTECTED_GENERIC_TOKENS = new Set([
+  "teen", "young", "kids", "adult", "graphic novel", "comic", "thriller", "fantasy", "dystopian", "horror", "mystery", "suspense", "adventure",
+]);
+const BLOCKED_SEMANTIC_TO_FRANCHISE_TOKENS = new Set(["teen", "young", "dark", "justice", "adventure", "fantasy"]);
 const GRAPHIC_NOVEL_SEEDS: Record<string, string[]> = {
   superhero: ["Ms. Marvel", "Miles Morales", "Runaways", "Young Avengers", "Spider-Man", "Batman", "Batgirl"],
   horror: ["Something is Killing the Children", "Locke & Key", "Hellboy", "The Sandman", "Gideon Falls", "Nailbiter"],
@@ -101,6 +105,19 @@ function getDirectGraphicSignalWeight(tagCounts: TagCounts | undefined): number 
 
 function hasTeenGraphicIntent(tagCounts: TagCounts | undefined): boolean {
   return getDirectGraphicSignalWeight(tagCounts) > 0;
+}
+
+function hasStrongSuperheroEvidence(tagCounts: TagCounts | undefined): boolean {
+  const score =
+    Number(tagCounts?.["facet:superhero"] || 0) +
+    Number(tagCounts?.["genre:superheroes"] || 0) +
+    Number(tagCounts?.["graphicNovel:superhero"] || 0) +
+    Number(tagCounts?.["source_universe:dc"] || 0) +
+    Number(tagCounts?.["source_universe:marvel"] || 0) +
+    Number(tagCounts?.["publisher:dc comics"] || 0) +
+    Number(tagCounts?.["publisher:marvel comics"] || 0) +
+    Number(tagCounts?.["franchise:teen titans"] || 0);
+  return score >= 2;
 }
 
 function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
@@ -353,7 +370,7 @@ function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[]
   if (hasFacet(tagCounts, /survival|post apocalyptic|apocalypse|wilderness/)) queries.push("walking dead");
   if (hasFacet(tagCounts, /dystopian|future|rebellion|authoritarian/)) queries.push("saga");
   if (hasSciFiFacet) queries.push("paper girls", "descender", "black science", "saga");
-  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/)) queries.push("ms. marvel", "spider-man");
+  if (hasFacet(tagCounts, /teen|young adult|school|coming of age/) && hasStrongSuperheroEvidence(tagCounts)) queries.push("ms. marvel", "spider-man");
   if (hasFacet(tagCounts, /supernatural|paranormal|magic|myth|monster|vampire/)) queries.push("hellboy");
   if (hasFacet(tagCounts, /manga|anime|japan/)) queries.push("naruto");
   const defaults = hasSciFiFacet
@@ -363,8 +380,6 @@ function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[]
         "black science",
         "saga",
         "invincible",
-        "young justice",
-        "teen titans",
         "runaways",
       ]
     : [
@@ -425,14 +440,28 @@ function buildEntitySeedQueriesFromGraphicKeywords(tagCounts: TagCounts | undefi
     Number(tagCounts?.["graphicNovel:horror"] || 0);
   const capSuperheroSeeds = superheroStrength <= 0 && nonSuperStrength >= 2;
   const out: string[] = [];
+  const franchiseTriggerProvenance: Array<{ query: string; why: string; trigger: string; source: "explicit franchise match" | "keyword seed map" | "fallback expansion" | "semantic token expansion" }> = [];
   for (const [rawKey, rawWeight] of weighted) {
     const key = rawKey.replace("graphicNovel:", "");
     const seeds = GRAPHIC_NOVEL_SEEDS[key] || [];
     const computed = Math.max(1, Math.round((Number(rawWeight) / total) * Math.max(4, finalLimit)));
     const seedCount = capSuperheroSeeds && key === "superhero" ? 1 : computed;
-    for (const seed of seeds.slice(0, seedCount)) out.push(seed, `${seed} graphic novel`, `${seed} tpb`);
+    for (const seed of seeds.slice(0, seedCount)) {
+      const normalizedSeed = normalizeText(seed);
+      if (capSuperheroSeeds && (/teen titans|young justice/.test(normalizedSeed))) continue;
+      out.push(seed, `${seed} graphic novel`, `${seed} tpb`);
+      franchiseTriggerProvenance.push({ query: normalizedSeed, why: `graphicNovel:${key}`, trigger: rawKey, source: "keyword seed map" });
+    }
   }
-  return Array.from(new Set(out.map((q) => stripDanglingQuotes(String(q || "").trim().toLowerCase())).filter(Boolean)));
+  const cleaned = Array.from(new Set(out.map((q) => stripDanglingQuotes(String(q || "").trim().toLowerCase())).filter(Boolean)))
+    .filter((q) => {
+      const normalized = normalizeText(q);
+      if (PROTECTED_GENERIC_TOKENS.has(normalized)) return false;
+      if (BLOCKED_SEMANTIC_TO_FRANCHISE_TOKENS.has(normalized)) return false;
+      return true;
+    });
+  (cleaned as any).__franchiseTriggerProvenance = franchiseTriggerProvenance;
+  return cleaned;
 }
 
 function computeSuperheroSuppressionSignals(tagCounts: TagCounts | undefined): { superheroStrength: number; nonSuperheroStrength: number; superheroSuppressionActive: boolean } {
@@ -922,6 +951,9 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
   const sessionFitQueries = buildSessionFitComicVineQueries(input.tagCounts, seedClean.cleaned);
   const entitySeedQueries = buildEntitySeedQueriesFromGraphicKeywords(input.tagCounts, finalLimit);
+  const franchiseTriggerProvenance = Array.isArray((entitySeedQueries as any).__franchiseTriggerProvenance)
+    ? (entitySeedQueries as any).__franchiseTriggerProvenance
+    : [];
   const allQueries = Array.from(new Set([
     ...entitySeedQueries,
     ...anchorSelection.anchors,
@@ -935,6 +967,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const suppressionFilteredQueries = suppressionSignals.superheroSuppressionActive
     ? allQueries.filter((q) => !superheroEntityRe.test(normalizeText(q)))
     : allQueries;
+  const protectedTokenFilteredCount = allQueries.length - allQueries.filter((q) => !PROTECTED_GENERIC_TOKENS.has(normalizeText(q))).length;
   const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
   const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$|^(teen|psychological).*(graphic novel)$/i;
   const anchorQueries = suppressionFilteredQueries.filter((q) => knownAnchorPattern.test(q) || anchorSelection.anchors.includes(q));
@@ -1302,6 +1335,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     superheroSuppressionActive: suppressionSignals.superheroSuppressionActive,
     selectedGraphicLanes: [anchorSelection.lane],
     selectedComicVineAnchors: anchorSelection.anchors,
+    franchiseTriggerProvenance,
+    protectedTokenFilteredCount,
     graphicNovelKeywordWeights: Object.entries(input.tagCounts || {}).filter(([k, v]) => k.startsWith("graphicNovel:") && Number(v) > 0),
     suppressedSuperheroSeedCount,
     finalEntitySeedQueriesByBucket: Object.fromEntries(
