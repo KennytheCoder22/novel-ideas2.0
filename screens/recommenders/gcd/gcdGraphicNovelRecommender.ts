@@ -17,8 +17,16 @@ const COMIC_VINE_PROXY_URL =
     : "/api/comicvine";
 let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
+const GRAPHIC_NOVEL_SEEDS: Record<string, string[]> = {
+  superhero: ["Ms. Marvel", "Miles Morales", "Runaways", "Young Avengers", "Spider-Man", "Batman", "Batgirl"],
+  horror: ["Something is Killing the Children", "Locke & Key", "Hellboy", "The Sandman", "Gideon Falls", "Nailbiter"],
+  sci_fi: ["Saga", "Paper Girls", "Y: The Last Man", "Descender", "Black Science"],
+  fantasy: ["Nimona", "Amulet", "Monstress", "The Sandman", "Bone"],
+  romance: ["Heartstopper", "Lore Olympus", "Check Please", "Bloom"],
+  mystery: ["Gotham Academy", "The Fade Out", "Blacksad", "Revival"],
+};
 
-type AnchorLane = "facet_weighted";
+type AnchorLane = "facet_weighted" | "fantasy_graphic" | "dystopian_graphic" | "mystery_graphic" | "horror_graphic" | "speculative_ya_graphic" | "superhero_identity";
 type CuratedFallback = { title: string; tags: string[]; publisher: string; facets: string[]; year?: number };
 
 const CURATED_TEEN_GRAPHIC_NOVEL_FALLBACK: CuratedFallback[] = [
@@ -130,6 +138,121 @@ function topSwipeSignals(tagCounts: TagCounts | undefined, limit = 16): string[]
     .map(([k]) => normalizeText(k));
 }
 
+function applyGraphicKeywordMixToDocs(docs: RecommendationDoc[], tagCounts: TagCounts | undefined, finalLimit: number): RecommendationDoc[] {
+  const weights = Object.entries(tagCounts || {})
+    .filter(([k, v]) => k.startsWith("graphicNovel:") && Number(v) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 3);
+  if (!weights.length || !docs.length) return docs.slice(0, finalLimit);
+  const reByKeyword: Record<string, RegExp> = {
+    superhero: /\b(superhero|superheroes|spider-man|batman|smallville|marvel|dc)\b/,
+    fantasy: /\b(fantasy|magic|dragon|myth)\b/,
+    sci_fi: /\b(sci[- ]?fi|science fiction|future|space|cyberpunk|robot|ai)\b/,
+    dystopian: /\b(dystopian|apocalypse|rebellion|authoritarian)\b/,
+    romance: /\b(romance|love|relationship)\b/,
+    mystery: /\b(mystery|detective|investigation|noir)\b/,
+    horror: /\b(horror|haunted|ghost|occult|terror)\b/,
+    adventure: /\b(adventure|quest|journey)\b/,
+    crime: /\b(crime|heist|noir)\b/,
+    mythology: /\b(mythology|myth|olympus|god|gods)\b/,
+    action: /\b(action|battle|fight|war)\b/,
+    manga: /\b(manga|anime)\b/,
+  };
+  const docMatches = (doc: RecommendationDoc, keyword: string): boolean => {
+    const text = [doc.title, doc.subtitle, doc.series, doc.queryText, ...(doc.subject || [])].join(" ").toLowerCase();
+    if (!/\b(graphic novel|comic|comics|tpb|ogn|manga)\b/.test(text)) return false;
+    const re = reByKeyword[keyword];
+    return re ? re.test(text) : text.includes(keyword.replace(/_/g, " "));
+  };
+  const total = weights.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
+  const quotas = weights.map(([k, v]) => ({ keyword: k.replace("graphicNovel:", ""), target: Math.max(1, Math.round((Number(v) / total) * finalLimit)) }));
+  const selected: RecommendationDoc[] = [];
+  const seen = new Set<string>();
+  for (const quota of quotas) {
+    const pool = docs.filter((doc) => docMatches(doc, quota.keyword));
+    let taken = 0;
+    for (const doc of pool) {
+      const id = String(doc?.sourceId || doc?.key || doc?.title || "");
+      if (!id || seen.has(id)) continue;
+      selected.push(doc);
+      seen.add(id);
+      taken += 1;
+      if (taken >= quota.target) break;
+    }
+  }
+  for (const doc of docs) {
+    const id = String(doc?.sourceId || doc?.key || doc?.title || "");
+    if (!id || seen.has(id)) continue;
+    selected.push(doc);
+    seen.add(id);
+    if (selected.length >= finalLimit) break;
+  }
+  return selected.slice(0, finalLimit);
+}
+
+function normalizeFranchiseKey(doc: RecommendationDoc): string {
+  const base = normalizeText(String(doc?.series || doc?.title || ""));
+  const normalized = base
+    .replace(/\s*#\s*\d+.*$/g, "")
+    .replace(/\b(vol(?:ume)?|tpb|trade paperback|collection|book one|season one|omnibus|deluxe)\b.*$/g, "")
+    .trim();
+  if (/titans?/.test(normalized)) return "titans_family";
+  if (/batman/.test(normalized)) return "batman_family";
+  if (/ms\.?\s*marvel|kamala/.test(normalized)) return "ms_marvel_family";
+  if (/spider[-\s]?man|miles morales/.test(normalized)) return "spider_family";
+  return normalized;
+}
+
+function shapeComicVineFinalDocs(docs: RecommendationDoc[], finalLimit: number): RecommendationDoc[] {
+  const collectionMarkerRe = /\b(vol\.?|volume|tpb|trade paperback|collection|complete collection|book one|season one|omnibus|deluxe|saga|origins)\b/;
+  const noveltyRe = /\b(go!|on strike|valenteen|super-titans|kinderspiele|cry for justice)\b/i;
+  const preferredAnchorRe = /\b(the sandman|something is killing the children|locke\s*&\s*key|sweet tooth|monstress|amulet|nimona|bone|saga|paper girls)\b/i;
+  const scored = docs.map((doc) => {
+    const text = normalizeText(`${doc.title || ""} ${doc.subtitle || ""}`);
+    const plainIssue = /#\s*\d+\b/.test(text) && !collectionMarkerRe.test(text);
+    const issueFragmentPenalty = plainIssue ? 8 : /#\s*\d+\b/.test(text) ? 2 : 0;
+    const collectedEditionBoost =
+      collectionMarkerRe.test(text)
+        ? 3
+        : 0;
+    const noveltyPenalty = noveltyRe.test(String(doc?.title || "")) ? 3 : 0;
+    const preferredAnchorBoost = preferredAnchorRe.test(String(doc?.title || "")) ? 2.5 : 0;
+    const marvelVerseSoftBoost = /\bmarvel-verse\b/.test(text) ? 0.5 : 0;
+    const hardReject = plainIssue;
+    const score = Number((doc as any)?.score || 0) + collectedEditionBoost + preferredAnchorBoost + marvelVerseSoftBoost - issueFragmentPenalty - noveltyPenalty;
+    return { doc, score, issue: issueFragmentPenalty > 0, key: normalizeFranchiseKey(doc), hardReject, novelty: noveltyPenalty > 0 };
+  }).sort((a, b) => b.score - a.score);
+
+  const selected: Array<typeof scored[number]> = [];
+  const bySeries: Record<string, number> = {};
+  for (const row of scored) {
+    if (row.hardReject) continue;
+    const key = row.key || normalizeText(String(row.doc?.title || ""));
+    if (Number(bySeries[key] || 0) >= 2) continue;
+    selected.push(row);
+    bySeries[key] = Number(bySeries[key] || 0) + 1;
+    if (selected.length >= finalLimit) break;
+  }
+  let out = selected.map((r) => r.doc);
+  const issueRatio = out.length ? out.filter((d) => /#\s*\d+\b/.test(normalizeText(String(d?.title || "")))).length / out.length : 0;
+  if (issueRatio > 0.4) {
+    const nonIssueBackfill = scored.filter((r) => !r.issue && !out.includes(r.doc)).map((r) => r.doc);
+    const filtered = out.filter((d) => !/#\s*\d+\b/.test(normalizeText(String(d?.title || ""))));
+    out = [...filtered, ...nonIssueBackfill].slice(0, finalLimit);
+  }
+  if (out.length < Math.min(8, finalLimit)) {
+    const backfill = scored
+      .filter((r) => !r.hardReject && !out.includes(r.doc))
+      .sort((a, b) => {
+        if (a.novelty !== b.novelty) return a.novelty ? 1 : -1;
+        return b.score - a.score;
+      })
+      .map((r) => r.doc);
+    out = [...out, ...backfill].slice(0, Math.max(Math.min(8, finalLimit), out.length));
+  }
+  return out;
+}
+
 function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   lane: AnchorLane;
   mode: "story_facet_weighted";
@@ -140,6 +263,21 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
 } {
   const signals = topSwipeSignals(tagCounts);
   const signalText = signals.join(" ");
+  const superheroStrength =
+    Number(tagCounts?.["facet:superhero"] || 0) +
+    Number(tagCounts?.["genre:superheroes"] || 0) +
+    Number(tagCounts?.["graphicNovel:superhero"] || 0) +
+    Number(tagCounts?.["source_universe:marvel"] || 0) +
+    Number(tagCounts?.["source_universe:dc"] || 0) +
+    Number(tagCounts?.["publisher:marvel comics"] || 0) +
+    Number(tagCounts?.["publisher:dc comics"] || 0);
+  const nonSuperStrength =
+    Number(tagCounts?.["graphicNovel:fantasy"] || 0) +
+    Number(tagCounts?.["graphicNovel:mystery"] || 0) +
+    Number(tagCounts?.["graphicNovel:dystopian"] || 0) +
+    Number(tagCounts?.["graphicNovel:horror"] || 0) +
+    Number(tagCounts?.["graphicNovel:adventure"] || 0);
+  const suppressSuperheroLane = superheroStrength <= 0 && nonSuperStrength >= 2;
   const storyFacets: Array<{ facet: string; re: RegExp }> = [
     { facet: "coming-of-age", re: /coming of age|teen|young adult|school|identity|growing up/ },
     { facet: "found family", re: /found family|team|crew|friends|community|belonging/ },
@@ -172,16 +310,27 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
 
   const scored = anchorProfiles.map((p) => {
     const overlap = p.facets.filter((f) => facetWeights[f] > 0);
-    const score = overlap.length + (overlap.includes("superhero") ? 0.25 : 0);
+    const superheroFacetBoost = overlap.includes("superhero") ? (suppressSuperheroLane ? -0.75 : 0.25) : 0;
+    const score = overlap.length + superheroFacetBoost;
     return { ...p, overlap, score };
   }).sort((a, b) => b.score - a.score);
 
   const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
   const anchors = selected.map((r) => r.anchor);
   const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
-  const defaults = ["hellboy", "the sandman", "saga", "batman"];
+  const defaults = suppressSuperheroLane
+    ? ["locke & key", "the sandman", "saga", "paper girls"]
+    : ["hellboy", "the sandman", "saga", "batman"];
   const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
-  return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
+  const inferLane = (): AnchorLane => {
+    if (!suppressSuperheroLane && superheroStrength >= Math.max(2, nonSuperStrength)) return "superhero_identity";
+    if (hasFacet(tagCounts, /horror|spooky|haunted|ghost|occult|paranormal/)) return "horror_graphic";
+    if (hasFacet(tagCounts, /dystopian|future|science fiction|sci-fi|survival|rebellion/)) return "dystopian_graphic";
+    if (hasFacet(tagCounts, /mystery|crime|detective|thriller|suspense/)) return "mystery_graphic";
+    if (hasFacet(tagCounts, /fantasy|magic|myth|adventure/)) return "fantasy_graphic";
+    return "speculative_ya_graphic";
+  };
+  return { lane: inferLane(), mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
@@ -245,6 +394,33 @@ function buildSessionFitComicVineQueries(tagCounts: TagCounts | undefined, clean
   }
   if (hasFacet(tagCounts, /fantasy|adventure|epic/)) add("fantasy adventure graphic novel");
   return queries.slice(0, 10);
+}
+
+function buildEntitySeedQueriesFromGraphicKeywords(tagCounts: TagCounts | undefined, finalLimit: number): string[] {
+  const weighted = Object.entries(tagCounts || {})
+    .filter(([k, v]) => k.startsWith("graphicNovel:") && Number(v) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 4);
+  const total = weighted.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
+  const superheroStrength =
+    Number(tagCounts?.["facet:superhero"] || 0) +
+    Number(tagCounts?.["genre:superheroes"] || 0) +
+    Number(tagCounts?.["graphicNovel:superhero"] || 0);
+  const nonSuperStrength =
+    Number(tagCounts?.["graphicNovel:fantasy"] || 0) +
+    Number(tagCounts?.["graphicNovel:mystery"] || 0) +
+    Number(tagCounts?.["graphicNovel:dystopian"] || 0) +
+    Number(tagCounts?.["graphicNovel:horror"] || 0);
+  const capSuperheroSeeds = superheroStrength <= 0 && nonSuperStrength >= 2;
+  const out: string[] = [];
+  for (const [rawKey, rawWeight] of weighted) {
+    const key = rawKey.replace("graphicNovel:", "");
+    const seeds = GRAPHIC_NOVEL_SEEDS[key] || [];
+    const computed = Math.max(1, Math.round((Number(rawWeight) / total) * Math.max(4, finalLimit)));
+    const seedCount = capSuperheroSeeds && key === "superhero" ? 1 : computed;
+    for (const seed of seeds.slice(0, seedCount)) out.push(seed, `${seed} graphic novel`, `${seed} tpb`);
+  }
+  return Array.from(new Set(out.map((q) => stripDanglingQuotes(String(q || "").trim().toLowerCase())).filter(Boolean)));
 }
 
 function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
@@ -562,6 +738,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const sampleTitles: string[] = [];
     const rejectedSampleTitles: string[] = [];
     const rejectedSampleReasons: Array<{ title: string; reason: string }> = [];
+    const rejectedDebugRows: Array<Record<string, any>> = [];
     const stageCounts = {
       comicVineApiResultCount: results.length,
       comicVinePostNormalizationCount: 0,
@@ -579,9 +756,26 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         const title = String(doc?.title || issue?.name || issue?.volume?.name || "").trim() || "(untitled)";
         if (rejectedSampleTitles.length < 8) rejectedSampleTitles.push(title);
         if (rejectedSampleReasons.length < 8) rejectedSampleReasons.push({ title, reason });
+        if (rejectedDebugRows.length < 20) {
+          rejectedDebugRows.push({
+            query,
+            reason,
+            rawTitle: String(issue?.name || issue?.title || "").trim(),
+            resourceType: String(issue?.resource_type || ""),
+            apiDetailUrl: String(issue?.api_detail_url || ""),
+            siteDetailUrl: String(issue?.site_detail_url || ""),
+            volumeName: String(issue?.volume?.name || ""),
+            issueName: String(issue?.name || ""),
+            descriptionLength: String(issue?.description || "").length,
+          });
+        }
       };
       if (!doc?.title) { countReject("missing_title"); continue; }
-      if (!isLikelyGraphicNovelCollection(issue, doc)) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
+      const hasComicVineIdentity = Boolean(issue?.id || issue?.api_detail_url || issue?.site_detail_url);
+      const hasVolumeIdentity = Boolean(issue?.volume?.name || issue?.volume?.id);
+      const hasCollectionishTitle = /\b(volume|vol\.|book|collection|collected|tpb|ogn|graphic novel|omnibus|deluxe)\b/i.test(String(doc?.title || ""));
+      const collectionPass = isLikelyGraphicNovelCollection(issue, doc) || (hasComicVineIdentity && (hasVolumeIdentity || hasCollectionishTitle));
+      if (!collectionPass) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
@@ -595,7 +789,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         pushRejectedSample("too_short_title");
         continue;
       }
-      if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle)) {
+      if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle) && !queryAnchorAlias.test(normalizeText(String(issue?.volume?.name || "")))) {
         countReject("comicvine_anchor_alias_mismatch");
         pushRejectedSample("comicvine_anchor_alias_mismatch");
         if (!/coloring book|guide|handbook|companion|anthology|omnibus/i.test(normalizedTitle)) {
@@ -606,7 +800,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
       if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); pushRejectedSample("trivial_title"); continue; }
       if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); pushRejectedSample("bad_prefix_die"); continue; }
-      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); pushRejectedSample("non_ascii_filtered"); continue; }
+      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth|spider|batman|marvel|titans/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); pushRejectedSample("non_ascii_filtered"); continue; }
       stageCounts.comicVineContentAcceptedCount += 1;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) { countReject("deduped"); pushRejectedSample("deduped"); continue; }
@@ -615,7 +809,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       stageCounts.comicVineFinalAcceptedCount += 1;
       if (docs.length >= fetchLimit) break;
     }
-    if ((docs.length - before) === 0 && aliasFallbackDocs.length > 0 && results.length > 0 && !queryAnchorAlias) {
+    if ((docs.length - before) === 0 && aliasFallbackDocs.length > 0 && results.length > 0) {
       for (const fallbackDoc of aliasFallbackDocs.slice(0, 3)) {
         const dedupeKey = String(fallbackDoc.key || `${fallbackDoc.title}|${fallbackDoc.author_name?.[0] || ""}`).toLowerCase();
         if (seen.has(dedupeKey)) continue;
@@ -639,6 +833,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       rejectedSampleTitles,
       rejectedSampleReasons,
       rejectedReasons,
+      rejectedDebugRows,
       stageCounts,
       error: null,
     };
@@ -697,9 +892,15 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const anchorSelection = selectComicVineAnchors(input.tagCounts);
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
   const sessionFitQueries = buildSessionFitComicVineQueries(input.tagCounts, seedClean.cleaned);
-  const allQueries = Array.from(new Set([...sessionFitQueries, ...anchorSelection.anchors, ...facetQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
+  const entitySeedQueries = buildEntitySeedQueriesFromGraphicKeywords(input.tagCounts, finalLimit);
+  const allQueries = Array.from(new Set([
+    ...entitySeedQueries,
+    ...anchorSelection.anchors,
+    ...facetQueries,
+    ...sessionFitQueries,
+  ].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
   const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
-  const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$/i;
+  const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$|^(teen|psychological).*(graphic novel)$/i;
   const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q) || anchorSelection.anchors.includes(q));
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
@@ -1020,13 +1221,15 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ? "fetch_or_normalization"
     : "none";
 
+  const docsWithKeywordMix = applyGraphicKeywordMixToDocs(docs, input.tagCounts, fetchLimit);
+  const shapedFinalDocs = shapeComicVineFinalDocs(docsWithKeywordMix, Math.min(finalLimit, fetchLimit));
   return {
     engineId: "comicVine",
     engineLabel: "ComicVine",
     deckKey,
     domainMode,
     builtFromQuery,
-    items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "open_library", doc })),
+    items: shapedFinalDocs.map((doc) => ({ kind: "open_library", doc })),
     debugRawFetchedCount: docs.length,
     comicVineQueriesGenerated: queriesToTry,
     comicVineRungsBuilt,
@@ -1069,7 +1272,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       canonical: totalCanonicalAcrossQueries,
       content: totalContentAcrossQueries,
       final: totalFinalAcrossQueries,
-      rendered: docs.length,
+      rendered: shapedFinalDocs.length,
       queryDerived: queryDerivedCount,
       fallback: fallbackCount,
     },
@@ -1098,9 +1301,9 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     debugRungStats: {
       byRung: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])),
       byRungSource: { comicVine: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])) },
-      total: docs.length,
+      total: shapedFinalDocs.length,
     } as any,
-    debugRawPool: docs.slice(0, fetchLimit),
+    debugRawPool: shapedFinalDocs,
     debugFilterAudit: [
       {
         source: "comicVine",
