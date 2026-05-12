@@ -4902,6 +4902,58 @@ const normalizedCandidatesRaw = [
       }
     }
   }
+  let recoveryTriggered = false;
+  let recoveryInputPoolLength = 0;
+  let recoveryEntitySeedMatches = 0;
+  const recoveryRejectedReasons: Record<string, number> = {};
+  if (includeComicVine && finalRenderDocs.length < 8) {
+    recoveryTriggered = true;
+    const entityPriority = [
+      "something is killing the children", "locke & key", "the sandman", "sweet tooth", "the walking dead", "hellboy", "black science", "descender", "runaways", "ms. marvel", "saga", "invincible",
+    ];
+    const broadPhraseQueryRe = /\b(literary science graphic novel|psychological suspense graphic novel|teen graphic novel|science fiction graphic novel|graphic horror novel)\b/i;
+    const genericBroadTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+    const pool = dedupeDocs([
+      ...(enrichedDocs as any[]),
+      ...(normalizedCandidates as any[]),
+      ...(candidateDocs as any[]),
+      ...((debugRawPool as any[]) || []),
+      ...(((comicVine as any)?.items || []).map((it: any) => it?.doc).filter(Boolean),
+    ] as any);
+    recoveryInputPoolLength = pool.length;
+    const selected: any[] = [];
+    const seenTitles = new Set<string>();
+    const add = (doc: any) => {
+      const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+      if (!title || seenTitles.has(title)) return false;
+      if (selected.filter((d: any) => finalSeriesKeyForRender(d) === finalSeriesKeyForRender(doc)).length >= 2) return false;
+      selected.push(doc); seenTitles.add(title); return true;
+    };
+    const sorted = pool.sort((a: any, b: any) => {
+      const score = (doc: any) => {
+        const t = normalizeText(String(doc?.title || ""));
+        const q = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+        const entityHit = entityPriority.findIndex((e) => t.includes(e) || q.includes(e));
+        if (entityHit >= 0) return 100 - entityHit;
+        if (broadPhraseQueryRe.test(q)) return 1;
+        return 20;
+      };
+      return score(b) - score(a);
+    });
+    for (const doc of sorted) {
+      if (selected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+      const title = String(doc?.title || "").trim();
+      const q = String(doc?.queryText || doc?.rawDoc?.queryText || "");
+      const norm = normalizeText(title);
+      const entityHit = entityPriority.some((e) => norm.includes(e) || normalizeText(q).includes(e));
+      if (entityHit) recoveryEntitySeedMatches += 1;
+      if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) { recoveryRejectedReasons.issue_spam = (recoveryRejectedReasons.issue_spam||0)+1; continue; }
+      if (broadPhraseQueryRe.test(q) && genericBroadTitleRe.test(title)) { recoveryRejectedReasons.generic_broad_artifact = (recoveryRejectedReasons.generic_broad_artifact||0)+1; continue; }
+      if (!entityHit && broadPhraseQueryRe.test(q) && selected.filter((d: any) => broadPhraseQueryRe.test(String(d?.queryText || d?.rawDoc?.queryText || ""))).length >= 1) { recoveryRejectedReasons.broad_phrase_cap = (recoveryRejectedReasons.broad_phrase_cap||0)+1; continue; }
+      add(doc);
+    }
+    if (selected.length >= 8) finalRenderDocs = selected;
+  }
   if (includeComicVine && finalRenderDocs.length > 0) {
     const entitySeedAllowlist = [
       "ms. marvel", "walking dead", "runaways", "descender", "black science", "scott pilgrim", "spider-man", "batman",
@@ -5087,6 +5139,8 @@ const normalizedCandidatesRaw = [
     if (rebuilt.length >= 5) finalRenderDocs = rebuilt;
   }
   const postTopUpFinalItemsLength = finalRenderDocs.length;
+  const recoveryFinalItemsLength = finalRenderDocs.length;
+  const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -5257,6 +5311,12 @@ const normalizedCandidatesRaw = [
     entitySeedTopUpRejectedReasons,
     entitySeedTopUpRejectedTitlesByReason,
     postTopUpFinalItemsLength,
+    recoveryTriggered,
+    recoveryInputPoolLength,
+    recoveryEntitySeedMatches,
+    recoveryRejectedReasons,
+    recoveryFinalItemsLength,
+    countContractSatisfied,
     returnedItemsBuiltFrom,
     teenPostPassOutputTitles,
     teenPostPassRejectedTitles,

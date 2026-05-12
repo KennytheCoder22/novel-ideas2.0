@@ -121,6 +121,12 @@ export type RecommendationResult = {
   entitySeedTopUpRejectedTitlesByReason?: Record<string, string[]>;
   postTopUpFinalItemsLength?: number;
   returnedItemsBuiltFrom?: string;
+  recoveryTriggered?: boolean;
+  recoveryInputPoolLength?: number;
+  recoveryEntitySeedMatches?: number;
+  recoveryRejectedReasons?: Record<string, number>;
+  recoveryFinalItemsLength?: number;
+  countContractSatisfied?: boolean;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
   fallbackSource?: string;

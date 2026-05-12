@@ -1036,9 +1036,17 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   // Prefer title + format intent. Avoid ordinal followups that frequently return "Volume X / Book One" artifacts.
   const formatFollowups = baseAnchors.map((a) => `${a} graphic novel`);
   const secondaryFormatFollowups = baseAnchors.map((a) => `${a} tpb`);
+  const moodAlignedPrioritySeeds = [
+    "something is killing the children", "locke & key", "sweet tooth", "the sandman", "walking dead", "descender", "black science", "runaways", "ms. marvel", "saga", "invincible",
+  ];
+  const prioritizedEntitySeeds = moodAlignedPrioritySeeds.filter((q) =>
+    suppressionSignals.superheroSuppressionActive
+      ? !/teen titans|young justice|batman/.test(normalizeText(q))
+      : true
+  );
   // Build a broad pool first (session-fit + anchors + facets) instead of over-optimizing one lane.
   const queriesToTry = interleaveQueries(
-    [sessionFitQueries, baseAnchors, otherQueries, formatFollowups, secondaryFormatFollowups, genericQueries],
+    [prioritizedEntitySeeds, sessionFitQueries, baseAnchors, otherQueries, formatFollowups, secondaryFormatFollowups, genericQueries],
     Math.max(40, MAX_COMICVINE_ANCHORS * 5)
   );
   const finalizedQueriesToTry =
