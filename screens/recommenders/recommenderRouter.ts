@@ -4645,32 +4645,56 @@ const normalizedCandidatesRaw = [
       } as any);
     }
   }
-  const superheroSignalStrength =
-    Number((routingInput.tagCounts as any)?.["genre:superheroes"] || 0) +
-    Number((routingInput.tagCounts as any)?.["graphicNovel:superhero"] || 0) +
-    Number((routingInput.tagCounts as any)?.["facet:superhero"] || 0);
-  const superheroTargetRatio =
-    superheroSignalStrength >= 3 ? 0.5 : superheroSignalStrength > 0 ? 0.35 : 0;
-  const isSuperheroGraphicNovelDoc = (doc: any): boolean => {
-    const bag = [
-      String(doc?.title || ""),
-      String(doc?.series || ""),
-      String(doc?.queryText || ""),
-      ...(Array.isArray(doc?.subject) ? doc.subject.map((x: any) => String(x || "")) : []),
-      ...(Array.isArray(doc?.author_name) ? doc.author_name.map((x: any) => String(x || "")) : []),
-    ].join(" ").toLowerCase();
-    const hasGraphicSignal = /\b(graphic novel|comic|comics|tpb|ogn)\b/.test(bag);
-    const hasSuperheroSignal = /\b(superhero|superheroes|spider-man|batman|smallville|marvel|dc)\b/.test(bag);
-    return hasGraphicSignal && hasSuperheroSignal;
+  const graphicKeywordWeights = Object.entries((routingInput.tagCounts || {}) as Record<string, number>)
+    .filter(([k, v]) => k.startsWith("graphicNovel:") && Number(v) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 3);
+  const keywordRegex: Record<string, RegExp> = {
+    superhero: /\b(superhero|superheroes|spider-man|batman|smallville|marvel|dc)\b/,
+    fantasy: /\b(fantasy|dragon|magic|wizard|myth|sword)\b/,
+    sci_fi: /\b(sci[- ]?fi|science fiction|future|space|cyberpunk|robot|ai)\b/,
+    dystopian: /\b(dystopian|apocalypse|rebellion|authoritarian)\b/,
+    romance: /\b(romance|love|relationship)\b/,
+    mystery: /\b(mystery|detective|investigation|noir)\b/,
+    horror: /\b(horror|haunted|ghost|terror|occult)\b/,
+    adventure: /\b(adventure|quest|journey)\b/,
+    action: /\b(action|fight|battle|war)\b/,
   };
-  if (superheroTargetRatio > 0 && finalRenderDocs.length > 0) {
-    const targetCount = Math.min(finalRenderDocs.length, Math.ceil(finalLimit * superheroTargetRatio));
-    const preferred = finalRenderDocs.filter((doc: any) => isSuperheroGraphicNovelDoc(doc));
-    if (preferred.length > 0) {
-      const preferredIds = new Set(preferred.map((doc: any) => String(doc?.sourceId || doc?.key || doc?.title || "")));
-      const fill = finalRenderDocs.filter((doc: any) => !preferredIds.has(String(doc?.sourceId || doc?.key || doc?.title || "")));
-      finalRenderDocs = [...preferred.slice(0, targetCount), ...fill].slice(0, finalLimit);
+  const docMatchesKeyword = (doc: any, keyword: string): boolean => {
+    const bag = [
+      String(doc?.title || ""), String(doc?.series || ""), String(doc?.queryText || ""),
+      ...(Array.isArray(doc?.subject) ? doc.subject.map((x: any) => String(x || "")) : []),
+    ].join(" ").toLowerCase();
+    if (!/\b(graphic novel|comic|comics|tpb|ogn|manga)\b/.test(bag)) return false;
+    const re = keywordRegex[keyword];
+    return re ? re.test(bag) : bag.includes(keyword.replace(/_/g, " "));
+  };
+  if (graphicKeywordWeights.length > 0 && finalRenderDocs.length > 0) {
+    const total = graphicKeywordWeights.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
+    const quotas = graphicKeywordWeights.map(([k, v]) => ({
+      keyword: k.replace("graphicNovel:", ""),
+      target: Math.max(1, Math.round((Number(v) / total) * finalLimit)),
+    }));
+    const chosen: any[] = [];
+    const chosenIds = new Set<string>();
+    for (const quota of quotas) {
+      const pool = finalRenderDocs.filter((doc: any) => docMatchesKeyword(doc, quota.keyword));
+      for (const doc of pool) {
+        const id = String(doc?.sourceId || doc?.key || doc?.title || "");
+        if (!id || chosenIds.has(id)) continue;
+        chosen.push(doc);
+        chosenIds.add(id);
+        if (chosen.filter((d: any) => docMatchesKeyword(d, quota.keyword)).length >= quota.target) break;
+      }
     }
+    for (const doc of finalRenderDocs) {
+      const id = String(doc?.sourceId || doc?.key || doc?.title || "");
+      if (!id || chosenIds.has(id)) continue;
+      chosen.push(doc);
+      chosenIds.add(id);
+      if (chosen.length >= finalLimit) break;
+    }
+    finalRenderDocs = chosen.slice(0, finalLimit);
   }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;

@@ -180,6 +180,39 @@ function resolveDeckFromModule(mod: any, expectedKey: DeckKey, fallbackLabel: st
   return ((mod as any)?.default ?? mod) as SwipeDeck;
 }
 
+const CONTROLLED_GRAPHIC_NOVEL_KEYWORDS = new Set([
+  "superhero","fantasy","sci_fi","dystopian","romance","mystery","horror","adventure","comedy","mythology",
+  "historical","drama","coming_of_age","survival","crime","school_life","paranormal","slice_of_life","action",
+  "manga","queer_identity","sports","western",
+]);
+
+function inferGraphicNovelKeywordsForCard(card: any): string[] {
+  const raw = Array.isArray(card?.graphicNovelKeywords) ? card.graphicNovelKeywords : [];
+  const normalized = raw.map((v: unknown) => String(v || "").trim().toLowerCase()).filter(Boolean);
+  const keywordBag = new Set<string>(normalized.filter((k) => CONTROLLED_GRAPHIC_NOVEL_KEYWORDS.has(k)));
+  const tags = Array.isArray(card?.tags) ? card.tags.map((v: unknown) => String(v || "")) : [];
+  const joined = [String(card?.title || ""), String(card?.genre || ""), ...tags].join(" ").toLowerCase();
+  if (/superhero|superheroes|spider-man|batman|smallville|marvel|dc comics?\b/.test(joined)) keywordBag.add("superhero");
+  if (/fantasy|dragon|wizard|magic|myth|witcher|zelda|merlin/.test(joined)) keywordBag.add("fantasy");
+  if (/science fiction|sci[- ]?fi|cyberpunk|space|future|doctor who|mass effect/.test(joined)) keywordBag.add("sci_fi");
+  if (/dystopian|apocalypse|rebellion|authoritarian|maze runner|hunger games/.test(joined)) keywordBag.add("dystopian");
+  if (/romance|love|heartstopper|bridgerton/.test(joined)) keywordBag.add("romance");
+  if (/mystery|detective|investigation|sherlock/.test(joined)) keywordBag.add("mystery");
+  if (/horror|haunted|ghost|walking dead|conjuring/.test(joined)) keywordBag.add("horror");
+  if (/paranormal|supernatural|occult|vampire/.test(joined)) keywordBag.add("paranormal");
+  if (/crime|noir|heist/.test(joined)) keywordBag.add("crime");
+  if (/coming of age|coming-of-age|high school|teen/.test(joined)) keywordBag.add("coming_of_age");
+  if (/adventure|quest|journey/.test(joined)) keywordBag.add("adventure");
+  if (/action|battle|fight|karate|arcane/.test(joined)) keywordBag.add("action");
+  if (/manga|anime|my hero academia|one piece/.test(joined)) keywordBag.add("manga");
+  if (keywordBag.size === 0) keywordBag.add("drama");
+  return Array.from(keywordBag).slice(0, 4);
+}
+
+function attachGraphicNovelKeywords(cards: any[]): any[] {
+  return cards.map((card) => ({ ...card, graphicNovelKeywords: inferGraphicNovelKeywordsForCard(card) }));
+}
+
 async function lookupOpenLibraryCover(
   title: string,
   author?: string
@@ -267,7 +300,7 @@ const deck36: SwipeDeck = (() => {
   const deckKey = candidate?.deckKey ?? "36";
   const deckLabel = candidate?.deckLabel ?? "Grades 3–6";
   const rules = candidate?.rules ?? { targetSwipesBeforeRecommend: 8, allowUpToSwipesBeforeRecommend: 12 };
-  return { deckKey, deckLabel, rules, cards } as SwipeDeck;
+  return { deckKey, deckLabel, rules, cards: attachGraphicNovelKeywords(cards) } as SwipeDeck;
 })();
 
 const DEFAULT_MSHS_CARDS: any[] = [];
@@ -287,7 +320,7 @@ const msHsDeckFinal: SwipeDeck = (() => {
   const deckLabel = candidate?.deckLabel ?? "Middle / High School";
   const rules = candidate?.rules ?? { targetSwipesBeforeRecommend: 10, allowUpToSwipesBeforeRecommend: 15 };
 
-  return { deckKey, deckLabel, rules, cards } as SwipeDeck;
+  return { deckKey, deckLabel, rules, cards: attachGraphicNovelKeywords(cards) } as SwipeDeck;
 })();
 
 const adultDeckResolved: SwipeDeck = resolveDeckFromModule(({ default: adultDeck } as any), "adult", "Advanced / Adult Readers");
@@ -305,7 +338,7 @@ const adultDeckFinal: SwipeDeck = (() => {
   const deckLabel = candidate?.deckLabel ?? "Advanced / Adult Readers";
   const rules = candidate?.rules ?? { targetSwipesBeforeRecommend: 10, allowUpToSwipesBeforeRecommend: 16 };
 
-  return { deckKey, deckLabel, rules, cards } as SwipeDeck;
+  return { deckKey, deckLabel, rules, cards: attachGraphicNovelKeywords(cards) } as SwipeDeck;
 })();
 
 
@@ -494,25 +527,8 @@ function tasteVectorFromAxes(axes: Record<string, number> | undefined): TasteVec
 
 function cardTagCounts(card: any): TagCounts {
   const tags = Array.isArray(card?.tags) ? card.tags.filter((t: any) => typeof t === "string" && t.trim()) : [];
-  const controlledGraphicNovelKeywords = new Set([
-    "superhero","fantasy","sci_fi","dystopian","romance","mystery","horror","adventure","comedy","mythology",
-    "historical","drama","coming_of_age","survival","crime","school_life","paranormal","slice_of_life","action",
-    "manga","queer_identity","sports","western",
-  ]);
-  const keywordBag = new Set<string>(
-    Array.isArray(card?.graphicNovelKeywords)
-      ? card.graphicNovelKeywords.map((v: unknown) => String(v || "").trim().toLowerCase()).filter(Boolean)
-      : []
-  );
-  const joined = [String(card?.title || ""), String(card?.genre || ""), ...tags].join(" ").toLowerCase();
-  if (/superhero|superheroes|spider-man|batman|smallville|marvel|dc comics?\b/.test(joined)) keywordBag.add("superhero");
-  if (/fantasy|dragon|wizard|magic|myth/.test(joined)) keywordBag.add("fantasy");
-  if (/science fiction|sci[- ]?fi|cyberpunk|space|future/.test(joined)) keywordBag.add("sci_fi");
-  if (/coming of age|coming-of-age|high school|teen/.test(joined)) keywordBag.add("coming_of_age");
-  if (/mystery|detective|investigation/.test(joined)) keywordBag.add("mystery");
-  if (/crime|noir/.test(joined)) keywordBag.add("crime");
-  for (const keyword of Array.from(keywordBag)) {
-    if (controlledGraphicNovelKeywords.has(keyword)) tags.push(`graphicNovel:${keyword}`);
+  for (const keyword of inferGraphicNovelKeywordsForCard(card)) {
+    if (CONTROLLED_GRAPHIC_NOVEL_KEYWORDS.has(keyword)) tags.push(`graphicNovel:${keyword}`);
   }
   if (tags.length > 0) {
     return tags.reduce((acc: TagCounts, tag: string) => {
