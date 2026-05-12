@@ -4869,6 +4869,45 @@ const normalizedCandidatesRaw = [
       }
     }
   }
+  if (includeComicVine && finalRenderDocs.length > 0) {
+    const entitySeedAllowlist = [
+      "ms. marvel", "walking dead", "runaways", "descender", "black science", "scott pilgrim", "spider-man", "batman",
+      "something is killing the children", "sweet tooth", "sandman", "saga", "paper girls",
+    ];
+    const broadPhraseQueryRe = /\b(literary science graphic novel|psychological suspense graphic novel|teen graphic novel|science fiction graphic novel)\b/i;
+    const genericGraphicNovelTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+    const beforeFilterLength = finalRenderDocs.length;
+    finalRenderDocs = finalRenderDocs.filter((doc: any) => {
+      const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
+      const queryText = String(doc?.queryText || doc?.rawDoc?.queryText || "").trim();
+      const normalizedTitle = normalizeText(title);
+      const isEntitySeedDoc = entitySeedAllowlist.some((seed) => normalizedTitle.includes(normalizeText(seed)) || normalizeText(queryText).includes(normalizeText(seed)));
+      if (!broadPhraseQueryRe.test(queryText)) return true;
+      if (!genericGraphicNovelTitleRe.test(title)) return true;
+      return isEntitySeedDoc;
+    });
+    if (beforeFilterLength > finalRenderDocs.length) {
+      topUpRejectedReasons.generic_broad_artifact_hard_rule = Number(topUpRejectedReasons.generic_broad_artifact_hard_rule || 0) + (beforeFilterLength - finalRenderDocs.length);
+    }
+    if (finalRenderDocs.length < 8) {
+      const seen = new Set(finalRenderDocs.map((doc: any) => String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase()));
+      const entityBackfillPool = dedupeDocs((debugRawPool as any[]) || []).filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const queryText = String(doc?.queryText || doc?.rawDoc?.queryText || "").trim();
+        const normalizedTitle = normalizeText(title);
+        if (!title) return false;
+        if (seen.has(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase())) return false;
+        return entitySeedAllowlist.some((seed) => normalizedTitle.includes(normalizeText(seed)) || normalizeText(queryText).includes(normalizeText(seed)));
+      });
+      for (const doc of entityBackfillPool) {
+        if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+        const franchise = finalSeriesKeyForRender(doc);
+        if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) continue;
+        finalRenderDocs.push(doc);
+        seen.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
+      }
+    }
+  }
   finalRenderDocs = dedupeDocs(finalRenderDocs as any).filter((doc: any, idx: number, arr: any[]) => {
     const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
     if (!title) return true;
