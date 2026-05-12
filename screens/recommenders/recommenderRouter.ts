@@ -3309,6 +3309,16 @@ export async function getRecommendations(
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
   const filterKeptDocs = enrichedDocs.filter((doc: any) => doc?.diagnostics?.filterKept === true || doc?.rawDoc?.diagnostics?.filterKept === true);
   const filterKeptDocsTitles = filterKeptDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const normalizedDocsCount = enrichedDocs.length;
+  const postCanonicalizationCount = filteredDocs.length;
+  const stageDropReasons = {
+    canonicalization: summarizeReasonCounts(enrichedDocs, filteredDocs),
+    deduplication: {} as Record<string, number>,
+    authorityFilter: {} as Record<string, number>,
+    laneFilter: {} as Record<string, number>,
+    shapeGate: {} as Record<string, number>,
+    finalShaping: {} as Record<string, number>,
+  };
 
   // Centralized filtering rule:
   // filterCandidates is the only keep/reject authority for fetched candidates.
@@ -3354,6 +3364,8 @@ export async function getRecommendations(
     });
     debugRouterLog("FANTASY_SUPPRESSION_APPLIED", { countAfter: candidateDocs.length });
   }
+  const postAuthorityFilterCount = candidateDocs.length;
+  stageDropReasons.authorityFilter = summarizeReasonCounts(filteredDocs, candidateDocs);
   candidateDocs = candidateDocs.filter((doc: any) => {
     const isOpenLibrary = String(doc?.source || doc?.diagnostics?.source || "").toLowerCase().includes("open");
     if (!isOpenLibrary) return true;
@@ -3366,6 +3378,8 @@ export async function getRecommendations(
     if (/\b(best of|year's best|anthology|collection|journal|magazine|reference|library of congress subject headings|poetics of|principles of psychology|catalog|criticism|companion|study guide|handbook)\b/.test(text)) return false;
     return true;
   });
+  const postLaneFilterCount = candidateDocs.length;
+  stageDropReasons.laneFilter = summarizeReasonCounts(filteredDocs, candidateDocs);
   candidateDocs = candidateDocs.filter((doc: any) => {
     const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
     if (/\b(huckleberry finn|anne of green gables|moby dick|les misérables|les miserables)\b/.test(text)) {
@@ -3387,6 +3401,26 @@ export async function getRecommendations(
     candidateDocs = dedupeDocs([...candidateDocs, ...diversificationBackfill]).slice(0, 60);
     debugRouterLog("DIVERSIFICATION_BACKFILL_APPLIED", { afterCount: candidateDocs.length });
   }
+  // ComicVine-resilient rescue: keep recognizable series/collection entries alive for ranking.
+  if (includeComicVine && candidateDocs.length < 20) {
+    const seen = new Set(candidateDocs.map((doc: any) => candidateKey(doc)));
+    const rescuePool = enrichedDocs.filter((doc: any) => {
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      if (!source.includes("comicvine")) return false;
+      const title = String(doc?.title || "").trim();
+      if (!title) return false;
+      if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe)\b/i.test(title)) return false;
+      return true;
+    });
+    for (const doc of rescuePool) {
+      const key = candidateKey(doc);
+      if (!key || seen.has(key)) continue;
+      candidateDocs.push(doc);
+      seen.add(key);
+      if (candidateDocs.length >= 40) break;
+    }
+  }
+  const postShapeGateCount = candidateDocs.length;
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
     fetched: 0,
@@ -3605,6 +3639,22 @@ function buildRungDiagnostics(candidates: any[]) {
   };
 }
 
+function summarizeReasonCounts(before: any[], after: any[]): Record<string, number> {
+  const kept = new Set((after || []).map((d: any) => candidateKey(d)).filter(Boolean));
+  const out: Record<string, number> = {};
+  for (const doc of before || []) {
+    const key = candidateKey(doc);
+    if (!key || kept.has(key)) continue;
+    const reasons = (doc?.diagnostics?.filterRejectReasons || doc?.rawDoc?.diagnostics?.filterRejectReasons || []) as string[];
+    if (Array.isArray(reasons) && reasons.length) {
+      for (const r of reasons) out[String(r)] = Number(out[String(r)] || 0) + 1;
+    } else {
+      out["dropped_without_explicit_reason"] = Number(out["dropped_without_explicit_reason"] || 0) + 1;
+    }
+  }
+  return out;
+}
+
 function enforceHistoricalCandidateMetadata<T extends any>(candidates: T[]): T[] {
   return (Array.isArray(candidates) ? candidates : []).map((candidate: any) => {
     const laneKind = String(candidate?.laneKind || candidate?.rawDoc?.laneKind || candidate?.diagnostics?.laneKind || "").toLowerCase();
@@ -3702,6 +3752,8 @@ const normalizedCandidatesRaw = [
       },
     };
   }));
+  const postDeduplicationCount = normalizedCandidates.length;
+  stageDropReasons.deduplication = summarizeReasonCounts(normalizedCandidatesRaw, normalizedCandidates);
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
 
@@ -3940,6 +3992,7 @@ const normalizedCandidatesRaw = [
         priorRejectedKeys: routingInput.priorRejectedKeys,
       }))
     : sourceLayerRankedDocs;
+  const finalRecommenderInputCount = sourceLayerRankedDocs.length;
   const rankedDropReasons: Array<{ title: string; reason: string }> = [];
   if (rankedDocs.length === 0 && sourceLayerRankedDocs.length > 0) {
     rankedDropReasons.push({ title: "(multiple)", reason: "final_recommender_returned_empty" });
@@ -3973,6 +4026,7 @@ const normalizedCandidatesRaw = [
     // Avoid refilling from raw ranking pool, which can reintroduce weak representatives.
     return metaSafeRankedDocs.slice(0, Math.max(finalLimit, 12));
   })();
+  const postFinalShapingCount = finalRankedDocsBase.length;
   const shapedDropReasons: Array<{ title: string; reason: string }> = [];
   if (metaSafeRankedDocs.length === 0 && postFilteredRankedDocs.length > 0) {
     shapedDropReasons.push({ title: "(multiple)", reason: "meta_or_family_shaping_removed_all" });
@@ -4926,6 +4980,15 @@ const normalizedCandidatesRaw = [
     rankedDropReasons,
     shapedInputLength: postFilteredRankedDocs.length,
     shapedDropReasons,
+    normalizedDocsCount,
+    postCanonicalizationCount,
+    postDeduplicationCount,
+    postAuthorityFilterCount,
+    postLaneFilterCount,
+    postShapeGateCount,
+    postFinalShapingCount,
+    finalRecommenderInputCount,
+    stageDropReasons,
     finalRankedDocsLength: finalRankedDocs.length,
     finalRankedDocsTitles: finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean),
     comicVineFinalScoreByTitle,

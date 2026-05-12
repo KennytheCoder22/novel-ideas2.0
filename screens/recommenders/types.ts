@@ -92,6 +92,15 @@ export type RecommendationResult = {
   rankedDropReasons?: Array<{ title: string; reason: string }>;
   shapedInputLength?: number;
   shapedDropReasons?: Array<{ title: string; reason: string }>;
+  normalizedDocsCount?: number;
+  postCanonicalizationCount?: number;
+  postDeduplicationCount?: number;
+  postAuthorityFilterCount?: number;
+  postLaneFilterCount?: number;
+  postShapeGateCount?: number;
+  postFinalShapingCount?: number;
+  finalRecommenderInputCount?: number;
+  stageDropReasons?: Record<string, Record<string, number>>;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
   fallbackSource?: string;
