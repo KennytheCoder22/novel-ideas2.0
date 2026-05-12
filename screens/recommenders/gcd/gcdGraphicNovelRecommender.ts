@@ -477,7 +477,6 @@ function gcdIssueToDoc(issue: any, queryText: string, queryRung: number): Recomm
     ].filter(Boolean))
   );
 
-  const docsWithKeywordMix = applyGraphicKeywordMixToDocs(docs, input.tagCounts, fetchLimit);
   return {
     key: issue?.api_url || `comicvine:${issue?.series || issue?.series_name || title}`,
     title,
@@ -1073,6 +1072,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ? "fetch_or_normalization"
     : "none";
 
+  const docsWithKeywordMix = applyGraphicKeywordMixToDocs(docs, input.tagCounts, fetchLimit);
   return {
     engineId: "comicVine",
     engineLabel: "ComicVine",
