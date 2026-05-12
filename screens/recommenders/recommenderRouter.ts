@@ -4752,6 +4752,14 @@ const normalizedCandidatesRaw = [
       ];
       const allowlistForGenericTitle = new Set([...knownGoodAnchors, ...entitySeedPriority].map((v) => normalizeText(v)));
       const genericBroadTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+      const moodAlignedPriority = [
+        "something is killing the children", "walking dead", "descender", "black science", "runaways", "batman", "spider-man", "ms. marvel",
+      ];
+      const inferEntityFamily = (doc: any): string => {
+        const t = normalizeText(`${doc?.title || ""} ${doc?.rawDoc?.queryText || doc?.queryText || ""}`);
+        const seed = [...moodAlignedPriority, ...entitySeedPriority, ...knownGoodAnchors].find((s) => t.includes(normalizeText(s)));
+        return seed || finalSeriesKeyForRender(doc) || "unknown";
+      };
       const topupPool = dedupeDocs((debugRawPool as any[]) || []).filter((doc: any) => {
         const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
         if (!source.includes("comicvine")) return false;
@@ -4776,13 +4784,32 @@ const normalizedCandidatesRaw = [
         };
         return score(qb, tb) - score(qa, ta);
       });
+      const familyCounts = new Map<string, number>();
+      for (const doc of finalRenderDocs) familyCounts.set(inferEntityFamily(doc), (familyCounts.get(inferEntityFamily(doc)) || 0) + 1);
       for (const doc of topupPool) {
-        if (finalRenderDocs.length >= Math.min(finalLimit, 10)) break;
+        if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
         const franchise = finalSeriesKeyForRender(doc);
-        if (seenFranchises.has(franchise) && distinctFranchises.size > 1) continue;
+        const family = inferEntityFamily(doc);
+        if ((familyCounts.get(family) || 0) >= 2) continue;
+        if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) continue;
         finalRenderDocs.push(doc);
         seenIds.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
         seenFranchises.add(franchise);
+        familyCounts.set(family, (familyCounts.get(family) || 0) + 1);
+      }
+      // Second pass: if still under-filled, allow remaining entity-family docs before broad artifacts.
+      if (finalRenderDocs.length < 8) {
+        for (const doc of topupPool) {
+          if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+          const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
+          if (!id || seenIds.has(id)) continue;
+          const qa = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+          if (/\b(psychological|suspense|thriller|graphic novel)\b/.test(qa) && !entitySeedPriority.some((s) => qa.includes(s))) continue;
+          const franchise = finalSeriesKeyForRender(doc);
+          if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) continue;
+          finalRenderDocs.push(doc);
+          seenIds.add(id);
+        }
       }
     }
   }
