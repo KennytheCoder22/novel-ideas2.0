@@ -190,6 +190,46 @@ function applyGraphicKeywordMixToDocs(docs: RecommendationDoc[], tagCounts: TagC
   return selected.slice(0, finalLimit);
 }
 
+function normalizeFranchiseKey(doc: RecommendationDoc): string {
+  const base = normalizeText(String(doc?.series || doc?.title || ""));
+  return base
+    .replace(/\s*#\s*\d+.*$/g, "")
+    .replace(/\b(vol(?:ume)?|tpb|trade paperback|collection|book one|season one|omnibus|deluxe)\b.*$/g, "")
+    .trim();
+}
+
+function shapeComicVineFinalDocs(docs: RecommendationDoc[], finalLimit: number): RecommendationDoc[] {
+  const scored = docs.map((doc) => {
+    const text = normalizeText(`${doc.title || ""} ${doc.subtitle || ""}`);
+    const issueFragmentPenalty = /#\s*\d+\b/.test(text) ? 4 : 0;
+    const collectedEditionBoost =
+      /\b(vol\.?|volume|tpb|trade paperback|collection|complete collection|book one|season one|omnibus|deluxe|saga|origins)\b/.test(text)
+        ? 3
+        : 0;
+    const marvelVerseSoftBoost = /\bmarvel-verse\b/.test(text) ? 0.5 : 0;
+    const score = Number((doc as any)?.score || 0) + collectedEditionBoost + marvelVerseSoftBoost - issueFragmentPenalty;
+    return { doc, score, issue: issueFragmentPenalty > 0, key: normalizeFranchiseKey(doc) };
+  }).sort((a, b) => b.score - a.score);
+
+  const selected: Array<typeof scored[number]> = [];
+  const bySeries: Record<string, number> = {};
+  for (const row of scored) {
+    const key = row.key || normalizeText(String(row.doc?.title || ""));
+    if (Number(bySeries[key] || 0) >= 2) continue;
+    selected.push(row);
+    bySeries[key] = Number(bySeries[key] || 0) + 1;
+    if (selected.length >= finalLimit) break;
+  }
+  let out = selected.map((r) => r.doc);
+  const issueRatio = out.length ? out.filter((d) => /#\s*\d+\b/.test(normalizeText(String(d?.title || "")))).length / out.length : 0;
+  if (issueRatio > 0.4) {
+    const nonIssueBackfill = scored.filter((r) => !r.issue && !out.includes(r.doc)).map((r) => r.doc);
+    const filtered = out.filter((d) => !/#\s*\d+\b/.test(normalizeText(String(d?.title || ""))));
+    out = [...filtered, ...nonIssueBackfill].slice(0, finalLimit);
+  }
+  return out;
+}
+
 function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   lane: AnchorLane;
   mode: "story_facet_weighted";
@@ -1122,13 +1162,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     : "none";
 
   const docsWithKeywordMix = applyGraphicKeywordMixToDocs(docs, input.tagCounts, fetchLimit);
+  const shapedFinalDocs = shapeComicVineFinalDocs(docsWithKeywordMix, Math.min(finalLimit, fetchLimit));
   return {
     engineId: "comicVine",
     engineLabel: "ComicVine",
     deckKey,
     domainMode,
     builtFromQuery,
-    items: docsWithKeywordMix.map((doc) => ({ kind: "open_library", doc })),
+    items: shapedFinalDocs.map((doc) => ({ kind: "open_library", doc })),
     debugRawFetchedCount: docs.length,
     comicVineQueriesGenerated: queriesToTry,
     comicVineRungsBuilt,
@@ -1171,7 +1212,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       canonical: totalCanonicalAcrossQueries,
       content: totalContentAcrossQueries,
       final: totalFinalAcrossQueries,
-      rendered: docsWithKeywordMix.length,
+      rendered: shapedFinalDocs.length,
       queryDerived: queryDerivedCount,
       fallback: fallbackCount,
     },
@@ -1200,9 +1241,9 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     debugRungStats: {
       byRung: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])),
       byRungSource: { comicVine: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])) },
-      total: docsWithKeywordMix.length,
+      total: shapedFinalDocs.length,
     } as any,
-    debugRawPool: docsWithKeywordMix,
+    debugRawPool: shapedFinalDocs,
     debugFilterAudit: [
       {
         source: "comicVine",
