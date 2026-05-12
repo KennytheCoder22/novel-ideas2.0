@@ -5175,6 +5175,18 @@ const normalizedCandidatesRaw = [
   const anchorFranchises = [
     "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
   ];
+  const convertedComicVineDocsForScoring = Array.isArray((comicVine as any)?.items)
+    ? (comicVine as any).items.map((it: any) => it?.doc).filter(Boolean)
+    : [];
+  const profileTextForSeeds = normalizeText(String(tasteProfileText || ""));
+  const profileSelectedEntitySeeds =
+    /\b(horror|dark|survival|apocalypse)\b/.test(profileTextForSeeds)
+      ? ["something is killing the children", "locke & key", "walking dead", "sweet tooth"]
+      : /\b(superhero|identity|coming of age|teen hero)\b/.test(profileTextForSeeds)
+        ? ["ms. marvel", "miles morales", "runaways"]
+        : /\b(sci[- ]?fi|science fiction|idea|speculative|survival)\b/.test(profileTextForSeeds)
+          ? ["descender", "black science", "saga", "invincible"]
+          : ["sandman", "amulet", "nimona"];
   const scoringUniverse = dedupeDocs([
     ...finalRenderDocs,
     ...(enrichedDocs as any[]),
@@ -5182,11 +5194,15 @@ const normalizedCandidatesRaw = [
     ...(candidateDocs as any[]),
     ...((debugRawPool as any[]) || []),
     ...(finalRankedDocsBase as any[]),
+    ...convertedComicVineDocsForScoring,
   ] as any);
+  const scoredCandidateUniverseSources = Array.from(new Set(scoringUniverse.map((d: any) => String(d?.source || d?.rawDoc?.source || "unknown"))));
+  const scoredCandidateUniverseFranchiseRoots = Array.from(new Set(scoringUniverse.map((d: any) => finalSeriesKeyForRender(d)).filter(Boolean)));
   const scoringPassInputCount = scoringUniverse.length;
   let entryPointCandidatesFound = 0;
   let entryPointCandidatesSuppressed = 0;
   const finalSuppressedByBetterEntryPoint: string[] = [];
+  const suppressedGlobalSeedReason = /\b(horror|dark|survival|apocalypse)\b/.test(profileTextForSeeds) ? "none" : "profile_not_horror";
   const scoredCanonicalDocs = scoringUniverse.map((doc: any) => {
     const title = String(doc?.title || doc?.rawDoc?.title || "");
     const subtitle = String(doc?.subtitle || doc?.rawDoc?.subtitle || "");
@@ -5208,8 +5224,12 @@ const normalizedCandidatesRaw = [
     const genericArtifactPenalty = /^graphic horror novel\b/i.test(title) || /^graphic fantasy\b/i.test(title) || /^the graphic novel$/i.test(title.trim()) ? -20 : 0;
     const issueFragmentPenalty = /#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title) ? -12 : 0;
     const canonicalAnchorTitleBoost = isAnchorFranchise ? 10 : 0;
+    const isSIKTC = /\bsomething is killing the children\b/i.test(normalizedTitle);
+    const profileSeedBoost = profileSelectedEntitySeeds.some((seed) => normalizedTitle.includes(normalizeText(seed))) ? 8 : 0;
+    const globalSeedSuppression = isSIKTC && suppressedGlobalSeedReason !== "none" ? -28 : 0;
+    const priorSeriesPenalty = (routingInput.priorSeriesKeys || []).some((k) => normalizeText(String(k || "")) === franchise) ? -20 : 0;
     const heuristicScore =
-      entryPointBoost + canonicalAnchorTitleBoost + sideStoryPenalty + issueFragmentPenalty + genericArtifactPenalty + lateVolumePenalty;
+      entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + issueFragmentPenalty + genericArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
     const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
     return {
       ...doc,
@@ -5220,6 +5240,9 @@ const normalizedCandidatesRaw = [
         canonicalAnchorTitleBoost,
         sideStoryPenalty,
         issueFragmentPenalty,
+        profileSeedBoost,
+        globalSeedSuppression,
+        priorSeriesPenalty,
         finalScore: baseScore + heuristicScore,
       },
     };
@@ -5231,6 +5254,8 @@ const normalizedCandidatesRaw = [
     .slice(0, 10)
     .map((doc: any) => ({ title: String(doc?.title || ""), score: Number(doc?.score || 0) }));
   finalRenderDocs = scoredCanonicalDocs;
+  const scoredCandidateUniverseCount = scoringUniverse.length;
+  const candidateDiversityFloorTarget = includeComicVine ? 30 : 20;
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const recoveryFinalItemsLength = finalRenderDocs.length;
   const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
@@ -5265,6 +5290,9 @@ const normalizedCandidatesRaw = [
   if (finalRenderDocs.some((d: any) => /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("side_arc_with_core_entry");
   if (finalRenderDocs.some((d: any) => /^graphic horror novel\b/i.test(String(d?.title || "")) || /^graphic fantasy\b/i.test(String(d?.title || "")) || /^the graphic novel$/i.test(String(d?.title || "").trim()))) qualityRecoveryReasons.push("generic_artifact_present");
   if (finalRenderDocs.some((d: any) => /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("late_volume_with_entry_available");
+  if (scoredCandidateUniverseCount < candidateDiversityFloorTarget) {
+    qualityRecoveryReasons.push("candidate_diversity_floor_not_met");
+  }
   const qualityRecoveryTriggered = qualityRecoveryReasons.length > 0;
   const qualityRecoveryReason = qualityRecoveryReasons.join(",");
   const preRenderTitles = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
@@ -5474,6 +5502,12 @@ const normalizedCandidatesRaw = [
     preRenderTitles,
     postRenderTitles,
     overwrittenAfterScoredRebuild,
+    scoredCandidateUniverseCount,
+    scoredCandidateUniverseSources,
+    scoredCandidateUniverseFranchiseRoots,
+    selectedFranchiseRoots: Array.from(new Set(finalRenderDocs.map((d: any) => finalSeriesKeyForRender(d)).filter(Boolean))),
+    suppressedGlobalSeedReason,
+    profileSelectedEntitySeeds,
     finalFranchiseFamilies,
     franchiseCapBlockedTitles,
     recoveryDiversificationAttempts,
