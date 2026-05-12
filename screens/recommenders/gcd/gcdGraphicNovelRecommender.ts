@@ -17,6 +17,14 @@ const COMIC_VINE_PROXY_URL =
     : "/api/comicvine";
 let hasLoggedProbeProxyUrl = false;
 const MAX_COMICVINE_ANCHORS = 8;
+const GRAPHIC_NOVEL_SEEDS: Record<string, string[]> = {
+  superhero: ["Ms. Marvel", "Miles Morales", "Runaways", "Young Avengers", "Spider-Man", "Batman", "Batgirl"],
+  horror: ["Something is Killing the Children", "Locke & Key", "Hellboy", "The Sandman", "Gideon Falls", "Nailbiter"],
+  sci_fi: ["Saga", "Paper Girls", "Y: The Last Man", "Descender", "Black Science"],
+  fantasy: ["Nimona", "Amulet", "Monstress", "The Sandman", "Bone"],
+  romance: ["Heartstopper", "Lore Olympus", "Check Please", "Bloom"],
+  mystery: ["Gotham Academy", "The Fade Out", "Blacksad", "Revival"],
+};
 
 type AnchorLane = "facet_weighted";
 type CuratedFallback = { title: string; tags: string[]; publisher: string; facets: string[]; year?: number };
@@ -297,6 +305,22 @@ function buildSessionFitComicVineQueries(tagCounts: TagCounts | undefined, clean
   }
   if (hasFacet(tagCounts, /fantasy|adventure|epic/)) add("fantasy adventure graphic novel");
   return queries.slice(0, 10);
+}
+
+function buildEntitySeedQueriesFromGraphicKeywords(tagCounts: TagCounts | undefined, finalLimit: number): string[] {
+  const weighted = Object.entries(tagCounts || {})
+    .filter(([k, v]) => k.startsWith("graphicNovel:") && Number(v) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 4);
+  const total = weighted.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
+  const out: string[] = [];
+  for (const [rawKey, rawWeight] of weighted) {
+    const key = rawKey.replace("graphicNovel:", "");
+    const seeds = GRAPHIC_NOVEL_SEEDS[key] || [];
+    const seedCount = Math.max(1, Math.round((Number(rawWeight) / total) * Math.max(4, finalLimit)));
+    for (const seed of seeds.slice(0, seedCount)) out.push(seed, `${seed} graphic novel`, `${seed} tpb`);
+  }
+  return Array.from(new Set(out.map((q) => stripDanglingQuotes(String(q || "").trim().toLowerCase())).filter(Boolean)));
 }
 
 function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
@@ -749,9 +773,15 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const anchorSelection = selectComicVineAnchors(input.tagCounts);
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
   const sessionFitQueries = buildSessionFitComicVineQueries(input.tagCounts, seedClean.cleaned);
-  const allQueries = Array.from(new Set([...sessionFitQueries, ...anchorSelection.anchors, ...facetQueries].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
+  const entitySeedQueries = buildEntitySeedQueriesFromGraphicKeywords(input.tagCounts, finalLimit);
+  const allQueries = Array.from(new Set([
+    ...entitySeedQueries,
+    ...anchorSelection.anchors,
+    ...facetQueries,
+    ...sessionFitQueries,
+  ].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
   const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
-  const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$/i;
+  const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$|^(teen|psychological).*(graphic novel)$/i;
   const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q) || anchorSelection.anchors.includes(q));
   const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
   const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
