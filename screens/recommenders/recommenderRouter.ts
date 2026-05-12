@@ -4793,6 +4793,20 @@ const normalizedCandidatesRaw = [
   const fallbackItems = outputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").includes("fallback") || String(item?.doc?.queryText || "") === "comicvine_publisher_facet_fallback");
   const nonFallbackItems = outputItems.filter((item: any) => !fallbackItems.includes(item));
   const mixedFallbackOutput = fallbackItems.length > 0 && nonFallbackItems.length > 0;
+  const usedEmergencyFallback = fallbackItems.length > 0;
+  const preFallbackCandidateCount = candidateCount;
+  const preFallbackRankedCount = rankedCount;
+  const preFallbackAcceptedCount = finalAcceptedDocsLength;
+  const fallbackSource = fallbackItems.length > 0
+    ? (mixedFallbackOutput ? "comicvine_mixed_fallback" : "comicvine_publisher_facet_fallback")
+    : "none";
+  const fallbackReason = !usedEmergencyFallback
+    ? "none"
+    : (includeComicVine && fetchedRawCount > 0 && preFallbackAcceptedCount === 0)
+      ? "comicvine_raw_results_rejected_during_shaping"
+      : hardPipelineFailure
+        ? "comicvine_pipeline_failure"
+        : "insufficient_query_derived_results";
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
   const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
   const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
@@ -4898,6 +4912,12 @@ const normalizedCandidatesRaw = [
     rankedCount,
     renderedCount: finalOutputItems.length,
     mixedFallbackOutput,
+    usedEmergencyFallback,
+    fallbackReason,
+    fallbackSource,
+    preFallbackCandidateCount,
+    preFallbackRankedCount,
+    preFallbackAcceptedCount,
     suppressTopRecommendations,
     debugRouterVersion,
     routerResultTracePresent: true,

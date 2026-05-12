@@ -84,6 +84,12 @@ export type RecommendationResult = {
   teenPostPassInputSource?: string;
   finalRankedDocsBaseLength?: number;
   rankedDocsLength?: number;
+  usedEmergencyFallback?: boolean;
+  fallbackReason?: string;
+  fallbackSource?: string;
+  preFallbackCandidateCount?: number;
+  preFallbackRankedCount?: number;
+  preFallbackAcceptedCount?: number;
   finalAcceptedDocsSource?: string;
   finalAcceptedDocsTitles?: string[];
   finalRankedDocsBaseTitles?: string[];
