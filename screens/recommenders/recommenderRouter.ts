@@ -4422,6 +4422,18 @@ const normalizedCandidatesRaw = [
   const comicVineFallbackLeakageWarning = String((comicVine as any)?.comicVineFallbackLeakageWarning || "");
   const comicVineRecommendationSetMode = String((comicVine as any)?.comicVineRecommendationSetMode || "unknown");
   const comicVineNormalRecommendationSet = Boolean((comicVine as any)?.comicVineNormalRecommendationSet);
+  const comicVineProtectedTokenFilteredCount = Number((comicVine as any)?.protectedTokenFilteredCount || 0);
+  const comicVineSuperheroSuppressionActive = Boolean((comicVine as any)?.superheroSuppressionActive);
+  const comicVineStrongSuperheroEvidence = Boolean((comicVine as any)?.strongSuperheroEvidence);
+  const comicVineSelectedAnchors = Array.isArray((comicVine as any)?.selectedComicVineAnchors) ? (comicVine as any).selectedComicVineAnchors : [];
+  const comicVineFranchiseTriggerDebug = (comicVine as any)?.franchiseTriggerDebug || (comicVine as any)?.franchiseTriggerProvenance || [];
+  const blockedSuperheroQueryRe = /^(teen titans|young justice|ms\.?\s*marvel|spider-man|miles morales|batman)(\b| )/i;
+  const resolvedComicVineQueryTexts = Array.from(comicVineQueryTexts).filter((q) =>
+    !(comicVineSuperheroSuppressionActive && !comicVineStrongSuperheroEvidence && blockedSuperheroQueryRe.test(String(q || "").toLowerCase()))
+  );
+  const resolvedComicVineRungsBuilt = Array.from(comicVineRungsBuilt).filter((q) =>
+    !(comicVineSuperheroSuppressionActive && !comicVineStrongSuperheroEvidence && blockedSuperheroQueryRe.test(String(q || "").toLowerCase()))
+  );
 
   const comicVineDispatchTrace = {
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
@@ -4443,8 +4455,8 @@ const normalizedCandidatesRaw = [
     mainRungQueriesLength,
     gcdFetchAttempted: comicVineFetchAttempted,
     comicVineFetchAttempted,
-    comicVineQueryTexts: Array.from(comicVineQueryTexts),
-    comicVineRungsBuilt: Array.from(comicVineRungsBuilt),
+    comicVineQueryTexts: resolvedComicVineQueryTexts,
+    comicVineRungsBuilt: resolvedComicVineRungsBuilt,
     comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched),
     gcdFetchResults: comicVineFetchResults,
     comicVineFetchResults,
@@ -4475,6 +4487,11 @@ const normalizedCandidatesRaw = [
     comicVineFallbackLeakageWarning,
     comicVineRecommendationSetMode,
     comicVineNormalRecommendationSet,
+    protectedTokenFilteredCount: comicVineProtectedTokenFilteredCount,
+    superheroSuppressionActive: comicVineSuperheroSuppressionActive,
+    strongSuperheroEvidence: comicVineStrongSuperheroEvidence,
+    selectedComicVineAnchors: comicVineSelectedAnchors,
+    franchiseTriggerDebug: comicVineFranchiseTriggerDebug,
     comicVinePipelineTraceCounts,
     comicVinePipelineFailureDetected,
     comicVinePipelineFailureReason,
