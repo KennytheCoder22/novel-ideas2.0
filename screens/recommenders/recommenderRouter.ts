@@ -4722,6 +4722,10 @@ const normalizedCandidatesRaw = [
   let topUpMergedPoolAfterQualityFiltersLength = 0;
   const topUpQualityRejectedReasons: Record<string, number> = {};
   const topUpQualityRejectedTitlesByReason: Record<string, string[]> = {};
+  let entitySeedConvertedCount = 0;
+  let entitySeedTopUpEligibleCount = 0;
+  const entitySeedTopUpRejectedReasons: Record<string, number> = {};
+  const entitySeedTopUpRejectedTitlesByReason: Record<string, string[]> = {};
   if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
     const seriesCounts = new Map<string, number>();
     for (const doc of finalRenderDocs) {
@@ -4804,17 +4808,46 @@ const normalizedCandidatesRaw = [
         const title = String(doc?.title || "").trim();
         if (!title) { registerTopupReject("missing_title", "(untitled)"); return false; }
         const normalizedTitle = normalizeText(title);
+        const normalizedQueryText = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+        const isEntitySeedDoc = entitySeedPriority.some((seed) => normalizedTitle.includes(normalizeText(seed)) || normalizedQueryText.includes(normalizeText(seed)));
+        if (isEntitySeedDoc) entitySeedConvertedCount += 1;
         if (genericBroadTitleRe.test(title) && !Array.from(allowlistForGenericTitle).some((needle) => normalizedTitle.includes(needle))) { registerTopupReject("generic_broad_artifact", title); return false; }
-        if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) { registerTopupReject("single_issue_spam", title); return false; }
+        if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) {
+          if (isEntitySeedDoc && /\b(collection|tpb|omnibus|deluxe|book|volume)\b/i.test(String(doc?.subtitle || doc?.rawDoc?.subtitle || ""))) {
+            entitySeedTopUpEligibleCount += 1;
+          } else {
+            registerTopupReject("single_issue_spam", title);
+            if (isEntitySeedDoc) {
+              entitySeedTopUpRejectedReasons.single_issue_spam = Number(entitySeedTopUpRejectedReasons.single_issue_spam || 0) + 1;
+              if (!entitySeedTopUpRejectedTitlesByReason.single_issue_spam) entitySeedTopUpRejectedTitlesByReason.single_issue_spam = [];
+              if (entitySeedTopUpRejectedTitlesByReason.single_issue_spam.length < 12) entitySeedTopUpRejectedTitlesByReason.single_issue_spam.push(title);
+            }
+            return false;
+          }
+        }
         const rejectReasons = (doc?.diagnostics?.filterRejectReasons || doc?.rawDoc?.diagnostics?.filterRejectReasons || []) as string[];
         const isRecognizableEntity = [...moodAlignedPriority, ...entitySeedPriority, ...knownGoodAnchors].some((seed) => normalizedTitle.includes(normalizeText(seed)));
         const collectedEditionLike = /\b(tpb|omnibus|volume|vol\.|deluxe|book|collection)\b/i.test(title);
         if (Array.isArray(rejectReasons) && rejectReasons.includes("below_shape_floor") && !(isRecognizableEntity || collectedEditionLike)) {
           registerTopupReject("below_shape_floor_non_entity", title);
+          if (isEntitySeedDoc) {
+            entitySeedTopUpRejectedReasons.below_shape_floor_non_entity = Number(entitySeedTopUpRejectedReasons.below_shape_floor_non_entity || 0) + 1;
+            if (!entitySeedTopUpRejectedTitlesByReason.below_shape_floor_non_entity) entitySeedTopUpRejectedTitlesByReason.below_shape_floor_non_entity = [];
+            if (entitySeedTopUpRejectedTitlesByReason.below_shape_floor_non_entity.length < 12) entitySeedTopUpRejectedTitlesByReason.below_shape_floor_non_entity.push(title);
+          }
           return false;
         }
         const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
-        if (!id || seenIds.has(id)) { registerTopupReject("duplicate_id", title); return false; }
+        if (!id || seenIds.has(id)) {
+          registerTopupReject("duplicate_id", title);
+          if (isEntitySeedDoc) {
+            entitySeedTopUpRejectedReasons.duplicate_id = Number(entitySeedTopUpRejectedReasons.duplicate_id || 0) + 1;
+            if (!entitySeedTopUpRejectedTitlesByReason.duplicate_id) entitySeedTopUpRejectedTitlesByReason.duplicate_id = [];
+            if (entitySeedTopUpRejectedTitlesByReason.duplicate_id.length < 12) entitySeedTopUpRejectedTitlesByReason.duplicate_id.push(title);
+          }
+          return false;
+        }
+        if (isEntitySeedDoc) entitySeedTopUpEligibleCount += 1;
         return true;
       }).sort((a: any, b: any) => {
         const qa = normalizeText(String(a?.queryText || a?.rawDoc?.queryText || ""));
@@ -5171,6 +5204,10 @@ const normalizedCandidatesRaw = [
     topUpMergedPoolAfterQualityFiltersLength,
     topUpQualityRejectedReasons,
     topUpQualityRejectedTitlesByReason,
+    entitySeedConvertedCount,
+    entitySeedTopUpEligibleCount,
+    entitySeedTopUpRejectedReasons,
+    entitySeedTopUpRejectedTitlesByReason,
     postTopUpFinalItemsLength,
     returnedItemsBuiltFrom,
     teenPostPassOutputTitles,

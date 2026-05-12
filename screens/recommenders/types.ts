@@ -115,6 +115,10 @@ export type RecommendationResult = {
   topUpMergedPoolAfterQualityFiltersLength?: number;
   topUpQualityRejectedReasons?: Record<string, number>;
   topUpQualityRejectedTitlesByReason?: Record<string, string[]>;
+  entitySeedConvertedCount?: number;
+  entitySeedTopUpEligibleCount?: number;
+  entitySeedTopUpRejectedReasons?: Record<string, number>;
+  entitySeedTopUpRejectedTitlesByReason?: Record<string, string[]>;
   postTopUpFinalItemsLength?: number;
   returnedItemsBuiltFrom?: string;
   usedEmergencyFallback?: boolean;
