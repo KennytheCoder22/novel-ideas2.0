@@ -5038,6 +5038,54 @@ const normalizedCandidatesRaw = [
     }
     finalRenderDocs = chosen.slice(0, minComicVineFinalCount);
   }
+  if (includeComicVine && finalRenderDocs.length > 0) {
+    const entitySeedPrimary = [
+      "something is killing the children", "locke & key", "the sandman", "sweet tooth", "walking dead", "hellboy", "black science", "descender", "runaways",
+      "ms. marvel",
+    ];
+    const broadPhraseQueryRe = /\b(literary science graphic novel|psychological suspense graphic novel|teen graphic novel|science fiction graphic novel|graphic horror novel)\b/i;
+    const genericBroadTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+    const isEntitySeedDoc = (doc: any) => {
+      const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+      const q = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+      return entitySeedPrimary.some((seed) => title.includes(normalizeText(seed)) || q.includes(normalizeText(seed)));
+    };
+    const isBroadPhraseDoc = (doc: any) => broadPhraseQueryRe.test(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+    const isGenericBroadArtifact = (doc: any) => genericBroadTitleRe.test(String(doc?.title || doc?.rawDoc?.title || "").trim());
+    const universe = dedupeDocs([
+      ...finalRenderDocs,
+      ...(rankedDocs as any[]),
+      ...(candidateDocs as any[]),
+      ...((debugRawPool as any[]) || []),
+    ] as any).filter((doc: any) => {
+      if (isBroadPhraseDoc(doc) && isGenericBroadArtifact(doc)) return false;
+      if (/#\s*\d+\b/.test(String(doc?.title || "")) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(String(doc?.title || ""))) return false;
+      return true;
+    });
+    const entityDocs = universe.filter((doc: any) => isEntitySeedDoc(doc));
+    const nonBroadDocs = universe.filter((doc: any) => !isBroadPhraseDoc(doc) && !isEntitySeedDoc(doc));
+    const broadDocs = universe.filter((doc: any) => isBroadPhraseDoc(doc) && !isGenericBroadArtifact(doc));
+    const targetCount = Math.min(Math.max(finalLimit, 8), 10);
+    const rebuilt: any[] = [];
+    const seenTitles = new Set<string>();
+    const addDoc = (doc: any) => {
+      const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+      if (!title || seenTitles.has(title)) return false;
+      if (rebuilt.filter((d: any) => finalSeriesKeyForRender(d) === finalSeriesKeyForRender(doc)).length >= 2) return false;
+      rebuilt.push(doc);
+      seenTitles.add(title);
+      return true;
+    };
+    for (const doc of entityDocs) { if (rebuilt.length >= targetCount) break; addDoc(doc); }
+    for (const doc of nonBroadDocs) { if (rebuilt.length >= targetCount) break; addDoc(doc); }
+    let broadUsed = 0;
+    for (const doc of broadDocs) {
+      if (rebuilt.length >= targetCount) break;
+      if (broadUsed >= 1) break;
+      if (addDoc(doc)) broadUsed += 1;
+    }
+    if (rebuilt.length >= 5) finalRenderDocs = rebuilt;
+  }
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
