@@ -192,28 +192,41 @@ function applyGraphicKeywordMixToDocs(docs: RecommendationDoc[], tagCounts: TagC
 
 function normalizeFranchiseKey(doc: RecommendationDoc): string {
   const base = normalizeText(String(doc?.series || doc?.title || ""));
-  return base
+  const normalized = base
     .replace(/\s*#\s*\d+.*$/g, "")
     .replace(/\b(vol(?:ume)?|tpb|trade paperback|collection|book one|season one|omnibus|deluxe)\b.*$/g, "")
     .trim();
+  if (/titans?/.test(normalized)) return "titans_family";
+  if (/batman/.test(normalized)) return "batman_family";
+  if (/ms\.?\s*marvel|kamala/.test(normalized)) return "ms_marvel_family";
+  if (/spider[-\s]?man|miles morales/.test(normalized)) return "spider_family";
+  return normalized;
 }
 
 function shapeComicVineFinalDocs(docs: RecommendationDoc[], finalLimit: number): RecommendationDoc[] {
+  const collectionMarkerRe = /\b(vol\.?|volume|tpb|trade paperback|collection|complete collection|book one|season one|omnibus|deluxe|saga|origins)\b/;
+  const noveltyRe = /\b(go!|on strike|valenteen|super-titans|kinderspiele|cry for justice)\b/i;
+  const preferredAnchorRe = /\b(the sandman|something is killing the children|locke\s*&\s*key|sweet tooth|monstress|amulet|nimona|bone|saga|paper girls)\b/i;
   const scored = docs.map((doc) => {
     const text = normalizeText(`${doc.title || ""} ${doc.subtitle || ""}`);
-    const issueFragmentPenalty = /#\s*\d+\b/.test(text) ? 4 : 0;
+    const plainIssue = /#\s*\d+\b/.test(text) && !collectionMarkerRe.test(text);
+    const issueFragmentPenalty = plainIssue ? 8 : /#\s*\d+\b/.test(text) ? 2 : 0;
     const collectedEditionBoost =
-      /\b(vol\.?|volume|tpb|trade paperback|collection|complete collection|book one|season one|omnibus|deluxe|saga|origins)\b/.test(text)
+      collectionMarkerRe.test(text)
         ? 3
         : 0;
+    const noveltyPenalty = noveltyRe.test(String(doc?.title || "")) ? 3 : 0;
+    const preferredAnchorBoost = preferredAnchorRe.test(String(doc?.title || "")) ? 2.5 : 0;
     const marvelVerseSoftBoost = /\bmarvel-verse\b/.test(text) ? 0.5 : 0;
-    const score = Number((doc as any)?.score || 0) + collectedEditionBoost + marvelVerseSoftBoost - issueFragmentPenalty;
-    return { doc, score, issue: issueFragmentPenalty > 0, key: normalizeFranchiseKey(doc) };
+    const hardReject = plainIssue;
+    const score = Number((doc as any)?.score || 0) + collectedEditionBoost + preferredAnchorBoost + marvelVerseSoftBoost - issueFragmentPenalty - noveltyPenalty;
+    return { doc, score, issue: issueFragmentPenalty > 0, key: normalizeFranchiseKey(doc), hardReject, novelty: noveltyPenalty > 0 };
   }).sort((a, b) => b.score - a.score);
 
   const selected: Array<typeof scored[number]> = [];
   const bySeries: Record<string, number> = {};
   for (const row of scored) {
+    if (row.hardReject) continue;
     const key = row.key || normalizeText(String(row.doc?.title || ""));
     if (Number(bySeries[key] || 0) >= 2) continue;
     selected.push(row);
@@ -226,6 +239,16 @@ function shapeComicVineFinalDocs(docs: RecommendationDoc[], finalLimit: number):
     const nonIssueBackfill = scored.filter((r) => !r.issue && !out.includes(r.doc)).map((r) => r.doc);
     const filtered = out.filter((d) => !/#\s*\d+\b/.test(normalizeText(String(d?.title || ""))));
     out = [...filtered, ...nonIssueBackfill].slice(0, finalLimit);
+  }
+  if (out.length < Math.min(8, finalLimit)) {
+    const backfill = scored
+      .filter((r) => !r.hardReject && !out.includes(r.doc))
+      .sort((a, b) => {
+        if (a.novelty !== b.novelty) return a.novelty ? 1 : -1;
+        return b.score - a.score;
+      })
+      .map((r) => r.doc);
+    out = [...out, ...backfill].slice(0, Math.max(Math.min(8, finalLimit), out.length));
   }
   return out;
 }
