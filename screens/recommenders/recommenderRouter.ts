@@ -4485,6 +4485,16 @@ const normalizedCandidatesRaw = [
   const comicVineStrongSuperheroEvidence = Boolean((comicVine as any)?.strongSuperheroEvidence);
   const comicVineSelectedAnchors = Array.isArray((comicVine as any)?.selectedComicVineAnchors) ? (comicVine as any).selectedComicVineAnchors : [];
   const comicVineFranchiseTriggerDebug = (comicVine as any)?.franchiseTriggerDebug || (comicVine as any)?.franchiseTriggerProvenance || [];
+  const comicVineFetchedRawTotal = Number((comicVine as any)?.comicVineFetchedRawTotal || 0);
+  const comicVineRawRowsBeforeDocConversion = Number((comicVine as any)?.comicVineRawRowsBeforeDocConversion || 0);
+  const comicVineDocConversionAttemptCount = Number((comicVine as any)?.comicVineDocConversionAttemptCount || 0);
+  const comicVineDocConversionSuccessCount = Number((comicVine as any)?.comicVineDocConversionSuccessCount || 0);
+  const comicVineDocConversionDropReasons = (comicVine as any)?.comicVineDocConversionDropReasons || {};
+  const comicVineConvertedDocTitles = Array.isArray((comicVine as any)?.comicVineConvertedDocTitles) ? (comicVine as any).comicVineConvertedDocTitles : [];
+  const comicVineTitleMergeDebug = Array.isArray((comicVine as any)?.comicVineTitleMergeDebug) ? (comicVine as any).comicVineTitleMergeDebug : [];
+  const comicVineContentEmptyDropCount = Number((comicVine as any)?.comicVineContentEmptyDropCount || 0);
+  const comicVineCanonicalEmptyDropCount = Number((comicVine as any)?.comicVineCanonicalEmptyDropCount || 0);
+  const comicVineFinalEmptyDropCount = Number((comicVine as any)?.comicVineFinalEmptyDropCount || 0);
   const blockedSuperheroQueryRe = /^(teen titans|young justice|ms\.?\s*marvel|spider-man|miles morales|batman)(\b| )/i;
   const resolvedComicVineQueryTexts = Array.from(comicVineQueryTexts).filter((q) =>
     !(comicVineSuperheroSuppressionActive && !comicVineStrongSuperheroEvidence && blockedSuperheroQueryRe.test(String(q || "").toLowerCase()))
@@ -4550,6 +4560,16 @@ const normalizedCandidatesRaw = [
     strongSuperheroEvidence: comicVineStrongSuperheroEvidence,
     selectedComicVineAnchors: comicVineSelectedAnchors,
     franchiseTriggerDebug: comicVineFranchiseTriggerDebug,
+    comicVineFetchedRawTotal,
+    comicVineRawRowsBeforeDocConversion,
+    comicVineDocConversionAttemptCount,
+    comicVineDocConversionSuccessCount,
+    comicVineDocConversionDropReasons,
+    comicVineConvertedDocTitles,
+    comicVineTitleMergeDebug,
+    comicVineContentEmptyDropCount,
+    comicVineCanonicalEmptyDropCount,
+    comicVineFinalEmptyDropCount,
     comicVinePipelineTraceCounts,
     comicVinePipelineFailureDetected,
     comicVinePipelineFailureReason,
@@ -4591,9 +4611,9 @@ const normalizedCandidatesRaw = [
   ) {
     teenPostPassInputDocs = [...finalRankedDocsBase];
   }
-  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
-  const finalAcceptedDocsSource = "finalRankedDocsBase";
-  const finalAcceptedDocsTitles = deterministicGuardedPool.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  let teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
+  let finalAcceptedDocsSource = "finalRankedDocsBase";
+  let finalAcceptedDocsTitles = deterministicGuardedPool.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
@@ -4688,6 +4708,24 @@ const normalizedCandidatesRaw = [
       : 3;
   const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
   let finalRenderDocs = finalSeriesCapResult.kept;
+  const preTopUpFinalItemsLength = finalRenderDocs.length;
+  let topUpCandidatesConsideredLength = 0;
+  let topUpCandidatesAcceptedLength = 0;
+  const topUpRejectedReasons: Record<string, number> = {};
+  let topUpSourceRankedDocsLength = 0;
+  let topUpSourceCandidateDocsLength = 0;
+  let topUpSourceNormalizedCandidatesLength = 0;
+  let topUpSourceEnrichedDocsLength = 0;
+  let topUpSourceDebugRawPoolLength = 0;
+  let topUpMergedPoolBeforeFiltersLength = 0;
+  let topUpMergedPoolAfterDedupeLength = 0;
+  let topUpMergedPoolAfterQualityFiltersLength = 0;
+  const topUpQualityRejectedReasons: Record<string, number> = {};
+  const topUpQualityRejectedTitlesByReason: Record<string, string[]> = {};
+  let entitySeedConvertedCount = 0;
+  let entitySeedTopUpEligibleCount = 0;
+  const entitySeedTopUpRejectedReasons: Record<string, number> = {};
+  const entitySeedTopUpRejectedTitlesByReason: Record<string, string[]> = {};
   if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
     const seriesCounts = new Map<string, number>();
     for (const doc of finalRenderDocs) {
@@ -4707,6 +4745,293 @@ const normalizedCandidatesRaw = [
       seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
     }
   }
+  if (includeComicVine && finalRenderDocs.length > 0) {
+    const byFranchise = new Map<string, number>();
+    for (const doc of finalRenderDocs) {
+      const key = finalSeriesKeyForRender(doc);
+      byFranchise.set(key, (byFranchise.get(key) || 0) + 1);
+    }
+    finalRenderDocs = finalRenderDocs.filter((doc: any) => {
+      const key = finalSeriesKeyForRender(doc);
+      const count = byFranchise.get(key) || 0;
+      if (count <= 2) return true;
+      byFranchise.set(key, count - 1);
+      return false;
+    });
+    const distinctFranchises = new Set(finalRenderDocs.map((doc: any) => finalSeriesKeyForRender(doc)).filter(Boolean));
+    if ((distinctFranchises.size <= 1 || finalRenderDocs.length < 8) && includeComicVine) {
+      const seenIds = new Set(finalRenderDocs.map((d: any) => String(d?.sourceId || d?.key || d?.title || "").toLowerCase()));
+      const seenFranchises = new Set(finalRenderDocs.map((d: any) => finalSeriesKeyForRender(d)));
+      const entitySeedPriority = [
+        "ms. marvel", "spider-man", "walking dead", "descender", "black science", "runaways", "batman", "teen titans", "invincible", "guardians of the galaxy", "miles morales",
+      ];
+      const knownGoodAnchors = [
+        "saga", "paper girls", "locke & key", "the sandman", "something is killing the children", "sweet tooth", "nimona", "amulet", "bone", "monstress",
+      ];
+      const allowlistForGenericTitle = new Set([...knownGoodAnchors, ...entitySeedPriority].map((v) => normalizeText(v)));
+      const genericBroadTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+      const moodAlignedPriority = [
+        "something is killing the children", "walking dead", "descender", "black science", "runaways", "batman", "spider-man", "ms. marvel",
+      ];
+      const inferEntityFamily = (doc: any): string => {
+        const t = normalizeText(`${doc?.title || ""} ${doc?.rawDoc?.queryText || doc?.queryText || ""}`);
+        const seed = [...moodAlignedPriority, ...entitySeedPriority, ...knownGoodAnchors].find((s) => t.includes(normalizeText(s)));
+        return seed || finalSeriesKeyForRender(doc) || "unknown";
+      };
+      const convertedComicVineDocs = Array.isArray((comicVine as any)?.items)
+        ? (comicVine as any).items.map((it: any) => it?.doc).filter(Boolean)
+        : [];
+      topUpSourceRankedDocsLength = (rankedDocs as any[])?.length || 0;
+      topUpSourceCandidateDocsLength = (candidateDocs as any[])?.length || 0;
+      topUpSourceNormalizedCandidatesLength = (normalizedCandidates as any[])?.length || 0;
+      topUpSourceEnrichedDocsLength = (enrichedDocs as any[])?.length || 0;
+      topUpSourceDebugRawPoolLength = ((debugRawPool as any[]) || []).length;
+      const topupSourceRaw = [
+        ...(rankedDocs as any[]),
+        ...(candidateDocs as any[]),
+        ...(normalizedCandidates as any[]),
+        ...(enrichedDocs as any[]),
+        ...((debugRawPool as any[]) || []),
+        ...convertedComicVineDocs,
+      ] as any[];
+      topUpMergedPoolBeforeFiltersLength = topupSourceRaw.length;
+      const topupSources = dedupeDocs(topupSourceRaw as any);
+      topUpMergedPoolAfterDedupeLength = topupSources.length;
+      const registerTopupReject = (reason: string, title: string) => {
+        topUpQualityRejectedReasons[reason] = Number(topUpQualityRejectedReasons[reason] || 0) + 1;
+        if (!topUpQualityRejectedTitlesByReason[reason]) topUpQualityRejectedTitlesByReason[reason] = [];
+        if (title && topUpQualityRejectedTitlesByReason[reason].length < 12) topUpQualityRejectedTitlesByReason[reason].push(title);
+      };
+      const topupPool = topupSources.filter((doc: any) => {
+        const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+        if (!source.includes("comicvine")) { registerTopupReject("non_comicvine_source", String(doc?.title || "")); return false; }
+        const title = String(doc?.title || "").trim();
+        if (!title) { registerTopupReject("missing_title", "(untitled)"); return false; }
+        const normalizedTitle = normalizeText(title);
+        const normalizedQueryText = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+        const isEntitySeedDoc = entitySeedPriority.some((seed) => normalizedTitle.includes(normalizeText(seed)) || normalizedQueryText.includes(normalizeText(seed)));
+        if (isEntitySeedDoc) entitySeedConvertedCount += 1;
+        if (genericBroadTitleRe.test(title) && !Array.from(allowlistForGenericTitle).some((needle) => normalizedTitle.includes(needle))) { registerTopupReject("generic_broad_artifact", title); return false; }
+        if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) {
+          if (isEntitySeedDoc && /\b(collection|tpb|omnibus|deluxe|book|volume)\b/i.test(String(doc?.subtitle || doc?.rawDoc?.subtitle || ""))) {
+            entitySeedTopUpEligibleCount += 1;
+          } else {
+            registerTopupReject("single_issue_spam", title);
+            if (isEntitySeedDoc) {
+              entitySeedTopUpRejectedReasons.single_issue_spam = Number(entitySeedTopUpRejectedReasons.single_issue_spam || 0) + 1;
+              if (!entitySeedTopUpRejectedTitlesByReason.single_issue_spam) entitySeedTopUpRejectedTitlesByReason.single_issue_spam = [];
+              if (entitySeedTopUpRejectedTitlesByReason.single_issue_spam.length < 12) entitySeedTopUpRejectedTitlesByReason.single_issue_spam.push(title);
+            }
+            return false;
+          }
+        }
+        const rejectReasons = (doc?.diagnostics?.filterRejectReasons || doc?.rawDoc?.diagnostics?.filterRejectReasons || []) as string[];
+        const isRecognizableEntity = [...moodAlignedPriority, ...entitySeedPriority, ...knownGoodAnchors].some((seed) => normalizedTitle.includes(normalizeText(seed)));
+        const collectedEditionLike = /\b(tpb|omnibus|volume|vol\.|deluxe|book|collection)\b/i.test(title);
+        if (Array.isArray(rejectReasons) && rejectReasons.includes("below_shape_floor") && !(isRecognizableEntity || collectedEditionLike)) {
+          registerTopupReject("below_shape_floor_non_entity", title);
+          if (isEntitySeedDoc) {
+            entitySeedTopUpRejectedReasons.below_shape_floor_non_entity = Number(entitySeedTopUpRejectedReasons.below_shape_floor_non_entity || 0) + 1;
+            if (!entitySeedTopUpRejectedTitlesByReason.below_shape_floor_non_entity) entitySeedTopUpRejectedTitlesByReason.below_shape_floor_non_entity = [];
+            if (entitySeedTopUpRejectedTitlesByReason.below_shape_floor_non_entity.length < 12) entitySeedTopUpRejectedTitlesByReason.below_shape_floor_non_entity.push(title);
+          }
+          return false;
+        }
+        const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
+        if (!id || seenIds.has(id)) {
+          registerTopupReject("duplicate_id", title);
+          if (isEntitySeedDoc) {
+            entitySeedTopUpRejectedReasons.duplicate_id = Number(entitySeedTopUpRejectedReasons.duplicate_id || 0) + 1;
+            if (!entitySeedTopUpRejectedTitlesByReason.duplicate_id) entitySeedTopUpRejectedTitlesByReason.duplicate_id = [];
+            if (entitySeedTopUpRejectedTitlesByReason.duplicate_id.length < 12) entitySeedTopUpRejectedTitlesByReason.duplicate_id.push(title);
+          }
+          return false;
+        }
+        if (isEntitySeedDoc) entitySeedTopUpEligibleCount += 1;
+        return true;
+      }).sort((a: any, b: any) => {
+        const qa = normalizeText(String(a?.queryText || a?.rawDoc?.queryText || ""));
+        const qb = normalizeText(String(b?.queryText || b?.rawDoc?.queryText || ""));
+        const ta = normalizeText(String(a?.title || ""));
+        const tb = normalizeText(String(b?.title || ""));
+        const score = (q: string, t: string) => {
+          if (entitySeedPriority.some((seed) => q === seed || q.startsWith(seed + " ") || t.includes(seed))) return 3;
+          if (knownGoodAnchors.some((seed) => q === seed || q.startsWith(seed + " ") || t.includes(seed))) return 2;
+          if (/\b(psychological|suspense|thriller|graphic novel)\b/.test(q)) return 0;
+          return 1;
+        };
+        return score(qb, tb) - score(qa, ta);
+      });
+      topUpMergedPoolAfterQualityFiltersLength = topupPool.length;
+      topUpCandidatesConsideredLength += topupPool.length;
+      const familyCounts = new Map<string, number>();
+      for (const doc of finalRenderDocs) familyCounts.set(inferEntityFamily(doc), (familyCounts.get(inferEntityFamily(doc)) || 0) + 1);
+      const seenTitles = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || d?.rawDoc?.title || ""))).filter(Boolean));
+      for (const doc of topupPool) {
+        if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+        const franchise = finalSeriesKeyForRender(doc);
+        const family = inferEntityFamily(doc);
+        if ((familyCounts.get(family) || 0) >= 2) { topUpRejectedReasons.family_cap = Number(topUpRejectedReasons.family_cap || 0) + 1; continue; }
+        if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
+        const normalizedTitle = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+        if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
+        finalRenderDocs.push(doc);
+        topUpCandidatesAcceptedLength += 1;
+        seenIds.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
+        seenFranchises.add(franchise);
+        familyCounts.set(family, (familyCounts.get(family) || 0) + 1);
+        seenTitles.add(normalizedTitle);
+      }
+      // Second pass: if still under-filled, allow remaining entity-family docs before broad artifacts.
+      if (finalRenderDocs.length < 8) {
+        for (const doc of topupPool) {
+          if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+          const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
+          if (!id || seenIds.has(id)) continue;
+          const qa = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+          if (/\b(psychological|suspense|thriller|graphic novel)\b/.test(qa) && !entitySeedPriority.some((s) => qa.includes(s))) { topUpRejectedReasons.broad_phrase_artifact = Number(topUpRejectedReasons.broad_phrase_artifact || 0) + 1; continue; }
+          const franchise = finalSeriesKeyForRender(doc);
+          if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
+          const normalizedTitle = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+          if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
+          finalRenderDocs.push(doc);
+          topUpCandidatesAcceptedLength += 1;
+          seenIds.add(id);
+          seenTitles.add(normalizedTitle);
+        }
+      }
+    }
+  }
+  let recoveryTriggered = false;
+  let recoveryInputPoolLength = 0;
+  let recoveryEntitySeedMatches = 0;
+  const recoveryRejectedReasons: Record<string, number> = {};
+  const franchiseCapBlockedTitles: string[] = [];
+  const recoveryDiversificationAttempts: string[] = [];
+  if (includeComicVine && finalRenderDocs.length < 8) {
+    recoveryTriggered = true;
+    const entityPriority = [
+      "something is killing the children", "locke & key", "the sandman", "sweet tooth", "the walking dead", "hellboy", "black science", "descender", "runaways", "ms. marvel", "saga", "invincible",
+    ];
+    const broadPhraseQueryRe = /\b(literary science graphic novel|psychological suspense graphic novel|teen graphic novel|science fiction graphic novel|graphic horror novel)\b/i;
+    const genericBroadTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+    const pool = dedupeDocs([
+      ...(enrichedDocs as any[]),
+      ...(normalizedCandidates as any[]),
+      ...(candidateDocs as any[]),
+      ...((debugRawPool as any[]) || []),
+      ...(((comicVine as any)?.items || []).map((it: any) => it?.doc).filter(Boolean)),
+    ] as any);
+    recoveryInputPoolLength = pool.length;
+    const selected: any[] = [];
+    const seenTitles = new Set<string>();
+    const add = (doc: any) => {
+      const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+      if (!title || seenTitles.has(title)) return false;
+      if (selected.filter((d: any) => finalSeriesKeyForRender(d) === finalSeriesKeyForRender(doc)).length >= 2) return false;
+      selected.push(doc); seenTitles.add(title); return true;
+    };
+    const sorted = pool.sort((a: any, b: any) => {
+      const score = (doc: any) => {
+        const tRaw = String(doc?.title || "");
+        const t = normalizeText(tRaw);
+        const q = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+        const entityHit = entityPriority.findIndex((e) => t.includes(e) || q.includes(e));
+        let s = entityHit >= 0 ? 100 - entityHit : 20;
+        if (/\b(volume one|vol\.?\s*1|book one|book 1)\b/i.test(tRaw)) s += 12;
+        if (/\b(volume|vol\.?|book|part)\s*(seven|eight|7|8)\b/i.test(tRaw)) s -= 8;
+        if (/\b(clockworks|omega)\b/i.test(tRaw)) s -= 6;
+        if (/\bgraphic (horror|fantasy) novel\b/i.test(tRaw)) s -= 10;
+        if (/\bthe hobbit\b/i.test(tRaw) && !/\bfantasy\b/.test(q)) s -= 8;
+        if (/\b#\s*\d+\b/.test(tRaw) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(tRaw)) s -= 14;
+        if (/\b(español|french|deutsch|italiano|japanese)\b/i.test(String(doc?.subtitle || doc?.rawDoc?.subtitle || ""))) s -= 10;
+        (doc as any).entryPointRankReason = s;
+        return s;
+      };
+      return score(b) - score(a);
+    });
+    const familySeen = new Set<string>();
+    // Pass 1: diversify, max 1 per family until we have attempted broad coverage.
+    for (const doc of sorted) {
+      if (selected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+      const title = String(doc?.title || "").trim();
+      const q = String(doc?.queryText || doc?.rawDoc?.queryText || "");
+      const norm = normalizeText(title);
+      const entityHit = entityPriority.some((e) => norm.includes(e) || normalizeText(q).includes(e));
+      if (entityHit) recoveryEntitySeedMatches += 1;
+      if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) { recoveryRejectedReasons.issue_spam = (recoveryRejectedReasons.issue_spam||0)+1; continue; }
+      if (broadPhraseQueryRe.test(q) && genericBroadTitleRe.test(title)) { recoveryRejectedReasons.generic_broad_artifact = (recoveryRejectedReasons.generic_broad_artifact||0)+1; continue; }
+      if (!entityHit && broadPhraseQueryRe.test(q) && selected.filter((d: any) => broadPhraseQueryRe.test(String(d?.queryText || d?.rawDoc?.queryText || ""))).length >= 1) { recoveryRejectedReasons.broad_phrase_cap = (recoveryRejectedReasons.broad_phrase_cap||0)+1; continue; }
+      const family = finalSeriesKeyForRender(doc);
+      recoveryDiversificationAttempts.push(`${family}:${String(doc?.title || "")}`);
+      if (selected.length < 8 && familySeen.has(family)) {
+        recoveryRejectedReasons.family_diversify_hold = (recoveryRejectedReasons.family_diversify_hold||0)+1;
+        continue;
+      }
+      if (add(doc)) familySeen.add(family);
+    }
+    // Pass 2: if still short, allow up to 2 per family while maintaining quality gates.
+    if (selected.length < 8) {
+      for (const doc of sorted) {
+        if (selected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+        const family = finalSeriesKeyForRender(doc);
+        if (selected.filter((d: any) => finalSeriesKeyForRender(d) === family).length >= 2) {
+          if (franchiseCapBlockedTitles.length < 20) franchiseCapBlockedTitles.push(String(doc?.title || ""));
+          continue;
+        }
+        const title = String(doc?.title || "").trim();
+        const q = String(doc?.queryText || doc?.rawDoc?.queryText || "");
+        if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) continue;
+        if (broadPhraseQueryRe.test(q) && genericBroadTitleRe.test(title)) continue;
+        add(doc);
+      }
+    }
+    if (selected.length >= 8) finalRenderDocs = selected;
+  }
+  if (includeComicVine && finalRenderDocs.length > 0) {
+    const entitySeedAllowlist = [
+      "ms. marvel", "walking dead", "runaways", "descender", "black science", "scott pilgrim", "spider-man", "batman",
+      "something is killing the children", "sweet tooth", "sandman", "saga", "paper girls",
+    ];
+    const broadPhraseQueryRe = /\b(literary science graphic novel|psychological suspense graphic novel|teen graphic novel|science fiction graphic novel)\b/i;
+    const genericGraphicNovelTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+    const beforeFilterLength = finalRenderDocs.length;
+    finalRenderDocs = finalRenderDocs.filter((doc: any) => {
+      const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
+      const queryText = String(doc?.queryText || doc?.rawDoc?.queryText || "").trim();
+      const normalizedTitle = normalizeText(title);
+      const isEntitySeedDoc = entitySeedAllowlist.some((seed) => normalizedTitle.includes(normalizeText(seed)) || normalizeText(queryText).includes(normalizeText(seed)));
+      if (!broadPhraseQueryRe.test(queryText)) return true;
+      if (!genericGraphicNovelTitleRe.test(title)) return true;
+      return isEntitySeedDoc;
+    });
+    if (beforeFilterLength > finalRenderDocs.length) {
+      topUpRejectedReasons.generic_broad_artifact_hard_rule = Number(topUpRejectedReasons.generic_broad_artifact_hard_rule || 0) + (beforeFilterLength - finalRenderDocs.length);
+    }
+    if (finalRenderDocs.length < 8) {
+      const seen = new Set(finalRenderDocs.map((doc: any) => String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase()));
+      const entityBackfillPool = dedupeDocs((debugRawPool as any[]) || []).filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const queryText = String(doc?.queryText || doc?.rawDoc?.queryText || "").trim();
+        const normalizedTitle = normalizeText(title);
+        if (!title) return false;
+        if (seen.has(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase())) return false;
+        return entitySeedAllowlist.some((seed) => normalizedTitle.includes(normalizeText(seed)) || normalizeText(queryText).includes(normalizeText(seed)));
+      });
+      for (const doc of entityBackfillPool) {
+        if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+        const franchise = finalSeriesKeyForRender(doc);
+        if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) continue;
+        finalRenderDocs.push(doc);
+        seen.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
+      }
+    }
+  }
+  finalRenderDocs = dedupeDocs(finalRenderDocs as any).filter((doc: any, idx: number, arr: any[]) => {
+    const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+    if (!title) return true;
+    return arr.findIndex((row: any) => normalizeText(String(row?.title || row?.rawDoc?.title || "")) === title) === idx;
+  });
   const realComicVineDocsCount = finalRenderDocs.filter(
     (doc: any) => !(doc?.diagnostics as any)?.comicvineRouterEmergencyFallback
   ).length;
@@ -4772,6 +5097,7 @@ const normalizedCandidatesRaw = [
     return re ? re.test(bag) : bag.includes(keyword.replace(/_/g, " "));
   };
   if (graphicKeywordWeights.length > 0 && finalRenderDocs.length > 0) {
+    const minComicVineFinalCount = includeComicVine ? Math.min(10, Math.max(finalLimit, 8)) : finalLimit;
     const total = graphicKeywordWeights.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
     const quotas = graphicKeywordWeights.map(([k, v]) => ({
       keyword: k.replace("graphicNovel:", ""),
@@ -4796,8 +5122,195 @@ const normalizedCandidatesRaw = [
       chosenIds.add(id);
       if (chosen.length >= finalLimit) break;
     }
-    finalRenderDocs = chosen.slice(0, finalLimit);
+    finalRenderDocs = chosen.slice(0, minComicVineFinalCount);
   }
+  if (includeComicVine && finalRenderDocs.length > 0) {
+    const entitySeedPrimary = [
+      "something is killing the children", "locke & key", "the sandman", "sweet tooth", "walking dead", "hellboy", "black science", "descender", "runaways",
+      "ms. marvel",
+    ];
+    const broadPhraseQueryRe = /\b(literary science graphic novel|psychological suspense graphic novel|teen graphic novel|science fiction graphic novel|graphic horror novel)\b/i;
+    const genericBroadTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+    const isEntitySeedDoc = (doc: any) => {
+      const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+      const q = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+      return entitySeedPrimary.some((seed) => title.includes(normalizeText(seed)) || q.includes(normalizeText(seed)));
+    };
+    const isBroadPhraseDoc = (doc: any) => broadPhraseQueryRe.test(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+    const isGenericBroadArtifact = (doc: any) => genericBroadTitleRe.test(String(doc?.title || doc?.rawDoc?.title || "").trim());
+    const universe = dedupeDocs([
+      ...finalRenderDocs,
+      ...(rankedDocs as any[]),
+      ...(candidateDocs as any[]),
+      ...((debugRawPool as any[]) || []),
+    ] as any).filter((doc: any) => {
+      if (isBroadPhraseDoc(doc) && isGenericBroadArtifact(doc)) return false;
+      if (/#\s*\d+\b/.test(String(doc?.title || "")) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(String(doc?.title || ""))) return false;
+      return true;
+    });
+    const entityDocs = universe.filter((doc: any) => isEntitySeedDoc(doc));
+    const nonBroadDocs = universe.filter((doc: any) => !isBroadPhraseDoc(doc) && !isEntitySeedDoc(doc));
+    const broadDocs = universe.filter((doc: any) => isBroadPhraseDoc(doc) && !isGenericBroadArtifact(doc));
+    const targetCount = Math.min(Math.max(finalLimit, 8), 10);
+    const rebuilt: any[] = [];
+    const seenTitles = new Set<string>();
+    const addDoc = (doc: any) => {
+      const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+      if (!title || seenTitles.has(title)) return false;
+      if (rebuilt.filter((d: any) => finalSeriesKeyForRender(d) === finalSeriesKeyForRender(doc)).length >= 2) return false;
+      rebuilt.push(doc);
+      seenTitles.add(title);
+      return true;
+    };
+    for (const doc of entityDocs) { if (rebuilt.length >= targetCount) break; addDoc(doc); }
+    for (const doc of nonBroadDocs) { if (rebuilt.length >= targetCount) break; addDoc(doc); }
+    let broadUsed = 0;
+    for (const doc of broadDocs) {
+      if (rebuilt.length >= targetCount) break;
+      if (broadUsed >= 1) break;
+      if (addDoc(doc)) broadUsed += 1;
+    }
+    if (rebuilt.length >= 5) finalRenderDocs = rebuilt;
+  }
+  const anchorFranchises = [
+    "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
+  ];
+  const convertedComicVineDocsForScoring = Array.isArray((comicVine as any)?.items)
+    ? (comicVine as any).items.map((it: any) => it?.doc).filter(Boolean)
+    : [];
+  const profileTextForSeeds = normalizeText(String(tasteProfileText || ""));
+  const profileSelectedEntitySeeds =
+    /\b(horror|dark|survival|apocalypse)\b/.test(profileTextForSeeds)
+      ? ["something is killing the children", "locke & key", "walking dead", "sweet tooth"]
+      : /\b(superhero|identity|coming of age|teen hero)\b/.test(profileTextForSeeds)
+        ? ["ms. marvel", "miles morales", "runaways"]
+        : /\b(sci[- ]?fi|science fiction|idea|speculative|survival)\b/.test(profileTextForSeeds)
+          ? ["descender", "black science", "saga", "invincible"]
+          : ["sandman", "amulet", "nimona"];
+  const scoringUniverse = dedupeDocs([
+    ...finalRenderDocs,
+    ...(enrichedDocs as any[]),
+    ...(normalizedCandidates as any[]),
+    ...(candidateDocs as any[]),
+    ...((debugRawPool as any[]) || []),
+    ...(finalRankedDocsBase as any[]),
+    ...convertedComicVineDocsForScoring,
+  ] as any);
+  const scoredCandidateUniverseSources = Array.from(new Set(scoringUniverse.map((d: any) => String(d?.source || d?.rawDoc?.source || "unknown"))));
+  const scoredCandidateUniverseFranchiseRoots = Array.from(new Set(scoringUniverse.map((d: any) => finalSeriesKeyForRender(d)).filter(Boolean)));
+  const scoringPassInputCount = scoringUniverse.length;
+  let entryPointCandidatesFound = 0;
+  let entryPointCandidatesSuppressed = 0;
+  const finalSuppressedByBetterEntryPoint: string[] = [];
+  const suppressedGlobalSeedReason = /\b(horror|dark|survival|apocalypse)\b/.test(profileTextForSeeds) ? "none" : "profile_not_horror";
+  const scoredCanonicalDocs = scoringUniverse.map((doc: any) => {
+    const title = String(doc?.title || doc?.rawDoc?.title || "");
+    const subtitle = String(doc?.subtitle || doc?.rawDoc?.subtitle || "");
+    const normalizedTitle = normalizeText(`${title} ${subtitle}`);
+    const franchise = normalizeText(finalSeriesKeyForRender(doc) || "");
+    const isAnchorFranchise = anchorFranchises.some((seed) => franchise.includes(normalizeText(seed)));
+    const entryPointBoost =
+      /\b(volume one|volume 1|book one|book 1)\b/i.test(title) || /#1\b/i.test(title)
+        ? 14
+        : isAnchorFranchise && /\btpb\b/i.test(title)
+          ? 8
+          : 0;
+    if (entryPointBoost > 0) entryPointCandidatesFound += 1;
+    const lateVolumePenalty = /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(normalizedTitle) || /#(20|30|40|50|60|70|80|90)\b/.test(title) ? -16 : 0;
+    const sideStoryPenalty =
+      /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(normalizedTitle)
+        ? -22
+        : 0;
+    const genericArtifactPenalty = /^graphic horror novel\b/i.test(title) || /^graphic fantasy\b/i.test(title) || /^the graphic novel$/i.test(title.trim()) ? -20 : 0;
+    const issueFragmentPenalty = /#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title) ? -12 : 0;
+    const canonicalAnchorTitleBoost = isAnchorFranchise ? 10 : 0;
+    const isSIKTC = /\bsomething is killing the children\b/i.test(normalizedTitle);
+    const profileSeedBoost = profileSelectedEntitySeeds.some((seed) => normalizedTitle.includes(normalizeText(seed))) ? 8 : 0;
+    const globalSeedSuppression = isSIKTC && suppressedGlobalSeedReason !== "none" ? -28 : 0;
+    const priorSeriesPenalty = (routingInput.priorSeriesKeys || []).some((k) => normalizeText(String(k || "")) === franchise) ? -20 : 0;
+    const heuristicScore =
+      entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + issueFragmentPenalty + genericArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
+    const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    return {
+      ...doc,
+      score: baseScore + heuristicScore,
+      diagnostics: {
+        ...(doc?.diagnostics || {}),
+        entryPointBoost,
+        canonicalAnchorTitleBoost,
+        sideStoryPenalty,
+        issueFragmentPenalty,
+        profileSeedBoost,
+        globalSeedSuppression,
+        priorSeriesPenalty,
+        finalScore: baseScore + heuristicScore,
+      },
+    };
+  });
+  const scoringPassApplied = scoringPassInputCount > 0;
+  const scoringPassOutputCount = scoredCanonicalDocs.length;
+  const topScoredTitles = [...scoredCanonicalDocs]
+    .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
+    .slice(0, 10)
+    .map((doc: any) => ({ title: String(doc?.title || ""), score: Number(doc?.score || 0) }));
+  finalRenderDocs = scoredCanonicalDocs;
+  const scoredCandidateUniverseCount = scoringUniverse.length;
+  const candidateDiversityFloorTarget = includeComicVine ? 30 : 20;
+  const postTopUpFinalItemsLength = finalRenderDocs.length;
+  const recoveryFinalItemsLength = finalRenderDocs.length;
+  const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
+  const finalFranchiseFamilies = Array.from(new Set(finalRenderDocs.map((doc: any) => finalSeriesKeyForRender(doc)).filter(Boolean)));
+  const broadArtifactCount = finalRenderDocs.filter((doc: any) => /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(String(doc?.title || ""))).length;
+  if (finalFranchiseFamilies.length <= 2 || broadArtifactCount >= 2) {
+    recoveryRejectedReasons.post_assembly_quality_guard_rebuild = (recoveryRejectedReasons.post_assembly_quality_guard_rebuild || 0) + 1;
+  }
+  const antiCollapseSelected: any[] = [];
+  const qualityRecoveryReasons: string[] = [];
+  for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
+    const family = finalSeriesKeyForRender(doc);
+    const familyCount = antiCollapseSelected.filter((d: any) => finalSeriesKeyForRender(d) === family).length;
+    if (familyCount >= 2) continue;
+    const isSideArc = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(doc?.title || ""));
+    if (isSideArc && antiCollapseSelected.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
+    const hasVolumeOne = finalRenderDocs.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(d?.title || "")));
+    if (hasVolumeOne && (/\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(doc?.title || "")) || /\ball her monsters\b/i.test(String(doc?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
+    const hasPenalty = Number((doc?.diagnostics as any)?.sideStoryPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || /^graphic horror novel\b/i.test(String(doc?.title || "")) || /^graphic fantasy\b/i.test(String(doc?.title || ""));
+    const hasUnpenalizedAlternative = finalRenderDocs.some((d: any) => finalSeriesKeyForRender(d) !== family && Number((d?.diagnostics as any)?.sideStoryPenalty || 0) >= 0 && Number((d?.diagnostics as any)?.issueFragmentPenalty || 0) >= 0);
+    if (hasPenalty && hasUnpenalizedAlternative && antiCollapseSelected.length < 8) continue;
+    antiCollapseSelected.push(doc);
+    if (antiCollapseSelected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+  }
+  if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
+  const familyCounts = finalRenderDocs.reduce((acc: Record<string, number>, d: any) => {
+    const k = finalSeriesKeyForRender(d) || "__none__";
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  if (Object.values(familyCounts).some((n) => n >= 3)) qualityRecoveryReasons.push("franchise_overfill");
+  if (finalRenderDocs.some((d: any) => /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("side_arc_with_core_entry");
+  if (finalRenderDocs.some((d: any) => /^graphic horror novel\b/i.test(String(d?.title || "")) || /^graphic fantasy\b/i.test(String(d?.title || "")) || /^the graphic novel$/i.test(String(d?.title || "").trim()))) qualityRecoveryReasons.push("generic_artifact_present");
+  if (finalRenderDocs.some((d: any) => /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("late_volume_with_entry_available");
+  if (scoredCandidateUniverseCount < candidateDiversityFloorTarget) {
+    qualityRecoveryReasons.push("candidate_diversity_floor_not_met");
+  }
+  const qualityRecoveryTriggered = qualityRecoveryReasons.length > 0;
+  const qualityRecoveryReason = qualityRecoveryReasons.join(",");
+  const preRenderTitles = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+  const hasSIKTCVol1 = scoredCanonicalDocs.some((d: any) => /something is killing the children:\s*volume\s*1|something is killing the children:\s*volume one/i.test(String(d?.title || "")));
+  const hasMsMarvelVol1 = scoredCanonicalDocs.some((d: any) => /ms\.?\s*marvel:\s*volume\s*1|ms\.?\s*marvel:\s*volume one/i.test(String(d?.title || "")));
+  if (hasSIKTCVol1) {
+    finalRenderDocs = finalRenderDocs.filter((d: any) => !/something is killing the children:\s*volume\s*(7|8)|all her monsters/i.test(String(d?.title || "")));
+  }
+  if (hasMsMarvelVol1) {
+    finalRenderDocs = finalRenderDocs.filter((d: any) => !/ms\.?\s*marvel:\s*volume\s*(4|5)/i.test(String(d?.title || "")));
+  }
+  teenPostPassInputDocs = [...finalRenderDocs];
+  teenPostPassInputSource = "scoredRebuild";
+  finalAcceptedDocsSource = "scoredRebuild";
+  finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const scoredRebuildUsedForRender = true;
+  const renderSource = "scored_rebuild";
+  const overwrittenAfterScoredRebuild = false;
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -4805,6 +5318,7 @@ const normalizedCandidatesRaw = [
   }
   const finalItemsLength = outputItems.length;
   const finalItemsTitles = outputItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
+  const postRenderTitles = finalItemsTitles;
   const comicVineFinalScoreByTitle = finalRenderDocs
     .filter((doc:any)=>String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
     .map((doc:any)=>({ title: String(doc?.title || ""), finalScore: Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) }));
@@ -4828,7 +5342,7 @@ const normalizedCandidatesRaw = [
   if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
     console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, finalAcceptedDocsTitles });
   }
-  const finalAcceptedDocIds = finalRankedDocsBase.map((doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim()).filter(Boolean);
+  const finalAcceptedDocIds = finalRenderDocs.map((doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim()).filter(Boolean);
   const finalRejectedDocIds = Array.isArray(finalDebugSnapshot?.rejected)
     ? finalDebugSnapshot.rejected.map((row: any) => String(row?.id || row?.title || "").trim()).filter(Boolean)
     : [];
@@ -4912,6 +5426,7 @@ const normalizedCandidatesRaw = [
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
   const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
   const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
+  const returnedItemsBuiltFrom = suppressTopRecommendations ? "suppressed" : (mixedFallbackOutput ? "non_fallback_output_items" : "output_items");
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
@@ -4948,6 +5463,55 @@ const normalizedCandidatesRaw = [
     finalSelectionMode,
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength: finalOutputItems.length,
+    preTopUpFinalItemsLength,
+    topUpCandidatesConsideredLength,
+    topUpCandidatesAcceptedLength,
+    topUpRejectedReasons,
+    topUpSourceRankedDocsLength,
+    topUpSourceCandidateDocsLength,
+    topUpSourceNormalizedCandidatesLength,
+    topUpSourceEnrichedDocsLength,
+    topUpSourceDebugRawPoolLength,
+    topUpMergedPoolBeforeFiltersLength,
+    topUpMergedPoolAfterDedupeLength,
+    topUpMergedPoolAfterQualityFiltersLength,
+    topUpQualityRejectedReasons,
+    topUpQualityRejectedTitlesByReason,
+    entitySeedConvertedCount,
+    entitySeedTopUpEligibleCount,
+    entitySeedTopUpRejectedReasons,
+    entitySeedTopUpRejectedTitlesByReason,
+    postTopUpFinalItemsLength,
+    recoveryTriggered,
+    recoveryInputPoolLength,
+    recoveryEntitySeedMatches,
+    recoveryRejectedReasons,
+    recoveryFinalItemsLength,
+    countContractSatisfied,
+    scoringPassApplied,
+    scoringPassInputCount,
+    scoringPassOutputCount,
+    topScoredTitles,
+    entryPointCandidatesFound,
+    entryPointCandidatesSuppressed,
+    qualityRecoveryTriggered,
+    qualityRecoveryReason,
+    finalSuppressedByBetterEntryPoint,
+    scoredRebuildUsedForRender,
+    renderSource,
+    preRenderTitles,
+    postRenderTitles,
+    overwrittenAfterScoredRebuild,
+    scoredCandidateUniverseCount,
+    scoredCandidateUniverseSources,
+    scoredCandidateUniverseFranchiseRoots,
+    selectedFranchiseRoots: Array.from(new Set(finalRenderDocs.map((d: any) => finalSeriesKeyForRender(d)).filter(Boolean))),
+    suppressedGlobalSeedReason,
+    profileSelectedEntitySeeds,
+    finalFranchiseFamilies,
+    franchiseCapBlockedTitles,
+    recoveryDiversificationAttempts,
+    returnedItemsBuiltFrom,
     teenPostPassOutputTitles,
     teenPostPassRejectedTitles,
     teenPostPassRejectReasons,
