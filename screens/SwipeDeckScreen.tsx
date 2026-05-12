@@ -2113,6 +2113,7 @@ function handleLeft() {
       `comicVineDocConversionSuccessCount:${Number(lastDebugGcdDispatchTrace?.comicVineDocConversionSuccessCount || 0)}`,
       `comicVineDocConversionDropReasons:${JSON.stringify(lastDebugGcdDispatchTrace?.comicVineDocConversionDropReasons || {})}`,
       `comicVineConvertedDocTitles:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineConvertedDocTitles) && lastDebugGcdDispatchTrace.comicVineConvertedDocTitles.length ? lastDebugGcdDispatchTrace.comicVineConvertedDocTitles.join(" | ") : "(none)"}`,
+      `comicVineTitleMergeDebug:${JSON.stringify(lastDebugGcdDispatchTrace?.comicVineTitleMergeDebug || [])}`,
       `comicVineContentEmptyDropCount:${Number(lastDebugGcdDispatchTrace?.comicVineContentEmptyDropCount || 0)}`,
       `comicVineCanonicalEmptyDropCount:${Number(lastDebugGcdDispatchTrace?.comicVineCanonicalEmptyDropCount || 0)}`,
       `comicVineFinalEmptyDropCount:${Number(lastDebugGcdDispatchTrace?.comicVineFinalEmptyDropCount || 0)}`,

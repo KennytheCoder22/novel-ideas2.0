@@ -4491,6 +4491,7 @@ const normalizedCandidatesRaw = [
   const comicVineDocConversionSuccessCount = Number((comicVine as any)?.comicVineDocConversionSuccessCount || 0);
   const comicVineDocConversionDropReasons = (comicVine as any)?.comicVineDocConversionDropReasons || {};
   const comicVineConvertedDocTitles = Array.isArray((comicVine as any)?.comicVineConvertedDocTitles) ? (comicVine as any).comicVineConvertedDocTitles : [];
+  const comicVineTitleMergeDebug = Array.isArray((comicVine as any)?.comicVineTitleMergeDebug) ? (comicVine as any).comicVineTitleMergeDebug : [];
   const comicVineContentEmptyDropCount = Number((comicVine as any)?.comicVineContentEmptyDropCount || 0);
   const comicVineCanonicalEmptyDropCount = Number((comicVine as any)?.comicVineCanonicalEmptyDropCount || 0);
   const comicVineFinalEmptyDropCount = Number((comicVine as any)?.comicVineFinalEmptyDropCount || 0);
@@ -4565,6 +4566,7 @@ const normalizedCandidatesRaw = [
     comicVineDocConversionSuccessCount,
     comicVineDocConversionDropReasons,
     comicVineConvertedDocTitles,
+    comicVineTitleMergeDebug,
     comicVineContentEmptyDropCount,
     comicVineCanonicalEmptyDropCount,
     comicVineFinalEmptyDropCount,
