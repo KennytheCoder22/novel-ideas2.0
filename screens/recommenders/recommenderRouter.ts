@@ -4611,9 +4611,9 @@ const normalizedCandidatesRaw = [
   ) {
     teenPostPassInputDocs = [...finalRankedDocsBase];
   }
-  const teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
-  const finalAcceptedDocsSource = "finalRankedDocsBase";
-  const finalAcceptedDocsTitles = deterministicGuardedPool.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  let teenPostPassInputSource = finalRankedDocsBase.length > 0 ? "finalRankedDocsBase" : "rankedDocs";
+  let finalAcceptedDocsSource = "finalRankedDocsBase";
+  let finalAcceptedDocsTitles = deterministicGuardedPool.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseTitles = finalRankedDocsBase.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const rankedDocsTitles = rankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalRankedDocsBaseLength = finalRankedDocsBase.length;
@@ -5267,6 +5267,22 @@ const normalizedCandidatesRaw = [
   if (finalRenderDocs.some((d: any) => /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("late_volume_with_entry_available");
   const qualityRecoveryTriggered = qualityRecoveryReasons.length > 0;
   const qualityRecoveryReason = qualityRecoveryReasons.join(",");
+  const preRenderTitles = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+  const hasSIKTCVol1 = scoredCanonicalDocs.some((d: any) => /something is killing the children:\s*volume\s*1|something is killing the children:\s*volume one/i.test(String(d?.title || "")));
+  const hasMsMarvelVol1 = scoredCanonicalDocs.some((d: any) => /ms\.?\s*marvel:\s*volume\s*1|ms\.?\s*marvel:\s*volume one/i.test(String(d?.title || "")));
+  if (hasSIKTCVol1) {
+    finalRenderDocs = finalRenderDocs.filter((d: any) => !/something is killing the children:\s*volume\s*(7|8)|all her monsters/i.test(String(d?.title || "")));
+  }
+  if (hasMsMarvelVol1) {
+    finalRenderDocs = finalRenderDocs.filter((d: any) => !/ms\.?\s*marvel:\s*volume\s*(4|5)/i.test(String(d?.title || "")));
+  }
+  teenPostPassInputDocs = [...finalRenderDocs];
+  teenPostPassInputSource = "scoredRebuild";
+  finalAcceptedDocsSource = "scoredRebuild";
+  finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const scoredRebuildUsedForRender = true;
+  const renderSource = "scored_rebuild";
+  const overwrittenAfterScoredRebuild = false;
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -5274,6 +5290,7 @@ const normalizedCandidatesRaw = [
   }
   const finalItemsLength = outputItems.length;
   const finalItemsTitles = outputItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
+  const postRenderTitles = finalItemsTitles;
   const comicVineFinalScoreByTitle = finalRenderDocs
     .filter((doc:any)=>String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
     .map((doc:any)=>({ title: String(doc?.title || ""), finalScore: Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) }));
@@ -5297,7 +5314,7 @@ const normalizedCandidatesRaw = [
   if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
     console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, finalAcceptedDocsTitles });
   }
-  const finalAcceptedDocIds = finalRankedDocsBase.map((doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim()).filter(Boolean);
+  const finalAcceptedDocIds = finalRenderDocs.map((doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.title || "").trim()).filter(Boolean);
   const finalRejectedDocIds = Array.isArray(finalDebugSnapshot?.rejected)
     ? finalDebugSnapshot.rejected.map((row: any) => String(row?.id || row?.title || "").trim()).filter(Boolean)
     : [];
@@ -5452,6 +5469,11 @@ const normalizedCandidatesRaw = [
     qualityRecoveryTriggered,
     qualityRecoveryReason,
     finalSuppressedByBetterEntryPoint,
+    scoredRebuildUsedForRender,
+    renderSource,
+    preRenderTitles,
+    postRenderTitles,
+    overwrittenAfterScoredRebuild,
     finalFranchiseFamilies,
     franchiseCapBlockedTitles,
     recoveryDiversificationAttempts,
