@@ -101,6 +101,12 @@ export type RecommendationResult = {
   postFinalShapingCount?: number;
   finalRecommenderInputCount?: number;
   stageDropReasons?: Record<string, Record<string, number>>;
+  preTopUpFinalItemsLength?: number;
+  topUpCandidatesConsideredLength?: number;
+  topUpCandidatesAcceptedLength?: number;
+  topUpRejectedReasons?: Record<string, number>;
+  postTopUpFinalItemsLength?: number;
+  returnedItemsBuiltFrom?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
   fallbackSource?: string;

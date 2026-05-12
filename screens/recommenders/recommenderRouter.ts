@@ -4708,6 +4708,10 @@ const normalizedCandidatesRaw = [
       : 3;
   const finalSeriesCapResult = applyFinalSeriesCap(saturatedFinalRenderDocsBase, finalSeriesCap);
   let finalRenderDocs = finalSeriesCapResult.kept;
+  const preTopUpFinalItemsLength = finalRenderDocs.length;
+  let topUpCandidatesConsideredLength = 0;
+  let topUpCandidatesAcceptedLength = 0;
+  const topUpRejectedReasons: Record<string, number> = {};
   if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
     const seriesCounts = new Map<string, number>();
     for (const doc of finalRenderDocs) {
@@ -4784,15 +4788,17 @@ const normalizedCandidatesRaw = [
         };
         return score(qb, tb) - score(qa, ta);
       });
+      topUpCandidatesConsideredLength += topupPool.length;
       const familyCounts = new Map<string, number>();
       for (const doc of finalRenderDocs) familyCounts.set(inferEntityFamily(doc), (familyCounts.get(inferEntityFamily(doc)) || 0) + 1);
       for (const doc of topupPool) {
         if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
         const franchise = finalSeriesKeyForRender(doc);
         const family = inferEntityFamily(doc);
-        if ((familyCounts.get(family) || 0) >= 2) continue;
-        if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) continue;
+        if ((familyCounts.get(family) || 0) >= 2) { topUpRejectedReasons.family_cap = Number(topUpRejectedReasons.family_cap || 0) + 1; continue; }
+        if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
         finalRenderDocs.push(doc);
+        topUpCandidatesAcceptedLength += 1;
         seenIds.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
         seenFranchises.add(franchise);
         familyCounts.set(family, (familyCounts.get(family) || 0) + 1);
@@ -4804,10 +4810,11 @@ const normalizedCandidatesRaw = [
           const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
           if (!id || seenIds.has(id)) continue;
           const qa = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
-          if (/\b(psychological|suspense|thriller|graphic novel)\b/.test(qa) && !entitySeedPriority.some((s) => qa.includes(s))) continue;
+          if (/\b(psychological|suspense|thriller|graphic novel)\b/.test(qa) && !entitySeedPriority.some((s) => qa.includes(s))) { topUpRejectedReasons.broad_phrase_artifact = Number(topUpRejectedReasons.broad_phrase_artifact || 0) + 1; continue; }
           const franchise = finalSeriesKeyForRender(doc);
-          if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) continue;
+          if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
           finalRenderDocs.push(doc);
+          topUpCandidatesAcceptedLength += 1;
           seenIds.add(id);
         }
       }
@@ -4878,6 +4885,7 @@ const normalizedCandidatesRaw = [
     return re ? re.test(bag) : bag.includes(keyword.replace(/_/g, " "));
   };
   if (graphicKeywordWeights.length > 0 && finalRenderDocs.length > 0) {
+    const minComicVineFinalCount = includeComicVine ? Math.min(10, Math.max(finalLimit, 8)) : finalLimit;
     const total = graphicKeywordWeights.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
     const quotas = graphicKeywordWeights.map(([k, v]) => ({
       keyword: k.replace("graphicNovel:", ""),
@@ -4902,8 +4910,9 @@ const normalizedCandidatesRaw = [
       chosenIds.add(id);
       if (chosen.length >= finalLimit) break;
     }
-    finalRenderDocs = chosen.slice(0, finalLimit);
+    finalRenderDocs = chosen.slice(0, minComicVineFinalCount);
   }
+  const postTopUpFinalItemsLength = finalRenderDocs.length;
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -5018,6 +5027,7 @@ const normalizedCandidatesRaw = [
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
   const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
   const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
+  const returnedItemsBuiltFrom = suppressTopRecommendations ? "suppressed" : (mixedFallbackOutput ? "non_fallback_output_items" : "output_items");
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
@@ -5054,6 +5064,12 @@ const normalizedCandidatesRaw = [
     finalSelectionMode,
     finalAcceptedDocsLength,
     renderedTopRecommendationsLength: finalOutputItems.length,
+    preTopUpFinalItemsLength,
+    topUpCandidatesConsideredLength,
+    topUpCandidatesAcceptedLength,
+    topUpRejectedReasons,
+    postTopUpFinalItemsLength,
+    returnedItemsBuiltFrom,
     teenPostPassOutputTitles,
     teenPostPassRejectedTitles,
     teenPostPassRejectReasons,
