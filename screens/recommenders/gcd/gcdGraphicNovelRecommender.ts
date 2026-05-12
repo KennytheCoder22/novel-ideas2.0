@@ -203,6 +203,18 @@ function normalizeFranchiseKey(doc: RecommendationDoc): string {
   return normalized;
 }
 
+function detectSuperheroFamilyKey(doc: RecommendationDoc): string | null {
+  const normalized = normalizeText(String(doc?.series || doc?.title || ""));
+  if (/\bteen titans|new teen titans|titans\b/.test(normalized)) return "titans_family";
+  if (/\byoung justice\b/.test(normalized)) return "young_justice_family";
+  if (/\bms\.?\s*marvel|kamala\b/.test(normalized)) return "ms_marvel_family";
+  if (/\bspider[-\s]?man|miles morales|peter parker\b/.test(normalized)) return "spider_family";
+  if (/\bbatman|batgirl|nightwing|robin\b/.test(normalized)) return "bat_family";
+  if (/\bguardians of the galaxy|guardians\b/.test(normalized)) return "guardians_family";
+  if (/\binvincible\b/.test(normalized)) return "invincible_family";
+  return null;
+}
+
 function shapeComicVineFinalDocs(docs: RecommendationDoc[], finalLimit: number): RecommendationDoc[] {
   const collectionMarkerRe = /\b(vol\.?|volume|tpb|trade paperback|collection|complete collection|book one|season one|omnibus|deluxe|saga|origins)\b/;
   const noveltyRe = /\b(go!|on strike|valenteen|super-titans|kinderspiele|cry for justice)\b/i;
@@ -916,7 +928,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ...facetQueries,
     ...sessionFitQueries,
   ].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
-  const superheroEntityRe = /^(ms\.?\s*marvel|batman|spider-man|miles morales|teen titans|young justice)(\b| )/i;
+  const superheroEntityRe = /^(ms\.?\s*marvel|batman|spider-man|miles morales|teen titans|young justice|guardians of the galaxy|invincible)(\b| )/i;
   const suppressedSuperheroSeedCount = suppressionSignals.superheroSuppressionActive
     ? allQueries.filter((q) => superheroEntityRe.test(normalizeText(q))).length
     : 0;
@@ -1164,6 +1176,35 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         if (docs.length >= 2) break;
         docs.push(candidate);
       }
+    }
+  }
+
+  const weakSuperheroEvidence = suppressionSignals.superheroSuppressionActive || suppressionSignals.superheroStrength <= 0;
+  const queryDerivedDocs = docs.filter((d: any) => !String(d?.source || "").includes("fallback"));
+  const superheroFamilies = Array.from(new Set(queryDerivedDocs.map((d) => detectSuperheroFamilyKey(d)).filter(Boolean)));
+  const superheroOnlyCollapse = queryDerivedDocs.length > 0 && superheroFamilies.length === 1 && queryDerivedDocs.every((d) => Boolean(detectSuperheroFamilyKey(d)));
+  if (weakSuperheroEvidence && superheroOnlyCollapse) {
+    const nonSuperheroBackfillAnchors = [
+      "Saga",
+      "Paper Girls",
+      "Descender",
+      "Black Science",
+      "Sweet Tooth",
+      "Locke & Key",
+      "The Sandman",
+      "Something is Killing the Children",
+      "Nimona",
+      "Amulet",
+      "Bone",
+      "Monstress",
+    ];
+    docs.length = 0;
+    seen.clear();
+    for (const q of nonSuperheroBackfillAnchors) {
+      if (docs.length >= Math.min(12, finalLimit)) break;
+      const probe = await fetchDocsForQuery(q, 1200, timeoutMs, perAnchorFetchLimit, docs, seen);
+      comicVineFetchResults.push({ query: q, status: probe.rawCount > 0 ? "ok" : probe.error ? "error" : "api_empty", rawCount: probe.rawCount, acceptedCount: probe.acceptedCount, rejectedCount: probe.rejectedCount, topTitles: probe.topTitles, rejectedReasons: probe.rejectedReasons, error: probe.error });
+      comicVineQueriesActuallyFetched.push(q);
     }
   }
 
