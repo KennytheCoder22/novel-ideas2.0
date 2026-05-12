@@ -423,6 +423,22 @@ function buildEntitySeedQueriesFromGraphicKeywords(tagCounts: TagCounts | undefi
   return Array.from(new Set(out.map((q) => stripDanglingQuotes(String(q || "").trim().toLowerCase())).filter(Boolean)));
 }
 
+function computeSuperheroSuppressionSignals(tagCounts: TagCounts | undefined): { superheroStrength: number; nonSuperheroStrength: number; superheroSuppressionActive: boolean } {
+  const superheroStrength =
+    Number(tagCounts?.["facet:superhero"] || 0) +
+    Number(tagCounts?.["genre:superheroes"] || 0) +
+    Number(tagCounts?.["graphicNovel:superhero"] || 0) +
+    Number(tagCounts?.["source_universe:marvel"] || 0) +
+    Number(tagCounts?.["source_universe:dc"] || 0);
+  const nonSuperheroStrength =
+    Number(tagCounts?.["graphicNovel:fantasy"] || 0) +
+    Number(tagCounts?.["graphicNovel:mystery"] || 0) +
+    Number(tagCounts?.["graphicNovel:dystopian"] || 0) +
+    Number(tagCounts?.["graphicNovel:horror"] || 0) +
+    Number(tagCounts?.["graphicNovel:adventure"] || 0);
+  return { superheroStrength, nonSuperheroStrength, superheroSuppressionActive: superheroStrength <= 0 && nonSuperheroStrength >= 2 };
+}
+
 function buildComicVineRungs(queries: string[]): Array<{ rung: number; query: string; audience: string; themes: string[] }> {
   return queries.map((query, i) => ({
     rung: i,
@@ -889,6 +905,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const bucketQueries = Array.isArray((input as any)?.bucketPlan?.queries) ? (input as any).bucketPlan.queries.map((q:any)=>String(q||"" ).trim()).filter(Boolean) : [];
   const querySeed = bucketPreview || bucketQueries[0] || "";
   const seedClean = cleanComicVineSeedQuery(querySeed);
+  const suppressionSignals = computeSuperheroSuppressionSignals(input.tagCounts);
   const anchorSelection = selectComicVineAnchors(input.tagCounts);
   const facetQueries = buildComicQueriesFromFacets(input.tagCounts);
   const sessionFitQueries = buildSessionFitComicVineQueries(input.tagCounts, seedClean.cleaned);
@@ -899,11 +916,18 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ...facetQueries,
     ...sessionFitQueries,
   ].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
+  const superheroEntityRe = /^(ms\.?\s*marvel|batman|spider-man|miles morales|teen titans|young justice)(\b| )/i;
+  const suppressedSuperheroSeedCount = suppressionSignals.superheroSuppressionActive
+    ? allQueries.filter((q) => superheroEntityRe.test(normalizeText(q))).length
+    : 0;
+  const suppressionFilteredQueries = suppressionSignals.superheroSuppressionActive
+    ? allQueries.filter((q) => !superheroEntityRe.test(normalizeText(q)))
+    : allQueries;
   const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
   const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$|^(teen|psychological).*(graphic novel)$/i;
-  const anchorQueries = allQueries.filter((q) => knownAnchorPattern.test(q) || anchorSelection.anchors.includes(q));
-  const genericQueries = allQueries.filter((q) => genericPattern.test(normalizeText(q)));
-  const otherQueries = allQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
+  const anchorQueries = suppressionFilteredQueries.filter((q) => knownAnchorPattern.test(q) || anchorSelection.anchors.includes(q));
+  const genericQueries = suppressionFilteredQueries.filter((q) => genericPattern.test(normalizeText(q)));
+  const otherQueries = suppressionFilteredQueries.filter((q) => !anchorQueries.includes(q) && !genericQueries.includes(q));
   const baseAnchors = anchorQueries.slice(0, MAX_COMICVINE_ANCHORS);
   const followupTemplates = ["graphic novel", "tpb", "collected edition", "deluxe edition"];
   const MAX_FOLLOWUPS_PER_ANCHOR = 1;
@@ -1232,6 +1256,16 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     items: shapedFinalDocs.map((doc) => ({ kind: "open_library", doc })),
     debugRawFetchedCount: docs.length,
     comicVineQueriesGenerated: queriesToTry,
+    superheroStrength: suppressionSignals.superheroStrength,
+    nonSuperheroStrength: suppressionSignals.nonSuperheroStrength,
+    superheroSuppressionActive: suppressionSignals.superheroSuppressionActive,
+    selectedGraphicLanes: [anchorSelection.lane],
+    selectedComicVineAnchors: anchorSelection.anchors,
+    graphicNovelKeywordWeights: Object.entries(input.tagCounts || {}).filter(([k, v]) => k.startsWith("graphicNovel:") && Number(v) > 0),
+    suppressedSuperheroSeedCount,
+    finalEntitySeedQueriesByBucket: Object.fromEntries(
+      Object.entries(GRAPHIC_NOVEL_SEEDS).map(([bucket, seeds]) => [bucket, entitySeedQueries.filter((q) => seeds.some((s) => normalizeText(q).startsWith(normalizeText(s))))])
+    ),
     comicVineRungsBuilt,
     comicVineQueriesActuallyFetched,
     comicVineBaseAnchorsFetched: baseAnchorsFetched,
