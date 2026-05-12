@@ -4744,15 +4744,37 @@ const normalizedCandidatesRaw = [
     if ((distinctFranchises.size <= 1 || finalRenderDocs.length < 8) && includeComicVine) {
       const seenIds = new Set(finalRenderDocs.map((d: any) => String(d?.sourceId || d?.key || d?.title || "").toLowerCase()));
       const seenFranchises = new Set(finalRenderDocs.map((d: any) => finalSeriesKeyForRender(d)));
+      const entitySeedPriority = [
+        "ms. marvel", "spider-man", "walking dead", "descender", "black science", "runaways", "batman", "teen titans", "invincible", "guardians of the galaxy", "miles morales",
+      ];
+      const knownGoodAnchors = [
+        "saga", "paper girls", "locke & key", "the sandman", "something is killing the children", "sweet tooth", "nimona", "amulet", "bone", "monstress",
+      ];
+      const allowlistForGenericTitle = new Set([...knownGoodAnchors, ...entitySeedPriority].map((v) => normalizeText(v)));
+      const genericBroadTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
       const topupPool = dedupeDocs((debugRawPool as any[]) || []).filter((doc: any) => {
         const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
         if (!source.includes("comicvine")) return false;
         const title = String(doc?.title || "").trim();
         if (!title) return false;
+        const normalizedTitle = normalizeText(title);
+        if (genericBroadTitleRe.test(title) && !Array.from(allowlistForGenericTitle).some((needle) => normalizedTitle.includes(needle))) return false;
         if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe)\b/i.test(title)) return false;
         const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
         if (!id || seenIds.has(id)) return false;
         return true;
+      }).sort((a: any, b: any) => {
+        const qa = normalizeText(String(a?.queryText || a?.rawDoc?.queryText || ""));
+        const qb = normalizeText(String(b?.queryText || b?.rawDoc?.queryText || ""));
+        const ta = normalizeText(String(a?.title || ""));
+        const tb = normalizeText(String(b?.title || ""));
+        const score = (q: string, t: string) => {
+          if (entitySeedPriority.some((seed) => q === seed || q.startsWith(seed + " ") || t.includes(seed))) return 3;
+          if (knownGoodAnchors.some((seed) => q === seed || q.startsWith(seed + " ") || t.includes(seed))) return 2;
+          if (/\b(psychological|suspense|thriller|graphic novel)\b/.test(q)) return 0;
+          return 1;
+        };
+        return score(qb, tb) - score(qa, ta);
       });
       for (const doc of topupPool) {
         if (finalRenderDocs.length >= Math.min(finalLimit, 10)) break;
