@@ -4720,6 +4720,8 @@ const normalizedCandidatesRaw = [
   let topUpMergedPoolBeforeFiltersLength = 0;
   let topUpMergedPoolAfterDedupeLength = 0;
   let topUpMergedPoolAfterQualityFiltersLength = 0;
+  const topUpQualityRejectedReasons: Record<string, number> = {};
+  const topUpQualityRejectedTitlesByReason: Record<string, string[]> = {};
   if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
     const seriesCounts = new Map<string, number>();
     for (const doc of finalRenderDocs) {
@@ -4791,21 +4793,28 @@ const normalizedCandidatesRaw = [
       topUpMergedPoolBeforeFiltersLength = topupSourceRaw.length;
       const topupSources = dedupeDocs(topupSourceRaw as any);
       topUpMergedPoolAfterDedupeLength = topupSources.length;
+      const registerTopupReject = (reason: string, title: string) => {
+        topUpQualityRejectedReasons[reason] = Number(topUpQualityRejectedReasons[reason] || 0) + 1;
+        if (!topUpQualityRejectedTitlesByReason[reason]) topUpQualityRejectedTitlesByReason[reason] = [];
+        if (title && topUpQualityRejectedTitlesByReason[reason].length < 12) topUpQualityRejectedTitlesByReason[reason].push(title);
+      };
       const topupPool = topupSources.filter((doc: any) => {
         const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
-        if (!source.includes("comicvine")) return false;
+        if (!source.includes("comicvine")) { registerTopupReject("non_comicvine_source", String(doc?.title || "")); return false; }
         const title = String(doc?.title || "").trim();
-        if (!title) return false;
+        if (!title) { registerTopupReject("missing_title", "(untitled)"); return false; }
         const normalizedTitle = normalizeText(title);
-        if (genericBroadTitleRe.test(title) && !Array.from(allowlistForGenericTitle).some((needle) => normalizedTitle.includes(needle))) return false;
-        if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe)\b/i.test(title)) return false;
+        if (genericBroadTitleRe.test(title) && !Array.from(allowlistForGenericTitle).some((needle) => normalizedTitle.includes(needle))) { registerTopupReject("generic_broad_artifact", title); return false; }
+        if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) { registerTopupReject("single_issue_spam", title); return false; }
         const rejectReasons = (doc?.diagnostics?.filterRejectReasons || doc?.rawDoc?.diagnostics?.filterRejectReasons || []) as string[];
-        if (Array.isArray(rejectReasons) && rejectReasons.includes("below_shape_floor")) {
-          const isRecognizableEntity = [...entitySeedPriority, ...knownGoodAnchors].some((seed) => normalizedTitle.includes(normalizeText(seed)));
-          if (!isRecognizableEntity) return false;
+        const isRecognizableEntity = [...moodAlignedPriority, ...entitySeedPriority, ...knownGoodAnchors].some((seed) => normalizedTitle.includes(normalizeText(seed)));
+        const collectedEditionLike = /\b(tpb|omnibus|volume|vol\.|deluxe|book|collection)\b/i.test(title);
+        if (Array.isArray(rejectReasons) && rejectReasons.includes("below_shape_floor") && !(isRecognizableEntity || collectedEditionLike)) {
+          registerTopupReject("below_shape_floor_non_entity", title);
+          return false;
         }
         const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
-        if (!id || seenIds.has(id)) return false;
+        if (!id || seenIds.has(id)) { registerTopupReject("duplicate_id", title); return false; }
         return true;
       }).sort((a: any, b: any) => {
         const qa = normalizeText(String(a?.queryText || a?.rawDoc?.queryText || ""));
@@ -5121,6 +5130,8 @@ const normalizedCandidatesRaw = [
     topUpMergedPoolBeforeFiltersLength,
     topUpMergedPoolAfterDedupeLength,
     topUpMergedPoolAfterQualityFiltersLength,
+    topUpQualityRejectedReasons,
+    topUpQualityRejectedTitlesByReason,
     postTopUpFinalItemsLength,
     returnedItemsBuiltFrom,
     teenPostPassOutputTitles,

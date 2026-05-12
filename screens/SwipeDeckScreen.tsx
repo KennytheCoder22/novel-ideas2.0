@@ -2067,6 +2067,8 @@ function handleLeft() {
       `topUpMergedPoolBeforeFiltersLength:${Number((lastRecommendationResult as any)?.topUpMergedPoolBeforeFiltersLength || 0)}`,
       `topUpMergedPoolAfterDedupeLength:${Number((lastRecommendationResult as any)?.topUpMergedPoolAfterDedupeLength || 0)}`,
       `topUpMergedPoolAfterQualityFiltersLength:${Number((lastRecommendationResult as any)?.topUpMergedPoolAfterQualityFiltersLength || 0)}`,
+      `topUpQualityRejectedReasons:${JSON.stringify((lastRecommendationResult as any)?.topUpQualityRejectedReasons || {})}`,
+      `topUpQualityRejectedTitlesByReason:${JSON.stringify((lastRecommendationResult as any)?.topUpQualityRejectedTitlesByReason || {})}`,
       `topUpRejectedReasons:${JSON.stringify((lastRecommendationResult as any)?.topUpRejectedReasons || {})}`,
       `postTopUpFinalItemsLength:${Number((lastRecommendationResult as any)?.postTopUpFinalItemsLength || 0)}`,
       `returnedItemsBuiltFrom:${String((lastRecommendationResult as any)?.returnedItemsBuiltFrom || "unknown")}`,

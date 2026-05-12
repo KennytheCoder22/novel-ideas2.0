@@ -113,6 +113,8 @@ export type RecommendationResult = {
   topUpMergedPoolBeforeFiltersLength?: number;
   topUpMergedPoolAfterDedupeLength?: number;
   topUpMergedPoolAfterQualityFiltersLength?: number;
+  topUpQualityRejectedReasons?: Record<string, number>;
+  topUpQualityRejectedTitlesByReason?: Record<string, string[]>;
   postTopUpFinalItemsLength?: number;
   returnedItemsBuiltFrom?: string;
   usedEmergencyFallback?: boolean;
