@@ -5172,6 +5172,53 @@ const normalizedCandidatesRaw = [
     }
     if (rebuilt.length >= 5) finalRenderDocs = rebuilt;
   }
+  const anchorFranchises = [
+    "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
+  ];
+  const scoringPassInputCount = finalRenderDocs.length;
+  const scoredCanonicalDocs = finalRenderDocs.map((doc: any) => {
+    const title = String(doc?.title || doc?.rawDoc?.title || "");
+    const subtitle = String(doc?.subtitle || doc?.rawDoc?.subtitle || "");
+    const normalizedTitle = normalizeText(`${title} ${subtitle}`);
+    const franchise = normalizeText(finalSeriesKeyForRender(doc) || "");
+    const isAnchorFranchise = anchorFranchises.some((seed) => franchise.includes(normalizeText(seed)));
+    const entryPointBoost =
+      /\b(volume one|volume 1|book one|book 1)\b/i.test(title) || /#1\b/i.test(title)
+        ? 14
+        : isAnchorFranchise && /\btpb\b/i.test(title)
+          ? 8
+          : 0;
+    const lateVolumePenalty = /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(normalizedTitle) || /#(20|30|40|50|60|70|80|90)\b/.test(title) ? -16 : 0;
+    const sideStoryPenalty =
+      /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(normalizedTitle)
+        ? -22
+        : 0;
+    const genericArtifactPenalty = /^graphic horror novel\b/i.test(title) || /^graphic fantasy\b/i.test(title) || /^the graphic novel$/i.test(title.trim()) ? -20 : 0;
+    const issueFragmentPenalty = /#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title) ? -12 : 0;
+    const canonicalAnchorTitleBoost = isAnchorFranchise ? 10 : 0;
+    const heuristicScore =
+      entryPointBoost + canonicalAnchorTitleBoost + sideStoryPenalty + issueFragmentPenalty + genericArtifactPenalty + lateVolumePenalty;
+    const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    return {
+      ...doc,
+      score: baseScore + heuristicScore,
+      diagnostics: {
+        ...(doc?.diagnostics || {}),
+        entryPointBoost,
+        canonicalAnchorTitleBoost,
+        sideStoryPenalty,
+        issueFragmentPenalty,
+        finalScore: baseScore + heuristicScore,
+      },
+    };
+  });
+  const scoringPassApplied = scoringPassInputCount > 0;
+  const scoringPassOutputCount = scoredCanonicalDocs.length;
+  const topScoredTitles = [...scoredCanonicalDocs]
+    .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
+    .slice(0, 10)
+    .map((doc: any) => ({ title: String(doc?.title || ""), score: Number(doc?.score || 0) }));
+  finalRenderDocs = scoredCanonicalDocs;
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const recoveryFinalItemsLength = finalRenderDocs.length;
   const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
@@ -5180,6 +5227,19 @@ const normalizedCandidatesRaw = [
   if (finalFranchiseFamilies.length <= 2 || broadArtifactCount >= 2) {
     recoveryRejectedReasons.post_assembly_quality_guard_rebuild = (recoveryRejectedReasons.post_assembly_quality_guard_rebuild || 0) + 1;
   }
+  const antiCollapseSelected: any[] = [];
+  for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
+    const family = finalSeriesKeyForRender(doc);
+    const familyCount = antiCollapseSelected.filter((d: any) => finalSeriesKeyForRender(d) === family).length;
+    if (familyCount >= 2) continue;
+    const isSideArc = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(doc?.title || ""));
+    if (isSideArc && antiCollapseSelected.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")))) continue;
+    const hasVolumeOne = finalRenderDocs.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(d?.title || "")));
+    if (hasVolumeOne && /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(doc?.title || ""))) continue;
+    antiCollapseSelected.push(doc);
+    if (antiCollapseSelected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+  }
+  if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -5356,6 +5416,10 @@ const normalizedCandidatesRaw = [
     recoveryRejectedReasons,
     recoveryFinalItemsLength,
     countContractSatisfied,
+    scoringPassApplied,
+    scoringPassInputCount,
+    scoringPassOutputCount,
+    topScoredTitles,
     finalFranchiseFamilies,
     franchiseCapBlockedTitles,
     recoveryDiversificationAttempts,
