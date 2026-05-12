@@ -1134,6 +1134,9 @@ if (family === "speculative") {
       String((doc as any)?.source || "").toLowerCase().includes("openlibrary") ||
       String((doc as any)?.engine || "").toLowerCase().includes("openlibrary") ||
       String((doc as any)?.laneKind || "").toLowerCase() === "ol-backfill";
+    const isComicVineLikeDoc =
+      String((doc as any)?.source || "").toLowerCase().includes("comicvine") ||
+      String((doc as any)?.engine || "").toLowerCase().includes("comicvine");
 
     const missingOrLowQualityCover =
       !Boolean((doc as any)?.hasCover) &&
@@ -1143,8 +1146,11 @@ if (family === "speculative") {
       ratingsCount === 0 &&
       !legitAuthority;
 
-    if (missingOrLowQualityCover) {
+    if (missingOrLowQualityCover && !isComicVineLikeDoc) {
       diagnostics.rejectReasons.push("missing_or_low_quality_cover");
+    } else if (missingOrLowQualityCover && isComicVineLikeDoc) {
+      diagnostics.passedChecks.push("soft_missing_cover_comicvine");
+      diagnostics.passedChecks.push("borderline_rescue_penalty");
     }
   }
 

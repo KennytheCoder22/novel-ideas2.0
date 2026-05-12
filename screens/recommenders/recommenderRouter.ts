@@ -4727,6 +4727,43 @@ const normalizedCandidatesRaw = [
       seriesCounts.set(seriesKey, (seriesCounts.get(seriesKey) || 0) + 1);
     }
   }
+  if (includeComicVine && finalRenderDocs.length > 0) {
+    const byFranchise = new Map<string, number>();
+    for (const doc of finalRenderDocs) {
+      const key = finalSeriesKeyForRender(doc);
+      byFranchise.set(key, (byFranchise.get(key) || 0) + 1);
+    }
+    finalRenderDocs = finalRenderDocs.filter((doc: any) => {
+      const key = finalSeriesKeyForRender(doc);
+      const count = byFranchise.get(key) || 0;
+      if (count <= 2) return true;
+      byFranchise.set(key, count - 1);
+      return false;
+    });
+    const distinctFranchises = new Set(finalRenderDocs.map((doc: any) => finalSeriesKeyForRender(doc)).filter(Boolean));
+    if ((distinctFranchises.size <= 1 || finalRenderDocs.length < 8) && includeComicVine) {
+      const seenIds = new Set(finalRenderDocs.map((d: any) => String(d?.sourceId || d?.key || d?.title || "").toLowerCase()));
+      const seenFranchises = new Set(finalRenderDocs.map((d: any) => finalSeriesKeyForRender(d)));
+      const topupPool = dedupeDocs((debugRawPool as any[]) || []).filter((doc: any) => {
+        const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+        if (!source.includes("comicvine")) return false;
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe)\b/i.test(title)) return false;
+        const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
+        if (!id || seenIds.has(id)) return false;
+        return true;
+      });
+      for (const doc of topupPool) {
+        if (finalRenderDocs.length >= Math.min(finalLimit, 10)) break;
+        const franchise = finalSeriesKeyForRender(doc);
+        if (seenFranchises.has(franchise) && distinctFranchises.size > 1) continue;
+        finalRenderDocs.push(doc);
+        seenIds.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
+        seenFranchises.add(franchise);
+      }
+    }
+  }
   const realComicVineDocsCount = finalRenderDocs.filter(
     (doc: any) => !(doc?.diagnostics as any)?.comicvineRouterEmergencyFallback
   ).length;
