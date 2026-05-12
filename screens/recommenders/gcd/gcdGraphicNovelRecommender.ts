@@ -130,6 +130,58 @@ function topSwipeSignals(tagCounts: TagCounts | undefined, limit = 16): string[]
     .map(([k]) => normalizeText(k));
 }
 
+function applyGraphicKeywordMixToDocs(docs: RecommendationDoc[], tagCounts: TagCounts | undefined, finalLimit: number): RecommendationDoc[] {
+  const weights = Object.entries(tagCounts || {})
+    .filter(([k, v]) => k.startsWith("graphicNovel:") && Number(v) > 0)
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 3);
+  if (!weights.length || !docs.length) return docs.slice(0, finalLimit);
+  const reByKeyword: Record<string, RegExp> = {
+    superhero: /\b(superhero|superheroes|spider-man|batman|smallville|marvel|dc)\b/,
+    fantasy: /\b(fantasy|magic|dragon|myth)\b/,
+    sci_fi: /\b(sci[- ]?fi|science fiction|future|space|cyberpunk|robot|ai)\b/,
+    dystopian: /\b(dystopian|apocalypse|rebellion|authoritarian)\b/,
+    romance: /\b(romance|love|relationship)\b/,
+    mystery: /\b(mystery|detective|investigation|noir)\b/,
+    horror: /\b(horror|haunted|ghost|occult|terror)\b/,
+    adventure: /\b(adventure|quest|journey)\b/,
+    crime: /\b(crime|heist|noir)\b/,
+    mythology: /\b(mythology|myth|olympus|god|gods)\b/,
+    action: /\b(action|battle|fight|war)\b/,
+    manga: /\b(manga|anime)\b/,
+  };
+  const docMatches = (doc: RecommendationDoc, keyword: string): boolean => {
+    const text = [doc.title, doc.subtitle, doc.series, doc.queryText, ...(doc.subject || [])].join(" ").toLowerCase();
+    if (!/\b(graphic novel|comic|comics|tpb|ogn|manga)\b/.test(text)) return false;
+    const re = reByKeyword[keyword];
+    return re ? re.test(text) : text.includes(keyword.replace(/_/g, " "));
+  };
+  const total = weights.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
+  const quotas = weights.map(([k, v]) => ({ keyword: k.replace("graphicNovel:", ""), target: Math.max(1, Math.round((Number(v) / total) * finalLimit)) }));
+  const selected: RecommendationDoc[] = [];
+  const seen = new Set<string>();
+  for (const quota of quotas) {
+    const pool = docs.filter((doc) => docMatches(doc, quota.keyword));
+    let taken = 0;
+    for (const doc of pool) {
+      const id = String(doc?.sourceId || doc?.key || doc?.title || "");
+      if (!id || seen.has(id)) continue;
+      selected.push(doc);
+      seen.add(id);
+      taken += 1;
+      if (taken >= quota.target) break;
+    }
+  }
+  for (const doc of docs) {
+    const id = String(doc?.sourceId || doc?.key || doc?.title || "");
+    if (!id || seen.has(id)) continue;
+    selected.push(doc);
+    seen.add(id);
+    if (selected.length >= finalLimit) break;
+  }
+  return selected.slice(0, finalLimit);
+}
+
 function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
   lane: AnchorLane;
   mode: "story_facet_weighted";
@@ -425,6 +477,7 @@ function gcdIssueToDoc(issue: any, queryText: string, queryRung: number): Recomm
     ].filter(Boolean))
   );
 
+  const docsWithKeywordMix = applyGraphicKeywordMixToDocs(docs, input.tagCounts, fetchLimit);
   return {
     key: issue?.api_url || `comicvine:${issue?.series || issue?.series_name || title}`,
     title,
@@ -1026,7 +1079,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     deckKey,
     domainMode,
     builtFromQuery,
-    items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "open_library", doc })),
+    items: docsWithKeywordMix.map((doc) => ({ kind: "open_library", doc })),
     debugRawFetchedCount: docs.length,
     comicVineQueriesGenerated: queriesToTry,
     comicVineRungsBuilt,
@@ -1069,7 +1122,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       canonical: totalCanonicalAcrossQueries,
       content: totalContentAcrossQueries,
       final: totalFinalAcrossQueries,
-      rendered: docs.length,
+      rendered: docsWithKeywordMix.length,
       queryDerived: queryDerivedCount,
       fallback: fallbackCount,
     },
@@ -1098,9 +1151,9 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     debugRungStats: {
       byRung: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])),
       byRungSource: { comicVine: Object.fromEntries(gcdRungs.map((r) => [String(r.rung), 0])) },
-      total: docs.length,
+      total: docsWithKeywordMix.length,
     } as any,
-    debugRawPool: docs.slice(0, fetchLimit),
+    debugRawPool: docsWithKeywordMix,
     debugFilterAudit: [
       {
         source: "comicVine",
