@@ -117,7 +117,7 @@ function hasStrongSuperheroEvidence(tagCounts: TagCounts | undefined): boolean {
     Number(tagCounts?.["publisher:dc comics"] || 0) +
     Number(tagCounts?.["publisher:marvel comics"] || 0) +
     Number(tagCounts?.["franchise:teen titans"] || 0);
-  return score >= 2;
+  return score >= 1;
 }
 
 function buildGcdSearchTerms(tagCounts: TagCounts | undefined): string[] {
@@ -427,7 +427,7 @@ function buildEntitySeedQueriesFromGraphicKeywords(tagCounts: TagCounts | undefi
   const weighted = Object.entries(tagCounts || {})
     .filter(([k, v]) => k.startsWith("graphicNovel:") && Number(v) > 0)
     .sort((a, b) => Number(b[1]) - Number(a[1]))
-    .slice(0, 4);
+    .slice(0, 6);
   const total = weighted.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
   const superheroStrength =
     Number(tagCounts?.["facet:superhero"] || 0) +
@@ -441,17 +441,21 @@ function buildEntitySeedQueriesFromGraphicKeywords(tagCounts: TagCounts | undefi
   const capSuperheroSeeds = superheroStrength <= 0 && nonSuperStrength >= 2;
   const out: string[] = [];
   const franchiseTriggerProvenance: Array<{ query: string; why: string; trigger: string; source: "explicit franchise match" | "keyword seed map" | "fallback expansion" | "semantic token expansion" }> = [];
+  const minDistinctBuckets = weighted.length >= 4 ? 4 : weighted.length;
+  let bucketIndex = 0;
   for (const [rawKey, rawWeight] of weighted) {
     const key = rawKey.replace("graphicNovel:", "");
     const seeds = GRAPHIC_NOVEL_SEEDS[key] || [];
-    const computed = Math.max(1, Math.round((Number(rawWeight) / total) * Math.max(4, finalLimit)));
-    const seedCount = capSuperheroSeeds && key === "superhero" ? 1 : computed;
+    const computed = Math.max(2, Math.round((Number(rawWeight) / total) * Math.max(8, finalLimit)));
+    const fairnessCap = bucketIndex < minDistinctBuckets ? Math.max(2, computed) : Math.max(1, computed - 1);
+    const seedCount = capSuperheroSeeds && key === "superhero" ? 2 : Math.min(4, fairnessCap);
     for (const seed of seeds.slice(0, seedCount)) {
       const normalizedSeed = normalizeText(seed);
       if (capSuperheroSeeds && (/teen titans|young justice/.test(normalizedSeed))) continue;
       out.push(seed, `${seed} graphic novel`, `${seed} tpb`);
       franchiseTriggerProvenance.push({ query: normalizedSeed, why: `graphicNovel:${key}`, trigger: rawKey, source: "keyword seed map" });
     }
+    bucketIndex += 1;
   }
   const cleaned = Array.from(new Set(out.map((q) => stripDanglingQuotes(String(q || "").trim().toLowerCase())).filter(Boolean)))
     .filter((q) => {
@@ -996,7 +1000,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   // Build a broad pool first (session-fit + anchors + facets) instead of over-optimizing one lane.
   const queriesToTry = interleaveQueries(
     [sessionFitQueries, baseAnchors, otherQueries, formatFollowups, secondaryFormatFollowups, genericQueries],
-    Math.max(30, MAX_COMICVINE_ANCHORS * 3)
+    Math.max(40, MAX_COMICVINE_ANCHORS * 5)
   );
   const finalizedQueriesToTry =
     suppressionSignals.superheroSuppressionActive && !strongSuperheroEvidence
