@@ -494,6 +494,26 @@ function tasteVectorFromAxes(axes: Record<string, number> | undefined): TasteVec
 
 function cardTagCounts(card: any): TagCounts {
   const tags = Array.isArray(card?.tags) ? card.tags.filter((t: any) => typeof t === "string" && t.trim()) : [];
+  const controlledGraphicNovelKeywords = new Set([
+    "superhero","fantasy","sci_fi","dystopian","romance","mystery","horror","adventure","comedy","mythology",
+    "historical","drama","coming_of_age","survival","crime","school_life","paranormal","slice_of_life","action",
+    "manga","queer_identity","sports","western",
+  ]);
+  const keywordBag = new Set<string>(
+    Array.isArray(card?.graphicNovelKeywords)
+      ? card.graphicNovelKeywords.map((v: unknown) => String(v || "").trim().toLowerCase()).filter(Boolean)
+      : []
+  );
+  const joined = [String(card?.title || ""), String(card?.genre || ""), ...tags].join(" ").toLowerCase();
+  if (/superhero|superheroes|spider-man|batman|smallville|marvel|dc comics?\b/.test(joined)) keywordBag.add("superhero");
+  if (/fantasy|dragon|wizard|magic|myth/.test(joined)) keywordBag.add("fantasy");
+  if (/science fiction|sci[- ]?fi|cyberpunk|space|future/.test(joined)) keywordBag.add("sci_fi");
+  if (/coming of age|coming-of-age|high school|teen/.test(joined)) keywordBag.add("coming_of_age");
+  if (/mystery|detective|investigation/.test(joined)) keywordBag.add("mystery");
+  if (/crime|noir/.test(joined)) keywordBag.add("crime");
+  for (const keyword of Array.from(keywordBag)) {
+    if (controlledGraphicNovelKeywords.has(keyword)) tags.push(`graphicNovel:${keyword}`);
+  }
   if (tags.length > 0) {
     return tags.reduce((acc: TagCounts, tag: string) => {
       acc[tag] = (acc[tag] || 0) + 1;

@@ -80,6 +80,8 @@ export interface SwipeDeckCard {
   wikiTitle?: string;
   imageUri?: string;
   olWorkId?: string;
+  // Optional controlled ComicVine/graphic-novel routing hints.
+  graphicNovelKeywords?: string[];
 
   // Allow future expansion without breaking typing.
   [key: string]: unknown;

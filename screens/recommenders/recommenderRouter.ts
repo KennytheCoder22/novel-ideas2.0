@@ -4645,6 +4645,33 @@ const normalizedCandidatesRaw = [
       } as any);
     }
   }
+  const superheroSignalStrength =
+    Number((routingInput.tagCounts as any)?.["genre:superheroes"] || 0) +
+    Number((routingInput.tagCounts as any)?.["graphicNovel:superhero"] || 0) +
+    Number((routingInput.tagCounts as any)?.["facet:superhero"] || 0);
+  const superheroTargetRatio =
+    superheroSignalStrength >= 3 ? 0.5 : superheroSignalStrength > 0 ? 0.35 : 0;
+  const isSuperheroGraphicNovelDoc = (doc: any): boolean => {
+    const bag = [
+      String(doc?.title || ""),
+      String(doc?.series || ""),
+      String(doc?.queryText || ""),
+      ...(Array.isArray(doc?.subject) ? doc.subject.map((x: any) => String(x || "")) : []),
+      ...(Array.isArray(doc?.author_name) ? doc.author_name.map((x: any) => String(x || "")) : []),
+    ].join(" ").toLowerCase();
+    const hasGraphicSignal = /\b(graphic novel|comic|comics|tpb|ogn)\b/.test(bag);
+    const hasSuperheroSignal = /\b(superhero|superheroes|spider-man|batman|smallville|marvel|dc)\b/.test(bag);
+    return hasGraphicSignal && hasSuperheroSignal;
+  };
+  if (superheroTargetRatio > 0 && finalRenderDocs.length > 0) {
+    const targetCount = Math.min(finalRenderDocs.length, Math.ceil(finalLimit * superheroTargetRatio));
+    const preferred = finalRenderDocs.filter((doc: any) => isSuperheroGraphicNovelDoc(doc));
+    if (preferred.length > 0) {
+      const preferredIds = new Set(preferred.map((doc: any) => String(doc?.sourceId || doc?.key || doc?.title || "")));
+      const fill = finalRenderDocs.filter((doc: any) => !preferredIds.has(String(doc?.sourceId || doc?.key || doc?.title || "")));
+      finalRenderDocs = [...preferred.slice(0, targetCount), ...fill].slice(0, finalLimit);
+    }
+  }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
