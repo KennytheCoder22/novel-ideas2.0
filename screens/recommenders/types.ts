@@ -105,6 +105,14 @@ export type RecommendationResult = {
   topUpCandidatesConsideredLength?: number;
   topUpCandidatesAcceptedLength?: number;
   topUpRejectedReasons?: Record<string, number>;
+  topUpSourceRankedDocsLength?: number;
+  topUpSourceCandidateDocsLength?: number;
+  topUpSourceNormalizedCandidatesLength?: number;
+  topUpSourceEnrichedDocsLength?: number;
+  topUpSourceDebugRawPoolLength?: number;
+  topUpMergedPoolBeforeFiltersLength?: number;
+  topUpMergedPoolAfterDedupeLength?: number;
+  topUpMergedPoolAfterQualityFiltersLength?: number;
   postTopUpFinalItemsLength?: number;
   returnedItemsBuiltFrom?: string;
   usedEmergencyFallback?: boolean;

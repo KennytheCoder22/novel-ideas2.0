@@ -4712,6 +4712,14 @@ const normalizedCandidatesRaw = [
   let topUpCandidatesConsideredLength = 0;
   let topUpCandidatesAcceptedLength = 0;
   const topUpRejectedReasons: Record<string, number> = {};
+  let topUpSourceRankedDocsLength = 0;
+  let topUpSourceCandidateDocsLength = 0;
+  let topUpSourceNormalizedCandidatesLength = 0;
+  let topUpSourceEnrichedDocsLength = 0;
+  let topUpSourceDebugRawPoolLength = 0;
+  let topUpMergedPoolBeforeFiltersLength = 0;
+  let topUpMergedPoolAfterDedupeLength = 0;
+  let topUpMergedPoolAfterQualityFiltersLength = 0;
   if (includeComicVine && finalRenderDocs.length < TARGET_MIN_RESULTS_WHEN_VIABLE) {
     const seriesCounts = new Map<string, number>();
     for (const doc of finalRenderDocs) {
@@ -4764,13 +4772,25 @@ const normalizedCandidatesRaw = [
         const seed = [...moodAlignedPriority, ...entitySeedPriority, ...knownGoodAnchors].find((s) => t.includes(normalizeText(s)));
         return seed || finalSeriesKeyForRender(doc) || "unknown";
       };
-      const topupSources = dedupeDocs([
+      const convertedComicVineDocs = Array.isArray((comicVine as any)?.items)
+        ? (comicVine as any).items.map((it: any) => it?.doc).filter(Boolean)
+        : [];
+      topUpSourceRankedDocsLength = (rankedDocs as any[])?.length || 0;
+      topUpSourceCandidateDocsLength = (candidateDocs as any[])?.length || 0;
+      topUpSourceNormalizedCandidatesLength = (normalizedCandidates as any[])?.length || 0;
+      topUpSourceEnrichedDocsLength = (enrichedDocs as any[])?.length || 0;
+      topUpSourceDebugRawPoolLength = ((debugRawPool as any[]) || []).length;
+      const topupSourceRaw = [
         ...(rankedDocs as any[]),
         ...(candidateDocs as any[]),
         ...(normalizedCandidates as any[]),
         ...(enrichedDocs as any[]),
         ...((debugRawPool as any[]) || []),
-      ] as any);
+        ...convertedComicVineDocs,
+      ] as any[];
+      topUpMergedPoolBeforeFiltersLength = topupSourceRaw.length;
+      const topupSources = dedupeDocs(topupSourceRaw as any);
+      topUpMergedPoolAfterDedupeLength = topupSources.length;
       const topupPool = topupSources.filter((doc: any) => {
         const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
         if (!source.includes("comicvine")) return false;
@@ -4779,6 +4799,11 @@ const normalizedCandidatesRaw = [
         const normalizedTitle = normalizeText(title);
         if (genericBroadTitleRe.test(title) && !Array.from(allowlistForGenericTitle).some((needle) => normalizedTitle.includes(needle))) return false;
         if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe)\b/i.test(title)) return false;
+        const rejectReasons = (doc?.diagnostics?.filterRejectReasons || doc?.rawDoc?.diagnostics?.filterRejectReasons || []) as string[];
+        if (Array.isArray(rejectReasons) && rejectReasons.includes("below_shape_floor")) {
+          const isRecognizableEntity = [...entitySeedPriority, ...knownGoodAnchors].some((seed) => normalizedTitle.includes(normalizeText(seed)));
+          if (!isRecognizableEntity) return false;
+        }
         const id = String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase();
         if (!id || seenIds.has(id)) return false;
         return true;
@@ -4795,6 +4820,7 @@ const normalizedCandidatesRaw = [
         };
         return score(qb, tb) - score(qa, ta);
       });
+      topUpMergedPoolAfterQualityFiltersLength = topupPool.length;
       topUpCandidatesConsideredLength += topupPool.length;
       const familyCounts = new Map<string, number>();
       for (const doc of finalRenderDocs) familyCounts.set(inferEntityFamily(doc), (familyCounts.get(inferEntityFamily(doc)) || 0) + 1);
@@ -5087,6 +5113,14 @@ const normalizedCandidatesRaw = [
     topUpCandidatesConsideredLength,
     topUpCandidatesAcceptedLength,
     topUpRejectedReasons,
+    topUpSourceRankedDocsLength,
+    topUpSourceCandidateDocsLength,
+    topUpSourceNormalizedCandidatesLength,
+    topUpSourceEnrichedDocsLength,
+    topUpSourceDebugRawPoolLength,
+    topUpMergedPoolBeforeFiltersLength,
+    topUpMergedPoolAfterDedupeLength,
+    topUpMergedPoolAfterQualityFiltersLength,
     postTopUpFinalItemsLength,
     returnedItemsBuiltFrom,
     teenPostPassOutputTitles,
