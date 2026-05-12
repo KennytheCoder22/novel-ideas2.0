@@ -5175,8 +5175,19 @@ const normalizedCandidatesRaw = [
   const anchorFranchises = [
     "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
   ];
-  const scoringPassInputCount = finalRenderDocs.length;
-  const scoredCanonicalDocs = finalRenderDocs.map((doc: any) => {
+  const scoringUniverse = dedupeDocs([
+    ...finalRenderDocs,
+    ...(enrichedDocs as any[]),
+    ...(normalizedCandidates as any[]),
+    ...(candidateDocs as any[]),
+    ...((debugRawPool as any[]) || []),
+    ...(finalRankedDocsBase as any[]),
+  ] as any);
+  const scoringPassInputCount = scoringUniverse.length;
+  let entryPointCandidatesFound = 0;
+  let entryPointCandidatesSuppressed = 0;
+  const finalSuppressedByBetterEntryPoint: string[] = [];
+  const scoredCanonicalDocs = scoringUniverse.map((doc: any) => {
     const title = String(doc?.title || doc?.rawDoc?.title || "");
     const subtitle = String(doc?.subtitle || doc?.rawDoc?.subtitle || "");
     const normalizedTitle = normalizeText(`${title} ${subtitle}`);
@@ -5188,6 +5199,7 @@ const normalizedCandidatesRaw = [
         : isAnchorFranchise && /\btpb\b/i.test(title)
           ? 8
           : 0;
+    if (entryPointBoost > 0) entryPointCandidatesFound += 1;
     const lateVolumePenalty = /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(normalizedTitle) || /#(20|30|40|50|60|70|80|90)\b/.test(title) ? -16 : 0;
     const sideStoryPenalty =
       /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(normalizedTitle)
@@ -5228,18 +5240,33 @@ const normalizedCandidatesRaw = [
     recoveryRejectedReasons.post_assembly_quality_guard_rebuild = (recoveryRejectedReasons.post_assembly_quality_guard_rebuild || 0) + 1;
   }
   const antiCollapseSelected: any[] = [];
+  const qualityRecoveryReasons: string[] = [];
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
     const family = finalSeriesKeyForRender(doc);
     const familyCount = antiCollapseSelected.filter((d: any) => finalSeriesKeyForRender(d) === family).length;
     if (familyCount >= 2) continue;
     const isSideArc = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(doc?.title || ""));
-    if (isSideArc && antiCollapseSelected.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")))) continue;
+    if (isSideArc && antiCollapseSelected.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
     const hasVolumeOne = finalRenderDocs.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(d?.title || "")));
-    if (hasVolumeOne && /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(doc?.title || ""))) continue;
+    if (hasVolumeOne && (/\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(doc?.title || "")) || /\ball her monsters\b/i.test(String(doc?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
+    const hasPenalty = Number((doc?.diagnostics as any)?.sideStoryPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || /^graphic horror novel\b/i.test(String(doc?.title || "")) || /^graphic fantasy\b/i.test(String(doc?.title || ""));
+    const hasUnpenalizedAlternative = finalRenderDocs.some((d: any) => finalSeriesKeyForRender(d) !== family && Number((d?.diagnostics as any)?.sideStoryPenalty || 0) >= 0 && Number((d?.diagnostics as any)?.issueFragmentPenalty || 0) >= 0);
+    if (hasPenalty && hasUnpenalizedAlternative && antiCollapseSelected.length < 8) continue;
     antiCollapseSelected.push(doc);
     if (antiCollapseSelected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
   }
   if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
+  const familyCounts = finalRenderDocs.reduce((acc: Record<string, number>, d: any) => {
+    const k = finalSeriesKeyForRender(d) || "__none__";
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
+  if (Object.values(familyCounts).some((n) => n >= 3)) qualityRecoveryReasons.push("franchise_overfill");
+  if (finalRenderDocs.some((d: any) => /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("side_arc_with_core_entry");
+  if (finalRenderDocs.some((d: any) => /^graphic horror novel\b/i.test(String(d?.title || "")) || /^graphic fantasy\b/i.test(String(d?.title || "")) || /^the graphic novel$/i.test(String(d?.title || "").trim()))) qualityRecoveryReasons.push("generic_artifact_present");
+  if (finalRenderDocs.some((d: any) => /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("late_volume_with_entry_available");
+  const qualityRecoveryTriggered = qualityRecoveryReasons.length > 0;
+  const qualityRecoveryReason = qualityRecoveryReasons.join(",");
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -5420,6 +5447,11 @@ const normalizedCandidatesRaw = [
     scoringPassInputCount,
     scoringPassOutputCount,
     topScoredTitles,
+    entryPointCandidatesFound,
+    entryPointCandidatesSuppressed,
+    qualityRecoveryTriggered,
+    qualityRecoveryReason,
+    finalSuppressedByBetterEntryPoint,
     finalFranchiseFamilies,
     franchiseCapBlockedTitles,
     recoveryDiversificationAttempts,
