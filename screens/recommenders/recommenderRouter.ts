@@ -4918,7 +4918,7 @@ const normalizedCandidatesRaw = [
       ...(normalizedCandidates as any[]),
       ...(candidateDocs as any[]),
       ...((debugRawPool as any[]) || []),
-      ...(((comicVine as any)?.items || []).map((it: any) => it?.doc).filter(Boolean),
+      ...(((comicVine as any)?.items || []).map((it: any) => it?.doc).filter(Boolean)),
     ] as any);
     recoveryInputPoolLength = pool.length;
     const selected: any[] = [];
