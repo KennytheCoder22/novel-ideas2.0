@@ -4764,7 +4764,14 @@ const normalizedCandidatesRaw = [
         const seed = [...moodAlignedPriority, ...entitySeedPriority, ...knownGoodAnchors].find((s) => t.includes(normalizeText(s)));
         return seed || finalSeriesKeyForRender(doc) || "unknown";
       };
-      const topupPool = dedupeDocs((debugRawPool as any[]) || []).filter((doc: any) => {
+      const topupSources = dedupeDocs([
+        ...(rankedDocs as any[]),
+        ...(candidateDocs as any[]),
+        ...(normalizedCandidates as any[]),
+        ...(enrichedDocs as any[]),
+        ...((debugRawPool as any[]) || []),
+      ] as any);
+      const topupPool = topupSources.filter((doc: any) => {
         const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
         if (!source.includes("comicvine")) return false;
         const title = String(doc?.title || "").trim();
@@ -4791,17 +4798,21 @@ const normalizedCandidatesRaw = [
       topUpCandidatesConsideredLength += topupPool.length;
       const familyCounts = new Map<string, number>();
       for (const doc of finalRenderDocs) familyCounts.set(inferEntityFamily(doc), (familyCounts.get(inferEntityFamily(doc)) || 0) + 1);
+      const seenTitles = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || d?.rawDoc?.title || ""))).filter(Boolean));
       for (const doc of topupPool) {
         if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
         const franchise = finalSeriesKeyForRender(doc);
         const family = inferEntityFamily(doc);
         if ((familyCounts.get(family) || 0) >= 2) { topUpRejectedReasons.family_cap = Number(topUpRejectedReasons.family_cap || 0) + 1; continue; }
         if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
+        const normalizedTitle = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+        if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
         finalRenderDocs.push(doc);
         topUpCandidatesAcceptedLength += 1;
         seenIds.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
         seenFranchises.add(franchise);
         familyCounts.set(family, (familyCounts.get(family) || 0) + 1);
+        seenTitles.add(normalizedTitle);
       }
       // Second pass: if still under-filled, allow remaining entity-family docs before broad artifacts.
       if (finalRenderDocs.length < 8) {
@@ -4813,13 +4824,21 @@ const normalizedCandidatesRaw = [
           if (/\b(psychological|suspense|thriller|graphic novel)\b/.test(qa) && !entitySeedPriority.some((s) => qa.includes(s))) { topUpRejectedReasons.broad_phrase_artifact = Number(topUpRejectedReasons.broad_phrase_artifact || 0) + 1; continue; }
           const franchise = finalSeriesKeyForRender(doc);
           if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
+          const normalizedTitle = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+          if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
           finalRenderDocs.push(doc);
           topUpCandidatesAcceptedLength += 1;
           seenIds.add(id);
+          seenTitles.add(normalizedTitle);
         }
       }
     }
   }
+  finalRenderDocs = dedupeDocs(finalRenderDocs as any).filter((doc: any, idx: number, arr: any[]) => {
+    const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+    if (!title) return true;
+    return arr.findIndex((row: any) => normalizeText(String(row?.title || row?.rawDoc?.title || "")) === title) === idx;
+  });
   const realComicVineDocsCount = finalRenderDocs.filter(
     (doc: any) => !(doc?.diagnostics as any)?.comicvineRouterEmergencyFallback
   ).length;
