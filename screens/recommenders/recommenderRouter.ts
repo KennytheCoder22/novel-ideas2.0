@@ -3404,9 +3404,13 @@ export async function getRecommendations(
   // ComicVine-resilient rescue: keep recognizable series/collection entries alive for ranking.
   if (includeComicVine && candidateDocs.length < 20) {
     const seen = new Set(candidateDocs.map((doc: any) => candidateKey(doc)));
-    const rescuePool = enrichedDocs.filter((doc: any) => {
-      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
-      if (!source.includes("comicvine")) return false;
+    const largestComicVinePool = dedupeDocs([
+      ...((debugRawPool as any[]) || []),
+      ...enrichedDocs,
+    ] as any);
+    const rescuePool = largestComicVinePool.filter((doc: any) => {
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().replace(/\s+/g, "");
+      if (!(source.includes("comicvine") || source.includes("comicvine_rescue"))) return false;
       const title = String(doc?.title || "").trim();
       if (!title) return false;
       if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe)\b/i.test(title)) return false;
