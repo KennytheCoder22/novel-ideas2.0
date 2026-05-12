@@ -3307,11 +3307,24 @@ export async function getRecommendations(
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
   const filterAuditSummary = summarizeFilterAudit(filterAuditRows);
+  const filterKeptDocs = enrichedDocs.filter((doc: any) => doc?.diagnostics?.filterKept === true || doc?.rawDoc?.diagnostics?.filterKept === true);
+  const filterKeptDocsTitles = filterKeptDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  const normalizedDocsCount = enrichedDocs.length;
+  const postCanonicalizationCount = filteredDocs.length;
+  const stageDropReasons = {
+    canonicalization: summarizeReasonCounts(enrichedDocs, filteredDocs),
+    deduplication: {} as Record<string, number>,
+    authorityFilter: {} as Record<string, number>,
+    laneFilter: {} as Record<string, number>,
+    shapeGate: {} as Record<string, number>,
+    finalShaping: {} as Record<string, number>,
+  };
 
   // Centralized filtering rule:
   // filterCandidates is the only keep/reject authority for fetched candidates.
   // NYT bypasses this as a capped post-filter procurement signal only.
   let candidateDocs = filteredDocs;
+  const candidatePoolDropReasons: Array<{ title: string; reason: string }> = [];
   const negativeSignals = new Set(
     [
       ...Object.keys((routingInput as any)?.dislikedTagCounts || {}),
@@ -3329,6 +3342,14 @@ export async function getRecommendations(
     candidateDocs = dedupeDocs([...candidateDocs, ...expansionPool]).slice(0, 40);
     debugRouterLog("POOL_EXPANSION_TRIGGERED", { filteredCount: filteredDocs.length, expandedCount: candidateDocs.length });
   }
+  const candidateDocKeys = new Set(candidateDocs.map((doc: any) => candidateKey(doc)));
+  for (const kept of filterKeptDocs) {
+    const key = candidateKey(kept);
+    if (!key || candidateDocKeys.has(key)) continue;
+    candidateDocs.push(kept);
+    candidateDocKeys.add(key);
+    candidatePoolDropReasons.push({ title: String(kept?.title || kept?.rawDoc?.title || "").trim(), reason: "restored_from_filter_kept_handoff" });
+  }
   const fantasySuppressed =
     negativeSignals.has("fantasy romance") ||
     negativeSignals.has("cozy fantasy") ||
@@ -3343,6 +3364,8 @@ export async function getRecommendations(
     });
     debugRouterLog("FANTASY_SUPPRESSION_APPLIED", { countAfter: candidateDocs.length });
   }
+  const postAuthorityFilterCount = candidateDocs.length;
+  stageDropReasons.authorityFilter = summarizeReasonCounts(filteredDocs, candidateDocs);
   candidateDocs = candidateDocs.filter((doc: any) => {
     const isOpenLibrary = String(doc?.source || doc?.diagnostics?.source || "").toLowerCase().includes("open");
     if (!isOpenLibrary) return true;
@@ -3355,6 +3378,8 @@ export async function getRecommendations(
     if (/\b(best of|year's best|anthology|collection|journal|magazine|reference|library of congress subject headings|poetics of|principles of psychology|catalog|criticism|companion|study guide|handbook)\b/.test(text)) return false;
     return true;
   });
+  const postLaneFilterCount = candidateDocs.length;
+  stageDropReasons.laneFilter = summarizeReasonCounts(filteredDocs, candidateDocs);
   candidateDocs = candidateDocs.filter((doc: any) => {
     const text = `${doc?.title || ""} ${doc?.description || ""} ${(doc?.subjects || []).join(" ")}`.toLowerCase();
     if (/\b(huckleberry finn|anne of green gables|moby dick|les misérables|les miserables)\b/.test(text)) {
@@ -3376,6 +3401,30 @@ export async function getRecommendations(
     candidateDocs = dedupeDocs([...candidateDocs, ...diversificationBackfill]).slice(0, 60);
     debugRouterLog("DIVERSIFICATION_BACKFILL_APPLIED", { afterCount: candidateDocs.length });
   }
+  // ComicVine-resilient rescue: keep recognizable series/collection entries alive for ranking.
+  if (includeComicVine && candidateDocs.length < 20) {
+    const seen = new Set(candidateDocs.map((doc: any) => candidateKey(doc)));
+    const largestComicVinePool = dedupeDocs([
+      ...((debugRawPool as any[]) || []),
+      ...enrichedDocs,
+    ] as any);
+    const rescuePool = largestComicVinePool.filter((doc: any) => {
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().replace(/\s+/g, "");
+      if (!(source.includes("comicvine") || source.includes("comicvine_rescue"))) return false;
+      const title = String(doc?.title || "").trim();
+      if (!title) return false;
+      if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe)\b/i.test(title)) return false;
+      return true;
+    });
+    for (const doc of rescuePool) {
+      const key = candidateKey(doc);
+      if (!key || seen.has(key)) continue;
+      candidateDocs.push(doc);
+      seen.add(key);
+      if (candidateDocs.length >= 40) break;
+    }
+  }
+  const postShapeGateCount = candidateDocs.length;
   let nytAnchorDebug: NytAnchorDebug = {
     enabled: false,
     fetched: 0,
@@ -3594,6 +3643,22 @@ function buildRungDiagnostics(candidates: any[]) {
   };
 }
 
+function summarizeReasonCounts(before: any[], after: any[]): Record<string, number> {
+  const kept = new Set((after || []).map((d: any) => candidateKey(d)).filter(Boolean));
+  const out: Record<string, number> = {};
+  for (const doc of before || []) {
+    const key = candidateKey(doc);
+    if (!key || kept.has(key)) continue;
+    const reasons = (doc?.diagnostics?.filterRejectReasons || doc?.rawDoc?.diagnostics?.filterRejectReasons || []) as string[];
+    if (Array.isArray(reasons) && reasons.length) {
+      for (const r of reasons) out[String(r)] = Number(out[String(r)] || 0) + 1;
+    } else {
+      out["dropped_without_explicit_reason"] = Number(out["dropped_without_explicit_reason"] || 0) + 1;
+    }
+  }
+  return out;
+}
+
 function enforceHistoricalCandidateMetadata<T extends any>(candidates: T[]): T[] {
   return (Array.isArray(candidates) ? candidates : []).map((candidate: any) => {
     const laneKind = String(candidate?.laneKind || candidate?.rawDoc?.laneKind || candidate?.diagnostics?.laneKind || "").toLowerCase();
@@ -3641,6 +3706,14 @@ const normalizedCandidatesRaw = [
     ...(includeKitsu ? kitsuCandidates : []),
     ...(includeComicVine ? gcdCandidates : []),
   ].filter((c: any) => c?.rawDoc?.diagnostics?.filterKept !== false && c?.diagnostics?.filterKept !== false);
+  const normalizedCandidateKeys = new Set(normalizedCandidatesRaw.map((c: any) => candidateKey(c)));
+  for (const kept of filterKeptDocs) {
+    const key = candidateKey(kept);
+    if (!key || normalizedCandidateKeys.has(key)) continue;
+    normalizedCandidatesRaw.push(kept);
+    normalizedCandidateKeys.add(key);
+    candidatePoolDropReasons.push({ title: String(kept?.title || kept?.rawDoc?.title || "").trim(), reason: "restored_into_normalized_candidates" });
+  }
   const normalizedCandidates = enforceHistoricalCandidateMetadata(collapseCrossRungDuplicates(normalizedCandidatesRaw as any).map((candidate: any) => {
     const inferredQueryFamily =
       normalizeRouterFamilyValue(
@@ -3683,6 +3756,8 @@ const normalizedCandidatesRaw = [
       },
     };
   }));
+  const postDeduplicationCount = normalizedCandidates.length;
+  stageDropReasons.deduplication = summarizeReasonCounts(normalizedCandidatesRaw, normalizedCandidates);
 
   const openLibraryNormalizedCandidates = normalizedCandidates.filter((c: any) => c?.source === "openLibrary");
 
@@ -3921,6 +3996,11 @@ const normalizedCandidatesRaw = [
         priorRejectedKeys: routingInput.priorRejectedKeys,
       }))
     : sourceLayerRankedDocs;
+  const finalRecommenderInputCount = sourceLayerRankedDocs.length;
+  const rankedDropReasons: Array<{ title: string; reason: string }> = [];
+  if (rankedDocs.length === 0 && sourceLayerRankedDocs.length > 0) {
+    rankedDropReasons.push({ title: "(multiple)", reason: "final_recommender_returned_empty" });
+  }
 
   const postFilteredRankedDocs = rankedDocs
     .filter((doc: any) => doc?.diagnostics?.filterKept !== false && doc?.rawDoc?.diagnostics?.filterKept !== false);
@@ -3950,6 +4030,11 @@ const normalizedCandidatesRaw = [
     // Avoid refilling from raw ranking pool, which can reintroduce weak representatives.
     return metaSafeRankedDocs.slice(0, Math.max(finalLimit, 12));
   })();
+  const postFinalShapingCount = finalRankedDocsBase.length;
+  const shapedDropReasons: Array<{ title: string; reason: string }> = [];
+  if (metaSafeRankedDocs.length === 0 && postFilteredRankedDocs.length > 0) {
+    shapedDropReasons.push({ title: "(multiple)", reason: "meta_or_family_shaping_removed_all" });
+  }
 
   const applyAuthorSeriesCaps = (docs: any[]): any[] => {
     const comicVineOnlyMode =
@@ -4395,6 +4480,18 @@ const normalizedCandidatesRaw = [
   const comicVineFallbackLeakageWarning = String((comicVine as any)?.comicVineFallbackLeakageWarning || "");
   const comicVineRecommendationSetMode = String((comicVine as any)?.comicVineRecommendationSetMode || "unknown");
   const comicVineNormalRecommendationSet = Boolean((comicVine as any)?.comicVineNormalRecommendationSet);
+  const comicVineProtectedTokenFilteredCount = Number((comicVine as any)?.protectedTokenFilteredCount || 0);
+  const comicVineSuperheroSuppressionActive = Boolean((comicVine as any)?.superheroSuppressionActive);
+  const comicVineStrongSuperheroEvidence = Boolean((comicVine as any)?.strongSuperheroEvidence);
+  const comicVineSelectedAnchors = Array.isArray((comicVine as any)?.selectedComicVineAnchors) ? (comicVine as any).selectedComicVineAnchors : [];
+  const comicVineFranchiseTriggerDebug = (comicVine as any)?.franchiseTriggerDebug || (comicVine as any)?.franchiseTriggerProvenance || [];
+  const blockedSuperheroQueryRe = /^(teen titans|young justice|ms\.?\s*marvel|spider-man|miles morales|batman)(\b| )/i;
+  const resolvedComicVineQueryTexts = Array.from(comicVineQueryTexts).filter((q) =>
+    !(comicVineSuperheroSuppressionActive && !comicVineStrongSuperheroEvidence && blockedSuperheroQueryRe.test(String(q || "").toLowerCase()))
+  );
+  const resolvedComicVineRungsBuilt = Array.from(comicVineRungsBuilt).filter((q) =>
+    !(comicVineSuperheroSuppressionActive && !comicVineStrongSuperheroEvidence && blockedSuperheroQueryRe.test(String(q || "").toLowerCase()))
+  );
 
   const comicVineDispatchTrace = {
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
@@ -4416,8 +4513,8 @@ const normalizedCandidatesRaw = [
     mainRungQueriesLength,
     gcdFetchAttempted: comicVineFetchAttempted,
     comicVineFetchAttempted,
-    comicVineQueryTexts: Array.from(comicVineQueryTexts),
-    comicVineRungsBuilt: Array.from(comicVineRungsBuilt),
+    comicVineQueryTexts: resolvedComicVineQueryTexts,
+    comicVineRungsBuilt: resolvedComicVineRungsBuilt,
     comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched),
     gcdFetchResults: comicVineFetchResults,
     comicVineFetchResults,
@@ -4448,6 +4545,11 @@ const normalizedCandidatesRaw = [
     comicVineFallbackLeakageWarning,
     comicVineRecommendationSetMode,
     comicVineNormalRecommendationSet,
+    protectedTokenFilteredCount: comicVineProtectedTokenFilteredCount,
+    superheroSuppressionActive: comicVineSuperheroSuppressionActive,
+    strongSuperheroEvidence: comicVineStrongSuperheroEvidence,
+    selectedComicVineAnchors: comicVineSelectedAnchors,
+    franchiseTriggerDebug: comicVineFranchiseTriggerDebug,
     comicVinePipelineTraceCounts,
     comicVinePipelineFailureDetected,
     comicVinePipelineFailureReason,
@@ -4514,7 +4616,7 @@ const normalizedCandidatesRaw = [
   const teenPostPassRejectReasons = teenPostPassRejectedTitles.map(() => "teen_postpass_trim");
   const teenPostPassSourceCapApplied = teenPostPassOutputLength < teenPostPassInputLength;
   const teenPostPassSeriesCapApplied = teenPostPassRejectedTitles.length > 0;
-  const finalRenderDocsBase = finalRankedDocs.length ? finalRankedDocs : rankedDocsWithDiagnostics;
+  const finalRenderDocsBase = finalRankedDocs.length ? finalRankedDocs : (rankedDocsWithDiagnostics.length ? rankedDocsWithDiagnostics : filterKeptDocs);
   const applyCrossFranchiseSaturationPenalty = (docsIn: any[]): any[] => {
     const franchiseCounts: Record<string, number> = {};
     return [...docsIn]
@@ -4793,6 +4895,20 @@ const normalizedCandidatesRaw = [
   const fallbackItems = outputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").includes("fallback") || String(item?.doc?.queryText || "") === "comicvine_publisher_facet_fallback");
   const nonFallbackItems = outputItems.filter((item: any) => !fallbackItems.includes(item));
   const mixedFallbackOutput = fallbackItems.length > 0 && nonFallbackItems.length > 0;
+  const usedEmergencyFallback = fallbackItems.length > 0;
+  const preFallbackCandidateCount = candidateCount;
+  const preFallbackRankedCount = rankedCount;
+  const preFallbackAcceptedCount = finalAcceptedDocsLength;
+  const fallbackSource = fallbackItems.length > 0
+    ? (mixedFallbackOutput ? "comicvine_mixed_fallback" : "comicvine_publisher_facet_fallback")
+    : "none";
+  const fallbackReason = !usedEmergencyFallback
+    ? "none"
+    : (includeComicVine && fetchedRawCount > 0 && preFallbackAcceptedCount === 0)
+      ? "comicvine_raw_results_rejected_during_shaping"
+      : hardPipelineFailure
+        ? "comicvine_pipeline_failure"
+        : "insufficient_query_derived_results";
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
   const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
   const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
@@ -4860,6 +4976,23 @@ const normalizedCandidatesRaw = [
     teenPostPassInputSource,
     finalRankedDocsBaseLength,
     rankedDocsLength,
+    filterKeptDocsLength: filterKeptDocs.length,
+    filterKeptDocsTitles,
+    candidatePoolInputLength: candidateDocs.length,
+    candidatePoolDropReasons,
+    rankedInputLength: sourceLayerRankedDocs.length,
+    rankedDropReasons,
+    shapedInputLength: postFilteredRankedDocs.length,
+    shapedDropReasons,
+    normalizedDocsCount,
+    postCanonicalizationCount,
+    postDeduplicationCount,
+    postAuthorityFilterCount,
+    postLaneFilterCount,
+    postShapeGateCount,
+    postFinalShapingCount,
+    finalRecommenderInputCount,
+    stageDropReasons,
     finalRankedDocsLength: finalRankedDocs.length,
     finalRankedDocsTitles: finalRankedDocs.map((doc:any)=>String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean),
     comicVineFinalScoreByTitle,
@@ -4898,6 +5031,12 @@ const normalizedCandidatesRaw = [
     rankedCount,
     renderedCount: finalOutputItems.length,
     mixedFallbackOutput,
+    usedEmergencyFallback,
+    fallbackReason,
+    fallbackSource,
+    preFallbackCandidateCount,
+    preFallbackRankedCount,
+    preFallbackAcceptedCount,
     suppressTopRecommendations,
     debugRouterVersion,
     routerResultTracePresent: true,
