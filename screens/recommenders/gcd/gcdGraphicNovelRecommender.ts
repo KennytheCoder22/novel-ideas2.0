@@ -26,7 +26,7 @@ const GRAPHIC_NOVEL_SEEDS: Record<string, string[]> = {
   mystery: ["Gotham Academy", "The Fade Out", "Blacksad", "Revival"],
 };
 
-type AnchorLane = "facet_weighted";
+type AnchorLane = "facet_weighted" | "fantasy_graphic" | "dystopian_graphic" | "mystery_graphic" | "horror_graphic" | "speculative_ya_graphic" | "superhero_identity";
 type CuratedFallback = { title: string; tags: string[]; publisher: string; facets: string[]; year?: number };
 
 const CURATED_TEEN_GRAPHIC_NOVEL_FALLBACK: CuratedFallback[] = [
@@ -263,6 +263,21 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
 } {
   const signals = topSwipeSignals(tagCounts);
   const signalText = signals.join(" ");
+  const superheroStrength =
+    Number(tagCounts?.["facet:superhero"] || 0) +
+    Number(tagCounts?.["genre:superheroes"] || 0) +
+    Number(tagCounts?.["graphicNovel:superhero"] || 0) +
+    Number(tagCounts?.["source_universe:marvel"] || 0) +
+    Number(tagCounts?.["source_universe:dc"] || 0) +
+    Number(tagCounts?.["publisher:marvel comics"] || 0) +
+    Number(tagCounts?.["publisher:dc comics"] || 0);
+  const nonSuperStrength =
+    Number(tagCounts?.["graphicNovel:fantasy"] || 0) +
+    Number(tagCounts?.["graphicNovel:mystery"] || 0) +
+    Number(tagCounts?.["graphicNovel:dystopian"] || 0) +
+    Number(tagCounts?.["graphicNovel:horror"] || 0) +
+    Number(tagCounts?.["graphicNovel:adventure"] || 0);
+  const suppressSuperheroLane = superheroStrength <= 0 && nonSuperStrength >= 2;
   const storyFacets: Array<{ facet: string; re: RegExp }> = [
     { facet: "coming-of-age", re: /coming of age|teen|young adult|school|identity|growing up/ },
     { facet: "found family", re: /found family|team|crew|friends|community|belonging/ },
@@ -295,16 +310,27 @@ function selectComicVineAnchors(tagCounts: TagCounts | undefined): {
 
   const scored = anchorProfiles.map((p) => {
     const overlap = p.facets.filter((f) => facetWeights[f] > 0);
-    const score = overlap.length + (overlap.includes("superhero") ? 0.25 : 0);
+    const superheroFacetBoost = overlap.includes("superhero") ? (suppressSuperheroLane ? -0.75 : 0.25) : 0;
+    const score = overlap.length + superheroFacetBoost;
     return { ...p, overlap, score };
   }).sort((a, b) => b.score - a.score);
 
   const selected = scored.filter((row) => row.score > 0).slice(0, MAX_COMICVINE_ANCHORS);
   const anchors = selected.map((r) => r.anchor);
   const reasonsByAnchor: Record<string, string[]> = Object.fromEntries(selected.map((r) => [r.anchor, [`matched facets: ${r.overlap.join(', ') || 'none'}`]]));
-  const defaults = ["hellboy", "the sandman", "saga", "batman"];
+  const defaults = suppressSuperheroLane
+    ? ["locke & key", "the sandman", "saga", "paper girls"]
+    : ["hellboy", "the sandman", "saga", "batman"];
   const suppressedDefaults = defaults.filter((a) => !anchors.includes(a));
-  return { lane: "facet_weighted", mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
+  const inferLane = (): AnchorLane => {
+    if (!suppressSuperheroLane && superheroStrength >= Math.max(2, nonSuperStrength)) return "superhero_identity";
+    if (hasFacet(tagCounts, /horror|spooky|haunted|ghost|occult|paranormal/)) return "horror_graphic";
+    if (hasFacet(tagCounts, /dystopian|future|science fiction|sci-fi|survival|rebellion/)) return "dystopian_graphic";
+    if (hasFacet(tagCounts, /mystery|crime|detective|thriller|suspense/)) return "mystery_graphic";
+    if (hasFacet(tagCounts, /fantasy|magic|myth|adventure/)) return "fantasy_graphic";
+    return "speculative_ya_graphic";
+  };
+  return { lane: inferLane(), mode: "story_facet_weighted", anchors, reasonsByAnchor, suppressedDefaults, topSignals: signals };
 }
 
 function buildComicQueriesFromFacets(tagCounts: TagCounts | undefined): string[] {
@@ -376,11 +402,22 @@ function buildEntitySeedQueriesFromGraphicKeywords(tagCounts: TagCounts | undefi
     .sort((a, b) => Number(b[1]) - Number(a[1]))
     .slice(0, 4);
   const total = weighted.reduce((sum, [, v]) => sum + Number(v), 0) || 1;
+  const superheroStrength =
+    Number(tagCounts?.["facet:superhero"] || 0) +
+    Number(tagCounts?.["genre:superheroes"] || 0) +
+    Number(tagCounts?.["graphicNovel:superhero"] || 0);
+  const nonSuperStrength =
+    Number(tagCounts?.["graphicNovel:fantasy"] || 0) +
+    Number(tagCounts?.["graphicNovel:mystery"] || 0) +
+    Number(tagCounts?.["graphicNovel:dystopian"] || 0) +
+    Number(tagCounts?.["graphicNovel:horror"] || 0);
+  const capSuperheroSeeds = superheroStrength <= 0 && nonSuperStrength >= 2;
   const out: string[] = [];
   for (const [rawKey, rawWeight] of weighted) {
     const key = rawKey.replace("graphicNovel:", "");
     const seeds = GRAPHIC_NOVEL_SEEDS[key] || [];
-    const seedCount = Math.max(1, Math.round((Number(rawWeight) / total) * Math.max(4, finalLimit)));
+    const computed = Math.max(1, Math.round((Number(rawWeight) / total) * Math.max(4, finalLimit)));
+    const seedCount = capSuperheroSeeds && key === "superhero" ? 1 : computed;
     for (const seed of seeds.slice(0, seedCount)) out.push(seed, `${seed} graphic novel`, `${seed} tpb`);
   }
   return Array.from(new Set(out.map((q) => stripDanglingQuotes(String(q || "").trim().toLowerCase())).filter(Boolean)));
