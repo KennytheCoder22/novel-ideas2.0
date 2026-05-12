@@ -4906,6 +4906,8 @@ const normalizedCandidatesRaw = [
   let recoveryInputPoolLength = 0;
   let recoveryEntitySeedMatches = 0;
   const recoveryRejectedReasons: Record<string, number> = {};
+  const franchiseCapBlockedTitles: string[] = [];
+  const recoveryDiversificationAttempts: string[] = [];
   if (includeComicVine && finalRenderDocs.length < 8) {
     recoveryTriggered = true;
     const entityPriority = [
@@ -4931,15 +4933,25 @@ const normalizedCandidatesRaw = [
     };
     const sorted = pool.sort((a: any, b: any) => {
       const score = (doc: any) => {
-        const t = normalizeText(String(doc?.title || ""));
+        const tRaw = String(doc?.title || "");
+        const t = normalizeText(tRaw);
         const q = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
         const entityHit = entityPriority.findIndex((e) => t.includes(e) || q.includes(e));
-        if (entityHit >= 0) return 100 - entityHit;
-        if (broadPhraseQueryRe.test(q)) return 1;
-        return 20;
+        let s = entityHit >= 0 ? 100 - entityHit : 20;
+        if (/\b(volume one|vol\.?\s*1|book one|book 1)\b/i.test(tRaw)) s += 12;
+        if (/\b(volume|vol\.?|book|part)\s*(seven|eight|7|8)\b/i.test(tRaw)) s -= 8;
+        if (/\b(clockworks|omega)\b/i.test(tRaw)) s -= 6;
+        if (/\bgraphic (horror|fantasy) novel\b/i.test(tRaw)) s -= 10;
+        if (/\bthe hobbit\b/i.test(tRaw) && !/\bfantasy\b/.test(q)) s -= 8;
+        if (/\b#\s*\d+\b/.test(tRaw) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(tRaw)) s -= 14;
+        if (/\b(español|french|deutsch|italiano|japanese)\b/i.test(String(doc?.subtitle || doc?.rawDoc?.subtitle || ""))) s -= 10;
+        (doc as any).entryPointRankReason = s;
+        return s;
       };
       return score(b) - score(a);
     });
+    const familySeen = new Set<string>();
+    // Pass 1: diversify, max 1 per family until we have attempted broad coverage.
     for (const doc of sorted) {
       if (selected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
       const title = String(doc?.title || "").trim();
@@ -4950,7 +4962,29 @@ const normalizedCandidatesRaw = [
       if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) { recoveryRejectedReasons.issue_spam = (recoveryRejectedReasons.issue_spam||0)+1; continue; }
       if (broadPhraseQueryRe.test(q) && genericBroadTitleRe.test(title)) { recoveryRejectedReasons.generic_broad_artifact = (recoveryRejectedReasons.generic_broad_artifact||0)+1; continue; }
       if (!entityHit && broadPhraseQueryRe.test(q) && selected.filter((d: any) => broadPhraseQueryRe.test(String(d?.queryText || d?.rawDoc?.queryText || ""))).length >= 1) { recoveryRejectedReasons.broad_phrase_cap = (recoveryRejectedReasons.broad_phrase_cap||0)+1; continue; }
-      add(doc);
+      const family = finalSeriesKeyForRender(doc);
+      recoveryDiversificationAttempts.push(`${family}:${String(doc?.title || "")}`);
+      if (selected.length < 8 && familySeen.has(family)) {
+        recoveryRejectedReasons.family_diversify_hold = (recoveryRejectedReasons.family_diversify_hold||0)+1;
+        continue;
+      }
+      if (add(doc)) familySeen.add(family);
+    }
+    // Pass 2: if still short, allow up to 2 per family while maintaining quality gates.
+    if (selected.length < 8) {
+      for (const doc of sorted) {
+        if (selected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+        const family = finalSeriesKeyForRender(doc);
+        if (selected.filter((d: any) => finalSeriesKeyForRender(d) === family).length >= 2) {
+          if (franchiseCapBlockedTitles.length < 20) franchiseCapBlockedTitles.push(String(doc?.title || ""));
+          continue;
+        }
+        const title = String(doc?.title || "").trim();
+        const q = String(doc?.queryText || doc?.rawDoc?.queryText || "");
+        if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) continue;
+        if (broadPhraseQueryRe.test(q) && genericBroadTitleRe.test(title)) continue;
+        add(doc);
+      }
     }
     if (selected.length >= 8) finalRenderDocs = selected;
   }
@@ -5141,6 +5175,11 @@ const normalizedCandidatesRaw = [
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const recoveryFinalItemsLength = finalRenderDocs.length;
   const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
+  const finalFranchiseFamilies = Array.from(new Set(finalRenderDocs.map((doc: any) => finalSeriesKeyForRender(doc)).filter(Boolean)));
+  const broadArtifactCount = finalRenderDocs.filter((doc: any) => /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(String(doc?.title || ""))).length;
+  if (finalFranchiseFamilies.length <= 2 || broadArtifactCount >= 2) {
+    recoveryRejectedReasons.post_assembly_quality_guard_rebuild = (recoveryRejectedReasons.post_assembly_quality_guard_rebuild || 0) + 1;
+  }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -5317,6 +5356,9 @@ const normalizedCandidatesRaw = [
     recoveryRejectedReasons,
     recoveryFinalItemsLength,
     countContractSatisfied,
+    finalFranchiseFamilies,
+    franchiseCapBlockedTitles,
+    recoveryDiversificationAttempts,
     returnedItemsBuiltFrom,
     teenPostPassOutputTitles,
     teenPostPassRejectedTitles,
