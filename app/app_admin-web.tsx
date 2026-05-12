@@ -128,6 +128,12 @@ function syncSchema(cfg: any) {
     cfg.decks.enabled[k] = v;
   }
 
+  cfg.swipe = (cfg.swipe && typeof cfg.swipe === "object") ? cfg.swipe : {};
+  cfg.swipe.categories = (cfg.swipe.categories && typeof cfg.swipe.categories === "object") ? cfg.swipe.categories : {};
+  for (const k of Object.keys(DEFAULT_SWIPE_CATEGORIES) as SwipeCategoryKey[]) {
+    if (typeof cfg.swipe.categories[k] !== "boolean") cfg.swipe.categories[k] = DEFAULT_SWIPE_CATEGORIES[k];
+  }
+
   // Theme compatibility
   // Canonical (mobile + Home): branding.mainTheme + branding.highlight
   // Legacy (older web configs): theme.mainThemeKey + theme.highlightKey
@@ -241,6 +247,15 @@ type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibra
 type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
+const DEFAULT_SWIPE_CATEGORIES: Record<SwipeCategoryKey, boolean> = {
+  books: true,
+  movies: true,
+  tv: true,
+  games: true,
+  youtube: true,
+  anime: true,
+  podcasts: true,
+};
 
 function deckLabel(k: DeckKey) {
   if (k === "k2") return "Kids";
@@ -533,6 +548,22 @@ export default function AdminWebScreen() {
       }
       const last = path[path.length - 1];
       cur[last] = !cur[last];
+      syncSchema(next);
+      return next;
+    });
+  };
+
+  const toggleSwipeCategory = (k: SwipeCategoryKey) => {
+    setConfig((prev: any) => {
+      const next = deepClone(prev);
+      syncSchema(next);
+      const current = {
+        ...DEFAULT_SWIPE_CATEGORIES,
+        ...(next?.swipe?.categories || {}),
+      };
+      current[k] = !current[k];
+      if (!Object.values(current).some(Boolean)) current.books = true;
+      next.swipe.categories = current;
       syncSchema(next);
       return next;
     });
@@ -918,11 +949,11 @@ export default function AdminWebScreen() {
         </Text>
         <View style={{ gap: 10 }}>
           {(["books", "movies", "tv", "games", "youtube", "anime", "podcasts"] as SwipeCategoryKey[]).map((k) => {
-            const enabled = config?.swipe?.categories ? !!config.swipe.categories[k] : true;
+            const enabled = !!(config?.swipe?.categories?.[k] ?? DEFAULT_SWIPE_CATEGORIES[k]);
             return (
               <View key={k} style={styles.rowBetween}>
                 <Text style={{ color: theme.text, fontWeight: "700" }}>{k.toUpperCase()}</Text>
-                <Switch value={enabled} onValueChange={() => togglePathBool(["swipe", "categories", k])} />
+                <Switch value={enabled} onValueChange={() => toggleSwipeCategory(k)} />
               </View>
             );
           })}
