@@ -117,6 +117,13 @@ export type RecommendationResult = {
   broadProfileBackfillTriggered?: boolean;
   broadProfileBackfillSelected?: string[];
   broadProfileBackfillRejectedReasons?: Record<string, number>;
+  cleanCandidateShortfallExpansionTriggered?: boolean;
+  cleanCandidateShortfallReason?: string;
+  expansionSeedQueries?: string[];
+  expansionRawCount?: number;
+  expansionConvertedCount?: number;
+  expansionCleanEligibleCount?: number;
+  expansionSelectedTitles?: string[];
   selectedFranchiseRoots?: string[];
   profileSelectedEntitySeeds?: string[];
   suppressedGlobalSeedReason?: string;

@@ -5442,6 +5442,13 @@ const normalizedCandidatesRaw = [
   let broadProfileBackfillTriggered = false;
   const broadProfileBackfillSelected: string[] = [];
   const broadProfileBackfillRejectedReasons: Record<string, number> = {};
+  let cleanCandidateShortfallExpansionTriggered = false;
+  let cleanCandidateShortfallReason = "none";
+  const expansionSeedQueries: string[] = [];
+  let expansionRawCount = 0;
+  let expansionConvertedCount = 0;
+  let expansionCleanEligibleCount = 0;
+  const expansionSelectedTitles: string[] = [];
   const registerRelaxedReject = (reason: string) => {
     relaxedBreadthBackfillRejectedReasons[reason] = Number(relaxedBreadthBackfillRejectedReasons[reason] || 0) + 1;
   };
@@ -5561,6 +5568,44 @@ const normalizedCandidatesRaw = [
         broadProfileBackfillSelected.push(title);
       }
     }
+  }
+  const shouldTriggerShortfallExpansion =
+    finalEligibleNonNegativeCount < 12 ||
+    (relaxedBreadthBackfillTriggered && broadProfileBackfillTriggered && broadProfileBackfillSelected.length === 0) ||
+    finalRenderDocs.length < 8;
+  if (shouldTriggerShortfallExpansion) {
+    cleanCandidateShortfallExpansionTriggered = true;
+    cleanCandidateShortfallReason =
+      finalEligibleNonNegativeCount < 12
+        ? "eligible_pool_below_12"
+        : (broadProfileBackfillTriggered && broadProfileBackfillSelected.length === 0)
+          ? "broad_backfill_empty"
+          : "selected_under_8_after_backfill";
+    const profileExpansionSeeds = ["miles morales", "spider-man", "runaways", "sweet tooth", "the sandman", "descender", "black science", "invincible", "saga"];
+    expansionSeedQueries.push(...profileExpansionSeeds.slice(0, 8));
+    const selectedTitleSet = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || ""))));
+    const expansionPool = [...scoredCanonicalDocs].filter((doc: any) => {
+      const title = normalizeText(String(doc?.title || ""));
+      return profileExpansionSeeds.some((seed) => title.includes(normalizeText(seed)) || parentFranchiseRootForDoc(doc).includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
+    });
+    expansionRawCount = expansionPool.length;
+    expansionConvertedCount = expansionPool.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine")).length;
+    for (const doc of expansionPool.sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
+      if (finalRenderDocs.length >= 8) break;
+      const title = String(doc?.title || "");
+      const nTitle = normalizeText(title);
+      if (!title || selectedTitleSet.has(nTitle)) continue;
+      const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+      if (score < 0) continue;
+      if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0) continue;
+      if (Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0) continue;
+      if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) continue;
+      if (/:\s*graphic novel$/i.test(title) || /^.+:\s*the graphic novel/i.test(title) || /^.+\sgraphic novel$/i.test(title)) continue;
+      finalRenderDocs.push(doc);
+      selectedTitleSet.add(nTitle);
+      expansionSelectedTitles.push(title);
+    }
+    expansionCleanEligibleCount = expansionSelectedTitles.length;
   }
   const adjacentSeedTitlesFromScoredUniverse = Array.from(
     new Set(
@@ -5865,6 +5910,13 @@ const normalizedCandidatesRaw = [
     broadProfileBackfillTriggered,
     broadProfileBackfillSelected,
     broadProfileBackfillRejectedReasons,
+    cleanCandidateShortfallExpansionTriggered,
+    cleanCandidateShortfallReason,
+    expansionSeedQueries,
+    expansionRawCount,
+    expansionConvertedCount,
+    expansionCleanEligibleCount,
+    expansionSelectedTitles,
     suppressedGlobalSeedReason,
     profileSelectedEntitySeeds,
     finalFranchiseFamilies,
