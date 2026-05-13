@@ -5439,8 +5439,14 @@ const normalizedCandidatesRaw = [
   const relaxedBreadthBackfillCandidates: string[] = [];
   const relaxedBreadthBackfillSelected: string[] = [];
   const relaxedBreadthBackfillRejectedReasons: Record<string, number> = {};
+  let broadProfileBackfillTriggered = false;
+  const broadProfileBackfillSelected: string[] = [];
+  const broadProfileBackfillRejectedReasons: Record<string, number> = {};
   const registerRelaxedReject = (reason: string) => {
     relaxedBreadthBackfillRejectedReasons[reason] = Number(relaxedBreadthBackfillRejectedReasons[reason] || 0) + 1;
+  };
+  const registerBroadReject = (reason: string) => {
+    broadProfileBackfillRejectedReasons[reason] = Number(broadProfileBackfillRejectedReasons[reason] || 0) + 1;
   };
   const hasWalkingDeadStarter = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === "the-walking-dead" && /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || "")));
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
@@ -5531,6 +5537,29 @@ const normalizedCandidatesRaw = [
       finalRenderDocs.push(doc);
       selectedTitleSet.add(nTitle);
       relaxedBreadthBackfillSelected.push(title);
+    }
+    if (finalRenderDocs.length < 8) {
+      broadProfileBackfillTriggered = true;
+      for (const doc of backfillPool) {
+        if (finalRenderDocs.length >= 8) break;
+        const title = String(doc?.title || "");
+        const nTitle = normalizeText(title);
+        if (!title || selectedTitleSet.has(nTitle)) { registerBroadReject("duplicate"); continue; }
+        const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+        if (score < 0) { registerBroadReject("negative_score"); continue; }
+        if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerBroadReject("locale_mismatch"); continue; }
+        if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0) { registerBroadReject("issue_fragment"); continue; }
+        if (Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.walkingDeadSubtitleFragmentPenalty || 0) < 0) { registerBroadReject("subtitle_fragment"); continue; }
+        if (/:\s*graphic novel$/i.test(title) || /^.+:\s*the graphic novel/i.test(title) || /^.+\sgraphic novel$/i.test(title)) { registerBroadReject("broad_artifact"); continue; }
+        const family = parentFranchiseRootForDoc(doc);
+        const familyCount = finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
+        const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse|compendium|master edition|treasury edition|deluxe edition)\b/i.test(title);
+        if (familyCount >= 1 && !hasStarterLikeSignal) { registerBroadReject("franchise_over_cap"); continue; }
+        if (family === "the-walking-dead" && !hasStarterLikeSignal && familyCount >= 1) { registerBroadReject("walking_dead_over_cap"); continue; }
+        finalRenderDocs.push(doc);
+        selectedTitleSet.add(nTitle);
+        broadProfileBackfillSelected.push(title);
+      }
     }
   }
   const adjacentSeedTitlesFromScoredUniverse = Array.from(
@@ -5833,6 +5862,9 @@ const normalizedCandidatesRaw = [
     relaxedBreadthBackfillCandidates,
     relaxedBreadthBackfillSelected,
     relaxedBreadthBackfillRejectedReasons,
+    broadProfileBackfillTriggered,
+    broadProfileBackfillSelected,
+    broadProfileBackfillRejectedReasons,
     suppressedGlobalSeedReason,
     profileSelectedEntitySeeds,
     finalFranchiseFamilies,

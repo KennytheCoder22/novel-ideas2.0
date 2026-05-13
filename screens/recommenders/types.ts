@@ -114,6 +114,9 @@ export type RecommendationResult = {
   relaxedBreadthBackfillCandidates?: string[];
   relaxedBreadthBackfillSelected?: string[];
   relaxedBreadthBackfillRejectedReasons?: Record<string, number>;
+  broadProfileBackfillTriggered?: boolean;
+  broadProfileBackfillSelected?: string[];
+  broadProfileBackfillRejectedReasons?: Record<string, number>;
   selectedFranchiseRoots?: string[];
   profileSelectedEntitySeeds?: string[];
   suppressedGlobalSeedReason?: string;
