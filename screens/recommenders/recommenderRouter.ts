@@ -5311,10 +5311,6 @@ const normalizedCandidatesRaw = [
     if (hasParentMetadata) parentMetadataUsedForRootCount += 1;
     parentFranchiseRootByTitle[title] = parentFranchiseRoot;
     parentRootSourceByTitle[title] = String(hasParentMetadata ? "parentVolumeName" : "title_fallback");
-    const hasParentMetadata = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName);
-    if (hasParentMetadata) parentMetadataUsedForRootCount += 1;
-    parentFranchiseRootByTitle[title] = parentFranchiseRoot;
-    parentRootSourceByTitle[title] = String(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName ? "parentVolumeName" : "title_fallback");
     const franchise = normalizeText(parentFranchiseRoot || "");
     const isAnchorFranchise = anchorFranchises.some((seed) => franchise.includes(normalizeText(seed)));
     const entryPointBoost =
