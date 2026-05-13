@@ -106,6 +106,10 @@ export type RecommendationResult = {
   semanticBreadthSelections?: string[];
   adjacentSeedExpansionCandidates?: string[];
   seedSaturationPenaltyApplied?: Record<string, number>;
+  relaxedBreadthBackfillTriggered?: boolean;
+  relaxedBreadthBackfillCandidates?: string[];
+  relaxedBreadthBackfillSelected?: string[];
+  relaxedBreadthBackfillRejectedReasons?: Record<string, number>;
   selectedFranchiseRoots?: string[];
   profileSelectedEntitySeeds?: string[];
   suppressedGlobalSeedReason?: string;

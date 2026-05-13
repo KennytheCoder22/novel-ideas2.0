@@ -5379,6 +5379,13 @@ const normalizedCandidatesRaw = [
   const qualityRecoveryReasons: string[] = [];
   const seedFamilyCounts: Record<string, number> = {};
   let walkingDeadSelectedCount = 0;
+  let relaxedBreadthBackfillTriggered = false;
+  const relaxedBreadthBackfillCandidates: string[] = [];
+  const relaxedBreadthBackfillSelected: string[] = [];
+  const relaxedBreadthBackfillRejectedReasons: Record<string, number> = {};
+  const registerRelaxedReject = (reason: string) => {
+    relaxedBreadthBackfillRejectedReasons[reason] = Number(relaxedBreadthBackfillRejectedReasons[reason] || 0) + 1;
+  };
   const hasWalkingDeadStarter = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === "the-walking-dead" && /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || "")));
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
     const family = parentFranchiseRootForDoc(doc);
@@ -5431,6 +5438,37 @@ const normalizedCandidatesRaw = [
   }
   if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
   else finalRenderDocs = antiCollapseSelected;
+  if (finalEligibleNonNegativeCount >= 8 && finalRenderDocs.length < 8) {
+    relaxedBreadthBackfillTriggered = true;
+    const selectedTitleSet = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || ""))));
+    const adjacentSeeds = ["locke & key", "sweet tooth", "the walking dead", "descender", "sandman", "runaways", "black science"];
+    const backfillPool = [...scoredCanonicalDocs]
+      .filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0)
+      .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0));
+    for (const doc of backfillPool) {
+      if (finalRenderDocs.length >= 8) break;
+      const title = String(doc?.title || "");
+      const nTitle = normalizeText(title);
+      if (!title || selectedTitleSet.has(nTitle)) { registerRelaxedReject("duplicate"); continue; }
+      if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerRelaxedReject("non_english"); continue; }
+      if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0) { registerRelaxedReject("issue_fragment"); continue; }
+      if (Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.walkingDeadSubtitleFragmentPenalty || 0) < 0) { registerRelaxedReject("subtitle_fragment"); continue; }
+      if (/:\s*graphic novel$/i.test(title) || /^.+:\s*the graphic novel/i.test(title) || /^.+\sgraphic novel$/i.test(title)) { registerRelaxedReject("broad_artifact"); continue; }
+      const family = parentFranchiseRootForDoc(doc);
+      const matchingAdjacentSeed = adjacentSeeds.find((seed) => nTitle.includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
+      if (!matchingAdjacentSeed) { registerRelaxedReject("not_adjacent_seed"); continue; }
+      if (matchingAdjacentSeed === "the walking dead" && !/\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(title)) { registerRelaxedReject("walking_dead_not_clean_starter"); continue; }
+      relaxedBreadthBackfillCandidates.push(title);
+      finalRenderDocs.push(doc);
+      selectedTitleSet.add(nTitle);
+      relaxedBreadthBackfillSelected.push(title);
+    }
+  }
+  adjacentSeedExpansionCandidates.push(
+    ...Array.from(new Set(scoredCanonicalDocs
+      .map((doc: any) => String(doc?.title || ""))
+      .filter((title: string) => /\b(locke\s*&\s*key|sweet tooth|walking dead|descender|sandman|runaways|black science)\b/i.test(title)))))
+  );
   const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
   const countContractShortfallReason =
     countContractSatisfied
@@ -5715,6 +5753,10 @@ const normalizedCandidatesRaw = [
     semanticBreadthSelections,
     adjacentSeedExpansionCandidates,
     seedSaturationPenaltyApplied,
+    relaxedBreadthBackfillTriggered,
+    relaxedBreadthBackfillCandidates,
+    relaxedBreadthBackfillSelected,
+    relaxedBreadthBackfillRejectedReasons,
     suppressedGlobalSeedReason,
     profileSelectedEntitySeeds,
     finalFranchiseFamilies,
