@@ -91,7 +91,6 @@ function finalSeriesKeyForRender(doc: any): string {
 
 function parentFranchiseRootForDoc(doc: any): string {
   const parentMeta =
-  const parent = String(
     doc?.parentVolumeName ||
     doc?.parentVolume?.name ||
     doc?.canonicalParentTitle ||
@@ -105,10 +104,7 @@ function parentFranchiseRootForDoc(doc: any): string {
     doc?.rawDoc?.rawDoc?.canonicalParentTitle ||
     doc?.rawDoc?.rawDoc?.series ||
     "";
-  const parent = String(
-    parentMeta,
-    "",
-  ).toLowerCase();
+  const parent = String(parentMeta || "").toLowerCase();
   const fallback = finalSeriesKeyForRender(doc);
   const raw = (parent.trim() ? parent : fallback).split(":")[0].replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   if (raw === "walking-dead" || raw === "the-walking-dead") return "the-walking-dead";
