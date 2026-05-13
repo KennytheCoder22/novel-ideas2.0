@@ -98,6 +98,10 @@ export type RecommendationResult = {
   parentRootSourceByTitle?: Record<string, string>;
   normalizedParentRootAliases?: Record<string, string>;
   subtitleOnlyParentFragmentRejectedTitles?: string[];
+  parentMetadataUsedForRootCount?: number;
+  subtitleFragmentInheritedParentRootTitles?: string[];
+  subtitleFragmentRejectedTitles?: string[];
+  fragmentAcceptedBecauseCollectedEditionTitles?: string[];
   sideArcRejectedTitles?: string[];
   selectedParentFranchiseCounts?: Record<string, number>;
   duplicateTitleRejectedTitles?: string[];
