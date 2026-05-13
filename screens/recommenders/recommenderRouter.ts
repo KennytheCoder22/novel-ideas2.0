@@ -98,8 +98,10 @@ function parentFranchiseRootForDoc(doc: any): string {
     doc?.rawDoc?.parentVolumeName ||
     "",
   ).toLowerCase();
-  if (parent.trim()) return parent.split(":")[0].replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return finalSeriesKeyForRender(doc);
+  const fallback = finalSeriesKeyForRender(doc);
+  const raw = (parent.trim() ? parent : fallback).split(":")[0].replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  if (raw === "walking-dead" || raw === "the-walking-dead") return "the-walking-dead";
+  return raw;
 }
 
 function applyFinalSeriesCap(docs: any[], perSeriesCap: number): { kept: any[]; dropped: Array<{ title: string; reason: string; seriesKey: string }>; counts: Record<string, number> } {
@@ -147,6 +149,21 @@ function enrichComicVineStructuralMetadata(docs: RecommendationDoc[]): Recommend
       },
     };
   });
+}
+
+function isCollectedStarterLikeText(text: string): boolean {
+  return /\b(volume one|volume 1|book one|book 1|tpb|trade paperback|omnibus|collection|compendium|master edition|treasury edition|deluxe edition)\b/i.test(text);
+}
+
+function isLikelySubtitleFragmentTitle(title: string): boolean {
+  const t = normalizeText(String(title || ""));
+  if (!t) return false;
+  if (isCollectedStarterLikeText(t)) return false;
+  if (/\b(part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/.test(t)) return true;
+  if (/\b\w+\s+of\s+\w+\b/.test(t)) return true;
+  if (/\b(conclusion|the end of|finale|aftermath)\b/.test(t)) return true;
+  if (/^[a-z0-9' -]{1,40}$/.test(t) && t.split(" ").length <= 4) return true;
+  return false;
 }
 
 function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiagnostics {
@@ -5256,6 +5273,13 @@ const normalizedCandidatesRaw = [
   const adjacentSeedExpansionCandidates: string[] = [];
   const seedSaturationPenaltyApplied: Record<string, number> = {};
   const parentFranchiseRootByTitle: Record<string, string> = {};
+  const parentRootSourceByTitle: Record<string, string> = {};
+  const normalizedParentRootAliases: Record<string, string> = { "walking-dead": "the-walking-dead", "the-walking-dead": "the-walking-dead" };
+  const subtitleOnlyParentFragmentRejectedTitles: string[] = [];
+  let parentMetadataUsedForRootCount = 0;
+  const subtitleFragmentInheritedParentRootTitles: string[] = [];
+  const subtitleFragmentRejectedTitles: string[] = [];
+  const fragmentAcceptedBecauseCollectedEditionTitles: string[] = [];
   let zeroScoreBroadFillersUsed = 0;
   const entitySeedCandidatesFoundBySeed: Record<string, number> = {};
   const entitySeedCandidatesSelected: string[] = [];
@@ -5268,7 +5292,10 @@ const normalizedCandidatesRaw = [
     const subtitle = String(doc?.subtitle || doc?.rawDoc?.subtitle || "");
     const normalizedTitle = normalizeText(`${title} ${subtitle}`);
     const parentFranchiseRoot = parentFranchiseRootForDoc(doc);
+    const hasParentMetadata = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName);
+    if (hasParentMetadata) parentMetadataUsedForRootCount += 1;
     parentFranchiseRootByTitle[title] = parentFranchiseRoot;
+    parentRootSourceByTitle[title] = String(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName ? "parentVolumeName" : "title_fallback");
     const franchise = normalizeText(parentFranchiseRoot || "");
     const isAnchorFranchise = anchorFranchises.some((seed) => franchise.includes(normalizeText(seed)));
     const entryPointBoost =
@@ -5291,6 +5318,17 @@ const normalizedCandidatesRaw = [
     const issueFragmentPenalty = /#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title) ? -12 : 0;
     const subtitleSideArcPenalty = /\b(after the flood|the road to war|the ratio part|one night only|election day|mecca conclusion|silk road|boss rush)\b/i.test(normalizedTitle)
       && !/\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(normalizedTitle) ? -30 : 0;
+    const collectedStarterLike = isCollectedStarterLikeText(`${title} ${subtitle}`);
+    const subtitleFragmentLike = hasParentMetadata && isLikelySubtitleFragmentTitle(title);
+    if (subtitleFragmentLike && !subtitleFragmentInheritedParentRootTitles.includes(title)) subtitleFragmentInheritedParentRootTitles.push(title);
+    if (subtitleFragmentLike && collectedStarterLike && !fragmentAcceptedBecauseCollectedEditionTitles.includes(title)) fragmentAcceptedBecauseCollectedEditionTitles.push(title);
+    const subtitleFragmentPenalty = subtitleFragmentLike && !collectedStarterLike ? -26 : 0;
+    const walkingDeadSubtitleFragmentPenalty =
+      parentFranchiseRoot === "the-walking-dead" &&
+      /\b(storm the gates|the last stand|the farm house|the road back|the rotten core|aftermath|vainqueurs|opportunity|conquered|betrayed|a gathering|found|eugene tinkers|confrontation)\b/i.test(normalizedTitle) &&
+      !/\b(volume|vol\.?|book|collection|omnibus|treasury|master edition|compendium)\b/i.test(normalizedTitle)
+        ? -34
+        : 0;
     const canonicalAnchorTitleBoost = isAnchorFranchise ? 10 : 0;
     const isSIKTC = /\bsomething is killing the children\b/i.test(normalizedTitle);
     const matchedProfileSeeds = profileSelectedEntitySeeds.filter((seed) => normalizedTitle.includes(normalizeText(seed)));
@@ -5312,7 +5350,7 @@ const normalizedCandidatesRaw = [
         ? -22
         : 0;
     const heuristicScore =
-      entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + subtitleSideArcPenalty + issueFragmentPenalty + genericArtifactPenalty + broadArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
+      entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + subtitleSideArcPenalty + subtitleFragmentPenalty + walkingDeadSubtitleFragmentPenalty + issueFragmentPenalty + genericArtifactPenalty + broadArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
     const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
     const shouldRejectAsBroadArtifact = broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise;
     if (shouldRejectAsBroadArtifact) broadArtifactRejectedTitles.push(title);
@@ -5327,6 +5365,8 @@ const normalizedCandidatesRaw = [
         sideStoryPenalty,
         issueFragmentPenalty,
         subtitleSideArcPenalty,
+        subtitleFragmentPenalty,
+        walkingDeadSubtitleFragmentPenalty,
         broadArtifactPenalty,
         nonEnglishEditionPenalty,
         profileSeedBoost,
@@ -5365,6 +5405,15 @@ const normalizedCandidatesRaw = [
   const antiCollapseSelected: any[] = [];
   const qualityRecoveryReasons: string[] = [];
   const seedFamilyCounts: Record<string, number> = {};
+  let walkingDeadSelectedCount = 0;
+  let relaxedBreadthBackfillTriggered = false;
+  const relaxedBreadthBackfillCandidates: string[] = [];
+  const relaxedBreadthBackfillSelected: string[] = [];
+  const relaxedBreadthBackfillRejectedReasons: Record<string, number> = {};
+  const registerRelaxedReject = (reason: string) => {
+    relaxedBreadthBackfillRejectedReasons[reason] = Number(relaxedBreadthBackfillRejectedReasons[reason] || 0) + 1;
+  };
+  const hasWalkingDeadStarter = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === "the-walking-dead" && /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || "")));
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
     const family = parentFranchiseRootForDoc(doc);
     const matchingSeed = profileSelectedEntitySeeds.find((seed) => normalizeText(String(doc?.title || "")).includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
@@ -5377,6 +5426,16 @@ const normalizedCandidatesRaw = [
     if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); continue; }
     const familyCount = antiCollapseSelected.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
     const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(String(doc?.title || ""));
+    const hasParentMetadata = Boolean((doc as any)?.parentVolumeName || (doc as any)?.parentVolume?.name || (doc as any)?.rawDoc?.parentVolumeName);
+    const subtitleFragmentLike = hasParentMetadata && isLikelySubtitleFragmentTitle(String(doc?.title || ""));
+    if (subtitleFragmentLike && !hasStarterLikeSignal) { subtitleFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
+    if (family === "the-walking-dead") {
+      const subtitleOnlyWalkingDeadFragment =
+        !/\b(volume|vol\.?|book|collection|omnibus|treasury|master edition|compendium)\b/i.test(String(doc?.title || "")) &&
+        /\b(storm the gates|the last stand|the farm house|the road back|the rotten core|aftermath|vainqueurs|opportunity|conquered|betrayed|a gathering|found|eugene tinkers|confrontation)\b/i.test(String(doc?.title || ""));
+      if (subtitleOnlyWalkingDeadFragment) { subtitleOnlyParentFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
+      if (!hasWalkingDeadStarter && walkingDeadSelectedCount >= 1) { subtitleOnlyParentFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
+    }
     if (familyCount >= 1 && !hasStarterLikeSignal) { sideArcRejectedTitles.push(String(doc?.title || "")); continue; }
     if (familyCount >= 2) continue;
     const normalizedTitle = normalizeText(String(doc?.title || ""));
@@ -5394,6 +5453,7 @@ const normalizedCandidatesRaw = [
       zeroScoreBroadFillersUsed += 1;
     }
     antiCollapseSelected.push(doc);
+    if (family === "the-walking-dead") walkingDeadSelectedCount += 1;
     if (matchingSeed) {
       seedFamilyCounts[matchingSeed] = seedCount + 1;
       if (!semanticBreadthSelections.includes(matchingSeed)) semanticBreadthSelections.push(matchingSeed);
@@ -5408,6 +5468,40 @@ const normalizedCandidatesRaw = [
   }
   if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
   else finalRenderDocs = antiCollapseSelected;
+  if (finalEligibleNonNegativeCount >= 8 && finalRenderDocs.length < 8) {
+    relaxedBreadthBackfillTriggered = true;
+    const selectedTitleSet = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || ""))));
+    const adjacentSeeds = ["locke & key", "sweet tooth", "the walking dead", "descender", "sandman", "runaways", "black science"];
+    const backfillPool = [...scoredCanonicalDocs]
+      .filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0)
+      .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0));
+    for (const doc of backfillPool) {
+      if (finalRenderDocs.length >= 8) break;
+      const title = String(doc?.title || "");
+      const nTitle = normalizeText(title);
+      if (!title || selectedTitleSet.has(nTitle)) { registerRelaxedReject("duplicate"); continue; }
+      if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerRelaxedReject("non_english"); continue; }
+      if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0) { registerRelaxedReject("issue_fragment"); continue; }
+      if (Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.walkingDeadSubtitleFragmentPenalty || 0) < 0) { registerRelaxedReject("subtitle_fragment"); continue; }
+      if (/:\s*graphic novel$/i.test(title) || /^.+:\s*the graphic novel/i.test(title) || /^.+\sgraphic novel$/i.test(title)) { registerRelaxedReject("broad_artifact"); continue; }
+      const family = parentFranchiseRootForDoc(doc);
+      const matchingAdjacentSeed = adjacentSeeds.find((seed) => nTitle.includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
+      if (!matchingAdjacentSeed) { registerRelaxedReject("not_adjacent_seed"); continue; }
+      if (matchingAdjacentSeed === "the walking dead" && !/\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(title)) { registerRelaxedReject("walking_dead_not_clean_starter"); continue; }
+      relaxedBreadthBackfillCandidates.push(title);
+      finalRenderDocs.push(doc);
+      selectedTitleSet.add(nTitle);
+      relaxedBreadthBackfillSelected.push(title);
+    }
+  }
+  const adjacentSeedTitlesFromScoredUniverse = Array.from(
+    new Set(
+      scoredCanonicalDocs
+        .map((doc: any) => String(doc?.title || ""))
+        .filter((title: string) => /\b(locke\s*&\s*key|sweet tooth|walking dead|descender|sandman|runaways|black science)\b/i.test(title))
+    )
+  );
+  adjacentSeedExpansionCandidates.push(...adjacentSeedTitlesFromScoredUniverse);
   const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
   const countContractShortfallReason =
     countContractSatisfied
@@ -5681,6 +5775,13 @@ const normalizedCandidatesRaw = [
     entitySeedCandidatesSelected,
     selectedFranchiseRoots: Array.from(new Set(finalRenderDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean))),
     parentFranchiseRootByTitle,
+    parentRootSourceByTitle,
+    normalizedParentRootAliases,
+    subtitleOnlyParentFragmentRejectedTitles,
+    parentMetadataUsedForRootCount,
+    subtitleFragmentInheritedParentRootTitles,
+    subtitleFragmentRejectedTitles,
+    fragmentAcceptedBecauseCollectedEditionTitles,
     sideArcRejectedTitles,
     selectedParentFranchiseCounts,
     duplicateTitleRejectedTitles,
@@ -5689,6 +5790,10 @@ const normalizedCandidatesRaw = [
     semanticBreadthSelections,
     adjacentSeedExpansionCandidates,
     seedSaturationPenaltyApplied,
+    relaxedBreadthBackfillTriggered,
+    relaxedBreadthBackfillCandidates,
+    relaxedBreadthBackfillSelected,
+    relaxedBreadthBackfillRejectedReasons,
     suppressedGlobalSeedReason,
     profileSelectedEntitySeeds,
     finalFranchiseFamilies,

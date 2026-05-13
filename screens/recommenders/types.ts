@@ -95,6 +95,13 @@ export type RecommendationResult = {
   entitySeedCandidatesFoundBySeed?: Record<string, number>;
   entitySeedCandidatesSelected?: string[];
   parentFranchiseRootByTitle?: Record<string, string>;
+  parentRootSourceByTitle?: Record<string, string>;
+  normalizedParentRootAliases?: Record<string, string>;
+  subtitleOnlyParentFragmentRejectedTitles?: string[];
+  parentMetadataUsedForRootCount?: number;
+  subtitleFragmentInheritedParentRootTitles?: string[];
+  subtitleFragmentRejectedTitles?: string[];
+  fragmentAcceptedBecauseCollectedEditionTitles?: string[];
   sideArcRejectedTitles?: string[];
   selectedParentFranchiseCounts?: Record<string, number>;
   duplicateTitleRejectedTitles?: string[];
@@ -103,6 +110,10 @@ export type RecommendationResult = {
   semanticBreadthSelections?: string[];
   adjacentSeedExpansionCandidates?: string[];
   seedSaturationPenaltyApplied?: Record<string, number>;
+  relaxedBreadthBackfillTriggered?: boolean;
+  relaxedBreadthBackfillCandidates?: string[];
+  relaxedBreadthBackfillSelected?: string[];
+  relaxedBreadthBackfillRejectedReasons?: Record<string, number>;
   selectedFranchiseRoots?: string[];
   profileSelectedEntitySeeds?: string[];
   suppressedGlobalSeedReason?: string;
