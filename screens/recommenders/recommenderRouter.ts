@@ -514,7 +514,11 @@ function collectSwipeTagsForRouting(value: any): string[] {
       for (const tag of source) {
         const cleaned = String(tag || "").toLowerCase().trim();
         if (cleaned) out.push(cleaned);
+      } else {
+        expansionNotTriggeredReason = "no_expansion_seed_queries";
       }
+    } else {
+      expansionNotTriggeredReason = "clean_eligible_sufficient";
     }
   }
   return Array.from(new Set(out));
@@ -1553,7 +1557,11 @@ function buildDirectEvidenceLaneWeights(input: RecommenderInput): Record<string,
       // drama, literary, or social/political tags are not enough.
       if (/^genre:historical$/.test(rawKeyText) || /\bhistorical fiction\b|\bhistorical novel\b|\bperiod fiction\b|\bgilded age\b|\bcivil war historical\b|\b19th century\b/.test(key)) {
         scores.historical += numeric * 1.15;
+      } else {
+        expansionNotTriggeredReason = "no_expansion_seed_queries";
       }
+    } else {
+      expansionNotTriggeredReason = "clean_eligible_sufficient";
     }
   }
 
@@ -2001,7 +2009,11 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         "psychological horror graphic novel";
       if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
         mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
+      } else {
+        expansionNotTriggeredReason = "no_expansion_seed_queries";
       }
+    } else {
+      expansionNotTriggeredReason = "clean_eligible_sufficient";
     }
   }
 
@@ -2968,7 +2980,11 @@ export async function getRecommendations(
         if (!key || existingKeys.has(key)) continue;
         existingKeys.add(key);
         rungs.push({ ...rung, hybridFamily: normalizedFamily, laneKind: "taste-cluster" });
+      } else {
+        expansionNotTriggeredReason = "no_expansion_seed_queries";
       }
+    } else {
+      expansionNotTriggeredReason = "clean_eligible_sufficient";
     }
   }
 
@@ -3371,6 +3387,7 @@ export async function getRecommendations(
   let expansionMergedCandidateCount = 0;
   let expansionCleanEligibleCount = 0;
   let expansionSelectedTitles: string[] = [];
+  let expansionNotTriggeredReason = "not_evaluated";
   let enrichedDocs = enrichComicVineStructuralMetadata(commerciallyEnrichedDocs);
   if (includeComicVine) {
     const cleanEligibleBaseline = commerciallyEnrichedDocs.filter((doc: any) => {
@@ -3379,6 +3396,7 @@ export async function getRecommendations(
     });
     expansionCleanEligibleCount = cleanEligibleBaseline.length;
     if (cleanEligibleBaseline.length < 8) {
+      expansionNotTriggeredReason = "clean_eligible_below_threshold";
       cleanCandidateShortfallExpansionTriggered = true;
       const expansionSeedQueries = Array.from(new Set([
         ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
@@ -3404,7 +3422,11 @@ export async function getRecommendations(
         } catch (e: any) {
           expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: 'error', rawCount: 0, error: String(e?.message || e) }));
         }
+      } else {
+        expansionNotTriggeredReason = "no_expansion_seed_queries";
       }
+    } else {
+      expansionNotTriggeredReason = "clean_eligible_sufficient";
     }
   }
 
@@ -5016,7 +5038,11 @@ const normalizedCandidatesRaw = [
           seenIds.add(id);
           seenTitles.add(normalizedTitle);
         }
+      } else {
+        expansionNotTriggeredReason = "no_expansion_seed_queries";
       }
+    } else {
+      expansionNotTriggeredReason = "clean_eligible_sufficient";
     }
   }
   let recoveryTriggered = false;
@@ -5032,6 +5058,32 @@ const normalizedCandidatesRaw = [
     ];
     const broadPhraseQueryRe = /\b(literary science graphic novel|psychological suspense graphic novel|teen graphic novel|science fiction graphic novel|graphic horror novel)\b/i;
     const genericBroadTitleRe = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i;
+    if (!expansionFetchAttempted) {
+      const expansionSeedQueries = Array.from(new Set([
+        ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+        ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
+      ].map((v) => String(v || "").trim()).filter(Boolean))).slice(0, 8);
+      if (expansionSeedQueries.length > 0) {
+        expansionFetchAttempted = true;
+        cleanCandidateShortfallExpansionTriggered = true;
+        try {
+          const expansionResult: any = await getComicVineGraphicNovelRecommendations({ ...routedInput, bucketPlan: { ...(effectiveBucketPlan || {}), queries: expansionSeedQueries } });
+          const expansionDocs = (Array.isArray(expansionResult?.items) ? expansionResult.items : []).map((it: any) => it?.doc).filter(Boolean);
+          expansionRawCount += Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0);
+          expansionConvertedCount += expansionDocs.length;
+          expansionSelectedTitles = Array.from(new Set([...expansionSelectedTitles, ...expansionDocs.map((d: any) => String(d?.title || "")).filter(Boolean)])).slice(0, 20);
+          expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: expansionDocs.length ? "ok" : "empty", rawCount: Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0) }));
+          enrichedDocs = enrichComicVineStructuralMetadata(dedupeDocs([...(enrichedDocs as any[]), ...expansionDocs]));
+          expansionMergedCandidateCount = enrichedDocs.length;
+          expansionNotTriggeredReason = "underfill_triggered_fetch";
+        } catch (e: any) {
+          expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: "error", rawCount: 0, error: String(e?.message || e) }));
+          expansionNotTriggeredReason = "underfill_fetch_error";
+        }
+      } else {
+        expansionNotTriggeredReason = "underfill_no_expansion_seed_queries";
+      }
+    }
     const pool = dedupeDocs([
       ...(enrichedDocs as any[]),
       ...(normalizedCandidates as any[]),
@@ -5141,7 +5193,11 @@ const normalizedCandidatesRaw = [
         if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) continue;
         finalRenderDocs.push(doc);
         seen.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
+      } else {
+        expansionNotTriggeredReason = "no_expansion_seed_queries";
       }
+    } else {
+      expansionNotTriggeredReason = "clean_eligible_sufficient";
     }
   }
   finalRenderDocs = dedupeDocs(finalRenderDocs as any).filter((doc: any, idx: number, arr: any[]) => {
@@ -5863,6 +5919,7 @@ const normalizedCandidatesRaw = [
     expansionConvertedCount,
     expansionCleanEligibleCount,
     expansionSelectedTitles,
+    expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
     fragmentAcceptedBecauseCollectedEditionTitles,

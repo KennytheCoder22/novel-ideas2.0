@@ -167,6 +167,15 @@ export type RecommendationResult = {
   countContractSatisfied?: boolean;
   finalEligibleNonNegativeCount?: number;
   countContractShortfallReason?: string;
+  cleanCandidateShortfallExpansionTriggered?: boolean;
+  expansionFetchAttempted?: boolean;
+  expansionFetchResultsByQuery?: Array<{ query: string; status: string; rawCount: number; error?: string }>;
+  expansionRawCount?: number;
+  expansionConvertedCount?: number;
+  expansionMergedCandidateCount?: number;
+  expansionCleanEligibleCount?: number;
+  expansionSelectedTitles?: string[];
+  expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
   fallbackSource?: string;
