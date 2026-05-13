@@ -5175,9 +5175,10 @@ const normalizedCandidatesRaw = [
   const anchorFranchises = [
     "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
   ];
-  const convertedComicVineDocsForScoring = Array.isArray((comicVine as any)?.items)
-    ? (comicVine as any).items.map((it: any) => it?.doc).filter(Boolean)
+  const convertedComicVineDocsForScoring = Array.isArray((comicVine as any)?.comicVineConvertedDocsForScoring)
+    ? (comicVine as any).comicVineConvertedDocsForScoring.filter(Boolean)
     : [];
+  const convertedDocsAvailableForScoringCount = convertedComicVineDocsForScoring.length;
   const profileTextForSeeds = normalizeText(String(tasteProfileText || ""));
   const profileSelectedEntitySeeds =
     /\b(horror|dark|survival|apocalypse)\b/.test(profileTextForSeeds)
@@ -5532,6 +5533,7 @@ const normalizedCandidatesRaw = [
     postRenderTitles,
     overwrittenAfterScoredRebuild,
     scoredCandidateUniverseCount,
+    convertedDocsAvailableForScoringCount,
     scoredCandidateUniverseSources,
     scoredCandidateUniverseFranchiseRoots,
     selectedFranchiseRoots: Array.from(new Set(finalRenderDocs.map((d: any) => finalSeriesKeyForRender(d)).filter(Boolean))),

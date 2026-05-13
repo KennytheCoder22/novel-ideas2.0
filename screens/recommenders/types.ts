@@ -83,6 +83,7 @@ export type RecommendationResult = {
   droppedBeforeRenderReason?: string;
   teenPostPassInputSource?: string;
   scoredCandidateUniverseCount?: number;
+  convertedDocsAvailableForScoringCount?: number;
   scoredCandidateUniverseSources?: Record<string, number>;
   scoredCandidateUniverseFranchiseRoots?: string[];
   selectedFranchiseRoots?: string[];

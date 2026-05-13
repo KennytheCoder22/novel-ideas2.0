@@ -2085,6 +2085,7 @@ function handleLeft() {
       `returnedItemsTitles:${Array.isArray((lastRecommendationResult as any)?.returnedItemsTitles) && (lastRecommendationResult as any).returnedItemsTitles.length ? (lastRecommendationResult as any).returnedItemsTitles.join(" | ") : "(none)"}`,
       `teenPostPassInputSource:${String((lastRecommendationResult as any)?.teenPostPassInputSource || "unknown")}`,
       `scoredCandidateUniverseCount:${Number((lastRecommendationResult as any)?.scoredCandidateUniverseCount || 0)}`,
+      `convertedDocsAvailableForScoringCount:${Number((lastRecommendationResult as any)?.convertedDocsAvailableForScoringCount || 0)}`,
       `scoredCandidateUniverseSources:${JSON.stringify((lastRecommendationResult as any)?.scoredCandidateUniverseSources || {})}`,
       `scoredCandidateUniverseFranchiseRoots:${Array.isArray((lastRecommendationResult as any)?.scoredCandidateUniverseFranchiseRoots) && (lastRecommendationResult as any).scoredCandidateUniverseFranchiseRoots.length ? (lastRecommendationResult as any).scoredCandidateUniverseFranchiseRoots.join(" | ") : "(none)"}`,
       `selectedFranchiseRoots:${Array.isArray((lastRecommendationResult as any)?.selectedFranchiseRoots) && (lastRecommendationResult as any).selectedFranchiseRoots.length ? (lastRecommendationResult as any).selectedFranchiseRoots.join(" | ") : "(none)"}`,
