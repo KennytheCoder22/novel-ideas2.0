@@ -5464,11 +5464,14 @@ const normalizedCandidatesRaw = [
       relaxedBreadthBackfillSelected.push(title);
     }
   }
-  adjacentSeedExpansionCandidates.push(
-    ...Array.from(new Set(scoredCanonicalDocs
-      .map((doc: any) => String(doc?.title || ""))
-      .filter((title: string) => /\b(locke\s*&\s*key|sweet tooth|walking dead|descender|sandman|runaways|black science)\b/i.test(title)))))
+  const adjacentSeedTitlesFromScoredUniverse = Array.from(
+    new Set(
+      scoredCanonicalDocs
+        .map((doc: any) => String(doc?.title || ""))
+        .filter((title: string) => /\b(locke\s*&\s*key|sweet tooth|walking dead|descender|sandman|runaways|black science)\b/i.test(title))
+    )
   );
+  adjacentSeedExpansionCandidates.push(...adjacentSeedTitlesFromScoredUniverse);
   const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
   const countContractShortfallReason =
     countContractSatisfied
