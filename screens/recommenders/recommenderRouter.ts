@@ -90,12 +90,23 @@ function finalSeriesKeyForRender(doc: any): string {
 }
 
 function parentFranchiseRootForDoc(doc: any): string {
+  const parentMeta =
   const parent = String(
     doc?.parentVolumeName ||
     doc?.parentVolume?.name ||
     doc?.canonicalParentTitle ||
     doc?.series ||
     doc?.rawDoc?.parentVolumeName ||
+    doc?.rawDoc?.parentVolume?.name ||
+    doc?.rawDoc?.canonicalParentTitle ||
+    doc?.rawDoc?.series ||
+    doc?.rawDoc?.rawDoc?.parentVolumeName ||
+    doc?.rawDoc?.rawDoc?.parentVolume?.name ||
+    doc?.rawDoc?.rawDoc?.canonicalParentTitle ||
+    doc?.rawDoc?.rawDoc?.series ||
+    "";
+  const parent = String(
+    parentMeta,
     "",
   ).toLowerCase();
   const fallback = finalSeriesKeyForRender(doc);
@@ -5292,6 +5303,18 @@ const normalizedCandidatesRaw = [
     const subtitle = String(doc?.subtitle || doc?.rawDoc?.subtitle || "");
     const normalizedTitle = normalizeText(`${title} ${subtitle}`);
     const parentFranchiseRoot = parentFranchiseRootForDoc(doc);
+    const parentMetadataValue =
+      doc?.parentVolumeName ||
+      doc?.parentVolume?.name ||
+      doc?.rawDoc?.parentVolumeName ||
+      doc?.rawDoc?.parentVolume?.name ||
+      doc?.rawDoc?.rawDoc?.parentVolumeName ||
+      doc?.rawDoc?.rawDoc?.parentVolume?.name ||
+      "";
+    const hasParentMetadata = Boolean(parentMetadataValue);
+    if (hasParentMetadata) parentMetadataUsedForRootCount += 1;
+    parentFranchiseRootByTitle[title] = parentFranchiseRoot;
+    parentRootSourceByTitle[title] = String(hasParentMetadata ? "parentVolumeName" : "title_fallback");
     const hasParentMetadata = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName);
     if (hasParentMetadata) parentMetadataUsedForRootCount += 1;
     parentFranchiseRootByTitle[title] = parentFranchiseRoot;
@@ -5426,6 +5449,14 @@ const normalizedCandidatesRaw = [
     if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); continue; }
     const familyCount = antiCollapseSelected.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
     const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(String(doc?.title || ""));
+    const hasParentMetadata = Boolean(
+      (doc as any)?.parentVolumeName ||
+      (doc as any)?.parentVolume?.name ||
+      (doc as any)?.rawDoc?.parentVolumeName ||
+      (doc as any)?.rawDoc?.parentVolume?.name ||
+      (doc as any)?.rawDoc?.rawDoc?.parentVolumeName ||
+      (doc as any)?.rawDoc?.rawDoc?.parentVolume?.name
+    );
     const hasParentMetadata = Boolean((doc as any)?.parentVolumeName || (doc as any)?.parentVolume?.name || (doc as any)?.rawDoc?.parentVolumeName);
     const subtitleFragmentLike = hasParentMetadata && isLikelySubtitleFragmentTitle(String(doc?.title || ""));
     if (subtitleFragmentLike && !hasStarterLikeSignal) { subtitleFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
