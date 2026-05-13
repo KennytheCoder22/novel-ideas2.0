@@ -94,6 +94,7 @@ export type RecommendationResult = {
   sideArcRejectedTitles?: string[];
   selectedParentFranchiseCounts?: Record<string, number>;
   duplicateTitleRejectedTitles?: string[];
+  negativeScoreRejectedTitles?: string[];
   selectedFranchiseRoots?: string[];
   profileSelectedEntitySeeds?: string[];
   suppressedGlobalSeedReason?: string;
@@ -145,6 +146,8 @@ export type RecommendationResult = {
   recoveryRejectedReasons?: Record<string, number>;
   recoveryFinalItemsLength?: number;
   countContractSatisfied?: boolean;
+  finalEligibleNonNegativeCount?: number;
+  countContractShortfallReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
   fallbackSource?: string;

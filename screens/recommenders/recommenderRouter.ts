@@ -5217,6 +5217,7 @@ const normalizedCandidatesRaw = [
   const broadArtifactRejectedTitles: string[] = [];
   const sideArcRejectedTitles: string[] = [];
   const duplicateTitleRejectedTitles: string[] = [];
+  const negativeScoreRejectedTitles: string[] = [];
   const parentFranchiseRootByTitle: Record<string, string> = {};
   let zeroScoreBroadFillersUsed = 0;
   const entitySeedCandidatesFoundBySeed: Record<string, number> = {};
@@ -5311,7 +5312,8 @@ const normalizedCandidatesRaw = [
   const candidateDiversityFloorTarget = includeComicVine ? 30 : 20;
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const recoveryFinalItemsLength = finalRenderDocs.length;
-  const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
+  const emergencySparseMode = false;
+  const finalEligibleNonNegativeCount = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0).length;
   const finalFranchiseFamilies = Array.from(new Set(finalRenderDocs.map((doc: any) => finalSeriesKeyForRender(doc)).filter(Boolean)));
   const broadArtifactCount = finalRenderDocs.filter((doc: any) => /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(String(doc?.title || ""))).length;
   if (finalFranchiseFamilies.length <= 2 || broadArtifactCount >= 2) {
@@ -5321,6 +5323,8 @@ const normalizedCandidatesRaw = [
   const qualityRecoveryReasons: string[] = [];
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
     const family = parentFranchiseRootForDoc(doc);
+    const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); continue; }
     const familyCount = antiCollapseSelected.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
     const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(String(doc?.title || ""));
     if (familyCount >= 1 && !hasStarterLikeSignal) { sideArcRejectedTitles.push(String(doc?.title || "")); continue; }
@@ -5345,6 +5349,16 @@ const normalizedCandidatesRaw = [
     if (antiCollapseSelected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
   }
   if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
+  else finalRenderDocs = antiCollapseSelected;
+  const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
+  const countContractShortfallReason =
+    countContractSatisfied
+      ? "none"
+      : finalEligibleNonNegativeCount < 8
+        ? "insufficient_non_negative_candidates"
+        : finalRenderDocs.length >= 8
+          ? "contract_met_only_with_invalid_fillers_prevented"
+          : "selection_constraints_after_quality_filters";
   const familyCounts = finalRenderDocs.reduce((acc: Record<string, number>, d: any) => {
     const k = parentFranchiseRootForDoc(d) || "__none__";
     acc[k] = (acc[k] || 0) + 1;
@@ -5576,6 +5590,8 @@ const normalizedCandidatesRaw = [
     recoveryRejectedReasons,
     recoveryFinalItemsLength,
     countContractSatisfied,
+    finalEligibleNonNegativeCount,
+    countContractShortfallReason,
     scoringPassApplied,
     scoringPassInputCount,
     scoringPassOutputCount,
@@ -5606,6 +5622,7 @@ const normalizedCandidatesRaw = [
     sideArcRejectedTitles,
     selectedParentFranchiseCounts,
     duplicateTitleRejectedTitles,
+    negativeScoreRejectedTitles,
     suppressedGlobalSeedReason,
     profileSelectedEntitySeeds,
     finalFranchiseFamilies,
