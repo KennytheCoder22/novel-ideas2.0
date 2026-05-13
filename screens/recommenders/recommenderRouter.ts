@@ -3371,6 +3371,7 @@ export async function getRecommendations(
   let expansionMergedCandidateCount = 0;
   let expansionCleanEligibleCount = 0;
   let expansionSelectedTitles: string[] = [];
+  let expansionNotTriggeredReason = "not_evaluated";
   let enrichedDocs = enrichComicVineStructuralMetadata(commerciallyEnrichedDocs);
   if (includeComicVine) {
     const cleanEligibleBaseline = commerciallyEnrichedDocs.filter((doc: any) => {
@@ -3380,6 +3381,7 @@ export async function getRecommendations(
     expansionCleanEligibleCount = cleanEligibleBaseline.length;
     if (cleanEligibleBaseline.length < 8) {
       cleanCandidateShortfallExpansionTriggered = true;
+      expansionNotTriggeredReason = "clean_eligible_below_threshold";
       const expansionSeedQueries = Array.from(new Set([
         ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
         ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
@@ -3403,8 +3405,13 @@ export async function getRecommendations(
           enrichedDocs = enrichComicVineStructuralMetadata(merged);
         } catch (e: any) {
           expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: 'error', rawCount: 0, error: String(e?.message || e) }));
+          expansionNotTriggeredReason = "early_expansion_fetch_error";
         }
+      } else {
+        expansionNotTriggeredReason = "no_expansion_seed_queries";
       }
+    } else {
+      expansionNotTriggeredReason = "clean_eligible_sufficient";
     }
   }
 
@@ -5519,7 +5526,7 @@ const normalizedCandidatesRaw = [
     const isSideArc = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(doc?.title || ""));
     if (isSideArc && antiCollapseSelected.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
     const hasVolumeOne = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(d?.title || "")));
-    if (hasVolumeOne && (/\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(doc?.title || "")) || /\ball her monsters\b/i.test(String(doc?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
+    if (hasVolumeOne && (/\b(volume|book)\s*(5|6|7|8|9|10|11|12|13|14|15|16)\b/i.test(String(doc?.title || "")) || /\bbook\s*sixteen\b/i.test(String(doc?.title || "")) || /\ball her monsters\b/i.test(String(doc?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
     const hasPenalty = Number((doc?.diagnostics as any)?.sideStoryPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || /^graphic horror novel\b/i.test(String(doc?.title || "")) || /^graphic fantasy\b/i.test(String(doc?.title || ""));
     const hasUnpenalizedAlternative = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) !== family && Number((d?.diagnostics as any)?.sideStoryPenalty || 0) >= 0 && Number((d?.diagnostics as any)?.issueFragmentPenalty || 0) >= 0);
     if (hasPenalty && hasUnpenalizedAlternative && antiCollapseSelected.length < 8) continue;
@@ -5660,6 +5667,33 @@ const normalizedCandidatesRaw = [
   const finalSortFieldUsed = "finalScore";
   const finalSortSource = "finalRecommenderForDeck";
   const returnedItemsLength = outputItems.length;
+  if (includeComicVine && returnedItemsLength < 8) {
+    cleanCandidateShortfallExpansionTriggered = true;
+    if (!expansionFetchAttempted) {
+      const expansionSeedQueries = Array.from(new Set([
+        ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
+        ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
+      ].map((v) => String(v || "").trim()).filter(Boolean))).slice(0, 8);
+      if (expansionSeedQueries.length > 0) {
+        expansionFetchAttempted = true;
+        try {
+          const expansionResult: any = await getComicVineGraphicNovelRecommendations({ ...routedInput, bucketPlan: { ...(effectiveBucketPlan || {}), queries: expansionSeedQueries } });
+          const expansionDocs = (Array.isArray(expansionResult?.items) ? expansionResult.items : []).map((it: any) => it?.doc).filter(Boolean);
+          expansionRawCount += Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0);
+          expansionConvertedCount += expansionDocs.length;
+          expansionSelectedTitles = Array.from(new Set([...expansionSelectedTitles, ...expansionDocs.map((d: any) => String(d?.title || "")).filter(Boolean)])).slice(0, 20);
+          expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: expansionDocs.length ? "ok" : "empty", rawCount: Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0) }));
+          expansionMergedCandidateCount = Math.max(expansionMergedCandidateCount, dedupeDocs([...(enrichedDocs as any[]), ...expansionDocs]).length);
+          expansionNotTriggeredReason = expansionDocs.length > 0 ? "post_selection_underfill_expansion_attempted" : "post_selection_underfill_expansion_empty";
+        } catch (e: any) {
+          expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: "error", rawCount: 0, error: String(e?.message || e) }));
+          expansionNotTriggeredReason = "post_selection_underfill_expansion_error";
+        }
+      } else {
+        expansionNotTriggeredReason = "post_selection_underfill_no_seed_queries";
+      }
+    }
+  }
   const returnedItemsTitles = finalItemsTitles;
   const renderedTopRecommendationsLength = outputItems.length;
   if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
@@ -5863,6 +5897,7 @@ const normalizedCandidatesRaw = [
     expansionConvertedCount,
     expansionCleanEligibleCount,
     expansionSelectedTitles,
+    expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
     fragmentAcceptedBecauseCollectedEditionTitles,
