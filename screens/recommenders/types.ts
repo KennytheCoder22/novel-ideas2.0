@@ -86,6 +86,10 @@ export type RecommendationResult = {
   convertedDocsAvailableForScoringCount?: number;
   scoredCandidateUniverseSources?: Record<string, number>;
   scoredCandidateUniverseFranchiseRoots?: string[];
+  broadArtifactRejectedTitles?: string[];
+  zeroScoreBroadFillersUsed?: number;
+  entitySeedCandidatesFoundBySeed?: Record<string, number>;
+  entitySeedCandidatesSelected?: string[];
   selectedFranchiseRoots?: string[];
   profileSelectedEntitySeeds?: string[];
   suppressedGlobalSeedReason?: string;
