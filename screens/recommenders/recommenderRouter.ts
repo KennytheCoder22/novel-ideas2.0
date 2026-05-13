@@ -5253,6 +5253,11 @@ const normalizedCandidatesRaw = [
     .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
     .slice(0, 10)
     .map((doc: any) => ({ title: String(doc?.title || ""), score: Number(doc?.score || 0) }));
+  const scoredUniversePreviewTitles = [...scoredCanonicalDocs]
+    .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
+    .slice(0, 40)
+    .map((doc: any) => String(doc?.title || "").trim())
+    .filter(Boolean);
   finalRenderDocs = scoredCanonicalDocs;
   const scoredCandidateUniverseCount = scoringUniverse.length;
   const candidateDiversityFloorTarget = includeComicVine ? 30 : 20;
@@ -5295,6 +5300,25 @@ const normalizedCandidatesRaw = [
   }
   const qualityRecoveryTriggered = qualityRecoveryReasons.length > 0;
   const qualityRecoveryReason = qualityRecoveryReasons.join(",");
+  const scoredUniverseFailureFromConvertedPool =
+    comicVineDocConversionSuccessCount > 100 && scoredCandidateUniverseCount < 30;
+  const scoredUniverseCollapsedToNormalizedTen = normalizedCandidates.length === 10 && scoredCandidateUniverseCount <= 10;
+  const scoredUniverseFailure = scoredUniverseFailureFromConvertedPool || scoredUniverseCollapsedToNormalizedTen;
+  const scoredUniverseFailureReason = scoredUniverseFailure
+    ? (scoredUniverseFailureFromConvertedPool
+      ? "wide converted pool not used"
+      : "scored universe collapsed to normalized docs")
+    : "none";
+  if (scoredUniverseFailure) {
+    qualityRecoveryReasons.push("scored_universe_failure");
+    recoveryRejectedReasons.scored_universe_failure = (recoveryRejectedReasons.scored_universe_failure || 0) + 1;
+    console.warn("SCORED_UNIVERSE_FAILURE", {
+      scoredCandidateUniverseCount,
+      comicVineDocConversionSuccessCount,
+      normalizedCandidatesLength: normalizedCandidates.length,
+      scoredUniverseFailureReason,
+    });
+  }
   const preRenderTitles = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   const hasSIKTCVol1 = scoredCanonicalDocs.some((d: any) => /something is killing the children:\s*volume\s*1|something is killing the children:\s*volume one/i.test(String(d?.title || "")));
   const hasMsMarvelVol1 = scoredCanonicalDocs.some((d: any) => /ms\.?\s*marvel:\s*volume\s*1|ms\.?\s*marvel:\s*volume one/i.test(String(d?.title || "")));
@@ -5424,9 +5448,11 @@ const normalizedCandidatesRaw = [
         ? "comicvine_pipeline_failure"
         : "insufficient_query_derived_results";
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
-  const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
+  const suppressTopRecommendations = (hardPipelineFailure && rankedCount === 0) || scoredUniverseFailure;
   const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
-  const returnedItemsBuiltFrom = suppressTopRecommendations ? "suppressed" : (mixedFallbackOutput ? "non_fallback_output_items" : "output_items");
+  const returnedItemsBuiltFrom = suppressTopRecommendations
+    ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
+    : (mixedFallbackOutput ? "non_fallback_output_items" : "output_items");
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
@@ -5496,6 +5522,9 @@ const normalizedCandidatesRaw = [
     entryPointCandidatesSuppressed,
     qualityRecoveryTriggered,
     qualityRecoveryReason,
+    scoredUniverseFailure,
+    scoredUniverseFailureReason,
+    scoredUniversePreviewTitles,
     finalSuppressedByBetterEntryPoint,
     scoredRebuildUsedForRender,
     renderSource,

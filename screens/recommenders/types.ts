@@ -82,6 +82,15 @@ export type RecommendationResult = {
   teenPostPassOutputLength?: number;
   droppedBeforeRenderReason?: string;
   teenPostPassInputSource?: string;
+  scoredCandidateUniverseCount?: number;
+  scoredCandidateUniverseSources?: Record<string, number>;
+  scoredCandidateUniverseFranchiseRoots?: string[];
+  selectedFranchiseRoots?: string[];
+  profileSelectedEntitySeeds?: string[];
+  suppressedGlobalSeedReason?: string;
+  scoredUniverseFailure?: boolean;
+  scoredUniverseFailureReason?: string;
+  scoredUniversePreviewTitles?: string[];
   finalRankedDocsBaseLength?: number;
   rankedDocsLength?: number;
   filterKeptDocsLength?: number;
