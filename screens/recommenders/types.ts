@@ -90,6 +90,10 @@ export type RecommendationResult = {
   zeroScoreBroadFillersUsed?: number;
   entitySeedCandidatesFoundBySeed?: Record<string, number>;
   entitySeedCandidatesSelected?: string[];
+  parentFranchiseRootByTitle?: Record<string, string>;
+  sideArcRejectedTitles?: string[];
+  selectedParentFranchiseCounts?: Record<string, number>;
+  duplicateTitleRejectedTitles?: string[];
   selectedFranchiseRoots?: string[];
   profileSelectedEntitySeeds?: string[];
   suppressedGlobalSeedReason?: string;
