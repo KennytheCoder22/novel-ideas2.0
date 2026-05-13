@@ -5449,7 +5449,6 @@ const normalizedCandidatesRaw = [
       (doc as any)?.rawDoc?.rawDoc?.parentVolumeName ||
       (doc as any)?.rawDoc?.rawDoc?.parentVolume?.name
     );
-    const hasParentMetadata = Boolean((doc as any)?.parentVolumeName || (doc as any)?.parentVolume?.name || (doc as any)?.rawDoc?.parentVolumeName);
     const subtitleFragmentLike = hasParentMetadata && isLikelySubtitleFragmentTitle(String(doc?.title || ""));
     if (subtitleFragmentLike && !hasStarterLikeSignal) { subtitleFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
     if (family === "the-walking-dead") {
