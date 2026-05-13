@@ -93,14 +93,17 @@ function parentFranchiseRootForDoc(doc: any): string {
   const parentMeta =
     doc?.parentVolumeName ||
     doc?.parentVolume?.name ||
+    doc?.diagnostics?.parentVolumeName ||
     doc?.canonicalParentTitle ||
     doc?.series ||
     doc?.rawDoc?.parentVolumeName ||
     doc?.rawDoc?.parentVolume?.name ||
+    doc?.rawDoc?.diagnostics?.parentVolumeName ||
     doc?.rawDoc?.canonicalParentTitle ||
     doc?.rawDoc?.series ||
     doc?.rawDoc?.rawDoc?.parentVolumeName ||
     doc?.rawDoc?.rawDoc?.parentVolume?.name ||
+    doc?.rawDoc?.rawDoc?.diagnostics?.parentVolumeName ||
     doc?.rawDoc?.rawDoc?.canonicalParentTitle ||
     doc?.rawDoc?.rawDoc?.series ||
     "";
@@ -138,7 +141,15 @@ function enrichComicVineStructuralMetadata(docs: RecommendationDoc[]): Recommend
   return asArray(docs).map((doc: any) => {
     const title = String(doc?.title || "");
     const subtitle = String(doc?.subtitle || "");
-    const parent = String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "").trim();
+    const parent = String(
+      doc?.parentVolumeName ||
+      doc?.diagnostics?.parentVolumeName ||
+      doc?.rawDoc?.parentVolumeName ||
+      doc?.rawDoc?.diagnostics?.parentVolumeName ||
+      doc?.rawDoc?.rawDoc?.parentVolumeName ||
+      doc?.rawDoc?.rawDoc?.diagnostics?.parentVolumeName ||
+      ""
+    ).trim();
     const bag = normalizeText(`${title} ${subtitle}`);
     const issueLike = /#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title);
     const collectedLike = /\b(volume one|volume 1|book one|book 1|tpb|collection|omnibus|deluxe|anthology|marvel-verse)\b/i.test(bag);
@@ -5302,10 +5313,13 @@ const normalizedCandidatesRaw = [
     const parentMetadataValue =
       doc?.parentVolumeName ||
       doc?.parentVolume?.name ||
+      doc?.diagnostics?.parentVolumeName ||
       doc?.rawDoc?.parentVolumeName ||
       doc?.rawDoc?.parentVolume?.name ||
+      doc?.rawDoc?.diagnostics?.parentVolumeName ||
       doc?.rawDoc?.rawDoc?.parentVolumeName ||
       doc?.rawDoc?.rawDoc?.parentVolume?.name ||
+      doc?.rawDoc?.rawDoc?.diagnostics?.parentVolumeName ||
       "";
     const hasParentMetadata = Boolean(parentMetadataValue);
     if (hasParentMetadata) parentMetadataUsedForRootCount += 1;
@@ -5444,10 +5458,13 @@ const normalizedCandidatesRaw = [
     const hasParentMetadata = Boolean(
       (doc as any)?.parentVolumeName ||
       (doc as any)?.parentVolume?.name ||
+      (doc as any)?.diagnostics?.parentVolumeName ||
       (doc as any)?.rawDoc?.parentVolumeName ||
       (doc as any)?.rawDoc?.parentVolume?.name ||
+      (doc as any)?.rawDoc?.diagnostics?.parentVolumeName ||
       (doc as any)?.rawDoc?.rawDoc?.parentVolumeName ||
-      (doc as any)?.rawDoc?.rawDoc?.parentVolume?.name
+      (doc as any)?.rawDoc?.rawDoc?.parentVolume?.name ||
+      (doc as any)?.rawDoc?.rawDoc?.diagnostics?.parentVolumeName
     );
     const subtitleFragmentLike = hasParentMetadata && isLikelySubtitleFragmentTitle(String(doc?.title || ""));
     if (subtitleFragmentLike && !hasStarterLikeSignal) { subtitleFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
