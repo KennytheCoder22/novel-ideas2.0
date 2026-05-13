@@ -125,6 +125,30 @@ function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
   return [];
 }
 
+function enrichComicVineStructuralMetadata(docs: RecommendationDoc[]): RecommendationDoc[] {
+  return asArray(docs).map((doc: any) => {
+    const title = String(doc?.title || "");
+    const subtitle = String(doc?.subtitle || "");
+    const parent = String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "").trim();
+    const bag = normalizeText(`${title} ${subtitle}`);
+    const issueLike = /#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title);
+    const collectedLike = /\b(volume one|volume 1|book one|book 1|tpb|collection|omnibus|deluxe|anthology|marvel-verse)\b/i.test(bag);
+    const entryPointLike = /\b(volume one|volume 1|book one|book 1|#1)\b/i.test(bag);
+    return {
+      ...doc,
+      parentVolumeName: parent || doc?.parentVolumeName,
+      diagnostics: {
+        ...(doc?.diagnostics || {}),
+        gcdStructuralEnriched: true,
+        gcdIssueLike: issueLike,
+        gcdCollectedLike: collectedLike,
+        gcdEntryPointLike: entryPointLike,
+        gcdParentRoot: parent ? parent.split(":")[0].trim() : undefined,
+      },
+    };
+  });
+}
+
 function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiagnostics {
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
@@ -3310,7 +3334,8 @@ export async function getRecommendations(
 
   // Hardcover enrichment is non-blocking and runs AFTER merging.
   const hardcoverEnrichedDocs = await enrichWithHardcover(openLibraryPrefilterEnrichedDocs);
-  const enrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
+  const commerciallyEnrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
+  const enrichedDocs = enrichComicVineStructuralMetadata(commerciallyEnrichedDocs);
 
   // Strict 20Q router:
   // taste comes only from 20Q-derived rungs. NYT is allowed only after filtering
@@ -4502,6 +4527,10 @@ const normalizedCandidatesRaw = [
   const comicVineRawRowsBeforeDocConversion = Number((comicVine as any)?.comicVineRawRowsBeforeDocConversion || 0);
   const comicVineDocConversionAttemptCount = Number((comicVine as any)?.comicVineDocConversionAttemptCount || 0);
   const comicVineDocConversionSuccessCount = Number((comicVine as any)?.comicVineDocConversionSuccessCount || 0);
+  const gcdStructuralEnrichmentCount = (enrichedDocs as any[]).filter((d: any) => Boolean((d?.diagnostics as any)?.gcdStructuralEnriched)).length;
+  const gcdEntryPointLikeCount = (enrichedDocs as any[]).filter((d: any) => Boolean((d?.diagnostics as any)?.gcdEntryPointLike)).length;
+  const gcdCollectedLikeCount = (enrichedDocs as any[]).filter((d: any) => Boolean((d?.diagnostics as any)?.gcdCollectedLike)).length;
+  const gcdIssueLikeCount = (enrichedDocs as any[]).filter((d: any) => Boolean((d?.diagnostics as any)?.gcdIssueLike)).length;
   const comicVineDocConversionDropReasons = (comicVine as any)?.comicVineDocConversionDropReasons || {};
   const comicVineConvertedDocTitles = Array.isArray((comicVine as any)?.comicVineConvertedDocTitles) ? (comicVine as any).comicVineConvertedDocTitles : [];
   const comicVineTitleMergeDebug = Array.isArray((comicVine as any)?.comicVineTitleMergeDebug) ? (comicVine as any).comicVineTitleMergeDebug : [];
@@ -4577,6 +4606,10 @@ const normalizedCandidatesRaw = [
     comicVineRawRowsBeforeDocConversion,
     comicVineDocConversionAttemptCount,
     comicVineDocConversionSuccessCount,
+    gcdStructuralEnrichmentCount,
+    gcdEntryPointLikeCount,
+    gcdCollectedLikeCount,
+    gcdIssueLikeCount,
     comicVineDocConversionDropReasons,
     comicVineConvertedDocTitles,
     comicVineTitleMergeDebug,
@@ -5611,6 +5644,10 @@ const normalizedCandidatesRaw = [
     overwrittenAfterScoredRebuild,
     scoredCandidateUniverseCount,
     convertedDocsAvailableForScoringCount,
+    gcdStructuralEnrichmentCount,
+    gcdEntryPointLikeCount,
+    gcdCollectedLikeCount,
+    gcdIssueLikeCount,
     scoredCandidateUniverseSources,
     scoredCandidateUniverseFranchiseRoots,
     broadArtifactRejectedTitles,

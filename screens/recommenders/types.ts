@@ -84,6 +84,10 @@ export type RecommendationResult = {
   teenPostPassInputSource?: string;
   scoredCandidateUniverseCount?: number;
   convertedDocsAvailableForScoringCount?: number;
+  gcdStructuralEnrichmentCount?: number;
+  gcdEntryPointLikeCount?: number;
+  gcdCollectedLikeCount?: number;
+  gcdIssueLikeCount?: number;
   scoredCandidateUniverseSources?: Record<string, number>;
   scoredCandidateUniverseFranchiseRoots?: string[];
   broadArtifactRejectedTitles?: string[];
