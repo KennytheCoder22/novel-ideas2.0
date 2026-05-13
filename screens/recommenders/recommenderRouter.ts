@@ -510,15 +510,10 @@ function collectSwipeTagsForRouting(value: any): string[] {
 
   const out: string[] = [];
   for (const source of sources) {
-    if (Array.isArray(source)) {
-      for (const tag of source) {
-        const cleaned = String(tag || "").toLowerCase().trim();
-        if (cleaned) out.push(cleaned);
-      } else {
-        expansionNotTriggeredReason = "no_expansion_seed_queries";
-      }
-    } else {
-      expansionNotTriggeredReason = "clean_eligible_sufficient";
+    if (!Array.isArray(source)) continue;
+    for (const tag of source) {
+      const cleaned = String(tag || "").toLowerCase().trim();
+      if (cleaned) out.push(cleaned);
     }
   }
   return Array.from(new Set(out));
@@ -1557,12 +1552,6 @@ function buildDirectEvidenceLaneWeights(input: RecommenderInput): Record<string,
       // drama, literary, or social/political tags are not enough.
       if (/^genre:historical$/.test(rawKeyText) || /\bhistorical fiction\b|\bhistorical novel\b|\bperiod fiction\b|\bgilded age\b|\bcivil war historical\b|\b19th century\b/.test(key)) {
         scores.historical += numeric * 1.15;
-      } else {
-        expansionNotTriggeredReason = "no_expansion_seed_queries";
-      }
-    } else {
-      expansionNotTriggeredReason = "clean_eligible_sufficient";
-    }
   }
 
   const positive = Object.entries(scores)
@@ -2009,12 +1998,6 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
         "psychological horror graphic novel";
       if (normalizeQueryKey(simpleFallbackQuery) !== normalizeQueryKey(openLibraryQuery)) {
         mapped.push({ query: simpleFallbackQuery, laneKind: "ol-backfill", source: "openLibrary", queryFamily: family, filterFamily: family, queryRung });
-      } else {
-        expansionNotTriggeredReason = "no_expansion_seed_queries";
-      }
-    } else {
-      expansionNotTriggeredReason = "clean_eligible_sufficient";
-    }
   }
 
   return capRouterQueryLanes(mapped);
@@ -2980,12 +2963,6 @@ export async function getRecommendations(
         if (!key || existingKeys.has(key)) continue;
         existingKeys.add(key);
         rungs.push({ ...rung, hybridFamily: normalizedFamily, laneKind: "taste-cluster" });
-      } else {
-        expansionNotTriggeredReason = "no_expansion_seed_queries";
-      }
-    } else {
-      expansionNotTriggeredReason = "clean_eligible_sufficient";
-    }
   }
 
   if (lockHistoricalRungs) {
@@ -3422,12 +3399,6 @@ export async function getRecommendations(
         } catch (e: any) {
           expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: 'error', rawCount: 0, error: String(e?.message || e) }));
         }
-      } else {
-        expansionNotTriggeredReason = "no_expansion_seed_queries";
-      }
-    } else {
-      expansionNotTriggeredReason = "clean_eligible_sufficient";
-    }
   }
 
   // Strict 20Q router:
@@ -5038,12 +5009,6 @@ const normalizedCandidatesRaw = [
           seenIds.add(id);
           seenTitles.add(normalizedTitle);
         }
-      } else {
-        expansionNotTriggeredReason = "no_expansion_seed_queries";
-      }
-    } else {
-      expansionNotTriggeredReason = "clean_eligible_sufficient";
-    }
   }
   let recoveryTriggered = false;
   let recoveryInputPoolLength = 0;
@@ -5193,12 +5158,6 @@ const normalizedCandidatesRaw = [
         if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) continue;
         finalRenderDocs.push(doc);
         seen.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
-      } else {
-        expansionNotTriggeredReason = "no_expansion_seed_queries";
-      }
-    } else {
-      expansionNotTriggeredReason = "clean_eligible_sufficient";
-    }
   }
   finalRenderDocs = dedupeDocs(finalRenderDocs as any).filter((doc: any, idx: number, arr: any[]) => {
     const title = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
