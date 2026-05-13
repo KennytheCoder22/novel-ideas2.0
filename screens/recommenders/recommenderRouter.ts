@@ -89,6 +89,19 @@ function finalSeriesKeyForRender(doc: any): string {
   return title.split(':')[0].replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 }
 
+function parentFranchiseRootForDoc(doc: any): string {
+  const parent = String(
+    doc?.parentVolumeName ||
+    doc?.parentVolume?.name ||
+    doc?.canonicalParentTitle ||
+    doc?.series ||
+    doc?.rawDoc?.parentVolumeName ||
+    "",
+  ).toLowerCase();
+  if (parent.trim()) return parent.split(":")[0].replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return finalSeriesKeyForRender(doc);
+}
+
 function applyFinalSeriesCap(docs: any[], perSeriesCap: number): { kept: any[]; dropped: Array<{ title: string; reason: string; seriesKey: string }>; counts: Record<string, number> } {
   const counts: Record<string, number> = {};
   const kept: any[] = [];
@@ -110,6 +123,30 @@ function unwrapFilteredCandidates(value: any): RecommendationDoc[] {
   if (Array.isArray(value)) return value as RecommendationDoc[];
   if (value && Array.isArray(value.candidates)) return value.candidates as RecommendationDoc[];
   return [];
+}
+
+function enrichComicVineStructuralMetadata(docs: RecommendationDoc[]): RecommendationDoc[] {
+  return asArray(docs).map((doc: any) => {
+    const title = String(doc?.title || "");
+    const subtitle = String(doc?.subtitle || "");
+    const parent = String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "").trim();
+    const bag = normalizeText(`${title} ${subtitle}`);
+    const issueLike = /#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title);
+    const collectedLike = /\b(volume one|volume 1|book one|book 1|tpb|collection|omnibus|deluxe|anthology|marvel-verse)\b/i.test(bag);
+    const entryPointLike = /\b(volume one|volume 1|book one|book 1|#1)\b/i.test(bag);
+    return {
+      ...doc,
+      parentVolumeName: parent || doc?.parentVolumeName,
+      diagnostics: {
+        ...(doc?.diagnostics || {}),
+        gcdStructuralEnriched: true,
+        gcdIssueLike: issueLike,
+        gcdCollectedLike: collectedLike,
+        gcdEntryPointLike: entryPointLike,
+        gcdParentRoot: parent ? parent.split(":")[0].trim() : undefined,
+      },
+    };
+  });
 }
 
 function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiagnostics {
@@ -3297,7 +3334,8 @@ export async function getRecommendations(
 
   // Hardcover enrichment is non-blocking and runs AFTER merging.
   const hardcoverEnrichedDocs = await enrichWithHardcover(openLibraryPrefilterEnrichedDocs);
-  const enrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
+  const commerciallyEnrichedDocs = enrichWithCommercialSignals(hardcoverEnrichedDocs);
+  const enrichedDocs = enrichComicVineStructuralMetadata(commerciallyEnrichedDocs);
 
   // Strict 20Q router:
   // taste comes only from 20Q-derived rungs. NYT is allowed only after filtering
@@ -4489,6 +4527,10 @@ const normalizedCandidatesRaw = [
   const comicVineRawRowsBeforeDocConversion = Number((comicVine as any)?.comicVineRawRowsBeforeDocConversion || 0);
   const comicVineDocConversionAttemptCount = Number((comicVine as any)?.comicVineDocConversionAttemptCount || 0);
   const comicVineDocConversionSuccessCount = Number((comicVine as any)?.comicVineDocConversionSuccessCount || 0);
+  const gcdStructuralEnrichmentCount = (enrichedDocs as any[]).filter((d: any) => Boolean((d?.diagnostics as any)?.gcdStructuralEnriched)).length;
+  const gcdEntryPointLikeCount = (enrichedDocs as any[]).filter((d: any) => Boolean((d?.diagnostics as any)?.gcdEntryPointLike)).length;
+  const gcdCollectedLikeCount = (enrichedDocs as any[]).filter((d: any) => Boolean((d?.diagnostics as any)?.gcdCollectedLike)).length;
+  const gcdIssueLikeCount = (enrichedDocs as any[]).filter((d: any) => Boolean((d?.diagnostics as any)?.gcdIssueLike)).length;
   const comicVineDocConversionDropReasons = (comicVine as any)?.comicVineDocConversionDropReasons || {};
   const comicVineConvertedDocTitles = Array.isArray((comicVine as any)?.comicVineConvertedDocTitles) ? (comicVine as any).comicVineConvertedDocTitles : [];
   const comicVineTitleMergeDebug = Array.isArray((comicVine as any)?.comicVineTitleMergeDebug) ? (comicVine as any).comicVineTitleMergeDebug : [];
@@ -4564,6 +4606,10 @@ const normalizedCandidatesRaw = [
     comicVineRawRowsBeforeDocConversion,
     comicVineDocConversionAttemptCount,
     comicVineDocConversionSuccessCount,
+    gcdStructuralEnrichmentCount,
+    gcdEntryPointLikeCount,
+    gcdCollectedLikeCount,
+    gcdIssueLikeCount,
     comicVineDocConversionDropReasons,
     comicVineConvertedDocTitles,
     comicVineTitleMergeDebug,
@@ -5175,9 +5221,10 @@ const normalizedCandidatesRaw = [
   const anchorFranchises = [
     "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
   ];
-  const convertedComicVineDocsForScoring = Array.isArray((comicVine as any)?.items)
-    ? (comicVine as any).items.map((it: any) => it?.doc).filter(Boolean)
+  const convertedComicVineDocsForScoring = Array.isArray((comicVine as any)?.comicVineConvertedDocsForScoring)
+    ? (comicVine as any).comicVineConvertedDocsForScoring.filter(Boolean)
     : [];
+  const convertedDocsAvailableForScoringCount = convertedComicVineDocsForScoring.length;
   const profileTextForSeeds = normalizeText(String(tasteProfileText || ""));
   const profileSelectedEntitySeeds =
     /\b(horror|dark|survival|apocalypse)\b/.test(profileTextForSeeds)
@@ -5197,8 +5244,21 @@ const normalizedCandidatesRaw = [
     ...convertedComicVineDocsForScoring,
   ] as any);
   const scoredCandidateUniverseSources = Array.from(new Set(scoringUniverse.map((d: any) => String(d?.source || d?.rawDoc?.source || "unknown"))));
-  const scoredCandidateUniverseFranchiseRoots = Array.from(new Set(scoringUniverse.map((d: any) => finalSeriesKeyForRender(d)).filter(Boolean)));
+  const scoredCandidateUniverseFranchiseRoots = Array.from(new Set(scoringUniverse.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
   const scoringPassInputCount = scoringUniverse.length;
+  const knownCanonicalFranchises = [...anchorFranchises, ...profileSelectedEntitySeeds];
+  const broadArtifactRejectedTitles: string[] = [];
+  const sideArcRejectedTitles: string[] = [];
+  const duplicateTitleRejectedTitles: string[] = [];
+  const negativeScoreRejectedTitles: string[] = [];
+  const untranslatedEditionRejectedTitles: string[] = [];
+  const semanticBreadthSelections: string[] = [];
+  const adjacentSeedExpansionCandidates: string[] = [];
+  const seedSaturationPenaltyApplied: Record<string, number> = {};
+  const parentFranchiseRootByTitle: Record<string, string> = {};
+  let zeroScoreBroadFillersUsed = 0;
+  const entitySeedCandidatesFoundBySeed: Record<string, number> = {};
+  const entitySeedCandidatesSelected: string[] = [];
   let entryPointCandidatesFound = 0;
   let entryPointCandidatesSuppressed = 0;
   const finalSuppressedByBetterEntryPoint: string[] = [];
@@ -5207,7 +5267,9 @@ const normalizedCandidatesRaw = [
     const title = String(doc?.title || doc?.rawDoc?.title || "");
     const subtitle = String(doc?.subtitle || doc?.rawDoc?.subtitle || "");
     const normalizedTitle = normalizeText(`${title} ${subtitle}`);
-    const franchise = normalizeText(finalSeriesKeyForRender(doc) || "");
+    const parentFranchiseRoot = parentFranchiseRootForDoc(doc);
+    parentFranchiseRootByTitle[title] = parentFranchiseRoot;
+    const franchise = normalizeText(parentFranchiseRoot || "");
     const isAnchorFranchise = anchorFranchises.some((seed) => franchise.includes(normalizeText(seed)));
     const entryPointBoost =
       /\b(volume one|volume 1|book one|book 1)\b/i.test(title) || /#1\b/i.test(title)
@@ -5222,28 +5284,58 @@ const normalizedCandidatesRaw = [
         ? -22
         : 0;
     const genericArtifactPenalty = /^graphic horror novel\b/i.test(title) || /^graphic fantasy\b/i.test(title) || /^the graphic novel$/i.test(title.trim()) ? -20 : 0;
+    const broadArtifactTitle =
+      /:\s*graphic novel$/i.test(title) ||
+      /^.+:\s*the graphic novel/i.test(title) ||
+      /^.+\sgraphic novel$/i.test(title);
     const issueFragmentPenalty = /#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title) ? -12 : 0;
+    const subtitleSideArcPenalty = /\b(after the flood|the road to war|the ratio part|one night only|election day|mecca conclusion|silk road|boss rush)\b/i.test(normalizedTitle)
+      && !/\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(normalizedTitle) ? -30 : 0;
     const canonicalAnchorTitleBoost = isAnchorFranchise ? 10 : 0;
     const isSIKTC = /\bsomething is killing the children\b/i.test(normalizedTitle);
-    const profileSeedBoost = profileSelectedEntitySeeds.some((seed) => normalizedTitle.includes(normalizeText(seed))) ? 8 : 0;
+    const matchedProfileSeeds = profileSelectedEntitySeeds.filter((seed) => normalizedTitle.includes(normalizeText(seed)));
+    matchedProfileSeeds.forEach((seed) => {
+      entitySeedCandidatesFoundBySeed[seed] = (entitySeedCandidatesFoundBySeed[seed] || 0) + 1;
+    });
+    const profileSeedBoost = matchedProfileSeeds.length > 0 ? 8 : 0;
+    const hasProfileGenreMatch = /\b(horror|dark|survival|apocalypse|superhero|coming of age|sci[- ]?fi|science fiction|speculative)\b/.test(normalizedTitle);
+    const hasAuthorityMetadata = Boolean((doc as any)?.author || (doc as any)?.author_name?.length || (doc as any)?.publisher || (doc as any)?.isbn);
+    const hasNonGenericTitle = !broadArtifactTitle && !/^the graphic novel$/i.test(title.trim());
+    const isKnownCanonicalFranchise = knownCanonicalFranchises.some((seed) => franchise.includes(normalizeText(seed)) || normalizedTitle.includes(normalizeText(seed)));
+    const broadArtifactPenalty = broadArtifactTitle && !isKnownCanonicalFranchise && matchedProfileSeeds.length === 0 ? -24 : 0;
+    const hasPositiveSignal = matchedProfileSeeds.length > 0 || isKnownCanonicalFranchise || hasProfileGenreMatch || hasNonGenericTitle || hasAuthorityMetadata;
     const globalSeedSuppression = isSIKTC && suppressedGlobalSeedReason !== "none" ? -28 : 0;
     const priorSeriesPenalty = (routingInput.priorSeriesKeys || []).some((k) => normalizeText(String(k || "")) === franchise) ? -20 : 0;
+    const nonEnglishEditionPenalty =
+      /\b(uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(normalizedTitle) ||
+      (Array.isArray((doc as any)?.language) && (doc as any).language.length > 0 && !(doc as any).language.includes("eng"))
+        ? -22
+        : 0;
     const heuristicScore =
-      entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + issueFragmentPenalty + genericArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
+      entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + subtitleSideArcPenalty + issueFragmentPenalty + genericArtifactPenalty + broadArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
     const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    const shouldRejectAsBroadArtifact = broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise;
+    if (shouldRejectAsBroadArtifact) broadArtifactRejectedTitles.push(title);
     return {
       ...doc,
-      score: baseScore + heuristicScore,
+      score: baseScore + heuristicScore + nonEnglishEditionPenalty,
+      rejectedInScoredRebuild: shouldRejectAsBroadArtifact,
       diagnostics: {
         ...(doc?.diagnostics || {}),
         entryPointBoost,
         canonicalAnchorTitleBoost,
         sideStoryPenalty,
         issueFragmentPenalty,
+        subtitleSideArcPenalty,
+        broadArtifactPenalty,
+        nonEnglishEditionPenalty,
         profileSeedBoost,
+        hasPositiveSignal,
+        broadArtifactTitle,
         globalSeedSuppression,
         priorSeriesPenalty,
-        finalScore: baseScore + heuristicScore,
+        rejectedInScoredRebuild: shouldRejectAsBroadArtifact,
+        finalScore: baseScore + heuristicScore + nonEnglishEditionPenalty,
       },
     };
   });
@@ -5253,12 +5345,18 @@ const normalizedCandidatesRaw = [
     .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
     .slice(0, 10)
     .map((doc: any) => ({ title: String(doc?.title || ""), score: Number(doc?.score || 0) }));
-  finalRenderDocs = scoredCanonicalDocs;
+  const scoredUniversePreviewTitles = [...scoredCanonicalDocs]
+    .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
+    .slice(0, 40)
+    .map((doc: any) => String(doc?.title || "").trim())
+    .filter(Boolean);
+  finalRenderDocs = scoredCanonicalDocs.filter((doc: any) => !Boolean((doc as any)?.rejectedInScoredRebuild));
   const scoredCandidateUniverseCount = scoringUniverse.length;
   const candidateDiversityFloorTarget = includeComicVine ? 30 : 20;
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const recoveryFinalItemsLength = finalRenderDocs.length;
-  const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
+  const emergencySparseMode = false;
+  const finalEligibleNonNegativeCount = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0).length;
   const finalFranchiseFamilies = Array.from(new Set(finalRenderDocs.map((doc: any) => finalSeriesKeyForRender(doc)).filter(Boolean)));
   const broadArtifactCount = finalRenderDocs.filter((doc: any) => /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(String(doc?.title || ""))).length;
   if (finalFranchiseFamilies.length <= 2 || broadArtifactCount >= 2) {
@@ -5266,35 +5364,90 @@ const normalizedCandidatesRaw = [
   }
   const antiCollapseSelected: any[] = [];
   const qualityRecoveryReasons: string[] = [];
+  const seedFamilyCounts: Record<string, number> = {};
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
-    const family = finalSeriesKeyForRender(doc);
-    const familyCount = antiCollapseSelected.filter((d: any) => finalSeriesKeyForRender(d) === family).length;
+    const family = parentFranchiseRootForDoc(doc);
+    const matchingSeed = profileSelectedEntitySeeds.find((seed) => normalizeText(String(doc?.title || "")).includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
+    const seedCount = matchingSeed ? Number(seedFamilyCounts[matchingSeed] || 0) : 0;
+    const saturationPenalty = seedCount >= 2 ? 18 : seedCount >= 1 ? 8 : 0;
+    if (matchingSeed && saturationPenalty > 0) seedSaturationPenaltyApplied[matchingSeed] = (seedSaturationPenaltyApplied[matchingSeed] || 0) + saturationPenalty;
+    const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty;
+    const isNonEnglishEdition = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
+    if (isNonEnglishEdition && finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && Number(((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0)) >= 0)) { untranslatedEditionRejectedTitles.push(String(doc?.title || "")); continue; }
+    if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); continue; }
+    const familyCount = antiCollapseSelected.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
+    const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(String(doc?.title || ""));
+    if (familyCount >= 1 && !hasStarterLikeSignal) { sideArcRejectedTitles.push(String(doc?.title || "")); continue; }
     if (familyCount >= 2) continue;
+    const normalizedTitle = normalizeText(String(doc?.title || ""));
+    if (antiCollapseSelected.some((d: any) => normalizeText(String(d?.title || "")) === normalizedTitle)) { duplicateTitleRejectedTitles.push(String(doc?.title || "")); continue; }
     const isSideArc = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(doc?.title || ""));
     if (isSideArc && antiCollapseSelected.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
-    const hasVolumeOne = finalRenderDocs.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(d?.title || "")));
+    const hasVolumeOne = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(d?.title || "")));
     if (hasVolumeOne && (/\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(doc?.title || "")) || /\ball her monsters\b/i.test(String(doc?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
     const hasPenalty = Number((doc?.diagnostics as any)?.sideStoryPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || /^graphic horror novel\b/i.test(String(doc?.title || "")) || /^graphic fantasy\b/i.test(String(doc?.title || ""));
-    const hasUnpenalizedAlternative = finalRenderDocs.some((d: any) => finalSeriesKeyForRender(d) !== family && Number((d?.diagnostics as any)?.sideStoryPenalty || 0) >= 0 && Number((d?.diagnostics as any)?.issueFragmentPenalty || 0) >= 0);
+    const hasUnpenalizedAlternative = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) !== family && Number((d?.diagnostics as any)?.sideStoryPenalty || 0) >= 0 && Number((d?.diagnostics as any)?.issueFragmentPenalty || 0) >= 0);
     if (hasPenalty && hasUnpenalizedAlternative && antiCollapseSelected.length < 8) continue;
+    const isBroadArtifact = /:\s*graphic novel$/i.test(String(doc?.title || "")) || /^.+:\s*the graphic novel/i.test(String(doc?.title || "")) || /^.+\sgraphic novel$/i.test(String(doc?.title || ""));
+    if (isBroadArtifact && Number(doc?.score || 0) <= 0) {
+      if (zeroScoreBroadFillersUsed >= 1) continue;
+      zeroScoreBroadFillersUsed += 1;
+    }
     antiCollapseSelected.push(doc);
+    if (matchingSeed) {
+      seedFamilyCounts[matchingSeed] = seedCount + 1;
+      if (!semanticBreadthSelections.includes(matchingSeed)) semanticBreadthSelections.push(matchingSeed);
+    }
+    if (!matchingSeed) {
+      const adjacent = ["descender", "saga", "sweet tooth", "runaways", "invincible", "sandman", "black science", "walking dead"].find((seed) => normalizeText(String(doc?.title || "")).includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
+      if (adjacent && !adjacentSeedExpansionCandidates.includes(adjacent)) adjacentSeedExpansionCandidates.push(adjacent);
+    }
+    const selectedSeed = profileSelectedEntitySeeds.find((seed) => normalizeText(String(doc?.title || "")).includes(normalizeText(seed)));
+    if (selectedSeed && !entitySeedCandidatesSelected.includes(selectedSeed)) entitySeedCandidatesSelected.push(selectedSeed);
     if (antiCollapseSelected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
   }
   if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
+  else finalRenderDocs = antiCollapseSelected;
+  const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
+  const countContractShortfallReason =
+    countContractSatisfied
+      ? "none"
+      : finalEligibleNonNegativeCount < 8
+        ? "insufficient_non_negative_candidates"
+        : finalRenderDocs.length >= 8
+          ? "contract_met_only_with_invalid_fillers_prevented"
+          : "selection_constraints_after_quality_filters";
   const familyCounts = finalRenderDocs.reduce((acc: Record<string, number>, d: any) => {
-    const k = finalSeriesKeyForRender(d) || "__none__";
+    const k = parentFranchiseRootForDoc(d) || "__none__";
     acc[k] = (acc[k] || 0) + 1;
     return acc;
   }, {});
   if (Object.values(familyCounts).some((n) => n >= 3)) qualityRecoveryReasons.push("franchise_overfill");
-  if (finalRenderDocs.some((d: any) => /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("side_arc_with_core_entry");
-  if (finalRenderDocs.some((d: any) => /^graphic horror novel\b/i.test(String(d?.title || "")) || /^graphic fantasy\b/i.test(String(d?.title || "")) || /^the graphic novel$/i.test(String(d?.title || "").trim()))) qualityRecoveryReasons.push("generic_artifact_present");
-  if (finalRenderDocs.some((d: any) => /\b(volume|book)\s*(5|6|7|8|9|10|11|12)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => finalSeriesKeyForRender(x) === finalSeriesKeyForRender(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("late_volume_with_entry_available");
+  if (finalRenderDocs.some((d: any) => /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush|after the flood|the road to war|the ratio part|one night only|election day)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => parentFranchiseRootForDoc(x) === parentFranchiseRootForDoc(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("side_arc_with_core_entry");
   if (scoredCandidateUniverseCount < candidateDiversityFloorTarget) {
     qualityRecoveryReasons.push("candidate_diversity_floor_not_met");
   }
   const qualityRecoveryTriggered = qualityRecoveryReasons.length > 0;
   const qualityRecoveryReason = qualityRecoveryReasons.join(",");
+  const scoredUniverseFailureFromConvertedPool =
+    comicVineDocConversionSuccessCount > 100 && scoredCandidateUniverseCount < 30;
+  const scoredUniverseCollapsedToNormalizedTen = normalizedCandidates.length === 10 && scoredCandidateUniverseCount <= 10;
+  const scoredUniverseFailure = scoredUniverseFailureFromConvertedPool || scoredUniverseCollapsedToNormalizedTen;
+  const scoredUniverseFailureReason = scoredUniverseFailure
+    ? (scoredUniverseFailureFromConvertedPool
+      ? "wide converted pool not used"
+      : "scored universe collapsed to normalized docs")
+    : "none";
+  if (scoredUniverseFailure) {
+    qualityRecoveryReasons.push("scored_universe_failure");
+    recoveryRejectedReasons.scored_universe_failure = (recoveryRejectedReasons.scored_universe_failure || 0) + 1;
+    console.warn("SCORED_UNIVERSE_FAILURE", {
+      scoredCandidateUniverseCount,
+      comicVineDocConversionSuccessCount,
+      normalizedCandidatesLength: normalizedCandidates.length,
+      scoredUniverseFailureReason,
+    });
+  }
   const preRenderTitles = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   const hasSIKTCVol1 = scoredCanonicalDocs.some((d: any) => /something is killing the children:\s*volume\s*1|something is killing the children:\s*volume one/i.test(String(d?.title || "")));
   const hasMsMarvelVol1 = scoredCanonicalDocs.some((d: any) => /ms\.?\s*marvel:\s*volume\s*1|ms\.?\s*marvel:\s*volume one/i.test(String(d?.title || "")));
@@ -5349,7 +5502,12 @@ const normalizedCandidatesRaw = [
   const returnedDocIds = outputItems.map((it: any) => String(it?.doc?.sourceId || it?.doc?.canonicalId || it?.doc?.id || it?.doc?.key || it?.doc?.title || "").trim()).filter(Boolean);
   const finalItemsRejectedTitles = teenPostPassRejectedTitles;
   const finalItemsRejectReasons = teenPostPassRejectReasons;
-  const finalSeriesKeys = finalRenderDocs.map((doc:any) => finalSeriesKeyForRender(doc));
+  const finalSeriesKeys = finalRenderDocs.map((doc:any) => parentFranchiseRootForDoc(doc));
+  const selectedParentFranchiseCounts = finalRenderDocs.reduce((acc: Record<string, number>, doc: any) => {
+    const k = parentFranchiseRootForDoc(doc) || "__none__";
+    acc[k] = (acc[k] || 0) + 1;
+    return acc;
+  }, {});
   const finalSeriesCounts = finalSeriesCapResult.counts;
   const finalRenderSeriesCapApplied = teenPostPassSeriesCapApplied || finalSeriesCapResult.dropped.length > 0;
   const finalRenderSourceCapApplied = teenPostPassSourceCapApplied;
@@ -5424,9 +5582,11 @@ const normalizedCandidatesRaw = [
         ? "comicvine_pipeline_failure"
         : "insufficient_query_derived_results";
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
-  const suppressTopRecommendations = hardPipelineFailure && rankedCount === 0;
+  const suppressTopRecommendations = (hardPipelineFailure && rankedCount === 0) || scoredUniverseFailure;
   const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
-  const returnedItemsBuiltFrom = suppressTopRecommendations ? "suppressed" : (mixedFallbackOutput ? "non_fallback_output_items" : "output_items");
+  const returnedItemsBuiltFrom = suppressTopRecommendations
+    ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
+    : (mixedFallbackOutput ? "non_fallback_output_items" : "output_items");
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
@@ -5488,6 +5648,8 @@ const normalizedCandidatesRaw = [
     recoveryRejectedReasons,
     recoveryFinalItemsLength,
     countContractSatisfied,
+    finalEligibleNonNegativeCount,
+    countContractShortfallReason,
     scoringPassApplied,
     scoringPassInputCount,
     scoringPassOutputCount,
@@ -5496,6 +5658,9 @@ const normalizedCandidatesRaw = [
     entryPointCandidatesSuppressed,
     qualityRecoveryTriggered,
     qualityRecoveryReason,
+    scoredUniverseFailure,
+    scoredUniverseFailureReason,
+    scoredUniversePreviewTitles,
     finalSuppressedByBetterEntryPoint,
     scoredRebuildUsedForRender,
     renderSource,
@@ -5503,9 +5668,27 @@ const normalizedCandidatesRaw = [
     postRenderTitles,
     overwrittenAfterScoredRebuild,
     scoredCandidateUniverseCount,
+    convertedDocsAvailableForScoringCount,
+    gcdStructuralEnrichmentCount,
+    gcdEntryPointLikeCount,
+    gcdCollectedLikeCount,
+    gcdIssueLikeCount,
     scoredCandidateUniverseSources,
     scoredCandidateUniverseFranchiseRoots,
-    selectedFranchiseRoots: Array.from(new Set(finalRenderDocs.map((d: any) => finalSeriesKeyForRender(d)).filter(Boolean))),
+    broadArtifactRejectedTitles,
+    zeroScoreBroadFillersUsed,
+    entitySeedCandidatesFoundBySeed,
+    entitySeedCandidatesSelected,
+    selectedFranchiseRoots: Array.from(new Set(finalRenderDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean))),
+    parentFranchiseRootByTitle,
+    sideArcRejectedTitles,
+    selectedParentFranchiseCounts,
+    duplicateTitleRejectedTitles,
+    negativeScoreRejectedTitles,
+    untranslatedEditionRejectedTitles,
+    semanticBreadthSelections,
+    adjacentSeedExpansionCandidates,
+    seedSaturationPenaltyApplied,
     suppressedGlobalSeedReason,
     profileSelectedEntitySeeds,
     finalFranchiseFamilies,

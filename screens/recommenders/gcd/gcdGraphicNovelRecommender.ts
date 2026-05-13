@@ -1475,6 +1475,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineDocConversionSuccessCount,
     comicVineDocConversionDropReasons: comicVineAdapterDropReasonsByQuery,
     comicVineConvertedDocTitles,
+    comicVineConvertedDocsForScoring: docsWithKeywordMix,
     comicVineTitleMergeDebug,
     comicVineContentEmptyDropCount,
     comicVineCanonicalEmptyDropCount,
