@@ -91,6 +91,7 @@ function finalSeriesKeyForRender(doc: any): string {
 
 function parentFranchiseRootForDoc(doc: any): string {
   const parentMeta =
+  const parent = String(
     doc?.parentVolumeName ||
     doc?.parentVolume?.name ||
     doc?.canonicalParentTitle ||
@@ -106,6 +107,7 @@ function parentFranchiseRootForDoc(doc: any): string {
     "";
   const parent = String(
     parentMeta,
+    "",
   ).toLowerCase();
   const fallback = finalSeriesKeyForRender(doc);
   const raw = (parent.trim() ? parent : fallback).split(":")[0].replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -5313,6 +5315,10 @@ const normalizedCandidatesRaw = [
     if (hasParentMetadata) parentMetadataUsedForRootCount += 1;
     parentFranchiseRootByTitle[title] = parentFranchiseRoot;
     parentRootSourceByTitle[title] = String(hasParentMetadata ? "parentVolumeName" : "title_fallback");
+    const hasParentMetadata = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName);
+    if (hasParentMetadata) parentMetadataUsedForRootCount += 1;
+    parentFranchiseRootByTitle[title] = parentFranchiseRoot;
+    parentRootSourceByTitle[title] = String(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName ? "parentVolumeName" : "title_fallback");
     const franchise = normalizeText(parentFranchiseRoot || "");
     const isAnchorFranchise = anchorFranchises.some((seed) => franchise.includes(normalizeText(seed)));
     const entryPointBoost =
@@ -5451,6 +5457,7 @@ const normalizedCandidatesRaw = [
       (doc as any)?.rawDoc?.rawDoc?.parentVolumeName ||
       (doc as any)?.rawDoc?.rawDoc?.parentVolume?.name
     );
+    const hasParentMetadata = Boolean((doc as any)?.parentVolumeName || (doc as any)?.parentVolume?.name || (doc as any)?.rawDoc?.parentVolumeName);
     const subtitleFragmentLike = hasParentMetadata && isLikelySubtitleFragmentTitle(String(doc?.title || ""));
     if (subtitleFragmentLike && !hasStarterLikeSignal) { subtitleFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
     if (family === "the-walking-dead") {
