@@ -5251,6 +5251,10 @@ const normalizedCandidatesRaw = [
   const sideArcRejectedTitles: string[] = [];
   const duplicateTitleRejectedTitles: string[] = [];
   const negativeScoreRejectedTitles: string[] = [];
+  const untranslatedEditionRejectedTitles: string[] = [];
+  const semanticBreadthSelections: string[] = [];
+  const adjacentSeedExpansionCandidates: string[] = [];
+  const seedSaturationPenaltyApplied: Record<string, number> = {};
   const parentFranchiseRootByTitle: Record<string, string> = {};
   let zeroScoreBroadFillersUsed = 0;
   const entitySeedCandidatesFoundBySeed: Record<string, number> = {};
@@ -5302,6 +5306,11 @@ const normalizedCandidatesRaw = [
     const hasPositiveSignal = matchedProfileSeeds.length > 0 || isKnownCanonicalFranchise || hasProfileGenreMatch || hasNonGenericTitle || hasAuthorityMetadata;
     const globalSeedSuppression = isSIKTC && suppressedGlobalSeedReason !== "none" ? -28 : 0;
     const priorSeriesPenalty = (routingInput.priorSeriesKeys || []).some((k) => normalizeText(String(k || "")) === franchise) ? -20 : 0;
+    const nonEnglishEditionPenalty =
+      /\b(uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(normalizedTitle) ||
+      (Array.isArray((doc as any)?.language) && (doc as any).language.length > 0 && !(doc as any).language.includes("eng"))
+        ? -22
+        : 0;
     const heuristicScore =
       entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + subtitleSideArcPenalty + issueFragmentPenalty + genericArtifactPenalty + broadArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
     const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
@@ -5309,7 +5318,7 @@ const normalizedCandidatesRaw = [
     if (shouldRejectAsBroadArtifact) broadArtifactRejectedTitles.push(title);
     return {
       ...doc,
-      score: baseScore + heuristicScore,
+      score: baseScore + heuristicScore + nonEnglishEditionPenalty,
       rejectedInScoredRebuild: shouldRejectAsBroadArtifact,
       diagnostics: {
         ...(doc?.diagnostics || {}),
@@ -5319,13 +5328,14 @@ const normalizedCandidatesRaw = [
         issueFragmentPenalty,
         subtitleSideArcPenalty,
         broadArtifactPenalty,
+        nonEnglishEditionPenalty,
         profileSeedBoost,
         hasPositiveSignal,
         broadArtifactTitle,
         globalSeedSuppression,
         priorSeriesPenalty,
         rejectedInScoredRebuild: shouldRejectAsBroadArtifact,
-        finalScore: baseScore + heuristicScore,
+        finalScore: baseScore + heuristicScore + nonEnglishEditionPenalty,
       },
     };
   });
@@ -5354,9 +5364,16 @@ const normalizedCandidatesRaw = [
   }
   const antiCollapseSelected: any[] = [];
   const qualityRecoveryReasons: string[] = [];
+  const seedFamilyCounts: Record<string, number> = {};
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
     const family = parentFranchiseRootForDoc(doc);
-    const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    const matchingSeed = profileSelectedEntitySeeds.find((seed) => normalizeText(String(doc?.title || "")).includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
+    const seedCount = matchingSeed ? Number(seedFamilyCounts[matchingSeed] || 0) : 0;
+    const saturationPenalty = seedCount >= 2 ? 18 : seedCount >= 1 ? 8 : 0;
+    if (matchingSeed && saturationPenalty > 0) seedSaturationPenaltyApplied[matchingSeed] = (seedSaturationPenaltyApplied[matchingSeed] || 0) + saturationPenalty;
+    const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty;
+    const isNonEnglishEdition = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
+    if (isNonEnglishEdition && finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && Number(((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0)) >= 0)) { untranslatedEditionRejectedTitles.push(String(doc?.title || "")); continue; }
     if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); continue; }
     const familyCount = antiCollapseSelected.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
     const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(String(doc?.title || ""));
@@ -5377,6 +5394,14 @@ const normalizedCandidatesRaw = [
       zeroScoreBroadFillersUsed += 1;
     }
     antiCollapseSelected.push(doc);
+    if (matchingSeed) {
+      seedFamilyCounts[matchingSeed] = seedCount + 1;
+      if (!semanticBreadthSelections.includes(matchingSeed)) semanticBreadthSelections.push(matchingSeed);
+    }
+    if (!matchingSeed) {
+      const adjacent = ["descender", "saga", "sweet tooth", "runaways", "invincible", "sandman", "black science", "walking dead"].find((seed) => normalizeText(String(doc?.title || "")).includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
+      if (adjacent && !adjacentSeedExpansionCandidates.includes(adjacent)) adjacentSeedExpansionCandidates.push(adjacent);
+    }
     const selectedSeed = profileSelectedEntitySeeds.find((seed) => normalizeText(String(doc?.title || "")).includes(normalizeText(seed)));
     if (selectedSeed && !entitySeedCandidatesSelected.includes(selectedSeed)) entitySeedCandidatesSelected.push(selectedSeed);
     if (antiCollapseSelected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
@@ -5660,6 +5685,10 @@ const normalizedCandidatesRaw = [
     selectedParentFranchiseCounts,
     duplicateTitleRejectedTitles,
     negativeScoreRejectedTitles,
+    untranslatedEditionRejectedTitles,
+    semanticBreadthSelections,
+    adjacentSeedExpansionCandidates,
+    seedSaturationPenaltyApplied,
     suppressedGlobalSeedReason,
     profileSelectedEntitySeeds,
     finalFranchiseFamilies,

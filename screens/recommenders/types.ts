@@ -99,6 +99,10 @@ export type RecommendationResult = {
   selectedParentFranchiseCounts?: Record<string, number>;
   duplicateTitleRejectedTitles?: string[];
   negativeScoreRejectedTitles?: string[];
+  untranslatedEditionRejectedTitles?: string[];
+  semanticBreadthSelections?: string[];
+  adjacentSeedExpansionCandidates?: string[];
+  seedSaturationPenaltyApplied?: Record<string, number>;
   selectedFranchiseRoots?: string[];
   profileSelectedEntitySeeds?: string[];
   suppressedGlobalSeedReason?: string;
