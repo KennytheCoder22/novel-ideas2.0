@@ -5609,16 +5609,47 @@ const normalizedCandidatesRaw = [
   const positiveFitReasonsByTitle: Record<string, string[]> = {};
   const penaltyReasonsByTitle: Record<string, string[]> = {};
   const finalSelectionRejectedByReason: Record<string, number> = {};
+  const genericTasteSignals = new Set(["audience:teen", "age:mshs", "media:movie", "media:tv", "film", "series", "format", "family", "identity", "dark"]);
+  const ignoredGenericTasteSignals: string[] = [];
+  const extractWeightedSignals = (obj: Record<string, any>, kind: "liked" | "disliked" | "skipped") => {
+    return Object.entries(obj || {})
+      .map(([k, v]) => ({ signal: String(k), weight: Number(v || 0) }))
+      .filter((row) => row.weight > 0)
+      .map((row) => {
+        if (genericTasteSignals.has(row.signal)) {
+          ignoredGenericTasteSignals.push(`${kind}:${row.signal}`);
+          row.weight = row.weight * 0.15;
+        } else if (/^genre:/.test(row.signal)) row.weight = row.weight * 3.2;
+        else if (/^(tone:|mood:)/.test(row.signal)) row.weight = row.weight * 2.6;
+        else if (/^(theme:|drive:)/.test(row.signal)) row.weight = row.weight * 2.4;
+        else if (/^(universe:|source:)/.test(row.signal)) row.weight = row.weight * 1.5;
+        else if (/^(media:|format:)/.test(row.signal)) row.weight = row.weight * 0.7;
+        else if (/^(audience:|age:)/.test(row.signal)) row.weight = row.weight * 0.2;
+        else row.weight = row.weight * 1.0;
+        return row;
+      })
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 30);
+  };
+  const weightedSwipeTasteVector = {
+    liked: extractWeightedSignals((routingInput as any)?.tagCounts || {}, "liked"),
+    disliked: extractWeightedSignals((routingInput as any)?.dislikedTagCounts || {}, "disliked"),
+    skipped: extractWeightedSignals((routingInput as any)?.leftTagCounts || {}, "skipped"),
+  };
   const swipeTasteVector = {
-    liked: Object.entries((routingInput as any)?.tagCounts || {}).filter(([, v]) => Number(v || 0) > 0).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k)),
-    disliked: Object.entries((routingInput as any)?.dislikedTagCounts || {}).filter(([, v]) => Number(v || 0) > 0).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k)),
-    skipped: Object.entries((routingInput as any)?.leftTagCounts || {}).filter(([, v]) => Number(v || 0) > 0).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k)),
+    liked: weightedSwipeTasteVector.liked.map((s) => s.signal),
+    disliked: weightedSwipeTasteVector.disliked.map((s) => s.signal),
+    skipped: weightedSwipeTasteVector.skipped.map((s) => s.signal),
   };
   const candidateTasteMatchScoreByTitle: Record<string, number> = {};
   const candidateTastePenaltyByTitle: Record<string, number> = {};
   const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
   const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
   const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
+  const candidateWeightedTasteScoreByTitle: Record<string, number> = {};
+  const candidateDislikePenaltyByTitle: Record<string, number> = {};
+  const candidateSkipPenaltyByTitle: Record<string, number> = {};
+  const finalRankingReasonByTitle: Record<string, string[]> = {};
   const pushReason = (bucket: Record<string, string[]>, title: string, reason: string) => {
     if (!bucket[title]) bucket[title] = [];
     if (!bucket[title].includes(reason)) bucket[title].push(reason);
@@ -5642,11 +5673,16 @@ const normalizedCandidatesRaw = [
         return null;
       }
       const text = normalizeText(`${title} ${String(doc?.description || "")}`);
-      const matchedLiked = swipeTasteVector.liked.filter((signal) => signal && text.includes(normalizeText(signal))).slice(0, 8);
-      const matchedDisliked = swipeTasteVector.disliked.filter((signal) => signal && text.includes(normalizeText(signal))).slice(0, 8);
-      const matchedSkipped = swipeTasteVector.skipped.filter((signal) => signal && text.includes(normalizeText(signal))).slice(0, 8);
-      const tasteMatchScore = matchedLiked.length * 3;
-      const tastePenaltyScore = matchedDisliked.length * 4 + matchedSkipped.length;
+      const matchedLikedWeighted = weightedSwipeTasteVector.liked.filter((row) => text.includes(normalizeText(row.signal)));
+      const matchedDislikedWeighted = weightedSwipeTasteVector.disliked.filter((row) => text.includes(normalizeText(row.signal)));
+      const matchedSkippedWeighted = weightedSwipeTasteVector.skipped.filter((row) => text.includes(normalizeText(row.signal)));
+      const matchedLiked = matchedLikedWeighted.map((r) => r.signal).slice(0, 8);
+      const matchedDisliked = matchedDislikedWeighted.map((r) => r.signal).slice(0, 8);
+      const matchedSkipped = matchedSkippedWeighted.map((r) => r.signal).slice(0, 8);
+      const tasteMatchScore = matchedLikedWeighted.reduce((acc, row) => acc + row.weight, 0);
+      const dislikePenalty = matchedDislikedWeighted.reduce((acc, row) => acc + row.weight * 1.25, 0);
+      const skipPenalty = matchedSkippedWeighted.reduce((acc, row) => acc + row.weight * 0.45, 0);
+      const tastePenaltyScore = dislikePenalty + skipPenalty;
       const laneMatch = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(text);
       const themeOverlap = profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
       const rootMatch = Boolean(parentFranchiseRootForDoc(doc));
@@ -5659,7 +5695,17 @@ const normalizedCandidatesRaw = [
       candidateTastePenaltyByTitle[title] = tastePenaltyScore;
       candidateMatchedLikedSignalsByTitle[title] = matchedLiked;
       candidateMatchedDislikedSignalsByTitle[title] = matchedDisliked;
+      candidateWeightedTasteScoreByTitle[title] = tasteMatchScore;
+      candidateDislikePenaltyByTitle[title] = dislikePenalty;
+      candidateSkipPenaltyByTitle[title] = skipPenalty;
       finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
+      finalRankingReasonByTitle[title] = [
+        ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
+        ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
+        ...(skipPenalty > 0 ? ["skip_overlap_penalty"] : []),
+        ...(laneMatch ? ["lane_match"] : []),
+        ...(themeOverlap ? ["theme_overlap"] : []),
+      ];
       const reasons: string[] = [];
       if (laneMatch) reasons.push("lane_match");
       if (themeOverlap) reasons.push("theme_overlap");
@@ -6330,10 +6376,16 @@ const normalizedCandidatesRaw = [
     penaltyReasonsByTitle,
     finalSelectionRejectedByReason,
     swipeTasteVector,
+    weightedSwipeTasteVector,
+    ignoredGenericTasteSignals,
     candidateTasteMatchScoreByTitle,
     candidateTastePenaltyByTitle,
     candidateMatchedLikedSignalsByTitle,
     candidateMatchedDislikedSignalsByTitle,
+    candidateWeightedTasteScoreByTitle,
+    candidateDislikePenaltyByTitle,
+    candidateSkipPenaltyByTitle,
+    finalRankingReasonByTitle,
     finalScoreComponentsByTitle,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
