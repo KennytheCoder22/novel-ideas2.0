@@ -5540,6 +5540,12 @@ const normalizedCandidatesRaw = [
     .filter(Boolean);
   finalRenderDocs = scoredCanonicalDocs.filter((doc: any) => !Boolean((doc as any)?.rejectedInScoredRebuild));
   const scoredCandidateUniverseCount = scoringUniverse.length;
+  const expansionTitleSetForScoring = new Set(expansionSelectedTitles.map((t) => normalizeText(String(t || ""))));
+  const preferredExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman"]);
+  let expansionCandidatesEnteredScoringCount = 0;
+  let expansionCandidatesSurvivedFiltersCount = 0;
+  const expansionCandidatesRejectedByReason: Record<string, number> = {};
+  const expansionCandidatesAcceptedFinal: string[] = [];
   const candidateDiversityFloorTarget = includeComicVine ? 30 : 20;
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const recoveryFinalItemsLength = finalRenderDocs.length;
@@ -5592,10 +5598,15 @@ const normalizedCandidatesRaw = [
     const seedCount = matchingSeed ? Number(seedFamilyCounts[matchingSeed] || 0) : 0;
     const saturationPenalty = seedCount >= 2 ? 18 : seedCount >= 1 ? 8 : 0;
     if (matchingSeed && saturationPenalty > 0) seedSaturationPenaltyApplied[matchingSeed] = (seedSaturationPenaltyApplied[matchingSeed] || 0) + saturationPenalty;
-    const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty;
+    const docRoot = parentFranchiseRootForDoc(doc);
+    const isExpansionDoc = expansionTitleSetForScoring.has(normalizeText(String(doc?.title || "")));
+    if (isExpansionDoc) expansionCandidatesEnteredScoringCount += 1;
+    const expansionDiversityBonus = isExpansionDoc && preferredExpansionRoots.has(docRoot) && finalRenderDocs.length < 8 ? 14 : 0;
+    const incumbentPenalty = finalRenderDocs.length < 8 && ["something-is-killing-the-children", "ms-marvel"].includes(docRoot) ? 24 : 0;
+    const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty + expansionDiversityBonus - incumbentPenalty;
     const isNonEnglishEdition = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
-    if (isNonEnglishEdition && finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && Number(((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0)) >= 0)) { untranslatedEditionRejectedTitles.push(String(doc?.title || "")); continue; }
-    if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); continue; }
+    if (isNonEnglishEdition && finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && Number(((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0)) >= 0)) { untranslatedEditionRejectedTitles.push(String(doc?.title || "")); if (isExpansionDoc) expansionCandidatesRejectedByReason.non_english = Number(expansionCandidatesRejectedByReason.non_english || 0) + 1; continue; }
+    if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); if (isExpansionDoc) expansionCandidatesRejectedByReason.negative_score = Number(expansionCandidatesRejectedByReason.negative_score || 0) + 1; continue; }
     const familyCount = antiCollapseSelected.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
     const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(String(doc?.title || ""));
     const hasParentMetadata = Boolean(
@@ -5619,8 +5630,8 @@ const normalizedCandidatesRaw = [
       if (subtitleOnlyWalkingDeadFragment) { subtitleOnlyParentFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
       if (!hasWalkingDeadStarter && walkingDeadSelectedCount >= 1) { subtitleOnlyParentFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
     }
-    if (familyCount >= 1 && !hasStarterLikeSignal) { sideArcRejectedTitles.push(String(doc?.title || "")); continue; }
-    if (familyCount >= 1) continue;
+    if (familyCount >= 1 && !hasStarterLikeSignal) { sideArcRejectedTitles.push(String(doc?.title || "")); if (isExpansionDoc) expansionCandidatesRejectedByReason.side_arc = Number(expansionCandidatesRejectedByReason.side_arc || 0) + 1; continue; }
+    if (familyCount >= 1) { if (isExpansionDoc) expansionCandidatesRejectedByReason.family_saturated = Number(expansionCandidatesRejectedByReason.family_saturated || 0) + 1; continue; }
     const normalizedTitle = normalizeText(String(doc?.title || ""));
     if (antiCollapseSelected.some((d: any) => normalizeText(String(d?.title || "")) === normalizedTitle)) { duplicateTitleRejectedTitles.push(String(doc?.title || "")); continue; }
     const isSideArc = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(doc?.title || ""));
@@ -5636,6 +5647,7 @@ const normalizedCandidatesRaw = [
       zeroScoreBroadFillersUsed += 1;
     }
     antiCollapseSelected.push(doc);
+    if (isExpansionDoc) expansionCandidatesSurvivedFiltersCount += 1;
     if (family === "the-walking-dead") walkingDeadSelectedCount += 1;
     if (matchingSeed) {
       seedFamilyCounts[matchingSeed] = seedCount + 1;
@@ -5651,6 +5663,9 @@ const normalizedCandidatesRaw = [
   }
   if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
   else finalRenderDocs = antiCollapseSelected;
+  for (const doc of finalRenderDocs) {
+    if (expansionTitleSetForScoring.has(normalizeText(String(doc?.title || "")))) expansionCandidatesAcceptedFinal.push(String(doc?.title || ""));
+  }
   relaxationCandidatesConsidered += [...finalRenderDocs].length;
   relaxationCandidatesSelected = finalRenderDocs.length;
   if (finalEligibleNonNegativeCount >= 8 && finalRenderDocs.length < 8) {
@@ -6068,6 +6083,10 @@ const normalizedCandidatesRaw = [
     expansionDroppedByQueryReason,
     expansionMergedTitlesByQuery,
     expansionDistinctRootsBeforeSelection,
+    expansionCandidatesEnteredScoringCount,
+    expansionCandidatesSurvivedFiltersCount,
+    expansionCandidatesRejectedByReason,
+    expansionCandidatesAcceptedFinal,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
