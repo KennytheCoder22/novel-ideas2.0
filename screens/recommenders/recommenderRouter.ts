@@ -3060,6 +3060,14 @@ export async function getRecommendations(
   let comicVinePositiveQueries: string[] = [];
   let comicVineExcludedTermsAppliedInFilterOnly = false;
   let comicVineQueryTooLong = false;
+  let effectiveBucketPlanForExpansion: any = {
+    ...bucketPlan,
+    lane: routerFamily,
+    family: routerFamily,
+    hybridMode: isHybridMode,
+    hybridLaneWeights,
+    primaryLane: routerFamily,
+  };
 
   for (const rung of rungs) {
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
@@ -3071,6 +3079,7 @@ export async function getRecommendations(
       hybridLaneWeights,
       primaryLane: routerFamily,
     };
+    effectiveBucketPlanForExpansion = effectiveBucketPlan;
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
@@ -3138,7 +3147,7 @@ export async function getRecommendations(
       const shouldDispatchComicVineForLane = includeComicVine && !comicVineAdapterFailed && !comicVineDispatchedOnce;
       const comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       if (shouldDispatchComicVineForLane) {
-        requests.push(getComicVineGraphicNovelRecommendations(routedInput));
+        requests.push(getComicVineGraphicNovelRecommendations(laneInput));
         comicVineDispatchedOnce = true;
       }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
@@ -5750,7 +5759,21 @@ const normalizedCandidatesRaw = [
       if (expansionSeedQueries.length > 0) {
         expansionFetchAttempted = true;
         try {
-          const expansionResult: any = await getComicVineGraphicNovelRecommendations({ ...routedInput, bucketPlan: { ...(effectiveBucketPlan || {}), queries: expansionSeedQueries } });
+          const expansionResult: any = await getComicVineGraphicNovelRecommendations({
+            ...routedInput,
+            bucketPlan: {
+              ...(effectiveBucketPlanForExpansion || {}),
+              queries: expansionSeedQueries,
+              preview: expansionSeedQueries[0] || (effectiveBucketPlanForExpansion?.preview ?? bucketPlan?.preview ?? ""),
+              rungs: expansionSeedQueries.map((q: string, idx: number) => ({
+                rung: idx + 1,
+                query: q,
+                primary: q,
+                secondary: null,
+                queryFamily: (effectiveBucketPlanForExpansion as any)?.family || routerFamily,
+              })),
+            },
+          });
           const expansionDocs = (Array.isArray(expansionResult?.items) ? expansionResult.items : []).map((it: any) => it?.doc).filter(Boolean);
           expansionRawCount += Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0);
           expansionConvertedCount += expansionDocs.length;
