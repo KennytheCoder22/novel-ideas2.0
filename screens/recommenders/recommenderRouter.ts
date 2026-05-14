@@ -5609,6 +5609,16 @@ const normalizedCandidatesRaw = [
   const positiveFitReasonsByTitle: Record<string, string[]> = {};
   const penaltyReasonsByTitle: Record<string, string[]> = {};
   const finalSelectionRejectedByReason: Record<string, number> = {};
+  const swipeTasteVector = {
+    liked: Object.entries((routingInput as any)?.tagCounts || {}).filter(([, v]) => Number(v || 0) > 0).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k)),
+    disliked: Object.entries((routingInput as any)?.dislikedTagCounts || {}).filter(([, v]) => Number(v || 0) > 0).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k)),
+    skipped: Object.entries((routingInput as any)?.leftTagCounts || {}).filter(([, v]) => Number(v || 0) > 0).sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k)),
+  };
+  const candidateTasteMatchScoreByTitle: Record<string, number> = {};
+  const candidateTastePenaltyByTitle: Record<string, number> = {};
+  const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
+  const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
   const pushReason = (bucket: Record<string, string[]>, title: string, reason: string) => {
     if (!bucket[title]) bucket[title] = [];
     if (!bucket[title].includes(reason)) bucket[title].push(reason);
@@ -5632,14 +5642,24 @@ const normalizedCandidatesRaw = [
         return null;
       }
       const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+      const matchedLiked = swipeTasteVector.liked.filter((signal) => signal && text.includes(normalizeText(signal))).slice(0, 8);
+      const matchedDisliked = swipeTasteVector.disliked.filter((signal) => signal && text.includes(normalizeText(signal))).slice(0, 8);
+      const matchedSkipped = swipeTasteVector.skipped.filter((signal) => signal && text.includes(normalizeText(signal))).slice(0, 8);
+      const tasteMatchScore = matchedLiked.length * 3;
+      const tastePenaltyScore = matchedDisliked.length * 4 + matchedSkipped.length;
       const laneMatch = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(text);
       const themeOverlap = profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
       const rootMatch = Boolean(parentFranchiseRootForDoc(doc));
       const starterSignal = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
       const audienceFit = /\b(teen|young adult|adult)\b/i.test(`${title} ${String(doc?.description || "")}`);
       const provenanceConfidence = Boolean(doc?.sourceId || doc?.queryText || doc?.parentVolumeName);
-      const score = (laneMatch ? 2 : 0) + (themeOverlap ? 2 : 0) + (rootMatch ? 2 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 2 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
+      const score = tasteMatchScore - tastePenaltyScore + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
       positiveFitScoreByTitle[title] = score;
+      candidateTasteMatchScoreByTitle[title] = tasteMatchScore;
+      candidateTastePenaltyByTitle[title] = tastePenaltyScore;
+      candidateMatchedLikedSignalsByTitle[title] = matchedLiked;
+      candidateMatchedDislikedSignalsByTitle[title] = matchedDisliked;
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
       const reasons: string[] = [];
       if (laneMatch) reasons.push("lane_match");
       if (themeOverlap) reasons.push("theme_overlap");
@@ -5648,7 +5668,7 @@ const normalizedCandidatesRaw = [
       if (audienceFit) reasons.push("audience_fit");
       if (provenanceConfidence) reasons.push("provenance_confidence");
       positiveFitReasonsByTitle[title] = reasons;
-      if (score < 3) {
+      if (score < 2) {
         finalSelectionRejectedByReason.low_positive_fit = Number(finalSelectionRejectedByReason.low_positive_fit || 0) + 1;
         pushReason(penaltyReasonsByTitle, title, "low_positive_fit");
         return null;
@@ -6309,6 +6329,12 @@ const normalizedCandidatesRaw = [
     positiveFitReasonsByTitle,
     penaltyReasonsByTitle,
     finalSelectionRejectedByReason,
+    swipeTasteVector,
+    candidateTasteMatchScoreByTitle,
+    candidateTastePenaltyByTitle,
+    candidateMatchedLikedSignalsByTitle,
+    candidateMatchedDislikedSignalsByTitle,
+    finalScoreComponentsByTitle,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,

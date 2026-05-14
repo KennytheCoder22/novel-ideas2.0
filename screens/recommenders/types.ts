@@ -197,6 +197,12 @@ export type RecommendationResult = {
   positiveFitReasonsByTitle?: Record<string, string[]>;
   penaltyReasonsByTitle?: Record<string, string[]>;
   finalSelectionRejectedByReason?: Record<string, number>;
+  swipeTasteVector?: { liked: string[]; disliked: string[]; skipped: string[] };
+  candidateTasteMatchScoreByTitle?: Record<string, number>;
+  candidateTastePenaltyByTitle?: Record<string, number>;
+  candidateMatchedLikedSignalsByTitle?: Record<string, string[]>;
+  candidateMatchedDislikedSignalsByTitle?: Record<string, string[]>;
+  finalScoreComponentsByTitle?: Record<string, Record<string, number>>;
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
