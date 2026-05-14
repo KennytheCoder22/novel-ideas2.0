@@ -3,6 +3,48 @@
 // Fully canonical rewrite aligned to the expanded semanticTraitRegistry.ts and tagNormalizationMap.ts.
 
 import type { SwipeDeck } from "./types";
+const GRAPHIC_NOVEL_KEYWORDS = new Set([
+  "superhero","fantasy","sci_fi","dystopian","romance","mystery","horror","adventure","comedy","mythology",
+  "historical","drama","coming_of_age","survival","crime","school_life","paranormal","slice_of_life","action",
+  "manga","queer_identity","sports","western",
+]);
+
+const MSHS_GRAPHIC_NOVEL_KEYWORDS_BY_TITLE: Record<string, string[]> = {
+  "spider-man: into the spider-verse": ["superhero", "action", "coming_of_age"],
+  "spider-man: homecoming": ["superhero", "coming_of_age", "school_life"],
+  "the batman": ["superhero", "mystery", "crime"],
+  "the dark knight": ["superhero", "crime", "drama"],
+  "smallville": ["superhero", "coming_of_age", "drama"],
+  "the umbrella academy": ["superhero", "sci_fi", "drama"],
+  "heartstopper: volume 1": ["romance", "coming_of_age", "queer_identity", "slice_of_life"],
+  "lore olympus: volume one": ["romance", "mythology", "fantasy"],
+  "nimona": ["fantasy", "comedy", "action"],
+};
+
+function inferMsHsGraphicNovelKeywords(card: any): string[] {
+  const titleKey = String(card?.title || "").trim().toLowerCase();
+  const explicit = MSHS_GRAPHIC_NOVEL_KEYWORDS_BY_TITLE[titleKey] || [];
+  const fromCard = Array.isArray(card?.graphicNovelKeywords) ? card.graphicNovelKeywords : [];
+  const tags = Array.isArray(card?.tags) ? card.tags.map((t: unknown) => String(t || "").toLowerCase()) : [];
+  const joined = [titleKey, String(card?.genre || "").toLowerCase(), ...tags].join(" ");
+  const inferred: string[] = [];
+  if (/superhero|superheroes|spider-man|batman|smallville|marvel|dc\b/.test(joined)) inferred.push("superhero");
+  if (/fantasy|magic|myth|dragon|witcher|zelda/.test(joined)) inferred.push("fantasy");
+  if (/science fiction|sci[- ]?fi|cyberpunk|space|future|doctor who/.test(joined)) inferred.push("sci_fi");
+  if (/dystopian|apocalypse|rebellion|hunger games|maze runner/.test(joined)) inferred.push("dystopian");
+  if (/romance|love|heartstopper|young royals/.test(joined)) inferred.push("romance");
+  if (/mystery|detective|investigation|sherlock/.test(joined)) inferred.push("mystery");
+  if (/horror|haunted|ghost|walking dead/.test(joined)) inferred.push("horror");
+  if (/adventure|quest|journey/.test(joined)) inferred.push("adventure");
+  if (/mythology|percy jackson|olympus/.test(joined)) inferred.push("mythology");
+  if (/crime|heist|noir/.test(joined)) inferred.push("crime");
+  if (/coming of age|coming-of-age|teen|school/.test(joined)) inferred.push("coming_of_age");
+  if (/anime|manga/.test(joined)) inferred.push("manga");
+  const combined = Array.from(new Set([...explicit, ...fromCard, ...inferred].map((v) => String(v || "").toLowerCase())))
+    .filter((k) => GRAPHIC_NOVEL_KEYWORDS.has(k))
+    .slice(0, 4);
+  return combined.length ? combined : ["drama"];
+}
 
 const CANON_MSHS_BOOKS: any[] = [
   { isDefault: true, title: "The Hunger Games", semantic: { contentTraits: ["dystopian_society","survival_game","rebellion"], toneTraits: ["intense","dark","fast"], characterTraits: ["reluctant_leader"], storyTraits: ["competition_arc","resistance_story","survival_story"], aversionTraits: ["violence","bleak_tone"] }, author: "Suzanne Collins", genre: "Dystopian / Survival", wikiTitle: "The Hunger Games", tags: ["audience:teen","age:mshs","media:book","dystopian","survival","high stakes","fast-paced","dark"],tasteTraits: { warmth: 0.0, darkness: 1, pacing: 1, realism: 0.0, characterFocus: 0.0, ideaDensity: 0.0 },  output: { genre: ["dystopian","survival","high stakes"], vibes: ["fast-paced","dark"] }, },
@@ -909,7 +951,11 @@ const msHsDeck: SwipeDeck = {
       /^(publisher:|source_universe:|facet:|format:graphic_novel)/i.test(String(tag || ""))
     );
     if (!hasComicVineUsefulTag) tags.push("facet:indie_genre");
-    return { ...card, tags: Array.from(new Set(tags)) };
+    return {
+      ...card,
+      tags: Array.from(new Set(tags)),
+      graphicNovelKeywords: inferMsHsGraphicNovelKeywords(card),
+    };
   }),
 };
 
