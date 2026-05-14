@@ -215,6 +215,8 @@ export type RecommendationResult = {
   staticDefaultQueriesSuppressedReason?: string;
   tasteProfileBuildFailure?: boolean;
   tasteProfileBuildFailureReason?: string;
+  preDispatchTasteProfileSummary?: { likedGenres: string[]; likedTones: string[]; likedThemes: string[]; dislikedSignals: string[]; skippedSignals: string[] };
+  preDispatchGeneratedQueries?: string[];
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;

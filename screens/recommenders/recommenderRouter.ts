@@ -3021,7 +3021,7 @@ export async function getRecommendations(
   rungs = rungs.slice(0, 9);
 
   const tagEntries = Object.entries((input.tagCounts || routingInput.tagCounts || {}) as Record<string, number>).filter(([, v]) => Number(v || 0) > 0);
-  const tasteText = normalizeText(String((routingInput as any)?.tasteProfile?.summary || tasteProfileText || ""));
+  const tasteText = normalizeText(String((routingInput as any)?.tasteProfile?.summary || ""));
   const inferFromTasteText = (tokens: string[]) => tokens.filter((t) => tasteText.includes(t)).map((t) => `${t.includes("science fiction") ? "genre" : "theme"}:${t}`);
   const inferredGenresFromText = inferFromTasteText(["science fiction", "fantasy", "comedy", "survival", "adventure"]);
   const inferredTonesFromText = inferFromTasteText(["hopeful", "dark", "political", "atmospheric"]);
@@ -3034,13 +3034,21 @@ export async function getRecommendations(
     dislikedSignals: [...Object.keys(((routingInput as any)?.dislikedTagCounts || {})).filter((k) => Number(((routingInput as any)?.dislikedTagCounts || {})[k] || 0) > 0).slice(0, 6), ...inferredDislikedFromText].slice(0, 8),
     skippedSignals: Object.keys(((routingInput as any)?.leftTagCounts || {}).length ? ((routingInput as any)?.leftTagCounts || {}) : ((routingInput as any)?.skippedTagCounts || {})).filter((k) => Number((((routingInput as any)?.leftTagCounts || (routingInput as any)?.skippedTagCounts || {})[k] || 0)) > 0).slice(0, 8),
   };
+  const swipeSignalCount = tagEntries.reduce((acc, [, v]) => acc + Number(v || 0), 0);
   const tasteProfileBuildFailure =
     tasteProfileSummary.likedGenres.length === 0 &&
     tasteProfileSummary.likedTones.length === 0 &&
     tasteProfileSummary.likedThemes.length === 0 &&
     tasteProfileSummary.dislikedSignals.length === 0 &&
     tasteProfileSummary.skippedSignals.length === 0;
-  const tasteProfileBuildFailureReason = tasteProfileBuildFailure ? "no_swipe_signals_resolved_from_tagcounts_or_taste_profile" : "none";
+  const tasteProfileBuildFailureReason = tasteProfileBuildFailure
+    ? (swipeSignalCount > 8 ? "swipe_signals_present_but_profile_empty" : "no_swipe_signals_resolved_from_tagcounts_or_taste_profile")
+    : "none";
+  if (swipeSignalCount > 8 && tasteProfileBuildFailure) {
+    console.error("Taste profile unexpectedly empty", { swipeSignalCount, tagEntryCount: tagEntries.length });
+  }
+  const preDispatchTasteProfileSummary = tasteProfileSummary;
+  const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
   const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
   const generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...tasteProfileSummary.likedGenres.map((s) => `${s.replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
@@ -6462,6 +6470,8 @@ const normalizedCandidatesRaw = [
     staticDefaultQueriesSuppressedReason,
     tasteProfileBuildFailure,
     tasteProfileBuildFailureReason,
+    preDispatchTasteProfileSummary,
+    preDispatchGeneratedQueries,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,

@@ -2151,6 +2151,8 @@ function handleLeft() {
       `staticDefaultQueriesSuppressedReason:${String((lastRecommendationResult as any)?.staticDefaultQueriesSuppressedReason || "none")}`,
       `tasteProfileBuildFailure:${Boolean((lastRecommendationResult as any)?.tasteProfileBuildFailure)}`,
       `tasteProfileBuildFailureReason:${String((lastRecommendationResult as any)?.tasteProfileBuildFailureReason || "none")}`,
+      `preDispatchTasteProfileSummary:${JSON.stringify((lastRecommendationResult as any)?.preDispatchTasteProfileSummary || {})}`,
+      `preDispatchGeneratedQueries:${Array.isArray((lastRecommendationResult as any)?.preDispatchGeneratedQueries) && (lastRecommendationResult as any).preDispatchGeneratedQueries.length ? (lastRecommendationResult as any).preDispatchGeneratedQueries.join(" | ") : "(none)"}`,
       `expansionNotTriggeredReason:${String((lastRecommendationResult as any)?.expansionNotTriggeredReason || "none")}`,
       `subtitleFragmentInheritedParentRootTitles:${Array.isArray((lastRecommendationResult as any)?.subtitleFragmentInheritedParentRootTitles) && (lastRecommendationResult as any).subtitleFragmentInheritedParentRootTitles.length ? (lastRecommendationResult as any).subtitleFragmentInheritedParentRootTitles.join(" | ") : "(none)"}`,
       `subtitleFragmentRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.subtitleFragmentRejectedTitles) && (lastRecommendationResult as any).subtitleFragmentRejectedTitles.length ? (lastRecommendationResult as any).subtitleFragmentRejectedTitles.join(" | ") : "(none)"}`,
