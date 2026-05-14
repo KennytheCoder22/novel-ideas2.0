@@ -5372,6 +5372,35 @@ const normalizedCandidatesRaw = [
     }
     if (rebuilt.length >= 5) finalRenderDocs = rebuilt;
   }
+  if (includeComicVine && !expansionFetchAttempted && candidateDocs.length < 30) {
+    cleanCandidateShortfallExpansionTriggered = true;
+    const preScoringExpansionSeeds = Array.from(new Set([
+      "Locke & Key", "Sweet Tooth", "Spider-Man", "Descender", "Runaways", "Black Science", "Saga", "The Sandman", "Invincible",
+    ].map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
+      const root = rootFromSeed(q);
+      if (!root || blockedExpansionQueryFragments.test(q)) return false;
+      if (selectedStarterRoots.has(root)) return false;
+      return true;
+    }).slice(0, 8);
+    if (preScoringExpansionSeeds.length > 0) {
+      expansionFetchAttempted = true;
+      expansionFetchResultsByQuery = [];
+      const preScoringExpansionDocs = await runExpansionQueries(preScoringExpansionSeeds);
+      const taggedExpansionDocs = preScoringExpansionDocs.map((doc: any) => ({
+        ...doc,
+        isExpansionCandidate: true,
+        expansionQueryText: String(doc?.queryText || "expansion"),
+        expansionRoot: parentFranchiseRootForDoc(doc),
+        diagnostics: { ...(doc?.diagnostics || {}), isExpansionCandidate: true, expansionQueryText: String(doc?.queryText || "expansion"), expansionRoot: parentFranchiseRootForDoc(doc) },
+      }));
+      expansionRawCount += expansionFetchResultsByQuery.reduce((acc, row) => acc + Number(row.rawCount || 0), 0);
+      expansionConvertedCount += taggedExpansionDocs.length;
+      expansionDistinctRootsBeforeSelection = Array.from(new Set([...expansionDistinctRootsBeforeSelection, ...taggedExpansionDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)]));
+      enrichedDocs = enrichComicVineStructuralMetadata(dedupeDocs([...(enrichedDocs as any[]), ...taggedExpansionDocs]));
+      candidateDocs = dedupeDocs([...(candidateDocs as any[]), ...taggedExpansionDocs]);
+      expansionMergedCandidateCount = Math.max(expansionMergedCandidateCount, candidateDocs.length);
+    }
+  }
   const anchorFranchises = [
     "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
   ];
