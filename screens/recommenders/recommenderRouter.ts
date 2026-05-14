@@ -3381,6 +3381,19 @@ export async function getRecommendations(
   let expansionCleanEligibleCount = 0;
   let expansionSelectedTitles: string[] = [];
   let expansionNotTriggeredReason = "not_evaluated";
+  const expansionExcludedRoots: string[] = [];
+  const expansionRootDiversityCandidates: string[] = [];
+  const expansionRejectedAsSaturatedRoot: Record<string, number> = {};
+  const expansionSelectedRootCounts: Record<string, number> = {};
+  const blockedExpansionQueryFragments = /(aftermath|vainqueurs|opportunity|all her monsters|storm the gates|the last stand|the road back)/i;
+  const prioritizedExpansionRoots = ["locke-key", "sweet-tooth", "the-sandman", "runaways", "descender", "miles-morales", "spider-man", "black-science", "saga", "invincible"];
+  const rootFromSeed = (v: string) => normalizeText(String(v || "")).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const selectedStarterRoots = new Set(
+    commerciallyEnrichedDocs
+      .filter((d: any) => /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || "")))
+      .map((d: any) => parentFranchiseRootForDoc(d))
+      .filter(Boolean)
+  );
   let enrichedDocs = enrichComicVineStructuralMetadata(commerciallyEnrichedDocs);
   if (includeComicVine) {
     const cleanEligibleBaseline = commerciallyEnrichedDocs.filter((doc: any) => {
@@ -3391,15 +3404,28 @@ export async function getRecommendations(
     if (cleanEligibleBaseline.length < 8) {
       cleanCandidateShortfallExpansionTriggered = true;
       expansionNotTriggeredReason = "clean_eligible_below_threshold";
-      const expansionSeedQueries = Array.from(new Set([
+      const candidateSeeds = Array.from(new Set([
+        ...prioritizedExpansionRoots.map((r) => r.replace(/-/g, " ")),
         ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
         ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
-      ].map((v) => String(v || "").trim()).filter(Boolean))).slice(0, 8);
+      ].map((v) => String(v || "").trim()).filter(Boolean)));
+      const expansionSeedQueries = candidateSeeds.filter((q) => {
+        const root = rootFromSeed(q);
+        if (!root) return false;
+        expansionRootDiversityCandidates.push(root);
+        if (blockedExpansionQueryFragments.test(q)) return false;
+        if (selectedStarterRoots.has(root)) {
+          expansionExcludedRoots.push(root);
+          expansionRejectedAsSaturatedRoot[root] = Number(expansionRejectedAsSaturatedRoot[root] || 0) + 1;
+          return false;
+        }
+        return true;
+      }).slice(0, 8);
       if (expansionSeedQueries.length > 0) {
         expansionFetchAttempted = true;
         const expansionInput: RecommenderInput = {
           ...routedInput,
-          bucketPlan: { ...(effectiveBucketPlan || {}), queries: expansionSeedQueries },
+          bucketPlan: { ...(effectiveBucketPlanForExpansion || {}), queries: expansionSeedQueries },
         };
         try {
           const expansionResult: any = await getComicVineGraphicNovelRecommendations(expansionInput);
@@ -3409,6 +3435,11 @@ export async function getRecommendations(
           expansionConvertedCount = expansionDocs.length;
           expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: expansionDocs.length ? 'ok' : 'empty', rawCount: expansionRawCount }));
           expansionSelectedTitles = expansionDocs.map((d: any) => String(d?.title || '')).filter(Boolean).slice(0, 20);
+          for (const d of expansionDocs) {
+            const root = parentFranchiseRootForDoc(d);
+            if (!root) continue;
+            expansionSelectedRootCounts[root] = Number(expansionSelectedRootCounts[root] || 0) + 1;
+          }
           const merged = dedupeDocs([...(commerciallyEnrichedDocs as any[]), ...expansionDocs]);
           expansionMergedCandidateCount = merged.length;
           enrichedDocs = enrichComicVineStructuralMetadata(merged);
@@ -5755,7 +5786,16 @@ const normalizedCandidatesRaw = [
         "Spider-Man", "Miles Morales", "Runaways", "Descender", "Sweet Tooth", "Saga", "The Sandman", "Black Science", "Invincible", "Locke & Key", "Walking Dead", "Ms. Marvel",
         ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
         ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
-      ].map((v) => String(v || "").trim()).filter(Boolean))).slice(0, 8);
+      ].map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
+        const root = rootFromSeed(q);
+        if (!root || blockedExpansionQueryFragments.test(q)) return false;
+        if (selectedStarterRoots.has(root)) {
+          expansionExcludedRoots.push(root);
+          expansionRejectedAsSaturatedRoot[root] = Number(expansionRejectedAsSaturatedRoot[root] || 0) + 1;
+          return false;
+        }
+        return true;
+      }).slice(0, 8);
       if (expansionSeedQueries.length > 0) {
         expansionFetchAttempted = true;
         try {
@@ -5778,6 +5818,11 @@ const normalizedCandidatesRaw = [
           expansionRawCount += Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0);
           expansionConvertedCount += expansionDocs.length;
           expansionSelectedTitles = Array.from(new Set([...expansionSelectedTitles, ...expansionDocs.map((d: any) => String(d?.title || "")).filter(Boolean)])).slice(0, 20);
+          for (const d of expansionDocs) {
+            const root = parentFranchiseRootForDoc(d);
+            if (!root) continue;
+            expansionSelectedRootCounts[root] = Number(expansionSelectedRootCounts[root] || 0) + 1;
+          }
           expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: expansionDocs.length ? "ok" : "final_empty", rawCount: Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0) }));
           expansionMergedCandidateCount = Math.max(expansionMergedCandidateCount, dedupeDocs([...(enrichedDocs as any[]), ...expansionDocs]).length);
           expansionNotTriggeredReason = expansionDocs.length > 0 ? "post_selection_underfill_expansion_attempted" : "post_selection_underfill_expansion_empty";
@@ -5993,6 +6038,10 @@ const normalizedCandidatesRaw = [
     expansionConvertedCount,
     expansionCleanEligibleCount,
     expansionSelectedTitles,
+    expansionExcludedRoots,
+    expansionRootDiversityCandidates,
+    expansionRejectedAsSaturatedRoot,
+    expansionSelectedRootCounts,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
