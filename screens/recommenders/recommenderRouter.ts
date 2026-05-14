@@ -5442,6 +5442,7 @@ const normalizedCandidatesRaw = [
   const expansionFalsePositiveRejectedTitles: string[] = [];
   const expansionLocaleRejectedTitles: string[] = [];
   const expansionWeakFillerRejectedTitles: string[] = [];
+  const sameParentSoftDuplicateRejectedTitles: string[] = [];
   const expansionAliasMap: Record<string, string[]> = {
     "spider-man": ["spider-man", "spiderman", "peter parker", "miles morales"],
     "sweet-tooth": ["sweet tooth", "gus"],
@@ -5529,10 +5530,12 @@ const normalizedCandidatesRaw = [
     const expansionQueryRoot = expansionQueryToRoot(String((doc as any)?.expansionQueryText || (doc as any)?.queryText || ""));
     const expansionRoot = parentFranchiseRootForDoc(doc);
     const aliasPool = expansionAliasMap[expansionQueryRoot] || [expansionQueryRoot.replace(/-/g, " ")];
-    const queryRootMatched =
-      aliasPool.some((alias) => normalizedTitle.includes(normalizeText(alias))) ||
+    const strictRootOnly = new Set(["saga", "sweet-tooth", "spider-man", "miles-morales"]);
+    const parentOrRootMatch =
       aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "")).includes(normalizeText(alias))) ||
       (expansionRoot && (expansionRoot === expansionQueryRoot || aliasPool.some((alias) => expansionRoot.includes(normalizeText(alias).replace(/[^a-z0-9]+/g, "-")))));
+    const titleAliasLooseMatch = aliasPool.some((alias) => normalizedTitle.includes(normalizeText(alias)));
+    const queryRootMatched = strictRootOnly.has(expansionQueryRoot) ? parentOrRootMatch : (parentOrRootMatch || titleAliasLooseMatch);
     matchedProfileSeeds.forEach((seed) => {
       entitySeedCandidatesFoundBySeed[seed] = (entitySeedCandidatesFoundBySeed[seed] || 0) + 1;
     });
@@ -5555,7 +5558,7 @@ const normalizedCandidatesRaw = [
     const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
     const isKnownTranslatedLocale = /\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(title));
     const hasEnglishAlternativeInUniverse = scoringUniverse.some((d: any) => parentFranchiseRootForDoc(d) === expansionRoot && !/\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(d?.title || "")));
-    const weakHobbitFiller = /\bthe hobbit\b/i.test(title) && !/\b(fantasy|adventure)\b/.test(profileTextForSeeds);
+    const weakHobbitFiller = /\bthe hobbit\b/i.test(title) && !(/\b(fantasy|adventure)\b/.test(profileTextForSeeds) || ["fantasy", "adventure"].includes(routerFamily));
     const expansionQueryRootMismatch = isExpansionCandidate && Boolean(expansionQueryRoot) && !queryRootMatched;
     const shouldRejectAsBroadArtifact = (broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise) || weakHobbitFiller || expansionQueryRootMismatch || (isExpansionCandidate && isKnownTranslatedLocale && hasEnglishAlternativeInUniverse);
     if (expansionQueryRootMismatch) {
@@ -5672,6 +5675,9 @@ const normalizedCandidatesRaw = [
     if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); if (isExpansionDoc) expansionCandidatesRejectedByReason.negative_score = Number(expansionCandidatesRejectedByReason.negative_score || 0) + 1; continue; }
     const familyCount = antiCollapseSelected.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
     const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(String(doc?.title || ""));
+    if (/marvel-verse:\s*ms\.?\s*marvel/i.test(String(doc?.title || "")) && antiCollapseSelected.some((d: any) => /ms\.?\s*marvel:\s*volume\s*(1|one)/i.test(String(d?.title || "")))) {
+      if (antiCollapseSelected.length < 8) { sameParentSoftDuplicateRejectedTitles.push(String(doc?.title || "")); continue; }
+    }
     const hasParentMetadata = Boolean(
       (doc as any)?.parentVolumeName ||
       (doc as any)?.parentVolume?.name ||
@@ -6154,6 +6160,7 @@ const normalizedCandidatesRaw = [
     expansionFalsePositiveRejectedTitles,
     expansionLocaleRejectedTitles,
     expansionWeakFillerRejectedTitles,
+    sameParentSoftDuplicateRejectedTitles,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,

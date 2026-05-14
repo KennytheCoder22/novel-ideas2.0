@@ -183,6 +183,7 @@ export type RecommendationResult = {
   expansionFalsePositiveRejectedTitles?: string[];
   expansionLocaleRejectedTitles?: string[];
   expansionWeakFillerRejectedTitles?: string[];
+  sameParentSoftDuplicateRejectedTitles?: string[];
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
