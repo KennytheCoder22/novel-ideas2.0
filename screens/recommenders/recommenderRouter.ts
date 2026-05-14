@@ -3394,6 +3394,38 @@ export async function getRecommendations(
       .map((d: any) => parentFranchiseRootForDoc(d))
       .filter(Boolean)
   );
+  const expansionConvertedByQuery: Record<string, number> = {};
+  const expansionDroppedByQueryReason: Record<string, Record<string, number>> = {};
+  const expansionMergedTitlesByQuery: Record<string, string[]> = {};
+  let expansionDistinctRootsBeforeSelection: string[] = [];
+  const runExpansionQueries = async (queries: string[]): Promise<any[]> => {
+    const allDocs: any[] = [];
+    for (let idx = 0; idx < queries.length; idx += 1) {
+      const q = queries[idx];
+      try {
+        const perQueryResult: any = await getComicVineGraphicNovelRecommendations({
+          ...routedInput,
+          bucketPlan: {
+            ...(effectiveBucketPlanForExpansion || {}),
+            queries: [q],
+            preview: q,
+            rungs: [{ rung: idx + 1, query: q, primary: q, secondary: null, queryFamily: (effectiveBucketPlanForExpansion as any)?.family || routerFamily }],
+          },
+        });
+        const perItems = Array.isArray(perQueryResult?.items) ? perQueryResult.items : [];
+        const perDocs = perItems.map((it: any) => it?.doc).filter(Boolean);
+        expansionFetchResultsByQuery.push({ query: q, status: perDocs.length ? "ok" : "final_empty", rawCount: Number(perQueryResult?.debugRawFetchedCount || perDocs.length || 0) });
+        expansionConvertedByQuery[q] = perDocs.length;
+        expansionMergedTitlesByQuery[q] = perDocs.map((d: any) => String(d?.title || "")).filter(Boolean).slice(0, 10);
+        allDocs.push(...perDocs);
+      } catch (e: any) {
+        expansionFetchResultsByQuery.push({ query: q, status: "error", rawCount: 0, error: String(e?.message || e) });
+        expansionConvertedByQuery[q] = 0;
+        expansionDroppedByQueryReason[q] = { fetch_error: 1 };
+      }
+    }
+    return allDocs;
+  };
   let enrichedDocs = enrichComicVineStructuralMetadata(commerciallyEnrichedDocs);
   if (includeComicVine) {
     const cleanEligibleBaseline = commerciallyEnrichedDocs.filter((doc: any) => {
@@ -3428,19 +3460,23 @@ export async function getRecommendations(
           bucketPlan: { ...(effectiveBucketPlanForExpansion || {}), queries: expansionSeedQueries },
         };
         try {
-          const expansionResult: any = await getComicVineGraphicNovelRecommendations(expansionInput);
-          const expansionItems = Array.isArray(expansionResult?.items) ? expansionResult.items : [];
-          const expansionDocs = expansionItems.map((it: any) => it?.doc).filter(Boolean);
-          expansionRawCount = Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0);
+          expansionFetchResultsByQuery = [];
+          const expansionDocs = await runExpansionQueries(expansionSeedQueries);
+          expansionRawCount = expansionFetchResultsByQuery.reduce((acc, row) => acc + Number(row.rawCount || 0), 0);
           expansionConvertedCount = expansionDocs.length;
-          expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: expansionDocs.length ? 'ok' : 'empty', rawCount: expansionRawCount }));
           expansionSelectedTitles = expansionDocs.map((d: any) => String(d?.title || '')).filter(Boolean).slice(0, 20);
+          expansionDistinctRootsBeforeSelection = Array.from(new Set(expansionDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
           for (const d of expansionDocs) {
             const root = parentFranchiseRootForDoc(d);
             if (!root) continue;
             expansionSelectedRootCounts[root] = Number(expansionSelectedRootCounts[root] || 0) + 1;
           }
-          const merged = dedupeDocs([...(commerciallyEnrichedDocs as any[]), ...expansionDocs]);
+          const filteredExpansionDocs = expansionDocs.filter((d: any) => {
+            const root = parentFranchiseRootForDoc(d);
+            if (["something-is-killing-the-children", "ms-marvel"].includes(root)) return false;
+            return true;
+          });
+          const merged = dedupeDocs([...(commerciallyEnrichedDocs as any[]), ...filteredExpansionDocs]);
           expansionMergedCandidateCount = merged.length;
           enrichedDocs = enrichComicVineStructuralMetadata(merged);
         } catch (e: any) {
@@ -5799,31 +5835,17 @@ const normalizedCandidatesRaw = [
       if (expansionSeedQueries.length > 0) {
         expansionFetchAttempted = true;
         try {
-          const expansionResult: any = await getComicVineGraphicNovelRecommendations({
-            ...routedInput,
-            bucketPlan: {
-              ...(effectiveBucketPlanForExpansion || {}),
-              queries: expansionSeedQueries,
-              preview: expansionSeedQueries[0] || (effectiveBucketPlanForExpansion?.preview ?? bucketPlan?.preview ?? ""),
-              rungs: expansionSeedQueries.map((q: string, idx: number) => ({
-                rung: idx + 1,
-                query: q,
-                primary: q,
-                secondary: null,
-                queryFamily: (effectiveBucketPlanForExpansion as any)?.family || routerFamily,
-              })),
-            },
-          });
-          const expansionDocs = (Array.isArray(expansionResult?.items) ? expansionResult.items : []).map((it: any) => it?.doc).filter(Boolean);
-          expansionRawCount += Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0);
+          expansionFetchResultsByQuery = [];
+          const expansionDocs = await runExpansionQueries(expansionSeedQueries);
+          expansionRawCount += expansionFetchResultsByQuery.reduce((acc, row) => acc + Number(row.rawCount || 0), 0);
           expansionConvertedCount += expansionDocs.length;
           expansionSelectedTitles = Array.from(new Set([...expansionSelectedTitles, ...expansionDocs.map((d: any) => String(d?.title || "")).filter(Boolean)])).slice(0, 20);
+          expansionDistinctRootsBeforeSelection = Array.from(new Set([...expansionDistinctRootsBeforeSelection, ...expansionDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)]));
           for (const d of expansionDocs) {
             const root = parentFranchiseRootForDoc(d);
             if (!root) continue;
             expansionSelectedRootCounts[root] = Number(expansionSelectedRootCounts[root] || 0) + 1;
           }
-          expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: expansionDocs.length ? "ok" : "final_empty", rawCount: Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0) }));
           expansionMergedCandidateCount = Math.max(expansionMergedCandidateCount, dedupeDocs([...(enrichedDocs as any[]), ...expansionDocs]).length);
           expansionNotTriggeredReason = expansionDocs.length > 0 ? "post_selection_underfill_expansion_attempted" : "post_selection_underfill_expansion_empty";
         } catch (e: any) {
@@ -6042,6 +6064,10 @@ const normalizedCandidatesRaw = [
     expansionRootDiversityCandidates,
     expansionRejectedAsSaturatedRoot,
     expansionSelectedRootCounts,
+    expansionConvertedByQuery,
+    expansionDroppedByQueryReason,
+    expansionMergedTitlesByQuery,
+    expansionDistinctRootsBeforeSelection,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
