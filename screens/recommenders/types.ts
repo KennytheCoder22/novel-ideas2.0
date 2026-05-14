@@ -191,6 +191,12 @@ export type RecommendationResult = {
   finalRootDiversityCount?: number;
   finalRootDuplicateCounts?: Record<string, number>;
   finalRootSecondEntryReasons?: Record<string, string>;
+  viableCandidateCountBeforeFinalSelection?: number;
+  viableCandidateRootsBeforeFinalSelection?: string[];
+  positiveFitScoreByTitle?: Record<string, number>;
+  positiveFitReasonsByTitle?: Record<string, string[]>;
+  penaltyReasonsByTitle?: Record<string, string[]>;
+  finalSelectionRejectedByReason?: Record<string, number>;
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;

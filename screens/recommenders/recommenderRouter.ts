@@ -5605,6 +5605,60 @@ const normalizedCandidatesRaw = [
     .map((doc: any) => String(doc?.title || "").trim())
     .filter(Boolean);
   finalRenderDocs = scoredCanonicalDocs.filter((doc: any) => !Boolean((doc as any)?.rejectedInScoredRebuild));
+  const positiveFitScoreByTitle: Record<string, number> = {};
+  const positiveFitReasonsByTitle: Record<string, string[]> = {};
+  const penaltyReasonsByTitle: Record<string, string[]> = {};
+  const finalSelectionRejectedByReason: Record<string, number> = {};
+  const pushReason = (bucket: Record<string, string[]>, title: string, reason: string) => {
+    if (!bucket[title]) bucket[title] = [];
+    if (!bucket[title].includes(reason)) bucket[title].push(reason);
+  };
+  const hardInvalid = (doc: any): string => {
+    const title = String(doc?.title || "").trim();
+    const root = parentFranchiseRootForDoc(doc);
+    if (!title || /^\.\.\.$/.test(title) || /^\s*(the\s+walking\s+dead:)?\s*\.\.\.\s*$/.test(title)) return "placeholder";
+    if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|book)\b/i.test(title)) return "issue_fragment";
+    if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0 && finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === root && Number((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0) >= 0)) return "locale_variant";
+    if (/^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title) && !root) return "generic_artifact_no_root";
+    return "";
+  };
+  const viableCandidates = finalRenderDocs
+    .map((doc: any) => {
+      const title = String(doc?.title || "");
+      const invalidReason = hardInvalid(doc);
+      if (invalidReason) {
+        finalSelectionRejectedByReason[invalidReason] = Number(finalSelectionRejectedByReason[invalidReason] || 0) + 1;
+        pushReason(penaltyReasonsByTitle, title, invalidReason);
+        return null;
+      }
+      const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+      const laneMatch = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(text);
+      const themeOverlap = profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
+      const rootMatch = Boolean(parentFranchiseRootForDoc(doc));
+      const starterSignal = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
+      const audienceFit = /\b(teen|young adult|adult)\b/i.test(`${title} ${String(doc?.description || "")}`);
+      const provenanceConfidence = Boolean(doc?.sourceId || doc?.queryText || doc?.parentVolumeName);
+      const score = (laneMatch ? 2 : 0) + (themeOverlap ? 2 : 0) + (rootMatch ? 2 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 2 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
+      positiveFitScoreByTitle[title] = score;
+      const reasons: string[] = [];
+      if (laneMatch) reasons.push("lane_match");
+      if (themeOverlap) reasons.push("theme_overlap");
+      if (rootMatch) reasons.push("root_match");
+      if (starterSignal) reasons.push("starter_or_collection");
+      if (audienceFit) reasons.push("audience_fit");
+      if (provenanceConfidence) reasons.push("provenance_confidence");
+      positiveFitReasonsByTitle[title] = reasons;
+      if (score < 3) {
+        finalSelectionRejectedByReason.low_positive_fit = Number(finalSelectionRejectedByReason.low_positive_fit || 0) + 1;
+        pushReason(penaltyReasonsByTitle, title, "low_positive_fit");
+        return null;
+      }
+      return { ...doc, positiveFitScore: score };
+    })
+    .filter(Boolean) as any[];
+  finalRenderDocs = viableCandidates.sort((a: any, b: any) => Number(b?.positiveFitScore || 0) - Number(a?.positiveFitScore || 0));
+  const viableCandidateCountBeforeFinalSelection = finalRenderDocs.length;
+  const viableCandidateRootsBeforeFinalSelection = Array.from(new Set(finalRenderDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
   const scoredCandidateUniverseCount = scoringUniverse.length;
   const expansionTitleSetForScoring = new Set(expansionSelectedTitles.map((t) => normalizeText(String(t || ""))));
   const preferredExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman"]);
@@ -6249,6 +6303,12 @@ const normalizedCandidatesRaw = [
     finalRootDiversityCount,
     finalRootDuplicateCounts,
     finalRootSecondEntryReasons,
+    viableCandidateCountBeforeFinalSelection,
+    viableCandidateRootsBeforeFinalSelection,
+    positiveFitScoreByTitle,
+    positiveFitReasonsByTitle,
+    penaltyReasonsByTitle,
+    finalSelectionRejectedByReason,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
