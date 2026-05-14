@@ -5490,6 +5490,25 @@ const normalizedCandidatesRaw = [
     relaxedBreadthBackfillRejectedReasons[reason] = Number(relaxedBreadthBackfillRejectedReasons[reason] || 0) + 1;
     relaxationRejectedReasons[reason] = Number(relaxationRejectedReasons[reason] || 0) + 1;
   };
+  const hasStarterInUniverse = (family: string) =>
+    scoredCanonicalDocs.some((d: any) =>
+      parentFranchiseRootForDoc(d) === family &&
+      /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || ""))
+    );
+  const isLateVolumeWhenStarterExists = (doc: any, family: string) =>
+    hasStarterInUniverse(family) &&
+    (/\b(volume|book)\s*(5|6|7|8|9|10|11|12|13|14|15|16)\b/i.test(String(doc?.title || "")) ||
+      /\bbook\s*sixteen\b/i.test(String(doc?.title || "")));
+  const isHardBlockedRelaxationCandidate = (doc: any, selected: any[]) => {
+    const title = String(doc?.title || "");
+    const family = parentFranchiseRootForDoc(doc);
+    if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return "negative_score";
+    if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0 && selected.some((d: any) => parentFranchiseRootForDoc(d) === family && Number((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0) >= 0)) return "non_english_when_english_exists";
+    if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.walkingDeadSubtitleFragmentPenalty || 0) < 0) return "fragment";
+    if (/^\s*(\.\.\.|the\s+walking\s+dead:\s*\.\.\.)\s*$/i.test(title) || /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title)) return "placeholder_or_generic";
+    if (isLateVolumeWhenStarterExists(doc, family)) return "late_volume_when_starter_exists";
+    return "";
+  };
   const hasWalkingDeadStarter = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === "the-walking-dead" && /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || "")));
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
     const family = parentFranchiseRootForDoc(doc);
@@ -5525,12 +5544,12 @@ const normalizedCandidatesRaw = [
       if (!hasWalkingDeadStarter && walkingDeadSelectedCount >= 1) { subtitleOnlyParentFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
     }
     if (familyCount >= 1 && !hasStarterLikeSignal) { sideArcRejectedTitles.push(String(doc?.title || "")); continue; }
-    if (familyCount >= 2) continue;
+    if (familyCount >= 1) continue;
     const normalizedTitle = normalizeText(String(doc?.title || ""));
     if (antiCollapseSelected.some((d: any) => normalizeText(String(d?.title || "")) === normalizedTitle)) { duplicateTitleRejectedTitles.push(String(doc?.title || "")); continue; }
     const isSideArc = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(doc?.title || ""));
     if (isSideArc && antiCollapseSelected.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
-    const hasVolumeOne = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(d?.title || "")));
+    const hasVolumeOne = hasStarterInUniverse(family);
     if (hasVolumeOne && (/\b(volume|book)\s*(5|6|7|8|9|10|11|12|13|14|15|16)\b/i.test(String(doc?.title || "")) || /\bbook\s*sixteen\b/i.test(String(doc?.title || "")) || /\ball her monsters\b/i.test(String(doc?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
     const hasPenalty = Number((doc?.diagnostics as any)?.sideStoryPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || /^graphic horror novel\b/i.test(String(doc?.title || "")) || /^graphic fantasy\b/i.test(String(doc?.title || ""));
     const hasUnpenalizedAlternative = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) !== family && Number((d?.diagnostics as any)?.sideStoryPenalty || 0) >= 0 && Number((d?.diagnostics as any)?.issueFragmentPenalty || 0) >= 0);
@@ -5572,10 +5591,8 @@ const normalizedCandidatesRaw = [
       const title = String(doc?.title || "");
       const nTitle = normalizeText(title);
       if (!title || selectedTitleSet.has(nTitle)) { registerRelaxedReject("duplicate"); continue; }
-      if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerRelaxedReject("non_english"); continue; }
-      if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0) { registerRelaxedReject("issue_fragment"); continue; }
-      if (Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.walkingDeadSubtitleFragmentPenalty || 0) < 0) { registerRelaxedReject("subtitle_fragment"); continue; }
-      if (/:\s*graphic novel$/i.test(title) || /^.+:\s*the graphic novel/i.test(title) || /^.+\sgraphic novel$/i.test(title)) { registerRelaxedReject("broad_artifact"); continue; }
+      const hardBlockReason = isHardBlockedRelaxationCandidate(doc, finalRenderDocs);
+      if (hardBlockReason) { registerRelaxedReject(hardBlockReason); continue; }
       const family = parentFranchiseRootForDoc(doc);
       const matchingAdjacentSeed = adjacentSeeds.find((seed) => nTitle.includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
       if (!matchingAdjacentSeed) { registerRelaxedReject("not_adjacent_seed"); continue; }
@@ -5598,11 +5615,9 @@ const normalizedCandidatesRaw = [
       const family = parentFranchiseRootForDoc(doc);
       if (!title || selectedTitleSet.has(nTitle)) { registerRelaxedReject("broader_duplicate"); continue; }
       if (!String((doc as any)?.queryText || (doc as any)?.diagnostics?.queryText || "").trim() || !String((doc as any)?.source || "").trim()) { registerRelaxedReject("missing_query_or_source"); continue; }
-      if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) { registerRelaxedReject("negative_score"); continue; }
-      if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerRelaxedReject("non_english"); continue; }
-      if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0) { registerRelaxedReject("fragment"); continue; }
-      if (/^\s*(\.\.\.|the\s+walking\s+dead:\s*\.\.\.)\s*$/i.test(title) || /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title)) { registerRelaxedReject("placeholder_or_generic"); continue; }
-      if (finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length >= 2) { registerRelaxedReject("franchise_cap_strict"); continue; }
+      const hardBlockReason = isHardBlockedRelaxationCandidate(doc, finalRenderDocs);
+      if (hardBlockReason) { registerRelaxedReject(hardBlockReason); continue; }
+      if (finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length >= 1) { registerRelaxedReject("franchise_cap_strict"); continue; }
       finalRenderDocs.push(doc);
       selectedTitleSet.add(nTitle);
       relaxationCandidatesSelected += 1;
@@ -5611,6 +5626,8 @@ const normalizedCandidatesRaw = [
   if (finalRenderDocs.length < 8) {
     relaxationStageReached = "slightly_loosen_franchise_cap";
     const selectedTitleSet = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || ""))));
+    const allDistinctFamilies = Array.from(new Set(scoredCanonicalDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
+    const exhaustedDistinctFamilies = allDistinctFamilies.every((family) => finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family));
     for (const doc of [...scoredCanonicalDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
       if (finalRenderDocs.length >= 8) break;
       relaxationCandidatesConsidered += 1;
@@ -5618,8 +5635,10 @@ const normalizedCandidatesRaw = [
       const nTitle = normalizeText(title);
       const family = parentFranchiseRootForDoc(doc);
       if (!title || selectedTitleSet.has(nTitle)) { registerRelaxedReject("loosen_duplicate"); continue; }
-      if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0 || Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerRelaxedReject("loosen_quality_guard"); continue; }
-      if (finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length >= 3) { registerRelaxedReject("franchise_cap_loosened"); continue; }
+      const hardBlockReason = isHardBlockedRelaxationCandidate(doc, finalRenderDocs);
+      if (hardBlockReason) { registerRelaxedReject(hardBlockReason); continue; }
+      if (!exhaustedDistinctFamilies && finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length >= 1) { registerRelaxedReject("franchise2_only_after_exhausted"); continue; }
+      if (finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length >= 2) { registerRelaxedReject("franchise_cap_loosened"); continue; }
       finalRenderDocs.push(doc);
       selectedTitleSet.add(nTitle);
       relaxationCandidatesSelected += 1;
