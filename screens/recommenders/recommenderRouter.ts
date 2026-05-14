@@ -5689,7 +5689,9 @@ const normalizedCandidatesRaw = [
       const starterSignal = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
       const audienceFit = /\b(teen|young adult|adult)\b/i.test(`${title} ${String(doc?.description || "")}`);
       const provenanceConfidence = Boolean(doc?.sourceId || doc?.queryText || doc?.parentVolumeName);
-      const score = tasteMatchScore - tastePenaltyScore + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
+      const defaultRoot = ["something-is-killing-the-children", "sweet-tooth", "ms-marvel", "the-walking-dead"].includes(parentFranchiseRootForDoc(doc));
+      const unsupportedDefaultPenalty = defaultRoot && matchedLiked.length === 0 ? 3 : 0;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
       positiveFitScoreByTitle[title] = score;
       candidateTasteMatchScoreByTitle[title] = tasteMatchScore;
       candidateTastePenaltyByTitle[title] = tastePenaltyScore;
@@ -5698,7 +5700,7 @@ const normalizedCandidatesRaw = [
       candidateWeightedTasteScoreByTitle[title] = tasteMatchScore;
       candidateDislikePenaltyByTitle[title] = dislikePenalty;
       candidateSkipPenaltyByTitle[title] = skipPenalty;
-      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
       finalRankingReasonByTitle[title] = [
         ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
         ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
@@ -5723,6 +5725,7 @@ const normalizedCandidatesRaw = [
     })
     .filter(Boolean) as any[];
   finalRenderDocs = viableCandidates.sort((a: any, b: any) => Number(b?.positiveFitScore || 0) - Number(a?.positiveFitScore || 0));
+  const swipeRankedCandidateList = [...finalRenderDocs];
   const viableCandidateCountBeforeFinalSelection = finalRenderDocs.length;
   const viableCandidateRootsBeforeFinalSelection = Array.from(new Set(finalRenderDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
   const scoredCandidateUniverseCount = scoringUniverse.length;
@@ -5983,6 +5986,23 @@ const normalizedCandidatesRaw = [
   }
   if (hasMsMarvelVol1) {
     finalRenderDocs = finalRenderDocs.filter((d: any) => !/ms\.?\s*marvel:\s*volume\s*(4|5)/i.test(String(d?.title || "")));
+  }
+  // Swipe-first final authority:
+  // final render must be derived from swipe-ranked viable candidates, not legacy
+  // top-up/recovery survivors that can reintroduce static-root bias.
+  if (swipeRankedCandidateList.length > 0) {
+    const selected: any[] = [];
+    const rootCounts: Record<string, number> = {};
+    for (const doc of swipeRankedCandidateList) {
+      const root = parentFranchiseRootForDoc(doc) || "__none__";
+      if (rootCounts[root] >= 2) continue;
+      const title = String(doc?.title || "");
+      if (selected.some((s: any) => normalizeText(String(s?.title || "")) === normalizeText(title))) continue;
+      selected.push(doc);
+      rootCounts[root] = Number(rootCounts[root] || 0) + 1;
+      if (selected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+    }
+    finalRenderDocs = selected;
   }
   const finalEligibilityRejectedTitlesByReason: Record<string, string[]> = {};
   const finalEligibilityAcceptedTitles: string[] = [];
