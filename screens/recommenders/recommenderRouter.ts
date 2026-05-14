@@ -3020,6 +3020,40 @@ export async function getRecommendations(
   });
   rungs = rungs.slice(0, 9);
 
+  const tagEntries = Object.entries((input.tagCounts || {}) as Record<string, number>).filter(([, v]) => Number(v || 0) > 0);
+  const topSignals = tagEntries.sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k));
+  const tasteProfileSummary = {
+    likedGenres: topSignals.filter((s) => s.startsWith("genre:")).slice(0, 4),
+    likedTones: topSignals.filter((s) => s.startsWith("tone:") || s.startsWith("mood:")).slice(0, 4),
+    likedThemes: topSignals.filter((s) => s.startsWith("theme:") || s.startsWith("drive:")).slice(0, 4),
+    dislikedSignals: Object.keys(((routingInput as any)?.dislikedTagCounts || {})).filter((k) => Number(((routingInput as any)?.dislikedTagCounts || {})[k] || 0) > 0).slice(0, 6),
+    skippedSignals: Object.keys(((routingInput as any)?.leftTagCounts || {})).filter((k) => Number(((routingInput as any)?.leftTagCounts || {})[k] || 0) > 0).slice(0, 6),
+  };
+  const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
+  const generatedComicVineQueriesFromTaste = Array.from(new Set([
+    ...tasteProfileSummary.likedGenres.map((s) => `${s.replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
+    ...tasteProfileSummary.likedTones.map((s) => `${s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ")} graphic novel`),
+    ...tasteProfileSummary.likedThemes.map((s) => `${s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ")} graphic novel`),
+  ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
+    const nq = normalizeText(q);
+    return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
+  }))).slice(0, 6);
+  const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
+  let staticDefaultQueriesUsed = false;
+  let staticDefaultQueriesSuppressedReason = "none";
+  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length >= 3) {
+    rungs = generatedComicVineQueriesFromTaste.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
+    staticDefaultQueriesSuppressedReason = "replaced_with_swipe_taste_queries";
+  }
+  rungs = rungs.filter((r: any) => {
+    const q = normalizeText(String(r?.query || ""));
+    const usedStatic = Array.from(staticDefaultQueries).some((seed) => q.includes(normalizeText(seed)));
+    if (usedStatic) staticDefaultQueriesUsed = true;
+    if (generatedComicVineQueriesFromTaste.length >= 3 && usedStatic) return false;
+    return true;
+  });
+  if (generatedComicVineQueriesFromTaste.length < 3) staticDefaultQueriesSuppressedReason = "insufficient_taste_specific_queries";
+
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
   const mainRungQueriesLength = rungQueries.length;
   if (sourceEnabled.comicVine && rungQueries.length === 0) {
@@ -6407,6 +6441,10 @@ const normalizedCandidatesRaw = [
     candidateSkipPenaltyByTitle,
     finalRankingReasonByTitle,
     finalScoreComponentsByTitle,
+    tasteProfileSummary,
+    generatedComicVineQueriesFromTaste,
+    staticDefaultQueriesUsed,
+    staticDefaultQueriesSuppressedReason,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,

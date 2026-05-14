@@ -209,6 +209,10 @@ export type RecommendationResult = {
   candidateSkipPenaltyByTitle?: Record<string, number>;
   finalRankingReasonByTitle?: Record<string, string[]>;
   finalScoreComponentsByTitle?: Record<string, Record<string, number>>;
+  tasteProfileSummary?: { likedGenres: string[]; likedTones: string[]; likedThemes: string[]; dislikedSignals: string[]; skippedSignals: string[] };
+  generatedComicVineQueriesFromTaste?: string[];
+  staticDefaultQueriesUsed?: boolean;
+  staticDefaultQueriesSuppressedReason?: string;
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
