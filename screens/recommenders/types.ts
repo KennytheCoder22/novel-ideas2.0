@@ -213,6 +213,8 @@ export type RecommendationResult = {
   generatedComicVineQueriesFromTaste?: string[];
   staticDefaultQueriesUsed?: boolean;
   staticDefaultQueriesSuppressedReason?: string;
+  tasteProfileBuildFailure?: boolean;
+  tasteProfileBuildFailureReason?: string;
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
