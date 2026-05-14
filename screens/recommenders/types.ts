@@ -179,6 +179,10 @@ export type RecommendationResult = {
   expansionCandidatesSurvivedFiltersCount?: number;
   expansionCandidatesRejectedByReason?: Record<string, number>;
   expansionCandidatesAcceptedFinal?: string[];
+  expansionQueryRootMismatchRejectedTitles?: string[];
+  expansionFalsePositiveRejectedTitles?: string[];
+  expansionLocaleRejectedTitles?: string[];
+  expansionWeakFillerRejectedTitles?: string[];
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;

@@ -5438,6 +5438,22 @@ const normalizedCandidatesRaw = [
   const semanticBreadthSelections: string[] = [];
   const adjacentSeedExpansionCandidates: string[] = [];
   const seedSaturationPenaltyApplied: Record<string, number> = {};
+  const expansionQueryRootMismatchRejectedTitles: string[] = [];
+  const expansionFalsePositiveRejectedTitles: string[] = [];
+  const expansionLocaleRejectedTitles: string[] = [];
+  const expansionWeakFillerRejectedTitles: string[] = [];
+  const expansionAliasMap: Record<string, string[]> = {
+    "spider-man": ["spider-man", "spiderman", "peter parker", "miles morales"],
+    "sweet-tooth": ["sweet tooth", "gus"],
+    "locke-key": ["locke & key", "locke and key", "keyhouse"],
+    "the-sandman": ["sandman", "dream of the endless", "morpheus"],
+    "descender": ["descender", "tim-21"],
+    "runaways": ["runaways"],
+    "black-science": ["black science"],
+    "invincible": ["invincible", "mark grayson"],
+    "saga": ["saga", "alana", "marko", "hazel"],
+  };
+  const expansionQueryToRoot = (query: string) => rootFromSeed(String(query || "").replace(/\bgraphic novel\b/gi, "").trim());
   const parentFranchiseRootByTitle: Record<string, string> = {};
   const parentRootSourceByTitle: Record<string, string> = {};
   const normalizedParentRootAliases: Record<string, string> = { "walking-dead": "the-walking-dead", "the-walking-dead": "the-walking-dead" };
@@ -5509,6 +5525,14 @@ const normalizedCandidatesRaw = [
     const canonicalAnchorTitleBoost = isAnchorFranchise ? 10 : 0;
     const isSIKTC = /\bsomething is killing the children\b/i.test(normalizedTitle);
     const matchedProfileSeeds = profileSelectedEntitySeeds.filter((seed) => normalizedTitle.includes(normalizeText(seed)));
+    const isExpansionCandidate = Boolean((doc as any)?.isExpansionCandidate || (doc as any)?.diagnostics?.isExpansionCandidate);
+    const expansionQueryRoot = expansionQueryToRoot(String((doc as any)?.expansionQueryText || (doc as any)?.queryText || ""));
+    const expansionRoot = parentFranchiseRootForDoc(doc);
+    const aliasPool = expansionAliasMap[expansionQueryRoot] || [expansionQueryRoot.replace(/-/g, " ")];
+    const queryRootMatched =
+      aliasPool.some((alias) => normalizedTitle.includes(normalizeText(alias))) ||
+      aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "")).includes(normalizeText(alias))) ||
+      (expansionRoot && (expansionRoot === expansionQueryRoot || aliasPool.some((alias) => expansionRoot.includes(normalizeText(alias).replace(/[^a-z0-9]+/g, "-")))));
     matchedProfileSeeds.forEach((seed) => {
       entitySeedCandidatesFoundBySeed[seed] = (entitySeedCandidatesFoundBySeed[seed] || 0) + 1;
     });
@@ -5529,7 +5553,17 @@ const normalizedCandidatesRaw = [
     const heuristicScore =
       entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + subtitleSideArcPenalty + subtitleFragmentPenalty + walkingDeadSubtitleFragmentPenalty + issueFragmentPenalty + genericArtifactPenalty + broadArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
     const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
-    const shouldRejectAsBroadArtifact = broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise;
+    const isKnownTranslatedLocale = /\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(title));
+    const hasEnglishAlternativeInUniverse = scoringUniverse.some((d: any) => parentFranchiseRootForDoc(d) === expansionRoot && !/\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(d?.title || "")));
+    const weakHobbitFiller = /\bthe hobbit\b/i.test(title) && !/\b(fantasy|adventure)\b/.test(profileTextForSeeds);
+    const expansionQueryRootMismatch = isExpansionCandidate && Boolean(expansionQueryRoot) && !queryRootMatched;
+    const shouldRejectAsBroadArtifact = (broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise) || weakHobbitFiller || expansionQueryRootMismatch || (isExpansionCandidate && isKnownTranslatedLocale && hasEnglishAlternativeInUniverse);
+    if (expansionQueryRootMismatch) {
+      expansionQueryRootMismatchRejectedTitles.push(title);
+      expansionFalsePositiveRejectedTitles.push(title);
+    }
+    if (isExpansionCandidate && isKnownTranslatedLocale && hasEnglishAlternativeInUniverse) expansionLocaleRejectedTitles.push(title);
+    if (weakHobbitFiller) expansionWeakFillerRejectedTitles.push(title);
     if (shouldRejectAsBroadArtifact) broadArtifactRejectedTitles.push(title);
     return {
       ...doc,
@@ -6116,6 +6150,10 @@ const normalizedCandidatesRaw = [
     expansionCandidatesSurvivedFiltersCount,
     expansionCandidatesRejectedByReason,
     expansionCandidatesAcceptedFinal,
+    expansionQueryRootMismatchRejectedTitles,
+    expansionFalsePositiveRejectedTitles,
+    expansionLocaleRejectedTitles,
+    expansionWeakFillerRejectedTitles,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
