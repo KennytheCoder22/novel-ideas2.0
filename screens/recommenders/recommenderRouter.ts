@@ -5898,6 +5898,45 @@ const normalizedCandidatesRaw = [
     finalEligibilityAcceptedTitles.push(title);
     return true;
   });
+  const finalRootSecondEntryReasons: Record<string, string> = {};
+  const finalRootDuplicateCounts: Record<string, number> = {};
+  const byRoot = new Map<string, any[]>();
+  for (const doc of finalRenderDocs) {
+    const root = parentFranchiseRootForDoc(doc) || "__none__";
+    if (!byRoot.has(root)) byRoot.set(root, []);
+    byRoot.get(root)!.push(doc);
+  }
+  const diversifiedFinal: any[] = [];
+  for (const [, docs] of byRoot.entries()) {
+    const sorted = [...docs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0));
+    if (sorted[0]) diversifiedFinal.push(sorted[0]);
+  }
+  const remainingPool = Array.from(byRoot.entries()).flatMap(([root, docs]) =>
+    docs
+      .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
+      .slice(1)
+      .map((doc: any) => ({ root, doc }))
+  );
+  for (const { root, doc } of remainingPool) {
+    if (diversifiedFinal.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+    const rootCount = diversifiedFinal.filter((d: any) => parentFranchiseRootForDoc(d) === root).length;
+    if (rootCount >= 2) continue;
+    const title = String(doc?.title || "");
+    const starterLike = /\b(volume one|volume 1|book one|book 1)\b/i.test(title);
+    const collectedLike = /\b(compendium|collection|omnibus|tpb)\b/i.test(title);
+    const sideArcLike = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(title) || Number((doc?.diagnostics as any)?.sideStoryPenalty || 0) < 0;
+    const translatedLike = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
+    if (sideArcLike || translatedLike) continue;
+    if (!(starterLike || collectedLike)) continue;
+    diversifiedFinal.push(doc);
+    finalRootSecondEntryReasons[root] = starterLike && collectedLike ? "starter_plus_collected" : (starterLike ? "starter_plus_alt_entry" : "collected_plus_starter_present");
+  }
+  finalRenderDocs = diversifiedFinal;
+  for (const doc of finalRenderDocs) {
+    const root = parentFranchiseRootForDoc(doc) || "__none__";
+    finalRootDuplicateCounts[root] = Number(finalRootDuplicateCounts[root] || 0) + 1;
+  }
+  const finalRootDiversityCount = Object.keys(finalRootDuplicateCounts).length;
   const finalEligibilityCleanCandidateCount = finalRenderDocs.length;
   teenPostPassInputDocs = [...finalRenderDocs];
   teenPostPassInputSource = "scoredRebuild";
@@ -6200,6 +6239,9 @@ const normalizedCandidatesRaw = [
     finalEligibilityCleanCandidateCount,
     finalEligibilityAcceptedTitles,
     finalEligibilityRejectedTitlesByReason,
+    finalRootDiversityCount,
+    finalRootDuplicateCounts,
+    finalRootSecondEntryReasons,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,

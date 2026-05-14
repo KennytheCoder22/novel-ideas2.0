@@ -188,6 +188,9 @@ export type RecommendationResult = {
   finalEligibilityCleanCandidateCount?: number;
   finalEligibilityAcceptedTitles?: string[];
   finalEligibilityRejectedTitlesByReason?: Record<string, string[]>;
+  finalRootDiversityCount?: number;
+  finalRootDuplicateCounts?: Record<string, number>;
+  finalRootSecondEntryReasons?: Record<string, string>;
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;
