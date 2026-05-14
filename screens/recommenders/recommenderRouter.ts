@@ -3020,6 +3020,63 @@ export async function getRecommendations(
   });
   rungs = rungs.slice(0, 9);
 
+  const tagEntries = Object.entries((input.tagCounts || routingInput.tagCounts || {}) as Record<string, number>).filter(([, v]) => Number(v || 0) > 0);
+  const tasteText = normalizeText(String((routingInput as any)?.tasteProfile?.summary || ""));
+  const inferFromTasteText = (tokens: string[]) => tokens.filter((t) => tasteText.includes(t)).map((t) => `${t.includes("science fiction") ? "genre" : "theme"}:${t}`);
+  const inferredGenresFromText = inferFromTasteText(["science fiction", "fantasy", "comedy", "survival", "adventure"]);
+  const inferredTonesFromText = inferFromTasteText(["hopeful", "dark", "political", "atmospheric"]);
+  const inferredDislikedFromText = inferFromTasteText(["realistic", "coming of age", "drama", "romance", "historical", "warm", "friendship"]);
+  const topSignals = tagEntries.sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k));
+  const tasteProfileSummary = {
+    likedGenres: [...topSignals.filter((s) => s.startsWith("genre:")).slice(0, 4), ...inferredGenresFromText].slice(0, 6),
+    likedTones: [...topSignals.filter((s) => s.startsWith("tone:") || s.startsWith("mood:")).slice(0, 4), ...inferredTonesFromText].slice(0, 6),
+    likedThemes: topSignals.filter((s) => s.startsWith("theme:") || s.startsWith("drive:")).slice(0, 6),
+    dislikedSignals: [...Object.keys(((routingInput as any)?.dislikedTagCounts || {})).filter((k) => Number(((routingInput as any)?.dislikedTagCounts || {})[k] || 0) > 0).slice(0, 6), ...inferredDislikedFromText].slice(0, 8),
+    skippedSignals: Object.keys(((routingInput as any)?.leftTagCounts || {}).length ? ((routingInput as any)?.leftTagCounts || {}) : ((routingInput as any)?.skippedTagCounts || {})).filter((k) => Number((((routingInput as any)?.leftTagCounts || (routingInput as any)?.skippedTagCounts || {})[k] || 0)) > 0).slice(0, 8),
+  };
+  const swipeSignalCount = tagEntries.reduce((acc, [, v]) => acc + Number(v || 0), 0);
+  const tasteProfileBuildFailure =
+    tasteProfileSummary.likedGenres.length === 0 &&
+    tasteProfileSummary.likedTones.length === 0 &&
+    tasteProfileSummary.likedThemes.length === 0 &&
+    tasteProfileSummary.dislikedSignals.length === 0 &&
+    tasteProfileSummary.skippedSignals.length === 0;
+  const tasteProfileBuildFailureReason = tasteProfileBuildFailure
+    ? (swipeSignalCount > 8 ? "swipe_signals_present_but_profile_empty" : "no_swipe_signals_resolved_from_tagcounts_or_taste_profile")
+    : "none";
+  if (swipeSignalCount > 8 && tasteProfileBuildFailure) {
+    console.error("Taste profile unexpectedly empty", { swipeSignalCount, tagEntryCount: tagEntries.length });
+  }
+  const preDispatchTasteProfileSummary = tasteProfileSummary;
+  const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
+  const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
+  const generatedComicVineQueriesFromTaste = Array.from(new Set([
+    ...tasteProfileSummary.likedGenres.map((s) => `${s.replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
+    ...tasteProfileSummary.likedTones.map((s) => `${s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ")} graphic novel`),
+    ...tasteProfileSummary.likedThemes.map((s) => `${s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ")} graphic novel`),
+  ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
+    const nq = normalizeText(q);
+    return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
+  }))).slice(0, 6);
+  const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
+  let staticDefaultQueriesUsed = false;
+  let staticDefaultQueriesSuppressedReason = "none";
+  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length >= 3 && !tasteProfileBuildFailure) {
+    rungs = generatedComicVineQueriesFromTaste.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
+    staticDefaultQueriesSuppressedReason = "replaced_with_swipe_taste_queries";
+  }
+  rungs = rungs.filter((r: any) => {
+    const q = normalizeText(String(r?.query || ""));
+    const usedStatic = Array.from(staticDefaultQueries).some((seed) => q.includes(normalizeText(seed)));
+    if (usedStatic) staticDefaultQueriesUsed = true;
+    if (generatedComicVineQueriesFromTaste.length >= 3 && usedStatic) return false;
+    return true;
+  });
+  if (tasteProfileBuildFailure) {
+    staticDefaultQueriesSuppressedReason = "taste_profile_build_failure_static_defaults_suppressed";
+    rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
+  } else if (generatedComicVineQueriesFromTaste.length < 3) staticDefaultQueriesSuppressedReason = "insufficient_taste_specific_queries";
+
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
   const mainRungQueriesLength = rungQueries.length;
   if (sourceEnabled.comicVine && rungQueries.length === 0) {
@@ -3060,6 +3117,14 @@ export async function getRecommendations(
   let comicVinePositiveQueries: string[] = [];
   let comicVineExcludedTermsAppliedInFilterOnly = false;
   let comicVineQueryTooLong = false;
+  let effectiveBucketPlanForExpansion: any = {
+    ...bucketPlan,
+    lane: routerFamily,
+    family: routerFamily,
+    hybridMode: isHybridMode,
+    hybridLaneWeights,
+    primaryLane: routerFamily,
+  };
 
   for (const rung of rungs) {
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
@@ -3071,6 +3136,7 @@ export async function getRecommendations(
       hybridLaneWeights,
       primaryLane: routerFamily,
     };
+    effectiveBucketPlanForExpansion = effectiveBucketPlan;
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
@@ -3138,7 +3204,7 @@ export async function getRecommendations(
       const shouldDispatchComicVineForLane = includeComicVine && !comicVineAdapterFailed && !comicVineDispatchedOnce;
       const comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       if (shouldDispatchComicVineForLane) {
-        requests.push(getComicVineGraphicNovelRecommendations(routedInput));
+        requests.push(getComicVineGraphicNovelRecommendations(laneInput));
         comicVineDispatchedOnce = true;
       }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
@@ -3372,6 +3438,51 @@ export async function getRecommendations(
   let expansionCleanEligibleCount = 0;
   let expansionSelectedTitles: string[] = [];
   let expansionNotTriggeredReason = "not_evaluated";
+  const expansionExcludedRoots: string[] = [];
+  const expansionRootDiversityCandidates: string[] = [];
+  const expansionRejectedAsSaturatedRoot: Record<string, number> = {};
+  const expansionSelectedRootCounts: Record<string, number> = {};
+  const blockedExpansionQueryFragments = /(aftermath|vainqueurs|opportunity|all her monsters|storm the gates|the last stand|the road back)/i;
+  const prioritizedExpansionRoots = ["locke-key", "sweet-tooth", "the-sandman", "runaways", "descender", "miles-morales", "spider-man", "black-science", "saga", "invincible"];
+  const rootFromSeed = (v: string) => normalizeText(String(v || "")).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const selectedStarterRoots = new Set(
+    commerciallyEnrichedDocs
+      .filter((d: any) => /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || "")))
+      .map((d: any) => parentFranchiseRootForDoc(d))
+      .filter(Boolean)
+  );
+  const expansionConvertedByQuery: Record<string, number> = {};
+  const expansionDroppedByQueryReason: Record<string, Record<string, number>> = {};
+  const expansionMergedTitlesByQuery: Record<string, string[]> = {};
+  let expansionDistinctRootsBeforeSelection: string[] = [];
+  const runExpansionQueries = async (queries: string[]): Promise<any[]> => {
+    const allDocs: any[] = [];
+    for (let idx = 0; idx < queries.length; idx += 1) {
+      const q = queries[idx];
+      try {
+        const perQueryResult: any = await getComicVineGraphicNovelRecommendations({
+          ...routedInput,
+          bucketPlan: {
+            ...(effectiveBucketPlanForExpansion || {}),
+            queries: [q],
+            preview: q,
+            rungs: [{ rung: idx + 1, query: q, primary: q, secondary: null, queryFamily: (effectiveBucketPlanForExpansion as any)?.family || routerFamily }],
+          },
+        });
+        const perItems = Array.isArray(perQueryResult?.items) ? perQueryResult.items : [];
+        const perDocs = perItems.map((it: any) => it?.doc).filter(Boolean);
+        expansionFetchResultsByQuery.push({ query: q, status: perDocs.length ? "ok" : "final_empty", rawCount: Number(perQueryResult?.debugRawFetchedCount || perDocs.length || 0) });
+        expansionConvertedByQuery[q] = perDocs.length;
+        expansionMergedTitlesByQuery[q] = perDocs.map((d: any) => String(d?.title || "")).filter(Boolean).slice(0, 10);
+        allDocs.push(...perDocs);
+      } catch (e: any) {
+        expansionFetchResultsByQuery.push({ query: q, status: "error", rawCount: 0, error: String(e?.message || e) });
+        expansionConvertedByQuery[q] = 0;
+        expansionDroppedByQueryReason[q] = { fetch_error: 1 };
+      }
+    }
+    return allDocs;
+  };
   let enrichedDocs = enrichComicVineStructuralMetadata(commerciallyEnrichedDocs);
   if (includeComicVine) {
     const cleanEligibleBaseline = commerciallyEnrichedDocs.filter((doc: any) => {
@@ -3382,25 +3493,47 @@ export async function getRecommendations(
     if (cleanEligibleBaseline.length < 8) {
       cleanCandidateShortfallExpansionTriggered = true;
       expansionNotTriggeredReason = "clean_eligible_below_threshold";
-      const expansionSeedQueries = Array.from(new Set([
+      const candidateSeeds = Array.from(new Set([
+        ...prioritizedExpansionRoots.map((r) => r.replace(/-/g, " ")),
         ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
         ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
-      ].map((v) => String(v || "").trim()).filter(Boolean))).slice(0, 8);
+      ].map((v) => String(v || "").trim()).filter(Boolean)));
+      const expansionSeedQueries = candidateSeeds.filter((q) => {
+        const root = rootFromSeed(q);
+        if (!root) return false;
+        expansionRootDiversityCandidates.push(root);
+        if (blockedExpansionQueryFragments.test(q)) return false;
+        if (selectedStarterRoots.has(root)) {
+          expansionExcludedRoots.push(root);
+          expansionRejectedAsSaturatedRoot[root] = Number(expansionRejectedAsSaturatedRoot[root] || 0) + 1;
+          return false;
+        }
+        return true;
+      }).slice(0, 8);
       if (expansionSeedQueries.length > 0) {
         expansionFetchAttempted = true;
         const expansionInput: RecommenderInput = {
           ...routedInput,
-          bucketPlan: { ...(effectiveBucketPlan || {}), queries: expansionSeedQueries },
+          bucketPlan: { ...(effectiveBucketPlanForExpansion || {}), queries: expansionSeedQueries },
         };
         try {
-          const expansionResult: any = await getComicVineGraphicNovelRecommendations(expansionInput);
-          const expansionItems = Array.isArray(expansionResult?.items) ? expansionResult.items : [];
-          const expansionDocs = expansionItems.map((it: any) => it?.doc).filter(Boolean);
-          expansionRawCount = Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0);
+          expansionFetchResultsByQuery = [];
+          const expansionDocs = await runExpansionQueries(expansionSeedQueries);
+          expansionRawCount = expansionFetchResultsByQuery.reduce((acc, row) => acc + Number(row.rawCount || 0), 0);
           expansionConvertedCount = expansionDocs.length;
-          expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: expansionDocs.length ? 'ok' : 'empty', rawCount: expansionRawCount }));
           expansionSelectedTitles = expansionDocs.map((d: any) => String(d?.title || '')).filter(Boolean).slice(0, 20);
-          const merged = dedupeDocs([...(commerciallyEnrichedDocs as any[]), ...expansionDocs]);
+          expansionDistinctRootsBeforeSelection = Array.from(new Set(expansionDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
+          for (const d of expansionDocs) {
+            const root = parentFranchiseRootForDoc(d);
+            if (!root) continue;
+            expansionSelectedRootCounts[root] = Number(expansionSelectedRootCounts[root] || 0) + 1;
+          }
+          const filteredExpansionDocs = expansionDocs.filter((d: any) => {
+            const root = parentFranchiseRootForDoc(d);
+            if (["something-is-killing-the-children", "ms-marvel"].includes(root)) return false;
+            return true;
+          });
+          const merged = dedupeDocs([...(commerciallyEnrichedDocs as any[]), ...filteredExpansionDocs]);
           expansionMergedCandidateCount = merged.length;
           enrichedDocs = enrichComicVineStructuralMetadata(merged);
         } catch (e: any) {
@@ -4093,7 +4226,7 @@ const normalizedCandidatesRaw = [
       .map((doc: any) => sourceForDoc(doc, "unknown"))
       .filter((s: string) => s !== "unknown")
   );
-  const shouldRunFinalRecommender = activeRecommenderSources.size > 1;
+  const shouldRunFinalRecommender = sourceLayerRankedDocs.length > 0 && (activeRecommenderSources.size > 1 || includeComicVine);
   debugRouterLog("PRE_FINAL_SOURCE_LAYER", {
     sourceLayerCount: sourceLayerRankedDocs.length,
     activeRecommenderSources: [...activeRecommenderSources],
@@ -5296,6 +5429,35 @@ const normalizedCandidatesRaw = [
     }
     if (rebuilt.length >= 5) finalRenderDocs = rebuilt;
   }
+  if (includeComicVine && !expansionFetchAttempted && candidateDocs.length < 30) {
+    cleanCandidateShortfallExpansionTriggered = true;
+    const preScoringExpansionSeeds = Array.from(new Set([
+      "Locke & Key", "Sweet Tooth", "Spider-Man", "Descender", "Runaways", "Black Science", "Saga", "The Sandman", "Invincible",
+    ].map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
+      const root = rootFromSeed(q);
+      if (!root || blockedExpansionQueryFragments.test(q)) return false;
+      if (selectedStarterRoots.has(root)) return false;
+      return true;
+    }).slice(0, 8);
+    if (preScoringExpansionSeeds.length > 0) {
+      expansionFetchAttempted = true;
+      expansionFetchResultsByQuery = [];
+      const preScoringExpansionDocs = await runExpansionQueries(preScoringExpansionSeeds);
+      const taggedExpansionDocs = preScoringExpansionDocs.map((doc: any) => ({
+        ...doc,
+        isExpansionCandidate: true,
+        expansionQueryText: String(doc?.queryText || "expansion"),
+        expansionRoot: parentFranchiseRootForDoc(doc),
+        diagnostics: { ...(doc?.diagnostics || {}), isExpansionCandidate: true, expansionQueryText: String(doc?.queryText || "expansion"), expansionRoot: parentFranchiseRootForDoc(doc) },
+      }));
+      expansionRawCount += expansionFetchResultsByQuery.reduce((acc, row) => acc + Number(row.rawCount || 0), 0);
+      expansionConvertedCount += taggedExpansionDocs.length;
+      expansionDistinctRootsBeforeSelection = Array.from(new Set([...expansionDistinctRootsBeforeSelection, ...taggedExpansionDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)]));
+      enrichedDocs = enrichComicVineStructuralMetadata(dedupeDocs([...(enrichedDocs as any[]), ...taggedExpansionDocs]));
+      candidateDocs = dedupeDocs([...(candidateDocs as any[]), ...taggedExpansionDocs]);
+      expansionMergedCandidateCount = Math.max(expansionMergedCandidateCount, candidateDocs.length);
+    }
+  }
   const anchorFranchises = [
     "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
   ];
@@ -5333,6 +5495,23 @@ const normalizedCandidatesRaw = [
   const semanticBreadthSelections: string[] = [];
   const adjacentSeedExpansionCandidates: string[] = [];
   const seedSaturationPenaltyApplied: Record<string, number> = {};
+  const expansionQueryRootMismatchRejectedTitles: string[] = [];
+  const expansionFalsePositiveRejectedTitles: string[] = [];
+  const expansionLocaleRejectedTitles: string[] = [];
+  const expansionWeakFillerRejectedTitles: string[] = [];
+  const sameParentSoftDuplicateRejectedTitles: string[] = [];
+  const expansionAliasMap: Record<string, string[]> = {
+    "spider-man": ["spider-man", "spiderman", "peter parker", "miles morales"],
+    "sweet-tooth": ["sweet tooth", "gus"],
+    "locke-key": ["locke & key", "locke and key", "keyhouse"],
+    "the-sandman": ["sandman", "dream of the endless", "morpheus"],
+    "descender": ["descender", "tim-21"],
+    "runaways": ["runaways"],
+    "black-science": ["black science"],
+    "invincible": ["invincible", "mark grayson"],
+    "saga": ["saga", "alana", "marko", "hazel"],
+  };
+  const expansionQueryToRoot = (query: string) => rootFromSeed(String(query || "").replace(/\bgraphic novel\b/gi, "").trim());
   const parentFranchiseRootByTitle: Record<string, string> = {};
   const parentRootSourceByTitle: Record<string, string> = {};
   const normalizedParentRootAliases: Record<string, string> = { "walking-dead": "the-walking-dead", "the-walking-dead": "the-walking-dead" };
@@ -5404,6 +5583,16 @@ const normalizedCandidatesRaw = [
     const canonicalAnchorTitleBoost = isAnchorFranchise ? 10 : 0;
     const isSIKTC = /\bsomething is killing the children\b/i.test(normalizedTitle);
     const matchedProfileSeeds = profileSelectedEntitySeeds.filter((seed) => normalizedTitle.includes(normalizeText(seed)));
+    const isExpansionCandidate = Boolean((doc as any)?.isExpansionCandidate || (doc as any)?.diagnostics?.isExpansionCandidate);
+    const expansionQueryRoot = expansionQueryToRoot(String((doc as any)?.expansionQueryText || (doc as any)?.queryText || ""));
+    const expansionRoot = parentFranchiseRootForDoc(doc);
+    const aliasPool = expansionAliasMap[expansionQueryRoot] || [expansionQueryRoot.replace(/-/g, " ")];
+    const strictRootOnly = new Set(["saga", "sweet-tooth", "spider-man", "miles-morales"]);
+    const parentOrRootMatch =
+      aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "")).includes(normalizeText(alias))) ||
+      (expansionRoot && (expansionRoot === expansionQueryRoot || aliasPool.some((alias) => expansionRoot.includes(normalizeText(alias).replace(/[^a-z0-9]+/g, "-")))));
+    const titleAliasLooseMatch = aliasPool.some((alias) => normalizedTitle.includes(normalizeText(alias)));
+    const queryRootMatched = strictRootOnly.has(expansionQueryRoot) ? parentOrRootMatch : (parentOrRootMatch || titleAliasLooseMatch);
     matchedProfileSeeds.forEach((seed) => {
       entitySeedCandidatesFoundBySeed[seed] = (entitySeedCandidatesFoundBySeed[seed] || 0) + 1;
     });
@@ -5424,7 +5613,17 @@ const normalizedCandidatesRaw = [
     const heuristicScore =
       entryPointBoost + canonicalAnchorTitleBoost + profileSeedBoost + sideStoryPenalty + subtitleSideArcPenalty + subtitleFragmentPenalty + walkingDeadSubtitleFragmentPenalty + issueFragmentPenalty + genericArtifactPenalty + broadArtifactPenalty + lateVolumePenalty + globalSeedSuppression + priorSeriesPenalty;
     const baseScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
-    const shouldRejectAsBroadArtifact = broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise;
+    const isKnownTranslatedLocale = /\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(title));
+    const hasEnglishAlternativeInUniverse = scoringUniverse.some((d: any) => parentFranchiseRootForDoc(d) === expansionRoot && !/\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(d?.title || "")));
+    const weakHobbitFiller = /\bthe hobbit\b/i.test(title) && !(/\b(fantasy|adventure)\b/.test(profileTextForSeeds) || ["fantasy", "adventure"].includes(routerFamily));
+    const expansionQueryRootMismatch = isExpansionCandidate && Boolean(expansionQueryRoot) && !queryRootMatched;
+    const shouldRejectAsBroadArtifact = (broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise) || weakHobbitFiller || expansionQueryRootMismatch || (isExpansionCandidate && isKnownTranslatedLocale && hasEnglishAlternativeInUniverse);
+    if (expansionQueryRootMismatch) {
+      expansionQueryRootMismatchRejectedTitles.push(title);
+      expansionFalsePositiveRejectedTitles.push(title);
+    }
+    if (isExpansionCandidate && isKnownTranslatedLocale && hasEnglishAlternativeInUniverse) expansionLocaleRejectedTitles.push(title);
+    if (weakHobbitFiller) expansionWeakFillerRejectedTitles.push(title);
     if (shouldRejectAsBroadArtifact) broadArtifactRejectedTitles.push(title);
     return {
       ...doc,
@@ -5463,7 +5662,136 @@ const normalizedCandidatesRaw = [
     .map((doc: any) => String(doc?.title || "").trim())
     .filter(Boolean);
   finalRenderDocs = scoredCanonicalDocs.filter((doc: any) => !Boolean((doc as any)?.rejectedInScoredRebuild));
+  const positiveFitScoreByTitle: Record<string, number> = {};
+  const positiveFitReasonsByTitle: Record<string, string[]> = {};
+  const penaltyReasonsByTitle: Record<string, string[]> = {};
+  const finalSelectionRejectedByReason: Record<string, number> = {};
+  const genericTasteSignals = new Set(["audience:teen", "age:mshs", "media:movie", "media:tv", "film", "series", "format", "family", "identity", "dark"]);
+  const ignoredGenericTasteSignals: string[] = [];
+  const extractWeightedSignals = (obj: Record<string, any>, kind: "liked" | "disliked" | "skipped") => {
+    return Object.entries(obj || {})
+      .map(([k, v]) => ({ signal: String(k), weight: Number(v || 0) }))
+      .filter((row) => row.weight > 0)
+      .map((row) => {
+        if (genericTasteSignals.has(row.signal)) {
+          ignoredGenericTasteSignals.push(`${kind}:${row.signal}`);
+          row.weight = row.weight * 0.15;
+        } else if (/^genre:/.test(row.signal)) row.weight = row.weight * 3.2;
+        else if (/^(tone:|mood:)/.test(row.signal)) row.weight = row.weight * 2.6;
+        else if (/^(theme:|drive:)/.test(row.signal)) row.weight = row.weight * 2.4;
+        else if (/^(universe:|source:)/.test(row.signal)) row.weight = row.weight * 1.5;
+        else if (/^(media:|format:)/.test(row.signal)) row.weight = row.weight * 0.7;
+        else if (/^(audience:|age:)/.test(row.signal)) row.weight = row.weight * 0.2;
+        else row.weight = row.weight * 1.0;
+        return row;
+      })
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 30);
+  };
+  const weightedSwipeTasteVector = {
+    liked: extractWeightedSignals((routingInput as any)?.tagCounts || {}, "liked"),
+    disliked: extractWeightedSignals((routingInput as any)?.dislikedTagCounts || {}, "disliked"),
+    skipped: extractWeightedSignals((routingInput as any)?.leftTagCounts || {}, "skipped"),
+  };
+  const swipeTasteVector = {
+    liked: weightedSwipeTasteVector.liked.map((s) => s.signal),
+    disliked: weightedSwipeTasteVector.disliked.map((s) => s.signal),
+    skipped: weightedSwipeTasteVector.skipped.map((s) => s.signal),
+  };
+  const candidateTasteMatchScoreByTitle: Record<string, number> = {};
+  const candidateTastePenaltyByTitle: Record<string, number> = {};
+  const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
+  const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
+  const candidateWeightedTasteScoreByTitle: Record<string, number> = {};
+  const candidateDislikePenaltyByTitle: Record<string, number> = {};
+  const candidateSkipPenaltyByTitle: Record<string, number> = {};
+  const finalRankingReasonByTitle: Record<string, string[]> = {};
+  const pushReason = (bucket: Record<string, string[]>, title: string, reason: string) => {
+    if (!bucket[title]) bucket[title] = [];
+    if (!bucket[title].includes(reason)) bucket[title].push(reason);
+  };
+  const hardInvalid = (doc: any): string => {
+    const title = String(doc?.title || "").trim();
+    const root = parentFranchiseRootForDoc(doc);
+    if (!title || /^\.\.\.$/.test(title) || /^\s*(the\s+walking\s+dead:)?\s*\.\.\.\s*$/.test(title)) return "placeholder";
+    if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|book)\b/i.test(title)) return "issue_fragment";
+    if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0 && finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === root && Number((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0) >= 0)) return "locale_variant";
+    if (/^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title) && !root) return "generic_artifact_no_root";
+    return "";
+  };
+  const viableCandidates = finalRenderDocs
+    .map((doc: any) => {
+      const title = String(doc?.title || "");
+      const invalidReason = hardInvalid(doc);
+      if (invalidReason) {
+        finalSelectionRejectedByReason[invalidReason] = Number(finalSelectionRejectedByReason[invalidReason] || 0) + 1;
+        pushReason(penaltyReasonsByTitle, title, invalidReason);
+        return null;
+      }
+      const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+      const matchedLikedWeighted = weightedSwipeTasteVector.liked.filter((row) => text.includes(normalizeText(row.signal)));
+      const matchedDislikedWeighted = weightedSwipeTasteVector.disliked.filter((row) => text.includes(normalizeText(row.signal)));
+      const matchedSkippedWeighted = weightedSwipeTasteVector.skipped.filter((row) => text.includes(normalizeText(row.signal)));
+      const matchedLiked = matchedLikedWeighted.map((r) => r.signal).slice(0, 8);
+      const matchedDisliked = matchedDislikedWeighted.map((r) => r.signal).slice(0, 8);
+      const matchedSkipped = matchedSkippedWeighted.map((r) => r.signal).slice(0, 8);
+      const tasteMatchScore = matchedLikedWeighted.reduce((acc, row) => acc + row.weight, 0);
+      const dislikePenalty = matchedDislikedWeighted.reduce((acc, row) => acc + row.weight * 1.25, 0);
+      const skipPenalty = matchedSkippedWeighted.reduce((acc, row) => acc + row.weight * 0.45, 0);
+      const tastePenaltyScore = dislikePenalty + skipPenalty;
+      const laneMatch = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(text);
+      const themeOverlap = profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
+      const rootMatch = Boolean(parentFranchiseRootForDoc(doc));
+      const starterSignal = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
+      const audienceFit = /\b(teen|young adult|adult)\b/i.test(`${title} ${String(doc?.description || "")}`);
+      const provenanceConfidence = Boolean(doc?.sourceId || doc?.queryText || doc?.parentVolumeName);
+      const defaultRoot = ["something-is-killing-the-children", "sweet-tooth", "ms-marvel", "the-walking-dead"].includes(parentFranchiseRootForDoc(doc));
+      const unsupportedDefaultPenalty = defaultRoot && matchedLiked.length === 0 ? 3 : 0;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
+      positiveFitScoreByTitle[title] = score;
+      candidateTasteMatchScoreByTitle[title] = tasteMatchScore;
+      candidateTastePenaltyByTitle[title] = tastePenaltyScore;
+      candidateMatchedLikedSignalsByTitle[title] = matchedLiked;
+      candidateMatchedDislikedSignalsByTitle[title] = matchedDisliked;
+      candidateWeightedTasteScoreByTitle[title] = tasteMatchScore;
+      candidateDislikePenaltyByTitle[title] = dislikePenalty;
+      candidateSkipPenaltyByTitle[title] = skipPenalty;
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
+      finalRankingReasonByTitle[title] = [
+        ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
+        ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
+        ...(skipPenalty > 0 ? ["skip_overlap_penalty"] : []),
+        ...(laneMatch ? ["lane_match"] : []),
+        ...(themeOverlap ? ["theme_overlap"] : []),
+      ];
+      const reasons: string[] = [];
+      if (laneMatch) reasons.push("lane_match");
+      if (themeOverlap) reasons.push("theme_overlap");
+      if (rootMatch) reasons.push("root_match");
+      if (starterSignal) reasons.push("starter_or_collection");
+      if (audienceFit) reasons.push("audience_fit");
+      if (provenanceConfidence) reasons.push("provenance_confidence");
+      positiveFitReasonsByTitle[title] = reasons;
+      if (score < 2) {
+        finalSelectionRejectedByReason.low_positive_fit = Number(finalSelectionRejectedByReason.low_positive_fit || 0) + 1;
+        pushReason(penaltyReasonsByTitle, title, "low_positive_fit");
+        return null;
+      }
+      return { ...doc, positiveFitScore: score };
+    })
+    .filter(Boolean) as any[];
+  finalRenderDocs = viableCandidates.sort((a: any, b: any) => Number(b?.positiveFitScore || 0) - Number(a?.positiveFitScore || 0));
+  const swipeRankedCandidateList = [...finalRenderDocs];
+  const viableCandidateCountBeforeFinalSelection = finalRenderDocs.length;
+  const viableCandidateRootsBeforeFinalSelection = Array.from(new Set(finalRenderDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
   const scoredCandidateUniverseCount = scoringUniverse.length;
+  const expansionTitleSetForScoring = new Set(expansionSelectedTitles.map((t) => normalizeText(String(t || ""))));
+  const preferredExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman"]);
+  let expansionCandidatesEnteredScoringCount = 0;
+  let expansionCandidatesSurvivedFiltersCount = 0;
+  const expansionCandidatesRejectedByReason: Record<string, number> = {};
+  const expansionCandidatesAcceptedFinal: string[] = [];
   const candidateDiversityFloorTarget = includeComicVine ? 30 : 20;
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const recoveryFinalItemsLength = finalRenderDocs.length;
@@ -5482,8 +5810,32 @@ const normalizedCandidatesRaw = [
   const relaxedBreadthBackfillCandidates: string[] = [];
   const relaxedBreadthBackfillSelected: string[] = [];
   const relaxedBreadthBackfillRejectedReasons: Record<string, number> = {};
+  let relaxationStageReached = "strict_high_quality_selected_results";
+  let relaxationCandidatesConsidered = 0;
+  let relaxationCandidatesSelected = 0;
+  const relaxationRejectedReasons: Record<string, number> = {};
   const registerRelaxedReject = (reason: string) => {
     relaxedBreadthBackfillRejectedReasons[reason] = Number(relaxedBreadthBackfillRejectedReasons[reason] || 0) + 1;
+    relaxationRejectedReasons[reason] = Number(relaxationRejectedReasons[reason] || 0) + 1;
+  };
+  const hasStarterInUniverse = (family: string) =>
+    scoredCanonicalDocs.some((d: any) =>
+      parentFranchiseRootForDoc(d) === family &&
+      /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || ""))
+    );
+  const isLateVolumeWhenStarterExists = (doc: any, family: string) =>
+    hasStarterInUniverse(family) &&
+    (/\b(volume|book)\s*(5|6|7|8|9|10|11|12|13|14|15|16)\b/i.test(String(doc?.title || "")) ||
+      /\bbook\s*sixteen\b/i.test(String(doc?.title || "")));
+  const isHardBlockedRelaxationCandidate = (doc: any, selected: any[]) => {
+    const title = String(doc?.title || "");
+    const family = parentFranchiseRootForDoc(doc);
+    if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return "negative_score";
+    if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0 && selected.some((d: any) => parentFranchiseRootForDoc(d) === family && Number((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0) >= 0)) return "non_english_when_english_exists";
+    if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.walkingDeadSubtitleFragmentPenalty || 0) < 0) return "fragment";
+    if (/^\s*(\.\.\.|the\s+walking\s+dead:\s*\.\.\.)\s*$/i.test(title) || /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title)) return "placeholder_or_generic";
+    if (isLateVolumeWhenStarterExists(doc, family)) return "late_volume_when_starter_exists";
+    return "";
   };
   const hasWalkingDeadStarter = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === "the-walking-dead" && /\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(String(d?.title || "")));
   for (const doc of [...finalRenderDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
@@ -5492,12 +5844,20 @@ const normalizedCandidatesRaw = [
     const seedCount = matchingSeed ? Number(seedFamilyCounts[matchingSeed] || 0) : 0;
     const saturationPenalty = seedCount >= 2 ? 18 : seedCount >= 1 ? 8 : 0;
     if (matchingSeed && saturationPenalty > 0) seedSaturationPenaltyApplied[matchingSeed] = (seedSaturationPenaltyApplied[matchingSeed] || 0) + saturationPenalty;
-    const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty;
+    const docRoot = parentFranchiseRootForDoc(doc);
+    const isExpansionDoc = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate || expansionTitleSetForScoring.has(normalizeText(String(doc?.title || ""))));
+    if (isExpansionDoc) expansionCandidatesEnteredScoringCount += 1;
+    const expansionDiversityBonus = isExpansionDoc && preferredExpansionRoots.has(docRoot) && finalRenderDocs.length < 8 ? 14 : 0;
+    const incumbentPenalty = finalRenderDocs.length < 8 && ["something-is-killing-the-children", "ms-marvel"].includes(docRoot) ? 24 : 0;
+    const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty + expansionDiversityBonus - incumbentPenalty;
     const isNonEnglishEdition = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
-    if (isNonEnglishEdition && finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && Number(((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0)) >= 0)) { untranslatedEditionRejectedTitles.push(String(doc?.title || "")); continue; }
-    if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); continue; }
+    if (isNonEnglishEdition && finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && Number(((d?.diagnostics as any)?.nonEnglishEditionPenalty || 0)) >= 0)) { untranslatedEditionRejectedTitles.push(String(doc?.title || "")); if (isExpansionDoc) expansionCandidatesRejectedByReason.non_english = Number(expansionCandidatesRejectedByReason.non_english || 0) + 1; continue; }
+    if (!emergencySparseMode && docScore < 0) { negativeScoreRejectedTitles.push(String(doc?.title || "")); if (isExpansionDoc) expansionCandidatesRejectedByReason.negative_score = Number(expansionCandidatesRejectedByReason.negative_score || 0) + 1; continue; }
     const familyCount = antiCollapseSelected.filter((d: any) => parentFranchiseRootForDoc(d) === family).length;
     const hasStarterLikeSignal = /\b(volume one|volume 1|book one|book 1|omnibus|collection|anthology|marvel-verse)\b/i.test(String(doc?.title || ""));
+    if (/marvel-verse:\s*ms\.?\s*marvel/i.test(String(doc?.title || "")) && antiCollapseSelected.some((d: any) => /ms\.?\s*marvel:\s*volume\s*(1|one)/i.test(String(d?.title || "")))) {
+      if (antiCollapseSelected.length < 8) { sameParentSoftDuplicateRejectedTitles.push(String(doc?.title || "")); continue; }
+    }
     const hasParentMetadata = Boolean(
       (doc as any)?.parentVolumeName ||
       (doc as any)?.parentVolume?.name ||
@@ -5519,13 +5879,13 @@ const normalizedCandidatesRaw = [
       if (subtitleOnlyWalkingDeadFragment) { subtitleOnlyParentFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
       if (!hasWalkingDeadStarter && walkingDeadSelectedCount >= 1) { subtitleOnlyParentFragmentRejectedTitles.push(String(doc?.title || "")); continue; }
     }
-    if (familyCount >= 1 && !hasStarterLikeSignal) { sideArcRejectedTitles.push(String(doc?.title || "")); continue; }
-    if (familyCount >= 2) continue;
+    if (familyCount >= 1 && !hasStarterLikeSignal) { sideArcRejectedTitles.push(String(doc?.title || "")); if (isExpansionDoc) expansionCandidatesRejectedByReason.side_arc = Number(expansionCandidatesRejectedByReason.side_arc || 0) + 1; continue; }
+    if (familyCount >= 1) { if (isExpansionDoc) expansionCandidatesRejectedByReason.family_saturated = Number(expansionCandidatesRejectedByReason.family_saturated || 0) + 1; continue; }
     const normalizedTitle = normalizeText(String(doc?.title || ""));
     if (antiCollapseSelected.some((d: any) => normalizeText(String(d?.title || "")) === normalizedTitle)) { duplicateTitleRejectedTitles.push(String(doc?.title || "")); continue; }
     const isSideArc = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(doc?.title || ""));
     if (isSideArc && antiCollapseSelected.some((d: any) => finalSeriesKeyForRender(d) === family && /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(String(d?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
-    const hasVolumeOne = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(d?.title || "")));
+    const hasVolumeOne = hasStarterInUniverse(family);
     if (hasVolumeOne && (/\b(volume|book)\s*(5|6|7|8|9|10|11|12|13|14|15|16)\b/i.test(String(doc?.title || "")) || /\bbook\s*sixteen\b/i.test(String(doc?.title || "")) || /\ball her monsters\b/i.test(String(doc?.title || "")))) { finalSuppressedByBetterEntryPoint.push(String(doc?.title || "")); entryPointCandidatesSuppressed += 1; continue; }
     const hasPenalty = Number((doc?.diagnostics as any)?.sideStoryPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || /^graphic horror novel\b/i.test(String(doc?.title || "")) || /^graphic fantasy\b/i.test(String(doc?.title || ""));
     const hasUnpenalizedAlternative = finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) !== family && Number((d?.diagnostics as any)?.sideStoryPenalty || 0) >= 0 && Number((d?.diagnostics as any)?.issueFragmentPenalty || 0) >= 0);
@@ -5536,6 +5896,7 @@ const normalizedCandidatesRaw = [
       zeroScoreBroadFillersUsed += 1;
     }
     antiCollapseSelected.push(doc);
+    if (isExpansionDoc) expansionCandidatesSurvivedFiltersCount += 1;
     if (family === "the-walking-dead") walkingDeadSelectedCount += 1;
     if (matchingSeed) {
       seedFamilyCounts[matchingSeed] = seedCount + 1;
@@ -5551,8 +5912,14 @@ const normalizedCandidatesRaw = [
   }
   if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
   else finalRenderDocs = antiCollapseSelected;
+  for (const doc of finalRenderDocs) {
+    if (expansionTitleSetForScoring.has(normalizeText(String(doc?.title || "")))) expansionCandidatesAcceptedFinal.push(String(doc?.title || ""));
+  }
+  relaxationCandidatesConsidered += [...finalRenderDocs].length;
+  relaxationCandidatesSelected = finalRenderDocs.length;
   if (finalEligibleNonNegativeCount >= 8 && finalRenderDocs.length < 8) {
     relaxedBreadthBackfillTriggered = true;
+    relaxationStageReached = "adjacent_profile_seed_backfill";
     const selectedTitleSet = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || ""))));
     const adjacentSeeds = ["locke & key", "sweet tooth", "the walking dead", "descender", "sandman", "runaways", "black science"];
     const backfillPool = [...scoredCanonicalDocs]
@@ -5560,22 +5927,65 @@ const normalizedCandidatesRaw = [
       .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0));
     for (const doc of backfillPool) {
       if (finalRenderDocs.length >= 8) break;
+      relaxationCandidatesConsidered += 1;
       const title = String(doc?.title || "");
       const nTitle = normalizeText(title);
       if (!title || selectedTitleSet.has(nTitle)) { registerRelaxedReject("duplicate"); continue; }
-      if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerRelaxedReject("non_english"); continue; }
-      if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0) { registerRelaxedReject("issue_fragment"); continue; }
-      if (Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.walkingDeadSubtitleFragmentPenalty || 0) < 0) { registerRelaxedReject("subtitle_fragment"); continue; }
-      if (/:\s*graphic novel$/i.test(title) || /^.+:\s*the graphic novel/i.test(title) || /^.+\sgraphic novel$/i.test(title)) { registerRelaxedReject("broad_artifact"); continue; }
+      const hardBlockReason = isHardBlockedRelaxationCandidate(doc, finalRenderDocs);
+      if (hardBlockReason) { registerRelaxedReject(hardBlockReason); continue; }
       const family = parentFranchiseRootForDoc(doc);
       const matchingAdjacentSeed = adjacentSeeds.find((seed) => nTitle.includes(normalizeText(seed)) || family.includes(normalizeText(seed).replace(/[^a-z0-9]+/g, "-")));
       if (!matchingAdjacentSeed) { registerRelaxedReject("not_adjacent_seed"); continue; }
       if (matchingAdjacentSeed === "the walking dead" && !/\b(volume one|volume 1|book one|book 1|compendium|collection|omnibus|treasury|master edition)\b/i.test(title)) { registerRelaxedReject("walking_dead_not_clean_starter"); continue; }
       relaxedBreadthBackfillCandidates.push(title);
       finalRenderDocs.push(doc);
+      relaxationCandidatesSelected += 1;
       selectedTitleSet.add(nTitle);
       relaxedBreadthBackfillSelected.push(title);
     }
+  }
+  if (finalRenderDocs.length < 8) {
+    relaxationStageReached = "broader_profile_compatible_query_family_backfill";
+    const selectedTitleSet = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || ""))));
+    for (const doc of [...scoredCanonicalDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
+      if (finalRenderDocs.length >= 8) break;
+      relaxationCandidatesConsidered += 1;
+      const title = String(doc?.title || "").trim();
+      const nTitle = normalizeText(title);
+      const family = parentFranchiseRootForDoc(doc);
+      if (!title || selectedTitleSet.has(nTitle)) { registerRelaxedReject("broader_duplicate"); continue; }
+      if (!String((doc as any)?.queryText || (doc as any)?.diagnostics?.queryText || "").trim() || !String((doc as any)?.source || "").trim()) { registerRelaxedReject("missing_query_or_source"); continue; }
+      const hardBlockReason = isHardBlockedRelaxationCandidate(doc, finalRenderDocs);
+      if (hardBlockReason) { registerRelaxedReject(hardBlockReason); continue; }
+      if (finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length >= 1) { registerRelaxedReject("franchise_cap_strict"); continue; }
+      finalRenderDocs.push(doc);
+      selectedTitleSet.add(nTitle);
+      relaxationCandidatesSelected += 1;
+    }
+  }
+  if (finalRenderDocs.length < 8) {
+    relaxationStageReached = "slightly_loosen_franchise_cap";
+    const selectedTitleSet = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || ""))));
+    const allDistinctFamilies = Array.from(new Set(scoredCanonicalDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
+    const exhaustedDistinctFamilies = allDistinctFamilies.every((family) => finalRenderDocs.some((d: any) => parentFranchiseRootForDoc(d) === family));
+    for (const doc of [...scoredCanonicalDocs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))) {
+      if (finalRenderDocs.length >= 8) break;
+      relaxationCandidatesConsidered += 1;
+      const title = String(doc?.title || "").trim();
+      const nTitle = normalizeText(title);
+      const family = parentFranchiseRootForDoc(doc);
+      if (!title || selectedTitleSet.has(nTitle)) { registerRelaxedReject("loosen_duplicate"); continue; }
+      const hardBlockReason = isHardBlockedRelaxationCandidate(doc, finalRenderDocs);
+      if (hardBlockReason) { registerRelaxedReject(hardBlockReason); continue; }
+      if (!exhaustedDistinctFamilies && finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length >= 1) { registerRelaxedReject("franchise2_only_after_exhausted"); continue; }
+      if (finalRenderDocs.filter((d: any) => parentFranchiseRootForDoc(d) === family).length >= 2) { registerRelaxedReject("franchise_cap_loosened"); continue; }
+      finalRenderDocs.push(doc);
+      selectedTitleSet.add(nTitle);
+      relaxationCandidatesSelected += 1;
+    }
+  }
+  if (finalRenderDocs.length < 8) {
+    relaxationStageReached = "allow_metadata_thin_structurally_clean";
   }
   const adjacentSeedTitlesFromScoredUniverse = Array.from(
     new Set(
@@ -5634,6 +6044,104 @@ const normalizedCandidatesRaw = [
   if (hasMsMarvelVol1) {
     finalRenderDocs = finalRenderDocs.filter((d: any) => !/ms\.?\s*marvel:\s*volume\s*(4|5)/i.test(String(d?.title || "")));
   }
+  // Swipe-first final authority:
+  // final render must be derived from swipe-ranked viable candidates, not legacy
+  // top-up/recovery survivors that can reintroduce static-root bias.
+  if (swipeRankedCandidateList.length > 0) {
+    const selected: any[] = [];
+    const rootCounts: Record<string, number> = {};
+    for (const doc of swipeRankedCandidateList) {
+      const root = parentFranchiseRootForDoc(doc) || "__none__";
+      if (rootCounts[root] >= 2) continue;
+      const title = String(doc?.title || "");
+      if (selected.some((s: any) => normalizeText(String(s?.title || "")) === normalizeText(title))) continue;
+      selected.push(doc);
+      rootCounts[root] = Number(rootCounts[root] || 0) + 1;
+      if (selected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+    }
+    finalRenderDocs = selected;
+  }
+  const finalEligibilityRejectedTitlesByReason: Record<string, string[]> = {};
+  const finalEligibilityAcceptedTitles: string[] = [];
+  const registerFinalEligibilityReject = (reason: string, title: string) => {
+    if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
+    if (title && finalEligibilityRejectedTitlesByReason[reason].length < 40) finalEligibilityRejectedTitlesByReason[reason].push(title);
+  };
+  const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
+  const finalEligibilityGateApplied = true;
+  const eligibleWithFitScore: Array<{ doc: any; fitScore: number }> = [];
+  finalRenderDocs = finalRenderDocs.filter((doc: any) => {
+    const title = String(doc?.title || "").trim();
+    const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
+    const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
+    const root = parentFranchiseRootForDoc(doc);
+    const hasParent = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName || doc?.diagnostics?.parentVolumeName);
+    const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
+    if (!sourceId) { registerFinalEligibilityReject("missing_source_id", title); return false; }
+    if (!queryText) { registerFinalEligibilityReject("missing_query_text", title); return false; }
+    if (!hasParent && !titleRootMatch) { registerFinalEligibilityReject("missing_parent_or_title_root_match", title); return false; }
+    const seedRootMatch = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root);
+    const expansionRootMatch = profileCompatibleExpansionRoots.has(root);
+    const queryRoot = rootFromSeed(String((doc as any)?.expansionQueryText || queryText).replace(/\bgraphic novel\b/gi, "").trim());
+    const aliasPool = expansionAliasMap[queryRoot] || [];
+    const queryFamilyAliasMatch = aliasPool.some((alias) => normalizeText(title).includes(normalizeText(alias))) || aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || "")).includes(normalizeText(alias)));
+    if (!(seedRootMatch || expansionRootMatch || Boolean(root) || queryFamilyAliasMatch)) { registerFinalEligibilityReject("no_positive_root_alignment", title); return false; }
+    const strongScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 8;
+    const starterLike = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
+    const laneSignal = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/i.test(`${title} ${String(doc?.description || "")}`);
+    const themeSignal = profileSelectedEntitySeeds.some((seed) => normalizeText(`${title} ${String(doc?.description || "")}`).includes(normalizeText(seed)));
+    const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
+    if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
+    if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0) { registerFinalEligibilityReject("structural_fragment", title); return false; }
+    if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerFinalEligibilityReject("locale_variant", title); return false; }
+    if (/^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title) || Number(doc?.score ?? 0) <= 0) { registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
+    eligibleWithFitScore.push({ doc, fitScore });
+    finalEligibilityAcceptedTitles.push(title);
+    return true;
+  });
+  finalRenderDocs = eligibleWithFitScore
+    .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
+    .map((row) => row.doc);
+  const finalRootSecondEntryReasons: Record<string, string> = {};
+  const finalRootDuplicateCounts: Record<string, number> = {};
+  const byRoot = new Map<string, any[]>();
+  for (const doc of finalRenderDocs) {
+    const root = parentFranchiseRootForDoc(doc) || "__none__";
+    if (!byRoot.has(root)) byRoot.set(root, []);
+    byRoot.get(root)!.push(doc);
+  }
+  const diversifiedFinal: any[] = [];
+  for (const [, docs] of byRoot.entries()) {
+    const sorted = [...docs].sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0));
+    if (sorted[0]) diversifiedFinal.push(sorted[0]);
+  }
+  const remainingPool = Array.from(byRoot.entries()).flatMap(([root, docs]) =>
+    docs
+      .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
+      .slice(1)
+      .map((doc: any) => ({ root, doc }))
+  );
+  for (const { root, doc } of remainingPool) {
+    if (diversifiedFinal.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+    const rootCount = diversifiedFinal.filter((d: any) => parentFranchiseRootForDoc(d) === root).length;
+    if (rootCount >= 2) continue;
+    const title = String(doc?.title || "");
+    const starterLike = /\b(volume one|volume 1|book one|book 1)\b/i.test(title);
+    const collectedLike = /\b(compendium|collection|omnibus|tpb)\b/i.test(title);
+    const sideArcLike = /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush)\b/i.test(title) || Number((doc?.diagnostics as any)?.sideStoryPenalty || 0) < 0;
+    const translatedLike = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
+    if (sideArcLike || translatedLike) continue;
+    if (!(starterLike || collectedLike)) continue;
+    diversifiedFinal.push(doc);
+    finalRootSecondEntryReasons[root] = starterLike && collectedLike ? "starter_plus_collected" : (starterLike ? "starter_plus_alt_entry" : "collected_plus_starter_present");
+  }
+  finalRenderDocs = diversifiedFinal;
+  for (const doc of finalRenderDocs) {
+    const root = parentFranchiseRootForDoc(doc) || "__none__";
+    finalRootDuplicateCounts[root] = Number(finalRootDuplicateCounts[root] || 0) + 1;
+  }
+  const finalRootDiversityCount = Object.keys(finalRootDuplicateCounts).length;
+  const finalEligibilityCleanCandidateCount = finalRenderDocs.length;
   teenPostPassInputDocs = [...finalRenderDocs];
   teenPostPassInputSource = "scoredRebuild";
   finalAcceptedDocsSource = "scoredRebuild";
@@ -5671,18 +6179,35 @@ const normalizedCandidatesRaw = [
     cleanCandidateShortfallExpansionTriggered = true;
     if (!expansionFetchAttempted) {
       const expansionSeedQueries = Array.from(new Set([
+        ...profileSelectedEntitySeeds,
+        ...adjacentSeedExpansionCandidates,
+        "Spider-Man", "Miles Morales", "Runaways", "Descender", "Sweet Tooth", "Saga", "The Sandman", "Black Science", "Invincible", "Locke & Key", "Walking Dead", "Ms. Marvel",
         ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
         ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
-      ].map((v) => String(v || "").trim()).filter(Boolean))).slice(0, 8);
+      ].map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
+        const root = rootFromSeed(q);
+        if (!root || blockedExpansionQueryFragments.test(q)) return false;
+        if (selectedStarterRoots.has(root)) {
+          expansionExcludedRoots.push(root);
+          expansionRejectedAsSaturatedRoot[root] = Number(expansionRejectedAsSaturatedRoot[root] || 0) + 1;
+          return false;
+        }
+        return true;
+      }).slice(0, 8);
       if (expansionSeedQueries.length > 0) {
         expansionFetchAttempted = true;
         try {
-          const expansionResult: any = await getComicVineGraphicNovelRecommendations({ ...routedInput, bucketPlan: { ...(effectiveBucketPlan || {}), queries: expansionSeedQueries } });
-          const expansionDocs = (Array.isArray(expansionResult?.items) ? expansionResult.items : []).map((it: any) => it?.doc).filter(Boolean);
-          expansionRawCount += Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0);
+          expansionFetchResultsByQuery = [];
+          const expansionDocs = await runExpansionQueries(expansionSeedQueries);
+          expansionRawCount += expansionFetchResultsByQuery.reduce((acc, row) => acc + Number(row.rawCount || 0), 0);
           expansionConvertedCount += expansionDocs.length;
           expansionSelectedTitles = Array.from(new Set([...expansionSelectedTitles, ...expansionDocs.map((d: any) => String(d?.title || "")).filter(Boolean)])).slice(0, 20);
-          expansionFetchResultsByQuery = expansionSeedQueries.map((q) => ({ query: q, status: expansionDocs.length ? "ok" : "empty", rawCount: Number(expansionResult?.debugRawFetchedCount || expansionDocs.length || 0) }));
+          expansionDistinctRootsBeforeSelection = Array.from(new Set([...expansionDistinctRootsBeforeSelection, ...expansionDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)]));
+          for (const d of expansionDocs) {
+            const root = parentFranchiseRootForDoc(d);
+            if (!root) continue;
+            expansionSelectedRootCounts[root] = Number(expansionSelectedRootCounts[root] || 0) + 1;
+          }
           expansionMergedCandidateCount = Math.max(expansionMergedCandidateCount, dedupeDocs([...(enrichedDocs as any[]), ...expansionDocs]).length);
           expansionNotTriggeredReason = expansionDocs.length > 0 ? "post_selection_underfill_expansion_attempted" : "post_selection_underfill_expansion_empty";
         } catch (e: any) {
@@ -5897,6 +6422,56 @@ const normalizedCandidatesRaw = [
     expansionConvertedCount,
     expansionCleanEligibleCount,
     expansionSelectedTitles,
+    expansionExcludedRoots,
+    expansionRootDiversityCandidates,
+    expansionRejectedAsSaturatedRoot,
+    expansionSelectedRootCounts,
+    expansionConvertedByQuery,
+    expansionDroppedByQueryReason,
+    expansionMergedTitlesByQuery,
+    expansionDistinctRootsBeforeSelection,
+    expansionCandidatesEnteredScoringCount,
+    expansionCandidatesSurvivedFiltersCount,
+    expansionCandidatesRejectedByReason,
+    expansionCandidatesAcceptedFinal,
+    expansionQueryRootMismatchRejectedTitles,
+    expansionFalsePositiveRejectedTitles,
+    expansionLocaleRejectedTitles,
+    expansionWeakFillerRejectedTitles,
+    sameParentSoftDuplicateRejectedTitles,
+    finalEligibilityGateApplied,
+    finalEligibilityCleanCandidateCount,
+    finalEligibilityAcceptedTitles,
+    finalEligibilityRejectedTitlesByReason,
+    finalRootDiversityCount,
+    finalRootDuplicateCounts,
+    finalRootSecondEntryReasons,
+    viableCandidateCountBeforeFinalSelection,
+    viableCandidateRootsBeforeFinalSelection,
+    positiveFitScoreByTitle,
+    positiveFitReasonsByTitle,
+    penaltyReasonsByTitle,
+    finalSelectionRejectedByReason,
+    swipeTasteVector,
+    weightedSwipeTasteVector,
+    ignoredGenericTasteSignals,
+    candidateTasteMatchScoreByTitle,
+    candidateTastePenaltyByTitle,
+    candidateMatchedLikedSignalsByTitle,
+    candidateMatchedDislikedSignalsByTitle,
+    candidateWeightedTasteScoreByTitle,
+    candidateDislikePenaltyByTitle,
+    candidateSkipPenaltyByTitle,
+    finalRankingReasonByTitle,
+    finalScoreComponentsByTitle,
+    tasteProfileSummary,
+    generatedComicVineQueriesFromTaste,
+    staticDefaultQueriesUsed,
+    staticDefaultQueriesSuppressedReason,
+    tasteProfileBuildFailure,
+    tasteProfileBuildFailureReason,
+    preDispatchTasteProfileSummary,
+    preDispatchGeneratedQueries,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
@@ -5913,6 +6488,10 @@ const normalizedCandidatesRaw = [
     relaxedBreadthBackfillCandidates,
     relaxedBreadthBackfillSelected,
     relaxedBreadthBackfillRejectedReasons,
+    relaxationStageReached,
+    relaxationCandidatesConsidered,
+    relaxationCandidatesSelected,
+    relaxationRejectedReasons,
     suppressedGlobalSeedReason,
     profileSelectedEntitySeeds,
     finalFranchiseFamilies,
