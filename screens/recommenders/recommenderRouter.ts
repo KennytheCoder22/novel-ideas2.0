@@ -5665,7 +5665,7 @@ const normalizedCandidatesRaw = [
     const saturationPenalty = seedCount >= 2 ? 18 : seedCount >= 1 ? 8 : 0;
     if (matchingSeed && saturationPenalty > 0) seedSaturationPenaltyApplied[matchingSeed] = (seedSaturationPenaltyApplied[matchingSeed] || 0) + saturationPenalty;
     const docRoot = parentFranchiseRootForDoc(doc);
-    const isExpansionDoc = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate || expansionTitleSetForScoring.has(normalizeText(String(doc?.title || "")));
+    const isExpansionDoc = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate || expansionTitleSetForScoring.has(normalizeText(String(doc?.title || ""))));
     if (isExpansionDoc) expansionCandidatesEnteredScoringCount += 1;
     const expansionDiversityBonus = isExpansionDoc && preferredExpansionRoots.has(docRoot) && finalRenderDocs.length < 8 ? 14 : 0;
     const incumbentPenalty = finalRenderDocs.length < 8 && ["something-is-killing-the-children", "ms-marvel"].includes(docRoot) ? 24 : 0;
