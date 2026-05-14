@@ -168,6 +168,7 @@ function applyGraphicKeywordMixToDocs(docs: RecommendationDoc[], tagCounts: TagC
   const quotas = weights.map(([k, v]) => ({ keyword: k.replace("graphicNovel:", ""), target: Math.max(1, Math.round((Number(v) / total) * finalLimit)) }));
   const selected: RecommendationDoc[] = [];
   const seen = new Set<string>();
+  const relaxationPool: Array<{ doc: RecommendationDoc; reason: string }> = [];
   for (const quota of quotas) {
     const pool = docs.filter((doc) => docMatches(doc, quota.keyword));
     let taken = 0;
@@ -755,6 +756,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const rejectedSampleTitles: string[] = [];
     const rejectedSampleReasons: Array<{ title: string; reason: string }> = [];
     const rejectedDebugRows: Array<Record<string, any>> = [];
+    const rejectedDocsForRelaxation: Array<{ doc: RecommendationDoc; reason: string }> = [];
     const stageCounts = {
       comicVineApiResultCount: results.length,
       comicVinePostNormalizationCount: 0,
@@ -786,24 +788,27 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
           });
         }
       };
+      const stashForRelaxation = (reason: string) => {
+        if (doc && rejectedDocsForRelaxation.length < 30) rejectedDocsForRelaxation.push({ doc, reason });
+      };
       if (!doc?.title) { countReject("missing_title"); continue; }
       const hasComicVineIdentity = Boolean(issue?.id || issue?.api_detail_url || issue?.site_detail_url);
       const hasVolumeIdentity = Boolean(issue?.volume?.name || issue?.volume?.id);
       const hasCollectionishTitle = /\b(volume|vol\.|book|collection|collected|tpb|ogn|graphic novel|omnibus|deluxe)\b/i.test(String(doc?.title || ""));
       const collectionPass = isLikelyGraphicNovelCollection(issue, doc) || (hasComicVineIdentity && (hasVolumeIdentity || hasCollectionishTitle));
-      if (!collectionPass) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); continue; }
+      if (!collectionPass) { countReject("single_issue_filtered"); pushRejectedSample("single_issue_filtered"); stashForRelaxation("single_issue_filtered"); continue; }
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
       if (/^(tpb|hc|sc|gn|ogn|vol\.?\s*\d+|book\s*\d+|chapter\s*\d+|issue\s*\d+|part\s*\d+)$/i.test(normalizedTitle)) {
         countReject("generic_format_title");
         pushRejectedSample("generic_format_title");
-        continue;
+        stashForRelaxation("generic_format_title"); continue;
       }
       if (normalizedTitle.split(/\s+/).filter(Boolean).length <= 1 && normalizedTitle.length < 8) {
         countReject("too_short_title");
         pushRejectedSample("too_short_title");
-        continue;
+        stashForRelaxation("too_short_title"); continue;
       }
       if (queryAnchorAlias && !queryAnchorAlias.test(normalizedTitle) && !queryAnchorAlias.test(normalizeText(String(issue?.volume?.name || "")))) {
         countReject("comicvine_anchor_alias_mismatch");
@@ -811,12 +816,12 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         if (!/coloring book|guide|handbook|companion|anthology|omnibus/i.test(normalizedTitle)) {
           aliasFallbackDocs.push(doc);
         }
-        continue;
+        stashForRelaxation("comicvine_anchor_alias_mismatch"); continue;
       }
       if (normalizedTitle.length >= 3) stageCounts.comicVineCanonicalAcceptedCount += 1;
-      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); pushRejectedSample("trivial_title"); continue; }
-      if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); pushRejectedSample("bad_prefix_die"); continue; }
-      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth|spider|batman|marvel|titans/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); pushRejectedSample("non_ascii_filtered"); continue; }
+      if (/^(graphic novel|a graphic novel|tpb|ogn|part one|part two)$/.test(normalizedTitle)) { countReject("trivial_title"); pushRejectedSample("trivial_title"); stashForRelaxation("trivial_title"); continue; }
+      if (/^die\s+/i.test(String(doc.title || ""))) { countReject("bad_prefix_die"); pushRejectedSample("bad_prefix_die"); stashForRelaxation("bad_prefix_die"); continue; }
+      if (/[^-]/.test(String(doc.title || "")) && !/hellboy|sandman|saga|locke|paper girls|sweet tooth|spider|batman|marvel|titans/i.test(String(doc.title || ""))) { countReject("non_ascii_filtered"); pushRejectedSample("non_ascii_filtered"); stashForRelaxation("non_ascii_filtered"); continue; }
       stageCounts.comicVineContentAcceptedCount += 1;
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) { countReject("deduped"); pushRejectedSample("deduped"); continue; }
@@ -850,6 +855,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       rejectedSampleReasons,
       rejectedReasons,
       rejectedDebugRows,
+      rejectedDocsForRelaxation,
       stageCounts,
       error: null,
     };
@@ -1060,7 +1066,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
       }
       const hadDocsBeforeQuery = docs.length > 0;
-      const { rawCount, acceptedCount, rejectedCount, topTitles, sampleTitles, rejectedSampleTitles, rejectedSampleReasons, rejectedReasons, stageCounts, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+      const { rawCount, acceptedCount, rejectedCount, topTitles, sampleTitles, rejectedSampleTitles, rejectedSampleReasons, rejectedReasons, rejectedDocsForRelaxation, stageCounts, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+      if (Array.isArray(rejectedDocsForRelaxation) && rejectedDocsForRelaxation.length > 0) relaxationPool.push(...rejectedDocsForRelaxation);
     comicVineRawCountByQuery[q] = rawCount;
     comicVineApiResultCountByQuery[q] = Number(stageCounts?.comicVineApiResultCount || rawCount || 0);
     comicVinePostNormalizationCountByQuery[q] = Number(stageCounts?.comicVinePostNormalizationCount || 0);
@@ -1183,6 +1190,25 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const totalFinalAcrossQueries = Object.values(comicVineFinalAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
   const highRawLowCandidatePipelineFailure = totalRawAcrossQueries >= 60 && queryDerivedCountBeforeTopUp <= 3;
 
+  if (!highRawLowCandidatePipelineFailure && docs.length < 10 && relaxationPool.length > 0) {
+    const tierOrder = [
+      ["comicvine_anchor_alias_mismatch"],
+      ["non_ascii_filtered", "too_short_title"],
+      ["single_issue_filtered", "generic_format_title", "trivial_title", "bad_prefix_die"],
+    ];
+    for (const tier of tierOrder) {
+      if (docs.length >= 10) break;
+      for (const entry of relaxationPool) {
+        if (!tier.includes(entry.reason)) continue;
+        const dedupeKey = String(entry.doc?.key || `${entry.doc?.title}|${entry.doc?.author_name?.[0] || ""}`).toLowerCase();
+        if (!dedupeKey || seen.has(dedupeKey)) continue;
+        seen.add(dedupeKey);
+        (entry.doc as any).diagnostics = { ...((entry.doc as any).diagnostics || {}), relaxedIntoPool: true, relaxedReason: entry.reason };
+        docs.push(entry.doc);
+        if (docs.length >= 10) break;
+      }
+    }
+  }
   if (!highRawLowCandidatePipelineFailure && docs.length < 10) {
     const needed = 10 - docs.length;
     const curated = buildCuratedFallbackDocs(input.tagCounts, Math.max(needed, 10));
