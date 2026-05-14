@@ -5665,7 +5665,7 @@ const normalizedCandidatesRaw = [
     const saturationPenalty = seedCount >= 2 ? 18 : seedCount >= 1 ? 8 : 0;
     if (matchingSeed && saturationPenalty > 0) seedSaturationPenaltyApplied[matchingSeed] = (seedSaturationPenaltyApplied[matchingSeed] || 0) + saturationPenalty;
     const docRoot = parentFranchiseRootForDoc(doc);
-    const isExpansionDoc = expansionTitleSetForScoring.has(normalizeText(String(doc?.title || "")));
+    const isExpansionDoc = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate || expansionTitleSetForScoring.has(normalizeText(String(doc?.title || "")));
     if (isExpansionDoc) expansionCandidatesEnteredScoringCount += 1;
     const expansionDiversityBonus = isExpansionDoc && preferredExpansionRoots.has(docRoot) && finalRenderDocs.length < 8 ? 14 : 0;
     const incumbentPenalty = finalRenderDocs.length < 8 && ["something-is-killing-the-children", "ms-marvel"].includes(docRoot) ? 24 : 0;
@@ -5872,6 +5872,7 @@ const normalizedCandidatesRaw = [
   };
   const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
   const finalEligibilityGateApplied = true;
+  const eligibleWithFitScore: Array<{ doc: any; fitScore: number }> = [];
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
@@ -5888,16 +5889,22 @@ const normalizedCandidatesRaw = [
     const aliasPool = expansionAliasMap[queryRoot] || [];
     const queryFamilyAliasMatch = aliasPool.some((alias) => normalizeText(title).includes(normalizeText(alias))) || aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || "")).includes(normalizeText(alias)));
     if (!(seedRootMatch || expansionRootMatch || Boolean(root) || queryFamilyAliasMatch)) { registerFinalEligibilityReject("no_positive_root_alignment", title); return false; }
-    const strongScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 12;
+    const strongScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 8;
     const starterLike = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
-    const laneSignal = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age)\b/i.test(`${title} ${String(doc?.description || "")}`);
-    if (!(laneSignal || seedRootMatch || starterLike || strongScore)) { registerFinalEligibilityReject("insufficient_profile_lane_signal", title); return false; }
+    const laneSignal = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/i.test(`${title} ${String(doc?.description || "")}`);
+    const themeSignal = profileSelectedEntitySeeds.some((seed) => normalizeText(`${title} ${String(doc?.description || "")}`).includes(normalizeText(seed)));
+    const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
+    if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
     if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0) { registerFinalEligibilityReject("structural_fragment", title); return false; }
     if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerFinalEligibilityReject("locale_variant", title); return false; }
     if (/^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title) || Number(doc?.score ?? 0) <= 0) { registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
+    eligibleWithFitScore.push({ doc, fitScore });
     finalEligibilityAcceptedTitles.push(title);
     return true;
   });
+  finalRenderDocs = eligibleWithFitScore
+    .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
+    .map((row) => row.doc);
   const finalRootSecondEntryReasons: Record<string, string> = {};
   const finalRootDuplicateCounts: Record<string, number> = {};
   const byRoot = new Map<string, any[]>();
