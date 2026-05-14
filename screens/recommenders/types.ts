@@ -184,6 +184,10 @@ export type RecommendationResult = {
   expansionLocaleRejectedTitles?: string[];
   expansionWeakFillerRejectedTitles?: string[];
   sameParentSoftDuplicateRejectedTitles?: string[];
+  finalEligibilityGateApplied?: boolean;
+  finalEligibilityCleanCandidateCount?: number;
+  finalEligibilityAcceptedTitles?: string[];
+  finalEligibilityRejectedTitlesByReason?: Record<string, string[]>;
   expansionNotTriggeredReason?: string;
   usedEmergencyFallback?: boolean;
   fallbackReason?: string;

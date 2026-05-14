@@ -5864,6 +5864,41 @@ const normalizedCandidatesRaw = [
   if (hasMsMarvelVol1) {
     finalRenderDocs = finalRenderDocs.filter((d: any) => !/ms\.?\s*marvel:\s*volume\s*(4|5)/i.test(String(d?.title || "")));
   }
+  const finalEligibilityRejectedTitlesByReason: Record<string, string[]> = {};
+  const finalEligibilityAcceptedTitles: string[] = [];
+  const registerFinalEligibilityReject = (reason: string, title: string) => {
+    if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
+    if (title && finalEligibilityRejectedTitlesByReason[reason].length < 40) finalEligibilityRejectedTitlesByReason[reason].push(title);
+  };
+  const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
+  const finalEligibilityGateApplied = true;
+  finalRenderDocs = finalRenderDocs.filter((doc: any) => {
+    const title = String(doc?.title || "").trim();
+    const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
+    const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
+    const root = parentFranchiseRootForDoc(doc);
+    const hasParent = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName || doc?.diagnostics?.parentVolumeName);
+    const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
+    if (!sourceId) { registerFinalEligibilityReject("missing_source_id", title); return false; }
+    if (!queryText) { registerFinalEligibilityReject("missing_query_text", title); return false; }
+    if (!hasParent && !titleRootMatch) { registerFinalEligibilityReject("missing_parent_or_title_root_match", title); return false; }
+    const seedRootMatch = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root);
+    const expansionRootMatch = profileCompatibleExpansionRoots.has(root);
+    const queryRoot = rootFromSeed(String((doc as any)?.expansionQueryText || queryText).replace(/\bgraphic novel\b/gi, "").trim());
+    const aliasPool = expansionAliasMap[queryRoot] || [];
+    const queryFamilyAliasMatch = aliasPool.some((alias) => normalizeText(title).includes(normalizeText(alias))) || aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || "")).includes(normalizeText(alias)));
+    if (!(seedRootMatch || expansionRootMatch || Boolean(root) || queryFamilyAliasMatch)) { registerFinalEligibilityReject("no_positive_root_alignment", title); return false; }
+    const strongScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 12;
+    const starterLike = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
+    const laneSignal = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age)\b/i.test(`${title} ${String(doc?.description || "")}`);
+    if (!(laneSignal || seedRootMatch || starterLike || strongScore)) { registerFinalEligibilityReject("insufficient_profile_lane_signal", title); return false; }
+    if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0) { registerFinalEligibilityReject("structural_fragment", title); return false; }
+    if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerFinalEligibilityReject("locale_variant", title); return false; }
+    if (/^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title) || Number(doc?.score ?? 0) <= 0) { registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
+    finalEligibilityAcceptedTitles.push(title);
+    return true;
+  });
+  const finalEligibilityCleanCandidateCount = finalRenderDocs.length;
   teenPostPassInputDocs = [...finalRenderDocs];
   teenPostPassInputSource = "scoredRebuild";
   finalAcceptedDocsSource = "scoredRebuild";
@@ -6161,6 +6196,10 @@ const normalizedCandidatesRaw = [
     expansionLocaleRejectedTitles,
     expansionWeakFillerRejectedTitles,
     sameParentSoftDuplicateRejectedTitles,
+    finalEligibilityGateApplied,
+    finalEligibilityCleanCandidateCount,
+    finalEligibilityAcceptedTitles,
+    finalEligibilityRejectedTitlesByReason,
     expansionNotTriggeredReason,
     subtitleFragmentInheritedParentRootTitles,
     subtitleFragmentRejectedTitles,
