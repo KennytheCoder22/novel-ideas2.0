@@ -3020,10 +3020,19 @@ export async function getRecommendations(
   });
   rungs = rungs.slice(0, 9);
 
+  const toSignalText = (value: any): string => {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object") {
+      if (typeof value.signal === "string") return value.signal;
+      if (typeof value.tag === "string") return value.tag;
+    }
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    return "";
+  };
   const combinedLikeSignals: Record<string, number> = {};
   const appendSignals = (obj: Record<string, any> | undefined, multiplier = 1) => {
     for (const [rawKey, rawValue] of Object.entries(obj || {})) {
-      const key = String(rawKey || "").trim().toLowerCase();
+      const key = toSignalText(rawKey).trim().toLowerCase();
       const value = Number(rawValue || 0) * multiplier;
       if (!key || !Number.isFinite(value) || value <= 0) continue;
       combinedLikeSignals[key] = Number(combinedLikeSignals[key] || 0) + value;
@@ -3034,8 +3043,16 @@ export async function getRecommendations(
   appendSignals((routingInput as any)?.tasteProfile?.runningTagCounts, 1.25);
   appendSignals((routingInput as any)?.tasteProfile?.tagCounts, 1.05);
   const ignoredTasteSignalPrefixes = ["audience:teen", "age:mshs", "media:book", "media:tv", "format:series", "series", "facet:indie_genre"];
+  const invalidTasteSignalsDropped: string[] = [];
   const tagEntries = Object.entries(combinedLikeSignals)
-    .filter(([k, v]) => Number(v || 0) > 0 && !ignoredTasteSignalPrefixes.some((ignored) => k === ignored || k.startsWith(`${ignored}:`)));
+    .filter(([k, v]) => {
+      if (Number(v || 0) <= 0) return false;
+      if (!k || typeof k !== "string") {
+        invalidTasteSignalsDropped.push(String(k));
+        return false;
+      }
+      return !ignoredTasteSignalPrefixes.some((ignored) => k === ignored || k.startsWith(`${ignored}:`));
+    });
   const tasteText = normalizeText(String((routingInput as any)?.tasteProfile?.summary || ""));
   const inferFromTasteText = (tokens: string[]) => tokens.filter((t) => tasteText.includes(t)).map((t) => `${t.includes("science fiction") ? "genre" : "theme"}:${t}`);
   const inferredGenresFromText = inferFromTasteText(["science fiction", "fantasy", "comedy", "survival", "adventure"]);
@@ -3045,8 +3062,13 @@ export async function getRecommendations(
     .sort((a, b) => Number(b[1]) - Number(a[1]))
     .slice(0, 28)
     .map(([k]) => String(k));
-  const promoteSignalToTaste = (signal: string): { genre?: string; tone?: string; theme?: string } => {
-    const s = normalizeText(signal);
+  const promoteSignalToTaste = (signal: any): { genre?: string; tone?: string; theme?: string } => {
+    const rawSignal = toSignalText(signal);
+    if (!rawSignal) {
+      invalidTasteSignalsDropped.push(String(signal));
+      return {};
+    }
+    const s = normalizeText(rawSignal);
     if (/^genre:/.test(s)) return { genre: s };
     if (/^(tone:|mood:)/.test(s)) return { tone: s };
     if (/^(theme:|drive:)/.test(s)) return { theme: s };
@@ -3096,15 +3118,20 @@ export async function getRecommendations(
   }
   const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
   const generatedComicVineQueriesFromTaste = Array.from(new Set([
-    ...tasteProfileSummary.likedGenres.map((s) => `${s.replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
-    ...tasteProfileSummary.likedTones.map((s) => `${s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ")} graphic novel`),
-    ...tasteProfileSummary.likedThemes.map((s) => `${s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ")} graphic novel`),
-  ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
+    ...tasteProfileSummary.likedGenres.map((s) => `${toSignalText(s).replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
+    ...tasteProfileSummary.likedTones.map((s) => `${toSignalText(s).replace(/^(tone:|mood:)/, "").replace(/_/g, " ")} graphic novel`),
+    ...tasteProfileSummary.likedThemes.map((s) => `${toSignalText(s).replace(/^(theme:|drive:)/, "").replace(/_/g, " ")} graphic novel`),
+  ].map((q) => toSignalText(q).replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
   }))).slice(0, 6);
   const preDispatchTasteProfileSummary = tasteProfileSummary;
   const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
+  const tasteProfileRawSignalTypes = {
+    inputTagCountsKeyTypes: Object.keys((input as any)?.tagCounts || {}).slice(0, 20).map((k) => typeof k),
+    routingTagCountsKeyTypes: Object.keys((routingInput as any)?.tagCounts || {}).slice(0, 20).map((k) => typeof k),
+    runningTagCountsKeyTypes: Object.keys((routingInput as any)?.tasteProfile?.runningTagCounts || {}).slice(0, 20).map((k) => typeof k),
+  };
   const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
   let staticDefaultQueriesUsed = false;
   let staticDefaultQueriesSuppressedReason = "none";
@@ -6512,7 +6539,9 @@ const normalizedCandidatesRaw = [
     finalRankingReasonByTitle,
     finalScoreComponentsByTitle,
     tasteProfileSummary,
+    tasteProfileRawSignalTypes,
     generatedComicVineQueriesFromTaste,
+    invalidTasteSignalsDropped,
     staticDefaultQueriesUsed,
     staticDefaultQueriesSuppressedReason,
     tasteProfileBuildFailure,
