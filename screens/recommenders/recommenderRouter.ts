@@ -3119,6 +3119,11 @@ export async function getRecommendations(
   let querySourceOfTruth: "taste_profile" | "fallback_static" | "expansion_static" | "error" = "fallback_static";
   let tasteQueriesUsedForPrimaryFetch = false;
   let tasteQueryPoolUsedAsPrimary = false;
+  let primaryTasteQueryPoolTitles: string[] = [];
+  let primaryTasteQueryPoolRoots: string[] = [];
+  let staticRungPoolRoots: string[] = [];
+  let preFilterPoolBuiltFrom = "unknown";
+  let preFilterPoolOverlapWithPreviousSession = 0;
   let tasteQueriesBlockedByReason = "none";
   let finalRungQueriesSource = "existing_rungs";
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0 && !tasteProfileBuildFailure) {
