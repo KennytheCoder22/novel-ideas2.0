@@ -215,6 +215,12 @@ export type RecommendationResult = {
   tasteQueriesUsedForPrimaryFetch?: boolean;
   tasteQueriesBlockedByReason?: string;
   finalRungQueriesSource?: string;
+  recentReturnedTitlePenaltyApplied?: number;
+  recentReturnedRootPenaltyApplied?: number;
+  repeatedTitleSuppressed?: number;
+  repeatedRootSuppressed?: number;
+  crossSessionDiversityApplied?: boolean;
+  crossSessionDiversityBypassedReason?: string;
   staticDefaultQueriesUsed?: boolean;
   staticDefaultQueriesSuppressedReason?: string;
   tasteProfileBuildFailure?: boolean;

@@ -51,6 +51,11 @@ const MAX_NYT_ANCHOR_INJECTIONS = 2;
 const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
 
+const RECENT_FRESH_HISTORY_LIMIT = 6;
+const recentFreshReturnedTitles: string[][] = [];
+const recentFreshReturnedRoots: string[][] = [];
+const recentFreshTasteSignatures: string[] = [];
+
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
 const DEBUG_RECOMMENDER_VALIDATION = true;
@@ -5765,6 +5770,19 @@ const normalizedCandidatesRaw = [
   const candidateDislikePenaltyByTitle: Record<string, number> = {};
   const candidateSkipPenaltyByTitle: Record<string, number> = {};
   const finalRankingReasonByTitle: Record<string, string[]> = {};
+  let recentReturnedTitlePenaltyApplied = 0;
+  let recentReturnedRootPenaltyApplied = 0;
+  let repeatedTitleSuppressed = 0;
+  let repeatedRootSuppressed = 0;
+  let crossSessionDiversityApplied = false;
+  let crossSessionDiversityBypassedReason = "not_fresh_session";
+  const isFreshUserSession = !Array.isArray((input as any)?.priorRecommendedIds) || (input as any).priorRecommendedIds.length === 0;
+  const tasteSignature = normalizeText(JSON.stringify({
+    genres: tasteProfileSummary.likedGenres,
+    tones: tasteProfileSummary.likedTones,
+    themes: tasteProfileSummary.likedThemes,
+  }));
+
   const pushReason = (bucket: Record<string, string[]>, title: string, reason: string) => {
     if (!bucket[title]) bucket[title] = [];
     if (!bucket[title].includes(reason)) bucket[title].push(reason);
@@ -5806,7 +5824,15 @@ const normalizedCandidatesRaw = [
       const provenanceConfidence = Boolean(doc?.sourceId || doc?.queryText || doc?.parentVolumeName);
       const defaultRoot = ["something-is-killing-the-children", "sweet-tooth", "ms-marvel", "the-walking-dead"].includes(parentFranchiseRootForDoc(doc));
       const unsupportedDefaultPenalty = defaultRoot && matchedLiked.length === 0 ? 3 : 0;
-      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
+      const normalizedTitle = normalizeText(title);
+      const docRoot = parentFranchiseRootForDoc(doc);
+      const seenRecentTitle = recentFreshReturnedTitles.some((bucket) => bucket.includes(normalizedTitle));
+      const seenRecentRoot = recentFreshReturnedRoots.some((bucket) => bucket.includes(docRoot));
+      const titleRepeatPenalty = isFreshUserSession && seenRecentTitle ? 16 : 0;
+      const rootRepeatPenalty = isFreshUserSession && seenRecentRoot ? 6 : 0;
+      if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
+      if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
       positiveFitScoreByTitle[title] = score;
       candidateTasteMatchScoreByTitle[title] = tasteMatchScore;
       candidateTastePenaltyByTitle[title] = tastePenaltyScore;
@@ -5815,7 +5841,7 @@ const normalizedCandidatesRaw = [
       candidateWeightedTasteScoreByTitle[title] = tasteMatchScore;
       candidateDislikePenaltyByTitle[title] = dislikePenalty;
       candidateSkipPenaltyByTitle[title] = skipPenalty;
-      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
       finalRankingReasonByTitle[title] = [
         ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
         ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
@@ -5840,6 +5866,37 @@ const normalizedCandidatesRaw = [
     })
     .filter(Boolean) as any[];
   finalRenderDocs = viableCandidates.sort((a: any, b: any) => Number(b?.positiveFitScore || 0) - Number(a?.positiveFitScore || 0));
+  if (isFreshUserSession) {
+    crossSessionDiversityApplied = true;
+    crossSessionDiversityBypassedReason = "none";
+    const previousTaste = recentFreshTasteSignatures[recentFreshTasteSignatures.length - 1] || "";
+    const highlySimilarTaste = previousTaste && previousTaste === tasteSignature;
+    const titleSeenSet = new Set(recentFreshReturnedTitles.flat());
+    const rootSeenSet = new Set(recentFreshReturnedRoots.flat());
+    const diversified: any[] = [];
+    for (const doc of finalRenderDocs) {
+      const title = normalizeText(String(doc?.title || ""));
+      const root = parentFranchiseRootForDoc(doc);
+      const isRepeatedTitle = titleSeenSet.has(title);
+      const isRepeatedRoot = rootSeenSet.has(root);
+      if (isRepeatedTitle) {
+        const strongestByMargin = Number(doc?.positiveFitScore || 0) >= Number((finalRenderDocs[1]?.positiveFitScore ?? 0)) + 10;
+        if (!(highlySimilarTaste && strongestByMargin)) {
+          repeatedTitleSuppressed += 1;
+          continue;
+        }
+      }
+      if (isRepeatedRoot && !isRepeatedTitle) {
+        const docScore = Number(doc?.positiveFitScore || 0);
+        if (docScore < 12) {
+          repeatedRootSuppressed += 1;
+          continue;
+        }
+      }
+      diversified.push(doc);
+    }
+    finalRenderDocs = diversified;
+  }
   const swipeRankedCandidateList = [...finalRenderDocs];
   const viableCandidateCountBeforeFinalSelection = finalRenderDocs.length;
   const viableCandidateRootsBeforeFinalSelection = Array.from(new Set(finalRenderDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
@@ -6279,6 +6336,17 @@ const normalizedCandidatesRaw = [
     }
   }
   const returnedItemsTitles = finalItemsTitles;
+  if (isFreshUserSession) {
+    const normalizedReturnedTitles = returnedItemsTitles.map((t) => normalizeText(t)).filter(Boolean);
+    const returnedRoots = Array.from(new Set(finalRenderDocs.map((doc: any) => parentFranchiseRootForDoc(doc)).filter(Boolean)));
+    recentFreshReturnedTitles.push(normalizedReturnedTitles);
+    recentFreshReturnedRoots.push(returnedRoots);
+    recentFreshTasteSignatures.push(tasteSignature);
+    while (recentFreshReturnedTitles.length > RECENT_FRESH_HISTORY_LIMIT) recentFreshReturnedTitles.shift();
+    while (recentFreshReturnedRoots.length > RECENT_FRESH_HISTORY_LIMIT) recentFreshReturnedRoots.shift();
+    while (recentFreshTasteSignatures.length > RECENT_FRESH_HISTORY_LIMIT) recentFreshTasteSignatures.shift();
+  }
+
   const renderedTopRecommendationsLength = outputItems.length;
   if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
     console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, finalAcceptedDocsTitles });
@@ -6529,6 +6597,12 @@ const normalizedCandidatesRaw = [
     tasteQueriesUsedForPrimaryFetch,
     tasteQueriesBlockedByReason,
     finalRungQueriesSource,
+    recentReturnedTitlePenaltyApplied,
+    recentReturnedRootPenaltyApplied,
+    repeatedTitleSuppressed,
+    repeatedRootSuppressed,
+    crossSessionDiversityApplied,
+    crossSessionDiversityBypassedReason,
     staticDefaultQueriesUsed,
     staticDefaultQueriesSuppressedReason,
     tasteProfileBuildFailure,
