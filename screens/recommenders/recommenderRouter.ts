@@ -5876,6 +5876,9 @@ const normalizedCandidatesRaw = [
         return null;
       }
       const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 1.25 : 0) + (themeOverlap ? 0.75 : 0) + (rootMatch ? 0.25 : 0) + ((starterSignal && tasteMatchScore >= 2.5) ? 0.4 : 0) + (audienceFit ? 0.5 : 0) + ((provenanceConfidence && tasteMatchScore >= 3.0) ? 0.35 : 0) + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0);
+      if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
+      if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
       positiveFitScoreByTitle[title] = score;
       candidateTasteMatchScoreByTitle[title] = tasteMatchScore;
       candidateTastePenaltyByTitle[title] = tastePenaltyScore;
