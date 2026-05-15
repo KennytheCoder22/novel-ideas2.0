@@ -51,6 +51,11 @@ const MAX_NYT_ANCHOR_INJECTIONS = 2;
 const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
 
+const RECENT_FRESH_HISTORY_LIMIT = 6;
+const recentFreshReturnedTitles: string[][] = [];
+const recentFreshReturnedRoots: string[][] = [];
+const recentFreshTasteSignatures: string[] = [];
+
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
 const DEBUG_RECOMMENDER_VALIDATION = true;
@@ -3021,61 +3026,115 @@ export async function getRecommendations(
   rungs = rungs.slice(0, 9);
 
   const tagEntries = Object.entries((input.tagCounts || routingInput.tagCounts || {}) as Record<string, number>).filter(([, v]) => Number(v || 0) > 0);
-  const tasteText = normalizeText(String((routingInput as any)?.tasteProfile?.summary || ""));
-  const inferFromTasteText = (tokens: string[]) => tokens.filter((t) => tasteText.includes(t)).map((t) => `${t.includes("science fiction") ? "genre" : "theme"}:${t}`);
-  const inferredGenresFromText = inferFromTasteText(["science fiction", "fantasy", "comedy", "survival", "adventure"]);
-  const inferredTonesFromText = inferFromTasteText(["hopeful", "dark", "political", "atmospheric"]);
-  const inferredDislikedFromText = inferFromTasteText(["realistic", "coming of age", "drama", "romance", "historical", "warm", "friendship"]);
-  const topSignals = tagEntries.sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k));
-  const tasteProfileSummary = {
-    likedGenres: [...topSignals.filter((s) => s.startsWith("genre:")).slice(0, 4), ...inferredGenresFromText].slice(0, 6),
-    likedTones: [...topSignals.filter((s) => s.startsWith("tone:") || s.startsWith("mood:")).slice(0, 4), ...inferredTonesFromText].slice(0, 6),
-    likedThemes: topSignals.filter((s) => s.startsWith("theme:") || s.startsWith("drive:")).slice(0, 6),
-    dislikedSignals: [...Object.keys(((routingInput as any)?.dislikedTagCounts || {})).filter((k) => Number(((routingInput as any)?.dislikedTagCounts || {})[k] || 0) > 0).slice(0, 6), ...inferredDislikedFromText].slice(0, 8),
-    skippedSignals: Object.keys(((routingInput as any)?.leftTagCounts || {}).length ? ((routingInput as any)?.leftTagCounts || {}) : ((routingInput as any)?.skippedTagCounts || {})).filter((k) => Number((((routingInput as any)?.leftTagCounts || (routingInput as any)?.skippedTagCounts || {})[k] || 0)) > 0).slice(0, 8),
-  };
   const swipeSignalCount = tagEntries.reduce((acc, [, v]) => acc + Number(v || 0), 0);
+
+  const genericSignalPattern = /^(audience:|age:|media:|format:|series$|facet:|source:|universe:)/;
+  const likedWeightedSignals = Object.entries(((routingInput as any)?.tagCounts || {}) as Record<string, number>)
+    .map(([signal, weight]) => ({ signal: String(signal || ""), weight: Number(weight || 0) }))
+    .filter((row) => row.weight > 0)
+    .sort((a, b) => b.weight - a.weight);
+  const dislikedWeightedSignals = Object.entries(((routingInput as any)?.dislikedTagCounts || {}) as Record<string, number>)
+    .map(([signal, weight]) => ({ signal: String(signal || ""), weight: Number(weight || 0) }))
+    .filter((row) => row.weight > 0)
+    .sort((a, b) => b.weight - a.weight);
+  const skippedWeightedSignals = Object.entries((((routingInput as any)?.leftTagCounts || (routingInput as any)?.skippedTagCounts || {}) as Record<string, number>))
+    .map(([signal, weight]) => ({ signal: String(signal || ""), weight: Number(weight || 0) }))
+    .filter((row) => row.weight > 0)
+    .sort((a, b) => b.weight - a.weight);
+
+  const genreLexicon = ["fantasy", "adventure", "horror", "thriller", "mystery", "dystopian", "romance", "science fiction", "superheroes", "crime", "historical"];
+  const toneLexicon = ["dark", "hopeful", "warm", "fast-paced", "spooky", "gentle", "playful", "energetic", "atmospheric"];
+  const themeLexicon = ["survival", "identity", "friendship", "coming of age", "systemic injustice", "mythology", "school", "family", "political", "war & society"];
+  const normalizeSignal = (v: string) => normalizeText(String(v || "").replace(/^(genre:|tone:|mood:|theme:|drive:)/, "").replace(/_/g, " ").trim());
+  const canonicalize = (v: string) => normalizeSignal(v).replace(/\s*&\s*/g, " and ");
+  const matchesLexicon = (signal: string, lexicon: string[]) => {
+    const n = canonicalize(signal);
+    return lexicon.find((token) => {
+      const t = canonicalize(token);
+      return n === t || n.includes(t) || t.includes(n);
+    }) || "";
+  };
+  const nonGenericLikedSignals = likedWeightedSignals.map((r) => r.signal).filter((s) => !genericSignalPattern.test(normalizeText(s)));
+
+  const likedGenres = Array.from(new Set(nonGenericLikedSignals.map((s) => matchesLexicon(s, genreLexicon)).filter(Boolean))).map((v) => `genre:${v}`);
+  const likedTones = Array.from(new Set(nonGenericLikedSignals.map((s) => matchesLexicon(s, toneLexicon)).filter(Boolean))).map((v) => `tone:${v}`);
+  const likedThemes = Array.from(new Set(nonGenericLikedSignals.map((s) => matchesLexicon(s, themeLexicon)).filter(Boolean))).map((v) => `theme:${v}`);
+
+  const tasteProfileSummary = {
+    likedGenres: likedGenres.slice(0, 6),
+    likedTones: likedTones.slice(0, 6),
+    likedThemes: likedThemes.slice(0, 6),
+    dislikedSignals: dislikedWeightedSignals.map((r) => r.signal).slice(0, 8),
+    skippedSignals: skippedWeightedSignals.map((r) => r.signal).slice(0, 8),
+  };
+
+  const weightedLikedSignalsPresentButNotPromoted = nonGenericLikedSignals.length > 0 && (tasteProfileSummary.likedGenres.length + tasteProfileSummary.likedTones.length + tasteProfileSummary.likedThemes.length) === 0;
   const tasteProfileBuildFailure =
-    tasteProfileSummary.likedGenres.length === 0 &&
-    tasteProfileSummary.likedTones.length === 0 &&
-    tasteProfileSummary.likedThemes.length === 0 &&
-    tasteProfileSummary.dislikedSignals.length === 0 &&
-    tasteProfileSummary.skippedSignals.length === 0;
-  const tasteProfileBuildFailureReason = tasteProfileBuildFailure
-    ? (swipeSignalCount > 8 ? "swipe_signals_present_but_profile_empty" : "no_swipe_signals_resolved_from_tagcounts_or_taste_profile")
-    : "none";
+    weightedLikedSignalsPresentButNotPromoted || (
+      tasteProfileSummary.likedGenres.length === 0 &&
+      tasteProfileSummary.likedTones.length === 0 &&
+      tasteProfileSummary.likedThemes.length === 0 &&
+      tasteProfileSummary.dislikedSignals.length === 0 &&
+      tasteProfileSummary.skippedSignals.length === 0
+    );
+  const tasteProfileBuildFailureReason = weightedLikedSignalsPresentButNotPromoted
+    ? "weighted liked signals not promoted"
+    : (tasteProfileBuildFailure
+      ? (swipeSignalCount > 8 ? "swipe_signals_present_but_profile_empty" : "no_swipe_signals_resolved_from_tagcounts_or_taste_profile")
+      : "none");
   if (swipeSignalCount > 8 && tasteProfileBuildFailure) {
-    console.error("Taste profile unexpectedly empty", { swipeSignalCount, tagEntryCount: tagEntries.length });
+    console.error("Taste profile unexpectedly empty", { swipeSignalCount, tagEntryCount: tagEntries.length, nonGenericLikedSignals: nonGenericLikedSignals.slice(0, 20) });
   }
   const preDispatchTasteProfileSummary = tasteProfileSummary;
-  const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
+  const preDispatchGeneratedQueries: string[] = [];
   const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
+  const genres = tasteProfileSummary.likedGenres.map((s) => s.replace(/^genre:/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  const tones = tasteProfileSummary.likedTones.map((s) => s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  const themes = tasteProfileSummary.likedThemes.map((s) => s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  const combinedQueries = [
+    ...(genres.length >= 2 ? [`${genres[0]} ${genres[1]} graphic novel`] : []),
+    ...(genres.includes("superheroes") && genres.includes("fantasy") ? ["superhero fantasy comic"] : []),
+    ...(genres.includes("mystery") && genres.includes("fantasy") ? ["mystery fantasy graphic novel"] : []),
+    ...(genres.includes("dystopian") && themes.includes("survival") ? ["dystopian survival graphic novel"] : []),
+    ...(genres.includes("dystopian") && genres.includes("thriller") ? ["dystopian thriller graphic novel"] : []),
+    ...(genres.includes("mystery") && genres.includes("thriller") ? ["mystery thriller graphic novel"] : []),
+    ...(genres.includes("romance") && themes.includes("coming of age") ? ["romance coming of age graphic novel"] : []),
+    ...(genres.includes("fantasy") && themes.includes("mythology") ? ["fantasy mythology graphic novel"] : []),
+  ];
   const generatedComicVineQueriesFromTaste = Array.from(new Set([
-    ...tasteProfileSummary.likedGenres.map((s) => `${s.replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
-    ...tasteProfileSummary.likedTones.map((s) => `${s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ")} graphic novel`),
-    ...tasteProfileSummary.likedThemes.map((s) => `${s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ")} graphic novel`),
+    ...combinedQueries,
+    ...genres.map((v) => `${v} graphic novel`),
+    ...tones.map((v) => `${v} graphic novel`),
+    ...themes.map((v) => `${v} graphic novel`),
   ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
-  }))).slice(0, 6);
+  }))).slice(0, 10);
   const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
   let staticDefaultQueriesUsed = false;
   let staticDefaultQueriesSuppressedReason = "none";
-  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length >= 3 && !tasteProfileBuildFailure) {
+  let querySourceOfTruth: "taste_profile" | "fallback_static" | "expansion_static" | "error" = "fallback_static";
+  let tasteQueriesUsedForPrimaryFetch = false;
+  let tasteQueriesBlockedByReason = "none";
+  let finalRungQueriesSource = "existing_rungs";
+  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0 && !tasteProfileBuildFailure) {
     rungs = generatedComicVineQueriesFromTaste.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
     staticDefaultQueriesSuppressedReason = "replaced_with_swipe_taste_queries";
+    querySourceOfTruth = "taste_profile";
+    tasteQueriesUsedForPrimaryFetch = true;
+    finalRungQueriesSource = "taste_profile";
   }
   rungs = rungs.filter((r: any) => {
     const q = normalizeText(String(r?.query || ""));
     const usedStatic = Array.from(staticDefaultQueries).some((seed) => q.includes(normalizeText(seed)));
     if (usedStatic) staticDefaultQueriesUsed = true;
-    if (generatedComicVineQueriesFromTaste.length >= 3 && usedStatic) return false;
+    if (generatedComicVineQueriesFromTaste.length > 0 && usedStatic) return false;
     return true;
   });
   if (tasteProfileBuildFailure) {
     staticDefaultQueriesSuppressedReason = "taste_profile_build_failure_static_defaults_suppressed";
     rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
-  } else if (generatedComicVineQueriesFromTaste.length < 3) staticDefaultQueriesSuppressedReason = "insufficient_taste_specific_queries";
+  } else if (generatedComicVineQueriesFromTaste.length === 0) { staticDefaultQueriesSuppressedReason = "no_taste_specific_queries"; tasteQueriesBlockedByReason = "generated_queries_empty"; finalRungQueriesSource = "fallback_static"; } else if (tasteProfileBuildFailure) { tasteQueriesBlockedByReason = "taste_profile_build_failure"; querySourceOfTruth = "error"; finalRungQueriesSource = "error"; }
 
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
   const mainRungQueriesLength = rungQueries.length;
@@ -5431,9 +5490,12 @@ const normalizedCandidatesRaw = [
   }
   if (includeComicVine && !expansionFetchAttempted && candidateDocs.length < 30) {
     cleanCandidateShortfallExpansionTriggered = true;
-    const preScoringExpansionSeeds = Array.from(new Set([
+    const tasteExpansionSeeds = generatedComicVineQueriesFromTaste.length > 0
+      ? generatedComicVineQueriesFromTaste.map((q) => q.replace(/\s*graphic novel\s*$/i, "").trim()).filter(Boolean)
+      : [];
+    const preScoringExpansionSeeds = Array.from(new Set((tasteExpansionSeeds.length > 0 ? tasteExpansionSeeds : [
       "Locke & Key", "Sweet Tooth", "Spider-Man", "Descender", "Runaways", "Black Science", "Saga", "The Sandman", "Invincible",
-    ].map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
+    ]).map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
       const root = rootFromSeed(q);
       if (!root || blockedExpansionQueryFragments.test(q)) return false;
       if (selectedStarterRoots.has(root)) return false;
@@ -5441,6 +5503,7 @@ const normalizedCandidatesRaw = [
     }).slice(0, 8);
     if (preScoringExpansionSeeds.length > 0) {
       expansionFetchAttempted = true;
+      if (tasteExpansionSeeds.length === 0 && querySourceOfTruth !== "taste_profile") querySourceOfTruth = "expansion_static";
       expansionFetchResultsByQuery = [];
       const preScoringExpansionDocs = await runExpansionQueries(preScoringExpansionSeeds);
       const taggedExpansionDocs = preScoringExpansionDocs.map((doc: any) => ({
@@ -5707,6 +5770,19 @@ const normalizedCandidatesRaw = [
   const candidateDislikePenaltyByTitle: Record<string, number> = {};
   const candidateSkipPenaltyByTitle: Record<string, number> = {};
   const finalRankingReasonByTitle: Record<string, string[]> = {};
+  let recentReturnedTitlePenaltyApplied = 0;
+  let recentReturnedRootPenaltyApplied = 0;
+  let repeatedTitleSuppressed = 0;
+  let repeatedRootSuppressed = 0;
+  let crossSessionDiversityApplied = false;
+  let crossSessionDiversityBypassedReason = "not_fresh_session";
+  const isFreshUserSession = !Array.isArray((input as any)?.priorRecommendedIds) || (input as any).priorRecommendedIds.length === 0;
+  const tasteSignature = normalizeText(JSON.stringify({
+    genres: tasteProfileSummary.likedGenres,
+    tones: tasteProfileSummary.likedTones,
+    themes: tasteProfileSummary.likedThemes,
+  }));
+
   const pushReason = (bucket: Record<string, string[]>, title: string, reason: string) => {
     if (!bucket[title]) bucket[title] = [];
     if (!bucket[title].includes(reason)) bucket[title].push(reason);
@@ -5748,7 +5824,15 @@ const normalizedCandidatesRaw = [
       const provenanceConfidence = Boolean(doc?.sourceId || doc?.queryText || doc?.parentVolumeName);
       const defaultRoot = ["something-is-killing-the-children", "sweet-tooth", "ms-marvel", "the-walking-dead"].includes(parentFranchiseRootForDoc(doc));
       const unsupportedDefaultPenalty = defaultRoot && matchedLiked.length === 0 ? 3 : 0;
-      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
+      const normalizedTitle = normalizeText(title);
+      const docRoot = parentFranchiseRootForDoc(doc);
+      const seenRecentTitle = recentFreshReturnedTitles.some((bucket) => bucket.includes(normalizedTitle));
+      const seenRecentRoot = recentFreshReturnedRoots.some((bucket) => bucket.includes(docRoot));
+      const titleRepeatPenalty = isFreshUserSession && seenRecentTitle ? 16 : 0;
+      const rootRepeatPenalty = isFreshUserSession && seenRecentRoot ? 6 : 0;
+      if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
+      if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
       positiveFitScoreByTitle[title] = score;
       candidateTasteMatchScoreByTitle[title] = tasteMatchScore;
       candidateTastePenaltyByTitle[title] = tastePenaltyScore;
@@ -5757,7 +5841,7 @@ const normalizedCandidatesRaw = [
       candidateWeightedTasteScoreByTitle[title] = tasteMatchScore;
       candidateDislikePenaltyByTitle[title] = dislikePenalty;
       candidateSkipPenaltyByTitle[title] = skipPenalty;
-      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
       finalRankingReasonByTitle[title] = [
         ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
         ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
@@ -5782,6 +5866,37 @@ const normalizedCandidatesRaw = [
     })
     .filter(Boolean) as any[];
   finalRenderDocs = viableCandidates.sort((a: any, b: any) => Number(b?.positiveFitScore || 0) - Number(a?.positiveFitScore || 0));
+  if (isFreshUserSession) {
+    crossSessionDiversityApplied = true;
+    crossSessionDiversityBypassedReason = "none";
+    const previousTaste = recentFreshTasteSignatures[recentFreshTasteSignatures.length - 1] || "";
+    const highlySimilarTaste = previousTaste && previousTaste === tasteSignature;
+    const titleSeenSet = new Set(recentFreshReturnedTitles.flat());
+    const rootSeenSet = new Set(recentFreshReturnedRoots.flat());
+    const diversified: any[] = [];
+    for (const doc of finalRenderDocs) {
+      const title = normalizeText(String(doc?.title || ""));
+      const root = parentFranchiseRootForDoc(doc);
+      const isRepeatedTitle = titleSeenSet.has(title);
+      const isRepeatedRoot = rootSeenSet.has(root);
+      if (isRepeatedTitle) {
+        const strongestByMargin = Number(doc?.positiveFitScore || 0) >= Number((finalRenderDocs[1]?.positiveFitScore ?? 0)) + 10;
+        if (!(highlySimilarTaste && strongestByMargin)) {
+          repeatedTitleSuppressed += 1;
+          continue;
+        }
+      }
+      if (isRepeatedRoot && !isRepeatedTitle) {
+        const docScore = Number(doc?.positiveFitScore || 0);
+        if (docScore < 12) {
+          repeatedRootSuppressed += 1;
+          continue;
+        }
+      }
+      diversified.push(doc);
+    }
+    finalRenderDocs = diversified;
+  }
   const swipeRankedCandidateList = [...finalRenderDocs];
   const viableCandidateCountBeforeFinalSelection = finalRenderDocs.length;
   const viableCandidateRootsBeforeFinalSelection = Array.from(new Set(finalRenderDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
@@ -6178,10 +6293,11 @@ const normalizedCandidatesRaw = [
   if (includeComicVine && returnedItemsLength < 8) {
     cleanCandidateShortfallExpansionTriggered = true;
     if (!expansionFetchAttempted) {
+      const terminalTasteExpansionSeeds = generatedComicVineQueriesFromTaste.map((q) => q.replace(/\s*graphic novel\s*$/i, "").trim()).filter(Boolean);
       const expansionSeedQueries = Array.from(new Set([
+        ...terminalTasteExpansionSeeds,
         ...profileSelectedEntitySeeds,
         ...adjacentSeedExpansionCandidates,
-        "Spider-Man", "Miles Morales", "Runaways", "Descender", "Sweet Tooth", "Saga", "The Sandman", "Black Science", "Invincible", "Locke & Key", "Walking Dead", "Ms. Marvel",
         ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
         ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
       ].map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
@@ -6220,6 +6336,17 @@ const normalizedCandidatesRaw = [
     }
   }
   const returnedItemsTitles = finalItemsTitles;
+  if (isFreshUserSession) {
+    const normalizedReturnedTitles = returnedItemsTitles.map((t) => normalizeText(t)).filter(Boolean);
+    const returnedRoots = Array.from(new Set(finalRenderDocs.map((doc: any) => parentFranchiseRootForDoc(doc)).filter(Boolean)));
+    recentFreshReturnedTitles.push(normalizedReturnedTitles);
+    recentFreshReturnedRoots.push(returnedRoots);
+    recentFreshTasteSignatures.push(tasteSignature);
+    while (recentFreshReturnedTitles.length > RECENT_FRESH_HISTORY_LIMIT) recentFreshReturnedTitles.shift();
+    while (recentFreshReturnedRoots.length > RECENT_FRESH_HISTORY_LIMIT) recentFreshReturnedRoots.shift();
+    while (recentFreshTasteSignatures.length > RECENT_FRESH_HISTORY_LIMIT) recentFreshTasteSignatures.shift();
+  }
+
   const renderedTopRecommendationsLength = outputItems.length;
   if (finalAcceptedDocsLength > 0 && finalRankedDocsBase.length === 0 && rankedDocs.length === 0 && teenPostPassInputLength === 0 && renderedTopRecommendationsLength === 0) {
     console.error("FINAL_ACCEPTED_LINEAGE_INVARIANT_FAILED", { finalAcceptedDocsLength, finalAcceptedDocsSource, finalAcceptedDocsTitles });
@@ -6466,6 +6593,16 @@ const normalizedCandidatesRaw = [
     finalScoreComponentsByTitle,
     tasteProfileSummary,
     generatedComicVineQueriesFromTaste,
+    querySourceOfTruth,
+    tasteQueriesUsedForPrimaryFetch,
+    tasteQueriesBlockedByReason,
+    finalRungQueriesSource,
+    recentReturnedTitlePenaltyApplied,
+    recentReturnedRootPenaltyApplied,
+    repeatedTitleSuppressed,
+    repeatedRootSuppressed,
+    crossSessionDiversityApplied,
+    crossSessionDiversityBypassedReason,
     staticDefaultQueriesUsed,
     staticDefaultQueriesSuppressedReason,
     tasteProfileBuildFailure,

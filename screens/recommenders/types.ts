@@ -211,6 +211,16 @@ export type RecommendationResult = {
   finalScoreComponentsByTitle?: Record<string, Record<string, number>>;
   tasteProfileSummary?: { likedGenres: string[]; likedTones: string[]; likedThemes: string[]; dislikedSignals: string[]; skippedSignals: string[] };
   generatedComicVineQueriesFromTaste?: string[];
+  querySourceOfTruth?: "taste_profile" | "fallback_static" | "expansion_static" | "error";
+  tasteQueriesUsedForPrimaryFetch?: boolean;
+  tasteQueriesBlockedByReason?: string;
+  finalRungQueriesSource?: string;
+  recentReturnedTitlePenaltyApplied?: number;
+  recentReturnedRootPenaltyApplied?: number;
+  repeatedTitleSuppressed?: number;
+  repeatedRootSuppressed?: number;
+  crossSessionDiversityApplied?: boolean;
+  crossSessionDiversityBypassedReason?: string;
   staticDefaultQueriesUsed?: boolean;
   staticDefaultQueriesSuppressedReason?: string;
   tasteProfileBuildFailure?: boolean;
