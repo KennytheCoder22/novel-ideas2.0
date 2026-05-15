@@ -3172,12 +3172,6 @@ export async function getRecommendations(
   const comicVineRejectedSampleReasonsByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
   const comicVineRescueRejectedTitlesByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
-  let primaryTasteQueryPoolRoots: string[] = [];
-  let primaryTasteQueryPoolTitles: string[] = [];
-  let staticRungPoolRoots: string[] = [];
-  let tasteQueryPoolUsedAsPrimary = false;
-  let preFilterPoolBuiltFrom = "mixed";
-  let preFilterPoolOverlapWithPreviousSession = 0;
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
   let comicVineDispatchedOnce = false;
@@ -3487,7 +3481,7 @@ export async function getRecommendations(
     .filter((d: any) => Array.from(staticDefaultQueries).some((seed) => normalizeText(String(d?.queryText || "")).includes(normalizeText(seed))))
     .map((d: any) => parentFranchiseRootForDoc(d))
     .filter(Boolean)));
-  preFilterPoolBuiltFrom = tasteQueryPoolUsedAsPrimary ? "taste_primary" : "legacy_or_fallback";
+  preFilterPoolBuiltFrom = tasteQueryPoolUsedAsPrimary ? "taste_profile" : "legacy_or_fallback";
   const currentPoolTitleSet = new Set(primaryTasteQueryPoolTitles);
   const prevPoolTitleSet = new Set(previousPrimaryTasteQueryPoolTitles);
   const overlap = Array.from(currentPoolTitleSet).filter((t) => prevPoolTitleSet.has(t)).length;
