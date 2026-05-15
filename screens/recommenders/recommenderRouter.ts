@@ -3035,20 +3035,24 @@ export async function getRecommendations(
     skippedSignals: Object.keys(((routingInput as any)?.leftTagCounts || {}).length ? ((routingInput as any)?.leftTagCounts || {}) : ((routingInput as any)?.skippedTagCounts || {})).filter((k) => Number((((routingInput as any)?.leftTagCounts || (routingInput as any)?.skippedTagCounts || {})[k] || 0)) > 0).slice(0, 8),
   };
   const swipeSignalCount = tagEntries.reduce((acc, [, v]) => acc + Number(v || 0), 0);
-  const tasteProfileBuildFailure =
+  const hasSwipeSignals =
+    swipeSignalCount > 0 ||
+    Object.keys(((routingInput as any)?.dislikedTagCounts || {})).length > 0 ||
+    Object.keys(((routingInput as any)?.leftTagCounts || {})).length > 0 ||
+    Object.keys(((routingInput as any)?.skippedTagCounts || {})).length > 0;
+  const tasteProfileSummaryEmpty =
     tasteProfileSummary.likedGenres.length === 0 &&
     tasteProfileSummary.likedTones.length === 0 &&
     tasteProfileSummary.likedThemes.length === 0 &&
     tasteProfileSummary.dislikedSignals.length === 0 &&
     tasteProfileSummary.skippedSignals.length === 0;
+  const tasteProfileBuildFailure = hasSwipeSignals && tasteProfileSummaryEmpty;
   const tasteProfileBuildFailureReason = tasteProfileBuildFailure
-    ? (swipeSignalCount > 8 ? "swipe_signals_present_but_profile_empty" : "no_swipe_signals_resolved_from_tagcounts_or_taste_profile")
+    ? "swipe_signals_present_but_profile_empty"
     : "none";
-  if (swipeSignalCount > 8 && tasteProfileBuildFailure) {
+  if (hasSwipeSignals && tasteProfileBuildFailure) {
     console.error("Taste profile unexpectedly empty", { swipeSignalCount, tagEntryCount: tagEntries.length });
   }
-  const preDispatchTasteProfileSummary = tasteProfileSummary;
-  const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
   const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
   const generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...tasteProfileSummary.likedGenres.map((s) => `${s.replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
@@ -3058,6 +3062,8 @@ export async function getRecommendations(
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
   }))).slice(0, 6);
+  const preDispatchTasteProfileSummary = tasteProfileSummary;
+  const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
   const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
   let staticDefaultQueriesUsed = false;
   let staticDefaultQueriesSuppressedReason = "none";
