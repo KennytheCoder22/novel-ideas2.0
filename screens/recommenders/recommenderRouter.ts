@@ -5857,14 +5857,16 @@ const normalizedCandidatesRaw = [
   };
   const weightedSwipeTasteVector = {
     liked: extractWeightedSignals((routingInput as any)?.tagCounts || {}, "liked"),
-    disliked: extractWeightedSignals((routingInput as any)?.dislikedTagCounts || {}, "disliked"),
-    skipped: extractWeightedSignals((routingInput as any)?.leftTagCounts || {}, "skipped"),
+    disliked: extractWeightedSignals(combinedDislikedTagCounts || {}, "disliked"),
+    skipped: extractWeightedSignals((routingInput as any)?.skippedTagCounts || {}, "skipped"),
   };
   const swipeTasteVector = {
     liked: weightedSwipeTasteVector.liked.map((s) => s.signal),
     disliked: weightedSwipeTasteVector.disliked.map((s) => s.signal),
     skipped: weightedSwipeTasteVector.skipped.map((s) => s.signal),
   };
+  const dislikeProfileBuildFailure = (Object.keys((routingInput as any)?.leftTagCounts || {}).length > 0) && weightedSwipeTasteVector.disliked.length === 0;
+  const dislikeProfileBuildFailureReason = dislikeProfileBuildFailure ? "left swipes not promoted" : "none";
   const candidateTasteMatchScoreByTitle: Record<string, number> = {};
   const candidateTastePenaltyByTitle: Record<string, number> = {};
   const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
@@ -6880,6 +6882,8 @@ const normalizedCandidatesRaw = [
     finalScoreComponentsByTitle,
     tasteProfileSummary,
     dislikeProfileBuilt,
+    dislikeProfileBuildFailure,
+    dislikeProfileBuildFailureReason,
     dislikedSignalsPromoted,
     dislikeOnlySession,
     fallbackBlockedByDislikeOnlySession,

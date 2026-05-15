@@ -1171,6 +1171,8 @@ export default function SwipeDeckScreen(props: Props) {
     const history = getRecommendationHistoryBucket(targetDeckKey);
 
     const likedTagCounts: Record<string, number> = {};
+    const dislikedTagCounts: Record<string, number> = {};
+    const leftTagCounts: Record<string, number> = {};
     const skippedTagCounts: Record<string, number> = {};
     for (const entry of swipeHistory) {
       const tags = Array.isArray((entry as any)?.card?.tags) ? (entry as any).card.tags : [];
@@ -1178,6 +1180,10 @@ export default function SwipeDeckScreen(props: Props) {
         const tag = String(rawTag || "").trim().toLowerCase();
         if (!tag) continue;
         if (entry.direction === "like") likedTagCounts[tag] = Number(likedTagCounts[tag] || 0) + 1;
+        if (entry.direction === "dislike") {
+          dislikedTagCounts[tag] = Number(dislikedTagCounts[tag] || 0) + 1;
+          leftTagCounts[tag] = Number(leftTagCounts[tag] || 0) + 1;
+        }
         if (entry.direction === "skip") skippedTagCounts[tag] = Number(skippedTagCounts[tag] || 0) + 1;
       }
     }
@@ -1191,6 +1197,8 @@ export default function SwipeDeckScreen(props: Props) {
       priorRejectedIds: uniqueMemoryValues(baseInput.priorRejectedIds, Array.from(history.rejectedIds)),
       priorRejectedKeys: uniqueMemoryValues(baseInput.priorRejectedKeys, Array.from(history.rejectedKeys)),
       ...(likedTagCounts ? { likedTagCounts } : {}),
+      ...(dislikedTagCounts ? { dislikedTagCounts } : {}),
+      ...(leftTagCounts ? { leftTagCounts } : {}),
       ...(skippedTagCounts ? { skippedTagCounts } : {}),
     };
   }
