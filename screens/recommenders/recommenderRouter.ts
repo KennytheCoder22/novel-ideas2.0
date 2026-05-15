@@ -5907,10 +5907,15 @@ const normalizedCandidatesRaw = [
         pushReason(penaltyReasonsByTitle, title, "recent_repeat_weak_taste");
         return null;
       }
-      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 1.25 : 0) + (themeOverlap ? 0.75 : 0) + (rootMatch ? 0.25 : 0) + ((starterSignal && tasteMatchScore >= 2.5) ? 0.4 : 0) + (audienceFit ? 0.5 : 0) + ((provenanceConfidence && tasteMatchScore >= 3.0) ? 0.35 : 0) + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0);
+      const narrativeWorkSignal = /\b(volume one|volume 1|book one|book 1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|collected edition|collection|saga|chronicles?)\b/i.test(`${title} ${String(doc?.description || "")}`);
+      const genericSuperheroTitlePenalty = /\bsuperhero(es)?\b/i.test(title) && !/\b(spider-man|batman|ms\.?\s*marvel|invincible|runaways|x-men|avengers)\b/i.test(title) ? 2.5 : 0;
+      const genericGraphicNovelPlaceholderPenalty = /\b(graphic novel|science fiction|fantasy)\b/i.test(title) && title.split(/\s+/).length <= 8 ? 2 : 0;
+      const metaReferencePenalty = /\b(feedback|preview|anthology|collection of|history of|reference|guide|companion|educational|study|criticism)\b/i.test(`${title} ${String(doc?.description || "")}`) ? 3 : 0;
+      const historicalAboutPenalty = /\bhistorical graphic novel about\b/i.test(title) ? 3 : 0;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 1.25 : 0) + (narrativeWorkSignal ? 1.25 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 0.75 : 0) + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty;
       if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
       if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
-      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
+      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + (starterSignal ? 2 : 0) + (audienceFit ? 1 : 0) + (rootMatch ? 0.25 : 0) + (laneMatch ? 0.25 : 0) + (provenanceConfidence ? 0.1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty;
       positiveFitScoreByTitle[title] = finalCandidateScore;
       candidateTasteMatchScoreByTitle[title] = tasteMatchScore;
       candidateTastePenaltyByTitle[title] = tastePenaltyScore;
@@ -5919,7 +5924,7 @@ const normalizedCandidatesRaw = [
       candidateWeightedTasteScoreByTitle[title] = tasteMatchScore;
       candidateDislikePenaltyByTitle[title] = dislikePenalty;
       candidateSkipPenaltyByTitle[title] = skipPenalty;
-      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 2 : 0, themeOverlap: themeOverlap ? 1 : 0, rootMatch: rootMatch ? 1 : 0, starterSignal: starterSignal ? 1 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 1 : 0, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.25 : 0, starterSignal: starterSignal ? 2 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 0.1 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
       finalRankingReasonByTitle[title] = [
         ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
         ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
@@ -6316,6 +6321,8 @@ const normalizedCandidatesRaw = [
     if ((isClearlyMalformed || Number(doc?.score ?? 0) <= 0) && !(strongTasteFit && laneAndTasteSignal && !isClearlyMalformed)) {
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
       registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
+    const passesNarrativeConfidenceGate = narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3;
+    if (!passesNarrativeConfidenceGate) { registerFinalEligibilityReject("narrative_confidence_too_low", title); return false; }
     if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
     eligibleWithFitScore.push({ doc, fitScore, recommendableWorkScore, artifactRiskScore, collectedEditionConfidence, narrativeFictionConfidence, metaOrReferenceWorkPenalty });
     finalEligibilityAcceptedTitles.push(title);
@@ -6333,6 +6340,10 @@ const normalizedCandidatesRaw = [
         const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
         const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
         if (!strongTasteFit || nonEnglish) return false;
+        const editionText = `${title} ${String(doc?.description || '')} ${String(doc?.parentVolumeName || '')}`;
+        const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
+        const narrativeFictionConfidence = (/\b(story|novel|saga|chronicle|mystery|thriller|horror|fantasy|adventure)\b/i.test(editionText) ? 2 : 0);
+        if (!(narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3)) return false;
         const titleNorm = normalizeText(title);
         const artifactLike = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/.test(titleNorm) || /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i.test(`${title} ${String(doc?.description || "")}`);
         if (artifactLike) return false;
