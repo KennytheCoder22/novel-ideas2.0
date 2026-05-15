@@ -3126,13 +3126,18 @@ export async function getRecommendations(
   let preFilterPoolOverlapWithPreviousSession = 0;
   let tasteQueriesBlockedByReason = "none";
   let finalRungQueriesSource = "existing_rungs";
-  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0 && !tasteProfileBuildFailure) {
+  let primaryTasteQueryOverrideApplied = false;
+  let primaryTasteQueryOverrideBlockedReason = "not_evaluated";
+  let primaryRungZeroSource = "none";
+  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0) {
     rungs = generatedComicVineQueriesFromTaste.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
     staticDefaultQueriesSuppressedReason = "replaced_with_swipe_taste_queries";
     querySourceOfTruth = "taste_profile";
     tasteQueriesUsedForPrimaryFetch = true;
     finalRungQueriesSource = "taste_profile";
     tasteQueryPoolUsedAsPrimary = true;
+    primaryTasteQueryOverrideApplied = true;
+    primaryTasteQueryOverrideBlockedReason = "none";
     rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
   }
   rungs = rungs.filter((r: any) => {
@@ -3145,10 +3150,17 @@ export async function getRecommendations(
   if (tasteProfileBuildFailure) {
     staticDefaultQueriesSuppressedReason = "taste_profile_build_failure_static_defaults_suppressed";
     rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
-  } else if (generatedComicVineQueriesFromTaste.length === 0) { staticDefaultQueriesSuppressedReason = "no_taste_specific_queries"; tasteQueriesBlockedByReason = "generated_queries_empty"; finalRungQueriesSource = "fallback_static"; } else if (tasteProfileBuildFailure) { tasteQueriesBlockedByReason = "taste_profile_build_failure"; querySourceOfTruth = "error"; finalRungQueriesSource = "error"; }
+  } else if (generatedComicVineQueriesFromTaste.length === 0) { staticDefaultQueriesSuppressedReason = "no_taste_specific_queries"; tasteQueriesBlockedByReason = "generated_queries_empty"; finalRungQueriesSource = "fallback_static"; primaryTasteQueryOverrideBlockedReason = "generated_queries_empty"; }
 
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
   const mainRungQueriesLength = rungQueries.length;
+  const rungZeroQuery = normalizeText(String(rungQueries[0] || ""));
+  const rungZeroIsTasteDerived = generatedComicVineQueriesFromTaste.some((q) => normalizeText(q) === rungZeroQuery);
+  const rungZeroIsStaticFallback = Array.from(staticDefaultQueries).some((q) => normalizeText(q) === rungZeroQuery);
+  primaryRungZeroSource = rungQueries.length === 0 ? "none" : (rungZeroIsTasteDerived ? "taste_profile" : (rungZeroIsStaticFallback ? "fallback_static" : "legacy_or_other"));
+  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0 && (!rungZeroIsTasteDerived || querySourceOfTruth !== "taste_profile")) {
+    throw new Error(`TASTE_QUERY_OVERRIDE_FAILED: generated taste queries exist but primary rung remained non-taste (rung0=${String(rungQueries[0] || "")}, source=${querySourceOfTruth})`);
+  }
   if (sourceEnabled.comicVine && rungQueries.length === 0) {
     throw new Error("COMICVINE_ENABLED_WITHOUT_RUNG_QUERIES: sourceEnabled.comicVine=true but no rung queries were built.");
   }
@@ -6650,6 +6662,9 @@ const normalizedCandidatesRaw = [
     tasteQueriesUsedForPrimaryFetch,
     tasteQueriesBlockedByReason,
     finalRungQueriesSource,
+    primaryTasteQueryOverrideApplied,
+    primaryTasteQueryOverrideBlockedReason,
+    primaryRungZeroSource,
     primaryTasteQueryPoolRoots,
     primaryTasteQueryPoolTitles: primaryTasteQueryPoolTitles.slice(0, 80),
     staticRungPoolRoots,
