@@ -3020,44 +3020,118 @@ export async function getRecommendations(
   });
   rungs = rungs.slice(0, 9);
 
-  const tagEntries = Object.entries((input.tagCounts || routingInput.tagCounts || {}) as Record<string, number>).filter(([, v]) => Number(v || 0) > 0);
+  const toSignalText = (value: any): string => {
+    if (typeof value === "string") return value;
+    if (value && typeof value === "object") {
+      if (typeof value.signal === "string") return value.signal;
+      if (typeof value.tag === "string") return value.tag;
+    }
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    return "";
+  };
+  const combinedLikeSignals: Record<string, number> = {};
+  const appendSignals = (obj: Record<string, any> | undefined, multiplier = 1) => {
+    for (const [rawKey, rawValue] of Object.entries(obj || {})) {
+      const key = toSignalText(rawKey).trim().toLowerCase();
+      const value = Number(rawValue || 0) * multiplier;
+      if (!key || !Number.isFinite(value) || value <= 0) continue;
+      combinedLikeSignals[key] = Number(combinedLikeSignals[key] || 0) + value;
+    }
+  };
+  appendSignals((input as any)?.tagCounts, 1.15);
+  appendSignals((routingInput as any)?.tagCounts, 1);
+  appendSignals((routingInput as any)?.tasteProfile?.runningTagCounts, 1.25);
+  appendSignals((routingInput as any)?.tasteProfile?.tagCounts, 1.05);
+  const ignoredTasteSignalPrefixes = ["audience:teen", "age:mshs", "media:book", "media:tv", "format:series", "series", "facet:indie_genre"];
+  const invalidTasteSignalsDropped: string[] = [];
+  const tagEntries = Object.entries(combinedLikeSignals)
+    .filter(([k, v]) => {
+      if (Number(v || 0) <= 0) return false;
+      if (!k || typeof k !== "string") {
+        invalidTasteSignalsDropped.push(String(k));
+        return false;
+      }
+      return !ignoredTasteSignalPrefixes.some((ignored) => k === ignored || k.startsWith(`${ignored}:`));
+    });
   const tasteText = normalizeText(String((routingInput as any)?.tasteProfile?.summary || ""));
   const inferFromTasteText = (tokens: string[]) => tokens.filter((t) => tasteText.includes(t)).map((t) => `${t.includes("science fiction") ? "genre" : "theme"}:${t}`);
   const inferredGenresFromText = inferFromTasteText(["science fiction", "fantasy", "comedy", "survival", "adventure"]);
   const inferredTonesFromText = inferFromTasteText(["hopeful", "dark", "political", "atmospheric"]);
   const inferredDislikedFromText = inferFromTasteText(["realistic", "coming of age", "drama", "romance", "historical", "warm", "friendship"]);
-  const topSignals = tagEntries.sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k));
+  const normalizedPositiveSignals = tagEntries
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 28)
+    .map(([k]) => String(k));
+  const promoteSignalToTaste = (signal: any): { genre?: string; tone?: string; theme?: string } => {
+    const rawSignal = toSignalText(signal);
+    if (!rawSignal) {
+      invalidTasteSignalsDropped.push(String(signal));
+      return {};
+    }
+    const s = normalizeText(rawSignal);
+    if (/^genre:/.test(s)) return { genre: s };
+    if (/^(tone:|mood:)/.test(s)) return { tone: s };
+    if (/^(theme:|drive:)/.test(s)) return { theme: s };
+    if (/\b(horror|fantasy|science fiction|dystopian|supernatural)\b/.test(s)) return { genre: `genre:${s}` };
+    if (/\b(dark|spooky|fast paced|fast-paced|atmospheric)\b/.test(s)) return { tone: `tone:${s.replace("fast-paced", "fast paced")}` };
+    if (/\b(survival|political|friendship|coming of age|coming-of-age)\b/.test(s)) return { theme: `theme:${s.replace("coming-of-age", "coming of age")}` };
+    return {};
+  };
+  const promotedSignals = normalizedPositiveSignals.map(promoteSignalToTaste);
   const tasteProfileSummary = {
-    likedGenres: [...topSignals.filter((s) => s.startsWith("genre:")).slice(0, 4), ...inferredGenresFromText].slice(0, 6),
-    likedTones: [...topSignals.filter((s) => s.startsWith("tone:") || s.startsWith("mood:")).slice(0, 4), ...inferredTonesFromText].slice(0, 6),
-    likedThemes: topSignals.filter((s) => s.startsWith("theme:") || s.startsWith("drive:")).slice(0, 6),
+    likedGenres: Array.from(new Set([...
+      promotedSignals.map((row) => row.genre).filter(Boolean) as string[],
+      inferredGenresFromText,
+    ])).slice(0, 6),
+    likedTones: Array.from(new Set([...
+      promotedSignals.map((row) => row.tone).filter(Boolean) as string[],
+      inferredTonesFromText,
+    ])).slice(0, 6),
+    likedThemes: Array.from(new Set(promotedSignals.map((row) => row.theme).filter(Boolean) as string[])).slice(0, 6),
     dislikedSignals: [...Object.keys(((routingInput as any)?.dislikedTagCounts || {})).filter((k) => Number(((routingInput as any)?.dislikedTagCounts || {})[k] || 0) > 0).slice(0, 6), ...inferredDislikedFromText].slice(0, 8),
     skippedSignals: Object.keys(((routingInput as any)?.leftTagCounts || {}).length ? ((routingInput as any)?.leftTagCounts || {}) : ((routingInput as any)?.skippedTagCounts || {})).filter((k) => Number((((routingInput as any)?.leftTagCounts || (routingInput as any)?.skippedTagCounts || {})[k] || 0)) > 0).slice(0, 8),
   };
   const swipeSignalCount = tagEntries.reduce((acc, [, v]) => acc + Number(v || 0), 0);
-  const tasteProfileBuildFailure =
+  const hasSwipeSignals =
+    swipeSignalCount > 0 ||
+    Object.keys(((routingInput as any)?.dislikedTagCounts || {})).length > 0 ||
+    Object.keys(((routingInput as any)?.leftTagCounts || {})).length > 0 ||
+    Object.keys(((routingInput as any)?.skippedTagCounts || {})).length > 0;
+  const tasteProfileSummaryEmpty =
     tasteProfileSummary.likedGenres.length === 0 &&
     tasteProfileSummary.likedTones.length === 0 &&
     tasteProfileSummary.likedThemes.length === 0 &&
     tasteProfileSummary.dislikedSignals.length === 0 &&
     tasteProfileSummary.skippedSignals.length === 0;
+  const tasteProfileBuildFailure = hasSwipeSignals && tasteProfileSummaryEmpty;
+  const likedSignalsNotPromoted =
+    hasSwipeSignals &&
+    normalizedPositiveSignals.length > 0 &&
+    tasteProfileSummary.likedGenres.length === 0 &&
+    tasteProfileSummary.likedTones.length === 0 &&
+    tasteProfileSummary.likedThemes.length === 0;
   const tasteProfileBuildFailureReason = tasteProfileBuildFailure
-    ? (swipeSignalCount > 8 ? "swipe_signals_present_but_profile_empty" : "no_swipe_signals_resolved_from_tagcounts_or_taste_profile")
+    ? (likedSignalsNotPromoted ? "liked signals not promoted into taste profile summary" : "swipe_signals_present_but_profile_empty")
     : "none";
-  if (swipeSignalCount > 8 && tasteProfileBuildFailure) {
+  if (hasSwipeSignals && tasteProfileBuildFailure) {
     console.error("Taste profile unexpectedly empty", { swipeSignalCount, tagEntryCount: tagEntries.length });
   }
-  const preDispatchTasteProfileSummary = tasteProfileSummary;
-  const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
   const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
   const generatedComicVineQueriesFromTaste = Array.from(new Set([
-    ...tasteProfileSummary.likedGenres.map((s) => `${s.replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
-    ...tasteProfileSummary.likedTones.map((s) => `${s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ")} graphic novel`),
-    ...tasteProfileSummary.likedThemes.map((s) => `${s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ")} graphic novel`),
-  ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
+    ...tasteProfileSummary.likedGenres.map((s) => `${toSignalText(s).replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
+    ...tasteProfileSummary.likedTones.map((s) => `${toSignalText(s).replace(/^(tone:|mood:)/, "").replace(/_/g, " ")} graphic novel`),
+    ...tasteProfileSummary.likedThemes.map((s) => `${toSignalText(s).replace(/^(theme:|drive:)/, "").replace(/_/g, " ")} graphic novel`),
+  ].map((q) => toSignalText(q).replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
   }))).slice(0, 6);
+  const preDispatchTasteProfileSummary = tasteProfileSummary;
+  const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
+  const tasteProfileRawSignalTypes = {
+    inputTagCountsKeyTypes: Object.keys((input as any)?.tagCounts || {}).slice(0, 20).map((k) => typeof k),
+    routingTagCountsKeyTypes: Object.keys((routingInput as any)?.tagCounts || {}).slice(0, 20).map((k) => typeof k),
+    runningTagCountsKeyTypes: Object.keys((routingInput as any)?.tasteProfile?.runningTagCounts || {}).slice(0, 20).map((k) => typeof k),
+  };
   const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
   let staticDefaultQueriesUsed = false;
   let staticDefaultQueriesSuppressedReason = "none";
@@ -6465,7 +6539,9 @@ const normalizedCandidatesRaw = [
     finalRankingReasonByTitle,
     finalScoreComponentsByTitle,
     tasteProfileSummary,
+    tasteProfileRawSignalTypes,
     generatedComicVineQueriesFromTaste,
+    invalidTasteSignalsDropped,
     staticDefaultQueriesUsed,
     staticDefaultQueriesSuppressedReason,
     tasteProfileBuildFailure,
