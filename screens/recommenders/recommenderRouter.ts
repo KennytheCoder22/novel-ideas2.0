@@ -3036,11 +3036,15 @@ export async function getRecommendations(
     .map(([signal, weight]) => ({ signal: String(signal || ""), weight: Number(weight || 0) }))
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
-  const dislikedWeightedSignals = Object.entries(((routingInput as any)?.dislikedTagCounts || {}) as Record<string, number>)
+  const combinedDislikedTagCounts = {
+    ...(((routingInput as any)?.dislikedTagCounts || {}) as Record<string, number>),
+    ...Object.fromEntries(Object.entries((((routingInput as any)?.leftTagCounts || {}) as Record<string, number>)).map(([k, v]) => [k, Number(v || 0) + Number((((routingInput as any)?.dislikedTagCounts || {}) as any)?.[k] || 0)])),
+  } as Record<string, number>;
+  const dislikedWeightedSignals = Object.entries(combinedDislikedTagCounts)
     .map(([signal, weight]) => ({ signal: String(signal || ""), weight: Number(weight || 0) }))
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
-  const skippedWeightedSignals = Object.entries((((routingInput as any)?.leftTagCounts || (routingInput as any)?.skippedTagCounts || {}) as Record<string, number>))
+  const skippedWeightedSignals = Object.entries((((routingInput as any)?.skippedTagCounts || {}) as Record<string, number>))
     .map(([signal, weight]) => ({ signal: String(signal || ""), weight: Number(weight || 0) }))
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
@@ -3072,6 +3076,11 @@ export async function getRecommendations(
   };
 
   const weightedLikedSignalsPresentButNotPromoted = nonGenericLikedSignals.length > 0 && (tasteProfileSummary.likedGenres.length + tasteProfileSummary.likedTones.length + tasteProfileSummary.likedThemes.length) === 0;
+  const dislikeOnlySession = swipeSignalCount > 0 && likedWeightedSignals.length === 0 && dislikedWeightedSignals.length > 0;
+  const dislikeProfileBuilt = dislikedWeightedSignals.length > 0;
+  const dislikedSignalsPromoted = dislikedWeightedSignals.map((r) => r.signal).slice(0, 20);
+  const retrievalSuppressedByDislikedSignals: string[] = [];
+  let fallbackBlockedByDislikeOnlySession = false;
   const tasteProfileBuildFailure =
     weightedLikedSignalsPresentButNotPromoted || (
       tasteProfileSummary.likedGenres.length === 0 &&
@@ -3104,7 +3113,7 @@ export async function getRecommendations(
     ...(genres.includes("romance") && themes.includes("coming of age") ? ["romance coming of age graphic novel"] : []),
     ...(genres.includes("fantasy") && themes.includes("mythology") ? ["fantasy mythology graphic novel"] : []),
   ];
-  const generatedComicVineQueriesFromTaste = Array.from(new Set([
+  let generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...combinedQueries,
     ...genres.map((v) => `${v} graphic novel`),
     ...tones.map((v) => `${v} graphic novel`),
@@ -3113,6 +3122,15 @@ export async function getRecommendations(
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
   }))).slice(0, 10);
+  if (dislikeOnlySession && generatedComicVineQueriesFromTaste.length === 0) {
+    generatedComicVineQueriesFromTaste = [
+      "grounded character driven comic series",
+      "literary suspense comic collected edition",
+      "non-fantasy contemporary comic collected edition",
+      "realistic mystery comic series",
+      "slice of life comic collected edition",
+    ];
+  }
   const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
   let staticDefaultQueriesUsed = false;
   let staticDefaultQueriesSuppressedReason = "none";
@@ -3142,6 +3160,10 @@ export async function getRecommendations(
   }
   rungs = rungs.filter((r: any) => {
     const q = normalizeText(String(r?.query || ""));
+    if (Array.from(dislikedSet).some((d) => d && q.includes(d))) {
+      retrievalSuppressedByDislikedSignals.push(String(r?.query || ""));
+      return false;
+    }
     const usedStatic = Array.from(staticDefaultQueries).some((seed) => q.includes(normalizeText(seed)));
     if (usedStatic) staticDefaultQueriesUsed = true;
     if (generatedComicVineQueriesFromTaste.length > 0 && usedStatic) return false;
@@ -3150,7 +3172,16 @@ export async function getRecommendations(
   if (tasteProfileBuildFailure) {
     staticDefaultQueriesSuppressedReason = "taste_profile_build_failure_static_defaults_suppressed";
     rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
-  } else if (generatedComicVineQueriesFromTaste.length === 0) { staticDefaultQueriesSuppressedReason = "no_taste_specific_queries"; tasteQueriesBlockedByReason = "generated_queries_empty"; finalRungQueriesSource = "fallback_static"; primaryTasteQueryOverrideBlockedReason = "generated_queries_empty"; }
+  } else if (generatedComicVineQueriesFromTaste.length === 0) {
+    staticDefaultQueriesSuppressedReason = "no_taste_specific_queries";
+    tasteQueriesBlockedByReason = "generated_queries_empty";
+    finalRungQueriesSource = dislikeOnlySession ? "dislike_only_exploration" : "fallback_static";
+    primaryTasteQueryOverrideBlockedReason = "generated_queries_empty";
+    if (dislikeOnlySession) {
+      fallbackBlockedByDislikeOnlySession = true;
+      rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
+    }
+  }
 
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
   const mainRungQueriesLength = rungQueries.length;
@@ -6848,6 +6879,11 @@ const normalizedCandidatesRaw = [
     finalRankingReasonByTitle,
     finalScoreComponentsByTitle,
     tasteProfileSummary,
+    dislikeProfileBuilt,
+    dislikedSignalsPromoted,
+    dislikeOnlySession,
+    fallbackBlockedByDislikeOnlySession,
+    retrievalSuppressedByDislikedSignals,
     generatedComicVineQueriesFromTaste,
     querySourceOfTruth,
     tasteQueriesUsedForPrimaryFetch,
