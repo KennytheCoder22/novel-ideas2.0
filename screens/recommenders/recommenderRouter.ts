@@ -3157,6 +3157,7 @@ export async function getRecommendations(
   const rungZeroQuery = normalizeText(String(rungQueries[0] || ""));
   const rungZeroIsTasteDerived = generatedComicVineQueriesFromTaste.some((q) => normalizeText(q) === rungZeroQuery);
   const rungZeroIsStaticFallback = Array.from(staticDefaultQueries).some((q) => normalizeText(q) === rungZeroQuery);
+  const tasteDerivedQuerySet = new Set(generatedComicVineQueriesFromTaste.map((q) => normalizeText(q)));
   primaryRungZeroSource = rungQueries.length === 0 ? "none" : (rungZeroIsTasteDerived ? "taste_profile" : (rungZeroIsStaticFallback ? "fallback_static" : "legacy_or_other"));
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0 && (!rungZeroIsTasteDerived || querySourceOfTruth !== "taste_profile")) {
     throw new Error(`TASTE_QUERY_OVERRIDE_FAILED: generated taste queries exist but primary rung remained non-taste (rung0=${String(rungQueries[0] || "")}, source=${querySourceOfTruth})`);
@@ -3272,6 +3273,8 @@ export async function getRecommendations(
               secondary: null,
             },
           ],
+          tastePrimaryQueries: querySourceOfTruth === "taste_profile" ? rungQueries : [],
+          forceTastePrimaryForComicVine: querySourceOfTruth === "taste_profile",
         },
       };
 
@@ -3338,6 +3341,17 @@ export async function getRecommendations(
           if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
           for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
+          if (querySourceOfTruth === "taste_profile") {
+            const leakedStaticQuery = (value?.comicVineQueriesActuallyFetched || []).map((q:any)=>String(q || "").trim()).find((q:string) => {
+              const nq = normalizeText(q);
+              const isTaste = tasteDerivedQuerySet.has(nq);
+              const isStatic = Array.from(staticDefaultQueries).some((seed) => normalizeText(seed) === nq);
+              return !isTaste && isStatic;
+            });
+            if (leakedStaticQuery) {
+              throw new Error(`TASTE_QUERY_STATIC_LEAKAGE: source=taste_profile but static query fetched (${leakedStaticQuery})`);
+            }
+          }
           if (Array.isArray(value?.comicVineFetchResults) && value.comicVineFetchResults.length) {
             for (const row of value.comicVineFetchResults) {
               comicVineFetchResults.push({

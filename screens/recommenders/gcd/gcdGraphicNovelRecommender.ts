@@ -1004,6 +1004,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ...facetQueries,
     ...sessionFitQueries,
   ].map((q)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)));
+  const tastePrimaryQueries = Array.isArray((input as any)?.bucketPlan?.tastePrimaryQueries)
+    ? (input as any).bucketPlan.tastePrimaryQueries.map((q:any)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)
+    : [];
+  const forceTastePrimaryForComicVine = Boolean((input as any)?.bucketPlan?.forceTastePrimaryForComicVine);
   const superheroEntityRe = /^(ms\.?\s*marvel|batman|spider-man|miles morales|teen titans|young justice|guardians of the galaxy|invincible)(\b| )/i;
   const suppressedSuperheroSeedCount = suppressionSignals.superheroSuppressionActive
     ? allQueries.filter((q) => superheroEntityRe.test(normalizeText(q))).length
@@ -1045,10 +1049,12 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
       : true
   );
   // Build a broad pool first (session-fit + anchors + facets) instead of over-optimizing one lane.
-  const queriesToTry = interleaveQueries(
-    [prioritizedEntitySeeds, sessionFitQueries, baseAnchors, otherQueries, formatFollowups, secondaryFormatFollowups, genericQueries],
-    Math.max(40, MAX_COMICVINE_ANCHORS * 5)
-  );
+  const queriesToTry = forceTastePrimaryForComicVine && tastePrimaryQueries.length > 0
+    ? Array.from(new Set(tastePrimaryQueries.map((q) => stripDanglingQuotes(String(q || "").trim())).filter(Boolean)))
+    : interleaveQueries(
+        [prioritizedEntitySeeds, sessionFitQueries, baseAnchors, otherQueries, formatFollowups, secondaryFormatFollowups, genericQueries],
+        Math.max(40, MAX_COMICVINE_ANCHORS * 5)
+      );
   const finalizedQueriesToTry =
     suppressionSignals.superheroSuppressionActive && !strongSuperheroEvidence
       ? queriesToTry.filter((q) => !blockedSuperheroQueriesRe.test(normalizeText(q)))
