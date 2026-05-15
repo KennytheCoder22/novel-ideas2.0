@@ -3048,7 +3048,7 @@ export async function getRecommendations(
     console.error("Taste profile unexpectedly empty", { swipeSignalCount, tagEntryCount: tagEntries.length });
   }
   const preDispatchTasteProfileSummary = tasteProfileSummary;
-  const preDispatchGeneratedQueries = generatedComicVineQueriesFromTaste;
+  const preDispatchGeneratedQueries: string[] = [];
   const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
   const generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...tasteProfileSummary.likedGenres.map((s) => `${s.replace(/^genre:/, "").replace(/_/g, " ")} graphic novel`),
@@ -3061,21 +3061,28 @@ export async function getRecommendations(
   const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
   let staticDefaultQueriesUsed = false;
   let staticDefaultQueriesSuppressedReason = "none";
-  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length >= 3 && !tasteProfileBuildFailure) {
+  let querySourceOfTruth: "taste_profile" | "fallback_static" | "expansion_static" | "error" = "fallback_static";
+  let tasteQueriesUsedForPrimaryFetch = false;
+  let tasteQueriesBlockedByReason = "none";
+  let finalRungQueriesSource = "existing_rungs";
+  if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0 && !tasteProfileBuildFailure) {
     rungs = generatedComicVineQueriesFromTaste.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
     staticDefaultQueriesSuppressedReason = "replaced_with_swipe_taste_queries";
+    querySourceOfTruth = "taste_profile";
+    tasteQueriesUsedForPrimaryFetch = true;
+    finalRungQueriesSource = "taste_profile";
   }
   rungs = rungs.filter((r: any) => {
     const q = normalizeText(String(r?.query || ""));
     const usedStatic = Array.from(staticDefaultQueries).some((seed) => q.includes(normalizeText(seed)));
     if (usedStatic) staticDefaultQueriesUsed = true;
-    if (generatedComicVineQueriesFromTaste.length >= 3 && usedStatic) return false;
+    if (generatedComicVineQueriesFromTaste.length > 0 && usedStatic) return false;
     return true;
   });
   if (tasteProfileBuildFailure) {
     staticDefaultQueriesSuppressedReason = "taste_profile_build_failure_static_defaults_suppressed";
     rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
-  } else if (generatedComicVineQueriesFromTaste.length < 3) staticDefaultQueriesSuppressedReason = "insufficient_taste_specific_queries";
+  } else if (generatedComicVineQueriesFromTaste.length === 0) { staticDefaultQueriesSuppressedReason = "no_taste_specific_queries"; tasteQueriesBlockedByReason = "generated_queries_empty"; finalRungQueriesSource = "fallback_static"; } else if (tasteProfileBuildFailure) { tasteQueriesBlockedByReason = "taste_profile_build_failure"; querySourceOfTruth = "error"; finalRungQueriesSource = "error"; }
 
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
   const mainRungQueriesLength = rungQueries.length;
@@ -5431,9 +5438,12 @@ const normalizedCandidatesRaw = [
   }
   if (includeComicVine && !expansionFetchAttempted && candidateDocs.length < 30) {
     cleanCandidateShortfallExpansionTriggered = true;
-    const preScoringExpansionSeeds = Array.from(new Set([
+    const tasteExpansionSeeds = generatedComicVineQueriesFromTaste.length > 0
+      ? generatedComicVineQueriesFromTaste.map((q) => q.replace(/\s*graphic novel\s*$/i, "").trim()).filter(Boolean)
+      : [];
+    const preScoringExpansionSeeds = Array.from(new Set((tasteExpansionSeeds.length > 0 ? tasteExpansionSeeds : [
       "Locke & Key", "Sweet Tooth", "Spider-Man", "Descender", "Runaways", "Black Science", "Saga", "The Sandman", "Invincible",
-    ].map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
+    ]).map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
       const root = rootFromSeed(q);
       if (!root || blockedExpansionQueryFragments.test(q)) return false;
       if (selectedStarterRoots.has(root)) return false;
@@ -5441,6 +5451,7 @@ const normalizedCandidatesRaw = [
     }).slice(0, 8);
     if (preScoringExpansionSeeds.length > 0) {
       expansionFetchAttempted = true;
+      if (tasteExpansionSeeds.length === 0 && querySourceOfTruth !== "taste_profile") querySourceOfTruth = "expansion_static";
       expansionFetchResultsByQuery = [];
       const preScoringExpansionDocs = await runExpansionQueries(preScoringExpansionSeeds);
       const taggedExpansionDocs = preScoringExpansionDocs.map((doc: any) => ({
@@ -6178,10 +6189,11 @@ const normalizedCandidatesRaw = [
   if (includeComicVine && returnedItemsLength < 8) {
     cleanCandidateShortfallExpansionTriggered = true;
     if (!expansionFetchAttempted) {
+      const terminalTasteExpansionSeeds = generatedComicVineQueriesFromTaste.map((q) => q.replace(/\s*graphic novel\s*$/i, "").trim()).filter(Boolean);
       const expansionSeedQueries = Array.from(new Set([
+        ...terminalTasteExpansionSeeds,
         ...profileSelectedEntitySeeds,
         ...adjacentSeedExpansionCandidates,
-        "Spider-Man", "Miles Morales", "Runaways", "Descender", "Sweet Tooth", "Saga", "The Sandman", "Black Science", "Invincible", "Locke & Key", "Walking Dead", "Ms. Marvel",
         ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries : []),
         ...(Array.isArray(rungs) ? rungs.map((r: any) => r?.query) : []),
       ].map((v) => String(v || "").trim()).filter(Boolean))).filter((q) => {
@@ -6466,6 +6478,10 @@ const normalizedCandidatesRaw = [
     finalScoreComponentsByTitle,
     tasteProfileSummary,
     generatedComicVineQueriesFromTaste,
+    querySourceOfTruth,
+    tasteQueriesUsedForPrimaryFetch,
+    tasteQueriesBlockedByReason,
+    finalRungQueriesSource,
     staticDefaultQueriesUsed,
     staticDefaultQueriesSuppressedReason,
     tasteProfileBuildFailure,
