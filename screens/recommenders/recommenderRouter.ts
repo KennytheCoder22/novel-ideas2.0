@@ -6256,6 +6256,10 @@ const normalizedCandidatesRaw = [
   }
   const finalEligibilityRejectedTitlesByReason: Record<string, string[]> = {};
   const finalEligibilityAcceptedTitles: string[] = [];
+  let finalEligibilityRelaxationTriggered = false;
+  const finalEligibilityRelaxedAcceptedTitles: string[] = [];
+  const finalEligibilityRelaxedReasonByTitle: Record<string, string> = {};
+  const rejectedDespiteStrongTasteFitTitles: string[] = [];
   const registerFinalEligibilityReject = (reason: string, title: string) => {
     if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
     if (title && finalEligibilityRejectedTitlesByReason[reason].length < 40) finalEligibilityRejectedTitlesByReason[reason].push(title);
@@ -6285,13 +6289,45 @@ const normalizedCandidatesRaw = [
     const themeSignal = profileSelectedEntitySeeds.some((seed) => normalizeText(`${title} ${String(doc?.description || "")}`).includes(normalizeText(seed)));
     const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
     if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
-    if (Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0) { registerFinalEligibilityReject("structural_fragment", title); return false; }
-    if (Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0) { registerFinalEligibilityReject("locale_variant", title); return false; }
-    if (/^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title) || Number(doc?.score ?? 0) <= 0) { registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
+    const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+    const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+    const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
+    const isClearlyMalformed = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title);
+    const structuralFragment = Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0;
+    const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
+    const laneAndTasteSignal = laneSignal && weightedTasteScore > 0;
+    if (structuralFragment && !strongTasteFit) { registerFinalEligibilityReject("structural_fragment", title); return false; }
+    if (nonEnglish) { if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title); registerFinalEligibilityReject("locale_variant", title); return false; }
+    if ((isClearlyMalformed || Number(doc?.score ?? 0) <= 0) && !(strongTasteFit && laneAndTasteSignal && !isClearlyMalformed)) {
+      if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
+      registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
     eligibleWithFitScore.push({ doc, fitScore });
     finalEligibilityAcceptedTitles.push(title);
     return true;
   });
+  if (eligibleWithFitScore.length < 8 && viableCandidateCountBeforeFinalSelection >= 15) {
+    finalEligibilityRelaxationTriggered = true;
+    const alreadyAccepted = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
+    const relaxedAdds = viableCandidates
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title || alreadyAccepted.has(normalizeText(title))) return false;
+        const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+        const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+        const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
+        const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
+        if (!strongTasteFit || nonEnglish) return false;
+        return true;
+      })
+      .slice(0, 12);
+    for (const doc of relaxedAdds) {
+      const title = String(doc?.title || "").trim();
+      eligibleWithFitScore.push({ doc, fitScore: 1 });
+      finalEligibilityAcceptedTitles.push(title);
+      finalEligibilityRelaxedAcceptedTitles.push(title);
+      finalEligibilityRelaxedReasonByTitle[title] = "strong_taste_fit_underfilled_output";
+    }
+  }
   finalRenderDocs = eligibleWithFitScore
     .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
     .map((row) => row.doc);
@@ -6649,6 +6685,10 @@ const normalizedCandidatesRaw = [
     finalEligibilityCleanCandidateCount,
     finalEligibilityAcceptedTitles,
     finalEligibilityRejectedTitlesByReason,
+    finalEligibilityRelaxationTriggered,
+    finalEligibilityRelaxedAcceptedTitles,
+    finalEligibilityRelaxedReasonByTitle,
+    rejectedDespiteStrongTasteFitTitles,
     finalRootDiversityCount,
     finalRootDuplicateCounts,
     finalRootSecondEntryReasons,
