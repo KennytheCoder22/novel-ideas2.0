@@ -6266,7 +6266,7 @@ const normalizedCandidatesRaw = [
   };
   const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
   const finalEligibilityGateApplied = true;
-  const eligibleWithFitScore: Array<{ doc: any; fitScore: number }> = [];
+  const eligibleWithFitScore: Array<{ doc: any; fitScore: number; recommendableWorkScore: number; artifactRiskScore: number; collectedEditionConfidence: number; narrativeFictionConfidence: number; metaOrReferenceWorkPenalty: number }> = [];
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
@@ -6296,12 +6296,28 @@ const normalizedCandidatesRaw = [
     const structuralFragment = Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0;
     const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
     const laneAndTasteSignal = laneSignal && weightedTasteScore > 0;
+    const recommendableEditionRe = /\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i;
+    const issueOnlyRe = /(#\s*\d+\b|\bissue\s*#?\s*\d+\b)/i;
+    const genericArtifactRe = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/i;
+    const metaRefRe = /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i;
+    const narrativeSignalRe = /\b(story|novel|saga|chronicle|mystery|thriller|horror|fantasy|adventure)\b/i;
+    const editionText = `${title} ${String(doc?.description || '')} ${String(doc?.parentVolumeName || '')}`;
+    const collectedEditionConfidence = (recommendableEditionRe.test(editionText) ? 3 : 0) + (hasParent ? 1 : 0) - (issueOnlyRe.test(title) ? 2 : 0);
+    const narrativeFictionConfidence = (narrativeSignalRe.test(editionText) ? 2 : 0) + (laneSignal ? 1 : 0) + (themeSignal ? 1 : 0);
+    const metaOrReferenceWorkPenalty = (metaRefRe.test(editionText) ? 4 : 0) + (genericArtifactRe.test(normalizeText(title)) ? 3 : 0);
+    const artifactRiskScore = (issueOnlyRe.test(title) ? 3 : 0) + (isClearlyMalformed ? 4 : 0) + metaOrReferenceWorkPenalty + (structuralFragment ? 2 : 0);
+    const recommendableWorkScore = collectedEditionConfidence + narrativeFictionConfidence - artifactRiskScore;
     if (structuralFragment && !strongTasteFit) { registerFinalEligibilityReject("structural_fragment", title); return false; }
+    if (artifactRiskScore >= 6 && !/\b(nonfiction|memoir|essay|history)\b/i.test(String((input as any)?.deckKey || ""))) {
+      if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
+      registerFinalEligibilityReject("high_artifact_risk", title); return false;
+    }
     if (nonEnglish) { if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title); registerFinalEligibilityReject("locale_variant", title); return false; }
     if ((isClearlyMalformed || Number(doc?.score ?? 0) <= 0) && !(strongTasteFit && laneAndTasteSignal && !isClearlyMalformed)) {
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
       registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
-    eligibleWithFitScore.push({ doc, fitScore });
+    if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
+    eligibleWithFitScore.push({ doc, fitScore, recommendableWorkScore, artifactRiskScore, collectedEditionConfidence, narrativeFictionConfidence, metaOrReferenceWorkPenalty });
     finalEligibilityAcceptedTitles.push(title);
     return true;
   });
@@ -6317,12 +6333,15 @@ const normalizedCandidatesRaw = [
         const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
         const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
         if (!strongTasteFit || nonEnglish) return false;
+        const titleNorm = normalizeText(title);
+        const artifactLike = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/.test(titleNorm) || /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i.test(`${title} ${String(doc?.description || "")}`);
+        if (artifactLike) return false;
         return true;
       })
       .slice(0, 12);
     for (const doc of relaxedAdds) {
       const title = String(doc?.title || "").trim();
-      eligibleWithFitScore.push({ doc, fitScore: 1 });
+      eligibleWithFitScore.push({ doc, fitScore: 1, recommendableWorkScore: 1, artifactRiskScore: 0, collectedEditionConfidence: 0, narrativeFictionConfidence: 1, metaOrReferenceWorkPenalty: 0 });
       finalEligibilityAcceptedTitles.push(title);
       finalEligibilityRelaxedAcceptedTitles.push(title);
       finalEligibilityRelaxedReasonByTitle[title] = "strong_taste_fit_underfilled_output";
