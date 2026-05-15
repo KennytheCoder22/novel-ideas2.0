@@ -3572,6 +3572,14 @@ export async function getRecommendations(
   const expansionDroppedByQueryReason: Record<string, Record<string, number>> = {};
   const expansionMergedTitlesByQuery: Record<string, string[]> = {};
   let expansionDistinctRootsBeforeSelection: string[] = [];
+  let narrativeExpansionTriggered = false;
+  let narrativeExpansionReason = "not_needed";
+  let narrativeExpansionQueries: string[] = [];
+  let narrativeExpansionRawCount = 0;
+  let narrativeExpansionConvertedCount = 0;
+  let narrativeExpansionViableCount = 0;
+  let narrativeExpansionAcceptedTitles: string[] = [];
+  let finalUnderfillAfterNarrativeExpansion = false;
   const runExpansionQueries = async (queries: string[]): Promise<any[]> => {
     const allDocs: any[] = [];
     for (let idx = 0; idx < queries.length; idx += 1) {
@@ -5983,6 +5991,45 @@ const normalizedCandidatesRaw = [
   const swipeRankedCandidateList = [...finalRenderDocs];
   const viableCandidateCountBeforeFinalSelection = finalRenderDocs.length;
   const viableCandidateRootsBeforeFinalSelection = Array.from(new Set(finalRenderDocs.map((d: any) => parentFranchiseRootForDoc(d)).filter(Boolean)));
+  if (includeComicVine && (viableCandidateCountBeforeFinalSelection < 12 || expansionCleanEligibleCount < 8)) {
+    narrativeExpansionTriggered = true;
+    narrativeExpansionReason = viableCandidateCountBeforeFinalSelection < 12 ? "viable_candidates_below_threshold" : "clean_candidates_below_threshold";
+    const narrativeSeedQueries = Array.from(new Set([
+      "fantasy adventure comic series",
+      "ya fantasy comic collected edition",
+      "teen horror comic collected edition",
+      "dystopian survival comic series",
+      "superhero mystery comic collected edition",
+      "science fiction adventure comic series",
+      ...generatedComicVineQueriesFromTaste.map((q) => `${q.replace(/\s*graphic novel\s*$/i, "").trim()} comic series`),
+      ...generatedComicVineQueriesFromTaste.map((q) => `${q.replace(/\s*graphic novel\s*$/i, "").trim()} collected edition`),
+    ].map((q) => q.replace(/\s+/g, " ").trim()).filter(Boolean))).slice(0, 10);
+    narrativeExpansionQueries = narrativeSeedQueries;
+    try {
+      const narrativeDocs = await runExpansionQueries(narrativeSeedQueries);
+      narrativeExpansionRawCount = expansionFetchResultsByQuery.reduce((acc, row) => acc + Number(row.rawCount || 0), 0);
+      narrativeExpansionConvertedCount = narrativeDocs.length;
+      const acceptedNarrativeDocs = narrativeDocs.filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+        const weightedTaste = weightedSwipeTasteVector.liked.reduce((acc, row) => acc + (text.includes(normalizeText(row.signal)) ? Number(row.weight || 0) : 0), 0);
+        const narrativeLike = /\b(volume|book|tpb|omnibus|collection|collected edition|graphic novel|saga|chronicle|adventure|mystery|thriller|horror|fantasy|science fiction)\b/i.test(`${title} ${String(doc?.description || "")}`);
+        const artifactLike = /\b(feedback|preview|guide|reference|history of|encyclopedia|study|criticism|anthology|collection of)\b/i.test(`${title} ${String(doc?.description || "")}`);
+        const viable = weightedTaste >= 2.5 && narrativeLike && !artifactLike;
+        if (viable) {
+          const score = weightedTaste + (narrativeLike ? 2 : 0) + (/\b(volume one|volume 1|book one|book 1|tpb|collected edition|omnibus)\b/i.test(title) ? 1.5 : 0);
+          positiveFitScoreByTitle[title] = Math.max(Number(positiveFitScoreByTitle[title] || 0), score);
+          candidateWeightedTasteScoreByTitle[title] = Math.max(Number(candidateWeightedTasteScoreByTitle[title] || 0), weightedTaste);
+          narrativeExpansionAcceptedTitles.push(title);
+        }
+        return viable;
+      });
+      narrativeExpansionViableCount = acceptedNarrativeDocs.length;
+      finalRenderDocs = dedupeDocs([...finalRenderDocs, ...acceptedNarrativeDocs]).slice(0, 60);
+    } catch (e: any) {
+      narrativeExpansionReason = `fetch_error:${String(e?.message || e)}`;
+    }
+  }
   const scoredCandidateUniverseCount = scoringUniverse.length;
   const expansionTitleSetForScoring = new Set(expansionSelectedTitles.map((t) => normalizeText(String(t || ""))));
   const preferredExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman"]);
@@ -6401,6 +6448,7 @@ const normalizedCandidatesRaw = [
   }
   const finalRootDiversityCount = Object.keys(finalRootDuplicateCounts).length;
   const finalEligibilityCleanCandidateCount = finalRenderDocs.length;
+  finalUnderfillAfterNarrativeExpansion = narrativeExpansionTriggered && finalEligibilityCleanCandidateCount < 6;
   teenPostPassInputDocs = [...finalRenderDocs];
   teenPostPassInputSource = "scoredRebuild";
   finalAcceptedDocsSource = "scoredRebuild";
@@ -6710,6 +6758,14 @@ const normalizedCandidatesRaw = [
     expansionFalsePositiveRejectedTitles,
     expansionLocaleRejectedTitles,
     expansionWeakFillerRejectedTitles,
+    narrativeExpansionTriggered,
+    narrativeExpansionReason,
+    narrativeExpansionQueries,
+    narrativeExpansionRawCount,
+    narrativeExpansionConvertedCount,
+    narrativeExpansionViableCount,
+    narrativeExpansionAcceptedTitles,
+    finalUnderfillAfterNarrativeExpansion,
     sameParentSoftDuplicateRejectedTitles,
     finalEligibilityGateApplied,
     finalEligibilityCleanCandidateCount,
