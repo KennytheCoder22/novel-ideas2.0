@@ -55,6 +55,9 @@ const RECENT_FRESH_HISTORY_LIMIT = 6;
 const recentFreshReturnedTitles: string[][] = [];
 const recentFreshReturnedRoots: string[][] = [];
 const recentFreshTasteSignatures: string[] = [];
+let previousPrimaryTasteQueryPoolTitles: string[] = [];
+let previousPrimaryTasteQueryPoolRoots: string[] = [];
+let previousStaticRungPoolRoots: string[] = [];
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -3123,6 +3126,8 @@ export async function getRecommendations(
     querySourceOfTruth = "taste_profile";
     tasteQueriesUsedForPrimaryFetch = true;
     finalRungQueriesSource = "taste_profile";
+    tasteQueryPoolUsedAsPrimary = true;
+    rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
   }
   rungs = rungs.filter((r: any) => {
     const q = normalizeText(String(r?.query || ""));
@@ -3463,6 +3468,27 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
+  const normalizeTitleForPool = (doc: any) => normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+  primaryTasteQueryPoolTitles = mergedDocs
+    .filter((d: any) => String(d?.laneKind || "").includes("swipe-taste") || generatedComicVineQueriesFromTaste.some((q) => normalizeText(String(d?.queryText || "")).includes(normalizeText(q))))
+    .map((d: any) => normalizeTitleForPool(d))
+    .filter(Boolean);
+  primaryTasteQueryPoolRoots = Array.from(new Set(mergedDocs
+    .filter((d: any) => String(d?.laneKind || "").includes("swipe-taste") || generatedComicVineQueriesFromTaste.some((q) => normalizeText(String(d?.queryText || "")).includes(normalizeText(q))))
+    .map((d: any) => parentFranchiseRootForDoc(d))
+    .filter(Boolean)));
+  staticRungPoolRoots = Array.from(new Set(mergedDocs
+    .filter((d: any) => Array.from(staticDefaultQueries).some((seed) => normalizeText(String(d?.queryText || "")).includes(normalizeText(seed))))
+    .map((d: any) => parentFranchiseRootForDoc(d))
+    .filter(Boolean)));
+  preFilterPoolBuiltFrom = tasteQueryPoolUsedAsPrimary ? "taste_profile" : "legacy_or_fallback";
+  const currentPoolTitleSet = new Set(primaryTasteQueryPoolTitles);
+  const prevPoolTitleSet = new Set(previousPrimaryTasteQueryPoolTitles);
+  const overlap = Array.from(currentPoolTitleSet).filter((t) => prevPoolTitleSet.has(t)).length;
+  preFilterPoolOverlapWithPreviousSession = overlap;
+  previousPrimaryTasteQueryPoolTitles = Array.from(currentPoolTitleSet).slice(0, 200);
+  previousPrimaryTasteQueryPoolRoots = Array.from(new Set(primaryTasteQueryPoolRoots)).slice(0, 100);
+  previousStaticRungPoolRoots = Array.from(new Set(staticRungPoolRoots)).slice(0, 100);
   const comicVineFetchAttemptedFlag = includeComicVine && mainRungQueriesLength > 0;
   const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && comicVineFetchAttemptedFlag);
   const proxyHealthError = comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
@@ -5776,6 +5802,11 @@ const normalizedCandidatesRaw = [
   let repeatedRootSuppressed = 0;
   let crossSessionDiversityApplied = false;
   let crossSessionDiversityBypassedReason = "not_fresh_session";
+  const diversityMemoryHitTitles: string[] = [];
+  const diversityMemoryHitRoots: string[] = [];
+  let diversityPenaltyStage = "pre-collapse_scoring";
+  let diversitySuppressionStage = "post-score_pre-final-collapse";
+  let repeatPenaltyCandidateCount = 0;
   const isFreshUserSession = !Array.isArray((input as any)?.priorRecommendedIds) || (input as any).priorRecommendedIds.length === 0;
   const tasteSignature = normalizeText(JSON.stringify({
     genres: tasteProfileSummary.likedGenres,
@@ -5830,6 +5861,21 @@ const normalizedCandidatesRaw = [
       const seenRecentRoot = recentFreshReturnedRoots.some((bucket) => bucket.includes(docRoot));
       const titleRepeatPenalty = isFreshUserSession && seenRecentTitle ? 16 : 0;
       const rootRepeatPenalty = isFreshUserSession && seenRecentRoot ? 6 : 0;
+      if (titleRepeatPenalty) {
+        recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
+        diversityMemoryHitTitles.push(title);
+      }
+      if (rootRepeatPenalty) {
+        recentReturnedRootPenaltyApplied += rootRepeatPenalty;
+        diversityMemoryHitRoots.push(docRoot || "(none)");
+      }
+      if (titleRepeatPenalty || rootRepeatPenalty) repeatPenaltyCandidateCount += 1;
+      if (isFreshUserSession && (titleRepeatPenalty > 0 || rootRepeatPenalty > 0) && tasteMatchScore < 2.25) {
+        finalSelectionRejectedByReason.recent_repeat_weak_taste = Number(finalSelectionRejectedByReason.recent_repeat_weak_taste || 0) + 1;
+        pushReason(penaltyReasonsByTitle, title, "recent_repeat_weak_taste");
+        return null;
+      }
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 1.25 : 0) + (themeOverlap ? 0.75 : 0) + (rootMatch ? 0.25 : 0) + ((starterSignal && tasteMatchScore >= 2.5) ? 0.4 : 0) + (audienceFit ? 0.5 : 0) + ((provenanceConfidence && tasteMatchScore >= 3.0) ? 0.35 : 0) + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0);
       if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
       if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
       const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
@@ -6336,6 +6382,7 @@ const normalizedCandidatesRaw = [
     }
   }
   const returnedItemsTitles = finalItemsTitles;
+  const diversityMemorySessionSize = recentFreshReturnedTitles.length;
   if (isFreshUserSession) {
     const normalizedReturnedTitles = returnedItemsTitles.map((t) => normalizeText(t)).filter(Boolean);
     const returnedRoots = Array.from(new Set(finalRenderDocs.map((doc: any) => parentFranchiseRootForDoc(doc)).filter(Boolean)));
@@ -6597,12 +6644,24 @@ const normalizedCandidatesRaw = [
     tasteQueriesUsedForPrimaryFetch,
     tasteQueriesBlockedByReason,
     finalRungQueriesSource,
+    primaryTasteQueryPoolRoots,
+    primaryTasteQueryPoolTitles: primaryTasteQueryPoolTitles.slice(0, 80),
+    staticRungPoolRoots,
+    tasteQueryPoolUsedAsPrimary,
+    preFilterPoolOverlapWithPreviousSession,
+    preFilterPoolBuiltFrom,
     recentReturnedTitlePenaltyApplied,
     recentReturnedRootPenaltyApplied,
     repeatedTitleSuppressed,
     repeatedRootSuppressed,
     crossSessionDiversityApplied,
     crossSessionDiversityBypassedReason,
+    diversityMemoryHitTitles: Array.from(new Set(diversityMemoryHitTitles.map((t) => String(t || "").trim()).filter(Boolean))).slice(0, 25),
+    diversityMemoryHitRoots: Array.from(new Set(diversityMemoryHitRoots.map((r) => String(r || "").trim()).filter(Boolean))).slice(0, 25),
+    diversityPenaltyStage,
+    diversitySuppressionStage,
+    diversityMemorySessionSize,
+    repeatPenaltyCandidateCount,
     staticDefaultQueriesUsed,
     staticDefaultQueriesSuppressedReason,
     tasteProfileBuildFailure,
