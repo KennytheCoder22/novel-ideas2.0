@@ -215,6 +215,12 @@ export type RecommendationResult = {
   tasteQueriesUsedForPrimaryFetch?: boolean;
   tasteQueriesBlockedByReason?: string;
   finalRungQueriesSource?: string;
+  primaryTasteQueryPoolRoots?: string[];
+  primaryTasteQueryPoolTitles?: string[];
+  staticRungPoolRoots?: string[];
+  tasteQueryPoolUsedAsPrimary?: boolean;
+  preFilterPoolOverlapWithPreviousSession?: number;
+  preFilterPoolBuiltFrom?: string;
   recentReturnedTitlePenaltyApplied?: number;
   recentReturnedRootPenaltyApplied?: number;
   repeatedTitleSuppressed?: number;

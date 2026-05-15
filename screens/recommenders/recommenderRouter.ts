@@ -55,6 +55,9 @@ const RECENT_FRESH_HISTORY_LIMIT = 6;
 const recentFreshReturnedTitles: string[][] = [];
 const recentFreshReturnedRoots: string[][] = [];
 const recentFreshTasteSignatures: string[] = [];
+let previousPrimaryTasteQueryPoolTitles: string[] = [];
+let previousPrimaryTasteQueryPoolRoots: string[] = [];
+let previousStaticRungPoolRoots: string[] = [];
 
 // Temporary validation logging for the taste-shaped query rollout.
 // Set to false after query/fetch/filter/final behavior is confirmed stable.
@@ -3123,6 +3126,8 @@ export async function getRecommendations(
     querySourceOfTruth = "taste_profile";
     tasteQueriesUsedForPrimaryFetch = true;
     finalRungQueriesSource = "taste_profile";
+    tasteQueryPoolUsedAsPrimary = true;
+    rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
   }
   rungs = rungs.filter((r: any) => {
     const q = normalizeText(String(r?.query || ""));
@@ -3167,6 +3172,12 @@ export async function getRecommendations(
   const comicVineRejectedSampleReasonsByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
   const comicVineAdapterDropReasonsByQuery: Record<string, Record<string, number>> = {};
   const comicVineRescueRejectedTitlesByQuery: Record<string, Array<{ title: string; reason: string }>> = {};
+  let primaryTasteQueryPoolRoots: string[] = [];
+  let primaryTasteQueryPoolTitles: string[] = [];
+  let staticRungPoolRoots: string[] = [];
+  let tasteQueryPoolUsedAsPrimary = false;
+  let preFilterPoolBuiltFrom = "mixed";
+  let preFilterPoolOverlapWithPreviousSession = 0;
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
   let comicVineDispatchedOnce = false;
@@ -3463,6 +3474,27 @@ export async function getRecommendations(
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
+  const normalizeTitleForPool = (doc: any) => normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
+  primaryTasteQueryPoolTitles = mergedDocs
+    .filter((d: any) => String(d?.laneKind || "").includes("swipe-taste") || generatedComicVineQueriesFromTaste.some((q) => normalizeText(String(d?.queryText || "")).includes(normalizeText(q))))
+    .map((d: any) => normalizeTitleForPool(d))
+    .filter(Boolean);
+  primaryTasteQueryPoolRoots = Array.from(new Set(mergedDocs
+    .filter((d: any) => String(d?.laneKind || "").includes("swipe-taste") || generatedComicVineQueriesFromTaste.some((q) => normalizeText(String(d?.queryText || "")).includes(normalizeText(q))))
+    .map((d: any) => parentFranchiseRootForDoc(d))
+    .filter(Boolean)));
+  staticRungPoolRoots = Array.from(new Set(mergedDocs
+    .filter((d: any) => Array.from(staticDefaultQueries).some((seed) => normalizeText(String(d?.queryText || "")).includes(normalizeText(seed))))
+    .map((d: any) => parentFranchiseRootForDoc(d))
+    .filter(Boolean)));
+  preFilterPoolBuiltFrom = tasteQueryPoolUsedAsPrimary ? "taste_primary" : "legacy_or_fallback";
+  const currentPoolTitleSet = new Set(primaryTasteQueryPoolTitles);
+  const prevPoolTitleSet = new Set(previousPrimaryTasteQueryPoolTitles);
+  const overlap = Array.from(currentPoolTitleSet).filter((t) => prevPoolTitleSet.has(t)).length;
+  preFilterPoolOverlapWithPreviousSession = overlap;
+  previousPrimaryTasteQueryPoolTitles = Array.from(currentPoolTitleSet).slice(0, 200);
+  previousPrimaryTasteQueryPoolRoots = Array.from(new Set(primaryTasteQueryPoolRoots)).slice(0, 100);
+  previousStaticRungPoolRoots = Array.from(new Set(staticRungPoolRoots)).slice(0, 100);
   const comicVineFetchAttemptedFlag = includeComicVine && mainRungQueriesLength > 0;
   const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && comicVineFetchAttemptedFlag);
   const proxyHealthError = comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
@@ -6615,6 +6647,12 @@ const normalizedCandidatesRaw = [
     tasteQueriesUsedForPrimaryFetch,
     tasteQueriesBlockedByReason,
     finalRungQueriesSource,
+    primaryTasteQueryPoolRoots,
+    primaryTasteQueryPoolTitles: primaryTasteQueryPoolTitles.slice(0, 80),
+    staticRungPoolRoots,
+    tasteQueryPoolUsedAsPrimary,
+    preFilterPoolOverlapWithPreviousSession,
+    preFilterPoolBuiltFrom,
     recentReturnedTitlePenaltyApplied,
     recentReturnedRootPenaltyApplied,
     repeatedTitleSuppressed,
