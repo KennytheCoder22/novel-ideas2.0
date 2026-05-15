@@ -5878,8 +5878,8 @@ const normalizedCandidatesRaw = [
       const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 1.25 : 0) + (themeOverlap ? 0.75 : 0) + (rootMatch ? 0.25 : 0) + ((starterSignal && tasteMatchScore >= 2.5) ? 0.4 : 0) + (audienceFit ? 0.5 : 0) + ((provenanceConfidence && tasteMatchScore >= 3.0) ? 0.35 : 0) + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0);
       if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
       if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
-      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
-      positiveFitScoreByTitle[title] = score;
+      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (laneMatch ? 2 : 0) + (themeOverlap ? 1 : 0) + (rootMatch ? 1 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 1 : 0) + (provenanceConfidence ? 1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0);
+      positiveFitScoreByTitle[title] = finalCandidateScore;
       candidateTasteMatchScoreByTitle[title] = tasteMatchScore;
       candidateTastePenaltyByTitle[title] = tastePenaltyScore;
       candidateMatchedLikedSignalsByTitle[title] = matchedLiked;
@@ -5903,12 +5903,12 @@ const normalizedCandidatesRaw = [
       if (audienceFit) reasons.push("audience_fit");
       if (provenanceConfidence) reasons.push("provenance_confidence");
       positiveFitReasonsByTitle[title] = reasons;
-      if (score < 2) {
+      if (finalCandidateScore < 2) {
         finalSelectionRejectedByReason.low_positive_fit = Number(finalSelectionRejectedByReason.low_positive_fit || 0) + 1;
         pushReason(penaltyReasonsByTitle, title, "low_positive_fit");
         return null;
       }
-      return { ...doc, positiveFitScore: score };
+      return { ...doc, positiveFitScore: finalCandidateScore };
     })
     .filter(Boolean) as any[];
   finalRenderDocs = viableCandidates.sort((a: any, b: any) => Number(b?.positiveFitScore || 0) - Number(a?.positiveFitScore || 0));
