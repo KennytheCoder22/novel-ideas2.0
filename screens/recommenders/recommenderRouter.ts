@@ -3580,6 +3580,12 @@ export async function getRecommendations(
   let narrativeExpansionViableCount = 0;
   let narrativeExpansionAcceptedTitles: string[] = [];
   let finalUnderfillAfterNarrativeExpansion = false;
+  let narrativeExpansionCandidatesEnteredScoringCount = 0;
+  const narrativeExpansionCandidatesDroppedBeforeScoringByReason: Record<string, number> = {};
+  let narrativeExpansionCandidatesSurvivedScoringCount = 0;
+  const narrativeExpansionCandidatesRejectedByFinalEligibilityReason: Record<string, number> = {};
+  const narrativeExpansionFinalAcceptedTitles: string[] = [];
+  let narrativeExpansionMergedDocs: any[] = [];
   const runExpansionQueries = async (queries: string[]): Promise<any[]> => {
     const allDocs: any[] = [];
     for (let idx = 0; idx < queries.length; idx += 1) {
@@ -5605,6 +5611,7 @@ const normalizedCandidatesRaw = [
           : ["sandman", "amulet", "nimona"];
   const scoringUniverse = dedupeDocs([
     ...finalRenderDocs,
+    ...narrativeExpansionMergedDocs,
     ...(enrichedDocs as any[]),
     ...(normalizedCandidates as any[]),
     ...(candidateDocs as any[]),
@@ -6012,20 +6019,34 @@ const normalizedCandidatesRaw = [
       const acceptedNarrativeDocs = narrativeDocs.filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+        narrativeExpansionCandidatesEnteredScoringCount += 1;
+        if (!title) {
+          narrativeExpansionCandidatesDroppedBeforeScoringByReason.missing_title = Number(narrativeExpansionCandidatesDroppedBeforeScoringByReason.missing_title || 0) + 1;
+          return false;
+        }
         const weightedTaste = weightedSwipeTasteVector.liked.reduce((acc, row) => acc + (text.includes(normalizeText(row.signal)) ? Number(row.weight || 0) : 0), 0);
         const narrativeLike = /\b(volume|book|tpb|omnibus|collection|collected edition|graphic novel|saga|chronicle|adventure|mystery|thriller|horror|fantasy|science fiction)\b/i.test(`${title} ${String(doc?.description || "")}`);
         const artifactLike = /\b(feedback|preview|guide|reference|history of|encyclopedia|study|criticism|anthology|collection of)\b/i.test(`${title} ${String(doc?.description || "")}`);
+        if (weightedTaste < 2.5) narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_taste_overlap = Number(narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_taste_overlap || 0) + 1;
+        if (!narrativeLike) narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_narrative_signal = Number(narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_narrative_signal || 0) + 1;
+        if (artifactLike) narrativeExpansionCandidatesDroppedBeforeScoringByReason.artifact_or_meta = Number(narrativeExpansionCandidatesDroppedBeforeScoringByReason.artifact_or_meta || 0) + 1;
         const viable = weightedTaste >= 2.5 && narrativeLike && !artifactLike;
         if (viable) {
           const score = weightedTaste + (narrativeLike ? 2 : 0) + (/\b(volume one|volume 1|book one|book 1|tpb|collected edition|omnibus)\b/i.test(title) ? 1.5 : 0);
           positiveFitScoreByTitle[title] = Math.max(Number(positiveFitScoreByTitle[title] || 0), score);
           candidateWeightedTasteScoreByTitle[title] = Math.max(Number(candidateWeightedTasteScoreByTitle[title] || 0), weightedTaste);
           narrativeExpansionAcceptedTitles.push(title);
+          narrativeExpansionCandidatesSurvivedScoringCount += 1;
         }
         return viable;
       });
       narrativeExpansionViableCount = acceptedNarrativeDocs.length;
-      finalRenderDocs = dedupeDocs([...finalRenderDocs, ...acceptedNarrativeDocs]).slice(0, 60);
+      narrativeExpansionMergedDocs = acceptedNarrativeDocs.map((doc: any) => ({
+        ...doc,
+        isExpansionCandidate: true,
+        diagnostics: { ...(doc?.diagnostics || {}), isExpansionCandidate: true, narrativeExpansionCandidate: true },
+      }));
+      finalRenderDocs = dedupeDocs([...finalRenderDocs, ...narrativeExpansionMergedDocs]).slice(0, 60);
     } catch (e: any) {
       narrativeExpansionReason = `fetch_error:${String(e?.message || e)}`;
     }
@@ -6308,6 +6329,7 @@ const normalizedCandidatesRaw = [
   }
   const finalEligibilityRejectedTitlesByReason: Record<string, string[]> = {};
   const finalEligibilityAcceptedTitles: string[] = [];
+  const narrativeExpansionAcceptedTitleSet = new Set(narrativeExpansionAcceptedTitles.map((t) => normalizeText(t)));
   let finalEligibilityRelaxationTriggered = false;
   const finalEligibilityRelaxedAcceptedTitles: string[] = [];
   const finalEligibilityRelaxedReasonByTitle: Record<string, string> = {};
@@ -6315,6 +6337,9 @@ const normalizedCandidatesRaw = [
   const registerFinalEligibilityReject = (reason: string, title: string) => {
     if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
     if (title && finalEligibilityRejectedTitlesByReason[reason].length < 40) finalEligibilityRejectedTitlesByReason[reason].push(title);
+    if (title && narrativeExpansionAcceptedTitleSet.has(normalizeText(title))) {
+      narrativeExpansionCandidatesRejectedByFinalEligibilityReason[reason] = Number(narrativeExpansionCandidatesRejectedByFinalEligibilityReason[reason] || 0) + 1;
+    }
   };
   const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
   const finalEligibilityGateApplied = true;
@@ -6373,6 +6398,7 @@ const normalizedCandidatesRaw = [
     if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
     eligibleWithFitScore.push({ doc, fitScore, recommendableWorkScore, artifactRiskScore, collectedEditionConfidence, narrativeFictionConfidence, metaOrReferenceWorkPenalty });
     finalEligibilityAcceptedTitles.push(title);
+    if (narrativeExpansionAcceptedTitleSet.has(normalizeText(title))) narrativeExpansionFinalAcceptedTitles.push(title);
     return true;
   });
   if (eligibleWithFitScore.length < 8 && viableCandidateCountBeforeFinalSelection >= 15) {
@@ -6765,6 +6791,11 @@ const normalizedCandidatesRaw = [
     narrativeExpansionConvertedCount,
     narrativeExpansionViableCount,
     narrativeExpansionAcceptedTitles,
+    narrativeExpansionCandidatesEnteredScoringCount,
+    narrativeExpansionCandidatesDroppedBeforeScoringByReason,
+    narrativeExpansionCandidatesSurvivedScoringCount,
+    narrativeExpansionCandidatesRejectedByFinalEligibilityReason,
+    narrativeExpansionFinalAcceptedTitles,
     finalUnderfillAfterNarrativeExpansion,
     sameParentSoftDuplicateRejectedTitles,
     finalEligibilityGateApplied,
