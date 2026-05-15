@@ -3020,17 +3020,52 @@ export async function getRecommendations(
   });
   rungs = rungs.slice(0, 9);
 
-  const tagEntries = Object.entries((input.tagCounts || routingInput.tagCounts || {}) as Record<string, number>).filter(([, v]) => Number(v || 0) > 0);
+  const combinedLikeSignals: Record<string, number> = {};
+  const appendSignals = (obj: Record<string, any> | undefined, multiplier = 1) => {
+    for (const [rawKey, rawValue] of Object.entries(obj || {})) {
+      const key = String(rawKey || "").trim().toLowerCase();
+      const value = Number(rawValue || 0) * multiplier;
+      if (!key || !Number.isFinite(value) || value <= 0) continue;
+      combinedLikeSignals[key] = Number(combinedLikeSignals[key] || 0) + value;
+    }
+  };
+  appendSignals((input as any)?.tagCounts, 1.15);
+  appendSignals((routingInput as any)?.tagCounts, 1);
+  appendSignals((routingInput as any)?.tasteProfile?.runningTagCounts, 1.25);
+  appendSignals((routingInput as any)?.tasteProfile?.tagCounts, 1.05);
+  const ignoredTasteSignalPrefixes = ["audience:teen", "age:mshs", "media:book", "media:tv", "format:series", "series", "facet:indie_genre"];
+  const tagEntries = Object.entries(combinedLikeSignals)
+    .filter(([k, v]) => Number(v || 0) > 0 && !ignoredTasteSignalPrefixes.some((ignored) => k === ignored || k.startsWith(`${ignored}:`)));
   const tasteText = normalizeText(String((routingInput as any)?.tasteProfile?.summary || ""));
   const inferFromTasteText = (tokens: string[]) => tokens.filter((t) => tasteText.includes(t)).map((t) => `${t.includes("science fiction") ? "genre" : "theme"}:${t}`);
   const inferredGenresFromText = inferFromTasteText(["science fiction", "fantasy", "comedy", "survival", "adventure"]);
   const inferredTonesFromText = inferFromTasteText(["hopeful", "dark", "political", "atmospheric"]);
   const inferredDislikedFromText = inferFromTasteText(["realistic", "coming of age", "drama", "romance", "historical", "warm", "friendship"]);
-  const topSignals = tagEntries.sort((a, b) => Number(b[1]) - Number(a[1])).slice(0, 20).map(([k]) => String(k));
+  const normalizedPositiveSignals = tagEntries
+    .sort((a, b) => Number(b[1]) - Number(a[1]))
+    .slice(0, 28)
+    .map(([k]) => String(k));
+  const promoteSignalToTaste = (signal: string): { genre?: string; tone?: string; theme?: string } => {
+    const s = normalizeText(signal);
+    if (/^genre:/.test(s)) return { genre: s };
+    if (/^(tone:|mood:)/.test(s)) return { tone: s };
+    if (/^(theme:|drive:)/.test(s)) return { theme: s };
+    if (/\b(horror|fantasy|science fiction|dystopian|supernatural)\b/.test(s)) return { genre: `genre:${s}` };
+    if (/\b(dark|spooky|fast paced|fast-paced|atmospheric)\b/.test(s)) return { tone: `tone:${s.replace("fast-paced", "fast paced")}` };
+    if (/\b(survival|political|friendship|coming of age|coming-of-age)\b/.test(s)) return { theme: `theme:${s.replace("coming-of-age", "coming of age")}` };
+    return {};
+  };
+  const promotedSignals = normalizedPositiveSignals.map(promoteSignalToTaste);
   const tasteProfileSummary = {
-    likedGenres: [...topSignals.filter((s) => s.startsWith("genre:")).slice(0, 4), ...inferredGenresFromText].slice(0, 6),
-    likedTones: [...topSignals.filter((s) => s.startsWith("tone:") || s.startsWith("mood:")).slice(0, 4), ...inferredTonesFromText].slice(0, 6),
-    likedThemes: topSignals.filter((s) => s.startsWith("theme:") || s.startsWith("drive:")).slice(0, 6),
+    likedGenres: Array.from(new Set([...
+      promotedSignals.map((row) => row.genre).filter(Boolean) as string[],
+      inferredGenresFromText,
+    ])).slice(0, 6),
+    likedTones: Array.from(new Set([...
+      promotedSignals.map((row) => row.tone).filter(Boolean) as string[],
+      inferredTonesFromText,
+    ])).slice(0, 6),
+    likedThemes: Array.from(new Set(promotedSignals.map((row) => row.theme).filter(Boolean) as string[])).slice(0, 6),
     dislikedSignals: [...Object.keys(((routingInput as any)?.dislikedTagCounts || {})).filter((k) => Number(((routingInput as any)?.dislikedTagCounts || {})[k] || 0) > 0).slice(0, 6), ...inferredDislikedFromText].slice(0, 8),
     skippedSignals: Object.keys(((routingInput as any)?.leftTagCounts || {}).length ? ((routingInput as any)?.leftTagCounts || {}) : ((routingInput as any)?.skippedTagCounts || {})).filter((k) => Number((((routingInput as any)?.leftTagCounts || (routingInput as any)?.skippedTagCounts || {})[k] || 0)) > 0).slice(0, 8),
   };
@@ -3047,8 +3082,14 @@ export async function getRecommendations(
     tasteProfileSummary.dislikedSignals.length === 0 &&
     tasteProfileSummary.skippedSignals.length === 0;
   const tasteProfileBuildFailure = hasSwipeSignals && tasteProfileSummaryEmpty;
+  const likedSignalsNotPromoted =
+    hasSwipeSignals &&
+    normalizedPositiveSignals.length > 0 &&
+    tasteProfileSummary.likedGenres.length === 0 &&
+    tasteProfileSummary.likedTones.length === 0 &&
+    tasteProfileSummary.likedThemes.length === 0;
   const tasteProfileBuildFailureReason = tasteProfileBuildFailure
-    ? "swipe_signals_present_but_profile_empty"
+    ? (likedSignalsNotPromoted ? "liked signals not promoted into taste profile summary" : "swipe_signals_present_but_profile_empty")
     : "none";
   if (hasSwipeSignals && tasteProfileBuildFailure) {
     console.error("Taste profile unexpectedly empty", { swipeSignalCount, tagEntryCount: tagEntries.length });
