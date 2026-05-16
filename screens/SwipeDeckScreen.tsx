@@ -1679,8 +1679,8 @@ function handleLeft() {
     }
   }
 
-  async function runAutoRecommendations() {
-    const tagCountsForQuery: any = { ...(tagCounts as any) };
+  async function runAutoRecommendations(overrides?: { tagCounts?: TagCounts; tasteProfile?: any; swipeSummary?: { likes: number; dislikes: number; skips: number; decisions: number } }) {
+    const tagCountsForQuery: any = { ...((overrides?.tagCounts || tagCounts) as any) };
 
     Object.keys(tagCountsForQuery).forEach((k) => {
       if (k.startsWith("age:") || k.startsWith("audience:")) delete tagCountsForQuery[k];
@@ -1706,12 +1706,15 @@ function handleLeft() {
       const input: RecommenderInput = {
         deckKey,
         tagCounts: tagCountsForQuery,
-        tasteProfile: tasteProfileWithMood,
+        tasteProfile: overrides?.tasteProfile ?? tasteProfileWithMood,
         limit: 10,
         timeoutMs: 9000,
       };
 
       const runResult = await performRecommendationRun(input);
+      if (overrides?.swipeSummary) {
+        setLastRecommendationSwipeSummary(`Right:${overrides.swipeSummary.likes} • Left:${overrides.swipeSummary.dislikes} • Skip:${overrides.swipeSummary.skips} • Decisions:${overrides.swipeSummary.decisions} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
+      }
 
       if (suppressPersonalityLearningForNextRun) {
         setPersonalityProfileState(personalityStoreRef.current[pipelineUserId] ?? initializePersonality(pipelineUserId));
@@ -1808,31 +1811,75 @@ function handleLeft() {
   }
 
   async function runDiagnosticPreset(preset: DiagnosticPreset) {
+    const execution = {
+      presetExecutionStarted: true,
+      presetSwipesAppliedCount: 0,
+      presetCardsMatchedCount: 0,
+      presetRecommendationTriggered: false,
+      presetRecommendationCompleted: false,
+      presetExportedAfterRecommendation: false,
+      presetExecutionError: "",
+    };
     handleFreshUserReset();
-    const cardsPool = cards.slice(0, 80);
+    const cardsPool = cards.slice(0, 120);
     const chosenHistory: SwipeHistoryEntry[] = [];
     const nextTagCounts: TagCounts = {};
     let likes = 0, dislikes = 0, skips = 0;
     preset.decisions.forEach((decision, idx) => {
-      const matched = cardsPool.find((c: any) => decision.titleContains ? String((c as any)?.title || "").toLowerCase().includes(decision.titleContains) : true) || cardsPool[idx];
+      const matched = cardsPool.find((c: any) => decision.titleContains ? String((c as any)?.title || "").toLowerCase().includes(decision.titleContains) : false) || cardsPool[idx];
       if (!matched) return;
+      execution.presetCardsMatchedCount += 1;
       chosenHistory.push({ direction: decision.direction, card: matched });
       const expandedTags = expandTeenCompanionTags(deckKey, Array.isArray((matched as any)?.tags) ? (matched as any).tags : []);
-      if (decision.direction === "like") { addTags(nextTagCounts, expandedTags, +1); likes += 1; }
-      else if (decision.direction === "dislike") { addTags(nextTagCounts, expandedTags, -1); dislikes += 1; }
-      else { skips += 1; }
+      if (decision.direction === "like") { addTags(nextTagCounts, expandedTags, +1); likes += 1; execution.presetSwipesAppliedCount += 1; }
+      else if (decision.direction === "dislike") { addTags(nextTagCounts, expandedTags, -1); dislikes += 1; execution.presetSwipesAppliedCount += 1; }
+      else { skips += 1; execution.presetSwipesAppliedCount += 1; }
     });
+    if (execution.presetSwipesAppliedCount === 0) {
+      execution.presetExecutionError = "preset_swipes_applied_count_zero";
+      Alert.alert("Preset failed", "No preset swipes were applied; aborting export.");
+      return {
+        presetTestName: preset.name,
+        presetExpectedProfile: preset.expectedProfile,
+        presetExpectedAvoids: preset.expectedAvoids,
+        ...execution,
+      };
+    }
     setSwipeHistory(chosenHistory);
     setTagCounts(nextTagCounts);
     setRightSwipes(likes);
     setLeftSwipes(dislikes);
     setDownSwipes(skips);
-    const result = (await runAutoRecommendations()) || (lastRecommendationResult as any) || {};
+    execution.presetRecommendationTriggered = true;
+    const syntheticTasteProfile = buildTasteProfile({
+      deckKey,
+      tagCounts: nextTagCounts,
+      feedback,
+      directTraits: weightedDirectTraitsHistory(chosenHistory),
+    });
+    const result = (await runAutoRecommendations({
+      tagCounts: nextTagCounts,
+      tasteProfile: syntheticTasteProfile,
+      swipeSummary: { likes, dislikes, skips, decisions: likes + dislikes },
+    })) || null;
+    execution.presetRecommendationCompleted = Boolean(result);
+    if (!result) {
+      execution.presetExecutionError = "recommendation_not_completed";
+      Alert.alert("Preset failed", "Recommendation did not complete; not exporting empty report.");
+      return {
+        presetTestName: preset.name,
+        presetExpectedProfile: preset.expectedProfile,
+        presetExpectedAvoids: preset.expectedAvoids,
+        ...execution,
+      };
+    }
     const summary = buildPresetCheckSummary(result, preset, chosenHistory);
+    execution.presetExportedAfterRecommendation = true;
     return {
       presetTestName: preset.name,
       presetExpectedProfile: preset.expectedProfile,
       presetExpectedAvoids: preset.expectedAvoids,
+      ...execution,
       failureSummary: summary,
       swipeHistory: chosenHistory.map((h) => ({ direction: h.direction, title: (h.card as any)?.title || "" })),
       swipeTasteVector: result?.swipeTasteVector,
