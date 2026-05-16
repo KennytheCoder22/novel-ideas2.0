@@ -1184,12 +1184,15 @@ export default function SwipeDeckScreen(props: Props) {
   function buildRecommendationInputWithHistory(baseInput: RecommenderInput): RecommenderInput {
     const targetDeckKey = baseInput.deckKey || deckKey;
     const history = getRecommendationHistoryBucket(targetDeckKey);
+    const sourceSwipeHistory: SwipeHistoryEntry[] = Array.isArray((baseInput as any)?.swipeHistory)
+      ? ((baseInput as any).swipeHistory as SwipeHistoryEntry[])
+      : swipeHistory;
 
     const likedTagCounts: Record<string, number> = {};
     const dislikedTagCounts: Record<string, number> = {};
     const leftTagCounts: Record<string, number> = {};
     const skippedTagCounts: Record<string, number> = {};
-    for (const entry of swipeHistory) {
+    for (const entry of sourceSwipeHistory) {
       const tags = Array.isArray((entry as any)?.card?.tags) ? (entry as any).card.tags : [];
       for (const rawTag of tags) {
         const tag = String(rawTag || "").trim().toLowerCase();
@@ -1215,6 +1218,7 @@ export default function SwipeDeckScreen(props: Props) {
       ...(dislikedTagCounts ? { dislikedTagCounts } : {}),
       ...(leftTagCounts ? { leftTagCounts } : {}),
       ...(skippedTagCounts ? { skippedTagCounts } : {}),
+      ...(Array.isArray((baseInput as any)?.swipeHistory) ? { swipeHistory: (baseInput as any).swipeHistory } : {}),
     };
   }
 
@@ -1798,6 +1802,13 @@ function handleLeft() {
     const input: RecommenderInput = {
       deckKey,
       tagCounts: tagCountsForQuery,
+      swipeHistory: entries as any,
+      dislikedTagCounts: Object.fromEntries(
+        Object.entries(nextTagCounts).filter(([, v]) => Number(v || 0) < 0).map(([k, v]) => [k, Math.abs(Number(v || 0))])
+      ) as any,
+      leftTagCounts: Object.fromEntries(
+        Object.entries(nextTagCounts).filter(([, v]) => Number(v || 0) < 0).map(([k, v]) => [k, Math.abs(Number(v || 0))])
+      ) as any,
       tasteProfile: mergeActiveTasteIntoProfile(
         buildTasteProfile({
           tagCounts: nextTagCounts,
