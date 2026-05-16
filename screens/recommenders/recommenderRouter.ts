@@ -5151,6 +5151,7 @@ const normalizedCandidatesRaw = [
   const preTopUpFinalItemsLength = finalRenderDocs.length;
   let topUpCandidatesConsideredLength = 0;
   let topUpCandidatesAcceptedLength = 0;
+  const topUpCandidatesAcceptedTitles: string[] = [];
   const topUpRejectedReasons: Record<string, number> = {};
   let topUpSourceRankedDocsLength = 0;
   let topUpSourceCandidateDocsLength = 0;
@@ -5317,6 +5318,7 @@ const normalizedCandidatesRaw = [
         if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
         finalRenderDocs.push(doc);
         topUpCandidatesAcceptedLength += 1;
+        topUpCandidatesAcceptedTitles.push(String(doc?.title || doc?.rawDoc?.title || "").trim());
         seenIds.add(String(doc?.sourceId || doc?.key || doc?.title || "").toLowerCase());
         seenFranchises.add(franchise);
         familyCounts.set(family, (familyCounts.get(family) || 0) + 1);
@@ -5336,6 +5338,7 @@ const normalizedCandidatesRaw = [
           if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
           finalRenderDocs.push(doc);
           topUpCandidatesAcceptedLength += 1;
+          topUpCandidatesAcceptedTitles.push(String(doc?.title || doc?.rawDoc?.title || "").trim());
           seenIds.add(id);
           seenTitles.add(normalizedTitle);
         }
@@ -6418,6 +6421,7 @@ const normalizedCandidatesRaw = [
   const genericCollectionArtifactRejectedTitles: string[] = [];
   const finalTasteThresholdByTitle: Record<string, number> = {};
   const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
+  const finalRenderCandidateTitlesBeforeGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
@@ -6538,7 +6542,9 @@ const normalizedCandidatesRaw = [
     .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
     .map((row) => row.doc)
     .slice(0, 10);
+  const finalRenderCandidateTitlesAfterGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   const finalCountCappedToTarget = finalRenderDocs.length >= 10;
+  const topUpFinalGateRejectedTitles = topUpCandidatesAcceptedTitles.filter((t) => !new Set(finalRenderCandidateTitlesAfterGate.map((x) => normalizeText(x))).has(normalizeText(t)));
   const finalRootSecondEntryReasons: Record<string, string> = {};
   const finalRootDuplicateCounts: Record<string, number> = {};
   const byRoot = new Map<string, any[]>();
@@ -6782,10 +6788,25 @@ const normalizedCandidatesRaw = [
         : "insufficient_query_derived_results";
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
   const suppressTopRecommendations = (hardPipelineFailure && rankedCount === 0) || scoredUniverseFailure;
-  const finalOutputItems = suppressTopRecommendations ? [] : outputItemsNoMixedFallback;
-  const returnedItemsBuiltFrom = suppressTopRecommendations
+  const gatedFinalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
+  let finalOutputItems = suppressTopRecommendations ? [] : gatedFinalItems;
+  let returnedItemsBuiltFrom = suppressTopRecommendations
     ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
-    : (mixedFallbackOutput ? "non_fallback_output_items" : "output_items");
+    : "final_gate_accepted_docs";
+  const finalEligibilityAcceptedSet = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
+  const returnedItemPassedFinalGateByTitle: Record<string, boolean> = {};
+  const finalRenderBypassBlockedTitles: string[] = [];
+  for (const item of outputItemsNoMixedFallback) {
+    const t = String(item?.doc?.title || item?.title || "").trim();
+    if (!t) continue;
+    const ok = finalEligibilityAcceptedSet.has(normalizeText(t));
+    returnedItemPassedFinalGateByTitle[t] = ok;
+    if (!ok) finalRenderBypassBlockedTitles.push(t);
+  }
+  if (finalRenderBypassBlockedTitles.length > 0) {
+    console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
+  }
+  const finalRenderSourceList = ["finalEligibilityAcceptedTitles", "finalAcceptedDocsAfterGate", "topUpOnlyIfPassedFinalGate"];
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
@@ -6933,6 +6954,12 @@ const normalizedCandidatesRaw = [
     finalTasteThresholdByTitle,
     finalAcceptedTasteEvidenceByTitle,
     finalCountCappedToTarget,
+    finalRenderSourceList,
+    finalRenderCandidateTitlesBeforeGate,
+    finalRenderCandidateTitlesAfterGate,
+    finalRenderBypassBlockedTitles,
+    topUpFinalGateRejectedTitles,
+    returnedItemPassedFinalGateByTitle,
     sameParentSoftDuplicateRejectedTitles,
     finalEligibilityGateApplied,
     finalEligibilityCleanCandidateCount,
