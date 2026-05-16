@@ -5906,13 +5906,23 @@ const normalizedCandidatesRaw = [
     disliked: extractWeightedSignals(combinedDislikedTagCounts || {}, "disliked"),
     skipped: extractWeightedSignals((routingInput as any)?.skippedTagCounts || {}, "skipped"),
   };
+  const dislikedSignalsFromSwipeHistory = Array.from(new Set(
+    (Array.isArray((routingInput as any)?.swipeHistory) ? (routingInput as any).swipeHistory : [])
+      .filter((swipe: any) => isNegativeSwipeForRouting(swipe))
+      .flatMap((swipe: any) => collectSwipeTagsForRouting(swipe))
+      .map((tag: string) => normalizeText(String(tag || "")))
+      .filter(Boolean)
+  ));
+  if (weightedSwipeTasteVector.disliked.length === 0 && dislikedSignalsFromSwipeHistory.length > 0) {
+    weightedSwipeTasteVector.disliked = dislikedSignalsFromSwipeHistory.slice(0, 30).map((signal) => ({ signal, weight: 1.5 }));
+  }
   const swipeTasteVector = {
     liked: weightedSwipeTasteVector.liked.map((s) => s.signal),
     disliked: weightedSwipeTasteVector.disliked.map((s) => s.signal),
     skipped: weightedSwipeTasteVector.skipped.map((s) => s.signal),
   };
   const dislikeProfileBuildFailure = ((Object.keys((routingInput as any)?.leftTagCounts || {}).length > 0) || (Object.keys((routingInput as any)?.dislikedTagCounts || {}).length > 0)) && weightedSwipeTasteVector.disliked.length === 0;
-  const dislikeProfileBuildFailureReason = dislikeProfileBuildFailure ? "left swipes not promoted" : "none";
+  const dislikeProfileBuildFailureReason = dislikeProfileBuildFailure ? "left swipes present but disliked signals empty after swipeHistory promotion" : "none";
   const candidateTasteMatchScoreByTitle: Record<string, number> = {};
   const candidateTastePenaltyByTitle: Record<string, number> = {};
   const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
@@ -6142,6 +6152,9 @@ const normalizedCandidatesRaw = [
         diagnostics: { ...(doc?.diagnostics || {}), isExpansionCandidate: true, narrativeExpansionCandidate: true },
       }));
       finalRenderDocs = dedupeDocs([...finalRenderDocs, ...narrativeExpansionMergedDocs]).slice(0, 60);
+      if (acceptedNarrativeDocs.length > 0 && expansionCandidatesEnteredScoringCount === 0) {
+        expansionMergedButNotScoredReason = "narrative_expansion_docs_merged_but_not_scored";
+      }
     } catch (e: any) {
       narrativeExpansionReason = `fetch_error:${String(e?.message || e)}`;
     }
@@ -6443,6 +6456,9 @@ const normalizedCandidatesRaw = [
   const genericCollectionArtifactRejectedTitles: string[] = [];
   const finalTasteThresholdByTitle: Record<string, number> = {};
   const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
+  const finalReturnedWithoutTasteEvidenceTitles: string[] = [];
+  let finalUnderfillBecauseNoTasteEvidence = false;
+  let expansionMergedButNotScoredReason = "none";
   const terminalRejectReasonByTitle: Record<string, string> = {};
   const markTerminalReject = (title: string, reason: string) => {
     const key = normalizeText(String(title || ""));
@@ -6844,6 +6860,24 @@ const normalizedCandidatesRaw = [
     const t = String(item?.doc?.title || item?.title || "").trim();
     return !terminalRejectReasonByTitle[normalizeText(t)];
   });
+  const acceptedEvidenceMap = finalAcceptedTasteEvidenceByTitle;
+  const meaningfulEvidence = (title: string) => {
+    const weighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+    const evidenceRows = acceptedEvidenceMap[title] || [];
+    const meaningfulSignals = Number((evidenceRows.find((r) => r.startsWith("meaningfulSignals:")) || "meaningfulSignals:0").split(":")[1] || 0);
+    const narrative = Number((evidenceRows.find((r) => r.startsWith("narrativeFictionConfidence:")) || "narrativeFictionConfidence:0").split(":")[1] || 0);
+    return weighted >= 2.5 || meaningfulSignals >= 2 || (weighted >= 2.5 && narrative >= 2);
+  };
+  finalOutputItems = finalOutputItems.filter((item: any) => {
+    const title = String(item?.doc?.title || item?.title || "").trim();
+    if (!title) return false;
+    const ok = meaningfulEvidence(title);
+    if (!ok) finalReturnedWithoutTasteEvidenceTitles.push(title);
+    return ok;
+  });
+  if (!suppressTopRecommendations && gatedFinalItems.length > 0 && finalOutputItems.length === 0) {
+    finalUnderfillBecauseNoTasteEvidence = true;
+  }
   const returnedItemsTitlesPostTerminal = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
   const rejectedButReturnedTitles = returnedItemsTitlesPostTerminal.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
   const finalRejectAssertionChecked = finalOutputItems.length > 0 || finalEligibilityAcceptedTitles.length > 0 || Object.keys(terminalRejectReasonByTitle).length > 0;
@@ -7004,6 +7038,9 @@ const normalizedCandidatesRaw = [
     finalTasteThresholdByTitle,
     finalAcceptedTasteEvidenceByTitle,
     finalCountCappedToTarget,
+    finalReturnedWithoutTasteEvidenceTitles,
+    finalUnderfillBecauseNoTasteEvidence,
+    expansionMergedButNotScoredReason,
     finalRenderSourceList,
     finalRenderCandidateTitlesBeforeGate,
     finalRenderCandidateTitlesAfterGate,
@@ -7036,6 +7073,7 @@ const normalizedCandidatesRaw = [
     finalSelectionRejectedByReason,
     swipeTasteVector,
     weightedSwipeTasteVector,
+    dislikedSignalsFromSwipeHistory,
     ignoredGenericTasteSignals,
     candidateTasteMatchScoreByTitle,
     candidateTastePenaltyByTitle,
