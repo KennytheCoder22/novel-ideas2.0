@@ -93,6 +93,12 @@ type SwipeHistoryEntry = {
   card: SwipeDeckCard;
 };
 
+type TestSessionPreset = {
+  id: string;
+  label: string;
+  sequence: Array<"like" | "dislike" | "skip">;
+};
+
 type TwentyQAxis = keyof TasteVector;
 
 type TwentyQObjective = {
@@ -947,6 +953,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [recIndex, setRecIndex] = useState(0);
   const [recCoverCache, setRecCoverCache] = useState<Record<string, string>>({});
   const [autoSearched, setAutoSearched] = useState(false);
+  const [forceRecommendationsView, setForceRecommendationsView] = useState(false);
 
   const [showRating, setShowRating] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
@@ -1291,6 +1298,7 @@ export default function SwipeDeckScreen(props: Props) {
     totalSeenCards,
     totalCards: cards.length,
   });
+  const showRecommendationsView = isDone || forceRecommendationsView;
   const currentCard: SwipeDeckCard | null = useMemo(() => {
     if (isDone) return null;
     return selectTwentyQCard({
@@ -1702,6 +1710,92 @@ function handleLeft() {
     }
   }
 
+  const testSessionPresets: TestSessionPreset[] = [
+    { id: "test_a", label: "Test A", sequence: ["like", "like", "dislike", "skip", "like", "dislike", "like", "skip"] },
+    { id: "test_b", label: "Test B", sequence: ["dislike", "dislike", "like", "skip", "dislike", "like", "skip", "like"] },
+    { id: "test_c", label: "Test C", sequence: ["like", "skip", "like", "skip", "dislike", "like", "dislike", "like"] },
+  ];
+
+  async function runTestSessionPreset(preset: TestSessionPreset) {
+    const sampleCards = cards.slice(0, preset.sequence.length);
+    if (sampleCards.length === 0) {
+      Alert.alert("No cards", "This deck has no cards to run a test session.");
+      return;
+    }
+
+    const entries: SwipeHistoryEntry[] = sampleCards.map((card, index) => ({
+      card,
+      direction: preset.sequence[index] || "skip",
+    }));
+
+    const nextTagCounts: TagCounts = {};
+    for (const entry of entries) {
+      const directionWeight = entry.direction === "like" ? 1 : entry.direction === "dislike" ? -1 : 0;
+      if (!directionWeight) continue;
+      const tags = Array.isArray((entry.card as any)?.tags) ? (entry.card as any).tags : [];
+      for (const rawTag of tags) {
+        const tag = String(rawTag || "").trim().toLowerCase();
+        if (!tag) continue;
+        nextTagCounts[tag] = Number(nextTagCounts[tag] || 0) + directionWeight;
+      }
+    }
+
+    const likeCount = entries.filter((entry) => entry.direction === "like").length;
+    const dislikeCount = entries.filter((entry) => entry.direction === "dislike").length;
+    const skipCount = entries.filter((entry) => entry.direction === "skip").length;
+    const seenKeys = entries.map((entry) => cardIdentityKey(entry.card));
+
+    setSwipeHistory(entries);
+    setTagCounts(nextTagCounts);
+    setRightSwipes(likeCount);
+    setLeftSwipes(dislikeCount);
+    setDownSwipes(skipCount);
+    setSeenCardKeys(seenKeys);
+    setRecentCardKeys(seenKeys.slice(-6));
+    setForceRecommendationsView(true);
+    setAutoSearched(true);
+
+    const tagCountsForQuery: any = { ...nextTagCounts };
+    tagCountsForQuery["audience:kids"] = 0;
+    tagCountsForQuery["audience:teen"] = 0;
+    tagCountsForQuery["audience:adult"] = 0;
+    tagCountsForQuery["age:k2"] = 0;
+    tagCountsForQuery["age:36"] = 0;
+    tagCountsForQuery["age:mshs"] = 0;
+    tagCountsForQuery["age:adult"] = 0;
+    if (deckKey === "k2") {
+      tagCountsForQuery["audience:kids"] = 1000;
+      tagCountsForQuery["age:k2"] = 1000;
+    } else if (deckKey === "36") {
+      tagCountsForQuery["audience:kids"] = 1000;
+      tagCountsForQuery["age:36"] = 1000;
+    } else if (deckKey === "ms_hs") {
+      tagCountsForQuery["audience:teen"] = 1000;
+      tagCountsForQuery["age:mshs"] = 1000;
+    } else if (deckKey === "adult") {
+      tagCountsForQuery["audience:adult"] = 1000;
+      tagCountsForQuery["age:adult"] = 1;
+    }
+
+    const input: RecommenderInput = {
+      deckKey,
+      tagCounts: tagCountsForQuery,
+      tasteProfile: mergeActiveTasteIntoProfile(
+        buildTasteProfile({
+          tagCounts: nextTagCounts,
+          directTraits: weightedDirectTraitsHistory(entries),
+          feedback: [],
+          itemTraitsById: {},
+        }),
+        activeTasteVector
+      ),
+      limit: 10,
+      timeoutMs: 9000,
+    };
+
+    await performRecommendationRun(input);
+  }
+
   function handleFreshUserReset() {
     const fresh = initializePersonality(pipelineUserId);
 
@@ -1733,6 +1827,7 @@ function handleLeft() {
     setRecIndex(0);
     setRecCoverCache({});
     setAutoSearched(false);
+    setForceRecommendationsView(false);
     setShowRating(false);
     setLastRecommendationInput(null);
     setLastRecommendationTimestamp("");
@@ -2523,7 +2618,7 @@ function handleLeft() {
         <View style={styles.statusDivider} />
 
         <View style={[styles.stage, needsCardOffset && styles.stageTop]}>
-          {isDone ? (
+          {showRecommendationsView ? (
             <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 30 }}>
               <View style={[styles.doneCard, { borderColor: highlightColor }]}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
@@ -2791,6 +2886,13 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
+          <View style={styles.testPillRow}>
+            {testSessionPresets.map((preset) => (
+              <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
+                <Text style={styles.debugToggleText}>{preset.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
@@ -2954,6 +3056,22 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: "stretch",
     justifyContent: "flex-end",
+  },
+  testPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  testPillButton: {
+    minWidth: 84,
+    alignItems: "center",
+    backgroundColor: "#0b1e33",
+    borderColor: "#e0b84b",
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
 
   genreQuickToggle: {
