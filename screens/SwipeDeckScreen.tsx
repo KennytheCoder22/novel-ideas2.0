@@ -1004,6 +1004,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [recommendFunctionErrorPhase, setRecommendFunctionErrorPhase] = useState<string>("");
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
+  const [showDiagnosticPresetPanel, setShowDiagnosticPresetPanel] = useState<boolean>(false);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -2904,14 +2905,19 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
-          <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
+          <TouchableOpacity
+            style={styles.diagnosticsToggle}
+            onPress={handleCopyDiagnostics}
+            onLongPress={() => setShowDiagnosticPresetPanel((v) => !v)}
+            delayLongPress={350}
+          >
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
             <Text style={styles.debugToggleText}>Fresh User</Text>
           </TouchableOpacity>
-          {__DEV__ ? (
+          {showDiagnosticPresetPanel ? (
             <>
               {DIAGNOSTIC_PRESETS.map((preset) => (
                 <TouchableOpacity key={preset.name} style={styles.devDiagBtn} onPress={async () => {
