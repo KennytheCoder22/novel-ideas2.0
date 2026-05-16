@@ -187,6 +187,11 @@ export type RecommendationResult = {
   finalEligibilityGateApplied?: boolean;
   finalEligibilityCleanCandidateCount?: number;
   finalEligibilityAcceptedTitles?: string[];
+  legacySeedInjectionBlockedTitles?: string[];
+  finalItemSourcePathByTitle?: Record<string, string>;
+  finalItemAllowedDespiteNotTastePrimaryReason?: Record<string, string>;
+  negativeScoreFinalItemBlockedTitles?: string[];
+  negativeScoreFinalItemAllowedReason?: Record<string, string>;
   finalEligibilityRejectedTitlesByReason?: Record<string, string[]>;
   finalRootDiversityCount?: number;
   finalRootDuplicateCounts?: Record<string, number>;

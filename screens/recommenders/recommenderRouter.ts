@@ -5171,6 +5171,7 @@ const normalizedCandidatesRaw = [
       byFranchise.set(key, (byFranchise.get(key) || 0) + 1);
     }
     finalRenderDocs = finalRenderDocs.filter((doc: any) => {
+    const tastePrimaryMode = querySourceOfTruth === "taste_profile";
       const key = finalSeriesKeyForRender(doc);
       const count = byFranchise.get(key) || 0;
       if (count <= 2) return true;
@@ -6378,6 +6379,11 @@ const normalizedCandidatesRaw = [
   }
   const finalEligibilityRejectedTitlesByReason: Record<string, string[]> = {};
   const finalEligibilityAcceptedTitles: string[] = [];
+  const legacySeedInjectionBlockedTitles: string[] = [];
+  const finalItemSourcePathByTitle: Record<string, string> = {};
+  const finalItemAllowedDespiteNotTastePrimaryReason: Record<string, string> = {};
+  const negativeScoreFinalItemBlockedTitles: string[] = [];
+  const negativeScoreFinalItemAllowedReason: Record<string, string> = {};
   const narrativeExpansionAcceptedTitleSet = new Set(narrativeExpansionAcceptedTitles.map((t) => normalizeText(t)));
   let finalEligibilityRelaxationTriggered = false;
   const finalEligibilityRelaxedAcceptedTitles: string[] = [];
@@ -6393,12 +6399,37 @@ const normalizedCandidatesRaw = [
   const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
   const finalEligibilityGateApplied = true;
   const eligibleWithFitScore: Array<{ doc: any; fitScore: number; recommendableWorkScore: number; artifactRiskScore: number; collectedEditionConfidence: number; narrativeFictionConfidence: number; metaOrReferenceWorkPenalty: number }> = [];
+  const tastePrimaryMode = querySourceOfTruth === "taste_profile";
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
     const root = parentFranchiseRootForDoc(doc);
     const hasParent = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName || doc?.diagnostics?.parentVolumeName);
+    const normalizedQueryText = normalizeText(queryText);
+    const queryInTastePool = generatedComicVineQueriesFromTaste.some((q) => normalizedQueryText.includes(normalizeText(q)) || normalizeText(q).includes(normalizedQueryText));
+    const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+    const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+    const explicitPositiveSwipeRootAffinity = weightedSwipeTasteVector.liked.some((row) => {
+      const signal = normalizeText(String(row?.signal || "").replace(/^[a-z]+:/, ""));
+      if (!signal) return false;
+      const corpus = normalizeText(`${title} ${String(doc?.description || "")} ${String(doc?.parentVolumeName || "")}`);
+      return corpus.includes(signal) && Number(row?.weight || 0) >= 1.8;
+    });
+    const hasStrongCandidateWeightedTasteScore = weightedTasteScore >= 3 || positiveFitScore >= 6;
+    const sourcePath = queryInTastePool
+      ? "taste_primary_query"
+      : explicitPositiveSwipeRootAffinity
+        ? "explicit_positive_swipe_root_affinity"
+        : hasStrongCandidateWeightedTasteScore
+          ? "strong_candidate_weighted_taste_score"
+          : "legacy_seed_path";
+    finalItemSourcePathByTitle[title] = sourcePath;
+    if (sourcePath !== "taste_primary_query") finalItemAllowedDespiteNotTastePrimaryReason[title] = sourcePath;
+    if (tastePrimaryMode && sourcePath === "legacy_seed_path") {
+      legacySeedInjectionBlockedTitles.push(title);
+      registerFinalEligibilityReject("taste_primary_legacy_seed_block", title); return false;
+    }
     const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
     if (!sourceId) { registerFinalEligibilityReject("missing_source_id", title); return false; }
     if (!queryText) { registerFinalEligibilityReject("missing_query_text", title); return false; }
@@ -6415,8 +6446,6 @@ const normalizedCandidatesRaw = [
     const themeSignal = profileSelectedEntitySeeds.some((seed) => normalizeText(`${title} ${String(doc?.description || "")}`).includes(normalizeText(seed)));
     const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
     if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
-    const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
-    const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
     const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
     const isClearlyMalformed = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title);
     const structuralFragment = Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0;
@@ -6483,6 +6512,18 @@ const normalizedCandidatesRaw = [
   finalRenderDocs = eligibleWithFitScore
     .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
     .map((row) => row.doc);
+  const nonNegativeTasteAlignedCount = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0).length;
+  finalRenderDocs = finalRenderDocs.filter((doc: any) => {
+    const title = String(doc?.title || "").trim();
+    const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    if (score >= 0) return true;
+    if (nonNegativeTasteAlignedCount >= 5) {
+      negativeScoreFinalItemBlockedTitles.push(title);
+      return false;
+    }
+    negativeScoreFinalItemAllowedReason[title] = "fewer_than_5_non_negative_taste_aligned_candidates";
+    return true;
+  });
   const finalRootSecondEntryReasons: Record<string, string> = {};
   const finalRootDuplicateCounts: Record<string, number> = {};
   const byRoot = new Map<string, any[]>();
@@ -6850,6 +6891,11 @@ const normalizedCandidatesRaw = [
     finalEligibilityGateApplied,
     finalEligibilityCleanCandidateCount,
     finalEligibilityAcceptedTitles,
+    legacySeedInjectionBlockedTitles,
+    finalItemSourcePathByTitle,
+    finalItemAllowedDespiteNotTastePrimaryReason,
+    negativeScoreFinalItemBlockedTitles,
+    negativeScoreFinalItemAllowedReason,
     finalEligibilityRejectedTitlesByReason,
     finalEligibilityRelaxationTriggered,
     finalEligibilityRelaxedAcceptedTitles,
