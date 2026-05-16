@@ -5943,6 +5943,11 @@ const normalizedCandidatesRaw = [
   const narrativeTitleConfidenceByTitle: Record<string, number> = {};
   const lowPositiveFitThresholdByCandidate: Record<string, number> = {};
   const candidateKilledByPenaltyStack: string[] = [];
+  const semanticEligibilityRejectedReason: Record<string, string> = {};
+  const genericRootSuppressed: string[] = [];
+  const rootBoostSuppressed: string[] = [];
+  const narrativeEvidenceScore: Record<string, number> = {};
+  const structuralOnlyMatch: string[] = [];
   let recentReturnedTitlePenaltyApplied = 0;
   let recentReturnedRootPenaltyApplied = 0;
   let repeatedTitleSuppressed = 0;
@@ -5974,7 +5979,22 @@ const normalizedCandidatesRaw = [
     if (/^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title) && !root) return "generic_artifact_no_root";
     return "";
   };
-  const viableCandidates = finalRenderDocs
+  const genericNarrativeRoots = new Set(["fantasy","survival","horror","mystery","adventure","dark","apocalypse","thriller","science-fiction","science fiction"]);
+  const semanticPrefiltered = finalRenderDocs.filter((doc: any) => {
+    const title = String(doc?.title || "").trim();
+    const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+    const packagingOnly = /\b(limited series|collected edition|trade paperback|hardcover|tpb|collection|archives?|anthology)\b/i.test(text);
+    const hasNarrative = /\b(story|character|conspiracy|investigation|psychological|survival|identity|relationship|journey|murder|mystery|thriller)\b/i.test(text);
+    const hasTasteOverlap = weightedSwipeTasteVector.liked.some((row) => text.includes(normalizeText(row.signal)));
+    narrativeEvidenceScore[title] = (hasNarrative ? 1 : 0) + (hasTasteOverlap ? 1 : 0);
+    if (packagingOnly && !hasNarrative && !hasTasteOverlap) {
+      semanticEligibilityRejectedReason[title] = "packaging_only_without_narrative_or_taste";
+      structuralOnlyMatch.push(title);
+      return false;
+    }
+    return true;
+  });
+  const viableCandidates = semanticPrefiltered
     .map((doc: any) => {
       const title = String(doc?.title || "");
       const invalidReason = hardInvalid(doc);
@@ -5996,7 +6016,10 @@ const normalizedCandidatesRaw = [
       const tastePenaltyScore = dislikePenalty + skipPenalty;
       const laneMatch = /\b(thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(text);
       const themeOverlap = profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
-      const rootMatch = Boolean(parentFranchiseRootForDoc(doc));
+      const root = parentFranchiseRootForDoc(doc);
+      const isGenericRoot = genericNarrativeRoots.has(String(root || "").toLowerCase());
+      if (isGenericRoot && title) genericRootSuppressed.push(title);
+      const rootMatch = !isGenericRoot && Boolean(root);
       const starterSignal = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
       const audienceFit = /\b(teen|young adult|adult)\b/i.test(`${title} ${String(doc?.description || "")}`);
       const provenanceConfidence = Boolean(doc?.sourceId || doc?.queryText || doc?.parentVolumeName);
@@ -6027,6 +6050,7 @@ const normalizedCandidatesRaw = [
       const publisherConfidence = /\b(image|dark horse|boom|dc|marvel|idw|vertigo)\b/i.test(`${String(doc?.publisher || "")} ${String((doc as any)?.rawDoc?.publisher || "")}`);
       const collectionEditionBoost = /\b(volume|vol\.|book|tpb|trade paperback|hardcover|hc|ogn|omnibus|compendium|collected edition)\b/i.test(title) ? 1 : 0;
       const narrativeTitleConfidenceScore = (collectionEditionBoost ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + (hasFranchiseAnchor ? 1.5 : 0) + (rootMatch ? 1 : 0) + (publisherConfidence ? 0.5 : 0);
+      if (isGenericRoot && title) rootBoostSuppressed.push(title);
       const genericSuperheroTitlePenalty = /\bsuperhero(es)?\b/i.test(title) && !/\b(spider-man|batman|ms\.?\s*marvel|invincible|runaways|x-men|avengers)\b/i.test(title) ? 2.5 : 0;
       const strongTasteOverlap = tasteMatchScore >= 3;
       const looksGenericPlaceholder = /\b(graphic novel|science fiction|fantasy)\b/i.test(title) && title.split(/\s+/).length <= 8;
@@ -7097,6 +7121,11 @@ const normalizedCandidatesRaw = [
     candidateKilledByPenaltyStack,
     finalRankingReasonByTitle,
     finalScoreComponentsByTitle,
+    semanticEligibilityRejectedReason,
+    genericRootSuppressed,
+    rootBoostSuppressed,
+    narrativeEvidenceScore,
+    structuralOnlyMatch,
     tasteProfileSummary,
     dislikeProfileBuilt,
     dislikeProfileBuildFailure,
