@@ -6421,6 +6421,12 @@ const normalizedCandidatesRaw = [
   const genericCollectionArtifactRejectedTitles: string[] = [];
   const finalTasteThresholdByTitle: Record<string, number> = {};
   const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
+  const terminalRejectReasonByTitle: Record<string, string> = {};
+  const markTerminalReject = (title: string, reason: string) => {
+    const key = normalizeText(String(title || ""));
+    if (!key) return;
+    if (!terminalRejectReasonByTitle[key]) terminalRejectReasonByTitle[key] = reason;
+  };
   const finalRenderCandidateTitlesBeforeGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
@@ -6474,6 +6480,7 @@ const normalizedCandidatesRaw = [
     const recommendableWorkScore = collectedEditionConfidence + narrativeFictionConfidence - artifactRiskScore;
     if (genericCollectionArtifactRe.test(normalizeText(title)) || /gwandanaland comics/i.test(title)) {
       if (genericCollectionArtifactRejectedTitles.length < 100) genericCollectionArtifactRejectedTitles.push(title);
+      markTerminalReject(title, "generic_collection_artifact");
       registerFinalEligibilityReject("generic_collection_artifact", title); return false;
     }
     if (structuralFragment && !strongTasteFit) { registerFinalEligibilityReject("structural_fragment", title); return false; }
@@ -6493,6 +6500,7 @@ const normalizedCandidatesRaw = [
     if (!passesTasteThreshold) {
       if (collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2) {
         if (formatSignalOnlyRejectedTitles.length < 100) formatSignalOnlyRejectedTitles.push(title);
+        markTerminalReject(title, "format_signal_only_without_taste_fit");
         registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
       }
       registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
@@ -6545,6 +6553,9 @@ const normalizedCandidatesRaw = [
   const finalRenderCandidateTitlesAfterGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   const finalCountCappedToTarget = finalRenderDocs.length >= 10;
   const topUpFinalGateRejectedTitles = topUpCandidatesAcceptedTitles.filter((t) => !new Set(finalRenderCandidateTitlesAfterGate.map((x) => normalizeText(x))).has(normalizeText(t)));
+  for (const row of Object.values(finalEligibilityRejectedTitlesByReason || {})) {
+    for (const title of row || []) markTerminalReject(String(title || ""), "final_eligibility_rejected");
+  }
   const finalRootSecondEntryReasons: Record<string, string> = {};
   const finalRootDuplicateCounts: Record<string, number> = {};
   const byRoot = new Map<string, any[]>();
@@ -6597,6 +6608,7 @@ const normalizedCandidatesRaw = [
     .filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0)
     .map((doc: any) => String(doc?.title || "").trim())
     .filter(Boolean);
+  for (const title of negativeScoreRenderBlockedTitles) markTerminalReject(title, "negative_score_render_blocked");
   finalRenderDocs = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0);
   const finalUnderfillInsteadOfArtifactFallback = includeComicVine && finalRenderDocs.length < 5;
   if (finalUnderfillInsteadOfArtifactFallback) finalRenderDocs = [];
@@ -6803,6 +6815,19 @@ const normalizedCandidatesRaw = [
     returnedItemPassedFinalGateByTitle[t] = ok;
     if (!ok) finalRenderBypassBlockedTitles.push(t);
   }
+  for (const title of finalRenderBypassBlockedTitles) markTerminalReject(title, "final_render_bypass_blocked");
+  const acceptedAfterTerminalRejectFilter = finalEligibilityAcceptedTitles.filter((t) => !terminalRejectReasonByTitle[normalizeText(t)]);
+  const rejectedButAcceptedTitles = finalEligibilityAcceptedTitles.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
+  finalOutputItems = finalOutputItems.filter((item: any) => {
+    const t = String(item?.doc?.title || item?.title || "").trim();
+    return !terminalRejectReasonByTitle[normalizeText(t)];
+  });
+  const returnedItemsTitlesPostTerminal = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+  const rejectedButReturnedTitles = returnedItemsTitlesPostTerminal.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
+  const finalGateConsistencyPassed = rejectedButReturnedTitles.length === 0 && rejectedButAcceptedTitles.length === 0;
+  if (!finalGateConsistencyPassed) {
+    throw new Error(`FINAL_REJECTED_ITEM_RETURNED: titles=${JSON.stringify(rejectedButReturnedTitles)} reasons=${JSON.stringify(Object.fromEntries(rejectedButReturnedTitles.map((t)=>[t, terminalRejectReasonByTitle[normalizeText(t)] || "unknown"])))}`);
+  }
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
@@ -6963,8 +6988,12 @@ const normalizedCandidatesRaw = [
     sameParentSoftDuplicateRejectedTitles,
     finalEligibilityGateApplied,
     finalEligibilityCleanCandidateCount,
-    finalEligibilityAcceptedTitles,
+    finalEligibilityAcceptedTitles: acceptedAfterTerminalRejectFilter,
     finalEligibilityRejectedTitlesByReason,
+    rejectedButReturnedTitles,
+    rejectedButAcceptedTitles,
+    terminalRejectReasonByTitle,
+    finalGateConsistencyPassed,
     finalEligibilityRelaxationTriggered,
     finalEligibilityRelaxedAcceptedTitles,
     finalEligibilityRelaxedReasonByTitle,
