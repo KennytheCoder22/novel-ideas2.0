@@ -5939,6 +5939,9 @@ const normalizedCandidatesRaw = [
   const candidateDislikePenaltyByTitle: Record<string, number> = {};
   const candidateSkipPenaltyByTitle: Record<string, number> = {};
   const singleTokenQueryHijackPenaltyByTitle: Record<string, number> = {};
+  const queryTermOnlyEvidenceByTitle: Record<string, boolean> = {};
+  const titleOnlyTasteSignalByTitle: Record<string, string[]> = {};
+  const semanticSupportFoundByTitle: Record<string, boolean> = {};
   const finalRankingReasonByTitle: Record<string, string[]> = {};
   const placeholderPenaltyAppliedTitles: string[] = [];
   const narrativeTitleConfidenceByTitle: Record<string, number> = {};
@@ -6066,7 +6069,20 @@ const normalizedCandidatesRaw = [
       const queryTokens = queryText.split(/\s+/).filter((t) => t.length >= 4 && !/\b(comic|series|collected|edition|volume|trade|paperback|graphic|novel)\b/.test(t));
       const titleTokenHits = queryTokens.filter((t) => normalizeText(title).includes(t)).length;
       const hasSupportOutsideTitle = queryTokens.some((t) => normalizeText(String(doc?.description || "")).includes(t) || normalizeText(String(doc?.publisher || "")).includes(t));
-      const singleTokenQueryHijackPenalty = titleTokenHits > 0 && !hasSupportOutsideTitle ? Math.max(0, 2.5 - (titleTokenHits * 0.5)) : 0;
+      const broadGenreTokenRe = /^(fantasy|mystery|adventure|survival|horror|romance|thriller|science|fiction|dystopian)$/i;
+      const titleOnlyTokens = queryTokens.filter((t) => normalizeText(title).includes(t) && broadGenreTokenRe.test(t));
+      const queryTermOnlyEvidence = titleTokenHits > 0 && !hasSupportOutsideTitle;
+      const semanticSupportFound = hasSupportOutsideTitle || matchedLikedWeighted.length > 0 || themeOverlap;
+      const singleTokenQueryHijackPenalty = queryTermOnlyEvidence ? Math.max(6, 10 - (titleTokenHits * 1.25)) : 0;
+      queryTermOnlyEvidenceByTitle[title] = queryTermOnlyEvidence;
+      titleOnlyTasteSignalByTitle[title] = titleOnlyTokens;
+      semanticSupportFoundByTitle[title] = semanticSupportFound;
+      if (queryTermOnlyEvidence && titleOnlyTokens.length > 0 && matchedLiked.length === 0) {
+        finalSelectionRejectedByReason.query_literalism_title_only = Number(finalSelectionRejectedByReason.query_literalism_title_only || 0) + 1;
+        pushReason(penaltyReasonsByTitle, title, "query_literalism_title_only");
+        candidateKilledByPenaltyStack.push(title);
+        return null;
+      }
       const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 1.25 : 0) + (narrativeWorkSignal ? 1.25 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 0.75 : 0) + narrativeTitleConfidenceScore + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
       if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
       if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
@@ -6922,6 +6938,7 @@ const normalizedCandidatesRaw = [
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && aggregatedRawFetched.comicVine <= 0 && includeComicVine) underfillReason = "transport_failure";
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && finalReturnedWithoutTasteEvidenceTitles.length > 0) underfillReason = "query_literalism";
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && Object.values(queryTermOnlyEvidenceByTitle).some(Boolean)) underfillReason = "query_literalism";
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && Object.keys(candidateMatchedLikedSignalsByTitle).length === 0) underfillReason = "insufficient_candidate_metadata";
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && weightedSwipeTasteVector.disliked.length > 0 && weightedSwipeTasteVector.liked.length === 0) underfillReason = "taste_conflict";
   const returnedItemsTitlesPostTerminal = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
@@ -7130,6 +7147,9 @@ const normalizedCandidatesRaw = [
     candidateDislikePenaltyByTitle,
     candidateSkipPenaltyByTitle,
     singleTokenQueryHijackPenaltyByTitle,
+    queryTermOnlyEvidenceByTitle,
+    titleOnlyTasteSignalByTitle,
+    semanticSupportFoundByTitle,
     placeholderPenaltyAppliedTitles,
     narrativeTitleConfidenceByTitle,
     lowPositiveFitThresholdByCandidate,
