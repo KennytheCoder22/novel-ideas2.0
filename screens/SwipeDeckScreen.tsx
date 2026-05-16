@@ -2243,6 +2243,7 @@ function handleLeft() {
       `scoredCandidateUniverseCount:${Number((lastRecommendationResult as any)?.scoredCandidateUniverseCount || 0)}`,
       `convertedDocsAvailableForScoringCount:${Number((lastRecommendationResult as any)?.convertedDocsAvailableForScoringCount || 0)}`,
       `gcdStructuralEnrichmentCount:${Number((lastRecommendationResult as any)?.gcdStructuralEnrichmentCount || 0)}`,
+      `gcdEnrichmentApplied:${Number((lastRecommendationResult as any)?.gcdStructuralEnrichmentCount || 0) > 0}`,
       `gcdEntryPointLikeCount:${Number((lastRecommendationResult as any)?.gcdEntryPointLikeCount || 0)}`,
       `gcdCollectedLikeCount:${Number((lastRecommendationResult as any)?.gcdCollectedLikeCount || 0)}`,
       `gcdIssueLikeCount:${Number((lastRecommendationResult as any)?.gcdIssueLikeCount || 0)}`,
