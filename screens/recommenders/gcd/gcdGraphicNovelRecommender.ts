@@ -961,8 +961,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
   }
 }
 
-async function runGcdAdapterPreflight(timeoutMs: number): Promise<void> {
-  const probeQuery = "saga";
+async function runGcdAdapterPreflight(timeoutMs: number, probeQuery: string): Promise<void> {
   const probeUrl = buildComicVineProxySearchUrl(probeQuery);
   if (!hasLoggedProbeProxyUrl) {
     hasLoggedProbeProxyUrl = true;
@@ -983,8 +982,6 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const perAnchorFetchLimit = 10;
   const fetchLimit = Math.max(40, Math.min(160, MAX_COMICVINE_ANCHORS * perAnchorFetchLimit));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
-  await runGcdAdapterPreflight(timeoutMs);
-
   const bucketPreview = String((input as any)?.bucketPlan?.preview || "").trim();
   const bucketQueries = Array.isArray((input as any)?.bucketPlan?.queries) ? (input as any).bucketPlan.queries.map((q:any)=>String(q||"" ).trim()).filter(Boolean) : [];
   const querySeed = bucketPreview || bucketQueries[0] || "";
@@ -1059,6 +1056,14 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     suppressionSignals.superheroSuppressionActive && !strongSuperheroEvidence
       ? queriesToTry.filter((q) => !blockedSuperheroQueriesRe.test(normalizeText(q)))
       : queriesToTry;
+  const comicVinePreflightQuery = stripDanglingQuotes(String((tastePrimaryQueries[0] || finalizedQueriesToTry[0] || "saga")).trim());
+  const comicVinePreflightUsesTasteQuery = tastePrimaryQueries.length > 0 && normalizeText(comicVinePreflightQuery) === normalizeText(String(tastePrimaryQueries[0] || ""));
+  let comicVinePreflightError: string | null = null;
+  try {
+    await runGcdAdapterPreflight(timeoutMs, comicVinePreflightQuery);
+  } catch (e: any) {
+    comicVinePreflightError = String(e?.message || e || "comicvine_preflight_failed");
+  }
   const comicVineResolvedSeedQuery = anchorSelection.anchors[0] || queriesToTry[0] || "";
   const comicVineUsedFallbackQuery = false;
   const comicVineFallbackReason = "tag_profile_anchor_selection";
@@ -1115,6 +1120,18 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
   const comicVineFetchResults: Array<{ query: string; status: "ok" | "api_empty" | "post_normalization_empty" | "canonical_empty" | "content_empty" | "final_empty" | "error"; rawCount: number; acceptedCount: number; rejectedCount: number; topTitles: string[]; rejectedReasons: Record<string, number>; error: string | null }> = [];
+  if (comicVinePreflightError) {
+    comicVineFetchResults.push({
+      query: comicVinePreflightQuery,
+      status: "error",
+      rawCount: 0,
+      acceptedCount: 0,
+      rejectedCount: 0,
+      topTitles: [],
+      rejectedReasons: {},
+      error: comicVinePreflightError,
+    });
+  }
   const comicVineRawCountByQuery: Record<string, number> = {};
   const comicVineApiResultCountByQuery: Record<string, number> = {};
   const comicVinePostNormalizationCountByQuery: Record<string, number> = {};
@@ -1446,6 +1463,10 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ),
     comicVineRungsBuilt,
     comicVineQueriesActuallyFetched,
+    comicVinePreflightQuery,
+    comicVinePreflightUsesTasteQuery,
+    comicVinePerQueryFailureDoesNotAbort: true,
+    comicVinePreflightError,
     comicVineBaseAnchorsFetched: baseAnchorsFetched,
     comicVineFollowupQueriesBuilt: followupQueriesBuilt,
     comicVineFollowupQueriesFetched: followupFetched,
