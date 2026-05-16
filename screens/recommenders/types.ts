@@ -192,6 +192,7 @@ export type RecommendationResult = {
   finalItemAllowedDespiteNotTastePrimaryReason?: Record<string, string>;
   negativeScoreFinalItemBlockedTitles?: string[];
   negativeScoreFinalItemAllowedReason?: Record<string, string>;
+  finalGateAppliedAtRender?: boolean;
   finalEligibilityRejectedTitlesByReason?: Record<string, string[]>;
   finalRootDiversityCount?: number;
   finalRootDuplicateCounts?: Record<string, number>;
