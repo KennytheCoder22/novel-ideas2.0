@@ -109,6 +109,32 @@ type TwentyQObjectiveStatus = TwentyQObjective & {
   resolved: boolean;
 };
 
+
+type PresetDecision = { titleContains: string; direction: "like" | "dislike" | "skip" };
+type DiagnosticPreset = {
+  name: string;
+  expectedProfile: string;
+  expectedAvoids: string;
+  decisions: PresetDecision[];
+};
+
+const DIAGNOSTIC_PRESETS: DiagnosticPreset[] = [
+  { name: "Test A: Superhero / Fantasy / Mystery Likes", expectedProfile: "superhero,fantasy,mystery,adventure", expectedAvoids: "romance,warm family", decisions: [
+    { titleContains: "batman", direction: "like" }, { titleContains: "spider", direction: "like" }, { titleContains: "harry", direction: "like" }, { titleContains: "percy", direction: "like" }, { titleContains: "sherlock", direction: "like" },
+  ]},
+  { name: "Test B: All Dislikes", expectedProfile: "dislike-heavy", expectedAvoids: "all major themes", decisions: [
+    { titleContains: "", direction: "dislike" }, { titleContains: "", direction: "dislike" }, { titleContains: "", direction: "dislike" }, { titleContains: "", direction: "dislike" }, { titleContains: "", direction: "dislike" },
+  ]},
+  { name: "Test C: Sci-Fi / Fantasy / Survival Mixed", expectedProfile: "science fiction,fantasy,survival mixed", expectedAvoids: "romance-heavy", decisions: [
+    { titleContains: "dune", direction: "like" }, { titleContains: "hunger", direction: "like" }, { titleContains: "ender", direction: "like" }, { titleContains: "twilight", direction: "dislike" }, { titleContains: "maze", direction: "like" },
+  ]},
+  { name: "Test D: Romance / Warm Coming-of-Age Likes", expectedProfile: "romance,warm,coming-of-age", expectedAvoids: "dark horror", decisions: [
+    { titleContains: "to all the boys", direction: "like" }, { titleContains: "fault in our stars", direction: "like" }, { titleContains: "anne", direction: "like" }, { titleContains: "it", direction: "dislike" }, { titleContains: "batman", direction: "dislike" },
+  ]},
+  { name: "Test E: Dark Horror / Survival Likes", expectedProfile: "dark,horror,survival,mystery", expectedAvoids: "warm romance", decisions: [
+    { titleContains: "it", direction: "like" }, { titleContains: "walking dead", direction: "like" }, { titleContains: "hunger", direction: "like" }, { titleContains: "romance", direction: "dislike" }, { titleContains: "to all the boys", direction: "dislike" },
+  ]},
+];
 type Props = {
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
@@ -978,6 +1004,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [recommendFunctionErrorPhase, setRecommendFunctionErrorPhase] = useState<string>("");
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
+  const [showDiagnosticPresetPanel] = useState<boolean>(true);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -1234,7 +1261,7 @@ export default function SwipeDeckScreen(props: Props) {
       const identity = historyIdentityFromDoc(item.doc);
       if (identity.id) history.rejectedIds.add(identity.id);
       if (identity.key) history.rejectedKeys.add(identity.key);
-      return;
+      return null;
     }
 
     const itemId = normalizeMemoryToken(fallbackId(item.book));
@@ -1631,6 +1658,7 @@ function handleLeft() {
           "No matches found for this swipe. Try swiping a few different cards, or tap Next to try again."
         );
       }
+      return result as any;
     } catch (err: any) {
       setRecommendFunctionError(String(err?.message || err || "recommendation_call_failed"));
       setRecommendFunctionErrorStack(String(err?.stack || ""));
@@ -1645,13 +1673,14 @@ function handleLeft() {
       }
       setRecItems([]);
       setRecError(err?.message || "Recommendation engine could not be reached (network blocked).");
+      return null;
     } finally {
       setRecLoading(false);
     }
   }
 
-  async function runAutoRecommendations() {
-    const tagCountsForQuery: any = { ...(tagCounts as any) };
+  async function runAutoRecommendations(overrides?: { tagCounts?: TagCounts; tasteProfile?: any; swipeSummary?: { likes: number; dislikes: number; skips: number; decisions: number } }) {
+    const tagCountsForQuery: any = { ...((overrides?.tagCounts || tagCounts) as any) };
 
     Object.keys(tagCountsForQuery).forEach((k) => {
       if (k.startsWith("age:") || k.startsWith("audience:")) delete tagCountsForQuery[k];
@@ -1677,12 +1706,15 @@ function handleLeft() {
       const input: RecommenderInput = {
         deckKey,
         tagCounts: tagCountsForQuery,
-        tasteProfile: tasteProfileWithMood,
+        tasteProfile: overrides?.tasteProfile ?? tasteProfileWithMood,
         limit: 10,
         timeoutMs: 9000,
       };
 
-      await performRecommendationRun(input);
+      const runResult = await performRecommendationRun(input);
+      if (overrides?.swipeSummary) {
+        setLastRecommendationSwipeSummary(`Right:${overrides.swipeSummary.likes} • Left:${overrides.swipeSummary.dislikes} • Skip:${overrides.swipeSummary.skips} • Decisions:${overrides.swipeSummary.decisions} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
+      }
 
       if (suppressPersonalityLearningForNextRun) {
         setPersonalityProfileState(personalityStoreRef.current[pipelineUserId] ?? initializePersonality(pipelineUserId));
@@ -1697,6 +1729,7 @@ function handleLeft() {
       setPersonalityProfileState(finalized.nextPersonality);
       setSessionMoodProfile(finalized.mood);
       await refreshPipelinePreview();
+      return runResult as any;
     } catch (err: any) {
       console.log("[NovelIdeas][REC] auto_run_error", { message: err?.message });
     }
@@ -1753,6 +1786,134 @@ function handleLeft() {
     setSessionNonce((n) => n + 1);
   }
 
+
+
+  function buildPresetCheckSummary(result: any, preset: DiagnosticPreset, history: SwipeHistoryEntry[]) {
+    const finalTitles = Array.isArray(result?.finalItemsTitles) ? result.finalItemsTitles : [];
+    const rootCounts = Object.values((result?.selectedParentFranchiseCounts || {})) as number[];
+    const failures: string[] = [];
+    const hasLikes = history.some((h) => h.direction === "like");
+    const hasDislikes = history.some((h) => h.direction === "dislike");
+    if (hasLikes && (!Array.isArray(result?.generatedComicVineQueriesFromTaste) || result.generatedComicVineQueriesFromTaste.length === 0)) failures.push("taste_queries_missing_when_likes_exist");
+    if (hasDislikes && (!Array.isArray(result?.tasteProfileSummary?.dislikedSignals) || result.tasteProfileSummary.dislikedSignals.length === 0)) failures.push("disliked_signals_missing_when_dislikes_exist");
+    if (hasLikes && result?.querySourceOfTruth !== "taste_profile") failures.push("static_fallback_used_despite_taste_profile");
+    if (Array.isArray(result?.legacySeedInjectionBlockedTitles) && result.legacySeedInjectionBlockedTitles.some((t: string) => finalTitles.includes(t))) failures.push("legacy_seed_lineage_leaked_to_final");
+    if (Array.isArray(result?.negativeScoreFinalItemBlockedTitles) && result.negativeScoreFinalItemBlockedTitles.some((t: string) => finalTitles.includes(t))) failures.push("negative_score_leaked_to_final");
+    if (result?.returnedItemsLength >= 8 && (finalTitles.length < 8 || finalTitles.length > 10)) failures.push("final_count_outside_8_10");
+    if (new Set(finalTitles.map((t: string) => String(t).toLowerCase())).size !== finalTitles.length) failures.push("duplicate_titles_present");
+    if (rootCounts.some((n) => Number(n) > 2)) failures.push("more_than_2_per_parent_root");
+    if (!result?.finalGateAppliedAtRender) failures.push("final_gate_not_applied_at_render");
+    const likelyFailureStage = failures.some((f) => f.includes("taste_queries") || f.includes("disliked_signals")) ? "swipe evidence extraction / taste query generation"
+      : failures.some((f) => f.includes("fallback")) ? "legacy fallback bypass"
+      : failures.some((f) => f.includes("negative") || f.includes("duplicate") || f.includes("parent_root")) ? "final eligibility / render overwrite"
+      : failures.length ? "candidate filtering / scoring" : "none";
+    return { failedChecks: failures, likelyFailureStage, worstOffendingTitles: finalTitles.slice(0, 4), suspectedNextFix: failures[0] || "none" };
+  }
+
+  async function runDiagnosticPreset(preset: DiagnosticPreset) {
+    const execution = {
+      presetExecutionStarted: true,
+      presetSwipesAppliedCount: 0,
+      presetCardsMatchedCount: 0,
+      presetRecommendationTriggered: false,
+      presetRecommendationCompleted: false,
+      presetExportedAfterRecommendation: false,
+      presetExecutionError: "",
+    };
+    handleFreshUserReset();
+    const cardsPool = cards.slice(0, 120);
+    const chosenHistory: SwipeHistoryEntry[] = [];
+    const nextTagCounts: TagCounts = {};
+    let likes = 0, dislikes = 0, skips = 0;
+    preset.decisions.forEach((decision, idx) => {
+      const matched = cardsPool.find((c: any) => decision.titleContains ? String((c as any)?.title || "").toLowerCase().includes(decision.titleContains) : false) || cardsPool[idx];
+      if (!matched) return;
+      execution.presetCardsMatchedCount += 1;
+      chosenHistory.push({ direction: decision.direction, card: matched });
+      const expandedTags = expandTeenCompanionTags(deckKey, Array.isArray((matched as any)?.tags) ? (matched as any).tags : []);
+      if (decision.direction === "like") { addTags(nextTagCounts, expandedTags, +1); likes += 1; execution.presetSwipesAppliedCount += 1; }
+      else if (decision.direction === "dislike") { addTags(nextTagCounts, expandedTags, -1); dislikes += 1; execution.presetSwipesAppliedCount += 1; }
+      else { skips += 1; execution.presetSwipesAppliedCount += 1; }
+    });
+    if (execution.presetSwipesAppliedCount === 0) {
+      execution.presetExecutionError = "preset_swipes_applied_count_zero";
+      Alert.alert("Preset failed", "No preset swipes were applied; aborting export.");
+      return {
+        presetTestName: preset.name,
+        presetExpectedProfile: preset.expectedProfile,
+        presetExpectedAvoids: preset.expectedAvoids,
+        ...execution,
+      };
+    }
+    setSwipeHistory(chosenHistory);
+    setTagCounts(nextTagCounts);
+    setRightSwipes(likes);
+    setLeftSwipes(dislikes);
+    setDownSwipes(skips);
+    execution.presetRecommendationTriggered = true;
+    const syntheticTasteProfile = buildTasteProfile({
+      deckKey,
+      tagCounts: nextTagCounts,
+      feedback,
+      directTraits: weightedDirectTraitsHistory(chosenHistory),
+    });
+    const result = (await runAutoRecommendations({
+      tagCounts: nextTagCounts,
+      tasteProfile: syntheticTasteProfile,
+      swipeSummary: { likes, dislikes, skips, decisions: likes + dislikes },
+    })) || null;
+    execution.presetRecommendationCompleted = Boolean(result);
+    if (!result) {
+      execution.presetExecutionError = "recommendation_not_completed";
+      Alert.alert("Preset failed", "Recommendation did not complete; not exporting empty report.");
+      return {
+        presetTestName: preset.name,
+        presetExpectedProfile: preset.expectedProfile,
+        presetExpectedAvoids: preset.expectedAvoids,
+        ...execution,
+      };
+    }
+    const summary = buildPresetCheckSummary(result, preset, chosenHistory);
+    execution.presetExportedAfterRecommendation = true;
+    return {
+      presetTestName: preset.name,
+      presetExpectedProfile: preset.expectedProfile,
+      presetExpectedAvoids: preset.expectedAvoids,
+      ...execution,
+      failureSummary: summary,
+      swipeHistory: chosenHistory.map((h) => ({ direction: h.direction, title: (h.card as any)?.title || "" })),
+      swipeTasteVector: result?.swipeTasteVector,
+      weightedSwipeTasteVector: result?.weightedSwipeTasteVector,
+      tasteProfileSummary: result?.tasteProfileSummary,
+      generatedComicVineQueriesFromTaste: result?.generatedComicVineQueriesFromTaste,
+      comicVineQueriesActuallyFetched: result?.comicVineQueriesActuallyFetched,
+      primaryTasteQueryPoolTitles: result?.primaryTasteQueryPoolTitles,
+      primaryTasteQueryPoolRoots: result?.primaryTasteQueryPoolRoots,
+      finalItemsTitles: result?.finalItemsTitles,
+      returnedItemsLength: result?.returnedItemsLength,
+      finalItemSourcePathByTitle: result?.finalItemSourcePathByTitle,
+      finalItemAllowedDespiteNotTastePrimaryReason: result?.finalItemAllowedDespiteNotTastePrimaryReason,
+      legacySeedInjectionBlockedTitles: result?.legacySeedInjectionBlockedTitles,
+      negativeScoreFinalItemBlockedTitles: result?.negativeScoreFinalItemBlockedTitles,
+      finalGateAppliedAtRender: result?.finalGateAppliedAtRender,
+      finalScoreComponentsByTitle: result?.finalScoreComponentsByTitle,
+      candidateWeightedTasteScoreByTitle: result?.candidateWeightedTasteScoreByTitle,
+      candidateDislikePenaltyByTitle: result?.candidateDislikePenaltyByTitle,
+      finalEligibilityRejectedTitlesByReason: result?.finalEligibilityRejectedTitlesByReason,
+      finalSelectionRejectedByReason: result?.finalSelectionRejectedByReason,
+    };
+  }
+
+  async function runAllDiagnosticPresets() {
+    const reports = [] as any[];
+    for (const preset of DIAGNOSTIC_PRESETS) {
+      const report = await runDiagnosticPreset(preset);
+      reports.push(report);
+    }
+    const combined = { generatedAt: new Date().toISOString(), deckKey, reportKind: "combined_diagnostic_sessions", tests: reports };
+    await Clipboard.setStringAsync(JSON.stringify(combined, null, 2));
+    Alert.alert("Diagnostics complete", "Combined diagnostic report copied to clipboard.");
+  }
 
   function summarizeCounts(values: Array<string | number | undefined | null>) {
     const counts = new Map<string, number>();
@@ -2791,13 +2952,33 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
-          <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
+          <TouchableOpacity
+            style={styles.diagnosticsToggle}
+            onPress={handleCopyDiagnostics}
+                      >
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
             <Text style={styles.debugToggleText}>Fresh User</Text>
           </TouchableOpacity>
+          {showDiagnosticPresetPanel ? (
+            <>
+              <Text style={styles.devDiagHelp}>Tap a preset pill to auto-run swipes, recommendations, and copy report.</Text>
+              {DIAGNOSTIC_PRESETS.map((preset, index) => (
+                <TouchableOpacity key={preset.name} style={styles.devDiagPill} onPress={async () => {
+                  const report = await runDiagnosticPreset(preset);
+                  await Clipboard.setStringAsync(JSON.stringify(report, null, 2));
+                  Alert.alert("Preset done", `${preset.name} report copied.`);
+                }}>
+                  <Text style={styles.devDiagPillText}>{`Test ${String.fromCharCode(65+index)}`}</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={styles.devDiagPillRunAll} onPress={runAllDiagnosticPresets}>
+                <Text style={styles.debugToggleText}>Run All Diagnostic Sessions</Text>
+              </TouchableOpacity>
+            </>
+          ) : null}
         </View>
       </View>
 
@@ -3069,6 +3250,21 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   debugToggleText: { color: "#fff", fontWeight: "900" },
+
+  devDiagHelp: {
+    maxWidth: 320,
+    color: "#cbd5f5",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  devDiagPillText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 12,
+  },
+
   countsPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
   rawPoolPanel: { position: "absolute", right: 16, bottom: 104, width: 380, maxWidth: "94%", zIndex: 50 },
   poolPanel: { position: "absolute", right: 16, bottom: 104, width: 360, maxWidth: "92%", zIndex: 50 },
