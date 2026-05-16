@@ -3103,21 +3103,31 @@ export async function getRecommendations(
   const genres = tasteProfileSummary.likedGenres.map((s) => s.replace(/^genre:/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const tones = tasteProfileSummary.likedTones.map((s) => s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const themes = tasteProfileSummary.likedThemes.map((s) => s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  const narrativeSeriesForms = (base: string) => ([
+    `${base} comic series`,
+    `${base} collected edition`,
+    `${base} comic volume 1`,
+    `${base} trade paperback`,
+    `${base} limited series`,
+  ]);
   const combinedQueries = [
-    ...(genres.length >= 2 ? [`${genres[0]} ${genres[1]} graphic novel`] : []),
+    ...(genres.length >= 2 ? narrativeSeriesForms(`${genres[0]} ${genres[1]}`) : []),
     ...(genres.includes("superheroes") && genres.includes("fantasy") ? ["superhero fantasy comic"] : []),
-    ...(genres.includes("mystery") && genres.includes("fantasy") ? ["mystery fantasy graphic novel"] : []),
-    ...(genres.includes("dystopian") && themes.includes("survival") ? ["dystopian survival graphic novel"] : []),
-    ...(genres.includes("dystopian") && genres.includes("thriller") ? ["dystopian thriller graphic novel"] : []),
-    ...(genres.includes("mystery") && genres.includes("thriller") ? ["mystery thriller graphic novel"] : []),
-    ...(genres.includes("romance") && themes.includes("coming of age") ? ["romance coming of age graphic novel"] : []),
-    ...(genres.includes("fantasy") && themes.includes("mythology") ? ["fantasy mythology graphic novel"] : []),
+    ...(genres.includes("mystery") && genres.includes("fantasy") ? narrativeSeriesForms("mystery fantasy") : []),
+    ...(genres.includes("dystopian") && themes.includes("survival") ? narrativeSeriesForms("dystopian survival") : []),
+    ...(genres.includes("dystopian") && genres.includes("thriller") ? narrativeSeriesForms("dystopian thriller") : []),
+    ...(genres.includes("mystery") && genres.includes("thriller") ? narrativeSeriesForms("mystery thriller") : []),
+    ...(genres.includes("romance") && themes.includes("coming of age") ? narrativeSeriesForms("romance coming of age") : []),
+    ...(genres.includes("fantasy") && themes.includes("mythology") ? narrativeSeriesForms("fantasy mythology") : []),
   ];
-  let generatedComicVineQueriesFromTaste = Array.from(new Set([
-    ...combinedQueries,
+  const broadGraphicQueries = Array.from(new Set([
     ...genres.map((v) => `${v} graphic novel`),
     ...tones.map((v) => `${v} graphic novel`),
     ...themes.map((v) => `${v} graphic novel`),
+  ]));
+  let generatedComicVineQueriesFromTaste = Array.from(new Set([
+    ...combinedQueries,
+    ...broadGraphicQueries,
   ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
@@ -3144,11 +3154,22 @@ export async function getRecommendations(
   let preFilterPoolOverlapWithPreviousSession = 0;
   let tasteQueriesBlockedByReason = "none";
   let finalRungQueriesSource = "existing_rungs";
+  let primaryNarrativeQueryMode = false;
+  let primaryNarrativeQueries: string[] = [];
+  let broadGraphicNovelQueriesUsedAsFallback = false;
+  let broadGraphicNovelFallbackReason = "none";
   let primaryTasteQueryOverrideApplied = false;
   let primaryTasteQueryOverrideBlockedReason = "not_evaluated";
   let primaryRungZeroSource = "none";
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0) {
-    rungs = generatedComicVineQueriesFromTaste.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
+    const narrativePrimary = generatedComicVineQueriesFromTaste.filter((q) => /\b(comic series|collected edition|volume 1|trade paperback|limited series)\b/i.test(q));
+    const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q));
+    const primaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
+    primaryNarrativeQueryMode = narrativePrimary.length > 0;
+    primaryNarrativeQueries = narrativePrimary.slice(0, 12);
+    broadGraphicNovelQueriesUsedAsFallback = narrativePrimary.length === 0 && broadFallback.length > 0;
+    broadGraphicNovelFallbackReason = broadGraphicNovelQueriesUsedAsFallback ? "no_narrative_series_queries_built" : "none";
+    rungs = primaryQueries.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
     staticDefaultQueriesSuppressedReason = "replaced_with_swipe_taste_queries";
     querySourceOfTruth = "taste_profile";
     tasteQueriesUsedForPrimaryFetch = true;
@@ -6531,6 +6552,13 @@ const normalizedCandidatesRaw = [
   const scoredRebuildUsedForRender = true;
   const renderSource = "scored_rebuild";
   const overwrittenAfterScoredRebuild = false;
+  const negativeScoreRenderBlockedTitles = finalRenderDocs
+    .filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0)
+    .map((doc: any) => String(doc?.title || "").trim())
+    .filter(Boolean);
+  finalRenderDocs = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0);
+  const finalUnderfillInsteadOfArtifactFallback = includeComicVine && finalRenderDocs.length < 5;
+  if (finalUnderfillInsteadOfArtifactFallback) finalRenderDocs = [];
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
@@ -6653,6 +6681,18 @@ const normalizedCandidatesRaw = [
           : teenPostPassOutputLength === 0
           ? "teen_postpass_eliminated_all"
           : "render_mapping_empty_after_final")
+      : "none";
+  const expansionDropStageSummary =
+    expansionRawCount > 0 && expansionCandidatesAcceptedFinal.length === 0
+      ? JSON.stringify({
+          expansionRawCount,
+          expansionConvertedCount,
+          expansionCandidatesEnteredScoringCount,
+          expansionCandidatesSurvivedFiltersCount,
+          expansionCandidatesRejectedByReason,
+          narrativeExpansionCandidatesDroppedBeforeScoringByReason,
+          narrativeExpansionCandidatesRejectedByFinalEligibilityReason,
+        })
       : "none";
   const builtFromQueryRaw =
     (google as any)?.builtFromQuery ||
@@ -6846,6 +6886,13 @@ const normalizedCandidatesRaw = [
     narrativeExpansionCandidatesRejectedByFinalEligibilityReason,
     narrativeExpansionFinalAcceptedTitles,
     finalUnderfillAfterNarrativeExpansion,
+    primaryNarrativeQueryMode,
+    primaryNarrativeQueries,
+    broadGraphicNovelQueriesUsedAsFallback,
+    broadGraphicNovelFallbackReason,
+    negativeScoreRenderBlockedTitles,
+    finalUnderfillInsteadOfArtifactFallback,
+    expansionDropStageSummary,
     sameParentSoftDuplicateRejectedTitles,
     finalEligibilityGateApplied,
     finalEligibilityCleanCandidateCount,
