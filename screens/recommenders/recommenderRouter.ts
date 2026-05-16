@@ -3131,7 +3131,9 @@ export async function getRecommendations(
   ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
-  }))).slice(0, 10);
+  })))
+    .map((q) => q.replace(/\b(comic series)\s+\1\b/gi, "$1").replace(/\b(collected edition)\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim())
+    .slice(0, 10);
   if (dislikeOnlySession && generatedComicVineQueriesFromTaste.length === 0) {
     generatedComicVineQueriesFromTaste = [
       "grounded character driven comic series",
@@ -3233,6 +3235,7 @@ export async function getRecommendations(
   const comicVineQueryTexts = new Set<string>();
   const comicVineRungsBuilt = new Set<string>();
   const comicVineQueriesActuallyFetched = new Set<string>();
+  const comicVineTasteQueriesAttempted = new Set<string>();
   const comicVineFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
   const comicVineRawCountByQuery: Record<string, number> = {};
   const comicVineAcceptedCountByQuery: Record<string, number> = {};
@@ -3252,6 +3255,9 @@ export async function getRecommendations(
   let comicVinePositiveQueries: string[] = [];
   let comicVineExcludedTermsAppliedInFilterOnly = false;
   let comicVineQueryTooLong = false;
+  let comicVinePreflightQuery = "";
+  let comicVinePreflightUsesTasteQuery = false;
+  const comicVinePerQueryFailureDoesNotAbort = true;
   let effectiveBucketPlanForExpansion: any = {
     ...bucketPlan,
     lane: routerFamily,
@@ -3338,7 +3344,7 @@ export async function getRecommendations(
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
-      const shouldDispatchComicVineForLane = includeComicVine && !comicVineAdapterFailed && !comicVineDispatchedOnce;
+      const shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
       const comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       if (shouldDispatchComicVineForLane) {
         requests.push(getComicVineGraphicNovelRecommendations(laneInput));
@@ -3381,7 +3387,9 @@ export async function getRecommendations(
         : null;
       if (comicVineDispatchedOnThisLane) {
         const gcdResult = results[index];
-        const query = "comicvine_adapter";
+        const query = String(lane.query || "comicvine_adapter");
+        comicVinePreflightQuery = comicVinePreflightQuery || query;
+        comicVinePreflightUsesTasteQuery = comicVinePreflightUsesTasteQuery || tasteDerivedQuerySet.has(normalizeText(query));
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
           for (const queryText of (value?.comicVineQueryTexts || [])) comicVineQueryTexts.add(String(queryText || "").trim());
@@ -3393,6 +3401,10 @@ export async function getRecommendations(
           if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
           for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
           for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
+          for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) {
+            const q = String(queryText || "").trim();
+            if (tasteDerivedQuerySet.has(normalizeText(q))) comicVineTasteQueriesAttempted.add(q);
+          }
           if (querySourceOfTruth === "taste_profile") {
             const leakedStaticQuery = (value?.comicVineQueriesActuallyFetched || []).map((q:any)=>String(q || "").trim()).find((q:string) => {
               const nq = normalizeText(q);
@@ -3432,7 +3444,6 @@ export async function getRecommendations(
           }
         } else if (gcdResult?.status === "rejected") {
           const reason: any = (gcdResult as PromiseRejectedResult).reason;
-          comicVineAdapterFailed = true;
           const reasonText = String(reason?.message || reason || "comicvine_fetch_failed");
           comicVineAdapterStatus = reasonText.includes("403") ? "proxy_403" : "proxy_error";
           comicVineFetchResults.push({
@@ -3579,9 +3590,16 @@ export async function getRecommendations(
   const proxyHealthStatus: "ok" | "failed" | "unknown" =
     !includeComicVine ? "unknown" : proxyHealthError ? "failed" : "ok";
   const kitsuFetchAttempted = Boolean(includeKitsu);
+  const tasteQueriesNonEmpty = generatedComicVineQueriesFromTaste.length > 0;
+  const attemptedTasteQueriesCount = Array.from(comicVineTasteQueriesAttempted).length;
+  const allTasteQueriesAttemptedAndFailed = tasteQueriesNonEmpty &&
+    generatedComicVineQueriesFromTaste.every((q) =>
+      comicVineFetchResults.some((row) => normalizeText(String(row?.query || "")) === normalizeText(q) && String(row?.status || "").toLowerCase() === "error")
+    );
   if (sourceEnabled.comicVine && includeComicVine && aggregatedRawFetched.comicVine === 0) {
     const missingProxy = comicVineFetchResults.some((row) => String(row?.error || "").includes("EXPO_PUBLIC_COMICVINE_PROXY_URL"));
-    sourceSkippedReason.push(missingProxy ? "comicvine_proxy_missing" : "comicvine_enabled_but_not_queried");
+    if (missingProxy) sourceSkippedReason.push("comicvine_proxy_missing");
+    else if (!tasteQueriesNonEmpty || allTasteQueriesAttemptedAndFailed || attemptedTasteQueriesCount === 0) sourceSkippedReason.push("comicvine_enabled_but_not_queried");
   }
   if (comicVineAdapterStatus === "proxy_403") sourceSkippedReason.push("comicvine_preflight_proxy_403");
 
@@ -4962,6 +4980,10 @@ const normalizedCandidatesRaw = [
     comicVineQueryTexts: resolvedComicVineQueryTexts,
     comicVineRungsBuilt: resolvedComicVineRungsBuilt,
     comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched),
+    comicVinePreflightQuery,
+    comicVinePreflightUsesTasteQuery,
+    comicVinePerQueryFailureDoesNotAbort,
+    comicVineTasteQueriesAttempted: Array.from(comicVineTasteQueriesAttempted),
     gcdFetchResults: comicVineFetchResults,
     comicVineFetchResults,
     comicVineRawCountByQuery,
@@ -5889,7 +5911,7 @@ const normalizedCandidatesRaw = [
     disliked: weightedSwipeTasteVector.disliked.map((s) => s.signal),
     skipped: weightedSwipeTasteVector.skipped.map((s) => s.signal),
   };
-  const dislikeProfileBuildFailure = (Object.keys((routingInput as any)?.leftTagCounts || {}).length > 0) && weightedSwipeTasteVector.disliked.length === 0;
+  const dislikeProfileBuildFailure = ((Object.keys((routingInput as any)?.leftTagCounts || {}).length > 0) || (Object.keys((routingInput as any)?.dislikedTagCounts || {}).length > 0)) && weightedSwipeTasteVector.disliked.length === 0;
   const dislikeProfileBuildFailureReason = dislikeProfileBuildFailure ? "left swipes not promoted" : "none";
   const candidateTasteMatchScoreByTitle: Record<string, number> = {};
   const candidateTastePenaltyByTitle: Record<string, number> = {};
