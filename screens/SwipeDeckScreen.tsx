@@ -1517,7 +1517,7 @@ function handleLeft() {
         }).start();
       },
     });
-  }, [currentCard, swipeThresholdX, swipeThresholdDown, position]);
+  }, [deckKey, sessionNonce, pipelineSessionId, pipelineUserId]);
 
   function tryAgain() {
     setSessionNonce((n) => n + 1);
