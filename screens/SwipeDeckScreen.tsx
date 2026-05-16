@@ -954,6 +954,14 @@ export default function SwipeDeckScreen(props: Props) {
   const [recCoverCache, setRecCoverCache] = useState<Record<string, string>>({});
   const [autoSearched, setAutoSearched] = useState(false);
   const [forceRecommendationsView, setForceRecommendationsView] = useState(false);
+  const [presetTestName, setPresetTestName] = useState<string>("");
+  const [presetExecutionStarted, setPresetExecutionStarted] = useState<string>("");
+  const [presetSwipesAppliedCount, setPresetSwipesAppliedCount] = useState(0);
+  const [presetCardsMatchedCount, setPresetCardsMatchedCount] = useState(0);
+  const [presetRecommendationTriggered, setPresetRecommendationTriggered] = useState(false);
+  const [presetRecommendationCompleted, setPresetRecommendationCompleted] = useState(false);
+  const [presetExportedAfterRecommendation, setPresetExportedAfterRecommendation] = useState(false);
+  const [presetExecutionError, setPresetExecutionError] = useState<string>("");
 
   const [showRating, setShowRating] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
@@ -1717,6 +1725,12 @@ function handleLeft() {
   ];
 
   async function runTestSessionPreset(preset: TestSessionPreset) {
+    setPresetTestName(preset.label);
+    setPresetExecutionStarted(new Date().toISOString());
+    setPresetExecutionError("");
+    setPresetRecommendationTriggered(false);
+    setPresetRecommendationCompleted(false);
+    setPresetExportedAfterRecommendation(false);
     const sampleCards = cards.slice(0, preset.sequence.length);
     if (sampleCards.length === 0) {
       Alert.alert("No cards", "This deck has no cards to run a test session.");
@@ -1744,6 +1758,7 @@ function handleLeft() {
     const dislikeCount = entries.filter((entry) => entry.direction === "dislike").length;
     const skipCount = entries.filter((entry) => entry.direction === "skip").length;
     const seenKeys = entries.map((entry) => cardIdentityKey(entry.card));
+    const decisions = likeCount + dislikeCount;
 
     setSwipeHistory(entries);
     setTagCounts(nextTagCounts);
@@ -1754,6 +1769,9 @@ function handleLeft() {
     setRecentCardKeys(seenKeys.slice(-6));
     setForceRecommendationsView(true);
     setAutoSearched(true);
+    setPresetSwipesAppliedCount(entries.length);
+    setPresetCardsMatchedCount(sampleCards.length);
+    setLastRecommendationSwipeSummary(`Right:${likeCount} • Left:${dislikeCount} • Skip:${skipCount} • Decisions:${decisions} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
 
     const tagCountsForQuery: any = { ...nextTagCounts };
     tagCountsForQuery["audience:kids"] = 0;
@@ -1793,7 +1811,15 @@ function handleLeft() {
       timeoutMs: 9000,
     };
 
-    await performRecommendationRun(input);
+    try {
+      setPresetRecommendationTriggered(true);
+      await performRecommendationRun(input);
+      setPresetRecommendationCompleted(true);
+    } catch (err: any) {
+      setPresetExecutionError(String(err?.message || err || "preset_execution_failed"));
+      setPresetRecommendationCompleted(false);
+      throw err;
+    }
   }
 
   function handleFreshUserReset() {
@@ -1828,6 +1854,14 @@ function handleLeft() {
     setRecCoverCache({});
     setAutoSearched(false);
     setForceRecommendationsView(false);
+    setPresetTestName("");
+    setPresetExecutionStarted("");
+    setPresetSwipesAppliedCount(0);
+    setPresetCardsMatchedCount(0);
+    setPresetRecommendationTriggered(false);
+    setPresetRecommendationCompleted(false);
+    setPresetExportedAfterRecommendation(false);
+    setPresetExecutionError("");
     setShowRating(false);
     setLastRecommendationInput(null);
     setLastRecommendationTimestamp("");
@@ -2048,6 +2082,12 @@ function handleLeft() {
   }
 
   async function handleCopyDiagnostics() {
+    if (presetRecommendationCompleted) setPresetExportedAfterRecommendation(true);
+    const recomputedRight = swipeHistory.filter((entry) => entry.direction === "like").length;
+    const recomputedLeft = swipeHistory.filter((entry) => entry.direction === "dislike").length;
+    const recomputedSkip = swipeHistory.filter((entry) => entry.direction === "skip").length;
+    const recomputedDecisions = recomputedRight + recomputedLeft;
+    const recomputedSummary = `Right:${recomputedRight} • Left:${recomputedLeft} • Skip:${recomputedSkip} • Decisions:${recomputedDecisions} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`;
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
           if (item.kind === "open_library") {
@@ -2370,7 +2410,8 @@ function handleLeft() {
       `Deck Key: ${deckKey}`,
       `Engine: ${recEngineLabel || "—"}`,
       `Saved Query Time: ${lastRecommendationTimestamp || "—"}`,
-      `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
+      `Swipe Summary: ${recomputedSummary}`,
+      `Swipe Summary (state): ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
       `20Q Progress: ${resolvedTwentyQCount}/${twentyQObjectives.length}`,
       `Current 20Q Objective: ${activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung} • ${activeTwentyQObjective.label}` : "complete"}`,
       `Active query family: ${reportQueryFamily}`,
@@ -2379,6 +2420,14 @@ function handleLeft() {
       swipeHistoryLines,
       "",
       `Built Query: ${reportBuiltQuery || "(none)"}`,
+      `presetTestName:${presetTestName || "(none)"}`,
+      `presetExecutionStarted:${presetExecutionStarted || "(none)"}`,
+      `presetSwipesAppliedCount:${presetSwipesAppliedCount}`,
+      `presetCardsMatchedCount:${presetCardsMatchedCount}`,
+      `presetRecommendationTriggered:${presetRecommendationTriggered}`,
+      `presetRecommendationCompleted:${presetRecommendationCompleted}`,
+      `presetExportedAfterRecommendation:${presetRecommendationCompleted ? "true" : String(presetExportedAfterRecommendation)}`,
+      `presetExecutionError:${presetExecutionError || "(none)"}`,
       "",
       "RUNG QUERIES",
       rungQueryLines,
