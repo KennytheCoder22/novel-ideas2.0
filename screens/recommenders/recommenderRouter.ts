@@ -5938,6 +5938,7 @@ const normalizedCandidatesRaw = [
   const candidateWeightedTasteScoreByTitle: Record<string, number> = {};
   const candidateDislikePenaltyByTitle: Record<string, number> = {};
   const candidateSkipPenaltyByTitle: Record<string, number> = {};
+  const singleTokenQueryHijackPenaltyByTitle: Record<string, number> = {};
   const finalRankingReasonByTitle: Record<string, string[]> = {};
   const placeholderPenaltyAppliedTitles: string[] = [];
   const narrativeTitleConfidenceByTitle: Record<string, number> = {};
@@ -6004,6 +6005,7 @@ const normalizedCandidatesRaw = [
         return null;
       }
       const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+      const queryText = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
       const matchedLikedWeighted = weightedSwipeTasteVector.liked.filter((row) => text.includes(normalizeText(row.signal)));
       const matchedDislikedWeighted = weightedSwipeTasteVector.disliked.filter((row) => text.includes(normalizeText(row.signal)));
       const matchedSkippedWeighted = weightedSwipeTasteVector.skipped.filter((row) => text.includes(normalizeText(row.signal)));
@@ -6061,10 +6063,14 @@ const normalizedCandidatesRaw = [
       const retroHorrorArchivePenalty = /\b(crypt of horror|tomb of horror|vault of horror|haunt of horror|horror city|ec comics|archives?)\b/i.test(`${title} ${String(doc?.description || "")}`) ? 5.5 : 0;
       const anthologyHorrorPenalty = /\b(horror anthology|anthology of horror|collected horror stories|horror archives?)\b/i.test(`${title} ${String(doc?.description || "")}`) ? 4 : 0;
       const historicalAboutPenalty = /\bhistorical graphic novel about\b/i.test(title) ? 3 : 0;
-      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 1.25 : 0) + (narrativeWorkSignal ? 1.25 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 0.75 : 0) + narrativeTitleConfidenceScore + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty;
+      const queryTokens = queryText.split(/\s+/).filter((t) => t.length >= 4 && !/\b(comic|series|collected|edition|volume|trade|paperback|graphic|novel)\b/.test(t));
+      const titleTokenHits = queryTokens.filter((t) => normalizeText(title).includes(t)).length;
+      const hasSupportOutsideTitle = queryTokens.some((t) => normalizeText(String(doc?.description || "")).includes(t) || normalizeText(String(doc?.publisher || "")).includes(t));
+      const singleTokenQueryHijackPenalty = titleTokenHits > 0 && !hasSupportOutsideTitle ? Math.max(0, 2.5 - (titleTokenHits * 0.5)) : 0;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 1.25 : 0) + (narrativeWorkSignal ? 1.25 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 0.75 : 0) + narrativeTitleConfidenceScore + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
       if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
       if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
-      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + (starterSignal ? 2 : 0) + (audienceFit ? 1 : 0) + narrativeTitleConfidenceScore + (rootMatch ? 0.25 : 0) + (laneMatch ? 0.25 : 0) + (provenanceConfidence ? 0.1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty;
+      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + (starterSignal ? 2 : 0) + (audienceFit ? 1 : 0) + narrativeTitleConfidenceScore + (rootMatch ? 0.25 : 0) + (laneMatch ? 0.25 : 0) + (provenanceConfidence ? 0.1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
       narrativeTitleConfidenceByTitle[title] = narrativeTitleConfidenceScore;
       const lowPositiveFitThreshold = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate) ? 1.25 : 2;
       lowPositiveFitThresholdByCandidate[title] = lowPositiveFitThreshold;
@@ -6076,7 +6082,8 @@ const normalizedCandidatesRaw = [
       candidateWeightedTasteScoreByTitle[title] = tasteMatchScore;
       candidateDislikePenaltyByTitle[title] = dislikePenalty;
       candidateSkipPenaltyByTitle[title] = skipPenalty;
-      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.25 : 0, starterSignal: starterSignal ? 2 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 0.1 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
+      singleTokenQueryHijackPenaltyByTitle[title] = singleTokenQueryHijackPenalty;
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.25 : 0, starterSignal: starterSignal ? 2 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 0.1 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, singleTokenQueryHijackPenalty: -singleTokenQueryHijackPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
       finalRankingReasonByTitle[title] = [
         ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
         ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
@@ -6491,6 +6498,7 @@ const normalizedCandidatesRaw = [
   const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
   const finalReturnedWithoutTasteEvidenceTitles: string[] = [];
   let finalUnderfillBecauseNoTasteEvidence = false;
+  let underfillReason: "transport_failure" | "query_literalism" | "semantic_gate_rejected_all" | "insufficient_candidate_metadata" | "taste_conflict" | "none" = "none";
   let expansionMergedButNotScoredReason = "none";
   const terminalRejectReasonByTitle: Record<string, string> = {};
   const markTerminalReject = (title: string, reason: string) => {
@@ -6910,7 +6918,12 @@ const normalizedCandidatesRaw = [
   });
   if (!suppressTopRecommendations && gatedFinalItems.length > 0 && finalOutputItems.length === 0) {
     finalUnderfillBecauseNoTasteEvidence = true;
+    underfillReason = "semantic_gate_rejected_all";
   }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && aggregatedRawFetched.comicVine <= 0 && includeComicVine) underfillReason = "transport_failure";
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && finalReturnedWithoutTasteEvidenceTitles.length > 0) underfillReason = "query_literalism";
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && Object.keys(candidateMatchedLikedSignalsByTitle).length === 0) underfillReason = "insufficient_candidate_metadata";
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && weightedSwipeTasteVector.disliked.length > 0 && weightedSwipeTasteVector.liked.length === 0) underfillReason = "taste_conflict";
   const returnedItemsTitlesPostTerminal = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
   const rejectedButReturnedTitles = returnedItemsTitlesPostTerminal.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
   const finalRejectAssertionChecked = finalOutputItems.length > 0 || finalEligibilityAcceptedTitles.length > 0 || Object.keys(terminalRejectReasonByTitle).length > 0;
@@ -7073,6 +7086,7 @@ const normalizedCandidatesRaw = [
     finalCountCappedToTarget,
     finalReturnedWithoutTasteEvidenceTitles,
     finalUnderfillBecauseNoTasteEvidence,
+    underfillReason,
     expansionMergedButNotScoredReason,
     finalRenderSourceList,
     finalRenderCandidateTitlesBeforeGate,
@@ -7115,6 +7129,7 @@ const normalizedCandidatesRaw = [
     candidateWeightedTasteScoreByTitle,
     candidateDislikePenaltyByTitle,
     candidateSkipPenaltyByTitle,
+    singleTokenQueryHijackPenaltyByTitle,
     placeholderPenaltyAppliedTitles,
     narrativeTitleConfidenceByTitle,
     lowPositiveFitThresholdByCandidate,
