@@ -1004,7 +1004,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [recommendFunctionErrorPhase, setRecommendFunctionErrorPhase] = useState<string>("");
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
-  const [showDiagnosticPresetPanel, setShowDiagnosticPresetPanel] = useState<boolean>(false);
+  const [showDiagnosticPresetPanel] = useState<boolean>(true);
 
   const tasteProfile = useMemo(() => {
     return buildTasteProfile({
@@ -2955,9 +2955,7 @@ function handleLeft() {
           <TouchableOpacity
             style={styles.diagnosticsToggle}
             onPress={handleCopyDiagnostics}
-            onLongPress={() => setShowDiagnosticPresetPanel((v) => !v)}
-            delayLongPress={350}
-          >
+                      >
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
 
@@ -2966,16 +2964,17 @@ function handleLeft() {
           </TouchableOpacity>
           {showDiagnosticPresetPanel ? (
             <>
-              {DIAGNOSTIC_PRESETS.map((preset) => (
-                <TouchableOpacity key={preset.name} style={styles.devDiagBtn} onPress={async () => {
+              <Text style={styles.devDiagHelp}>Tap a preset pill to auto-run swipes, recommendations, and copy report.</Text>
+              {DIAGNOSTIC_PRESETS.map((preset, index) => (
+                <TouchableOpacity key={preset.name} style={styles.devDiagPill} onPress={async () => {
                   const report = await runDiagnosticPreset(preset);
                   await Clipboard.setStringAsync(JSON.stringify(report, null, 2));
                   Alert.alert("Preset done", `${preset.name} report copied.`);
                 }}>
-                  <Text style={styles.debugToggleText}>{preset.name}</Text>
+                  <Text style={styles.devDiagPillText}>{`Test ${String.fromCharCode(65+index)}`}</Text>
                 </TouchableOpacity>
               ))}
-              <TouchableOpacity style={styles.devDiagBtnRunAll} onPress={runAllDiagnosticPresets}>
+              <TouchableOpacity style={styles.devDiagPillRunAll} onPress={runAllDiagnosticPresets}>
                 <Text style={styles.debugToggleText}>Run All Diagnostic Sessions</Text>
               </TouchableOpacity>
             </>
@@ -3251,6 +3250,21 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   debugToggleText: { color: "#fff", fontWeight: "900" },
+
+  devDiagHelp: {
+    maxWidth: 320,
+    color: "#cbd5f5",
+    fontSize: 11,
+    fontWeight: "700",
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  devDiagPillText: {
+    color: "#fff",
+    fontWeight: "900",
+    fontSize: 12,
+  },
+
   countsPanel: { position: "absolute", right: 16, bottom: 104, width: 320, maxWidth: "90%", zIndex: 50 },
   rawPoolPanel: { position: "absolute", right: 16, bottom: 104, width: 380, maxWidth: "94%", zIndex: 50 },
   poolPanel: { position: "absolute", right: 16, bottom: 104, width: 360, maxWidth: "92%", zIndex: 50 },
