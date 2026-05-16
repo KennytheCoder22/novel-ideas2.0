@@ -2366,6 +2366,8 @@ function handleLeft() {
       `rejectedButAcceptedTitles:${Array.isArray((lastRecommendationResult as any)?.rejectedButAcceptedTitles) ? (lastRecommendationResult as any).rejectedButAcceptedTitles.join(" | ") : "(none)"}`,
       `terminalRejectReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.terminalRejectReasonByTitle || {})}`,
       `finalGateConsistencyPassed:${Boolean((lastRecommendationResult as any)?.finalGateConsistencyPassed)}`,
+      `finalRejectAssertionChecked:${Boolean((lastRecommendationResult as any)?.finalRejectAssertionChecked)}`,
+      `finalRejectAssertionThrowReason:${String((lastRecommendationResult as any)?.finalRejectAssertionThrowReason || "none")}`,
       `finalRankedDocsBaseTitles:${Array.isArray((lastRecommendationResult as any)?.finalRankedDocsBaseTitles) && (lastRecommendationResult as any).finalRankedDocsBaseTitles.length ? (lastRecommendationResult as any).finalRankedDocsBaseTitles.join(" | ") : "(none)"}`,
       `rankedDocsTitles:${Array.isArray((lastRecommendationResult as any)?.rankedDocsTitles) && (lastRecommendationResult as any).rankedDocsTitles.length ? (lastRecommendationResult as any).rankedDocsTitles.join(" | ") : "(none)"}`,
       `normalizedDocsCount:${Number((lastRecommendationResult as any)?.normalizedDocsCount || 0)}`,

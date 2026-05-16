@@ -6846,8 +6846,11 @@ const normalizedCandidatesRaw = [
   });
   const returnedItemsTitlesPostTerminal = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
   const rejectedButReturnedTitles = returnedItemsTitlesPostTerminal.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
-  const finalGateConsistencyPassed = rejectedButReturnedTitles.length === 0 && rejectedButAcceptedTitles.length === 0;
-  if (!finalGateConsistencyPassed) {
+  const finalRejectAssertionChecked = finalOutputItems.length > 0 || finalEligibilityAcceptedTitles.length > 0 || Object.keys(terminalRejectReasonByTitle).length > 0;
+  let finalRejectAssertionThrowReason = "none";
+  const finalGateConsistencyPassed = rejectedButReturnedTitles.length === 0;
+  if (finalRejectAssertionChecked && rejectedButReturnedTitles.length > 0) {
+    finalRejectAssertionThrowReason = `returned_intersects_terminal_rejects:${rejectedButReturnedTitles.length}`;
     throw new Error(`FINAL_REJECTED_ITEM_RETURNED: titles=${JSON.stringify(rejectedButReturnedTitles)} reasons=${JSON.stringify(Object.fromEntries(rejectedButReturnedTitles.map((t)=>[t, terminalRejectReasonByTitle[normalizeText(t)] || "unknown"])))}`);
   }
   if (finalRenderBypassBlockedTitles.length > 0) {
@@ -7016,6 +7019,8 @@ const normalizedCandidatesRaw = [
     rejectedButAcceptedTitles,
     terminalRejectReasonByTitle,
     finalGateConsistencyPassed,
+    finalRejectAssertionChecked,
+    finalRejectAssertionThrowReason,
     finalEligibilityRelaxationTriggered,
     finalEligibilityRelaxedAcceptedTitles,
     finalEligibilityRelaxedReasonByTitle,
