@@ -6414,6 +6414,10 @@ const normalizedCandidatesRaw = [
   const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
   const finalEligibilityGateApplied = true;
   const eligibleWithFitScore: Array<{ doc: any; fitScore: number; recommendableWorkScore: number; artifactRiskScore: number; collectedEditionConfidence: number; narrativeFictionConfidence: number; metaOrReferenceWorkPenalty: number }> = [];
+  const formatSignalOnlyRejectedTitles: string[] = [];
+  const genericCollectionArtifactRejectedTitles: string[] = [];
+  const finalTasteThresholdByTitle: Record<string, number> = {};
+  const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
@@ -6432,11 +6436,20 @@ const normalizedCandidatesRaw = [
     if (!(seedRootMatch || expansionRootMatch || Boolean(root) || queryFamilyAliasMatch)) { registerFinalEligibilityReject("no_positive_root_alignment", title); return false; }
     const strongScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 8;
     const starterLike = /\b(volume one|volume 1|book one|book 1|tpb|collection|compendium|omnibus)\b/i.test(title);
-    const laneSignal = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/i.test(`${title} ${String(doc?.description || "")}`);
-    const themeSignal = profileSelectedEntitySeeds.some((seed) => normalizeText(`${title} ${String(doc?.description || "")}`).includes(normalizeText(seed)));
+    const textBag = normalizeText(`${title} ${String(doc?.description || "")}`);
+    const laneSignal = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/i.test(textBag);
+    const themeSignal = profileSelectedEntitySeeds.some((seed) => textBag.includes(normalizeText(seed)));
     const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
     if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+    const likedSignalsRaw = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
+    const genericTasteSignalRe = /^(fantasy|adventure|mystery|crime|thriller|horror|science fiction|romance|superhero|comics?|graphic novel)$/i;
+    const matchedMeaningfulLikedSignals = Object.keys(likedSignalsRaw)
+      .map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim())
+      .filter((token) => token.length >= 4 && !genericTasteSignalRe.test(token))
+      .filter((token) => textBag.includes(normalizeText(token)));
+    const meaningfulSignalCount = Array.from(new Set(matchedMeaningfulLikedSignals)).length;
+    finalTasteThresholdByTitle[title] = 2.5;
     const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
     const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
     const isClearlyMalformed = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title);
@@ -6446,7 +6459,8 @@ const normalizedCandidatesRaw = [
     const recommendableEditionRe = /\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i;
     const issueOnlyRe = /(#\s*\d+\b|\bissue\s*#?\s*\d+\b)/i;
     const genericArtifactRe = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/i;
-    const metaRefRe = /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i;
+    const genericCollectionArtifactRe = /^the collected edition$|^hardcover\/trade paperback$|^great british .+ comic book heroes(?:\s*#?\d+)?$/i;
+    const metaRefRe = /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated|archive|canon|anthology)\b/i;
     const narrativeSignalRe = /\b(story|novel|saga|chronicle|mystery|thriller|horror|fantasy|adventure)\b/i;
     const editionText = `${title} ${String(doc?.description || '')} ${String(doc?.parentVolumeName || '')}`;
     const collectedEditionConfidence = (recommendableEditionRe.test(editionText) ? 3 : 0) + (hasParent ? 1 : 0) - (issueOnlyRe.test(title) ? 2 : 0);
@@ -6454,6 +6468,10 @@ const normalizedCandidatesRaw = [
     const metaOrReferenceWorkPenalty = (metaRefRe.test(editionText) ? 4 : 0) + (genericArtifactRe.test(normalizeText(title)) ? 3 : 0);
     const artifactRiskScore = (issueOnlyRe.test(title) ? 3 : 0) + (isClearlyMalformed ? 4 : 0) + metaOrReferenceWorkPenalty + (structuralFragment ? 2 : 0);
     const recommendableWorkScore = collectedEditionConfidence + narrativeFictionConfidence - artifactRiskScore;
+    if (genericCollectionArtifactRe.test(normalizeText(title)) || /gwandanaland comics/i.test(title)) {
+      if (genericCollectionArtifactRejectedTitles.length < 100) genericCollectionArtifactRejectedTitles.push(title);
+      registerFinalEligibilityReject("generic_collection_artifact", title); return false;
+    }
     if (structuralFragment && !strongTasteFit) { registerFinalEligibilityReject("structural_fragment", title); return false; }
     if (artifactRiskScore >= 6 && !/\b(nonfiction|memoir|essay|history)\b/i.test(String((input as any)?.deckKey || ""))) {
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
@@ -6465,7 +6483,22 @@ const normalizedCandidatesRaw = [
       registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
     const passesNarrativeConfidenceGate = narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3;
     if (!passesNarrativeConfidenceGate) { registerFinalEligibilityReject("narrative_confidence_too_low", title); return false; }
+    const oneStrongTasteSignalPlusNarrative = weightedTasteScore >= 2.5 && narrativeFictionConfidence >= 2 && !genericArtifactRe.test(normalizeText(title));
+    const twoMeaningfulSignals = meaningfulSignalCount >= 2;
+    const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative;
+    if (!passesTasteThreshold) {
+      if (collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2) {
+        if (formatSignalOnlyRejectedTitles.length < 100) formatSignalOnlyRejectedTitles.push(title);
+        registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
+      }
+      registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
+    }
     if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
+    finalAcceptedTasteEvidenceByTitle[title] = [
+      `weightedTasteScore:${weightedTasteScore.toFixed(2)}`,
+      `meaningfulSignals:${meaningfulSignalCount}`,
+      `narrativeFictionConfidence:${narrativeFictionConfidence}`,
+    ];
     eligibleWithFitScore.push({ doc, fitScore, recommendableWorkScore, artifactRiskScore, collectedEditionConfidence, narrativeFictionConfidence, metaOrReferenceWorkPenalty });
     finalEligibilityAcceptedTitles.push(title);
     if (narrativeExpansionAcceptedTitleSet.has(normalizeText(title))) narrativeExpansionFinalAcceptedTitles.push(title);
@@ -6503,7 +6536,9 @@ const normalizedCandidatesRaw = [
   }
   finalRenderDocs = eligibleWithFitScore
     .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
-    .map((row) => row.doc);
+    .map((row) => row.doc)
+    .slice(0, 10);
+  const finalCountCappedToTarget = finalRenderDocs.length >= 10;
   const finalRootSecondEntryReasons: Record<string, string> = {};
   const finalRootDuplicateCounts: Record<string, number> = {};
   const byRoot = new Map<string, any[]>();
@@ -6893,6 +6928,11 @@ const normalizedCandidatesRaw = [
     negativeScoreRenderBlockedTitles,
     finalUnderfillInsteadOfArtifactFallback,
     expansionDropStageSummary,
+    formatSignalOnlyRejectedTitles,
+    genericCollectionArtifactRejectedTitles,
+    finalTasteThresholdByTitle,
+    finalAcceptedTasteEvidenceByTitle,
+    finalCountCappedToTarget,
     sameParentSoftDuplicateRejectedTitles,
     finalEligibilityGateApplied,
     finalEligibilityCleanCandidateCount,
