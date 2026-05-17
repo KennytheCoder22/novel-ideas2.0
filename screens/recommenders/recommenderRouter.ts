@@ -7118,6 +7118,10 @@ const normalizedCandidatesRaw = [
   let finalOutputItems = suppressTopRecommendations ? [] : terminalAssemblyBaseItems;
   let singleSourceDirectReturnTriggered = false;
   let singleSourceDirectReturnTitles: string[] = [];
+  let singleSourceItemsLengthBeforeReturn = singleSourceItems.length;
+  let singleSourceItemsTitlesBeforeReturn = singleSourceItems.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+  let singleSourceItemsBuiltFrom = "source_lane_approved_candidates";
+  const singleSourceItemsDropReasonByTitle: Record<string, string> = {};
   let finalReturnSourceUsed = "final_gate_accepted_docs";
   const finalReturnDropReasonByTitle: Record<string, string> = {};
   if (!suppressTopRecommendations && singleSourceMode) {
@@ -7251,7 +7255,23 @@ const normalizedCandidatesRaw = [
     returnedItemsBuiltFrom = "controlled_try_again_state";
   }
   if (!suppressTopRecommendations && singleSourceDirectReturnTriggered) {
-    finalOutputItems = singleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
+    let dynamicSingleSourceItems = singleSourceItems;
+    if (dynamicSingleSourceItems.length === 0 && finalGateAcceptedItems.length > 0) {
+      dynamicSingleSourceItems = finalGateAcceptedItems.map((row: any) => row?.doc).filter(Boolean);
+      singleSourceItemsBuiltFrom = "final_gate_accepted_docs";
+    } else if (dynamicSingleSourceItems.length === 0 && terminalAssemblyBaseItems.length > 0) {
+      dynamicSingleSourceItems = terminalAssemblyBaseItems.map((row: any) => row?.doc).filter(Boolean);
+      singleSourceItemsBuiltFrom = "terminal_assembly_base";
+    } else if (dynamicSingleSourceItems.length === 0 && teenPostPassItems.length > 0) {
+      dynamicSingleSourceItems = teenPostPassItems.map((row: any) => row?.doc).filter(Boolean);
+      singleSourceItemsBuiltFrom = "teen_post_pass_output";
+    }
+    singleSourceItemsLengthBeforeReturn = dynamicSingleSourceItems.length;
+    singleSourceItemsTitlesBeforeReturn = dynamicSingleSourceItems.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+    if (singleSourceItems.length > 0 && dynamicSingleSourceItems.length === 0) {
+      for (const doc of singleSourceItems) singleSourceItemsDropReasonByTitle[String(doc?.title || "")] = "dropped_before_single_source_return";
+    }
+    finalOutputItems = dynamicSingleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
     returnedItemsBuiltFrom = "single_source_lane_direct";
     finalReturnSourceUsed = `single_source_direct:${singleSource}`;
   }
@@ -7497,6 +7517,10 @@ const normalizedCandidatesRaw = [
     finalRecommenderOutputBySource,
     singleSourceDirectReturnTriggered,
     singleSourceDirectReturnTitles,
+    singleSourceItemsLengthBeforeReturn,
+    singleSourceItemsTitlesBeforeReturn,
+    singleSourceItemsBuiltFrom,
+    singleSourceItemsDropReasonByTitle,
     finalReturnSourceUsed,
     finalReturnDropReasonByTitle,
     preSourceSpecificGateTitles,
