@@ -5942,6 +5942,7 @@ const normalizedCandidatesRaw = [
   const queryTermOnlyEvidenceByTitle: Record<string, boolean> = {};
   const titleOnlyTasteSignalByTitle: Record<string, string[]> = {};
   const semanticSupportFoundByTitle: Record<string, boolean> = {};
+  const semanticEvidenceCountByTitle: Record<string, number> = {};
   const finalRankingReasonByTitle: Record<string, string[]> = {};
   const placeholderPenaltyAppliedTitles: string[] = [];
   const narrativeTitleConfidenceByTitle: Record<string, number> = {};
@@ -6054,7 +6055,6 @@ const normalizedCandidatesRaw = [
       const hasFranchiseAnchor = profileSelectedEntitySeeds.some((seed) => normalizeText(title).includes(normalizeText(seed)));
       const publisherConfidence = /\b(image|dark horse|boom|dc|marvel|idw|vertigo)\b/i.test(`${String(doc?.publisher || "")} ${String((doc as any)?.rawDoc?.publisher || "")}`);
       const collectionEditionBoost = /\b(volume|vol\.|book|tpb|trade paperback|hardcover|hc|ogn|omnibus|compendium|collected edition)\b/i.test(title) ? 1 : 0;
-      const narrativeTitleConfidenceScore = (collectionEditionBoost ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + (hasFranchiseAnchor ? 1.5 : 0) + (rootMatch ? 1 : 0) + (publisherConfidence ? 0.5 : 0);
       if (isGenericRoot && title) rootBoostSuppressed.push(title);
       const genericSuperheroTitlePenalty = /\bsuperhero(es)?\b/i.test(title) && !/\b(spider-man|batman|ms\.?\s*marvel|invincible|runaways|x-men|avengers)\b/i.test(title) ? 2.5 : 0;
       const strongTasteOverlap = tasteMatchScore >= 3;
@@ -6072,21 +6072,35 @@ const normalizedCandidatesRaw = [
       const broadGenreTokenRe = /^(fantasy|mystery|adventure|survival|horror|romance|thriller|science|fiction|dystopian)$/i;
       const titleOnlyTokens = queryTokens.filter((t) => normalizeText(title).includes(t) && broadGenreTokenRe.test(t));
       const queryTermOnlyEvidence = titleTokenHits > 0 && !hasSupportOutsideTitle;
-      const semanticSupportFound = hasSupportOutsideTitle || matchedLikedWeighted.length > 0 || themeOverlap;
+      const normalizedRoot = normalizeText(String(docRoot || "").replace(/-/g, " "));
+      const franchiseAffinity = profileSelectedEntitySeeds.some((seed) => normalizedRoot.includes(normalizeText(seed)));
+      const narrativeOverlap = laneMatch || narrativeWorkSignal;
+      const semanticEvidenceCount =
+        (matchedLikedWeighted.length > 0 ? 1 : 0) +
+        (hasSupportOutsideTitle ? 1 : 0) +
+        (themeOverlap ? 1 : 0) +
+        (franchiseAffinity ? 1 : 0) +
+        (narrativeOverlap ? 1 : 0);
+      const semanticSupportFound = semanticEvidenceCount > 0;
+      const structuralBoostsAllowed = semanticSupportFound;
+      const starterSignalScore = starterSignal && structuralBoostsAllowed ? 0.8 : 0;
+      const collectionEditionScore = collectionEditionBoost && structuralBoostsAllowed ? 0.8 : 0;
+      const narrativeTitleConfidenceScore = (collectionEditionScore ? 1.2 : 0) + (narrativeWorkSignal ? 1.5 : 0) + (hasFranchiseAnchor ? 1.25 : 0) + (rootMatch ? 0.5 : 0) + (publisherConfidence ? 0.35 : 0);
       const singleTokenQueryHijackPenalty = queryTermOnlyEvidence ? Math.max(6, 10 - (titleTokenHits * 1.25)) : 0;
       queryTermOnlyEvidenceByTitle[title] = queryTermOnlyEvidence;
       titleOnlyTasteSignalByTitle[title] = titleOnlyTokens;
       semanticSupportFoundByTitle[title] = semanticSupportFound;
+      semanticEvidenceCountByTitle[title] = semanticEvidenceCount;
       if (queryTermOnlyEvidence && titleOnlyTokens.length > 0 && matchedLiked.length === 0) {
         finalSelectionRejectedByReason.query_literalism_title_only = Number(finalSelectionRejectedByReason.query_literalism_title_only || 0) + 1;
         pushReason(penaltyReasonsByTitle, title, "query_literalism_title_only");
         candidateKilledByPenaltyStack.push(title);
         return null;
       }
-      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 1.25 : 0) + (narrativeWorkSignal ? 1.25 : 0) + (starterSignal ? 1 : 0) + (audienceFit ? 0.75 : 0) + narrativeTitleConfidenceScore + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0) ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 1.25 : 0) + (narrativeWorkSignal ? 1.25 : 0) + starterSignalScore + (audienceFit ? 0.75 : 0) + narrativeTitleConfidenceScore + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0 && semanticSupportFound) ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
       if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
       if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
-      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + (starterSignal ? 2 : 0) + (audienceFit ? 1 : 0) + narrativeTitleConfidenceScore + (rootMatch ? 0.25 : 0) + (laneMatch ? 0.25 : 0) + (provenanceConfidence ? 0.1 : 0) + (Number(doc?.score ?? 0) > 0 ? 1 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
+      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + starterSignalScore + (audienceFit ? 1 : 0) + narrativeTitleConfidenceScore + (rootMatch ? 0.5 : 0) + (laneMatch ? 0.25 : 0) + (provenanceConfidence && semanticSupportFound ? 0.05 : 0) + (Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
       narrativeTitleConfidenceByTitle[title] = narrativeTitleConfidenceScore;
       const lowPositiveFitThreshold = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate) ? 1.25 : 2;
       lowPositiveFitThresholdByCandidate[title] = lowPositiveFitThreshold;
@@ -6099,7 +6113,7 @@ const normalizedCandidatesRaw = [
       candidateDislikePenaltyByTitle[title] = dislikePenalty;
       candidateSkipPenaltyByTitle[title] = skipPenalty;
       singleTokenQueryHijackPenaltyByTitle[title] = singleTokenQueryHijackPenalty;
-      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.25 : 0, starterSignal: starterSignal ? 2 : 0, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence ? 0.1 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, singleTokenQueryHijackPenalty: -singleTokenQueryHijackPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 ? 1 : 0 };
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.5 : 0, starterSignal: starterSignalScore, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence && semanticSupportFound ? 0.05 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, semanticEvidenceCount, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, singleTokenQueryHijackPenalty: -singleTokenQueryHijackPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0 };
       finalRankingReasonByTitle[title] = [
         ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
         ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
@@ -6547,6 +6561,7 @@ const normalizedCandidatesRaw = [
     const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
     if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+    const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
     const likedSignalsRaw = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
     const genericTasteSignalRe = /^(fantasy|adventure|mystery|crime|thriller|horror|science fiction|romance|superhero|comics?|graphic novel)$/i;
     const matchedMeaningfulLikedSignals = Object.keys(likedSignalsRaw)
@@ -6592,6 +6607,9 @@ const normalizedCandidatesRaw = [
     const oneStrongTasteSignalPlusNarrative = weightedTasteScore >= 2.5 && narrativeFictionConfidence >= 2 && !genericArtifactRe.test(normalizeText(title));
     const twoMeaningfulSignals = meaningfulSignalCount >= 2;
     const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative;
+    if (semanticEvidenceCount < 2) {
+      registerFinalEligibilityReject("insufficient_semantic_evidence_count", title); return false;
+    }
     if (!passesTasteThreshold) {
       if (collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2) {
         if (formatSignalOnlyRejectedTitles.length < 100) formatSignalOnlyRejectedTitles.push(title);
@@ -7150,6 +7168,7 @@ const normalizedCandidatesRaw = [
     queryTermOnlyEvidenceByTitle,
     titleOnlyTasteSignalByTitle,
     semanticSupportFoundByTitle,
+    semanticEvidenceCountByTitle,
     placeholderPenaltyAppliedTitles,
     narrativeTitleConfidenceByTitle,
     lowPositiveFitThresholdByCandidate,
