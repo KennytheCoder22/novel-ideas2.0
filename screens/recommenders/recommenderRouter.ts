@@ -7023,7 +7023,15 @@ const normalizedCandidatesRaw = [
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
   const suppressTopRecommendations = (hardPipelineFailure && rankedCount === 0) || scoredUniverseFailure;
   const gatedFinalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
-  let finalOutputItems = suppressTopRecommendations ? [] : gatedFinalItems;
+  const teenPostPassItems = finalRankedDocs.map((doc:any) => ({ kind: "open_library", doc }));
+  const finalAcceptedDocsItems = finalAcceptedDocs.map((doc:any) => ({ kind: "open_library", doc }));
+  const terminalAssemblyBaseItems =
+    teenPostPassItems.length > 0
+      ? teenPostPassItems
+      : finalAcceptedDocsItems.length > 0
+        ? finalAcceptedDocsItems
+        : gatedFinalItems;
+  let finalOutputItems = suppressTopRecommendations ? [] : terminalAssemblyBaseItems;
   const finalGateAcceptedDocsCount = finalRenderDocs.length;
   const terminalAssemblyInputCount = finalOutputItems.length;
   const terminalAssemblyDropReasonByTitle: Record<string, string> = {};
@@ -7074,8 +7082,12 @@ const normalizedCandidatesRaw = [
   });
   if (!suppressTopRecommendations && acceptedAfterTerminalRejectFilter.length > 0 && finalOutputItems.length === 0) {
     const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
-    finalOutputItems = gatedFinalItems.filter((item: any) => acceptedSet.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
-    if (finalOutputItems.length > 0) returnedItemsBuiltFrom = "final_gate_accepted_docs_fail_open";
+    finalOutputItems = terminalAssemblyBaseItems.filter((item: any) => acceptedSet.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
+    if (finalOutputItems.length > 0) returnedItemsBuiltFrom = "terminal_base_fail_open";
+  }
+  if (!suppressTopRecommendations && terminalAssemblyBaseItems.length > 0 && finalOutputItems.length === 0) {
+    finalOutputItems = terminalAssemblyBaseItems;
+    returnedItemsBuiltFrom = "terminal_base_unfiltered_fallback";
   }
   const terminalAssemblyOutputCount = finalOutputItems.length;
   if (!suppressTopRecommendations && gatedFinalItems.length > 0 && finalOutputItems.length === 0) {
