@@ -3140,6 +3140,9 @@ export async function getRecommendations(
   if (genres.includes("fantasy") && genres.includes("adventure")) curatedRootsByPattern.push("Amulet", "Bone", "Wynd", "Lightfall", "The Last Kids on Earth");
   if (genres.includes("mystery") && (genres.includes("crime") || themes.includes("historical"))) curatedRootsByPattern.push("Goldie Vance", "Enola Holmes", "Stumptown", "Blacksad");
   if ((genres.includes("fantasy") || genres.includes("supernatural")) && tones.includes("gentle") && themes.includes("coming of age")) curatedRootsByPattern.push("Natsume", "The Tea Dragon Society", "Witch Hat Atelier");
+  if (genres.includes("dystopian") && genres.includes("mystery") && themes.includes("survival")) curatedRootsByPattern.push("Lazarus", "Sweet Tooth", "Y: The Last Man", "The Walking Dead");
+  if (genres.includes("fantasy") && genres.includes("mystery") && (tones.includes("atmospheric") || tones.includes("dark"))) curatedRootsByPattern.push("Locke & Key", "The Sandman", "Monstress", "The Woods");
+  if (genres.includes("romance") && themes.includes("coming of age") && genres.includes("superheroes")) curatedRootsByPattern.push("Ms. Marvel", "Runaways", "Young Avengers", "Lumberjanes");
   const curatedSeedQueries = Array.from(new Set(curatedRootsByPattern.flatMap((root) => [`${root} comic series`, `${root} volume 1`, `${root} collected edition`])));
   curatedSeedRootsUsed.push(...curatedRootsByPattern);
   let generatedComicVineQueriesFromTaste = Array.from(new Set([
@@ -6608,6 +6611,9 @@ const normalizedCandidatesRaw = [
       return false;
     }
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+    const queryTermOnlyEvidence = Boolean(queryTermOnlyEvidenceByTitle[title]);
+    const titleOnlyTasteSignals = titleOnlyTasteSignalByTitle[title] || [];
+    const weakAnthologyRootTitle = /\b(house of mystery|showcase presents|mystery men|mystery club)\b/i.test(title);
     const likedSignalsRaw = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
     const genericTasteSignalRe = /^(fantasy|adventure|mystery|crime|thriller|horror|science fiction|romance|superhero|comics?|graphic novel)$/i;
     const matchedMeaningfulLikedSignals = Object.keys(likedSignalsRaw)
@@ -6662,6 +6668,14 @@ const normalizedCandidatesRaw = [
     }
     if (nonEnglish) { if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title); registerFinalEligibilityReject("locale_variant", title); return false; }
     if (parodyMetaTitle && !hasComedyParodyAffinity) { registerFinalEligibilityReject("parody_meta_without_profile_affinity", title); return false; }
+    if (isComicVineCandidate && queryTermOnlyEvidence && titleOnlyTasteSignals.length > 0) {
+      registerFinalEligibilityReject("title_token_only_without_narrative_support", title);
+      return false;
+    }
+    if (isComicVineCandidate && weakAnthologyRootTitle && semanticEvidenceCount < 3) {
+      registerFinalEligibilityReject("weak_anthology_root_without_strong_semantic_support", title);
+      return false;
+    }
     if ((isClearlyMalformed || Number(doc?.score ?? 0) <= 0) && !(strongTasteFit && laneAndTasteSignal && !isClearlyMalformed)) {
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
       registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
