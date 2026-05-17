@@ -7060,6 +7060,28 @@ const normalizedCandidatesRaw = [
   const outputItemsNoMixedFallback = mixedFallbackOutput ? nonFallbackItems : outputItems;
   const suppressTopRecommendations = (hardPipelineFailure && rankedCount === 0) || scoredUniverseFailure;
   const gatedFinalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
+  const sourceLaneInputCount = {
+    googleBooks: finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("google")).length,
+    openLibrary: finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("openlibrary")).length,
+    kitsu: finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu")).length,
+    comicVine: finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine")).length,
+  };
+  const googleBooksApprovedCandidates = finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("google"));
+  const openLibraryApprovedCandidates = finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("openlibrary"));
+  const kitsuApprovedCandidates = finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"));
+  const comicVineApprovedCandidates = finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"));
+  const sourceLaneApprovedCount = {
+    googleBooks: googleBooksApprovedCandidates.length,
+    openLibrary: openLibraryApprovedCandidates.length,
+    kitsu: kitsuApprovedCandidates.length,
+    comicVine: comicVineApprovedCandidates.length,
+  };
+  const sourceLaneRejectedReasonBySource = {
+    googleBooks: [] as string[],
+    openLibrary: [] as string[],
+    kitsu: [] as string[],
+    comicVine: [] as string[],
+  };
   const teenPostPassItems = finalRankedDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const finalAcceptedDocsItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const finalGateAcceptedItems = finalRenderDocs
@@ -7073,7 +7095,24 @@ const normalizedCandidatesRaw = [
         : teenPostPassItems.length > 0
           ? teenPostPassItems
           : gatedFinalItems;
+  const activeSources = [
+    sourceEnabled.googleBooks ? "googleBooks" : null,
+    sourceEnabled.openLibrary ? "openLibrary" : null,
+    includeKitsu ? "kitsu" : null,
+    includeComicVine ? "comicVine" : null,
+  ].filter(Boolean) as string[];
+  const singleSourceMode = activeSources.length === 1;
+  const singleSource = singleSourceMode ? activeSources[0] : "";
+  const singleSourceItems =
+    singleSource === "googleBooks" ? googleBooksApprovedCandidates :
+    singleSource === "openLibrary" ? openLibraryApprovedCandidates :
+    singleSource === "kitsu" ? kitsuApprovedCandidates :
+    singleSource === "comicVine" ? comicVineApprovedCandidates :
+    [];
   let finalOutputItems = suppressTopRecommendations ? [] : terminalAssemblyBaseItems;
+  if (!suppressTopRecommendations && singleSourceMode) {
+    finalOutputItems = singleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
+  }
   const finalGateAcceptedDocsCount = finalGateAcceptedItems.length;
   const terminalAssemblyInputCount = finalOutputItems.length;
   const terminalAssemblyInputTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
@@ -7134,6 +7173,13 @@ const normalizedCandidatesRaw = [
   }
   const terminalAssemblyOutputCount = finalOutputItems.length;
   const terminalAssemblyOutputTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+  const finalRecommenderInputBySource = sourceLaneApprovedCount;
+  const finalRecommenderOutputBySource = {
+    googleBooks: finalOutputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("google")).length,
+    openLibrary: finalOutputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("openlibrary")).length,
+    kitsu: finalOutputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("kitsu")).length,
+    comicVine: finalOutputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("comicvine")).length,
+  };
   nonComicVineReturnedAfterComicVine = finalOutputItems.filter((item: any) => {
     const s = String(item?.doc?.source || item?.source || "").toLowerCase();
     return s && !s.includes("comicvine");
@@ -7415,6 +7461,11 @@ const normalizedCandidatesRaw = [
     nonComicVineReturnedBeforeComicVine,
     nonComicVineReturnedAfterComicVine,
     comicVineScopedRulesAppliedCount,
+    sourceLaneInputCount,
+    sourceLaneApprovedCount,
+    sourceLaneRejectedReasonBySource,
+    finalRecommenderInputBySource,
+    finalRecommenderOutputBySource,
     preSourceSpecificGateTitles,
     postSourceSpecificGateTitles,
     placeholderPenaltyAppliedTitles,
