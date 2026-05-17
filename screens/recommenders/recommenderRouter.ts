@@ -5274,7 +5274,11 @@ const normalizedCandidatesRaw = [
       };
       const topupPool = topupSources.filter((doc: any) => {
         const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
-        if (!source.includes("comicvine")) { registerTopupReject("non_comicvine_source", String(doc?.title || "")); return false; }
+        if (!source.includes("comicvine")) {
+          nonComicVineCandidateDroppedByComicVineRule.push(String(doc?.title || ""));
+          registerTopupReject("non_comicvine_source", String(doc?.title || ""));
+          return false;
+        }
         const title = String(doc?.title || "").trim();
         if (!title) { registerTopupReject("missing_title", "(untitled)"); return false; }
         const normalizedTitle = normalizeText(title);
@@ -6518,6 +6522,11 @@ const normalizedCandidatesRaw = [
   let fallbackTierTriggered = false;
   let fallbackTierCandidateCount = 0;
   let controlledEmergencyFallback = false;
+  const sourceSpecificGateAppliedByTitle: Record<string, string[]> = {};
+  const sourceSpecificRejectReasonByTitle: Record<string, string> = {};
+  const nonComicVineCandidateDroppedByComicVineRule: string[] = [];
+  const preSourceSpecificGateTitles: string[] = [];
+  const postSourceSpecificGateTitles: string[] = [];
   const rejectedDespiteStrongTasteFitTitles: string[] = [];
   const registerFinalEligibilityReject = (reason: string, title: string) => {
     if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
@@ -6525,6 +6534,10 @@ const normalizedCandidatesRaw = [
     if (title && narrativeExpansionAcceptedTitleSet.has(normalizeText(title))) {
       narrativeExpansionCandidatesRejectedByFinalEligibilityReason[reason] = Number(narrativeExpansionCandidatesRejectedByFinalEligibilityReason[reason] || 0) + 1;
     }
+  };
+  const markSourceSpecificGate = (title: string, rule: string) => {
+    if (!sourceSpecificGateAppliedByTitle[title]) sourceSpecificGateAppliedByTitle[title] = [];
+    if (!sourceSpecificGateAppliedByTitle[title].includes(rule)) sourceSpecificGateAppliedByTitle[title].push(rule);
   };
   const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
   const finalEligibilityGateApplied = true;
@@ -6545,8 +6558,11 @@ const normalizedCandidatesRaw = [
     if (!terminalRejectReasonByTitle[key]) terminalRejectReasonByTitle[key] = reason;
   };
   const finalRenderCandidateTitlesBeforeGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+  preSourceSpecificGateTitles.push(...finalRenderCandidateTitlesBeforeGate);
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
+    const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+    const isComicVineCandidate = source.includes("comicvine");
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
     const root = parentFranchiseRootForDoc(doc);
@@ -6596,9 +6612,11 @@ const normalizedCandidatesRaw = [
     const metaOrReferenceWorkPenalty = (metaRefRe.test(editionText) ? 4 : 0) + (genericArtifactRe.test(normalizeText(title)) ? 3 : 0);
     const artifactRiskScore = (issueOnlyRe.test(title) ? 3 : 0) + (isClearlyMalformed ? 4 : 0) + metaOrReferenceWorkPenalty + (structuralFragment ? 2 : 0);
     const recommendableWorkScore = collectedEditionConfidence + narrativeFictionConfidence - artifactRiskScore;
-    if (genericCollectionArtifactRe.test(normalizeText(title)) || /gwandanaland comics/i.test(title)) {
+    if (isComicVineCandidate && (genericCollectionArtifactRe.test(normalizeText(title)) || /gwandanaland comics/i.test(title))) {
+      markSourceSpecificGate(title, "generic_collection_artifact");
       if (genericCollectionArtifactRejectedTitles.length < 100) genericCollectionArtifactRejectedTitles.push(title);
       markTerminalReject(title, "generic_collection_artifact");
+      sourceSpecificRejectReasonByTitle[title] = "generic_collection_artifact";
       registerFinalEligibilityReject("generic_collection_artifact", title); return false;
     }
     if (structuralFragment && !strongTasteFit) { registerFinalEligibilityReject("structural_fragment", title); return false; }
@@ -6615,7 +6633,8 @@ const normalizedCandidatesRaw = [
     const oneStrongTasteSignalPlusNarrative = weightedTasteScore >= 2.5 && narrativeFictionConfidence >= 2 && !genericArtifactRe.test(normalizeText(title));
     const twoMeaningfulSignals = meaningfulSignalCount >= 2;
     const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative;
-    if (semanticEvidenceCount < 2) {
+    if (isComicVineCandidate && semanticEvidenceCount < 2) {
+      markSourceSpecificGate(title, "semantic_evidence_count_gate");
       const hasTitleOnlyTasteSignal = Boolean(queryTermOnlyEvidenceByTitle[title] && (titleOnlyTasteSignalByTitle[title] || []).length > 0);
       const dislikedOverlapPenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
       const hasDislikedOverlap = dislikedOverlapPenalty > 0.8;
@@ -6641,13 +6660,16 @@ const normalizedCandidatesRaw = [
         ].join(",");
         nearMissSemanticEvidenceReasons[title] = rejectReason;
         fallbackTierRejectedReasonsByTitle[title] = rejectReason;
+        sourceSpecificRejectReasonByTitle[title] = `semantic_evidence_count_gate:${rejectReason}`;
         registerFinalEligibilityReject("insufficient_semantic_evidence_count", title); return false;
       }
     }
     if (!passesTasteThreshold) {
-      if (collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2) {
+      if (isComicVineCandidate && collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2) {
+        markSourceSpecificGate(title, "format_signal_only_without_taste_fit");
         if (formatSignalOnlyRejectedTitles.length < 100) formatSignalOnlyRejectedTitles.push(title);
         markTerminalReject(title, "format_signal_only_without_taste_fit");
+        sourceSpecificRejectReasonByTitle[title] = "format_signal_only_without_taste_fit";
         registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
       }
       registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
@@ -6663,6 +6685,7 @@ const normalizedCandidatesRaw = [
     if (narrativeExpansionAcceptedTitleSet.has(normalizeText(title))) narrativeExpansionFinalAcceptedTitles.push(title);
     return true;
   });
+  postSourceSpecificGateTitles.push(...finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
   if (eligibleWithFitScore.length < 8 && viableCandidateCountBeforeFinalSelection >= 15) {
     finalEligibilityRelaxationTriggered = true;
     const alreadyAccepted = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
@@ -7286,6 +7309,11 @@ const normalizedCandidatesRaw = [
     fallbackTierCandidateCount,
     fallbackTierRejectedReasonsByTitle,
     controlledEmergencyFallback,
+    sourceSpecificGateAppliedByTitle,
+    sourceSpecificRejectReasonByTitle,
+    nonComicVineCandidateDroppedByComicVineRule,
+    preSourceSpecificGateTitles,
+    postSourceSpecificGateTitles,
     placeholderPenaltyAppliedTitles,
     narrativeTitleConfidenceByTitle,
     lowPositiveFitThresholdByCandidate,
