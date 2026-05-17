@@ -7167,6 +7167,9 @@ const normalizedCandidatesRaw = [
   let singleSourceItemsTitlesBeforeReturn = singleSourceItems.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   let singleSourceItemsBuiltFrom = "source_lane_approved_candidates";
   const singleSourceItemsDropReasonByTitle: Record<string, string> = {};
+  const singleSourceReturnedPassedFinalEligibilityByTitle: Record<string, boolean> = {};
+  let singleSourceFallbackPoolUsed = "none";
+  const singleSourceFallbackRejectedBecauseNotFinalEligible: string[] = [];
   let finalReturnSourceUsed = "final_gate_accepted_docs";
   const finalReturnDropReasonByTitle: Record<string, string> = {};
   if (!suppressTopRecommendations && singleSourceMode) {
@@ -7321,18 +7324,61 @@ const normalizedCandidatesRaw = [
     if (singleSourceItems.length > 0 && dynamicSingleSourceItems.length === 0) {
       for (const doc of singleSourceItems) singleSourceItemsDropReasonByTitle[String(doc?.title || "")] = "dropped_before_single_source_return";
     }
+    const titleNeedsStrongNarrativeEvidence = (title: string) => {
+      const t = String(title || "").trim().toLowerCase();
+      if (!t) return false;
+      if (/\btrade\s*paperback\b/i.test(t)) return true;
+      if (/\bvolume\s*one\b/i.test(t) && /\bsuperpowers\b/i.test(t)) return true;
+      if (/\bsex\s*fantasy\b/i.test(t)) return true;
+      if (/\bfinal\s*fantasy\b/i.test(t)) return true;
+      if (/\bamazing\s*fantasy\b/i.test(t)) return true;
+      if (/\bromance\b/i.test(t) && !/\b(romantic|romance\s+(drama|comedy|thriller|mystery|horror|fantasy|sci[-\s]?fi))\b/i.test(t)) return true;
+      return false;
+    };
+    const hasStrongNarrativeEvidence = (title: string) => {
+      const evidenceRows = finalAcceptedTasteEvidenceByTitle[title] || [];
+      const meaningful = Number((evidenceRows.find((r) => r.startsWith("meaningfulSignals:")) || "meaningfulSignals:0").split(":")[1] || 0);
+      const narrative = Number((evidenceRows.find((r) => r.startsWith("narrativeFictionConfidence:")) || "narrativeFictionConfidence:0").split(":")[1] || 0);
+      const semanticCount = Number(semanticEvidenceCountByTitle[title] || 0);
+      const weighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+      return narrative >= 3 || (meaningful >= 3 && semanticCount >= 3) || (weighted >= 3.5 && meaningful >= 2 && semanticCount >= 2);
+    };
+    const enforceFinalEligibilityAndQuality = (docs: any[], sourceLabel: string) => {
+      const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
+      const next: any[] = [];
+      for (const doc of docs) {
+        const title = String(doc?.title || "").trim();
+        if (!title) continue;
+        const finalEligible = acceptedSet.has(normalizeText(title));
+        singleSourceReturnedPassedFinalEligibilityByTitle[title] = finalEligible;
+        if (!finalEligible) {
+          singleSourceFallbackRejectedBecauseNotFinalEligible.push(title);
+          continue;
+        }
+        if (titleNeedsStrongNarrativeEvidence(title) && !hasStrongNarrativeEvidence(title)) {
+          singleSourceItemsDropReasonByTitle[title] = `quality_guard_weak_narrative:${sourceLabel}`;
+          continue;
+        }
+        next.push(doc);
+      }
+      return next;
+    };
     if (dynamicSingleSourceItems.length === 0 && finalAcceptedDocsItems.length > 0) {
-      dynamicSingleSourceItems = finalAcceptedDocsItems.map((row: any) => row?.doc).filter(Boolean);
+      singleSourceFallbackPoolUsed = "finalAcceptedDocsItems";
+      dynamicSingleSourceItems = enforceFinalEligibilityAndQuality(finalAcceptedDocsItems.map((row: any) => row?.doc).filter(Boolean), "finalAcceptedDocsItems");
       singleSourceItemsBuiltFrom = "finalAcceptedDocsItems_fallback";
     }
     if (dynamicSingleSourceItems.length === 0 && teenPostPassItems.length > 0) {
-      dynamicSingleSourceItems = teenPostPassItems.map((row: any) => row?.doc).filter(Boolean);
+      singleSourceFallbackPoolUsed = "teenPostPassItems";
+      dynamicSingleSourceItems = enforceFinalEligibilityAndQuality(teenPostPassItems.map((row: any) => row?.doc).filter(Boolean), "teenPostPassItems");
       singleSourceItemsBuiltFrom = "teenPostPassItems_fallback";
     }
     if (dynamicSingleSourceItems.length === 0 && finalRenderDocs.length > 0) {
-      dynamicSingleSourceItems = finalRenderDocs;
+      singleSourceFallbackPoolUsed = "finalRenderDocs";
+      dynamicSingleSourceItems = enforceFinalEligibilityAndQuality(finalRenderDocs, "finalRenderDocs");
       singleSourceItemsBuiltFrom = "finalRenderDocs_fallback";
     }
+    dynamicSingleSourceItems = enforceFinalEligibilityAndQuality(dynamicSingleSourceItems, "singleSourcePrimary");
     finalOutputItems = dynamicSingleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
     returnedItemsBuiltFrom = "single_source_lane_direct";
     finalReturnSourceUsed = `single_source_direct:${singleSource}`;
@@ -7583,6 +7629,9 @@ const normalizedCandidatesRaw = [
     singleSourceItemsTitlesBeforeReturn,
     singleSourceItemsBuiltFrom,
     singleSourceItemsDropReasonByTitle,
+    singleSourceReturnedPassedFinalEligibilityByTitle,
+    singleSourceFallbackPoolUsed,
+    singleSourceFallbackRejectedBecauseNotFinalEligible,
     finalReturnSourceUsed,
     finalReturnDropReasonByTitle,
     preSourceSpecificGateTitles,
