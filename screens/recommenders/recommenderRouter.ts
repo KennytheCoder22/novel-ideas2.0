@@ -6964,6 +6964,7 @@ const normalizedCandidatesRaw = [
   const suppressTopRecommendations = (hardPipelineFailure && rankedCount === 0) || scoredUniverseFailure;
   const gatedFinalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   let finalOutputItems = suppressTopRecommendations ? [] : gatedFinalItems;
+  const terminalReturnDropReasonByTitle: Record<string, string> = {};
   let returnedItemsBuiltFrom = suppressTopRecommendations
     ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
     : "final_gate_accepted_docs";
@@ -6985,18 +6986,24 @@ const normalizedCandidatesRaw = [
     return !terminalRejectReasonByTitle[normalizeText(t)];
   });
   const acceptedEvidenceMap = finalAcceptedTasteEvidenceByTitle;
+  const fallbackAcceptedSet = new Set(fallbackTierAcceptedTitles.map((t) => normalizeText(t)));
   const meaningfulEvidence = (title: string) => {
     const weighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const evidenceRows = acceptedEvidenceMap[title] || [];
     const meaningfulSignals = Number((evidenceRows.find((r) => r.startsWith("meaningfulSignals:")) || "meaningfulSignals:0").split(":")[1] || 0);
     const narrative = Number((evidenceRows.find((r) => r.startsWith("narrativeFictionConfidence:")) || "narrativeFictionConfidence:0").split(":")[1] || 0);
+    if (fallbackAcceptedSet.has(normalizeText(title))) return true;
     return weighted >= 2.5 || meaningfulSignals >= 2 || (weighted >= 2.5 && narrative >= 2);
   };
+  const preEvidenceFilteredTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
   finalOutputItems = finalOutputItems.filter((item: any) => {
     const title = String(item?.doc?.title || item?.title || "").trim();
     if (!title) return false;
     const ok = meaningfulEvidence(title);
-    if (!ok) finalReturnedWithoutTasteEvidenceTitles.push(title);
+    if (!ok) {
+      finalReturnedWithoutTasteEvidenceTitles.push(title);
+      terminalReturnDropReasonByTitle[title] = "post_gate_meaningful_evidence_filter";
+    }
     return ok;
   });
   if (!suppressTopRecommendations && gatedFinalItems.length > 0 && finalOutputItems.length === 0) {
@@ -7004,11 +7011,21 @@ const normalizedCandidatesRaw = [
     underfillReason = "semantic_gate_rejected_all";
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && aggregatedRawFetched.comicVine <= 0 && includeComicVine) underfillReason = "transport_failure";
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && includeComicVine && hardPipelineFailure && normalizedCount === 0 && fetchedRawCount > 0) underfillReason = "comicvine_fallback_only";
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && finalReturnedWithoutTasteEvidenceTitles.length > 0) underfillReason = "query_literalism";
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && Object.values(queryTermOnlyEvidenceByTitle).some(Boolean)) underfillReason = "query_literalism";
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && Object.keys(candidateMatchedLikedSignalsByTitle).length === 0) underfillReason = "insufficient_candidate_metadata";
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && weightedSwipeTasteVector.disliked.length > 0 && weightedSwipeTasteVector.liked.length === 0) underfillReason = "taste_conflict";
   const returnedItemsTitlesPostTerminal = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+  for (const title of acceptedAfterTerminalRejectFilter) {
+    const returned = returnedItemsTitlesPostTerminal.some((t) => normalizeText(t) === normalizeText(title));
+    if (!returned && !terminalReturnDropReasonByTitle[title]) {
+      const wasPreEvidence = preEvidenceFilteredTitles.some((t) => normalizeText(t) === normalizeText(title));
+      terminalReturnDropReasonByTitle[title] = wasPreEvidence
+        ? "dropped_after_terminal_filter_unknown"
+        : "missing_from_gated_final_items";
+    }
+  }
   const rejectedButReturnedTitles = returnedItemsTitlesPostTerminal.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
   const finalRejectAssertionChecked = finalOutputItems.length > 0 || finalEligibilityAcceptedTitles.length > 0 || Object.keys(terminalRejectReasonByTitle).length > 0;
   let finalRejectAssertionThrowReason = "none";
@@ -7304,6 +7321,7 @@ const normalizedCandidatesRaw = [
     teenPostPassOutputTitles,
     finalGateAcceptedTitles: acceptedAfterTerminalRejectFilter,
     returnedItemsTitlesPostTerminal,
+    terminalReturnDropReasonByTitle,
     teenPostPassRejectedTitles,
     teenPostPassRejectReasons,
     teenPostPassSourceCapApplied,
