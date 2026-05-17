@@ -7255,16 +7255,21 @@ const normalizedCandidatesRaw = [
     returnedItemsBuiltFrom = "controlled_try_again_state";
   }
   if (!suppressTopRecommendations && singleSourceDirectReturnTriggered) {
-    let dynamicSingleSourceItems = singleSourceItems;
-    if (dynamicSingleSourceItems.length === 0 && finalGateAcceptedItems.length > 0) {
-      dynamicSingleSourceItems = finalGateAcceptedItems.map((row: any) => row?.doc).filter(Boolean);
-      singleSourceItemsBuiltFrom = "final_gate_accepted_docs";
-    } else if (dynamicSingleSourceItems.length === 0 && terminalAssemblyBaseItems.length > 0) {
-      dynamicSingleSourceItems = terminalAssemblyBaseItems.map((row: any) => row?.doc).filter(Boolean);
-      singleSourceItemsBuiltFrom = "terminal_assembly_base";
-    } else if (dynamicSingleSourceItems.length === 0 && teenPostPassItems.length > 0) {
-      dynamicSingleSourceItems = teenPostPassItems.map((row: any) => row?.doc).filter(Boolean);
-      singleSourceItemsBuiltFrom = "teen_post_pass_output";
+    const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
+    let dynamicSingleSourceItems = singleSourceItems.filter((doc: any) => acceptedSet.has(normalizeText(String(doc?.title || ""))));
+    if (singleSource === "comicVine") {
+      dynamicSingleSourceItems = dynamicSingleSourceItems.filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const weighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+        const dislike = Number(candidateDislikePenaltyByTitle[title] || 0);
+        const semanticCount = Number(semanticEvidenceCountByTitle[title] || 0);
+        const evidenceRows = finalAcceptedTasteEvidenceByTitle[title] || [];
+        const meaningful = Number((evidenceRows.find((r) => r.startsWith("meaningfulSignals:")) || "meaningfulSignals:0").split(":")[1] || 0);
+        return meaningful >= 1 && semanticCount >= 2 && weighted > dislike;
+      });
+      singleSourceItemsBuiltFrom = "comicvine_lane_final_gate_approved";
+    } else {
+      singleSourceItemsBuiltFrom = "source_lane_final_gate_approved";
     }
     singleSourceItemsLengthBeforeReturn = dynamicSingleSourceItems.length;
     singleSourceItemsTitlesBeforeReturn = dynamicSingleSourceItems.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
