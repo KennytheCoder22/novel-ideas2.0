@@ -6511,6 +6511,9 @@ const normalizedCandidatesRaw = [
   let finalEligibilityRelaxationTriggered = false;
   const finalEligibilityRelaxedAcceptedTitles: string[] = [];
   const finalEligibilityRelaxedReasonByTitle: Record<string, string> = {};
+  const nearMissSemanticEvidenceTitles: string[] = [];
+  const nearMissSemanticEvidenceReasons: Record<string, string> = {};
+  const fallbackTierAcceptedTitles: string[] = [];
   const rejectedDespiteStrongTasteFitTitles: string[] = [];
   const registerFinalEligibilityReject = (reason: string, title: string) => {
     if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
@@ -6608,7 +6611,29 @@ const normalizedCandidatesRaw = [
     const twoMeaningfulSignals = meaningfulSignalCount >= 2;
     const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative;
     if (semanticEvidenceCount < 2) {
-      registerFinalEligibilityReject("insufficient_semantic_evidence_count", title); return false;
+      const hasTitleOnlyTasteSignal = Boolean(queryTermOnlyEvidenceByTitle[title] && (titleOnlyTasteSignalByTitle[title] || []).length > 0);
+      const hasDislikedOverlap = Number(candidateDislikePenaltyByTitle[title] || 0) > 0;
+      const hasArtifactRisk = artifactRiskScore > 0;
+      const fallbackEligible =
+        semanticEvidenceCount === 1 &&
+        narrativeFictionConfidence >= 3 &&
+        !hasArtifactRisk &&
+        !hasTitleOnlyTasteSignal &&
+        !hasDislikedOverlap;
+      if (fallbackEligible) {
+        nearMissSemanticEvidenceTitles.push(title);
+        nearMissSemanticEvidenceReasons[title] = "semanticEvidenceCount=1_but_high_narrative_low_risk";
+      } else {
+        nearMissSemanticEvidenceTitles.push(title);
+        nearMissSemanticEvidenceReasons[title] = [
+          `semanticEvidenceCount:${semanticEvidenceCount}`,
+          `narrativeFictionConfidence:${narrativeFictionConfidence}`,
+          `artifactRiskScore:${artifactRiskScore}`,
+          `titleOnlyTasteSignal:${hasTitleOnlyTasteSignal}`,
+          `dislikedOverlap:${hasDislikedOverlap}`,
+        ].join(",");
+        registerFinalEligibilityReject("insufficient_semantic_evidence_count", title); return false;
+      }
     }
     if (!passesTasteThreshold) {
       if (collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2) {
@@ -6657,6 +6682,22 @@ const normalizedCandidatesRaw = [
       finalEligibilityAcceptedTitles.push(title);
       finalEligibilityRelaxedAcceptedTitles.push(title);
       finalEligibilityRelaxedReasonByTitle[title] = "strong_taste_fit_underfilled_output";
+    }
+  }
+  if (eligibleWithFitScore.length === 0 && nearMissSemanticEvidenceTitles.length > 0) {
+    const nearMissSet = new Set(nearMissSemanticEvidenceTitles.map((t) => normalizeText(t)));
+    const fallbackAdds = viableCandidates
+      .filter((doc: any) => nearMissSet.has(normalizeText(String(doc?.title || ""))))
+      .slice(0, Math.min(6, finalLimit));
+    for (const doc of fallbackAdds) {
+      const title = String(doc?.title || "").trim();
+      if (!title) continue;
+      const alreadyAccepted = eligibleWithFitScore.some((row) => normalizeText(String(row?.doc?.title || "")) === normalizeText(title));
+      if (alreadyAccepted) continue;
+      eligibleWithFitScore.push({ doc, fitScore: 0.5, recommendableWorkScore: 1, artifactRiskScore: 0, collectedEditionConfidence: 2, narrativeFictionConfidence: 3, metaOrReferenceWorkPenalty: 0 });
+      fallbackTierAcceptedTitles.push(title);
+      finalEligibilityAcceptedTitles.push(title);
+      finalEligibilityRelaxedReasonByTitle[title] = "fallback_semantic_evidence_count_1";
     }
   }
   finalRenderDocs = eligibleWithFitScore
@@ -7169,6 +7210,9 @@ const normalizedCandidatesRaw = [
     titleOnlyTasteSignalByTitle,
     semanticSupportFoundByTitle,
     semanticEvidenceCountByTitle,
+    nearMissSemanticEvidenceTitles,
+    nearMissSemanticEvidenceReasons,
+    fallbackTierAcceptedTitles,
     placeholderPenaltyAppliedTitles,
     narrativeTitleConfidenceByTitle,
     lowPositiveFitThresholdByCandidate,
