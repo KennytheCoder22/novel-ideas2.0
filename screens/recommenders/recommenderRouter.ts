@@ -6549,7 +6549,7 @@ const normalizedCandidatesRaw = [
   const acceptedEvidenceButFinalRejectedReasonByTitle: Record<string, string> = {};
   const finalReturnedWithoutTasteEvidenceTitles: string[] = [];
   let finalUnderfillBecauseNoTasteEvidence = false;
-  let underfillReason: "transport_failure" | "query_literalism" | "semantic_gate_rejected_all" | "insufficient_candidate_metadata" | "taste_conflict" | "none" = "none";
+  let underfillReason: "transport_failure" | "query_literalism" | "semantic_gate_rejected_all" | "insufficient_candidate_metadata" | "taste_conflict" | "comicvine_fallback_only" | "none" = "none";
   let expansionMergedButNotScoredReason = "none";
   const terminalRejectReasonByTitle: Record<string, string> = {};
   const markTerminalReject = (title: string, reason: string) => {
@@ -6565,6 +6565,8 @@ const normalizedCandidatesRaw = [
     const isComicVineCandidate = source.includes("comicvine");
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
+    const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+    const isComicVineFallbackCandidate = source.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
     const root = parentFranchiseRootForDoc(doc);
     const hasParent = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName || doc?.diagnostics?.parentVolumeName);
     const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
@@ -7557,3 +7559,7 @@ const normalizedCandidatesRaw = [
     deploymentRuntimeMarker,
   } as RecommendationResult;
 }
+    if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
+      registerFinalEligibilityReject("fallback_no_taste_match", title);
+      return false;
+    }
