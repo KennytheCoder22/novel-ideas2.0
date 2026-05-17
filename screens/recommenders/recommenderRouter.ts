@@ -3131,10 +3131,22 @@ export async function getRecommendations(
     ...tones.map((v) => `${v} graphic novel`),
     ...themes.map((v) => `${v} graphic novel`),
   ]));
+  const curatedSeedRootsUsed: string[] = [];
+  const curatedSeedMatchesFound: string[] = [];
+  let candidateGenerationMode: "taste_narrative" | "taste_plus_curated" | "broad_only" | "static_fallback" = "static_fallback";
+  let queryGeneratedGoodCandidateCount = 0;
+  let queryGeneratedArtifactCount = 0;
+  const curatedRootsByPattern: string[] = [];
+  if (genres.includes("fantasy") && genres.includes("adventure")) curatedRootsByPattern.push("Amulet", "Bone", "Wynd", "Lightfall", "The Last Kids on Earth");
+  if (genres.includes("mystery") && (genres.includes("crime") || themes.includes("historical"))) curatedRootsByPattern.push("Goldie Vance", "Enola Holmes", "Stumptown", "Blacksad");
+  if ((genres.includes("fantasy") || genres.includes("supernatural")) && tones.includes("gentle") && themes.includes("coming of age")) curatedRootsByPattern.push("Natsume", "The Tea Dragon Society", "Witch Hat Atelier");
+  const curatedSeedQueries = Array.from(new Set(curatedRootsByPattern.flatMap((root) => [`${root} comic series`, `${root} volume 1`, `${root} collected edition`])));
+  curatedSeedRootsUsed.push(...curatedRootsByPattern);
   let generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...combinedQueries,
     ...semanticRefinementQueries,
     ...broadGraphicQueries,
+    ...curatedSeedQueries,
   ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
@@ -3186,6 +3198,7 @@ export async function getRecommendations(
     tasteQueryPoolUsedAsPrimary = true;
     primaryTasteQueryOverrideApplied = true;
     primaryTasteQueryOverrideBlockedReason = "none";
+    candidateGenerationMode = curatedSeedQueries.length > 0 ? "taste_plus_curated" : (narrativePrimary.length > 0 ? "taste_narrative" : "broad_only");
     rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
   }
   rungs = rungs.filter((r: any) => {
@@ -3211,6 +3224,7 @@ export async function getRecommendations(
       fallbackBlockedByDislikeOnlySession = true;
       rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
     }
+    candidateGenerationMode = "static_fallback";
   }
 
   const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
@@ -7163,6 +7177,13 @@ const normalizedCandidatesRaw = [
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
   const finalRenderSourceList = ["finalEligibilityAcceptedTitles", "finalAcceptedDocsAfterGate", "topUpOnlyIfPassedFinalGate"];
+  curatedSeedMatchesFound.push(
+    ...Array.from(new Set(finalRenderDocs
+      .map((doc: any) => String(doc?.title || "").trim())
+      .filter((title) => curatedSeedRootsUsed.some((root) => normalizeText(title).includes(normalizeText(root))))))
+  );
+  queryGeneratedGoodCandidateCount = finalEligibilityAcceptedTitles.length;
+  queryGeneratedArtifactCount = Object.values(finalEligibilityRejectedTitlesByReason || {}).reduce((acc, row) => acc + (Array.isArray(row) ? row.length : 0), 0);
   const hasEvidenceFinalMismatch = Object.keys(acceptedEvidenceButFinalRejectedReasonByTitle).length > 0 && acceptedAfterTerminalRejectFilter.length === 0;
   const qaFailureClass =
     finalEligibilityAcceptedTitles.length > 0 && finalOutputItems.length === 0
@@ -7403,6 +7424,11 @@ const normalizedCandidatesRaw = [
     dislikeOnlySession,
     fallbackBlockedByDislikeOnlySession,
     retrievalSuppressedByDislikedSignals,
+    candidateGenerationMode,
+    curatedSeedRootsUsed,
+    curatedSeedMatchesFound,
+    queryGeneratedGoodCandidateCount,
+    queryGeneratedArtifactCount,
     generatedComicVineQueriesFromTaste,
     querySourceOfTruth,
     tasteQueriesUsedForPrimaryFetch,
