@@ -7024,6 +7024,9 @@ const normalizedCandidatesRaw = [
   const suppressTopRecommendations = (hardPipelineFailure && rankedCount === 0) || scoredUniverseFailure;
   const gatedFinalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   let finalOutputItems = suppressTopRecommendations ? [] : gatedFinalItems;
+  const finalGateAcceptedDocsCount = finalRenderDocs.length;
+  const terminalAssemblyInputCount = finalOutputItems.length;
+  const terminalAssemblyDropReasonByTitle: Record<string, string> = {};
   const terminalReturnDropReasonByTitle: Record<string, string> = {};
   let returnedItemsBuiltFrom = suppressTopRecommendations
     ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
@@ -7065,9 +7068,16 @@ const normalizedCandidatesRaw = [
     if (!ok) {
       finalReturnedWithoutTasteEvidenceTitles.push(title);
       terminalReturnDropReasonByTitle[title] = "post_gate_meaningful_evidence_filter";
+      terminalAssemblyDropReasonByTitle[title] = "post_gate_meaningful_evidence_filter";
     }
     return ok;
   });
+  if (!suppressTopRecommendations && acceptedAfterTerminalRejectFilter.length > 0 && finalOutputItems.length === 0) {
+    const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
+    finalOutputItems = gatedFinalItems.filter((item: any) => acceptedSet.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
+    if (finalOutputItems.length > 0) returnedItemsBuiltFrom = "final_gate_accepted_docs_fail_open";
+  }
+  const terminalAssemblyOutputCount = finalOutputItems.length;
   if (!suppressTopRecommendations && gatedFinalItems.length > 0 && finalOutputItems.length === 0) {
     finalUnderfillBecauseNoTasteEvidence = true;
     underfillReason = "semantic_gate_rejected_all";
@@ -7410,6 +7420,10 @@ const normalizedCandidatesRaw = [
     franchiseCapBlockedTitles,
     recoveryDiversificationAttempts,
     returnedItemsBuiltFrom,
+    finalGateAcceptedDocsCount,
+    terminalAssemblyInputCount,
+    terminalAssemblyOutputCount,
+    terminalAssemblyDropReasonByTitle,
     teenPostPassOutputTitles,
     finalGateAcceptedTitles: acceptedAfterTerminalRejectFilter,
     returnedItemsTitlesPostTerminal,
