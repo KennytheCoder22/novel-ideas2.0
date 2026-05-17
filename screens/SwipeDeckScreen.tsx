@@ -93,6 +93,12 @@ type SwipeHistoryEntry = {
   card: SwipeDeckCard;
 };
 
+type TestSessionPreset = {
+  id: string;
+  label: string;
+  sequence: Array<"like" | "dislike" | "skip">;
+};
+
 type TwentyQAxis = keyof TasteVector;
 
 type TwentyQObjective = {
@@ -947,6 +953,15 @@ export default function SwipeDeckScreen(props: Props) {
   const [recIndex, setRecIndex] = useState(0);
   const [recCoverCache, setRecCoverCache] = useState<Record<string, string>>({});
   const [autoSearched, setAutoSearched] = useState(false);
+  const [forceRecommendationsView, setForceRecommendationsView] = useState(false);
+  const [presetTestName, setPresetTestName] = useState<string>("");
+  const [presetExecutionStarted, setPresetExecutionStarted] = useState<string>("");
+  const [presetSwipesAppliedCount, setPresetSwipesAppliedCount] = useState(0);
+  const [presetCardsMatchedCount, setPresetCardsMatchedCount] = useState(0);
+  const [presetRecommendationTriggered, setPresetRecommendationTriggered] = useState(false);
+  const [presetRecommendationCompleted, setPresetRecommendationCompleted] = useState(false);
+  const [presetExportedAfterRecommendation, setPresetExportedAfterRecommendation] = useState(false);
+  const [presetExecutionError, setPresetExecutionError] = useState<string>("");
 
   const [showRating, setShowRating] = useState(false);
   const [showEqualizer, setShowEqualizer] = useState(false);
@@ -1169,12 +1184,15 @@ export default function SwipeDeckScreen(props: Props) {
   function buildRecommendationInputWithHistory(baseInput: RecommenderInput): RecommenderInput {
     const targetDeckKey = baseInput.deckKey || deckKey;
     const history = getRecommendationHistoryBucket(targetDeckKey);
+    const sourceSwipeHistory: SwipeHistoryEntry[] = Array.isArray((baseInput as any)?.swipeHistory)
+      ? ((baseInput as any).swipeHistory as SwipeHistoryEntry[])
+      : swipeHistory;
 
     const likedTagCounts: Record<string, number> = {};
     const dislikedTagCounts: Record<string, number> = {};
     const leftTagCounts: Record<string, number> = {};
     const skippedTagCounts: Record<string, number> = {};
-    for (const entry of swipeHistory) {
+    for (const entry of sourceSwipeHistory) {
       const tags = Array.isArray((entry as any)?.card?.tags) ? (entry as any).card.tags : [];
       for (const rawTag of tags) {
         const tag = String(rawTag || "").trim().toLowerCase();
@@ -1200,6 +1218,7 @@ export default function SwipeDeckScreen(props: Props) {
       ...(dislikedTagCounts ? { dislikedTagCounts } : {}),
       ...(leftTagCounts ? { leftTagCounts } : {}),
       ...(skippedTagCounts ? { skippedTagCounts } : {}),
+      ...(Array.isArray((baseInput as any)?.swipeHistory) ? { swipeHistory: (baseInput as any).swipeHistory } : {}),
     };
   }
 
@@ -1291,6 +1310,7 @@ export default function SwipeDeckScreen(props: Props) {
     totalSeenCards,
     totalCards: cards.length,
   });
+  const showRecommendationsView = isDone || forceRecommendationsView;
   const currentCard: SwipeDeckCard | null = useMemo(() => {
     if (isDone) return null;
     return selectTwentyQCard({
@@ -1497,7 +1517,7 @@ function handleLeft() {
         }).start();
       },
     });
-  }, [currentCard, swipeThresholdX, swipeThresholdDown, position]);
+  }, [deckKey, sessionNonce, pipelineSessionId, pipelineUserId]);
 
   function tryAgain() {
     setSessionNonce((n) => n + 1);
@@ -1702,6 +1722,117 @@ function handleLeft() {
     }
   }
 
+  const testSessionPresets: TestSessionPreset[] = [
+    { id: "test_a", label: "Test A", sequence: ["like", "like", "dislike", "skip", "like", "dislike", "like", "skip"] },
+    { id: "test_b", label: "Test B", sequence: ["dislike", "dislike", "like", "skip", "dislike", "like", "skip", "like"] },
+    { id: "test_c", label: "Test C", sequence: ["like", "skip", "like", "skip", "dislike", "like", "dislike", "like"] },
+  ];
+
+  async function runTestSessionPreset(preset: TestSessionPreset) {
+    setPresetTestName(preset.label);
+    setPresetExecutionStarted(new Date().toISOString());
+    setPresetExecutionError("");
+    setPresetRecommendationTriggered(false);
+    setPresetRecommendationCompleted(false);
+    setPresetExportedAfterRecommendation(false);
+    const sampleCards = cards.slice(0, preset.sequence.length);
+    if (sampleCards.length === 0) {
+      Alert.alert("No cards", "This deck has no cards to run a test session.");
+      return;
+    }
+
+    const entries: SwipeHistoryEntry[] = sampleCards.map((card, index) => ({
+      card,
+      direction: preset.sequence[index] || "skip",
+    }));
+
+    const nextTagCounts: TagCounts = {};
+    for (const entry of entries) {
+      const directionWeight = entry.direction === "like" ? 1 : entry.direction === "dislike" ? -1 : 0;
+      if (!directionWeight) continue;
+      const tags = Array.isArray((entry.card as any)?.tags) ? (entry.card as any).tags : [];
+      for (const rawTag of tags) {
+        const tag = String(rawTag || "").trim().toLowerCase();
+        if (!tag) continue;
+        nextTagCounts[tag] = Number(nextTagCounts[tag] || 0) + directionWeight;
+      }
+    }
+
+    const likeCount = entries.filter((entry) => entry.direction === "like").length;
+    const dislikeCount = entries.filter((entry) => entry.direction === "dislike").length;
+    const skipCount = entries.filter((entry) => entry.direction === "skip").length;
+    const seenKeys = entries.map((entry) => cardIdentityKey(entry.card));
+    const decisions = likeCount + dislikeCount;
+
+    setSwipeHistory(entries);
+    setTagCounts(nextTagCounts);
+    setRightSwipes(likeCount);
+    setLeftSwipes(dislikeCount);
+    setDownSwipes(skipCount);
+    setSeenCardKeys(seenKeys);
+    setRecentCardKeys(seenKeys.slice(-6));
+    setForceRecommendationsView(true);
+    setAutoSearched(true);
+    setPresetSwipesAppliedCount(entries.length);
+    setPresetCardsMatchedCount(sampleCards.length);
+    setLastRecommendationSwipeSummary(`Right:${likeCount} • Left:${dislikeCount} • Skip:${skipCount} • Decisions:${decisions} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
+
+    const tagCountsForQuery: any = { ...nextTagCounts };
+    tagCountsForQuery["audience:kids"] = 0;
+    tagCountsForQuery["audience:teen"] = 0;
+    tagCountsForQuery["audience:adult"] = 0;
+    tagCountsForQuery["age:k2"] = 0;
+    tagCountsForQuery["age:36"] = 0;
+    tagCountsForQuery["age:mshs"] = 0;
+    tagCountsForQuery["age:adult"] = 0;
+    if (deckKey === "k2") {
+      tagCountsForQuery["audience:kids"] = 1000;
+      tagCountsForQuery["age:k2"] = 1000;
+    } else if (deckKey === "36") {
+      tagCountsForQuery["audience:kids"] = 1000;
+      tagCountsForQuery["age:36"] = 1000;
+    } else if (deckKey === "ms_hs") {
+      tagCountsForQuery["audience:teen"] = 1000;
+      tagCountsForQuery["age:mshs"] = 1000;
+    } else if (deckKey === "adult") {
+      tagCountsForQuery["audience:adult"] = 1000;
+      tagCountsForQuery["age:adult"] = 1;
+    }
+
+    const input: RecommenderInput = {
+      deckKey,
+      tagCounts: tagCountsForQuery,
+      swipeHistory: entries as any,
+      dislikedTagCounts: Object.fromEntries(
+        Object.entries(nextTagCounts).filter(([, v]) => Number(v || 0) < 0).map(([k, v]) => [k, Math.abs(Number(v || 0))])
+      ) as any,
+      leftTagCounts: Object.fromEntries(
+        Object.entries(nextTagCounts).filter(([, v]) => Number(v || 0) < 0).map(([k, v]) => [k, Math.abs(Number(v || 0))])
+      ) as any,
+      tasteProfile: mergeActiveTasteIntoProfile(
+        buildTasteProfile({
+          tagCounts: nextTagCounts,
+          directTraits: weightedDirectTraitsHistory(entries),
+          feedback: [],
+          itemTraitsById: {},
+        }),
+        activeTasteVector
+      ),
+      limit: 10,
+      timeoutMs: 9000,
+    };
+
+    try {
+      setPresetRecommendationTriggered(true);
+      await performRecommendationRun(input);
+      setPresetRecommendationCompleted(true);
+    } catch (err: any) {
+      setPresetExecutionError(String(err?.message || err || "preset_execution_failed"));
+      setPresetRecommendationCompleted(false);
+      throw err;
+    }
+  }
+
   function handleFreshUserReset() {
     const fresh = initializePersonality(pipelineUserId);
 
@@ -1733,6 +1864,15 @@ function handleLeft() {
     setRecIndex(0);
     setRecCoverCache({});
     setAutoSearched(false);
+    setForceRecommendationsView(false);
+    setPresetTestName("");
+    setPresetExecutionStarted("");
+    setPresetSwipesAppliedCount(0);
+    setPresetCardsMatchedCount(0);
+    setPresetRecommendationTriggered(false);
+    setPresetRecommendationCompleted(false);
+    setPresetExportedAfterRecommendation(false);
+    setPresetExecutionError("");
     setShowRating(false);
     setLastRecommendationInput(null);
     setLastRecommendationTimestamp("");
@@ -1953,6 +2093,12 @@ function handleLeft() {
   }
 
   async function handleCopyDiagnostics() {
+    if (presetRecommendationCompleted) setPresetExportedAfterRecommendation(true);
+    const recomputedRight = swipeHistory.filter((entry) => entry.direction === "like").length;
+    const recomputedLeft = swipeHistory.filter((entry) => entry.direction === "dislike").length;
+    const recomputedSkip = swipeHistory.filter((entry) => entry.direction === "skip").length;
+    const recomputedDecisions = recomputedRight + recomputedLeft;
+    const recomputedSummary = `Right:${recomputedRight} • Left:${recomputedLeft} • Skip:${recomputedSkip} • Decisions:${recomputedDecisions} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`;
     const recommendationLines = recItems.length
       ? recItems.map((item, i) => {
           if (item.kind === "open_library") {
@@ -2097,6 +2243,7 @@ function handleLeft() {
       `scoredCandidateUniverseCount:${Number((lastRecommendationResult as any)?.scoredCandidateUniverseCount || 0)}`,
       `convertedDocsAvailableForScoringCount:${Number((lastRecommendationResult as any)?.convertedDocsAvailableForScoringCount || 0)}`,
       `gcdStructuralEnrichmentCount:${Number((lastRecommendationResult as any)?.gcdStructuralEnrichmentCount || 0)}`,
+      `gcdEnrichmentApplied:${Number((lastRecommendationResult as any)?.gcdStructuralEnrichmentCount || 0) > 0}`,
       `gcdEntryPointLikeCount:${Number((lastRecommendationResult as any)?.gcdEntryPointLikeCount || 0)}`,
       `gcdCollectedLikeCount:${Number((lastRecommendationResult as any)?.gcdCollectedLikeCount || 0)}`,
       `gcdIssueLikeCount:${Number((lastRecommendationResult as any)?.gcdIssueLikeCount || 0)}`,
@@ -2123,6 +2270,18 @@ function handleLeft() {
       `expansionCandidatesSurvivedFiltersCount:${Number((lastRecommendationResult as any)?.expansionCandidatesSurvivedFiltersCount || 0)}`,
       `expansionCandidatesRejectedByReason:${JSON.stringify((lastRecommendationResult as any)?.expansionCandidatesRejectedByReason || {})}`,
       `expansionCandidatesAcceptedFinal:${Array.isArray((lastRecommendationResult as any)?.expansionCandidatesAcceptedFinal) && (lastRecommendationResult as any).expansionCandidatesAcceptedFinal.length ? (lastRecommendationResult as any).expansionCandidatesAcceptedFinal.join(" | ") : "(none)"}`,
+      `primaryNarrativeQueryMode:${Boolean((lastRecommendationResult as any)?.primaryNarrativeQueryMode)}`,
+      `primaryNarrativeQueries:${Array.isArray((lastRecommendationResult as any)?.primaryNarrativeQueries) && (lastRecommendationResult as any).primaryNarrativeQueries.length ? (lastRecommendationResult as any).primaryNarrativeQueries.join(" | ") : "(none)"}`,
+      `broadGraphicNovelQueriesUsedAsFallback:${Boolean((lastRecommendationResult as any)?.broadGraphicNovelQueriesUsedAsFallback)}`,
+      `broadGraphicNovelFallbackReason:${String((lastRecommendationResult as any)?.broadGraphicNovelFallbackReason || "none")}`,
+      `negativeScoreRenderBlockedTitles:${Array.isArray((lastRecommendationResult as any)?.negativeScoreRenderBlockedTitles) && (lastRecommendationResult as any).negativeScoreRenderBlockedTitles.length ? (lastRecommendationResult as any).negativeScoreRenderBlockedTitles.join(" | ") : "(none)"}`,
+      `finalUnderfillInsteadOfArtifactFallback:${Boolean((lastRecommendationResult as any)?.finalUnderfillInsteadOfArtifactFallback)}`,
+      `expansionDropStageSummary:${String((lastRecommendationResult as any)?.expansionDropStageSummary || "none")}`,
+      `formatSignalOnlyRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.formatSignalOnlyRejectedTitles) && (lastRecommendationResult as any).formatSignalOnlyRejectedTitles.length ? (lastRecommendationResult as any).formatSignalOnlyRejectedTitles.join(" | ") : "(none)"}`,
+      `genericCollectionArtifactRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.genericCollectionArtifactRejectedTitles) && (lastRecommendationResult as any).genericCollectionArtifactRejectedTitles.length ? (lastRecommendationResult as any).genericCollectionArtifactRejectedTitles.join(" | ") : "(none)"}`,
+      `finalTasteThresholdByTitle:${JSON.stringify((lastRecommendationResult as any)?.finalTasteThresholdByTitle || {})}`,
+      `finalAcceptedTasteEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.finalAcceptedTasteEvidenceByTitle || {})}`,
+      `finalCountCappedToTarget:${Boolean((lastRecommendationResult as any)?.finalCountCappedToTarget)}`,
       `expansionQueryRootMismatchRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.expansionQueryRootMismatchRejectedTitles) && (lastRecommendationResult as any).expansionQueryRootMismatchRejectedTitles.length ? (lastRecommendationResult as any).expansionQueryRootMismatchRejectedTitles.join(" | ") : "(none)"}`,
       `expansionFalsePositiveRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.expansionFalsePositiveRejectedTitles) && (lastRecommendationResult as any).expansionFalsePositiveRejectedTitles.length ? (lastRecommendationResult as any).expansionFalsePositiveRejectedTitles.join(" | ") : "(none)"}`,
       `expansionLocaleRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.expansionLocaleRejectedTitles) && (lastRecommendationResult as any).expansionLocaleRejectedTitles.length ? (lastRecommendationResult as any).expansionLocaleRejectedTitles.join(" | ") : "(none)"}`,
@@ -2151,6 +2310,10 @@ function handleLeft() {
       `candidateWeightedTasteScoreByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateWeightedTasteScoreByTitle || {})}`,
       `candidateDislikePenaltyByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateDislikePenaltyByTitle || {})}`,
       `candidateSkipPenaltyByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateSkipPenaltyByTitle || {})}`,
+      `singleTokenQueryHijackPenaltyByTitle:${JSON.stringify((lastRecommendationResult as any)?.singleTokenQueryHijackPenaltyByTitle || {})}`,
+      `queryTermOnlyEvidenceByTitle:${JSON.stringify((lastRecommendationResult as any)?.queryTermOnlyEvidenceByTitle || {})}`,
+      `titleOnlyTasteSignalByTitle:${JSON.stringify((lastRecommendationResult as any)?.titleOnlyTasteSignalByTitle || {})}`,
+      `semanticSupportFoundByTitle:${JSON.stringify((lastRecommendationResult as any)?.semanticSupportFoundByTitle || {})}`,
       `finalRankingReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.finalRankingReasonByTitle || {})}`,
       `finalScoreComponentsByTitle:${JSON.stringify((lastRecommendationResult as any)?.finalScoreComponentsByTitle || {})}`,
       `tasteProfileSummary:${JSON.stringify((lastRecommendationResult as any)?.tasteProfileSummary || {})}`,
@@ -2209,6 +2372,28 @@ function handleLeft() {
       `rankedDocsLength:${Number((lastRecommendationResult as any)?.rankedDocsLength || 0)}`,
       `finalAcceptedDocsSource:${String((lastRecommendationResult as any)?.finalAcceptedDocsSource || "none")}`,
       `finalAcceptedDocsTitles:${Array.isArray((lastRecommendationResult as any)?.finalAcceptedDocsTitles) && (lastRecommendationResult as any).finalAcceptedDocsTitles.length ? (lastRecommendationResult as any).finalAcceptedDocsTitles.join(" | ") : "(none)"}`,
+      `finalRenderSourceList:${Array.isArray((lastRecommendationResult as any)?.finalRenderSourceList) ? (lastRecommendationResult as any).finalRenderSourceList.join(" | ") : "(none)"}`,
+      `finalRenderCandidateTitlesBeforeGate:${Array.isArray((lastRecommendationResult as any)?.finalRenderCandidateTitlesBeforeGate) ? (lastRecommendationResult as any).finalRenderCandidateTitlesBeforeGate.join(" | ") : "(none)"}`,
+      `finalRenderCandidateTitlesAfterGate:${Array.isArray((lastRecommendationResult as any)?.finalRenderCandidateTitlesAfterGate) ? (lastRecommendationResult as any).finalRenderCandidateTitlesAfterGate.join(" | ") : "(none)"}`,
+      `finalRenderBypassBlockedTitles:${Array.isArray((lastRecommendationResult as any)?.finalRenderBypassBlockedTitles) ? (lastRecommendationResult as any).finalRenderBypassBlockedTitles.join(" | ") : "(none)"}`,
+      `topUpFinalGateRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.topUpFinalGateRejectedTitles) ? (lastRecommendationResult as any).topUpFinalGateRejectedTitles.join(" | ") : "(none)"}`,
+      `returnedItemPassedFinalGateByTitle:${JSON.stringify((lastRecommendationResult as any)?.returnedItemPassedFinalGateByTitle || {})}`,
+      `rejectedButReturnedTitles:${Array.isArray((lastRecommendationResult as any)?.rejectedButReturnedTitles) ? (lastRecommendationResult as any).rejectedButReturnedTitles.join(" | ") : "(none)"}`,
+      `rejectedButAcceptedTitles:${Array.isArray((lastRecommendationResult as any)?.rejectedButAcceptedTitles) ? (lastRecommendationResult as any).rejectedButAcceptedTitles.join(" | ") : "(none)"}`,
+      `terminalRejectReasonByTitle:${JSON.stringify((lastRecommendationResult as any)?.terminalRejectReasonByTitle || {})}`,
+      `finalGateConsistencyPassed:${Boolean((lastRecommendationResult as any)?.finalGateConsistencyPassed)}`,
+      `finalRejectAssertionChecked:${Boolean((lastRecommendationResult as any)?.finalRejectAssertionChecked)}`,
+      `finalRejectAssertionThrowReason:${String((lastRecommendationResult as any)?.finalRejectAssertionThrowReason || "none")}`,
+      `dislikedSignalsFromSwipeHistory:${Array.isArray((lastRecommendationResult as any)?.dislikedSignalsFromSwipeHistory) ? (lastRecommendationResult as any).dislikedSignalsFromSwipeHistory.join(" | ") : "(none)"}`,
+      `finalReturnedWithoutTasteEvidenceTitles:${Array.isArray((lastRecommendationResult as any)?.finalReturnedWithoutTasteEvidenceTitles) ? (lastRecommendationResult as any).finalReturnedWithoutTasteEvidenceTitles.join(" | ") : "(none)"}`,
+      `finalUnderfillBecauseNoTasteEvidence:${Boolean((lastRecommendationResult as any)?.finalUnderfillBecauseNoTasteEvidence)}`,
+      `underfillReason:${String((lastRecommendationResult as any)?.underfillReason || "none")}`,
+      `expansionMergedButNotScoredReason:${String((lastRecommendationResult as any)?.expansionMergedButNotScoredReason || "none")}`,
+      `semanticEligibilityRejectedReason:${JSON.stringify((lastRecommendationResult as any)?.semanticEligibilityRejectedReason || {})}`,
+      `genericRootSuppressed:${Array.isArray((lastRecommendationResult as any)?.genericRootSuppressed) ? (lastRecommendationResult as any).genericRootSuppressed.join(" | ") : "(none)"}`,
+      `rootBoostSuppressed:${Array.isArray((lastRecommendationResult as any)?.rootBoostSuppressed) ? (lastRecommendationResult as any).rootBoostSuppressed.join(" | ") : "(none)"}`,
+      `narrativeEvidenceScore:${JSON.stringify((lastRecommendationResult as any)?.narrativeEvidenceScore || {})}`,
+      `structuralOnlyMatch:${Array.isArray((lastRecommendationResult as any)?.structuralOnlyMatch) ? (lastRecommendationResult as any).structuralOnlyMatch.join(" | ") : "(none)"}`,
       `finalRankedDocsBaseTitles:${Array.isArray((lastRecommendationResult as any)?.finalRankedDocsBaseTitles) && (lastRecommendationResult as any).finalRankedDocsBaseTitles.length ? (lastRecommendationResult as any).finalRankedDocsBaseTitles.join(" | ") : "(none)"}`,
       `rankedDocsTitles:${Array.isArray((lastRecommendationResult as any)?.rankedDocsTitles) && (lastRecommendationResult as any).rankedDocsTitles.length ? (lastRecommendationResult as any).rankedDocsTitles.join(" | ") : "(none)"}`,
       `normalizedDocsCount:${Number((lastRecommendationResult as any)?.normalizedDocsCount || 0)}`,
@@ -2253,6 +2438,10 @@ function handleLeft() {
       `comicVineQueryTexts:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueryTexts) && lastDebugGcdDispatchTrace.comicVineQueryTexts.length ? lastDebugGcdDispatchTrace.comicVineQueryTexts.join(" | ") : "(none)"}`,
       `comicVineRungsBuilt:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineRungsBuilt) && lastDebugGcdDispatchTrace.comicVineRungsBuilt.length ? lastDebugGcdDispatchTrace.comicVineRungsBuilt.join(" | ") : "(none)"}`,
       `comicVineQueriesActuallyFetched:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineQueriesActuallyFetched) && lastDebugGcdDispatchTrace.comicVineQueriesActuallyFetched.length ? lastDebugGcdDispatchTrace.comicVineQueriesActuallyFetched.join(" | ") : "(none)"}`,
+      `comicVinePreflightQuery:${String(lastDebugGcdDispatchTrace?.comicVinePreflightQuery || "(none)")}`,
+      `comicVinePreflightUsesTasteQuery:${Boolean(lastDebugGcdDispatchTrace?.comicVinePreflightUsesTasteQuery)}`,
+      `comicVinePerQueryFailureDoesNotAbort:${Boolean(lastDebugGcdDispatchTrace?.comicVinePerQueryFailureDoesNotAbort)}`,
+      `comicVineTasteQueriesAttempted:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineTasteQueriesAttempted) && lastDebugGcdDispatchTrace.comicVineTasteQueriesAttempted.length ? lastDebugGcdDispatchTrace.comicVineTasteQueriesAttempted.join(" | ") : "(none)"}`,
       `comicVineFetchResults:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineFetchResults) && lastDebugGcdDispatchTrace.comicVineFetchResults.length ? lastDebugGcdDispatchTrace.comicVineFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
       `comicVineFetchedRawTotal:${Number(lastDebugGcdDispatchTrace?.comicVineFetchedRawTotal || 0)}`,
       `comicVineRawRowsBeforeDocConversion:${Number(lastDebugGcdDispatchTrace?.comicVineRawRowsBeforeDocConversion || 0)}`,
@@ -2275,7 +2464,8 @@ function handleLeft() {
       `Deck Key: ${deckKey}`,
       `Engine: ${recEngineLabel || "—"}`,
       `Saved Query Time: ${lastRecommendationTimestamp || "—"}`,
-      `Swipe Summary: ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
+      `Swipe Summary: ${recomputedSummary}`,
+      `Swipe Summary (state): ${lastRecommendationSwipeSummary || `Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes}`}`,
       `20Q Progress: ${resolvedTwentyQCount}/${twentyQObjectives.length}`,
       `Current 20Q Objective: ${activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung} • ${activeTwentyQObjective.label}` : "complete"}`,
       `Active query family: ${reportQueryFamily}`,
@@ -2284,6 +2474,14 @@ function handleLeft() {
       swipeHistoryLines,
       "",
       `Built Query: ${reportBuiltQuery || "(none)"}`,
+      `presetTestName:${presetTestName || "(none)"}`,
+      `presetExecutionStarted:${presetExecutionStarted || "(none)"}`,
+      `presetSwipesAppliedCount:${presetSwipesAppliedCount}`,
+      `presetCardsMatchedCount:${presetCardsMatchedCount}`,
+      `presetRecommendationTriggered:${presetRecommendationTriggered}`,
+      `presetRecommendationCompleted:${presetRecommendationCompleted}`,
+      `presetExportedAfterRecommendation:${presetRecommendationCompleted ? "true" : String(presetExportedAfterRecommendation)}`,
+      `presetExecutionError:${presetExecutionError || "(none)"}`,
       "",
       "RUNG QUERIES",
       rungQueryLines,
@@ -2523,7 +2721,7 @@ function handleLeft() {
         <View style={styles.statusDivider} />
 
         <View style={[styles.stage, needsCardOffset && styles.stageTop]}>
-          {isDone ? (
+          {showRecommendationsView ? (
             <ScrollView style={{ width: "100%" }} contentContainerStyle={{ alignItems: "center", paddingBottom: 30 }}>
               <View style={[styles.doneCard, { borderColor: highlightColor }]}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
@@ -2791,6 +2989,13 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
+          <View style={styles.testPillRow}>
+            {testSessionPresets.map((preset) => (
+              <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
+                <Text style={styles.debugToggleText}>{preset.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
@@ -2954,6 +3159,22 @@ const styles = StyleSheet.create({
     gap: 8,
     alignItems: "stretch",
     justifyContent: "flex-end",
+  },
+  testPillRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 8,
+  },
+  testPillButton: {
+    minWidth: 84,
+    alignItems: "center",
+    backgroundColor: "#0b1e33",
+    borderColor: "#e0b84b",
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
   },
 
   genreQuickToggle: {
