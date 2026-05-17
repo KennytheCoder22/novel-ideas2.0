@@ -3143,6 +3143,15 @@ export async function getRecommendations(
   if (genres.includes("dystopian") && genres.includes("mystery") && themes.includes("survival")) curatedRootsByPattern.push("Lazarus", "Sweet Tooth", "Y: The Last Man", "The Walking Dead");
   if (genres.includes("fantasy") && genres.includes("mystery") && (tones.includes("atmospheric") || tones.includes("dark"))) curatedRootsByPattern.push("Locke & Key", "The Sandman", "Monstress", "The Woods");
   if (genres.includes("romance") && themes.includes("coming of age") && genres.includes("superheroes")) curatedRootsByPattern.push("Ms. Marvel", "Runaways", "Young Avengers", "Lumberjanes");
+  if (genres.includes("mystery") && genres.includes("dystopian") && (themes.includes("teen") || themes.includes("coming of age"))) {
+    curatedRootsByPattern.push("Paper Girls", "Morning Glories", "Gotham Academy", "The Woods", "The Unwritten");
+  }
+  if (genres.includes("mystery") && genres.includes("thriller") && (genres.includes("horror") || themes.includes("survival"))) {
+    curatedRootsByPattern.push("Something is Killing the Children", "Locke & Key", "Wytches", "Nailbiter", "Harrow County");
+  }
+  if (genres.includes("dystopian") && genres.includes("romance") && themes.includes("coming of age")) {
+    curatedRootsByPattern.push("Paper Girls", "On a Sunbeam", "Laura Dean Keeps Breaking Up With Me", "Fence", "Snotgirl");
+  }
   const curatedSeedQueries = Array.from(new Set(curatedRootsByPattern.flatMap((root) => [`${root} comic series`, `${root} volume 1`, `${root} collected edition`])));
   curatedSeedRootsUsed.push(...curatedRootsByPattern);
   let generatedComicVineQueriesFromTaste = Array.from(new Set([
