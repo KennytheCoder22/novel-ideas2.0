@@ -31,6 +31,15 @@ You can start developing by editing the files inside the **app** directory. This
 - Swipe deck data is stored in `data/swipeDecks/` as both `.ts` and `.json` files.
 - Runtime and theme settings are centralized under `constants/`.
 
+## Quick quality checks
+
+Run these commands before committing:
+
+```bash
+npm run lint
+npm run typecheck
+```
+
 ## Get a fresh project
 
 When you're ready, run:
