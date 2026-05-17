@@ -3103,6 +3103,16 @@ export async function getRecommendations(
   const genres = tasteProfileSummary.likedGenres.map((s) => s.replace(/^genre:/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const tones = tasteProfileSummary.likedTones.map((s) => s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const themes = tasteProfileSummary.likedThemes.map((s) => s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  const likedSignalsText = normalizeText([
+    ...tasteProfileSummary.likedSignals,
+    ...Object.keys((((input as any)?.likedTagCounts || {}) as Record<string, number>),
+    ).join(" "));
+  const eerieArchetypeProfile =
+    /\b(hollow knight|slay the spire|good place|existential|surreal|atmospheric|lore)\b/.test(likedSignalsText) ||
+    ((genres.includes("fantasy") || genres.includes("mystery")) && (tones.includes("dark") || tones.includes("atmospheric")));
+  const socialMysteryProfile =
+    /\b(veronica mars|social|investigation|detective|school mystery)\b/.test(likedSignalsText) ||
+    (genres.includes("mystery") && (themes.includes("coming of age") || themes.includes("social")));
   const narrativeSeriesForms = (base: string) => ([
     `${base} comic series`,
     `${base} collected edition`,
@@ -3151,6 +3161,12 @@ export async function getRecommendations(
   }
   if (genres.includes("dystopian") && genres.includes("romance") && themes.includes("coming of age")) {
     curatedRootsByPattern.push("Paper Girls", "On a Sunbeam", "Laura Dean Keeps Breaking Up With Me", "Fence", "Snotgirl");
+  }
+  if (eerieArchetypeProfile) {
+    curatedRootsByPattern.push("Die", "Monstress", "Coda", "The Last God", "Seven to Eternity", "The Wicked + The Divine", "Sandman Universe", "Gideon Falls");
+  }
+  if (socialMysteryProfile) {
+    curatedRootsByPattern.push("Gotham Academy", "Paper Girls", "The Fade Out", "Blacksad", "Velvet");
   }
   const curatedSeedQueries = Array.from(new Set(curatedRootsByPattern.flatMap((root) => [`${root} comic series`, `${root} volume 1`, `${root} collected edition`])));
   curatedSeedRootsUsed.push(...curatedRootsByPattern);
