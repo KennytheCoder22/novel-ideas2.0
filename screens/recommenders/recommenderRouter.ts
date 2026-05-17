@@ -6561,12 +6561,11 @@ const normalizedCandidatesRaw = [
   preSourceSpecificGateTitles.push(...finalRenderCandidateTitlesBeforeGate);
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
-    const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
-    const isComicVineCandidate = source.includes("comicvine");
+    const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+    const isComicVineCandidate = docSource.includes("comicvine");
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
-    const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
-    const isComicVineFallbackCandidate = source.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
+    const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
     const root = parentFranchiseRootForDoc(doc);
     const hasParent = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName || doc?.diagnostics?.parentVolumeName);
     const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
