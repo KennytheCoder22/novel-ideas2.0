@@ -7024,7 +7024,7 @@ const normalizedCandidatesRaw = [
   const suppressTopRecommendations = (hardPipelineFailure && rankedCount === 0) || scoredUniverseFailure;
   const gatedFinalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const teenPostPassItems = finalRankedDocs.map((doc:any) => ({ kind: "open_library", doc }));
-  const finalAcceptedDocsItems = finalAcceptedDocs.map((doc:any) => ({ kind: "open_library", doc }));
+  const finalAcceptedDocsItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const terminalAssemblyBaseItems =
     teenPostPassItems.length > 0
       ? teenPostPassItems
