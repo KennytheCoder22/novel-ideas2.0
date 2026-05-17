@@ -7025,15 +7025,21 @@ const normalizedCandidatesRaw = [
   const gatedFinalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const teenPostPassItems = finalRankedDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const finalAcceptedDocsItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
+  const finalGateAcceptedItems = finalRenderDocs
+    .filter((doc: any) => finalEligibilityAcceptedTitles.some((t) => normalizeText(String(t || "")) === normalizeText(String(doc?.title || ""))))
+    .map((doc:any) => ({ kind: "open_library", doc }));
   const terminalAssemblyBaseItems =
-    teenPostPassItems.length > 0
-      ? teenPostPassItems
+    finalGateAcceptedItems.length > 0
+      ? finalGateAcceptedItems
       : finalAcceptedDocsItems.length > 0
         ? finalAcceptedDocsItems
-        : gatedFinalItems;
+        : teenPostPassItems.length > 0
+          ? teenPostPassItems
+          : gatedFinalItems;
   let finalOutputItems = suppressTopRecommendations ? [] : terminalAssemblyBaseItems;
-  const finalGateAcceptedDocsCount = finalRenderDocs.length;
+  const finalGateAcceptedDocsCount = finalGateAcceptedItems.length;
   const terminalAssemblyInputCount = finalOutputItems.length;
+  const terminalAssemblyInputTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
   const terminalAssemblyDropReasonByTitle: Record<string, string> = {};
   const terminalReturnDropReasonByTitle: Record<string, string> = {};
   let returnedItemsBuiltFrom = suppressTopRecommendations
@@ -7086,6 +7092,7 @@ const normalizedCandidatesRaw = [
     if (finalOutputItems.length > 0) returnedItemsBuiltFrom = "terminal_base_fail_open";
   }
   const terminalAssemblyOutputCount = finalOutputItems.length;
+  const terminalAssemblyOutputTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
   if (!suppressTopRecommendations && gatedFinalItems.length > 0 && finalOutputItems.length === 0) {
     finalUnderfillBecauseNoTasteEvidence = true;
     underfillReason = "semantic_gate_rejected_all";
@@ -7432,6 +7439,8 @@ const normalizedCandidatesRaw = [
     finalGateAcceptedDocsCount,
     terminalAssemblyInputCount,
     terminalAssemblyOutputCount,
+    terminalAssemblyInputTitles,
+    terminalAssemblyOutputTitles,
     terminalAssemblyDropReasonByTitle,
     teenPostPassOutputTitles,
     finalGateAcceptedTitles: acceptedAfterTerminalRejectFilter,
