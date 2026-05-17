@@ -3099,13 +3099,19 @@ export async function getRecommendations(
   }
   const preDispatchTasteProfileSummary = tasteProfileSummary;
   const preDispatchGeneratedQueries: string[] = [];
-  const dislikedSet = new Set(tasteProfileSummary.dislikedSignals.map((s) => normalizeText(s)));
-  const genres = tasteProfileSummary.likedGenres.map((s) => s.replace(/^genre:/, "").replace(/_/g, " ").trim()).filter(Boolean);
-  const tones = tasteProfileSummary.likedTones.map((s) => s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
-  const themes = tasteProfileSummary.likedThemes.map((s) => s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  const likedSignalsSafe = Array.isArray((tasteProfileSummary as any)?.likedSignals) ? (tasteProfileSummary as any).likedSignals : [];
+  const dislikedSignalsSafe = Array.isArray((tasteProfileSummary as any)?.dislikedSignals) ? (tasteProfileSummary as any).dislikedSignals : [];
+  const likedGenresSafe = Array.isArray((tasteProfileSummary as any)?.likedGenres) ? (tasteProfileSummary as any).likedGenres : [];
+  const likedTonesSafe = Array.isArray((tasteProfileSummary as any)?.likedTones) ? (tasteProfileSummary as any).likedTones : [];
+  const likedThemesSafe = Array.isArray((tasteProfileSummary as any)?.likedThemes) ? (tasteProfileSummary as any).likedThemes : [];
+  const likedTagCountsSafe = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
+  const dislikedSet = new Set(dislikedSignalsSafe.map((s: string) => normalizeText(s)));
+  const genres = likedGenresSafe.map((s: string) => s.replace(/^genre:/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  const tones = likedTonesSafe.map((s: string) => s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  const themes = likedThemesSafe.map((s: string) => s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const likedSignalsText = normalizeText([
-    ...tasteProfileSummary.likedSignals,
-    ...Object.keys(((input as any)?.likedTagCounts || {}) as Record<string, number>),
+    ...likedSignalsSafe,
+    ...Object.keys(likedTagCountsSafe),
   ].join(" "));
   const eerieArchetypeProfile =
     /\b(hollow knight|slay the spire|good place|existential|surreal|atmospheric|lore)\b/.test(likedSignalsText) ||
