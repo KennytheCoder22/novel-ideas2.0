@@ -6533,6 +6533,7 @@ const normalizedCandidatesRaw = [
   const genericCollectionArtifactRejectedTitles: string[] = [];
   const finalTasteThresholdByTitle: Record<string, number> = {};
   const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
+  const acceptedEvidenceButFinalRejectedReasonByTitle: Record<string, string> = {};
   const finalReturnedWithoutTasteEvidenceTitles: string[] = [];
   let finalUnderfillBecauseNoTasteEvidence = false;
   let underfillReason: "transport_failure" | "query_literalism" | "semantic_gate_rejected_all" | "insufficient_candidate_metadata" | "taste_conflict" | "none" = "none";
@@ -7045,6 +7046,20 @@ const normalizedCandidatesRaw = [
         : "missing_from_gated_final_items";
     }
   }
+  for (const [title, evidence] of Object.entries(finalAcceptedTasteEvidenceByTitle)) {
+    const accepted = acceptedAfterTerminalRejectFilter.some((t) => normalizeText(t) === normalizeText(title));
+    if (accepted) continue;
+    if (terminalRejectReasonByTitle[normalizeText(title)]) {
+      acceptedEvidenceButFinalRejectedReasonByTitle[title] = `terminal_reject:${terminalRejectReasonByTitle[normalizeText(title)]}`;
+      continue;
+    }
+    const rejectedReasons = Object.entries(finalEligibilityRejectedTitlesByReason)
+      .filter(([, titles]) => (titles || []).some((t) => normalizeText(String(t || "")) === normalizeText(title)))
+      .map(([reason]) => reason);
+    acceptedEvidenceButFinalRejectedReasonByTitle[title] = rejectedReasons.length > 0
+      ? `final_gate_rejected:${rejectedReasons.join("|")}`
+      : `not_in_final_accepted_unknown:${(evidence || []).join(",")}`;
+  }
   const rejectedButReturnedTitles = returnedItemsTitlesPostTerminal.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
   const finalRejectAssertionChecked = finalOutputItems.length > 0 || finalEligibilityAcceptedTitles.length > 0 || Object.keys(terminalRejectReasonByTitle).length > 0;
   let finalRejectAssertionThrowReason = "none";
@@ -7057,9 +7072,12 @@ const normalizedCandidatesRaw = [
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
   const finalRenderSourceList = ["finalEligibilityAcceptedTitles", "finalAcceptedDocsAfterGate", "topUpOnlyIfPassedFinalGate"];
+  const hasEvidenceFinalMismatch = Object.keys(acceptedEvidenceButFinalRejectedReasonByTitle).length > 0 && acceptedAfterTerminalRejectFilter.length === 0;
   const qaFailureClass =
     finalEligibilityAcceptedTitles.length > 0 && finalOutputItems.length === 0
       ? "handoff_failure"
+      : hasEvidenceFinalMismatch
+        ? "evidence_final_gate_mismatch"
       : finalEligibilityAcceptedTitles.length === 0
         ? "no_final_eligible_candidates"
         : "none";
@@ -7209,6 +7227,7 @@ const normalizedCandidatesRaw = [
     genericCollectionArtifactRejectedTitles,
     finalTasteThresholdByTitle,
     finalAcceptedTasteEvidenceByTitle,
+    acceptedEvidenceButFinalRejectedReasonByTitle,
     finalCountCappedToTarget,
     finalReturnedWithoutTasteEvidenceTitles,
     finalUnderfillBecauseNoTasteEvidence,
