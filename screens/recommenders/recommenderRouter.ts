@@ -7250,6 +7250,11 @@ const normalizedCandidatesRaw = [
     finalOutputItems = [];
     returnedItemsBuiltFrom = "controlled_try_again_state";
   }
+  if (!suppressTopRecommendations && singleSourceDirectReturnTriggered) {
+    finalOutputItems = singleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
+    returnedItemsBuiltFrom = "single_source_lane_direct";
+    finalReturnSourceUsed = `single_source_direct:${singleSource}`;
+  }
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
