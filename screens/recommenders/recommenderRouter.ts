@@ -3168,6 +3168,27 @@ export async function getRecommendations(
   if (genres.includes("dystopian") && genres.includes("romance") && themes.includes("coming of age")) {
     curatedRootsByPattern.push("Paper Girls", "On a Sunbeam", "Laura Dean Keeps Breaking Up With Me", "Fence", "Snotgirl");
   }
+  const darkFantasyEmotionalMythologyProfile =
+    genres.includes("fantasy") &&
+    (tones.includes("dark") || tones.includes("atmospheric")) &&
+    (themes.includes("mythology") || themes.includes("emotional growth") || themes.includes("coming of age"));
+  if (darkFantasyEmotionalMythologyProfile) {
+    curatedRootsByPattern.push("Monstress", "Coda", "The Last God", "Seven to Eternity", "Sandman", "Norse Mythology");
+  }
+  const romanceComingOfAgeWarmthProfile =
+    genres.includes("romance") &&
+    themes.includes("coming of age") &&
+    (tones.includes("warm") || tones.includes("gentle") || tones.includes("hopeful") || tones.includes("anime-like"));
+  if (romanceComingOfAgeWarmthProfile) {
+    curatedRootsByPattern.push("Laura Dean Keeps Breaking Up With Me", "Bloom", "Heartstopper", "Fence", "Mooncakes");
+  }
+  const fantasyDystopianIdentityPoliticalProfile =
+    genres.includes("fantasy") &&
+    genres.includes("dystopian") &&
+    (themes.includes("identity") || themes.includes("political") || themes.includes("politics"));
+  if (fantasyDystopianIdentityPoliticalProfile) {
+    curatedRootsByPattern.push("Paper Girls", "Wynd", "The Woods", "On a Sunbeam", "Die", "East of West");
+  }
   if (eerieArchetypeProfile) {
     curatedRootsByPattern.push("Die", "Monstress", "Coda", "The Last God", "Seven to Eternity", "The Wicked + The Divine", "Sandman Universe", "Gideon Falls");
   }
