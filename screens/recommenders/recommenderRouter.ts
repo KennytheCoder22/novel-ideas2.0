@@ -3105,8 +3105,8 @@ export async function getRecommendations(
   const themes = tasteProfileSummary.likedThemes.map((s) => s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const likedSignalsText = normalizeText([
     ...tasteProfileSummary.likedSignals,
-    ...Object.keys((((input as any)?.likedTagCounts || {}) as Record<string, number>),
-    ).join(" "));
+    ...Object.keys(((input as any)?.likedTagCounts || {}) as Record<string, number>),
+  ].join(" "));
   const eerieArchetypeProfile =
     /\b(hollow knight|slay the spire|good place|existential|surreal|atmospheric|lore)\b/.test(likedSignalsText) ||
     ((genres.includes("fantasy") || genres.includes("mystery")) && (tones.includes("dark") || tones.includes("atmospheric")));
