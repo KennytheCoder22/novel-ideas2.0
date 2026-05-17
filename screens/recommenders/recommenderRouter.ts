@@ -5207,6 +5207,9 @@ const normalizedCandidatesRaw = [
   const topUpQualityRejectedReasons: Record<string, number> = {};
   const topUpQualityRejectedTitlesByReason: Record<string, string[]> = {};
   const nonComicVineCandidateDroppedByComicVineRule: string[] = [];
+  let comicVineScopedRulesAppliedCount = 0;
+  let nonComicVineReturnedBeforeComicVine = 0;
+  let nonComicVineReturnedAfterComicVine = 0;
   let entitySeedConvertedCount = 0;
   let entitySeedTopUpEligibleCount = 0;
   const entitySeedTopUpRejectedReasons: Record<string, number> = {};
@@ -5289,11 +5292,8 @@ const normalizedCandidatesRaw = [
       };
       const topupPool = topupSources.filter((doc: any) => {
         const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
-        if (!source.includes("comicvine")) {
-          nonComicVineCandidateDroppedByComicVineRule.push(String(doc?.title || ""));
-          registerTopupReject("non_comicvine_source", String(doc?.title || ""));
-          return false;
-        }
+        if (!source.includes("comicvine")) return true;
+        comicVineScopedRulesAppliedCount += 1;
         const title = String(doc?.title || "").trim();
         if (!title) { registerTopupReject("missing_title", "(untitled)"); return false; }
         const normalizedTitle = normalizeText(title);
@@ -7077,6 +7077,10 @@ const normalizedCandidatesRaw = [
   const finalGateAcceptedDocsCount = finalGateAcceptedItems.length;
   const terminalAssemblyInputCount = finalOutputItems.length;
   const terminalAssemblyInputTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+  nonComicVineReturnedBeforeComicVine = finalOutputItems.filter((item: any) => {
+    const s = String(item?.doc?.source || item?.source || "").toLowerCase();
+    return s && !s.includes("comicvine");
+  }).length;
   const terminalAssemblyDropReasonByTitle: Record<string, string> = {};
   const terminalReturnDropReasonByTitle: Record<string, string> = {};
   let returnedItemsBuiltFrom = suppressTopRecommendations
@@ -7130,6 +7134,10 @@ const normalizedCandidatesRaw = [
   }
   const terminalAssemblyOutputCount = finalOutputItems.length;
   const terminalAssemblyOutputTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+  nonComicVineReturnedAfterComicVine = finalOutputItems.filter((item: any) => {
+    const s = String(item?.doc?.source || item?.source || "").toLowerCase();
+    return s && !s.includes("comicvine");
+  }).length;
   if (!suppressTopRecommendations && gatedFinalItems.length > 0 && finalOutputItems.length === 0) {
     finalUnderfillBecauseNoTasteEvidence = true;
     underfillReason = "semantic_gate_rejected_all";
@@ -7403,6 +7411,10 @@ const normalizedCandidatesRaw = [
     sourceSpecificGateAppliedByTitle,
     sourceSpecificRejectReasonByTitle,
     nonComicVineCandidateDroppedByComicVineRule,
+    nonComicVineDroppedByComicVineRule: nonComicVineCandidateDroppedByComicVineRule,
+    nonComicVineReturnedBeforeComicVine,
+    nonComicVineReturnedAfterComicVine,
+    comicVineScopedRulesAppliedCount,
     preSourceSpecificGateTitles,
     postSourceSpecificGateTitles,
     placeholderPenaltyAppliedTitles,
