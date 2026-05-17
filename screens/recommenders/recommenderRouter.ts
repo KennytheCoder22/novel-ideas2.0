@@ -7084,8 +7084,14 @@ const normalizedCandidatesRaw = [
   };
   const teenPostPassItems = finalRankedDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const finalAcceptedDocsItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
-  const finalGateAcceptedItems = finalRenderDocs
-    .filter((doc: any) => finalEligibilityAcceptedTitles.some((t) => normalizeText(String(t || "")) === normalizeText(String(doc?.title || ""))))
+  const acceptedTitleSet = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(String(t || ""))));
+  const acceptedDocPool = dedupeDocs([
+    ...finalRenderDocs,
+    ...finalRankedDocs,
+    ...outputItems.map((it: any) => it?.doc).filter(Boolean),
+  ] as any[]);
+  const finalGateAcceptedItems = acceptedDocPool
+    .filter((doc: any) => acceptedTitleSet.has(normalizeText(String(doc?.title || ""))))
     .map((doc:any) => ({ kind: "open_library", doc }));
   const terminalAssemblyBaseItems =
     finalGateAcceptedItems.length > 0
@@ -7110,8 +7116,15 @@ const normalizedCandidatesRaw = [
     singleSource === "comicVine" ? comicVineApprovedCandidates :
     [];
   let finalOutputItems = suppressTopRecommendations ? [] : terminalAssemblyBaseItems;
+  let singleSourceDirectReturnTriggered = false;
+  let singleSourceDirectReturnTitles: string[] = [];
+  let finalReturnSourceUsed = "final_gate_accepted_docs";
+  const finalReturnDropReasonByTitle: Record<string, string> = {};
   if (!suppressTopRecommendations && singleSourceMode) {
     finalOutputItems = singleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
+    singleSourceDirectReturnTriggered = true;
+    singleSourceDirectReturnTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || "").trim()).filter(Boolean);
+    finalReturnSourceUsed = `single_source:${singleSource}`;
   }
   const finalGateAcceptedDocsCount = finalGateAcceptedItems.length;
   const terminalAssemblyInputCount = finalOutputItems.length;
@@ -7140,7 +7153,9 @@ const normalizedCandidatesRaw = [
   const rejectedButAcceptedTitles = finalEligibilityAcceptedTitles.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
   finalOutputItems = finalOutputItems.filter((item: any) => {
     const t = String(item?.doc?.title || item?.title || "").trim();
-    return !terminalRejectReasonByTitle[normalizeText(t)];
+    const keep = !terminalRejectReasonByTitle[normalizeText(t)];
+    if (!keep) finalReturnDropReasonByTitle[t] = `terminal_reject:${terminalRejectReasonByTitle[normalizeText(t)]}`;
+    return keep;
   });
   const acceptedEvidenceMap = finalAcceptedTasteEvidenceByTitle;
   const fallbackAcceptedSet = new Set(fallbackTierAcceptedTitles.map((t) => normalizeText(t)));
@@ -7163,6 +7178,7 @@ const normalizedCandidatesRaw = [
       finalReturnedWithoutTasteEvidenceTitles.push(title);
       terminalReturnDropReasonByTitle[title] = "post_gate_meaningful_evidence_filter";
       terminalAssemblyDropReasonByTitle[title] = "post_gate_meaningful_evidence_filter";
+      finalReturnDropReasonByTitle[title] = "post_gate_meaningful_evidence_filter";
     }
     return ok;
   });
@@ -7170,6 +7186,7 @@ const normalizedCandidatesRaw = [
     const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
     finalOutputItems = terminalAssemblyBaseItems.filter((item: any) => acceptedSet.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
     if (finalOutputItems.length > 0) returnedItemsBuiltFrom = "terminal_base_fail_open";
+    if (finalOutputItems.length > 0) finalReturnSourceUsed = "terminal_base_fail_open";
   }
   const terminalAssemblyOutputCount = finalOutputItems.length;
   const terminalAssemblyOutputTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
@@ -7179,6 +7196,12 @@ const normalizedCandidatesRaw = [
     openLibrary: finalOutputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("openlibrary")).length,
     kitsu: finalOutputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("kitsu")).length,
     comicVine: finalOutputItems.filter((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("comicvine")).length,
+  };
+  const approvedLaneCandidateTitlesBySource = {
+    googleBooks: googleBooksApprovedCandidates.map((d: any) => String(d?.title || "").trim()).filter(Boolean),
+    openLibrary: openLibraryApprovedCandidates.map((d: any) => String(d?.title || "").trim()).filter(Boolean),
+    kitsu: kitsuApprovedCandidates.map((d: any) => String(d?.title || "").trim()).filter(Boolean),
+    comicVine: comicVineApprovedCandidates.map((d: any) => String(d?.title || "").trim()).filter(Boolean),
   };
   nonComicVineReturnedAfterComicVine = finalOutputItems.filter((item: any) => {
     const s = String(item?.doc?.source || item?.source || "").toLowerCase();
@@ -7464,8 +7487,13 @@ const normalizedCandidatesRaw = [
     sourceLaneInputCount,
     sourceLaneApprovedCount,
     sourceLaneRejectedReasonBySource,
+    approvedLaneCandidateTitlesBySource,
     finalRecommenderInputBySource,
     finalRecommenderOutputBySource,
+    singleSourceDirectReturnTriggered,
+    singleSourceDirectReturnTitles,
+    finalReturnSourceUsed,
+    finalReturnDropReasonByTitle,
     preSourceSpecificGateTitles,
     postSourceSpecificGateTitles,
     placeholderPenaltyAppliedTitles,
