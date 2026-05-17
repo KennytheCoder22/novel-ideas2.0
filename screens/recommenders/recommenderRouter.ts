@@ -6514,6 +6514,9 @@ const normalizedCandidatesRaw = [
   const nearMissSemanticEvidenceTitles: string[] = [];
   const nearMissSemanticEvidenceReasons: Record<string, string> = {};
   const fallbackTierAcceptedTitles: string[] = [];
+  const fallbackTierRejectedReasonsByTitle: Record<string, string> = {};
+  let fallbackTierTriggered = false;
+  let fallbackTierCandidateCount = 0;
   const rejectedDespiteStrongTasteFitTitles: string[] = [];
   const registerFinalEligibilityReject = (reason: string, title: string) => {
     if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
@@ -6612,7 +6615,8 @@ const normalizedCandidatesRaw = [
     const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative;
     if (semanticEvidenceCount < 2) {
       const hasTitleOnlyTasteSignal = Boolean(queryTermOnlyEvidenceByTitle[title] && (titleOnlyTasteSignalByTitle[title] || []).length > 0);
-      const hasDislikedOverlap = Number(candidateDislikePenaltyByTitle[title] || 0) > 0;
+      const dislikedOverlapPenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+      const hasDislikedOverlap = dislikedOverlapPenalty > 0.8;
       const hasArtifactRisk = artifactRiskScore > 0;
       const fallbackEligible =
         semanticEvidenceCount === 1 &&
@@ -6620,18 +6624,21 @@ const normalizedCandidatesRaw = [
         !hasArtifactRisk &&
         !hasTitleOnlyTasteSignal &&
         !hasDislikedOverlap;
+      fallbackTierCandidateCount += 1;
       if (fallbackEligible) {
         nearMissSemanticEvidenceTitles.push(title);
-        nearMissSemanticEvidenceReasons[title] = "semanticEvidenceCount=1_but_high_narrative_low_risk";
+        nearMissSemanticEvidenceReasons[title] = "semanticEvidenceCount=1_but_high_narrative_low_risk_minor_dislike_tolerated";
       } else {
         nearMissSemanticEvidenceTitles.push(title);
-        nearMissSemanticEvidenceReasons[title] = [
+        const rejectReason = [
           `semanticEvidenceCount:${semanticEvidenceCount}`,
           `narrativeFictionConfidence:${narrativeFictionConfidence}`,
           `artifactRiskScore:${artifactRiskScore}`,
           `titleOnlyTasteSignal:${hasTitleOnlyTasteSignal}`,
-          `dislikedOverlap:${hasDislikedOverlap}`,
+          `dislikedOverlapPenalty:${dislikedOverlapPenalty.toFixed(2)}`,
         ].join(",");
+        nearMissSemanticEvidenceReasons[title] = rejectReason;
+        fallbackTierRejectedReasonsByTitle[title] = rejectReason;
         registerFinalEligibilityReject("insufficient_semantic_evidence_count", title); return false;
       }
     }
@@ -6685,6 +6692,7 @@ const normalizedCandidatesRaw = [
     }
   }
   if (eligibleWithFitScore.length === 0 && nearMissSemanticEvidenceTitles.length > 0) {
+    fallbackTierTriggered = true;
     const nearMissSet = new Set(nearMissSemanticEvidenceTitles.map((t) => normalizeText(t)));
     const fallbackAdds = viableCandidates
       .filter((doc: any) => nearMissSet.has(normalizeText(String(doc?.title || ""))))
@@ -7213,6 +7221,9 @@ const normalizedCandidatesRaw = [
     nearMissSemanticEvidenceTitles,
     nearMissSemanticEvidenceReasons,
     fallbackTierAcceptedTitles,
+    fallbackTierTriggered,
+    fallbackTierCandidateCount,
+    fallbackTierRejectedReasonsByTitle,
     placeholderPenaltyAppliedTitles,
     narrativeTitleConfidenceByTitle,
     lowPositiveFitThresholdByCandidate,
@@ -7291,6 +7302,8 @@ const normalizedCandidatesRaw = [
     recoveryDiversificationAttempts,
     returnedItemsBuiltFrom,
     teenPostPassOutputTitles,
+    finalGateAcceptedTitles: acceptedAfterTerminalRejectFilter,
+    returnedItemsTitlesPostTerminal,
     teenPostPassRejectedTitles,
     teenPostPassRejectReasons,
     teenPostPassSourceCapApplied,
