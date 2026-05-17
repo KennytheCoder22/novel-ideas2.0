@@ -6586,6 +6586,10 @@ const normalizedCandidatesRaw = [
     const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
     if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+    if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
+      registerFinalEligibilityReject("fallback_no_taste_match", title);
+      return false;
+    }
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
     const likedSignalsRaw = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
     const genericTasteSignalRe = /^(fantasy|adventure|mystery|crime|thriller|horror|science fiction|romance|superhero|comics?|graphic novel)$/i;
@@ -7558,7 +7562,3 @@ const normalizedCandidatesRaw = [
     deploymentRuntimeMarker,
   } as RecommendationResult;
 }
-    if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
-      registerFinalEligibilityReject("fallback_no_taste_match", title);
-      return false;
-    }
