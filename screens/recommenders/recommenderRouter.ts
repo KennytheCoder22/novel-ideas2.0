@@ -6546,6 +6546,8 @@ const normalizedCandidatesRaw = [
   const genericCollectionArtifactRejectedTitles: string[] = [];
   const finalTasteThresholdByTitle: Record<string, number> = {};
   const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
+  const meaningfulSignalsGateRejectedTitles: string[] = [];
+  const dislikedOverlapDominatesRejectedTitles: string[] = [];
   const acceptedEvidenceButFinalRejectedReasonByTitle: Record<string, string> = {};
   const finalReturnedWithoutTasteEvidenceTitles: string[] = [];
   let finalUnderfillBecauseNoTasteEvidence = false;
@@ -6586,6 +6588,7 @@ const normalizedCandidatesRaw = [
     const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
     if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+    const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
     if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
       registerFinalEligibilityReject("fallback_no_taste_match", title);
       return false;
@@ -6601,6 +6604,16 @@ const normalizedCandidatesRaw = [
       .map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim().toLowerCase())
       .some((token) => /\b(comedy|humor|parody|satire|spoof)\b/.test(token));
     const meaningfulSignalCount = Array.from(new Set(matchedMeaningfulLikedSignals)).length;
+    if (meaningfulSignalCount < 1) {
+      meaningfulSignalsGateRejectedTitles.push(title);
+      registerFinalEligibilityReject("meaningful_signals_required", title);
+      return false;
+    }
+    if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
+      dislikedOverlapDominatesRejectedTitles.push(title);
+      registerFinalEligibilityReject("disliked_overlap_dominates", title);
+      return false;
+    }
     finalTasteThresholdByTitle[title] = 2.5;
     const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
     const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
@@ -7363,6 +7376,8 @@ const normalizedCandidatesRaw = [
     fallbackTierTriggered,
     fallbackTierCandidateCount,
     fallbackTierRejectedReasonsByTitle,
+    meaningfulSignalsGateRejectedTitles,
+    dislikedOverlapDominatesRejectedTitles,
     controlledEmergencyFallback,
     sourceSpecificGateAppliedByTitle,
     sourceSpecificRejectReasonByTitle,
