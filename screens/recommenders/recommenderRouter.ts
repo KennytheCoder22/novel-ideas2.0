@@ -6517,6 +6517,7 @@ const normalizedCandidatesRaw = [
   const fallbackTierRejectedReasonsByTitle: Record<string, string> = {};
   let fallbackTierTriggered = false;
   let fallbackTierCandidateCount = 0;
+  let controlledEmergencyFallback = false;
   const rejectedDespiteStrongTasteFitTitles: string[] = [];
   const registerFinalEligibilityReject = (reason: string, title: string) => {
     if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
@@ -6702,11 +6703,29 @@ const normalizedCandidatesRaw = [
       if (!title) continue;
       const alreadyAccepted = eligibleWithFitScore.some((row) => normalizeText(String(row?.doc?.title || "")) === normalizeText(title));
       if (alreadyAccepted) continue;
+      const likedSignalsRaw = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
+      const genericTasteSignalRe = /^(fantasy|adventure|mystery|crime|thriller|horror|science fiction|romance|superhero|comics?|graphic novel)$/i;
+      const textBag = normalizeText(`${title} ${String(doc?.description || "")}`);
+      const meaningfulSignalCount = Array.from(new Set(
+        Object.keys(likedSignalsRaw)
+          .map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim())
+          .filter((token) => token.length >= 4 && !genericTasteSignalRe.test(token))
+          .filter((token) => textBag.includes(normalizeText(token)))
+      )).length;
+      if (meaningfulSignalCount < 1) {
+        fallbackTierRejectedReasonsByTitle[title] = "fallback_requires_meaningful_signals>=1";
+        continue;
+      }
       eligibleWithFitScore.push({ doc, fitScore: 0.5, recommendableWorkScore: 1, artifactRiskScore: 0, collectedEditionConfidence: 2, narrativeFictionConfidence: 3, metaOrReferenceWorkPenalty: 0 });
       fallbackTierAcceptedTitles.push(title);
       finalEligibilityAcceptedTitles.push(title);
       finalEligibilityRelaxedReasonByTitle[title] = "fallback_semantic_evidence_count_1";
+      finalAcceptedTasteEvidenceByTitle[title] = [
+        ...(finalAcceptedTasteEvidenceByTitle[title] || []),
+        `meaningfulSignals:${meaningfulSignalCount}`,
+      ];
     }
+    controlledEmergencyFallback = fallbackTierAcceptedTitles.length > 0 && finalEligibilityAcceptedTitles.length === fallbackTierAcceptedTitles.length;
   }
   finalRenderDocs = eligibleWithFitScore
     .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
@@ -7038,6 +7057,12 @@ const normalizedCandidatesRaw = [
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
   const finalRenderSourceList = ["finalEligibilityAcceptedTitles", "finalAcceptedDocsAfterGate", "topUpOnlyIfPassedFinalGate"];
+  const qaFailureClass =
+    finalEligibilityAcceptedTitles.length > 0 && finalOutputItems.length === 0
+      ? "handoff_failure"
+      : finalEligibilityAcceptedTitles.length === 0
+        ? "no_final_eligible_candidates"
+        : "none";
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
@@ -7241,6 +7266,7 @@ const normalizedCandidatesRaw = [
     fallbackTierTriggered,
     fallbackTierCandidateCount,
     fallbackTierRejectedReasonsByTitle,
+    controlledEmergencyFallback,
     placeholderPenaltyAppliedTitles,
     narrativeTitleConfidenceByTitle,
     lowPositiveFitThresholdByCandidate,
@@ -7322,6 +7348,7 @@ const normalizedCandidatesRaw = [
     finalGateAcceptedTitles: acceptedAfterTerminalRejectFilter,
     returnedItemsTitlesPostTerminal,
     terminalReturnDropReasonByTitle,
+    qaFailureClass,
     teenPostPassRejectedTitles,
     teenPostPassRejectReasons,
     teenPostPassSourceCapApplied,
