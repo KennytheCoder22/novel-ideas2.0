@@ -5192,6 +5192,7 @@ const normalizedCandidatesRaw = [
   let topUpMergedPoolAfterQualityFiltersLength = 0;
   const topUpQualityRejectedReasons: Record<string, number> = {};
   const topUpQualityRejectedTitlesByReason: Record<string, string[]> = {};
+  const nonComicVineCandidateDroppedByComicVineRule: string[] = [];
   let entitySeedConvertedCount = 0;
   let entitySeedTopUpEligibleCount = 0;
   const entitySeedTopUpRejectedReasons: Record<string, number> = {};
@@ -6524,7 +6525,6 @@ const normalizedCandidatesRaw = [
   let controlledEmergencyFallback = false;
   const sourceSpecificGateAppliedByTitle: Record<string, string[]> = {};
   const sourceSpecificRejectReasonByTitle: Record<string, string> = {};
-  const nonComicVineCandidateDroppedByComicVineRule: string[] = [];
   const preSourceSpecificGateTitles: string[] = [];
   const postSourceSpecificGateTitles: string[] = [];
   const rejectedDespiteStrongTasteFitTitles: string[] = [];
@@ -6710,10 +6710,27 @@ const normalizedCandidatesRaw = [
       .slice(0, 12);
     for (const doc of relaxedAdds) {
       const title = String(doc?.title || "").trim();
+      const textBag = normalizeText(`${title} ${String(doc?.description || "")}`);
+      const likedSignalsRaw = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
+      const genericTasteSignalRe = /^(fantasy|adventure|mystery|crime|thriller|horror|science fiction|romance|superhero|comics?|graphic novel)$/i;
+      const meaningfulSignalCount = Array.from(new Set(
+        Object.keys(likedSignalsRaw)
+          .map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim())
+          .filter((token) => token.length >= 4 && !genericTasteSignalRe.test(token))
+          .filter((token) => textBag.includes(normalizeText(token)))
+      )).length;
+      if (meaningfulSignalCount < 1) {
+        fallbackTierRejectedReasonsByTitle[title] = "relaxed_add_requires_meaningful_signals>=1";
+        continue;
+      }
       eligibleWithFitScore.push({ doc, fitScore: 1, recommendableWorkScore: 1, artifactRiskScore: 0, collectedEditionConfidence: 0, narrativeFictionConfidence: 1, metaOrReferenceWorkPenalty: 0 });
       finalEligibilityAcceptedTitles.push(title);
       finalEligibilityRelaxedAcceptedTitles.push(title);
       finalEligibilityRelaxedReasonByTitle[title] = "strong_taste_fit_underfilled_output";
+      finalAcceptedTasteEvidenceByTitle[title] = [
+        ...(finalAcceptedTasteEvidenceByTitle[title] || []),
+        `meaningfulSignals:${meaningfulSignalCount}`,
+      ];
     }
   }
   if (eligibleWithFitScore.length === 0 && nearMissSemanticEvidenceTitles.length > 0) {
@@ -7030,12 +7047,14 @@ const normalizedCandidatesRaw = [
   });
   const acceptedEvidenceMap = finalAcceptedTasteEvidenceByTitle;
   const fallbackAcceptedSet = new Set(fallbackTierAcceptedTitles.map((t) => normalizeText(t)));
+  const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
   const meaningfulEvidence = (title: string) => {
     const weighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const evidenceRows = acceptedEvidenceMap[title] || [];
     const meaningfulSignals = Number((evidenceRows.find((r) => r.startsWith("meaningfulSignals:")) || "meaningfulSignals:0").split(":")[1] || 0);
     const narrative = Number((evidenceRows.find((r) => r.startsWith("narrativeFictionConfidence:")) || "narrativeFictionConfidence:0").split(":")[1] || 0);
     if (fallbackAcceptedSet.has(normalizeText(title))) return true;
+    if (acceptedAfterTerminalSet.has(normalizeText(title))) return true;
     return weighted >= 2.5 || meaningfulSignals >= 2 || (weighted >= 2.5 && narrative >= 2);
   };
   const preEvidenceFilteredTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
