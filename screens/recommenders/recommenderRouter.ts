@@ -7321,6 +7321,18 @@ const normalizedCandidatesRaw = [
     if (singleSourceItems.length > 0 && dynamicSingleSourceItems.length === 0) {
       for (const doc of singleSourceItems) singleSourceItemsDropReasonByTitle[String(doc?.title || "")] = "dropped_before_single_source_return";
     }
+    if (dynamicSingleSourceItems.length === 0 && finalAcceptedDocsItems.length > 0) {
+      dynamicSingleSourceItems = finalAcceptedDocsItems.map((row: any) => row?.doc).filter(Boolean);
+      singleSourceItemsBuiltFrom = "finalAcceptedDocsItems_fallback";
+    }
+    if (dynamicSingleSourceItems.length === 0 && teenPostPassItems.length > 0) {
+      dynamicSingleSourceItems = teenPostPassItems.map((row: any) => row?.doc).filter(Boolean);
+      singleSourceItemsBuiltFrom = "teenPostPassItems_fallback";
+    }
+    if (dynamicSingleSourceItems.length === 0 && finalRenderDocs.length > 0) {
+      dynamicSingleSourceItems = finalRenderDocs;
+      singleSourceItemsBuiltFrom = "finalRenderDocs_fallback";
+    }
     finalOutputItems = dynamicSingleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
     returnedItemsBuiltFrom = "single_source_lane_direct";
     finalReturnSourceUsed = `single_source_direct:${singleSource}`;
