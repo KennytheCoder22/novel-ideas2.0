@@ -7602,7 +7602,26 @@ const normalizedCandidatesRaw = [
   }
   if (!suppressTopRecommendations && acceptedAfterTerminalRejectFilter.length > 0) {
     const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
-    const acceptedItemsFromPostPass = teenPostPassItems.filter((item: any) => acceptedSet.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
+    const canonicalAcceptedRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "paper-girls", "the-sandman", "saga", "nimona", "runaways"]);
+    const acceptedHardArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
+    const acceptedItemsFromPostPass = teenPostPassItems.filter((item: any) => {
+      const title = String(item?.doc?.title || item?.title || "").trim();
+      if (!title) return false;
+      if (!acceptedSet.has(normalizeText(title))) return false;
+      const root = String(parentFranchiseRootForDoc(item?.doc || item) || "");
+      const canonical = canonicalAcceptedRoots.has(root);
+      const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+        .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+      const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+      const weakLexicalPenalty = Number(weakLexicalFantasyClusterPenaltyByTitle[title] || 0);
+      const queryLiteralOnly = Boolean(queryTermOnlyEvidenceByTitle[title]);
+      const entitySeedAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(title).includes(normalizeText(seed)) || normalizeText(root).includes(normalizeText(seed)));
+      if (acceptedHardArtifactRootRe.test(root) && !canonical) return false;
+      if (!canonical && meaningful <= 0 && semanticEvidence < 2 && !entitySeedAligned) return false;
+      if (!canonical && weakLexicalPenalty > 0 && semanticEvidence < 2) return false;
+      if (!canonical && queryLiteralOnly && meaningful < 2 && semanticEvidence < 2) return false;
+      return true;
+    });
     if (acceptedItemsFromPostPass.length > 0) {
       finalOutputItems = acceptedItemsFromPostPass.slice(0, Math.max(1, finalLimit));
       returnedItemsBuiltFrom = "accepted_titles_authoritative";
