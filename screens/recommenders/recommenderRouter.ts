@@ -7553,6 +7553,8 @@ const normalizedCandidatesRaw = [
   let acceptedTitlesBeforeScrub: string[] = [];
   let acceptedTitlesAfterScrub: string[] = [];
   let acceptedTitlesScrubRejectedByReason: Record<string, string> = {};
+  let acceptedTitlesReturned: string[] = [];
+  let acceptedTitlesDroppedAfterScrub: string[] = [];
   let acceptedTitlesRejectedAsArtifactRoot: string[] = [];
   let acceptedTitlesRejectedAsLiteralArtifact: string[] = [];
   let acceptedTitlesRejectedAsWeakNarrative: string[] = [];
@@ -7691,7 +7693,19 @@ const normalizedCandidatesRaw = [
       .filter(Boolean);
     acceptedTitlesScrubRejectedByReason = { ...canonicalRescueSupersededAcceptedTitlesByReason };
     if (acceptedItemsFromPostPass.length > 0) {
-      finalOutputItems = acceptedItemsFromPostPass.slice(0, Math.max(1, finalLimit));
+      const targetLimit = Math.max(1, finalLimit);
+      const acceptedPrefixItems = acceptedItemsFromPostPass.slice(0, targetLimit);
+      const acceptedPrefixTitleSet = new Set(acceptedPrefixItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+      const existingNonAcceptedItems = finalOutputItems.filter((item: any) => {
+        const t = normalizeText(String(item?.doc?.title || item?.title || ""));
+        return t && !acceptedPrefixTitleSet.has(t);
+      });
+      const filledWithNonAccepted = [...acceptedPrefixItems, ...existingNonAcceptedItems].slice(0, targetLimit);
+      finalOutputItems = filledWithNonAccepted;
+      acceptedTitlesReturned = finalOutputItems
+        .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+        .filter((title: string) => title && acceptedTitlesAfterScrub.some((a) => normalizeText(a) === normalizeText(title)));
+      acceptedTitlesDroppedAfterScrub = acceptedTitlesAfterScrub.filter((title) => !acceptedTitlesReturned.some((r) => normalizeText(r) === normalizeText(title)));
       returnedItemsBuiltFrom = "accepted_titles_authoritative";
       finalReturnSourceUsed = "accepted_titles_authoritative";
     } else if (Object.keys(canonicalRescueSupersededAcceptedTitlesByReason).length > 0) {
@@ -7854,6 +7868,12 @@ const normalizedCandidatesRaw = [
         finalReturnSourceUsed = "canonical_affinity_rescue_plus_second_tier_fill";
       }
     }
+  }
+  if (acceptedTitlesAfterScrub.length > 0 && acceptedTitlesReturned.length === 0) {
+    acceptedTitlesReturned = finalOutputItems
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter((title: string) => title && acceptedTitlesAfterScrub.some((a) => normalizeText(a) === normalizeText(title)));
+    acceptedTitlesDroppedAfterScrub = acceptedTitlesAfterScrub.filter((title) => !acceptedTitlesReturned.some((r) => normalizeText(r) === normalizeText(title)));
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardRejectReasonRe = /^(issue_fragment|locale_variant|placeholder|generic_artifact_no_root|terminal_reject:|final_eligibility_rejected)/;
@@ -8073,6 +8093,8 @@ const normalizedCandidatesRaw = [
     finalEligibilityAcceptedAndRejectedTitles,
     acceptedTitlesBeforeScrub,
     acceptedTitlesAfterScrub,
+    acceptedTitlesReturned,
+    acceptedTitlesDroppedAfterScrub,
     acceptedTitlesScrubRejectedByReason,
     acceptedTitlesRejectedAsArtifactRoot,
     acceptedTitlesRejectedAsLiteralArtifact,
