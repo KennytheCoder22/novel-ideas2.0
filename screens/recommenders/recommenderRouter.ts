@@ -6758,7 +6758,7 @@ const normalizedCandidatesRaw = [
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
-    const franchiseAffinityRoots = new Set(["saga", "nimona", "the-sandman", "locke-key", "paper-girls", "monstress", "lumberjanes"]);
+    const franchiseAffinityRoots = new Set(["saga", "runaways", "nimona", "the-sandman", "locke-key", "paper-girls", "monstress", "lumberjanes"]);
     const semanticFranchiseAffinity = franchiseAffinityRoots.has(root);
     if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
       if (!curatedSeedProfileMatch[title]) {
@@ -6773,6 +6773,13 @@ const normalizedCandidatesRaw = [
     if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title] && !semanticFranchiseAffinity) {
       registerFinalEligibilityReject("fallback_no_taste_match", title);
       return false;
+    }
+    if (isComicVineFallbackCandidate && semanticFranchiseAffinity) {
+      const fallbackFitScore = Number(positiveFitScoreByTitle[title] || 0);
+      if (semanticEvidenceCount <= 0 && fallbackFitScore < 5) {
+        registerFinalEligibilityReject("fallback_no_taste_match", title);
+        return false;
+      }
     }
     const queryTermOnlyEvidence = Boolean(queryTermOnlyEvidenceByTitle[title]);
     const titleOnlyTasteSignals = titleOnlyTasteSignalByTitle[title] || [];
@@ -7555,6 +7562,7 @@ const normalizedCandidatesRaw = [
   let acceptedTitlesScrubRejectedByReason: Record<string, string> = {};
   let acceptedTitlesReturned: string[] = [];
   let acceptedTitlesDroppedAfterScrub: string[] = [];
+  let acceptedPrefixInvariantFailed = false;
   let acceptedTitlesRejectedAsArtifactRoot: string[] = [];
   let acceptedTitlesRejectedAsLiteralArtifact: string[] = [];
   let acceptedTitlesRejectedAsWeakNarrative: string[] = [];
@@ -7660,7 +7668,7 @@ const normalizedCandidatesRaw = [
     const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
     const canonicalAcceptedRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "paper-girls", "the-sandman", "saga", "nimona", "runaways"]);
     const acceptedHardArtifactRootRe = /^(the-power-fantasy|graphic-fantasy|adventure-van|trade-paperback)$/;
-    const acceptedLiteralArtifactTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
+    const acceptedLiteralArtifactTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|collected edition|trade paperback collected edition|hardcover\/trade paperback|sex fantasy|generic romance|through romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
     const canonicalRescueSupersededAcceptedTitlesByReason: Record<string, string> = {};
     acceptedTitlesBeforeScrub = teenPostPassItems
       .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
@@ -7903,6 +7911,29 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = "teen_postpass_handoff_recovery";
       finalReturnSourceUsed = "teen_postpass_handoff_recovery";
     }
+  }
+  if (!suppressTopRecommendations && acceptedTitlesAfterScrub.length > 0) {
+    const acceptedOrder = acceptedTitlesAfterScrub.map((t) => normalizeText(t)).filter(Boolean);
+    const acceptedSet = new Set(acceptedOrder);
+    const byTitle = new Map<string, any>();
+    for (const item of finalOutputItems) {
+      const title = String(item?.doc?.title || item?.title || "").trim();
+      const key = normalizeText(title);
+      if (!key || byTitle.has(key)) continue;
+      byTitle.set(key, item);
+    }
+    const acceptedPrefixItems = acceptedOrder.map((k) => byTitle.get(k)).filter(Boolean);
+    const nonAcceptedItems = finalOutputItems.filter((item: any) => {
+      const title = String(item?.doc?.title || item?.title || "").trim();
+      return !acceptedSet.has(normalizeText(title));
+    });
+    finalOutputItems = [...acceptedPrefixItems, ...nonAcceptedItems].slice(0, Math.max(1, finalLimit));
+    acceptedTitlesReturned = finalOutputItems
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter((title: string) => title && acceptedTitlesAfterScrub.some((a) => normalizeText(a) === normalizeText(title)));
+    acceptedTitlesDroppedAfterScrub = acceptedTitlesAfterScrub.filter((title) => !acceptedTitlesReturned.some((r) => normalizeText(r) === normalizeText(title)));
+    const returnedNow = finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean);
+    acceptedPrefixInvariantFailed = acceptedOrder.some((t, idx) => returnedNow[idx] !== t);
   }
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
@@ -8290,6 +8321,7 @@ const normalizedCandidatesRaw = [
     finalItemsTitles,
     returnedItemsLength: finalOutputItems.length,
     returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
+    acceptedPrefixInvariantFailed,
     finalAcceptedDocIds,
     finalRejectedDocIds,
     returnedDocIds,
