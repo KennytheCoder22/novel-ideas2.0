@@ -8142,6 +8142,8 @@ const normalizedCandidatesRaw = [
         .filter(Boolean)
     );
     const allowedLateRejectReasons = new Set(["format_signal_only_without_taste_fit", "fails_taste_threshold_gate", "insufficient_positive_fit_score"]);
+    const formatSignalOnlyRejectedSet = new Set((formatSignalOnlyRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
+    const genericCollectionRejectedSet = new Set((genericCollectionArtifactRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
     const rejectReasonsByTitle = new Map<string, Set<string>>();
     for (const [reason, titles] of Object.entries(finalEligibilityRejectedTitlesByReason || {})) {
       if (!Array.isArray(titles)) continue;
@@ -8156,6 +8158,12 @@ const normalizedCandidatesRaw = [
     const amuletLaneRoots = new Set(["amulet", "bone", "saga", "paper-girls", "runaways", "nimona"]);
     const genericAnthologyRootRe = /(?:^|[-\s])(comic-book-art|art-series|science-comics?|sparkler|for-posterity|anthology)(?:$|[-\s])/i;
     const queryLiteralScienceRe = /\b(science|science bros|citizen science|mystery science theater 3000)\b/i;
+    const mysteryFamilyRootAlias: Record<string, string> = {
+      "house-of-mystery": "house-of-mystery-family",
+      "the-house-of-mystery": "house-of-mystery-family",
+      "showcase-presents": "house-of-mystery-family",
+      "gwandanaland-comics": "house-of-mystery-family",
+    };
     const mergedPool = [
       ...finalRenderDocs.filter((d: any) => rejectedTitles.has(normalizeText(String(d?.title || "")))),
       ...finalRenderDocs,
@@ -8214,8 +8222,33 @@ const normalizedCandidatesRaw = [
         continue;
       }
       const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      const rootFamily = mysteryFamilyRootAlias[root] || root;
+      const titleNorm = normalizeText(title);
+      const titleOnlyTasteSignal = queryLiteralScienceRe.test(titleNorm) || /\bmystery\b/i.test(titleNorm);
+      if (terminalRejectReasonByTitle[nt]) {
+        lateTeenUnderfillRejectedReasons.terminal_reject_reentry = (lateTeenUnderfillRejectedReasons.terminal_reject_reentry || 0) + 1;
+        continue;
+      }
+      if (formatSignalOnlyRejectedSet.has(nt)) {
+        lateTeenUnderfillRejectedReasons.format_signal_only_reentry = (lateTeenUnderfillRejectedReasons.format_signal_only_reentry || 0) + 1;
+        continue;
+      }
+      if (genericCollectionRejectedSet.has(nt)) {
+        lateTeenUnderfillRejectedReasons.generic_collection_reentry = (lateTeenUnderfillRejectedReasons.generic_collection_reentry || 0) + 1;
+        continue;
+      }
+      const titleRejectReasons = rejectReasonsByTitle.get(nt) || new Set<string>();
+      const insufficientSemanticRejected = Array.from(titleRejectReasons).some((r: string) => /insufficient_semantic/i.test(r));
+      if (insufficientSemanticRejected) {
+        lateTeenUnderfillRejectedReasons.insufficient_semantic_reentry = (lateTeenUnderfillRejectedReasons.insufficient_semantic_reentry || 0) + 1;
+        continue;
+      }
       if (seenRoot.has(root)) {
         lateTeenUnderfillRejectedReasons.duplicate_root = (lateTeenUnderfillRejectedReasons.duplicate_root || 0) + 1;
+        continue;
+      }
+      if (seenRoot.has(rootFamily)) {
+        lateTeenUnderfillRejectedReasons.duplicate_root_family = (lateTeenUnderfillRejectedReasons.duplicate_root_family || 0) + 1;
         continue;
       }
       if (genericAnthologyRootRe.test(root)) {
@@ -8230,11 +8263,15 @@ const normalizedCandidatesRaw = [
       const provenanceConfidence = Number((finalScoreComponentsByTitle[title] || {}).provenanceConfidence || 0) > 0;
       const parentRootSource = String(parentRootSourceByTitle[title] || "");
       const titleFallbackCanonical = parentRootSource === "title_fallback" && positiveFit >= 4.75 && (semanticSupport || themeOverlap || provenanceConfidence);
-      const reasons = rejectReasonsByTitle.get(nt) || new Set<string>();
+      const reasons = titleRejectReasons;
       const onlySoftLateRejects = reasons.size > 0 && Array.from(reasons).every((r) => allowedLateRejectReasons.has(r));
       const titleLiteralScienceOnly = queryLiteralScienceRe.test(normalizeText(title)) && !semanticSupport;
       if (titleLiteralScienceOnly && meaningful < 1) {
         lateTeenUnderfillRejectedReasons.query_literal_science_only = (lateTeenUnderfillRejectedReasons.query_literal_science_only || 0) + 1;
+        continue;
+      }
+      if (titleOnlyTasteSignal && !semanticSupport && meaningful < 1) {
+        lateTeenUnderfillRejectedReasons.title_only_signal_without_semantics = (lateTeenUnderfillRejectedReasons.title_only_signal_without_semantics || 0) + 1;
         continue;
       }
       const genericAnthologyWithoutTaste = genericAnthologyRootRe.test(root) && meaningful < 1 && !themeOverlap;
@@ -8249,6 +8286,7 @@ const normalizedCandidatesRaw = [
       finalOutputItems.push({ kind: "open_library", doc });
       seenTitle.add(nt);
       seenRoot.add(root);
+      seenRoot.add(rootFamily);
       lateTeenUnderfillCandidatesAccepted += 1;
       lateTeenUnderfillAcceptedTitles.push(title);
     }
