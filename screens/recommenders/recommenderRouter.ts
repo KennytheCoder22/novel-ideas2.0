@@ -8124,8 +8124,17 @@ const normalizedCandidatesRaw = [
   }
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
   const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
+  let lateTeenUnderfillTriggered = false;
+  let lateTeenUnderfillVisibleCountBefore = 0;
+  let lateTeenUnderfillCandidatesConsidered = 0;
+  let lateTeenUnderfillCandidatesAccepted = 0;
+  const lateTeenUnderfillAcceptedTitles: string[] = [];
+  const lateTeenUnderfillRejectedReasons: Record<string, number> = {};
   const lateTargetMin = Math.max(3, Math.min(5, finalLimit));
-  if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && finalOutputItems.length < lateTargetMin && finalEligibleNonNegativeCount > 0) {
+  const visibleCount = Number(renderedTopRecommendations?.length ?? returnedItems?.length ?? finalOutputItems.length ?? 0);
+  if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && visibleCount < lateTargetMin && finalEligibleNonNegativeCount > 0) {
+    lateTeenUnderfillTriggered = true;
+    lateTeenUnderfillVisibleCountBefore = visibleCount;
     const rejectedTitles = new Set(
       Object.values(finalEligibilityRejectedTitlesByReason || {})
         .flatMap((arr: any) => Array.isArray(arr) ? arr : [])
@@ -8144,6 +8153,7 @@ const normalizedCandidatesRaw = [
       }
     }
     const canonicalSignalRoots = new Set(["runaways", "saga", "ms-marvel", "paper-girls", "the-sandman", "black-science", "adventure-time", "nimona"]);
+    const genericAnthologyRootRe = /(?:^|[-\s])(comic-book-art|art-series|science-comics?|sparkler|for-posterity|anthology)(?:$|[-\s])/i;
     const mergedPool = [
       ...finalRenderDocs.filter((d: any) => rejectedTitles.has(normalizeText(String(d?.title || "")))),
       ...finalRenderDocs,
@@ -8161,29 +8171,64 @@ const normalizedCandidatesRaw = [
       )
     );
     for (const doc of mergedPool) {
+      lateTeenUnderfillCandidatesConsidered += 1;
       if (finalOutputItems.length >= lateTargetMin) break;
       const title = String(doc?.title || "").trim();
-      if (!title) continue;
+      if (!title) {
+        lateTeenUnderfillRejectedReasons.empty_title = (lateTeenUnderfillRejectedReasons.empty_title || 0) + 1;
+        continue;
+      }
       const nt = normalizeText(title);
-      if (seenTitle.has(nt)) continue;
-      if (!passesSharedReturnArtifactScrub(doc)) continue;
-      if (isLikelyIssueFragmentDoc(doc)) continue;
+      if (seenTitle.has(nt)) {
+        lateTeenUnderfillRejectedReasons.duplicate_title = (lateTeenUnderfillRejectedReasons.duplicate_title || 0) + 1;
+        continue;
+      }
+      if (!passesSharedReturnArtifactScrub(doc)) {
+        lateTeenUnderfillRejectedReasons.shared_scrub_block = (lateTeenUnderfillRejectedReasons.shared_scrub_block || 0) + 1;
+        continue;
+      }
+      if (isLikelyIssueFragmentDoc(doc)) {
+        lateTeenUnderfillRejectedReasons.issue_fragment = (lateTeenUnderfillRejectedReasons.issue_fragment || 0) + 1;
+        continue;
+      }
       const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
-      if (score < 0) continue;
+      if (score < 0) {
+        lateTeenUnderfillRejectedReasons.negative_score = (lateTeenUnderfillRejectedReasons.negative_score || 0) + 1;
+        continue;
+      }
       const root = String(parentFranchiseRootForDoc(doc) || "__none__");
-      if (seenRoot.has(root)) continue;
+      if (seenRoot.has(root)) {
+        lateTeenUnderfillRejectedReasons.duplicate_root = (lateTeenUnderfillRejectedReasons.duplicate_root || 0) + 1;
+        continue;
+      }
+      if (genericAnthologyRootRe.test(root)) {
+        lateTeenUnderfillRejectedReasons.generic_anthology_root = (lateTeenUnderfillRejectedReasons.generic_anthology_root || 0) + 1;
+        continue;
+      }
       const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || []).find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
       const semanticSupport = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
       const themeOverlap = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0) > 0;
       const canonicalSeriesSignal = canonicalSignalRoots.has(root);
       const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
       const provenanceConfidence = Number((finalScoreComponentsByTitle[title] || {}).provenanceConfidence || 0) > 0;
+      const parentRootSource = String(parentRootSourceByTitle[title] || "");
+      const titleFallbackCanonical = parentRootSource === "title_fallback" && positiveFit >= 4.75 && (semanticSupport || themeOverlap || provenanceConfidence);
       const reasons = rejectReasonsByTitle.get(nt) || new Set<string>();
       const onlySoftLateRejects = reasons.size > 0 && Array.from(reasons).every((r) => allowedLateRejectReasons.has(r));
-      if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || (positiveFit >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) continue;
+      const genericAnthologyWithoutTaste = genericAnthologyRootRe.test(root) && meaningful < 1 && !themeOverlap;
+      if (genericAnthologyWithoutTaste) {
+        lateTeenUnderfillRejectedReasons.generic_anthology_without_taste = (lateTeenUnderfillRejectedReasons.generic_anthology_without_taste || 0) + 1;
+        continue;
+      }
+      if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || titleFallbackCanonical || (positiveFit >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) {
+        lateTeenUnderfillRejectedReasons.insufficient_signal = (lateTeenUnderfillRejectedReasons.insufficient_signal || 0) + 1;
+        continue;
+      }
       finalOutputItems.push({ kind: "open_library", doc });
       seenTitle.add(nt);
       seenRoot.add(root);
+      lateTeenUnderfillCandidatesAccepted += 1;
+      lateTeenUnderfillAcceptedTitles.push(title);
     }
     if (finalOutputItems.length > 0) {
       finalOutputItems = finalOutputItems.slice(0, Math.max(1, finalLimit));
@@ -8273,6 +8318,12 @@ const normalizedCandidatesRaw = [
     recoveryRejectedReasons,
     recoveryFinalItemsLength,
     countContractSatisfied,
+    lateTeenUnderfillTriggered,
+    lateTeenUnderfillVisibleCountBefore,
+    lateTeenUnderfillCandidatesConsidered,
+    lateTeenUnderfillCandidatesAccepted,
+    lateTeenUnderfillAcceptedTitles,
+    lateTeenUnderfillRejectedReasons,
     finalEligibleNonNegativeCount,
     countContractShortfallReason,
     scoringPassApplied,
