@@ -7556,6 +7556,8 @@ const normalizedCandidatesRaw = [
     returnedItemsBuiltFrom = "controlled_try_again_state";
   }
   if (!suppressTopRecommendations && singleSourceDirectReturnTriggered) {
+    const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
+    const isGenericCollectionArtifactTitle = (title: string) => /^the collected edition$|^hardcover\/trade paperback$|^great british .+ comic book heroes(?:\s*#?\d+)?$/i.test(normalizeText(title));
     const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
     let dynamicSingleSourceItems = singleSourceItems.filter((doc: any) => acceptedSet.has(normalizeText(String(doc?.title || ""))));
     if (singleSource === "comicVine") {
@@ -7612,6 +7614,15 @@ const normalizedCandidatesRaw = [
           singleSourceItemsDropReasonByTitle[title] = `quality_guard_weak_narrative:${sourceLabel}`;
           continue;
         }
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (hardBlockedArtifactRootRe.test(root)) {
+          singleSourceItemsDropReasonByTitle[title] = `hard_blocked_artifact_root:${sourceLabel}`;
+          continue;
+        }
+        if (isGenericCollectionArtifactTitle(title)) {
+          singleSourceItemsDropReasonByTitle[title] = `generic_collection_artifact:${sourceLabel}`;
+          continue;
+        }
         next.push(doc);
       }
       return next;
@@ -7665,22 +7676,120 @@ const normalizedCandidatesRaw = [
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
-    const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key"]);
-    const canonicalRescue = swipeRankedCandidateList
+    const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "mixtape", "lumberjanes", "radiant-red"]);
+    const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
+    const hardBlockedRescueLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
+    const genericCollectionArtifactRe = /^the collected edition$|^hardcover\/trade paperback$|^great british .+ comic book heroes(?:\s*#?\d+)?$/i;
+    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
+    const titleOrRootIsSingleGenreLiteral = (title: string, root: string) => {
+      const titleNorm = normalizeText(title);
+      const rootNorm = normalizeText(root);
+      return /\b(romance|fantasy|mythology|science|mystery|horror)\b/.test(titleNorm) || /\b(romance|fantasy|mythology|science|mystery|horror)\b/.test(rootNorm);
+    };
+    const canonicalRescuePerRootCap = finalLimit <= 2 ? 1 : 2;
+    const canonicalRescueCandidates = swipeRankedCandidateList
       .filter((doc: any) => canonicalRescueRoots.has(String(parentFranchiseRootForDoc(doc) || "")))
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (hardBlockedArtifactRootRe.test(root)) return false;
+        if (hardBlockedRescueLiteralRootRe.test(root)) return false;
+        if (genericRecoveryTitleRe.test(title)) return false;
+        if (genericCollectionArtifactRe.test(normalizeText(title))) return false;
+        if (isLikelySubtitleFragmentTitle(title)) return false;
+        if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+        const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
         const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
         const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
-        return semanticEvidence >= 1 || positiveFit >= 5;
-      })
-      .slice(0, Math.max(1, finalLimit))
-      .map((doc: any) => ({ kind: "open_library", doc }));
+        return (semanticEvidence >= 1 || positiveFit >= 5) && positiveFit > dislikePenalty;
+      });
+    const canonicalRescueByRoot = new Map<string, any[]>();
+    for (const doc of canonicalRescueCandidates) {
+      const root = String(parentFranchiseRootForDoc(doc) || "");
+      if (!root) continue;
+      const bucket = canonicalRescueByRoot.get(root) || [];
+      bucket.push(doc);
+      canonicalRescueByRoot.set(root, bucket);
+    }
+    const canonicalRescueEntryPointRe = /\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|#1|tpb|trade paperback|collected edition|collection|omnibus|compendium)\b/i;
+    const canonicalRescueSortedByRoot = new Map<string, any[]>();
+    for (const [root, docs] of canonicalRescueByRoot.entries()) {
+      const ranked = docs.slice().sort((a: any, b: any) => {
+        const ta = String(a?.title || "").trim();
+        const tb = String(b?.title || "").trim();
+        const aEntryPoint = canonicalRescueEntryPointRe.test(ta);
+        const bEntryPoint = canonicalRescueEntryPointRe.test(tb);
+        if (aEntryPoint !== bEntryPoint) return aEntryPoint ? -1 : 1;
+        const aVol = Number((ta.match(/\b(?:vol(?:ume)?\.?\s*)(\d+)\b/i)?.[1]) || Number.MAX_SAFE_INTEGER);
+        const bVol = Number((tb.match(/\b(?:vol(?:ume)?\.?\s*)(\d+)\b/i)?.[1]) || Number.MAX_SAFE_INTEGER);
+        if (aVol !== bVol) return aVol - bVol;
+        const aSem = Number(semanticEvidenceCountByTitle[ta] || 0);
+        const bSem = Number(semanticEvidenceCountByTitle[tb] || 0);
+        if (aSem !== bSem) return bSem - aSem;
+        const aFit = Number(positiveFitScoreByTitle[ta] || 0);
+        const bFit = Number(positiveFitScoreByTitle[tb] || 0);
+        if (aFit !== bFit) return bFit - aFit;
+        return 0;
+      });
+      canonicalRescueSortedByRoot.set(root, ranked);
+    }
+    const canonicalRescueDiversified: any[] = [];
+    const canonicalRescueRootCounts: Record<string, number> = {};
+    const canonicalRescueLimit = Math.max(1, finalLimit);
+    while (canonicalRescueDiversified.length < canonicalRescueLimit) {
+      let addedThisRound = false;
+      for (const [root, docs] of canonicalRescueSortedByRoot.entries()) {
+        if (canonicalRescueDiversified.length >= canonicalRescueLimit) break;
+        const currentRootCount = Number(canonicalRescueRootCounts[root] || 0);
+        if (currentRootCount >= canonicalRescuePerRootCap) continue;
+        const nextDoc = docs.shift();
+        if (!nextDoc) continue;
+        canonicalRescueDiversified.push(nextDoc);
+        canonicalRescueRootCounts[root] = currentRootCount + 1;
+        addedThisRound = true;
+      }
+      if (!addedThisRound) break;
+    }
+    const canonicalRescue = canonicalRescueDiversified.map((doc: any) => ({ kind: "open_library", doc }));
     if (canonicalRescue.length > 0) {
       finalOutputItems = canonicalRescue;
       returnedItemsBuiltFrom = "canonical_affinity_rescue";
       finalReturnSourceUsed = "canonical_affinity_rescue";
+    }
+    if (finalOutputItems.length > 0 && finalOutputItems.length < Math.min(3, Math.max(1, finalLimit))) {
+      const alreadyChosenTitles = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+      const secondTierFill = swipeRankedCandidateList
+        .filter((doc: any) => {
+          const title = String(doc?.title || "").trim();
+          if (!title) return false;
+          if (alreadyChosenTitles.has(normalizeText(title))) return false;
+          const root = String(parentFranchiseRootForDoc(doc) || "");
+          if (hardBlockedArtifactRootRe.test(root)) return false;
+          if (hardBlockedRescueLiteralRootRe.test(root)) return false;
+          if (genericRecoveryTitleRe.test(title)) return false;
+          if (genericCollectionArtifactRe.test(normalizeText(title))) return false;
+          if (isLikelySubtitleFragmentTitle(title)) return false;
+          if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+          const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+          const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+          const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+          const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+            .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+          const singleGenreLiteral = titleOrRootIsSingleGenreLiteral(title, root);
+          if (singleGenreLiteral && semanticEvidence < 2) return false;
+          return positiveFit >= 5.5
+            && positiveFit > dislikePenalty
+            && (meaningful >= 1 || semanticEvidence >= 1)
+            && !singleGenreLiteral;
+        })
+        .slice(0, Math.max(0, Math.min(3, Math.max(1, finalLimit)) - finalOutputItems.length))
+        .map((doc: any) => ({ kind: "open_library", doc }));
+      if (secondTierFill.length > 0) {
+        finalOutputItems = [...finalOutputItems, ...secondTierFill];
+        returnedItemsBuiltFrom = "canonical_affinity_rescue_plus_second_tier_fill";
+        finalReturnSourceUsed = "canonical_affinity_rescue_plus_second_tier_fill";
+      }
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
