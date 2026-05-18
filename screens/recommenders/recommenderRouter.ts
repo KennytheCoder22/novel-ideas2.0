@@ -7745,17 +7745,21 @@ const normalizedCandidatesRaw = [
   const skipsHorrorLike = skippedSignalTokens.some((token) => horrorPreferenceSignals.some((h) => token.includes(h)));
   const horrorLikeNeutralOrLiked = likesHorrorLike || (!dislikesHorrorLike && !skipsHorrorLike);
   const hardLexicalDieArtifactRe = /\b(love[-\s]?or[-\s]?die|kill[-\s]?or[-\s]?die|die[-\s]?die[-\s]?die|villains[-\s]?are[-\s]?destined[-\s]?to[-\s]?die|if[-\s]?my[-\s]?favorite[-\s]?pop[-\s]?idol.*die)\b/i;
+  const negativeScoreBlockedSet = new Set(negativeScoreRenderBlockedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
   const passesSharedReturnArtifactScrub = (doc: any) => {
     const title = String(doc?.title || "").trim();
     if (!title) return false;
     const root = String(parentFranchiseRootForDoc(doc) || "");
+    const normalizedTitle = normalizeText(title);
+    if (negativeScoreBlockedSet.has(normalizedTitle)) return false;
     if (isLikelySubtitleFragmentTitle(title)) return false;
     if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
     if (/\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i.test(title)) return false;
+    if (/amazing fantasy/i.test(title) && !(root === "spider-man" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
     if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
     return true;
   };
-  if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && acceptedTitlesAfterScrub.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const hardBlockedLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
     const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
@@ -7765,6 +7769,7 @@ const normalizedCandidatesRaw = [
       const title = normalizeText(String(item?.doc?.title || item?.title || ""));
       if (title && !postPassTitleOrder.has(title)) postPassTitleOrder.set(title, idx);
     });
+    const sciFiPreferredRoots = new Set(["black-science", "the-manhattan-projects", "adventure-time", "paper-girls", "runaways"]);
     const directFitRescueCandidates = swipeRankedCandidateList
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
@@ -7789,6 +7794,9 @@ const normalizedCandidatesRaw = [
         const tb = String(b?.title || "").trim();
         const ra = String(parentFranchiseRootForDoc(a) || "");
         const rb = String(parentFranchiseRootForDoc(b) || "");
+        const aSci = sciFiPreferredRoots.has(ra);
+        const bSci = sciFiPreferredRoots.has(rb);
+        if (aSci !== bSci) return aSci ? -1 : 1;
         const aPost = postPassTitleOrder.has(normalizeText(ta));
         const bPost = postPassTitleOrder.has(normalizeText(tb));
         if (aPost !== bPost) return aPost ? -1 : 1;
@@ -7803,14 +7811,32 @@ const normalizedCandidatesRaw = [
         if (aFit !== bFit) return bFit - aFit;
         return 0;
       });
-    const directFitRescue = directFitRescueCandidates.slice(0, Math.max(1, finalLimit)).map((doc: any) => ({ kind: "open_library", doc }));
+    const directFitPerRootCap = 1;
+    const directFitDiversified: any[] = [];
+    const directFitRootCounts: Record<string, number> = {};
+    for (const doc of directFitRescueCandidates) {
+      if (directFitDiversified.length >= Math.max(1, finalLimit)) break;
+      const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      const count = Number(directFitRootCounts[root] || 0);
+      if (count >= directFitPerRootCap) continue;
+      directFitDiversified.push(doc);
+      directFitRootCounts[root] = count + 1;
+    }
+    if (directFitDiversified.length < Math.max(1, finalLimit)) {
+      for (const doc of directFitRescueCandidates) {
+        if (directFitDiversified.length >= Math.max(1, finalLimit)) break;
+        if (directFitDiversified.includes(doc)) continue;
+        directFitDiversified.push(doc);
+      }
+    }
+    const directFitRescue = directFitDiversified.slice(0, Math.max(1, finalLimit)).map((doc: any) => ({ kind: "open_library", doc }));
     if (directFitRescue.length > 0) {
       finalOutputItems = directFitRescue;
       returnedItemsBuiltFrom = "direct_fit_rescue";
       finalReturnSourceUsed = "direct_fit_rescue";
     }
   }
-  if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && acceptedTitlesAfterScrub.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const packagingArtifactRe = /\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i;
     const semanticSparseRoots = new Set(["saga", "the-sandman", "nimona", "runaways", "paper-girls", "lumberjanes"]);
@@ -7841,7 +7867,7 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = "semantic_fallback_rescue";
     }
   }
-  if (!suppressTopRecommendations && finalOutputItems.length === 0 && canonicalRescueAllowed && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && acceptedTitlesAfterScrub.length === 0 && canonicalRescueAllowed && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "mixtape", "lumberjanes", "radiant-red"]);
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const hardBlockedRescueLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
