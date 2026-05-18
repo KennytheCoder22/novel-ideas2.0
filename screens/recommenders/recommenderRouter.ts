@@ -3211,6 +3211,8 @@ export async function getRecommendations(
       .replace(/\bcharacter driven\b/gi, "character-focused")
       .replace(/\bcomic\s+comic\b/gi, "comic")
       .replace(/\bcomic\s+series\s+comic\s+series\b/gi, "comic series")
+      .replace(/\b(comic\s+series)\s+\1\b/gi, "$1")
+      .replace(/\b(graphic\s+novel)\s+\1\b/gi, "$1")
       .replace(/\bgraphic\s+novel\s+graphic\s+novel\b/gi, "graphic novel")
       .replace(/\s+/g, " ")
       .trim())
@@ -7591,12 +7593,13 @@ const normalizedCandidatesRaw = [
         returnedItemsBuiltFrom = returnedItemsBuiltFrom === "single_source_lane_direct"
           ? "single_source_lane_direct_plus_accepted_backfill"
           : "accepted_titles_backfill";
+        finalReturnSourceUsed = returnedItemsBuiltFrom;
       }
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardRejectReasonRe = /^(issue_fragment|locale_variant|placeholder|generic_artifact_no_root|terminal_reject:|final_eligibility_rejected)/;
-    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback)\b/i;
+    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance)\b/i;
     const recoveredFromTeenPostPass = teenPostPassItems.filter((item: any) => {
       const title = String(item?.doc?.title || item?.title || "").trim();
       if (!title) return false;
@@ -7610,7 +7613,11 @@ const normalizedCandidatesRaw = [
       const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
       const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
       const tasteWeighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
-      if (!(canonicalRoot || semanticEvidence >= 2 || (positiveFit >= 5 && semanticEvidence >= 1) || tasteWeighted >= 2.5)) return false;
+      const titleNorm = normalizeText(title);
+      const rootNorm = normalizeText(String(root || ""));
+      const singleGenreTokenOnly = /\b(romance|fantasy)\b/.test(titleNorm) || /\b(romance|fantasy)\b/.test(rootNorm);
+      if (singleGenreTokenOnly && !canonicalRoot && semanticEvidence < 2) return false;
+      if (!(canonicalRoot || semanticEvidence >= 2 || (positiveFit >= 5 && semanticEvidence >= 1) || (tasteWeighted >= 2.5 && semanticEvidence >= 1))) return false;
       return true;
     }).slice(0, Math.max(1, finalLimit));
     if (recoveredFromTeenPostPass.length > 0) {
