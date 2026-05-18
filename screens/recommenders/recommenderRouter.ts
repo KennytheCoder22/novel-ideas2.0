@@ -6905,6 +6905,31 @@ const normalizedCandidatesRaw = [
   const finalRenderCandidateTitlesAfterGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   const finalCountCappedToTarget = finalRenderDocs.length >= 10;
   const topUpFinalGateRejectedTitles = topUpCandidatesAcceptedTitles.filter((t) => !new Set(finalRenderCandidateTitlesAfterGate.map((x) => normalizeText(x))).has(normalizeText(t)));
+  const finalEligibilityAcceptedSetCanonical = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
+  for (const [reason, titles] of Object.entries(finalEligibilityRejectedTitlesByReason)) {
+    finalEligibilityRejectedTitlesByReason[reason] = (titles || []).filter((title) => !finalEligibilityAcceptedSetCanonical.has(normalizeText(String(title || ""))));
+  }
+  const rejectedTitleSetCanonical = new Set(
+    Object.values(finalEligibilityRejectedTitlesByReason)
+      .flat()
+      .map((title) => normalizeText(String(title || "")))
+      .filter(Boolean)
+  );
+  const finalEligibilityAcceptedTitlesCanonical = Array.from(new Set(finalEligibilityAcceptedTitles.filter(Boolean)))
+    .filter((title) => !rejectedTitleSetCanonical.has(normalizeText(title)));
+  finalEligibilityAcceptedTitles.length = 0;
+  finalEligibilityAcceptedTitles.push(...finalEligibilityAcceptedTitlesCanonical);
+  const finalEligibilityAcceptedAndRejectedTitles = finalEligibilityAcceptedTitles
+    .filter((title) => rejectedTitleSetCanonical.has(normalizeText(title)));
+  if (finalEligibilityAcceptedAndRejectedTitles.length > 0) {
+    console.error("FINAL_ELIGIBILITY_XOR_VIOLATION", finalEligibilityAcceptedAndRejectedTitles.map((title) => ({
+      title,
+      rejectedReasons: Object.entries(finalEligibilityRejectedTitlesByReason)
+        .filter(([, row]) => (row || []).some((t) => normalizeText(String(t || "")) === normalizeText(title)))
+        .map(([reason]) => reason),
+      accepted: true,
+    })));
+  }
   const finalEligibilityAcceptedTitlesBeforeTerminal = Array.from(new Set(finalEligibilityAcceptedTitles.filter(Boolean)));
   const finalEligibilityAcceptedSetBeforeTerminal = new Set(finalEligibilityAcceptedTitlesBeforeTerminal.map((t) => normalizeText(t)));
   for (const row of Object.values(finalEligibilityRejectedTitlesByReason || {})) {
@@ -7639,6 +7664,7 @@ const normalizedCandidatesRaw = [
     finalEligibilityCleanCandidateCount,
     finalEligibilityAcceptedTitlesBeforeTerminal,
     finalEligibilityAcceptedTitlesAfterTerminal,
+    finalEligibilityAcceptedAndRejectedTitles,
     finalEligibilityAcceptedTitles: acceptedAfterTerminalRejectFilter,
     finalEligibilityRejectedTitlesByReason,
     rejectedButReturnedTitles,
