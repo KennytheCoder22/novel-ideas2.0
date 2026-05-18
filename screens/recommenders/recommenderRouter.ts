@@ -7550,6 +7550,9 @@ const normalizedCandidatesRaw = [
   const finalRejectAssertionChecked = finalOutputItems.length > 0 || finalEligibilityAcceptedTitles.length > 0 || Object.keys(terminalRejectReasonByTitle).length > 0;
   let finalRejectAssertionThrowReason = "none";
   const finalGateConsistencyPassed = rejectedButReturnedTitles.length === 0;
+  let acceptedTitlesBeforeScrub: string[] = [];
+  let acceptedTitlesAfterScrub: string[] = [];
+  let acceptedTitlesScrubRejectedByReason: Record<string, string> = {};
   if (finalRejectAssertionChecked && rejectedButReturnedTitles.length > 0) {
     finalRejectAssertionThrowReason = `returned_intersects_terminal_rejects:${rejectedButReturnedTitles.length}`;
     finalOutputItems = [];
@@ -7653,6 +7656,9 @@ const normalizedCandidatesRaw = [
     const acceptedHardArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const acceptedLiteralArtifactTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
     const canonicalRescueSupersededAcceptedTitlesByReason: Record<string, string> = {};
+    acceptedTitlesBeforeScrub = teenPostPassItems
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter((title: string) => title && acceptedSet.has(normalizeText(title)));
     const acceptedItemsFromPostPass = teenPostPassItems.filter((item: any) => {
       const title = String(item?.doc?.title || item?.title || "").trim();
       if (!title) return false;
@@ -7668,11 +7674,13 @@ const normalizedCandidatesRaw = [
       if (acceptedHardArtifactRootRe.test(root) && !canonical) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "hard_artifact_root"; return false; }
       if (acceptedLiteralArtifactTitleRe.test(title)) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "literal_artifact_title"; return false; }
       if (isLikelySubtitleFragmentTitle(title)) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "subtitle_fragment"; return false; }
-      if (!canonical && meaningful <= 0 && semanticEvidence < 2 && !entitySeedAligned) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "low_signal_noncanonical"; return false; }
-      if (!canonical && weakLexicalPenalty > 0 && semanticEvidence < 2) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "weak_lexical_noncanonical"; return false; }
-      if (!canonical && queryLiteralOnly && meaningful < 2 && semanticEvidence < 2) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "query_literal_noncanonical"; return false; }
+      if (queryLiteralOnly && meaningful < 1 && semanticEvidence < 1 && !entitySeedAligned && weakLexicalPenalty > 0) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "query_literal_low_signal"; return false; }
       return true;
     });
+    acceptedTitlesAfterScrub = acceptedItemsFromPostPass
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter(Boolean);
+    acceptedTitlesScrubRejectedByReason = { ...canonicalRescueSupersededAcceptedTitlesByReason };
     if (acceptedItemsFromPostPass.length > 0) {
       finalOutputItems = acceptedItemsFromPostPass.slice(0, Math.max(1, finalLimit));
       returnedItemsBuiltFrom = "accepted_titles_authoritative";
@@ -8011,6 +8019,9 @@ const normalizedCandidatesRaw = [
     finalEligibilityAcceptedTitlesBeforeTerminal,
     finalEligibilityAcceptedTitlesAfterTerminal,
     finalEligibilityAcceptedAndRejectedTitles,
+    acceptedTitlesBeforeScrub,
+    acceptedTitlesAfterScrub,
+    acceptedTitlesScrubRejectedByReason,
     finalEligibilityAcceptedTitles: acceptedAfterTerminalRejectFilter,
     finalEligibilityRejectedTitlesByReason,
     rejectedButReturnedTitles,
