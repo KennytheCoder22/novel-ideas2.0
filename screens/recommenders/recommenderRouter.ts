@@ -6206,7 +6206,7 @@ const normalizedCandidatesRaw = [
       const queryTokens = queryText.split(/\s+/).filter((t) => t.length >= 4 && !/\b(comic|series|collected|edition|volume|trade|paperback|graphic|novel)\b/.test(t));
       const titleTokenHits = queryTokens.filter((t) => normalizeText(title).includes(t)).length;
       const hasSupportOutsideTitle = queryTokens.some((t) => normalizeText(String(doc?.description || "")).includes(t) || normalizeText(String(doc?.publisher || "")).includes(t));
-      const broadGenreTokenRe = /^(fantasy|mystery|adventure|survival|horror|romance|thriller|science|fiction|dystopian)$/i;
+      const broadGenreTokenRe = /^(fantasy|mystery|adventure|survival|horror|romance|thriller|science|fiction|dystopian|crime)$/i;
       const dangerousLexicalTokenRe = /^(die|kill|dark|blood|death|doom|bone|fantasy|dystopian|crime)$/i;
       const titleOnlyTokens = queryTokens.filter((t) => normalizeText(title).includes(t) && broadGenreTokenRe.test(t));
       const queryTermOnlyEvidence = titleTokenHits > 0 && !hasSupportOutsideTitle;
@@ -7520,6 +7520,58 @@ const normalizedCandidatesRaw = [
       ? `final_gate_rejected:${rejectedReasons.join("|")}`
       : `not_in_final_accepted_unknown:${(evidence || []).join(",")}`;
   }
+  const formatSignalOnlyRejectedSet = new Set((formatSignalOnlyRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
+  const genericCollectionRejectedSet = new Set((genericCollectionArtifactRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
+  const broadArtifactRejectedSet = new Set((broadArtifactRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
+  const finalEligibilityHardNeverReturnReasons = new Set([
+    "insufficient_semantic_evidence_count",
+    "title_token_only_without_narrative_support",
+    "query_literalism_title_only",
+    "generic_collection_artifact",
+    "high_artifact_risk",
+    "parody_meta_without_profile_affinity",
+    "format_signal_only_without_taste_fit",
+  ]);
+  const finalEligibilityHardNeverReturnTitles = new Set(
+    Object.entries(finalEligibilityRejectedTitlesByReason || {})
+      .filter(([reason]) => finalEligibilityHardNeverReturnReasons.has(String(reason)))
+      .flatMap(([, titles]) => Array.isArray(titles) ? titles : [])
+      .map((t: any) => normalizeText(String(t || "")))
+      .filter(Boolean)
+  );
+  const lateFillNeverReturnTitles = new Set(
+    [
+      ...(formatSignalOnlyRejectedTitles || []),
+      ...(genericCollectionArtifactRejectedTitles || []),
+      ...(broadArtifactRejectedTitles || []),
+      ...(negativeScoreRenderBlockedTitles || []),
+    ]
+      .map((t: any) => normalizeText(String(t || "")))
+      .filter(Boolean)
+  );
+  const likedSignalsForReturnScrub = [
+    ...Object.keys((((input as any)?.likedTagCounts || {}) as Record<string, number>)),
+    ...weightedSwipeTasteVector.liked.map((s) => String(s?.signal || "")),
+  ].map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim().toLowerCase());
+  const hasComedyParodyReturnAffinity = likedSignalsForReturnScrub.some((token) => /\b(comedy|humou?r|parody|satire|spoof|riff)\b/.test(token));
+  const isParodyMetaReturnBlocked = (title: string, doc?: any) => {
+    if (hasComedyParodyReturnAffinity) return false;
+    const root = normalizeText(String(doc ? parentFranchiseRootForDoc(doc) : ""));
+    const text = `${title} ${root} ${String(doc?.description || doc?.rawDoc?.description || "")} ${String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "")}`;
+    return /\b(mystery science theater 3000|mst3k|rifftrax|riff|parody|spoof)\b/i.test(text);
+  };
+  const canReturnTitle = (title: string, doc?: any) => {
+    const key = normalizeText(String(title || ""));
+    if (!key) return false;
+    if (terminalRejectReasonByTitle[key]) return false;
+    if (lateFillNeverReturnTitles.has(key)) return false;
+    if (genericCollectionRejectedSet.has(key)) return false;
+    if (formatSignalOnlyRejectedSet.has(key)) return false;
+    if (finalEligibilityHardNeverReturnTitles.has(key)) return false;
+    if (isParodyMetaReturnBlocked(title, doc)) return false;
+    return true;
+  };
+  const passesSharedNeverReturnTitleScrub = canReturnTitle;
   const acceptedAfterTerminalSetForReason = new Set(finalEligibilityAcceptedTitlesAfterTerminal.map((t) => normalizeText(t)));
   for (const doc of finalRenderDocs) {
     const title = String(doc?.title || "").trim();
@@ -7552,6 +7604,7 @@ const normalizedCandidatesRaw = [
       const title = String(item?.doc?.title || item?.title || "").trim();
       if (!title) return false;
       if (terminalRejectReasonByTitle[normalizeText(title)]) return false;
+      if (!canReturnTitle(title, item?.doc || item)) return false;
       return returnPathInvariantInputTitles.some((t) => normalizeText(t) === normalizeText(title));
     });
     if (returnableFromPostPass.length > 0) {
@@ -7760,6 +7813,7 @@ const normalizedCandidatesRaw = [
     if (!title) return false;
     const root = String(parentFranchiseRootForDoc(doc) || "");
     const normalizedTitle = normalizeText(title);
+    if (!canReturnTitle(title, doc)) return false;
     if (negativeScoreBlockedSet.has(normalizedTitle)) return false;
     if (isLikelySubtitleFragmentTitle(title)) return false;
     if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
@@ -7815,6 +7869,7 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title) return false;
+        if (!passesSharedNeverReturnTitleScrub(title)) return false;
         const root = String(parentFranchiseRootForDoc(doc) || "");
         if (hardBlockedArtifactRootRe.test(root) || hardBlockedLiteralRootRe.test(root)) return false;
         if (genericRecoveryTitleRe.test(title)) return false;
@@ -7885,6 +7940,7 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title) return false;
+        if (!passesSharedNeverReturnTitleScrub(title)) return false;
         const root = String(parentFranchiseRootForDoc(doc) || "");
         if (hardBlockedArtifactRootRe.test(root)) return false;
         if (packagingArtifactRe.test(title) || isLikelySubtitleFragmentTitle(title)) return false;
@@ -7892,6 +7948,14 @@ const normalizedCandidatesRaw = [
         const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
         const semanticSupport = Boolean(semanticSupportFoundByTitle[title]);
         const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+        const titleOnlyTasteSignal = titleOnlyTasteSignalByTitle[title] || [];
+        const meaningfulSignals = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+          .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+        if (titleOnlyTasteSignal.length > 0 && meaningfulSignals === 0) {
+          markTerminalReject(title, "semantic_fallback_title_literal_artifact");
+          finalReturnDropReasonByTitle[title] = "semantic_fallback_title_literal_artifact";
+          return false;
+        }
         const rejectReasons = new Set(finalEligibilityRejectedTitlesByReason?.fallback_no_taste_match || []);
         const onlyFallbackNoTaste = rejectReasons.has(title) && Object.entries(finalEligibilityRejectedTitlesByReason || {}).every(([k, v]) => k === "fallback_no_taste_match" || !Array.isArray(v) || !v.includes(title));
         return positiveFit >= 5
@@ -7906,6 +7970,47 @@ const normalizedCandidatesRaw = [
       finalOutputItems = semanticFallbackRescue;
       returnedItemsBuiltFrom = "semantic_fallback_rescue";
       finalReturnSourceUsed = "semantic_fallback_rescue";
+    }
+  }
+  if (!suppressTopRecommendations && includeComicVine && finalOutputItems.length < Math.min(3, Math.max(1, finalLimit)) && acceptedTitlesAfterScrub.length === 0) {
+    const alreadyChosenTitles = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const cleanUnderfillNeeded = Math.max(0, Math.min(3, Math.max(1, finalLimit)) - finalOutputItems.length);
+    const cleanUnderfillTier = swipeRankedCandidateList
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        if (alreadyChosenTitles.has(normalizeText(title))) return false;
+        if (!canReturnTitle(title, doc)) return false;
+        if (isLikelySubtitleFragmentTitle(title) || isLikelyIssueFragmentDoc(doc)) return false;
+        if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+        const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
+        const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+        const candidateTasteMatchScore = Number(candidateTasteMatchScoreByTitle[title] || 0);
+        const candidateTastePenalty = Number(candidateTastePenaltyByTitle[title] || candidateDislikePenaltyByTitle[title] || 0);
+        const titleOnlyTasteSignal = (titleOnlyTasteSignalByTitle[title] || []).length > 0;
+        return semanticSupportFound
+          && positiveFitScore >= 4
+          && candidateTasteMatchScore > 0
+          && candidateTastePenalty <= candidateTasteMatchScore + 1
+          && !titleOnlyTasteSignal;
+      })
+      .sort((a: any, b: any) => {
+        const ta = String(a?.title || "").trim();
+        const tb = String(b?.title || "").trim();
+        const aSem = Number(semanticEvidenceCountByTitle[ta] || 0);
+        const bSem = Number(semanticEvidenceCountByTitle[tb] || 0);
+        if (aSem !== bSem) return bSem - aSem;
+        const aFit = Number(positiveFitScoreByTitle[ta] || 0);
+        const bFit = Number(positiveFitScoreByTitle[tb] || 0);
+        if (aFit !== bFit) return bFit - aFit;
+        return Number(candidateTastePenaltyByTitle[ta] || 0) - Number(candidateTastePenaltyByTitle[tb] || 0);
+      })
+      .slice(0, cleanUnderfillNeeded)
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (cleanUnderfillTier.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...cleanUnderfillTier];
+      returnedItemsBuiltFrom = finalOutputItems.length === cleanUnderfillTier.length ? "clean_semantic_underfill_rescue" : `${returnedItemsBuiltFrom}_plus_clean_semantic_underfill`;
+      finalReturnSourceUsed = returnedItemsBuiltFrom;
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && acceptedTitlesAfterScrub.length === 0 && canonicalRescueAllowed && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
@@ -7925,6 +8030,7 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title) return false;
+        if (!passesSharedNeverReturnTitleScrub(title)) return false;
         const root = String(parentFranchiseRootForDoc(doc) || "");
         if (root === "something-is-killing-the-children" && !horrorLikeNeutralOrLiked) return false;
         if (hardBlockedArtifactRootRe.test(root)) return false;
@@ -7992,6 +8098,7 @@ const normalizedCandidatesRaw = [
         .filter((doc: any) => {
           const title = String(doc?.title || "").trim();
           if (!title) return false;
+          if (!passesSharedNeverReturnTitleScrub(title)) return false;
           if (canonicalRescue.some((item: any) => normalizeText(String(item?.doc?.title || "")) === normalizeText(title))) return false;
           const root = String(parentFranchiseRootForDoc(doc) || "");
           if (hardBlockedArtifactRootRe.test(root)) return false;
@@ -8029,6 +8136,7 @@ const normalizedCandidatesRaw = [
         .filter((doc: any) => {
           const title = String(doc?.title || "").trim();
           if (!title) return false;
+          if (!passesSharedNeverReturnTitleScrub(title)) return false;
           if (alreadyChosenTitles.has(normalizeText(title))) return false;
           const root = String(parentFranchiseRootForDoc(doc) || "");
           if (hardBlockedArtifactRootRe.test(root)) return false;
@@ -8142,21 +8250,8 @@ const normalizedCandidatesRaw = [
         .filter(Boolean)
     );
     const allowedLateRejectReasons = new Set(["format_signal_only_without_taste_fit", "fails_taste_threshold_gate", "insufficient_positive_fit_score"]);
-    const formatSignalOnlyRejectedSet = new Set((formatSignalOnlyRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
-    const genericCollectionRejectedSet = new Set((genericCollectionArtifactRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
-    const broadArtifactRejectedSet = new Set((broadArtifactRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
     const finalEligibilityRejectedFlat = Object.values(finalEligibilityRejectedTitlesByReason || {}).flatMap((arr: any) => Array.isArray(arr) ? arr : []);
-    const lateFillNeverReturnTitles = new Set(
-      [
-        ...(formatSignalOnlyRejectedTitles || []),
-        ...(genericCollectionArtifactRejectedTitles || []),
-        ...(broadArtifactRejectedTitles || []),
-        ...finalEligibilityRejectedFlat,
-        ...(negativeScoreRenderBlockedTitles || []),
-      ]
-        .map((t: any) => normalizeText(String(t || "")))
-        .filter(Boolean)
-    );
+    const finalEligibilityRejectedSet = new Set(finalEligibilityRejectedFlat.map((t: any) => normalizeText(String(t || ""))).filter(Boolean));
     const hardArtifactRootRejectedSet = new Set((acceptedTitlesRejectedAsArtifactRoot || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
     const acceptedScrubbedBeforeCanonicalSet = new Set(
       Object.entries(acceptedTitlesScrubRejectedByReason || {})
@@ -8249,8 +8344,12 @@ const normalizedCandidatesRaw = [
         lateTeenUnderfillRejectedReasons.terminal_reject_reentry = (lateTeenUnderfillRejectedReasons.terminal_reject_reentry || 0) + 1;
         continue;
       }
-      if (lateFillNeverReturnTitles.has(nt)) {
+      if (!passesSharedNeverReturnTitleScrub(title)) {
         lateTeenUnderfillRejectedReasons.late_fill_prior_reject_reentry = (lateTeenUnderfillRejectedReasons.late_fill_prior_reject_reentry || 0) + 1;
+        continue;
+      }
+      if (finalEligibilityRejectedSet.has(nt)) {
+        lateTeenUnderfillRejectedReasons.final_eligibility_reject_reentry = (lateTeenUnderfillRejectedReasons.final_eligibility_reject_reentry || 0) + 1;
         continue;
       }
       if (hardArtifactRootRejectedSet.has(nt)) {
@@ -8320,7 +8419,7 @@ const normalizedCandidatesRaw = [
       const cleanSciFiLateAllowance = semanticSupport
         && positiveFit >= 3
         && !Boolean(queryTermOnlyEvidenceByTitle[title])
-        && !lateFillNeverReturnTitles.has(nt)
+        && passesSharedNeverReturnTitleScrub(title)
         && tastePenalty <= (tasteMatch + 1);
       if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || titleFallbackCanonical || cleanSciFiLateAllowance || (positiveFit >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) {
         lateTeenUnderfillRejectedReasons.insufficient_signal = (lateTeenUnderfillRejectedReasons.insufficient_signal || 0) + 1;
@@ -8339,6 +8438,8 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = "late_teen_comicvine_underfill_fill";
     }
   }
+  finalOutputItems = finalOutputItems.filter((item: any) => canReturnTitle(String(item?.doc?.title || item?.title || "").trim(), item?.doc || item));
+  finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
   countContractSatisfied = finalOutputItems.length >= Math.max(4, Math.min(6, finalLimit));
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
