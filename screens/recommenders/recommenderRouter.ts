@@ -7678,7 +7678,14 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "mixtape", "lumberjanes", "radiant-red"]);
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
+    const hardBlockedRescueLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
     const genericCollectionArtifactRe = /^the collected edition$|^hardcover\/trade paperback$|^great british .+ comic book heroes(?:\s*#?\d+)?$/i;
+    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
+    const titleOrRootIsSingleGenreLiteral = (title: string, root: string) => {
+      const titleNorm = normalizeText(title);
+      const rootNorm = normalizeText(root);
+      return /\b(romance|fantasy|mythology|science|mystery|horror)\b/.test(titleNorm) || /\b(romance|fantasy|mythology|science|mystery|horror)\b/.test(rootNorm);
+    };
     const canonicalRescuePerRootCap = finalLimit <= 2 ? 1 : 2;
     const canonicalRescueCandidates = swipeRankedCandidateList
       .filter((doc: any) => canonicalRescueRoots.has(String(parentFranchiseRootForDoc(doc) || "")))
@@ -7687,7 +7694,10 @@ const normalizedCandidatesRaw = [
         if (!title) return false;
         const root = String(parentFranchiseRootForDoc(doc) || "");
         if (hardBlockedArtifactRootRe.test(root)) return false;
+        if (hardBlockedRescueLiteralRootRe.test(root)) return false;
+        if (genericRecoveryTitleRe.test(title)) return false;
         if (genericCollectionArtifactRe.test(normalizeText(title))) return false;
+        if (isLikelySubtitleFragmentTitle(title)) return false;
         if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
         const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
         const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
@@ -7756,14 +7766,22 @@ const normalizedCandidatesRaw = [
           if (alreadyChosenTitles.has(normalizeText(title))) return false;
           const root = String(parentFranchiseRootForDoc(doc) || "");
           if (hardBlockedArtifactRootRe.test(root)) return false;
+          if (hardBlockedRescueLiteralRootRe.test(root)) return false;
+          if (genericRecoveryTitleRe.test(title)) return false;
           if (genericCollectionArtifactRe.test(normalizeText(title))) return false;
+          if (isLikelySubtitleFragmentTitle(title)) return false;
           if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
           const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
           const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
           const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
           const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
             .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
-          return positiveFit >= 5.5 && positiveFit > dislikePenalty && (meaningful >= 1 || semanticEvidence >= 1);
+          const singleGenreLiteral = titleOrRootIsSingleGenreLiteral(title, root);
+          if (singleGenreLiteral && semanticEvidence < 2) return false;
+          return positiveFit >= 5.5
+            && positiveFit > dislikePenalty
+            && (meaningful >= 1 || semanticEvidence >= 1)
+            && !singleGenreLiteral;
         })
         .slice(0, Math.max(0, Math.min(3, Math.max(1, finalLimit)) - finalOutputItems.length))
         .map((doc: any) => ({ kind: "open_library", doc }));
