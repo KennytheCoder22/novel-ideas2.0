@@ -7641,6 +7641,10 @@ const normalizedCandidatesRaw = [
           singleSourceItemsDropReasonByTitle[title] = `generic_collection_artifact:${sourceLabel}`;
           continue;
         }
+        if (!passesSharedReturnArtifactScrub(doc)) {
+          singleSourceItemsDropReasonByTitle[title] = `shared_artifact_scrub:${sourceLabel}`;
+          continue;
+        }
         next.push(doc);
       }
       return next;
@@ -7735,9 +7739,22 @@ const normalizedCandidatesRaw = [
   const horrorPreferenceSignals = ["horror", "spooky", "dark", "slasher", "occult", "monster"];
   const likedSignalTokens = weightedSwipeTasteVector.liked.map((s) => normalizeText(String(s?.signal || ""))).filter(Boolean);
   const dislikedSignalTokens = weightedSwipeTasteVector.disliked.map((s) => normalizeText(String(s?.signal || ""))).filter(Boolean);
+  const skippedSignalTokens = weightedSwipeTasteVector.skipped.map((s) => normalizeText(String(s?.signal || ""))).filter(Boolean);
   const likesHorrorLike = likedSignalTokens.some((token) => horrorPreferenceSignals.some((h) => token.includes(h)));
   const dislikesHorrorLike = dislikedSignalTokens.some((token) => horrorPreferenceSignals.some((h) => token.includes(h)));
-  const horrorLikeNeutralOrLiked = likesHorrorLike || !dislikesHorrorLike;
+  const skipsHorrorLike = skippedSignalTokens.some((token) => horrorPreferenceSignals.some((h) => token.includes(h)));
+  const horrorLikeNeutralOrLiked = likesHorrorLike || (!dislikesHorrorLike && !skipsHorrorLike);
+  const hardLexicalDieArtifactRe = /\b(love[-\s]?or[-\s]?die|kill[-\s]?or[-\s]?die|die[-\s]?die[-\s]?die|villains[-\s]?are[-\s]?destined[-\s]?to[-\s]?die|if[-\s]?my[-\s]?favorite[-\s]?pop[-\s]?idol.*die)\b/i;
+  const passesSharedReturnArtifactScrub = (doc: any) => {
+    const title = String(doc?.title || "").trim();
+    if (!title) return false;
+    const root = String(parentFranchiseRootForDoc(doc) || "");
+    if (isLikelySubtitleFragmentTitle(title)) return false;
+    if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+    if (/\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i.test(title)) return false;
+    if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
+    return true;
+  };
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const hardBlockedLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
@@ -7804,6 +7821,7 @@ const normalizedCandidatesRaw = [
         const root = String(parentFranchiseRootForDoc(doc) || "");
         if (hardBlockedArtifactRootRe.test(root)) return false;
         if (packagingArtifactRe.test(title) || isLikelySubtitleFragmentTitle(title)) return false;
+        if (root === "something-is-killing-the-children" && !horrorLikeNeutralOrLiked) return false;
         const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
         const semanticSupport = Boolean(semanticSupportFoundByTitle[title]);
         const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
@@ -8037,6 +8055,7 @@ const normalizedCandidatesRaw = [
     const returnedNow = finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean);
     acceptedPrefixInvariantFailed = acceptedOrder.some((t, idx) => returnedNow[idx] !== t);
   }
+  finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
