@@ -8131,7 +8131,10 @@ const normalizedCandidatesRaw = [
   const lateTeenUnderfillAcceptedTitles: string[] = [];
   const lateTeenUnderfillRejectedReasons: Record<string, number> = {};
   const lateTargetMin = Math.max(3, Math.min(5, finalLimit));
-  const visibleCount = Number(renderedTopRecommendations?.length ?? returnedItems?.length ?? finalOutputItems.length ?? 0);
+  const visibleCount =
+    (typeof returnedItems !== "undefined" && Array.isArray(returnedItems)) ? returnedItems.length :
+    Array.isArray(finalOutputItems) ? finalOutputItems.length :
+    0;
   if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && visibleCount < lateTargetMin && finalEligibleNonNegativeCount > 0) {
     lateTeenUnderfillTriggered = true;
     lateTeenUnderfillVisibleCountBefore = visibleCount;
