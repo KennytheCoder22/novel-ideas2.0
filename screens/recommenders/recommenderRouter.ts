@@ -6955,6 +6955,42 @@ const normalizedCandidatesRaw = [
         `meaningfulSignals:${meaningfulSignalCount}`,
       ];
     }
+    controlledEmergencyFallback = fallbackTierAcceptedTitles.length > 0 && finalEligibilityAcceptedTitles.length === fallbackTierAcceptedTitles.length;
+  }
+  if (eligibleWithFitScore.length === 0 && nearMissSemanticEvidenceTitles.length > 0) {
+    fallbackTierTriggered = true;
+    const nearMissSet = new Set(nearMissSemanticEvidenceTitles.map((t) => normalizeText(t)));
+    const fallbackAdds = viableCandidates
+      .filter((doc: any) => nearMissSet.has(normalizeText(String(doc?.title || ""))))
+      .slice(0, Math.min(6, finalLimit));
+    for (const doc of fallbackAdds) {
+      const title = String(doc?.title || "").trim();
+      if (!title) continue;
+      const alreadyAccepted = eligibleWithFitScore.some((row) => normalizeText(String(row?.doc?.title || "")) === normalizeText(title));
+      if (alreadyAccepted) continue;
+      const likedSignalsRaw = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
+      const genericTasteSignalRe = /^(fantasy|adventure|mystery|crime|thriller|horror|science fiction|romance|superhero|comics?|graphic novel)$/i;
+      const textBag = normalizeText(`${title} ${String(doc?.description || "")}`);
+      const meaningfulSignalCount = Array.from(new Set(
+        Object.keys(likedSignalsRaw)
+          .map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim())
+          .filter((token) => token.length >= 4 && !genericTasteSignalRe.test(token))
+          .filter((token) => textBag.includes(normalizeText(token)))
+      )).length;
+      if (meaningfulSignalCount < 1) {
+        fallbackTierRejectedReasonsByTitle[title] = "fallback_requires_meaningful_signals>=1";
+        continue;
+      }
+      eligibleWithFitScore.push({ doc, fitScore: 0.5, recommendableWorkScore: 1, artifactRiskScore: 0, collectedEditionConfidence: 2, narrativeFictionConfidence: 3, metaOrReferenceWorkPenalty: 0 });
+      fallbackTierAcceptedTitles.push(title);
+      finalEligibilityAcceptedTitles.push(title);
+      finalEligibilityRelaxedReasonByTitle[title] = "fallback_semantic_evidence_count_1";
+      finalAcceptedTasteEvidenceByTitle[title] = [
+        ...(finalAcceptedTasteEvidenceByTitle[title] || []),
+        `meaningfulSignals:${meaningfulSignalCount}`,
+      ];
+    }
+    controlledEmergencyFallback = fallbackTierAcceptedTitles.length > 0 && finalEligibilityAcceptedTitles.length === fallbackTierAcceptedTitles.length;
   }
   if (eligibleWithFitScore.length === 0 && nearMissSemanticEvidenceTitles.length > 0) {
     fallbackTierTriggered = true;
