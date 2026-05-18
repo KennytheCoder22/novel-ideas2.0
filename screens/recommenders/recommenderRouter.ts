@@ -3261,6 +3261,31 @@ export async function getRecommendations(
     candidateGenerationMode = curatedSeedQueries.length > 0 ? "taste_plus_curated" : (narrativePrimary.length > 0 ? "taste_narrative" : "broad_only");
     rungs = rungs.filter((r: any) => !Array.from(staticDefaultQueries).some((seed) => normalizeText(String(r?.query || "")).includes(normalizeText(seed))));
   }
+  if (sourceEnabled.comicVine && rungs.length > 1) {
+    const canonicalSeedRoots = new Set([
+      "amulet", "bone", "ms-marvel", "lumberjanes", "paper-girls", "nimona", "locke-key", "something-is-killing-the-children", "the-sandman",
+    ]);
+    const dangerousRootTokens = new Set(["fantasy", "dystopian", "amulet", "bone", "die", "crime", "dark"]);
+    const queryLooksHijackProne = (query: string) => {
+      const q = normalizeText(query);
+      const tokens = q.split(/\s+/).filter((t) => t.length >= 3);
+      const hits = tokens.filter((t) => dangerousRootTokens.has(t));
+      return hits.length > 0 && tokens.length <= 4;
+    };
+    const queryHasCanonicalSupport = (query: string) => {
+      const q = normalizeText(query);
+      return Array.from(canonicalSeedRoots).some((root) => q.includes(root.replace(/-/g, " ")));
+    };
+    const hasTasteSupport = weightedSwipeTasteVector.liked.length >= 2 || profileSelectedEntitySeeds.length >= 2;
+    const first = String(rungs[0]?.query || "");
+    if (queryLooksHijackProne(first) && !(queryHasCanonicalSupport(first) && hasTasteSupport)) {
+      const replacement = rungs.slice(1).find((r: any) => !queryLooksHijackProne(String(r?.query || "")) || queryHasCanonicalSupport(String(r?.query || "")));
+      if (replacement) {
+        rungs = [replacement, ...rungs.filter((r: any) => r !== replacement)];
+        primaryRungZeroSource = "hijack_guard_reordered";
+      }
+    }
+  }
   rungs = rungs.filter((r: any) => {
     const q = normalizeText(String(r?.query || ""));
     if (Array.from(dislikedSet).some((d) => d && q.includes(d))) {
@@ -6149,6 +6174,7 @@ const normalizedCandidatesRaw = [
       const titleTokenHits = queryTokens.filter((t) => normalizeText(title).includes(t)).length;
       const hasSupportOutsideTitle = queryTokens.some((t) => normalizeText(String(doc?.description || "")).includes(t) || normalizeText(String(doc?.publisher || "")).includes(t));
       const broadGenreTokenRe = /^(fantasy|mystery|adventure|survival|horror|romance|thriller|science|fiction|dystopian)$/i;
+      const dangerousLexicalTokenRe = /^(die|kill|dark|blood|death|doom|bone|fantasy|dystopian|crime)$/i;
       const titleOnlyTokens = queryTokens.filter((t) => normalizeText(title).includes(t) && broadGenreTokenRe.test(t));
       const queryTermOnlyEvidence = titleTokenHits > 0 && !hasSupportOutsideTitle;
       const normalizedRoot = normalizeText(String(docRoot || "").replace(/-/g, " "));
@@ -6166,6 +6192,10 @@ const normalizedCandidatesRaw = [
       const collectionEditionScore = collectionEditionBoost && structuralBoostsAllowed ? 0.8 : 0;
       const narrativeTitleConfidenceScore = (collectionEditionScore ? 1.2 : 0) + (narrativeWorkSignal ? 1.5 : 0) + (hasFranchiseAnchor ? 1.25 : 0) + (rootMatch ? 0.5 : 0) + (publisherConfidence ? 0.35 : 0);
       const singleTokenQueryHijackPenalty = queryTermOnlyEvidence ? Math.max(6, 10 - (titleTokenHits * 1.25)) : 0;
+      const lexicalHijackHits = queryTokens.filter((t) => dangerousLexicalTokenRe.test(t) && normalizeText(title).includes(t)).length;
+      const lexicalTitleOnlyHijackPenalty = lexicalHijackHits > 0 && !hasSupportOutsideTitle && matchedLiked.length === 0
+        ? (6 + lexicalHijackHits * 2)
+        : 0;
       queryTermOnlyEvidenceByTitle[title] = queryTermOnlyEvidence;
       titleOnlyTasteSignalByTitle[title] = titleOnlyTokens;
       semanticSupportFoundByTitle[title] = semanticSupportFound;
@@ -6176,10 +6206,10 @@ const normalizedCandidatesRaw = [
         candidateKilledByPenaltyStack.push(title);
         return null;
       }
-      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 1.25 : 0) + (narrativeWorkSignal ? 1.25 : 0) + starterSignalScore + (audienceFit ? 0.75 : 0) + narrativeTitleConfidenceScore + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0 && semanticSupportFound) ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
+      const score = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 1.25 : 0) + (narrativeWorkSignal ? 1.25 : 0) + starterSignalScore + (audienceFit ? 0.75 : 0) + narrativeTitleConfidenceScore + ((Number(doc?.score ?? 0) > 0 && tasteMatchScore >= 2.0 && semanticSupportFound) ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty - lexicalTitleOnlyHijackPenalty;
       if (titleRepeatPenalty) recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
       if (rootRepeatPenalty) recentReturnedRootPenaltyApplied += rootRepeatPenalty;
-      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + starterSignalScore + (audienceFit ? 1 : 0) + narrativeTitleConfidenceScore + (rootMatch ? 0.5 : 0) + (laneMatch ? 0.25 : 0) + (provenanceConfidence && semanticSupportFound ? 0.05 : 0) + (Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty;
+      const finalCandidateScore = tasteMatchScore - tastePenaltyScore - unsupportedDefaultPenalty - titleRepeatPenalty - rootRepeatPenalty + (themeOverlap ? 2 : 0) + (narrativeWorkSignal ? 2 : 0) + starterSignalScore + (audienceFit ? 1 : 0) + narrativeTitleConfidenceScore + (rootMatch ? 0.5 : 0) + (laneMatch ? 0.25 : 0) + (provenanceConfidence && semanticSupportFound ? 0.05 : 0) + (Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0) - genericSuperheroTitlePenalty - genericGraphicNovelPlaceholderPenalty - metaReferencePenalty - historicalAboutPenalty - retroHorrorArchivePenalty - anthologyHorrorPenalty - singleTokenQueryHijackPenalty - lexicalTitleOnlyHijackPenalty;
       narrativeTitleConfidenceByTitle[title] = narrativeTitleConfidenceScore;
       const lowPositiveFitThreshold = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate) ? 1.25 : 2;
       lowPositiveFitThresholdByCandidate[title] = lowPositiveFitThreshold;
@@ -6192,7 +6222,7 @@ const normalizedCandidatesRaw = [
       candidateDislikePenaltyByTitle[title] = dislikePenalty;
       candidateSkipPenaltyByTitle[title] = skipPenalty;
       singleTokenQueryHijackPenaltyByTitle[title] = singleTokenQueryHijackPenalty;
-      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.5 : 0, starterSignal: starterSignalScore, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence && semanticSupportFound ? 0.05 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, semanticEvidenceCount, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, singleTokenQueryHijackPenalty: -singleTokenQueryHijackPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0 };
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.5 : 0, starterSignal: starterSignalScore, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence && semanticSupportFound ? 0.05 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, semanticEvidenceCount, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, singleTokenQueryHijackPenalty: -singleTokenQueryHijackPenalty, lexicalTitleOnlyHijackPenalty: -lexicalTitleOnlyHijackPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0 };
       finalRankingReasonByTitle[title] = [
         ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
         ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
