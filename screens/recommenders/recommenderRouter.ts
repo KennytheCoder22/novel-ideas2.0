@@ -7460,6 +7460,34 @@ const normalizedCandidatesRaw = [
     cleanCandidateButNotAcceptedReasonByTitle[title] = rejectedReasons.length > 0 ? `final_gate_rejected:${rejectedReasons.join("|")}` : "not_in_final_accepted_unknown";
   }
   const rejectedButReturnedTitles = returnedItemsTitlesPostTerminal.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
+  const returnPathInvariantInputTitles = Array.from(new Set([
+    ...acceptedAfterTerminalRejectFilter,
+    ...teenPostPassOutputTitles,
+  ].map((t) => String(t || "").trim()).filter(Boolean)));
+  const returnPathUnexplainedDropTitles = returnPathInvariantInputTitles.filter((title) => {
+    const returned = finalOutputItems.some((item: any) => normalizeText(String(item?.doc?.title || item?.title || "")) === normalizeText(title));
+    if (returned) return false;
+    if (terminalRejectReasonByTitle[normalizeText(title)]) return false;
+    if (finalReturnDropReasonByTitle[title]) return false;
+    if (terminalReturnDropReasonByTitle[title]) return false;
+    return true;
+  });
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && returnPathInvariantInputTitles.length > 0) {
+    const returnableFromPostPass = teenPostPassItems.filter((item: any) => {
+      const title = String(item?.doc?.title || item?.title || "").trim();
+      if (!title) return false;
+      if (terminalRejectReasonByTitle[normalizeText(title)]) return false;
+      return returnPathInvariantInputTitles.some((t) => normalizeText(t) === normalizeText(title));
+    });
+    if (returnableFromPostPass.length > 0) {
+      finalOutputItems = returnableFromPostPass;
+      returnedItemsBuiltFrom = "teen_postpass_handoff_recovery";
+      finalReturnSourceUsed = "teen_postpass_handoff_recovery";
+      for (const title of returnPathUnexplainedDropTitles) {
+        finalReturnDropReasonByTitle[title] = "recovered_via_teen_postpass_handoff";
+      }
+    }
+  }
   const finalRejectAssertionChecked = finalOutputItems.length > 0 || finalEligibilityAcceptedTitles.length > 0 || Object.keys(terminalRejectReasonByTitle).length > 0;
   let finalRejectAssertionThrowReason = "none";
   const finalGateConsistencyPassed = rejectedButReturnedTitles.length === 0;
@@ -7718,6 +7746,7 @@ const normalizedCandidatesRaw = [
     acceptedEvidenceButFinalRejectedReasonByTitle,
     acceptedEvidenceButMissingFromFinalEligibilityTitles,
     cleanCandidateButNotAcceptedReasonByTitle,
+    returnPathUnexplainedDropTitles,
     finalCountCappedToTarget,
     finalReturnedWithoutTasteEvidenceTitles,
     finalUnderfillBecauseNoTasteEvidence,
