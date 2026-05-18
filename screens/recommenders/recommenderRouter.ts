@@ -3206,6 +3206,11 @@ export async function getRecommendations(
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
   })))
+    .map((q) => q
+      .replace(/\b(novel|fiction)\b/gi, "comic")
+      .replace(/\bcharacter driven\b/gi, "character-focused")
+      .replace(/\s+/g, " ")
+      .trim())
     .map((q) => q.replace(/\b(comic series)\s+\1\b/gi, "$1").replace(/\b(collected edition)\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim())
     .slice(0, 10);
   if (dislikeOnlySession && generatedComicVineQueriesFromTaste.length === 0) {
@@ -6647,7 +6652,15 @@ const normalizedCandidatesRaw = [
     const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
     if (!sourceId) { registerFinalEligibilityReject("missing_source_id", title); return false; }
     if (!queryText) { registerFinalEligibilityReject("missing_query_text", title); return false; }
-    if (!hasParent && !titleRootMatch) { registerFinalEligibilityReject("missing_parent_or_title_root_match", title); return false; }
+    if (!hasParent && !titleRootMatch) {
+      const hasStrongComicVineSemanticSupport =
+        isComicVineCandidate &&
+        (Number(semanticEvidenceCountByTitle[title] || 0) >= 2 || Number(positiveFitScoreByTitle[title] || 0) >= 5);
+      if (!hasStrongComicVineSemanticSupport) {
+        registerFinalEligibilityReject("missing_parent_or_title_root_match", title); return false;
+      }
+      markSourceSpecificGate(title, "comicvine_soft_parent_root_match_bypass");
+    }
     const seedRootMatch = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root);
     const expansionRootMatch = profileCompatibleExpansionRoots.has(root);
     const genreSet = new Set(genres.map((g) => normalizeText(g)));
@@ -6676,12 +6689,14 @@ const normalizedCandidatesRaw = [
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+    const franchiseAffinityRoots = new Set(["saga", "nimona", "the-sandman", "locke-key", "paper-girls", "monstress", "lumberjanes"]);
+    const semanticFranchiseAffinity = franchiseAffinityRoots.has(root);
     if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
       if (!curatedSeedProfileMatch[title]) {
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
-      if (semanticEvidenceCount <= 0) {
+      if (semanticEvidenceCount <= 0 && !semanticFranchiseAffinity) {
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
@@ -6704,9 +6719,16 @@ const normalizedCandidatesRaw = [
       .some((token) => /\b(comedy|humor|parody|satire|spoof)\b/.test(token));
     const meaningfulSignalCount = Array.from(new Set(matchedMeaningfulLikedSignals)).length;
     if (meaningfulSignalCount < 1) {
+      const softPassComicVine =
+        isComicVineCandidate &&
+        (semanticEvidenceCount >= 2 || semanticFranchiseAffinity || Number(positiveFitScoreByTitle[title] || 0) >= 6);
+      if (softPassComicVine) {
+        markSourceSpecificGate(title, "comicvine_soft_meaningful_signals_bypass");
+      } else {
       meaningfulSignalsGateRejectedTitles.push(title);
       registerFinalEligibilityReject("meaningful_signals_required", title);
       return false;
+      }
     }
     if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
       dislikedOverlapDominatesRejectedTitles.push(title);
