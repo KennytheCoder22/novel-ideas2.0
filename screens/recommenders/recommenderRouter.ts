@@ -7553,6 +7553,10 @@ const normalizedCandidatesRaw = [
   let acceptedTitlesBeforeScrub: string[] = [];
   let acceptedTitlesAfterScrub: string[] = [];
   let acceptedTitlesScrubRejectedByReason: Record<string, string> = {};
+  let acceptedTitlesRejectedAsArtifactRoot: string[] = [];
+  let acceptedTitlesRejectedAsLiteralArtifact: string[] = [];
+  let acceptedTitlesRejectedAsWeakNarrative: string[] = [];
+  let acceptedTitlesRejectedAsTasteFailure: string[] = [];
   if (finalRejectAssertionChecked && rejectedButReturnedTitles.length > 0) {
     finalRejectAssertionThrowReason = `returned_intersects_terminal_rejects:${rejectedButReturnedTitles.length}`;
     finalOutputItems = [];
@@ -7653,8 +7657,8 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations && acceptedAfterTerminalRejectFilter.length > 0) {
     const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
     const canonicalAcceptedRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "paper-girls", "the-sandman", "saga", "nimona", "runaways"]);
-    const acceptedHardArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
-    const acceptedLiteralArtifactTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
+    const acceptedHardArtifactRootRe = /^(the-power-fantasy|graphic-fantasy|adventure-van|trade-paperback)$/;
+    const acceptedLiteralArtifactTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
     const canonicalRescueSupersededAcceptedTitlesByReason: Record<string, string> = {};
     acceptedTitlesBeforeScrub = teenPostPassItems
       .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
@@ -7668,12 +7672,17 @@ const normalizedCandidatesRaw = [
       const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
         .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
       const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+      const weightedTaste = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+      const narrativeConfidence = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+        .find((r: string) => r.startsWith("narrativeFictionConfidence:"))?.split(":")[1] || 0);
       const weakLexicalPenalty = Number(weakLexicalFantasyClusterPenaltyByTitle[title] || 0);
       const queryLiteralOnly = Boolean(queryTermOnlyEvidenceByTitle[title]);
       const entitySeedAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(title).includes(normalizeText(seed)) || normalizeText(root).includes(normalizeText(seed)));
-      if (acceptedHardArtifactRootRe.test(root) && !canonical) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "hard_artifact_root"; return false; }
-      if (acceptedLiteralArtifactTitleRe.test(title)) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "literal_artifact_title"; return false; }
+      if (acceptedHardArtifactRootRe.test(root) && !canonical) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "hard_artifact_root"; acceptedTitlesRejectedAsArtifactRoot.push(title); return false; }
+      if (acceptedLiteralArtifactTitleRe.test(title)) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "literal_artifact_title"; acceptedTitlesRejectedAsLiteralArtifact.push(title); return false; }
       if (isLikelySubtitleFragmentTitle(title)) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "subtitle_fragment"; return false; }
+      if (narrativeConfidence < 2 && meaningful < 1 && semanticEvidence < 2) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "weak_narrative"; acceptedTitlesRejectedAsWeakNarrative.push(title); return false; }
+      if (weightedTaste < 2.5) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "taste_failure"; acceptedTitlesRejectedAsTasteFailure.push(title); return false; }
       if (queryLiteralOnly && meaningful < 1 && semanticEvidence < 1 && !entitySeedAligned && weakLexicalPenalty > 0) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "query_literal_low_signal"; return false; }
       return true;
     });
@@ -7689,7 +7698,15 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push(`accepted_titles_scrubbed_before_canonical:${Object.entries(canonicalRescueSupersededAcceptedTitlesByReason).slice(0, 8).map(([t, r]) => `${t}:${r}`).join("|")}`);
     }
   }
-  if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+  const acceptedNarrativeCandidatesExist = acceptedTitlesAfterScrub.length > 0;
+  const acceptedNarrativeConfidenceFail = acceptedTitlesAfterScrub.length > 0 && acceptedTitlesAfterScrub.every((title) => {
+    const narrativeConfidence = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+      .find((r: string) => r.startsWith("narrativeFictionConfidence:"))?.split(":")[1] || 0);
+    const weightedTaste = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+    return narrativeConfidence < 2 && weightedTaste < 2.5;
+  });
+  const canonicalRescueAllowed = !acceptedNarrativeCandidatesExist || acceptedNarrativeConfidenceFail;
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && canonicalRescueAllowed && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "mixtape", "lumberjanes", "radiant-red"]);
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const hardBlockedRescueLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
@@ -7716,7 +7733,8 @@ const normalizedCandidatesRaw = [
         const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
         const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
         const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
-        return (semanticEvidence >= 1 || positiveFit >= 5) && positiveFit > dislikePenalty;
+        const rescuePenaltyMultiplier = acceptedNarrativeCandidatesExist ? 0.88 : 1;
+        return (semanticEvidence >= 1 || (positiveFit * rescuePenaltyMultiplier) >= 5) && (positiveFit * rescuePenaltyMultiplier) > dislikePenalty;
       });
     const canonicalRescueByRoot = new Map<string, any[]>();
     for (const doc of canonicalRescueCandidates) {
@@ -8056,6 +8074,13 @@ const normalizedCandidatesRaw = [
     acceptedTitlesBeforeScrub,
     acceptedTitlesAfterScrub,
     acceptedTitlesScrubRejectedByReason,
+    acceptedTitlesRejectedAsArtifactRoot,
+    acceptedTitlesRejectedAsLiteralArtifact,
+    acceptedTitlesRejectedAsWeakNarrative,
+    acceptedTitlesRejectedAsTasteFailure,
+    canonicalRescueAllowed,
+    acceptedNarrativeCandidatesExist,
+    acceptedNarrativeConfidenceFail,
     finalEligibilityAcceptedTitles: acceptedAfterTerminalRejectFilter,
     finalEligibilityRejectedTitlesByReason,
     rejectedButReturnedTitles,
