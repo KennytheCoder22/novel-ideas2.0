@@ -3276,7 +3276,8 @@ export async function getRecommendations(
       const q = normalizeText(query);
       return Array.from(canonicalSeedRoots).some((root) => q.includes(root.replace(/-/g, " ")));
     };
-    const hasTasteSupport = weightedSwipeTasteVector.liked.length >= 2 || profileSelectedEntitySeeds.length >= 2;
+    const likedTagCounts = ((routingInput as any)?.likedTagCounts || {}) as Record<string, number>;
+    const hasTasteSupport = Object.keys(likedTagCounts).filter((k) => Number(likedTagCounts[k] || 0) > 0).length >= 2;
     const first = String(rungs[0]?.query || "");
     if (queryLooksHijackProne(first) && !(queryHasCanonicalSupport(first) && hasTasteSupport)) {
       const replacement = rungs.slice(1).find((r: any) => !queryLooksHijackProne(String(r?.query || "")) || queryHasCanonicalSupport(String(r?.query || "")));
@@ -3284,6 +3285,23 @@ export async function getRecommendations(
         rungs = [replacement, ...rungs.filter((r: any) => r !== replacement)];
         primaryRungZeroSource = "hijack_guard_reordered";
       }
+    }
+  }
+  if (sourceEnabled.comicVine) {
+    const nonEmptyRungs = rungs.filter((r: any) => String(r?.query || "").trim().length > 0);
+    rungs = nonEmptyRungs;
+    if (generatedComicVineQueriesFromTaste.length > 0 && rungs.length === 0) {
+      const conservativeFallbacks = [
+        "teen graphic novel",
+        "young adult comic series",
+        "mystery fantasy comic series",
+        "coming of age graphic novel",
+      ];
+      const fallbackQuery =
+        generatedComicVineQueriesFromTaste.find((q) => String(q || "").trim().length > 0) ||
+        conservativeFallbacks[0];
+      rungs = [{ rung: 0, query: fallbackQuery, queryFamily: routerFamily, laneKind: "swipe-taste-driven-recovered" } as any];
+      primaryRungZeroSource = "hijack_guard_fallback_recovery";
     }
   }
   rungs = rungs.filter((r: any) => {
