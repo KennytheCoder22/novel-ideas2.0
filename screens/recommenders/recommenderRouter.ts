@@ -6594,6 +6594,9 @@ const normalizedCandidatesRaw = [
   let controlledEmergencyFallback = false;
   const sourceSpecificGateAppliedByTitle: Record<string, string[]> = {};
   const sourceSpecificRejectReasonByTitle: Record<string, string> = {};
+  const curatedSeedProfileMatch: Record<string, boolean> = {};
+  const curatedSeedReason: Record<string, string> = {};
+  const curatedSeedMatchedArchetype: Record<string, string> = {};
   const preSourceSpecificGateTitles: string[] = [];
   const postSourceSpecificGateTitles: string[] = [];
   const rejectedDespiteStrongTasteFitTitles: string[] = [];
@@ -6645,6 +6648,18 @@ const normalizedCandidatesRaw = [
     if (!hasParent && !titleRootMatch) { registerFinalEligibilityReject("missing_parent_or_title_root_match", title); return false; }
     const seedRootMatch = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root);
     const expansionRootMatch = profileCompatibleExpansionRoots.has(root);
+    const genreSet = new Set(genres.map((g) => normalizeText(g)));
+    const themeSet = new Set(themes.map((t) => normalizeText(t)));
+    const toneSet = new Set(tones.map((t) => normalizeText(t)));
+    const fallbackArchetypes: Array<{ archetype: string; roots: string[]; check: () => boolean; reason: string }> = [
+      { archetype: "dark_fantasy_emotional_mythology", roots: ["monstress", "coda", "the-last-god", "seven-to-eternity", "sandman", "norse-mythology"], check: () => genreSet.has("fantasy") && (toneSet.has("dark") || toneSet.has("atmospheric")) && (themeSet.has("mythology") || themeSet.has("emotional growth") || themeSet.has("coming of age")), reason: "profile_dark_fantasy_emotional_mythology" },
+      { archetype: "romance_coming_of_age_warmth", roots: ["laura-dean-keeps-breaking-up-with-me", "bloom", "heartstopper", "fence", "mooncakes"], check: () => genreSet.has("romance") && themeSet.has("coming of age") && (toneSet.has("warm") || toneSet.has("gentle") || toneSet.has("hopeful") || toneSet.has("anime-like")), reason: "profile_romance_coming_of_age_warmth" },
+      { archetype: "fantasy_dystopian_identity_political", roots: ["paper-girls", "wynd", "the-woods", "on-a-sunbeam", "die", "east-of-west"], check: () => genreSet.has("fantasy") && genreSet.has("dystopian") && (themeSet.has("identity") || themeSet.has("political") || themeSet.has("politics")), reason: "profile_fantasy_dystopian_identity_political" },
+    ];
+    const matchedArchetype = fallbackArchetypes.find((row) => row.check() && row.roots.includes(root));
+    curatedSeedMatchedArchetype[title] = matchedArchetype?.archetype || "none";
+    curatedSeedProfileMatch[title] = Boolean(matchedArchetype);
+    curatedSeedReason[title] = matchedArchetype?.reason || "none";
     const queryRoot = rootFromSeed(String((doc as any)?.expansionQueryText || queryText).replace(/\bgraphic novel\b/gi, "").trim());
     const aliasPool = expansionAliasMap[queryRoot] || [];
     const queryFamilyAliasMatch = aliasPool.some((alias) => normalizeText(title).includes(normalizeText(alias))) || aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || "")).includes(normalizeText(alias)));
@@ -6658,11 +6673,21 @@ const normalizedCandidatesRaw = [
     if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
+    const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
     if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
+      if (!curatedSeedProfileMatch[title]) {
+        registerFinalEligibilityReject("fallback_no_taste_match", title);
+        return false;
+      }
+      if (semanticEvidenceCount <= 0) {
+        registerFinalEligibilityReject("fallback_no_taste_match", title);
+        return false;
+      }
+    }
+    if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title]) {
       registerFinalEligibilityReject("fallback_no_taste_match", title);
       return false;
     }
-    const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
     const queryTermOnlyEvidence = Boolean(queryTermOnlyEvidenceByTitle[title]);
     const titleOnlyTasteSignals = titleOnlyTasteSignalByTitle[title] || [];
     const weakAnthologyRootTitle = /\b(house of mystery|showcase presents|mystery men|mystery club)\b/i.test(title);
@@ -7633,6 +7658,9 @@ const normalizedCandidatesRaw = [
     controlledEmergencyFallback,
     sourceSpecificGateAppliedByTitle,
     sourceSpecificRejectReasonByTitle,
+    curatedSeedProfileMatch,
+    curatedSeedReason,
+    curatedSeedMatchedArchetype,
     nonComicVineCandidateDroppedByComicVineRule,
     nonComicVineDroppedByComicVineRule: nonComicVineCandidateDroppedByComicVineRule,
     nonComicVineReturnedBeforeComicVine,
