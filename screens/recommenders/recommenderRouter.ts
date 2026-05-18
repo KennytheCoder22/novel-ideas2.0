@@ -7666,7 +7666,8 @@ const normalizedCandidatesRaw = [
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key"]);
-    const canonicalRescue = swipeRankedCandidateList
+    const canonicalRescuePerRootCap = finalLimit <= 2 ? 1 : 2;
+    const canonicalRescueCandidates = swipeRankedCandidateList
       .filter((doc: any) => canonicalRescueRoots.has(String(parentFranchiseRootForDoc(doc) || "")))
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
@@ -7674,9 +7675,55 @@ const normalizedCandidatesRaw = [
         const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
         const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
         return semanticEvidence >= 1 || positiveFit >= 5;
-      })
-      .slice(0, Math.max(1, finalLimit))
-      .map((doc: any) => ({ kind: "open_library", doc }));
+      });
+    const canonicalRescueByRoot = new Map<string, any[]>();
+    for (const doc of canonicalRescueCandidates) {
+      const root = String(parentFranchiseRootForDoc(doc) || "");
+      if (!root) continue;
+      const bucket = canonicalRescueByRoot.get(root) || [];
+      bucket.push(doc);
+      canonicalRescueByRoot.set(root, bucket);
+    }
+    const canonicalRescueEntryPointRe = /\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|#1|tpb|trade paperback|collected edition|collection|omnibus|compendium)\b/i;
+    const canonicalRescueSortedByRoot = new Map<string, any[]>();
+    for (const [root, docs] of canonicalRescueByRoot.entries()) {
+      const ranked = docs.slice().sort((a: any, b: any) => {
+        const ta = String(a?.title || "").trim();
+        const tb = String(b?.title || "").trim();
+        const aEntryPoint = canonicalRescueEntryPointRe.test(ta);
+        const bEntryPoint = canonicalRescueEntryPointRe.test(tb);
+        if (aEntryPoint !== bEntryPoint) return aEntryPoint ? -1 : 1;
+        const aVol = Number((ta.match(/\b(?:vol(?:ume)?\.?\s*)(\d+)\b/i)?.[1]) || Number.MAX_SAFE_INTEGER);
+        const bVol = Number((tb.match(/\b(?:vol(?:ume)?\.?\s*)(\d+)\b/i)?.[1]) || Number.MAX_SAFE_INTEGER);
+        if (aVol !== bVol) return aVol - bVol;
+        const aSem = Number(semanticEvidenceCountByTitle[ta] || 0);
+        const bSem = Number(semanticEvidenceCountByTitle[tb] || 0);
+        if (aSem !== bSem) return bSem - aSem;
+        const aFit = Number(positiveFitScoreByTitle[ta] || 0);
+        const bFit = Number(positiveFitScoreByTitle[tb] || 0);
+        if (aFit !== bFit) return bFit - aFit;
+        return 0;
+      });
+      canonicalRescueSortedByRoot.set(root, ranked);
+    }
+    const canonicalRescueDiversified: any[] = [];
+    const canonicalRescueRootCounts: Record<string, number> = {};
+    const canonicalRescueLimit = Math.max(1, finalLimit);
+    while (canonicalRescueDiversified.length < canonicalRescueLimit) {
+      let addedThisRound = false;
+      for (const [root, docs] of canonicalRescueSortedByRoot.entries()) {
+        if (canonicalRescueDiversified.length >= canonicalRescueLimit) break;
+        const currentRootCount = Number(canonicalRescueRootCounts[root] || 0);
+        if (currentRootCount >= canonicalRescuePerRootCap) continue;
+        const nextDoc = docs.shift();
+        if (!nextDoc) continue;
+        canonicalRescueDiversified.push(nextDoc);
+        canonicalRescueRootCounts[root] = currentRootCount + 1;
+        addedThisRound = true;
+      }
+      if (!addedThisRound) break;
+    }
+    const canonicalRescue = canonicalRescueDiversified.map((doc: any) => ({ kind: "open_library", doc }));
     if (canonicalRescue.length > 0) {
       finalOutputItems = canonicalRescue;
       returnedItemsBuiltFrom = "canonical_affinity_rescue";
