@@ -6587,7 +6587,7 @@ const normalizedCandidatesRaw = [
     )
   );
   adjacentSeedExpansionCandidates.push(...adjacentSeedTitlesFromScoredUniverse);
-  const countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
+  let countContractSatisfied = finalRenderDocs.length >= 8 && finalRenderDocs.length <= 10;
   const countContractShortfallReason =
     countContractSatisfied
       ? "none"
@@ -7760,6 +7760,38 @@ const normalizedCandidatesRaw = [
     return true;
   };
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && acceptedTitlesAfterScrub.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+    const teenComicVineOnlySafeUnderfillFill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
+    if (teenComicVineOnlySafeUnderfillFill) {
+      const rootSeen = new Set<string>();
+      const safeUnderfill = teenPostPassItems
+        .map((item: any) => item?.doc || item)
+        .filter((doc: any) => {
+          const title = String(doc?.title || "").trim();
+          if (!title) return false;
+          if (!passesSharedReturnArtifactScrub(doc)) return false;
+          if (isLikelyIssueFragmentDoc(doc)) return false;
+          const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+          if (score < 0) return false;
+          const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+            .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+          return meaningful >= 1;
+        })
+        .filter((doc: any) => {
+          const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+          if (rootSeen.has(root)) return false;
+          rootSeen.add(root);
+          return true;
+        })
+        .slice(0, Math.min(Math.max(4, Math.min(finalLimit, 6)), finalLimit))
+        .map((doc: any) => ({ kind: "open_library", doc }));
+      if (safeUnderfill.length > 0) {
+        finalOutputItems = safeUnderfill;
+        returnedItemsBuiltFrom = "teen_comicvine_safe_underfill_fill";
+        finalReturnSourceUsed = "teen_comicvine_safe_underfill_fill";
+      }
+    }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && acceptedTitlesAfterScrub.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const hardBlockedLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
     const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
@@ -8082,6 +8114,7 @@ const normalizedCandidatesRaw = [
     acceptedPrefixInvariantFailed = acceptedOrder.some((t, idx) => returnedNow[idx] !== t);
   }
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
+  countContractSatisfied = finalOutputItems.length >= Math.max(4, Math.min(6, finalLimit));
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
