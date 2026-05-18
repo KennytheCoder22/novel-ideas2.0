@@ -7586,20 +7586,33 @@ const normalizedCandidatesRaw = [
     const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
     const acceptedItemsFromPostPass = teenPostPassItems.filter((item: any) => acceptedSet.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
     if (acceptedItemsFromPostPass.length > 0) {
-      const existing = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))));
-      const missingAccepted = acceptedItemsFromPostPass.filter((item: any) => !existing.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
-      if (missingAccepted.length > 0) {
-        finalOutputItems = [...finalOutputItems, ...missingAccepted].slice(0, Math.max(1, finalLimit));
-        returnedItemsBuiltFrom = returnedItemsBuiltFrom === "single_source_lane_direct"
-          ? "single_source_lane_direct_plus_accepted_backfill"
-          : "accepted_titles_backfill";
-        finalReturnSourceUsed = returnedItemsBuiltFrom;
-      }
+      finalOutputItems = acceptedItemsFromPostPass.slice(0, Math.max(1, finalLimit));
+      returnedItemsBuiltFrom = "accepted_titles_authoritative";
+      finalReturnSourceUsed = "accepted_titles_authoritative";
+    }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+    const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key"]);
+    const canonicalRescue = swipeRankedCandidateList
+      .filter((doc: any) => canonicalRescueRoots.has(String(parentFranchiseRootForDoc(doc) || "")))
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+        const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+        return semanticEvidence >= 1 || positiveFit >= 5;
+      })
+      .slice(0, Math.max(1, finalLimit))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (canonicalRescue.length > 0) {
+      finalOutputItems = canonicalRescue;
+      returnedItemsBuiltFrom = "canonical_affinity_rescue";
+      finalReturnSourceUsed = "canonical_affinity_rescue";
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardRejectReasonRe = /^(issue_fragment|locale_variant|placeholder|generic_artifact_no_root|terminal_reject:|final_eligibility_rejected)/;
-    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance)\b/i;
+    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
     const recoveredFromTeenPostPass = teenPostPassItems.filter((item: any) => {
       const title = String(item?.doc?.title || item?.title || "").trim();
       if (!title) return false;
@@ -7615,7 +7628,7 @@ const normalizedCandidatesRaw = [
       const tasteWeighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
       const titleNorm = normalizeText(title);
       const rootNorm = normalizeText(String(root || ""));
-      const singleGenreTokenOnly = /\b(romance|fantasy)\b/.test(titleNorm) || /\b(romance|fantasy)\b/.test(rootNorm);
+      const singleGenreTokenOnly = /\b(romance|fantasy|mythology|science|mystery)\b/.test(titleNorm) || /\b(romance|fantasy|mythology|science|mystery)\b/.test(rootNorm);
       if (singleGenreTokenOnly && !canonicalRoot && semanticEvidence < 2) return false;
       if (!(canonicalRoot || semanticEvidence >= 2 || (positiveFit >= 5 && semanticEvidence >= 1) || (tasteWeighted >= 2.5 && semanticEvidence >= 1))) return false;
       return true;
