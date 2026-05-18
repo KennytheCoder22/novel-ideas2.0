@@ -961,7 +961,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
   }
 }
 
-async function runGcdAdapterPreflight(timeoutMs: number, probeQuery: string): Promise<void> {
+async function runGcdAdapterPreflight(timeoutMs: number, probeQuery: string): Promise<{ status: "ok" | "soft_fail"; error: string | null; rawCount: number }> {
   const probeUrl = buildComicVineProxySearchUrl(probeQuery);
   if (!hasLoggedProbeProxyUrl) {
     hasLoggedProbeProxyUrl = true;
@@ -970,9 +970,15 @@ async function runGcdAdapterPreflight(timeoutMs: number, probeQuery: string): Pr
   const probeDocs: RecommendationDoc[] = [];
   const probeSeen = new Set<string>();
   const { rawCount, error } = await fetchDocsForQuery(probeQuery, -1, timeoutMs, 6, probeDocs, probeSeen);
+  const errorText = String(error || "");
+  const isRateLimit420 = /\b420\b/.test(errorText);
+  if (isRateLimit420) {
+    return { status: "soft_fail", error: `COMICVINE_ADAPTER_PREFLIGHT_SOFT_FAIL_420: query=${probeQuery} raw=${rawCount} error=${errorText || "none"}`, rawCount };
+  }
   if (rawCount <= 0) {
     throw new Error(`COMICVINE_ADAPTER_PREFLIGHT_FAILED: query=${probeQuery} raw=${rawCount} error=${error || "none"}`);
   }
+  return { status: "ok", error: null, rawCount };
 }
 
 export async function getGcdGraphicNovelRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
@@ -1059,9 +1065,13 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVinePreflightQuery = stripDanglingQuotes(String((tastePrimaryQueries[0] || finalizedQueriesToTry[0] || "saga")).trim());
   const comicVinePreflightUsesTasteQuery = tastePrimaryQueries.length > 0 && normalizeText(comicVinePreflightQuery) === normalizeText(String(tastePrimaryQueries[0] || ""));
   let comicVinePreflightError: string | null = null;
+  let comicVinePreflightStatus: "ok" | "soft_fail" | "hard_fail" = "ok";
   try {
-    await runGcdAdapterPreflight(timeoutMs, comicVinePreflightQuery);
+    const preflight = await runGcdAdapterPreflight(timeoutMs, comicVinePreflightQuery);
+    comicVinePreflightStatus = preflight.status;
+    comicVinePreflightError = preflight.error;
   } catch (e: any) {
+    comicVinePreflightStatus = "hard_fail";
     comicVinePreflightError = String(e?.message || e || "comicvine_preflight_failed");
   }
   const comicVineResolvedSeedQuery = anchorSelection.anchors[0] || queriesToTry[0] || "";
@@ -1123,7 +1133,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   if (comicVinePreflightError) {
     comicVineFetchResults.push({
       query: comicVinePreflightQuery,
-      status: "error",
+      status: comicVinePreflightStatus === "soft_fail" ? "api_empty" : "error",
       rawCount: 0,
       acceptedCount: 0,
       rejectedCount: 0,
@@ -1465,6 +1475,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineQueriesActuallyFetched,
     comicVinePreflightQuery,
     comicVinePreflightUsesTasteQuery,
+    comicVinePreflightStatus,
     comicVinePerQueryFailureDoesNotAbort: true,
     comicVinePreflightError,
     comicVineBaseAnchorsFetched: baseAnchorsFetched,
