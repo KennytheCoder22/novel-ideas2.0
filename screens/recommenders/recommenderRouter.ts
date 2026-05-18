@@ -8131,10 +8131,7 @@ const normalizedCandidatesRaw = [
   const lateTeenUnderfillAcceptedTitles: string[] = [];
   const lateTeenUnderfillRejectedReasons: Record<string, number> = {};
   const lateTargetMin = Math.max(3, Math.min(5, finalLimit));
-  const visibleCount =
-    (typeof returnedItems !== "undefined" && Array.isArray(returnedItems)) ? returnedItems.length :
-    Array.isArray(finalOutputItems) ? finalOutputItems.length :
-    0;
+  const visibleCount = Array.isArray(finalOutputItems) ? finalOutputItems.length : 0;
   if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && visibleCount < lateTargetMin && finalEligibleNonNegativeCount > 0) {
     lateTeenUnderfillTriggered = true;
     lateTeenUnderfillVisibleCountBefore = visibleCount;
@@ -8156,13 +8153,30 @@ const normalizedCandidatesRaw = [
       }
     }
     const canonicalSignalRoots = new Set(["runaways", "saga", "ms-marvel", "paper-girls", "the-sandman", "black-science", "adventure-time", "nimona"]);
+    const amuletLaneRoots = new Set(["amulet", "bone", "saga", "paper-girls", "runaways", "nimona"]);
     const genericAnthologyRootRe = /(?:^|[-\s])(comic-book-art|art-series|science-comics?|sparkler|for-posterity|anthology)(?:$|[-\s])/i;
+    const queryLiteralScienceRe = /\b(science|science bros|citizen science|mystery science theater 3000)\b/i;
     const mergedPool = [
       ...finalRenderDocs.filter((d: any) => rejectedTitles.has(normalizeText(String(d?.title || "")))),
       ...finalRenderDocs,
       ...swipeRankedCandidateList,
       ...narrativeExpansionMergedDocs,
     ];
+    const sortedPool = mergedPool.slice().sort((a: any, b: any) => {
+      const aTitle = String(a?.title || "").trim();
+      const bTitle = String(b?.title || "").trim();
+      const aRoot = String(parentFranchiseRootForDoc(a) || "");
+      const bRoot = String(parentFranchiseRootForDoc(b) || "");
+      const aCanonical = canonicalSignalRoots.has(aRoot) || amuletLaneRoots.has(aRoot) ? 1 : 0;
+      const bCanonical = canonicalSignalRoots.has(bRoot) || amuletLaneRoots.has(bRoot) ? 1 : 0;
+      if (aCanonical !== bCanonical) return bCanonical - aCanonical;
+      const aSem = (Boolean(semanticSupportFoundByTitle[aTitle]) || Number(semanticEvidenceCountByTitle[aTitle] || 0) >= 1) ? 1 : 0;
+      const bSem = (Boolean(semanticSupportFoundByTitle[bTitle]) || Number(semanticEvidenceCountByTitle[bTitle] || 0) >= 1) ? 1 : 0;
+      if (aSem !== bSem) return bSem - aSem;
+      const aFit = Number(positiveFitScoreByTitle[aTitle] || 0);
+      const bFit = Number(positiveFitScoreByTitle[bTitle] || 0);
+      return bFit - aFit;
+    });
     const seenTitle = new Set(
       finalOutputItems
         .map((item: any) => normalizeText(String(item?.doc?.title || item?.title || "")))
@@ -8173,7 +8187,7 @@ const normalizedCandidatesRaw = [
         String(parentFranchiseRootForDoc(item?.doc || item) || "__none__")
       )
     );
-    for (const doc of mergedPool) {
+    for (const doc of sortedPool) {
       lateTeenUnderfillCandidatesConsidered += 1;
       if (finalOutputItems.length >= lateTargetMin) break;
       const title = String(doc?.title || "").trim();
@@ -8218,6 +8232,11 @@ const normalizedCandidatesRaw = [
       const titleFallbackCanonical = parentRootSource === "title_fallback" && positiveFit >= 4.75 && (semanticSupport || themeOverlap || provenanceConfidence);
       const reasons = rejectReasonsByTitle.get(nt) || new Set<string>();
       const onlySoftLateRejects = reasons.size > 0 && Array.from(reasons).every((r) => allowedLateRejectReasons.has(r));
+      const titleLiteralScienceOnly = queryLiteralScienceRe.test(normalizeText(title)) && !semanticSupport;
+      if (titleLiteralScienceOnly && meaningful < 1) {
+        lateTeenUnderfillRejectedReasons.query_literal_science_only = (lateTeenUnderfillRejectedReasons.query_literal_science_only || 0) + 1;
+        continue;
+      }
       const genericAnthologyWithoutTaste = genericAnthologyRootRe.test(root) && meaningful < 1 && !themeOverlap;
       if (genericAnthologyWithoutTaste) {
         lateTeenUnderfillRejectedReasons.generic_anthology_without_taste = (lateTeenUnderfillRejectedReasons.generic_anthology_without_taste || 0) + 1;
