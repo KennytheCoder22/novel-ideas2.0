@@ -7732,6 +7732,12 @@ const normalizedCandidatesRaw = [
     return narrativeConfidence < 2 && weightedTaste < 2.5;
   });
   const canonicalRescueAllowed = !acceptedNarrativeCandidatesExist || acceptedNarrativeConfidenceFail;
+  const horrorPreferenceSignals = ["horror", "spooky", "dark", "slasher", "occult", "monster"];
+  const likedSignalTokens = weightedSwipeTasteVector.liked.map((s) => normalizeText(String(s?.signal || ""))).filter(Boolean);
+  const dislikedSignalTokens = weightedSwipeTasteVector.disliked.map((s) => normalizeText(String(s?.signal || ""))).filter(Boolean);
+  const likesHorrorLike = likedSignalTokens.some((token) => horrorPreferenceSignals.some((h) => token.includes(h)));
+  const dislikesHorrorLike = dislikedSignalTokens.some((token) => horrorPreferenceSignals.some((h) => token.includes(h)));
+  const horrorLikeNeutralOrLiked = likesHorrorLike || !dislikesHorrorLike;
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const hardBlockedLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
@@ -7787,6 +7793,36 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = "direct_fit_rescue";
     }
   }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+    const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
+    const packagingArtifactRe = /\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i;
+    const semanticSparseRoots = new Set(["saga", "the-sandman", "nimona", "runaways", "paper-girls", "lumberjanes"]);
+    const semanticFallbackRescue = swipeRankedCandidateList
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (hardBlockedArtifactRootRe.test(root)) return false;
+        if (packagingArtifactRe.test(title) || isLikelySubtitleFragmentTitle(title)) return false;
+        const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+        const semanticSupport = Boolean(semanticSupportFoundByTitle[title]);
+        const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+        const rejectReasons = new Set(finalEligibilityRejectedTitlesByReason?.fallback_no_taste_match || []);
+        const onlyFallbackNoTaste = rejectReasons.has(title) && Object.entries(finalEligibilityRejectedTitlesByReason || {}).every(([k, v]) => k === "fallback_no_taste_match" || !Array.isArray(v) || !v.includes(title));
+        return positiveFit >= 5
+          && !Boolean(queryTermOnlyEvidenceByTitle[title])
+          && Number(candidateDislikePenaltyByTitle[title] || 0) < positiveFit
+          && (semanticSupport || semanticEvidence >= 1)
+          && (onlyFallbackNoTaste || semanticSparseRoots.has(root) || semanticEvidence >= 2);
+      })
+      .slice(0, Math.max(1, finalLimit))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (semanticFallbackRescue.length > 0) {
+      finalOutputItems = semanticFallbackRescue;
+      returnedItemsBuiltFrom = "semantic_fallback_rescue";
+      finalReturnSourceUsed = "semantic_fallback_rescue";
+    }
+  }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && canonicalRescueAllowed && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "mixtape", "lumberjanes", "radiant-red"]);
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
@@ -7805,6 +7841,7 @@ const normalizedCandidatesRaw = [
         const title = String(doc?.title || "").trim();
         if (!title) return false;
         const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (root === "something-is-killing-the-children" && !horrorLikeNeutralOrLiked) return false;
         if (hardBlockedArtifactRootRe.test(root)) return false;
         if (hardBlockedRescueLiteralRootRe.test(root)) return false;
         if (genericRecoveryTitleRe.test(title)) return false;
