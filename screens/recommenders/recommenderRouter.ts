@@ -6749,7 +6749,7 @@ const normalizedCandidatesRaw = [
         return false;
       }
     }
-    if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title]) {
+    if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title] && !semanticFranchiseAffinity) {
       registerFinalEligibilityReject("fallback_no_taste_match", title);
       return false;
     }
@@ -7576,6 +7576,23 @@ const normalizedCandidatesRaw = [
     finalOutputItems = dynamicSingleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
     returnedItemsBuiltFrom = "single_source_lane_direct";
     finalReturnSourceUsed = `single_source_direct:${singleSource}`;
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+    const hardRejectReasonRe = /^(issue_fragment|locale_variant|placeholder|generic_artifact_no_root|terminal_reject:|final_eligibility_rejected)/;
+    const recoveredFromTeenPostPass = teenPostPassItems.filter((item: any) => {
+      const title = String(item?.doc?.title || item?.title || "").trim();
+      if (!title) return false;
+      const terminalReason = String(terminalRejectReasonByTitle[normalizeText(title)] || "");
+      if (hardRejectReasonRe.test(terminalReason)) return false;
+      const explicitDrop = String(finalReturnDropReasonByTitle[title] || terminalReturnDropReasonByTitle[title] || "");
+      if (hardRejectReasonRe.test(explicitDrop)) return false;
+      return true;
+    }).slice(0, Math.max(1, finalLimit));
+    if (recoveredFromTeenPostPass.length > 0) {
+      finalOutputItems = recoveredFromTeenPostPass;
+      returnedItemsBuiltFrom = "teen_postpass_handoff_recovery";
+      finalReturnSourceUsed = "teen_postpass_handoff_recovery";
+    }
   }
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
