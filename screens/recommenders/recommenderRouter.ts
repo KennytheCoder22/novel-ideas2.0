@@ -6860,6 +6860,7 @@ const normalizedCandidatesRaw = [
         `meaningfulSignals:${meaningfulSignalCount}`,
       ];
     }
+    controlledEmergencyFallback = fallbackTierAcceptedTitles.length > 0 && finalEligibilityAcceptedTitles.length === fallbackTierAcceptedTitles.length;
   }
   if (eligibleWithFitScore.length === 0 && nearMissSemanticEvidenceTitles.length > 0) {
     fallbackTierTriggered = true;
