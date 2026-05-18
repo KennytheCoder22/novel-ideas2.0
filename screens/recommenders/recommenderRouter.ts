@@ -7559,6 +7559,7 @@ const normalizedCandidatesRaw = [
   const finalGateConsistencyPassed = rejectedButReturnedTitles.length === 0;
   let acceptedTitlesBeforeScrub: string[] = [];
   let acceptedTitlesAfterScrub: string[] = [];
+  let acceptedDocsAfterScrub: any[] = [];
   let acceptedTitlesScrubRejectedByReason: Record<string, string> = {};
   let acceptedTitlesReturned: string[] = [];
   let acceptedTitlesDroppedAfterScrub: string[] = [];
@@ -7699,6 +7700,9 @@ const normalizedCandidatesRaw = [
     acceptedTitlesAfterScrub = acceptedItemsFromPostPass
       .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
       .filter(Boolean);
+    acceptedDocsAfterScrub = acceptedItemsFromPostPass
+      .map((item: any) => item?.doc || item)
+      .filter(Boolean);
     acceptedTitlesScrubRejectedByReason = { ...canonicalRescueSupersededAcceptedTitlesByReason };
     if (acceptedItemsFromPostPass.length > 0) {
       const targetLimit = Math.max(1, finalLimit);
@@ -7728,6 +7732,33 @@ const normalizedCandidatesRaw = [
     return narrativeConfidence < 2 && weightedTaste < 2.5;
   });
   const canonicalRescueAllowed = !acceptedNarrativeCandidatesExist || acceptedNarrativeConfidenceFail;
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
+    const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
+    const hardBlockedLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
+    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|collected edition|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
+    const directFitRescue = swipeRankedCandidateList
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (hardBlockedArtifactRootRe.test(root) || hardBlockedLiteralRootRe.test(root)) return false;
+        if (genericRecoveryTitleRe.test(title)) return false;
+        if (isLikelySubtitleFragmentTitle(title)) return false;
+        if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+        const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+        const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+        const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+          .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+        return positiveFit >= 5.5 && meaningful >= 1 && positiveFit > dislikePenalty;
+      })
+      .slice(0, Math.max(1, finalLimit))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (directFitRescue.length > 0) {
+      finalOutputItems = directFitRescue;
+      returnedItemsBuiltFrom = "direct_fit_rescue";
+      finalReturnSourceUsed = "direct_fit_rescue";
+    }
+  }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && canonicalRescueAllowed && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const canonicalRescueRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "mixtape", "lumberjanes", "radiant-red"]);
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
@@ -7916,6 +7947,12 @@ const normalizedCandidatesRaw = [
     const acceptedOrder = acceptedTitlesAfterScrub.map((t) => normalizeText(t)).filter(Boolean);
     const acceptedSet = new Set(acceptedOrder);
     const byTitle = new Map<string, any>();
+    for (const doc of acceptedDocsAfterScrub) {
+      const title = String(doc?.title || "").trim();
+      const key = normalizeText(title);
+      if (!key || byTitle.has(key)) continue;
+      byTitle.set(key, { kind: "open_library", doc });
+    }
     for (const item of finalOutputItems) {
       const title = String(item?.doc?.title || item?.title || "").trim();
       const key = normalizeText(title);
