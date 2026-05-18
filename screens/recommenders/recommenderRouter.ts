@@ -8145,6 +8145,18 @@ const normalizedCandidatesRaw = [
     const formatSignalOnlyRejectedSet = new Set((formatSignalOnlyRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
     const genericCollectionRejectedSet = new Set((genericCollectionArtifactRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
     const broadArtifactRejectedSet = new Set((broadArtifactRejectedTitles || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
+    const finalEligibilityRejectedFlat = Object.values(finalEligibilityRejectedTitlesByReason || {}).flatMap((arr: any) => Array.isArray(arr) ? arr : []);
+    const lateFillNeverReturnTitles = new Set(
+      [
+        ...(formatSignalOnlyRejectedTitles || []),
+        ...(genericCollectionArtifactRejectedTitles || []),
+        ...(broadArtifactRejectedTitles || []),
+        ...finalEligibilityRejectedFlat,
+        ...(negativeScoreRenderBlockedTitles || []),
+      ]
+        .map((t: any) => normalizeText(String(t || "")))
+        .filter(Boolean)
+    );
     const hardArtifactRootRejectedSet = new Set((acceptedTitlesRejectedAsArtifactRoot || []).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
     const acceptedScrubbedBeforeCanonicalSet = new Set(
       Object.entries(acceptedTitlesScrubRejectedByReason || {})
@@ -8237,6 +8249,10 @@ const normalizedCandidatesRaw = [
         lateTeenUnderfillRejectedReasons.terminal_reject_reentry = (lateTeenUnderfillRejectedReasons.terminal_reject_reentry || 0) + 1;
         continue;
       }
+      if (lateFillNeverReturnTitles.has(nt)) {
+        lateTeenUnderfillRejectedReasons.late_fill_prior_reject_reentry = (lateTeenUnderfillRejectedReasons.late_fill_prior_reject_reentry || 0) + 1;
+        continue;
+      }
       if (hardArtifactRootRejectedSet.has(nt)) {
         lateTeenUnderfillRejectedReasons.hard_artifact_reentry = (lateTeenUnderfillRejectedReasons.hard_artifact_reentry || 0) + 1;
         continue;
@@ -8299,7 +8315,13 @@ const normalizedCandidatesRaw = [
         lateTeenUnderfillRejectedReasons.generic_anthology_without_taste = (lateTeenUnderfillRejectedReasons.generic_anthology_without_taste || 0) + 1;
         continue;
       }
-      const cleanSciFiLateAllowance = semanticSupport && positiveFit >= 3 && !Boolean(queryTermOnlyEvidenceByTitle[title]) && !broadArtifactRejectedSet.has(nt);
+      const tastePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+      const tasteMatch = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+      const cleanSciFiLateAllowance = semanticSupport
+        && positiveFit >= 3
+        && !Boolean(queryTermOnlyEvidenceByTitle[title])
+        && !lateFillNeverReturnTitles.has(nt)
+        && tastePenalty <= (tasteMatch + 1);
       if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || titleFallbackCanonical || cleanSciFiLateAllowance || (positiveFit >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) {
         lateTeenUnderfillRejectedReasons.insufficient_signal = (lateTeenUnderfillRejectedReasons.insufficient_signal || 0) + 1;
         continue;
