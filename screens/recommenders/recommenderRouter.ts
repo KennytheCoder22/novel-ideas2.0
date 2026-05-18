@@ -8125,13 +8125,24 @@ const normalizedCandidatesRaw = [
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
   const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
   const lateTargetMin = Math.max(3, Math.min(5, finalLimit));
-  if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && finalOutputItems.length < lateTargetMin && !countContractSatisfied) {
+  if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && finalOutputItems.length < lateTargetMin && finalEligibleNonNegativeCount > 0) {
     const rejectedTitles = new Set(
       Object.values(finalEligibilityRejectedTitlesByReason || {})
         .flatMap((arr: any) => Array.isArray(arr) ? arr : [])
         .map((t: any) => normalizeText(String(t || "")))
         .filter(Boolean)
     );
+    const allowedLateRejectReasons = new Set(["format_signal_only_without_taste_fit", "fails_taste_threshold_gate", "insufficient_positive_fit_score"]);
+    const rejectReasonsByTitle = new Map<string, Set<string>>();
+    for (const [reason, titles] of Object.entries(finalEligibilityRejectedTitlesByReason || {})) {
+      if (!Array.isArray(titles)) continue;
+      for (const t of titles) {
+        const key = normalizeText(String(t || ""));
+        if (!key) continue;
+        if (!rejectReasonsByTitle.has(key)) rejectReasonsByTitle.set(key, new Set<string>());
+        rejectReasonsByTitle.get(key)!.add(String(reason));
+      }
+    }
     const canonicalSignalRoots = new Set(["runaways", "saga", "ms-marvel", "paper-girls", "the-sandman", "black-science", "adventure-time", "nimona"]);
     const mergedPool = [
       ...finalRenderDocs.filter((d: any) => rejectedTitles.has(normalizeText(String(d?.title || "")))),
@@ -8165,15 +8176,19 @@ const normalizedCandidatesRaw = [
       const semanticSupport = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
       const themeOverlap = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0) > 0;
       const canonicalSeriesSignal = canonicalSignalRoots.has(root);
-      if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal)) continue;
+      const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+      const provenanceConfidence = Number((finalScoreComponentsByTitle[title] || {}).provenanceConfidence || 0) > 0;
+      const reasons = rejectReasonsByTitle.get(nt) || new Set<string>();
+      const onlySoftLateRejects = reasons.size > 0 && Array.from(reasons).every((r) => allowedLateRejectReasons.has(r));
+      if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || (positiveFit >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) continue;
       finalOutputItems.push({ kind: "open_library", doc });
       seenTitle.add(nt);
       seenRoot.add(root);
     }
     if (finalOutputItems.length > 0) {
       finalOutputItems = finalOutputItems.slice(0, Math.max(1, finalLimit));
-      returnedItemsBuiltFrom = "teen_comicvine_late_safe_underfill_fill";
-      finalReturnSourceUsed = "teen_comicvine_late_safe_underfill_fill";
+      returnedItemsBuiltFrom = "late_teen_comicvine_underfill_fill";
+      finalReturnSourceUsed = "late_teen_comicvine_underfill_fill";
     }
   }
   countContractSatisfied = finalOutputItems.length >= Math.max(4, Math.min(6, finalLimit));
