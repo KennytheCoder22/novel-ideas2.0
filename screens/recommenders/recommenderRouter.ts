@@ -7802,6 +7802,40 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = "canonical_affinity_rescue";
       finalReturnSourceUsed = "canonical_affinity_rescue";
     }
+    if (finalOutputItems.length > 0 && finalOutputItems.length < Math.min(3, Math.max(1, finalLimit))) {
+      const alreadyChosenTitles = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+      const secondTierFill = swipeRankedCandidateList
+        .filter((doc: any) => {
+          const title = String(doc?.title || "").trim();
+          if (!title) return false;
+          if (alreadyChosenTitles.has(normalizeText(title))) return false;
+          const root = String(parentFranchiseRootForDoc(doc) || "");
+          if (hardBlockedArtifactRootRe.test(root)) return false;
+          if (hardBlockedRescueLiteralRootRe.test(root)) return false;
+          if (genericRecoveryTitleRe.test(title)) return false;
+          if (genericCollectionArtifactRe.test(normalizeText(title))) return false;
+          if (isLikelySubtitleFragmentTitle(title)) return false;
+          if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+          const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+          const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+          const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+          const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+            .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+          const singleGenreLiteral = titleOrRootIsSingleGenreLiteral(title, root);
+          if (singleGenreLiteral && semanticEvidence < 2) return false;
+          return positiveFit >= 5.5
+            && positiveFit > dislikePenalty
+            && (meaningful >= 1 || semanticEvidence >= 1)
+            && !singleGenreLiteral;
+        })
+        .slice(0, Math.max(0, Math.min(3, Math.max(1, finalLimit)) - finalOutputItems.length))
+        .map((doc: any) => ({ kind: "open_library", doc }));
+      if (secondTierFill.length > 0) {
+        finalOutputItems = [...finalOutputItems, ...secondTierFill];
+        returnedItemsBuiltFrom = "canonical_affinity_rescue_plus_second_tier_fill";
+        finalReturnSourceUsed = "canonical_affinity_rescue_plus_second_tier_fill";
+      }
+    }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardRejectReasonRe = /^(issue_fragment|locale_variant|placeholder|generic_artifact_no_root|terminal_reject:|final_eligibility_rejected)/;
