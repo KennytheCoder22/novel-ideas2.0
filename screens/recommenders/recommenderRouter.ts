@@ -3209,6 +3209,9 @@ export async function getRecommendations(
     .map((q) => q
       .replace(/\b(novel|fiction)\b/gi, "comic")
       .replace(/\bcharacter driven\b/gi, "character-focused")
+      .replace(/\bcomic\s+comic\b/gi, "comic")
+      .replace(/\bcomic\s+series\s+comic\s+series\b/gi, "comic series")
+      .replace(/\bgraphic\s+novel\s+graphic\s+novel\b/gi, "graphic novel")
       .replace(/\s+/g, " ")
       .trim())
     .map((q) => q.replace(/\b(comic series)\s+\1\b/gi, "$1").replace(/\b(collected edition)\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim())
@@ -7577,15 +7580,37 @@ const normalizedCandidatesRaw = [
     returnedItemsBuiltFrom = "single_source_lane_direct";
     finalReturnSourceUsed = `single_source_direct:${singleSource}`;
   }
+  if (!suppressTopRecommendations && acceptedAfterTerminalRejectFilter.length > 0) {
+    const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
+    const acceptedItemsFromPostPass = teenPostPassItems.filter((item: any) => acceptedSet.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
+    if (acceptedItemsFromPostPass.length > 0) {
+      const existing = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))));
+      const missingAccepted = acceptedItemsFromPostPass.filter((item: any) => !existing.has(normalizeText(String(item?.doc?.title || item?.title || ""))));
+      if (missingAccepted.length > 0) {
+        finalOutputItems = [...finalOutputItems, ...missingAccepted].slice(0, Math.max(1, finalLimit));
+        returnedItemsBuiltFrom = returnedItemsBuiltFrom === "single_source_lane_direct"
+          ? "single_source_lane_direct_plus_accepted_backfill"
+          : "accepted_titles_backfill";
+      }
+    }
+  }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardRejectReasonRe = /^(issue_fragment|locale_variant|placeholder|generic_artifact_no_root|terminal_reject:|final_eligibility_rejected)/;
+    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback)\b/i;
     const recoveredFromTeenPostPass = teenPostPassItems.filter((item: any) => {
       const title = String(item?.doc?.title || item?.title || "").trim();
       if (!title) return false;
       const terminalReason = String(terminalRejectReasonByTitle[normalizeText(title)] || "");
       if (hardRejectReasonRe.test(terminalReason)) return false;
+      if (genericRecoveryTitleRe.test(title)) return false;
       const explicitDrop = String(finalReturnDropReasonByTitle[title] || terminalReturnDropReasonByTitle[title] || "");
       if (hardRejectReasonRe.test(explicitDrop)) return false;
+      const root = parentFranchiseRootForDoc(item?.doc || item);
+      const canonicalRoot = new Set(["saga", "the-sandman", "locke-key", "something-is-killing-the-children", "paper-girls", "nimona", "runaways"]).has(String(root || ""));
+      const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+      const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+      const tasteWeighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+      if (!(canonicalRoot || semanticEvidence >= 2 || (positiveFit >= 5 && semanticEvidence >= 1) || tasteWeighted >= 2.5)) return false;
       return true;
     }).slice(0, Math.max(1, finalLimit));
     if (recoveredFromTeenPostPass.length > 0) {
