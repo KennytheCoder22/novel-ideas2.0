@@ -185,6 +185,15 @@ function isLikelySubtitleFragmentTitle(title: string): boolean {
   return false;
 }
 
+function isLikelyIssueFragmentDoc(doc: any): boolean {
+  const title = String(doc?.title || "").trim();
+  const bag = normalizeText(`${title} ${String(doc?.description || "")}`);
+  if (!title) return false;
+  if (/#\s*\d+\b/.test(title) && !/\b(vol\.?|volume|tpb|collection|omnibus|deluxe|book)\b/i.test(title)) return true;
+  if (/\b(issue|chapter)\s*#?\d+\b/i.test(title) && !/\b(volume|book|omnibus|collection)\b/i.test(bag)) return true;
+  return false;
+}
+
 function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiagnostics {
   const config = (input as any)?.sourceEnabled || {};
   const localLibrarySupported = Boolean((input as any)?.localLibrarySupported);
@@ -8114,6 +8123,51 @@ const normalizedCandidatesRaw = [
     acceptedPrefixInvariantFailed = acceptedOrder.some((t, idx) => returnedNow[idx] !== t);
   }
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
+  const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
+  const lateTargetMin = Math.max(3, Math.min(5, finalLimit));
+  if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && finalOutputItems.length < lateTargetMin && !countContractSatisfied) {
+    const rejectedTitles = new Set(
+      Object.values(finalEligibilityRejectedTitlesByReason || {})
+        .flatMap((arr: any) => Array.isArray(arr) ? arr : [])
+        .map((t: any) => normalizeText(String(t || "")))
+        .filter(Boolean)
+    );
+    const canonicalSignalRoots = new Set(["runaways", "saga", "ms-marvel", "paper-girls", "the-sandman", "black-science", "adventure-time", "nimona"]);
+    const mergedPool = [
+      ...finalRenderDocs.filter((d: any) => rejectedTitles.has(normalizeText(String(d?.title || "")))),
+      ...finalRenderDocs,
+      ...swipeRankedCandidateList,
+      ...narrativeExpansionMergedDocs,
+    ];
+    const seenTitle = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const seenRoot = new Set(finalOutputItems.map((item: any) => String(parentFranchiseRootForDoc(item?.doc || item) || "__none__"));
+    for (const doc of mergedPool) {
+      if (finalOutputItems.length >= lateTargetMin) break;
+      const title = String(doc?.title || "").trim();
+      if (!title) continue;
+      const nt = normalizeText(title);
+      if (seenTitle.has(nt)) continue;
+      if (!passesSharedReturnArtifactScrub(doc)) continue;
+      if (isLikelyIssueFragmentDoc(doc)) continue;
+      const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+      if (score < 0) continue;
+      const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      if (seenRoot.has(root)) continue;
+      const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || []).find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+      const semanticSupport = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
+      const themeOverlap = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0) > 0;
+      const canonicalSeriesSignal = canonicalSignalRoots.has(root);
+      if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal)) continue;
+      finalOutputItems.push({ kind: "open_library", doc });
+      seenTitle.add(nt);
+      seenRoot.add(root);
+    }
+    if (finalOutputItems.length > 0) {
+      finalOutputItems = finalOutputItems.slice(0, Math.max(1, finalLimit));
+      returnedItemsBuiltFrom = "teen_comicvine_late_safe_underfill_fill";
+      finalReturnSourceUsed = "teen_comicvine_late_safe_underfill_fill";
+    }
+  }
   countContractSatisfied = finalOutputItems.length >= Math.max(4, Math.min(6, finalLimit));
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
