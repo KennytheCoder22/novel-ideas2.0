@@ -8139,8 +8139,16 @@ const normalizedCandidatesRaw = [
       ...swipeRankedCandidateList,
       ...narrativeExpansionMergedDocs,
     ];
-    const seenTitle = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
-    const seenRoot = new Set(finalOutputItems.map((item: any) => String(parentFranchiseRootForDoc(item?.doc || item) || "__none__"));
+    const seenTitle = new Set(
+      finalOutputItems
+        .map((item: any) => normalizeText(String(item?.doc?.title || item?.title || "")))
+        .filter(Boolean)
+    );
+    const seenRoot = new Set(
+      finalOutputItems.map((item: any) =>
+        String(parentFranchiseRootForDoc(item?.doc || item) || "__none__")
+      )
+    );
     for (const doc of mergedPool) {
       if (finalOutputItems.length >= lateTargetMin) break;
       const title = String(doc?.title || "").trim();
