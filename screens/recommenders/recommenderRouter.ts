@@ -7735,8 +7735,14 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const hardBlockedLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
-    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|collected edition|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
-    const directFitRescue = swipeRankedCandidateList
+    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
+    const directFitPreferredRoots = new Set(["paper-girls", "gotham-academy", "lumberjanes-gotham-academy", "lumberjanes"]);
+    const postPassTitleOrder = new Map<string, number>();
+    teenPostPassItems.forEach((item: any, idx: number) => {
+      const title = normalizeText(String(item?.doc?.title || item?.title || ""));
+      if (title && !postPassTitleOrder.has(title)) postPassTitleOrder.set(title, idx);
+    });
+    const directFitRescueCandidates = swipeRankedCandidateList
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title) return false;
@@ -7747,12 +7753,34 @@ const normalizedCandidatesRaw = [
         if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
         const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
         const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+        const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
         const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
           .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
-        return positiveFit >= 5.5 && meaningful >= 1 && positiveFit > dislikePenalty;
+        const postPassMember = postPassTitleOrder.has(normalizeText(title));
+        const entitySeedAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(title).includes(normalizeText(seed)) || normalizeText(root).includes(normalizeText(seed)));
+        const hasSupport = postPassMember || entitySeedAligned || semanticEvidence >= 1 || directFitPreferredRoots.has(root);
+        return positiveFit >= 5.5 && meaningful >= 1 && positiveFit > dislikePenalty && hasSupport;
       })
-      .slice(0, Math.max(1, finalLimit))
-      .map((doc: any) => ({ kind: "open_library", doc }));
+      .sort((a: any, b: any) => {
+        const ta = String(a?.title || "").trim();
+        const tb = String(b?.title || "").trim();
+        const ra = String(parentFranchiseRootForDoc(a) || "");
+        const rb = String(parentFranchiseRootForDoc(b) || "");
+        const aPost = postPassTitleOrder.has(normalizeText(ta));
+        const bPost = postPassTitleOrder.has(normalizeText(tb));
+        if (aPost !== bPost) return aPost ? -1 : 1;
+        const aPreferredRoot = directFitPreferredRoots.has(ra);
+        const bPreferredRoot = directFitPreferredRoots.has(rb);
+        if (aPreferredRoot !== bPreferredRoot) return aPreferredRoot ? -1 : 1;
+        const aPostIdx = Number(postPassTitleOrder.get(normalizeText(ta)) ?? Number.MAX_SAFE_INTEGER);
+        const bPostIdx = Number(postPassTitleOrder.get(normalizeText(tb)) ?? Number.MAX_SAFE_INTEGER);
+        if (aPostIdx !== bPostIdx) return aPostIdx - bPostIdx;
+        const aFit = Number(positiveFitScoreByTitle[ta] || 0);
+        const bFit = Number(positiveFitScoreByTitle[tb] || 0);
+        if (aFit !== bFit) return bFit - aFit;
+        return 0;
+      });
+    const directFitRescue = directFitRescueCandidates.slice(0, Math.max(1, finalLimit)).map((doc: any) => ({ kind: "open_library", doc }));
     if (directFitRescue.length > 0) {
       finalOutputItems = directFitRescue;
       returnedItemsBuiltFrom = "direct_fit_rescue";
@@ -7764,7 +7792,7 @@ const normalizedCandidatesRaw = [
     const hardBlockedArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
     const hardBlockedRescueLiteralRootRe = /^(lightning-and-romance|through-romance|akiba-romance|romance-papa|sadistic-full-romance)$/;
     const genericCollectionArtifactRe = /^the collected edition$|^hardcover\/trade paperback$|^great british .+ comic book heroes(?:\s*#?\d+)?$/i;
-    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
+    const genericRecoveryTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
     const titleOrRootIsSingleGenreLiteral = (title: string, root: string) => {
       const titleNorm = normalizeText(title);
       const rootNorm = normalizeText(root);
