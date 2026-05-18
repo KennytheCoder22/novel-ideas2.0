@@ -7550,6 +7550,9 @@ const normalizedCandidatesRaw = [
   const finalRejectAssertionChecked = finalOutputItems.length > 0 || finalEligibilityAcceptedTitles.length > 0 || Object.keys(terminalRejectReasonByTitle).length > 0;
   let finalRejectAssertionThrowReason = "none";
   const finalGateConsistencyPassed = rejectedButReturnedTitles.length === 0;
+  let acceptedTitlesBeforeScrub: string[] = [];
+  let acceptedTitlesAfterScrub: string[] = [];
+  let acceptedTitlesScrubRejectedByReason: Record<string, string> = {};
   if (finalRejectAssertionChecked && rejectedButReturnedTitles.length > 0) {
     finalRejectAssertionThrowReason = `returned_intersects_terminal_rejects:${rejectedButReturnedTitles.length}`;
     finalOutputItems = [];
@@ -7651,6 +7654,11 @@ const normalizedCandidatesRaw = [
     const acceptedSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(t)));
     const canonicalAcceptedRoots = new Set(["something-is-killing-the-children", "spider-man", "ms-marvel", "adventure-time", "black-science", "locke-key", "paper-girls", "the-sandman", "saga", "nimona", "runaways"]);
     const acceptedHardArtifactRootRe = /^(the-power-fantasy|final-fantasy-lost-stranger|graphic-fantasy|adventure-van)$/;
+    const acceptedLiteralArtifactTitleRe = /\b(graphic fantasy|a good fantasy|science comics?|oops comic adventure|trade paperback|sex fantasy|generic romance|through romance|lightning and romance|akiba romance|romance papa|sadistic full romance|the power fantasy|pirates in the heartland|mystery science theater 3000)\b/i;
+    const canonicalRescueSupersededAcceptedTitlesByReason: Record<string, string> = {};
+    acceptedTitlesBeforeScrub = teenPostPassItems
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter((title: string) => title && acceptedSet.has(normalizeText(title)));
     const acceptedItemsFromPostPass = teenPostPassItems.filter((item: any) => {
       const title = String(item?.doc?.title || item?.title || "").trim();
       if (!title) return false;
@@ -7663,16 +7671,22 @@ const normalizedCandidatesRaw = [
       const weakLexicalPenalty = Number(weakLexicalFantasyClusterPenaltyByTitle[title] || 0);
       const queryLiteralOnly = Boolean(queryTermOnlyEvidenceByTitle[title]);
       const entitySeedAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(title).includes(normalizeText(seed)) || normalizeText(root).includes(normalizeText(seed)));
-      if (acceptedHardArtifactRootRe.test(root) && !canonical) return false;
-      if (!canonical && meaningful <= 0 && semanticEvidence < 2 && !entitySeedAligned) return false;
-      if (!canonical && weakLexicalPenalty > 0 && semanticEvidence < 2) return false;
-      if (!canonical && queryLiteralOnly && meaningful < 2 && semanticEvidence < 2) return false;
+      if (acceptedHardArtifactRootRe.test(root) && !canonical) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "hard_artifact_root"; return false; }
+      if (acceptedLiteralArtifactTitleRe.test(title)) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "literal_artifact_title"; return false; }
+      if (isLikelySubtitleFragmentTitle(title)) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "subtitle_fragment"; return false; }
+      if (queryLiteralOnly && meaningful < 1 && semanticEvidence < 1 && !entitySeedAligned && weakLexicalPenalty > 0) { canonicalRescueSupersededAcceptedTitlesByReason[title] = "query_literal_low_signal"; return false; }
       return true;
     });
+    acceptedTitlesAfterScrub = acceptedItemsFromPostPass
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter(Boolean);
+    acceptedTitlesScrubRejectedByReason = { ...canonicalRescueSupersededAcceptedTitlesByReason };
     if (acceptedItemsFromPostPass.length > 0) {
       finalOutputItems = acceptedItemsFromPostPass.slice(0, Math.max(1, finalLimit));
       returnedItemsBuiltFrom = "accepted_titles_authoritative";
       finalReturnSourceUsed = "accepted_titles_authoritative";
+    } else if (Object.keys(canonicalRescueSupersededAcceptedTitlesByReason).length > 0) {
+      sourceSkippedReason.push(`accepted_titles_scrubbed_before_canonical:${Object.entries(canonicalRescueSupersededAcceptedTitlesByReason).slice(0, 8).map(([t, r]) => `${t}:${r}`).join("|")}`);
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
@@ -7752,7 +7766,38 @@ const normalizedCandidatesRaw = [
       if (!addedThisRound) break;
     }
     const canonicalRescue = canonicalRescueDiversified.map((doc: any) => ({ kind: "open_library", doc }));
-    if (canonicalRescue.length > 0) {
+    const canonicalRescueTarget = Math.min(3, Math.max(1, finalLimit));
+    const secondTierFill = swipeRankedCandidateList
+        .filter((doc: any) => {
+          const title = String(doc?.title || "").trim();
+          if (!title) return false;
+          if (canonicalRescue.some((item: any) => normalizeText(String(item?.doc?.title || "")) === normalizeText(title))) return false;
+          const root = String(parentFranchiseRootForDoc(doc) || "");
+          if (hardBlockedArtifactRootRe.test(root)) return false;
+          if (hardBlockedRescueLiteralRootRe.test(root)) return false;
+          if (genericRecoveryTitleRe.test(title)) return false;
+          if (genericCollectionArtifactRe.test(normalizeText(title))) return false;
+          if (isLikelySubtitleFragmentTitle(title)) return false;
+          if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+          const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+          const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+          const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+          const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || [])
+            .find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+          const singleGenreLiteral = titleOrRootIsSingleGenreLiteral(title, root);
+          if (singleGenreLiteral && semanticEvidence < 2) return false;
+          return positiveFit >= 5.5
+            && positiveFit > dislikePenalty
+            && (meaningful >= 1 || semanticEvidence >= 1)
+            && !singleGenreLiteral;
+        })
+        .slice(0, Math.max(0, canonicalRescueTarget - canonicalRescue.length))
+        .map((doc: any) => ({ kind: "open_library", doc }));
+    if (secondTierFill.length > 0) {
+      finalOutputItems = [...secondTierFill, ...canonicalRescue].slice(0, Math.max(1, finalLimit));
+      returnedItemsBuiltFrom = "second_tier_then_canonical_affinity_rescue";
+      finalReturnSourceUsed = "second_tier_then_canonical_affinity_rescue";
+    } else if (canonicalRescue.length > 0) {
       finalOutputItems = canonicalRescue;
       returnedItemsBuiltFrom = "canonical_affinity_rescue";
       finalReturnSourceUsed = "canonical_affinity_rescue";
@@ -8008,6 +8053,9 @@ const normalizedCandidatesRaw = [
     finalEligibilityAcceptedTitlesBeforeTerminal,
     finalEligibilityAcceptedTitlesAfterTerminal,
     finalEligibilityAcceptedAndRejectedTitles,
+    acceptedTitlesBeforeScrub,
+    acceptedTitlesAfterScrub,
+    acceptedTitlesScrubRejectedByReason,
     finalEligibilityAcceptedTitles: acceptedAfterTerminalRejectFilter,
     finalEligibilityRejectedTitlesByReason,
     rejectedButReturnedTitles,
