@@ -167,6 +167,7 @@ export type RecommendationResult = {
   positiveFitRescueRejectedReasons?: Record<string, string>;
   positiveFitRescueTopUpApplied?: boolean;
   positiveFitRescueReturnedTitles?: string[];
+  emergencySafeRescueReturnedTitles?: string[];
   returnedItemsBuiltFrom?: string;
   recoveryTriggered?: boolean;
   recoveryInputPoolLength?: number;

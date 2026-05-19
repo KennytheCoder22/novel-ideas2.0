@@ -7842,6 +7842,7 @@ const normalizedCandidatesRaw = [
   }
   let positiveFitRescueTopUpApplied = false;
   let positiveFitRescueReturnedTitles: string[] = [];
+  let emergencySafeRescueReturnedTitles: string[] = [];
   const positiveFitRescueRejectedReasons: Record<string, string> = {};
   const positiveFitRescueEligibleTitles: string[] = [];
   const positiveFitRescueCandidateTitlesBeforeSafety = teenComicVinePositiveFitRescuePool.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
@@ -8933,10 +8934,56 @@ const normalizedCandidatesRaw = [
       positiveFitRescueReturnedTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
     }
   }
+  if (teenComicVineOnlyLateUnderfill && finalOutputItems.length < 3) {
+    const emergencyPool = dedupeDocs([
+      ...(teenComicVinePositiveFitRescuePool || []),
+      ...(finalRenderDocs || []),
+      ...(finalRankedDocs || []),
+      ...(finalRankedDocsBase || []),
+      ...(rankedDocs || []),
+      ...(recoveryTriggered ? [...(enrichedDocs as any[]), ...(normalizedCandidates as any[]), ...(candidateDocs as any[])] : []),
+    ] as any[]).filter((doc: any) => {
+      const title = String(doc?.title || "").trim();
+      if (!title) return false;
+      if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
+      if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
+      if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("locale_variant")) return false;
+      if (negativeScoreBlockedSet.has(normalizeText(title))) return false;
+      if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
+      if (!passesSharedReturnArtifactScrub(doc)) return false;
+      return true;
+    });
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const stronger = emergencyPool.filter((doc: any) => {
+      const t = String(doc?.title || "").trim();
+      return (Number(positiveFitScoreByTitle[t] || 0) > 0) || (Number(candidateWeightedTasteScoreByTitle[t] || 0) > 0);
+    });
+    const weaker = emergencyPool.filter((doc: any) => {
+      const t = String(doc?.title || "").trim();
+      return !((Number(positiveFitScoreByTitle[t] || 0) > 0) || (Number(candidateWeightedTasteScoreByTitle[t] || 0) > 0));
+    });
+    const selectedStrong = selectRescueWithRootDiversity(stronger.filter((doc: any) => !seen.has(normalizeText(String(doc?.title || "")))), 3 - finalOutputItems.length);
+    let toAdd = selectedStrong;
+    if (toAdd.length < (3 - finalOutputItems.length)) {
+      const need = (3 - finalOutputItems.length) - toAdd.length;
+      const selectedWeak = selectRescueWithRootDiversity(weaker.filter((doc: any) => !seen.has(normalizeText(String(doc?.title || ""))) && !toAdd.some((d: any) => normalizeText(String(d?.title || "")) === normalizeText(String(doc?.title || "")))), need);
+      toAdd = [...toAdd, ...selectedWeak];
+    }
+    if (toAdd.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...toAdd.map((doc: any) => ({ kind: "open_library", doc }))];
+      returnedItemsBuiltFrom = finalOutputItems.length >= 3 ? "emergency_safe_rescue" : "emergency_safe_rescue_partial";
+      finalReturnSourceUsed = returnedItemsBuiltFrom;
+      emergencySafeRescueReturnedTitles = toAdd.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+    }
+  }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
-    returnedItemsBuiltFrom = suppressTopRecommendations
-      ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
-      : "none";
+    if (teenComicVineOnlyLateUnderfill && includeComicVine && comicVineOnlyMode) {
+      returnedItemsBuiltFrom = "none";
+    } else {
+      returnedItemsBuiltFrom = suppressTopRecommendations
+        ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
+        : "none";
+    }
   }
   countContractSatisfied = finalOutputItems.length >= Math.max(4, Math.min(6, finalLimit));
   if (finalRenderBypassBlockedTitles.length > 0) {
@@ -9035,6 +9082,7 @@ const normalizedCandidatesRaw = [
     positiveFitRescueRejectedReasons,
     positiveFitRescueTopUpApplied,
     positiveFitRescueReturnedTitles: Array.from(new Set(positiveFitRescueReturnedTitles)).slice(0, 20),
+    emergencySafeRescueReturnedTitles: Array.from(new Set(emergencySafeRescueReturnedTitles)).slice(0, 20),
     finalEligibleNonNegativeCount,
     countContractShortfallReason,
     scoringPassApplied,

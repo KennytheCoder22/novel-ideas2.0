@@ -2248,6 +2248,7 @@ function handleLeft() {
       `positiveFitRescueRejectedReasons:${JSON.stringify((lastRecommendationResult as any)?.positiveFitRescueRejectedReasons || {})}`,
       `positiveFitRescueTopUpApplied:${Boolean((lastRecommendationResult as any)?.positiveFitRescueTopUpApplied)}`,
       `positiveFitRescueReturnedTitles:${Array.isArray((lastRecommendationResult as any)?.positiveFitRescueReturnedTitles) && (lastRecommendationResult as any).positiveFitRescueReturnedTitles.length ? (lastRecommendationResult as any).positiveFitRescueReturnedTitles.join(" | ") : "(none)"}`,
+      `emergencySafeRescueReturnedTitles:${Array.isArray((lastRecommendationResult as any)?.emergencySafeRescueReturnedTitles) && (lastRecommendationResult as any).emergencySafeRescueReturnedTitles.length ? (lastRecommendationResult as any).emergencySafeRescueReturnedTitles.join(" | ") : "(none)"}`,
       `teenPostPassInputSource:${String((lastRecommendationResult as any)?.teenPostPassInputSource || "unknown")}`,
       `scoredCandidateUniverseCount:${Number((lastRecommendationResult as any)?.scoredCandidateUniverseCount || 0)}`,
       `convertedDocsAvailableForScoringCount:${Number((lastRecommendationResult as any)?.convertedDocsAvailableForScoringCount || 0)}`,
