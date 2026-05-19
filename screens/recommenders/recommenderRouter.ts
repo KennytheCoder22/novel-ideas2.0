@@ -7595,6 +7595,43 @@ const normalizedCandidatesRaw = [
     if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
     return true;
   }
+  function rescueSortScore(doc: any) {
+    const title = String(doc?.title || "").trim();
+    const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+    const tasteMatch = Number(candidateWeightedTasteScoreByTitle[title] || 0) - Number(candidateDislikePenaltyByTitle[title] || 0);
+    const semanticCount = Number(semanticEvidenceCountByTitle[title] || 0);
+    const starterOrCollection = /\b(volume\s*1|vol\.?\s*1|book\s*1|omnibus|compendium|collection|collected|tpb|trade paperback)\b/i.test(title) ? 1 : 0;
+    return { positiveFit, starterOrCollection, tasteMatch, semanticCount };
+  }
+  function rankRescueDocs(docs: any[]) {
+    return docs.slice().sort((a: any, b: any) => {
+      const as = rescueSortScore(a); const bs = rescueSortScore(b);
+      if (bs.positiveFit !== as.positiveFit) return bs.positiveFit - as.positiveFit;
+      if (bs.starterOrCollection !== as.starterOrCollection) return bs.starterOrCollection - as.starterOrCollection;
+      if (bs.tasteMatch !== as.tasteMatch) return bs.tasteMatch - as.tasteMatch;
+      return bs.semanticCount - as.semanticCount;
+    });
+  }
+  function selectRescueWithRootDiversity(docs: any[], targetCount: number) {
+    const ranked = rankRescueDocs(docs);
+    const distinctFirst: any[] = [];
+    const seenRoots = new Set<string>();
+    for (const doc of ranked) {
+      if (distinctFirst.length >= targetCount) break;
+      const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      if (seenRoots.has(root)) continue;
+      seenRoots.add(root);
+      distinctFirst.push(doc);
+    }
+    if (distinctFirst.length >= targetCount) return distinctFirst.slice(0, targetCount);
+    for (const doc of ranked) {
+      if (distinctFirst.length >= targetCount) break;
+      const title = normalizeText(String(doc?.title || ""));
+      if (distinctFirst.some((d: any) => normalizeText(String(d?.title || "")) === title)) continue;
+      distinctFirst.push(doc);
+    }
+    return distinctFirst.slice(0, targetCount);
+  }
   if (!suppressTopRecommendations && singleSourceMode) {
     finalOutputItems = singleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
     singleSourceDirectReturnTriggered = true;
@@ -7799,17 +7836,11 @@ const normalizedCandidatesRaw = [
         else positiveFitRescueRejectedReasons[title] = "rescue_safety_scrub_failed";
         return ok;
       })
-      .sort((a: any, b: any) => {
-        const at = String(a?.title || "");
-        const bt = String(b?.title || "");
-        const aFit = Number(positiveFitScoreByTitle[at] || 0) + Number(candidateWeightedTasteScoreByTitle[at] || 0) - Number(candidateDislikePenaltyByTitle[at] || 0);
-        const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0);
-        return bFit - aFit;
-      })
-      .slice(0, Math.max(3, Math.min(5, Math.max(finalLimit, 5))))
+      ;
+    const positiveFitRescueSelected = selectRescueWithRootDiversity(positiveFitRescue, Math.max(3, Math.min(5, Math.max(finalLimit, 5))))
       .map((doc: any) => ({ kind: "open_library", doc }));
-    if (positiveFitRescue.length >= 3 || (scoredUniverseFailure && positiveFitRescue.length > 0)) {
-      finalOutputItems = positiveFitRescue;
+    if (positiveFitRescueSelected.length >= 3 || (scoredUniverseFailure && positiveFitRescueSelected.length > 0)) {
+      finalOutputItems = positiveFitRescueSelected;
       returnedItemsBuiltFrom = "positive_fit_rescue";
       finalReturnSourceUsed = "positive_fit_rescue";
       positiveFitRescueReturnedTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
@@ -8828,7 +8859,7 @@ const normalizedCandidatesRaw = [
   }
   if (teenComicVineOnlyLateUnderfill && finalOutputItems.length > 0 && finalOutputItems.length < 3) {
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
-    const rescueTopUp = teenComicVinePositiveFitRescuePool
+    const rescueTopUpPool = teenComicVinePositiveFitRescuePool
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title) return false;
@@ -8837,15 +8868,8 @@ const normalizedCandidatesRaw = [
         if (!ok) positiveFitRescueRejectedReasons[title] = positiveFitRescueRejectedReasons[title] || "rescue_safety_scrub_failed";
         return ok;
       })
-      .sort((a: any, b: any) => {
-        const at = String(a?.title || "");
-        const bt = String(b?.title || "");
-        const aFit = Number(positiveFitScoreByTitle[at] || 0) + Number(candidateWeightedTasteScoreByTitle[at] || 0) - Number(candidateDislikePenaltyByTitle[at] || 0);
-        const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0);
-        return bFit - aFit;
-      })
-      .slice(0, 3 - finalOutputItems.length)
-      .map((doc: any) => ({ kind: "open_library", doc }));
+      ;
+    const rescueTopUp = selectRescueWithRootDiversity(rescueTopUpPool, 3 - finalOutputItems.length).map((doc: any) => ({ kind: "open_library", doc }));
     if (rescueTopUp.length > 0) {
       finalOutputItems = [...finalOutputItems, ...rescueTopUp];
       positiveFitRescueTopUpApplied = true;
