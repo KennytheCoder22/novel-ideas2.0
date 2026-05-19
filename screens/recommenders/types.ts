@@ -159,6 +159,10 @@ export type RecommendationResult = {
   entitySeedTopUpRejectedTitlesByReason?: Record<string, string[]>;
   postTopUpFinalItemsLength?: number;
   positiveFitRescuePoolLength?: number;
+  positiveFitRescuePoolSourceCounts?: Record<string, number>;
+  positiveFitRescueCandidateTitlesBeforeSafety?: string[];
+  positiveFitRescueCandidateTitlesAfterSafety?: string[];
+  positiveFitRescueExcludedByReason?: Record<string, number>;
   positiveFitRescueEligibleTitles?: string[];
   positiveFitRescueRejectedReasons?: Record<string, string>;
   positiveFitRescueTopUpApplied?: boolean;

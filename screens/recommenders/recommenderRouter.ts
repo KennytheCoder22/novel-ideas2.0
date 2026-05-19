@@ -7470,23 +7470,41 @@ const normalizedCandidatesRaw = [
     return nonNegative && nonExplicit && nonFragment && (curatedRoot || profileFit);
   });
   const hasAcceptedFinalEligibilityTitles = finalEligibilityAcceptedTitles.length > 0;
+  const rescuePoolSourceDocs = {
+    finalRenderDocs: [...finalRenderDocs],
+    finalRankedDocs: [...finalRankedDocs],
+    finalRankedDocsBase: [...finalRankedDocsBase],
+    rankedDocs: [...rankedDocs],
+    swipeRankedCandidateList: [...swipeRankedCandidateList],
+    narrativeExpansionMergedDocs: [...narrativeExpansionMergedDocs],
+    fallbackTierAcceptedDocs: [...fallbackTierAcceptedTitles.map((title: string) => ({ title, source: "comicvine_fallback_title" }))],
+  };
+  const positiveFitRescuePoolSourceCounts: Record<string, number> = Object.fromEntries(
+    Object.entries(rescuePoolSourceDocs).map(([k, v]) => [k, Array.isArray(v) ? v.length : 0])
+  );
+  const positiveFitRescueExcludedByReason: Record<string, number> = {};
   const teenComicVinePositiveFitRescuePool = dedupeDocs([
-    ...finalRenderDocs,
-    ...finalRankedDocs,
-    ...finalRankedDocsBase,
-    ...rankedDocs,
-    ...swipeRankedCandidateList,
-    ...narrativeExpansionMergedDocs,
+    ...rescuePoolSourceDocs.finalRenderDocs,
+    ...rescuePoolSourceDocs.finalRankedDocs,
+    ...rescuePoolSourceDocs.finalRankedDocsBase,
+    ...rescuePoolSourceDocs.rankedDocs,
+    ...rescuePoolSourceDocs.swipeRankedCandidateList,
+    ...rescuePoolSourceDocs.narrativeExpansionMergedDocs,
+    ...rescuePoolSourceDocs.fallbackTierAcceptedDocs,
   ] as any[]).filter((doc: any) => {
     const title = String(doc?.title || "").trim();
-    if (!title) return false;
-    if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
-    if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
-    if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
-    if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
+    if (!title) { positiveFitRescueExcludedByReason.empty_title = (positiveFitRescueExcludedByReason.empty_title || 0) + 1; return false; }
+    if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) { positiveFitRescueExcludedByReason.negative_score = (positiveFitRescueExcludedByReason.negative_score || 0) + 1; return false; }
+    if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) { positiveFitRescueExcludedByReason.fragment = (positiveFitRescueExcludedByReason.fragment || 0) + 1; return false; }
     const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+    const root = String(parentFranchiseRootForDoc(doc) || "");
+    const allowQueryLiteralHighFit = positiveFit >= 4.5 || isCuratedTeenGraphicNovelRoot(root);
+    if (Boolean(queryTermOnlyEvidenceByTitle[title]) && !allowQueryLiteralHighFit) { positiveFitRescueExcludedByReason.query_literal_only = (positiveFitRescueExcludedByReason.query_literal_only || 0) + 1; return false; }
+    if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) { positiveFitRescueExcludedByReason.age_maturity_blocked = (positiveFitRescueExcludedByReason.age_maturity_blocked || 0) + 1; return false; }
     const weightedTaste = Number(candidateWeightedTasteScoreByTitle[title] || 0);
-    return (positiveFit > 0 || weightedTaste > 0);
+    const keep = (positiveFit > 0 || weightedTaste > 0);
+    if (!keep) positiveFitRescueExcludedByReason.no_positive_fit_or_taste = (positiveFitRescueExcludedByReason.no_positive_fit_or_taste || 0) + 1;
+    return keep;
   });
   const teenComicVineCanFailSoftRender = teenComicVineOnlyLateUnderfill && teenComicVinePositiveFitRescuePool.length > 0;
   const suppressTopRecommendations =
@@ -7826,6 +7844,8 @@ const normalizedCandidatesRaw = [
   let positiveFitRescueReturnedTitles: string[] = [];
   const positiveFitRescueRejectedReasons: Record<string, string> = {};
   const positiveFitRescueEligibleTitles: string[] = [];
+  const positiveFitRescueCandidateTitlesBeforeSafety = teenComicVinePositiveFitRescuePool.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+  let positiveFitRescueCandidateTitlesAfterSafety: string[] = [];
   if (teenComicVineOnlyLateUnderfill && (scoredUniverseFailure || finalOutputItems.length < 3) && teenComicVinePositiveFitRescuePool.length > 0) {
     const positiveFitRescue = teenComicVinePositiveFitRescuePool
       .filter((doc: any) => {
@@ -7839,6 +7859,7 @@ const normalizedCandidatesRaw = [
       ;
     const positiveFitRescueSelected = selectRescueWithRootDiversity(positiveFitRescue, Math.max(3, Math.min(5, Math.max(finalLimit, 5))))
       .map((doc: any) => ({ kind: "open_library", doc }));
+    positiveFitRescueCandidateTitlesAfterSafety = positiveFitRescue.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
     if (positiveFitRescueSelected.length >= 3 || (scoredUniverseFailure && positiveFitRescueSelected.length > 0)) {
       finalOutputItems = positiveFitRescueSelected;
       returnedItemsBuiltFrom = "positive_fit_rescue";
@@ -9006,6 +9027,10 @@ const normalizedCandidatesRaw = [
     lateTeenUnderfillAcceptedTitles,
     lateTeenUnderfillRejectedReasons,
     positiveFitRescuePoolLength: teenComicVinePositiveFitRescuePool.length,
+    positiveFitRescuePoolSourceCounts,
+    positiveFitRescueCandidateTitlesBeforeSafety: Array.from(new Set(positiveFitRescueCandidateTitlesBeforeSafety)).slice(0, 80),
+    positiveFitRescueCandidateTitlesAfterSafety: Array.from(new Set(positiveFitRescueCandidateTitlesAfterSafety)).slice(0, 80),
+    positiveFitRescueExcludedByReason,
     positiveFitRescueEligibleTitles: Array.from(new Set(positiveFitRescueEligibleTitles)).slice(0, 50),
     positiveFitRescueRejectedReasons,
     positiveFitRescueTopUpApplied,
