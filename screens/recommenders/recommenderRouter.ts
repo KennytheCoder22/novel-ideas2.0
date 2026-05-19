@@ -7303,6 +7303,9 @@ const normalizedCandidatesRaw = [
     !sourceEnabled.localLibrary &&
     !includeKitsu;
   const teenComicVineOnlySafeUnderfillFill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
+  const curatedTeenGraphicNovelRoots = new Set([
+    "paper-girls","saga","runaways","ms-marvel","nimona","lumberjanes","on-a-sunbeam","descender","black-science","the-wicked-the-divine","locke-key","something-is-killing-the-children","adventure-time","amulet","bone","blue-flag","a-silent-voice","planetes","sweet-tooth","the-sandman","monstress",
+  ]);
   const builtFromQuery = comicVineOnlyMode
     ? String(builtFromQueryRaw)
         .replace(/\bpsychological suspense novel\b/gi, "psychological suspense graphic novel")
@@ -8276,9 +8279,6 @@ const normalizedCandidatesRaw = [
   }
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
   const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
-  const curatedTeenGraphicNovelRoots = new Set([
-    "paper-girls","saga","runaways","ms-marvel","nimona","lumberjanes","on-a-sunbeam","descender","black-science","the-wicked-the-divine","locke-key","something-is-killing-the-children","adventure-time","amulet","bone","blue-flag","a-silent-voice","planetes","sweet-tooth","the-sandman","monstress",
-  ]);
   let lateTeenUnderfillTriggered = false;
   let lateTeenUnderfillVisibleCountBefore = 0;
   let lateTeenUnderfillCandidatesConsidered = 0;
