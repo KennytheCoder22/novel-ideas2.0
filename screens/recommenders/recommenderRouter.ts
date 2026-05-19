@@ -3155,11 +3155,7 @@ export async function getRecommendations(
     ...(themes.includes("coming of age") && (genres.includes("thriller") || genres.includes("mystery")) ? ["teen conspiracy thriller comic series"] : []),
     ...(themes.includes("survival") && genres.includes("mystery") ? ["mystery survival drama comic series"] : []),
   ]));
-  const broadGraphicQueries = Array.from(new Set([
-    ...genres.map((v) => `${v} graphic novel`),
-    ...tones.map((v) => `${v} graphic novel`),
-    ...themes.map((v) => `${v} graphic novel`),
-  ]));
+  const broadGraphicQueries: string[] = [];
   const curatedSeedRootsUsed: string[] = [];
   const curatedSeedMatchesFound: string[] = [];
   let candidateGenerationMode: "taste_narrative" | "taste_plus_curated" | "broad_only" | "static_fallback" = "static_fallback";
@@ -8250,6 +8246,36 @@ const normalizedCandidatesRaw = [
       finalOutputItems = curatedZeroResultOverride;
       returnedItemsBuiltFrom = "curated_teen_comicvine_zero_result_override";
       finalReturnSourceUsed = "curated_teen_comicvine_zero_result_override";
+    }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenComicVineOnlyLateUnderfill && finalEligibleNonNegativeCount > 0) {
+    const seenRoots = new Set<string>();
+    const bestCleanCandidates = swipeRankedCandidateList
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        const titleNorm = normalizeText(title);
+        if (terminalRejectReasonByTitle[titleNorm]) return false;
+        if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+        if (broadArtifactRejectedTitles.includes(title)) return false;
+        if (genericCollectionArtifactRejectedTitles.includes(title) || formatSignalOnlyRejectedTitles.includes(title)) return false;
+        if (/\b(graphic fantasy|a good fantasy|science comics?|mystery science theater 3000|collected edition|trade paperback|hardcover\/trade paperback|coming of age)\b/i.test(title)) return false;
+        const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
+        const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+        const candidateTasteMatchScore = Number(candidateTasteMatchScoreByTitle[title] || 0);
+        const candidateTastePenalty = Number(candidateTastePenaltyByTitle[title] || candidateDislikePenaltyByTitle[title] || 0);
+        if (!(semanticSupportFound && positiveFitScore >= 2.5 && candidateTastePenalty <= candidateTasteMatchScore + 1)) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+        if (seenRoots.has(root)) return false;
+        seenRoots.add(root);
+        return true;
+      })
+      .slice(0, 5)
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (bestCleanCandidates.length > 0) {
+      finalOutputItems = bestCleanCandidates;
+      returnedItemsBuiltFrom = "teen_comicvine_best_clean_underfill";
+      finalReturnSourceUsed = "teen_comicvine_best_clean_underfill";
     }
   }
   if (!suppressTopRecommendations && acceptedTitlesAfterScrub.length > 0) {
