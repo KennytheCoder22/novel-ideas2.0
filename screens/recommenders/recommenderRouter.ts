@@ -7303,6 +7303,7 @@ const normalizedCandidatesRaw = [
     !sourceEnabled.localLibrary &&
     !includeKitsu;
   const teenComicVineOnlySafeUnderfillFill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
+  const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
   const curatedTeenGraphicNovelRoots = new Set([
     "paper-girls","saga","runaways","ms-marvel","nimona","lumberjanes","on-a-sunbeam","descender","black-science","the-wicked-the-divine","locke-key","something-is-killing-the-children","adventure-time","amulet","bone","blue-flag","a-silent-voice","planetes","sweet-tooth","the-sandman","monstress",
   ]);
@@ -8278,7 +8279,6 @@ const normalizedCandidatesRaw = [
     acceptedPrefixInvariantFailed = acceptedOrder.some((t, idx) => returnedNow[idx] !== t);
   }
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
-  const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
   let lateTeenUnderfillTriggered = false;
   let lateTeenUnderfillVisibleCountBefore = 0;
   let lateTeenUnderfillCandidatesConsidered = 0;
