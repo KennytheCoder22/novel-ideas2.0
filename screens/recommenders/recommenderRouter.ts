@@ -3142,6 +3142,16 @@ export async function getRecommendations(
   const highSuspenseProfile =
     (genres.includes("thriller") || genres.includes("mystery")) &&
     (tones.includes("dark") || tones.includes("tense") || themes.includes("survival"));
+  const archetypeProfileActivated = energeticEnsembleAdventureProfile
+    ? "energetic_ensemble_adventure"
+    : highSuspenseProfile
+    ? "high_suspense"
+    : "general_narrative";
+  const anchorExemplarsSelected = Array.from(new Set([
+    ...(energeticEnsembleAdventureProfile ? ["Runaways", "Ms. Marvel", "Paper Girls", "Amulet", "Bone"] : []),
+    ...(romanceComingOfAgeWarmthProfile ? ["Laura Dean Keeps Breaking Up With Me", "Bloom", "Heartstopper"] : []),
+    ...(highSuspenseProfile && !energeticEnsembleAdventureProfile ? ["Something is Killing the Children", "Locke & Key"] : []),
+  ]));
   const narrativeSeriesForms = (base: string) => ([
     `${base} character driven graphic novel`,
     `${base} story rich graphic novel`,
@@ -3220,12 +3230,17 @@ export async function getRecommendations(
     curatedRootsByPattern.push("Gotham Academy", "Paper Girls", "The Fade Out", "Blacksad", "Velvet");
   }
   const curatedSeedQueries = Array.from(new Set(curatedRootsByPattern.flatMap((root) => [`${root} character driven graphic novel`, `${root} coming of age graphic novel`])));
+  const anchorExemplarQueries = anchorExemplarsSelected.flatMap((seed) => [
+    `${seed} style graphic novel`,
+    `${seed} emotional growth graphic novel`,
+  ]);
   curatedSeedRootsUsed.push(...curatedRootsByPattern);
   let generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...combinedQueries,
     ...semanticRefinementQueries,
     ...broadGraphicQueries,
     ...curatedSeedQueries,
+    ...anchorExemplarQueries,
   ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
@@ -8718,6 +8733,8 @@ const normalizedCandidatesRaw = [
     finalReturnedWithoutTasteEvidenceTitles,
     finalUnderfillBecauseNoTasteEvidence,
     underfillReason,
+    archetypeProfileActivated,
+    anchorExemplarsSelected,
     expansionMergedButNotScoredReason,
     finalRenderSourceList,
     finalRenderCandidateTitlesBeforeGate,
