@@ -7213,6 +7213,13 @@ const normalizedCandidatesRaw = [
     .map((doc: any) => String(doc?.title || "").trim())
     .filter(Boolean);
   for (const title of negativeScoreRenderBlockedTitles) markTerminalReject(title, "negative_score_render_blocked");
+  if (negativeScoreRenderBlockedTitles.length > 0) {
+    const negativeBlockedCanonical = new Set(negativeScoreRenderBlockedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
+    const scrubbedAcceptedTitles = finalEligibilityAcceptedTitles.filter((title) => !negativeBlockedCanonical.has(normalizeText(String(title || ""))));
+    finalEligibilityAcceptedTitles.length = 0;
+    finalEligibilityAcceptedTitles.push(...scrubbedAcceptedTitles);
+    eligibleWithFitScore.splice(0, eligibleWithFitScore.length, ...eligibleWithFitScore.filter((row: any) => !negativeBlockedCanonical.has(normalizeText(String(row?.doc?.title || "")))));
+  }
   const nonNegativeFinalRenderDocs = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0);
   finalRenderDocs = nonNegativeFinalRenderDocs;
   finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
@@ -7451,9 +7458,13 @@ const normalizedCandidatesRaw = [
     const curatedRoot = isCuratedTeenGraphicNovelRoot(root);
     return nonNegative && nonExplicit && nonFragment && (curatedRoot || profileFit);
   });
+  const hasAcceptedFinalEligibilityTitles = finalEligibilityAcceptedTitles.length > 0;
   const suppressTopRecommendations =
-    (hardPipelineFailure && rankedCount === 0) ||
-    (scoredUniverseFailure && !(teenComicVineOnlyLateUnderfill && cleanCuratedOrProfileFitCandidates.length > 0));
+    !hasAcceptedFinalEligibilityTitles &&
+    (
+      (hardPipelineFailure && rankedCount === 0) ||
+      (scoredUniverseFailure && !(teenComicVineOnlyLateUnderfill && cleanCuratedOrProfileFitCandidates.length > 0))
+    );
   const gatedFinalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const sourceLaneInputCount = {
     googleBooks: finalRenderDocs.filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("google")).length,
