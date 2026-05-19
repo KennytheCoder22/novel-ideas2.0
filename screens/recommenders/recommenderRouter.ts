@@ -7469,7 +7469,8 @@ const normalizedCandidatesRaw = [
     if (!title) return false;
     if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
     if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
-    if (!passesSharedReturnArtifactScrub(doc)) return false;
+    if (!canReturnTitle(title, doc)) return false;
+    if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
     if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
     const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
     const weightedTaste = Number(candidateWeightedTasteScoreByTitle[title] || 0);
@@ -7550,6 +7551,20 @@ const normalizedCandidatesRaw = [
   const singleSourceFallbackRejectedBecauseNotFinalEligible: string[] = [];
   let finalReturnSourceUsed = "final_gate_accepted_docs";
   const finalReturnDropReasonByTitle: Record<string, string> = {};
+  const passesSharedReturnArtifactScrub = (doc: any) => {
+    const title = String(doc?.title || "").trim();
+    if (!title) return false;
+    const root = String(parentFranchiseRootForDoc(doc) || "");
+    const normalizedTitle = normalizeText(title);
+    if (!canReturnTitle(title, doc)) return false;
+    if (new Set(negativeScoreRenderBlockedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean)).has(normalizedTitle)) return false;
+    if (isLikelySubtitleFragmentTitle(title)) return false;
+    if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+    if (/(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)/i.test(title)) return false;
+    if (/amazing fantasy/i.test(title) && !(root === "spider-man" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
+    if (/(love[-\s]?or[-\s]?die|kill[-\s]?or[-\s]?die|die[-\s]?die[-\s]?die|villains[-\s]?are[-\s]?destined[-\s]?to[-\s]?die|if[-\s]?my[-\s]?favorite[-\s]?pop[-\s]?idol.*die)/i.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
+    return true;
+  };
   if (!suppressTopRecommendations && singleSourceMode) {
     finalOutputItems = singleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
     singleSourceDirectReturnTriggered = true;
