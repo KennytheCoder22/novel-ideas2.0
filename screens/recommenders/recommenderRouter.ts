@@ -7473,6 +7473,8 @@ const normalizedCandidatesRaw = [
   const teenComicVinePositiveFitRescuePool = dedupeDocs([
     ...finalRenderDocs,
     ...finalRankedDocs,
+    ...finalRankedDocsBase,
+    ...rankedDocs,
     ...swipeRankedCandidateList,
     ...narrativeExpansionMergedDocs,
   ] as any[]).filter((doc: any) => {
@@ -7767,7 +7769,7 @@ const normalizedCandidatesRaw = [
   function passesSharedNeverReturnTitleScrub(title: string, doc?: any) {
     return canReturnTitle(title, doc);
   }
-  if (teenComicVineOnlyLateUnderfill && scoredUniverseFailure && finalOutputItems.length === 0 && teenComicVinePositiveFitRescuePool.length > 0) {
+  if (teenComicVineOnlyLateUnderfill && (scoredUniverseFailure || finalOutputItems.length < 3) && teenComicVinePositiveFitRescuePool.length > 0) {
     const positiveFitRescue = teenComicVinePositiveFitRescuePool
       .filter((doc: any) => passesSharedReturnArtifactScrub(doc))
       .sort((a: any, b: any) => {
@@ -7777,9 +7779,9 @@ const normalizedCandidatesRaw = [
         const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0);
         return bFit - aFit;
       })
-      .slice(0, Math.max(3, Math.min(5, finalLimit)))
+      .slice(0, Math.max(3, Math.min(5, Math.max(finalLimit, 5))))
       .map((doc: any) => ({ kind: "open_library", doc }));
-    if (positiveFitRescue.length > 0) {
+    if (positiveFitRescue.length >= 3 || (scoredUniverseFailure && positiveFitRescue.length > 0)) {
       finalOutputItems = positiveFitRescue;
       returnedItemsBuiltFrom = "positive_fit_rescue";
       finalReturnSourceUsed = "positive_fit_rescue";
@@ -8752,7 +8754,7 @@ const normalizedCandidatesRaw = [
         const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0) - bPenalty;
         return bFit - aFit;
       })
-      .slice(0, Math.max(1, Math.min(3, finalLimit)))
+      .slice(0, Math.max(3, Math.min(5, Math.max(finalLimit, 5))))
       .map((doc: any) => ({ kind: "open_library", doc }));
     if (emergencyBestClean.length > 0) {
       finalOutputItems = emergencyBestClean;
@@ -8788,12 +8790,38 @@ const normalizedCandidatesRaw = [
         const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0) - bPenalty;
         return bFit - aFit;
       })
-      .slice(0, Math.max(2, Math.min(4, finalLimit)))
+      .slice(0, Math.max(3, Math.min(5, Math.max(finalLimit, 5))))
       .map((doc: any) => ({ kind: "open_library", doc }));
     if (failSoftSafeCandidates.length > 0) {
       finalOutputItems = failSoftSafeCandidates;
       returnedItemsBuiltFrom = "teen_comicvine_fail_soft_safe_candidates";
       finalReturnSourceUsed = "teen_comicvine_fail_soft_safe_candidates";
+    }
+  }
+  if (teenComicVineOnlyLateUnderfill && finalOutputItems.length > 0 && finalOutputItems.length < 3) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const rescueTopUp = teenComicVinePositiveFitRescuePool
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        if (seen.has(normalizeText(title))) return false;
+        return passesSharedReturnArtifactScrub(doc);
+      })
+      .sort((a: any, b: any) => {
+        const at = String(a?.title || "");
+        const bt = String(b?.title || "");
+        const aFit = Number(positiveFitScoreByTitle[at] || 0) + Number(candidateWeightedTasteScoreByTitle[at] || 0) - Number(candidateDislikePenaltyByTitle[at] || 0);
+        const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0);
+        return bFit - aFit;
+      })
+      .slice(0, 3 - finalOutputItems.length)
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (rescueTopUp.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...rescueTopUp];
+      returnedItemsBuiltFrom = returnedItemsBuiltFrom === "positive_fit_rescue"
+        ? "positive_fit_rescue"
+        : "positive_fit_rescue_top_up";
+      finalReturnSourceUsed = "positive_fit_rescue_top_up";
     }
   }
   finalOutputItems = finalOutputItems.filter((item: any) => canReturnTitle(String(item?.doc?.title || item?.title || "").trim(), item?.doc || item));
