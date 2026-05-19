@@ -21,6 +21,9 @@ const PROTECTED_GENERIC_TOKENS = new Set([
   "teen", "young", "kids", "adult", "graphic novel", "comic", "thriller", "fantasy", "dystopian", "horror", "mystery", "suspense", "adventure",
 ]);
 const BLOCKED_SEMANTIC_TO_FRANCHISE_TOKENS = new Set(["teen", "young", "dark", "justice", "adventure", "fantasy"]);
+const CURATED_TEEN_GRAPHIC_NOVEL_ROOTS = new Set([
+  "paper-girls","saga","runaways","ms-marvel","nimona","lumberjanes","on-a-sunbeam","descender","black-science","the-wicked-the-divine","locke-key","something-is-killing-the-children","adventure-time","amulet","bone","blue-flag","a-silent-voice","planetes",
+]);
 const GRAPHIC_NOVEL_SEEDS: Record<string, string[]> = {
   superhero: ["Ms. Marvel", "Miles Morales", "Runaways", "Young Avengers", "Spider-Man", "Batman", "Batgirl"],
   horror: ["Something is Killing the Children", "Locke & Key", "Hellboy", "The Sandman", "Gideon Falls", "Nailbiter"],
@@ -404,22 +407,27 @@ function buildSessionFitComicVineQueries(tagCounts: TagCounts | undefined, clean
     const normalized = stripDanglingQuotes(String(q || "").trim().toLowerCase());
     if (normalized && !queries.includes(normalized)) queries.push(normalized);
   };
-  if (cleanedSeed) add(`${cleanedSeed} graphic novel`);
-  add("teen graphic novel");
+  const narrativeArchetypes = [
+    "found family fantasy graphic novel",
+    "adventure mystery coming-of-age graphic novel",
+    "emotionally warm fantasy quest comic",
+    "identity and friendship graphic novel",
+  ];
+  if (cleanedSeed && !/\b(romance|historical|bone|amulet|science|fantasy|mystery)\b/.test(cleanedSeed)) add(`${cleanedSeed} narrative graphic novel`);
+  for (const archetype of narrativeArchetypes) add(archetype);
   if (hasFacet(tagCounts, /thriller|suspense|mystery|crime|detective|psychological/)) {
-    add("teen thriller graphic novel");
-    add("psychological graphic novel");
-    add("mystery thriller comic");
+    add("high-stakes mystery team graphic novel");
+    add("psychological coming-of-age mystery comic");
   }
   if (hasFacet(tagCounts, /dystopian|future|science fiction|sci-fi|survival|rebellion/)) {
-    add("dystopian graphic novel");
-    add("science fiction graphic novel");
+    add("dystopian survival identity graphic novel");
+    add("speculative future rebellion graphic novel");
   }
   if (hasFacet(tagCounts, /dark|horror|spooky|paranormal|supernatural/)) {
-    add("dark fantasy graphic novel");
-    add("supernatural thriller comic");
+    add("dark supernatural coming-of-age graphic novel");
+    add("haunted mystery friendship comic");
   }
-  if (hasFacet(tagCounts, /fantasy|adventure|epic/)) add("fantasy adventure graphic novel");
+  if (hasFacet(tagCounts, /fantasy|adventure|epic/)) add("fantasy quest with friendship dynamics graphic novel");
   return queries.slice(0, 10);
 }
 
@@ -798,8 +806,38 @@ function inferAnchorFamily(query: string): string {
   if (/locke.*key/.test(q)) return "supernatural_family_mystery";
   return "graphic_novel";
 }
+function toRootSlug(value: string): string {
+  return normalizeText(String(value || "")).replace(/&/g, " and ").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+function isLexicalArtifactOnly(issue: any, doc: RecommendationDoc, query: string): boolean {
+  const title = normalizeText(String(doc?.title || ""));
+  const volume = normalizeText(String(issue?.volume?.name || ""));
+  const q = normalizeText(query);
+  const weakTokenOnly = Boolean(title) && (title.includes(q) || q.includes(title) || volume.includes(q));
+  const hasMeaningfulEvidence = String(doc?.description || doc?.subtitle || "").trim().length >= 60;
+  const collectionOnly = /\b(starter|collection|collected edition|collected|omnibus|deluxe|compendium)\b/.test(`${title} ${volume}`);
+  return weakTokenOnly && collectionOnly && !hasMeaningfulEvidence;
+}
+function hasMeaningfulNarrativeEvidence(issue: any, doc: RecommendationDoc, query: string): boolean {
+  const text = normalizeText(`${doc?.title || ""} ${doc?.subtitle || ""} ${doc?.description || ""} ${(Array.isArray(doc?.subject) ? doc.subject.join(" ") : "")}`);
+  const q = normalizeText(query);
+  const semanticSupport = /\b(identity|friendship|found family|coming of age|quest|survival|mystery|rebellion|team|grief|community)\b/.test(text);
+  const themeOverlap = ["identity","friendship","found family","coming of age","quest","mystery","survival"].some((t) => text.includes(t) && q.includes(t));
+  const likedSignalOverlap = ["identity","friendship","found family","coming of age","adventure","mystery","fantasy"].reduce((n, t) => n + (text.includes(t) ? 1 : 0), 0);
+  const curatedOverlayMatch = [...CURATED_TEEN_GRAPHIC_NOVEL_ROOTS].some((root) => toRootSlug(String(doc?.title || "")).includes(root));
+  const narrativeEmbeddingSimilarity = semanticSupport && themeOverlap ? 0.8 : semanticSupport ? 0.6 : 0.2;
+  const threshold = 0.65;
+  return semanticSupport || themeOverlap || likedSignalOverlap >= 1 || curatedOverlayMatch || narrativeEmbeddingSimilarity >= threshold;
+}
 
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
+  query = String(query || "")
+    .replace(/\bgraphic graphic novel\b/gi, "graphic novel")
+    .replace(/\bgraphic graphic\b/gi, "graphic")
+    .replace(/\bcomic comic\b/gi, "comic")
+    .replace(/\bDie character-focused graphic\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -869,6 +907,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       const hasCollectionishTitle = /\b(volume|vol\.|book|collection|collected|tpb|ogn|graphic novel|omnibus|deluxe)\b/i.test(String(doc?.title || ""));
       const collectionPass = isLikelyGraphicNovelCollection(issue, doc) || (hasComicVineIdentity && (hasVolumeIdentity || hasCollectionishTitle));
       if (!collectionPass) { countReject("single_issue_filtered"); stageCounts.comicVineFinalEmptyDropCount += 1; pushRejectedSample("single_issue_filtered"); continue; }
+      if (isLexicalArtifactOnly(issue, doc, query)) { countReject("lexical_artifact_only_evidence"); stageCounts.comicVineContentEmptyDropCount += 1; pushRejectedSample("lexical_artifact_only_evidence"); continue; }
+      if (!hasMeaningfulNarrativeEvidence(issue, doc, query)) { countReject("no_meaningful_narrative_evidence"); stageCounts.comicVineContentEmptyDropCount += 1; pushRejectedSample("no_meaningful_narrative_evidence"); continue; }
       stageCounts.comicVinePostNormalizationCount += 1;
       if (topTitles.length < 5) topTitles.push(String(doc.title));
       const normalizedTitle = normalizeText(doc.title);
@@ -1371,6 +1411,18 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const totalContentAcrossQueries = Object.values(comicVineContentAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
   const totalFinalAcrossQueries = Object.values(comicVineFinalAcceptedCountByQuery).reduce((acc, n) => acc + Number(n || 0), 0);
   const highRawLowCandidatePipelineFailure = totalRawAcrossQueries >= 60 && queryDerivedCountBeforeTopUp <= 3;
+  const isTeenComicVineOnly = comicVineOnlyMode && (String(deckKey || "").toLowerCase().includes("teen") || String(domainMode || "").toLowerCase().includes("teen"));
+  const targetMin = Math.min(10, Math.max(6, finalLimit));
+  const signalText = normalizeText(Object.keys(input.tagCounts || {}).filter((k) => Number((input.tagCounts as any)?.[k] || 0) > 0).join(" "));
+  const dislikedText = normalizeText(Object.keys(input.tagCounts || {}).filter((k) => Number((input.tagCounts as any)?.[k] || 0) < 0).join(" "));
+  const profileFitScore = (doc: RecommendationDoc): number => {
+    const root = toRootSlug(String(doc?.title || ""));
+    if (![...CURATED_TEEN_GRAPHIC_NOVEL_ROOTS].some((r) => root.includes(r) || r.includes(root))) return -1;
+    const evidence = normalizeText(`${doc?.title || ""} ${(Array.isArray(doc?.subject) ? doc.subject.join(" ") : "")}`);
+    const liked = ["friendship", "identity", "coming of age", "family", "adventure", "mystery"].reduce((n, token) => n + (signalText.includes(token) && evidence.includes(token) ? 1 : 0), 0);
+    const disliked = ["gore", "erotica", "extreme horror"].reduce((n, token) => n + (dislikedText.includes(token) && evidence.includes(token) ? 1 : 0), 0);
+    return liked * 2 - disliked * 3;
+  };
 
   if (!highRawLowCandidatePipelineFailure && docs.length < 10) {
     const needed = 10 - docs.length;
@@ -1391,6 +1443,21 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
           fallbackEmergencyFill: true,
           fallbackInjectedBecause: "insufficient_query_derived_results",
         },
+      } as RecommendationDoc);
+    }
+  }
+  if (isTeenComicVineOnly && docs.length < targetMin) {
+    const seenTitles = new Set(docs.map((d) => normalizeText(d.title)));
+    const curated = buildCuratedFallbackDocs(input.tagCounts, 40).map((doc) => ({ doc, fit: profileFitScore(doc) })).filter((row) => row.fit >= 0).sort((a, b) => b.fit - a.fit);
+    for (const row of curated) {
+      if (docs.length >= targetMin) break;
+      const k = normalizeText(row.doc.title);
+      if (seenTitles.has(k)) continue;
+      seenTitles.add(k);
+      docs.push({
+        ...row.doc,
+        source: "comicvine_curated_overlay" as any,
+        diagnostics: { ...((row.doc as any).diagnostics || {}), curatedTeenOverlay: true, curatedTeenOverlayFit: row.fit },
       } as RecommendationDoc);
     }
   }
