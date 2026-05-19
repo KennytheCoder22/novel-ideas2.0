@@ -8635,7 +8635,7 @@ const normalizedCandidatesRaw = [
         parentRootSource === "title_fallback" &&
         (themeOverlap || semanticSupport || curatedProfileFitScore > 0);
       const titleFallbackCanonical = parentRootSource === "title_fallback" && positiveFit >= 4.75 && (semanticSupport || themeOverlap || provenanceConfidence);
-      const blockedWeakLateRoots = new Set(["graphic-fantasy", "fantasy", "coming-of-age", "history-of-science-fiction"]);
+      const blockedWeakLateRoots = new Set(["graphic-fantasy", "fantasy", "coming-of-age", "history-of-science-fiction", "mystery-science-theater", "journey-into-mystery"]);
       const meaningfulTasteOverlap =
         Number((finalAcceptedTasteEvidenceByTitle[title] || []).find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0) >= 1 ||
         (candidateMatchedLikedSignalsByTitle[title] || []).length > 0;
@@ -8683,8 +8683,35 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = "late_teen_comicvine_underfill_fill";
     }
   }
+  if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && finalOutputItems.length === 0) {
+    const permanentlyBlockedLiteralRoots = new Set(["coming-of-age", "graphic-fantasy", "mystery-science-theater", "journey-into-mystery", "fantasy", "history-of-science-fiction"]);
+    const emergencyBestClean = dedupeDocs([...(finalRenderDocs || []), ...(swipeRankedCandidateList || [])])
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (permanentlyBlockedLiteralRoots.has(root) && !isCuratedTeenGraphicNovelRoot(root)) return false;
+        if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
+        if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
+        if (!passesSharedReturnArtifactScrub(doc)) return false;
+        if (terminalRejectReasonByTitle[normalizeText(title)]) return false;
+        return true;
+      })
+      .slice(0, Math.max(1, Math.min(3, finalLimit)))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (emergencyBestClean.length > 0) {
+      finalOutputItems = emergencyBestClean;
+      returnedItemsBuiltFrom = "teen_comicvine_emergency_best_clean";
+      finalReturnSourceUsed = "teen_comicvine_emergency_best_clean";
+    }
+  }
   finalOutputItems = finalOutputItems.filter((item: any) => canReturnTitle(String(item?.doc?.title || item?.title || "").trim(), item?.doc || item));
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
+  if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
+    returnedItemsBuiltFrom = suppressTopRecommendations
+      ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
+      : "none";
+  }
   countContractSatisfied = finalOutputItems.length >= Math.max(4, Math.min(6, finalLimit));
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
