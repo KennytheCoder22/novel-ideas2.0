@@ -7302,6 +7302,7 @@ const normalizedCandidatesRaw = [
     !sourceEnabled.openLibrary &&
     !sourceEnabled.localLibrary &&
     !includeKitsu;
+  const teenComicVineOnlySafeUnderfillFill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
   const builtFromQuery = comicVineOnlyMode
     ? String(builtFromQueryRaw)
         .replace(/\bpsychological suspense novel\b/gi, "psychological suspense graphic novel")
@@ -7837,7 +7838,6 @@ const normalizedCandidatesRaw = [
     return true;
   };
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && acceptedTitlesAfterScrub.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
-    const teenComicVineOnlySafeUnderfillFill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
     if (teenComicVineOnlySafeUnderfillFill) {
       const rootSeen = new Set<string>();
       const safeUnderfill = teenPostPassItems
