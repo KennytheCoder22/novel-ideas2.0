@@ -6757,10 +6757,17 @@ const normalizedCandidatesRaw = [
     if (!key) return;
     if (!terminalRejectReasonByTitle[key]) terminalRejectReasonByTitle[key] = reason;
   };
+  const teenMaturityHardBlockRe = /\b(explicit sexual|sexually explicit|pornographic|porn|erotica|adult only|adults only|18\+|nc-17|x-rated|rape|sexual assault|incest|gore porn|extreme gore)\b/i;
   const finalRenderCandidateTitlesBeforeGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   preSourceSpecificGateTitles.push(...finalRenderCandidateTitlesBeforeGate);
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
+    const maturityText = `${title} ${String(doc?.description || "")} ${String(doc?.rawDoc?.description || "")}`;
+    if (isTeenDeckKey(input.deckKey) && teenMaturityHardBlockRe.test(maturityText)) {
+      registerFinalEligibilityReject("age_maturity_blocked", title);
+      markTerminalReject(title, "age_maturity_blocked");
+      return false;
+    }
     const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
     const isComicVineCandidate = docSource.includes("comicvine");
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
@@ -6860,7 +6867,7 @@ const normalizedCandidatesRaw = [
         markSourceSpecificGate(title, "comicvine_soft_meaningful_signals_bypass");
       } else {
       meaningfulSignalsGateRejectedTitles.push(title);
-      registerFinalEligibilityReject("meaningful_signals_required", title);
+      registerFinalEligibilityReject("low_recommendation_confidence", title);
       return false;
       }
     }
@@ -6915,7 +6922,7 @@ const normalizedCandidatesRaw = [
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
       registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
     const passesNarrativeConfidenceGate = narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3;
-    if (!passesNarrativeConfidenceGate) { registerFinalEligibilityReject("narrative_confidence_too_low", title); return false; }
+    if (!passesNarrativeConfidenceGate) { registerFinalEligibilityReject("low_recommendation_confidence", title); return false; }
     const oneStrongTasteSignalPlusNarrative = weightedTasteScore >= 2.5 && narrativeFictionConfidence >= 2 && !genericArtifactRe.test(normalizeText(title));
     const twoMeaningfulSignals = meaningfulSignalCount >= 2;
     const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative;
