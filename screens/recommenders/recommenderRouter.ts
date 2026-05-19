@@ -6773,16 +6773,33 @@ const normalizedCandidatesRaw = [
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
     const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
+    const isTeenComicVineOnly =
+      isTeenDeckKey(input.deckKey) &&
+      includeComicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu;
     const root = parentFranchiseRootForDoc(doc);
     const hasParent = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName || doc?.diagnostics?.parentVolumeName);
     const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
     if (!sourceId) { registerFinalEligibilityReject("missing_source_id", title); return false; }
     if (!queryText) { registerFinalEligibilityReject("missing_query_text", title); return false; }
+    const structuralFragment = Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0;
+    const queryTermOnlyEvidence = Boolean(queryTermOnlyEvidenceByTitle[title]);
+    const rawScoreForGate = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    const teenCuratedTitleFallbackAllow =
+      isTeenComicVineOnly &&
+      parentRootSourceByTitle[title] === "title_fallback" &&
+      isCuratedTeenGraphicNovelRoot(root) &&
+      rawScoreForGate >= 0 &&
+      !queryTermOnlyEvidence &&
+      !structuralFragment;
     if (!hasParent && !titleRootMatch) {
       const hasStrongComicVineSemanticSupport =
         isComicVineCandidate &&
         (Number(semanticEvidenceCountByTitle[title] || 0) >= 2 || Number(positiveFitScoreByTitle[title] || 0) >= 5);
-      if (!hasStrongComicVineSemanticSupport) {
+      if (!hasStrongComicVineSemanticSupport && !teenCuratedTitleFallbackAllow) {
         registerFinalEligibilityReject("missing_parent_or_title_root_match", title); return false;
       }
       markSourceSpecificGate(title, "comicvine_soft_parent_root_match_bypass");
@@ -6846,7 +6863,6 @@ const normalizedCandidatesRaw = [
         return false;
       }
     }
-    const queryTermOnlyEvidence = Boolean(queryTermOnlyEvidenceByTitle[title]);
     const titleOnlyTasteSignals = titleOnlyTasteSignalByTitle[title] || [];
     const weakAnthologyRootTitle = /\b(house of mystery|showcase presents|mystery men|mystery club)\b/i.test(title);
     const likedSignalsRaw = (((input as any)?.likedTagCounts || {}) as Record<string, number>);
@@ -6866,9 +6882,12 @@ const normalizedCandidatesRaw = [
       if (softPassComicVine) {
         markSourceSpecificGate(title, "comicvine_soft_meaningful_signals_bypass");
       } else {
-      meaningfulSignalsGateRejectedTitles.push(title);
-      registerFinalEligibilityReject("low_recommendation_confidence", title);
-      return false;
+      if (!teenCuratedTitleFallbackAllow) {
+        meaningfulSignalsGateRejectedTitles.push(title);
+        registerFinalEligibilityReject("low_recommendation_confidence", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "curated_title_fallback_low_metadata_ok");
       }
     }
     if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
@@ -6880,7 +6899,6 @@ const normalizedCandidatesRaw = [
     const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
     const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
     const isClearlyMalformed = /^(.+:\s*)?(a\s+graphic novel|the\s+graphic novel|graphic novel)$/i.test(title);
-    const structuralFragment = Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0;
     const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
     const laneAndTasteSignal = laneSignal && weightedTasteScore > 0;
     const recommendableEditionRe = /\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i;
@@ -6922,7 +6940,7 @@ const normalizedCandidatesRaw = [
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
       registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
     const passesNarrativeConfidenceGate = narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3;
-    if (!passesNarrativeConfidenceGate) { registerFinalEligibilityReject("low_recommendation_confidence", title); return false; }
+    if (!passesNarrativeConfidenceGate && !teenCuratedTitleFallbackAllow) { registerFinalEligibilityReject("low_recommendation_confidence", title); return false; }
     const oneStrongTasteSignalPlusNarrative = weightedTasteScore >= 2.5 && narrativeFictionConfidence >= 2 && !genericArtifactRe.test(normalizeText(title));
     const twoMeaningfulSignals = meaningfulSignalCount >= 2;
     const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative;
@@ -6954,7 +6972,8 @@ const normalizedCandidatesRaw = [
         nearMissSemanticEvidenceReasons[title] = rejectReason;
         fallbackTierRejectedReasonsByTitle[title] = rejectReason;
         sourceSpecificRejectReasonByTitle[title] = `semantic_evidence_count_gate:${rejectReason}`;
-        registerFinalEligibilityReject("insufficient_semantic_evidence_count", title); return false;
+        if (!teenCuratedTitleFallbackAllow) { registerFinalEligibilityReject("insufficient_semantic_evidence_count", title); return false; }
+        markSourceSpecificGate(title, "curated_title_fallback_low_metadata_ok");
       }
     }
     if (!passesTasteThreshold) {
@@ -7532,8 +7551,21 @@ const normalizedCandidatesRaw = [
     const evidenceRows = acceptedEvidenceMap[title] || [];
     const meaningfulSignals = Number((evidenceRows.find((r) => r.startsWith("meaningfulSignals:")) || "meaningfulSignals:0").split(":")[1] || 0);
     const narrative = Number((evidenceRows.find((r) => r.startsWith("narrativeFictionConfidence:")) || "narrativeFictionConfidence:0").split(":")[1] || 0);
+    const inferredRoot = rootFromSeed(String(title || ""));
+    const parentRootSource = String(parentRootSourceByTitle[title] || "");
+    const teenCuratedTitleFallbackAllow =
+      isTeenDeckKey(input.deckKey) &&
+      includeComicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu &&
+      parentRootSource === "title_fallback" &&
+      (isCuratedTeenGraphicNovelRoot(inferredRoot) || Boolean(curatedSeedProfileMatch[title])) &&
+      Number(candidateWeightedTasteScoreByTitle[title] || 0) >= 0;
     if (fallbackAcceptedSet.has(normalizeText(title))) return true;
     if (acceptedAfterTerminalSet.has(normalizeText(title))) return true;
+    if (teenCuratedTitleFallbackAllow) return true;
     return weighted >= 2.5 || meaningfulSignals >= 2 || (weighted >= 2.5 && narrative >= 2);
   };
   const preEvidenceFilteredTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
