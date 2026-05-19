@@ -7187,9 +7187,33 @@ const normalizedCandidatesRaw = [
     .map((doc: any) => String(doc?.title || "").trim())
     .filter(Boolean);
   for (const title of negativeScoreRenderBlockedTitles) markTerminalReject(title, "negative_score_render_blocked");
-  finalRenderDocs = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0);
+  const nonNegativeFinalRenderDocs = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0);
+  finalRenderDocs = nonNegativeFinalRenderDocs;
+  finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
   const finalUnderfillInsteadOfArtifactFallback = includeComicVine && finalRenderDocs.length < 5;
-  if (finalUnderfillInsteadOfArtifactFallback) finalRenderDocs = [];
+  if (finalUnderfillInsteadOfArtifactFallback && finalRenderDocs.length === 0) {
+    const cleanCuratedFallbackDocs = teenPostPassInputDocs.filter((doc: any) => {
+      const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
+      if (!title) return false;
+      const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+      if (score < 0) return false;
+      const root = parentFranchiseRootForDoc(doc);
+      const parentRootSource = String(parentRootSourceByTitle[title] || "");
+      const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+      const themeOverlapScore = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0);
+      const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
+      const curatedTitleFallbackProtected =
+        (isTeenDeckKey(input.deckKey) && includeComicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !includeKitsu) &&
+        isCuratedTeenGraphicNovelRoot(root) &&
+        parentRootSource === "title_fallback" &&
+        (semanticEvidenceCount > 0 || themeOverlapScore > 0 || curatedProfileFitScore > 0);
+      return Boolean(curatedSeedProfileMatch[title] || curatedTitleFallbackProtected || Number(positiveFitScoreByTitle[title] || 0) >= 6);
+    });
+    if (cleanCuratedFallbackDocs.length > 0) {
+      finalRenderDocs = dedupeDocs(cleanCuratedFallbackDocs).slice(0, Math.max(1, Math.min(finalLimit, 5)));
+      finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+    }
+  }
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
