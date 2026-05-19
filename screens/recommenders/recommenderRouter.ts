@@ -6936,7 +6936,18 @@ const normalizedCandidatesRaw = [
       registerFinalEligibilityReject("weak_anthology_root_without_strong_semantic_support", title);
       return false;
     }
-    if ((isClearlyMalformed || Number(doc?.score ?? 0) <= 0) && !(strongTasteFit && laneAndTasteSignal && !isClearlyMalformed)) {
+    const comicVinePositiveFitHighRescueAllow =
+      isTeenDeckKey(input.deckKey) &&
+      includeComicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu &&
+      isComicVineCandidate &&
+      !isClearlyMalformed &&
+      Number(positiveFitScoreByTitle[title] || 0) >= 5 &&
+      Number(doc?.score ?? 0) > 0;
+    if ((isClearlyMalformed || Number(doc?.score ?? 0) <= 0) && !(strongTasteFit && laneAndTasteSignal && !isClearlyMalformed) && !comicVinePositiveFitHighRescueAllow) {
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
       registerFinalEligibilityReject("generic_or_zero_score_filler", title); return false; }
     const passesNarrativeConfidenceGate = narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3;
@@ -7469,7 +7480,6 @@ const normalizedCandidatesRaw = [
     if (!title) return false;
     if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
     if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
-    if (!canReturnTitle(title, doc)) return false;
     if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
     if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
     const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
@@ -7756,6 +7766,24 @@ const normalizedCandidatesRaw = [
   }
   function passesSharedNeverReturnTitleScrub(title: string, doc?: any) {
     return canReturnTitle(title, doc);
+  }
+  if (teenComicVineOnlyLateUnderfill && scoredUniverseFailure && finalOutputItems.length === 0 && teenComicVinePositiveFitRescuePool.length > 0) {
+    const positiveFitRescue = teenComicVinePositiveFitRescuePool
+      .filter((doc: any) => passesSharedReturnArtifactScrub(doc))
+      .sort((a: any, b: any) => {
+        const at = String(a?.title || "");
+        const bt = String(b?.title || "");
+        const aFit = Number(positiveFitScoreByTitle[at] || 0) + Number(candidateWeightedTasteScoreByTitle[at] || 0) - Number(candidateDislikePenaltyByTitle[at] || 0);
+        const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0);
+        return bFit - aFit;
+      })
+      .slice(0, Math.max(3, Math.min(5, finalLimit)))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (positiveFitRescue.length > 0) {
+      finalOutputItems = positiveFitRescue;
+      returnedItemsBuiltFrom = "positive_fit_rescue";
+      finalReturnSourceUsed = "positive_fit_rescue";
+    }
   }
   const acceptedAfterTerminalSetForReason = new Set(finalEligibilityAcceptedTitlesAfterTerminal.map((t) => normalizeText(t)));
   for (const doc of finalRenderDocs) {
