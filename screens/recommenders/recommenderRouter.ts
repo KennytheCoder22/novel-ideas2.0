@@ -8858,6 +8858,36 @@ const normalizedCandidatesRaw = [
   }
   finalOutputItems = finalOutputItems.filter((item: any) => canReturnTitle(String(item?.doc?.title || item?.title || "").trim(), item?.doc || item));
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
+  if (teenComicVineOnlyLateUnderfill && finalOutputItems.length < 3) {
+    const byTitle = new Map<string, any>();
+    for (const doc of teenComicVinePositiveFitRescuePool) {
+      const title = String(doc?.title || "").trim();
+      if (!title) continue;
+      const nt = normalizeText(title);
+      if (!byTitle.has(nt)) byTitle.set(nt, doc);
+    }
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const toAppend: any[] = [];
+    for (const title of positiveFitRescueEligibleTitles) {
+      if (finalOutputItems.length + toAppend.length >= 3) break;
+      const nt = normalizeText(title);
+      if (!nt || seen.has(nt)) continue;
+      const doc = byTitle.get(nt);
+      if (!doc) continue;
+      if (!passesPositiveFitRescueSafety(doc)) continue;
+      toAppend.push({ kind: "open_library", doc });
+      seen.add(nt);
+    }
+    if (toAppend.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...toAppend];
+      positiveFitRescueTopUpApplied = true;
+      returnedItemsBuiltFrom = returnedItemsBuiltFrom === "positive_fit_rescue"
+        ? "positive_fit_rescue"
+        : "positive_fit_rescue_top_up";
+      finalReturnSourceUsed = "positive_fit_rescue_top_up";
+      positiveFitRescueReturnedTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+    }
+  }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
     returnedItemsBuiltFrom = suppressTopRecommendations
       ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")

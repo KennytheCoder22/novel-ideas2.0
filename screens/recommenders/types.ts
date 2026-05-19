@@ -158,6 +158,11 @@ export type RecommendationResult = {
   entitySeedTopUpRejectedReasons?: Record<string, number>;
   entitySeedTopUpRejectedTitlesByReason?: Record<string, string[]>;
   postTopUpFinalItemsLength?: number;
+  positiveFitRescuePoolLength?: number;
+  positiveFitRescueEligibleTitles?: string[];
+  positiveFitRescueRejectedReasons?: Record<string, string>;
+  positiveFitRescueTopUpApplied?: boolean;
+  positiveFitRescueReturnedTitles?: string[];
   returnedItemsBuiltFrom?: string;
   recoveryTriggered?: boolean;
   recoveryInputPoolLength?: number;
