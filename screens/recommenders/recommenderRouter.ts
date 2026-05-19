@@ -3225,6 +3225,14 @@ export async function getRecommendations(
       .trim())
     .map((q) => q.replace(/\b(comic series)\s+\1\b/gi, "$1").replace(/\b(collected edition)\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim())
     .filter((q) => !/\b(science comic dystopian comic series|romance coming of age comic series|[a-z]+\s+graphic comic)\b/i.test(normalizeText(q)))
+    .map((q) => String(q || "")
+      .replace(/\bgraphic graphic novel\b/gi, "graphic novel")
+      .replace(/\bgraphic graphic\b/gi, "graphic")
+      .replace(/\bcomic comic\b/gi, "comic")
+      .replace(/\bDie character-focused graphic\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter(Boolean)
     .slice(0, 10);
   if (dislikeOnlySession && generatedComicVineQueriesFromTaste.length === 0) {
     generatedComicVineQueriesFromTaste = [
@@ -6765,25 +6773,33 @@ const normalizedCandidatesRaw = [
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+    const parentRootSource = String(parentRootSourceByTitle[title] || "");
+    const themeOverlapScore = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0);
+    const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
     const franchiseAffinityRoots = new Set(["saga", "runaways", "nimona", "the-sandman", "locke-key", "paper-girls", "monstress", "lumberjanes"]);
     const semanticFranchiseAffinity = franchiseAffinityRoots.has(root);
+    const curatedTitleFallbackProtected =
+      teenComicVineOnlySafeUnderfillFill &&
+      curatedTeenGraphicNovelRoots.has(root) &&
+      parentRootSource === "title_fallback" &&
+      (semanticEvidenceCount > 0 || themeOverlapScore > 0 || curatedProfileFitScore > 0);
     if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
-      if (!curatedSeedProfileMatch[title]) {
+      if (!curatedSeedProfileMatch[title] && !curatedTitleFallbackProtected) {
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
-      if (semanticEvidenceCount <= 0 && !semanticFranchiseAffinity) {
+      if (semanticEvidenceCount <= 0 && !semanticFranchiseAffinity && !curatedTitleFallbackProtected) {
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
     }
-    if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title] && !semanticFranchiseAffinity) {
+    if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title] && !semanticFranchiseAffinity && !curatedTitleFallbackProtected) {
       registerFinalEligibilityReject("fallback_no_taste_match", title);
       return false;
     }
     if (isComicVineFallbackCandidate && semanticFranchiseAffinity) {
       const fallbackFitScore = Number(positiveFitScoreByTitle[title] || 0);
-      if (semanticEvidenceCount <= 0 && fallbackFitScore < 5) {
+      if (semanticEvidenceCount <= 0 && fallbackFitScore < 5 && !curatedTitleFallbackProtected) {
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
@@ -8206,6 +8222,27 @@ const normalizedCandidatesRaw = [
       finalOutputItems = recoveredFromTeenPostPass;
       returnedItemsBuiltFrom = "teen_postpass_handoff_recovery";
       finalReturnSourceUsed = "teen_postpass_handoff_recovery";
+    }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenComicVineOnlyLateUnderfill) {
+    const curatedZeroResultOverride = swipeRankedCandidateList
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        if (terminalRejectReasonByTitle[normalizeText(title)]) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (!curatedTeenGraphicNovelRoots.has(root)) return false;
+        const semanticSupport = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
+        const themeOverlap = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0);
+        const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
+        return semanticSupport || themeOverlap > 0 || curatedProfileFitScore > 0;
+      })
+      .slice(0, 5)
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (curatedZeroResultOverride.length > 0) {
+      finalOutputItems = curatedZeroResultOverride;
+      returnedItemsBuiltFrom = "curated_teen_comicvine_zero_result_override";
+      finalReturnSourceUsed = "curated_teen_comicvine_zero_result_override";
     }
   }
   if (!suppressTopRecommendations && acceptedTitlesAfterScrub.length > 0) {

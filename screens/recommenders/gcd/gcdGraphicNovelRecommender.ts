@@ -831,6 +831,13 @@ function hasMeaningfulNarrativeEvidence(issue: any, doc: RecommendationDoc, quer
 }
 
 async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: number, fetchLimit: number, docs: RecommendationDoc[], seen: Set<string>) {
+  query = String(query || "")
+    .replace(/\bgraphic graphic novel\b/gi, "graphic novel")
+    .replace(/\bgraphic graphic\b/gi, "graphic")
+    .replace(/\bcomic comic\b/gi, "comic")
+    .replace(/\bDie character-focused graphic\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
