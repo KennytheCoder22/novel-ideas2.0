@@ -7096,7 +7096,7 @@ const normalizedCandidatesRaw = [
     .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
     .map((row) => row.doc)
     .slice(0, 10);
-  const finalRenderCandidateTitlesAfterGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+  let finalRenderCandidateTitlesAfterGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   const finalCountCappedToTarget = finalRenderDocs.length >= 10;
   const topUpFinalGateRejectedTitles = topUpCandidatesAcceptedTitles.filter((t) => !new Set(finalRenderCandidateTitlesAfterGate.map((x) => normalizeText(x))).has(normalizeText(t)));
   const finalEligibilityAcceptedSetCanonical = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
@@ -7190,6 +7190,7 @@ const normalizedCandidatesRaw = [
   const nonNegativeFinalRenderDocs = finalRenderDocs.filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0);
   finalRenderDocs = nonNegativeFinalRenderDocs;
   finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  finalRenderCandidateTitlesAfterGate = [...finalAcceptedDocsTitles];
   const finalUnderfillInsteadOfArtifactFallback = includeComicVine && finalRenderDocs.length < 5;
   if (finalUnderfillInsteadOfArtifactFallback && finalRenderDocs.length === 0) {
     const cleanCuratedFallbackDocs = teenPostPassInputDocs.filter((doc: any) => {
@@ -7214,6 +7215,12 @@ const normalizedCandidatesRaw = [
       finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
     }
   }
+  finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  finalRenderCandidateTitlesAfterGate = [...finalAcceptedDocsTitles];
+  const negativeBlockedCanonical = new Set(negativeScoreRenderBlockedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
+  finalRenderDocs = finalRenderDocs.filter((doc: any) => !negativeBlockedCanonical.has(normalizeText(String(doc?.title || doc?.rawDoc?.title || ""))));
+  finalAcceptedDocsTitles = finalRenderDocs.map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim()).filter(Boolean);
+  finalRenderCandidateTitlesAfterGate = finalAcceptedDocsTitles.filter((title) => !negativeBlockedCanonical.has(normalizeText(title)));
   const finalItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
   const outputItems = finalItems;
   if (teenPostPassOutputLength > 0 && outputItems.length === 0) {
