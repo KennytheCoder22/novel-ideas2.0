@@ -8682,21 +8682,27 @@ const normalizedCandidatesRaw = [
     }
   }
   if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && finalOutputItems.length === 0) {
-    const queryLiteralSensitiveRoots = new Set(["coming-of-age", "graphic-fantasy", "mystery-science-theater", "journey-into-mystery", "fantasy", "history-of-science-fiction"]);
     const emergencyBestClean = dedupeDocs([...(finalRenderDocs || []), ...(swipeRankedCandidateList || [])])
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title) return false;
-        const root = String(parentFranchiseRootForDoc(doc) || "");
-        const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
-        const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || []).find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
-        const profileStronglySupportsRoot = isCuratedTeenGraphicNovelRoot(root) || semanticEvidence >= 3 || meaningful >= 2;
-        if (queryLiteralSensitiveRoots.has(root) && !profileStronglySupportsRoot && Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
         if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
         if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
         if (!passesSharedReturnArtifactScrub(doc)) return false;
         if (terminalRejectReasonByTitle[normalizeText(title)]) return false;
         return true;
+      })
+      .sort((a: any, b: any) => {
+        const at = String(a?.title || "");
+        const bt = String(b?.title || "");
+        const ar = String(parentFranchiseRootForDoc(a) || "");
+        const br = String(parentFranchiseRootForDoc(b) || "");
+        const literalRoots = new Set(["coming-of-age", "graphic-fantasy", "mystery-science-theater", "journey-into-mystery", "fantasy", "history-of-science-fiction"]);
+        const aPenalty = (Boolean(queryTermOnlyEvidenceByTitle[at]) && literalRoots.has(ar)) ? 3 : 0;
+        const bPenalty = (Boolean(queryTermOnlyEvidenceByTitle[bt]) && literalRoots.has(br)) ? 3 : 0;
+        const aFit = Number(positiveFitScoreByTitle[at] || 0) + Number(candidateWeightedTasteScoreByTitle[at] || 0) - Number(candidateDislikePenaltyByTitle[at] || 0) - aPenalty;
+        const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0) - bPenalty;
+        return bFit - aFit;
       })
       .slice(0, Math.max(1, Math.min(3, finalLimit)))
       .map((doc: any) => ({ kind: "open_library", doc }));
@@ -8717,7 +8723,18 @@ const normalizedCandidatesRaw = [
         if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
         return true;
       })
-      .sort((a: any, b: any) => Number(positiveFitScoreByTitle[String(b?.title || "")] || 0) - Number(positiveFitScoreByTitle[String(a?.title || "")] || 0))
+      .sort((a: any, b: any) => {
+        const at = String(a?.title || "");
+        const bt = String(b?.title || "");
+        const ar = String(parentFranchiseRootForDoc(a) || "");
+        const br = String(parentFranchiseRootForDoc(b) || "");
+        const literalRoots = new Set(["coming-of-age", "graphic-fantasy", "mystery-science-theater", "journey-into-mystery", "fantasy", "history-of-science-fiction"]);
+        const aPenalty = (Boolean(queryTermOnlyEvidenceByTitle[at]) && literalRoots.has(ar)) ? 3 : 0;
+        const bPenalty = (Boolean(queryTermOnlyEvidenceByTitle[bt]) && literalRoots.has(br)) ? 3 : 0;
+        const aFit = Number(positiveFitScoreByTitle[at] || 0) + Number(candidateWeightedTasteScoreByTitle[at] || 0) - Number(candidateDislikePenaltyByTitle[at] || 0) - aPenalty;
+        const bFit = Number(positiveFitScoreByTitle[bt] || 0) + Number(candidateWeightedTasteScoreByTitle[bt] || 0) - Number(candidateDislikePenaltyByTitle[bt] || 0) - bPenalty;
+        return bFit - aFit;
+      })
       .slice(0, Math.max(2, Math.min(4, finalLimit)))
       .map((doc: any) => ({ kind: "open_library", doc }));
     if (failSoftSafeCandidates.length > 0) {
