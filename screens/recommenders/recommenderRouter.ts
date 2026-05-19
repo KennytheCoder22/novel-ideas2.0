@@ -7553,7 +7553,7 @@ const normalizedCandidatesRaw = [
   const finalReturnDropReasonByTitle: Record<string, string> = {};
   const hardLexicalDieArtifactRe = /\b(love[-\s]?or[-\s]?die|kill[-\s]?or[-\s]?die|die[-\s]?die[-\s]?die|villains[-\s]?are[-\s]?destined[-\s]?to[-\s]?die|if[-\s]?my[-\s]?favorite[-\s]?pop[-\s]?idol.*die)\b/i;
   const negativeScoreBlockedSet = new Set(negativeScoreRenderBlockedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
-  const passesSharedReturnArtifactScrub = (doc: any) => {
+  function passesSharedReturnArtifactScrub(doc: any) {
     const title = String(doc?.title || "").trim();
     if (!title) return false;
     const root = String(parentFranchiseRootForDoc(doc) || "");
@@ -7566,7 +7566,7 @@ const normalizedCandidatesRaw = [
     if (/amazing fantasy/i.test(title) && !(root === "spider-man" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
     if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
     return true;
-  };
+  }
   if (!suppressTopRecommendations && singleSourceMode) {
     finalOutputItems = singleSourceItems.map((doc: any) => ({ kind: "open_library", doc }));
     singleSourceDirectReturnTriggered = true;
@@ -7737,13 +7737,13 @@ const normalizedCandidatesRaw = [
     ...weightedSwipeTasteVector.liked.map((s) => String(s?.signal || "")),
   ].map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim().toLowerCase());
   const hasComedyParodyReturnAffinity = likedSignalsForReturnScrub.some((token) => /\b(comedy|humou?r|parody|satire|spoof|riff)\b/.test(token));
-  const isParodyMetaReturnBlocked = (title: string, doc?: any) => {
+  function isParodyMetaReturnBlocked(title: string, doc?: any) {
     if (hasComedyParodyReturnAffinity) return false;
     const root = normalizeText(String(doc ? parentFranchiseRootForDoc(doc) : ""));
     const text = `${title} ${root} ${String(doc?.description || doc?.rawDoc?.description || "")} ${String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "")}`;
     return /\b(mystery science theater 3000|mst3k|rifftrax|riff|parody|spoof)\b/i.test(text);
-  };
-  const canReturnTitle = (title: string, doc?: any) => {
+  }
+  function canReturnTitle(title: string, doc?: any) {
     const key = normalizeText(String(title || ""));
     if (!key) return false;
     if (terminalRejectReasonByTitle[key]) return false;
@@ -7753,8 +7753,10 @@ const normalizedCandidatesRaw = [
     if (finalEligibilityHardNeverReturnTitles.has(key)) return false;
     if (isParodyMetaReturnBlocked(title, doc)) return false;
     return true;
-  };
-  const passesSharedNeverReturnTitleScrub = canReturnTitle;
+  }
+  function passesSharedNeverReturnTitleScrub(title: string, doc?: any) {
+    return canReturnTitle(title, doc);
+  }
   const acceptedAfterTerminalSetForReason = new Set(finalEligibilityAcceptedTitlesAfterTerminal.map((t) => normalizeText(t)));
   for (const doc of finalRenderDocs) {
     const title = String(doc?.title || "").trim();
