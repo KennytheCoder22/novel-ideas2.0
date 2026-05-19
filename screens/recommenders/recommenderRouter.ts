@@ -50,6 +50,12 @@ const MIN_POOL_FOR_NYT_INJECTION = 14;
 const MAX_NYT_ANCHOR_INJECTIONS = 2;
 const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
+const CURATED_TEEN_GRAPHIC_NOVEL_ROOT_SET = new Set([
+  "paper-girls","saga","runaways","ms-marvel","nimona","lumberjanes","on-a-sunbeam","descender","black-science","the-wicked-the-divine","locke-key","something-is-killing-the-children","adventure-time","amulet","bone","blue-flag","a-silent-voice","planetes","sweet-tooth","the-sandman","monstress",
+]);
+function isCuratedTeenGraphicNovelRoot(root: string): boolean {
+  return CURATED_TEEN_GRAPHIC_NOVEL_ROOT_SET.has(String(root || "").trim());
+}
 
 const RECENT_FRESH_HISTORY_LIMIT = 6;
 const recentFreshReturnedTitles: string[][] = [];
@@ -3128,12 +3134,18 @@ export async function getRecommendations(
   const socialMysteryProfile =
     /\b(veronica mars|social|investigation|detective|school mystery)\b/.test(likedSignalsText) ||
     (genres.includes("mystery") && (themes.includes("coming of age") || themes.includes("social")));
+  const energeticEnsembleAdventureProfile =
+    /\b(bleach|one piece|legend of korra|korra|series of unfortunate events|smallville|maze runner)\b/.test(likedSignalsText) ||
+    ((genres.includes("fantasy") || genres.includes("supernatural")) &&
+      (themes.includes("adventure") || themes.includes("identity")) &&
+      (tones.includes("energetic") || tones.includes("playful") || tones.includes("dramatic")));
+  const highSuspenseProfile =
+    (genres.includes("thriller") || genres.includes("mystery")) &&
+    (tones.includes("dark") || tones.includes("tense") || themes.includes("survival"));
   const narrativeSeriesForms = (base: string) => ([
-    `${base} comic series`,
-    `${base} collected edition`,
-    `${base} comic volume 1`,
-    `${base} trade paperback`,
-    `${base} limited series`,
+    `${base} character driven graphic novel`,
+    `${base} story rich graphic novel`,
+    `${base} narrative focused comic`,
   ]);
   const combinedQueries = [
     ...(genres.length >= 2 ? narrativeSeriesForms(`${genres[0]} ${genres[1]}`) : []),
@@ -3144,18 +3156,21 @@ export async function getRecommendations(
     ...(genres.includes("mystery") && genres.includes("thriller") ? narrativeSeriesForms("mystery thriller") : []),
     ...(genres.includes("romance") && themes.includes("coming of age") ? narrativeSeriesForms("romance coming of age") : []),
     ...(genres.includes("fantasy") && themes.includes("mythology") ? narrativeSeriesForms("fantasy mythology") : []),
+    ...(energeticEnsembleAdventureProfile ? [
+      "supernatural ensemble adventure graphic novel",
+      "emotionally intense fantasy conflict graphic novel",
+      "outsider power progression graphic novel",
+      "strange world coming of power graphic novel",
+      "stylized serialized action fantasy comic",
+    ] : []),
   ];
   const semanticRefinementQueries = Array.from(new Set([
-    ...(genres.includes("thriller") || genres.includes("mystery") ? ["psychological suspense comic series", "character driven thriller comic series", "social paranoia thriller comic series"] : []),
-    ...(genres.includes("horror") ? ["psychological horror suspense comic series", "character driven survival horror comic series"] : []),
-    ...(themes.includes("coming of age") && (genres.includes("thriller") || genres.includes("mystery")) ? ["teen conspiracy thriller comic series"] : []),
+    ...(highSuspenseProfile && !energeticEnsembleAdventureProfile ? ["psychological suspense comic series", "character driven thriller comic series", "social paranoia thriller comic series"] : []),
+    ...(genres.includes("horror") && !energeticEnsembleAdventureProfile ? ["psychological horror suspense comic series", "character driven survival horror comic series"] : []),
+    ...(themes.includes("coming of age") && highSuspenseProfile && !energeticEnsembleAdventureProfile ? ["teen conspiracy thriller comic series"] : []),
     ...(themes.includes("survival") && genres.includes("mystery") ? ["mystery survival drama comic series"] : []),
   ]));
-  const broadGraphicQueries = Array.from(new Set([
-    ...genres.map((v) => `${v} graphic novel`),
-    ...tones.map((v) => `${v} graphic novel`),
-    ...themes.map((v) => `${v} graphic novel`),
-  ]));
+  const broadGraphicQueries: string[] = [];
   const curatedSeedRootsUsed: string[] = [];
   const curatedSeedMatchesFound: string[] = [];
   let candidateGenerationMode: "taste_narrative" | "taste_plus_curated" | "broad_only" | "static_fallback" = "static_fallback";
@@ -3204,7 +3219,7 @@ export async function getRecommendations(
   if (socialMysteryProfile) {
     curatedRootsByPattern.push("Gotham Academy", "Paper Girls", "The Fade Out", "Blacksad", "Velvet");
   }
-  const curatedSeedQueries = Array.from(new Set(curatedRootsByPattern.flatMap((root) => [`${root} comic series`, `${root} volume 1`, `${root} collected edition`])));
+  const curatedSeedQueries = Array.from(new Set(curatedRootsByPattern.flatMap((root) => [`${root} character driven graphic novel`, `${root} coming of age graphic novel`])));
   curatedSeedRootsUsed.push(...curatedRootsByPattern);
   let generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...combinedQueries,
@@ -3216,24 +3231,33 @@ export async function getRecommendations(
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
   })))
     .map((q) => q
-      .replace(/\b(novel|fiction)\b/gi, "comic")
+      .replace(/\b(novel|fiction)\b/gi, "graphic novel")
       .replace(/\bcharacter driven\b/gi, "character-focused")
       .replace(/\bcomic\s+comic\b/gi, "comic")
-      .replace(/\bcomic\s+series\s+comic\s+series\b/gi, "comic series")
+      .replace(/\bcomic\s+series\s+comic\s+series\b/gi, "graphic novel")
       .replace(/\b(comic\s+series)\s+\1\b/gi, "$1")
       .replace(/\b(graphic\s+novel)\s+\1\b/gi, "$1")
       .replace(/\bgraphic\s+novel\s+graphic\s+novel\b/gi, "graphic novel")
       .replace(/\s+/g, " ")
       .trim())
     .map((q) => q.replace(/\b(comic series)\s+\1\b/gi, "$1").replace(/\b(collected edition)\s+\1\b/gi, "$1").replace(/\s+/g, " ").trim())
+    .filter((q) => !/\b(science comic dystopian comic series|romance coming of age comic series|[a-z]+\s+graphic comic)\b/i.test(normalizeText(q)))
+    .map((q) => String(q || "")
+      .replace(/\bgraphic graphic novel\b/gi, "graphic novel")
+      .replace(/\bgraphic graphic\b/gi, "graphic")
+      .replace(/\bcomic comic\b/gi, "comic")
+      .replace(/\bDie character-focused graphic\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim())
+    .filter(Boolean)
     .slice(0, 10);
   if (dislikeOnlySession && generatedComicVineQueriesFromTaste.length === 0) {
     generatedComicVineQueriesFromTaste = [
-      "grounded character driven comic series",
-      "literary suspense comic collected edition",
-      "non-fantasy contemporary comic collected edition",
-      "realistic mystery comic series",
-      "slice of life comic collected edition",
+      "character driven suspense graphic novel",
+      "psychological sci fi graphic novel",
+      "teen supernatural mystery comic",
+      "coming of age friendship graphic novel",
+      "character driven horror comic",
     ];
   }
   const staticDefaultQueries = new Set(["something is killing the children", "sweet tooth", "ms. marvel", "psychological suspense graphic novel"]);
@@ -3257,7 +3281,7 @@ export async function getRecommendations(
   let primaryTasteQueryOverrideBlockedReason = "not_evaluated";
   let primaryRungZeroSource = "none";
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0) {
-    const narrativePrimary = generatedComicVineQueriesFromTaste.filter((q) => /\b(comic series|collected edition|volume 1|trade paperback|limited series)\b/i.test(q));
+    const narrativePrimary = generatedComicVineQueriesFromTaste.filter((q) => /\b(character|narrative|story|coming of age|friendship|mystery|supernatural|psychological|graphic novel)\b/i.test(q));
     const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q));
     const primaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
     primaryNarrativeQueryMode = narrativePrimary.length > 0;
@@ -6334,14 +6358,13 @@ const normalizedCandidatesRaw = [
     narrativeExpansionTriggered = true;
     narrativeExpansionReason = viableCandidateCountBeforeFinalSelection < 12 ? "viable_candidates_below_threshold" : "clean_candidates_below_threshold";
     const narrativeSeedQueries = Array.from(new Set([
-      "fantasy adventure comic series",
-      "ya fantasy comic collected edition",
-      "teen horror comic collected edition",
-      "dystopian survival comic series",
-      "superhero mystery comic collected edition",
-      "science fiction adventure comic series",
-      ...generatedComicVineQueriesFromTaste.map((q) => `${q.replace(/\s*graphic novel\s*$/i, "").trim()} comic series`),
-      ...generatedComicVineQueriesFromTaste.map((q) => `${q.replace(/\s*graphic novel\s*$/i, "").trim()} collected edition`),
+      "psychological sci fi graphic novel",
+      "teen supernatural mystery comic",
+      "character driven horror comic",
+      "coming of age friendship graphic novel",
+      "adventure mystery coming of age graphic novel",
+      "emotionally warm fantasy quest comic",
+      ...generatedComicVineQueriesFromTaste,
     ].map((q) => q.replace(/\s+/g, " ").trim()).filter(Boolean))).slice(0, 10);
     narrativeExpansionQueries = narrativeSeedQueries;
     try {
@@ -6767,25 +6790,33 @@ const normalizedCandidatesRaw = [
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+    const parentRootSource = String(parentRootSourceByTitle[title] || "");
+    const themeOverlapScore = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0);
+    const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
     const franchiseAffinityRoots = new Set(["saga", "runaways", "nimona", "the-sandman", "locke-key", "paper-girls", "monstress", "lumberjanes"]);
     const semanticFranchiseAffinity = franchiseAffinityRoots.has(root);
+    const curatedTitleFallbackProtected =
+      (isTeenDeckKey(input.deckKey) && includeComicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !includeKitsu) &&
+      isCuratedTeenGraphicNovelRoot(root) &&
+      parentRootSource === "title_fallback" &&
+      (semanticEvidenceCount > 0 || themeOverlapScore > 0 || curatedProfileFitScore > 0);
     if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
-      if (!curatedSeedProfileMatch[title]) {
+      if (!curatedSeedProfileMatch[title] && !curatedTitleFallbackProtected) {
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
-      if (semanticEvidenceCount <= 0 && !semanticFranchiseAffinity) {
+      if (semanticEvidenceCount <= 0 && !semanticFranchiseAffinity && !curatedTitleFallbackProtected) {
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
     }
-    if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title] && !semanticFranchiseAffinity) {
+    if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title] && !semanticFranchiseAffinity && !curatedTitleFallbackProtected) {
       registerFinalEligibilityReject("fallback_no_taste_match", title);
       return false;
     }
     if (isComicVineFallbackCandidate && semanticFranchiseAffinity) {
       const fallbackFitScore = Number(positiveFitScoreByTitle[title] || 0);
-      if (semanticEvidenceCount <= 0 && fallbackFitScore < 5) {
+      if (semanticEvidenceCount <= 0 && fallbackFitScore < 5 && !curatedTitleFallbackProtected) {
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
@@ -7288,7 +7319,9 @@ const normalizedCandidatesRaw = [
     !sourceEnabled.openLibrary &&
     !sourceEnabled.localLibrary &&
     !includeKitsu;
-  const builtFromQuery = comicVineOnlyMode
+  const teenComicVineOnlySafeUnderfillFill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
+  const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
+    const builtFromQuery = comicVineOnlyMode
     ? String(builtFromQueryRaw)
         .replace(/\bpsychological suspense novel\b/gi, "psychological suspense graphic novel")
         .replace(/\bpsychological thriller novel\b/gi, "psychological thriller graphic novel")
@@ -7823,7 +7856,6 @@ const normalizedCandidatesRaw = [
     return true;
   };
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && acceptedTitlesAfterScrub.length === 0 && (comicVineOnlyMode || fallbackOnlyResult || fallbackHeavyResult)) {
-    const teenComicVineOnlySafeUnderfillFill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
     if (teenComicVineOnlySafeUnderfillFill) {
       const rootSeen = new Set<string>();
       const safeUnderfill = teenPostPassItems
@@ -7988,11 +8020,20 @@ const normalizedCandidatesRaw = [
         const candidateTasteMatchScore = Number(candidateTasteMatchScoreByTitle[title] || 0);
         const candidateTastePenalty = Number(candidateTastePenaltyByTitle[title] || candidateDislikePenaltyByTitle[title] || 0);
         const titleOnlyTasteSignal = (titleOnlyTasteSignalByTitle[title] || []).length > 0;
-        return semanticSupportFound
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        const parentRootSource = String(parentRootSourceByTitle[title] || "");
+        const curatedRoot = Boolean(root) && isCuratedTeenGraphicNovelRoot(root);
+        const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
+        const curatedTitleFallbackAllowance =
+          teenComicVineOnlySafeUnderfillFill &&
+          curatedRoot &&
+          parentRootSource === "title_fallback" &&
+          (Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0) > 0 || semanticSupportFound || curatedProfileFitScore > 0);
+        return (semanticSupportFound
           && positiveFitScore >= 4
-          && candidateTasteMatchScore > 0
+          && (candidateTasteMatchScore > 0 || curatedTitleFallbackAllowance)
           && candidateTastePenalty <= candidateTasteMatchScore + 1
-          && !titleOnlyTasteSignal;
+          && !titleOnlyTasteSignal) || curatedTitleFallbackAllowance;
       })
       .sort((a: any, b: any) => {
         const ta = String(a?.title || "").trim();
@@ -8201,6 +8242,57 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = "teen_postpass_handoff_recovery";
     }
   }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenComicVineOnlyLateUnderfill) {
+    const curatedZeroResultOverride = swipeRankedCandidateList
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        if (terminalRejectReasonByTitle[normalizeText(title)]) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (!isCuratedTeenGraphicNovelRoot(root)) return false;
+        const semanticSupport = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
+        const themeOverlap = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0);
+        const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
+        return semanticSupport || themeOverlap > 0 || curatedProfileFitScore > 0;
+      })
+      .slice(0, 5)
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (curatedZeroResultOverride.length > 0) {
+      finalOutputItems = curatedZeroResultOverride;
+      returnedItemsBuiltFrom = "curated_teen_comicvine_zero_result_override";
+      finalReturnSourceUsed = "curated_teen_comicvine_zero_result_override";
+    }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenComicVineOnlyLateUnderfill && finalEligibleNonNegativeCount > 0) {
+    const seenRoots = new Set<string>();
+    const bestCleanCandidates = swipeRankedCandidateList
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        const titleNorm = normalizeText(title);
+        if (terminalRejectReasonByTitle[titleNorm]) return false;
+        if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+        if (broadArtifactRejectedTitles.includes(title)) return false;
+        if (genericCollectionArtifactRejectedTitles.includes(title) || formatSignalOnlyRejectedTitles.includes(title)) return false;
+        if (/\b(graphic fantasy|a good fantasy|science comics?|mystery science theater 3000|collected edition|trade paperback|hardcover\/trade paperback|coming of age)\b/i.test(title)) return false;
+        const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
+        const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+        const candidateTasteMatchScore = Number(candidateTasteMatchScoreByTitle[title] || 0);
+        const candidateTastePenalty = Number(candidateTastePenaltyByTitle[title] || candidateDislikePenaltyByTitle[title] || 0);
+        if (!(semanticSupportFound && positiveFitScore >= 2.5 && candidateTastePenalty <= candidateTasteMatchScore + 1)) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+        if (seenRoots.has(root)) return false;
+        seenRoots.add(root);
+        return true;
+      })
+      .slice(0, 5)
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (bestCleanCandidates.length > 0) {
+      finalOutputItems = bestCleanCandidates;
+      returnedItemsBuiltFrom = "teen_comicvine_best_clean_underfill";
+      finalReturnSourceUsed = "teen_comicvine_best_clean_underfill";
+    }
+  }
   if (!suppressTopRecommendations && acceptedTitlesAfterScrub.length > 0) {
     const acceptedOrder = acceptedTitlesAfterScrub.map((t) => normalizeText(t)).filter(Boolean);
     const acceptedSet = new Set(acceptedOrder);
@@ -8231,7 +8323,6 @@ const normalizedCandidatesRaw = [
     acceptedPrefixInvariantFailed = acceptedOrder.some((t, idx) => returnedNow[idx] !== t);
   }
   finalOutputItems = finalOutputItems.filter((item: any) => passesSharedReturnArtifactScrub(item?.doc || item));
-  const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
   let lateTeenUnderfillTriggered = false;
   let lateTeenUnderfillVisibleCountBefore = 0;
   let lateTeenUnderfillCandidatesConsidered = 0;
@@ -8397,6 +8488,12 @@ const normalizedCandidatesRaw = [
       const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
       const provenanceConfidence = Number((finalScoreComponentsByTitle[title] || {}).provenanceConfidence || 0) > 0;
       const parentRootSource = String(parentRootSourceByTitle[title] || "");
+      const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFit);
+      const curatedTitleFallbackCanonical =
+        teenComicVineOnlyLateUnderfill &&
+        isCuratedTeenGraphicNovelRoot(root) &&
+        parentRootSource === "title_fallback" &&
+        (themeOverlap || semanticSupport || curatedProfileFitScore > 0);
       const titleFallbackCanonical = parentRootSource === "title_fallback" && positiveFit >= 4.75 && (semanticSupport || themeOverlap || provenanceConfidence);
       const reasons = titleRejectReasons;
       const onlySoftLateRejects = reasons.size > 0 && Array.from(reasons).every((r) => allowedLateRejectReasons.has(r));
@@ -8421,7 +8518,7 @@ const normalizedCandidatesRaw = [
         && !Boolean(queryTermOnlyEvidenceByTitle[title])
         && passesSharedNeverReturnTitleScrub(title)
         && tastePenalty <= (tasteMatch + 1);
-      if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || titleFallbackCanonical || cleanSciFiLateAllowance || (positiveFit >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) {
+      if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || titleFallbackCanonical || curatedTitleFallbackCanonical || cleanSciFiLateAllowance || (positiveFit >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) {
         lateTeenUnderfillRejectedReasons.insufficient_signal = (lateTeenUnderfillRejectedReasons.insufficient_signal || 0) + 1;
         continue;
       }
