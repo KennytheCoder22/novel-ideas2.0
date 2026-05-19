@@ -50,6 +50,12 @@ const MIN_POOL_FOR_NYT_INJECTION = 14;
 const MAX_NYT_ANCHOR_INJECTIONS = 2;
 const NYT_TONE_SIMILARITY_THRESHOLD = 0.34;
 const TARGET_MIN_RESULTS_WHEN_VIABLE = 8;
+const CURATED_TEEN_GRAPHIC_NOVEL_ROOT_SET = new Set([
+  "paper-girls","saga","runaways","ms-marvel","nimona","lumberjanes","on-a-sunbeam","descender","black-science","the-wicked-the-divine","locke-key","something-is-killing-the-children","adventure-time","amulet","bone","blue-flag","a-silent-voice","planetes","sweet-tooth","the-sandman","monstress",
+]);
+function isCuratedTeenGraphicNovelRoot(root: string): boolean {
+  return CURATED_TEEN_GRAPHIC_NOVEL_ROOT_SET.has(String(root || "").trim());
+}
 
 const RECENT_FRESH_HISTORY_LIMIT = 6;
 const recentFreshReturnedTitles: string[][] = [];
@@ -6779,8 +6785,8 @@ const normalizedCandidatesRaw = [
     const franchiseAffinityRoots = new Set(["saga", "runaways", "nimona", "the-sandman", "locke-key", "paper-girls", "monstress", "lumberjanes"]);
     const semanticFranchiseAffinity = franchiseAffinityRoots.has(root);
     const curatedTitleFallbackProtected =
-      teenComicVineOnlySafeUnderfillFill &&
-      curatedTeenGraphicNovelRoots.has(root) &&
+      (isTeenDeckKey(input.deckKey) && includeComicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !includeKitsu) &&
+      isCuratedTeenGraphicNovelRoot(root) &&
       parentRootSource === "title_fallback" &&
       (semanticEvidenceCount > 0 || themeOverlapScore > 0 || curatedProfileFitScore > 0);
     if (isComicVineFallbackCandidate && weightedTasteScore <= 0) {
@@ -7304,10 +7310,7 @@ const normalizedCandidatesRaw = [
     !includeKitsu;
   const teenComicVineOnlySafeUnderfillFill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
   const teenComicVineOnlyLateUnderfill = isTeenDeckKey(input.deckKey) && comicVineOnlyMode;
-  const curatedTeenGraphicNovelRoots = new Set([
-    "paper-girls","saga","runaways","ms-marvel","nimona","lumberjanes","on-a-sunbeam","descender","black-science","the-wicked-the-divine","locke-key","something-is-killing-the-children","adventure-time","amulet","bone","blue-flag","a-silent-voice","planetes","sweet-tooth","the-sandman","monstress",
-  ]);
-  const builtFromQuery = comicVineOnlyMode
+    const builtFromQuery = comicVineOnlyMode
     ? String(builtFromQueryRaw)
         .replace(/\bpsychological suspense novel\b/gi, "psychological suspense graphic novel")
         .replace(/\bpsychological thriller novel\b/gi, "psychological thriller graphic novel")
@@ -8008,7 +8011,7 @@ const normalizedCandidatesRaw = [
         const titleOnlyTasteSignal = (titleOnlyTasteSignalByTitle[title] || []).length > 0;
         const root = String(parentFranchiseRootForDoc(doc) || "");
         const parentRootSource = String(parentRootSourceByTitle[title] || "");
-        const curatedRoot = Boolean(root) && curatedTeenGraphicNovelRoots.has(root);
+        const curatedRoot = Boolean(root) && isCuratedTeenGraphicNovelRoot(root);
         const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
         const curatedTitleFallbackAllowance =
           teenComicVineOnlySafeUnderfillFill &&
@@ -8235,7 +8238,7 @@ const normalizedCandidatesRaw = [
         if (!title) return false;
         if (terminalRejectReasonByTitle[normalizeText(title)]) return false;
         const root = String(parentFranchiseRootForDoc(doc) || "");
-        if (!curatedTeenGraphicNovelRoots.has(root)) return false;
+        if (!isCuratedTeenGraphicNovelRoot(root)) return false;
         const semanticSupport = Boolean(semanticSupportFoundByTitle[title]) || Number(semanticEvidenceCountByTitle[title] || 0) >= 1;
         const themeOverlap = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0);
         const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
@@ -8447,7 +8450,7 @@ const normalizedCandidatesRaw = [
       const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFit);
       const curatedTitleFallbackCanonical =
         teenComicVineOnlyLateUnderfill &&
-        curatedTeenGraphicNovelRoots.has(root) &&
+        isCuratedTeenGraphicNovelRoot(root) &&
         parentRootSource === "title_fallback" &&
         (themeOverlap || semanticSupport || curatedProfileFitScore > 0);
       const titleFallbackCanonical = parentRootSource === "title_fallback" && positiveFit >= 4.75 && (semanticSupport || themeOverlap || provenanceConfidence);
