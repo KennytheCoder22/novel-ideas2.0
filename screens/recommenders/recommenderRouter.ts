@@ -3142,6 +3142,10 @@ export async function getRecommendations(
   const highSuspenseProfile =
     (genres.includes("thriller") || genres.includes("mystery")) &&
     (tones.includes("dark") || tones.includes("tense") || themes.includes("survival"));
+  const romanceComingOfAgeWarmthProfile =
+    genres.includes("romance") &&
+    themes.includes("coming of age") &&
+    (tones.includes("warm") || tones.includes("gentle") || tones.includes("hopeful") || tones.includes("anime-like"));
   const archetypeProfileActivated = energeticEnsembleAdventureProfile
     ? "energetic_ensemble_adventure"
     : highSuspenseProfile
@@ -3209,10 +3213,6 @@ export async function getRecommendations(
   if (darkFantasyEmotionalMythologyProfile) {
     curatedRootsByPattern.push("Monstress", "Coda", "The Last God", "Seven to Eternity", "Sandman", "Norse Mythology");
   }
-  const romanceComingOfAgeWarmthProfile =
-    genres.includes("romance") &&
-    themes.includes("coming of age") &&
-    (tones.includes("warm") || tones.includes("gentle") || tones.includes("hopeful") || tones.includes("anime-like"));
   if (romanceComingOfAgeWarmthProfile) {
     curatedRootsByPattern.push("Laura Dean Keeps Breaking Up With Me", "Bloom", "Heartstopper", "Fence", "Mooncakes");
   }
