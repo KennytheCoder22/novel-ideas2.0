@@ -3134,27 +3134,30 @@ export async function getRecommendations(
   const socialMysteryProfile =
     /\b(veronica mars|social|investigation|detective|school mystery)\b/.test(likedSignalsText) ||
     (genres.includes("mystery") && (themes.includes("coming of age") || themes.includes("social")));
-  const energeticEnsembleAdventureProfile =
-    /\b(bleach|one piece|legend of korra|korra|series of unfortunate events|smallville|maze runner)\b/.test(likedSignalsText) ||
-    ((genres.includes("fantasy") || genres.includes("supernatural")) &&
-      (themes.includes("adventure") || themes.includes("identity")) &&
-      (tones.includes("energetic") || tones.includes("playful") || tones.includes("dramatic")));
-  const highSuspenseProfile =
-    (genres.includes("thriller") || genres.includes("mystery")) &&
-    (tones.includes("dark") || tones.includes("tense") || themes.includes("survival"));
-  const romanceComingOfAgeWarmthProfile =
-    genres.includes("romance") &&
-    themes.includes("coming of age") &&
-    (tones.includes("warm") || tones.includes("gentle") || tones.includes("hopeful") || tones.includes("anime-like"));
-  const archetypeProfileActivated = energeticEnsembleAdventureProfile
+  function energeticEnsembleAdventureProfile(): boolean {
+    return /\b(bleach|one piece|legend of korra|korra|series of unfortunate events|smallville|maze runner)\b/.test(likedSignalsText) ||
+      ((genres.includes("fantasy") || genres.includes("supernatural")) &&
+        (themes.includes("adventure") || themes.includes("identity")) &&
+        (tones.includes("energetic") || tones.includes("playful") || tones.includes("dramatic")));
+  }
+  function highSuspenseProfile(): boolean {
+    return (genres.includes("thriller") || genres.includes("mystery")) &&
+      (tones.includes("dark") || tones.includes("tense") || themes.includes("survival"));
+  }
+  function romanceComingOfAgeWarmthProfile(): boolean {
+    return genres.includes("romance") &&
+      themes.includes("coming of age") &&
+      (tones.includes("warm") || tones.includes("gentle") || tones.includes("hopeful") || tones.includes("anime-like"));
+  }
+  const archetypeProfileActivated = energeticEnsembleAdventureProfile()
     ? "energetic_ensemble_adventure"
-    : highSuspenseProfile
+    : highSuspenseProfile()
     ? "high_suspense"
     : "general_narrative";
   const anchorExemplarsSelected = Array.from(new Set([
-    ...(energeticEnsembleAdventureProfile ? ["Runaways", "Ms. Marvel", "Paper Girls", "Amulet", "Bone"] : []),
-    ...(romanceComingOfAgeWarmthProfile ? ["Laura Dean Keeps Breaking Up With Me", "Bloom", "Heartstopper"] : []),
-    ...(highSuspenseProfile && !energeticEnsembleAdventureProfile ? ["Something is Killing the Children", "Locke & Key"] : []),
+    ...(energeticEnsembleAdventureProfile() ? ["Runaways", "Ms. Marvel", "Paper Girls", "Amulet", "Bone"] : []),
+    ...(romanceComingOfAgeWarmthProfile() ? ["Laura Dean Keeps Breaking Up With Me", "Bloom", "Heartstopper"] : []),
+    ...(highSuspenseProfile() && !energeticEnsembleAdventureProfile() ? ["Something is Killing the Children", "Locke & Key"] : []),
   ]));
   const narrativeSeriesForms = (base: string) => ([
     `${base} character driven graphic novel`,
@@ -3170,7 +3173,7 @@ export async function getRecommendations(
     ...(genres.includes("mystery") && genres.includes("thriller") ? narrativeSeriesForms("mystery thriller") : []),
     ...(genres.includes("romance") && themes.includes("coming of age") ? narrativeSeriesForms("romance coming of age") : []),
     ...(genres.includes("fantasy") && themes.includes("mythology") ? narrativeSeriesForms("fantasy mythology") : []),
-    ...(energeticEnsembleAdventureProfile ? [
+    ...(energeticEnsembleAdventureProfile() ? [
       "supernatural ensemble adventure graphic novel",
       "emotionally intense fantasy conflict graphic novel",
       "outsider power progression graphic novel",
@@ -3179,9 +3182,9 @@ export async function getRecommendations(
     ] : []),
   ];
   const semanticRefinementQueries = Array.from(new Set([
-    ...(highSuspenseProfile && !energeticEnsembleAdventureProfile ? ["psychological suspense comic series", "character driven thriller comic series", "social paranoia thriller comic series"] : []),
-    ...(genres.includes("horror") && !energeticEnsembleAdventureProfile ? ["psychological horror suspense comic series", "character driven survival horror comic series"] : []),
-    ...(themes.includes("coming of age") && highSuspenseProfile && !energeticEnsembleAdventureProfile ? ["teen conspiracy thriller comic series"] : []),
+    ...(highSuspenseProfile() && !energeticEnsembleAdventureProfile() ? ["psychological suspense comic series", "character driven thriller comic series", "social paranoia thriller comic series"] : []),
+    ...(genres.includes("horror") && !energeticEnsembleAdventureProfile() ? ["psychological horror suspense comic series", "character driven survival horror comic series"] : []),
+    ...(themes.includes("coming of age") && highSuspenseProfile() && !energeticEnsembleAdventureProfile() ? ["teen conspiracy thriller comic series"] : []),
     ...(themes.includes("survival") && genres.includes("mystery") ? ["mystery survival drama comic series"] : []),
   ]));
   const broadGraphicQueries: string[] = [];
@@ -8306,6 +8309,29 @@ const normalizedCandidatesRaw = [
       finalOutputItems = bestCleanCandidates;
       returnedItemsBuiltFrom = "teen_comicvine_best_clean_underfill";
       finalReturnSourceUsed = "teen_comicvine_best_clean_underfill";
+    }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenComicVineOnlyLateUnderfill) {
+    const curatedRootRecovery = swipeRankedCandidateList
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        const t = normalizeText(title);
+        if (terminalRejectReasonByTitle[t]) return false;
+        const hardReject = String(finalReturnDropReasonByTitle[title] || "").startsWith("terminal_reject:");
+        if (hardReject) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        if (!isCuratedTeenGraphicNovelRoot(root)) return false;
+        if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
+        if (isLikelySubtitleFragmentTitle(title) || isLikelyIssueFragmentDoc(doc)) return false;
+        return true;
+      })
+      .slice(0, 5)
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (curatedRootRecovery.length > 0) {
+      finalOutputItems = curatedRootRecovery;
+      returnedItemsBuiltFrom = "teen_comicvine_curated_root_recovery";
+      finalReturnSourceUsed = "teen_comicvine_curated_root_recovery";
     }
   }
   if (!suppressTopRecommendations && acceptedTitlesAfterScrub.length > 0) {
