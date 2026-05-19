@@ -8635,14 +8635,12 @@ const normalizedCandidatesRaw = [
         parentRootSource === "title_fallback" &&
         (themeOverlap || semanticSupport || curatedProfileFitScore > 0);
       const titleFallbackCanonical = parentRootSource === "title_fallback" && positiveFit >= 4.75 && (semanticSupport || themeOverlap || provenanceConfidence);
-      const blockedWeakLateRoots = new Set(["graphic-fantasy", "fantasy", "coming-of-age", "history-of-science-fiction", "mystery-science-theater", "journey-into-mystery"]);
+      const queryLiteralSensitiveRoots = new Set(["graphic-fantasy", "fantasy", "coming-of-age", "history-of-science-fiction", "mystery-science-theater", "journey-into-mystery"]);
       const meaningfulTasteOverlap =
         Number((finalAcceptedTasteEvidenceByTitle[title] || []).find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0) >= 1 ||
         (candidateMatchedLikedSignalsByTitle[title] || []).length > 0;
-      if (blockedWeakLateRoots.has(root) && !(isCuratedTeenGraphicNovelRoot(root) || (semanticEvidenceCount >= 3 && meaningfulTasteOverlap))) {
-        lateTeenUnderfillRejectedReasons.blocked_weak_late_root = (lateTeenUnderfillRejectedReasons.blocked_weak_late_root || 0) + 1;
-        continue;
-      }
+      const profileStronglySupportsRoot = isCuratedTeenGraphicNovelRoot(root) || (semanticEvidenceCount >= 3 && meaningfulTasteOverlap);
+      const queryLiteralOnlyRootPenalty = (queryLiteralSensitiveRoots.has(root) && !profileStronglySupportsRoot) ? 3 : 0;
       const reasons = titleRejectReasons;
       const onlySoftLateRejects = reasons.size > 0 && Array.from(reasons).every((r) => allowedLateRejectReasons.has(r));
       const titleLiteralScienceOnly = queryLiteralScienceRe.test(normalizeText(title)) && !semanticSupport;
@@ -8666,7 +8664,7 @@ const normalizedCandidatesRaw = [
         && !Boolean(queryTermOnlyEvidenceByTitle[title])
         && passesSharedNeverReturnTitleScrub(title)
         && tastePenalty <= (tasteMatch + 1);
-      if (!(meaningful >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || titleFallbackCanonical || curatedTitleFallbackCanonical || cleanSciFiLateAllowance || (positiveFit >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) {
+      if (!((meaningful - queryLiteralOnlyRootPenalty) >= 1 || semanticSupport || themeOverlap || canonicalSeriesSignal || titleFallbackCanonical || curatedTitleFallbackCanonical || cleanSciFiLateAllowance || ((positiveFit - queryLiteralOnlyRootPenalty) >= 5 && (provenanceConfidence || canonicalSeriesSignal || semanticSupport) && onlySoftLateRejects))) {
         lateTeenUnderfillRejectedReasons.insufficient_signal = (lateTeenUnderfillRejectedReasons.insufficient_signal || 0) + 1;
         continue;
       }
@@ -8684,13 +8682,16 @@ const normalizedCandidatesRaw = [
     }
   }
   if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && finalOutputItems.length === 0) {
-    const permanentlyBlockedLiteralRoots = new Set(["coming-of-age", "graphic-fantasy", "mystery-science-theater", "journey-into-mystery", "fantasy", "history-of-science-fiction"]);
+    const queryLiteralSensitiveRoots = new Set(["coming-of-age", "graphic-fantasy", "mystery-science-theater", "journey-into-mystery", "fantasy", "history-of-science-fiction"]);
     const emergencyBestClean = dedupeDocs([...(finalRenderDocs || []), ...(swipeRankedCandidateList || [])])
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title) return false;
         const root = String(parentFranchiseRootForDoc(doc) || "");
-        if (permanentlyBlockedLiteralRoots.has(root) && !isCuratedTeenGraphicNovelRoot(root)) return false;
+        const semanticEvidence = Number(semanticEvidenceCountByTitle[title] || 0);
+        const meaningful = Number((finalAcceptedTasteEvidenceByTitle[title] || []).find((r: string) => r.startsWith("meaningfulSignals:"))?.split(":")[1] || 0);
+        const profileStronglySupportsRoot = isCuratedTeenGraphicNovelRoot(root) || semanticEvidence >= 3 || meaningful >= 2;
+        if (queryLiteralSensitiveRoots.has(root) && !profileStronglySupportsRoot && Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
         if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
         if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
         if (!passesSharedReturnArtifactScrub(doc)) return false;
@@ -8703,6 +8704,26 @@ const normalizedCandidatesRaw = [
       finalOutputItems = emergencyBestClean;
       returnedItemsBuiltFrom = "teen_comicvine_emergency_best_clean";
       finalReturnSourceUsed = "teen_comicvine_emergency_best_clean";
+    }
+  }
+  if (teenComicVineOnlyLateUnderfill && finalOutputItems.length === 0) {
+    const failSoftSafeCandidates = dedupeDocs([...(finalRenderDocs || []), ...(swipeRankedCandidateList || []), ...(narrativeExpansionMergedDocs || [])])
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
+        if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
+        if (!passesSharedReturnArtifactScrub(doc)) return false;
+        if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => Number(positiveFitScoreByTitle[String(b?.title || "")] || 0) - Number(positiveFitScoreByTitle[String(a?.title || "")] || 0))
+      .slice(0, Math.max(2, Math.min(4, finalLimit)))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (failSoftSafeCandidates.length > 0) {
+      finalOutputItems = failSoftSafeCandidates;
+      returnedItemsBuiltFrom = "teen_comicvine_fail_soft_safe_candidates";
+      finalReturnSourceUsed = "teen_comicvine_fail_soft_safe_candidates";
     }
   }
   finalOutputItems = finalOutputItems.filter((item: any) => canReturnTitle(String(item?.doc?.title || item?.title || "").trim(), item?.doc || item));
