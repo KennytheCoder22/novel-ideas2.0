@@ -8950,7 +8950,7 @@ const normalizedCandidatesRaw = [
       if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("locale_variant")) return false;
       if (negativeScoreBlockedSet.has(normalizeText(title))) return false;
       if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
-      if (!passesSharedReturnArtifactScrub(doc)) return false;
+      if (!passesPositiveFitRescueSafety(doc)) return false;
       return true;
     });
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
@@ -8976,7 +8976,7 @@ const normalizedCandidatesRaw = [
       emergencySafeRescueReturnedTitles = toAdd.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
     }
   }
-  if (teenComicVineOnlyLateUnderfill && comicVineOnlyMode && finalOutputItems.length === 0 && postTopUpFinalItemsLength >= 3) {
+  if (teenComicVineOnlyLateUnderfill && comicVineOnlyMode && finalOutputItems.length < 3 && postTopUpFinalItemsLength >= 1) {
     const emergencyFromPostTopUp = selectRescueWithRootDiversity(
       (finalRenderDocs || []).filter((doc: any) => {
         const title = String(doc?.title || "").trim();
@@ -8985,16 +8985,26 @@ const normalizedCandidatesRaw = [
         if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
         if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
         if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("locale_variant")) return false;
-        return passesSharedReturnArtifactScrub(doc);
+        return passesPositiveFitRescueSafety(doc);
       }),
-      3
+      Math.max(0, 3 - finalOutputItems.length)
     ).map((doc: any) => ({ kind: "open_library", doc }));
     if (emergencyFromPostTopUp.length > 0) {
-      finalOutputItems = emergencyFromPostTopUp;
+      const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+      const append = emergencyFromPostTopUp.filter((item: any) => {
+        const t = normalizeText(String(item?.doc?.title || item?.title || ""));
+        if (!t || seen.has(t)) return false;
+        seen.add(t);
+        return true;
+      });
+      finalOutputItems = [...finalOutputItems, ...append].slice(0, 3);
       returnedItemsBuiltFrom = "emergency_safe_rescue_from_post_topup";
       finalReturnSourceUsed = "emergency_safe_rescue_from_post_topup";
-      emergencySafeRescueReturnedTitles = emergencyFromPostTopUp.map((item: any) => String(item?.doc?.title || "").trim()).filter(Boolean);
+      emergencySafeRescueReturnedTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || "").trim()).filter(Boolean);
     }
+  }
+  if (teenComicVineOnlyLateUnderfill && comicVineOnlyMode && String(returnedItemsBuiltFrom) === "suppressed_scored_universe_failure") {
+    returnedItemsBuiltFrom = finalOutputItems.length > 0 ? "emergency_safe_rescue" : "none";
   }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
     if (teenComicVineOnlyLateUnderfill && includeComicVine && comicVineOnlyMode) {
