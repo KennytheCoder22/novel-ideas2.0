@@ -6895,14 +6895,6 @@ const normalizedCandidatesRaw = [
       markSourceSpecificGate(title, "curated_title_fallback_low_metadata_ok");
       }
     }
-    if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
-      if (!superheroNarrativeFitFinalGate) {
-        dislikedOverlapDominatesRejectedTitles.push(title);
-        registerFinalEligibilityReject("disliked_overlap_dominates", title);
-        return false;
-      }
-      markSourceSpecificGate(title, "superhero_narrative_fit_dislike_override");
-    }
     finalTasteThresholdByTitle[title] = 2.5;
     const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
     const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
@@ -6927,6 +6919,14 @@ const normalizedCandidatesRaw = [
       isComicVineCandidate &&
       superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
       (positiveFitScore >= 5 || (semanticEvidenceCount >= 2 && narrativeFictionConfidence >= 2));
+    if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
+      if (!superheroNarrativeFitFinalGate) {
+        dislikedOverlapDominatesRejectedTitles.push(title);
+        registerFinalEligibilityReject("disliked_overlap_dominates", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "superhero_narrative_fit_dislike_override");
+    }
     if (isComicVineCandidate && (genericCollectionArtifactRe.test(normalizeText(title)) || /gwandanaland comics/i.test(title))) {
       markSourceSpecificGate(title, "generic_collection_artifact");
       if (genericCollectionArtifactRejectedTitles.length < 100) genericCollectionArtifactRejectedTitles.push(title);
@@ -7018,7 +7018,7 @@ const normalizedCandidatesRaw = [
         sourceSpecificRejectReasonByTitle[title] = "format_signal_only_without_taste_fit";
         registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
       }
-      if (!(superheroNarrativeFitFinalGate && positiveFitScore >= 5 && narrativeFictionConfidence >= 2)) {
+      if (!superheroNarrativeFitFinalGate) {
         registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
       }
       markSourceSpecificGate(title, "superhero_narrative_fit_taste_threshold_override");
