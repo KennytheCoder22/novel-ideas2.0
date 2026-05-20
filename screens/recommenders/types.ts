@@ -69,6 +69,8 @@ export type RecommendationResult = {
     comicVinePositiveQueries?: string[];
     comicVineExcludedTermsAppliedInFilterOnly?: boolean;
     comicVineQueryTooLong?: boolean;
+    comicVineIssueLikeRejectedAtConversionCountByQuery?: Record<string, number>;
+    comicVineIssueLikeRejectedTitlesByQuery?: Record<string, string[]>;
   };
   debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
   finalAcceptedDocsLength?: number;
@@ -158,6 +160,16 @@ export type RecommendationResult = {
   entitySeedTopUpRejectedReasons?: Record<string, number>;
   entitySeedTopUpRejectedTitlesByReason?: Record<string, string[]>;
   postTopUpFinalItemsLength?: number;
+  positiveFitRescuePoolLength?: number;
+  positiveFitRescuePoolSourceCounts?: Record<string, number>;
+  positiveFitRescueCandidateTitlesBeforeSafety?: string[];
+  positiveFitRescueCandidateTitlesAfterSafety?: string[];
+  positiveFitRescueExcludedByReason?: Record<string, number>;
+  positiveFitRescueEligibleTitles?: string[];
+  positiveFitRescueRejectedReasons?: Record<string, string>;
+  positiveFitRescueTopUpApplied?: boolean;
+  positiveFitRescueReturnedTitles?: string[];
+  emergencySafeRescueReturnedTitles?: string[];
   returnedItemsBuiltFrom?: string;
   recoveryTriggered?: boolean;
   recoveryInputPoolLength?: number;
