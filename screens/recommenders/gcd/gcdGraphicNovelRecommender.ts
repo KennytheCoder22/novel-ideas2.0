@@ -1085,20 +1085,15 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ? (input as any).bucketPlan.tastePrimaryQueries.map((q:any)=>stripDanglingQuotes(String(q||"").trim())).filter(Boolean)
     : [];
   const forceTastePrimaryForComicVine = Boolean((input as any)?.bucketPlan?.forceTastePrimaryForComicVine);
-  const superheroEntityRe = /^(ms\.?\s*marvel|batman|spider-man|miles morales|teen titans|young justice|guardians of the galaxy|invincible)(\b| )/i;
-  const suppressedSuperheroSeedCount = suppressionSignals.superheroSuppressionActive
-    ? allQueries.filter((q) => superheroEntityRe.test(normalizeText(q))).length
-    : 0;
-  const suppressionFilteredQueries = suppressionSignals.superheroSuppressionActive
-    ? allQueries.filter((q) => !superheroEntityRe.test(normalizeText(q)))
-    : allQueries;
+  const superheroEntityRe = /^(ms\.?\s*marvel|batman|spider-man|miles morales|teen titans|young justice|guardians of the galaxy|invincible|superman|avengers)(\b| )/i;
+  // Superhero should behave as a genre lens, not a storyline suppressor.
+  // Keep diagnostics, but do not strip superhero-franchise queries before taste/story alignment runs.
+  const suppressedSuperheroSeedCount = 0;
+  const suppressionFilteredQueries = allQueries;
   const blockedSuperheroQueriesRe = /^(teen titans|young justice|ms\.?\s*marvel|spider-man|miles morales|batman)(\b| )/i;
-  const preAssertionBlockedQueries = suppressionFilteredQueries.filter((q) => blockedSuperheroQueriesRe.test(normalizeText(q)));
-  const assertedSuppressionFilteredQueries =
-    suppressionSignals.superheroSuppressionActive && !strongSuperheroEvidence
-      ? suppressionFilteredQueries.filter((q) => !blockedSuperheroQueriesRe.test(normalizeText(q)))
-      : suppressionFilteredQueries;
-  const suppressionAssertionTriggered = suppressionSignals.superheroSuppressionActive && !strongSuperheroEvidence && preAssertionBlockedQueries.length > 0;
+  const preAssertionBlockedQueries: string[] = [];
+  const assertedSuppressionFilteredQueries = suppressionFilteredQueries;
+  const suppressionAssertionTriggered = false;
   const protectedTokenFilteredCount = allQueries.length - allQueries.filter((q) => !PROTECTED_GENERIC_TOKENS.has(normalizeText(q))).length;
   const knownAnchorPattern = /hellboy|locke\s*&\s*key|sandman|something is killing the children|saga|y:\s*the last man|gideon falls|department of truth|sweet tooth|paper girls/i;
   const genericPattern = /^(horror|mystery|thriller|supernatural|psychological|dystopian)(\s+comics?)?$|^(teen|psychological).*(graphic novel)$/i;
@@ -1120,11 +1115,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const moodAlignedPrioritySeeds = [
     "something is killing the children", "locke & key", "sweet tooth", "the sandman", "walking dead", "descender", "black science", "runaways", "ms. marvel", "saga", "invincible",
   ];
-  const prioritizedEntitySeeds = moodAlignedPrioritySeeds.filter((q) =>
-    suppressionSignals.superheroSuppressionActive
-      ? !/teen titans|young justice|batman/.test(normalizeText(q))
-      : true
-  );
+  const prioritizedEntitySeeds = moodAlignedPrioritySeeds;
   // Build a broad pool first (session-fit + anchors + facets) instead of over-optimizing one lane.
   const queriesToTry = forceTastePrimaryForComicVine && tastePrimaryQueries.length > 0
     ? Array.from(new Set(tastePrimaryQueries.map((q) => stripDanglingQuotes(String(q || "").trim())).filter(Boolean)))
@@ -1132,10 +1123,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         [prioritizedEntitySeeds, sessionFitQueries, baseAnchors, otherQueries, formatFollowups, secondaryFormatFollowups, genericQueries],
         Math.max(40, MAX_COMICVINE_ANCHORS * 5)
       );
-  const finalizedQueriesToTry =
-    suppressionSignals.superheroSuppressionActive && !strongSuperheroEvidence
-      ? queriesToTry.filter((q) => !blockedSuperheroQueriesRe.test(normalizeText(q)))
-      : queriesToTry;
+  const finalizedQueriesToTry = queriesToTry;
   const comicVinePreflightQuery = stripDanglingQuotes(String((tastePrimaryQueries[0] || finalizedQueriesToTry[0] || "saga")).trim());
   const comicVinePreflightUsesTasteQuery = tastePrimaryQueries.length > 0 && normalizeText(comicVinePreflightQuery) === normalizeText(String(tastePrimaryQueries[0] || ""));
   let comicVinePreflightError: string | null = null;
