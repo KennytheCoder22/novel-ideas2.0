@@ -704,6 +704,10 @@ function comicVineIssueToDoc(issue: any, queryText: string, queryRung: number): 
   const issueNumber = String(issue?.issue_number || "").trim();
   const rawTitle = issueName || (volumeName && issueNumber ? `${volumeName} #${issueNumber}` : volumeName);
   if (!rawTitle) return null;
+  const collectionMarkerRe = /\b(volume|vol\.?|tpb|trade paperback|compendium|omnibus|collection|collected|deluxe|complete|book\s*\d+)\b/i;
+  const obviousIssueRe = /\b(infinity comic\s*#|issue\s*#?\d+|#\s*\d+)\b/i;
+  const rawContext = `${rawTitle} ${String(issue?.deck || "")} ${volumeName}`.trim();
+  if (obviousIssueRe.test(rawContext) && !collectionMarkerRe.test(rawContext)) return null;
   const parentVolumeName = volumeName || seriesName || "";
   const normalizedRawTitle = normalizeText(rawTitle);
   const looksGeneric = /\b(volume|vol\.?|book|chapter|part)\s*\d+\b/i.test(rawTitle);
