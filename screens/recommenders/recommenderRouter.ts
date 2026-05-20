@@ -6990,7 +6990,15 @@ const normalizedCandidatesRaw = [
     if (!passesTasteThreshold) {
       const canonicalFormatSoftPassRoots = new Set(["adventure-time", "something-is-killing-the-children", "ms-marvel", "spider-man", "locke-key", "paper-girls", "saga", "the-sandman"]);
       const canonicalFormatSoftPass = canonicalFormatSoftPassRoots.has(String(root || "")) && (semanticEvidenceCount >= 1 || positiveFitScore >= 5);
-      if (isComicVineCandidate && collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2 && !canonicalFormatSoftPass) {
+      const highPositiveFitFormatRescueAllow =
+        isTeenDeckKey(input.deckKey) &&
+        includeComicVine &&
+        !sourceEnabled.googleBooks &&
+        !sourceEnabled.openLibrary &&
+        !sourceEnabled.localLibrary &&
+        !includeKitsu &&
+        positiveFitScore >= 5;
+      if (isComicVineCandidate && collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2 && !canonicalFormatSoftPass && !highPositiveFitFormatRescueAllow) {
         markSourceSpecificGate(title, "format_signal_only_without_taste_fit");
         if (formatSignalOnlyRejectedTitles.length < 100) formatSignalOnlyRejectedTitles.push(title);
         markTerminalReject(title, "format_signal_only_without_taste_fit");
@@ -9041,6 +9049,41 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = "emergency_safe_rescue_final";
       finalReturnSourceUsed = "emergency_safe_rescue_final";
       emergencySafeRescueReturnedTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+    }
+  }
+  if (teenComicVineOnlyLateUnderfill && finalOutputItems.length > 0) {
+    const seenTitle = new Set<string>();
+    finalOutputItems = finalOutputItems.filter((item: any) => {
+      const t = normalizeText(String(item?.doc?.title || item?.title || ""));
+      if (!t || seenTitle.has(t)) return false;
+      seenTitle.add(t);
+      return true;
+    });
+    const roots = finalOutputItems
+      .map((item: any) => String(parentFranchiseRootForDoc(item?.doc || item) || "__none__"))
+      .filter((r: string) => r !== "__none__");
+    const distinctRoots = new Set(roots);
+    if (distinctRoots.size >= 3) {
+      const seenRoot = new Set<string>();
+      finalOutputItems = finalOutputItems.filter((item: any) => {
+        const root = String(parentFranchiseRootForDoc(item?.doc || item) || "__none__");
+        if (root === "__none__") return true;
+        if (seenRoot.has(root)) return false;
+        seenRoot.add(root);
+        return true;
+      });
+    }
+    if (finalOutputItems.length < 3) {
+      const refill = selectRescueWithRootDiversity(
+        dedupeDocs([...(finalRenderDocs || []), ...(finalRankedDocsBase || []), ...(rankedDocs || []), ...(teenComicVinePositiveFitRescuePool || [])] as any[])
+          .filter((doc: any) => {
+            const t = normalizeText(String(doc?.title || ""));
+            if (!t || seenTitle.has(t)) return false;
+            return passesEmergencySafeRescue(doc);
+          }),
+        3 - finalOutputItems.length
+      ).map((doc: any) => ({ kind: "open_library", doc }));
+      if (refill.length > 0) finalOutputItems = [...finalOutputItems, ...refill];
     }
   }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {

@@ -858,6 +858,10 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     let comicVineIssueLikeRejectedAtConversionCount = 0;
     const comicVineIssueLikeRejectedTitles: string[] = [];
     const issueLikeRowRe = /(?:^|[\s:])#\s*(\d{1,3})\b|(?:^|\s)(?:issue)\s*#?\s*(\d{1,3})\b|infinity comic\s*#\s*\d+/i;
+    const markIssueLikeReject = (title: string) => {
+      comicVineIssueLikeRejectedAtConversionCount += 1;
+      if (comicVineIssueLikeRejectedTitles.length < 20) comicVineIssueLikeRejectedTitles.push(String(title || "").trim() || "(untitled)");
+    };
     const topTitles: string[] = [];
     const titleMergeDebugRows: Array<{ rawTitle: string; parentVolumeName: string; displayTitleAfterParentMerge: string; parentTitleMergeApplied: boolean }> = [];
     const sampleTitles: string[] = [];
@@ -885,8 +889,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       const rawIssueTitle = String(issue?.name || issue?.title || issue?.volume?.name || "").trim();
       const doc = comicVineIssueToDoc(issue, query, queryRung);
       if (!doc && issueLikeRowRe.test(rawIssueTitle)) {
-        comicVineIssueLikeRejectedAtConversionCount += 1;
-        if (comicVineIssueLikeRejectedTitles.length < 20) comicVineIssueLikeRejectedTitles.push(rawIssueTitle);
+        markIssueLikeReject(rawIssueTitle);
       }
       if (doc?.title) stageCounts.comicVineDocConversionSuccessCount += 1;
       if (sampleTitles.length < 8 && doc?.title) sampleTitles.push(String(doc.title));
@@ -920,8 +923,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       const mergedTitle = String((doc as any)?.diagnostics?.displayTitleAfterParentMerge || doc?.title || "").trim();
       const issueLikeAfterMerge = issueLikeRowRe.test(`${rawIssueTitle} ${mergedTitle}`);
       if (issueLikeAfterMerge) {
-        comicVineIssueLikeRejectedAtConversionCount += 1;
-        if (comicVineIssueLikeRejectedTitles.length < 20) comicVineIssueLikeRejectedTitles.push(mergedTitle || rawIssueTitle);
+        markIssueLikeReject(mergedTitle || rawIssueTitle);
         countReject("single_issue_filtered");
         stageCounts.comicVineFinalEmptyDropCount += 1;
         pushRejectedSample("single_issue_filtered");
@@ -931,9 +933,9 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       const hasVolumeIdentity = Boolean(issue?.volume?.name || issue?.volume?.id);
       const hasCollectionishTitle = /\b(volume|vol\.|book|collection|collected|tpb|ogn|graphic novel|omnibus|deluxe)\b/i.test(String(doc?.title || ""));
       const collectionPass = isLikelyGraphicNovelCollection(issue, doc) || (hasComicVineIdentity && (hasVolumeIdentity || hasCollectionishTitle));
-      if (!collectionPass) { countReject("single_issue_filtered"); stageCounts.comicVineFinalEmptyDropCount += 1; pushRejectedSample("single_issue_filtered"); continue; }
+      if (!collectionPass) { markIssueLikeReject(String(doc?.title || rawIssueTitle)); countReject("single_issue_filtered"); stageCounts.comicVineFinalEmptyDropCount += 1; pushRejectedSample("single_issue_filtered"); continue; }
       if (/\b(infinity comic\s*#|issue\s*#?\d+|#\s*\d+)\b/i.test(String(doc?.title || "")) && !/\b(volume|vol\.|tpb|trade paperback|collection|compendium|omnibus|deluxe|complete)\b/i.test(String(doc?.title || ""))) {
-        countReject("single_issue_filtered"); stageCounts.comicVineFinalEmptyDropCount += 1; pushRejectedSample("single_issue_filtered"); continue;
+        markIssueLikeReject(String(doc?.title || rawIssueTitle)); countReject("single_issue_filtered"); stageCounts.comicVineFinalEmptyDropCount += 1; pushRejectedSample("single_issue_filtered"); continue;
       }
       if (isLexicalArtifactOnly(issue, doc, query)) { countReject("lexical_artifact_only_evidence"); stageCounts.comicVineContentEmptyDropCount += 1; pushRejectedSample("lexical_artifact_only_evidence"); continue; }
       if (!hasMeaningfulNarrativeEvidence(issue, doc, query)) { countReject("no_meaningful_narrative_evidence"); stageCounts.comicVineContentEmptyDropCount += 1; pushRejectedSample("no_meaningful_narrative_evidence"); continue; }
