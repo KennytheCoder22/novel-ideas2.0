@@ -838,6 +838,9 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     .replace(/\bDie character-focused graphic\b/gi, "")
     .replace(/\s+/g, " ")
     .trim();
+  if (!/\b(graphic novel|tpb|trade paperback|compendium|omnibus|collection|complete collection)\b/i.test(query)) {
+    query = `${query} graphic novel tpb collection`;
+  }
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -907,6 +910,9 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       const hasCollectionishTitle = /\b(volume|vol\.|book|collection|collected|tpb|ogn|graphic novel|omnibus|deluxe)\b/i.test(String(doc?.title || ""));
       const collectionPass = isLikelyGraphicNovelCollection(issue, doc) || (hasComicVineIdentity && (hasVolumeIdentity || hasCollectionishTitle));
       if (!collectionPass) { countReject("single_issue_filtered"); stageCounts.comicVineFinalEmptyDropCount += 1; pushRejectedSample("single_issue_filtered"); continue; }
+      if (/\b(infinity comic\s*#|issue\s*#?\d+|#\s*\d+)\b/i.test(String(doc?.title || "")) && !/\b(volume|vol\.|tpb|trade paperback|collection|compendium|omnibus|deluxe|complete)\b/i.test(String(doc?.title || ""))) {
+        countReject("single_issue_filtered"); stageCounts.comicVineFinalEmptyDropCount += 1; pushRejectedSample("single_issue_filtered"); continue;
+      }
       if (isLexicalArtifactOnly(issue, doc, query)) { countReject("lexical_artifact_only_evidence"); stageCounts.comicVineContentEmptyDropCount += 1; pushRejectedSample("lexical_artifact_only_evidence"); continue; }
       if (!hasMeaningfulNarrativeEvidence(issue, doc, query)) { countReject("no_meaningful_narrative_evidence"); stageCounts.comicVineContentEmptyDropCount += 1; pushRejectedSample("no_meaningful_narrative_evidence"); continue; }
       stageCounts.comicVinePostNormalizationCount += 1;

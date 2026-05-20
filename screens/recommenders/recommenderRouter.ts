@@ -7613,6 +7613,18 @@ const normalizedCandidatesRaw = [
     if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
     return true;
   }
+  function passesEmergencySafeRescue(doc: any) {
+    const title = String(doc?.title || "").trim();
+    if (!title) return false;
+    const nt = normalizeText(title);
+    if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
+    if (String(terminalRejectReasonByTitle[nt] || "").includes("age_maturity_blocked")) return false;
+    if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return false;
+    if (negativeScoreBlockedSet.has(nt)) return false;
+    if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
+    if (hardLexicalDieArtifactRe.test(title)) return false;
+    return true;
+  }
   function rescueSortScore(doc: any) {
     const title = String(doc?.title || "").trim();
     const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
@@ -8950,7 +8962,7 @@ const normalizedCandidatesRaw = [
       if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("locale_variant")) return false;
       if (negativeScoreBlockedSet.has(normalizeText(title))) return false;
       if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
-      if (!passesPositiveFitRescueSafety(doc)) return false;
+      if (!passesEmergencySafeRescue(doc)) return false;
       return true;
     });
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
@@ -8985,7 +8997,7 @@ const normalizedCandidatesRaw = [
         if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
         if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
         if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("locale_variant")) return false;
-        return passesPositiveFitRescueSafety(doc);
+        return passesEmergencySafeRescue(doc);
       }),
       Math.max(0, 3 - finalOutputItems.length)
     ).map((doc: any) => ({ kind: "open_library", doc }));
@@ -9005,6 +9017,25 @@ const normalizedCandidatesRaw = [
   }
   if (teenComicVineOnlyLateUnderfill && comicVineOnlyMode && String(returnedItemsBuiltFrom) === "suppressed_scored_universe_failure") {
     returnedItemsBuiltFrom = finalOutputItems.length > 0 ? "emergency_safe_rescue" : "none";
+  }
+  if (teenComicVineOnlyLateUnderfill && comicVineOnlyMode && finalOutputItems.length < 3) {
+    const fallbackEmergency = selectRescueWithRootDiversity(
+      dedupeDocs([
+        ...(finalRenderDocs || []),
+        ...(finalRankedDocs || []),
+        ...(finalRankedDocsBase || []),
+        ...(rankedDocs || []),
+        ...(normalizedCandidates || []),
+        ...(candidateDocs || []),
+      ] as any[]).filter((doc: any) => passesEmergencySafeRescue(doc)),
+      3
+    ).map((doc: any) => ({ kind: "open_library", doc }));
+    if (fallbackEmergency.length > 0) {
+      finalOutputItems = fallbackEmergency.slice(0, 3);
+      returnedItemsBuiltFrom = "emergency_safe_rescue_final";
+      finalReturnSourceUsed = "emergency_safe_rescue_final";
+      emergencySafeRescueReturnedTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+    }
   }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
     if (teenComicVineOnlyLateUnderfill && includeComicVine && comicVineOnlyMode) {
