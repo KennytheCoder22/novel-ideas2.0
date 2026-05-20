@@ -6896,9 +6896,12 @@ const normalizedCandidatesRaw = [
       }
     }
     if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
-      dislikedOverlapDominatesRejectedTitles.push(title);
-      registerFinalEligibilityReject("disliked_overlap_dominates", title);
-      return false;
+      if (!superheroNarrativeFitFinalGate) {
+        dislikedOverlapDominatesRejectedTitles.push(title);
+        registerFinalEligibilityReject("disliked_overlap_dominates", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "superhero_narrative_fit_dislike_override");
     }
     finalTasteThresholdByTitle[title] = 2.5;
     const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
@@ -6919,6 +6922,11 @@ const normalizedCandidatesRaw = [
     const parodyMetaTitle = /\b(mystery science theater 3000|mst3k|riff|rifftrax|parody|spoof)\b/i.test(`${title} ${String(doc?.description || "")}`);
     const artifactRiskScore = (issueOnlyRe.test(title) ? 3 : 0) + (isClearlyMalformed ? 4 : 0) + metaOrReferenceWorkPenalty + (structuralFragment ? 2 : 0);
     const recommendableWorkScore = collectedEditionConfidence + narrativeFictionConfidence - artifactRiskScore;
+    const superheroFranchiseFinalGateRe = /\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i;
+    const superheroNarrativeFitFinalGate =
+      isComicVineCandidate &&
+      superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
+      (positiveFitScore >= 5 || (semanticEvidenceCount >= 2 && narrativeFictionConfidence >= 2));
     if (isComicVineCandidate && (genericCollectionArtifactRe.test(normalizeText(title)) || /gwandanaland comics/i.test(title))) {
       markSourceSpecificGate(title, "generic_collection_artifact");
       if (genericCollectionArtifactRejectedTitles.length < 100) genericCollectionArtifactRejectedTitles.push(title);
@@ -7010,7 +7018,10 @@ const normalizedCandidatesRaw = [
         sourceSpecificRejectReasonByTitle[title] = "format_signal_only_without_taste_fit";
         registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
       }
-      registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
+      if (!(superheroNarrativeFitFinalGate && positiveFitScore >= 5 && narrativeFictionConfidence >= 2)) {
+        registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
+      }
+      markSourceSpecificGate(title, "superhero_narrative_fit_taste_threshold_override");
     }
     if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
     finalAcceptedTasteEvidenceByTitle[title] = [
