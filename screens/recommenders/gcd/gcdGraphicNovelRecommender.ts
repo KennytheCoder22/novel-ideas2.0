@@ -857,6 +857,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const rejectedReasons: Record<string, number> = {};
     let comicVineIssueLikeRejectedAtConversionCount = 0;
     const comicVineIssueLikeRejectedTitles: string[] = [];
+    const issueLikeRowRe = /(?:^|[\s:])#\s*(\d{1,3})\b|(?:^|\s)(?:issue)\s*#?\s*(\d{1,3})\b|infinity comic\s*#\s*\d+/i;
     const topTitles: string[] = [];
     const titleMergeDebugRows: Array<{ rawTitle: string; parentVolumeName: string; displayTitleAfterParentMerge: string; parentTitleMergeApplied: boolean }> = [];
     const sampleTitles: string[] = [];
@@ -883,7 +884,7 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       stageCounts.comicVineDocConversionAttemptCount += 1;
       const rawIssueTitle = String(issue?.name || issue?.title || issue?.volume?.name || "").trim();
       const doc = comicVineIssueToDoc(issue, query, queryRung);
-      if (!doc && /\b(infinity comic\s*#|issue\s*#?\d+|#\s*\d+)\b/i.test(rawIssueTitle)) {
+      if (!doc && issueLikeRowRe.test(rawIssueTitle)) {
         comicVineIssueLikeRejectedAtConversionCount += 1;
         if (comicVineIssueLikeRejectedTitles.length < 20) comicVineIssueLikeRejectedTitles.push(rawIssueTitle);
       }
@@ -916,6 +917,16 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         }
       };
       if (!doc?.title) { countReject("missing_title"); stageCounts.comicVineCanonicalEmptyDropCount += 1; continue; }
+      const mergedTitle = String((doc as any)?.diagnostics?.displayTitleAfterParentMerge || doc?.title || "").trim();
+      const issueLikeAfterMerge = issueLikeRowRe.test(`${rawIssueTitle} ${mergedTitle}`);
+      if (issueLikeAfterMerge) {
+        comicVineIssueLikeRejectedAtConversionCount += 1;
+        if (comicVineIssueLikeRejectedTitles.length < 20) comicVineIssueLikeRejectedTitles.push(mergedTitle || rawIssueTitle);
+        countReject("single_issue_filtered");
+        stageCounts.comicVineFinalEmptyDropCount += 1;
+        pushRejectedSample("single_issue_filtered");
+        continue;
+      }
       const hasComicVineIdentity = Boolean(issue?.id || issue?.api_detail_url || issue?.site_detail_url);
       const hasVolumeIdentity = Boolean(issue?.volume?.name || issue?.volume?.id);
       const hasCollectionishTitle = /\b(volume|vol\.|book|collection|collected|tpb|ogn|graphic novel|omnibus|deluxe)\b/i.test(String(doc?.title || ""));

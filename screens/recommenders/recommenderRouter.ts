@@ -7630,14 +7630,20 @@ const normalizedCandidatesRaw = [
     const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
     const tasteMatch = Number(candidateWeightedTasteScoreByTitle[title] || 0) - Number(candidateDislikePenaltyByTitle[title] || 0);
     const semanticCount = Number(semanticEvidenceCountByTitle[title] || 0);
+    const likedSignalOverlap = Number((candidateMatchedLikedSignalsByTitle[title] || []).length || 0);
+    const themeOverlap = Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0);
     const starterOrCollection = /\b(volume\s*1|vol\.?\s*1|book\s*1|omnibus|compendium|collection|collected|tpb|trade paperback)\b/i.test(title) ? 1 : 0;
-    return { positiveFit, starterOrCollection, tasteMatch, semanticCount };
+    const broadDefaultPenalty = /\b(the hobbit|eye of the world|disney|alice)\b/i.test(title) && likedSignalOverlap === 0 && semanticCount < 2 ? 2 : 0;
+    return { positiveFit, starterOrCollection, tasteMatch, semanticCount, likedSignalOverlap, themeOverlap, broadDefaultPenalty };
   }
   function rankRescueDocs(docs: any[]) {
     return docs.slice().sort((a: any, b: any) => {
       const as = rescueSortScore(a); const bs = rescueSortScore(b);
       if (bs.positiveFit !== as.positiveFit) return bs.positiveFit - as.positiveFit;
+      if (bs.likedSignalOverlap !== as.likedSignalOverlap) return bs.likedSignalOverlap - as.likedSignalOverlap;
+      if (bs.themeOverlap !== as.themeOverlap) return bs.themeOverlap - as.themeOverlap;
       if (bs.starterOrCollection !== as.starterOrCollection) return bs.starterOrCollection - as.starterOrCollection;
+      if (as.broadDefaultPenalty !== bs.broadDefaultPenalty) return as.broadDefaultPenalty - bs.broadDefaultPenalty;
       if (bs.tasteMatch !== as.tasteMatch) return bs.tasteMatch - as.tasteMatch;
       return bs.semanticCount - as.semanticCount;
     });
