@@ -8976,6 +8976,26 @@ const normalizedCandidatesRaw = [
       emergencySafeRescueReturnedTitles = toAdd.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
     }
   }
+  if (teenComicVineOnlyLateUnderfill && comicVineOnlyMode && finalOutputItems.length === 0 && postTopUpFinalItemsLength >= 3) {
+    const emergencyFromPostTopUp = selectRescueWithRootDiversity(
+      (finalRenderDocs || []).filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
+        if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
+        if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("age_maturity_blocked")) return false;
+        if (String(terminalRejectReasonByTitle[normalizeText(title)] || "").includes("locale_variant")) return false;
+        return passesSharedReturnArtifactScrub(doc);
+      }),
+      3
+    ).map((doc: any) => ({ kind: "open_library", doc }));
+    if (emergencyFromPostTopUp.length > 0) {
+      finalOutputItems = emergencyFromPostTopUp;
+      returnedItemsBuiltFrom = "emergency_safe_rescue_from_post_topup";
+      finalReturnSourceUsed = "emergency_safe_rescue_from_post_topup";
+      emergencySafeRescueReturnedTitles = emergencyFromPostTopUp.map((item: any) => String(item?.doc?.title || "").trim()).filter(Boolean);
+    }
+  }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
     if (teenComicVineOnlyLateUnderfill && includeComicVine && comicVineOnlyMode) {
       returnedItemsBuiltFrom = "none";
