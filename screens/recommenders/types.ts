@@ -69,6 +69,8 @@ export type RecommendationResult = {
     comicVinePositiveQueries?: string[];
     comicVineExcludedTermsAppliedInFilterOnly?: boolean;
     comicVineQueryTooLong?: boolean;
+    comicVineIssueLikeRejectedAtConversionCountByQuery?: Record<string, number>;
+    comicVineIssueLikeRejectedTitlesByQuery?: Record<string, string[]>;
   };
   debugComicVineDispatchTrace?: RecommendationResult["debugGcdDispatchTrace"];
   finalAcceptedDocsLength?: number;

@@ -855,6 +855,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const results = Array.isArray(payload?.results) ? payload.results : [];
     const before = docs.length;
     const rejectedReasons: Record<string, number> = {};
+    let comicVineIssueLikeRejectedAtConversionCount = 0;
+    const comicVineIssueLikeRejectedTitles: string[] = [];
     const topTitles: string[] = [];
     const titleMergeDebugRows: Array<{ rawTitle: string; parentVolumeName: string; displayTitleAfterParentMerge: string; parentTitleMergeApplied: boolean }> = [];
     const sampleTitles: string[] = [];
@@ -879,7 +881,12 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
     const aliasFallbackDocs: RecommendationDoc[] = [];
     for (const issue of results) {
       stageCounts.comicVineDocConversionAttemptCount += 1;
+      const rawIssueTitle = String(issue?.name || issue?.title || issue?.volume?.name || "").trim();
       const doc = comicVineIssueToDoc(issue, query, queryRung);
+      if (!doc && /\b(infinity comic\s*#|issue\s*#?\d+|#\s*\d+)\b/i.test(rawIssueTitle)) {
+        comicVineIssueLikeRejectedAtConversionCount += 1;
+        if (comicVineIssueLikeRejectedTitles.length < 20) comicVineIssueLikeRejectedTitles.push(rawIssueTitle);
+      }
       if (doc?.title) stageCounts.comicVineDocConversionSuccessCount += 1;
       if (sampleTitles.length < 8 && doc?.title) sampleTitles.push(String(doc.title));
       if (titleMergeDebugRows.length < 20) {
@@ -979,6 +986,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
       stageCounts,
       convertedDocTitles: docs.slice(before).map((d: any) => String(d?.title || "").trim()).filter(Boolean),
       titleMergeDebugRows,
+      comicVineIssueLikeRejectedAtConversionCount,
+      comicVineIssueLikeRejectedTitles,
       error: null,
     };
   } catch (err: any) {
@@ -1004,6 +1013,8 @@ async function fetchDocsForQuery(query: string, queryRung: number, timeoutMs: nu
         comicVineContentAcceptedCount: 0,
         comicVineFinalAcceptedCount: 0,
       },
+      comicVineIssueLikeRejectedAtConversionCount: 0,
+      comicVineIssueLikeRejectedTitles: [],
       error: String(err?.message || err || "comicvine_search_failed"),
     };
   } finally {
@@ -1211,6 +1222,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const comicVineDocConversionSuccessCountByQuery: Record<string, number> = {};
   const comicVineRawRowsBeforeDocConversionByQuery: Record<string, number> = {};
   const comicVineConvertedDocTitlesByQuery: Record<string, string[]> = {};
+  const comicVineIssueLikeRejectedAtConversionCountByQuery: Record<string, number> = {};
+  const comicVineIssueLikeRejectedTitlesByQuery: Record<string, string[]> = {};
   const comicVineContentEmptyDropCountByQuery: Record<string, number> = {};
   const comicVineCanonicalEmptyDropCountByQuery: Record<string, number> = {};
   const comicVineFinalEmptyDropCountByQuery: Record<string, number> = {};
@@ -1251,7 +1264,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
         if (owner) followupBudgetByAnchor[owner] = (followupBudgetByAnchor[owner] || 0) + 1;
       }
       const hadDocsBeforeQuery = docs.length > 0;
-      const { rawCount, acceptedCount, rejectedCount, topTitles, sampleTitles, rejectedSampleTitles, rejectedSampleReasons, rejectedReasons, stageCounts, convertedDocTitles, titleMergeDebugRows, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
+      const { rawCount, acceptedCount, rejectedCount, topTitles, sampleTitles, rejectedSampleTitles, rejectedSampleReasons, rejectedReasons, stageCounts, convertedDocTitles, titleMergeDebugRows, comicVineIssueLikeRejectedAtConversionCount, comicVineIssueLikeRejectedTitles, error } = await fetchDocsForQuery(q, i, timeoutMs, fetchLimit, docs, seen);
     comicVineRawCountByQuery[q] = rawCount;
     comicVineApiResultCountByQuery[q] = Number(stageCounts?.comicVineApiResultCount || rawCount || 0);
     comicVinePostNormalizationCountByQuery[q] = Number(stageCounts?.comicVinePostNormalizationCount || 0);
@@ -1269,6 +1282,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineDocConversionSuccessCountByQuery[q] = Number(stageCounts?.comicVineDocConversionSuccessCount || 0);
     comicVineRawRowsBeforeDocConversionByQuery[q] = Number(stageCounts?.comicVineRawRowsBeforeDocConversion || rawCount || 0);
     comicVineConvertedDocTitlesByQuery[q] = Array.isArray(convertedDocTitles) ? convertedDocTitles : [];
+    comicVineIssueLikeRejectedAtConversionCountByQuery[q] = Number(comicVineIssueLikeRejectedAtConversionCount || 0);
+    comicVineIssueLikeRejectedTitlesByQuery[q] = Array.isArray(comicVineIssueLikeRejectedTitles) ? comicVineIssueLikeRejectedTitles : [];
     comicVineContentEmptyDropCountByQuery[q] = Number(stageCounts?.comicVineContentEmptyDropCount || 0);
     comicVineCanonicalEmptyDropCountByQuery[q] = Number(stageCounts?.comicVineCanonicalEmptyDropCount || 0);
     comicVineFinalEmptyDropCountByQuery[q] = Number(stageCounts?.comicVineFinalEmptyDropCount || 0);
@@ -1582,6 +1597,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     comicVineRejectedSampleTitlesByQuery,
     comicVineRejectedSampleReasonsByQuery,
     comicVineAdapterDropReasonsByQuery,
+    comicVineIssueLikeRejectedAtConversionCountByQuery,
+    comicVineIssueLikeRejectedTitlesByQuery,
     comicVineRescueCandidatesByQuery,
     comicVineRescueRejectedTitlesByQuery,
     comicVineFetchedRawTotal,

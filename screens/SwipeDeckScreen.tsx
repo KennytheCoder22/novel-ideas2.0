@@ -2453,6 +2453,8 @@ function handleLeft() {
       `comicVinePerQueryFailureDoesNotAbort:${Boolean(lastDebugGcdDispatchTrace?.comicVinePerQueryFailureDoesNotAbort)}`,
       `comicVineTasteQueriesAttempted:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineTasteQueriesAttempted) && lastDebugGcdDispatchTrace.comicVineTasteQueriesAttempted.length ? lastDebugGcdDispatchTrace.comicVineTasteQueriesAttempted.join(" | ") : "(none)"}`,
       `comicVineFetchResults:${Array.isArray(lastDebugGcdDispatchTrace?.comicVineFetchResults) && lastDebugGcdDispatchTrace.comicVineFetchResults.length ? lastDebugGcdDispatchTrace.comicVineFetchResults.map((row: any) => `${row?.query || "(query)"}=>${row?.status || "unknown"} raw=${Number(row?.rawCount || 0)}${row?.error ? ` err=${row.error}` : ""}`).join(" || ") : "(none)"}`,
+      `comicVineIssueLikeRejectedAtConversionCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineIssueLikeRejectedAtConversionCountByQuery || {})}`,
+      `comicVineIssueLikeRejectedTitlesByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineIssueLikeRejectedTitlesByQuery || {})}`,
       `comicVineFetchedRawTotal:${Number(lastDebugGcdDispatchTrace?.comicVineFetchedRawTotal || 0)}`,
       `comicVineRawRowsBeforeDocConversion:${Number(lastDebugGcdDispatchTrace?.comicVineRawRowsBeforeDocConversion || 0)}`,
       `comicVineDocConversionAttemptCount:${Number(lastDebugGcdDispatchTrace?.comicVineDocConversionAttemptCount || 0)}`,
