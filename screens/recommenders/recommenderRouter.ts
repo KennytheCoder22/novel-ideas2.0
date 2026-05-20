@@ -5986,11 +5986,13 @@ const normalizedCandidatesRaw = [
     const expansionRoot = parentFranchiseRootForDoc(doc);
     const aliasPool = expansionAliasMap[expansionQueryRoot] || [expansionQueryRoot.replace(/-/g, " ")];
     const strictRootOnly = new Set(["saga", "sweet-tooth", "spider-man", "miles-morales"]);
+    const superheroFranchiseRoots = new Set(["spider-man", "miles-morales", "batman", "superman", "avengers", "ms-marvel", "teen-titans", "young-justice"]);
     const parentOrRootMatch =
       aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "")).includes(normalizeText(alias))) ||
       (expansionRoot && (expansionRoot === expansionQueryRoot || aliasPool.some((alias) => expansionRoot.includes(normalizeText(alias).replace(/[^a-z0-9]+/g, "-")))));
     const titleAliasLooseMatch = aliasPool.some((alias) => normalizedTitle.includes(normalizeText(alias)));
-    const queryRootMatched = strictRootOnly.has(expansionQueryRoot) ? parentOrRootMatch : (parentOrRootMatch || titleAliasLooseMatch);
+    const isSuperheroRoot = superheroFranchiseRoots.has(expansionQueryRoot);
+    const queryRootMatched = strictRootOnly.has(expansionQueryRoot) && !isSuperheroRoot ? parentOrRootMatch : (parentOrRootMatch || titleAliasLooseMatch);
     matchedProfileSeeds.forEach((seed) => {
       entitySeedCandidatesFoundBySeed[seed] = (entitySeedCandidatesFoundBySeed[seed] || 0) + 1;
     });
@@ -6014,7 +6016,10 @@ const normalizedCandidatesRaw = [
     const isKnownTranslatedLocale = /\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(title));
     const hasEnglishAlternativeInUniverse = scoringUniverse.some((d: any) => parentFranchiseRootForDoc(d) === expansionRoot && !/\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(d?.title || "")));
     const weakHobbitFiller = /\bthe hobbit\b/i.test(title) && !(/\b(fantasy|adventure)\b/.test(profileTextForSeeds) || ["fantasy", "adventure"].includes(routerFamily));
-    const expansionQueryRootMismatch = isExpansionCandidate && Boolean(expansionQueryRoot) && !queryRootMatched;
+    const superheroNarrativeFit =
+      isSuperheroRoot &&
+      (matchedProfileSeeds.length > 0 || /\b(noir|mystery|detective|coming of age|identity|friendship|school|survival|thriller|suspense)\b/.test(normalizedTitle) || baseScore >= 4.5);
+    const expansionQueryRootMismatch = isExpansionCandidate && Boolean(expansionQueryRoot) && !queryRootMatched && !superheroNarrativeFit;
     const shouldRejectAsBroadArtifact = (broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise) || weakHobbitFiller || expansionQueryRootMismatch || (isExpansionCandidate && isKnownTranslatedLocale && hasEnglishAlternativeInUniverse);
     if (expansionQueryRootMismatch) {
       expansionQueryRootMismatchRejectedTitles.push(title);
