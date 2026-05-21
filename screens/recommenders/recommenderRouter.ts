@@ -7053,15 +7053,26 @@ const normalizedCandidatesRaw = [
         const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
         const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
         const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
+        const sourceText = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+        const isComicVineCandidate = sourceText.includes("comicvine");
         const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
-        if (!strongTasteFit || nonEnglish) return false;
         const editionText = `${title} ${String(doc?.description || '')} ${String(doc?.parentVolumeName || '')}`;
-        const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
         const narrativeFictionConfidence = (/\b(story|novel|saga|chronicle|mystery|thriller|horror|fantasy|adventure)\b/i.test(editionText) ? 2 : 0);
+        const superheroFranchiseFinalGateRe = /\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i;
+        const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+        const superheroUnderfillRescueAllow =
+          isComicVineCandidate &&
+          superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
+          positiveFitScore >= 4.5 &&
+          narrativeFictionConfidence >= 2 &&
+          semanticEvidenceCount >= 1;
+        if ((!strongTasteFit && !superheroUnderfillRescueAllow) || nonEnglish) return false;
+        const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
         if (!(narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3)) return false;
         const titleNorm = normalizeText(title);
         const artifactLike = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/.test(titleNorm) || /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i.test(`${title} ${String(doc?.description || "")}`);
         if (artifactLike) return false;
+        if (superheroUnderfillRescueAllow) markSourceSpecificGate(title, "superhero_underfill_rescue_relaxation");
         return true;
       })
       .slice(0, 12);
