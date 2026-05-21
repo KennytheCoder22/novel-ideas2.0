@@ -7077,6 +7077,7 @@ const normalizedCandidatesRaw = [
       ...(finalRankedDocsBase || []),
     ] as any[]);
     markSourceSpecificGate("__router__", `superhero_underfill_rescue_pool_size:${superheroUnderfillRescuePool.length}`);
+    const superheroUnderfillRescueAllowedTitles = new Set<string>();
     const relaxedAdds = superheroUnderfillRescuePool
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
@@ -7123,7 +7124,10 @@ const normalizedCandidatesRaw = [
         const titleNorm = normalizeText(title);
         const artifactLike = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/.test(titleNorm) || /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i.test(`${title} ${String(doc?.description || "")}`);
         if (artifactLike) return false;
-        if (superheroUnderfillRescueAllow) markSourceSpecificGate(title, "superhero_underfill_rescue_relaxation");
+        if (superheroUnderfillRescueAllow) {
+          superheroUnderfillRescueAllowedTitles.add(normalizeText(title));
+          markSourceSpecificGate(title, "superhero_underfill_rescue_relaxation");
+        }
         return true;
       })
       .slice(0, 12);
@@ -7138,14 +7142,17 @@ const normalizedCandidatesRaw = [
           .filter((token) => token.length >= 4 && !genericTasteSignalRe.test(token))
           .filter((token) => textBag.includes(normalizeText(token)))
       )).length;
-      if (meaningfulSignalCount < 1) {
+      const isSuperheroUnderfillRescueAllowed = superheroUnderfillRescueAllowedTitles.has(normalizeText(title));
+      if (meaningfulSignalCount < 1 && !isSuperheroUnderfillRescueAllowed) {
         fallbackTierRejectedReasonsByTitle[title] = "relaxed_add_requires_meaningful_signals>=1";
         continue;
       }
       eligibleWithFitScore.push({ doc, fitScore: 1, recommendableWorkScore: 1, artifactRiskScore: 0, collectedEditionConfidence: 0, narrativeFictionConfidence: 1, metaOrReferenceWorkPenalty: 0 });
       finalEligibilityAcceptedTitles.push(title);
       finalEligibilityRelaxedAcceptedTitles.push(title);
-      finalEligibilityRelaxedReasonByTitle[title] = "strong_taste_fit_underfilled_output";
+      finalEligibilityRelaxedReasonByTitle[title] = isSuperheroUnderfillRescueAllowed
+        ? "superhero_underfill_rescue_allow_override"
+        : "strong_taste_fit_underfilled_output";
       finalAcceptedTasteEvidenceByTitle[title] = [
         ...(finalAcceptedTasteEvidenceByTitle[title] || []),
         `meaningfulSignals:${meaningfulSignalCount}`,
