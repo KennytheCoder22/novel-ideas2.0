@@ -6714,6 +6714,9 @@ const normalizedCandidatesRaw = [
   const acceptedEvidenceButMissingFromFinalEligibilityTitles: string[] = [];
   const narrativeExpansionAcceptedTitleSet = new Set(narrativeExpansionAcceptedTitles.map((t) => normalizeText(t)));
   let finalEligibilityRelaxationTriggered = false;
+  let superheroUnderfillRelaxationBranchEntered = false;
+  let superheroUnderfillRelaxationEligibility = false;
+  let superheroUnderfillRelaxationPredicateState: Record<string, any> = {};
   const finalEligibilityRelaxedAcceptedTitles: string[] = [];
   const finalEligibilityRelaxedReasonByTitle: Record<string, string> = {};
   const nearMissSemanticEvidenceTitles: string[] = [];
@@ -7043,8 +7046,23 @@ const normalizedCandidatesRaw = [
     return true;
   });
   postSourceSpecificGateTitles.push(...finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
-  if (eligibleWithFitScore.length < 8 && viableCandidateCountBeforeFinalSelection >= 15) {
+  const superheroUnderfillRelaxationNeedsUnderfill = eligibleWithFitScore.length < 8;
+  const superheroUnderfillRelaxationHasEnoughCandidates = viableCandidateCountBeforeFinalSelection >= 15;
+  const superheroUnderfillRelaxationTargetRenderCount = Math.max(3, Math.min(finalLimit, 12));
+  superheroUnderfillRelaxationEligibility = superheroUnderfillRelaxationNeedsUnderfill && superheroUnderfillRelaxationHasEnoughCandidates;
+  superheroUnderfillRelaxationPredicateState = {
+    needsUnderfill: superheroUnderfillRelaxationNeedsUnderfill,
+    hasEnoughCandidates: superheroUnderfillRelaxationHasEnoughCandidates,
+    eligibleWithFitScoreLength: eligibleWithFitScore.length,
+    viableCandidateCountBeforeFinalSelection,
+    finalLimit,
+    targetRenderCount: superheroUnderfillRelaxationTargetRenderCount,
+    acceptedTitlesBeforeRelaxation: finalEligibilityAcceptedTitles.length,
+    returnedItemsBuiltFromBeforeRelaxation: String(returnedItemsBuiltFrom || "none"),
+  };
+  if (superheroUnderfillRelaxationEligibility) {
     finalEligibilityRelaxationTriggered = true;
+    superheroUnderfillRelaxationBranchEntered = true;
     markSourceSpecificGate("__router__", "superhero_underfill_relaxation_branch:entered");
     const alreadyAccepted = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
     const relaxedAdds = viableCandidates
@@ -9405,6 +9423,9 @@ const normalizedCandidatesRaw = [
     dislikedOverlapDominatesRejectedTitles,
     controlledEmergencyFallback,
     sourceSpecificGateAppliedByTitle,
+    superheroUnderfillRelaxationBranchEntered,
+    superheroUnderfillRelaxationEligibility,
+    superheroUnderfillRelaxationPredicateState,
     sourceSpecificRejectReasonByTitle,
     curatedSeedProfileMatch,
     curatedSeedReason,
