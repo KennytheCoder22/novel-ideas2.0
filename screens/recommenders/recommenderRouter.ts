@@ -6917,7 +6917,7 @@ const normalizedCandidatesRaw = [
     const parodyMetaTitle = /\b(mystery science theater 3000|mst3k|riff|rifftrax|parody|spoof)\b/i.test(`${title} ${String(doc?.description || "")}`);
     const artifactRiskScore = (issueOnlyRe.test(title) ? 3 : 0) + (isClearlyMalformed ? 4 : 0) + metaOrReferenceWorkPenalty + (structuralFragment ? 2 : 0);
     const recommendableWorkScore = collectedEditionConfidence + narrativeFictionConfidence - artifactRiskScore;
-    const superheroFranchiseFinalGateRe = /\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i;
+    const superheroFranchiseFinalGateRe = /\b(spider[\s-]?man(?:\s+noir)?|avenging\s+spider[\s-]?man|miles\s+morales|ms\.?\s*marvel|kamala\s+khan|batman|superman|avengers?|teen\s+titans|young\s+justice|runaways)\b/i;
     const superheroNarrativeFitFinalGate =
       isComicVineCandidate &&
       superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
@@ -7054,7 +7054,7 @@ const normalizedCandidatesRaw = [
     const sourceText = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
     if (!sourceText.includes("comicvine")) return false;
     const docText = `${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`;
-    if (!/\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i.test(docText)) return false;
+    if (!/\b(spider[\s-]?man(?:\s+noir)?|avenging\s+spider[\s-]?man|miles\s+morales|ms\.?\s*marvel|kamala\s+khan|batman|superman|avengers?|teen\s+titans|young\s+justice|runaways)\b/i.test(docText)) return false;
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
     const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
     const scoreComponents = (finalScoreComponentsByTitle[title] || {}) as any;
@@ -7093,6 +7093,8 @@ const normalizedCandidatesRaw = [
       ...(finalRankedDocsBase || []),
     ] as any[]);
     markSourceSpecificGate("__router__", `superhero_underfill_rescue_pool_size:${superheroUnderfillRescuePool.length}`);
+    markSourceSpecificGate("__router__", `superhero_underfill_rescue_pool_titles:${superheroUnderfillRescuePool.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean).slice(0, 40).join("|") || "(none)"}`);
+    markSourceSpecificGate("__router__", `superhero_underfill_rescue_pool_roots:${Array.from(new Set(superheroUnderfillRescuePool.map((doc: any) => parentFranchiseRootForDoc(doc)).filter(Boolean))).slice(0, 40).join("|") || "(none)"}`);
     const superheroUnderfillRescueAllowedTitles = new Set<string>();
     const superheroUnderfillRescuePredicateFailureCounts: Record<string, number> = {
       not_comicvine_candidate: 0,
@@ -7120,7 +7122,7 @@ const normalizedCandidatesRaw = [
         const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
         const editionText = `${title} ${String(doc?.description || '')} ${String(doc?.parentVolumeName || '')}`;
         const narrativeFictionConfidence = (/\b(story|novel|saga|chronicle|mystery|thriller|horror|fantasy|adventure)\b/i.test(editionText) ? 2 : 0);
-        const superheroFranchiseFinalGateRe = /\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i;
+        const superheroFranchiseFinalGateRe = /\b(spider[\s-]?man(?:\s+noir)?|avenging\s+spider[\s-]?man|miles\s+morales|ms\.?\s*marvel|kamala\s+khan|batman|superman|avengers?|teen\s+titans|young\s+justice|runaways)\b/i;
         const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
         const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
         const scoreComponents = (finalScoreComponentsByTitle[title] || {}) as any;
