@@ -7078,6 +7078,20 @@ const normalizedCandidatesRaw = [
     ] as any[]);
     markSourceSpecificGate("__router__", `superhero_underfill_rescue_pool_size:${superheroUnderfillRescuePool.length}`);
     const superheroUnderfillRescueAllowedTitles = new Set<string>();
+    const superheroUnderfillRescuePredicateFailureCounts: Record<string, number> = {
+      not_comicvine_candidate: 0,
+      franchise_regex_miss: 0,
+      fit_or_semantic_composite_miss: 0,
+      narrative_or_substitute_miss: 0,
+      semantic_evidence_count_miss: 0,
+      non_english_blocked: 0,
+      post_allow_narrative_or_collection_blocked: 0,
+      artifact_like_blocked: 0,
+      allowed: 0,
+    };
+    const incSuperheroUnderfillFailure = (k: string) => {
+      superheroUnderfillRescuePredicateFailureCounts[k] = Number(superheroUnderfillRescuePredicateFailureCounts[k] || 0) + 1;
+    };
     const relaxedAdds = superheroUnderfillRescuePool
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
@@ -7098,13 +7112,23 @@ const normalizedCandidatesRaw = [
         const hasRootMatch = Boolean(scoreComponents?.rootMatch || scoreComponents?.root_match || scoreComponents?.queryRootMatch || scoreComponents?.query_root_match);
         const semanticThemeRootCompositeSupport = semanticSupportFound && hasThemeOverlap && hasRootMatch;
         const lowVolumeNarrativeSubstitute = semanticThemeRootCompositeSupport;
+        const superheroFranchiseMatched = superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`);
+        const fitOrSemanticCompositePass = (positiveFitScore >= 4.5 || semanticThemeRootCompositeSupport);
+        const narrativeOrSubstitutePass = (narrativeFictionConfidence >= 2 || lowVolumeNarrativeSubstitute);
+        const semanticEvidenceCountPass = semanticEvidenceCount >= 1;
         const superheroUnderfillRescueAllow =
           isComicVineCandidate &&
-          superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
-          (positiveFitScore >= 4.5 || semanticThemeRootCompositeSupport) &&
-          (narrativeFictionConfidence >= 2 || lowVolumeNarrativeSubstitute) &&
-          semanticEvidenceCount >= 1;
-        if (isComicVineCandidate && superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`)) {
+          superheroFranchiseMatched &&
+          fitOrSemanticCompositePass &&
+          narrativeOrSubstitutePass &&
+          semanticEvidenceCountPass;
+        if (!isComicVineCandidate) incSuperheroUnderfillFailure("not_comicvine_candidate");
+        else if (!superheroFranchiseMatched) incSuperheroUnderfillFailure("franchise_regex_miss");
+        else if (!fitOrSemanticCompositePass) incSuperheroUnderfillFailure("fit_or_semantic_composite_miss");
+        else if (!narrativeOrSubstitutePass) incSuperheroUnderfillFailure("narrative_or_substitute_miss");
+        else if (!semanticEvidenceCountPass) incSuperheroUnderfillFailure("semantic_evidence_count_miss");
+        else incSuperheroUnderfillFailure("allowed");
+        if (isComicVineCandidate && superheroFranchiseMatched) {
           markSourceSpecificGate(
             title,
             superheroUnderfillRescueAllow
@@ -7118,12 +7142,21 @@ const normalizedCandidatesRaw = [
             );
           }
         }
-        if ((!strongTasteFit && !superheroUnderfillRescueAllow) || nonEnglish) return false;
+        if ((!strongTasteFit && !superheroUnderfillRescueAllow) || nonEnglish) {
+          if (nonEnglish) incSuperheroUnderfillFailure("non_english_blocked");
+          return false;
+        }
         const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
-        if (!(narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3)) return false;
+        if (!(narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3)) {
+          if (superheroUnderfillRescueAllow) incSuperheroUnderfillFailure("post_allow_narrative_or_collection_blocked");
+          return false;
+        }
         const titleNorm = normalizeText(title);
         const artifactLike = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/.test(titleNorm) || /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i.test(`${title} ${String(doc?.description || "")}`);
-        if (artifactLike) return false;
+        if (artifactLike) {
+          if (superheroUnderfillRescueAllow) incSuperheroUnderfillFailure("artifact_like_blocked");
+          return false;
+        }
         if (superheroUnderfillRescueAllow) {
           superheroUnderfillRescueAllowedTitles.add(normalizeText(title));
           markSourceSpecificGate(title, "superhero_underfill_rescue_relaxation");
@@ -7132,6 +7165,7 @@ const normalizedCandidatesRaw = [
       })
       .slice(0, 12);
     markSourceSpecificGate("__router__", `superhero_underfill_rescue_allowed_titles_count:${superheroUnderfillRescueAllowedTitles.size}`);
+    markSourceSpecificGate("__router__", `superhero_underfill_rescue_predicate_failure_breakdown:${Object.entries(superheroUnderfillRescuePredicateFailureCounts).map(([k,v]) => `${k}=${v}`).join(",")}`);
     if (superheroUnderfillRescueAllowedTitles.size > 0) {
       markSourceSpecificGate("__router__", `superhero_underfill_rescue_allowed_titles:${Array.from(superheroUnderfillRescueAllowedTitles).join("|")}`);
     }
