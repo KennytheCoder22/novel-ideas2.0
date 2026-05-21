@@ -7131,6 +7131,10 @@ const normalizedCandidatesRaw = [
         return true;
       })
       .slice(0, 12);
+    markSourceSpecificGate("__router__", `superhero_underfill_rescue_allowed_titles_count:${superheroUnderfillRescueAllowedTitles.size}`);
+    if (superheroUnderfillRescueAllowedTitles.size > 0) {
+      markSourceSpecificGate("__router__", `superhero_underfill_rescue_allowed_titles:${Array.from(superheroUnderfillRescueAllowedTitles).join("|")}`);
+    }
     for (const doc of relaxedAdds) {
       const title = String(doc?.title || "").trim();
       const textBag = normalizeText(`${title} ${String(doc?.description || "")}`);
@@ -7143,6 +7147,9 @@ const normalizedCandidatesRaw = [
           .filter((token) => textBag.includes(normalizeText(token)))
       )).length;
       const isSuperheroUnderfillRescueAllowed = superheroUnderfillRescueAllowedTitles.has(normalizeText(title));
+      if (isSuperheroUnderfillRescueAllowed) {
+        markSourceSpecificGate(title, "superhero_underfill_rescue_allowed_titles:carried_into_relaxed_add");
+      }
       if (meaningfulSignalCount < 1 && !isSuperheroUnderfillRescueAllowed) {
         fallbackTierRejectedReasonsByTitle[title] = "relaxed_add_requires_meaningful_signals>=1";
         continue;
