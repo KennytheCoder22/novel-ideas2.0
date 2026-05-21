@@ -7096,11 +7096,12 @@ const normalizedCandidatesRaw = [
         const hasThemeOverlap = Boolean(scoreComponents?.themeOverlap || scoreComponents?.theme_overlap);
         const hasRootMatch = Boolean(scoreComponents?.rootMatch || scoreComponents?.root_match || scoreComponents?.queryRootMatch || scoreComponents?.query_root_match);
         const semanticThemeRootCompositeSupport = semanticSupportFound && hasThemeOverlap && hasRootMatch;
+        const lowVolumeNarrativeSubstitute = semanticThemeRootCompositeSupport;
         const superheroUnderfillRescueAllow =
           isComicVineCandidate &&
           superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
           (positiveFitScore >= 4.5 || semanticThemeRootCompositeSupport) &&
-          narrativeFictionConfidence >= 2 &&
+          (narrativeFictionConfidence >= 2 || lowVolumeNarrativeSubstitute) &&
           semanticEvidenceCount >= 1;
         if (isComicVineCandidate && superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`)) {
           markSourceSpecificGate(
