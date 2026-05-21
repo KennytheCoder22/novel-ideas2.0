@@ -6714,6 +6714,9 @@ const normalizedCandidatesRaw = [
   const acceptedEvidenceButMissingFromFinalEligibilityTitles: string[] = [];
   const narrativeExpansionAcceptedTitleSet = new Set(narrativeExpansionAcceptedTitles.map((t) => normalizeText(t)));
   let finalEligibilityRelaxationTriggered = false;
+  let superheroUnderfillRelaxationBranchEntered = false;
+  let superheroUnderfillRelaxationEligibility = false;
+  let superheroUnderfillRelaxationPredicateState: Record<string, any> = {};
   const finalEligibilityRelaxedAcceptedTitles: string[] = [];
   const finalEligibilityRelaxedReasonByTitle: Record<string, string> = {};
   const nearMissSemanticEvidenceTitles: string[] = [];
@@ -6919,6 +6922,14 @@ const normalizedCandidatesRaw = [
       isComicVineCandidate &&
       superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
       (positiveFitScore >= 5 || (semanticEvidenceCount >= 2 && narrativeFictionConfidence >= 2));
+    if (isComicVineCandidate) {
+      markSourceSpecificGate(
+        title,
+        superheroNarrativeFitFinalGate
+          ? "superhero_narrative_fit_final_gate:true"
+          : "superhero_narrative_fit_final_gate:false"
+      );
+    }
     if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
       if (!superheroNarrativeFitFinalGate) {
         dislikedOverlapDominatesRejectedTitles.push(title);
@@ -7035,25 +7046,83 @@ const normalizedCandidatesRaw = [
     return true;
   });
   postSourceSpecificGateTitles.push(...finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
-  if (eligibleWithFitScore.length < 8 && viableCandidateCountBeforeFinalSelection >= 15) {
+  const superheroUnderfillRelaxationNeedsUnderfill = eligibleWithFitScore.length < 8;
+  const superheroUnderfillRelaxationHasEnoughCandidates = viableCandidateCountBeforeFinalSelection >= 15;
+  const superheroUnderfillRelaxationLowVolumeRescueEligible =
+    viableCandidateCountBeforeFinalSelection >= 1 &&
+    finalEligibilityAcceptedTitles.length < Math.min(2, Math.max(1, finalLimit));
+  const superheroUnderfillRelaxationTargetRenderCount = Math.max(3, Math.min(finalLimit, 12));
+  superheroUnderfillRelaxationEligibility =
+    superheroUnderfillRelaxationNeedsUnderfill &&
+    (superheroUnderfillRelaxationHasEnoughCandidates || superheroUnderfillRelaxationLowVolumeRescueEligible);
+  superheroUnderfillRelaxationPredicateState = {
+    needsUnderfill: superheroUnderfillRelaxationNeedsUnderfill,
+    hasEnoughCandidates: superheroUnderfillRelaxationHasEnoughCandidates,
+    lowVolumeRescueEligible: superheroUnderfillRelaxationLowVolumeRescueEligible,
+    eligibleWithFitScoreLength: eligibleWithFitScore.length,
+    viableCandidateCountBeforeFinalSelection,
+    finalLimit,
+    targetRenderCount: superheroUnderfillRelaxationTargetRenderCount,
+    acceptedTitlesBeforeRelaxation: finalEligibilityAcceptedTitles.length,
+    returnedItemsBuiltFromBeforeRelaxation: "not_initialized_at_relaxation_stage",
+  };
+  if (superheroUnderfillRelaxationEligibility) {
     finalEligibilityRelaxationTriggered = true;
+    superheroUnderfillRelaxationBranchEntered = true;
+    markSourceSpecificGate("__router__", "superhero_underfill_relaxation_branch:entered");
     const alreadyAccepted = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
-    const relaxedAdds = viableCandidates
+    const superheroUnderfillRescuePool = dedupeDocs([
+      ...(viableCandidates || []),
+      ...(rankedDocs || []),
+      ...(finalRankedDocsBase || []),
+    ] as any[]);
+    markSourceSpecificGate("__router__", `superhero_underfill_rescue_pool_size:${superheroUnderfillRescuePool.length}`);
+    const relaxedAdds = superheroUnderfillRescuePool
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title || alreadyAccepted.has(normalizeText(title))) return false;
         const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
         const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
         const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
+        const sourceText = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+        const isComicVineCandidate = sourceText.includes("comicvine");
         const nonEnglish = Number((doc?.diagnostics as any)?.nonEnglishEditionPenalty || 0) < 0;
-        if (!strongTasteFit || nonEnglish) return false;
         const editionText = `${title} ${String(doc?.description || '')} ${String(doc?.parentVolumeName || '')}`;
-        const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
         const narrativeFictionConfidence = (/\b(story|novel|saga|chronicle|mystery|thriller|horror|fantasy|adventure)\b/i.test(editionText) ? 2 : 0);
+        const superheroFranchiseFinalGateRe = /\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i;
+        const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+        const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
+        const scoreComponents = (finalScoreComponentsByTitle[title] || {}) as any;
+        const hasThemeOverlap = Boolean(scoreComponents?.themeOverlap || scoreComponents?.theme_overlap);
+        const hasRootMatch = Boolean(scoreComponents?.rootMatch || scoreComponents?.root_match || scoreComponents?.queryRootMatch || scoreComponents?.query_root_match);
+        const semanticThemeRootCompositeSupport = semanticSupportFound && hasThemeOverlap && hasRootMatch;
+        const superheroUnderfillRescueAllow =
+          isComicVineCandidate &&
+          superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
+          (positiveFitScore >= 4.5 || semanticThemeRootCompositeSupport) &&
+          narrativeFictionConfidence >= 2 &&
+          semanticEvidenceCount >= 1;
+        if (isComicVineCandidate && superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`)) {
+          markSourceSpecificGate(
+            title,
+            superheroUnderfillRescueAllow
+              ? "superhero_underfill_rescue_candidate:true"
+              : "superhero_underfill_rescue_candidate:false"
+          );
+          if (!superheroUnderfillRescueAllow) {
+            markSourceSpecificGate(
+              title,
+              `superhero_underfill_rescue_candidate:false:fit=${positiveFitScore.toFixed(2)},narr=${narrativeFictionConfidence},semanticCount=${semanticEvidenceCount},semanticSupport=${semanticSupportFound ? 1 : 0},themeOverlap=${hasThemeOverlap ? 1 : 0},rootMatch=${hasRootMatch ? 1 : 0}`
+            );
+          }
+        }
+        if ((!strongTasteFit && !superheroUnderfillRescueAllow) || nonEnglish) return false;
+        const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
         if (!(narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3)) return false;
         const titleNorm = normalizeText(title);
         const artifactLike = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/.test(titleNorm) || /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i.test(`${title} ${String(doc?.description || "")}`);
         if (artifactLike) return false;
+        if (superheroUnderfillRescueAllow) markSourceSpecificGate(title, "superhero_underfill_rescue_relaxation");
         return true;
       })
       .slice(0, 12);
@@ -9377,6 +9446,9 @@ const normalizedCandidatesRaw = [
     dislikedOverlapDominatesRejectedTitles,
     controlledEmergencyFallback,
     sourceSpecificGateAppliedByTitle,
+    superheroUnderfillRelaxationBranchEntered,
+    superheroUnderfillRelaxationEligibility,
+    superheroUnderfillRelaxationPredicateState,
     sourceSpecificRejectReasonByTitle,
     curatedSeedProfileMatch,
     curatedSeedReason,
