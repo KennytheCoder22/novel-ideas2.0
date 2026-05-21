@@ -7048,11 +7048,17 @@ const normalizedCandidatesRaw = [
   postSourceSpecificGateTitles.push(...finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
   const superheroUnderfillRelaxationNeedsUnderfill = eligibleWithFitScore.length < 8;
   const superheroUnderfillRelaxationHasEnoughCandidates = viableCandidateCountBeforeFinalSelection >= 15;
+  const superheroUnderfillRelaxationLowVolumeRescueEligible =
+    viableCandidateCountBeforeFinalSelection >= 1 &&
+    finalEligibilityAcceptedTitles.length < Math.min(2, Math.max(1, finalLimit));
   const superheroUnderfillRelaxationTargetRenderCount = Math.max(3, Math.min(finalLimit, 12));
-  superheroUnderfillRelaxationEligibility = superheroUnderfillRelaxationNeedsUnderfill && superheroUnderfillRelaxationHasEnoughCandidates;
+  superheroUnderfillRelaxationEligibility =
+    superheroUnderfillRelaxationNeedsUnderfill &&
+    (superheroUnderfillRelaxationHasEnoughCandidates || superheroUnderfillRelaxationLowVolumeRescueEligible);
   superheroUnderfillRelaxationPredicateState = {
     needsUnderfill: superheroUnderfillRelaxationNeedsUnderfill,
     hasEnoughCandidates: superheroUnderfillRelaxationHasEnoughCandidates,
+    lowVolumeRescueEligible: superheroUnderfillRelaxationLowVolumeRescueEligible,
     eligibleWithFitScoreLength: eligibleWithFitScore.length,
     viableCandidateCountBeforeFinalSelection,
     finalLimit,
