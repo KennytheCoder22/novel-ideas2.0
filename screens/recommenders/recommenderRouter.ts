@@ -7396,10 +7396,13 @@ const normalizedCandidatesRaw = [
       if (!title) return true;
       const gates = sourceSpecificGateAppliedByTitle[title] || [];
       const superheroFinalGatePass = gates.includes("superhero_narrative_fit_final_gate:true");
+      const superheroRescueAcceptedPass = gates.includes("superhero_underfill_rescue_relaxation");
       const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
       const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
       const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]) || semanticEvidenceCount >= 1;
-      const superheroNegativeScoreRenderBypass = superheroFinalGatePass && semanticSupportFound && positiveFitScore >= 4.5;
+      const superheroNegativeScoreRenderBypass =
+        (superheroFinalGatePass && semanticSupportFound && positiveFitScore >= 4.5) ||
+        (superheroRescueAcceptedPass && semanticSupportFound && positiveFitScore >= 3.5);
       if (superheroNegativeScoreRenderBypass) {
         negativeScoreRenderBypassedTitles.push(title);
         markSourceSpecificGate(title, "superhero_negative_score_render_bypass");
