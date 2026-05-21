@@ -7387,10 +7387,31 @@ const normalizedCandidatesRaw = [
   const scoredRebuildUsedForRender = true;
   const renderSource = "scored_rebuild";
   const overwrittenAfterScoredRebuild = false;
+  const negativeScoreRenderBypassedTitles: string[] = [];
   const negativeScoreRenderBlockedTitles = finalRenderDocs
-    .filter((doc: any) => Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0)
+    .filter((doc: any) => {
+      const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+      if (score >= 0) return false;
+      const title = String(doc?.title || "").trim();
+      if (!title) return true;
+      const gates = sourceSpecificGateAppliedByTitle[title] || [];
+      const superheroFinalGatePass = gates.includes("superhero_narrative_fit_final_gate:true");
+      const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+      const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+      const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]) || semanticEvidenceCount >= 1;
+      const superheroNegativeScoreRenderBypass = superheroFinalGatePass && semanticSupportFound && positiveFitScore >= 4.5;
+      if (superheroNegativeScoreRenderBypass) {
+        negativeScoreRenderBypassedTitles.push(title);
+        markSourceSpecificGate(title, "superhero_negative_score_render_bypass");
+        return false;
+      }
+      return true;
+    })
     .map((doc: any) => String(doc?.title || "").trim())
     .filter(Boolean);
+  if (negativeScoreRenderBypassedTitles.length > 0) {
+    markSourceSpecificGate("__router__", `superhero_negative_score_render_bypass_titles:${Array.from(new Set(negativeScoreRenderBypassedTitles)).join("|")}`);
+  }
   for (const title of negativeScoreRenderBlockedTitles) markTerminalReject(title, "negative_score_render_blocked");
   if (negativeScoreRenderBlockedTitles.length > 0) {
     const negativeBlockedCanonical = new Set(negativeScoreRenderBlockedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
