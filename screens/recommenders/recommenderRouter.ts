@@ -6260,13 +6260,18 @@ const normalizedCandidatesRaw = [
       const normalizedRoot = normalizeText(String(docRoot || "").replace(/-/g, " "));
       const franchiseAffinity = profileSelectedEntitySeeds.some((seed) => normalizedRoot.includes(normalizeText(seed)));
       const narrativeOverlap = laneMatch || narrativeWorkSignal;
+      const curatedSuperheroRoots = new Set(["runaways", "ms-marvel", "spider-man", "avenging-spider-man", "spider-man-noir", "batman"]);
+      const normalizedProfileSignals = profileSelectedEntitySeeds.map((seed) => normalizeText(seed));
+      const profileHasSuperheroIntent = normalizedProfileSignals.some((seed) => /\b(superhero|marvel|dc|teen|young adult|team|coming of age|identity)\b/i.test(seed));
+      const curatedFranchiseMetadataSupport = curatedSuperheroRoots.has(String(docRoot || "")) && profileHasSuperheroIntent;
       const semanticEvidenceCount =
         (matchedLikedWeighted.length > 0 ? 1 : 0) +
         (hasSupportOutsideTitle ? 1 : 0) +
         (themeOverlap ? 1 : 0) +
         (franchiseAffinity ? 1 : 0) +
-        (narrativeOverlap ? 1 : 0);
-      const semanticSupportFound = semanticEvidenceCount > 0;
+        (narrativeOverlap ? 1 : 0) +
+        (curatedFranchiseMetadataSupport ? 1 : 0);
+      const semanticSupportFound = semanticEvidenceCount > 0 || curatedFranchiseMetadataSupport;
       const structuralBoostsAllowed = semanticSupportFound;
       const starterSignalScore = starterSignal && structuralBoostsAllowed ? 0.8 : 0;
       const collectionEditionScore = collectionEditionBoost && structuralBoostsAllowed ? 0.8 : 0;
@@ -6317,7 +6322,7 @@ const normalizedCandidatesRaw = [
       candidateSkipPenaltyByTitle[title] = skipPenalty;
       singleTokenQueryHijackPenaltyByTitle[title] = singleTokenQueryHijackPenalty;
       weakLexicalFantasyClusterPenaltyByTitle[title] = weakLexicalFantasyClusterPenalty;
-      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.5 : 0, starterSignal: starterSignalScore, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence && semanticSupportFound ? 0.05 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, semanticEvidenceCount, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, singleTokenQueryHijackPenalty: -singleTokenQueryHijackPenalty, lexicalTitleOnlyHijackPenalty: -lexicalTitleOnlyHijackPenalty, weakLexicalFantasyClusterPenalty: -weakLexicalFantasyClusterPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0 };
+      finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.5 : 0, starterSignal: starterSignalScore, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence && semanticSupportFound ? 0.05 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, semanticEvidenceCount, curatedFranchiseMetadataSupport: curatedFranchiseMetadataSupport ? 1 : 0, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, singleTokenQueryHijackPenalty: -singleTokenQueryHijackPenalty, lexicalTitleOnlyHijackPenalty: -lexicalTitleOnlyHijackPenalty, weakLexicalFantasyClusterPenalty: -weakLexicalFantasyClusterPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0 };
       finalRankingReasonByTitle[title] = [
         ...(tasteMatchScore > 0 ? ["liked_overlap"] : []),
         ...(dislikePenalty > 0 ? ["disliked_overlap_penalty"] : []),
