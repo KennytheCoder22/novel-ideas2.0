@@ -7170,9 +7170,12 @@ const normalizedCandidatesRaw = [
           return false;
         }
         const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
-        if (!(narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3)) {
-          if (superheroUnderfillRescueAllow) incSuperheroUnderfillFailure("post_allow_narrative_or_collection_blocked");
+        const narrativeOrCollectionPass = (narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3);
+        if (!narrativeOrCollectionPass && !superheroUnderfillRescueAllow) {
           return false;
+        }
+        if (!narrativeOrCollectionPass && superheroUnderfillRescueAllow) {
+          markSourceSpecificGate(title, "superhero_underfill_rescue_post_allow_narrative_collection_bypass");
         }
         const titleNorm = normalizeText(title);
         const artifactLike = /^(graphic\s+(fantasy|novel|science fiction)|science fiction classics|fantasy classics)$/.test(titleNorm) || /\b(feedback|tribute|preview|sampler|companion|guide|reference|history of|encyclopedia|adventure\s*about|how to|study|criticism|annotation|annotated)\b/i.test(`${title} ${String(doc?.description || "")}`);
