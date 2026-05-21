@@ -7071,7 +7071,13 @@ const normalizedCandidatesRaw = [
     superheroUnderfillRelaxationBranchEntered = true;
     markSourceSpecificGate("__router__", "superhero_underfill_relaxation_branch:entered");
     const alreadyAccepted = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
-    const relaxedAdds = viableCandidates
+    const superheroUnderfillRescuePool = dedupeDocs([
+      ...(viableCandidates || []),
+      ...(rankedDocs || []),
+      ...(finalRankedDocsBase || []),
+    ] as any[]);
+    markSourceSpecificGate("__router__", `superhero_underfill_rescue_pool_size:${superheroUnderfillRescuePool.length}`);
+    const relaxedAdds = superheroUnderfillRescuePool
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         if (!title || alreadyAccepted.has(normalizeText(title))) return false;
