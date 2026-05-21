@@ -7058,7 +7058,7 @@ const normalizedCandidatesRaw = [
     finalLimit,
     targetRenderCount: superheroUnderfillRelaxationTargetRenderCount,
     acceptedTitlesBeforeRelaxation: finalEligibilityAcceptedTitles.length,
-    returnedItemsBuiltFromBeforeRelaxation: String(returnedItemsBuiltFrom || "none"),
+    returnedItemsBuiltFromBeforeRelaxation: "not_initialized_at_relaxation_stage",
   };
   if (superheroUnderfillRelaxationEligibility) {
     finalEligibilityRelaxationTriggered = true;
