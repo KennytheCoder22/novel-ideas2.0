@@ -7045,6 +7045,7 @@ const normalizedCandidatesRaw = [
   postSourceSpecificGateTitles.push(...finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
   if (eligibleWithFitScore.length < 8 && viableCandidateCountBeforeFinalSelection >= 15) {
     finalEligibilityRelaxationTriggered = true;
+    markSourceSpecificGate("__router__", "superhero_underfill_relaxation_branch:entered");
     const alreadyAccepted = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(t)));
     const relaxedAdds = viableCandidates
       .filter((doc: any) => {
@@ -7066,6 +7067,14 @@ const normalizedCandidatesRaw = [
           positiveFitScore >= 4.5 &&
           narrativeFictionConfidence >= 2 &&
           semanticEvidenceCount >= 1;
+        if (isComicVineCandidate && superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`)) {
+          markSourceSpecificGate(
+            title,
+            superheroUnderfillRescueAllow
+              ? "superhero_underfill_rescue_candidate:true"
+              : "superhero_underfill_rescue_candidate:false"
+          );
+        }
         if ((!strongTasteFit && !superheroUnderfillRescueAllow) || nonEnglish) return false;
         const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
         if (!(narrativeFictionConfidence >= 2 || collectedEditionConfidence >= 3)) return false;
