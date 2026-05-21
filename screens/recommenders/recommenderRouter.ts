@@ -5986,11 +5986,13 @@ const normalizedCandidatesRaw = [
     const expansionRoot = parentFranchiseRootForDoc(doc);
     const aliasPool = expansionAliasMap[expansionQueryRoot] || [expansionQueryRoot.replace(/-/g, " ")];
     const strictRootOnly = new Set(["saga", "sweet-tooth", "spider-man", "miles-morales"]);
+    const superheroFranchiseRoots = new Set(["spider-man", "miles-morales", "batman", "superman", "avengers", "ms-marvel", "teen-titans", "young-justice"]);
     const parentOrRootMatch =
       aliasPool.some((alias) => normalizeText(String(doc?.parentVolumeName || doc?.rawDoc?.parentVolumeName || "")).includes(normalizeText(alias))) ||
       (expansionRoot && (expansionRoot === expansionQueryRoot || aliasPool.some((alias) => expansionRoot.includes(normalizeText(alias).replace(/[^a-z0-9]+/g, "-")))));
     const titleAliasLooseMatch = aliasPool.some((alias) => normalizedTitle.includes(normalizeText(alias)));
-    const queryRootMatched = strictRootOnly.has(expansionQueryRoot) ? parentOrRootMatch : (parentOrRootMatch || titleAliasLooseMatch);
+    const isSuperheroRoot = superheroFranchiseRoots.has(expansionQueryRoot);
+    const queryRootMatched = strictRootOnly.has(expansionQueryRoot) && !isSuperheroRoot ? parentOrRootMatch : (parentOrRootMatch || titleAliasLooseMatch);
     matchedProfileSeeds.forEach((seed) => {
       entitySeedCandidatesFoundBySeed[seed] = (entitySeedCandidatesFoundBySeed[seed] || 0) + 1;
     });
@@ -6014,7 +6016,10 @@ const normalizedCandidatesRaw = [
     const isKnownTranslatedLocale = /\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(title));
     const hasEnglishAlternativeInUniverse = scoringUniverse.some((d: any) => parentFranchiseRootForDoc(d) === expansionRoot && !/\b(maschinenmond|uhrwerke|schlüssel|willkommen|psychospiele|die schattenkrone)\b/i.test(String(d?.title || "")));
     const weakHobbitFiller = /\bthe hobbit\b/i.test(title) && !(/\b(fantasy|adventure)\b/.test(profileTextForSeeds) || ["fantasy", "adventure"].includes(routerFamily));
-    const expansionQueryRootMismatch = isExpansionCandidate && Boolean(expansionQueryRoot) && !queryRootMatched;
+    const superheroNarrativeFit =
+      isSuperheroRoot &&
+      (matchedProfileSeeds.length > 0 || /\b(noir|mystery|detective|coming of age|identity|friendship|school|survival|thriller|suspense)\b/.test(normalizedTitle) || baseScore >= 4.5);
+    const expansionQueryRootMismatch = isExpansionCandidate && Boolean(expansionQueryRoot) && !queryRootMatched && !superheroNarrativeFit;
     const shouldRejectAsBroadArtifact = (broadArtifactTitle && !hasPositiveSignal && !isKnownCanonicalFranchise) || weakHobbitFiller || expansionQueryRootMismatch || (isExpansionCandidate && isKnownTranslatedLocale && hasEnglishAlternativeInUniverse);
     if (expansionQueryRootMismatch) {
       expansionQueryRootMismatchRejectedTitles.push(title);
@@ -6890,11 +6895,6 @@ const normalizedCandidatesRaw = [
       markSourceSpecificGate(title, "curated_title_fallback_low_metadata_ok");
       }
     }
-    if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
-      dislikedOverlapDominatesRejectedTitles.push(title);
-      registerFinalEligibilityReject("disliked_overlap_dominates", title);
-      return false;
-    }
     finalTasteThresholdByTitle[title] = 2.5;
     const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
     const strongTasteFit = weightedTasteScore >= 3 || positiveFitScore >= 6;
@@ -6914,6 +6914,27 @@ const normalizedCandidatesRaw = [
     const parodyMetaTitle = /\b(mystery science theater 3000|mst3k|riff|rifftrax|parody|spoof)\b/i.test(`${title} ${String(doc?.description || "")}`);
     const artifactRiskScore = (issueOnlyRe.test(title) ? 3 : 0) + (isClearlyMalformed ? 4 : 0) + metaOrReferenceWorkPenalty + (structuralFragment ? 2 : 0);
     const recommendableWorkScore = collectedEditionConfidence + narrativeFictionConfidence - artifactRiskScore;
+    const superheroFranchiseFinalGateRe = /\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i;
+    const superheroNarrativeFitFinalGate =
+      isComicVineCandidate &&
+      superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
+      (positiveFitScore >= 5 || (semanticEvidenceCount >= 2 && narrativeFictionConfidence >= 2));
+    if (isComicVineCandidate) {
+      markSourceSpecificGate(
+        title,
+        superheroNarrativeFitFinalGate
+          ? "superhero_narrative_fit_final_gate:true"
+          : "superhero_narrative_fit_final_gate:false"
+      );
+    }
+    if (dislikePenaltyScore >= weightedTasteScore && dislikePenaltyScore > 0) {
+      if (!superheroNarrativeFitFinalGate) {
+        dislikedOverlapDominatesRejectedTitles.push(title);
+        registerFinalEligibilityReject("disliked_overlap_dominates", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "superhero_narrative_fit_dislike_override");
+    }
     if (isComicVineCandidate && (genericCollectionArtifactRe.test(normalizeText(title)) || /gwandanaland comics/i.test(title))) {
       markSourceSpecificGate(title, "generic_collection_artifact");
       if (genericCollectionArtifactRejectedTitles.length < 100) genericCollectionArtifactRejectedTitles.push(title);
@@ -7005,7 +7026,10 @@ const normalizedCandidatesRaw = [
         sourceSpecificRejectReasonByTitle[title] = "format_signal_only_without_taste_fit";
         registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
       }
-      registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
+      if (!superheroNarrativeFitFinalGate) {
+        registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
+      }
+      markSourceSpecificGate(title, "superhero_narrative_fit_taste_threshold_override");
     }
     if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
     finalAcceptedTasteEvidenceByTitle[title] = [
