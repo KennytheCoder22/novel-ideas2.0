@@ -7048,9 +7048,24 @@ const normalizedCandidatesRaw = [
   postSourceSpecificGateTitles.push(...finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
   const superheroUnderfillRelaxationNeedsUnderfill = eligibleWithFitScore.length < 8;
   const superheroUnderfillRelaxationHasEnoughCandidates = viableCandidateCountBeforeFinalSelection >= 15;
+  const superheroUnderfillRelaxationHeroRescueSignalCount = viableCandidates.filter((doc: any) => {
+    const title = String(doc?.title || "").trim();
+    if (!title) return false;
+    const sourceText = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+    if (!sourceText.includes("comicvine")) return false;
+    const docText = `${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`;
+    if (!/\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i.test(docText)) return false;
+    const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+    const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
+    const scoreComponents = (finalScoreComponentsByTitle[title] || {}) as any;
+    const hasThemeOverlap = Boolean(scoreComponents?.themeOverlap || scoreComponents?.theme_overlap);
+    const hasRootMatch = Boolean(scoreComponents?.rootMatch || scoreComponents?.root_match || scoreComponents?.queryRootMatch || scoreComponents?.query_root_match);
+    const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+    return semanticEvidenceCount >= 1 && (positiveFitScore >= 2 || (semanticSupportFound && hasThemeOverlap && hasRootMatch));
+  }).length;
   const superheroUnderfillRelaxationLowVolumeRescueEligible =
     viableCandidateCountBeforeFinalSelection >= 1 &&
-    finalEligibilityAcceptedTitles.length < Math.min(2, Math.max(1, finalLimit));
+    (finalEligibilityAcceptedTitles.length < Math.min(2, Math.max(1, finalLimit)) || superheroUnderfillRelaxationHeroRescueSignalCount > 0);
   const superheroUnderfillRelaxationTargetRenderCount = Math.max(3, Math.min(finalLimit, 12));
   superheroUnderfillRelaxationEligibility =
     superheroUnderfillRelaxationNeedsUnderfill &&
@@ -7059,6 +7074,7 @@ const normalizedCandidatesRaw = [
     needsUnderfill: superheroUnderfillRelaxationNeedsUnderfill,
     hasEnoughCandidates: superheroUnderfillRelaxationHasEnoughCandidates,
     lowVolumeRescueEligible: superheroUnderfillRelaxationLowVolumeRescueEligible,
+    heroRescueSignalCount: superheroUnderfillRelaxationHeroRescueSignalCount,
     eligibleWithFitScoreLength: eligibleWithFitScore.length,
     viableCandidateCountBeforeFinalSelection,
     finalLimit,
