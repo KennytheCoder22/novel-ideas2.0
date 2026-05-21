@@ -7085,10 +7085,15 @@ const normalizedCandidatesRaw = [
         const narrativeFictionConfidence = (/\b(story|novel|saga|chronicle|mystery|thriller|horror|fantasy|adventure)\b/i.test(editionText) ? 2 : 0);
         const superheroFranchiseFinalGateRe = /\b(spider-man|miles morales|ms\.?\s*marvel|batman|superman|avengers|teen titans|young justice|runaways)\b/i;
         const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+        const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
+        const scoreComponents = (finalScoreComponentsByTitle[title] || {}) as any;
+        const hasThemeOverlap = Boolean(scoreComponents?.themeOverlap || scoreComponents?.theme_overlap);
+        const hasRootMatch = Boolean(scoreComponents?.rootMatch || scoreComponents?.root_match || scoreComponents?.queryRootMatch || scoreComponents?.query_root_match);
+        const semanticThemeRootCompositeSupport = semanticSupportFound && hasThemeOverlap && hasRootMatch;
         const superheroUnderfillRescueAllow =
           isComicVineCandidate &&
           superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`) &&
-          positiveFitScore >= 4.5 &&
+          (positiveFitScore >= 4.5 || semanticThemeRootCompositeSupport) &&
           narrativeFictionConfidence >= 2 &&
           semanticEvidenceCount >= 1;
         if (isComicVineCandidate && superheroFranchiseFinalGateRe.test(`${title} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`)) {
@@ -7098,6 +7103,12 @@ const normalizedCandidatesRaw = [
               ? "superhero_underfill_rescue_candidate:true"
               : "superhero_underfill_rescue_candidate:false"
           );
+          if (!superheroUnderfillRescueAllow) {
+            markSourceSpecificGate(
+              title,
+              `superhero_underfill_rescue_candidate:false:fit=${positiveFitScore.toFixed(2)},narr=${narrativeFictionConfidence},semanticCount=${semanticEvidenceCount},semanticSupport=${semanticSupportFound ? 1 : 0},themeOverlap=${hasThemeOverlap ? 1 : 0},rootMatch=${hasRootMatch ? 1 : 0}`
+            );
+          }
         }
         if ((!strongTasteFit && !superheroUnderfillRescueAllow) || nonEnglish) return false;
         const collectedEditionConfidence = (/\b(volume\s*one|volume\s*1|book\s*one|book\s*1|vol\.?\s*1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|deluxe edition|collected edition|collection)\b/i.test(editionText) ? 3 : 0);
