@@ -7781,18 +7781,21 @@ const normalizedCandidatesRaw = [
   const hardLexicalDieArtifactRe = /\b(love[-\s]?or[-\s]?die|kill[-\s]?or[-\s]?die|die[-\s]?die[-\s]?die|villains[-\s]?are[-\s]?destined[-\s]?to[-\s]?die|if[-\s]?my[-\s]?favorite[-\s]?pop[-\s]?idol.*die)\b/i;
   const negativeScoreBlockedSet = new Set(negativeScoreRenderBlockedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
   function passesSharedReturnArtifactScrub(doc: any) {
+    return sharedReturnArtifactScrubRejectReason(doc) === null;
+  }
+  function sharedReturnArtifactScrubRejectReason(doc: any): string | null {
     const title = String(doc?.title || "").trim();
-    if (!title) return false;
+    if (!title) return "missing_title";
     const root = String(parentFranchiseRootForDoc(doc) || "");
     const normalizedTitle = normalizeText(title);
-    if (!canReturnTitle(title, doc)) return false;
-    if (negativeScoreBlockedSet.has(normalizedTitle)) return false;
-    if (isLikelySubtitleFragmentTitle(title)) return false;
-    if (Boolean(queryTermOnlyEvidenceByTitle[title])) return false;
-    if (/\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i.test(title)) return false;
-    if (/amazing fantasy/i.test(title) && !(root === "spider-man" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
-    if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return false;
-    return true;
+    if (!canReturnTitle(title, doc)) return "can_return_title";
+    if (negativeScoreBlockedSet.has(normalizedTitle)) return "negative_score_blocked_set";
+    if (isLikelySubtitleFragmentTitle(title)) return "subtitle_fragment_title_shape";
+    if (Boolean(queryTermOnlyEvidenceByTitle[title])) return "query_term_only_evidence";
+    if (/\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i.test(title)) return "collection_artifact_wording";
+    if (/amazing fantasy/i.test(title) && !(root === "spider-man" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return "amazing_fantasy_without_spiderman_semantic";
+    if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return "hard_lexical_die_artifact";
+    return null;
   }
   function passesPositiveFitRescueSafety(doc: any) {
     const title = String(doc?.title || "").trim();
@@ -9361,7 +9364,8 @@ const normalizedCandidatesRaw = [
       if (formatSignalOnlyRejectedSet.has(nt)) return "canReturnTitle:format_signal_only_rejected";
       if (finalEligibilityHardNeverReturnTitles.has(nt)) return "canReturnTitle:final_eligibility_hard_never_return";
       if (isParodyMetaReturnBlocked(title, doc)) return "canReturnTitle:parody_meta_blocked";
-      if (!passesSharedReturnArtifactScrub(doc)) return "passesSharedReturnArtifactScrub:false";
+      const artifactScrubReason = sharedReturnArtifactScrubRejectReason(doc);
+      if (artifactScrubReason) return `passesSharedReturnArtifactScrub:${artifactScrubReason}`;
       return "accept";
     };
     const scoredUniverseContractTopUp = dedupeDocs([
