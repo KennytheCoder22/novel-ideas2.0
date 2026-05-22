@@ -7966,12 +7966,21 @@ const normalizedCandidatesRaw = [
     const title = String(doc?.title || "").trim();
     if (!title) return false;
     const nt = normalizeText(title);
-    if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
+    const root = String(parentFranchiseRootForDoc(doc) || "");
+    const canonicalRoots = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender", "x-men", "green-lantern", "fantastic-four", "guardians-of-the-galaxy", "wonder-woman", "thor", "justice-league", "batman", "daredevil", "miles-morales", "monstress", "lumberjanes"]);
+    const text = `${title} ${String(doc?.description || doc?.rawDoc?.description || "")}`;
+    const collectedEditionLike = isCollectedStarterLikeText(text);
+    const explicitIssueMarker = /#\s*\d+\b|\b(issue|chapter)\s*#?\d+\b/i.test(title);
+    const metaArtifact = /\b(guide|companion|encyclopedia|history of|criticism|analysis|study guide|reader|handbook)\b/i.test(text);
+    const titleFallbackLike = String(parentRootSourceByTitle[title] || "").includes("title_fallback");
+    const cleanSeriesOrCollected = collectedEditionLike && (canonicalRoots.has(root) || titleFallbackLike) && !explicitIssueMarker && !metaArtifact;
+    if ((isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) && !cleanSeriesOrCollected) return false;
     if (String(terminalRejectReasonByTitle[nt] || "").includes("age_maturity_blocked")) return false;
     if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return false;
     if (negativeScoreBlockedSet.has(nt)) return false;
     if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
     if (hardLexicalDieArtifactRe.test(title)) return false;
+    if (String(terminalRejectReasonByTitle[nt] || "").includes("final_eligibility_rejected") && !cleanSeriesOrCollected) return false;
     return true;
   }
   function rescueSortScore(doc: any) {
@@ -8199,7 +8208,7 @@ const normalizedCandidatesRaw = [
   function canReturnTitleRejectReason(title: string, doc?: any): string | null {
     const key = normalizeText(String(title || ""));
     if (!key) return "missing_title";
-    if (terminalRejectReasonByTitle[key]) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+    const text = `${title} ${String(doc?.description || doc?.rawDoc?.description || "")}`;
     const singleSourceComicVineContractMode =
       includeComicVine &&
       sourceEnabled.comicVine &&
@@ -8207,10 +8216,15 @@ const normalizedCandidatesRaw = [
       !sourceEnabled.openLibrary &&
       !sourceEnabled.localLibrary &&
       !includeKitsu;
-    const canonicalSeriesLike = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender"])
+    const canonicalSeriesLike = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender", "x-men", "green-lantern", "fantastic-four", "guardians-of-the-galaxy", "wonder-woman", "thor", "justice-league", "batman", "daredevil", "miles-morales", "monstress", "lumberjanes"])
       .has(String(parentFranchiseRootForDoc(doc) || ""));
-    const collectedEditionLike = isCollectedStarterLikeText(`${title} ${String(doc?.description || doc?.rawDoc?.description || "")}`);
-    if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && collectedEditionLike && canonicalSeriesLike)) return "late_fill_never_return";
+    const collectedEditionLike = isCollectedStarterLikeText(text);
+    const explicitIssueMarker = /#\s*\d+\b|\b(issue|chapter)\s*#?\d+\b/i.test(title);
+    const metaArtifact = /\b(guide|companion|encyclopedia|history of|criticism|analysis|study guide|reader|handbook)\b/i.test(text);
+    const titleFallbackLike = String(parentRootSourceByTitle[title] || "").includes("title_fallback");
+    const cleanSeriesOrCollected = collectedEditionLike && (canonicalSeriesLike || titleFallbackLike) && !explicitIssueMarker && !metaArtifact;
+    if (terminalRejectReasonByTitle[key] && !(singleSourceComicVineContractMode && cleanSeriesOrCollected && String(terminalRejectReasonByTitle[key]).includes("final_eligibility_rejected"))) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+    if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && cleanSeriesOrCollected)) return "late_fill_never_return";
     if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
     if (formatSignalOnlyRejectedSet.has(key)) return "format_signal_only_rejected";
     if (finalEligibilityHardNeverReturnTitles.has(key)) return "final_eligibility_hard_never_return";
@@ -8869,6 +8883,8 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = "teen_postpass_handoff_recovery";
     }
   }
+  const preLateTeenUnderfillOutputItems = finalOutputItems.slice();
+  const preLateTeenUnderfillBuiltFrom = String(returnedItemsBuiltFrom || "");
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenComicVineOnlyLateUnderfill) {
     const curatedZeroResultOverride = swipeRankedCandidateList
       .filter((doc: any) => {
@@ -9451,6 +9467,18 @@ const normalizedCandidatesRaw = [
       if (refill.length > 0) finalOutputItems = [...finalOutputItems, ...refill];
     }
   }
+  if (
+    teenComicVineOnlyLateUnderfill &&
+    includeComicVine &&
+    comicVineOnlyMode &&
+    preLateTeenUnderfillOutputItems.length > 0 &&
+    finalOutputItems.length > 0 &&
+    finalOutputItems.length < preLateTeenUnderfillOutputItems.length
+  ) {
+    finalOutputItems = preLateTeenUnderfillOutputItems;
+    returnedItemsBuiltFrom = `${preLateTeenUnderfillBuiltFrom || "none"}_non_shrunk_restore`;
+    finalReturnSourceUsed = `${String(finalReturnSourceUsed || "none")}_non_shrunk_restore`;
+  }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
     if (teenComicVineOnlyLateUnderfill && includeComicVine && comicVineOnlyMode) {
       returnedItemsBuiltFrom = "none";
@@ -9515,13 +9543,15 @@ const normalizedCandidatesRaw = [
       if (!title || !nt) return "missing_title";
       if (seen.has(nt)) return "duplicate_title";
       if (score < 0) return "negative_score";
-      if ((isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) && !(titleFallbackLike && canonicalSeriesLike && !explicitIssueMarker)) return "passesEmergencySafeRescue:issue_fragment";
+      const metaArtifact = /\b(guide|companion|encyclopedia|history of|criticism|analysis|study guide|reader|handbook)\b/i.test(`${title} ${String(doc?.description || "")}`);
+      const cleanSeriesOrCollected = collectedEditionLike && canonicalSeriesLike && !explicitIssueMarker && !metaArtifact;
+      if ((isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) && !(titleFallbackLike && canonicalSeriesLike && !explicitIssueMarker) && !cleanSeriesOrCollected) return "passesEmergencySafeRescue:issue_fragment";
       if (String(terminalRejectReasonByTitle[nt] || "").includes("age_maturity_blocked")) return "passesEmergencySafeRescue:age_maturity_blocked";
       if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return "passesEmergencySafeRescue:locale_variant";
       if (negativeScoreBlockedSet.has(nt)) return "passesEmergencySafeRescue:negative_score_blocked_set";
       if (hardLexicalDieArtifactRe.test(title)) return "passesEmergencySafeRescue:hard_lexical_die_artifact";
-      if (terminalRejectReasonByTitle[nt]) return `canReturnTitle:terminal_reject:${terminalRejectReasonByTitle[nt]}`;
-      if (lateFillNeverReturnTitles.has(nt) && !(enabledSourceCountForContract === 1 && includeComicVine && collectedEditionLike && canonicalSeriesLike)) return "canReturnTitle:late_fill_never_return";
+      if (terminalRejectReasonByTitle[nt] && !(enabledSourceCountForContract === 1 && includeComicVine && cleanSeriesOrCollected && String(terminalRejectReasonByTitle[nt]).includes("final_eligibility_rejected"))) return `canReturnTitle:terminal_reject:${terminalRejectReasonByTitle[nt]}`;
+      if (lateFillNeverReturnTitles.has(nt) && !(enabledSourceCountForContract === 1 && includeComicVine && cleanSeriesOrCollected)) return "canReturnTitle:late_fill_never_return";
       if (genericCollectionRejectedSet.has(nt)) return "canReturnTitle:generic_collection_rejected";
       if (formatSignalOnlyRejectedSet.has(nt)) return "canReturnTitle:format_signal_only_rejected";
       if (finalEligibilityHardNeverReturnTitles.has(nt)) return "canReturnTitle:final_eligibility_hard_never_return";
@@ -9560,6 +9590,60 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_scored_universe_contract_topup`;
       finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_scored_universe_contract_topup`;
     }
+  }
+  if (
+    !suppressTopRecommendations &&
+    enabledSourceCountForContract === 1 &&
+    includeComicVine &&
+    finalOutputItems.length < targetFinalCountForContract
+  ) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const finalContractRefillDiagnostics: string[] = [];
+    const finalContractRefillAcceptedTitles: string[] = [];
+    const finalContractRefill = dedupeDocs([
+      ...(scoredCanonicalDocs || []),
+      ...(finalRenderDocs || []),
+      ...(swipeRankedCandidateList || []),
+      ...(rankedDocs || []),
+      ...(candidateDocs || []),
+      ...(normalizedCandidates || []),
+      ...(viableCandidates || []),
+      ...(teenComicVinePositiveFitRescuePool || []),
+    ] as any[])
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt) {
+          finalContractRefillDiagnostics.push(`${title || "(untitled)"}:reject=missing_title`);
+          return false;
+        }
+        if (seen.has(nt)) {
+          finalContractRefillDiagnostics.push(`${title}:reject=duplicate_title`);
+          return false;
+        }
+        if (!passesEmergencySafeRescue(doc)) {
+          finalContractRefillDiagnostics.push(`${title}:reject=passesEmergencySafeRescue:false`);
+          return false;
+        }
+        const returnReject = canReturnTitleRejectReason(title, doc);
+        if (returnReject) {
+          finalContractRefillDiagnostics.push(`${title}:reject=canReturnTitle:${returnReject}`);
+          return false;
+        }
+        finalContractRefillDiagnostics.push(`${title}:accept`);
+        finalContractRefillAcceptedTitles.push(title);
+        return true;
+      })
+      .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (finalContractRefill.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...finalContractRefill];
+      returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_final_contract_refill`;
+      finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_final_contract_refill`;
+    }
+    markSourceSpecificGate("__router__", `final_contract_refill_candidate_count:${finalContractRefillDiagnostics.length}`);
+    markSourceSpecificGate("__router__", `final_contract_refill_candidates:${finalContractRefillDiagnostics.slice(0, 120).join("|") || "(none)"}`);
+    markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
   }
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,
