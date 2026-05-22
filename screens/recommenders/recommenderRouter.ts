@@ -9327,6 +9327,40 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_single_source_contract_topup`;
     }
   }
+  if (
+    !suppressTopRecommendations &&
+    enabledSourceCountForContract === 1 &&
+    includeComicVine &&
+    scoredUniverseFailure &&
+    finalOutputItems.length < targetFinalCountForContract
+  ) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const scoredUniverseContractTopUp = dedupeDocs([
+      ...(scoredCanonicalDocs || []),
+      ...(swipeRankedCandidateList || []),
+      ...(finalRenderDocs || []),
+      ...(viableCandidates || []),
+      ...(candidateDocs || []),
+      ...(normalizedCandidates || []),
+    ] as any[])
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const key = normalizeText(title);
+        if (!title || !key || seen.has(key)) return false;
+        if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
+        if (!passesEmergencySafeRescue(doc)) return false;
+        if (!canReturnTitle(title, doc)) return false;
+        if (!passesSharedReturnArtifactScrub(doc)) return false;
+        return true;
+      })
+      .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (scoredUniverseContractTopUp.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...scoredUniverseContractTopUp];
+      returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_scored_universe_contract_topup`;
+      finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_scored_universe_contract_topup`;
+    }
+  }
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,
     sourceEnabled.openLibrary ? 1 : 0,
