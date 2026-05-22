@@ -3287,8 +3287,22 @@ export async function getRecommendations(
       .replace(/\bDie character-focused graphic\b/gi, "")
       .replace(/\s+/g, " ")
       .trim())
-    .filter(Boolean)
-    .slice(0, 10);
+    .filter(Boolean);
+  if (bigTwoSuperheroProfile && bigTwoExpansionQueries.length > 0) {
+    const normalizedBigTwo = new Set(bigTwoExpansionQueries.map((q) => normalizeText(q)));
+    const normalizedAll = new Set(generatedComicVineQueriesFromTaste.map((q) => normalizeText(q)));
+    const prioritizedBigTwo = bigTwoExpansionQueries
+      .filter((q) => normalizedAll.has(normalizeText(q)))
+      .map((q) => q.replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+    const nonBigTwo = generatedComicVineQueriesFromTaste.filter((q) => !normalizedBigTwo.has(normalizeText(q)));
+    generatedComicVineQueriesFromTaste = Array.from(new Set([
+      ...prioritizedBigTwo,
+      ...nonBigTwo,
+    ])).slice(0, 10);
+  } else {
+    generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.slice(0, 10);
+  }
   if (dislikeOnlySession && generatedComicVineQueriesFromTaste.length === 0) {
     generatedComicVineQueriesFromTaste = [
       "character driven suspense graphic novel",
