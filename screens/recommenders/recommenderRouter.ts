@@ -9241,6 +9241,17 @@ const normalizedCandidatesRaw = [
     }
   }
   if (teenComicVineOnlyLateUnderfill && finalOutputItems.length > 0) {
+    const enabledSourceCountLateUnderfill = [
+      sourceEnabled.googleBooks ? 1 : 0,
+      sourceEnabled.openLibrary ? 1 : 0,
+      sourceEnabled.localLibrary ? 1 : 0,
+      includeKitsu ? 1 : 0,
+      includeComicVine ? 1 : 0,
+    ].reduce((acc, n) => acc + n, 0);
+    const singleSourceContractModeLateUnderfill = enabledSourceCountLateUnderfill === 1;
+    const lateUnderfillTarget = singleSourceContractModeLateUnderfill
+      ? Math.max(1, Math.min(10, finalLimit))
+      : 3;
     const seenTitle = new Set<string>();
     finalOutputItems = finalOutputItems.filter((item: any) => {
       const t = normalizeText(String(item?.doc?.title || item?.title || ""));
@@ -9252,7 +9263,7 @@ const normalizedCandidatesRaw = [
       .map((item: any) => String(parentFranchiseRootForDoc(item?.doc || item) || "__none__"))
       .filter((r: string) => r !== "__none__");
     const distinctRoots = new Set(roots);
-    if (distinctRoots.size >= 3) {
+    if (!singleSourceContractModeLateUnderfill && distinctRoots.size >= 3) {
       const seenRoot = new Set<string>();
       finalOutputItems = finalOutputItems.filter((item: any) => {
         const root = String(parentFranchiseRootForDoc(item?.doc || item) || "__none__");
@@ -9262,7 +9273,7 @@ const normalizedCandidatesRaw = [
         return true;
       });
     }
-    if (finalOutputItems.length < 3) {
+    if (finalOutputItems.length < lateUnderfillTarget) {
       const refill = selectRescueWithRootDiversity(
         dedupeDocs([...(finalRenderDocs || []), ...(finalRankedDocsBase || []), ...(rankedDocs || []), ...(teenComicVinePositiveFitRescuePool || [])] as any[])
           .filter((doc: any) => {
@@ -9270,7 +9281,7 @@ const normalizedCandidatesRaw = [
             if (!t || seenTitle.has(t)) return false;
             return passesEmergencySafeRescue(doc);
           }),
-        3 - finalOutputItems.length
+        lateUnderfillTarget - finalOutputItems.length
       ).map((doc: any) => ({ kind: "open_library", doc }));
       if (refill.length > 0) finalOutputItems = [...finalOutputItems, ...refill];
     }
