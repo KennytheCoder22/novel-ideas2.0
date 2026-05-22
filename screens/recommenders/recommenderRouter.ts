@@ -7406,6 +7406,11 @@ const normalizedCandidatesRaw = [
       if (superheroNegativeScoreRenderBypass) {
         negativeScoreRenderBypassedTitles.push(title);
         markSourceSpecificGate(title, "superhero_negative_score_render_bypass");
+        if (superheroRescueAcceptedPass && semanticSupportFound && positiveFitScore >= 3.5) {
+          markSourceSpecificGate(title, "superhero_negative_score_render_bypass:rescue_accepted");
+        } else if (superheroFinalGatePass && semanticSupportFound && positiveFitScore >= 4.5) {
+          markSourceSpecificGate(title, "superhero_negative_score_render_bypass:final_gate");
+        }
         return false;
       }
       return true;
