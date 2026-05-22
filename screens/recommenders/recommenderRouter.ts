@@ -9335,6 +9335,8 @@ const normalizedCandidatesRaw = [
     finalOutputItems.length < targetFinalCountForContract
   ) {
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const scoredUniverseTopUpCandidateDiagnostics: string[] = [];
+    const scoredUniverseTopUpAcceptedTitles: string[] = [];
     const scoredUniverseContractTopUp = dedupeDocs([
       ...(scoredCanonicalDocs || []),
       ...(swipeRankedCandidateList || []),
@@ -9346,15 +9348,40 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         const key = normalizeText(title);
-        if (!title || !key || seen.has(key)) return false;
-        if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
-        if (!passesEmergencySafeRescue(doc)) return false;
-        if (!canReturnTitle(title, doc)) return false;
-        if (!passesSharedReturnArtifactScrub(doc)) return false;
+        const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+        if (!title || !key) {
+          scoredUniverseTopUpCandidateDiagnostics.push(`(untitled):score=${score.toFixed(2)}:reject=missing_title`);
+          return false;
+        }
+        if (seen.has(key)) {
+          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=duplicate_title`);
+          return false;
+        }
+        if (score < 0) {
+          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=negative_score`);
+          return false;
+        }
+        if (!passesEmergencySafeRescue(doc)) {
+          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=passesEmergencySafeRescue`);
+          return false;
+        }
+        if (!canReturnTitle(title, doc)) {
+          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=canReturnTitle(existing_or_diversity_or_terminal_guard)`);
+          return false;
+        }
+        if (!passesSharedReturnArtifactScrub(doc)) {
+          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=passesSharedReturnArtifactScrub`);
+          return false;
+        }
+        scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:accept`);
+        scoredUniverseTopUpAcceptedTitles.push(title);
         return true;
       })
       .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
       .map((doc: any) => ({ kind: "open_library", doc }));
+    markSourceSpecificGate("__router__", `scored_universe_contract_topup_candidate_count:${scoredUniverseTopUpCandidateDiagnostics.length}`);
+    markSourceSpecificGate("__router__", `scored_universe_contract_topup_candidates:${scoredUniverseTopUpCandidateDiagnostics.slice(0, 80).join("|") || "(none)"}`);
+    markSourceSpecificGate("__router__", `scored_universe_contract_topup_accepts:${Array.from(new Set(scoredUniverseTopUpAcceptedTitles)).slice(0, 40).join("|") || "(none)"}`);
     if (scoredUniverseContractTopUp.length > 0) {
       finalOutputItems = [...finalOutputItems, ...scoredUniverseContractTopUp];
       returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_scored_universe_contract_topup`;
