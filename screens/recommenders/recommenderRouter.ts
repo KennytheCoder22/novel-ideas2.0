@@ -7967,12 +7967,13 @@ const normalizedCandidatesRaw = [
     if (!title) return false;
     const nt = normalizeText(title);
     const root = String(parentFranchiseRootForDoc(doc) || "");
-    const canonicalRoots = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender", "x-men", "green-lantern", "fantastic-four", "guardians-of-the-galaxy", "wonder-woman", "thor", "justice-league", "batman", "daredevil", "miles-morales"]);
+    const canonicalRoots = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender", "x-men", "green-lantern", "fantastic-four", "guardians-of-the-galaxy", "wonder-woman", "thor", "justice-league", "batman", "daredevil", "miles-morales", "monstress", "lumberjanes"]);
     const text = `${title} ${String(doc?.description || doc?.rawDoc?.description || "")}`;
     const collectedEditionLike = isCollectedStarterLikeText(text);
     const explicitIssueMarker = /#\s*\d+\b|\b(issue|chapter)\s*#?\d+\b/i.test(title);
     const metaArtifact = /\b(guide|companion|encyclopedia|history of|criticism|analysis|study guide|reader|handbook)\b/i.test(text);
-    const cleanSeriesOrCollected = collectedEditionLike && canonicalRoots.has(root) && !explicitIssueMarker && !metaArtifact;
+    const titleFallbackLike = String(parentRootSourceByTitle[title] || "").includes("title_fallback");
+    const cleanSeriesOrCollected = collectedEditionLike && (canonicalRoots.has(root) || titleFallbackLike) && !explicitIssueMarker && !metaArtifact;
     if ((isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) && !cleanSeriesOrCollected) return false;
     if (String(terminalRejectReasonByTitle[nt] || "").includes("age_maturity_blocked")) return false;
     if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return false;
@@ -8215,12 +8216,13 @@ const normalizedCandidatesRaw = [
       !sourceEnabled.openLibrary &&
       !sourceEnabled.localLibrary &&
       !includeKitsu;
-    const canonicalSeriesLike = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender", "x-men", "green-lantern", "fantastic-four", "guardians-of-the-galaxy", "wonder-woman", "thor", "justice-league", "batman", "daredevil", "miles-morales"])
+    const canonicalSeriesLike = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender", "x-men", "green-lantern", "fantastic-four", "guardians-of-the-galaxy", "wonder-woman", "thor", "justice-league", "batman", "daredevil", "miles-morales", "monstress", "lumberjanes"])
       .has(String(parentFranchiseRootForDoc(doc) || ""));
     const collectedEditionLike = isCollectedStarterLikeText(text);
     const explicitIssueMarker = /#\s*\d+\b|\b(issue|chapter)\s*#?\d+\b/i.test(title);
     const metaArtifact = /\b(guide|companion|encyclopedia|history of|criticism|analysis|study guide|reader|handbook)\b/i.test(text);
-    const cleanSeriesOrCollected = collectedEditionLike && canonicalSeriesLike && !explicitIssueMarker && !metaArtifact;
+    const titleFallbackLike = String(parentRootSourceByTitle[title] || "").includes("title_fallback");
+    const cleanSeriesOrCollected = collectedEditionLike && (canonicalSeriesLike || titleFallbackLike) && !explicitIssueMarker && !metaArtifact;
     if (terminalRejectReasonByTitle[key] && !(singleSourceComicVineContractMode && cleanSeriesOrCollected && String(terminalRejectReasonByTitle[key]).includes("final_eligibility_rejected"))) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
     if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && cleanSeriesOrCollected)) return "late_fill_never_return";
     if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
@@ -9573,6 +9575,39 @@ const normalizedCandidatesRaw = [
       finalOutputItems = [...finalOutputItems, ...scoredUniverseContractTopUp];
       returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_scored_universe_contract_topup`;
       finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_scored_universe_contract_topup`;
+    }
+  }
+  if (
+    !suppressTopRecommendations &&
+    enabledSourceCountForContract === 1 &&
+    includeComicVine &&
+    finalOutputItems.length < targetFinalCountForContract
+  ) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const finalContractRefill = dedupeDocs([
+      ...(scoredCanonicalDocs || []),
+      ...(finalRenderDocs || []),
+      ...(swipeRankedCandidateList || []),
+      ...(rankedDocs || []),
+      ...(candidateDocs || []),
+      ...(normalizedCandidates || []),
+      ...(viableCandidates || []),
+      ...(teenComicVinePositiveFitRescuePool || []),
+    ] as any[])
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt || seen.has(nt)) return false;
+        if (!passesEmergencySafeRescue(doc)) return false;
+        if (!canReturnTitle(title, doc)) return false;
+        return true;
+      })
+      .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (finalContractRefill.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...finalContractRefill];
+      returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_final_contract_refill`;
+      finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_final_contract_refill`;
     }
   }
   const enabledSourceCount = [
