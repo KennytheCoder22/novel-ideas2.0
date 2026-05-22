@@ -3124,6 +3124,9 @@ export async function getRecommendations(
   const genres = likedGenresSafe.map((s: string) => s.replace(/^genre:/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const tones = likedTonesSafe.map((s: string) => s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const themes = likedThemesSafe.map((s: string) => s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  // Keep a stable alias for "drive" style taste signals so query constructors never
+  // crash if downstream code references `drives` during ComicVine dispatch.
+  const drives = themes;
   const likedSignalsText = normalizeText([
     ...likedSignalsSafe,
     ...Object.keys(likedTagCountsSafe),
@@ -3237,6 +3240,43 @@ export async function getRecommendations(
     `${seed} style graphic novel`,
     `${seed} emotional growth graphic novel`,
   ]);
+  const bigTwoSuperheroProfile =
+    genres.includes("superheroes") ||
+    themes.includes("identity") ||
+    drives.includes("identity") ||
+    /\b(superhero|dc|marvel|justice league|avengers)\b/.test(likedSignalsText);
+  const darkDetectiveProfile =
+    (tones.includes("dark") || tones.includes("atmospheric")) &&
+    (genres.includes("mystery") || genres.includes("crime") || themes.includes("identity"));
+  const hopefulComingOfAgeHeroProfile =
+    (tones.includes("hopeful") || tones.includes("warm") || tones.includes("playful")) &&
+    (themes.includes("coming of age") || themes.includes("identity") || themes.includes("friendship"));
+  const mythologyEpicProfile =
+    themes.includes("mythology") || (genres.includes("fantasy") && (themes.includes("identity") || themes.includes("adventure")));
+  const teamActionProfile =
+    themes.includes("friendship") || themes.includes("adventure") || /\b(team|ensemble|group)\b/.test(likedSignalsText);
+  const cosmicSciFiProfile =
+    (genres.includes("science fiction") || genres.includes("dystopian")) &&
+    (themes.includes("survival") || themes.includes("political") || themes.includes("justice"));
+  const dynamicBigTwoRoots = Array.from(new Set([
+    ...(darkDetectiveProfile ? ["Batman", "Daredevil", "Spider-Man Noir"] : []),
+    ...(hopefulComingOfAgeHeroProfile ? ["Ms. Marvel", "Miles Morales", "Spider-Man", "Supergirl"] : []),
+    ...(mythologyEpicProfile ? ["Thor", "Wonder Woman", "New Gods"] : []),
+    ...(teamActionProfile ? ["X-Men", "Teen Titans", "Avengers", "Justice League"] : []),
+    ...(cosmicSciFiProfile ? ["Green Lantern", "Fantastic Four", "Guardians of the Galaxy", "X-Men"] : []),
+  ]));
+  const fallbackBigTwoRoots = ["Batman", "Superman", "Wonder Woman", "Captain America", "Thor", "Justice League", "Avengers"];
+  const selectedBigTwoRoots = bigTwoSuperheroProfile
+    ? (dynamicBigTwoRoots.length > 0 ? dynamicBigTwoRoots : fallbackBigTwoRoots)
+    : [];
+  const bigTwoRootQueryForms = (root: string) => [
+    `${root}`,
+    `${root} graphic novel`,
+    `${root} TPB`,
+    `${root} collected edition`,
+    `${root} story arc`,
+  ];
+  const bigTwoExpansionQueries = selectedBigTwoRoots.flatMap((root) => bigTwoRootQueryForms(root));
   curatedSeedRootsUsed.push(...curatedRootsByPattern);
   let generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...combinedQueries,
@@ -3244,6 +3284,7 @@ export async function getRecommendations(
     ...broadGraphicQueries,
     ...curatedSeedQueries,
     ...anchorExemplarQueries,
+    ...bigTwoExpansionQueries,
   ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
@@ -3267,8 +3308,56 @@ export async function getRecommendations(
       .replace(/\bDie character-focused graphic\b/gi, "")
       .replace(/\s+/g, " ")
       .trim())
-    .filter(Boolean)
-    .slice(0, 10);
+    .filter(Boolean);
+  if (bigTwoSuperheroProfile && bigTwoExpansionQueries.length > 0) {
+    const normalizedBigTwo = new Set(selectedBigTwoRoots.map((q) => normalizeText(q)));
+    const prioritizedBigTwoRaw = generatedComicVineQueriesFromTaste
+      .filter((q) => {
+        const nq = normalizeText(q);
+        return Array.from(normalizedBigTwo).some((root) => nq === root || nq.startsWith(`${root} `));
+      })
+      .map((q) => q.replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+    const bigTwoRootOrder = selectedBigTwoRoots.map((r) => normalizeText(r)).filter(Boolean).slice(0, 6);
+    const bigTwoBuckets = new Map<string, string[]>();
+    for (const q of prioritizedBigTwoRaw) {
+      const nq = normalizeText(q);
+      const root = bigTwoRootOrder.find((r) => nq === r || nq.startsWith(`${r} `)) || "";
+      if (!root) continue;
+      if (!bigTwoBuckets.has(root)) bigTwoBuckets.set(root, []);
+      bigTwoBuckets.get(root)!.push(q);
+    }
+    const prioritizedBigTwo: string[] = [];
+    const maxBigTwoFormsPerRootInTopPool = 2;
+    let advanced = true;
+    while (advanced && prioritizedBigTwo.length < 10) {
+      advanced = false;
+      for (const root of bigTwoRootOrder) {
+        const bucket = bigTwoBuckets.get(root) || [];
+        const usedForRoot = prioritizedBigTwo.filter((q) => {
+          const nq = normalizeText(q);
+          return nq === root || nq.startsWith(`${root} `);
+        }).length;
+        if (usedForRoot >= maxBigTwoFormsPerRootInTopPool) continue;
+        const next = bucket.shift();
+        if (!next) continue;
+        if (!prioritizedBigTwo.includes(next)) {
+          prioritizedBigTwo.push(next);
+          advanced = true;
+        }
+      }
+    }
+    const nonBigTwo = generatedComicVineQueriesFromTaste.filter((q) => {
+      const nq = normalizeText(q);
+      return !Array.from(normalizedBigTwo).some((root) => nq === root || nq.startsWith(`${root} `));
+    });
+    generatedComicVineQueriesFromTaste = Array.from(new Set([
+      ...prioritizedBigTwo,
+      ...nonBigTwo,
+    ])).slice(0, 10);
+  } else {
+    generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.slice(0, 10);
+  }
   if (dislikeOnlySession && generatedComicVineQueriesFromTaste.length === 0) {
     generatedComicVineQueriesFromTaste = [
       "character driven suspense graphic novel",
@@ -3299,9 +3388,54 @@ export async function getRecommendations(
   let primaryTasteQueryOverrideBlockedReason = "not_evaluated";
   let primaryRungZeroSource = "none";
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0) {
+    const normalizeRootToken = (v: string) => normalizeText(v).replace(/[^a-z0-9]+/g, " ").trim();
+    const bigTwoRootsNormalized = selectedBigTwoRoots.map((r) => normalizeRootToken(r)).filter(Boolean);
+    const detectHeroRootFromQuery = (query: string): string => {
+      const nq = normalizeText(query);
+      const matched = bigTwoRootsNormalized.find((root) => nq === root || nq.startsWith(`${root} `));
+      if (matched) return matched;
+      const token = nq.split(/\s+/).slice(0, 2).join(" ").trim();
+      return token || nq;
+    };
+    const normalizedBigTwoQuerySet = new Set(bigTwoExpansionQueries.map((q) => normalizeText(q)));
+    const bigTwoQueriesInPool = generatedComicVineQueriesFromTaste.filter((q) => normalizedBigTwoQuerySet.has(normalizeText(q)));
     const narrativePrimary = generatedComicVineQueriesFromTaste.filter((q) => /\b(character|narrative|story|coming of age|friendship|mystery|supernatural|psychological|graphic novel)\b/i.test(q));
     const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q));
-    const primaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
+    const baselinePrimaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
+    const primaryQueriesRaw = Array.from(new Set([
+      ...bigTwoQueriesInPool,
+      ...baselinePrimaryQueries,
+    ]));
+    const preferredRootOrder = selectedBigTwoRoots.map((r) => normalizeRootToken(r)).filter(Boolean);
+    const rootsFromPool = Array.from(new Set(primaryQueriesRaw.map((q) => detectHeroRootFromQuery(q)).filter(Boolean)));
+    const selectedRootsForSession = Array.from(new Set([
+      ...preferredRootOrder.filter((r) => rootsFromPool.includes(r)),
+      ...rootsFromPool,
+    ])).slice(0, 6);
+    const rootBuckets = new Map<string, string[]>();
+    for (const query of primaryQueriesRaw) {
+      const root = detectHeroRootFromQuery(query);
+      if (!selectedRootsForSession.includes(root)) continue;
+      if (!rootBuckets.has(root)) rootBuckets.set(root, []);
+      rootBuckets.get(root)!.push(query);
+    }
+    const maxFormsPerRoot = includeComicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !includeKitsu ? 3 : 2;
+    const primaryQueries: string[] = [];
+    let progress = true;
+    while (progress && primaryQueries.length < 12) {
+      progress = false;
+      for (const root of selectedRootsForSession) {
+        const bucket = rootBuckets.get(root) || [];
+        const takenForRoot = primaryQueries.filter((q) => detectHeroRootFromQuery(q) === root).length;
+        if (takenForRoot >= maxFormsPerRoot) continue;
+        const candidate = bucket.shift();
+        if (!candidate) continue;
+        if (!primaryQueries.includes(candidate)) {
+          primaryQueries.push(candidate);
+          progress = true;
+        }
+      }
+    }
     primaryNarrativeQueryMode = narrativePrimary.length > 0;
     primaryNarrativeQueries = narrativePrimary.slice(0, 12);
     broadGraphicNovelQueriesUsedAsFallback = narrativePrimary.length === 0 && broadFallback.length > 0;
@@ -5513,14 +5647,25 @@ const normalizedCandidatesRaw = [
       topUpMergedPoolAfterQualityFiltersLength = topupPool.length;
       topUpCandidatesConsideredLength += topupPool.length;
       const familyCounts = new Map<string, number>();
+      const singleSourceComicVineContractMode =
+        includeComicVine &&
+        sourceEnabled.comicVine &&
+        !sourceEnabled.googleBooks &&
+        !sourceEnabled.openLibrary &&
+        !sourceEnabled.localLibrary &&
+        !includeKitsu;
+      const familyCapLimit = singleSourceComicVineContractMode ? 3 : 2;
+      const franchiseCapLimit = singleSourceComicVineContractMode ? 3 : 2;
       for (const doc of finalRenderDocs) familyCounts.set(inferEntityFamily(doc), (familyCounts.get(inferEntityFamily(doc)) || 0) + 1);
       const seenTitles = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || d?.rawDoc?.title || ""))).filter(Boolean));
       for (const doc of topupPool) {
         if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
         const franchise = finalSeriesKeyForRender(doc);
         const family = inferEntityFamily(doc);
-        if ((familyCounts.get(family) || 0) >= 2) { topUpRejectedReasons.family_cap = Number(topUpRejectedReasons.family_cap || 0) + 1; continue; }
-        if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
+        if ((familyCounts.get(family) || 0) >= familyCapLimit) { topUpRejectedReasons.family_cap = Number(topUpRejectedReasons.family_cap || 0) + 1; continue; }
+        const franchiseCount = finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length;
+        const canSoftBypassFranchiseCap = singleSourceComicVineContractMode && finalRenderDocs.length < Math.min(Math.max(finalLimit, 8), 10);
+        if (franchiseCount >= franchiseCapLimit && !canSoftBypassFranchiseCap) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
         const normalizedTitle = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
         if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
         finalRenderDocs.push(doc);
@@ -5540,7 +5685,9 @@ const normalizedCandidatesRaw = [
           const qa = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
           if (/\b(psychological|suspense|thriller|graphic novel)\b/.test(qa) && !entitySeedPriority.some((s) => qa.includes(s))) { topUpRejectedReasons.broad_phrase_artifact = Number(topUpRejectedReasons.broad_phrase_artifact || 0) + 1; continue; }
           const franchise = finalSeriesKeyForRender(doc);
-          if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
+          const franchiseCount = finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length;
+          const canSoftBypassFranchiseCap = singleSourceComicVineContractMode && finalRenderDocs.length < Math.min(Math.max(finalLimit, 8), 10);
+          if (franchiseCount >= franchiseCapLimit && !canSoftBypassFranchiseCap) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
           const normalizedTitle = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
           if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
           finalRenderDocs.push(doc);
@@ -7824,12 +7971,14 @@ const normalizedCandidatesRaw = [
     const title = String(doc?.title || "").trim();
     if (!title) return false;
     const nt = normalizeText(title);
-    if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return false;
+    const cleanSeriesOrCollected = isCleanSeriesOrCollectedCandidate(title, doc);
+    if ((isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) && !cleanSeriesOrCollected) return false;
     if (String(terminalRejectReasonByTitle[nt] || "").includes("age_maturity_blocked")) return false;
     if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return false;
     if (negativeScoreBlockedSet.has(nt)) return false;
     if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
     if (hardLexicalDieArtifactRe.test(title)) return false;
+    if (String(terminalRejectReasonByTitle[nt] || "").includes("final_eligibility_rejected") && !cleanSeriesOrCollected) return false;
     return true;
   }
   function rescueSortScore(doc: any) {
@@ -8054,11 +8203,34 @@ const normalizedCandidatesRaw = [
   function canReturnTitle(title: string, doc?: any) {
     return canReturnTitleRejectReason(title, doc) === null;
   }
+  function isCleanSeriesOrCollectedCandidate(title: string, doc?: any) {
+    const key = normalizeText(String(title || ""));
+    if (!key) return false;
+    const root = String(parentFranchiseRootForDoc(doc) || "");
+    const text = `${title} ${String(doc?.description || doc?.rawDoc?.description || "")}`;
+    const canonicalSeriesLike = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender", "x-men", "green-lantern", "fantastic-four", "guardians-of-the-galaxy", "wonder-woman", "thor", "justice-league", "batman", "daredevil", "miles-morales", "monstress", "lumberjanes"])
+      .has(root);
+    const titleFallbackLike = String(parentRootSourceByTitle[title] || "").includes("title_fallback");
+    const collectedEditionLike = isCollectedStarterLikeText(text);
+    const storyArcLike = /\b(story\s*arc|saga|chronicles|year one|the court of owls|metamorphosis)\b/i.test(text);
+    const explicitIssueMarker = /#\s*\d+\b|\b(issue|chapter)\s*#?\d+\b/i.test(title);
+    const metaArtifact = /\b(guide|companion|encyclopedia|history of|criticism|analysis|study guide|reader|handbook)\b/i.test(text);
+    const localeMarker = /\b(spanish|espa[nñ]ol|french|fran[cç]ais|german|deutsch|italian|portugu[eê]s|edition\s+fran[cç]aise)\b/i.test(text);
+    return (canonicalSeriesLike || titleFallbackLike || collectedEditionLike || storyArcLike) && !explicitIssueMarker && !metaArtifact && !localeMarker;
+  }
   function canReturnTitleRejectReason(title: string, doc?: any): string | null {
     const key = normalizeText(String(title || ""));
     if (!key) return "missing_title";
-    if (terminalRejectReasonByTitle[key]) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
-    if (lateFillNeverReturnTitles.has(key)) return "late_fill_never_return";
+    const singleSourceComicVineContractMode =
+      includeComicVine &&
+      sourceEnabled.comicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu;
+    const cleanSeriesOrCollected = isCleanSeriesOrCollectedCandidate(title, doc);
+    if (terminalRejectReasonByTitle[key] && !(singleSourceComicVineContractMode && cleanSeriesOrCollected && String(terminalRejectReasonByTitle[key]).includes("final_eligibility_rejected"))) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+    if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && cleanSeriesOrCollected)) return "late_fill_never_return";
     if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
     if (formatSignalOnlyRejectedSet.has(key)) return "format_signal_only_rejected";
     if (finalEligibilityHardNeverReturnTitles.has(key)) return "final_eligibility_hard_never_return";
@@ -8717,6 +8889,8 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = "teen_postpass_handoff_recovery";
     }
   }
+  const preLateTeenUnderfillOutputItems = finalOutputItems.slice();
+  const preLateTeenUnderfillBuiltFrom = String(returnedItemsBuiltFrom || "");
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenComicVineOnlyLateUnderfill) {
     const curatedZeroResultOverride = swipeRankedCandidateList
       .filter((doc: any) => {
@@ -9299,6 +9473,18 @@ const normalizedCandidatesRaw = [
       if (refill.length > 0) finalOutputItems = [...finalOutputItems, ...refill];
     }
   }
+  if (
+    teenComicVineOnlyLateUnderfill &&
+    includeComicVine &&
+    comicVineOnlyMode &&
+    preLateTeenUnderfillOutputItems.length > 0 &&
+    finalOutputItems.length > 0 &&
+    finalOutputItems.length < preLateTeenUnderfillOutputItems.length
+  ) {
+    finalOutputItems = preLateTeenUnderfillOutputItems;
+    returnedItemsBuiltFrom = `${preLateTeenUnderfillBuiltFrom || "none"}_non_shrunk_restore`;
+    finalReturnSourceUsed = `${String(finalReturnSourceUsed || "none")}_non_shrunk_restore`;
+  }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
     if (teenComicVineOnlyLateUnderfill && includeComicVine && comicVineOnlyMode) {
       returnedItemsBuiltFrom = "none";
@@ -9350,26 +9536,21 @@ const normalizedCandidatesRaw = [
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
     const scoredUniverseTopUpCandidateDiagnostics: string[] = [];
     const scoredUniverseTopUpAcceptedTitles: string[] = [];
-    const scoredUniverseCanonicalRoots = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers"]);
     const scoredUniverseTopUpRejectReason = (doc: any): string => {
       const title = String(doc?.title || "").trim();
       const nt = normalizeText(title);
       const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
-      const root = String(parentFranchiseRootForDoc(doc) || "");
-      const titleFallbackLike = String(parentRootSourceByTitle[title] || "").includes("title_fallback");
-      const canonicalSeriesLike = scoredUniverseCanonicalRoots.has(root);
-      const collectedEditionLike = isCollectedStarterLikeText(`${title} ${String(doc?.description || "")}`);
-      const explicitIssueMarker = /#\s*\d+\b|\b(issue|chapter)\s*#?\d+\b/i.test(title);
       if (!title || !nt) return "missing_title";
       if (seen.has(nt)) return "duplicate_title";
       if (score < 0) return "negative_score";
-      if ((isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) && !(titleFallbackLike && canonicalSeriesLike && !explicitIssueMarker)) return "passesEmergencySafeRescue:issue_fragment";
+      const cleanSeriesOrCollected = isCleanSeriesOrCollectedCandidate(title, doc);
+      if ((isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) && !cleanSeriesOrCollected) return "passesEmergencySafeRescue:issue_fragment";
       if (String(terminalRejectReasonByTitle[nt] || "").includes("age_maturity_blocked")) return "passesEmergencySafeRescue:age_maturity_blocked";
       if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return "passesEmergencySafeRescue:locale_variant";
       if (negativeScoreBlockedSet.has(nt)) return "passesEmergencySafeRescue:negative_score_blocked_set";
       if (hardLexicalDieArtifactRe.test(title)) return "passesEmergencySafeRescue:hard_lexical_die_artifact";
-      if (terminalRejectReasonByTitle[nt]) return `canReturnTitle:terminal_reject:${terminalRejectReasonByTitle[nt]}`;
-      if (lateFillNeverReturnTitles.has(nt) && !(enabledSourceCountForContract === 1 && includeComicVine && collectedEditionLike && canonicalSeriesLike)) return "canReturnTitle:late_fill_never_return";
+      if (terminalRejectReasonByTitle[nt] && !(enabledSourceCountForContract === 1 && includeComicVine && cleanSeriesOrCollected && String(terminalRejectReasonByTitle[nt]).includes("final_eligibility_rejected"))) return `canReturnTitle:terminal_reject:${terminalRejectReasonByTitle[nt]}`;
+      if (lateFillNeverReturnTitles.has(nt) && !(enabledSourceCountForContract === 1 && includeComicVine && cleanSeriesOrCollected)) return "canReturnTitle:late_fill_never_return";
       if (genericCollectionRejectedSet.has(nt)) return "canReturnTitle:generic_collection_rejected";
       if (formatSignalOnlyRejectedSet.has(nt)) return "canReturnTitle:format_signal_only_rejected";
       if (finalEligibilityHardNeverReturnTitles.has(nt)) return "canReturnTitle:final_eligibility_hard_never_return";
@@ -9408,6 +9589,60 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_scored_universe_contract_topup`;
       finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_scored_universe_contract_topup`;
     }
+  }
+  if (
+    !suppressTopRecommendations &&
+    enabledSourceCountForContract === 1 &&
+    includeComicVine &&
+    finalOutputItems.length < targetFinalCountForContract
+  ) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const finalContractRefillDiagnostics: string[] = [];
+    const finalContractRefillAcceptedTitles: string[] = [];
+    const finalContractRefill = dedupeDocs([
+      ...(scoredCanonicalDocs || []),
+      ...(finalRenderDocs || []),
+      ...(swipeRankedCandidateList || []),
+      ...(rankedDocs || []),
+      ...(candidateDocs || []),
+      ...(normalizedCandidates || []),
+      ...(viableCandidates || []),
+      ...(teenComicVinePositiveFitRescuePool || []),
+    ] as any[])
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt) {
+          finalContractRefillDiagnostics.push(`${title || "(untitled)"}:reject=missing_title`);
+          return false;
+        }
+        if (seen.has(nt)) {
+          finalContractRefillDiagnostics.push(`${title}:reject=duplicate_title`);
+          return false;
+        }
+        if (!passesEmergencySafeRescue(doc)) {
+          finalContractRefillDiagnostics.push(`${title}:reject=passesEmergencySafeRescue:false`);
+          return false;
+        }
+        const returnReject = canReturnTitleRejectReason(title, doc);
+        if (returnReject) {
+          finalContractRefillDiagnostics.push(`${title}:reject=canReturnTitle:${returnReject}`);
+          return false;
+        }
+        finalContractRefillDiagnostics.push(`${title}:accept`);
+        finalContractRefillAcceptedTitles.push(title);
+        return true;
+      })
+      .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (finalContractRefill.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...finalContractRefill];
+      returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_final_contract_refill`;
+      finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_final_contract_refill`;
+    }
+    markSourceSpecificGate("__router__", `final_contract_refill_candidate_count:${finalContractRefillDiagnostics.length}`);
+    markSourceSpecificGate("__router__", `final_contract_refill_candidates:${finalContractRefillDiagnostics.slice(0, 120).join("|") || "(none)"}`);
+    markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
   }
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,

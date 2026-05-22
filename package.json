@@ -10,7 +10,8 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
-    "populate:swipe-images": "node scripts/populateSwipeCardFallbackImages.mjs"
+    "populate:swipe-images": "node scripts/populateSwipeCardFallbackImages.mjs",
+    "trace:comicvine:contract": "npx tsx scripts/run-comicvine-contract-traces.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
