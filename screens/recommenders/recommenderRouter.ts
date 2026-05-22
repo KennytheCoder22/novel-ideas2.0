@@ -9337,6 +9337,27 @@ const normalizedCandidatesRaw = [
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
     const scoredUniverseTopUpCandidateDiagnostics: string[] = [];
     const scoredUniverseTopUpAcceptedTitles: string[] = [];
+    const scoredUniverseTopUpRejectReason = (doc: any): string => {
+      const title = String(doc?.title || "").trim();
+      const nt = normalizeText(title);
+      const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+      if (!title || !nt) return "missing_title";
+      if (seen.has(nt)) return "duplicate_title";
+      if (score < 0) return "negative_score";
+      if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return "passesEmergencySafeRescue:issue_fragment";
+      if (String(terminalRejectReasonByTitle[nt] || "").includes("age_maturity_blocked")) return "passesEmergencySafeRescue:age_maturity_blocked";
+      if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return "passesEmergencySafeRescue:locale_variant";
+      if (negativeScoreBlockedSet.has(nt)) return "passesEmergencySafeRescue:negative_score_blocked_set";
+      if (hardLexicalDieArtifactRe.test(title)) return "passesEmergencySafeRescue:hard_lexical_die_artifact";
+      if (terminalRejectReasonByTitle[nt]) return `canReturnTitle:terminal_reject:${terminalRejectReasonByTitle[nt]}`;
+      if (lateFillNeverReturnTitles.has(nt)) return "canReturnTitle:late_fill_never_return";
+      if (genericCollectionRejectedSet.has(nt)) return "canReturnTitle:generic_collection_rejected";
+      if (formatSignalOnlyRejectedSet.has(nt)) return "canReturnTitle:format_signal_only_rejected";
+      if (finalEligibilityHardNeverReturnTitles.has(nt)) return "canReturnTitle:final_eligibility_hard_never_return";
+      if (isParodyMetaReturnBlocked(title, doc)) return "canReturnTitle:parody_meta_blocked";
+      if (!passesSharedReturnArtifactScrub(doc)) return "passesSharedReturnArtifactScrub:false";
+      return "accept";
+    };
     const scoredUniverseContractTopUp = dedupeDocs([
       ...(scoredCanonicalDocs || []),
       ...(swipeRankedCandidateList || []),
@@ -9347,30 +9368,10 @@ const normalizedCandidatesRaw = [
     ] as any[])
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
-        const key = normalizeText(title);
         const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
-        if (!title || !key) {
-          scoredUniverseTopUpCandidateDiagnostics.push(`(untitled):score=${score.toFixed(2)}:reject=missing_title`);
-          return false;
-        }
-        if (seen.has(key)) {
-          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=duplicate_title`);
-          return false;
-        }
-        if (score < 0) {
-          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=negative_score`);
-          return false;
-        }
-        if (!passesEmergencySafeRescue(doc)) {
-          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=passesEmergencySafeRescue`);
-          return false;
-        }
-        if (!canReturnTitle(title, doc)) {
-          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=canReturnTitle(existing_or_diversity_or_terminal_guard)`);
-          return false;
-        }
-        if (!passesSharedReturnArtifactScrub(doc)) {
-          scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:reject=passesSharedReturnArtifactScrub`);
+        const reason = scoredUniverseTopUpRejectReason(doc);
+        if (reason !== "accept") {
+          scoredUniverseTopUpCandidateDiagnostics.push(`${title || "(untitled)"}:score=${score.toFixed(2)}:reject=${reason}`);
           return false;
         }
         scoredUniverseTopUpCandidateDiagnostics.push(`${title}:score=${score.toFixed(2)}:accept`);
