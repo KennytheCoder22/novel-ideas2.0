@@ -9502,6 +9502,12 @@ const normalizedCandidatesRaw = [
     includeComicVine ? 1 : 0,
   ].reduce((acc, n) => acc + n, 0);
   const targetFinalCountForContract = Math.max(1, Math.min(10, finalLimit));
+  const scoredUniverseCandidateSignalCount = Math.max(
+    Number(scoredCandidateUniverseCount || 0),
+    Number(convertedDocsAvailableForScoringCount || 0),
+    Array.isArray(scoredCanonicalDocs) ? scoredCanonicalDocs.length : 0,
+    Array.isArray(swipeRankedCandidateList) ? swipeRankedCandidateList.length : 0
+  );
   if (!suppressTopRecommendations && enabledSourceCountForContract === 1 && finalOutputItems.length < targetFinalCountForContract) {
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
     const singleSourceContractTopUp = dedupeDocs([
@@ -9530,9 +9536,13 @@ const normalizedCandidatesRaw = [
     !suppressTopRecommendations &&
     enabledSourceCountForContract === 1 &&
     includeComicVine &&
-    scoredUniverseFailure &&
+    scoredUniverseCandidateSignalCount > 0 &&
     finalOutputItems.length < targetFinalCountForContract
   ) {
+    markSourceSpecificGate(
+      "__router__",
+      `scored_universe_contract_topup_entered:failure=${scoredUniverseFailure ? "true" : "false"}:candidate_signal_count=${scoredUniverseCandidateSignalCount}:returned_items=${finalOutputItems.length}`
+    );
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
     const scoredUniverseTopUpCandidateDiagnostics: string[] = [];
     const scoredUniverseTopUpAcceptedTitles: string[] = [];
