@@ -3245,17 +3245,38 @@ export async function getRecommendations(
     themes.includes("identity") ||
     drives.includes("identity") ||
     /\b(superhero|dc|marvel|justice league|avengers)\b/.test(likedSignalsText);
-  const bigTwoExpansionQueries = bigTwoSuperheroProfile
-    ? [
-      "Batman complete collection TPB",
-      "Superman complete collection TPB",
-      "Wonder Woman complete collection TPB",
-      "Captain America complete collection TPB",
-      "Thor complete collection TPB",
-      "Justice League complete collection TPB",
-      "Avengers complete collection TPB",
-    ]
+  const darkDetectiveProfile =
+    (tones.includes("dark") || tones.includes("atmospheric")) &&
+    (genres.includes("mystery") || genres.includes("crime") || themes.includes("identity"));
+  const hopefulComingOfAgeHeroProfile =
+    (tones.includes("hopeful") || tones.includes("warm") || tones.includes("playful")) &&
+    (themes.includes("coming of age") || themes.includes("identity") || themes.includes("friendship"));
+  const mythologyEpicProfile =
+    themes.includes("mythology") || (genres.includes("fantasy") && (themes.includes("identity") || themes.includes("adventure")));
+  const teamActionProfile =
+    themes.includes("friendship") || themes.includes("adventure") || /\b(team|ensemble|group)\b/.test(likedSignalsText);
+  const cosmicSciFiProfile =
+    (genres.includes("science fiction") || genres.includes("dystopian")) &&
+    (themes.includes("survival") || themes.includes("political") || themes.includes("justice"));
+  const dynamicBigTwoRoots = Array.from(new Set([
+    ...(darkDetectiveProfile ? ["Batman", "Daredevil", "Spider-Man Noir"] : []),
+    ...(hopefulComingOfAgeHeroProfile ? ["Ms. Marvel", "Miles Morales", "Spider-Man", "Supergirl"] : []),
+    ...(mythologyEpicProfile ? ["Thor", "Wonder Woman", "New Gods"] : []),
+    ...(teamActionProfile ? ["X-Men", "Teen Titans", "Avengers", "Justice League"] : []),
+    ...(cosmicSciFiProfile ? ["Green Lantern", "Fantastic Four", "Guardians of the Galaxy", "X-Men"] : []),
+  ]));
+  const fallbackBigTwoRoots = ["Batman", "Superman", "Wonder Woman", "Captain America", "Thor", "Justice League", "Avengers"];
+  const selectedBigTwoRoots = bigTwoSuperheroProfile
+    ? (dynamicBigTwoRoots.length > 0 ? dynamicBigTwoRoots : fallbackBigTwoRoots)
     : [];
+  const bigTwoRootQueryForms = (root: string) => [
+    `${root}`,
+    `${root} graphic novel`,
+    `${root} TPB`,
+    `${root} collected edition`,
+    `${root} story arc`,
+  ];
+  const bigTwoExpansionQueries = selectedBigTwoRoots.flatMap((root) => bigTwoRootQueryForms(root));
   curatedSeedRootsUsed.push(...curatedRootsByPattern);
   let generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...combinedQueries,
@@ -3289,13 +3310,20 @@ export async function getRecommendations(
       .trim())
     .filter(Boolean);
   if (bigTwoSuperheroProfile && bigTwoExpansionQueries.length > 0) {
-    const normalizedBigTwo = new Set(bigTwoExpansionQueries.map((q) => normalizeText(q)));
+    const normalizedBigTwo = new Set(selectedBigTwoRoots.map((q) => normalizeText(q)));
     const normalizedAll = new Set(generatedComicVineQueriesFromTaste.map((q) => normalizeText(q)));
-    const prioritizedBigTwo = bigTwoExpansionQueries
+    const prioritizedBigTwo = generatedComicVineQueriesFromTaste
+      .filter((q) => {
+        const nq = normalizeText(q);
+        return Array.from(normalizedBigTwo).some((root) => nq === root || nq.startsWith(`${root} `));
+      })
       .filter((q) => normalizedAll.has(normalizeText(q)))
       .map((q) => q.replace(/\s+/g, " ").trim())
       .filter(Boolean);
-    const nonBigTwo = generatedComicVineQueriesFromTaste.filter((q) => !normalizedBigTwo.has(normalizeText(q)));
+    const nonBigTwo = generatedComicVineQueriesFromTaste.filter((q) => {
+      const nq = normalizeText(q);
+      return !Array.from(normalizedBigTwo).some((root) => nq === root || nq.startsWith(`${root} `));
+    });
     generatedComicVineQueriesFromTaste = Array.from(new Set([
       ...prioritizedBigTwo,
       ...nonBigTwo,
