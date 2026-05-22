@@ -9337,20 +9337,26 @@ const normalizedCandidatesRaw = [
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
     const scoredUniverseTopUpCandidateDiagnostics: string[] = [];
     const scoredUniverseTopUpAcceptedTitles: string[] = [];
+    const scoredUniverseCanonicalRoots = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers"]);
     const scoredUniverseTopUpRejectReason = (doc: any): string => {
       const title = String(doc?.title || "").trim();
       const nt = normalizeText(title);
       const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+      const root = String(parentFranchiseRootForDoc(doc) || "");
+      const titleFallbackLike = String(parentRootSourceByTitle[title] || "").includes("title_fallback");
+      const canonicalSeriesLike = scoredUniverseCanonicalRoots.has(root);
+      const collectedEditionLike = isCollectedStarterLikeText(`${title} ${String(doc?.description || "")}`);
+      const explicitIssueMarker = /#\s*\d+\b|\b(issue|chapter)\s*#?\d+\b/i.test(title);
       if (!title || !nt) return "missing_title";
       if (seen.has(nt)) return "duplicate_title";
       if (score < 0) return "negative_score";
-      if (isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) return "passesEmergencySafeRescue:issue_fragment";
+      if ((isLikelyIssueFragmentDoc(doc) || isLikelySubtitleFragmentTitle(title)) && !(titleFallbackLike && canonicalSeriesLike && !explicitIssueMarker)) return "passesEmergencySafeRescue:issue_fragment";
       if (String(terminalRejectReasonByTitle[nt] || "").includes("age_maturity_blocked")) return "passesEmergencySafeRescue:age_maturity_blocked";
       if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return "passesEmergencySafeRescue:locale_variant";
       if (negativeScoreBlockedSet.has(nt)) return "passesEmergencySafeRescue:negative_score_blocked_set";
       if (hardLexicalDieArtifactRe.test(title)) return "passesEmergencySafeRescue:hard_lexical_die_artifact";
       if (terminalRejectReasonByTitle[nt]) return `canReturnTitle:terminal_reject:${terminalRejectReasonByTitle[nt]}`;
-      if (lateFillNeverReturnTitles.has(nt)) return "canReturnTitle:late_fill_never_return";
+      if (lateFillNeverReturnTitles.has(nt) && !(enabledSourceCountForContract === 1 && includeComicVine && collectedEditionLike && canonicalSeriesLike)) return "canReturnTitle:late_fill_never_return";
       if (genericCollectionRejectedSet.has(nt)) return "canReturnTitle:generic_collection_rejected";
       if (formatSignalOnlyRejectedSet.has(nt)) return "canReturnTitle:format_signal_only_rejected";
       if (finalEligibilityHardNeverReturnTitles.has(nt)) return "canReturnTitle:final_eligibility_hard_never_return";
