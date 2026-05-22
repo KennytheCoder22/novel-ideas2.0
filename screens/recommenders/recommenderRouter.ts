@@ -3361,15 +3361,53 @@ export async function getRecommendations(
   let primaryTasteQueryOverrideBlockedReason = "not_evaluated";
   let primaryRungZeroSource = "none";
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0) {
+    const normalizeRootToken = (v: string) => normalizeText(v).replace(/[^a-z0-9]+/g, " ").trim();
+    const bigTwoRootsNormalized = selectedBigTwoRoots.map((r) => normalizeRootToken(r)).filter(Boolean);
+    const detectHeroRootFromQuery = (query: string): string => {
+      const nq = normalizeText(query);
+      const matched = bigTwoRootsNormalized.find((root) => nq === root || nq.startsWith(`${root} `));
+      if (matched) return matched;
+      const token = nq.split(/\s+/).slice(0, 2).join(" ").trim();
+      return token || nq;
+    };
     const normalizedBigTwoQuerySet = new Set(bigTwoExpansionQueries.map((q) => normalizeText(q)));
     const bigTwoQueriesInPool = generatedComicVineQueriesFromTaste.filter((q) => normalizedBigTwoQuerySet.has(normalizeText(q)));
     const narrativePrimary = generatedComicVineQueriesFromTaste.filter((q) => /\b(character|narrative|story|coming of age|friendship|mystery|supernatural|psychological|graphic novel)\b/i.test(q));
     const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q));
     const baselinePrimaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
-    const primaryQueries = Array.from(new Set([
+    const primaryQueriesRaw = Array.from(new Set([
       ...bigTwoQueriesInPool,
       ...baselinePrimaryQueries,
     ]));
+    const selectedRootsForSession = Array.from(new Set(primaryQueriesRaw.map((q) => detectHeroRootFromQuery(q)).filter(Boolean))).slice(0, 6);
+    const rootMemoryPenalty = (query: string) => {
+      const root = detectHeroRootFromQuery(query);
+      return /^(batman|daredevil)\b/.test(root) ? 1 : 0;
+    };
+    const rootBuckets = new Map<string, string[]>();
+    for (const query of primaryQueriesRaw.sort((a, b) => rootMemoryPenalty(a) - rootMemoryPenalty(b))) {
+      const root = detectHeroRootFromQuery(query);
+      if (!selectedRootsForSession.includes(root)) continue;
+      if (!rootBuckets.has(root)) rootBuckets.set(root, []);
+      rootBuckets.get(root)!.push(query);
+    }
+    const maxFormsPerRoot = includeComicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !includeKitsu ? 3 : 2;
+    const primaryQueries: string[] = [];
+    let progress = true;
+    while (progress && primaryQueries.length < 12) {
+      progress = false;
+      for (const root of selectedRootsForSession) {
+        const bucket = rootBuckets.get(root) || [];
+        const takenForRoot = primaryQueries.filter((q) => detectHeroRootFromQuery(q) === root).length;
+        if (takenForRoot >= maxFormsPerRoot) continue;
+        const candidate = bucket.shift();
+        if (!candidate) continue;
+        if (!primaryQueries.includes(candidate)) {
+          primaryQueries.push(candidate);
+          progress = true;
+        }
+      }
+    }
     primaryNarrativeQueryMode = narrativePrimary.length > 0;
     primaryNarrativeQueries = narrativePrimary.slice(0, 12);
     broadGraphicNovelQueriesUsedAsFallback = narrativePrimary.length === 0 && broadFallback.length > 0;
