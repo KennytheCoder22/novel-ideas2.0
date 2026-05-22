@@ -3311,15 +3311,42 @@ export async function getRecommendations(
     .filter(Boolean);
   if (bigTwoSuperheroProfile && bigTwoExpansionQueries.length > 0) {
     const normalizedBigTwo = new Set(selectedBigTwoRoots.map((q) => normalizeText(q)));
-    const normalizedAll = new Set(generatedComicVineQueriesFromTaste.map((q) => normalizeText(q)));
-    const prioritizedBigTwo = generatedComicVineQueriesFromTaste
+    const prioritizedBigTwoRaw = generatedComicVineQueriesFromTaste
       .filter((q) => {
         const nq = normalizeText(q);
         return Array.from(normalizedBigTwo).some((root) => nq === root || nq.startsWith(`${root} `));
       })
-      .filter((q) => normalizedAll.has(normalizeText(q)))
       .map((q) => q.replace(/\s+/g, " ").trim())
       .filter(Boolean);
+    const bigTwoRootOrder = selectedBigTwoRoots.map((r) => normalizeText(r)).filter(Boolean).slice(0, 6);
+    const bigTwoBuckets = new Map<string, string[]>();
+    for (const q of prioritizedBigTwoRaw) {
+      const nq = normalizeText(q);
+      const root = bigTwoRootOrder.find((r) => nq === r || nq.startsWith(`${r} `)) || "";
+      if (!root) continue;
+      if (!bigTwoBuckets.has(root)) bigTwoBuckets.set(root, []);
+      bigTwoBuckets.get(root)!.push(q);
+    }
+    const prioritizedBigTwo: string[] = [];
+    const maxBigTwoFormsPerRootInTopPool = 2;
+    let advanced = true;
+    while (advanced && prioritizedBigTwo.length < 10) {
+      advanced = false;
+      for (const root of bigTwoRootOrder) {
+        const bucket = bigTwoBuckets.get(root) || [];
+        const usedForRoot = prioritizedBigTwo.filter((q) => {
+          const nq = normalizeText(q);
+          return nq === root || nq.startsWith(`${root} `);
+        }).length;
+        if (usedForRoot >= maxBigTwoFormsPerRootInTopPool) continue;
+        const next = bucket.shift();
+        if (!next) continue;
+        if (!prioritizedBigTwo.includes(next)) {
+          prioritizedBigTwo.push(next);
+          advanced = true;
+        }
+      }
+    }
     const nonBigTwo = generatedComicVineQueriesFromTaste.filter((q) => {
       const nq = normalizeText(q);
       return !Array.from(normalizedBigTwo).some((root) => nq === root || nq.startsWith(`${root} `));
@@ -3379,13 +3406,14 @@ export async function getRecommendations(
       ...bigTwoQueriesInPool,
       ...baselinePrimaryQueries,
     ]));
-    const selectedRootsForSession = Array.from(new Set(primaryQueriesRaw.map((q) => detectHeroRootFromQuery(q)).filter(Boolean))).slice(0, 6);
-    const rootMemoryPenalty = (query: string) => {
-      const root = detectHeroRootFromQuery(query);
-      return /^(batman|daredevil)\b/.test(root) ? 1 : 0;
-    };
+    const preferredRootOrder = selectedBigTwoRoots.map((r) => normalizeRootToken(r)).filter(Boolean);
+    const rootsFromPool = Array.from(new Set(primaryQueriesRaw.map((q) => detectHeroRootFromQuery(q)).filter(Boolean)));
+    const selectedRootsForSession = Array.from(new Set([
+      ...preferredRootOrder.filter((r) => rootsFromPool.includes(r)),
+      ...rootsFromPool,
+    ])).slice(0, 6);
     const rootBuckets = new Map<string, string[]>();
-    for (const query of primaryQueriesRaw.sort((a, b) => rootMemoryPenalty(a) - rootMemoryPenalty(b))) {
+    for (const query of primaryQueriesRaw) {
       const root = detectHeroRootFromQuery(query);
       if (!selectedRootsForSession.includes(root)) continue;
       if (!rootBuckets.has(root)) rootBuckets.set(root, []);
