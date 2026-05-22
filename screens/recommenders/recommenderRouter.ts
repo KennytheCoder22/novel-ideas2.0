@@ -9284,7 +9284,51 @@ const normalizedCandidatesRaw = [
         : "none";
     }
   }
-  countContractSatisfied = finalOutputItems.length >= Math.max(4, Math.min(6, finalLimit));
+  const enabledSourceCountForContract = [
+    sourceEnabled.googleBooks ? 1 : 0,
+    sourceEnabled.openLibrary ? 1 : 0,
+    sourceEnabled.localLibrary ? 1 : 0,
+    includeKitsu ? 1 : 0,
+    includeComicVine ? 1 : 0,
+  ].reduce((acc, n) => acc + n, 0);
+  const targetFinalCountForContract = Math.max(1, Math.min(10, finalLimit));
+  if (!suppressTopRecommendations && enabledSourceCountForContract === 1 && finalOutputItems.length < targetFinalCountForContract) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const singleSourceContractTopUp = dedupeDocs([
+      ...(finalRenderDocs || []),
+      ...(finalRankedDocsBase || []),
+      ...(rankedDocs || []),
+      ...(viableCandidates || []),
+      ...(teenComicVinePositiveFitRescuePool || []),
+    ] as any[])
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const key = normalizeText(title);
+        if (!title || !key || seen.has(key)) return false;
+        if (!passesEmergencySafeRescue(doc)) return false;
+        return true;
+      })
+      .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (singleSourceContractTopUp.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...singleSourceContractTopUp];
+      returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_single_source_contract_topup`;
+      finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_single_source_contract_topup`;
+    }
+  }
+  const enabledSourceCount = [
+    sourceEnabled.googleBooks ? 1 : 0,
+    sourceEnabled.openLibrary ? 1 : 0,
+    sourceEnabled.localLibrary ? 1 : 0,
+    includeKitsu ? 1 : 0,
+    includeComicVine ? 1 : 0,
+  ].reduce((acc, n) => acc + n, 0);
+  const targetFinalCount = Math.max(1, Math.min(10, finalLimit));
+  const singleSourceCountContractMin = targetFinalCount;
+  const multiSourceCountContractMin = Math.max(4, Math.min(6, targetFinalCount));
+  countContractSatisfied = enabledSourceCount <= 1
+    ? finalOutputItems.length >= singleSourceCountContractMin
+    : finalOutputItems.length >= multiSourceCountContractMin;
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
