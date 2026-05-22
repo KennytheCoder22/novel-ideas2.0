@@ -3124,6 +3124,9 @@ export async function getRecommendations(
   const genres = likedGenresSafe.map((s: string) => s.replace(/^genre:/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const tones = likedTonesSafe.map((s: string) => s.replace(/^(tone:|mood:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
   const themes = likedThemesSafe.map((s: string) => s.replace(/^(theme:|drive:)/, "").replace(/_/g, " ").trim()).filter(Boolean);
+  // Keep a stable alias for "drive" style taste signals so query constructors never
+  // crash if downstream code references `drives` during ComicVine dispatch.
+  const drives = themes;
   const likedSignalsText = normalizeText([
     ...likedSignalsSafe,
     ...Object.keys(likedTagCountsSafe),
@@ -3237,6 +3240,22 @@ export async function getRecommendations(
     `${seed} style graphic novel`,
     `${seed} emotional growth graphic novel`,
   ]);
+  const bigTwoSuperheroProfile =
+    genres.includes("superheroes") ||
+    themes.includes("identity") ||
+    drives.includes("identity") ||
+    /\b(superhero|dc|marvel|justice league|avengers)\b/.test(likedSignalsText);
+  const bigTwoExpansionQueries = bigTwoSuperheroProfile
+    ? [
+      "Batman complete collection TPB",
+      "Superman complete collection TPB",
+      "Wonder Woman complete collection TPB",
+      "Captain America complete collection TPB",
+      "Thor complete collection TPB",
+      "Justice League complete collection TPB",
+      "Avengers complete collection TPB",
+    ]
+    : [];
   curatedSeedRootsUsed.push(...curatedRootsByPattern);
   let generatedComicVineQueriesFromTaste = Array.from(new Set([
     ...combinedQueries,
@@ -3244,6 +3263,7 @@ export async function getRecommendations(
     ...broadGraphicQueries,
     ...curatedSeedQueries,
     ...anchorExemplarQueries,
+    ...bigTwoExpansionQueries,
   ].map((q) => q.replace(/\s+/g, " ").trim()).filter((q) => {
     const nq = normalizeText(q);
     return !Array.from(dislikedSet).some((d) => d && nq.includes(d));
