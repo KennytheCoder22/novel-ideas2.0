@@ -7788,9 +7788,16 @@ const normalizedCandidatesRaw = [
     if (!title) return "missing_title";
     const root = String(parentFranchiseRootForDoc(doc) || "");
     const normalizedTitle = normalizeText(title);
-    if (!canReturnTitle(title, doc)) return "can_return_title";
+    const explicitIssueOrChapterMarker = /#\s*\d+\b|\b(issue|chapter)\s*#?\d+\b/i.test(title);
+    const titleFallbackLike = String(parentRootSourceByTitle[title] || "").includes("title_fallback");
+    const canonicalSeriesRoots = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "sweet-tooth", "descender"]);
+    const canonicalSeriesTitleFallbackSafe = titleFallbackLike && canonicalSeriesRoots.has(root) && !explicitIssueOrChapterMarker;
+    const canReturnRejectReason = canReturnTitleRejectReason(title, doc);
+    if (canReturnRejectReason && !(canonicalSeriesTitleFallbackSafe && canReturnRejectReason === "late_fill_never_return")) {
+      return `can_return_title:${canReturnRejectReason}`;
+    }
     if (negativeScoreBlockedSet.has(normalizedTitle)) return "negative_score_blocked_set";
-    if (isLikelySubtitleFragmentTitle(title)) return "subtitle_fragment_title_shape";
+    if (isLikelySubtitleFragmentTitle(title) && !canonicalSeriesTitleFallbackSafe) return "subtitle_fragment_title_shape";
     if (Boolean(queryTermOnlyEvidenceByTitle[title])) return "query_term_only_evidence";
     if (/\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i.test(title)) return "collection_artifact_wording";
     if (/amazing fantasy/i.test(title) && !(root === "spider-man" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return "amazing_fantasy_without_spiderman_semantic";
@@ -8045,15 +8052,18 @@ const normalizedCandidatesRaw = [
     return /\b(mystery science theater 3000|mst3k|rifftrax|riff|parody|spoof)\b/i.test(text);
   }
   function canReturnTitle(title: string, doc?: any) {
+    return canReturnTitleRejectReason(title, doc) === null;
+  }
+  function canReturnTitleRejectReason(title: string, doc?: any): string | null {
     const key = normalizeText(String(title || ""));
-    if (!key) return false;
-    if (terminalRejectReasonByTitle[key]) return false;
-    if (lateFillNeverReturnTitles.has(key)) return false;
-    if (genericCollectionRejectedSet.has(key)) return false;
-    if (formatSignalOnlyRejectedSet.has(key)) return false;
-    if (finalEligibilityHardNeverReturnTitles.has(key)) return false;
-    if (isParodyMetaReturnBlocked(title, doc)) return false;
-    return true;
+    if (!key) return "missing_title";
+    if (terminalRejectReasonByTitle[key]) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+    if (lateFillNeverReturnTitles.has(key)) return "late_fill_never_return";
+    if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
+    if (formatSignalOnlyRejectedSet.has(key)) return "format_signal_only_rejected";
+    if (finalEligibilityHardNeverReturnTitles.has(key)) return "final_eligibility_hard_never_return";
+    if (isParodyMetaReturnBlocked(title, doc)) return "parody_meta_blocked";
+    return null;
   }
   function passesSharedNeverReturnTitleScrub(title: string, doc?: any) {
     return canReturnTitle(title, doc);
