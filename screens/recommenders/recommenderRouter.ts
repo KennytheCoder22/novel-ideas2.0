@@ -5553,13 +5553,21 @@ const normalizedCandidatesRaw = [
       topUpMergedPoolAfterQualityFiltersLength = topupPool.length;
       topUpCandidatesConsideredLength += topupPool.length;
       const familyCounts = new Map<string, number>();
+      const singleSourceComicVineContractMode =
+        includeComicVine &&
+        sourceEnabled.comicVine &&
+        !sourceEnabled.googleBooks &&
+        !sourceEnabled.openLibrary &&
+        !sourceEnabled.localLibrary &&
+        !includeKitsu;
+      const familyCapLimit = singleSourceComicVineContractMode ? 3 : 2;
       for (const doc of finalRenderDocs) familyCounts.set(inferEntityFamily(doc), (familyCounts.get(inferEntityFamily(doc)) || 0) + 1);
       const seenTitles = new Set(finalRenderDocs.map((d: any) => normalizeText(String(d?.title || d?.rawDoc?.title || ""))).filter(Boolean));
       for (const doc of topupPool) {
         if (finalRenderDocs.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
         const franchise = finalSeriesKeyForRender(doc);
         const family = inferEntityFamily(doc);
-        if ((familyCounts.get(family) || 0) >= 2) { topUpRejectedReasons.family_cap = Number(topUpRejectedReasons.family_cap || 0) + 1; continue; }
+        if ((familyCounts.get(family) || 0) >= familyCapLimit) { topUpRejectedReasons.family_cap = Number(topUpRejectedReasons.family_cap || 0) + 1; continue; }
         if (finalRenderDocs.filter((d: any) => finalSeriesKeyForRender(d) === franchise).length >= 2) { topUpRejectedReasons.franchise_cap = Number(topUpRejectedReasons.franchise_cap || 0) + 1; continue; }
         const normalizedTitle = normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
         if (!normalizedTitle || seenTitles.has(normalizedTitle)) { topUpRejectedReasons.duplicate_title = Number(topUpRejectedReasons.duplicate_title || 0) + 1; continue; }
@@ -8098,7 +8106,17 @@ const normalizedCandidatesRaw = [
     const key = normalizeText(String(title || ""));
     if (!key) return "missing_title";
     if (terminalRejectReasonByTitle[key]) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
-    if (lateFillNeverReturnTitles.has(key)) return "late_fill_never_return";
+    const singleSourceComicVineContractMode =
+      includeComicVine &&
+      sourceEnabled.comicVine &&
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !includeKitsu;
+    const canonicalSeriesLike = new Set(["runaways", "saga", "paper-girls", "the-sandman", "the-woods", "spider-man", "ms-marvel", "teen-titans", "avengers", "sweet-tooth", "descender"])
+      .has(String(parentFranchiseRootForDoc(doc) || ""));
+    const collectedEditionLike = isCollectedStarterLikeText(`${title} ${String(doc?.description || doc?.rawDoc?.description || "")}`);
+    if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && collectedEditionLike && canonicalSeriesLike)) return "late_fill_never_return";
     if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
     if (formatSignalOnlyRejectedSet.has(key)) return "format_signal_only_rejected";
     if (finalEligibilityHardNeverReturnTitles.has(key)) return "final_eligibility_hard_never_return";
