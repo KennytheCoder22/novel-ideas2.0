@@ -3333,9 +3333,15 @@ export async function getRecommendations(
   let primaryTasteQueryOverrideBlockedReason = "not_evaluated";
   let primaryRungZeroSource = "none";
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0) {
+    const normalizedBigTwoQuerySet = new Set(bigTwoExpansionQueries.map((q) => normalizeText(q)));
+    const bigTwoQueriesInPool = generatedComicVineQueriesFromTaste.filter((q) => normalizedBigTwoQuerySet.has(normalizeText(q)));
     const narrativePrimary = generatedComicVineQueriesFromTaste.filter((q) => /\b(character|narrative|story|coming of age|friendship|mystery|supernatural|psychological|graphic novel)\b/i.test(q));
     const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q));
-    const primaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
+    const baselinePrimaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
+    const primaryQueries = Array.from(new Set([
+      ...bigTwoQueriesInPool,
+      ...baselinePrimaryQueries,
+    ]));
     primaryNarrativeQueryMode = narrativePrimary.length > 0;
     primaryNarrativeQueries = narrativePrimary.slice(0, 12);
     broadGraphicNovelQueriesUsedAsFallback = narrativePrimary.length === 0 && broadFallback.length > 0;
