@@ -8883,6 +8883,8 @@ const normalizedCandidatesRaw = [
       finalReturnSourceUsed = "teen_postpass_handoff_recovery";
     }
   }
+  const preLateTeenUnderfillOutputItems = finalOutputItems.slice();
+  const preLateTeenUnderfillBuiltFrom = String(returnedItemsBuiltFrom || "");
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenComicVineOnlyLateUnderfill) {
     const curatedZeroResultOverride = swipeRankedCandidateList
       .filter((doc: any) => {
@@ -9465,6 +9467,18 @@ const normalizedCandidatesRaw = [
       if (refill.length > 0) finalOutputItems = [...finalOutputItems, ...refill];
     }
   }
+  if (
+    teenComicVineOnlyLateUnderfill &&
+    includeComicVine &&
+    comicVineOnlyMode &&
+    preLateTeenUnderfillOutputItems.length > 0 &&
+    finalOutputItems.length > 0 &&
+    finalOutputItems.length < preLateTeenUnderfillOutputItems.length
+  ) {
+    finalOutputItems = preLateTeenUnderfillOutputItems;
+    returnedItemsBuiltFrom = `${preLateTeenUnderfillBuiltFrom || "none"}_non_shrunk_restore`;
+    finalReturnSourceUsed = `${String(finalReturnSourceUsed || "none")}_non_shrunk_restore`;
+  }
   if (finalOutputItems.length === 0 && /recovery|rescue|underfill|direct|accepted_titles_authoritative/.test(String(returnedItemsBuiltFrom || ""))) {
     if (teenComicVineOnlyLateUnderfill && includeComicVine && comicVineOnlyMode) {
       returnedItemsBuiltFrom = "none";
@@ -9584,6 +9598,8 @@ const normalizedCandidatesRaw = [
     finalOutputItems.length < targetFinalCountForContract
   ) {
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const finalContractRefillDiagnostics: string[] = [];
+    const finalContractRefillAcceptedTitles: string[] = [];
     const finalContractRefill = dedupeDocs([
       ...(scoredCanonicalDocs || []),
       ...(finalRenderDocs || []),
@@ -9597,9 +9613,25 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => {
         const title = String(doc?.title || "").trim();
         const nt = normalizeText(title);
-        if (!title || !nt || seen.has(nt)) return false;
-        if (!passesEmergencySafeRescue(doc)) return false;
-        if (!canReturnTitle(title, doc)) return false;
+        if (!title || !nt) {
+          finalContractRefillDiagnostics.push(`${title || "(untitled)"}:reject=missing_title`);
+          return false;
+        }
+        if (seen.has(nt)) {
+          finalContractRefillDiagnostics.push(`${title}:reject=duplicate_title`);
+          return false;
+        }
+        if (!passesEmergencySafeRescue(doc)) {
+          finalContractRefillDiagnostics.push(`${title}:reject=passesEmergencySafeRescue:false`);
+          return false;
+        }
+        const returnReject = canReturnTitleRejectReason(title, doc);
+        if (returnReject) {
+          finalContractRefillDiagnostics.push(`${title}:reject=canReturnTitle:${returnReject}`);
+          return false;
+        }
+        finalContractRefillDiagnostics.push(`${title}:accept`);
+        finalContractRefillAcceptedTitles.push(title);
         return true;
       })
       .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
@@ -9609,6 +9641,9 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_final_contract_refill`;
       finalReturnSourceUsed = `${finalReturnSourceUsed || "none"}_final_contract_refill`;
     }
+    markSourceSpecificGate("__router__", `final_contract_refill_candidate_count:${finalContractRefillDiagnostics.length}`);
+    markSourceSpecificGate("__router__", `final_contract_refill_candidates:${finalContractRefillDiagnostics.slice(0, 120).join("|") || "(none)"}`);
+    markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
   }
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,
