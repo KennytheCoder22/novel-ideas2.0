@@ -9740,7 +9740,7 @@ const normalizedCandidatesRaw = [
     if (/\b(spider[-\s]?man|miles morales|spider-man noir|avenging spider-man|amazing spider-man)\b/.test(raw)) return "spider-man-family";
     if (/\bjustice league\b/.test(raw)) return "justice-league-family";
     if (/\bms\.?\s*marvel\b/.test(raw)) return "ms-marvel-family";
-    return parentFranchiseRootForDoc(doc) || "__none__";
+    return "__uncapped__";
   };
   const familyCapCounts: Record<string, number> = {};
   const cappedFinalOutputItems: any[] = [];
@@ -9749,7 +9749,7 @@ const normalizedCandidatesRaw = [
     const tier = refillAlignmentTier(doc).tier;
     const fam = normalizeReturnRootFamily(doc);
     const count = Number(familyCapCounts[fam] || 0);
-    if (fam !== "__none__" && count >= 2 && tier !== "strong_taste_fit") continue;
+    if (fam !== "__uncapped__" && count >= 2 && tier !== "strong_taste_fit") continue;
     familyCapCounts[fam] = count + 1;
     cappedFinalOutputItems.push(item);
   }
@@ -9775,7 +9775,7 @@ const normalizedCandidatesRaw = [
         if (canReturnTitleRejectReason(title, doc)) return false;
         const fam = normalizeReturnRootFamily(doc);
         const famCount = Number(familyCountsTopUp[fam] || 0);
-        if (fam !== "__none__" && famCount >= 2 && align?.tier !== "strong_taste_fit") return false;
+        if (fam !== "__uncapped__" && famCount >= 2 && align?.tier !== "strong_taste_fit") return false;
         return true;
       })
       .sort((a: any, b: any) => {
@@ -9791,7 +9791,7 @@ const normalizedCandidatesRaw = [
       if (!t || seenTitles.has(t)) continue;
       const fam = normalizeReturnRootFamily(row.doc);
       const famCount = Number(familyCountsTopUp[fam] || 0);
-      if (fam !== "__none__" && famCount >= 2 && row.align?.tier !== "strong_taste_fit") continue;
+      if (fam !== "__uncapped__" && famCount >= 2 && row.align?.tier !== "strong_taste_fit") continue;
       finalOutputItems.push({ kind: "open_library", doc: row.doc });
       seenTitles.add(t);
       familyCountsTopUp[fam] = famCount + 1;
