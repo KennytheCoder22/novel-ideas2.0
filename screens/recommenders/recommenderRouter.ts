@@ -3404,7 +3404,33 @@ export async function getRecommendations(
   let primaryTasteQueryOverrideApplied = false;
   let primaryTasteQueryOverrideBlockedReason = "not_evaluated";
   let primaryRungZeroSource = "none";
+  let tasteQueryDrift = false;
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0) {
+    const franchiseRootRe = /\b(spider[-\s]?man|batman|superman|green lantern|guardians|justice league|avengers|x-men|ms\.?\s*marvel|teen titans)\b/i;
+    const tasteTokens = Array.from(new Set([
+      ...likedGenresSafe, ...likedTonesSafe, ...likedThemesSafe, ...likedSignalsSafe,
+    ].map((s: string) => normalizeText(String(s || ""))).filter((s: string) => s.length >= 4)));
+    const franchiseHeavyCount = generatedComicVineQueriesFromTaste.filter((q) => franchiseRootRe.test(q)).length;
+    const lowTasteOverlapCount = generatedComicVineQueriesFromTaste.filter((q) => {
+      const nq = normalizeText(q);
+      return !tasteTokens.some((t) => nq.includes(t));
+    }).length;
+    tasteQueryDrift =
+      generatedComicVineQueriesFromTaste.length >= 4 &&
+      franchiseHeavyCount / generatedComicVineQueriesFromTaste.length >= 0.6 &&
+      lowTasteOverlapCount / generatedComicVineQueriesFromTaste.length >= 0.6;
+    if (tasteQueryDrift) {
+      generatedComicVineQueriesFromTaste = Array.from(new Set([
+        `${String(likedThemesSafe[0] || "character driven")} graphic novel`,
+        `${String(likedGenresSafe[0] || "dark fantasy")} graphic novel`,
+        `${String(likedThemesSafe[1] || "dystopian survival")} graphic novel`,
+        `${String(likedTonesSafe[0] || "emotional intimate")} graphic novel`,
+        "character driven graphic novel",
+        "dark fantasy graphic novel",
+        "dystopian survival graphic novel",
+      ].map((q) => q.replace(/\s+/g, " ").trim()))).slice(0, 10);
+      markSourceSpecificGate("__router__", "taste_query_drift:true");
+    }
     const normalizeRootToken = (v: string) => normalizeText(v).replace(/[^a-z0-9]+/g, " ").trim();
     const bigTwoRootsNormalized = selectedBigTwoRoots.map((r) => normalizeRootToken(r)).filter(Boolean);
     const detectHeroRootFromQuery = (query: string): string => {
@@ -10479,6 +10505,10 @@ const normalizedCandidatesRaw = [
     returnedSwipeEvidenceByTitle,
     returnedSourceLayerByTitle,
     returnedReasonCounts,
+    primaryRecommendationCount: returnedReasonCounts.primary_recommendation,
+    alignedBackfillCount: returnedReasonCounts.aligned_backfill,
+    contractFillerCount: returnedReasonCounts.contract_filler,
+    tasteQueryDrift,
     acceptedPrefixInvariantFailed,
     finalAcceptedDocIds,
     finalRejectedDocIds,
