@@ -6393,6 +6393,7 @@ const normalizedCandidatesRaw = [
       const seenRecentRoot = recentFreshReturnedRoots.some((bucket) => bucket.includes(docRoot));
       const titleRepeatPenalty = isFreshUserSession && seenRecentTitle ? 16 : 0;
       const rootRepeatPenalty = isFreshUserSession && seenRecentRoot ? 6 : 0;
+      const narrativeWorkSignal = /\b(volume one|volume 1|book one|book 1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|collected edition|collection|saga|chronicles?)\b/i.test(`${title} ${String(doc?.description || "")}`);
       if (titleRepeatPenalty) {
         recentReturnedTitlePenaltyApplied += titleRepeatPenalty;
         diversityMemoryHitTitles.push(title);
@@ -6407,7 +6408,6 @@ const normalizedCandidatesRaw = [
         pushReason(penaltyReasonsByTitle, title, "recent_repeat_weak_taste");
         return null;
       }
-      const narrativeWorkSignal = /\b(volume one|volume 1|book one|book 1|tpb|trade paperback|hardcover|hc|ogn|original graphic novel|omnibus|compendium|collected edition|collection|saga|chronicles?)\b/i.test(`${title} ${String(doc?.description || "")}`);
       const hasFranchiseAnchor = profileSelectedEntitySeeds.some((seed) => normalizeText(title).includes(normalizeText(seed)));
       const publisherConfidence = /\b(image|dark horse|boom|dc|marvel|idw|vertigo)\b/i.test(`${String(doc?.publisher || "")} ${String((doc as any)?.rawDoc?.publisher || "")}`);
       const collectionEditionBoost = /\b(volume|vol\.|book|tpb|trade paperback|hardcover|hc|ogn|omnibus|compendium|collected edition)\b/i.test(title) ? 1 : 0;
