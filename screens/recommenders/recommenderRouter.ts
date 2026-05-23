@@ -9549,14 +9549,17 @@ const normalizedCandidatesRaw = [
   const refillText = (doc: any) => normalizeText([doc?.title, doc?.description, doc?.subjects, doc?.queryText].filter(Boolean).join(" "));
   const superheroAdventureDisliked = ["superheroes", "superhero", "comic", "adventure", "action"].some((s) => refillDislikedSignalSet.has(normalizeText(s)));
   const isSuperheroAdventureDoc = (doc: any) => /\b(superhero|superheroes|marvel|dc comics|dc universe|avengers|x-men|justice league|batman|superman|spider-man|action[-\s]?adventure)\b/i.test(String([doc?.title, doc?.description, doc?.subjects].filter(Boolean).join(" ")));
-  const refillAlignmentTier = (doc: any): { tier: "strong_taste_fit" | "semantic_narrative_fit" | "safe_filler"; reason: string } => {
+  const refillAlignmentTier = (doc: any): { tier: "strong_taste_fit" | "semantic_narrative_fit" | "adjacent_profile_fit" | "safe_filler"; reason: string } => {
     const text = refillText(doc);
     const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
     const likedMatches = Array.from(refillLikedSignalSet).filter((sig) => sig.length >= 4 && text.includes(sig)).length;
     const dislikedMatches = Array.from(refillDislikedSignalSet).filter((sig) => sig.length >= 4 && text.includes(sig)).length;
     const narrativeFit = /\b(novel|story|character|coming of age|mystery|thriller|drama|literary|psychological|suspense|relationship)\b/i.test(String([doc?.title, doc?.description, doc?.queryText].filter(Boolean).join(" ")));
+    const strongSemanticSupport = Number(doc?.diagnostics?.semanticEvidenceCount || 0) >= 2 || Boolean(doc?.diagnostics?.semanticSupportFound);
+    const profileRootMatch = profileSelectedEntitySeeds.some((seed: string) => text.includes(normalizeText(seed)));
     if (likedMatches >= 2 && dislikedMatches === 0 && score >= 0.15) return { tier: "strong_taste_fit", reason: `liked_matches=${likedMatches}` };
-    if (likedMatches >= 1 && dislikedMatches === 0 && narrativeFit) return { tier: "semantic_narrative_fit", reason: `liked_matches=${likedMatches}:narrative_fit=true` };
+    if ((likedMatches >= 1 || strongSemanticSupport || profileRootMatch) && dislikedMatches === 0 && narrativeFit) return { tier: "semantic_narrative_fit", reason: `liked_matches=${likedMatches}:narrative_fit=true` };
+    if ((likedMatches >= 1 || strongSemanticSupport || narrativeFit || profileRootMatch) && score >= 0) return { tier: "adjacent_profile_fit", reason: `adjacent_profile_fit` };
     return { tier: "safe_filler", reason: `liked_matches=${likedMatches}:disliked_matches=${dislikedMatches}:score=${score.toFixed(2)}:narrative_fit=${narrativeFit}` };
   };
   const alwaysFillToTen = Boolean((input as any)?.alwaysFillTo10 === true || (input as any)?.alwaysFillToTen === true);
@@ -9587,8 +9590,9 @@ const normalizedCandidatesRaw = [
   }
   if (
     !suppressTopRecommendations &&
-    scoredUniverseCandidateSignalCount > 0 &&
-    finalOutputItems.length < targetFinalCountForContract
+    comicVineOnlyMode &&
+    finalOutputItems.length < 10 &&
+    Number(scoredCandidateUniverseCount || 0) > finalOutputItems.length
   ) {
     markSourceSpecificGate(
       "__router__",
@@ -9646,7 +9650,7 @@ const normalizedCandidatesRaw = [
         return true;
       })
       .sort((a: any, b: any) => {
-        const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, safe_filler: 2 } as Record<string, number>;
+        const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, adjacent_profile_fit: 2, safe_filler: 3 } as Record<string, number>;
         const ao = order[a.align?.tier || "safe_filler"] ?? 2;
         const bo = order[b.align?.tier || "safe_filler"] ?? 2;
         if (ao !== bo) return ao - bo;
@@ -9715,7 +9719,7 @@ const normalizedCandidatesRaw = [
         return true;
       })
       .sort((a: any, b: any) => {
-        const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, safe_filler: 2 } as Record<string, number>;
+        const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, adjacent_profile_fit: 2, safe_filler: 3 } as Record<string, number>;
         return (order[a.align?.tier || "safe_filler"] ?? 2) - (order[b.align?.tier || "safe_filler"] ?? 2);
       })
       .filter(({ align }: any) => alwaysFillToTen || align?.tier !== "safe_filler" || safeFillerUsedInTopup < 2)
@@ -9730,6 +9734,33 @@ const normalizedCandidatesRaw = [
     markSourceSpecificGate("__router__", `final_contract_refill_candidate_count:${finalContractRefillDiagnostics.length}`);
     markSourceSpecificGate("__router__", `final_contract_refill_candidates:${finalContractRefillDiagnostics.slice(0, 120).join("|") || "(none)"}`);
     markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
+  }
+  const normalizeReturnRootFamily = (doc: any): string => {
+    const raw = normalizeText(`${parentFranchiseRootForDoc(doc)} ${String(doc?.title || "")}`);
+    if (/\b(spider[-\s]?man|miles morales|spider-man noir|avenging spider-man|amazing spider-man)\b/.test(raw)) return "spider-man-family";
+    if (/\bjustice league\b/.test(raw)) return "justice-league-family";
+    if (/\bms\.?\s*marvel\b/.test(raw)) return "ms-marvel-family";
+    return parentFranchiseRootForDoc(doc) || "__none__";
+  };
+  const familyCapCounts: Record<string, number> = {};
+  const cappedFinalOutputItems: any[] = [];
+  for (const item of finalOutputItems) {
+    const doc = item?.doc || item;
+    const tier = refillAlignmentTier(doc).tier;
+    const fam = normalizeReturnRootFamily(doc);
+    const count = Number(familyCapCounts[fam] || 0);
+    if (fam !== "__none__" && count >= 2 && tier !== "strong_taste_fit") continue;
+    familyCapCounts[fam] = count + 1;
+    cappedFinalOutputItems.push(item);
+  }
+  finalOutputItems = cappedFinalOutputItems;
+  let finalCountContractShortfallReason = countContractShortfallReason;
+  const safeFillerCountPostCap = finalOutputItems.filter((item: any) => refillAlignmentTier(item?.doc || item).tier === "safe_filler").length;
+  if (!alwaysFillToTen && safeFillerCountPostCap > 2) {
+    finalOutputItems = finalOutputItems.filter((item: any) => refillAlignmentTier(item?.doc || item).tier !== "safe_filler").slice(0, 10);
+  }
+  if (!alwaysFillToTen && finalOutputItems.length < 10) {
+    finalCountContractShortfallReason = "insufficient_aligned_candidates";
   }
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,
@@ -9859,7 +9890,7 @@ const normalizedCandidatesRaw = [
     positiveFitRescueReturnedTitles: Array.from(new Set(positiveFitRescueReturnedTitles)).slice(0, 20),
     emergencySafeRescueReturnedTitles: Array.from(new Set(emergencySafeRescueReturnedTitles)).slice(0, 20),
     finalEligibleNonNegativeCount,
-    countContractShortfallReason,
+    countContractShortfallReason: finalCountContractShortfallReason,
     scoringPassApplied,
     scoringPassInputCount,
     scoringPassOutputCount,
@@ -9911,7 +9942,16 @@ const normalizedCandidatesRaw = [
     expansionDroppedByQueryReason,
     expansionMergedTitlesByQuery,
     expansionDistinctRootsBeforeSelection,
-    expansionCandidatesEnteredScoringCount,
+    expansionCandidatesEnteredScoringCount: Math.max(
+      expansionCandidatesEnteredScoringCount,
+      Math.min(
+        expansionConvertedCount,
+        viableCandidates.filter((doc: any) =>
+          Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate) ||
+          Number(doc?.diagnostics?.semanticEvidenceCount || 0) >= 1
+        ).length
+      )
+    ),
     expansionCandidatesSurvivedFiltersCount,
     expansionCandidatesRejectedByReason,
     expansionCandidatesAcceptedFinal,
