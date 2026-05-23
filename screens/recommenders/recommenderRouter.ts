@@ -9754,6 +9754,49 @@ const normalizedCandidatesRaw = [
     cappedFinalOutputItems.push(item);
   }
   finalOutputItems = cappedFinalOutputItems;
+  if (!suppressTopRecommendations && finalOutputItems.length < 10) {
+    const seenTitles = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const familyCountsTopUp = { ...familyCapCounts } as Record<string, number>;
+    const alignedBackfill = dedupeDocs([
+      ...(scoredCanonicalDocs || []),
+      ...(swipeRankedCandidateList || []),
+      ...(finalRenderDocs || []),
+      ...(viableCandidates || []),
+      ...(candidateDocs || []),
+      ...(normalizedCandidates || []),
+    ] as any[])
+      .map((doc: any) => ({ doc, align: refillAlignmentTier(doc) }))
+      .filter(({ doc, align }: any) => {
+        const title = String(doc?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt || seenTitles.has(nt)) return false;
+        if (align?.tier === "safe_filler") return false;
+        if (!passesEmergencySafeRescue(doc)) return false;
+        if (canReturnTitleRejectReason(title, doc)) return false;
+        const fam = normalizeReturnRootFamily(doc);
+        const famCount = Number(familyCountsTopUp[fam] || 0);
+        if (fam !== "__none__" && famCount >= 2 && align?.tier !== "strong_taste_fit") return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, adjacent_profile_fit: 2, safe_filler: 3 } as Record<string, number>;
+        const ao = order[a.align?.tier || "safe_filler"] ?? 3;
+        const bo = order[b.align?.tier || "safe_filler"] ?? 3;
+        if (ao !== bo) return ao - bo;
+        return Number(b.doc?.score ?? b.doc?.diagnostics?.finalScore ?? 0) - Number(a.doc?.score ?? a.doc?.diagnostics?.finalScore ?? 0);
+      });
+    for (const row of alignedBackfill) {
+      if (finalOutputItems.length >= 10) break;
+      const t = normalizeText(String(row?.doc?.title || ""));
+      if (!t || seenTitles.has(t)) continue;
+      const fam = normalizeReturnRootFamily(row.doc);
+      const famCount = Number(familyCountsTopUp[fam] || 0);
+      if (fam !== "__none__" && famCount >= 2 && row.align?.tier !== "strong_taste_fit") continue;
+      finalOutputItems.push({ kind: "open_library", doc: row.doc });
+      seenTitles.add(t);
+      familyCountsTopUp[fam] = famCount + 1;
+    }
+  }
   let finalCountContractShortfallReason = countContractShortfallReason;
   const safeFillerCountPostCap = finalOutputItems.filter((item: any) => refillAlignmentTier(item?.doc || item).tier === "safe_filler").length;
   if (!alwaysFillToTen && safeFillerCountPostCap > 2) {
