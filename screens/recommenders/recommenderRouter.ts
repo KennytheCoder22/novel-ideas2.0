@@ -9890,6 +9890,18 @@ const normalizedCandidatesRaw = [
       }
     }
   }
+  // Final returned-items dedupe pass after all rescue/top-up/handoff logic.
+  // This prevents duplicate visible titles from surviving into render/persist.
+  if (finalOutputItems.length > 1) {
+    const seenReturnedTitles = new Set<string>();
+    finalOutputItems = finalOutputItems.filter((item: any) => {
+      const key = normalizeText(String(item?.doc?.title || item?.title || ""));
+      if (!key) return false;
+      if (seenReturnedTitles.has(key)) return false;
+      seenReturnedTitles.add(key);
+      return true;
+    });
+  }
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,
     sourceEnabled.openLibrary ? 1 : 0,
