@@ -10022,6 +10022,12 @@ const normalizedCandidatesRaw = [
     returnedItemsByAlignmentTier[tier] = Number(returnedItemsByAlignmentTier[tier] || 0) + 1;
     if (tier === "safe_filler") safeFillerTitles.push(String(doc?.title || "").trim());
   }
+  // Absolute-last contract recompute based on the final visible/persisted list.
+  const finalVisibleCount = finalOutputItems.length;
+  countContractSatisfied = enabledSourceCount <= 1
+    ? finalVisibleCount >= singleSourceCountContractMin
+    : finalVisibleCount >= multiSourceCountContractMin;
+  finalCountContractShortfallReason = countContractSatisfied ? "none" : "insufficient_aligned_candidates";
   return {
     engineId: preferredEngine,
     engineLabel,
