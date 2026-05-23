@@ -9735,6 +9735,7 @@ const normalizedCandidatesRaw = [
     markSourceSpecificGate("__router__", `final_contract_refill_candidates:${finalContractRefillDiagnostics.slice(0, 120).join("|") || "(none)"}`);
     markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
   }
+  const postTopUpOutputSnapshot = [...finalOutputItems];
   const normalizeReturnRootFamily = (doc: any): string => {
     const raw = normalizeText(`${parentFranchiseRootForDoc(doc)} ${String(doc?.title || "")}`);
     if (/\b(spider[-\s]?man|miles morales|spider-man noir|avenging spider-man|amazing spider-man)\b/.test(raw)) return "spider-man-family";
@@ -9832,6 +9833,34 @@ const normalizedCandidatesRaw = [
   }
   if (!alwaysFillToTen && finalOutputItems.length < 10) {
     finalCountContractShortfallReason = "insufficient_aligned_candidates";
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length < Math.min(10, postTopUpOutputSnapshot.length)) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const safeCount = finalOutputItems.filter((item: any) => refillAlignmentTier(item?.doc || item).tier === "safe_filler").length;
+    const handoffRecovery = postTopUpOutputSnapshot
+      .map((item: any) => item?.doc || item)
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt || seen.has(nt)) return false;
+        if (!passesEmergencySafeRescue(doc)) return false;
+        if (canReturnTitleRejectReason(title, doc)) return false;
+        const tier = refillAlignmentTier(doc).tier;
+        if (!alwaysFillToTen && tier === "safe_filler" && safeCount >= 2) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, adjacent_profile_fit: 2, safe_filler: 3 } as Record<string, number>;
+        const ao = order[refillAlignmentTier(a).tier] ?? 3;
+        const bo = order[refillAlignmentTier(b).tier] ?? 3;
+        if (ao !== bo) return ao - bo;
+        return Number(b?.score ?? b?.diagnostics?.finalScore ?? 0) - Number(a?.score ?? a?.diagnostics?.finalScore ?? 0);
+      })
+      .slice(0, Math.max(0, 10 - finalOutputItems.length))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (handoffRecovery.length > 0) {
+      finalOutputItems = [...finalOutputItems, ...handoffRecovery];
+    }
   }
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,
