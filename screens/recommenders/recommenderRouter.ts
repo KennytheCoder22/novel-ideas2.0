@@ -3405,6 +3405,7 @@ export async function getRecommendations(
   let primaryTasteQueryOverrideBlockedReason = "not_evaluated";
   let primaryRungZeroSource = "none";
   let tasteQueryDrift = false;
+  let tasteQueryDriftGatePending = false;
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0) {
     const franchiseRootRe = /\b(spider[-\s]?man|batman|superman|green lantern|guardians|justice league|avengers|x-men|ms\.?\s*marvel|teen titans)\b/i;
     const tasteTokens = Array.from(new Set([
@@ -3429,7 +3430,7 @@ export async function getRecommendations(
         "dark fantasy graphic novel",
         "dystopian survival graphic novel",
       ].map((q) => q.replace(/\s+/g, " ").trim()))).slice(0, 10);
-      markSourceSpecificGate("__router__", "taste_query_drift:true");
+      tasteQueryDriftGatePending = true;
     }
     const normalizeRootToken = (v: string) => normalizeText(v).replace(/[^a-z0-9]+/g, " ").trim();
     const bigTwoRootsNormalized = selectedBigTwoRoots.map((r) => normalizeRootToken(r)).filter(Boolean);
@@ -6956,6 +6957,7 @@ const normalizedCandidatesRaw = [
     if (!sourceSpecificGateAppliedByTitle[title]) sourceSpecificGateAppliedByTitle[title] = [];
     if (!sourceSpecificGateAppliedByTitle[title].includes(rule)) sourceSpecificGateAppliedByTitle[title].push(rule);
   };
+  if (tasteQueryDriftGatePending) markSourceSpecificGate("__router__", "taste_query_drift:true");
   const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
   const finalEligibilityGateApplied = true;
   const eligibleWithFitScore: Array<{ doc: any; fitScore: number; recommendableWorkScore: number; artifactRiskScore: number; collectedEditionConfidence: number; narrativeFictionConfidence: number; metaOrReferenceWorkPenalty: number }> = [];
@@ -10052,6 +10054,7 @@ const normalizedCandidatesRaw = [
   const returnedSwipeEvidenceByTitle: Record<string, string[]> = {};
   const returnedSourceLayerByTitle: Record<string, string> = {};
   const returnedReasonCounts = { primary_recommendation: 0, aligned_backfill: 0, contract_filler: 0 };
+  const finalReasonFilterRejectedReasons: Record<string, number> = {};
   const alignedBackfillRejectedReasons: Record<string, number> = {};
   let swipeEvidenceCandidateCount = 0;
   const negativePenaltyDominantSignalsByTitle: Record<string, string> = {};
@@ -10103,6 +10106,8 @@ const normalizedCandidatesRaw = [
       const evidence = hasSwipeAlignedEvidence(doc, title);
       const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
       const likedWeight = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+      const semanticCount = Number(semanticEvidenceCountByTitle[title] || 0);
+      const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
       if (finalEligibleSet.has(nt)) reason = "primary_recommendation";
       else if (evidence.length > 0) {
         if (dislikePenalty > likedWeight * 1.35 && likedWeight < 3) {
@@ -10111,11 +10116,17 @@ const normalizedCandidatesRaw = [
         } else {
           reason = "aligned_backfill";
         }
+      } else if (
+        Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0 &&
+        (semanticCount >= 1 || positiveFit >= 4)
+      ) {
+        reason = "aligned_backfill";
+        returnedSwipeEvidenceByTitle[title] = [`semantic_support:${semanticCount}`, `positive_fit:${positiveFit.toFixed(2)}`];
       } else {
         alignedBackfillRejectedReasons.no_swipe_evidence = Number(alignedBackfillRejectedReasons.no_swipe_evidence || 0) + 1;
       }
       returnedReasonByTitle[title] = reason;
-      returnedSwipeEvidenceByTitle[title] = evidence;
+      returnedSwipeEvidenceByTitle[title] = returnedSwipeEvidenceByTitle[title] || evidence;
       returnedSourceLayerByTitle[title] = sourceLayer;
       returnedReasonCounts[reason] += 1;
       return { ...item, returnedReason: reason };
@@ -10125,7 +10136,11 @@ const normalizedCandidatesRaw = [
       return (order[a.returnedReason] ?? 9) - (order[b.returnedReason] ?? 9);
     });
   if (!alwaysFillToTen) {
-    finalOutputItems = finalOutputItems.filter((item: any) => item.returnedReason !== "contract_filler");
+    finalOutputItems = finalOutputItems.filter((item: any) => {
+      const keep = item.returnedReason !== "contract_filler";
+      if (!keep) finalReasonFilterRejectedReasons.contract_filler_not_allowed = Number(finalReasonFilterRejectedReasons.contract_filler_not_allowed || 0) + 1;
+      return keep;
+    });
   }
   if (finalOutputItems.length > 10) finalOutputItems = finalOutputItems.slice(0, 10);
   // Absolute-last contract recompute based on the final visible/persisted list.
@@ -10543,6 +10558,7 @@ const normalizedCandidatesRaw = [
     swipeEvidenceCandidateCount,
     expandedPoolUsedForFinalSelection,
     negativePenaltyDominantSignalsByTitle,
+    finalReasonFilterRejectedReasons,
     primaryRecommendationCount: returnedReasonCounts.primary_recommendation,
     alignedBackfillCount: returnedReasonCounts.aligned_backfill,
     contractFillerCount: returnedReasonCounts.contract_filler,
