@@ -6851,7 +6851,7 @@ const normalizedCandidatesRaw = [
   const scoredUniverseFailureFromConvertedPool =
     comicVineDocConversionSuccessCount > 100 && scoredCandidateUniverseCount < 30;
   const scoredUniverseCollapsedToNormalizedTen = normalizedCandidates.length === 10 && scoredCandidateUniverseCount <= 10;
-  const scoredUniverseFailure = (scoredUniverseFailureFromConvertedPool || scoredUniverseCollapsedToNormalizedTen) && finalEligibilityCleanCandidateCount < 6;
+  const scoredUniverseFailure = (scoredUniverseFailureFromConvertedPool || scoredUniverseCollapsedToNormalizedTen) && finalRenderDocs.length < 6;
   const scoredUniverseFailureReason = scoredUniverseFailure
     ? (scoredUniverseFailureFromConvertedPool
       ? "wide converted pool not used"
