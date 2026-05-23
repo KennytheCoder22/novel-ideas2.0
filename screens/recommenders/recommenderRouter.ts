@@ -9621,7 +9621,7 @@ const normalizedCandidatesRaw = [
       if (String(terminalRejectReasonByTitle[nt] || "").includes("locale_variant")) return "passesEmergencySafeRescue:locale_variant";
       if (negativeScoreBlockedSet.has(nt)) return "passesEmergencySafeRescue:negative_score_blocked_set";
       if (hardLexicalDieArtifactRe.test(title)) return "passesEmergencySafeRescue:hard_lexical_die_artifact";
-      if (terminalRejectReasonByTitle[nt] && !(enabledSourceCountForContract === 1 && includeComicVine && cleanSeriesOrCollected && String(terminalRejectReasonByTitle[nt]).includes("final_eligibility_rejected"))) return `canReturnTitle:terminal_reject:${terminalRejectReasonByTitle[nt]}`;
+      if (terminalRejectReasonByTitle[nt]) return `canReturnTitle:terminal_reject:${terminalRejectReasonByTitle[nt]}`;
       if (lateFillNeverReturnTitles.has(nt) && !(enabledSourceCountForContract === 1 && includeComicVine && cleanSeriesOrCollected)) return "canReturnTitle:late_fill_never_return";
       if (genericCollectionRejectedSet.has(nt)) return "canReturnTitle:generic_collection_rejected";
       if (formatSignalOnlyRejectedSet.has(nt)) return "canReturnTitle:format_signal_only_rejected";
@@ -9902,6 +9902,15 @@ const normalizedCandidatesRaw = [
       return true;
     });
   }
+  // Final eligibility is terminal: do not allow re-introduction of terminally rejected titles.
+  finalOutputItems = finalOutputItems.filter((item: any) => {
+    const title = String(item?.doc?.title || item?.title || "").trim();
+    const nt = normalizeText(title);
+    if (!title || !nt) return false;
+    if (terminalRejectReasonByTitle[nt]) return false;
+    if (finalEligibilityHardNeverReturnTitles.has(nt)) return false;
+    return true;
+  });
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,
     sourceEnabled.openLibrary ? 1 : 0,
