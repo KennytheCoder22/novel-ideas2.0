@@ -7163,7 +7163,14 @@ const normalizedCandidatesRaw = [
     if (!passesNarrativeConfidenceGate && !teenCuratedTitleFallbackAllow) { registerFinalEligibilityReject("low_recommendation_confidence", title); return false; }
     const oneStrongTasteSignalPlusNarrative = weightedTasteScore >= 2.5 && narrativeFictionConfidence >= 2 && !genericArtifactRe.test(normalizeText(title));
     const twoMeaningfulSignals = meaningfulSignalCount >= 2;
-    const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative;
+    const compositeHighFitSemanticPass =
+      Number(positiveFitScoreByTitle[title] || 0) >= 5.5 &&
+      semanticEvidenceCount >= 1 &&
+      narrativeFictionConfidence >= 2 &&
+      recommendableWorkScore >= 1 &&
+      artifactRiskScore < 3 &&
+      !queryTermOnlyEvidence;
+    const passesTasteThreshold = weightedTasteScore >= 2.5 || twoMeaningfulSignals || oneStrongTasteSignalPlusNarrative || compositeHighFitSemanticPass;
     if (isComicVineCandidate && semanticEvidenceCount < 2) {
       markSourceSpecificGate(title, "semantic_evidence_count_gate");
       const hasTitleOnlyTasteSignal = Boolean(queryTermOnlyEvidenceByTitle[title] && (titleOnlyTasteSignalByTitle[title] || []).length > 0);
@@ -7215,10 +7222,12 @@ const normalizedCandidatesRaw = [
         sourceSpecificRejectReasonByTitle[title] = "format_signal_only_without_taste_fit";
         registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
       }
-      if (!superheroNarrativeFitFinalGate) {
+      if (!superheroNarrativeFitFinalGate && !compositeHighFitSemanticPass) {
         registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
       }
-      markSourceSpecificGate(title, "superhero_narrative_fit_taste_threshold_override");
+      markSourceSpecificGate(title, compositeHighFitSemanticPass
+        ? "composite_high_fit_semantic_taste_threshold_override"
+        : "superhero_narrative_fit_taste_threshold_override");
     }
     if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
     finalAcceptedTasteEvidenceByTitle[title] = [
