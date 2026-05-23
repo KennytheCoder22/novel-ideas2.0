@@ -9759,6 +9759,34 @@ const normalizedCandidatesRaw = [
   if (!alwaysFillToTen && safeFillerCountPostCap > 2) {
     finalOutputItems = finalOutputItems.filter((item: any) => refillAlignmentTier(item?.doc || item).tier !== "safe_filler").slice(0, 10);
   }
+  if (
+    !alwaysFillToTen &&
+    finalOutputItems.length === 0 &&
+    comicVineOnlyMode
+  ) {
+    // Keep a minimal visible set for ComicVine-only underfill instead of collapsing to zero.
+    // Prefer non-safe tiers first; allow up to 2 safe fillers only when nothing aligned survives.
+    const rescuePool = dedupeDocs([
+      ...(scoredCanonicalDocs || []),
+      ...(swipeRankedCandidateList || []),
+      ...(finalRenderDocs || []),
+      ...(viableCandidates || []),
+    ] as any[])
+      .map((doc: any) => ({ doc, align: refillAlignmentTier(doc) }))
+      .filter(({ doc }: any) => {
+        const title = String(doc?.title || "").trim();
+        if (!title) return false;
+        if (!passesEmergencySafeRescue(doc)) return false;
+        return !canReturnTitleRejectReason(title, doc);
+      })
+      .sort((a: any, b: any) => {
+        const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, adjacent_profile_fit: 2, safe_filler: 3 } as Record<string, number>;
+        return (order[a.align?.tier || "safe_filler"] ?? 3) - (order[b.align?.tier || "safe_filler"] ?? 3);
+      });
+    const aligned = rescuePool.filter((x: any) => x.align?.tier !== "safe_filler").slice(0, 10).map((x: any) => ({ kind: "open_library", doc: x.doc }));
+    const safe = rescuePool.filter((x: any) => x.align?.tier === "safe_filler").slice(0, 2).map((x: any) => ({ kind: "open_library", doc: x.doc }));
+    finalOutputItems = aligned.length > 0 ? aligned : safe;
+  }
   if (!alwaysFillToTen && finalOutputItems.length < 10) {
     finalCountContractShortfallReason = "insufficient_aligned_candidates";
   }
