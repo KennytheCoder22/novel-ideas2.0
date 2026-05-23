@@ -67,6 +67,13 @@ async function runPreset(preset: TracePreset) {
   const result = await getRecommendations(input as any);
   const trace = (result as any)?.debugGcdDispatchTrace || {};
 
+
+  const returnedTitles = Array.isArray((result as any)?.items) ? (result as any).items.map((it: any) => String(it?.doc?.title || it?.title || '').trim()).filter(Boolean) : [];
+  const terminalRejectReasonByTitle = ((result as any)?.terminalRejectReasonByTitle || {}) as Record<string, string>;
+  const norm = (v: string) => String(v || '').toLowerCase().trim();
+  const returnedWithFinalEligibilityRejected = returnedTitles.filter((t) => String(terminalRejectReasonByTitle[norm(t)] || '').includes('final_eligibility_rejected'));
+  const recommendFunctionReturned = true;
+
   const fields = {
     returnedItemsLength: Number((result as any)?.items?.length || 0),
     countContractSatisfied: Boolean(trace?.countContractSatisfied),
@@ -75,6 +82,15 @@ async function runPreset(preset: TracePreset) {
     final_contract_refill_accepts: trace?.final_contract_refill_accepts ?? [],
     non_shrunk_restore: trace?.non_shrunk_restore ?? false,
   };
+
+  if (!recommendFunctionReturned) throw new Error(`${preset.id}: recommendFunctionReturned false`);
+  if (!Boolean(trace?.comicVineFetchAttempted)) throw new Error(`${preset.id}: comicVineFetchAttempted false`);
+  if (Number(((result as any)?.finalEligibilityAcceptedTitles || []).length || 0) <= 0) {
+    throw new Error(`${preset.id}: finalEligibilityAcceptedTitlesCount <= 0`);
+  }
+  if (returnedWithFinalEligibilityRejected.length > 0) {
+    throw new Error(`${preset.id}: returned titles with final_eligibility_rejected: ${returnedWithFinalEligibilityRejected.join(' | ')}`);
+  }
 
   console.log(`\n=== ${preset.id.toUpperCase()} ===`);
   console.log(JSON.stringify(fields, null, 2));

@@ -3447,7 +3447,7 @@ export async function getRecommendations(
     const normalizedBigTwoQuerySet = new Set(bigTwoExpansionQueries.map((q) => normalizeText(q)));
     const bigTwoQueriesInPool = generatedComicVineQueriesFromTaste.filter((q) => normalizedBigTwoQuerySet.has(normalizeText(q)));
     const narrativePrimary = generatedComicVineQueriesFromTaste.filter((q) => /\b(character|narrative|story|coming of age|friendship|mystery|supernatural|psychological|graphic novel)\b/i.test(q));
-    const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q));
+    const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q) && /\b(character|story|coming of age|mystery|survival|identity|friendship|supernatural|thriller)\b/i.test(q));
     const baselinePrimaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
     const primaryQueriesRaw = Array.from(new Set([
       ...bigTwoQueriesInPool,
@@ -8327,7 +8327,7 @@ const normalizedCandidatesRaw = [
       !sourceEnabled.localLibrary &&
       !includeKitsu;
     const cleanSeriesOrCollected = isCleanSeriesOrCollectedCandidate(title, doc);
-    if (terminalRejectReasonByTitle[key] && !(singleSourceComicVineContractMode && cleanSeriesOrCollected && String(terminalRejectReasonByTitle[key]).includes("final_eligibility_rejected"))) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+    if (terminalRejectReasonByTitle[key]) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
     if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && cleanSeriesOrCollected)) return "late_fill_never_return";
     if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
     if (formatSignalOnlyRejectedSet.has(key)) return "format_signal_only_rejected";
