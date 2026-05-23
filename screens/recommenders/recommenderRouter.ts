@@ -3150,10 +3150,10 @@ export async function getRecommendations(
     return (genres.includes("thriller") || genres.includes("mystery")) &&
       (tones.includes("dark") || tones.includes("tense") || themes.includes("survival"));
   }
+  const explicitRomanceSignal =
+    genres.includes("romance") ||
+    /\b(romance|romantic|love story|relationship drama|dating)\b/.test(likedSignalsText);
   function romanceComingOfAgeWarmthProfile(): boolean {
-    const explicitRomanceSignal =
-      genres.includes("romance") ||
-      /\b(romance|romantic|love story|relationship drama|dating)\b/.test(likedSignalsText);
     return explicitRomanceSignal &&
       themes.includes("coming of age") &&
       (tones.includes("warm") || tones.includes("gentle") || tones.includes("hopeful") || tones.includes("anime-like"));
@@ -3215,7 +3215,7 @@ export async function getRecommendations(
   if (genres.includes("mystery") && genres.includes("thriller") && (genres.includes("horror") || themes.includes("survival"))) {
     curatedRootsByPattern.push("Something is Killing the Children", "Locke & Key", "Wytches", "Nailbiter", "Harrow County");
   }
-  if (genres.includes("dystopian") && genres.includes("romance") && themes.includes("coming of age")) {
+  if (explicitRomanceSignal && genres.includes("dystopian") && genres.includes("romance") && themes.includes("coming of age")) {
     curatedRootsByPattern.push("Paper Girls", "On a Sunbeam", "Laura Dean Keeps Breaking Up With Me", "Fence", "Snotgirl");
   }
   const darkFantasyEmotionalMythologyProfile =
@@ -7566,8 +7566,10 @@ const normalizedCandidatesRaw = [
   );
   const finalEligibilityAcceptedTitlesCanonical = Array.from(new Set(finalEligibilityAcceptedTitles.filter(Boolean)))
     .filter((title) => !rejectedTitleSetCanonical.has(normalizeText(title)));
+  const cleanFinalRenderTitleSet = new Set(finalRenderDocs.map((doc: any) => normalizeText(String(doc?.title || ""))).filter(Boolean));
+  const finalEligibilityAcceptedTitlesAlignedToRender = finalEligibilityAcceptedTitlesCanonical.filter((title) => cleanFinalRenderTitleSet.has(normalizeText(title)));
   finalEligibilityAcceptedTitles.length = 0;
-  finalEligibilityAcceptedTitles.push(...finalEligibilityAcceptedTitlesCanonical);
+  finalEligibilityAcceptedTitles.push(...finalEligibilityAcceptedTitlesAlignedToRender);
   const finalEligibilityAcceptedAndRejectedTitles = finalEligibilityAcceptedTitles
     .filter((title) => rejectedTitleSetCanonical.has(normalizeText(title)));
   if (finalEligibilityAcceptedAndRejectedTitles.length > 0) {
