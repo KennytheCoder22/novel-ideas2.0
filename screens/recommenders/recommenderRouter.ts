@@ -9736,6 +9736,10 @@ const normalizedCandidatesRaw = [
     markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
   }
   const postTopUpOutputSnapshot = [...finalOutputItems];
+  const postTopUpOutputSnapshotLength = postTopUpOutputSnapshot.length;
+  let handoffRecoveryConsidered = 0;
+  let handoffRecoveryAccepted = 0;
+  const handoffRecoveryRejectedReasons: Record<string, number> = {};
   const normalizeReturnRootFamily = (doc: any): string => {
     const raw = normalizeText(`${parentFranchiseRootForDoc(doc)} ${String(doc?.title || "")}`);
     if (/\b(spider[-\s]?man|miles morales|spider-man noir|avenging spider-man|amazing spider-man)\b/.test(raw)) return "spider-man-family";
@@ -9840,13 +9844,16 @@ const normalizedCandidatesRaw = [
     const handoffRecovery = postTopUpOutputSnapshot
       .map((item: any) => item?.doc || item)
       .filter((doc: any) => {
+        handoffRecoveryConsidered += 1;
         const title = String(doc?.title || "").trim();
         const nt = normalizeText(title);
-        if (!title || !nt || seen.has(nt)) return false;
-        if (!passesEmergencySafeRescue(doc)) return false;
-        if (canReturnTitleRejectReason(title, doc)) return false;
+        if (!title || !nt) { handoffRecoveryRejectedReasons.missing_title = Number(handoffRecoveryRejectedReasons.missing_title || 0) + 1; return false; }
+        if (seen.has(nt)) { handoffRecoveryRejectedReasons.duplicate_title = Number(handoffRecoveryRejectedReasons.duplicate_title || 0) + 1; return false; }
+        if (!passesEmergencySafeRescue(doc)) { handoffRecoveryRejectedReasons.failed_emergency_safe = Number(handoffRecoveryRejectedReasons.failed_emergency_safe || 0) + 1; return false; }
+        const rejectReason = canReturnTitleRejectReason(title, doc);
+        if (rejectReason) { handoffRecoveryRejectedReasons[`can_return:${rejectReason}`] = Number(handoffRecoveryRejectedReasons[`can_return:${rejectReason}`] || 0) + 1; return false; }
         const tier = refillAlignmentTier(doc).tier;
-        if (!alwaysFillToTen && tier === "safe_filler" && safeCount >= 2) return false;
+        if (!alwaysFillToTen && tier === "safe_filler" && safeCount >= 2) { handoffRecoveryRejectedReasons.safe_filler_cap = Number(handoffRecoveryRejectedReasons.safe_filler_cap || 0) + 1; return false; }
         return true;
       })
       .sort((a: any, b: any) => {
@@ -9860,6 +9867,24 @@ const normalizedCandidatesRaw = [
       .map((doc: any) => ({ kind: "open_library", doc }));
     if (handoffRecovery.length > 0) {
       finalOutputItems = [...finalOutputItems, ...handoffRecovery];
+      handoffRecoveryAccepted += handoffRecovery.length;
+    }
+    if (!alwaysFillToTen && finalOutputItems.length < 10 && postTopUpOutputSnapshot.length >= 10) {
+      const relaxed = postTopUpOutputSnapshot
+        .map((item: any) => item?.doc || item)
+        .find((doc: any) => {
+          const title = String(doc?.title || "").trim();
+          const nt = normalizeText(title);
+          if (!title || !nt || seen.has(nt)) return false;
+          if (!passesEmergencySafeRescue(doc)) return false;
+          const rejectReason = String(canReturnTitleRejectReason(title, doc) || "");
+          if (/(late_fill_never_return|format_signal_only_rejected|generic_collection_rejected)/.test(rejectReason)) return false;
+          return true;
+        });
+      if (relaxed) {
+        finalOutputItems.push({ kind: "open_library", doc: relaxed });
+        handoffRecoveryAccepted += 1;
+      }
     }
   }
   const enabledSourceCount = [
@@ -9991,6 +10016,10 @@ const normalizedCandidatesRaw = [
     emergencySafeRescueReturnedTitles: Array.from(new Set(emergencySafeRescueReturnedTitles)).slice(0, 20),
     finalEligibleNonNegativeCount,
     countContractShortfallReason: finalCountContractShortfallReason,
+    postTopUpOutputSnapshotLength,
+    handoffRecoveryConsidered,
+    handoffRecoveryAccepted,
+    handoffRecoveryRejectedReasons,
     scoringPassApplied,
     scoringPassInputCount,
     scoringPassOutputCount,
