@@ -3314,6 +3314,11 @@ export async function getRecommendations(
       .replace(/\s+/g, " ")
       .trim())
     .filter(Boolean);
+  const suppressNonRomanceYALiterals = (query: string): boolean => {
+    if (explicitRomanceSignal) return false;
+    return /\b(laura dean|bloom|heartstopper|fence|mooncakes|romance|romantic|dating|love story)\b/i.test(String(query || ""));
+  };
+  generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.filter((q) => !suppressNonRomanceYALiterals(q));
   const normalizeRootFamilyFromQuery = (query: string): string => {
     const q = normalizeText(String(query || ""));
     if (/\bspider[-\s]?man\b/.test(q)) return "spider-man-family";
@@ -3494,7 +3499,9 @@ export async function getRecommendations(
       .slice(0, 12);
     broadGraphicNovelQueriesUsedAsFallback = narrativePrimary.length === 0 && broadFallback.length > 0;
     broadGraphicNovelFallbackReason = broadGraphicNovelQueriesUsedAsFallback ? "no_narrative_series_queries_built" : "none";
-    rungs = primaryQueries.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
+    rungs = primaryQueries
+      .filter((query) => !suppressNonRomanceYALiterals(query))
+      .map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
     staticDefaultQueriesSuppressedReason = "replaced_with_swipe_taste_queries";
     querySourceOfTruth = "taste_profile";
     tasteQueriesUsedForPrimaryFetch = true;
@@ -9865,7 +9872,11 @@ const normalizedCandidatesRaw = [
     }
     markSourceSpecificGate("__router__", `final_contract_refill_candidate_count:${finalContractRefillDiagnostics.length}`);
     markSourceSpecificGate("__router__", `final_contract_refill_candidates:${finalContractRefillDiagnostics.slice(0, 120).join("|") || "(none)"}`);
-    markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
+    const finalContractRefillAcceptsForDiagnostics =
+      finalEligibilityAcceptedTitles.length > 0
+        ? Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60)
+        : [];
+    markSourceSpecificGate("__router__", `final_contract_refill_accepts:${finalContractRefillAcceptsForDiagnostics.join("|") || "(none)"}`);
   }
   postTopUpOutputSnapshot = [...finalOutputItems];
   postTopUpOutputSnapshotLength = postTopUpOutputSnapshot.length;
