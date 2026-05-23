@@ -3486,7 +3486,12 @@ export async function getRecommendations(
       }
     }
     primaryNarrativeQueryMode = narrativePrimary.length > 0;
-    primaryNarrativeQueries = narrativePrimary.slice(0, 12);
+    primaryNarrativeQueries = narrativePrimary
+      .filter((q) =>
+        explicitRomanceSignal ||
+        !/\b(laura dean|bloom|heartstopper|fence|mooncakes|romance|romantic|dating|love story)\b/i.test(String(q || ""))
+      )
+      .slice(0, 12);
     broadGraphicNovelQueriesUsedAsFallback = narrativePrimary.length === 0 && broadFallback.length > 0;
     broadGraphicNovelFallbackReason = broadGraphicNovelQueriesUsedAsFallback ? "no_narrative_series_queries_built" : "none";
     rungs = primaryQueries.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
@@ -7168,7 +7173,20 @@ const normalizedCandidatesRaw = [
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
       registerFinalEligibilityReject("high_artifact_risk", title); return false;
     }
-    if (nonEnglish) { if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title); registerFinalEligibilityReject("locale_variant", title); return false; }
+    if (nonEnglish) {
+      const semanticLocaleRescue =
+        semanticEvidenceCount >= 2 &&
+        positiveFitScore >= 4 &&
+        narrativeFictionConfidence >= 2 &&
+        !queryTermOnlyEvidence;
+      if (!semanticLocaleRescue) {
+        if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
+        registerFinalEligibilityReject("locale_variant", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "locale_variant_soft_penalty_rescued");
+      finalEligibilityRelaxedReasonByTitle[title] = "locale_variant_soft_penalty_rescued";
+    }
     if (parodyMetaTitle && !hasComedyParodyAffinity) { registerFinalEligibilityReject("parody_meta_without_profile_affinity", title); return false; }
     if (isComicVineCandidate && queryTermOnlyEvidence && titleOnlyTasteSignals.length > 0) {
       registerFinalEligibilityReject("title_token_only_without_narrative_support", title);
