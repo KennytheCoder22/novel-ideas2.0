@@ -7515,6 +7515,31 @@ const normalizedCandidatesRaw = [
     }
     controlledEmergencyFallback = fallbackTierAcceptedTitles.length > 0 && finalEligibilityAcceptedTitles.length === fallbackTierAcceptedTitles.length;
   }
+  if (
+    eligibleWithFitScore.length < Math.min(6, Math.max(1, finalLimit)) &&
+    /RAW_HIGH_CANDIDATE_TINY/.test(String(comicVinePipelineFailureReason || "")) &&
+    Number(expansionConvertedCount || 0) >= 10
+  ) {
+    const seenExpanded = new Set(eligibleWithFitScore.map((row: any) => normalizeText(String(row?.doc?.title || ""))).filter(Boolean));
+    const expandedPoolPreTerminal = dedupeDocs([...(narrativeExpansionMergedDocs || []), ...(viableCandidates || []), ...(scoredCanonicalDocs || [])] as any[]);
+    for (const doc of expandedPoolPreTerminal) {
+      const title = String(doc?.title || "").trim();
+      const nt = normalizeText(title);
+      if (!title || !nt || seenExpanded.has(nt)) continue;
+      if (terminalRejectReasonByTitle[nt]) continue;
+      if (finalEligibilityHardNeverReturnTitles.has(nt)) continue;
+      if (sourceSpecificRejectReasonByTitle[title]) continue;
+      if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) continue;
+      const sem = Number(semanticEvidenceCountByTitle[title] || 0);
+      const fit = Number(positiveFitScoreByTitle[title] || 0);
+      if (sem < 1 && fit < 4) continue;
+      eligibleWithFitScore.push({ doc, fitScore: Math.max(1, fit), recommendableWorkScore: 1, artifactRiskScore: 0, collectedEditionConfidence: 1, narrativeFictionConfidence: 2, metaOrReferenceWorkPenalty: 0 });
+      finalEligibilityAcceptedTitles.push(title);
+      finalEligibilityRelaxedReasonByTitle[title] = "expanded_pool_semantic_rescue_before_terminal";
+      seenExpanded.add(nt);
+      if (eligibleWithFitScore.length >= Math.min(10, Math.max(6, finalLimit))) break;
+    }
+  }
   finalRenderDocs = eligibleWithFitScore
     .sort((a, b) => b.fitScore - a.fitScore || Number((b.doc?.score ?? 0) - (a.doc?.score ?? 0)))
     .map((row) => row.doc)
@@ -8354,6 +8379,10 @@ const normalizedCandidatesRaw = [
     cleanCandidateButNotAcceptedReasonByTitle[title] = rejectedReasons.length > 0 ? `final_gate_rejected:${rejectedReasons.join("|")}` : "not_in_final_accepted_unknown";
   }
   const rejectedButReturnedTitles = returnedItemsTitlesPostTerminal.filter((t) => Boolean(terminalRejectReasonByTitle[normalizeText(t)]));
+  const terminalRejectedButReturnedTitles = [...rejectedButReturnedTitles];
+  if (terminalRejectedButReturnedTitles.length > 0) {
+    sourceSkippedReason.push(`TERMINAL_REJECT_LEAK:${terminalRejectedButReturnedTitles.slice(0, 20).join("|")}`);
+  }
   const returnPathInvariantInputTitles = Array.from(new Set([
     ...acceptedAfterTerminalRejectFilter,
     ...teenPostPassOutputTitles,
@@ -9195,6 +9224,11 @@ const normalizedCandidatesRaw = [
       }
       if (finalEligibilityRejectedSet.has(nt)) {
         lateTeenUnderfillRejectedReasons.final_eligibility_reject_reentry = (lateTeenUnderfillRejectedReasons.final_eligibility_reject_reentry || 0) + 1;
+        continue;
+      }
+      if (sourceSpecificRejectReasonByTitle[title]) {
+        lateTeenUnderfillRejectedReasons.source_specific_reject_reentry = (lateTeenUnderfillRejectedReasons.source_specific_reject_reentry || 0) + 1;
+        lateUnderfillFillRejectedReasons.source_specific_reject_reentry = (lateUnderfillFillRejectedReasons.source_specific_reject_reentry || 0) + 1;
         continue;
       }
       if (hardArtifactRootRejectedSet.has(nt)) {
@@ -10393,6 +10427,7 @@ const normalizedCandidatesRaw = [
     finalEligibilityAcceptedTitles: acceptedAfterTerminalRejectFilter,
     finalEligibilityRejectedTitlesByReason,
     rejectedButReturnedTitles,
+    terminalRejectedButReturnedTitles,
     rejectedButAcceptedTitles,
     terminalRejectReasonByTitle,
     finalGateConsistencyPassed,
