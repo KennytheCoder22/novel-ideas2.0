@@ -2661,6 +2661,9 @@ export async function getRecommendations(
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
   const sourceEnabled = resolveSourceEnabled(routedInput);
   const sourceSkippedReason: string[] = [];
+  var tdzGuardedDiagnosticsInitialized = false;
+  var postTopUpOutputSnapshot: any[] = [];
+  var postTopUpOutputSnapshotLength = 0;
   let googleQuotaExhausted = false;
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
@@ -9839,8 +9842,8 @@ const normalizedCandidatesRaw = [
     markSourceSpecificGate("__router__", `final_contract_refill_candidates:${finalContractRefillDiagnostics.slice(0, 120).join("|") || "(none)"}`);
     markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
   }
-  const postTopUpOutputSnapshot = [...finalOutputItems];
-  const postTopUpOutputSnapshotLength = postTopUpOutputSnapshot.length;
+  postTopUpOutputSnapshot = [...finalOutputItems];
+  postTopUpOutputSnapshotLength = postTopUpOutputSnapshot.length;
   let handoffRecoveryConsidered = 0;
   let handoffRecoveryAccepted = 0;
   const handoffRecoveryRejectedReasons: Record<string, number> = {};
@@ -10128,7 +10131,7 @@ const normalizedCandidatesRaw = [
     Number(expansionConvertedCount || 0) >= 10;
   const finalEligibleSet = new Set((acceptedAfterTerminalRejectFilter || []).map((t: string) => normalizeText(t)));
   const tasteQuerySet = new Set((generatedComicVineQueriesFromTaste || []).map((q: string) => normalizeText(q)));
-  const tdzGuardedDiagnosticsInitialized = true;
+  tdzGuardedDiagnosticsInitialized = true;
   const hasSwipeAlignedEvidence = (doc: any, title: string): string[] => {
     const ev: string[] = [];
     const nt = normalizeText(title);
