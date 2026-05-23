@@ -3243,11 +3243,10 @@ export async function getRecommendations(
     `${seed} style graphic novel`,
     `${seed} emotional growth graphic novel`,
   ]);
-  const bigTwoSuperheroProfile =
+  const explicitSuperheroSignal =
     genres.includes("superheroes") ||
-    themes.includes("identity") ||
-    drives.includes("identity") ||
-    /\b(superhero|dc|marvel|justice league|avengers)\b/.test(likedSignalsText);
+    /\b(superhero|superheroes|dc|marvel|justice league|avengers|x-men|spider[-\s]?man|batman|superman|wonder woman|thor)\b/.test(likedSignalsText);
+  const bigTwoSuperheroProfile = explicitSuperheroSignal;
   const darkDetectiveProfile =
     (tones.includes("dark") || tones.includes("atmospheric")) &&
     (genres.includes("mystery") || genres.includes("crime") || themes.includes("identity"));
