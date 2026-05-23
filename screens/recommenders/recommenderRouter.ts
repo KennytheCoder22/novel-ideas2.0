@@ -9911,6 +9911,51 @@ const normalizedCandidatesRaw = [
     if (finalEligibilityHardNeverReturnTitles.has(nt)) return false;
     return true;
   });
+  // After terminal filtering, run one last aligned-only refill from non-terminal candidates.
+  if (!suppressTopRecommendations && finalOutputItems.length < 10) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    let safeCount = finalOutputItems.filter((item: any) => refillAlignmentTier(item?.doc || item).tier === "safe_filler").length;
+    const terminalAlignedRefill = dedupeDocs([
+      ...(scoredCanonicalDocs || []),
+      ...(swipeRankedCandidateList || []),
+      ...(finalRenderDocs || []),
+      ...(viableCandidates || []),
+      ...(candidateDocs || []),
+      ...(normalizedCandidates || []),
+      ...(postTopUpOutputSnapshot || []),
+    ] as any[])
+      .map((entry: any) => {
+        const doc = entry?.doc || entry;
+        return { doc, align: refillAlignmentTier(doc) };
+      })
+      .filter(({ doc, align }: any) => {
+        const title = String(doc?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt || seen.has(nt)) return false;
+        if (terminalRejectReasonByTitle[nt]) return false;
+        if (finalEligibilityHardNeverReturnTitles.has(nt)) return false;
+        if (!passesEmergencySafeRescue(doc)) return false;
+        const rejectReason = canReturnTitleRejectReason(title, doc);
+        if (rejectReason) return false;
+        if (!alwaysFillToTen && align?.tier === "safe_filler" && safeCount >= 2) return false;
+        return true;
+      })
+      .sort((a: any, b: any) => {
+        const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, adjacent_profile_fit: 2, safe_filler: 3 } as Record<string, number>;
+        const ao = order[a.align?.tier || "safe_filler"] ?? 3;
+        const bo = order[b.align?.tier || "safe_filler"] ?? 3;
+        if (ao !== bo) return ao - bo;
+        return Number(b.doc?.score ?? b.doc?.diagnostics?.finalScore ?? 0) - Number(a.doc?.score ?? a.doc?.diagnostics?.finalScore ?? 0);
+      });
+    for (const row of terminalAlignedRefill) {
+      if (finalOutputItems.length >= 10) break;
+      const nt = normalizeText(String(row?.doc?.title || ""));
+      if (!nt || seen.has(nt)) continue;
+      finalOutputItems.push({ kind: "open_library", doc: row.doc });
+      seen.add(nt);
+      if (row.align?.tier === "safe_filler") safeCount += 1;
+    }
+  }
   const enabledSourceCount = [
     sourceEnabled.googleBooks ? 1 : 0,
     sourceEnabled.openLibrary ? 1 : 0,
