@@ -10022,6 +10022,52 @@ const normalizedCandidatesRaw = [
     returnedItemsByAlignmentTier[tier] = Number(returnedItemsByAlignmentTier[tier] || 0) + 1;
     if (tier === "safe_filler") safeFillerTitles.push(String(doc?.title || "").trim());
   }
+  const returnedReasonByTitle: Record<string, "primary_recommendation" | "aligned_backfill" | "contract_filler"> = {};
+  const returnedSwipeEvidenceByTitle: Record<string, string[]> = {};
+  const returnedSourceLayerByTitle: Record<string, string> = {};
+  const returnedReasonCounts = { primary_recommendation: 0, aligned_backfill: 0, contract_filler: 0 };
+  const finalEligibleSet = new Set((acceptedAfterTerminalRejectFilter || []).map((t: string) => normalizeText(t)));
+  const tasteQuerySet = new Set((generatedComicVineQueriesFromTaste || []).map((q: string) => normalizeText(q)));
+  const hasSwipeAlignedEvidence = (doc: any, title: string): string[] => {
+    const ev: string[] = [];
+    const nt = normalizeText(title);
+    const matchedLiked = candidateMatchedLikedSignalsByTitle[title] || [];
+    if (matchedLiked.length > 0) ev.push(`liked_signal_overlap:${matchedLiked.slice(0, 3).join(",")}`);
+    const qtext = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
+    if (qtext && Array.from(tasteQuerySet).some((q) => q && qtext.includes(q))) ev.push("generated_taste_query_match");
+    const root = normalizeText(String(parentFranchiseRootForDoc(doc) || ""));
+    if (profileSelectedEntitySeeds.some((seed: string) => normalizeText(seed) && (nt.includes(normalizeText(seed)) || root.includes(normalizeText(seed))))) ev.push("profile_entity_seed_match");
+    const pfit = Number(positiveFitScoreByTitle[title] || 0);
+    const sem = Number(semanticEvidenceCountByTitle[title] || 0);
+    const nconf = Number((finalAcceptedTasteEvidenceByTitle[title] || []).find((r: string) => r.startsWith("narrativeFictionConfidence:"))?.split(":")[1] || 0);
+    const qOnly = Boolean(queryTermOnlyEvidenceByTitle[title]);
+    if (pfit >= 5.5 && sem >= 1 && nconf >= 2 && !qOnly) ev.push("composite_high_fit_semantic_pass");
+    return ev;
+  };
+  finalOutputItems = finalOutputItems
+    .map((item: any) => {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      const nt = normalizeText(title);
+      const sourceLayer = String((doc?.diagnostics?.laneKind || doc?.laneKind || doc?.source || "unknown"));
+      let reason: "primary_recommendation" | "aligned_backfill" | "contract_filler" = "contract_filler";
+      const evidence = hasSwipeAlignedEvidence(doc, title);
+      if (finalEligibleSet.has(nt)) reason = "primary_recommendation";
+      else if (evidence.length > 0) reason = "aligned_backfill";
+      returnedReasonByTitle[title] = reason;
+      returnedSwipeEvidenceByTitle[title] = evidence;
+      returnedSourceLayerByTitle[title] = sourceLayer;
+      returnedReasonCounts[reason] += 1;
+      return { ...item, returnedReason: reason };
+    })
+    .sort((a: any, b: any) => {
+      const order = { primary_recommendation: 0, aligned_backfill: 1, contract_filler: 2 } as Record<string, number>;
+      return (order[a.returnedReason] ?? 9) - (order[b.returnedReason] ?? 9);
+    });
+  if (!alwaysFillToTen) {
+    finalOutputItems = finalOutputItems.filter((item: any) => item.returnedReason !== "contract_filler");
+  }
+  if (finalOutputItems.length > 10) finalOutputItems = finalOutputItems.slice(0, 10);
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1
@@ -10429,6 +10475,10 @@ const normalizedCandidatesRaw = [
     safeFillerTitles: Array.from(new Set(safeFillerTitles)).slice(0, 20),
     strongTasteReturnedCount: returnedItemsByAlignmentTier.strong_taste_fit || 0,
     semanticNarrativeReturnedCount: returnedItemsByAlignmentTier.semantic_narrative_fit || 0,
+    returnedReasonByTitle,
+    returnedSwipeEvidenceByTitle,
+    returnedSourceLayerByTitle,
+    returnedReasonCounts,
     acceptedPrefixInvariantFailed,
     finalAcceptedDocIds,
     finalRejectedDocIds,
