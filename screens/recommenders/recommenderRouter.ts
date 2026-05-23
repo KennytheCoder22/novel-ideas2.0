@@ -10052,6 +10052,12 @@ const normalizedCandidatesRaw = [
   const returnedSwipeEvidenceByTitle: Record<string, string[]> = {};
   const returnedSourceLayerByTitle: Record<string, string> = {};
   const returnedReasonCounts = { primary_recommendation: 0, aligned_backfill: 0, contract_filler: 0 };
+  const alignedBackfillRejectedReasons: Record<string, number> = {};
+  let swipeEvidenceCandidateCount = 0;
+  const negativePenaltyDominantSignalsByTitle: Record<string, string> = {};
+  const expandedPoolUsedForFinalSelection =
+    /RAW_HIGH_CANDIDATE_TINY/.test(String(comicVinePipelineFailureReason || "")) &&
+    Number(expansionConvertedCount || 0) >= 10;
   const finalEligibleSet = new Set((acceptedAfterTerminalRejectFilter || []).map((t: string) => normalizeText(t)));
   const tasteQuerySet = new Set((generatedComicVineQueriesFromTaste || []).map((q: string) => normalizeText(q)));
   const hasSwipeAlignedEvidence = (doc: any, title: string): string[] => {
@@ -10068,8 +10074,25 @@ const normalizedCandidatesRaw = [
     const nconf = Number((finalAcceptedTasteEvidenceByTitle[title] || []).find((r: string) => r.startsWith("narrativeFictionConfidence:"))?.split(":")[1] || 0);
     const qOnly = Boolean(queryTermOnlyEvidenceByTitle[title]);
     if (pfit >= 5.5 && sem >= 1 && nconf >= 2 && !qOnly) ev.push("composite_high_fit_semantic_pass");
+    if (ev.length > 0) swipeEvidenceCandidateCount += 1;
     return ev;
   };
+  if (expandedPoolUsedForFinalSelection && finalOutputItems.length < 10) {
+    const seen = new Set(finalOutputItems.map((i: any) => normalizeText(String(i?.doc?.title || i?.title || ""))).filter(Boolean));
+    const expandedCandidates = dedupeDocs([...(narrativeExpansionMergedDocs || []), ...(viableCandidates || []), ...(scoredCanonicalDocs || [])] as any[])
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt || seen.has(nt)) return false;
+        if (terminalRejectReasonByTitle[nt]) return false;
+        if (finalEligibilityHardNeverReturnTitles.has(nt)) return false;
+        if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
+        return passesEmergencySafeRescue(doc) && !canReturnTitleRejectReason(title, doc);
+      })
+      .slice(0, Math.max(0, 10 - finalOutputItems.length))
+      .map((doc: any) => ({ kind: "open_library", doc }));
+    if (expandedCandidates.length > 0) finalOutputItems = [...finalOutputItems, ...expandedCandidates];
+  }
   finalOutputItems = finalOutputItems
     .map((item: any) => {
       const doc = item?.doc || item;
@@ -10078,8 +10101,19 @@ const normalizedCandidatesRaw = [
       const sourceLayer = String((doc?.diagnostics?.laneKind || doc?.laneKind || doc?.source || "unknown"));
       let reason: "primary_recommendation" | "aligned_backfill" | "contract_filler" = "contract_filler";
       const evidence = hasSwipeAlignedEvidence(doc, title);
+      const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+      const likedWeight = Number(candidateWeightedTasteScoreByTitle[title] || 0);
       if (finalEligibleSet.has(nt)) reason = "primary_recommendation";
-      else if (evidence.length > 0) reason = "aligned_backfill";
+      else if (evidence.length > 0) {
+        if (dislikePenalty > likedWeight * 1.35 && likedWeight < 3) {
+          alignedBackfillRejectedReasons.disliked_penalty_dominates = Number(alignedBackfillRejectedReasons.disliked_penalty_dominates || 0) + 1;
+          negativePenaltyDominantSignalsByTitle[title] = `dislike=${dislikePenalty.toFixed(2)} liked=${likedWeight.toFixed(2)}`;
+        } else {
+          reason = "aligned_backfill";
+        }
+      } else {
+        alignedBackfillRejectedReasons.no_swipe_evidence = Number(alignedBackfillRejectedReasons.no_swipe_evidence || 0) + 1;
+      }
       returnedReasonByTitle[title] = reason;
       returnedSwipeEvidenceByTitle[title] = evidence;
       returnedSourceLayerByTitle[title] = sourceLayer;
@@ -10505,6 +10539,10 @@ const normalizedCandidatesRaw = [
     returnedSwipeEvidenceByTitle,
     returnedSourceLayerByTitle,
     returnedReasonCounts,
+    alignedBackfillRejectedReasons,
+    swipeEvidenceCandidateCount,
+    expandedPoolUsedForFinalSelection,
+    negativePenaltyDominantSignalsByTitle,
     primaryRecommendationCount: returnedReasonCounts.primary_recommendation,
     alignedBackfillCount: returnedReasonCounts.aligned_backfill,
     contractFillerCount: returnedReasonCounts.contract_filler,
