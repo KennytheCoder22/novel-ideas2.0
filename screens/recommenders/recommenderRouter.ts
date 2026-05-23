@@ -6347,7 +6347,8 @@ const normalizedCandidatesRaw = [
     const hasNarrative = /\b(story|character|conspiracy|investigation|psychological|survival|identity|relationship|journey|murder|mystery|thriller)\b/i.test(text);
     const hasTasteOverlap = weightedSwipeTasteVector.liked.some((row) => text.includes(normalizeText(row.signal)));
     narrativeEvidenceScore[title] = (hasNarrative ? 1 : 0) + (hasTasteOverlap ? 1 : 0);
-    if (packagingOnly && !hasNarrative && !hasTasteOverlap) {
+    const packagingHasEntryPointSignal = /\b(volume one|volume 1|book one|book 1|omnibus|compendium|collected edition|collection)\b/i.test(text);
+    if (packagingOnly && !hasNarrative && !hasTasteOverlap && !packagingHasEntryPointSignal) {
       semanticEligibilityRejectedReason[title] = "packaging_only_without_narrative_or_taste";
       structuralOnlyMatch.push(title);
       return false;
@@ -6401,7 +6402,7 @@ const normalizedCandidatesRaw = [
         diversityMemoryHitRoots.push(docRoot || "(none)");
       }
       if (titleRepeatPenalty || rootRepeatPenalty) repeatPenaltyCandidateCount += 1;
-      if (isFreshUserSession && (titleRepeatPenalty > 0 || rootRepeatPenalty > 0) && tasteMatchScore < 2.25) {
+      if (isFreshUserSession && (titleRepeatPenalty > 0 || rootRepeatPenalty > 0) && tasteMatchScore < 1.4 && !narrativeWorkSignal) {
         finalSelectionRejectedByReason.recent_repeat_weak_taste = Number(finalSelectionRejectedByReason.recent_repeat_weak_taste || 0) + 1;
         pushReason(penaltyReasonsByTitle, title, "recent_repeat_weak_taste");
         return null;
@@ -6588,10 +6589,11 @@ const normalizedCandidatesRaw = [
         const weightedTaste = weightedSwipeTasteVector.liked.reduce((acc, row) => acc + (text.includes(normalizeText(row.signal)) ? Number(row.weight || 0) : 0), 0);
         const narrativeLike = /\b(volume|book|tpb|omnibus|collection|collected edition|graphic novel|saga|chronicle|adventure|mystery|thriller|horror|fantasy|science fiction)\b/i.test(`${title} ${String(doc?.description || "")}`);
         const artifactLike = /\b(feedback|preview|guide|reference|history of|encyclopedia|study|criticism|anthology|collection of)\b/i.test(`${title} ${String(doc?.description || "")}`);
-        if (weightedTaste < 2.5) narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_taste_overlap = Number(narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_taste_overlap || 0) + 1;
+        if (weightedTaste < 1.5) narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_taste_overlap = Number(narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_taste_overlap || 0) + 1;
         if (!narrativeLike) narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_narrative_signal = Number(narrativeExpansionCandidatesDroppedBeforeScoringByReason.low_narrative_signal || 0) + 1;
         if (artifactLike) narrativeExpansionCandidatesDroppedBeforeScoringByReason.artifact_or_meta = Number(narrativeExpansionCandidatesDroppedBeforeScoringByReason.artifact_or_meta || 0) + 1;
-        const viable = weightedTaste >= 2.5 && narrativeLike && !artifactLike;
+        const semanticNarrativeAdjacency = narrativeLike || /\b(character|story|mystery|thriller|psychological|coming of age|relationship)\b/i.test(text);
+        const viable = weightedTaste >= 1.5 && semanticNarrativeAdjacency && !artifactLike;
         if (viable) {
           const score = weightedTaste + (narrativeLike ? 2 : 0) + (/\b(volume one|volume 1|book one|book 1|tpb|collected edition|omnibus)\b/i.test(title) ? 1.5 : 0);
           positiveFitScoreByTitle[title] = Math.max(Number(positiveFitScoreByTitle[title] || 0), score);
@@ -6849,7 +6851,7 @@ const normalizedCandidatesRaw = [
   const scoredUniverseFailureFromConvertedPool =
     comicVineDocConversionSuccessCount > 100 && scoredCandidateUniverseCount < 30;
   const scoredUniverseCollapsedToNormalizedTen = normalizedCandidates.length === 10 && scoredCandidateUniverseCount <= 10;
-  const scoredUniverseFailure = scoredUniverseFailureFromConvertedPool || scoredUniverseCollapsedToNormalizedTen;
+  const scoredUniverseFailure = (scoredUniverseFailureFromConvertedPool || scoredUniverseCollapsedToNormalizedTen) && finalEligibilityCleanCandidateCount < 6;
   const scoredUniverseFailureReason = scoredUniverseFailure
     ? (scoredUniverseFailureFromConvertedPool
       ? "wide converted pool not used"
@@ -7205,7 +7207,8 @@ const normalizedCandidatesRaw = [
         !sourceEnabled.localLibrary &&
         !includeKitsu &&
         positiveFitScore >= 5;
-      if (isComicVineCandidate && collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2 && !canonicalFormatSoftPass && !highPositiveFitFormatRescueAllow) {
+      const semanticNarrativeFormatRescue = semanticEvidenceCount >= 1 && narrativeFictionConfidence >= 2;
+      if (isComicVineCandidate && collectedEditionConfidence >= 3 && weightedTasteScore < 2.5 && meaningfulSignalCount < 2 && !canonicalFormatSoftPass && !highPositiveFitFormatRescueAllow && !semanticNarrativeFormatRescue) {
         markSourceSpecificGate(title, "format_signal_only_without_taste_fit");
         if (formatSignalOnlyRejectedTitles.length < 100) formatSignalOnlyRejectedTitles.push(title);
         markTerminalReject(title, "format_signal_only_without_taste_fit");
