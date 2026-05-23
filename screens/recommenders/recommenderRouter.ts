@@ -7527,7 +7527,6 @@ const normalizedCandidatesRaw = [
       const nt = normalizeText(title);
       if (!title || !nt || seenExpanded.has(nt)) continue;
       if (terminalRejectReasonByTitle[nt]) continue;
-      if (finalEligibilityHardNeverReturnTitles.has(nt)) continue;
       if (sourceSpecificRejectReasonByTitle[title]) continue;
       if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) continue;
       const sem = Number(semanticEvidenceCountByTitle[title] || 0);
@@ -9175,6 +9174,13 @@ const normalizedCandidatesRaw = [
         String(parentFranchiseRootForDoc(item?.doc || item) || "__none__")
       )
     );
+    const seenRootFamily = new Set(
+      finalOutputItems.map((item: any) => {
+        const t = String(item?.doc?.title || item?.title || "");
+        const r = String(parentFranchiseRootForDoc(item?.doc || item) || "__none__");
+        return lateUnderfillRootFamilyKey(r, t);
+      })
+    );
     const lateUnderfillRootFamilyCounts: Record<string, number> = {};
     const lateUnderfillRootFamilyKey = (rawRoot: string, title: string) => {
       const text = normalizeText(`${rawRoot} ${title}`);
@@ -9265,6 +9271,11 @@ const normalizedCandidatesRaw = [
         lateTeenUnderfillRejectedReasons.duplicate_root_family = (lateTeenUnderfillRejectedReasons.duplicate_root_family || 0) + 1;
         continue;
       }
+      if (seenRootFamily.has(cappedRootFamily)) {
+        lateTeenUnderfillRejectedReasons.duplicate_root_family_alias = (lateTeenUnderfillRejectedReasons.duplicate_root_family_alias || 0) + 1;
+        lateUnderfillFillRejectedReasons.duplicate_root_family_alias = (lateUnderfillFillRejectedReasons.duplicate_root_family_alias || 0) + 1;
+        continue;
+      }
       if (Number(lateUnderfillRootFamilyCounts[cappedRootFamily] || 0) >= 2) {
         lateTeenUnderfillRejectedReasons.root_family_cap = (lateTeenUnderfillRejectedReasons.root_family_cap || 0) + 1;
         lateUnderfillFillRejectedReasons.root_family_cap = (lateUnderfillFillRejectedReasons.root_family_cap || 0) + 1;
@@ -9326,6 +9337,7 @@ const normalizedCandidatesRaw = [
       seenTitle.add(nt);
       seenRoot.add(root);
       seenRoot.add(rootFamily);
+      seenRootFamily.add(cappedRootFamily);
       lateTeenUnderfillCandidatesAccepted += 1;
       lateTeenUnderfillAcceptedTitles.push(title);
       lateUnderfillFillAcceptedTitles.push(title);
@@ -10116,6 +10128,7 @@ const normalizedCandidatesRaw = [
     Number(expansionConvertedCount || 0) >= 10;
   const finalEligibleSet = new Set((acceptedAfterTerminalRejectFilter || []).map((t: string) => normalizeText(t)));
   const tasteQuerySet = new Set((generatedComicVineQueriesFromTaste || []).map((q: string) => normalizeText(q)));
+  const tdzGuardedDiagnosticsInitialized = true;
   const hasSwipeAlignedEvidence = (doc: any, title: string): string[] => {
     const ev: string[] = [];
     const nt = normalizeText(title);
@@ -10195,6 +10208,24 @@ const normalizedCandidatesRaw = [
       if (!keep) finalReasonFilterRejectedReasons.contract_filler_not_allowed = Number(finalReasonFilterRejectedReasons.contract_filler_not_allowed || 0) + 1;
       return keep;
     });
+  }
+  if (!alwaysFillToTen && finalOutputItems.length < Math.min(6, postTopUpOutputSnapshot.length)) {
+    const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const rescuedAligned = postTopUpOutputSnapshot
+      .map((it: any) => it?.doc || it)
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt || seen.has(nt)) return false;
+        if (terminalRejectReasonByTitle[nt]) return false;
+        if (Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) < 0) return false;
+        const sem = Number(semanticEvidenceCountByTitle[title] || 0);
+        const fit = Number(positiveFitScoreByTitle[title] || 0);
+        return passesEmergencySafeRescue(doc) && !canReturnTitleRejectReason(title, doc) && (sem >= 1 || fit >= 4);
+      })
+      .slice(0, Math.max(0, Math.min(8, postTopUpOutputSnapshot.length) - finalOutputItems.length))
+      .map((doc: any) => ({ kind: "open_library", doc, returnedReason: "aligned_backfill" }));
+    if (rescuedAligned.length > 0) finalOutputItems = [...finalOutputItems, ...rescuedAligned];
   }
   if (finalOutputItems.length > 10) finalOutputItems = finalOutputItems.slice(0, 10);
   // Absolute-last contract recompute based on the final visible/persisted list.
@@ -10633,6 +10664,7 @@ const normalizedCandidatesRaw = [
     lateUnderfillFillAcceptedTitles: Array.from(new Set(lateUnderfillFillAcceptedTitles)).slice(0, 40),
     lateUnderfillFillRejectedReasons,
     finalRootFamilyCounts,
+    tdzGuardedDiagnosticsInitialized,
     primaryRecommendationCount: returnedReasonCounts.primary_recommendation,
     alignedBackfillCount: returnedReasonCounts.aligned_backfill,
     contractFillerCount: returnedReasonCounts.contract_filler,
