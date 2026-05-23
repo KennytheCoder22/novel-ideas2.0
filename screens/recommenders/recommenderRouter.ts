@@ -3309,6 +3309,23 @@ export async function getRecommendations(
       .replace(/\s+/g, " ")
       .trim())
     .filter(Boolean);
+  const normalizeRootFamilyFromQuery = (query: string): string => {
+    const q = normalizeText(String(query || ""));
+    if (/\bspider[-\s]?man\b/.test(q)) return "spider-man-family";
+    if (/\bjustice league\b/.test(q)) return "justice-league-family";
+    if (/\bbatman\b/.test(q)) return "batman-family";
+    if (/\bsuperman\b/.test(q)) return "superman-family";
+    if (/\bavengers\b/.test(q)) return "avengers-family";
+    return q.split(/\s+/).slice(0, 2).join(" ");
+  };
+  const recentlySeenQueryFamilies = new Set(
+    recentFreshReturnedRoots.flatMap((bucket) => bucket.map((r) => normalizeRootFamilyFromQuery(String(r || "").replace(/-/g, " "))))
+  );
+  generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.filter((q) => {
+    const family = normalizeRootFamilyFromQuery(q);
+    const isNarrativeBroad = /\b(character|narrative|story|coming of age|friendship|mystery|psychological|graphic novel)\b/i.test(q);
+    return !(recentlySeenQueryFamilies.has(family) && !isNarrativeBroad);
+  });
   if (bigTwoSuperheroProfile && bigTwoExpansionQueries.length > 0) {
     const normalizedBigTwo = new Set(selectedBigTwoRoots.map((q) => normalizeText(q)));
     const prioritizedBigTwoRaw = generatedComicVineQueriesFromTaste
@@ -6243,6 +6260,13 @@ const normalizedCandidatesRaw = [
     disliked: extractWeightedSignals(combinedDislikedTagCounts || {}, "disliked"),
     skipped: extractWeightedSignals((routingInput as any)?.skippedTagCounts || {}, "skipped"),
   };
+  const likedSignalSetForContext = new Set(weightedSwipeTasteVector.liked.map((row) => normalizeText(String(row.signal || ""))).filter(Boolean));
+  weightedSwipeTasteVector.disliked = weightedSwipeTasteVector.disliked.map((row) => {
+    const signal = normalizeText(String(row.signal || ""));
+    return likedSignalSetForContext.has(signal)
+      ? { ...row, weight: Number(row.weight || 0) * 0.35 }
+      : row;
+  });
   const dislikedSignalsFromSwipeHistory = Array.from(new Set(
     (Array.isArray((routingInput as any)?.swipeHistory) ? (routingInput as any).swipeHistory : [])
       .filter((swipe: any) => isNegativeSwipeForRouting(swipe))
@@ -6446,7 +6470,14 @@ const normalizedCandidatesRaw = [
       titleOnlyTasteSignalByTitle[title] = titleOnlyTokens;
       semanticSupportFoundByTitle[title] = semanticSupportFound;
       semanticEvidenceCountByTitle[title] = semanticEvidenceCount;
-      if (queryTermOnlyEvidence && titleOnlyTokens.length > 0 && matchedLiked.length === 0) {
+      const plausibleAdjacency =
+        semanticEvidenceCount >= 1 ||
+        narrativeWorkSignal ||
+        laneMatch ||
+        themeOverlap ||
+        rootMatch ||
+        Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) >= 0;
+      if (queryTermOnlyEvidence && titleOnlyTokens.length > 0 && matchedLiked.length === 0 && !plausibleAdjacency) {
         finalSelectionRejectedByReason.query_literalism_title_only = Number(finalSelectionRejectedByReason.query_literalism_title_only || 0) + 1;
         pushReason(penaltyReasonsByTitle, title, "query_literalism_title_only");
         candidateKilledByPenaltyStack.push(title);
@@ -6485,7 +6516,7 @@ const normalizedCandidatesRaw = [
       if (audienceFit) reasons.push("audience_fit");
       if (provenanceConfidence) reasons.push("provenance_confidence");
       positiveFitReasonsByTitle[title] = reasons;
-      if (finalCandidateScore < lowPositiveFitThreshold) {
+      if (finalCandidateScore < lowPositiveFitThreshold && !plausibleAdjacency) {
         finalSelectionRejectedByReason.low_positive_fit = Number(finalSelectionRejectedByReason.low_positive_fit || 0) + 1;
         pushReason(penaltyReasonsByTitle, title, "low_positive_fit");
         if ((genericGraphicNovelPlaceholderPenalty + metaReferencePenalty + historicalAboutPenalty) >= 3 && strongTasteOverlap) candidateKilledByPenaltyStack.push(title);
@@ -9528,6 +9559,8 @@ const normalizedCandidatesRaw = [
     if (likedMatches >= 1 && dislikedMatches === 0 && narrativeFit) return { tier: "semantic_narrative_fit", reason: `liked_matches=${likedMatches}:narrative_fit=true` };
     return { tier: "safe_filler", reason: `liked_matches=${likedMatches}:disliked_matches=${dislikedMatches}:score=${score.toFixed(2)}:narrative_fit=${narrativeFit}` };
   };
+  const alwaysFillToTen = Boolean((input as any)?.alwaysFillTo10 === true || (input as any)?.alwaysFillToTen === true);
+  let safeFillerUsedInTopup = 0;
   if (!suppressTopRecommendations && enabledSourceCountForContract === 1 && finalOutputItems.length < targetFinalCountForContract) {
     const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
     const singleSourceContractTopUp = dedupeDocs([
@@ -9619,8 +9652,10 @@ const normalizedCandidatesRaw = [
         if (ao !== bo) return ao - bo;
         return Number(b.doc?.score ?? b.doc?.diagnostics?.finalScore ?? 0) - Number(a.doc?.score ?? a.doc?.diagnostics?.finalScore ?? 0);
       })
+      .filter(({ align }: any) => alwaysFillToTen || align?.tier !== "safe_filler" || safeFillerUsedInTopup < 2)
       .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
       .map(({ doc }: any) => ({ kind: "open_library", doc }));
+    safeFillerUsedInTopup += scoredUniverseContractTopUp.filter((item: any) => refillAlignmentTier(item?.doc).tier === "safe_filler").length;
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_candidate_count:${scoredUniverseTopUpCandidateDiagnostics.length}`);
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_candidates:${scoredUniverseTopUpCandidateDiagnostics.slice(0, 80).join("|") || "(none)"}`);
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_accepts:${Array.from(new Set(scoredUniverseTopUpAcceptedTitles)).slice(0, 40).join("|") || "(none)"}`);
@@ -9683,8 +9718,10 @@ const normalizedCandidatesRaw = [
         const order = { strong_taste_fit: 0, semantic_narrative_fit: 1, safe_filler: 2 } as Record<string, number>;
         return (order[a.align?.tier || "safe_filler"] ?? 2) - (order[b.align?.tier || "safe_filler"] ?? 2);
       })
+      .filter(({ align }: any) => alwaysFillToTen || align?.tier !== "safe_filler" || safeFillerUsedInTopup < 2)
       .slice(0, Math.max(0, targetFinalCountForContract - finalOutputItems.length))
       .map(({ doc }: any) => ({ kind: "open_library", doc }));
+    safeFillerUsedInTopup += finalContractRefill.filter((item: any) => refillAlignmentTier(item?.doc).tier === "safe_filler").length;
     if (finalContractRefill.length > 0) {
       finalOutputItems = [...finalOutputItems, ...finalContractRefill];
       returnedItemsBuiltFrom = `${returnedItemsBuiltFrom || "none"}_final_contract_refill`;
@@ -9730,6 +9767,23 @@ const normalizedCandidatesRaw = [
 
   if (hardPipelineFailure) {
     sourceSkippedReason.push(`PIPELINE_FAILURE:raw=${fetchedRawCount},normalized=${normalizedCount},candidates=${candidateCount},ranked=${rankedCount}`);
+  }
+  const returnedItemsByAlignmentTier = { strong_taste_fit: 0, semantic_narrative_fit: 0, adjacent_profile_fit: 0, safe_filler: 0 } as Record<string, number>;
+  const safeFillerTitles: string[] = [];
+  for (const item of finalOutputItems) {
+    const doc = item?.doc || item;
+    const text = normalizeText([doc?.title, doc?.description, doc?.subjects, doc?.queryText].filter(Boolean).join(" "));
+    const likedMatches = Array.from(refillLikedSignalSet).filter((sig) => sig.length >= 4 && text.includes(sig)).length;
+    const dislikedMatches = Array.from(refillDislikedSignalSet).filter((sig) => sig.length >= 4 && text.includes(sig)).length;
+    const narrativeFit = /\b(novel|story|character|coming of age|mystery|thriller|drama|literary|psychological|suspense|relationship)\b/i.test(String([doc?.title, doc?.description, doc?.queryText].filter(Boolean).join(" ")));
+    const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    const tier = likedMatches >= 2 && dislikedMatches === 0 && score >= 0.15
+      ? "strong_taste_fit"
+      : (likedMatches >= 1 && dislikedMatches === 0 && narrativeFit
+        ? "semantic_narrative_fit"
+        : (likedMatches >= 1 || narrativeFit ? "adjacent_profile_fit" : "safe_filler"));
+    returnedItemsByAlignmentTier[tier] = Number(returnedItemsByAlignmentTier[tier] || 0) + 1;
+    if (tier === "safe_filler") safeFillerTitles.push(String(doc?.title || "").trim());
   }
   return {
     engineId: preferredEngine,
@@ -10114,6 +10168,11 @@ const normalizedCandidatesRaw = [
     finalItemsTitles,
     returnedItemsLength: finalOutputItems.length,
     returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
+    returnedItemsByAlignmentTier,
+    safeFillerReturnedCount: returnedItemsByAlignmentTier.safe_filler || 0,
+    safeFillerTitles: Array.from(new Set(safeFillerTitles)).slice(0, 20),
+    strongTasteReturnedCount: returnedItemsByAlignmentTier.strong_taste_fit || 0,
+    semanticNarrativeReturnedCount: returnedItemsByAlignmentTier.semantic_narrative_fit || 0,
     acceptedPrefixInvariantFailed,
     finalAcceptedDocIds,
     finalRejectedDocIds,
