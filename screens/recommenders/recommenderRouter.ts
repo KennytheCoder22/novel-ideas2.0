@@ -3151,7 +3151,10 @@ export async function getRecommendations(
       (tones.includes("dark") || tones.includes("tense") || themes.includes("survival"));
   }
   function romanceComingOfAgeWarmthProfile(): boolean {
-    return genres.includes("romance") &&
+    const explicitRomanceSignal =
+      genres.includes("romance") ||
+      /\b(romance|romantic|love story|relationship drama|dating)\b/.test(likedSignalsText);
+    return explicitRomanceSignal &&
       themes.includes("coming of age") &&
       (tones.includes("warm") || tones.includes("gentle") || tones.includes("hopeful") || tones.includes("anime-like"));
   }
