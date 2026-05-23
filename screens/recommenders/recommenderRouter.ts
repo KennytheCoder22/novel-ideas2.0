@@ -7293,6 +7293,7 @@ const normalizedCandidatesRaw = [
     (finalEligibilityAcceptedTitles.length < Math.min(2, Math.max(1, finalLimit)) || superheroUnderfillRelaxationHeroRescueSignalCount > 0);
   const superheroUnderfillRelaxationTargetRenderCount = Math.max(3, Math.min(finalLimit, 12));
   superheroUnderfillRelaxationEligibility =
+    explicitSuperheroSignal &&
     superheroUnderfillRelaxationNeedsUnderfill &&
     (superheroUnderfillRelaxationHasEnoughCandidates || superheroUnderfillRelaxationLowVolumeRescueEligible);
   superheroUnderfillRelaxationPredicateState = {
@@ -7446,6 +7447,8 @@ const normalizedCandidatesRaw = [
       ];
     }
     controlledEmergencyFallback = fallbackTierAcceptedTitles.length > 0 && finalEligibilityAcceptedTitles.length === fallbackTierAcceptedTitles.length;
+  } else if (!explicitSuperheroSignal) {
+    markSourceSpecificGate("__router__", "superhero_underfill_relaxation_branch:skipped_no_explicit_superhero_signal");
   }
   if (eligibleWithFitScore.length === 0 && nearMissSemanticEvidenceTitles.length > 0) {
     fallbackTierTriggered = true;
