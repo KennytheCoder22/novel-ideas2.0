@@ -10231,6 +10231,20 @@ const normalizedCandidatesRaw = [
     if (rescuedAligned.length > 0) finalOutputItems = [...finalOutputItems, ...rescuedAligned];
   }
   if (finalOutputItems.length > 10) finalOutputItems = finalOutputItems.slice(0, 10);
+  // Hard integrity guard: never return items that did not pass final eligibility.
+  // If final eligibility accepted nothing, return honest underfill instead of contract rescue artifacts.
+  if (!suppressTopRecommendations) {
+    const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
+    if (acceptedAfterTerminalSet.size === 0) {
+      finalOutputItems = [];
+      sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+    } else {
+      finalOutputItems = finalOutputItems.filter((item: any) => {
+        const title = String(item?.doc?.title || item?.title || "").trim();
+        return acceptedAfterTerminalSet.has(normalizeText(title));
+      });
+    }
+  }
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1

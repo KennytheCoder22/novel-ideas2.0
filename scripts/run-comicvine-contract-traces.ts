@@ -66,6 +66,7 @@ async function runPreset(preset: TracePreset) {
 
   const result = await getRecommendations(input as any);
   const trace = (result as any)?.debugGcdDispatchTrace || {};
+  const runtimeRouterVersion = String((result as any)?.debugRouterVersion || '');
 
 
   const returnedTitles = Array.isArray((result as any)?.items) ? (result as any).items.map((it: any) => String(it?.doc?.title || it?.title || '').trim()).filter(Boolean) : [];
@@ -84,6 +85,9 @@ async function runPreset(preset: TracePreset) {
   };
 
   if (!recommendFunctionReturned) throw new Error(`${preset.id}: recommendFunctionReturned false`);
+  if (!runtimeRouterVersion.includes('+tdz-guard-2026-05-23b')) {
+    throw new Error(`${preset.id}: stale runtime artifact detected (debugRouterVersion=${runtimeRouterVersion || 'missing'})`);
+  }
   if (!Boolean(trace?.comicVineFetchAttempted)) throw new Error(`${preset.id}: comicVineFetchAttempted false`);
   if (Number(((result as any)?.finalEligibilityAcceptedTitles || []).length || 0) <= 0) {
     throw new Error(`${preset.id}: finalEligibilityAcceptedTitlesCount <= 0`);
