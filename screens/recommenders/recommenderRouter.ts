@@ -9900,6 +9900,9 @@ const normalizedCandidatesRaw = [
   countContractSatisfied = enabledSourceCount <= 1
     ? finalOutputItems.length >= singleSourceCountContractMin
     : finalOutputItems.length >= multiSourceCountContractMin;
+  if (countContractSatisfied) {
+    finalCountContractShortfallReason = "none";
+  }
   if (finalRenderBypassBlockedTitles.length > 0) {
     console.error("FINAL_RENDER_BYPASS", { titles: finalRenderBypassBlockedTitles.slice(0, 30) });
   }
