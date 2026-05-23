@@ -9072,6 +9072,8 @@ const normalizedCandidatesRaw = [
   let lateTeenUnderfillCandidatesAccepted = 0;
   const lateTeenUnderfillAcceptedTitles: string[] = [];
   const lateTeenUnderfillRejectedReasons: Record<string, number> = {};
+  const lateUnderfillFillAcceptedTitles: string[] = [];
+  const lateUnderfillFillRejectedReasons: Record<string, number> = {};
   const lateTargetMin = Math.max(3, Math.min(5, finalLimit));
   const visibleCount = Array.isArray(finalOutputItems) ? finalOutputItems.length : 0;
   if (!suppressTopRecommendations && teenComicVineOnlyLateUnderfill && visibleCount < lateTargetMin && finalEligibleNonNegativeCount > 0) {
@@ -9144,6 +9146,14 @@ const normalizedCandidatesRaw = [
         String(parentFranchiseRootForDoc(item?.doc || item) || "__none__")
       )
     );
+    const lateUnderfillRootFamilyCounts: Record<string, number> = {};
+    const lateUnderfillRootFamilyKey = (rawRoot: string, title: string) => {
+      const text = normalizeText(`${rawRoot} ${title}`);
+      if (/\b(spider[-\s]?man|spider-man noir|miles morales|avenging spider-man|amazing spider-man)\b/.test(text)) return "spider-man-family";
+      if (/\bjustice league\b/.test(text)) return "justice-league-family";
+      if (/\bms\.?\s*marvel\b/.test(text)) return "ms-marvel-family";
+      return rawRoot || "__none__";
+    };
     for (const doc of sortedPool) {
       lateTeenUnderfillCandidatesConsidered += 1;
       if (finalOutputItems.length >= lateTargetMin) break;
@@ -9172,6 +9182,7 @@ const normalizedCandidatesRaw = [
       }
       const root = String(parentFranchiseRootForDoc(doc) || "__none__");
       const rootFamily = mysteryFamilyRootAlias[root] || root;
+      const cappedRootFamily = lateUnderfillRootFamilyKey(rootFamily, title);
       const titleNorm = normalizeText(title);
       const titleOnlyTasteSignal = queryLiteralScienceRe.test(titleNorm) || /\bmystery\b/i.test(titleNorm);
       if (terminalRejectReasonByTitle[nt]) {
@@ -9218,6 +9229,11 @@ const normalizedCandidatesRaw = [
       }
       if (seenRoot.has(rootFamily)) {
         lateTeenUnderfillRejectedReasons.duplicate_root_family = (lateTeenUnderfillRejectedReasons.duplicate_root_family || 0) + 1;
+        continue;
+      }
+      if (Number(lateUnderfillRootFamilyCounts[cappedRootFamily] || 0) >= 2) {
+        lateTeenUnderfillRejectedReasons.root_family_cap = (lateTeenUnderfillRejectedReasons.root_family_cap || 0) + 1;
+        lateUnderfillFillRejectedReasons.root_family_cap = (lateUnderfillFillRejectedReasons.root_family_cap || 0) + 1;
         continue;
       }
       if (genericAnthologyRootRe.test(root)) {
@@ -9278,6 +9294,8 @@ const normalizedCandidatesRaw = [
       seenRoot.add(rootFamily);
       lateTeenUnderfillCandidatesAccepted += 1;
       lateTeenUnderfillAcceptedTitles.push(title);
+      lateUnderfillFillAcceptedTitles.push(title);
+      lateUnderfillRootFamilyCounts[cappedRootFamily] = Number(lateUnderfillRootFamilyCounts[cappedRootFamily] || 0) + 1;
     }
     if (finalOutputItems.length > 0) {
       finalOutputItems = finalOutputItems.slice(0, Math.max(1, finalLimit));
@@ -10055,6 +10073,7 @@ const normalizedCandidatesRaw = [
   const returnedSourceLayerByTitle: Record<string, string> = {};
   const returnedReasonCounts = { primary_recommendation: 0, aligned_backfill: 0, contract_filler: 0 };
   const finalReasonFilterRejectedReasons: Record<string, number> = {};
+  const finalReasonFilterAcceptedTitles: string[] = [];
   const alignedBackfillRejectedReasons: Record<string, number> = {};
   let swipeEvidenceCandidateCount = 0;
   const negativePenaltyDominantSignalsByTitle: Record<string, string> = {};
@@ -10129,6 +10148,7 @@ const normalizedCandidatesRaw = [
       returnedSwipeEvidenceByTitle[title] = returnedSwipeEvidenceByTitle[title] || evidence;
       returnedSourceLayerByTitle[title] = sourceLayer;
       returnedReasonCounts[reason] += 1;
+      if (reason !== "contract_filler" || alwaysFillToTen) finalReasonFilterAcceptedTitles.push(title);
       return { ...item, returnedReason: reason };
     })
     .sort((a: any, b: any) => {
@@ -10149,6 +10169,21 @@ const normalizedCandidatesRaw = [
     ? finalVisibleCount >= singleSourceCountContractMin
     : finalVisibleCount >= multiSourceCountContractMin;
   finalCountContractShortfallReason = countContractSatisfied ? "none" : "insufficient_aligned_candidates";
+  const finalEligibilityAcceptedButUnderfilledFailure =
+    acceptedAfterTerminalRejectFilter.length === 0 && finalVisibleCount >= 10 ? false : (acceptedAfterTerminalRejectFilter.length === 0 && finalVisibleCount < 10);
+  if (finalEligibilityAcceptedButUnderfilledFailure) {
+    sourceSkippedReason.push("final_eligibility_accepted_none_underfilled");
+  }
+  const finalRootFamilyCounts = finalOutputItems.reduce((acc: Record<string, number>, item: any) => {
+    const title = String(item?.doc?.title || item?.title || "");
+    const root = String(parentFranchiseRootForDoc(item?.doc || item) || "__none__");
+    const text = normalizeText(`${root} ${title}`);
+    const fam = /\b(spider[-\s]?man|spider-man noir|miles morales|avenging spider-man|amazing spider-man)\b/.test(text)
+      ? "spider-man-family"
+      : (/\bjustice league\b/.test(text) ? "justice-league-family" : (/\bms\.?\s*marvel\b/.test(text) ? "ms-marvel-family" : root));
+    acc[fam] = Number(acc[fam] || 0) + 1;
+    return acc;
+  }, {});
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -10559,6 +10594,10 @@ const normalizedCandidatesRaw = [
     expandedPoolUsedForFinalSelection,
     negativePenaltyDominantSignalsByTitle,
     finalReasonFilterRejectedReasons,
+    finalReasonFilterAcceptedTitles: Array.from(new Set(finalReasonFilterAcceptedTitles)).slice(0, 40),
+    lateUnderfillFillAcceptedTitles: Array.from(new Set(lateUnderfillFillAcceptedTitles)).slice(0, 40),
+    lateUnderfillFillRejectedReasons,
+    finalRootFamilyCounts,
     primaryRecommendationCount: returnedReasonCounts.primary_recommendation,
     alignedBackfillCount: returnedReasonCounts.aligned_backfill,
     contractFillerCount: returnedReasonCounts.contract_filler,
