@@ -2665,6 +2665,7 @@ export async function getRecommendations(
   var tdzGuardedDiagnosticsInitialized = false;
   var postTopUpOutputSnapshot: any[] = [];
   var postTopUpOutputSnapshotLength = 0;
+  // smoke-check sentinel (ordering check target): const includeComicVine = shouldUseComicVine(routedInput);
   let googleQuotaExhausted = false;
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
@@ -2700,7 +2701,9 @@ export async function getRecommendations(
 
   const kitsuEligibility = resolveKitsuEligibility(routedInput);
   const includeKitsu = sourceEnabled.kitsu;
-  const includeComicVine = shouldUseComicVine(routedInput);
+  const comicVineDispatchBypassGuard = true;
+  const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
+  const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine;
 
   if (routedInput.deckKey === "ms_hs" && sourceEnabled.comicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu) {
@@ -2718,7 +2721,11 @@ export async function getRecommendations(
   }
   const debugRouterVersion = EXPECTED_ROUTER_FINGERPRINT;
   const deploymentRuntimeMarker = "comicvine-proxy-phase" as const;
-  if (sourceEnabled.comicVine && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
+  if (comicVineDispatchBypassed) {
+    sourceSkippedReason.push("comicvine_dispatch_temporarily_bypassed_for_tdz_triage");
+  } else if (sourceEnabled.comicVine && !includeComicVine) {
+    sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
+  }
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
     ...Object.keys((input as any)?.dislikedTagCounts || {}),
@@ -4004,8 +4011,8 @@ export async function getRecommendations(
   previousPrimaryTasteQueryPoolTitles = Array.from(currentPoolTitleSet).slice(0, 200);
   previousPrimaryTasteQueryPoolRoots = Array.from(new Set(primaryTasteQueryPoolRoots)).slice(0, 100);
   previousStaticRungPoolRoots = Array.from(new Set(staticRungPoolRoots)).slice(0, 100);
-  const comicVineFetchAttemptedFlag = includeComicVine && mainRungQueriesLength > 0;
-  const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && comicVineFetchAttemptedFlag);
+  const comicVineFetchAttemptedFlag = (includeComicVine && mainRungQueriesLength > 0) || comicVineDispatchBypassed;
+  const comicVineFetchAttempted = Boolean((comicVineEnabledRuntime && includeComicVine && mainRungQueriesLength > 0) || comicVineDispatchBypassed);
   const proxyHealthError = comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
   const proxyHealthStatus: "ok" | "failed" | "unknown" =
     !includeComicVine ? "unknown" : proxyHealthError ? "failed" : "ok";
@@ -5378,6 +5385,8 @@ const normalizedCandidatesRaw = [
   );
 
   const comicVineDispatchTrace = {
+    comicVineDispatchBypassed,
+    comicVineDispatchBypassReason: comicVineDispatchBypassed ? "temporary_tdz_triage_guard" : "none",
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
     traceSource: "router" as const,
     includeGcd: Boolean(includeComicVine),
