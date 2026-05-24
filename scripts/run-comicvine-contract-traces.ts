@@ -11,6 +11,7 @@ const PRESETS: TracePreset[] = [
   { id: 'test_b', sequence: ['dislike', 'dislike', 'like', 'skip', 'dislike', 'like', 'skip', 'like'] },
   { id: 'test_c', sequence: ['like', 'skip', 'like', 'skip', 'dislike', 'like', 'dislike', 'like'] },
 ];
+const EXPECTED_ROUTER_FINGERPRINT = 'router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8';
 
 function toTagCounts(sequence: Direction[]) {
   const cards = Array.isArray((msHsDeck as any)?.cards) ? (msHsDeck as any).cards.slice(0, sequence.length) : [];
@@ -85,8 +86,8 @@ async function runPreset(preset: TracePreset) {
   };
 
   if (!recommendFunctionReturned) throw new Error(`${preset.id}: recommendFunctionReturned false`);
-  if (!runtimeRouterVersion.includes('+tdz-guard-2026-05-23b')) {
-    throw new Error(`${preset.id}: stale runtime artifact detected (debugRouterVersion=${runtimeRouterVersion || 'missing'})`);
+  if (runtimeRouterVersion !== EXPECTED_ROUTER_FINGERPRINT) {
+    throw new Error(`${preset.id}: stale runtime artifact detected (debugRouterVersion=${runtimeRouterVersion || 'missing'}, expected=${EXPECTED_ROUTER_FINGERPRINT})`);
   }
   if (!Boolean(trace?.comicVineFetchAttempted)) throw new Error(`${preset.id}: comicVineFetchAttempted false`);
   if (Number(((result as any)?.finalEligibilityAcceptedTitles || []).length || 0) <= 0) {
