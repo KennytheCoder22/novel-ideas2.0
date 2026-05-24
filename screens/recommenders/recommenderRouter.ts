@@ -7075,6 +7075,12 @@ const normalizedCandidatesRaw = [
     const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
     const franchiseAffinityRoots = new Set(["saga", "runaways", "nimona", "the-sandman", "locke-key", "paper-girls", "monstress", "lumberjanes"]);
     const semanticFranchiseAffinity = franchiseAffinityRoots.has(root);
+    const explicitFranchiseSignal =
+      seedRootMatch ||
+      expansionRootMatch ||
+      queryFamilyAliasMatch ||
+      semanticFranchiseAffinity ||
+      (explicitSuperheroSignal && /\b(spider[\s-]?man|miles\s+morales|ms\.?\s*marvel|batman|superman|avengers?|teen\s+titans|runaways)\b/i.test(`${title} ${String(doc?.queryText || "")} ${String(doc?.parentVolumeName || "")}`));
     const curatedTitleFallbackProtected =
       (isTeenDeckKey(input.deckKey) && includeComicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !includeKitsu) &&
       isCuratedTeenGraphicNovelRoot(root) &&
@@ -7113,6 +7119,10 @@ const normalizedCandidatesRaw = [
       .map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim().toLowerCase())
       .some((token) => /\b(comedy|humor|parody|satire|spoof)\b/.test(token));
     const meaningfulSignalCount = Array.from(new Set(matchedMeaningfulLikedSignals)).length;
+    if (meaningfulSignalCount === 0 && weightedTasteScore < 2.5 && !explicitFranchiseSignal) {
+      registerFinalEligibilityReject("zero_meaningful_signal_without_franchise_or_taste_alignment", title);
+      return false;
+    }
     if (meaningfulSignalCount < 1) {
       const softPassComicVine =
         isComicVineCandidate &&
