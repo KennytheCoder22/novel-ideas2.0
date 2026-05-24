@@ -7290,12 +7290,18 @@ const normalizedCandidatesRaw = [
         sourceSpecificRejectReasonByTitle[title] = "format_signal_only_without_taste_fit";
         registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
       }
-      if (!superheroNarrativeFitFinalGate && !compositeHighFitSemanticPass) {
+      const strongSemanticFitRescueAllow =
+        positiveFitScore >= 4.5 &&
+        semanticEvidenceCount >= 1 &&
+        narrativeFictionConfidence >= 2 &&
+        artifactRiskScore < 3 &&
+        !queryTermOnlyEvidence;
+      if (!superheroNarrativeFitFinalGate && !compositeHighFitSemanticPass && !strongSemanticFitRescueAllow) {
         registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
       }
       markSourceSpecificGate(title, compositeHighFitSemanticPass
         ? "composite_high_fit_semantic_taste_threshold_override"
-        : "superhero_narrative_fit_taste_threshold_override");
+        : (strongSemanticFitRescueAllow ? "strong_semantic_fit_taste_threshold_override" : "superhero_narrative_fit_taste_threshold_override"));
     }
     if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
     finalAcceptedTasteEvidenceByTitle[title] = [
@@ -9673,6 +9679,13 @@ const normalizedCandidatesRaw = [
         ? (scoredUniverseFailure ? "suppressed_scored_universe_failure" : "suppressed")
         : "none";
     }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && emergencySafeRescueReturnedTitles.length > 0) {
+    underfillReason = "emergency_rescue_candidates_removed_by_late_safety_filters";
+    markSourceSpecificGate(
+      "__router__",
+      `emergency_rescue_dropped_after_late_filters:${Array.from(new Set(emergencySafeRescueReturnedTitles)).slice(0, 20).join("|") || "(none)"}`
+    );
   }
   const enabledSourceCountForContract = [
     sourceEnabled.googleBooks ? 1 : 0,
