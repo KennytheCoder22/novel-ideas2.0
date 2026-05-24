@@ -7106,8 +7106,15 @@ const normalizedCandidatesRaw = [
       }
     }
     if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title] && !semanticFranchiseAffinity && !curatedTitleFallbackProtected) {
-      registerFinalEligibilityReject("fallback_no_taste_match", title);
-      return false;
+      const fallbackSemanticRescueAllow =
+        Boolean(semanticSupportFoundByTitle[title]) &&
+        Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0) > 0 &&
+        Number(positiveFitScoreByTitle[title] || 0) >= 5;
+      if (!fallbackSemanticRescueAllow) {
+        registerFinalEligibilityReject("fallback_no_taste_match", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "fallback_no_taste_match_semantic_rescue_override");
     }
     if (isComicVineFallbackCandidate && semanticFranchiseAffinity) {
       const fallbackFitScore = Number(positiveFitScoreByTitle[title] || 0);
@@ -10321,7 +10328,8 @@ const normalizedCandidatesRaw = [
           const title = String(doc?.title || "").trim();
           const nt = normalizeText(title);
           if (!title || !nt) return false;
-          if (terminalRejectReasonByTitle[nt]) return false;
+          const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+          if (terminalReason && !terminalReason.includes("fallback_no_taste_match")) return false;
           if (isSuperheroAdventureDoc(doc) && !explicitSuperheroSignal) return false;
           const sem = Number(semanticEvidenceCountByTitle[title] || 0);
           const fit = Number(positiveFitScoreByTitle[title] || 0);

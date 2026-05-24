@@ -1385,8 +1385,11 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
 
   if (docs.length === 0) {
     const rescueQueries = Object.keys(comicVineRescueCandidatesByQuery).slice(0, 2);
-    for (const rq of rescueQueries) {
-      for (const candidate of comicVineRescueCandidatesByQuery[rq] || []) {
+  for (let rqi = 0; rqi < rescueQueries.length; rqi += 1) {
+      const rq = rescueQueries[rqi];
+      const rescueCandidates = comicVineRescueCandidatesByQuery[rq] || [];
+      for (let ci = 0; ci < rescueCandidates.length; ci += 1) {
+        const candidate = rescueCandidates[ci];
         if (docs.length >= 2) break;
         docs.push(candidate);
       }
