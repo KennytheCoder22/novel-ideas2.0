@@ -10412,6 +10412,28 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
     if (acceptedAfterTerminalSet.size === 0) {
+      const teenPostPassHandoffItems =
+        teenPostPassOutputLength > 0
+          ? teenPostPassItems
+              .filter((item: any) => {
+                const doc = item?.doc || item;
+                const title = String(doc?.title || item?.title || "").trim();
+                const nt = normalizeText(title);
+                if (!title || !nt) return false;
+                const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+                if (terminalReason && !terminalReason.includes("fallback_no_taste_match")) return false;
+                if (sharedReturnArtifactScrubRejectReason(doc)) return false;
+                if (canReturnTitleRejectReason(title, doc)) return false;
+                return true;
+              })
+              .slice(0, Math.max(1, Math.min(3, finalLimit)))
+          : [];
+      if (teenPostPassHandoffItems.length > 0) {
+        finalOutputItems = teenPostPassHandoffItems;
+        returnedItemsBuiltFrom = "teen_postpass_emergency_handoff";
+        finalReturnSourceUsed = "teen_postpass_emergency_handoff";
+        sourceSkippedReason.push("final_gate_integrity:teen_postpass_emergency_handoff");
+      } else {
       const viableUnderfillRescue = dedupeDocs([...(finalRenderDocs || []), ...(viableCandidates || []), ...(scoredCanonicalDocs || [])] as any[])
         .filter((doc: any) => {
           const title = String(doc?.title || "").trim();
@@ -10440,6 +10462,7 @@ const normalizedCandidatesRaw = [
         finalOutputItems = [];
         sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
       }
+      }
     } else {
       finalOutputItems = finalOutputItems.filter((item: any) => {
         const title = String(item?.doc?.title || item?.title || "").trim();
@@ -10455,7 +10478,7 @@ const normalizedCandidatesRaw = [
   finalCountContractShortfallReason = countContractSatisfied ? "none" : "insufficient_aligned_candidates";
   const finalEligibilityAcceptedButUnderfilledFailure =
     acceptedAfterTerminalRejectFilter.length === 0 && finalVisibleCount >= 10 ? false : (acceptedAfterTerminalRejectFilter.length === 0 && finalVisibleCount < 10);
-  if (finalEligibilityAcceptedButUnderfilledFailure) {
+  if (finalEligibilityAcceptedButUnderfilledFailure && teenPostPassOutputLength === 0) {
     sourceSkippedReason.push("final_eligibility_accepted_none_underfilled");
   }
   const finalRootFamilyCounts = finalOutputItems.reduce((acc: Record<string, number>, item: any) => {
