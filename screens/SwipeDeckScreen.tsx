@@ -2100,6 +2100,22 @@ function handleLeft() {
   }
 
   async function handleCopyDiagnostics() {
+    const expectedFingerprint = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8";
+    const runtimeFingerprint = lastDebugRouterVersion || "";
+    const staleRuntime = runtimeFingerprint !== expectedFingerprint;
+    const missingRouterTrace = !Boolean(lastRouterResultTracePresent);
+    if (staleRuntime || missingRouterTrace) {
+      const reason = [
+        staleRuntime ? `stale_runtime_fingerprint:${runtimeFingerprint || "(missing)"}` : "",
+        missingRouterTrace ? "router_result_trace_missing" : "",
+      ].filter(Boolean).join(", ");
+      setPresetExecutionError(`SESSION_REPORT_EXPORT_BLOCKED:${reason}`);
+      Alert.alert(
+        "Export blocked",
+        `Session report export blocked due to invalid runtime trace.\n\nExpected fingerprint: ${expectedFingerprint}\nActual fingerprint: ${runtimeFingerprint || "(missing)"}\nrouterResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}`
+      );
+      return;
+    }
     if (presetRecommendationCompleted) setPresetExportedAfterRecommendation(true);
     const recomputedRight = swipeHistory.filter((entry) => entry.direction === "like").length;
     const recomputedLeft = swipeHistory.filter((entry) => entry.direction === "dislike").length;
