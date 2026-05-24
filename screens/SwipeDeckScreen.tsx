@@ -2113,6 +2113,11 @@ function handleLeft() {
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
         `Reason: ${reason || "(unknown)"}`,
+        `App URL: ${typeof window !== "undefined" ? window.location.href : "(unavailable)"}`,
+        `App Origin: ${typeof window !== "undefined" ? window.location.origin : "(unavailable)"}`,
+        `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,
+        `Bundle script sample: ${typeof document !== "undefined" ? Array.from(document.querySelectorAll('script[src]')).map((el) => (el as HTMLScriptElement).src).slice(-5).join(" | ") || "(none)" : "(unavailable)"}`,
+        `Captured at: ${new Date().toISOString()}`,
         `Expected fingerprint: ${expectedFingerprint}`,
         `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
         `routerResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}`,
