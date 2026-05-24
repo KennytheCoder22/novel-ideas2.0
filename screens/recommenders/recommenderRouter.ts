@@ -2662,14 +2662,40 @@ export async function getRecommendations(
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
   const sourceEnabled = resolveSourceEnabled(routedInput);
   const sourceSkippedReason: string[] = [];
+  const sourceDisableReasonsDetailed: Record<string, string[]> = {
+    googleBooks: [],
+    openLibrary: [],
+    localLibrary: [],
+    kitsu: [],
+    comicVine: [],
+  };
+  const teensDeckForceBookSources =
+    (routedInput as any)?.deckCategory === "teens" ||
+    isTeenDeckKey((routedInput as any)?.deckKey || "");
+  if (teensDeckForceBookSources) {
+    if (!sourceEnabled.googleBooks) {
+      sourceEnabled.googleBooks = true;
+      sourceDisableReasonsDetailed.googleBooks.push("force_enabled_for_teens_tdz_recovery");
+    }
+    if (!sourceEnabled.openLibrary) {
+      sourceEnabled.openLibrary = true;
+      sourceDisableReasonsDetailed.openLibrary.push("force_enabled_for_teens_tdz_recovery");
+    }
+  }
   var tdzGuardedDiagnosticsInitialized = false;
   var postTopUpOutputSnapshot: any[] = [];
   var postTopUpOutputSnapshotLength = 0;
   // smoke-check sentinel (ordering check target): const includeComicVine = shouldUseComicVine(routedInput);
   let googleQuotaExhausted = false;
 
-  if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
-  if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
+  if (!sourceEnabled.googleBooks) {
+    sourceSkippedReason.push("googleBooks_disabled_by_admin");
+    sourceDisableReasonsDetailed.googleBooks.push("disabled_by_admin_or_config");
+  }
+  if (!sourceEnabled.openLibrary) {
+    sourceSkippedReason.push("openLibrary_disabled_by_admin");
+    sourceDisableReasonsDetailed.openLibrary.push("disabled_by_admin_or_config");
+  }
   const comicVineProxyUrlRaw = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL ?? "").trim();
   const normalizedComicVineProxyUrl = comicVineProxyUrlRaw && comicVineProxyUrlRaw !== "undefined" && comicVineProxyUrlRaw !== "null"
     ? comicVineProxyUrlRaw
@@ -2680,14 +2706,19 @@ export async function getRecommendations(
   const comicVineEnabledRuntime = Boolean(sourceEnabled.comicVine === true && comicVineProxyUrl);
   if ((routedInput as any)?.sourceEnabled?.comicVine !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
     sourceSkippedReason.push("comicvine_disabled_in_production");
+    sourceDisableReasonsDetailed.comicVine.push("disabled_in_production_runtime_gate");
   } else if (!sourceEnabled.comicVine) {
     sourceSkippedReason.push("comicvine_disabled_by_admin");
+    sourceDisableReasonsDetailed.comicVine.push("disabled_by_admin_or_config");
   }
   if (!sourceEnabled.localLibrary) {
+    const localReason = routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported";
     sourceSkippedReason.push(
-      routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported"
+      localReason
     );
+    sourceDisableReasonsDetailed.localLibrary.push(localReason);
   }
+  if (!sourceEnabled.kitsu) sourceDisableReasonsDetailed.kitsu.push("disabled_by_admin_or_config");
   if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.comicVine) {
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED", {
       sourceEnabled,
@@ -2713,6 +2744,7 @@ export async function getRecommendations(
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED_AFTER_SYNTHESIS", {
       sourceEnabled,
       sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
+      sourceDisableReasonsDetailed,
       routerFamily,
       builtQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
       deckKey: routedInput.deckKey,
