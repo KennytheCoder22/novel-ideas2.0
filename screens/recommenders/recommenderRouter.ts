@@ -2661,6 +2661,9 @@ export async function getRecommendations(
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
   const sourceEnabled = resolveSourceEnabled(routedInput);
   const sourceSkippedReason: string[] = [];
+  var tdzGuardedDiagnosticsInitialized = false;
+  var postTopUpOutputSnapshot: any[] = [];
+  var postTopUpOutputSnapshotLength = 0;
   let googleQuotaExhausted = false;
 
   if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
@@ -2712,7 +2715,7 @@ export async function getRecommendations(
       sourceSkippedReason,
     });
   }
-  const debugRouterVersion = "router-comicvine-proxy-default-v1";
+  const debugRouterVersion = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b";
   const deploymentRuntimeMarker = "comicvine-proxy-phase" as const;
   if (sourceEnabled.comicVine && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
@@ -3147,8 +3150,11 @@ export async function getRecommendations(
     return (genres.includes("thriller") || genres.includes("mystery")) &&
       (tones.includes("dark") || tones.includes("tense") || themes.includes("survival"));
   }
+  const explicitRomanceSignal =
+    genres.includes("romance") ||
+    /\b(romance|romantic|love story|relationship drama|dating)\b/.test(likedSignalsText);
   function romanceComingOfAgeWarmthProfile(): boolean {
-    return genres.includes("romance") &&
+    return explicitRomanceSignal &&
       themes.includes("coming of age") &&
       (tones.includes("warm") || tones.includes("gentle") || tones.includes("hopeful") || tones.includes("anime-like"));
   }
@@ -3209,7 +3215,7 @@ export async function getRecommendations(
   if (genres.includes("mystery") && genres.includes("thriller") && (genres.includes("horror") || themes.includes("survival"))) {
     curatedRootsByPattern.push("Something is Killing the Children", "Locke & Key", "Wytches", "Nailbiter", "Harrow County");
   }
-  if (genres.includes("dystopian") && genres.includes("romance") && themes.includes("coming of age")) {
+  if (explicitRomanceSignal && genres.includes("dystopian") && genres.includes("romance") && themes.includes("coming of age")) {
     curatedRootsByPattern.push("Paper Girls", "On a Sunbeam", "Laura Dean Keeps Breaking Up With Me", "Fence", "Snotgirl");
   }
   const darkFantasyEmotionalMythologyProfile =
@@ -3240,11 +3246,10 @@ export async function getRecommendations(
     `${seed} style graphic novel`,
     `${seed} emotional growth graphic novel`,
   ]);
-  const bigTwoSuperheroProfile =
+  const explicitSuperheroSignal =
     genres.includes("superheroes") ||
-    themes.includes("identity") ||
-    drives.includes("identity") ||
-    /\b(superhero|dc|marvel|justice league|avengers)\b/.test(likedSignalsText);
+    /\b(superhero|superheroes|dc|marvel|justice league|avengers|x-men|spider[-\s]?man|batman|superman|wonder woman|thor)\b/.test(likedSignalsText);
+  const bigTwoSuperheroProfile = explicitSuperheroSignal;
   const darkDetectiveProfile =
     (tones.includes("dark") || tones.includes("atmospheric")) &&
     (genres.includes("mystery") || genres.includes("crime") || themes.includes("identity"));
@@ -3309,6 +3314,11 @@ export async function getRecommendations(
       .replace(/\s+/g, " ")
       .trim())
     .filter(Boolean);
+  const suppressNonRomanceYALiterals = (query: string): boolean => {
+    if (explicitRomanceSignal) return false;
+    return /\b(laura dean|bloom|heartstopper|fence|mooncakes|romance|romantic|dating|love story)\b/i.test(String(query || ""));
+  };
+  generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.filter((q) => !suppressNonRomanceYALiterals(q));
   const normalizeRootFamilyFromQuery = (query: string): string => {
     const q = normalizeText(String(query || ""));
     if (/\bspider[-\s]?man\b/.test(q)) return "spider-man-family";
@@ -3444,7 +3454,7 @@ export async function getRecommendations(
     const normalizedBigTwoQuerySet = new Set(bigTwoExpansionQueries.map((q) => normalizeText(q)));
     const bigTwoQueriesInPool = generatedComicVineQueriesFromTaste.filter((q) => normalizedBigTwoQuerySet.has(normalizeText(q)));
     const narrativePrimary = generatedComicVineQueriesFromTaste.filter((q) => /\b(character|narrative|story|coming of age|friendship|mystery|supernatural|psychological|graphic novel)\b/i.test(q));
-    const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q));
+    const broadFallback = generatedComicVineQueriesFromTaste.filter((q) => /\bgraphic novel\b/i.test(q) && /\b(character|story|coming of age|mystery|survival|identity|friendship|supernatural|thriller)\b/i.test(q));
     const baselinePrimaryQueries = narrativePrimary.length > 0 ? narrativePrimary : broadFallback;
     const primaryQueriesRaw = Array.from(new Set([
       ...bigTwoQueriesInPool,
@@ -3481,10 +3491,17 @@ export async function getRecommendations(
       }
     }
     primaryNarrativeQueryMode = narrativePrimary.length > 0;
-    primaryNarrativeQueries = narrativePrimary.slice(0, 12);
+    primaryNarrativeQueries = narrativePrimary
+      .filter((q) =>
+        explicitRomanceSignal ||
+        !/\b(laura dean|bloom|heartstopper|fence|mooncakes|romance|romantic|dating|love story)\b/i.test(String(q || ""))
+      )
+      .slice(0, 12);
     broadGraphicNovelQueriesUsedAsFallback = narrativePrimary.length === 0 && broadFallback.length > 0;
     broadGraphicNovelFallbackReason = broadGraphicNovelQueriesUsedAsFallback ? "no_narrative_series_queries_built" : "none";
-    rungs = primaryQueries.map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
+    rungs = primaryQueries
+      .filter((query) => !suppressNonRomanceYALiterals(query))
+      .map((query, index) => ({ rung: index, query, queryFamily: routerFamily, laneKind: "swipe-taste-driven" }));
     staticDefaultQueriesSuppressedReason = "replaced_with_swipe_taste_queries";
     querySourceOfTruth = "taste_profile";
     tasteQueriesUsedForPrimaryFetch = true;
@@ -3564,12 +3581,12 @@ export async function getRecommendations(
     candidateGenerationMode = "static_fallback";
   }
 
-  const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
-  const mainRungQueriesLength = rungQueries.length;
-  const rungZeroQuery = normalizeText(String(rungQueries[0] || ""));
-  const rungZeroIsTasteDerived = generatedComicVineQueriesFromTaste.some((q) => normalizeText(q) === rungZeroQuery);
-  const rungZeroIsStaticFallback = Array.from(staticDefaultQueries).some((q) => normalizeText(q) === rungZeroQuery);
-  const tasteDerivedQuerySet = new Set(generatedComicVineQueriesFromTaste.map((q) => normalizeText(q)));
+  var rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
+  var mainRungQueriesLength = rungQueries.length;
+  var rungZeroQuery = normalizeText(String(rungQueries[0] || ""));
+  var rungZeroIsTasteDerived = generatedComicVineQueriesFromTaste.some((q) => normalizeText(q) === rungZeroQuery);
+  var rungZeroIsStaticFallback = Array.from(staticDefaultQueries).some((q) => normalizeText(q) === rungZeroQuery);
+  var tasteDerivedQuerySet = new Set(generatedComicVineQueriesFromTaste.map((q) => normalizeText(q)));
   primaryRungZeroSource = rungQueries.length === 0 ? "none" : (rungZeroIsTasteDerived ? "taste_profile" : (rungZeroIsStaticFallback ? "fallback_static" : "legacy_or_other"));
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0 && (!rungZeroIsTasteDerived || querySourceOfTruth !== "taste_profile")) {
     throw new Error(`TASTE_QUERY_OVERRIDE_FAILED: generated taste queries exist but primary rung remained non-taste (rung0=${String(rungQueries[0] || "")}, source=${querySourceOfTruth})`);
@@ -3639,24 +3656,24 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (const lane of queryLanes) {
-      const laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
-      const inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
-      const laneFamily =
+      var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
+      var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
+      var laneFamily =
         routerFamily === "historical" || inferHistoricalFromQueryText(laneQueryText)
           ? "historical"
           : normalizeRouterFamilyValue((lane as any)?.queryFamily) ||
             normalizeRouterFamilyValue((lane as any)?.filterFamily) ||
             inferredQueryFamily ||
             rungFamily;
-      const laneFilterFamily =
+      var laneFilterFamily =
         laneFamily === "historical"
           ? "historical"
           : normalizeRouterFamilyValue((lane as any)?.filterFamily) || laneFamily;
-      const laneKindResolved =
+      var laneKindResolved =
         String((lane as any)?.laneKind || "").toLowerCase() === "historical" || laneFamily === "historical" || laneFilterFamily === "historical"
           ? "historical"
           : String((lane as any)?.laneKind || "core");
-      const laneQueryFamilyResolved = laneKindResolved === "historical" ? "historical" : laneFamily;
+      var laneQueryFamilyResolved = laneKindResolved === "historical" ? "historical" : laneFamily;
       debugRouterLog("QUERY_FAMILY_BEFORE_FETCH", {
         query: laneQueryText,
         queryFamily: (lane as any)?.queryFamily || null,
@@ -3664,13 +3681,13 @@ export async function getRecommendations(
         laneFamily,
         laneFilterFamily,
       });
-      const laneQueryRung = Number.isFinite(Number(lane.queryRung))
+      var laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
         : Number.isFinite(Number(rung?.rung))
         ? Number(rung.rung)
         : undefined;
 
-      const laneInput: RecommenderInput = {
+      var laneInput: RecommenderInput = {
         ...routedInput,
         bucketPlan: {
           ...effectiveBucketPlan,
@@ -3694,16 +3711,16 @@ export async function getRecommendations(
         },
       };
 
-      const requests: Array<Promise<RecommendationResult>> = [];
-      const effectiveLaneSource =
+      var requests: Array<Promise<RecommendationResult>> = [];
+      var effectiveLaneSource =
         googleQuotaExhausted && lane.source === "googleBooks" && sourceEnabled.openLibrary
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
-      const shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
-      const comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
+      var shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
+      var comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       if (shouldDispatchComicVineForLane) {
         requests.push(getComicVineGraphicNovelRecommendations(laneInput));
         comicVineDispatchedOnce = true;
@@ -7163,7 +7180,20 @@ const normalizedCandidatesRaw = [
       if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
       registerFinalEligibilityReject("high_artifact_risk", title); return false;
     }
-    if (nonEnglish) { if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title); registerFinalEligibilityReject("locale_variant", title); return false; }
+    if (nonEnglish) {
+      const semanticLocaleRescue =
+        semanticEvidenceCount >= 2 &&
+        positiveFitScore >= 4 &&
+        narrativeFictionConfidence >= 2 &&
+        !queryTermOnlyEvidence;
+      if (!semanticLocaleRescue) {
+        if (strongTasteFit) rejectedDespiteStrongTasteFitTitles.push(title);
+        registerFinalEligibilityReject("locale_variant", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "locale_variant_soft_penalty_rescued");
+      finalEligibilityRelaxedReasonByTitle[title] = "locale_variant_soft_penalty_rescued";
+    }
     if (parodyMetaTitle && !hasComedyParodyAffinity) { registerFinalEligibilityReject("parody_meta_without_profile_affinity", title); return false; }
     if (isComicVineCandidate && queryTermOnlyEvidence && titleOnlyTasteSignals.length > 0) {
       registerFinalEligibilityReject("title_token_only_without_narrative_support", title);
@@ -7291,6 +7321,7 @@ const normalizedCandidatesRaw = [
     (finalEligibilityAcceptedTitles.length < Math.min(2, Math.max(1, finalLimit)) || superheroUnderfillRelaxationHeroRescueSignalCount > 0);
   const superheroUnderfillRelaxationTargetRenderCount = Math.max(3, Math.min(finalLimit, 12));
   superheroUnderfillRelaxationEligibility =
+    explicitSuperheroSignal &&
     superheroUnderfillRelaxationNeedsUnderfill &&
     (superheroUnderfillRelaxationHasEnoughCandidates || superheroUnderfillRelaxationLowVolumeRescueEligible);
   superheroUnderfillRelaxationPredicateState = {
@@ -7444,6 +7475,8 @@ const normalizedCandidatesRaw = [
       ];
     }
     controlledEmergencyFallback = fallbackTierAcceptedTitles.length > 0 && finalEligibilityAcceptedTitles.length === fallbackTierAcceptedTitles.length;
+  } else if (!explicitSuperheroSignal) {
+    markSourceSpecificGate("__router__", "superhero_underfill_relaxation_branch:skipped_no_explicit_superhero_signal");
   }
   if (eligibleWithFitScore.length === 0 && nearMissSemanticEvidenceTitles.length > 0) {
     fallbackTierTriggered = true;
@@ -7558,8 +7591,10 @@ const normalizedCandidatesRaw = [
   );
   const finalEligibilityAcceptedTitlesCanonical = Array.from(new Set(finalEligibilityAcceptedTitles.filter(Boolean)))
     .filter((title) => !rejectedTitleSetCanonical.has(normalizeText(title)));
+  const cleanFinalRenderTitleSet = new Set(finalRenderDocs.map((doc: any) => normalizeText(String(doc?.title || ""))).filter(Boolean));
+  const finalEligibilityAcceptedTitlesAlignedToRender = finalEligibilityAcceptedTitlesCanonical.filter((title) => cleanFinalRenderTitleSet.has(normalizeText(title)));
   finalEligibilityAcceptedTitles.length = 0;
-  finalEligibilityAcceptedTitles.push(...finalEligibilityAcceptedTitlesCanonical);
+  finalEligibilityAcceptedTitles.push(...finalEligibilityAcceptedTitlesAlignedToRender);
   const finalEligibilityAcceptedAndRejectedTitles = finalEligibilityAcceptedTitles
     .filter((title) => rejectedTitleSetCanonical.has(normalizeText(title)));
   if (finalEligibilityAcceptedAndRejectedTitles.length > 0) {
@@ -8324,7 +8359,7 @@ const normalizedCandidatesRaw = [
       !sourceEnabled.localLibrary &&
       !includeKitsu;
     const cleanSeriesOrCollected = isCleanSeriesOrCollectedCandidate(title, doc);
-    if (terminalRejectReasonByTitle[key] && !(singleSourceComicVineContractMode && cleanSeriesOrCollected && String(terminalRejectReasonByTitle[key]).includes("final_eligibility_rejected"))) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+    if (terminalRejectReasonByTitle[key]) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
     if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && cleanSeriesOrCollected)) return "late_fill_never_return";
     if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
     if (formatSignalOnlyRejectedSet.has(key)) return "format_signal_only_rejected";
@@ -9837,10 +9872,14 @@ const normalizedCandidatesRaw = [
     }
     markSourceSpecificGate("__router__", `final_contract_refill_candidate_count:${finalContractRefillDiagnostics.length}`);
     markSourceSpecificGate("__router__", `final_contract_refill_candidates:${finalContractRefillDiagnostics.slice(0, 120).join("|") || "(none)"}`);
-    markSourceSpecificGate("__router__", `final_contract_refill_accepts:${Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60).join("|") || "(none)"}`);
+    const finalContractRefillAcceptsForDiagnostics =
+      finalEligibilityAcceptedTitles.length > 0
+        ? Array.from(new Set(finalContractRefillAcceptedTitles)).slice(0, 60)
+        : [];
+    markSourceSpecificGate("__router__", `final_contract_refill_accepts:${finalContractRefillAcceptsForDiagnostics.join("|") || "(none)"}`);
   }
-  const postTopUpOutputSnapshot = [...finalOutputItems];
-  const postTopUpOutputSnapshotLength = postTopUpOutputSnapshot.length;
+  postTopUpOutputSnapshot = [...finalOutputItems];
+  postTopUpOutputSnapshotLength = postTopUpOutputSnapshot.length;
   let handoffRecoveryConsidered = 0;
   let handoffRecoveryAccepted = 0;
   const handoffRecoveryRejectedReasons: Record<string, number> = {};
@@ -10128,7 +10167,7 @@ const normalizedCandidatesRaw = [
     Number(expansionConvertedCount || 0) >= 10;
   const finalEligibleSet = new Set((acceptedAfterTerminalRejectFilter || []).map((t: string) => normalizeText(t)));
   const tasteQuerySet = new Set((generatedComicVineQueriesFromTaste || []).map((q: string) => normalizeText(q)));
-  const tdzGuardedDiagnosticsInitialized = true;
+  tdzGuardedDiagnosticsInitialized = true;
   const hasSwipeAlignedEvidence = (doc: any, title: string): string[] => {
     const ev: string[] = [];
     const nt = normalizeText(title);
@@ -10228,6 +10267,20 @@ const normalizedCandidatesRaw = [
     if (rescuedAligned.length > 0) finalOutputItems = [...finalOutputItems, ...rescuedAligned];
   }
   if (finalOutputItems.length > 10) finalOutputItems = finalOutputItems.slice(0, 10);
+  // Hard integrity guard: never return items that did not pass final eligibility.
+  // If final eligibility accepted nothing, return honest underfill instead of contract rescue artifacts.
+  if (!suppressTopRecommendations) {
+    const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
+    if (acceptedAfterTerminalSet.size === 0) {
+      finalOutputItems = [];
+      sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+    } else {
+      finalOutputItems = finalOutputItems.filter((item: any) => {
+        const title = String(item?.doc?.title || item?.title || "").trim();
+        return acceptedAfterTerminalSet.has(normalizeText(title));
+      });
+    }
+  }
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1
