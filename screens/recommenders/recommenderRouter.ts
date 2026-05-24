@@ -9747,6 +9747,7 @@ const normalizedCandidatesRaw = [
       if (!title || !nt) return "missing_title";
       if (seen.has(nt)) return "duplicate_title";
       if (score < 0) return "negative_score";
+      if (!explicitSuperheroSignal && isSuperheroAdventureDoc(doc)) return "superhero_topup_blocked_without_explicit_signal";
       if (superheroAdventureDisliked && isSuperheroAdventureDoc(doc)) {
         const tier = refillAlignmentTier(doc);
         if (tier.tier !== "strong_taste_fit") return `superhero_disliked_without_countervailing_support:tier=${tier.tier}`;
@@ -9801,7 +9802,11 @@ const normalizedCandidatesRaw = [
     safeFillerUsedInTopup += scoredUniverseContractTopUp.filter((item: any) => refillAlignmentTier(item?.doc).tier === "safe_filler").length;
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_candidate_count:${scoredUniverseTopUpCandidateDiagnostics.length}`);
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_candidates:${scoredUniverseTopUpCandidateDiagnostics.slice(0, 80).join("|") || "(none)"}`);
-    markSourceSpecificGate("__router__", `scored_universe_contract_topup_accepts:${Array.from(new Set(scoredUniverseTopUpAcceptedTitles)).slice(0, 40).join("|") || "(none)"}`);
+    const scoredUniverseTopUpAcceptsForDiagnostics =
+      finalEligibilityAcceptedTitles.length > 0
+        ? Array.from(new Set(scoredUniverseTopUpAcceptedTitles)).slice(0, 40)
+        : [];
+    markSourceSpecificGate("__router__", `scored_universe_contract_topup_accepts:${scoredUniverseTopUpAcceptsForDiagnostics.join("|") || "(none)"}`);
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_alignment_tiered:true`);
     if (scoredUniverseContractTopUp.length > 0) {
       finalOutputItems = [...finalOutputItems, ...scoredUniverseContractTopUp];
@@ -10272,8 +10277,33 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
     if (acceptedAfterTerminalSet.size === 0) {
-      finalOutputItems = [];
-      sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+      const viableUnderfillRescue = dedupeDocs([...(finalRenderDocs || []), ...(viableCandidates || []), ...(scoredCanonicalDocs || [])] as any[])
+        .filter((doc: any) => {
+          const title = String(doc?.title || "").trim();
+          const nt = normalizeText(title);
+          if (!title || !nt) return false;
+          if (terminalRejectReasonByTitle[nt]) return false;
+          if (isSuperheroAdventureDoc(doc) && !explicitSuperheroSignal) return false;
+          const sem = Number(semanticEvidenceCountByTitle[title] || 0);
+          const fit = Number(positiveFitScoreByTitle[title] || 0);
+          const weighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+          const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+          if (score < 0) return false;
+          if (sem < 1 && fit < 4 && weighted < 2.5) return false;
+          const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+          if (scrubReason) return false;
+          if (canReturnTitleRejectReason(title, doc)) return false;
+          return true;
+        })
+        .slice(0, Math.max(1, Math.min(3, finalLimit)));
+      if (viableUnderfillRescue.length > 0) {
+        finalOutputItems = viableUnderfillRescue.map((doc: any) => ({ kind: "open_library", doc }));
+        finalEligibilityAcceptedTitles.push(...viableUnderfillRescue.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
+        sourceSkippedReason.push("final_gate_integrity:min_viable_underfill_rescue");
+      } else {
+        finalOutputItems = [];
+        sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+      }
     } else {
       finalOutputItems = finalOutputItems.filter((item: any) => {
         const title = String(item?.doc?.title || item?.title || "").trim();

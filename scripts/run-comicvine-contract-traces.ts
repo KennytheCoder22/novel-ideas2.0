@@ -90,6 +90,9 @@ async function runPreset(preset: TracePreset) {
     throw new Error(`${preset.id}: stale runtime artifact detected (debugRouterVersion=${runtimeRouterVersion || 'missing'}, expected=${EXPECTED_ROUTER_FINGERPRINT})`);
   }
   if (!Boolean(trace?.comicVineFetchAttempted)) throw new Error(`${preset.id}: comicVineFetchAttempted false`);
+  if (!Boolean(trace?.debugGcdDispatchTrace || Object.keys(trace || {}).length > 0)) {
+    throw new Error(`${preset.id}: routerResultTracePresent false`);
+  }
   if (Number(((result as any)?.finalEligibilityAcceptedTitles || []).length || 0) <= 0) {
     throw new Error(`${preset.id}: finalEligibilityAcceptedTitlesCount <= 0`);
   }
