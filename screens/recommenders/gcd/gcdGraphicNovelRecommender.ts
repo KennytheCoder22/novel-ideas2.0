@@ -1378,7 +1378,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   }
 
   const fetchedSet = new Set(comicVineQueriesActuallyFetched);
-  for (const q of followupQueriesBuilt) {
+  for (let qi = 0; qi < followupQueriesBuilt.length; qi += 1) {
+    const q = followupQueriesBuilt[qi];
     if (!fetchedSet.has(q)) followupDropped.push({ query: q, reason: "followup_budget_exhausted_or_truncated" });
   }
 
@@ -1413,7 +1414,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
     ];
     docs.length = 0;
     seen.clear();
-    for (const q of nonSuperheroBackfillAnchors) {
+    for (let qi = 0; qi < nonSuperheroBackfillAnchors.length; qi += 1) {
+      const q = nonSuperheroBackfillAnchors[qi];
       if (docs.length >= Math.min(12, finalLimit)) break;
       const probe = await fetchDocsForQuery(q, 1200, timeoutMs, perAnchorFetchLimit, docs, seen);
       comicVineFetchResults.push({ query: q, status: probe.rawCount > 0 ? "ok" : probe.error ? "error" : "api_empty", rawCount: probe.rawCount, acceptedCount: probe.acceptedCount, rejectedCount: probe.rejectedCount, topTitles: probe.topTitles, rejectedReasons: probe.rejectedReasons, error: probe.error });
@@ -1496,7 +1498,8 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   if (docs.length === 0) {
     const knownGoodProbeQueries = ["batman", "spider-man", "ms. marvel", "locke & key", "saga", "guardians of the galaxy"];
     let probeFoundAny = false;
-    for (const q of knownGoodProbeQueries) {
+    for (let qi = 0; qi < knownGoodProbeQueries.length; qi += 1) {
+      const q = knownGoodProbeQueries[qi];
       if (comicVineQueriesActuallyFetched.includes(q)) continue;
       comicVineQueriesActuallyFetched.push(q);
     if (baseAnchors.includes(q)) baseAnchorsFetched.push(q);

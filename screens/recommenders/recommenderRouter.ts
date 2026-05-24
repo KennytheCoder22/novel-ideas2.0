@@ -3319,6 +3319,15 @@ export async function getRecommendations(
     return /\b(laura dean|bloom|heartstopper|fence|mooncakes|romance|romantic|dating|love story)\b/i.test(String(query || ""));
   };
   generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.filter((q) => !suppressNonRomanceYALiterals(q));
+  const romanceNegativeSignalActive =
+    dislikedSignalsSafe.some((s: string) => /\b(romance|romantic|dating|love|warm|hopeful|coming of age)\b/i.test(String(s || ""))) ||
+    Object.keys((((input as any)?.dislikedTagCounts || {}) as Record<string, number>)
+      ).some((k) => /\b(romance|romantic|dating|love|warm|hopeful|coming of age)\b/i.test(String(k || "")));
+  if (romanceNegativeSignalActive) {
+    generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.filter((q) =>
+      !/\b(laura dean|bloom|heartstopper|fence|mooncakes|romance|romantic|dating|love story|coming of age|warm|hopeful)\b/i.test(String(q || ""))
+    );
+  }
   const normalizeRootFamilyFromQuery = (query: string): string => {
     const q = normalizeText(String(query || ""));
     if (/\bspider[-\s]?man\b/.test(q)) return "spider-man-family";
@@ -9686,6 +9695,13 @@ const normalizedCandidatesRaw = [
       "__router__",
       `emergency_rescue_dropped_after_late_filters:${Array.from(new Set(emergencySafeRescueReturnedTitles)).slice(0, 20).join("|") || "(none)"}`
     );
+  }
+  if (!suppressTopRecommendations && emergencySafeRescueReturnedTitles.length > 0) {
+    const finalReturnedSet = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const droppedEmergencyRescueTitles = Array.from(new Set(emergencySafeRescueReturnedTitles.filter(Boolean))).filter((t) => !finalReturnedSet.has(normalizeText(t)));
+    if (droppedEmergencyRescueTitles.length > 0) {
+      markSourceSpecificGate("__router__", `emergency_rescue_removed_titles:${droppedEmergencyRescueTitles.slice(0, 20).join("|")}`);
+    }
   }
   const enabledSourceCountForContract = [
     sourceEnabled.googleBooks ? 1 : 0,
