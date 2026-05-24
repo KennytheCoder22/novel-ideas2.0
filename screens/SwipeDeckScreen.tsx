@@ -1587,7 +1587,7 @@ function handleLeft() {
         "auto"
       );
       const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
-      const expectedFingerprint = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5";
+      const expectedFingerprint = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5+dispatch-loop-idx";
       if (runtimeFingerprint !== expectedFingerprint) {
         setRecommendFunctionErrorPhase("dispatch ComicVine");
         throw new Error(`STALE_ROUTER_ARTIFACT:${runtimeFingerprint || "(missing)"} expected:${expectedFingerprint}`);
@@ -2100,7 +2100,7 @@ function handleLeft() {
   }
 
   async function handleCopyDiagnostics() {
-    const expectedFingerprint = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5";
+    const expectedFingerprint = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5+dispatch-loop-idx";
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const staleRuntime = runtimeFingerprint !== expectedFingerprint;
     const missingRouterTrace = !Boolean(lastRouterResultTracePresent);

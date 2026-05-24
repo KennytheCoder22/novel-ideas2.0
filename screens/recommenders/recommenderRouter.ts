@@ -2715,7 +2715,7 @@ export async function getRecommendations(
       sourceSkippedReason,
     });
   }
-  const debugRouterVersion = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5";
+  const debugRouterVersion = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5+dispatch-loop-idx";
   const deploymentRuntimeMarker = "comicvine-proxy-phase" as const;
   if (sourceEnabled.comicVine && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
@@ -3651,7 +3651,8 @@ export async function getRecommendations(
     primaryLane: routerFamily,
   };
 
-  for (const rung of rungs) {
+  for (let rungi = 0; rungi < rungs.length; rungi += 1) {
+    const rung = rungs[rungi];
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
     const effectiveBucketPlan = {
       ...bucketPlan,
@@ -3664,7 +3665,8 @@ export async function getRecommendations(
     effectiveBucketPlanForExpansion = effectiveBucketPlan;
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
-    for (const lane of queryLanes) {
+    for (let lanei = 0; lanei < queryLanes.length; lanei += 1) {
+      const lane = queryLanes[lanei];
       var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
       var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
       var laneFamily =
