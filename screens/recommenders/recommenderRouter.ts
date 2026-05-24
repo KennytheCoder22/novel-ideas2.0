@@ -3776,21 +3776,34 @@ export async function getRecommendations(
         comicVinePreflightUsesTasteQuery = comicVinePreflightUsesTasteQuery || tasteDerivedQuerySet.has(normalizeText(query));
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
-          for (const queryText of (value?.comicVineQueryTexts || [])) comicVineQueryTexts.add(String(queryText || "").trim());
+          const comicVineQueryTextsFromAdapter = Array.isArray(value?.comicVineQueryTexts) ? value.comicVineQueryTexts : [];
+          for (let qi = 0; qi < comicVineQueryTextsFromAdapter.length; qi += 1) {
+            const queryText = comicVineQueryTextsFromAdapter[qi];
+            comicVineQueryTexts.add(String(queryText || "").trim());
+          }
           if (!comicVineResolvedSeedQuery && typeof value?.comicVineResolvedSeedQuery === "string") comicVineResolvedSeedQuery = value.comicVineResolvedSeedQuery;
           if (typeof value?.comicVineFallbackReason === "string") comicVineFallbackReason = value.comicVineFallbackReason;
           if (typeof value?.comicVineUsedFallbackQuery === "boolean") comicVineUsedFallbackQuery = value.comicVineUsedFallbackQuery;
           if (Array.isArray(value?.comicVinePositiveQueries)) comicVinePositiveQueries = value.comicVinePositiveQueries.map((q:any)=>String(q||"").trim()).filter(Boolean);
           if (typeof value?.comicVineExcludedTermsAppliedInFilterOnly === "boolean") comicVineExcludedTermsAppliedInFilterOnly = value.comicVineExcludedTermsAppliedInFilterOnly;
           if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
-          for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
-          for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
-          for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) {
+          const comicVineRungsBuiltFromAdapter = Array.isArray(value?.comicVineRungsBuilt) ? value.comicVineRungsBuilt : [];
+          for (let qi = 0; qi < comicVineRungsBuiltFromAdapter.length; qi += 1) {
+            const queryText = comicVineRungsBuiltFromAdapter[qi];
+            comicVineRungsBuilt.add(String(queryText || "").trim());
+          }
+          const comicVineFetchedQueriesFromAdapter = Array.isArray(value?.comicVineQueriesActuallyFetched) ? value.comicVineQueriesActuallyFetched : [];
+          for (let qi = 0; qi < comicVineFetchedQueriesFromAdapter.length; qi += 1) {
+            const queryText = comicVineFetchedQueriesFromAdapter[qi];
+            comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
+          }
+          for (let qi = 0; qi < comicVineFetchedQueriesFromAdapter.length; qi += 1) {
+            const queryText = comicVineFetchedQueriesFromAdapter[qi];
             const q = String(queryText || "").trim();
             if (tasteDerivedQuerySet.has(normalizeText(q))) comicVineTasteQueriesAttempted.add(q);
           }
           if (querySourceOfTruth === "taste_profile") {
-            const leakedStaticQuery = (value?.comicVineQueriesActuallyFetched || []).map((q:any)=>String(q || "").trim()).find((q:string) => {
+            const leakedStaticQuery = comicVineFetchedQueriesFromAdapter.map((q:any)=>String(q || "").trim()).find((q:string) => {
               const nq = normalizeText(q);
               const isTaste = tasteDerivedQuerySet.has(nq);
               const isStatic = Array.from(staticDefaultQueries).some((seed) => normalizeText(seed) === nq);
@@ -3801,7 +3814,8 @@ export async function getRecommendations(
             }
           }
           if (Array.isArray(value?.comicVineFetchResults) && value.comicVineFetchResults.length) {
-            for (const row of value.comicVineFetchResults) {
+            for (let ri = 0; ri < value.comicVineFetchResults.length; ri += 1) {
+              const row = value.comicVineFetchResults[ri];
               comicVineFetchResults.push({
                 query: String(row?.query || query || "").trim(),
                 status: String(row?.status || "ok"),
