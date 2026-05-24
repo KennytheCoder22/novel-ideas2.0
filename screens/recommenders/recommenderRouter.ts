@@ -7007,6 +7007,7 @@ const normalizedCandidatesRaw = [
   const genericCollectionArtifactRejectedTitles: string[] = [];
   const finalTasteThresholdByTitle: Record<string, number> = {};
   const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
+  const semanticRescueOverrideTitles = new Set<string>();
   const meaningfulSignalsGateRejectedTitles: string[] = [];
   const dislikedOverlapDominatesRejectedTitles: string[] = [];
   const acceptedEvidenceButFinalRejectedReasonByTitle: Record<string, string> = {};
@@ -7130,6 +7131,7 @@ const normalizedCandidatesRaw = [
         registerFinalEligibilityReject("fallback_no_taste_match", title);
         return false;
       }
+      semanticRescueOverrideTitles.add(normalizeText(title));
       markSourceSpecificGate(title, "fallback_no_taste_match_semantic_rescue_override");
     }
     if (isComicVineFallbackCandidate && semanticFranchiseAffinity) {
@@ -7331,6 +7333,7 @@ const normalizedCandidatesRaw = [
       if (!superheroNarrativeFitFinalGate && !compositeHighFitSemanticPass && !strongSemanticFitRescueAllow) {
         registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
       }
+      if (strongSemanticFitRescueAllow) semanticRescueOverrideTitles.add(normalizeText(title));
       markSourceSpecificGate(title, compositeHighFitSemanticPass
         ? "composite_high_fit_semantic_taste_threshold_override"
         : (strongSemanticFitRescueAllow ? "strong_semantic_fit_taste_threshold_override" : "superhero_narrative_fit_taste_threshold_override"));
@@ -8407,7 +8410,14 @@ const normalizedCandidatesRaw = [
       !sourceEnabled.localLibrary &&
       !includeKitsu;
     const cleanSeriesOrCollected = isCleanSeriesOrCollectedCandidate(title, doc);
-    if (terminalRejectReasonByTitle[key]) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+    if (terminalRejectReasonByTitle[key]) {
+      const terminalReason = String(terminalRejectReasonByTitle[key] || "");
+      if (terminalReason.includes("final_eligibility_rejected") && semanticRescueOverrideTitles.has(key)) {
+        markSourceSpecificGate(title, "semantic_rescue_terminal_reject_bypass");
+      } else {
+        return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+      }
+    }
     if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && cleanSeriesOrCollected)) return "late_fill_never_return";
     if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
     if (formatSignalOnlyRejectedSet.has(key)) return "format_signal_only_rejected";
@@ -9749,7 +9759,7 @@ const normalizedCandidatesRaw = [
   const refillDislikedSignalSet = new Set((dislikedSignalsSafe || []).map((s: string) => normalizeText(String(s || ""))).filter(Boolean));
   const refillText = (doc: any) => normalizeText([doc?.title, doc?.description, doc?.subjects, doc?.queryText].filter(Boolean).join(" "));
   const superheroAdventureDisliked = ["superheroes", "superhero", "comic", "adventure", "action"].some((s) => refillDislikedSignalSet.has(normalizeText(s)));
-  const isSuperheroAdventureDoc = (doc: any) => /\b(superhero|superheroes|marvel|dc comics|dc universe|avengers|x-men|justice league|batman|superman|spider-man|action[-\s]?adventure)\b/i.test(String([doc?.title, doc?.description, doc?.subjects].filter(Boolean).join(" ")));
+  const isSuperheroAdventureDoc = (doc: any) => /\b(superhero|superheroes|marvel|dc comics|dc universe|avengers|x-men|justice league|teen titans|batman|superman|spider-man|action[-\s]?adventure)\b/i.test(String([doc?.title, doc?.description, doc?.subjects].filter(Boolean).join(" ")));
   const refillAlignmentTier = (doc: any): { tier: "strong_taste_fit" | "semantic_narrative_fit" | "adjacent_profile_fit" | "safe_filler"; reason: string } => {
     const text = refillText(doc);
     const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
