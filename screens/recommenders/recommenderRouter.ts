@@ -3642,6 +3642,8 @@ export async function getRecommendations(
   let comicVineQueryTooLong = false;
   let comicVinePreflightQuery = "";
   let comicVinePreflightUsesTasteQuery = false;
+  let comicVineDispatchError: string | null = null;
+  let comicVineDispatchErrorPhase: string | null = null;
   const comicVinePerQueryFailureDoesNotAbort = true;
   let effectiveBucketPlanForExpansion: any = {
     ...bucketPlan,
@@ -3667,6 +3669,7 @@ export async function getRecommendations(
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
     for (let lanei = 0; lanei < queryLanes.length; lanei += 1) {
+      try {
       const lane = queryLanes[lanei];
       var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
       var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
@@ -3960,6 +3963,22 @@ export async function getRecommendations(
       });
 
       allMergedDocs.push(...taggedDocs);
+      } catch (dispatchError: any) {
+        const dispatchMessage = String(dispatchError?.message || dispatchError || "comicvine_dispatch_lane_error");
+        comicVineDispatchError = dispatchMessage;
+        comicVineDispatchErrorPhase = "dispatch ComicVine";
+        comicVineAdapterFailed = true;
+        comicVineAdapterStatus = "proxy_error";
+        if (includeComicVine) {
+          const fallbackQuery = String((queryLanes[lanei] as any)?.query || (rung as any)?.query || "comicvine_adapter");
+          comicVineFetchResults.push({
+            query: fallbackQuery,
+            status: "error",
+            rawCount: 0,
+            error: `dispatch_lane_error:${dispatchMessage}`,
+          });
+        }
+      }
     }
   }
 
@@ -5383,6 +5402,8 @@ const normalizedCandidatesRaw = [
     comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched),
     comicVinePreflightQuery,
     comicVinePreflightUsesTasteQuery,
+    comicVineDispatchError,
+    comicVineDispatchErrorPhase,
     comicVinePerQueryFailureDoesNotAbort,
     comicVineTasteQueriesAttempted: Array.from(comicVineTasteQueriesAttempted),
     gcdFetchResults: comicVineFetchResults,
