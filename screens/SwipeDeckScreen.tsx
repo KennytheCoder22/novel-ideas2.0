@@ -2110,9 +2110,21 @@ function handleLeft() {
         missingRouterTrace ? "router_result_trace_missing" : "",
       ].filter(Boolean).join(", ");
       setPresetExecutionError(`SESSION_REPORT_EXPORT_BLOCKED:${reason}`);
+      const blockedReport = [
+        "SESSION REPORT (BLOCKED)",
+        `Reason: ${reason || "(unknown)"}`,
+        `Expected fingerprint: ${expectedFingerprint}`,
+        `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
+        `routerResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}`,
+        `recommendFunctionCalled: ${String(Boolean(recommendFunctionCalled))}`,
+        `recommendFunctionReturned: ${String(Boolean(recommendFunctionReturned))}`,
+        `recommendFunctionErrorPhase: ${recommendFunctionErrorPhase || "(none)"}`,
+        `recommendFunctionError: ${recommendFunctionError || "(none)"}`,
+      ].join("\n");
+      await Clipboard.setStringAsync(blockedReport);
       Alert.alert(
         "Export blocked",
-        `Session report export blocked due to invalid runtime trace.\n\nExpected fingerprint: ${expectedFingerprint}\nActual fingerprint: ${runtimeFingerprint || "(missing)"}\nrouterResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}`
+        `Session report export blocked due to invalid runtime trace.\n\nExpected fingerprint: ${expectedFingerprint}\nActual fingerprint: ${runtimeFingerprint || "(missing)"}\nrouterResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}\n\nA blocked diagnostics report has been copied to clipboard.`
       );
       return;
     }
