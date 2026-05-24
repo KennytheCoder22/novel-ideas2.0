@@ -27,6 +27,7 @@ import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
+import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -1587,7 +1588,7 @@ function handleLeft() {
         "auto"
       );
       const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
-      const expectedFingerprint = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5+dispatch-loop-idx";
+      const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
       if (runtimeFingerprint !== expectedFingerprint) {
         setRecommendFunctionErrorPhase("dispatch ComicVine");
         throw new Error(`STALE_ROUTER_ARTIFACT:${runtimeFingerprint || "(missing)"} expected:${expectedFingerprint}`);
@@ -2100,7 +2101,7 @@ function handleLeft() {
   }
 
   async function handleCopyDiagnostics() {
-    const expectedFingerprint = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5+dispatch-loop-idx";
+    const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const staleRuntime = runtimeFingerprint !== expectedFingerprint;
     const missingRouterTrace = !Boolean(lastRouterResultTracePresent);

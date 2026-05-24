@@ -1,5 +1,6 @@
 import msHsDeck from '../data/swipeDecks/ms_hs';
 import { getRecommendations } from '../screens/recommenders/recommenderRouter';
+import { EXPECTED_ROUTER_FINGERPRINT } from '../screens/recommenders/routerFingerprint';
 import type { RecommenderInput } from '../screens/recommenders/types';
 
 type Direction = 'like' | 'dislike' | 'skip';
@@ -11,7 +12,6 @@ const PRESETS: TracePreset[] = [
   { id: 'test_b', sequence: ['dislike', 'dislike', 'like', 'skip', 'dislike', 'like', 'skip', 'like'] },
   { id: 'test_c', sequence: ['like', 'skip', 'like', 'skip', 'dislike', 'like', 'dislike', 'like'] },
 ];
-const EXPECTED_ROUTER_FINGERPRINT = 'router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5+dispatch-loop-idx';
 
 function toTagCounts(sequence: Direction[]) {
   const cards = Array.isArray((msHsDeck as any)?.cards) ? (msHsDeck as any).cards.slice(0, sequence.length) : [];

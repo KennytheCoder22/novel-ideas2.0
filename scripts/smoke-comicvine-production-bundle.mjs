@@ -4,7 +4,8 @@ import path from 'node:path';
 const ROUTER_PATH = 'screens/recommenders/recommenderRouter.ts';
 const src = fs.readFileSync(ROUTER_PATH, 'utf8');
 
-const EXPECTED_ROUTER_FINGERPRINT = 'router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5+dispatch-loop-idx';
+const fingerprintSource = fs.readFileSync('screens/recommenders/routerFingerprint.ts', 'utf8');
+const EXPECTED_ROUTER_FINGERPRINT = (fingerprintSource.match(/EXPECTED_ROUTER_FINGERPRINT\\s*=\\s*\"([^\"]+)\"/) || [])[1] || '';
 const checks = [
   { name: 'debug-router-version-fingerprint', ok: src.includes(EXPECTED_ROUTER_FINGERPRINT) },
   { name: 'tdz-var-initialized-top-scope', ok: /var tdzGuardedDiagnosticsInitialized\s*=\s*false;/.test(src) },
