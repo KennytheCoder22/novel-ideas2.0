@@ -2715,7 +2715,7 @@ export async function getRecommendations(
       sourceSkippedReason,
     });
   }
-  const debugRouterVersion = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8";
+  const debugRouterVersion = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b+dispatch-var-972e5e8+dispatch-8509da5";
   const deploymentRuntimeMarker = "comicvine-proxy-phase" as const;
   if (sourceEnabled.comicVine && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
   const tasteAxes: any = (input as any)?.tasteProfile || {};
