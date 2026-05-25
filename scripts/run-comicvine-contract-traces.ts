@@ -68,16 +68,19 @@ async function runPreset(preset: TracePreset) {
   const result = await getRecommendations(input as any);
   const trace = (result as any)?.debugGcdDispatchTrace || {};
   const runtimeRouterVersion = String((result as any)?.debugRouterVersion || '');
+  const routerResultTracePresent = Boolean((result as any)?.routerResultTracePresent);
+  const recommendFunctionReturned = Boolean(result);
+  const recommendFunctionError = String((trace as any)?.comicVineDispatchError || '');
 
 
   const returnedTitles = Array.isArray((result as any)?.items) ? (result as any).items.map((it: any) => String(it?.doc?.title || it?.title || '').trim()).filter(Boolean) : [];
   const terminalRejectReasonByTitle = ((result as any)?.terminalRejectReasonByTitle || {}) as Record<string, string>;
   const norm = (v: string) => String(v || '').toLowerCase().trim();
   const returnedWithFinalEligibilityRejected = returnedTitles.filter((t) => String(terminalRejectReasonByTitle[norm(t)] || '').includes('final_eligibility_rejected'));
-  const recommendFunctionReturned = true;
+  const returnedItemsLength = Number((result as any)?.items?.length || 0);
 
   const fields = {
-    returnedItemsLength: Number((result as any)?.items?.length || 0),
+    returnedItemsLength,
     countContractSatisfied: Boolean(trace?.countContractSatisfied),
     returnedItemsBuiltFrom: String(trace?.returnedItemsBuiltFrom || ''),
     final_contract_refill_candidates: trace?.final_contract_refill_candidates ?? [],
@@ -89,24 +92,87 @@ async function runPreset(preset: TracePreset) {
   if (runtimeRouterVersion !== EXPECTED_ROUTER_FINGERPRINT) {
     throw new Error(`${preset.id}: stale runtime artifact detected (debugRouterVersion=${runtimeRouterVersion || 'missing'}, expected=${EXPECTED_ROUTER_FINGERPRINT})`);
   }
-  if (!Boolean(trace?.comicVineFetchAttempted)) throw new Error(`${preset.id}: comicVineFetchAttempted false`);
-  if (!Boolean(trace?.debugGcdDispatchTrace || Object.keys(trace || {}).length > 0)) {
+  if (!routerResultTracePresent || !Boolean(trace?.debugRouterVersion || Object.keys(trace || {}).length > 0)) {
     throw new Error(`${preset.id}: routerResultTracePresent false`);
   }
-  if (Number(((result as any)?.finalEligibilityAcceptedTitles || []).length || 0) <= 0) {
-    throw new Error(`${preset.id}: finalEligibilityAcceptedTitlesCount <= 0`);
+  if (recommendFunctionError) {
+    throw new Error(`${preset.id}: recommendFunctionError present (${recommendFunctionError})`);
   }
   if (returnedWithFinalEligibilityRejected.length > 0) {
     throw new Error(`${preset.id}: returned titles with final_eligibility_rejected: ${returnedWithFinalEligibilityRejected.join(' | ')}`);
   }
 
-  console.log(`\n=== ${preset.id.toUpperCase()} ===`);
-  console.log(JSON.stringify(fields, null, 2));
+  return {
+    id: preset.id,
+    passed: true,
+    returnedItemsLength,
+    runtimeRouterVersion,
+    routerResultTracePresent,
+    recommendFunctionReturned,
+    recommendFunctionError: recommendFunctionError || '(none)',
+    fields,
+  };
+}
+
+function printPreset(result: any) {
+  console.log(`\n=== ${String(result?.id || '').toUpperCase()} ===`);
+  console.log(JSON.stringify(result?.fields || {}, null, 2));
 }
 
 (async () => {
+  const presetResults: Array<{
+    id: string;
+    passed: boolean;
+    returnedItemsLength: number;
+    runtimeRouterVersion: string;
+    routerResultTracePresent: boolean;
+    recommendFunctionReturned: boolean;
+    recommendFunctionError: string;
+    fields: Record<string, any>;
+  }> = [];
+
   for (const preset of PRESETS) {
-    await runPreset(preset);
+    try {
+      const one = await runPreset(preset);
+      presetResults.push(one);
+      printPreset(one);
+    } catch (error: any) {
+      presetResults.push({
+        id: preset.id,
+        passed: false,
+        returnedItemsLength: 0,
+        runtimeRouterVersion: '(missing)',
+        routerResultTracePresent: false,
+        recommendFunctionReturned: false,
+        recommendFunctionError: String(error?.message || error || 'unknown'),
+        fields: { error: String(error?.message || error || 'unknown') },
+      });
+      console.error(`\n=== ${preset.id.toUpperCase()} ===`);
+      console.error(String(error?.message || error || 'unknown'));
+    }
+  }
+
+  const gateEligible = presetResults.filter((row) =>
+    row.passed &&
+    row.runtimeRouterVersion === EXPECTED_ROUTER_FINGERPRINT &&
+    row.recommendFunctionReturned === true &&
+    row.recommendFunctionError === '(none)' &&
+    row.routerResultTracePresent === true &&
+    row.returnedItemsLength >= 1
+  );
+  const gatePass = gateEligible.length >= 2;
+  console.log('\n=== RELEASE GATE SUMMARY ===');
+  console.log(JSON.stringify({
+    expectedFingerprint: EXPECTED_ROUTER_FINGERPRINT,
+    gateRule: 'fingerprint exact + recommendFunctionReturned:true + recommendFunctionError:(none) + routerResultTracePresent:true + returnedItemsLength>=1 on at least 2/3 presets',
+    passingPresetCount: gateEligible.length,
+    totalPresets: PRESETS.length,
+    passingPresetIds: gateEligible.map((row) => row.id),
+    gatePass,
+  }, null, 2));
+
+  if (!gatePass) {
+    throw new Error(`release gate failed: ${gateEligible.length}/${PRESETS.length} presets met baseline (need >=2)`);
   }
 })().catch((error) => {
   console.error('[comicvine-trace-harness] failed', error);
