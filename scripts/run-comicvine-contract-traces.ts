@@ -89,6 +89,12 @@ async function runPreset(preset: TracePreset) {
     returnedSwipeEvidenceByTitle: (result as any)?.returnedSwipeEvidenceByTitle || {},
     teenPostPassGlobalHandoffConsidered: Boolean((result as any)?.teenPostPassGlobalHandoffConsidered),
     teenPostPassGlobalHandoffAcceptedTitles: Array.isArray((result as any)?.teenPostPassGlobalHandoffAcceptedTitles) ? (result as any).teenPostPassGlobalHandoffAcceptedTitles : [],
+    nytFetchAttempted: Boolean((result as any)?.nytFetchAttempted),
+    nytCandidateTitles: Array.isArray((result as any)?.nytCandidateTitles) ? (result as any).nytCandidateTitles : [],
+    nytAcceptedTitles: Array.isArray((result as any)?.nytAcceptedTitles) ? (result as any).nytAcceptedTitles : [],
+    nytRejectedByTitle: (result as any)?.nytRejectedByTitle || {},
+    nytReturnedCount: Number((result as any)?.nytReturnedCount || 0),
+    nytAdminEnabled: Boolean((result as any)?.nytAdminEnabled),
     final_contract_refill_candidates: trace?.final_contract_refill_candidates ?? [],
     final_contract_refill_accepts: trace?.final_contract_refill_accepts ?? [],
     non_shrunk_restore: trace?.non_shrunk_restore ?? false,
@@ -213,6 +219,24 @@ function printPreset(result: any) {
       const evidence = Array.isArray(swipeEvidence[title]) ? swipeEvidence[title] : [];
       if (!reason) warnings.push({ preset: row.id, code: 'missing_return_reason', detail: title });
       if (evidence.length === 0) warnings.push({ preset: row.id, code: 'missing_swipe_evidence', detail: title });
+    }
+    if (Number(fields.nytReturnedCount || 0) > 0 && returnedTitles.length > 0 && Number(fields.nytReturnedCount || 0) === returnedTitles.length) {
+      warnings.push({ preset: row.id, code: 'nyt_only_returned_items', detail: String(fields.returnedItemsBuiltFrom || '') });
+    }
+  }
+  const nytTitleToPresets: Record<string, string[]> = {};
+  for (const row of presetResults) {
+    const nytAccepted: string[] = Array.isArray(row.fields?.nytAcceptedTitles) ? row.fields.nytAcceptedTitles : [];
+    for (const t of nytAccepted) {
+      const key = String(t || '').trim().toLowerCase();
+      if (!key) continue;
+      nytTitleToPresets[key] = nytTitleToPresets[key] || [];
+      nytTitleToPresets[key].push(row.id);
+    }
+  }
+  for (const [title, presets] of Object.entries(nytTitleToPresets)) {
+    if (new Set(presets).size > 1) {
+      warnings.push({ preset: 'multi', code: 'nyt_title_repeated_across_presets', detail: `${title} => ${Array.from(new Set(presets)).join(',')}` });
     }
   }
   const rootKeyByPreset: Record<string, string> = {};

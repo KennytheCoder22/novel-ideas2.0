@@ -10756,6 +10756,59 @@ const normalizedCandidatesRaw = [
     }
   }
   finalOutputItems = itemsForReturn;
+  const nytFetchAttempted = Boolean(sourceEnabled.nyt) && Boolean(nytAnchorDebug.enabled);
+  const nytCandidateTitles = dedupeDocs([
+    ...(nytAnchorResult?.docs || []),
+    ...(candidateDocs || []),
+    ...(finalRenderDocs || []),
+  ] as any[])
+    .filter((doc: any) => isNytAnchorDoc(doc))
+    .map((doc: any) => String(doc?.title || "").trim())
+    .filter(Boolean);
+  const nytRejectedByTitle: Record<string, string> = {};
+  if (finalOutputItems.length > 0) {
+    const nytPassed: any[] = [];
+    const nonNyt: any[] = [];
+    for (const item of finalOutputItems) {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      if (!isNytAnchorDoc(doc)) {
+        nonNyt.push(item);
+        continue;
+      }
+      const nt = normalizeText(title);
+      const positiveFit = Number(positiveFitScoreByTitle[title] || 0);
+      const semanticSupport = Boolean(semanticSupportFoundByTitle[title]);
+      const dislikes = Number(candidateDislikePenaltyByTitle[title] || 0);
+      const weighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+      const hardRejectReason = String(terminalRejectReasonByTitle[nt] || "");
+      const artifactReject = sharedReturnArtifactScrubRejectReason(doc) || (isReferenceArtifactTitle(title) ? "reference_artifact" : "");
+      if (positiveFit < 4.5) { nytRejectedByTitle[title] = `weak_positive_fit:${positiveFit.toFixed(2)}`; continue; }
+      if (!semanticSupport) { nytRejectedByTitle[title] = "semantic_support_missing"; continue; }
+      if (dislikes > (weighted + 0.5)) { nytRejectedByTitle[title] = `dislike_penalty_exceeded:${dislikes.toFixed(2)}>${weighted.toFixed(2)}`; continue; }
+      if (hardRejectReason && !/fallback_no_taste_match|fails_taste_threshold_gate/.test(hardRejectReason)) { nytRejectedByTitle[title] = `terminal_reject:${hardRejectReason}`; continue; }
+      if (artifactReject) { nytRejectedByTitle[title] = `artifact_or_safety:${artifactReject}`; continue; }
+      nytPassed.push(item);
+    }
+    finalOutputItems = [...nonNyt, ...nytPassed.slice(0, 2)].slice(0, Math.max(1, finalLimit));
+  }
+  const nytAcceptedTitles = finalOutputItems
+    .filter((item: any) => isNytAnchorDoc(item?.doc || item))
+    .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+    .filter(Boolean);
+  const nytReturnedCount = nytAcceptedTitles.length;
+  const successfulSourceCountExcludingNyt = [
+    Number(aggregatedRawFetched.googleBooks || 0) > 0,
+    Number(aggregatedRawFetched.openLibrary || 0) > 0,
+    Number(aggregatedRawFetched.kitsu || 0) > 0,
+    Number(aggregatedRawFetched.comicVine || 0) > 0,
+  ].filter(Boolean).length;
+  if (nytReturnedCount > 0 && successfulSourceCountExcludingNyt === 0) {
+    sourceSkippedReason.push("warning_nyt_only_successful_source");
+  }
+  if (nytReturnedCount > 0 && nytReturnedCount === finalOutputItems.length) {
+    sourceSkippedReason.push("warning_nyt_only_returned_items");
+  }
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1
@@ -11252,6 +11305,12 @@ const normalizedCandidatesRaw = [
     rankedDocsTitles,
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
+    nytFetchAttempted,
+    nytCandidateTitles,
+    nytAcceptedTitles,
+    nytRejectedByTitle,
+    nytReturnedCount,
+    nytAdminEnabled: Boolean(sourceEnabled.nyt),
     sourceEnabled,
     sourceSkippedReason,
     comicVineAdapterStatus,
