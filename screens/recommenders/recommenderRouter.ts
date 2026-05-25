@@ -10515,6 +10515,55 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
     }
   }
+  let teenPostPassGlobalHandoffConsidered = false;
+  let teenPostPassGlobalHandoffAcceptedTitles: string[] = [];
+  const teenPostPassGlobalHandoffRejectedByTitle: Record<string, string> = {};
+  let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
+  if (itemsForReturn.length === 0 && teenPostPassOutputTitles.length > 0) {
+    teenPostPassGlobalHandoffConsidered = true;
+    const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
+    const seenRoots = new Set<string>();
+    const fallbackItems = teenPostPassItems.filter((item: any) => {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      const nt = normalizeText(title);
+      if (!title || !nt) {
+        teenPostPassGlobalHandoffRejectedByTitle[title || "(missing_title)"] = "missing_title";
+        return false;
+      }
+      if (hardArtifactRe.test(title)) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "artifact_or_fetch_error";
+        return false;
+      }
+      const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+      if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !terminalReason.includes("fails_taste_threshold_gate")) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = `terminal_reject:${terminalReason}`;
+        return false;
+      }
+      const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+      if (scrubReason) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = `artifact_scrub:${scrubReason}`;
+        return false;
+      }
+      const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      if (seenRoots.has(root)) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "duplicate_root";
+        return false;
+      }
+      seenRoots.add(root);
+      return true;
+    }).slice(0, Math.max(1, Math.min(3, finalLimit)));
+    if (fallbackItems.length > 0) {
+      itemsForReturn = fallbackItems;
+      teenPostPassGlobalHandoffAcceptedTitles = fallbackItems
+        .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+        .filter(Boolean);
+      returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
+      finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
+      sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
+    }
+  }
+  finalOutputItems = itemsForReturn;
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1
@@ -10932,6 +10981,9 @@ const normalizedCandidatesRaw = [
     finalItemsLength,
     finalItemsTitles,
     returnedItemsLength: finalOutputItems.length,
+    teenPostPassGlobalHandoffConsidered,
+    teenPostPassGlobalHandoffAcceptedTitles,
+    teenPostPassGlobalHandoffRejectedByTitle,
     returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
     returnedItemsByAlignmentTier,
     safeFillerReturnedCount: returnedItemsByAlignmentTier.safe_filler || 0,
