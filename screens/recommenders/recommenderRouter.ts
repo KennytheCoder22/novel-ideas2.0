@@ -10414,9 +10414,71 @@ const normalizedCandidatesRaw = [
   if (finalOutputItems.length > 10) finalOutputItems = finalOutputItems.slice(0, 10);
   // Hard integrity guard: never return items that did not pass final eligibility.
   // If final eligibility accepted nothing, return honest underfill instead of contract rescue artifacts.
+  let normalFinalGateRecoveryConsidered = false;
+  const normalFinalGateRecoveryAcceptedTitles: string[] = [];
+  const normalFinalGateRecoveryRejectedByTitle: Record<string, string> = {};
   if (!suppressTopRecommendations) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
     if (acceptedAfterTerminalSet.size === 0) {
+      const normalFinalGateRecoveryItems =
+        teenPostPassOutputTitles.length > 0
+          ? (() => {
+              normalFinalGateRecoveryConsidered = true;
+              const seenRoots = new Set<string>();
+              return teenPostPassItems
+                .filter((item: any) => {
+                  const doc = item?.doc || item;
+                  const title = String(doc?.title || item?.title || "").trim();
+                  const nt = normalizeText(title);
+                  if (!title || !nt) {
+                    normalFinalGateRecoveryRejectedByTitle[title || "(missing_title)"] = "missing_title";
+                    return false;
+                  }
+                  if (/\[google_books_fetch_error\]/i.test(title)) {
+                    normalFinalGateRecoveryRejectedByTitle[title] = "google_books_fetch_error_title";
+                    return false;
+                  }
+                  if (/\b(classroom|reference|index|teaching|awards?|bibliograph(?:y|ies)|poetry for children)\b/i.test(title)) {
+                    normalFinalGateRecoveryRejectedByTitle[title] = "reference_or_classroom_artifact_title";
+                    return false;
+                  }
+                  const fit = Number(positiveFitScoreByTitle[title] || 0);
+                  if (!(fit > 0)) {
+                    normalFinalGateRecoveryRejectedByTitle[title] = "non_positive_fit";
+                    return false;
+                  }
+                  const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+                  if (scrubReason) {
+                    normalFinalGateRecoveryRejectedByTitle[title] = `artifact_scrub:${scrubReason}`;
+                    return false;
+                  }
+                  const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+                  if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !terminalReason.includes("fails_taste_threshold_gate")) {
+                    normalFinalGateRecoveryRejectedByTitle[title] = `terminal_safety_reject:${terminalReason}`;
+                    return false;
+                  }
+                  const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+                  if (seenRoots.has(root)) {
+                    normalFinalGateRecoveryRejectedByTitle[title] = "duplicate_root";
+                    return false;
+                  }
+                  seenRoots.add(root);
+                  return true;
+                })
+                .slice(0, Math.max(1, Math.min(3, finalLimit)));
+            })()
+          : [];
+      if (normalFinalGateRecoveryItems.length > 0) {
+        finalOutputItems = normalFinalGateRecoveryItems;
+        normalFinalGateRecoveryAcceptedTitles.push(
+          ...normalFinalGateRecoveryItems
+            .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+            .filter(Boolean)
+        );
+        returnedItemsBuiltFrom = "normal_final_gate_recovery_from_teen_postpass";
+        finalReturnSourceUsed = "normal_final_gate_recovery_from_teen_postpass";
+        sourceSkippedReason.push("final_gate_integrity:normal_final_gate_recovery_from_teen_postpass");
+      }
       const teenPostPassHandoffItems =
         teenPostPassOutputLength > 0
           ? teenPostPassItems
@@ -11004,6 +11066,9 @@ const normalizedCandidatesRaw = [
     teenPostPassGlobalHandoffConsidered,
     teenPostPassGlobalHandoffAcceptedTitles,
     teenPostPassGlobalHandoffRejectedByTitle,
+    normalFinalGateRecoveryConsidered,
+    normalFinalGateRecoveryAcceptedTitles,
+    normalFinalGateRecoveryRejectedByTitle,
     returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
     returnedItemsByAlignmentTier,
     safeFillerReturnedCount: returnedItemsByAlignmentTier.safe_filler || 0,
