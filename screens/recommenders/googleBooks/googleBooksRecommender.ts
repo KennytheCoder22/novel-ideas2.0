@@ -758,17 +758,6 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
             message: err?.message || String(err || "unknown error"),
           });
 
-          rawPoolRows.push({
-            title: "[GOOGLE_BOOKS_FETCH_ERROR]",
-            author: undefined,
-            source: "googleBooks",
-            queryText: q,
-            engineQueryText: engineQuery,
-            queryRung: queryIndex,
-            laneKind,
-            error: err?.message || String(err || "unknown error"),
-          });
-
           rawDocs = [];
         }
       }

@@ -4071,6 +4071,31 @@ export async function getRecommendations(
 
   if (googleQuotaExhausted) sourceEnabled.googleBooks = false;
 
+  const googleStarved = sourceEnabled.googleBooks && Number(aggregatedRawFetched.googleBooks || 0) === 0;
+  const openLibraryStarved = sourceEnabled.openLibrary && Number(aggregatedRawFetched.openLibrary || 0) === 0;
+  const kitsuStarved = includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0;
+  const comicVineUnavailableBypass = Boolean(comicVineDispatchBypassed);
+  const allRealSourcesStarved =
+    googleStarved &&
+    openLibraryStarved &&
+    (kitsuStarved || !includeKitsu) &&
+    (comicVineUnavailableBypass || !includeComicVine);
+  if (allRealSourcesStarved) {
+    throwSourceFatal("source_health_failed", {
+      sourceEnabled,
+      sourceDisableReasonsDetailed,
+      perSourceStatus: {
+        googleBooks: { enabled: sourceEnabled.googleBooks, rawFetched: aggregatedRawFetched.googleBooks, starved: googleStarved },
+        openLibrary: { enabled: sourceEnabled.openLibrary, rawFetched: aggregatedRawFetched.openLibrary, starved: openLibraryStarved },
+        kitsu: { enabled: includeKitsu, rawFetched: aggregatedRawFetched.kitsu, starved: kitsuStarved },
+        comicVine: { enabled: includeComicVine, bypassed: comicVineUnavailableBypass, status: comicVineAdapterStatus },
+      },
+      sourceSkippedReason,
+      builtQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
+      deckKey: routedInput.deckKey,
+    });
+  }
+
   debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
   debugRouterLog("RAW FETCHED BY SOURCE", aggregatedRawFetched);
 
