@@ -10462,6 +10462,9 @@ const normalizedCandidatesRaw = [
   let kitsuNormalRecoveryConsidered = false;
   const kitsuNormalRecoveryAcceptedTitles: string[] = [];
   const kitsuNormalRecoveryRejectedByTitle: Record<string, string> = {};
+  const kitsuRecoveryPoolTitles: string[] = [];
+  const kitsuRecoveryBestRejectedReasons: Record<string, string> = {};
+  let minimalSafeOneBlockedReason = "";
   if (!suppressTopRecommendations) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
     if (acceptedAfterTerminalSet.size === 0) {
@@ -10527,7 +10530,28 @@ const normalizedCandidatesRaw = [
       if (finalOutputItems.length === 0 && teenPostPassOutputTitles.length > 0) {
         kitsuNormalRecoveryConsidered = true;
         const seenRoots = new Set<string>();
-        const kitsuRecoveryItems = teenPostPassItems
+        const kitsuPool = dedupeDocs([
+          ...(teenPostPassItems.map((item: any) => item?.doc || item).filter(Boolean) as any[]),
+          ...(finalRenderDocs || []),
+          ...(viableCandidates || []),
+          ...(swipeRankedCandidateList || []),
+        ] as any[])
+          .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"));
+        kitsuRecoveryPoolTitles.push(
+          ...kitsuPool.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean)
+        );
+        const kitsuRecoveryItems = kitsuPool
+          .sort((a: any, b: any) => {
+            const at = String(a?.title || "").trim();
+            const bt = String(b?.title || "").trim();
+            const af = Number(positiveFitScoreByTitle[at] || 0);
+            const bf = Number(positiveFitScoreByTitle[bt] || 0);
+            if (bf !== af) return bf - af;
+            const as = Number(semanticEvidenceCountByTitle[at] || 0);
+            const bs = Number(semanticEvidenceCountByTitle[bt] || 0);
+            return bs - as;
+          })
+          .map((doc: any) => ({ kind: "open_library", doc }))
           .filter((item: any) => {
             const doc = item?.doc || item;
             const title = String(doc?.title || item?.title || "").trim();
@@ -10565,12 +10589,20 @@ const normalizedCandidatesRaw = [
             const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
             if (!(fit > 1 && semanticSupportFound)) {
               kitsuNormalRecoveryRejectedByTitle[title] = `fit_or_semantic_gate:fit=${fit.toFixed(2)}:semantic=${semanticSupportFound ? 1 : 0}`;
+              kitsuRecoveryBestRejectedReasons[title] = kitsuNormalRecoveryRejectedByTitle[title];
               return false;
             }
             const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
             const weightedTaste = Number(candidateWeightedTasteScoreByTitle[title] || 0);
             if (dislikePenalty > weightedTaste + 1.25) {
               kitsuNormalRecoveryRejectedByTitle[title] = `dominant_dislike_penalty:${dislikePenalty.toFixed(2)}>${(weightedTaste + 1.25).toFixed(2)}`;
+              kitsuRecoveryBestRejectedReasons[title] = kitsuNormalRecoveryRejectedByTitle[title];
+              return false;
+            }
+            const dislikedSignals = (candidateMatchedDislikedSignalsByTitle[title] || []).map((s: any) => String(s || "").toLowerCase());
+            if (dislikedSignals.some((s: string) => /\bhorror\b/.test(s))) {
+              kitsuNormalRecoveryRejectedByTitle[title] = "explicit_disliked_overlap:horror";
+              kitsuRecoveryBestRejectedReasons[title] = kitsuNormalRecoveryRejectedByTitle[title];
               return false;
             }
             const root = String(parentFranchiseRootForDoc(doc) || "__none__");
@@ -10751,6 +10783,22 @@ const normalizedCandidatesRaw = [
         if (/\[google_books_fetch_error\]/i.test(title)) return false;
         const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
         if (scrubReason && scrubReason.includes("artifact")) return false;
+        const fit = Number(positiveFitScoreByTitle[title] || 0);
+        if (fit < 0) {
+          minimalSafeOneBlockedReason = `negative_positive_fit_score:${fit.toFixed(2)}`;
+          return false;
+        }
+        const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+        const weightedTaste = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+        if (dislikePenalty > weightedTaste) {
+          minimalSafeOneBlockedReason = `dominant_dislike_penalty:${dislikePenalty.toFixed(2)}>${weightedTaste.toFixed(2)}`;
+          return false;
+        }
+        const dislikedSignals = (candidateMatchedDislikedSignalsByTitle[title] || []).map((s: any) => String(s || "").toLowerCase());
+        if (dislikedSignals.some((s: string) => /\bhorror\b/.test(s))) {
+          minimalSafeOneBlockedReason = "explicit_disliked_overlap:horror";
+          return false;
+        }
         const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
         if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !terminalReason.includes("fails_taste_threshold_gate")) return false;
         return true;
@@ -11247,6 +11295,9 @@ const normalizedCandidatesRaw = [
     kitsuNormalRecoveryConsidered,
     kitsuNormalRecoveryAcceptedTitles,
     kitsuNormalRecoveryRejectedByTitle,
+    kitsuRecoveryPoolTitles,
+    kitsuRecoveryBestRejectedReasons,
+    minimalSafeOneBlockedReason,
     returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
     returnedItemsByAlignmentTier,
     safeFillerReturnedCount: returnedItemsByAlignmentTier.safe_filler || 0,
