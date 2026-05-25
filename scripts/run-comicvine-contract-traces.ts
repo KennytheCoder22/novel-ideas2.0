@@ -1,5 +1,6 @@
 import msHsDeck from '../data/swipeDecks/ms_hs';
 import { getRecommendations } from '../screens/recommenders/recommenderRouter';
+import { EXPECTED_ROUTER_FINGERPRINT } from '../screens/recommenders/routerFingerprint';
 import type { RecommenderInput } from '../screens/recommenders/types';
 
 type Direction = 'like' | 'dislike' | 'skip';
@@ -66,23 +67,167 @@ async function runPreset(preset: TracePreset) {
 
   const result = await getRecommendations(input as any);
   const trace = (result as any)?.debugGcdDispatchTrace || {};
+  const runtimeRouterVersion = String((result as any)?.debugRouterVersion || '');
+  const routerResultTracePresent = Boolean((result as any)?.routerResultTracePresent);
+  const recommendFunctionReturned = Boolean(result);
+  const recommendFunctionError = String((trace as any)?.comicVineDispatchError || '');
+  const recommendationResultWasPersisted = Boolean((result as any)?.recommendationResultWasPersisted);
+
+
+  const returnedTitles = Array.isArray((result as any)?.items) ? (result as any).items.map((it: any) => String(it?.doc?.title || it?.title || '').trim()).filter(Boolean) : [];
+  const terminalRejectReasonByTitle = ((result as any)?.terminalRejectReasonByTitle || {}) as Record<string, string>;
+  const norm = (v: string) => String(v || '').toLowerCase().trim();
+  const returnedWithFinalEligibilityRejected = returnedTitles.filter((t) => String(terminalRejectReasonByTitle[norm(t)] || '').includes('final_eligibility_rejected'));
+  const returnedItemsLength = Number((result as any)?.items?.length || 0);
 
   const fields = {
-    returnedItemsLength: Number((result as any)?.items?.length || 0),
+    returnedItemsLength,
+    returnedItemsTitles: returnedTitles,
     countContractSatisfied: Boolean(trace?.countContractSatisfied),
     returnedItemsBuiltFrom: String(trace?.returnedItemsBuiltFrom || ''),
+    returnedReasonByTitle: (result as any)?.returnedReasonByTitle || {},
+    returnedSwipeEvidenceByTitle: (result as any)?.returnedSwipeEvidenceByTitle || {},
+    teenPostPassGlobalHandoffConsidered: Boolean((result as any)?.teenPostPassGlobalHandoffConsidered),
+    teenPostPassGlobalHandoffAcceptedTitles: Array.isArray((result as any)?.teenPostPassGlobalHandoffAcceptedTitles) ? (result as any).teenPostPassGlobalHandoffAcceptedTitles : [],
     final_contract_refill_candidates: trace?.final_contract_refill_candidates ?? [],
     final_contract_refill_accepts: trace?.final_contract_refill_accepts ?? [],
     non_shrunk_restore: trace?.non_shrunk_restore ?? false,
   };
 
-  console.log(`\n=== ${preset.id.toUpperCase()} ===`);
-  console.log(JSON.stringify(fields, null, 2));
+  if (!recommendFunctionReturned) throw new Error(`${preset.id}: recommendFunctionReturned false`);
+  if (runtimeRouterVersion !== EXPECTED_ROUTER_FINGERPRINT) {
+    throw new Error(`${preset.id}: stale runtime artifact detected (debugRouterVersion=${runtimeRouterVersion || 'missing'}, expected=${EXPECTED_ROUTER_FINGERPRINT})`);
+  }
+  if (!routerResultTracePresent || !Boolean(trace?.debugRouterVersion || Object.keys(trace || {}).length > 0)) {
+    throw new Error(`${preset.id}: routerResultTracePresent false`);
+  }
+  if (recommendFunctionError) {
+    throw new Error(`${preset.id}: recommendFunctionError present (${recommendFunctionError})`);
+  }
+  if (!recommendationResultWasPersisted) {
+    throw new Error(`${preset.id}: recommendationResultWasPersisted false`);
+  }
+  if (returnedWithFinalEligibilityRejected.length > 0) {
+    throw new Error(`${preset.id}: returned titles with final_eligibility_rejected: ${returnedWithFinalEligibilityRejected.join(' | ')}`);
+  }
+
+  return {
+    id: preset.id,
+    passed: true,
+    returnedItemsLength,
+    runtimeRouterVersion,
+    routerResultTracePresent,
+    recommendFunctionReturned,
+    recommendationResultWasPersisted,
+    recommendFunctionError: recommendFunctionError || '(none)',
+    fields,
+  };
+}
+
+function printPreset(result: any) {
+  console.log(`\n=== ${String(result?.id || '').toUpperCase()} ===`);
+  console.log(JSON.stringify(result?.fields || {}, null, 2));
 }
 
 (async () => {
+  const presetResults: Array<{
+    id: string;
+    passed: boolean;
+    returnedItemsLength: number;
+    runtimeRouterVersion: string;
+    routerResultTracePresent: boolean;
+    recommendFunctionReturned: boolean;
+    recommendationResultWasPersisted: boolean;
+    recommendFunctionError: string;
+    fields: Record<string, any>;
+  }> = [];
+
   for (const preset of PRESETS) {
-    await runPreset(preset);
+    try {
+      const one = await runPreset(preset);
+      presetResults.push(one);
+      printPreset(one);
+    } catch (error: any) {
+      presetResults.push({
+        id: preset.id,
+        passed: false,
+        returnedItemsLength: 0,
+        runtimeRouterVersion: '(missing)',
+        routerResultTracePresent: false,
+        recommendFunctionReturned: false,
+        recommendationResultWasPersisted: false,
+        recommendFunctionError: String(error?.message || error || 'unknown'),
+        fields: { error: String(error?.message || error || 'unknown') },
+      });
+      console.error(`\n=== ${preset.id.toUpperCase()} ===`);
+      console.error(String(error?.message || error || 'unknown'));
+    }
+  }
+
+  const gateEligible = presetResults.filter((row) =>
+    row.passed &&
+    row.runtimeRouterVersion === EXPECTED_ROUTER_FINGERPRINT &&
+    row.recommendFunctionReturned === true &&
+    row.recommendationResultWasPersisted === true &&
+    row.recommendFunctionError === '(none)' &&
+    row.routerResultTracePresent === true &&
+    row.returnedItemsLength >= 1
+  );
+  const gatePass = gateEligible.length >= 2;
+  console.log('\n=== RELEASE GATE SUMMARY ===');
+  console.log(JSON.stringify({
+    expectedFingerprint: EXPECTED_ROUTER_FINGERPRINT,
+    gateRule: 'fingerprint exact + recommendFunctionReturned:true + recommendFunctionError:(none) + routerResultTracePresent:true + returnedItemsLength>=1 on at least 2/3 presets',
+    passingPresetCount: gateEligible.length,
+    totalPresets: PRESETS.length,
+    passingPresetIds: gateEligible.map((row) => row.id),
+    gatePass,
+  }, null, 2));
+
+  const warnings: Array<{ preset: string; code: string; detail: string }> = [];
+  for (const row of presetResults) {
+    const fields = row.fields || {};
+    const returnedTitles: string[] = Array.isArray(fields.returnedItemsTitles) ? fields.returnedItemsTitles : [];
+    const builtFrom = String(fields.returnedItemsBuiltFrom || '');
+    const reasons = (fields.returnedReasonByTitle || {}) as Record<string, string>;
+    const swipeEvidence = (fields.returnedSwipeEvidenceByTitle || {}) as Record<string, string[]>;
+
+    if (/minimal_safe_one/.test(builtFrom)) {
+      warnings.push({ preset: row.id, code: 'minimal_safe_one_return', detail: builtFrom });
+    }
+    for (const title of returnedTitles) {
+      const reason = String(reasons[title] || '').trim();
+      const evidence = Array.isArray(swipeEvidence[title]) ? swipeEvidence[title] : [];
+      if (!reason) warnings.push({ preset: row.id, code: 'missing_return_reason', detail: title });
+      if (evidence.length === 0) warnings.push({ preset: row.id, code: 'missing_swipe_evidence', detail: title });
+    }
+  }
+  const rootKeyByPreset: Record<string, string> = {};
+  for (const row of presetResults) {
+    const titles: string[] = Array.isArray(row.fields?.returnedItemsTitles) ? row.fields.returnedItemsTitles : [];
+    rootKeyByPreset[row.id] = titles[0] ? titles[0].toLowerCase().trim() : '(none)';
+  }
+  const roots = Object.values(rootKeyByPreset);
+  if (roots.length === PRESETS.length && roots.every((r) => r && r === roots[0])) {
+    warnings.push({ preset: 'all', code: 'same_title_all_presets', detail: roots[0] });
+  }
+  console.log('\n=== QUALITY WARNING SUMMARY (NON-BLOCKING) ===');
+  console.log(JSON.stringify({
+    warningCount: warnings.length,
+    warnings,
+    perPreset: presetResults.map((row) => ({
+      id: row.id,
+      returnedItemsTitles: row.fields?.returnedItemsTitles || [],
+      returnedItemsBuiltFrom: row.fields?.returnedItemsBuiltFrom || '',
+      returnedReasonByTitle: row.fields?.returnedReasonByTitle || {},
+      returnedSwipeEvidenceByTitle: row.fields?.returnedSwipeEvidenceByTitle || {},
+      teenPostPassGlobalHandoffConsidered: row.fields?.teenPostPassGlobalHandoffConsidered || false,
+      teenPostPassGlobalHandoffAcceptedTitles: row.fields?.teenPostPassGlobalHandoffAcceptedTitles || [],
+    })),
+  }, null, 2));
+
+  if (!gatePass) {
+    throw new Error(`release gate failed: ${gateEligible.length}/${PRESETS.length} presets met baseline (need >=2)`);
   }
 })().catch((error) => {
   console.error('[comicvine-trace-harness] failed', error);

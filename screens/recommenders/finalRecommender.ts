@@ -327,7 +327,8 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\b(marvel comics|dc comics|image comics|dark horse comics|boom!?\s*studios|idw publishing|skybound entertainment|dynamite entertainment|valiant comics|vault comics|aftershock comics|mad cave studios|ablaze publishing|black mask studios|scout comics|behemoth comics|red 5 comics|tko studios|ahoy comics|source point press|scholastic graphix|first second books|oni press|fantagraphics|drawn\s*&\s*quarterly|top shelf productions|silver sprocket|nbm graphic novels|selfmadehero|titan comics|udon entertainment|humanoids|archie comics|rebellion|2000 ad|antarctic press|comixology originals)\b/;
 
   if (!title) return { reject: true, reason: 'missing_title', detail: 'empty title' };
-  if ((comicLikeSource || comicLikeItem) && !allowedPublisherPattern.test(publisher)) {
+  const comicVinePublisherTrustedSource = /\bcomicvine\b/.test(source);
+  if ((comicLikeSource || comicLikeItem) && !comicVinePublisherTrustedSource && !allowedPublisherPattern.test(publisher)) {
     return { reject: true, reason: 'low_metadata_trust', detail: `publisher not in allowlist: ${c.publisher || "(missing)"}` };
   }
   if ((!hasAuthor || normalize(c.author) === 'unknown') && !(comicLikeSource || comicLikeItem)) {
@@ -489,7 +490,11 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bstudy guide\b/
   ];
 
-  if (hardRejectTextPatterns.some((rx) => rx.test(text))) {
+  const plausibleNarrativeSeriesAllow =
+    /\b(locke\s*&\s*key|something\s+is\s+killing\s+the\s+children)\b/.test(text) &&
+    /\b(volume|vol\.?|book|tpb|trade paperback|story|saga|comic|graphic novel)\b/.test(text);
+
+  if (!plausibleNarrativeSeriesAllow && hardRejectTextPatterns.some((rx) => rx.test(text))) {
     return { reject: true, reason: 'hard_reject_text', detail: text.slice(0, 180) };
   }
 
