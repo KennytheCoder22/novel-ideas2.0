@@ -10519,7 +10519,7 @@ const normalizedCandidatesRaw = [
   let teenPostPassGlobalHandoffAcceptedTitles: string[] = [];
   const teenPostPassGlobalHandoffRejectedByTitle: Record<string, string> = {};
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
-  if (itemsForReturn.length === 0 && teenPostPassOutputTitles.length > 0) {
+  if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
     teenPostPassGlobalHandoffConsidered = true;
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
     const seenRoots = new Set<string>();
@@ -10561,6 +10561,26 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
       finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
       sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
+    } else {
+      const minimalSafeOne = teenPostPassItems.find((item: any) => {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt) return false;
+        if (/\[google_books_fetch_error\]/i.test(title)) return false;
+        const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+        if (scrubReason && scrubReason.includes("artifact")) return false;
+        const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+        if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !terminalReason.includes("fails_taste_threshold_gate")) return false;
+        return true;
+      });
+      if (minimalSafeOne) {
+        itemsForReturn = [minimalSafeOne];
+        teenPostPassGlobalHandoffAcceptedTitles = [String(minimalSafeOne?.doc?.title || minimalSafeOne?.title || "").trim()].filter(Boolean);
+        sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:minimal_safe_one");
+      } else {
+        sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:no_safe_candidate");
+      }
     }
   }
   finalOutputItems = itemsForReturn;
