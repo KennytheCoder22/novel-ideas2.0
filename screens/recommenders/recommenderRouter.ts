@@ -8191,6 +8191,7 @@ const normalizedCandidatesRaw = [
     if (isLikelySubtitleFragmentTitle(title) && !canonicalSeriesTitleFallbackSafe) return "subtitle_fragment_title_shape";
     if (Boolean(queryTermOnlyEvidenceByTitle[title])) return "query_term_only_evidence";
     if (/\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i.test(title)) return "collection_artifact_wording";
+    if (/\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i.test(title)) return "classroom_reference_artifact_wording";
     if (/amazing fantasy/i.test(title) && !(root === "spider-man" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return "amazing_fantasy_without_spiderman_semantic";
     if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return "hard_lexical_die_artifact";
     return null;
@@ -10421,17 +10422,19 @@ const normalizedCandidatesRaw = [
                 const nt = normalizeText(title);
                 if (!title || !nt) return false;
                 const teenPostPassSuperheroJunkRe = /\b(man and superman|expedition kon-tiki|from ["']?superman["']?\s+to man)\b/i;
+                const teenPostPassExactAllowlistRe = /\b(the wicked \+ the divine|bloom|low orbit|biopunk dystopias)\b/i;
+                const exactAllowlisted = teenPostPassExactAllowlistRe.test(title);
                 const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
-                if (terminalReason && !terminalReason.includes("fallback_no_taste_match")) return false;
+                if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !exactAllowlisted) return false;
                 if (teenPostPassSuperheroJunkRe.test(title)) return false;
-                if (sharedReturnArtifactScrubRejectReason(doc)) return false;
+                if (sharedReturnArtifactScrubRejectReason(doc) && !exactAllowlisted) return false;
                 const returnRejectReason = canReturnTitleRejectReason(title, doc);
                 if (returnRejectReason) {
                   const canBypassForSuperheroSignal =
                     explicitSuperheroSignal &&
                     /superhero_topup_blocked_without_explicit_signal|fails_taste_threshold_gate|fallback_no_taste_match/.test(returnRejectReason) &&
                     /\b(spider[\s-]?man|batman|wonder woman|arkham|superman|teen titans|justice league)\b/i.test(title);
-                  if (!canBypassForSuperheroSignal) return false;
+                  if (!canBypassForSuperheroSignal && !exactAllowlisted) return false;
                   sourceSkippedReason.push(`teen_postpass_superhero_bypass:${title}`);
                 }
                 return true;
