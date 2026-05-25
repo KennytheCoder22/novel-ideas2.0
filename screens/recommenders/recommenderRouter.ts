@@ -220,6 +220,7 @@ function resolveSourceEnabled(input: RecommenderInput): RecommendationSourceDiag
     localLibrary: localLibrarySupported ? config?.localLibrary !== false : false,
     kitsu: config?.kitsu !== false,
     comicVine: gcdEnabled,
+    nyt: config?.nyt === true,
   };
 }
 
@@ -231,6 +232,7 @@ function buildSourceOrigins(config: any): Record<string, string> {
     localLibrary: config?.localLibrary === false ? "explicit_disable" : "default_enabled_or_unsupported",
     kitsu: config?.kitsu === false ? "explicit_disable" : "default_enabled",
     comicVineToggle: config?.comicVine === false ? "explicit_disable" : "default_enabled",
+    nyt: config?.nyt === true ? "explicit_enable" : "default_disabled",
   };
 }
 
@@ -2675,6 +2677,7 @@ export async function getRecommendations(
     localLibrary: [],
     kitsu: [],
     comicVine: [],
+    nyt: [],
   };
   const teensDeckForceBookSources =
     (routedInput as any)?.deckCategory === "teens" ||
@@ -2726,7 +2729,8 @@ export async function getRecommendations(
     sourceDisableReasonsDetailed.localLibrary.push(localReason);
   }
   if (!sourceEnabled.kitsu) sourceDisableReasonsDetailed.kitsu.push("disabled_by_admin_or_config");
-  if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.comicVine) {
+  if (!sourceEnabled.nyt) sourceDisableReasonsDetailed.nyt.push("disabled_by_admin_or_config");
+  if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.comicVine && !sourceEnabled.nyt) {
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED", {
       sourceEnabled,
       sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
@@ -2742,7 +2746,7 @@ export async function getRecommendations(
   const comicVineDispatchBypassGuard = true;
   const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
   const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
-  const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine;
+  const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
   if (routedInput.deckKey === "ms_hs" && sourceEnabled.comicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu) {
     debugRouterLog("COMICVINE_ONLY_SMOKE_PATH", { deckKey: routedInput.deckKey, includeComicVine });
@@ -4376,11 +4380,14 @@ export async function getRecommendations(
   };
 
   const finalLimitForAnchors = Math.max(1, Math.min(10, routingInput.limit ?? 10));
-  const googleFetchFailureDetected = Number(aggregatedRawFetched.googleBooks || 0) === 0;
-  const allowNytInjections = !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
-  const nytAnchorResult = googleFetchFailureDetected
-    ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
-    : await fetchNytAnchorDocs(routedInput, routerFamily);
+  const googleFetchFailureDetected = sourceEnabled.googleBooks && Number(aggregatedRawFetched.googleBooks || 0) === 0;
+  const nytEnabled = Boolean(sourceEnabled.nyt);
+  const allowNytInjections = nytEnabled && !googleFetchFailureDetected && shouldAllowNytAnchorInjections(filteredDocs.length, finalLimitForAnchors);
+  const nytAnchorResult = !nytEnabled
+    ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "nyt_disabled_by_admin_or_config" } }
+    : googleFetchFailureDetected
+      ? { docs: [], debug: { ...nytAnchorDebug, enabled: false, error: "google_books_fetch_failure_detected" } }
+      : await fetchNytAnchorDocs(routedInput, routerFamily);
   nytAnchorDebug = { ...nytAnchorResult.debug, allowInjections: allowNytInjections };
 
   if (nytAnchorResult.docs.length) {
@@ -5366,6 +5373,7 @@ const normalizedCandidatesRaw = [
     openLibrary: 0,
     kitsu: 0,
     comicVine: 0,
+    nyt: 0,
   };
 
   for (const doc of rankedDocsWithDiagnostics) {
@@ -5378,6 +5386,7 @@ const normalizedCandidatesRaw = [
   if (sourceEnabled.openLibrary) labelParts.push("Open Library");
   if (includeKitsu) labelParts.push("Kitsu");
   if (includeComicVine) labelParts.push("ComicVine");
+  if (sourceEnabled.nyt) labelParts.push("NYT");
   if (sourceEnabled.localLibrary) labelParts.push("Local Library");
   const engineLabel = labelParts.join(" + ") || "No enabled sources";
 

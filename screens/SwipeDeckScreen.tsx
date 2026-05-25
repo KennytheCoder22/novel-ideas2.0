@@ -125,6 +125,7 @@ type Props = {
     localLibrary?: boolean;
     kitsu?: boolean;
     comicVine?: boolean;
+    nyt?: boolean;
   };
   localLibrarySupported?: boolean;
   swipeCategories?: {
@@ -913,6 +914,7 @@ export default function SwipeDeckScreen(props: Props) {
     localLibrary: props.localLibrarySupported ? props.recommendationSourceEnabled?.localLibrary !== false : false,
     kitsu: props.recommendationSourceEnabled?.kitsu !== false,
     comicVine: props.recommendationSourceEnabled?.comicVine !== false,
+    nyt: props.recommendationSourceEnabled?.nyt === true,
   };
   const enabledDeckList = useMemo(
     () => (["k2", "36", "ms_hs", "adult"] as DeckKey[]).filter((k) => enabledDecks[k] !== false),
@@ -1550,7 +1552,8 @@ function handleLeft() {
       !sourceEnabled.openLibrary &&
       !sourceEnabled.localLibrary &&
       !sourceEnabled.kitsu &&
-      !sourceEnabled.comicVine;
+      !sourceEnabled.comicVine &&
+      !sourceEnabled.nyt;
     if (allDisabled) {
       setRecError("No enabled recommendation sources");
       setRecItems([]);
@@ -2234,6 +2237,7 @@ function handleLeft() {
       `sourceEnabled.localLibrary:${Boolean(lastSourceEnabled?.localLibrary)}`,
       `sourceEnabled.kitsu:${Boolean(lastSourceEnabled?.kitsu)}`,
       `sourceEnabled.comicVine:${Boolean(lastSourceEnabled?.comicVine)}`,
+      `sourceEnabled.nyt:${Boolean((lastSourceEnabled as any)?.nyt)}`,
       `sourceSkippedReason:${lastSourceSkippedReason.length ? lastSourceSkippedReason.join(", ") : "(none)"}`,
       `debugRouterVersion:${lastDebugRouterVersion || "router-comicvine-proxy-default-v1"}`,
       `deploymentRuntimeMarker:${lastDeploymentRuntimeMarker || "comicvine-proxy-phase"}`,

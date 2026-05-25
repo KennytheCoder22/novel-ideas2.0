@@ -1,6 +1,6 @@
 import type { RecommendationDoc } from './types';
 
-export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'comicVine';
+export type CandidateSource = 'googleBooks' | 'openLibrary' | 'kitsu' | 'comicVine' | 'nyt';
 
 export type FormatCategory = 'manga' | 'graphic_novel' | 'comic' | 'prose';
 

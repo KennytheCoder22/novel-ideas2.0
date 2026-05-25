@@ -98,7 +98,7 @@ function tryLoadDesktopAdminDraft(): any | null {
 
 type DeckKey = "k2" | "36" | "ms_hs" | "adult";
 type SourceKey = "open_library" | "local_collection";
-type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary" | "kitsu" | "gcd";
+type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary" | "kitsu" | "gcd" | "nyt";
 type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
@@ -110,6 +110,7 @@ const DEFAULT_RECOMMENDATION_SOURCE_ENABLED: RecommendationSourceEnabled = {
   localLibrary: false,
   kitsu: true,
   gcd: true,
+  nyt: false,
 };
 
 function resolveRecommendationSourceSettings(cfg: any): {
@@ -127,6 +128,7 @@ function resolveRecommendationSourceSettings(cfg: any): {
     localLibrary: localLibrarySupported ? configured?.localLibrary !== false : false,
     kitsu: configured?.kitsu !== false,
     gcd: configured?.gcd !== false,
+    nyt: configured?.nyt === true,
   };
 
   if (!cfg?.recommendations?.sourceEnabled && typeof legacySource === "string") {
@@ -995,6 +997,16 @@ setMainThemeKey: (t: ThemeKey) => void;
   </View>
   <View style={styles.rowBetween}>
     <View>
+      <Text style={{ color: props.theme.text, fontWeight: "700" }}>New York Times (limited)</Text>
+      <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>Injects at most 1–2 high-match anchors.</Text>
+    </View>
+    <Switch
+      value={props.sourceEnabled.nyt}
+      onValueChange={(next) => props.setSourceEnabled("nyt", next)}
+    />
+  </View>
+  <View style={styles.rowBetween}>
+    <View>
       <Text style={{ color: props.theme.text, fontWeight: "700" }}>This library’s collection</Text>
       {!props.localLibrarySupported ? (
         <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>Not supported in this build yet.</Text>
@@ -1027,7 +1039,8 @@ setMainThemeKey: (t: ThemeKey) => void;
  !props.sourceEnabled.openLibrary &&
  !(props.sourceEnabled.localLibrary && props.localLibrarySupported) &&
  !props.sourceEnabled.kitsu &&
- !props.sourceEnabled.gcd ? (
+ !props.sourceEnabled.gcd &&
+ !props.sourceEnabled.nyt ? (
   <Text style={[styles.noteSmall, { color: props.theme.danger, marginTop: 8 }]}>
     All recommendation sources are disabled. Enable at least one source before running recommendations.
   </Text>
