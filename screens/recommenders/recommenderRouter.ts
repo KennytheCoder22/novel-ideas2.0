@@ -10546,7 +10546,13 @@ const normalizedCandidatesRaw = [
               return false;
             }
             const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
-            if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !terminalReason.includes("fails_taste_threshold_gate")) {
+            const isSoftTerminalReject =
+              terminalReason.includes("fallback_no_taste_match") ||
+              terminalReason.includes("fails_taste_threshold_gate") ||
+              terminalReason.includes("final_eligibility_rejected");
+            const isHardTerminalReject =
+              /age_maturity_blocked|safety|unsafe|artifact|reference|locale|fetch_error/i.test(terminalReason);
+            if (terminalReason && !isSoftTerminalReject && isHardTerminalReject) {
               kitsuNormalRecoveryRejectedByTitle[title] = `terminal_safety_reject:${terminalReason}`;
               return false;
             }
@@ -10557,8 +10563,14 @@ const normalizedCandidatesRaw = [
             }
             const fit = Number(positiveFitScoreByTitle[title] || 0);
             const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
-            if (!(fit > 2 && semanticSupportFound)) {
+            if (!(fit > 1 && semanticSupportFound)) {
               kitsuNormalRecoveryRejectedByTitle[title] = `fit_or_semantic_gate:fit=${fit.toFixed(2)}:semantic=${semanticSupportFound ? 1 : 0}`;
+              return false;
+            }
+            const dislikePenalty = Number(candidateDislikePenaltyByTitle[title] || 0);
+            const weightedTaste = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+            if (dislikePenalty > weightedTaste + 1.25) {
+              kitsuNormalRecoveryRejectedByTitle[title] = `dominant_dislike_penalty:${dislikePenalty.toFixed(2)}>${(weightedTaste + 1.25).toFixed(2)}`;
               return false;
             }
             const root = String(parentFranchiseRootForDoc(doc) || "__none__");
