@@ -185,12 +185,25 @@ function printPreset(result: any) {
   }, null, 2));
 
   const warnings: Array<{ preset: string; code: string; detail: string }> = [];
+  const returnedPathCounts = {
+    normalFinalGate: 0,
+    teenPostPassEmergencyHandoff: 0,
+    globalMinimalSafeFallback: 0,
+  };
   for (const row of presetResults) {
     const fields = row.fields || {};
     const returnedTitles: string[] = Array.isArray(fields.returnedItemsTitles) ? fields.returnedItemsTitles : [];
     const builtFrom = String(fields.returnedItemsBuiltFrom || '');
     const reasons = (fields.returnedReasonByTitle || {}) as Record<string, string>;
     const swipeEvidence = (fields.returnedSwipeEvidenceByTitle || {}) as Record<string, string[]>;
+
+    if (builtFrom.includes('minimal_safe_one')) {
+      returnedPathCounts.globalMinimalSafeFallback += returnedTitles.length;
+    } else if (builtFrom.includes('teen_postpass')) {
+      returnedPathCounts.teenPostPassEmergencyHandoff += returnedTitles.length;
+    } else {
+      returnedPathCounts.normalFinalGate += returnedTitles.length;
+    }
 
     if (/minimal_safe_one/.test(builtFrom)) {
       warnings.push({ preset: row.id, code: 'minimal_safe_one_return', detail: builtFrom });
@@ -214,6 +227,7 @@ function printPreset(result: any) {
   console.log('\n=== QUALITY WARNING SUMMARY (NON-BLOCKING) ===');
   console.log(JSON.stringify({
     warningCount: warnings.length,
+    returnedPathCounts,
     warnings,
     perPreset: presetResults.map((row) => ({
       id: row.id,
