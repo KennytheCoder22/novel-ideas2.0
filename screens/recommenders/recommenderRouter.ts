@@ -184,12 +184,19 @@ function isCollectedStarterLikeText(text: string): boolean {
 function isLikelySubtitleFragmentTitle(title: string): boolean {
   const t = normalizeText(String(title || ""));
   if (!t) return false;
+  if (/^(one dark window|sharp objects|shutter island)$/.test(t)) return false;
   if (isCollectedStarterLikeText(t)) return false;
   if (/\b(part|chapter)\s*(one|two|three|four|five|six|seven|eight|nine|ten|\d+)\b/.test(t)) return true;
   if (/\b\w+\s+of\s+\w+\b/.test(t)) return true;
   if (/\b(conclusion|the end of|finale|aftermath)\b/.test(t)) return true;
   if (/^[a-z0-9' -]{1,40}$/.test(t) && t.split(" ").length <= 4) return true;
   return false;
+}
+
+function isReferenceArtifactTitle(title: string): boolean {
+  const t = String(title || "").toLowerCase();
+  if (!t) return false;
+  return /\b(100 graphic novels for public libraries|public libraries|masters of|index|teaching|literacy|research|screenplays|subject headings|popular culture|focus on)\b/.test(t);
 }
 
 function isLikelyIssueFragmentDoc(doc: any): boolean {
@@ -8192,6 +8199,7 @@ const normalizedCandidatesRaw = [
       return `can_return_title:${canReturnRejectReason}`;
     }
     if (negativeScoreBlockedSet.has(normalizedTitle)) return "negative_score_blocked_set";
+    if (isReferenceArtifactTitle(title)) return "reference_library_artifact";
     if (isLikelySubtitleFragmentTitle(title) && !canonicalSeriesTitleFallbackSafe) return "subtitle_fragment_title_shape";
     if (Boolean(queryTermOnlyEvidenceByTitle[title])) return "query_term_only_evidence";
     if (/\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i.test(title)) return "collection_artifact_wording";
@@ -10487,6 +10495,7 @@ const normalizedCandidatesRaw = [
                 const title = String(doc?.title || item?.title || "").trim();
                 const nt = normalizeText(title);
                 if (!title || !nt) return false;
+                if (isReferenceArtifactTitle(title)) return false;
                 const teenPostPassSuperheroJunkRe = /\b(man and superman|expedition kon-tiki|from ["']?superman["']?\s+to man)\b/i;
                 const teenPostPassExactAllowlistRe = /\b(the wicked \+ the divine|bloom|low orbit|biopunk dystopias)\b/i;
                 const exactAllowlisted = teenPostPassExactAllowlistRe.test(title);
@@ -10558,6 +10567,7 @@ const normalizedCandidatesRaw = [
         const title = String(doc?.title || item?.title || "").trim();
         const nt = normalizeText(title);
         if (!title || !nt) return false;
+        if (isReferenceArtifactTitle(title)) return false;
         if (hardArtifactRe.test(title)) return false;
         const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
         if (terminalReason && !terminalReason.includes("fallback_no_taste_match")) return false;
@@ -10632,6 +10642,7 @@ const normalizedCandidatesRaw = [
         const title = String(doc?.title || item?.title || "").trim();
         const nt = normalizeText(title);
         if (!title || !nt) return false;
+        if (isReferenceArtifactTitle(title)) return false;
         if (/\[google_books_fetch_error\]/i.test(title)) return false;
         const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
         if (scrubReason && scrubReason.includes("artifact")) return false;
