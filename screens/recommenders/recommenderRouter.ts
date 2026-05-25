@@ -5386,8 +5386,12 @@ const normalizedCandidatesRaw = [
   const comicVinePipelineFailureDetected = Boolean((comicVine as any)?.comicVinePipelineFailureDetected);
   const comicVinePipelineFailureReason = String((comicVine as any)?.comicVinePipelineFailureReason || "");
   const comicVineFallbackOnlyResult = Boolean((comicVine as any)?.comicVineFallbackOnlyResult);
+  const fallbackOnlyResult = comicVineFallbackOnlyResult;
   const comicVineFallbackLeakageWarning = String((comicVine as any)?.comicVineFallbackLeakageWarning || "");
   const comicVineRecommendationSetMode = String((comicVine as any)?.comicVineRecommendationSetMode || "unknown");
+  const fallbackHeavyResult =
+    comicVineRecommendationSetMode === "fallback_heavy" ||
+    (comicVineFallbackCount > 0 && comicVineQueryDerivedCount > 0 && comicVineFallbackCount >= comicVineQueryDerivedCount);
   const comicVineNormalRecommendationSet = Boolean((comicVine as any)?.comicVineNormalRecommendationSet);
   const comicVineProtectedTokenFilteredCount = Number((comicVine as any)?.protectedTokenFilteredCount || 0);
   const comicVineSuperheroSuppressionActive = Boolean((comicVine as any)?.superheroSuppressionActive);
