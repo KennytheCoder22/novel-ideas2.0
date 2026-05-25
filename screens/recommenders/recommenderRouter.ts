@@ -10475,12 +10475,12 @@ const normalizedCandidatesRaw = [
             .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
             .filter(Boolean)
         );
-        returnedItemsBuiltFrom = "normal_final_gate_recovery_from_teen_postpass";
-        finalReturnSourceUsed = "normal_final_gate_recovery_from_teen_postpass";
-        sourceSkippedReason.push("final_gate_integrity:normal_final_gate_recovery_from_teen_postpass");
+        returnedItemsBuiltFrom = "normal_final_gate_recovery";
+        finalReturnSourceUsed = "normal_final_gate_recovery";
+        sourceSkippedReason.push("final_gate_integrity:normal_final_gate_recovery");
       }
       const teenPostPassHandoffItems =
-        teenPostPassOutputLength > 0
+        finalOutputItems.length === 0 && teenPostPassOutputLength > 0
           ? teenPostPassItems
               .filter((item: any) => {
                 const doc = item?.doc || item;
@@ -10620,6 +10620,9 @@ const normalizedCandidatesRaw = [
       teenPostPassGlobalHandoffAcceptedTitles = fallbackItems
         .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
         .filter(Boolean);
+      for (const acceptedTitle of teenPostPassGlobalHandoffAcceptedTitles) {
+        delete teenPostPassGlobalHandoffRejectedByTitle[acceptedTitle];
+      }
       returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
       finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
       sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
@@ -10639,6 +10642,9 @@ const normalizedCandidatesRaw = [
       if (minimalSafeOne) {
         itemsForReturn = [minimalSafeOne];
         teenPostPassGlobalHandoffAcceptedTitles = [String(minimalSafeOne?.doc?.title || minimalSafeOne?.title || "").trim()].filter(Boolean);
+        for (const acceptedTitle of teenPostPassGlobalHandoffAcceptedTitles) {
+          delete teenPostPassGlobalHandoffRejectedByTitle[acceptedTitle];
+        }
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:minimal_safe_one");
       } else {
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:no_safe_candidate");
