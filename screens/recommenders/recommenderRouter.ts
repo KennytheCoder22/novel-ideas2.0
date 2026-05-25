@@ -10487,6 +10487,34 @@ const normalizedCandidatesRaw = [
       });
     }
   }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
+    const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
+    const seenRoots = new Set<string>();
+    const teenPostPassGlobalHandoff = teenPostPassItems
+      .filter((item: any) => {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt) return false;
+        if (hardArtifactRe.test(title)) return false;
+        const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+        if (terminalReason && !terminalReason.includes("fallback_no_taste_match")) return false;
+        if (sharedReturnArtifactScrubRejectReason(doc)) return false;
+        const returnRejectReason = canReturnTitleRejectReason(title, doc);
+        if (returnRejectReason && !/fallback_no_taste_match|fails_taste_threshold_gate/.test(returnRejectReason)) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+        if (seenRoots.has(root)) return false;
+        seenRoots.add(root);
+        return true;
+      })
+      .slice(0, Math.max(1, Math.min(3, finalLimit)));
+    if (teenPostPassGlobalHandoff.length > 0) {
+      finalOutputItems = teenPostPassGlobalHandoff;
+      returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
+      finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
+      sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
+    }
+  }
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1
