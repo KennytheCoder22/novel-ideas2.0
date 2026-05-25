@@ -10420,10 +10420,20 @@ const normalizedCandidatesRaw = [
                 const title = String(doc?.title || item?.title || "").trim();
                 const nt = normalizeText(title);
                 if (!title || !nt) return false;
+                const teenPostPassSuperheroJunkRe = /\b(man and superman|expedition kon-tiki|from ["']?superman["']?\s+to man)\b/i;
                 const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
                 if (terminalReason && !terminalReason.includes("fallback_no_taste_match")) return false;
+                if (teenPostPassSuperheroJunkRe.test(title)) return false;
                 if (sharedReturnArtifactScrubRejectReason(doc)) return false;
-                if (canReturnTitleRejectReason(title, doc)) return false;
+                const returnRejectReason = canReturnTitleRejectReason(title, doc);
+                if (returnRejectReason) {
+                  const canBypassForSuperheroSignal =
+                    explicitSuperheroSignal &&
+                    /superhero_topup_blocked_without_explicit_signal|fails_taste_threshold_gate|fallback_no_taste_match/.test(returnRejectReason) &&
+                    /\b(spider[\s-]?man|batman|wonder woman|arkham|superman|teen titans|justice league)\b/i.test(title);
+                  if (!canBypassForSuperheroSignal) return false;
+                  sourceSkippedReason.push(`teen_postpass_superhero_bypass:${title}`);
+                }
                 return true;
               })
               .slice(0, Math.max(1, Math.min(3, finalLimit)))
