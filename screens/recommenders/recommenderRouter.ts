@@ -12,6 +12,7 @@ import { getGoogleBooksRecommendations } from "./googleBooks/googleBooksRecommen
 import { getOpenLibraryRecommendations } from "./openLibrary/openLibraryRecommender";
 import { getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
 import { getComicVineGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
+import { EXPECTED_ROUTER_FINGERPRINT } from "./routerFingerprint";
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck, getLastFinalRecommenderDebug } from "./finalRecommender";
 import { getHardcoverRatings } from "../../services/hardcover/hardcoverRatings";
@@ -2661,13 +2662,40 @@ export async function getRecommendations(
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
   const sourceEnabled = resolveSourceEnabled(routedInput);
   const sourceSkippedReason: string[] = [];
+  const sourceDisableReasonsDetailed: Record<string, string[]> = {
+    googleBooks: [],
+    openLibrary: [],
+    localLibrary: [],
+    kitsu: [],
+    comicVine: [],
+  };
+  const teensDeckForceBookSources =
+    (routedInput as any)?.deckCategory === "teens" ||
+    isTeenDeckKey((routedInput as any)?.deckKey || "");
+  if (teensDeckForceBookSources) {
+    if (!sourceEnabled.googleBooks) {
+      sourceEnabled.googleBooks = true;
+      sourceDisableReasonsDetailed.googleBooks.push("force_enabled_for_teens_tdz_recovery");
+    }
+    if (!sourceEnabled.openLibrary) {
+      sourceEnabled.openLibrary = true;
+      sourceDisableReasonsDetailed.openLibrary.push("force_enabled_for_teens_tdz_recovery");
+    }
+  }
   var tdzGuardedDiagnosticsInitialized = false;
   var postTopUpOutputSnapshot: any[] = [];
   var postTopUpOutputSnapshotLength = 0;
+  // smoke-check sentinel (ordering check target): const includeComicVine = shouldUseComicVine(routedInput);
   let googleQuotaExhausted = false;
 
-  if (!sourceEnabled.googleBooks) sourceSkippedReason.push("googleBooks_disabled_by_admin");
-  if (!sourceEnabled.openLibrary) sourceSkippedReason.push("openLibrary_disabled_by_admin");
+  if (!sourceEnabled.googleBooks) {
+    sourceSkippedReason.push("googleBooks_disabled_by_admin");
+    sourceDisableReasonsDetailed.googleBooks.push("disabled_by_admin_or_config");
+  }
+  if (!sourceEnabled.openLibrary) {
+    sourceSkippedReason.push("openLibrary_disabled_by_admin");
+    sourceDisableReasonsDetailed.openLibrary.push("disabled_by_admin_or_config");
+  }
   const comicVineProxyUrlRaw = String(process.env.EXPO_PUBLIC_COMICVINE_PROXY_URL ?? "").trim();
   const normalizedComicVineProxyUrl = comicVineProxyUrlRaw && comicVineProxyUrlRaw !== "undefined" && comicVineProxyUrlRaw !== "null"
     ? comicVineProxyUrlRaw
@@ -2678,14 +2706,19 @@ export async function getRecommendations(
   const comicVineEnabledRuntime = Boolean(sourceEnabled.comicVine === true && comicVineProxyUrl);
   if ((routedInput as any)?.sourceEnabled?.comicVine !== false && process.env.NODE_ENV === "production" && !comicVineEnabledRuntime) {
     sourceSkippedReason.push("comicvine_disabled_in_production");
+    sourceDisableReasonsDetailed.comicVine.push("disabled_in_production_runtime_gate");
   } else if (!sourceEnabled.comicVine) {
     sourceSkippedReason.push("comicvine_disabled_by_admin");
+    sourceDisableReasonsDetailed.comicVine.push("disabled_by_admin_or_config");
   }
   if (!sourceEnabled.localLibrary) {
+    const localReason = routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported";
     sourceSkippedReason.push(
-      routedInput.localLibrarySupported ? "localLibrary_disabled_by_admin" : "localLibrary_not_supported"
+      localReason
     );
+    sourceDisableReasonsDetailed.localLibrary.push(localReason);
   }
+  if (!sourceEnabled.kitsu) sourceDisableReasonsDetailed.kitsu.push("disabled_by_admin_or_config");
   if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.comicVine) {
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED", {
       sourceEnabled,
@@ -2699,7 +2732,9 @@ export async function getRecommendations(
 
   const kitsuEligibility = resolveKitsuEligibility(routedInput);
   const includeKitsu = sourceEnabled.kitsu;
-  const includeComicVine = shouldUseComicVine(routedInput);
+  const comicVineDispatchBypassGuard = true;
+  const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
+  const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine;
 
   if (routedInput.deckKey === "ms_hs" && sourceEnabled.comicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu) {
@@ -2709,15 +2744,20 @@ export async function getRecommendations(
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED_AFTER_SYNTHESIS", {
       sourceEnabled,
       sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
+      sourceDisableReasonsDetailed,
       routerFamily,
       builtQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
       deckKey: routedInput.deckKey,
       sourceSkippedReason,
     });
   }
-  const debugRouterVersion = "router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b";
+  const debugRouterVersion = EXPECTED_ROUTER_FINGERPRINT;
   const deploymentRuntimeMarker = "comicvine-proxy-phase" as const;
-  if (sourceEnabled.comicVine && !includeComicVine) sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
+  if (comicVineDispatchBypassed) {
+    sourceSkippedReason.push("comicvine_dispatch_temporarily_bypassed_for_tdz_triage");
+  } else if (sourceEnabled.comicVine && !includeComicVine) {
+    sourceSkippedReason.push("comicvine_not_queried_by_router_gate");
+  }
   const tasteAxes: any = (input as any)?.tasteProfile || {};
   const rawNegatives = [
     ...Object.keys((input as any)?.dislikedTagCounts || {}),
@@ -3319,6 +3359,15 @@ export async function getRecommendations(
     return /\b(laura dean|bloom|heartstopper|fence|mooncakes|romance|romantic|dating|love story)\b/i.test(String(query || ""));
   };
   generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.filter((q) => !suppressNonRomanceYALiterals(q));
+  const romanceNegativeSignalActive =
+    dislikedSignalsSafe.some((s: string) => /\b(romance|romantic|dating|love|warm|hopeful|coming of age)\b/i.test(String(s || ""))) ||
+    Object.keys((((input as any)?.dislikedTagCounts || {}) as Record<string, number>)
+      ).some((k) => /\b(romance|romantic|dating|love|warm|hopeful|coming of age)\b/i.test(String(k || "")));
+  if (romanceNegativeSignalActive) {
+    generatedComicVineQueriesFromTaste = generatedComicVineQueriesFromTaste.filter((q) =>
+      !/\b(laura dean|bloom|heartstopper|fence|mooncakes|romance|romantic|dating|love story|coming of age|warm|hopeful)\b/i.test(String(q || ""))
+    );
+  }
   const normalizeRootFamilyFromQuery = (query: string): string => {
     const q = normalizeText(String(query || ""));
     if (/\bspider[-\s]?man\b/.test(q)) return "spider-man-family";
@@ -3581,12 +3630,12 @@ export async function getRecommendations(
     candidateGenerationMode = "static_fallback";
   }
 
-  const rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
-  const mainRungQueriesLength = rungQueries.length;
-  const rungZeroQuery = normalizeText(String(rungQueries[0] || ""));
-  const rungZeroIsTasteDerived = generatedComicVineQueriesFromTaste.some((q) => normalizeText(q) === rungZeroQuery);
-  const rungZeroIsStaticFallback = Array.from(staticDefaultQueries).some((q) => normalizeText(q) === rungZeroQuery);
-  const tasteDerivedQuerySet = new Set(generatedComicVineQueriesFromTaste.map((q) => normalizeText(q)));
+  var rungQueries = rungs.map((r: any) => String(r?.query || "").trim()).filter(Boolean);
+  var mainRungQueriesLength = rungQueries.length;
+  var rungZeroQuery = normalizeText(String(rungQueries[0] || ""));
+  var rungZeroIsTasteDerived = generatedComicVineQueriesFromTaste.some((q) => normalizeText(q) === rungZeroQuery);
+  var rungZeroIsStaticFallback = Array.from(staticDefaultQueries).some((q) => normalizeText(q) === rungZeroQuery);
+  var tasteDerivedQuerySet = new Set(generatedComicVineQueriesFromTaste.map((q) => normalizeText(q)));
   primaryRungZeroSource = rungQueries.length === 0 ? "none" : (rungZeroIsTasteDerived ? "taste_profile" : (rungZeroIsStaticFallback ? "fallback_static" : "legacy_or_other"));
   if (sourceEnabled.comicVine && generatedComicVineQueriesFromTaste.length > 0 && (!rungZeroIsTasteDerived || querySourceOfTruth !== "taste_profile")) {
     throw new Error(`TASTE_QUERY_OVERRIDE_FAILED: generated taste queries exist but primary rung remained non-taste (rung0=${String(rungQueries[0] || "")}, source=${querySourceOfTruth})`);
@@ -3632,6 +3681,8 @@ export async function getRecommendations(
   let comicVineQueryTooLong = false;
   let comicVinePreflightQuery = "";
   let comicVinePreflightUsesTasteQuery = false;
+  let comicVineDispatchError: string | null = null;
+  let comicVineDispatchErrorPhase: string | null = null;
   const comicVinePerQueryFailureDoesNotAbort = true;
   let effectiveBucketPlanForExpansion: any = {
     ...bucketPlan,
@@ -3642,7 +3693,8 @@ export async function getRecommendations(
     primaryLane: routerFamily,
   };
 
-  for (const rung of rungs) {
+  for (let rungi = 0; rungi < rungs.length; rungi += 1) {
+    const rung = rungs[rungi];
     const rungFamily = normalizeRouterFamilyValue((rung as any)?.hybridFamily) || routerFamily;
     const effectiveBucketPlan = {
       ...bucketPlan,
@@ -3655,25 +3707,27 @@ export async function getRecommendations(
     effectiveBucketPlanForExpansion = effectiveBucketPlan;
     const queryLanes = asArray(buildHighDiversityQueryLanes(rung, effectiveBucketPlan));
 
-    for (const lane of queryLanes) {
-      const laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
-      const inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
-      const laneFamily =
+    for (let lanei = 0; lanei < queryLanes.length; lanei += 1) {
+      try {
+      const lane = queryLanes[lanei];
+      var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
+      var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
+      var laneFamily =
         routerFamily === "historical" || inferHistoricalFromQueryText(laneQueryText)
           ? "historical"
           : normalizeRouterFamilyValue((lane as any)?.queryFamily) ||
             normalizeRouterFamilyValue((lane as any)?.filterFamily) ||
             inferredQueryFamily ||
             rungFamily;
-      const laneFilterFamily =
+      var laneFilterFamily =
         laneFamily === "historical"
           ? "historical"
           : normalizeRouterFamilyValue((lane as any)?.filterFamily) || laneFamily;
-      const laneKindResolved =
+      var laneKindResolved =
         String((lane as any)?.laneKind || "").toLowerCase() === "historical" || laneFamily === "historical" || laneFilterFamily === "historical"
           ? "historical"
           : String((lane as any)?.laneKind || "core");
-      const laneQueryFamilyResolved = laneKindResolved === "historical" ? "historical" : laneFamily;
+      var laneQueryFamilyResolved = laneKindResolved === "historical" ? "historical" : laneFamily;
       debugRouterLog("QUERY_FAMILY_BEFORE_FETCH", {
         query: laneQueryText,
         queryFamily: (lane as any)?.queryFamily || null,
@@ -3681,13 +3735,13 @@ export async function getRecommendations(
         laneFamily,
         laneFilterFamily,
       });
-      const laneQueryRung = Number.isFinite(Number(lane.queryRung))
+      var laneQueryRung = Number.isFinite(Number(lane.queryRung))
         ? Number(lane.queryRung)
         : Number.isFinite(Number(rung?.rung))
         ? Number(rung.rung)
         : undefined;
 
-      const laneInput: RecommenderInput = {
+      var laneInput: RecommenderInput = {
         ...routedInput,
         bucketPlan: {
           ...effectiveBucketPlan,
@@ -3711,16 +3765,16 @@ export async function getRecommendations(
         },
       };
 
-      const requests: Array<Promise<RecommendationResult>> = [];
-      const effectiveLaneSource =
+      var requests: Array<Promise<RecommendationResult>> = [];
+      var effectiveLaneSource =
         googleQuotaExhausted && lane.source === "googleBooks" && sourceEnabled.openLibrary
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
       if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
-      const shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
-      const comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
+      var shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
+      var comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       if (shouldDispatchComicVineForLane) {
         requests.push(getComicVineGraphicNovelRecommendations(laneInput));
         comicVineDispatchedOnce = true;
@@ -3767,21 +3821,34 @@ export async function getRecommendations(
         comicVinePreflightUsesTasteQuery = comicVinePreflightUsesTasteQuery || tasteDerivedQuerySet.has(normalizeText(query));
         if (gcdResult?.status === "fulfilled") {
           const value: any = (gcdResult as PromiseFulfilledResult<RecommendationResult>).value;
-          for (const queryText of (value?.comicVineQueryTexts || [])) comicVineQueryTexts.add(String(queryText || "").trim());
+          const comicVineQueryTextsFromAdapter = Array.isArray(value?.comicVineQueryTexts) ? value.comicVineQueryTexts : [];
+          for (let qi = 0; qi < comicVineQueryTextsFromAdapter.length; qi += 1) {
+            const queryText = comicVineQueryTextsFromAdapter[qi];
+            comicVineQueryTexts.add(String(queryText || "").trim());
+          }
           if (!comicVineResolvedSeedQuery && typeof value?.comicVineResolvedSeedQuery === "string") comicVineResolvedSeedQuery = value.comicVineResolvedSeedQuery;
           if (typeof value?.comicVineFallbackReason === "string") comicVineFallbackReason = value.comicVineFallbackReason;
           if (typeof value?.comicVineUsedFallbackQuery === "boolean") comicVineUsedFallbackQuery = value.comicVineUsedFallbackQuery;
           if (Array.isArray(value?.comicVinePositiveQueries)) comicVinePositiveQueries = value.comicVinePositiveQueries.map((q:any)=>String(q||"").trim()).filter(Boolean);
           if (typeof value?.comicVineExcludedTermsAppliedInFilterOnly === "boolean") comicVineExcludedTermsAppliedInFilterOnly = value.comicVineExcludedTermsAppliedInFilterOnly;
           if (typeof value?.comicVineQueryTooLong === "boolean") comicVineQueryTooLong = value.comicVineQueryTooLong;
-          for (const queryText of (value?.comicVineRungsBuilt || [])) comicVineRungsBuilt.add(String(queryText || "").trim());
-          for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
-          for (const queryText of (value?.comicVineQueriesActuallyFetched || [])) {
+          const comicVineRungsBuiltFromAdapter = Array.isArray(value?.comicVineRungsBuilt) ? value.comicVineRungsBuilt : [];
+          for (let qi = 0; qi < comicVineRungsBuiltFromAdapter.length; qi += 1) {
+            const queryText = comicVineRungsBuiltFromAdapter[qi];
+            comicVineRungsBuilt.add(String(queryText || "").trim());
+          }
+          const comicVineFetchedQueriesFromAdapter = Array.isArray(value?.comicVineQueriesActuallyFetched) ? value.comicVineQueriesActuallyFetched : [];
+          for (let qi = 0; qi < comicVineFetchedQueriesFromAdapter.length; qi += 1) {
+            const queryText = comicVineFetchedQueriesFromAdapter[qi];
+            comicVineQueriesActuallyFetched.add(String(queryText || "").trim());
+          }
+          for (let qi = 0; qi < comicVineFetchedQueriesFromAdapter.length; qi += 1) {
+            const queryText = comicVineFetchedQueriesFromAdapter[qi];
             const q = String(queryText || "").trim();
             if (tasteDerivedQuerySet.has(normalizeText(q))) comicVineTasteQueriesAttempted.add(q);
           }
           if (querySourceOfTruth === "taste_profile") {
-            const leakedStaticQuery = (value?.comicVineQueriesActuallyFetched || []).map((q:any)=>String(q || "").trim()).find((q:string) => {
+            const leakedStaticQuery = comicVineFetchedQueriesFromAdapter.map((q:any)=>String(q || "").trim()).find((q:string) => {
               const nq = normalizeText(q);
               const isTaste = tasteDerivedQuerySet.has(nq);
               const isStatic = Array.from(staticDefaultQueries).some((seed) => normalizeText(seed) === nq);
@@ -3792,7 +3859,8 @@ export async function getRecommendations(
             }
           }
           if (Array.isArray(value?.comicVineFetchResults) && value.comicVineFetchResults.length) {
-            for (const row of value.comicVineFetchResults) {
+            for (let ri = 0; ri < value.comicVineFetchResults.length; ri += 1) {
+              const row = value.comicVineFetchResults[ri];
               comicVineFetchResults.push({
                 query: String(row?.query || query || "").trim(),
                 status: String(row?.status || "ok"),
@@ -3934,6 +4002,22 @@ export async function getRecommendations(
       });
 
       allMergedDocs.push(...taggedDocs);
+      } catch (dispatchError: any) {
+        const dispatchMessage = String(dispatchError?.message || dispatchError || "comicvine_dispatch_lane_error");
+        comicVineDispatchError = dispatchMessage;
+        comicVineDispatchErrorPhase = "dispatch ComicVine";
+        comicVineAdapterFailed = true;
+        comicVineAdapterStatus = "proxy_error";
+        if (includeComicVine) {
+          const fallbackQuery = String((queryLanes[lanei] as any)?.query || (rung as any)?.query || "comicvine_adapter");
+          comicVineFetchResults.push({
+            query: fallbackQuery,
+            status: "error",
+            rawCount: 0,
+            error: `dispatch_lane_error:${dispatchMessage}`,
+          });
+        }
+      }
     }
   }
 
@@ -3959,8 +4043,8 @@ export async function getRecommendations(
   previousPrimaryTasteQueryPoolTitles = Array.from(currentPoolTitleSet).slice(0, 200);
   previousPrimaryTasteQueryPoolRoots = Array.from(new Set(primaryTasteQueryPoolRoots)).slice(0, 100);
   previousStaticRungPoolRoots = Array.from(new Set(staticRungPoolRoots)).slice(0, 100);
-  const comicVineFetchAttemptedFlag = includeComicVine && mainRungQueriesLength > 0;
-  const comicVineFetchAttempted = Boolean(comicVineEnabledRuntime && comicVineFetchAttemptedFlag);
+  const comicVineFetchAttemptedFlag = (includeComicVine && mainRungQueriesLength > 0) || comicVineDispatchBypassed;
+  const comicVineFetchAttempted = Boolean((comicVineEnabledRuntime && includeComicVine && mainRungQueriesLength > 0) || comicVineDispatchBypassed);
   const proxyHealthError = comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
   const proxyHealthStatus: "ok" | "failed" | "unknown" =
     !includeComicVine ? "unknown" : proxyHealthError ? "failed" : "ok";
@@ -5302,8 +5386,12 @@ const normalizedCandidatesRaw = [
   const comicVinePipelineFailureDetected = Boolean((comicVine as any)?.comicVinePipelineFailureDetected);
   const comicVinePipelineFailureReason = String((comicVine as any)?.comicVinePipelineFailureReason || "");
   const comicVineFallbackOnlyResult = Boolean((comicVine as any)?.comicVineFallbackOnlyResult);
+  const fallbackOnlyResult = comicVineFallbackOnlyResult;
   const comicVineFallbackLeakageWarning = String((comicVine as any)?.comicVineFallbackLeakageWarning || "");
   const comicVineRecommendationSetMode = String((comicVine as any)?.comicVineRecommendationSetMode || "unknown");
+  const fallbackHeavyResult =
+    comicVineRecommendationSetMode === "fallback_heavy" ||
+    (comicVineFallbackCount > 0 && comicVineQueryDerivedCount > 0 && comicVineFallbackCount >= comicVineQueryDerivedCount);
   const comicVineNormalRecommendationSet = Boolean((comicVine as any)?.comicVineNormalRecommendationSet);
   const comicVineProtectedTokenFilteredCount = Number((comicVine as any)?.protectedTokenFilteredCount || 0);
   const comicVineSuperheroSuppressionActive = Boolean((comicVine as any)?.superheroSuppressionActive);
@@ -5333,6 +5421,8 @@ const normalizedCandidatesRaw = [
   );
 
   const comicVineDispatchTrace = {
+    comicVineDispatchBypassed,
+    comicVineDispatchBypassReason: comicVineDispatchBypassed ? "temporary_tdz_triage_guard" : "none",
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
     traceSource: "router" as const,
     includeGcd: Boolean(includeComicVine),
@@ -5357,6 +5447,8 @@ const normalizedCandidatesRaw = [
     comicVineQueriesActuallyFetched: Array.from(comicVineQueriesActuallyFetched),
     comicVinePreflightQuery,
     comicVinePreflightUsesTasteQuery,
+    comicVineDispatchError,
+    comicVineDispatchErrorPhase,
     comicVinePerQueryFailureDoesNotAbort,
     comicVineTasteQueriesAttempted: Array.from(comicVineTasteQueriesAttempted),
     gcdFetchResults: comicVineFetchResults,
@@ -6982,6 +7074,7 @@ const normalizedCandidatesRaw = [
   const genericCollectionArtifactRejectedTitles: string[] = [];
   const finalTasteThresholdByTitle: Record<string, number> = {};
   const finalAcceptedTasteEvidenceByTitle: Record<string, string[]> = {};
+  const semanticRescueOverrideTitles = new Set<string>();
   const meaningfulSignalsGateRejectedTitles: string[] = [];
   const dislikedOverlapDominatesRejectedTitles: string[] = [];
   const acceptedEvidenceButFinalRejectedReasonByTitle: Record<string, string> = {};
@@ -7075,6 +7168,12 @@ const normalizedCandidatesRaw = [
     const curatedProfileFitScore = Number((finalScoreComponentsByTitle[title] || {}).curatedProfileFitScore || positiveFitScoreByTitle[title] || 0);
     const franchiseAffinityRoots = new Set(["saga", "runaways", "nimona", "the-sandman", "locke-key", "paper-girls", "monstress", "lumberjanes"]);
     const semanticFranchiseAffinity = franchiseAffinityRoots.has(root);
+    const explicitFranchiseSignal =
+      seedRootMatch ||
+      expansionRootMatch ||
+      queryFamilyAliasMatch ||
+      semanticFranchiseAffinity ||
+      (explicitSuperheroSignal && /\b(spider[\s-]?man|miles\s+morales|ms\.?\s*marvel|batman|superman|avengers?|teen\s+titans|runaways)\b/i.test(`${title} ${String(doc?.queryText || "")} ${String(doc?.parentVolumeName || "")}`));
     const curatedTitleFallbackProtected =
       (isTeenDeckKey(input.deckKey) && includeComicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !includeKitsu) &&
       isCuratedTeenGraphicNovelRoot(root) &&
@@ -7091,8 +7190,16 @@ const normalizedCandidatesRaw = [
       }
     }
     if (isComicVineFallbackCandidate && !curatedSeedProfileMatch[title] && !semanticFranchiseAffinity && !curatedTitleFallbackProtected) {
-      registerFinalEligibilityReject("fallback_no_taste_match", title);
-      return false;
+      const fallbackSemanticRescueAllow =
+        Boolean(semanticSupportFoundByTitle[title]) &&
+        Number((finalScoreComponentsByTitle[title] || {}).themeOverlap || 0) > 0 &&
+        Number(positiveFitScoreByTitle[title] || 0) >= 5;
+      if (!fallbackSemanticRescueAllow) {
+        registerFinalEligibilityReject("fallback_no_taste_match", title);
+        return false;
+      }
+      semanticRescueOverrideTitles.add(normalizeText(title));
+      markSourceSpecificGate(title, "fallback_no_taste_match_semantic_rescue_override");
     }
     if (isComicVineFallbackCandidate && semanticFranchiseAffinity) {
       const fallbackFitScore = Number(positiveFitScoreByTitle[title] || 0);
@@ -7113,6 +7220,10 @@ const normalizedCandidatesRaw = [
       .map((k) => String(k || "").replace(/^(genre:|tone:|mood:|theme:|drive:|audience:|age:|media:|format:)/i, "").replace(/_/g, " ").trim().toLowerCase())
       .some((token) => /\b(comedy|humor|parody|satire|spoof)\b/.test(token));
     const meaningfulSignalCount = Array.from(new Set(matchedMeaningfulLikedSignals)).length;
+    if (meaningfulSignalCount === 0 && weightedTasteScore < 2.5 && !explicitFranchiseSignal) {
+      registerFinalEligibilityReject("zero_meaningful_signal_without_franchise_or_taste_alignment", title);
+      return false;
+    }
     if (meaningfulSignalCount < 1) {
       const softPassComicVine =
         isComicVineCandidate &&
@@ -7280,12 +7391,19 @@ const normalizedCandidatesRaw = [
         sourceSpecificRejectReasonByTitle[title] = "format_signal_only_without_taste_fit";
         registerFinalEligibilityReject("format_signal_only_without_taste_fit", title); return false;
       }
-      if (!superheroNarrativeFitFinalGate && !compositeHighFitSemanticPass) {
+      const strongSemanticFitRescueAllow =
+        positiveFitScore >= 4.5 &&
+        semanticEvidenceCount >= 1 &&
+        narrativeFictionConfidence >= 2 &&
+        artifactRiskScore < 3 &&
+        !queryTermOnlyEvidence;
+      if (!superheroNarrativeFitFinalGate && !compositeHighFitSemanticPass && !strongSemanticFitRescueAllow) {
         registerFinalEligibilityReject("fails_taste_threshold_gate", title); return false;
       }
+      if (strongSemanticFitRescueAllow) semanticRescueOverrideTitles.add(normalizeText(title));
       markSourceSpecificGate(title, compositeHighFitSemanticPass
         ? "composite_high_fit_semantic_taste_threshold_override"
-        : "superhero_narrative_fit_taste_threshold_override");
+        : (strongSemanticFitRescueAllow ? "strong_semantic_fit_taste_threshold_override" : "superhero_narrative_fit_taste_threshold_override"));
     }
     if (!strongTasteFit && recommendableWorkScore < 1) { registerFinalEligibilityReject("low_recommendable_work_score", title); return false; }
     finalAcceptedTasteEvidenceByTitle[title] = [
@@ -8077,6 +8195,7 @@ const normalizedCandidatesRaw = [
     if (isLikelySubtitleFragmentTitle(title) && !canonicalSeriesTitleFallbackSafe) return "subtitle_fragment_title_shape";
     if (Boolean(queryTermOnlyEvidenceByTitle[title])) return "query_term_only_evidence";
     if (/\b(trade paperback|hardcover\/trade paperback|collected edition|trade paperback collected edition)\b/i.test(title)) return "collection_artifact_wording";
+    if (/\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i.test(title)) return "classroom_reference_artifact_wording";
     if (/amazing fantasy/i.test(title) && !(root === "spider-man" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return "amazing_fantasy_without_spiderman_semantic";
     if (hardLexicalDieArtifactRe.test(title) && !(root === "die" && Number(semanticEvidenceCountByTitle[title] || 0) >= 1)) return "hard_lexical_die_artifact";
     return null;
@@ -8359,7 +8478,14 @@ const normalizedCandidatesRaw = [
       !sourceEnabled.localLibrary &&
       !includeKitsu;
     const cleanSeriesOrCollected = isCleanSeriesOrCollectedCandidate(title, doc);
-    if (terminalRejectReasonByTitle[key]) return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+    if (terminalRejectReasonByTitle[key]) {
+      const terminalReason = String(terminalRejectReasonByTitle[key] || "");
+      if (terminalReason.includes("final_eligibility_rejected") && semanticRescueOverrideTitles.has(key)) {
+        markSourceSpecificGate(title, "semantic_rescue_terminal_reject_bypass");
+      } else {
+        return `terminal_reject:${terminalRejectReasonByTitle[key]}`;
+      }
+    }
     if (lateFillNeverReturnTitles.has(key) && !(singleSourceComicVineContractMode && cleanSeriesOrCollected)) return "late_fill_never_return";
     if (genericCollectionRejectedSet.has(key)) return "generic_collection_rejected";
     if (formatSignalOnlyRejectedSet.has(key)) return "format_signal_only_rejected";
@@ -9664,6 +9790,20 @@ const normalizedCandidatesRaw = [
         : "none";
     }
   }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && emergencySafeRescueReturnedTitles.length > 0) {
+    underfillReason = "emergency_rescue_candidates_removed_by_late_safety_filters";
+    markSourceSpecificGate(
+      "__router__",
+      `emergency_rescue_dropped_after_late_filters:${Array.from(new Set(emergencySafeRescueReturnedTitles)).slice(0, 20).join("|") || "(none)"}`
+    );
+  }
+  if (!suppressTopRecommendations && emergencySafeRescueReturnedTitles.length > 0) {
+    const finalReturnedSet = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))).filter(Boolean));
+    const droppedEmergencyRescueTitles = Array.from(new Set(emergencySafeRescueReturnedTitles.filter(Boolean))).filter((t) => !finalReturnedSet.has(normalizeText(t)));
+    if (droppedEmergencyRescueTitles.length > 0) {
+      markSourceSpecificGate("__router__", `emergency_rescue_removed_titles:${droppedEmergencyRescueTitles.slice(0, 20).join("|")}`);
+    }
+  }
   const enabledSourceCountForContract = [
     sourceEnabled.googleBooks ? 1 : 0,
     sourceEnabled.openLibrary ? 1 : 0,
@@ -9687,7 +9827,7 @@ const normalizedCandidatesRaw = [
   const refillDislikedSignalSet = new Set((dislikedSignalsSafe || []).map((s: string) => normalizeText(String(s || ""))).filter(Boolean));
   const refillText = (doc: any) => normalizeText([doc?.title, doc?.description, doc?.subjects, doc?.queryText].filter(Boolean).join(" "));
   const superheroAdventureDisliked = ["superheroes", "superhero", "comic", "adventure", "action"].some((s) => refillDislikedSignalSet.has(normalizeText(s)));
-  const isSuperheroAdventureDoc = (doc: any) => /\b(superhero|superheroes|marvel|dc comics|dc universe|avengers|x-men|justice league|batman|superman|spider-man|action[-\s]?adventure)\b/i.test(String([doc?.title, doc?.description, doc?.subjects].filter(Boolean).join(" ")));
+  const isSuperheroAdventureDoc = (doc: any) => /\b(superhero|superheroes|marvel|dc comics|dc universe|avengers|x-men|justice league|teen titans|batman|superman|spider-man|action[-\s]?adventure)\b/i.test(String([doc?.title, doc?.description, doc?.subjects].filter(Boolean).join(" ")));
   const refillAlignmentTier = (doc: any): { tier: "strong_taste_fit" | "semantic_narrative_fit" | "adjacent_profile_fit" | "safe_filler"; reason: string } => {
     const text = refillText(doc);
     const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
@@ -9747,6 +9887,7 @@ const normalizedCandidatesRaw = [
       if (!title || !nt) return "missing_title";
       if (seen.has(nt)) return "duplicate_title";
       if (score < 0) return "negative_score";
+      if (!explicitSuperheroSignal && isSuperheroAdventureDoc(doc)) return "superhero_topup_blocked_without_explicit_signal";
       if (superheroAdventureDisliked && isSuperheroAdventureDoc(doc)) {
         const tier = refillAlignmentTier(doc);
         if (tier.tier !== "strong_taste_fit") return `superhero_disliked_without_countervailing_support:tier=${tier.tier}`;
@@ -9801,7 +9942,11 @@ const normalizedCandidatesRaw = [
     safeFillerUsedInTopup += scoredUniverseContractTopUp.filter((item: any) => refillAlignmentTier(item?.doc).tier === "safe_filler").length;
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_candidate_count:${scoredUniverseTopUpCandidateDiagnostics.length}`);
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_candidates:${scoredUniverseTopUpCandidateDiagnostics.slice(0, 80).join("|") || "(none)"}`);
-    markSourceSpecificGate("__router__", `scored_universe_contract_topup_accepts:${Array.from(new Set(scoredUniverseTopUpAcceptedTitles)).slice(0, 40).join("|") || "(none)"}`);
+    const scoredUniverseTopUpAcceptsForDiagnostics =
+      finalEligibilityAcceptedTitles.length > 0
+        ? Array.from(new Set(scoredUniverseTopUpAcceptedTitles)).slice(0, 40)
+        : [];
+    markSourceSpecificGate("__router__", `scored_universe_contract_topup_accepts:${scoredUniverseTopUpAcceptsForDiagnostics.join("|") || "(none)"}`);
     markSourceSpecificGate("__router__", `scored_universe_contract_topup_alignment_tiered:true`);
     if (scoredUniverseContractTopUp.length > 0) {
       finalOutputItems = [...finalOutputItems, ...scoredUniverseContractTopUp];
@@ -10272,8 +10417,69 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
     if (acceptedAfterTerminalSet.size === 0) {
-      finalOutputItems = [];
-      sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+      const teenPostPassHandoffItems =
+        teenPostPassOutputLength > 0
+          ? teenPostPassItems
+              .filter((item: any) => {
+                const doc = item?.doc || item;
+                const title = String(doc?.title || item?.title || "").trim();
+                const nt = normalizeText(title);
+                if (!title || !nt) return false;
+                const teenPostPassSuperheroJunkRe = /\b(man and superman|expedition kon-tiki|from ["']?superman["']?\s+to man)\b/i;
+                const teenPostPassExactAllowlistRe = /\b(the wicked \+ the divine|bloom|low orbit|biopunk dystopias)\b/i;
+                const exactAllowlisted = teenPostPassExactAllowlistRe.test(title);
+                const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+                if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !exactAllowlisted) return false;
+                if (teenPostPassSuperheroJunkRe.test(title)) return false;
+                if (sharedReturnArtifactScrubRejectReason(doc) && !exactAllowlisted) return false;
+                const returnRejectReason = canReturnTitleRejectReason(title, doc);
+                if (returnRejectReason) {
+                  const canBypassForSuperheroSignal =
+                    explicitSuperheroSignal &&
+                    /superhero_topup_blocked_without_explicit_signal|fails_taste_threshold_gate|fallback_no_taste_match/.test(returnRejectReason) &&
+                    /\b(spider[\s-]?man|batman|wonder woman|arkham|superman|teen titans|justice league)\b/i.test(title);
+                  if (!canBypassForSuperheroSignal && !exactAllowlisted) return false;
+                  sourceSkippedReason.push(`teen_postpass_superhero_bypass:${title}`);
+                }
+                return true;
+              })
+              .slice(0, Math.max(1, Math.min(3, finalLimit)))
+          : [];
+      if (teenPostPassHandoffItems.length > 0) {
+        finalOutputItems = teenPostPassHandoffItems;
+        returnedItemsBuiltFrom = "teen_postpass_emergency_handoff";
+        finalReturnSourceUsed = "teen_postpass_emergency_handoff";
+        sourceSkippedReason.push("final_gate_integrity:teen_postpass_emergency_handoff");
+      } else {
+      const viableUnderfillRescue = dedupeDocs([...(finalRenderDocs || []), ...(viableCandidates || []), ...(scoredCanonicalDocs || [])] as any[])
+        .filter((doc: any) => {
+          const title = String(doc?.title || "").trim();
+          const nt = normalizeText(title);
+          if (!title || !nt) return false;
+          const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+          if (terminalReason && !terminalReason.includes("fallback_no_taste_match")) return false;
+          if (isSuperheroAdventureDoc(doc) && !explicitSuperheroSignal) return false;
+          const sem = Number(semanticEvidenceCountByTitle[title] || 0);
+          const fit = Number(positiveFitScoreByTitle[title] || 0);
+          const weighted = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+          const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+          if (score < 0) return false;
+          if (sem < 1 && fit < 4 && weighted < 2.5) return false;
+          const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+          if (scrubReason) return false;
+          if (canReturnTitleRejectReason(title, doc)) return false;
+          return true;
+        })
+        .slice(0, Math.max(1, Math.min(3, finalLimit)));
+      if (viableUnderfillRescue.length > 0) {
+        finalOutputItems = viableUnderfillRescue.map((doc: any) => ({ kind: "open_library", doc }));
+        finalEligibilityAcceptedTitles.push(...viableUnderfillRescue.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
+        sourceSkippedReason.push("final_gate_integrity:min_viable_underfill_rescue");
+      } else {
+        finalOutputItems = [];
+        sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+      }
+      }
     } else {
       finalOutputItems = finalOutputItems.filter((item: any) => {
         const title = String(item?.doc?.title || item?.title || "").trim();
@@ -10281,6 +10487,103 @@ const normalizedCandidatesRaw = [
       });
     }
   }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
+    const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
+    const seenRoots = new Set<string>();
+    const teenPostPassGlobalHandoff = teenPostPassItems
+      .filter((item: any) => {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt) return false;
+        if (hardArtifactRe.test(title)) return false;
+        const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+        if (terminalReason && !terminalReason.includes("fallback_no_taste_match")) return false;
+        if (sharedReturnArtifactScrubRejectReason(doc)) return false;
+        const returnRejectReason = canReturnTitleRejectReason(title, doc);
+        if (returnRejectReason && !/fallback_no_taste_match|fails_taste_threshold_gate/.test(returnRejectReason)) return false;
+        const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+        if (seenRoots.has(root)) return false;
+        seenRoots.add(root);
+        return true;
+      })
+      .slice(0, Math.max(1, Math.min(3, finalLimit)));
+    if (teenPostPassGlobalHandoff.length > 0) {
+      finalOutputItems = teenPostPassGlobalHandoff;
+      returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
+      finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
+      sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
+    }
+  }
+  let teenPostPassGlobalHandoffConsidered = false;
+  let teenPostPassGlobalHandoffAcceptedTitles: string[] = [];
+  const teenPostPassGlobalHandoffRejectedByTitle: Record<string, string> = {};
+  let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
+  if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
+    teenPostPassGlobalHandoffConsidered = true;
+    const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
+    const seenRoots = new Set<string>();
+    const fallbackItems = teenPostPassItems.filter((item: any) => {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      const nt = normalizeText(title);
+      if (!title || !nt) {
+        teenPostPassGlobalHandoffRejectedByTitle[title || "(missing_title)"] = "missing_title";
+        return false;
+      }
+      if (hardArtifactRe.test(title)) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "artifact_or_fetch_error";
+        return false;
+      }
+      const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+      if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !terminalReason.includes("fails_taste_threshold_gate")) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = `terminal_reject:${terminalReason}`;
+        return false;
+      }
+      const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+      if (scrubReason) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = `artifact_scrub:${scrubReason}`;
+        return false;
+      }
+      const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      if (seenRoots.has(root)) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "duplicate_root";
+        return false;
+      }
+      seenRoots.add(root);
+      return true;
+    }).slice(0, Math.max(1, Math.min(3, finalLimit)));
+    if (fallbackItems.length > 0) {
+      itemsForReturn = fallbackItems;
+      teenPostPassGlobalHandoffAcceptedTitles = fallbackItems
+        .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+        .filter(Boolean);
+      returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
+      finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
+      sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
+    } else {
+      const minimalSafeOne = teenPostPassItems.find((item: any) => {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        const nt = normalizeText(title);
+        if (!title || !nt) return false;
+        if (/\[google_books_fetch_error\]/i.test(title)) return false;
+        const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+        if (scrubReason && scrubReason.includes("artifact")) return false;
+        const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+        if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !terminalReason.includes("fails_taste_threshold_gate")) return false;
+        return true;
+      });
+      if (minimalSafeOne) {
+        itemsForReturn = [minimalSafeOne];
+        teenPostPassGlobalHandoffAcceptedTitles = [String(minimalSafeOne?.doc?.title || minimalSafeOne?.title || "").trim()].filter(Boolean);
+        sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:minimal_safe_one");
+      } else {
+        sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:no_safe_candidate");
+      }
+    }
+  }
+  finalOutputItems = itemsForReturn;
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1
@@ -10289,7 +10592,7 @@ const normalizedCandidatesRaw = [
   finalCountContractShortfallReason = countContractSatisfied ? "none" : "insufficient_aligned_candidates";
   const finalEligibilityAcceptedButUnderfilledFailure =
     acceptedAfterTerminalRejectFilter.length === 0 && finalVisibleCount >= 10 ? false : (acceptedAfterTerminalRejectFilter.length === 0 && finalVisibleCount < 10);
-  if (finalEligibilityAcceptedButUnderfilledFailure) {
+  if (finalEligibilityAcceptedButUnderfilledFailure && teenPostPassOutputLength === 0) {
     sourceSkippedReason.push("final_eligibility_accepted_none_underfilled");
   }
   const finalRootFamilyCounts = finalOutputItems.reduce((acc: Record<string, number>, item: any) => {
@@ -10698,6 +11001,9 @@ const normalizedCandidatesRaw = [
     finalItemsLength,
     finalItemsTitles,
     returnedItemsLength: finalOutputItems.length,
+    teenPostPassGlobalHandoffConsidered,
+    teenPostPassGlobalHandoffAcceptedTitles,
+    teenPostPassGlobalHandoffRejectedByTitle,
     returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
     returnedItemsByAlignmentTier,
     safeFillerReturnedCount: returnedItemsByAlignmentTier.safe_filler || 0,

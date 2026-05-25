@@ -4,8 +4,10 @@ import path from 'node:path';
 const ROUTER_PATH = 'screens/recommenders/recommenderRouter.ts';
 const src = fs.readFileSync(ROUTER_PATH, 'utf8');
 
+const fingerprintSource = fs.readFileSync('screens/recommenders/routerFingerprint.ts', 'utf8');
+const EXPECTED_ROUTER_FINGERPRINT = (fingerprintSource.match(/EXPECTED_ROUTER_FINGERPRINT\\s*=\\s*\"([^\"]+)\"/) || [])[1] || '';
 const checks = [
-  { name: 'debug-router-version-fingerprint', ok: src.includes('router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b') },
+  { name: 'debug-router-version-fingerprint', ok: src.includes(EXPECTED_ROUTER_FINGERPRINT) },
   { name: 'tdz-var-initialized-top-scope', ok: /var tdzGuardedDiagnosticsInitialized\s*=\s*false;/.test(src) },
   { name: 'postTopUp-snapshot-var-initialized-top-scope', ok: /var postTopUpOutputSnapshot:\s*any\[\]\s*=\s*\[\];/.test(src) },
   { name: 'postTopUp-snapshot-length-var-initialized-top-scope', ok: /var postTopUpOutputSnapshotLength\s*=\s*0;/.test(src) },
@@ -45,7 +47,7 @@ for (const base of webDistCandidates) {
 }
 
 const fingerprintFoundInBundle = jsFiles.some((f) => {
-  try { return fs.readFileSync(f, 'utf8').includes('router-comicvine-proxy-default-v1+tdz-guard-2026-05-23b'); }
+  try { return fs.readFileSync(f, 'utf8').includes(EXPECTED_ROUTER_FINGERPRINT); }
   catch { return false; }
 });
 

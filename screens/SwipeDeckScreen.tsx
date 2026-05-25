@@ -27,6 +27,7 @@ import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
+import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -1586,6 +1587,12 @@ function handleLeft() {
         },
         "auto"
       );
+      const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
+      const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
+      if (runtimeFingerprint !== expectedFingerprint) {
+        setRecommendFunctionErrorPhase("dispatch ComicVine");
+        throw new Error(`STALE_ROUTER_ARTIFACT:${runtimeFingerprint || "(missing)"} expected:${expectedFingerprint}`);
+      }
       setRecommendFunctionReturned(true);
       setRecommendFunctionErrorPhase("filter candidates");
       setRecommendFunctionErrorPhase("final recommender");
@@ -1652,6 +1659,7 @@ function handleLeft() {
         );
       }
     } catch (err: any) {
+      setRecommendFunctionReturned(false);
       setRecommendFunctionError(String(err?.message || err || "recommendation_call_failed"));
       setRecommendFunctionErrorStack(String(err?.stack || ""));
       setRecommendFunctionErrorPhase((prev) => prev || "unknown");
@@ -2093,6 +2101,43 @@ function handleLeft() {
   }
 
   async function handleCopyDiagnostics() {
+    const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
+    const runtimeFingerprint = lastDebugRouterVersion || "";
+    const staleRuntime = runtimeFingerprint !== expectedFingerprint;
+    const missingRouterTrace = !Boolean(lastRouterResultTracePresent);
+    if (staleRuntime || missingRouterTrace) {
+      const reason = [
+        staleRuntime ? `stale_runtime_fingerprint:${runtimeFingerprint || "(missing)"}` : "",
+        missingRouterTrace ? "router_result_trace_missing" : "",
+      ].filter(Boolean).join(", ");
+      setPresetExecutionError(`SESSION_REPORT_EXPORT_BLOCKED:${reason}`);
+      const blockedReport = [
+        "SESSION REPORT (BLOCKED)",
+        `Reason: ${reason || "(unknown)"}`,
+        `App URL: ${typeof window !== "undefined" ? window.location.href : "(unavailable)"}`,
+        `App Origin: ${typeof window !== "undefined" ? window.location.origin : "(unavailable)"}`,
+        `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,
+        `Bundle script sample: ${typeof document !== "undefined" ? Array.from(document.querySelectorAll('script[src]')).map((el) => (el as HTMLScriptElement).src).slice(-5).join(" | ") || "(none)" : "(unavailable)"}`,
+        `Captured at: ${new Date().toISOString()}`,
+        `Expected fingerprint: ${expectedFingerprint}`,
+        `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
+        `routerResultType: ${typeof (lastRecommendationResult as any)}`,
+        `routerResultKeysRaw: ${Object.keys((lastRecommendationResult as any) || {}).join(", ") || "(none)"}`,
+        `routerResult.debugRouterVersion: ${(lastRecommendationResult as any)?.debugRouterVersion || "(missing)"}`,
+        `routerResult.trace.debugRouterVersion: ${((lastRecommendationResult as any)?.debugComicVineDispatchTrace || (lastRecommendationResult as any)?.debugGcdDispatchTrace || {})?.debugRouterVersion || "(missing)"}`,
+        `routerResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}`,
+        `recommendFunctionCalled: ${String(Boolean(recommendFunctionCalled))}`,
+        `recommendFunctionReturned: ${String(Boolean(recommendFunctionReturned))}`,
+        `recommendFunctionErrorPhase: ${recommendFunctionErrorPhase || "(none)"}`,
+        `recommendFunctionError: ${recommendFunctionError || "(none)"}`,
+      ].join("\n");
+      await Clipboard.setStringAsync(blockedReport);
+      Alert.alert(
+        "Export blocked",
+        `Session report export blocked due to invalid runtime trace.\n\nExpected fingerprint: ${expectedFingerprint}\nActual fingerprint: ${runtimeFingerprint || "(missing)"}\nrouterResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}\n\nA blocked diagnostics report has been copied to clipboard.`
+      );
+      return;
+    }
     if (presetRecommendationCompleted) setPresetExportedAfterRecommendation(true);
     const recomputedRight = swipeHistory.filter((entry) => entry.direction === "like").length;
     const recomputedLeft = swipeHistory.filter((entry) => entry.direction === "dislike").length;
@@ -2200,6 +2245,10 @@ function handleLeft() {
       `comicVineScoreBreakdownByTitle:${JSON.stringify((lastRecommendationResult as any)?.comicVineScoreBreakdownByTitle || [])}`,
       `recommendFunctionErrorPhase:${recommendFunctionErrorPhase || "(none)"}`,
       `recommendFunctionErrorStack:${recommendFunctionErrorStack || "(none)"}`,
+      `routerResultType:${typeof (lastRecommendationResult as any)}`,
+      `routerResultKeysRaw:${Object.keys((lastRecommendationResult as any) || {}).join(", ") || "(none)"}`,
+      `routerResult.debugRouterVersion:${(lastRecommendationResult as any)?.debugRouterVersion || "(missing)"}`,
+      `routerResult.trace.debugRouterVersion:${((lastRecommendationResult as any)?.debugComicVineDispatchTrace || (lastRecommendationResult as any)?.debugGcdDispatchTrace || {})?.debugRouterVersion || "(missing)"}`,
       `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,
       `routerResultKeys:${lastRouterResultKeys.length ? lastRouterResultKeys.join(", ") : "(none)"}`,
       `finalAcceptedDocsLength:${Number((lastRecommendationResult as any)?.finalAcceptedDocsLength || 0)}`,
@@ -2207,6 +2256,9 @@ function handleLeft() {
       `teenPostPassInputLength:${Number((lastRecommendationResult as any)?.teenPostPassInputLength || 0)}`,
       `teenPostPassOutputLength:${Number((lastRecommendationResult as any)?.teenPostPassOutputLength || 0)}`,
       `teenPostPassOutputTitles:${Array.isArray((lastRecommendationResult as any)?.teenPostPassOutputTitles) && (lastRecommendationResult as any).teenPostPassOutputTitles.length ? (lastRecommendationResult as any).teenPostPassOutputTitles.join(" | ") : "(none)"}`,
+      `teenPostPassGlobalHandoffConsidered:${Boolean((lastRecommendationResult as any)?.teenPostPassGlobalHandoffConsidered)}`,
+      `teenPostPassGlobalHandoffAcceptedTitles:${Array.isArray((lastRecommendationResult as any)?.teenPostPassGlobalHandoffAcceptedTitles) && (lastRecommendationResult as any).teenPostPassGlobalHandoffAcceptedTitles.length ? (lastRecommendationResult as any).teenPostPassGlobalHandoffAcceptedTitles.join(" | ") : "(none)"}`,
+      `teenPostPassGlobalHandoffRejectedByTitle:${JSON.stringify((lastRecommendationResult as any)?.teenPostPassGlobalHandoffRejectedByTitle || {})}`,
       `finalItemsLength:${Number((lastRecommendationResult as any)?.finalItemsLength || 0)}`,
       `finalItemsTitles:${Array.isArray((lastRecommendationResult as any)?.finalItemsTitles) && (lastRecommendationResult as any).finalItemsTitles.length ? (lastRecommendationResult as any).finalItemsTitles.join(" | ") : "(none)"}`,
       `returnedItemsLength:${Number((lastRecommendationResult as any)?.returnedItemsLength || 0)}`,

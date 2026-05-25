@@ -490,7 +490,11 @@ function isHardReject(c: Candidate): { reject: boolean; reason?: QualityRejectRe
     /\bstudy guide\b/
   ];
 
-  if (hardRejectTextPatterns.some((rx) => rx.test(text))) {
+  const plausibleNarrativeSeriesAllow =
+    /\b(locke\s*&\s*key|something\s+is\s+killing\s+the\s+children)\b/.test(text) &&
+    /\b(volume|vol\.?|book|tpb|trade paperback|story|saga|comic|graphic novel)\b/.test(text);
+
+  if (!plausibleNarrativeSeriesAllow && hardRejectTextPatterns.some((rx) => rx.test(text))) {
     return { reject: true, reason: 'hard_reject_text', detail: text.slice(0, 180) };
   }
 
