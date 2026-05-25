@@ -10425,6 +10425,9 @@ const normalizedCandidatesRaw = [
   let normalFinalGateRecoveryConsidered = false;
   const normalFinalGateRecoveryAcceptedTitles: string[] = [];
   const normalFinalGateRecoveryRejectedByTitle: Record<string, string> = {};
+  let kitsuNormalRecoveryConsidered = false;
+  const kitsuNormalRecoveryAcceptedTitles: string[] = [];
+  const kitsuNormalRecoveryRejectedByTitle: Record<string, string> = {};
   if (!suppressTopRecommendations) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
     if (acceptedAfterTerminalSet.size === 0) {
@@ -10486,6 +10489,62 @@ const normalizedCandidatesRaw = [
         returnedItemsBuiltFrom = "normal_final_gate_recovery";
         finalReturnSourceUsed = "normal_final_gate_recovery";
         sourceSkippedReason.push("final_gate_integrity:normal_final_gate_recovery");
+      }
+      if (finalOutputItems.length === 0 && teenPostPassOutputTitles.length > 0) {
+        kitsuNormalRecoveryConsidered = true;
+        const seenRoots = new Set<string>();
+        const kitsuRecoveryItems = teenPostPassItems
+          .filter((item: any) => {
+            const doc = item?.doc || item;
+            const title = String(doc?.title || item?.title || "").trim();
+            const nt = normalizeText(title);
+            if (!title || !nt) {
+              kitsuNormalRecoveryRejectedByTitle[title || "(missing_title)"] = "missing_title";
+              return false;
+            }
+            const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+            if (!source.includes("kitsu")) {
+              kitsuNormalRecoveryRejectedByTitle[title] = "not_kitsu_source";
+              return false;
+            }
+            if (/\[google_books_fetch_error\]/i.test(title) || isReferenceArtifactTitle(title)) {
+              kitsuNormalRecoveryRejectedByTitle[title] = "artifact_or_fetch_error";
+              return false;
+            }
+            const terminalReason = String(terminalRejectReasonByTitle[nt] || "");
+            if (terminalReason && !terminalReason.includes("fallback_no_taste_match") && !terminalReason.includes("fails_taste_threshold_gate")) {
+              kitsuNormalRecoveryRejectedByTitle[title] = `terminal_safety_reject:${terminalReason}`;
+              return false;
+            }
+            const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+            if (scrubReason) {
+              kitsuNormalRecoveryRejectedByTitle[title] = `artifact_scrub:${scrubReason}`;
+              return false;
+            }
+            const fit = Number(positiveFitScoreByTitle[title] || 0);
+            const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
+            if (!(fit > 2 && semanticSupportFound)) {
+              kitsuNormalRecoveryRejectedByTitle[title] = `fit_or_semantic_gate:fit=${fit.toFixed(2)}:semantic=${semanticSupportFound ? 1 : 0}`;
+              return false;
+            }
+            const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+            if (seenRoots.has(root)) {
+              kitsuNormalRecoveryRejectedByTitle[title] = "duplicate_root";
+              return false;
+            }
+            seenRoots.add(root);
+            return true;
+          })
+          .slice(0, 1);
+        if (kitsuRecoveryItems.length > 0) {
+          finalOutputItems = kitsuRecoveryItems;
+          kitsuNormalRecoveryAcceptedTitles.push(
+            ...kitsuRecoveryItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
+          );
+          returnedItemsBuiltFrom = "kitsu_normal_recovery";
+          finalReturnSourceUsed = "kitsu_normal_recovery";
+          sourceSkippedReason.push("final_gate_integrity:kitsu_normal_recovery");
+        }
       }
       const teenPostPassHandoffItems =
         finalOutputItems.length === 0 && teenPostPassOutputLength > 0
@@ -11086,6 +11145,9 @@ const normalizedCandidatesRaw = [
     normalFinalGateRecoveryConsidered,
     normalFinalGateRecoveryAcceptedTitles,
     normalFinalGateRecoveryRejectedByTitle,
+    kitsuNormalRecoveryConsidered,
+    kitsuNormalRecoveryAcceptedTitles,
+    kitsuNormalRecoveryRejectedByTitle,
     returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
     returnedItemsByAlignmentTier,
     safeFillerReturnedCount: returnedItemsByAlignmentTier.safe_filler || 0,
