@@ -3971,12 +3971,12 @@ export async function getRecommendations(
       };
       const sanitizeKitsuQuery = (q: string) => {
         const nq = String(q || "").toLowerCase();
-        const strongestFirst = ["adventure", "fantasy", "science fiction", "drama", "romance", "action", "comedy"];
+        const strongestFirst = ["adventure", "drama", "action", "romance", "fantasy", "science fiction", "comedy"];
         const weakOrUnproven = ["mystery", "horror", "thriller"];
         const strongestHit = strongestFirst.find((term) => nq.includes(term));
         if (strongestHit) return strongestHit;
         const fallbackHit = weakOrUnproven.find((term) => nq.includes(term));
-        return fallbackHit || "fantasy";
+        return fallbackHit || "adventure";
       };
       const googleLaneQuery = baseLaneQuery;
       const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
@@ -3995,14 +3995,16 @@ export async function getRecommendations(
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
-        if (googleBooksProbeDegraded) {
+        const googleProbeStatus = String(sourceHealthProbeStatus.google_books || "").toLowerCase();
+        const googleProbeFailed = googleProbeStatus.includes("failed") || googleProbeStatus.includes("timeout") || googleProbeStatus.includes("error");
+        if (googleBooksProbeDegraded || googleProbeFailed) {
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", {
             source: "googleBooks",
             source_fetch_cap_exceeded: false,
             source_fetch_skipped_due_to_probe_degraded: true,
             probeStatus: String(sourceHealthProbeStatus.google_books || ""),
           });
-          sourceSkippedReason.push("googleBooks_skipped_due_to_probe_degraded");
+          sourceSkippedReason.push(googleProbeFailed ? "googleBooks_skipped_due_to_probe_failed" : "googleBooks_skipped_due_to_probe_degraded");
         } else
         if (googleBooksRouterFetchCount >= sourceFetchCapPerRun) {
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "googleBooks", source_fetch_cap_exceeded: true, googleBooksRouterFetchCount });
