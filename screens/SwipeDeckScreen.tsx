@@ -2307,6 +2307,8 @@ function handleLeft() {
     const effectiveIsUndefined = Boolean((resultShape as any)?.isUndefined ?? (afterRouterCallWithShapeV2Payload as any)?.isUndefined ?? (latestLegacyAfterRouterCallPhase as any)?.isUndefined);
     const effectiveIsEmptyObject = Boolean((resultShape as any)?.isEmptyObject ?? (afterRouterCallWithShapeV2Payload as any)?.isEmptyObject ?? (latestLegacyAfterRouterCallPhase as any)?.isEmptyObject);
     const hasAfterRouterCallEvent = Boolean(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase);
+    const returnedItemsLength = Number((resultShape as any)?.itemsLength ?? (afterRouterCallWithShapeV2Payload as any)?.itemsLength ?? -1);
+    const zeroItemsReturnedRun = Boolean(recommendFunctionReturned) && !recommendFunctionError && returnedItemsLength === 0;
     const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
     const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
     const hasRouterEntered = globalRouterPhases.some((row: any) => String(row?.phase || "") === "router_entered");
@@ -2324,11 +2326,13 @@ function handleLeft() {
     const timeoutMsTs = parseTs((latestTimeoutPhase as any)?.timestamp);
     const earlyReturnCloseToTimeout = Number.isFinite(earlyReturnMs) && Number.isFinite(timeoutMsTs) && (earlyReturnMs - timeoutMsTs) >= 0 && (earlyReturnMs - timeoutMsTs) <= 1000;
     const earlyReturnReason = String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason || "");
-    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
+    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent || zeroItemsReturnedRun) {
       const reason = getRecommendationsReturnedUndefinedRun
         ? "getRecommendations_returned_undefined"
         : getRecommendationsReturnedEmptyObjectRun
         ? "getRecommendations_returned_empty_object"
+        : zeroItemsReturnedRun
+        ? "zero_items_returned"
         : ((routerRunTimeoutRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun) &&
             earlyReturnCloseToTimeout &&
             earlyReturnReason === "source_health_failed")
@@ -2443,6 +2447,18 @@ function handleLeft() {
         `sourceSpecificQueryRejectedReasonBySource: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceSpecificQueryRejectedReasonBySource || {})}`,
         `kitsuQuerySanitizedFrom: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedFrom || [])}`,
         `kitsuQuerySanitizedTo: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedTo || [])}`,
+        `returnedItemsLength: ${String(returnedItemsLength)}`,
+        `zeroItemsCause_sourceStarvation: ${String(Boolean((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthFailed || earlyReturnReason === "source_health_failed"))}`,
+        `zeroItemsCause_finalGateRejection: ${String(Boolean((lastRecommendationResult as any)?.terminalRejectReasonByTitle || (lastRecommendationResult as any)?.finalEligibilityHardNeverReturnTitles))}`,
+        `zeroItemsCause_postTerminalDrop: ${String(Boolean((lastRecommendationResult as any)?.finalRenderDocsDroppedByReason || (lastRecommendationResult as any)?.droppedBeforeRenderReason))}`,
+        `zeroItemsCause_emergencyHandoffBlocked: ${String(Boolean((lastRecommendationResult as any)?.finalHandoffEmptyReason))}`,
+        `rawSourceCounts: ${JSON.stringify((lastRecommendationResult as any)?.debugSourceStats || {})}`,
+        `candidatePoolLength: ${String(Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0)}`,
+        `finalEligibilityRejectedTitlesByReason: ${JSON.stringify((lastRecommendationResult as any)?.finalEligibilityRejectedTitlesByReason || {})}`,
+        `teenPostPassOutputLength: ${String((lastRecommendationResult as any)?.teenPostPassOutputLength ?? "(missing)")}`,
+        `kitsuRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered))}`,
+        `kitsuRecoveryAcceptedTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryAcceptedTitles || [])}`,
+        `kitsuRecoveryRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryRejectedByTitle || {})}`,
       ].join("\n");
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(
