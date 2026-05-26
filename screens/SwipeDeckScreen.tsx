@@ -1003,6 +1003,11 @@ export default function SwipeDeckScreen(props: Props) {
   const [queryBuildStatus, setQueryBuildStatus] = useState<string>("not_started");
   const [phaseHistory, setPhaseHistory] = useState<Array<{ phase: string; timestamp: string }>>([]);
   const [recommenderCallReferenceType, setRecommenderCallReferenceType] = useState<string>("");
+  const [activeRecommendationRunId, setActiveRecommendationRunId] = useState<string>("");
+  const [currentRecommendationRunId, setCurrentRecommendationRunId] = useState<string>("");
+  const [pendingRecommendationPromisePresent, setPendingRecommendationPromisePresent] = useState<boolean>(false);
+  const [recommendationLockState, setRecommendationLockState] = useState<string>("idle");
+  const pendingRecommendationPromiseRef = useRef<Promise<any> | null>(null);
   const [sourceHealthPreflightEnabled, setSourceHealthPreflightEnabled] = useState<boolean>(true);
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
@@ -1607,6 +1612,10 @@ function handleLeft() {
     setQueryBuildStatus("not_started");
     setPhaseHistory([]);
     setRecommenderCallReferenceType("");
+    const runId = `rec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    setCurrentRecommendationRunId(runId);
+    setActiveRecommendationRunId(runId);
+    setRecommendationLockState(recLoading ? "already_loading" : "acquired");
 
     try {
       markPhase("before_query_build");
@@ -1664,6 +1673,8 @@ function handleLeft() {
         },
         "auto"
       );
+      pendingRecommendationPromiseRef.current = routerPromise;
+      setPendingRecommendationPromisePresent(true);
       const result: any = await Promise.race([
         Promise.race([
           routerPromise,
@@ -1676,6 +1687,8 @@ function handleLeft() {
         ),
       ]);
       markPhase("after_getRecommendations_call");
+      setPendingRecommendationPromisePresent(false);
+      pendingRecommendationPromiseRef.current = null;
       const routerHistory = Array.isArray((result as any)?.routerPhaseHistory) ? (result as any).routerPhaseHistory : [];
       if (!routerHistory.some((row: any) => String(row?.phase || "") === "router_entered")) {
         throw new Error("router_entry_timeout:router_entered_missing");
@@ -1753,6 +1766,8 @@ function handleLeft() {
         );
       }
     } catch (err: any) {
+      setPendingRecommendationPromisePresent(false);
+      pendingRecommendationPromiseRef.current = null;
       setRecommendFunctionReturned(false);
       setRecommendFunctionError(String(err?.message || err || "recommendation_call_failed"));
       setRecommendFunctionErrorStack(String(err?.stack || ""));
@@ -1771,6 +1786,7 @@ function handleLeft() {
       setRecItems([]);
       setRecError(err?.message || "Recommendation engine could not be reached (network blocked).");
     } finally {
+      setRecommendationLockState("released");
       setRecLoading(false);
     }
   }
@@ -2226,6 +2242,14 @@ function handleLeft() {
         `Router build timestamp: ${(lastRecommendationResult as any)?.routerBuildTimestamp || "(missing)"}`,
         `Router instrumentation version: ${(lastRecommendationResult as any)?.routerInstrumentationVersion || "(missing)"}`,
         `getRecommendations reference type: ${recommenderCallReferenceType || "(unknown)"}`,
+        `getRecommendationsFunctionName: ${typeof getRecommendations === "function" ? (getRecommendations as any).name || "(anonymous)" : "(not_function)"}`,
+        `getRecommendationsFunctionSourcePrefix: ${typeof getRecommendations === "function" ? String(getRecommendations).slice(0, 120) : "(not_function)"}`,
+        `recommendationLockState: ${recommendationLockState}`,
+        `pendingRecommendationPromisePresent: ${String(Boolean(pendingRecommendationPromisePresent || pendingRecommendationPromiseRef.current))}`,
+        `activeRecommendationRunId: ${activeRecommendationRunId || "(none)"}`,
+        `currentRecommendationRunId: ${currentRecommendationRunId || "(none)"}`,
+        `globalRouterEntryHeartbeat: ${JSON.stringify((globalThis as any).__novelIdeasRouterEntryHeartbeat || null)}`,
+        `globalRouterPhaseHistory: ${JSON.stringify((globalThis as any).__novelIdeasRouterPhaseHistory || [])}`,
         `App URL: ${typeof window !== "undefined" ? window.location.href : "(unavailable)"}`,
         `App Origin: ${typeof window !== "undefined" ? window.location.origin : "(unavailable)"}`,
         `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,

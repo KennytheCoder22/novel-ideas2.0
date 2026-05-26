@@ -2639,6 +2639,17 @@ export async function getRecommendations(
   input: RecommenderInput,
   override?: EngineOverride
 ): Promise<RecommendationResult> {
+  try {
+    const heartbeat = { phase: "getRecommendations_function_entered", timestamp: new Date().toISOString() };
+    (globalThis as any).__novelIdeasRouterEntryHeartbeat = heartbeat;
+    const history = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
+      ? (globalThis as any).__novelIdeasRouterPhaseHistory
+      : [];
+    history.push(heartbeat);
+    (globalThis as any).__novelIdeasRouterPhaseHistory = history.slice(-120);
+  } catch {
+    // non-fatal instrumentation only
+  }
   const routerPhaseHistory: Array<{ phase: string; timestamp: string }> = [];
   const markRouterPhase = (phase: string) => {
     routerPhaseHistory.push({ phase, timestamp: new Date().toISOString() });
