@@ -2313,6 +2313,7 @@ function handleLeft() {
     const debugCandidatePoolLengthTop = Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0;
     const fetchedRawCountTop = Number((lastRecommendationResult as any)?.fetchedRawCount ?? ((lastRecommendationResult as any)?.debugSourceStats ? Object.values((lastRecommendationResult as any).debugSourceStats).reduce((acc: number, row: any) => acc + Number(row?.rawFetched || 0), 0) : 0));
     const sourceStarvationByZeroPools = fetchedRawCountTop === 0 && debugCandidatePoolLengthTop === 0;
+    const skippedReasons = Array.isArray((lastRecommendationResult as any)?.sourceSkippedReason) ? (lastRecommendationResult as any).sourceSkippedReason : [];
     const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
     const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
     const hasRouterEntered = globalRouterPhases.some((row: any) => String(row?.phase || "") === "router_entered");
@@ -2391,6 +2392,7 @@ function handleLeft() {
         `sourceFetchAttemptedBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchAttemptedBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchAttemptedBySource || {})}`,
         `sourceFetchTimeoutBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchTimeoutBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchTimeoutBySource || {})}`,
         `sourceRawCountBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceRawCountBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceRawCountBySource || {})}`,
+        `sourceSkippedReason: ${JSON.stringify(skippedReasons)}`,
         `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
         `Router instrumentation marker (client): ${ROUTER_INSTRUMENTATION_MARKER}`,
         `Deployed commit marker: ${(lastRecommendationResult as any)?.deployedCommitHash || "(missing)"}`,
@@ -2496,6 +2498,8 @@ function handleLeft() {
         `kitsuRecoveryRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryRejectedByTitle || {})}`,
         `kitsuRecoveryPoolTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [])}`,
         `kitsuRecoveryBestRejectedReasons: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryBestRejectedReasons || {})}`,
+        `terminalAssemblyInputTitles: ${JSON.stringify((lastRecommendationResult as any)?.terminalAssemblyInputTitles || [])}`,
+        `terminalAssemblyOutputTitles: ${JSON.stringify((lastRecommendationResult as any)?.terminalAssemblyOutputTitles || [])}`,
       ].join("\n");
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(

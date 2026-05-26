@@ -2794,6 +2794,7 @@ export async function getRecommendations(
   const googleBooksFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
   const openLibraryFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
+  const queryLanesUsed: string[] = [];
   const sourceDisableReasonsDetailed: Record<string, string[]> = {
     googleBooks: [],
     openLibrary: [],
@@ -3893,6 +3894,7 @@ export async function getRecommendations(
         break;
       }
       const lane = queryLanes[lanei];
+      queryLanesUsed.push(String((lane as any)?.query || (lane as any)?.queryText || "").trim());
       var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
       var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
       var laneFamily =
@@ -4053,6 +4055,16 @@ export async function getRecommendations(
         comicVineDispatchedOnce = true;
       }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
+      if (requests.length === 0) {
+        pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
+          laneIndex: lanei,
+          reason: "no_requests_after_source_checks",
+          googleBooksRouterFetchCount,
+          openLibraryRouterFetchCount,
+          kitsuRouterFetchCount,
+        });
+        break;
+      }
 
       const results = await Promise.allSettled(requests);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
@@ -11135,6 +11147,9 @@ const normalizedCandidatesRaw = [
     }
   }
   markRouterPhase("router_before_scoring");
+  const terminalAssemblyInputTitlesAtReturn = Array.isArray(itemsForReturn)
+    ? itemsForReturn.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
+    : [];
   finalOutputItems = itemsForReturn;
   if (String(returnedItemsBuiltFrom) === "kitsu_normal_recovery" && finalOutputItems.length === 0) {
     const acceptedSet = new Set(kitsuNormalRecoveryAcceptedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
@@ -11151,12 +11166,11 @@ const normalizedCandidatesRaw = [
   }
   if (String(returnedItemsBuiltFrom) === "kitsu_normal_recovery" && finalOutputItems.length === 0) {
     sourceSkippedReason.push("kitsu_recovery_lost_at_return_assembly");
-    throwSourceFatal("kitsu_recovery_lost_at_return_assembly", {
-      kitsuNormalRecoveryAcceptedTitles,
-      returnedItemsBuiltFrom,
-      finalOutputItemsLength: finalOutputItems.length,
-    });
+    // Do not throw: return a clean zero-item result with explicit diagnostics.
   }
+  const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
+    ? finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
+    : [];
   const nytFetchAttempted = Boolean(sourceEnabled.nyt) && Boolean(nytAnchorDebug.enabled);
   const nytCandidateTitles = dedupeDocs([
     ...(nytAnchorResult?.docs || []),
@@ -11603,8 +11617,8 @@ const normalizedCandidatesRaw = [
     finalGateAcceptedDocsCount,
     terminalAssemblyInputCount,
     terminalAssemblyOutputCount,
-    terminalAssemblyInputTitles,
-    terminalAssemblyOutputTitles,
+    terminalAssemblyInputTitles: terminalAssemblyInputTitlesAtReturn,
+    terminalAssemblyOutputTitles: terminalAssemblyOutputTitlesAtReturn,
     terminalAssemblyDropReasonByTitle,
     teenPostPassOutputTitles,
     finalGateAcceptedTitles: acceptedAfterTerminalRejectFilter,
@@ -11639,6 +11653,8 @@ const normalizedCandidatesRaw = [
     kitsuNormalRecoveryRejectedByTitle,
     kitsuRecoveryPoolTitles,
     kitsuRecoveryBestRejectedReasons,
+    terminalAssemblyInputTitles: terminalAssemblyInputTitlesAtReturn,
+    terminalAssemblyOutputTitles: terminalAssemblyOutputTitlesAtReturn,
     minimalSafeOneBlockedReason,
     returnedItemsTitles: finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
     returnedItemsByAlignmentTier,
