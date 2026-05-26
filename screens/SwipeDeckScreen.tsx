@@ -1657,7 +1657,7 @@ function handleLeft() {
             fetch(url, { method: "GET" }).catch(() => null),
             new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}_timeout:${sourceProbeTimeoutMs}`)), sourceProbeTimeoutMs)),
           ]);
-          sourceProbeStatus[label] = "ok_or_reachable";
+          sourceProbeStatus[label] = "reachable_unproven";
         } catch (e: any) {
           sourceProbeStatus[label] = String(e?.message || "failed");
         }
@@ -2433,6 +2433,12 @@ function handleLeft() {
         `kitsuPostFilterCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuPostFilterCount ?? "(missing)")}`,
         `kitsuUsableCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuUsableCount ?? "(missing)")}`,
         `kitsuSourceHealthRejectedReason: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuSourceHealthRejectedReason ?? "(missing)")}`,
+        `googleBooksQueriesActuallyFetched: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksQueriesActuallyFetched || [])}`,
+        `openLibraryQueriesActuallyFetched: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryQueriesActuallyFetched || [])}`,
+        `kitsuQueriesActuallyFetched: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQueriesActuallyFetched || [])}`,
+        `googleBooksFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksFetchResultsByQuery || [])}`,
+        `openLibraryFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryFetchResultsByQuery || [])}`,
+        `kitsuFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFetchResultsByQuery || [])}`,
       ].join("\n");
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(

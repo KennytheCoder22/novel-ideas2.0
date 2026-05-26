@@ -3845,6 +3845,29 @@ export async function getRecommendations(
 
     for (let lanei = 0; lanei < queryLanes.length; lanei += 1) {
       try {
+      const googleBooksExhausted =
+        !sourceEnabled.googleBooks ||
+        googleQuotaExhausted ||
+        googleBooksProbeDegraded ||
+        googleBooksRouterFetchCount >= sourceFetchCapPerRun;
+      const openLibraryExhausted =
+        !sourceEnabled.openLibrary ||
+        openLibraryRouterFetchCount >= sourceFetchCapPerRun;
+      const kitsuExhausted =
+        !includeKitsu ||
+        kitsuRouterFetchCount >= sourceFetchCapPerRun;
+      if (googleBooksExhausted && openLibraryExhausted && kitsuExhausted) {
+        pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
+          laneIndex: lanei,
+          googleBooksExhausted,
+          openLibraryExhausted,
+          kitsuExhausted,
+          googleBooksRouterFetchCount,
+          openLibraryRouterFetchCount,
+          kitsuRouterFetchCount,
+        });
+        break;
+      }
       pushGlobalPhase("router_fetch_loop_iteration", {
         laneIndex: lanei,
         totalLanes: queryLanes.length,
