@@ -2474,6 +2474,10 @@ function handleLeft() {
         `sourceSpecificQueryRejectedReasonBySource: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceSpecificQueryRejectedReasonBySource || {})}`,
         `kitsuQuerySanitizedFrom: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedFrom || [])}`,
         `kitsuQuerySanitizedTo: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedTo || [])}`,
+        `kitsuPreSanitizedQuery: ${String((lastRecommendationResult as any)?.kitsuPreSanitizedQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuPreSanitizedQuery || "(missing)")}`,
+        `kitsuSanitizedQuerySelected: ${String((lastRecommendationResult as any)?.kitsuSanitizedQuerySelected || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuSanitizedQuerySelected || "(missing)")}`,
+        `kitsuFinalQueryUsedForFetch: ${JSON.stringify((lastRecommendationResult as any)?.kitsuFinalQueryUsedForFetch || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFinalQueryUsedForFetch || [])}`,
+        `kitsuFetchQueryMatchesSanitizedSelection: ${String(Boolean((lastRecommendationResult as any)?.kitsuFetchQueryMatchesSanitizedSelection))}`,
         `returnedItemsLength: ${String(returnedItemsLength)}`,
         `zeroItemsCompactSummary: ${JSON.stringify({
           debugRawPoolLength: Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0,
