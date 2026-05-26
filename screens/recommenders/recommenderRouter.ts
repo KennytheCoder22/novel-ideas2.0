@@ -2637,6 +2637,11 @@ export async function getRecommendations(
   input: RecommenderInput,
   override?: EngineOverride
 ): Promise<RecommendationResult> {
+  const routerPhaseHistory: Array<{ phase: string; timestamp: string }> = [];
+  const markRouterPhase = (phase: string) => {
+    routerPhaseHistory.push({ phase, timestamp: new Date().toISOString() });
+  };
+  markRouterPhase("router_entered");
   const routingInput = removeSkippedSwipeEvidenceForRouting(input);
   const preferredEngine = chooseEngine(routingInput, override);
   const baseBucketPlan = buildRouterBucketPlan(routingInput);
@@ -2665,11 +2670,26 @@ export async function getRecommendations(
     hybridLaneWeights,
     primaryLane: routerFamily,
   };
+  markRouterPhase("router_query_built");
 
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
   const sourceEnabled = resolveSourceEnabled(routedInput);
+  const withSourceTimeout = async <T>(phaseBefore: string, phaseAfter: string, ms: number, op: () => Promise<T>): Promise<T> => {
+    markRouterPhase(phaseBefore);
+    try {
+      const out = await Promise.race([
+        op(),
+        new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${phaseBefore}_timeout:${ms}`)), ms)),
+      ]);
+      markRouterPhase(phaseAfter);
+      return out;
+    } catch (err) {
+      markRouterPhase(`${phaseAfter}_failed`);
+      throw err;
+    }
+  };
   const sourceSkippedReason: string[] = [];
   const sourceDisableReasonsDetailed: Record<string, string[]> = {
     googleBooks: [],
@@ -3781,9 +3801,15 @@ export async function getRecommendations(
         googleQuotaExhausted && lane.source === "googleBooks" && sourceEnabled.openLibrary
           ? "openLibrary"
           : lane.source;
-      if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") requests.push(runEngine("googleBooks", laneInput));
-      if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") requests.push(runEngine("openLibrary", laneInput));
-      if (includeKitsu) requests.push(getKitsuMangaRecommendations(laneInput));
+      if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
+        requests.push(withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 10_000, () => runEngine("googleBooks", laneInput)));
+      }
+      if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
+        requests.push(withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput)));
+      }
+      if (includeKitsu) {
+        requests.push(withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput)));
+      }
       var shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
       var comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       if (shouldDispatchComicVineForLane) {
@@ -10815,6 +10841,7 @@ const normalizedCandidatesRaw = [
       }
     }
   }
+  markRouterPhase("router_before_scoring");
   finalOutputItems = itemsForReturn;
   if (String(returnedItemsBuiltFrom) === "kitsu_normal_recovery" && finalOutputItems.length === 0) {
     const acceptedSet = new Set(kitsuNormalRecoveryAcceptedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
@@ -10911,6 +10938,7 @@ const normalizedCandidatesRaw = [
     acc[fam] = Number(acc[fam] || 0) + 1;
     return acc;
   }, {});
+  markRouterPhase("router_before_final_return");
   return {
     engineId: preferredEngine,
     engineLabel,
@@ -11389,6 +11417,7 @@ const normalizedCandidatesRaw = [
     rankedDocsTitles,
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
+    routerPhaseHistory,
     nytFetchAttempted,
     nytCandidateTitles,
     nytAcceptedTitles,

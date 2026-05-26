@@ -2213,6 +2213,7 @@ function handleLeft() {
         `queryBuildStatus: ${queryBuildStatus || "(unknown)"}`,
         `lastKnownSourceHealthFetchPhase: ${lastKnownFetchPhase || "(none)"}`,
         `phaseHistory: ${JSON.stringify(phaseHistory || [])}`,
+        `lastRouterHeartbeat: ${JSON.stringify((((lastRecommendationResult as any)?.routerPhaseHistory || [])[((lastRecommendationResult as any)?.routerPhaseHistory || []).length - 1] || null))}`,
         `Expected fingerprint: ${expectedFingerprint}`,
         `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
         `routerResultType: ${typeof (lastRecommendationResult as any)}`,
