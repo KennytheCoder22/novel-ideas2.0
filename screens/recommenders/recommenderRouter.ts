@@ -2770,6 +2770,13 @@ export async function getRecommendations(
     }
   };
   const sourceSkippedReason: string[] = [];
+  let googleBooksRouterFetchCount = 0;
+  let openLibraryRouterFetchCount = 0;
+  let kitsuRouterFetchCount = 0;
+  const sourceFetchCapPerRun = 2;
+  const routerRunStartedAtMs = Date.now();
+  const routerRunSoftTimeoutMs = 20_000;
+  let routerFetchLoopStoppedByTimeout = false;
   const sourceDisableReasonsDetailed: Record<string, string[]> = {
     googleBooks: [],
     openLibrary: [],
@@ -3830,6 +3837,21 @@ export async function getRecommendations(
 
     for (let lanei = 0; lanei < queryLanes.length; lanei += 1) {
       try {
+      pushGlobalPhase("router_fetch_loop_iteration", {
+        laneIndex: lanei,
+        totalLanes: queryLanes.length,
+        googleBooksRouterFetchCount,
+        openLibraryRouterFetchCount,
+        kitsuRouterFetchCount,
+      });
+      if (Date.now() - routerRunStartedAtMs >= routerRunSoftTimeoutMs) {
+        routerFetchLoopStoppedByTimeout = true;
+        pushGlobalPhase("router_fetch_loop_stopped_by_timeout", {
+          laneIndex: lanei,
+          elapsedMs: Date.now() - routerRunStartedAtMs,
+        });
+        break;
+      }
       const lane = queryLanes[lanei];
       var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
       var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
@@ -3892,25 +3914,43 @@ export async function getRecommendations(
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
+        if (googleBooksRouterFetchCount >= sourceFetchCapPerRun) {
+          pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "googleBooks", source_fetch_cap_exceeded: true, googleBooksRouterFetchCount });
+          sourceSkippedReason.push("source_fetch_cap_exceeded:googleBooks");
+        } else {
+          googleBooksRouterFetchCount += 1;
         pushGlobalPhase("before_google_books_router_fetch");
         requests.push(
           withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 10_000, () => runEngine("googleBooks", laneInput))
             .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
         );
+        }
       }
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
+        if (openLibraryRouterFetchCount >= sourceFetchCapPerRun) {
+          pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "openLibrary", source_fetch_cap_exceeded: true, openLibraryRouterFetchCount });
+          sourceSkippedReason.push("source_fetch_cap_exceeded:openLibrary");
+        } else {
+          openLibraryRouterFetchCount += 1;
         pushGlobalPhase("before_open_library_router_fetch");
         requests.push(
           withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput))
             .finally(() => pushGlobalPhase("after_open_library_router_fetch")) as any
         );
+        }
       }
       if (includeKitsu) {
+        if (kitsuRouterFetchCount >= sourceFetchCapPerRun) {
+          pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
+          sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
+        } else {
+          kitsuRouterFetchCount += 1;
         pushGlobalPhase("before_kitsu_router_fetch");
         requests.push(
           withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
             .finally(() => pushGlobalPhase("after_kitsu_router_fetch")) as any
         );
+        }
       }
       var shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
       var comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
