@@ -1,5 +1,5 @@
 // /screens/recommenders/types.ts
-export type EngineId = "googleBooks" | "openLibrary" | "kitsu" | "comicVine";
+export type EngineId = "googleBooks" | "openLibrary" | "kitsu" | "comicVine" | "nyt";
 export type DomainMode = "default" | "picture" | "earlyReader" | "chapterMiddle";
 export type DeckKey = "k2" | "36" | "ms_hs" | "adult";
 export type TagCounts = Record<string, number>;
@@ -278,6 +278,7 @@ export type SourceEnabledConfig = {
   localLibrary?: boolean;
   kitsu?: boolean;
   comicVine?: boolean;
+  nyt?: boolean;
 };
 export type StructuredFetchRung = { rung: number; family?: string; primary: string | null; secondary: string | null; themes: string[]; audience: string; query: string; };
 export type BucketPlan = { queries?: string[]; rungs?: StructuredFetchRung[]; bucketId?: string; domainMode?: DomainMode; preview?: string; strategy?: string; signals?: { genres?: string[]; tones?: string[]; textures?: string[]; scenarios?: string[]; }; };
@@ -296,4 +297,5 @@ export type RecommendationSourceDiagnostics = {
   localLibrary: boolean;
   kitsu: boolean;
   comicVine: boolean;
+  nyt?: boolean;
 };

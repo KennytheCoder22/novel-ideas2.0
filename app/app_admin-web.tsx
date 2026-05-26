@@ -206,6 +206,7 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
     localLibrary: localLibrarySupported ? configured?.localLibrary !== false : false,
     kitsu: configured?.kitsu !== false,
     gcd: configured?.gcd !== false,
+    nyt: configured?.nyt === true,
   };
 
   if (!cfg?.recommendations?.sourceEnabled && typeof legacySource === "string") {
@@ -243,7 +244,7 @@ type HighlightKey = ThemeKey | "white" | "black" | "silver";
 type TitleTextKey = "white" | "black";
 
 type DeckKey = "k2" | "36" | "ms_hs" | "adult";
-type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary" | "kitsu" | "gcd";
+type RecommendationSourceToggleKey = "googleBooks" | "openLibrary" | "localLibrary" | "kitsu" | "gcd" | "nyt";
 type RecommendationSourceEnabled = Record<RecommendationSourceToggleKey, boolean>;
 
 type SwipeCategoryKey = "books" | "movies" | "tv" | "games" | "youtube" | "anime" | "podcasts";
@@ -271,6 +272,7 @@ function sourceLabel(s: RecommendationSourceToggleKey) {
   if (s === "localLibrary") return "This library’s collection";
   if (s === "kitsu") return "Kitsu (Manga)";
   if (s === "gcd") return "ComicVine (Comics)";
+  if (s === "nyt") return "New York Times (limited)";
   return s;
 }
 
@@ -883,7 +885,7 @@ export default function AdminWebScreen() {
           Toggle one or more sources. If all are off, recommendations will not run.
         </Text>
         <View style={{ gap: 10 }}>
-          {(["googleBooks", "openLibrary", "localLibrary", "kitsu", "gcd"] as RecommendationSourceToggleKey[]).map((sourceKey) => {
+          {(["googleBooks", "openLibrary", "localLibrary", "kitsu", "gcd", "nyt"] as RecommendationSourceToggleKey[]).map((sourceKey) => {
             const localLibrarySupported = Boolean(config?.recommendations?.localLibrarySupported);
             const disabled = sourceKey === "localLibrary" && !localLibrarySupported;
             const enabled = sourceKey === "localLibrary"
@@ -911,7 +913,8 @@ export default function AdminWebScreen() {
         !config?.recommendations?.sourceEnabled?.openLibrary &&
         !(Boolean(config?.recommendations?.sourceEnabled?.localLibrary) && Boolean(config?.recommendations?.localLibrarySupported)) &&
         !config?.recommendations?.sourceEnabled?.kitsu &&
-        !config?.recommendations?.sourceEnabled?.gcd ? (
+        !config?.recommendations?.sourceEnabled?.gcd &&
+        !config?.recommendations?.sourceEnabled?.nyt ? (
           <Text style={[styles.note, { color: theme.danger }]}>
             All recommendation sources are disabled. Enable at least one source.
           </Text>
