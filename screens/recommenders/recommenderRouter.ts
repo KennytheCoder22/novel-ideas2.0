@@ -2795,6 +2795,9 @@ export async function getRecommendations(
   const openLibraryFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
   const queryLanesUsed: string[] = [];
+  const googleBooksQueryUsedByLane: string[] = [];
+  const openLibraryQueryUsedByLane: string[] = [];
+  const kitsuQueryUsedByLane: string[] = [];
   const sourceDisableReasonsDetailed: Record<string, string[]> = {
     googleBooks: [],
     openLibrary: [],
@@ -3957,10 +3960,10 @@ export async function getRecommendations(
         const cleaned = q
           .replace(/["']/g, " ")
           .replace(/[-+]\w+/g, " ")
-          .replace(/\b(character[-\s]?focused|graphic novel|novel|book|narrative|consequence|survival)\b/gi, " ")
+          .replace(/\b(character[-\s]?focused|graphic novel|novel|book|narrative|consequence|survival|exclude|without)\b/gi, " ")
           .replace(/\s+/g, " ")
           .trim();
-        return cleaned.split(/\s+/).slice(0, 5).join(" ").trim();
+        return cleaned.split(/\s+/).slice(0, 3).join(" ").trim();
       };
       const sanitizeKitsuQuery = (q: string) => {
         const nq = String(q || "").toLowerCase();
@@ -4004,6 +4007,7 @@ export async function getRecommendations(
           bucketPlan: { ...(laneInput.bucketPlan as any), queries: [googleLaneQuery], preview: googleLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: googleLaneQuery, primary: googleLaneQuery }] },
         };
           googleBooksRouterFetchCount += 1;
+        googleBooksQueryUsedByLane.push(googleLaneQuery);
         googleBooksQueriesActuallyFetched.add(googleLaneQuery);
         pushGlobalPhase("before_google_books_router_fetch");
         requests.push(
@@ -4022,10 +4026,11 @@ export async function getRecommendations(
           bucketPlan: { ...(laneInput.bucketPlan as any), queries: [openLibraryLaneQuery], preview: openLibraryLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: openLibraryLaneQuery, primary: openLibraryLaneQuery }] },
         };
           openLibraryRouterFetchCount += 1;
+        openLibraryQueryUsedByLane.push(openLibraryLaneQuery);
         openLibraryQueriesActuallyFetched.add(openLibraryLaneQuery);
         pushGlobalPhase("before_open_library_router_fetch");
         requests.push(
-          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput))
+          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 2_000, () => runEngine("openLibrary", laneInput))
             .finally(() => pushGlobalPhase("after_open_library_router_fetch")) as any
         );
         }
@@ -4040,6 +4045,7 @@ export async function getRecommendations(
           bucketPlan: { ...(laneInput.bucketPlan as any), queries: [kitsuLaneQuery], preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
         };
           kitsuRouterFetchCount += 1;
+        kitsuQueryUsedByLane.push(kitsuLaneQuery);
         kitsuQueriesActuallyFetched.add(kitsuLaneQuery);
         pushGlobalPhase("before_kitsu_router_fetch");
         requests.push(
@@ -11756,6 +11762,9 @@ const normalizedCandidatesRaw = [
       openLibrary: Number(aggregatedRawFetched.openLibrary || 0),
       kitsu: Number(aggregatedRawFetched.kitsu || 0),
     },
+    googleBooksQueryUsedByLane: Array.from(new Set(googleBooksQueryUsedByLane)).slice(0, 60),
+    openLibraryQueryUsedByLane: Array.from(new Set(openLibraryQueryUsedByLane)).slice(0, 60),
+    kitsuQueryUsedByLane: Array.from(new Set(kitsuQueryUsedByLane)).slice(0, 60),
     comicVineAdapterStatus,
     comicVineQueryDerivedCount,
     comicVineFallbackCount,
