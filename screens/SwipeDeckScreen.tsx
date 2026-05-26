@@ -28,6 +28,8 @@ import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
+const DEPLOYED_COMMIT_MARKER = "67a0c19";
+const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-67a0c19";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -1000,6 +1002,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastKnownFetchPhase, setLastKnownFetchPhase] = useState<string>("");
   const [queryBuildStatus, setQueryBuildStatus] = useState<string>("not_started");
   const [phaseHistory, setPhaseHistory] = useState<Array<{ phase: string; timestamp: string }>>([]);
+  const [recommenderCallReferenceType, setRecommenderCallReferenceType] = useState<string>("");
   const [sourceHealthPreflightEnabled, setSourceHealthPreflightEnabled] = useState<boolean>(true);
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
@@ -1603,6 +1606,7 @@ function handleLeft() {
     setLastKnownFetchPhase("starting");
     setQueryBuildStatus("not_started");
     setPhaseHistory([]);
+    setRecommenderCallReferenceType("");
 
     try {
       markPhase("before_query_build");
@@ -1649,20 +1653,33 @@ function handleLeft() {
       if (allRealFailed) throw new Error(`source_health_failed_pre_source_fetch:${JSON.stringify(sourceProbeStatus)}`);
       markPhase("before_source_fetch");
       const recommendationTimeoutMs = 90_000;
+      markPhase("before_getRecommendations_call");
+      setRecommenderCallReferenceType(typeof getRecommendations);
+      const routerPromise = getRecommendations(
+        {
+          ...inputWithHistory,
+          profileOverride: currentLaneOverride,
+          sourceEnabled,
+          localLibrarySupported: Boolean(props.localLibrarySupported),
+        },
+        "auto"
+      );
       const result: any = await Promise.race([
-        getRecommendations(
-          {
-            ...inputWithHistory,
-            profileOverride: currentLaneOverride,
-            sourceEnabled,
-            localLibrarySupported: Boolean(props.localLibrarySupported),
-          },
-          "auto"
-        ),
+        Promise.race([
+          routerPromise,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("router_entry_timeout:10000")), 10_000)
+          ),
+        ]),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
         ),
       ]);
+      markPhase("after_getRecommendations_call");
+      const routerHistory = Array.isArray((result as any)?.routerPhaseHistory) ? (result as any).routerPhaseHistory : [];
+      if (!routerHistory.some((row: any) => String(row?.phase || "") === "router_entered")) {
+        throw new Error("router_entry_timeout:router_entered_missing");
+      }
       markPhase("after_source_fetch");
       const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
       const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
@@ -2184,11 +2201,14 @@ function handleLeft() {
     const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
+    const routerEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_entry_timeout:");
     const preflightTimeoutRun = String(recommendFunctionError || "").startsWith("source_health_preflight_timeout:");
     const staleRuntime = runtimeFingerprint !== expectedFingerprint;
     const missingRouterTrace = !Boolean(lastRouterResultTracePresent);
     if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace) {
-      const reason = timeoutRun
+      const reason = routerEntryTimeoutRun
+        ? "router_entry_timeout"
+        : timeoutRun
         ? "recommendation_timeout"
         : preflightTimeoutRun
           ? "source_health_preflight_timeout"
@@ -2200,9 +2220,12 @@ function handleLeft() {
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
         `Reason: ${reason || "(unknown)"}`,
+        `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
+        `Router instrumentation marker (client): ${ROUTER_INSTRUMENTATION_MARKER}`,
         `Deployed commit marker: ${(lastRecommendationResult as any)?.deployedCommitHash || "(missing)"}`,
         `Router build timestamp: ${(lastRecommendationResult as any)?.routerBuildTimestamp || "(missing)"}`,
         `Router instrumentation version: ${(lastRecommendationResult as any)?.routerInstrumentationVersion || "(missing)"}`,
+        `getRecommendations reference type: ${recommenderCallReferenceType || "(unknown)"}`,
         `App URL: ${typeof window !== "undefined" ? window.location.href : "(unavailable)"}`,
         `App Origin: ${typeof window !== "undefined" ? window.location.origin : "(unavailable)"}`,
         `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,
