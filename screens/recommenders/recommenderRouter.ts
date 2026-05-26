@@ -4014,8 +4014,9 @@ export async function getRecommendations(
         googleBooksQueryUsedByLane.push(googleLaneQuery);
         googleBooksQueriesActuallyFetched.add(googleLaneQuery);
         pushGlobalPhase("before_google_books_router_fetch");
+        const googleBooksTimeoutMs = googleBooksRouterFetchCount <= 1 ? 8_000 : 5_000;
         requests.push(
-          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 5_000, () => runEngine("googleBooks", laneInput))
+          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, () => runEngine("googleBooks", laneInput))
             .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
         );
         }
