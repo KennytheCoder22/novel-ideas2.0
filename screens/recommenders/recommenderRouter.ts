@@ -2795,6 +2795,7 @@ export async function getRecommendations(
   const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
+  let fetchLoopExhaustedMarkerEmitted = false;
   const googleBooksQueryUsedByLane: string[] = [];
   const openLibraryQueryUsedByLane: string[] = [];
   const kitsuQueryUsedByLane: string[] = [];
@@ -3870,15 +3871,18 @@ export async function getRecommendations(
         !includeKitsu ||
         kitsuRouterFetchCount >= sourceFetchCapPerRun;
       if (googleBooksExhausted && openLibraryExhausted && kitsuExhausted) {
-        pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
-          laneIndex: lanei,
-          googleBooksExhausted,
-          openLibraryExhausted,
-          kitsuExhausted,
-          googleBooksRouterFetchCount,
-          openLibraryRouterFetchCount,
-          kitsuRouterFetchCount,
-        });
+        if (!fetchLoopExhaustedMarkerEmitted) {
+          pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
+            laneIndex: lanei,
+            googleBooksExhausted,
+            openLibraryExhausted,
+            kitsuExhausted,
+            googleBooksRouterFetchCount,
+            openLibraryRouterFetchCount,
+            kitsuRouterFetchCount,
+          });
+          fetchLoopExhaustedMarkerEmitted = true;
+        }
         break;
       }
       pushGlobalPhase("router_fetch_loop_iteration", {
@@ -4062,13 +4066,16 @@ export async function getRecommendations(
       }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
       if (requests.length === 0) {
-        pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
-          laneIndex: lanei,
-          reason: "no_requests_after_source_checks",
-          googleBooksRouterFetchCount,
-          openLibraryRouterFetchCount,
-          kitsuRouterFetchCount,
-        });
+        if (!fetchLoopExhaustedMarkerEmitted) {
+          pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
+            laneIndex: lanei,
+            reason: "no_requests_after_source_checks",
+            googleBooksRouterFetchCount,
+            openLibraryRouterFetchCount,
+            kitsuRouterFetchCount,
+          });
+          fetchLoopExhaustedMarkerEmitted = true;
+        }
         break;
       }
 
