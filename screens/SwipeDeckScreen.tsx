@@ -998,6 +998,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [recommendationTimedOutAt, setRecommendationTimedOutAt] = useState<string>("");
   const [lastKnownBuiltQuery, setLastKnownBuiltQuery] = useState<string>("");
   const [lastKnownFetchPhase, setLastKnownFetchPhase] = useState<string>("");
+  const [sourceHealthPreflightEnabled, setSourceHealthPreflightEnabled] = useState<boolean>(true);
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
 
@@ -1028,6 +1029,15 @@ export default function SwipeDeckScreen(props: Props) {
     ms_hs: createRecommendationHistoryBucket(),
     adult: createRecommendationHistoryBucket(),
   });
+
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem("novelideas_disable_source_health_preflight") : null;
+      setSourceHealthPreflightEnabled(!(raw === "1" || String(raw).toLowerCase() === "true"));
+    } catch {
+      setSourceHealthPreflightEnabled(true);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1585,9 +1595,30 @@ function handleLeft() {
     setLastKnownFetchPhase("starting");
 
     try {
-      setRecommendFunctionErrorPhase("before query build");
+      setRecommendFunctionErrorPhase("before_query_build");
       setLastKnownFetchPhase("before_query_build");
-      setRecommendFunctionErrorPhase("before source fetch");
+      const estimatedBuiltQuery = String((inputWithHistory as any)?.bucketPlan?.preview || (inputWithHistory as any)?.bucketPlan?.queries?.[0] || "");
+      setLastKnownBuiltQuery(estimatedBuiltQuery);
+      setRecommendFunctionErrorPhase("after_query_build");
+      setLastKnownFetchPhase("after_query_build");
+      if (sourceHealthPreflightEnabled) {
+        setRecommendFunctionErrorPhase("before_source_health_preflight");
+        setLastKnownFetchPhase("before_source_health_preflight");
+        const sourceHealthPreflightTimeoutMs = 10_000;
+        await Promise.race([
+          (async () => {
+            await fetch("/api/openlibrary?health=1", { method: "GET" }).catch(() => null);
+          })(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`source_health_preflight_timeout:${sourceHealthPreflightTimeoutMs}`)), sourceHealthPreflightTimeoutMs)
+          ),
+        ]);
+        setRecommendFunctionErrorPhase("after_source_health_preflight");
+        setLastKnownFetchPhase("after_source_health_preflight");
+      } else {
+        setLastKnownFetchPhase("source_health_preflight_disabled");
+      }
+      setRecommendFunctionErrorPhase("before_source_fetch");
       setLastKnownFetchPhase("before_source_fetch");
       const recommendationTimeoutMs = 90_000;
       const result: any = await Promise.race([
@@ -1604,7 +1635,7 @@ function handleLeft() {
           setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
         ),
       ]);
-      setRecommendFunctionErrorPhase("after source fetch");
+      setRecommendFunctionErrorPhase("after_source_fetch");
       setLastKnownFetchPhase("after_source_fetch");
       const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
       const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
@@ -1613,9 +1644,9 @@ function handleLeft() {
         throw new Error(`STALE_ROUTER_ARTIFACT:${runtimeFingerprint || "(missing)"} expected:${expectedFingerprint}`);
       }
       setRecommendFunctionReturned(true);
-      setRecommendFunctionErrorPhase("before ranking");
+      setRecommendFunctionErrorPhase("before_ranking");
       setLastKnownFetchPhase("before_ranking");
-      setRecommendFunctionErrorPhase("before final return assembly");
+      setRecommendFunctionErrorPhase("before_final_return_assembly");
       setLastKnownFetchPhase("before_final_return_assembly");
 
       console.log("[NovelIdeas] Recommendation source", {
@@ -2128,14 +2159,18 @@ function handleLeft() {
     const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
+    const preflightTimeoutRun = String(recommendFunctionError || "").startsWith("source_health_preflight_timeout:");
     const staleRuntime = runtimeFingerprint !== expectedFingerprint;
     const missingRouterTrace = !Boolean(lastRouterResultTracePresent);
-    if (timeoutRun || staleRuntime || missingRouterTrace) {
-      const reason = [
-        timeoutRun ? "recommendation_timeout" : "",
-        staleRuntime ? `stale_runtime_fingerprint:${runtimeFingerprint || "(missing)"}` : "",
-        missingRouterTrace ? "router_result_trace_missing" : "",
-      ].filter(Boolean).join(", ");
+    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace) {
+      const reason = timeoutRun
+        ? "recommendation_timeout"
+        : preflightTimeoutRun
+          ? "source_health_preflight_timeout"
+          : [
+              staleRuntime ? `stale_runtime_fingerprint:${runtimeFingerprint || "(missing)"}` : "",
+              missingRouterTrace ? "router_result_trace_missing" : "",
+            ].filter(Boolean).join(", ");
       setPresetExecutionError(`SESSION_REPORT_EXPORT_BLOCKED:${reason}`);
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
@@ -2145,7 +2180,7 @@ function handleLeft() {
         `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,
         `Bundle script sample: ${typeof document !== "undefined" ? Array.from(document.querySelectorAll('script[src]')).map((el) => (el as HTMLScriptElement).src).slice(-5).join(" | ") || "(none)" : "(unavailable)"}`,
         `Captured at: ${new Date().toISOString()}`,
-        `timeoutMs: ${timeoutRun ? "90000" : "(n/a)"}`,
+        `timeoutMs: ${timeoutRun ? "90000" : preflightTimeoutRun ? "10000" : "(n/a)"}`,
         `recommendationStartedAt: ${recommendationStartedAt || "(missing)"}`,
         `recommendationTimedOutAt: ${recommendationTimedOutAt || "(not_timed_out)"}`,
         `lastKnownPhase: ${recommendFunctionErrorPhase || "(none)"}`,
@@ -2166,8 +2201,8 @@ function handleLeft() {
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(
         "Export blocked",
-        timeoutRun
-          ? `Session report export blocked due to recommendation timeout.\n\nTimeout: 90000ms\nLast phase: ${recommendFunctionErrorPhase || "(none)"}\n\nA blocked diagnostics report has been copied to clipboard.`
+        (timeoutRun || preflightTimeoutRun)
+          ? `Session report export blocked due to recommendation timeout.\n\nTimeout: ${preflightTimeoutRun ? "10000" : "90000"}ms\nLast phase: ${recommendFunctionErrorPhase || "(none)"}\n\nA blocked diagnostics report has been copied to clipboard.`
           : `Session report export blocked due to invalid runtime trace.\n\nExpected fingerprint: ${expectedFingerprint}\nActual fingerprint: ${runtimeFingerprint || "(missing)"}\nrouterResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}\n\nA blocked diagnostics report has been copied to clipboard.`
       );
       return;
