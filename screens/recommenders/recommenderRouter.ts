@@ -2639,14 +2639,18 @@ export async function getRecommendations(
   input: RecommenderInput,
   override?: EngineOverride
 ): Promise<RecommendationResult> {
-  try {
-    const heartbeat = { phase: "getRecommendations_function_entered", timestamp: new Date().toISOString() };
-    (globalThis as any).__novelIdeasRouterEntryHeartbeat = heartbeat;
+  const pushGlobalPhase = (phase: string, extra?: Record<string, any>) => {
+    const entry = { phase, timestamp: new Date().toISOString(), ...(extra || {}) };
+    (globalThis as any).__novelIdeasRouterEntryHeartbeat = entry;
     const history = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
       ? (globalThis as any).__novelIdeasRouterPhaseHistory
       : [];
-    history.push(heartbeat);
-    (globalThis as any).__novelIdeasRouterPhaseHistory = history.slice(-120);
+    history.push(entry);
+    (globalThis as any).__novelIdeasRouterPhaseHistory = history.slice(-160);
+  };
+  try {
+    pushGlobalPhase("getRecommendations_function_entered");
+    pushGlobalPhase("getRecommendations_after_entry_heartbeat");
   } catch {
     // non-fatal instrumentation only
   }
@@ -2654,35 +2658,69 @@ export async function getRecommendations(
   const markRouterPhase = (phase: string) => {
     routerPhaseHistory.push({ phase, timestamp: new Date().toISOString() });
   };
+  let routingInput: RecommenderInput;
+  let preferredEngine: EngineId | "auto";
+  let baseBucketPlan: any;
+  let generatedHybridLaneWeights: any;
+  let evidenceLaneWeights: any;
+  let affinityMultipliers: any;
+  let hybridLaneWeights: any;
+  let routerFamily: any;
+  let rankedLaneWeights: any;
+  let isHybridMode: boolean;
+  let bucketPlan: any;
+  try {
+    pushGlobalPhase("getRecommendations_before_args_normalization");
+    const preRouterTimeoutMs = 10_000;
+    const preRouterResult = await Promise.race([
+      (async () => {
+        routingInput = removeSkippedSwipeEvidenceForRouting(input);
+        pushGlobalPhase("getRecommendations_after_args_normalization");
+        preferredEngine = chooseEngine(routingInput, override);
+        baseBucketPlan = buildRouterBucketPlan(routingInput);
+        generatedHybridLaneWeights = buildHybridLaneWeights(routingInput, baseBucketPlan);
+        evidenceLaneWeights = buildDirectEvidenceLaneWeights(routingInput);
+        affinityMultipliers = buildUserAffinityLaneMultipliers(input);
+        hybridLaneWeights = applyLaneAffinityMultipliers(
+          mergeEvidenceLaneWeights(generatedHybridLaneWeights, evidenceLaneWeights),
+          affinityMultipliers
+        );
+        routerFamily = choosePrimaryRouterFamilyFromWeights(
+          inferRouterFamily(baseBucketPlan),
+          hybridLaneWeights,
+          routingInput
+        );
+        rankedLaneWeights = Object.entries(hybridLaneWeights || {})
+          .map(([family, weight]) => ({ family: normalizeRouterFamilyValue(family), weight: Number(weight || 0) }))
+          .filter((entry) => entry.family && entry.weight > 0)
+          .sort((a, b) => b.weight - a.weight);
+        isHybridMode = Object.keys(hybridLaneWeights).length > 1;
+        bucketPlan = {
+          ...baseBucketPlan,
+          lane: routerFamily,
+          family: routerFamily,
+          hybridMode: isHybridMode,
+          hybridLaneWeights,
+          primaryLane: routerFamily,
+        };
+        pushGlobalPhase("getRecommendations_before_router_call");
+        return true;
+      })(),
+      new Promise<boolean>((_, reject) =>
+        setTimeout(() => reject(new Error(`getRecommendations_pre_router_timeout:${preRouterTimeoutMs}`)), preRouterTimeoutMs)
+      ),
+    ]);
+    if (!preRouterResult) throw new Error("getRecommendations_pre_router_timeout:unknown");
+    pushGlobalPhase("getRecommendations_after_router_call");
+  } catch (err: any) {
+    pushGlobalPhase("getRecommendations_pre_router_error", {
+      phase: "getRecommendations_pre_router_error",
+      error: String(err?.message || err || "unknown"),
+      stackPrefix: String(err?.stack || "").slice(0, 240),
+    });
+    throw err;
+  }
   markRouterPhase("router_entered");
-  const routingInput = removeSkippedSwipeEvidenceForRouting(input);
-  const preferredEngine = chooseEngine(routingInput, override);
-  const baseBucketPlan = buildRouterBucketPlan(routingInput);
-  const generatedHybridLaneWeights = buildHybridLaneWeights(routingInput, baseBucketPlan);
-  const evidenceLaneWeights = buildDirectEvidenceLaneWeights(routingInput);
-  const affinityMultipliers = buildUserAffinityLaneMultipliers(input);
-  const hybridLaneWeights = applyLaneAffinityMultipliers(
-    mergeEvidenceLaneWeights(generatedHybridLaneWeights, evidenceLaneWeights),
-    affinityMultipliers
-  );
-  const routerFamily = choosePrimaryRouterFamilyFromWeights(
-    inferRouterFamily(baseBucketPlan),
-    hybridLaneWeights,
-    routingInput
-  );
-  const rankedLaneWeights = Object.entries(hybridLaneWeights || {})
-    .map(([family, weight]) => ({ family: normalizeRouterFamilyValue(family), weight: Number(weight || 0) }))
-    .filter((entry) => entry.family && entry.weight > 0)
-    .sort((a, b) => b.weight - a.weight);
-  const isHybridMode = Object.keys(hybridLaneWeights).length > 1;
-  const bucketPlan = {
-    ...baseBucketPlan,
-    lane: routerFamily,
-    family: routerFamily,
-    hybridMode: isHybridMode,
-    hybridLaneWeights,
-    primaryLane: routerFamily,
-  };
   markRouterPhase("router_query_built");
 
   // Gold-standard 20Q router:
