@@ -28,8 +28,8 @@ import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
-const DEPLOYED_COMMIT_MARKER = "cad8f5c";
-const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-cad8f5c";
+const DEPLOYED_COMMIT_MARKER = "4f92874";
+const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-4f92874";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -1714,6 +1714,11 @@ function handleLeft() {
             !Array.isArray(recommendationResult) &&
             Object.keys(recommendationResult).length === 0,
         };
+        (globalThis as any).__novelIdeasAfterRouterCallEventPayload = {
+          phase: "getRecommendations_after_router_call",
+          timestamp: new Date().toISOString(),
+          ...resultShape,
+        };
         markPhase("getRecommendations_after_router_call", resultShape);
         (globalThis as any).__novelIdeasLastGetRecommendationsResultShape = resultShape;
       } catch {
@@ -2283,6 +2288,7 @@ function handleLeft() {
       ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
       : [];
     const latestAfterRouterCallPhase = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
+    const directAfterRouterCallPayload = (globalThis as any).__novelIdeasAfterRouterCallEventPayload || null;
     const resultShape = (globalThis as any).__novelIdeasLastGetRecommendationsResultShape || null;
     const effectiveIsUndefined = Boolean((resultShape as any)?.isUndefined ?? (latestAfterRouterCallPhase as any)?.isUndefined);
     const effectiveIsEmptyObject = Boolean((resultShape as any)?.isEmptyObject ?? (latestAfterRouterCallPhase as any)?.isEmptyObject);
@@ -2363,6 +2369,9 @@ function handleLeft() {
         `getRecommendationsReturnDebugRouterVersion: ${String((resultShape as any)?.debugRouterVersion ?? (latestAfterRouterCallPhase as any)?.debugRouterVersion ?? "(missing)")}`,
         `getRecommendationsReturnBuiltFromQuery: ${String((resultShape as any)?.builtFromQuery ?? (latestAfterRouterCallPhase as any)?.builtFromQuery ?? "(missing)")}`,
         `getRecommendationsReturnError: ${String((resultShape as any)?.error ?? (latestAfterRouterCallPhase as any)?.error ?? "(missing)")}`,
+        `directAfterRouterCallPayload:${JSON.stringify(directAfterRouterCallPayload || null)}`,
+        `markPhaseAfterRouterCallPayload:${JSON.stringify(latestAfterRouterCallPhase || null)}`,
+        `lastGetRecommendationsResultShape:${JSON.stringify(resultShape || null)}`,
         `afterRouterCallEventPayload:${JSON.stringify(latestAfterRouterCallPhase || null)}`,
         `getRecommendationsEarlyReturnReason: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason ?? "(missing)")}`,
         `getRecommendationsEarlyReturnPhase: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnPhase ?? "(missing)")}`,
