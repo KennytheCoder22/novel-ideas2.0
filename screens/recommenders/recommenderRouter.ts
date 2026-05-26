@@ -27,7 +27,7 @@ import { applyAdultCanonicalRungOverrides, adultExpansionQueries } from "./adult
 import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey, teenExpansionQueries } from "./teenRouter";
 
 export type EngineOverride = EngineId | "auto";
-const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-67a0c19";
+const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-be07f19";
 const ROUTER_BUILD_TIMESTAMP = "2026-05-26T00:00:00.000Z";
 
 if (typeof getComicVineGraphicNovelRecommendations !== "function") {
@@ -2639,6 +2639,20 @@ export async function getRecommendations(
   input: RecommenderInput,
   override?: EngineOverride
 ): Promise<RecommendationResult> {
+  try {
+    const entry = { phase: "router_entered", timestamp: new Date().toISOString() };
+    (globalThis as any).__novelIdeasRouterEntryHeartbeat = entry;
+    const history = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
+      ? (globalThis as any).__novelIdeasRouterPhaseHistory
+      : [];
+    history.push(entry);
+    const afterEntry = { phase: "router_after_entry_marker", timestamp: new Date().toISOString() };
+    history.push(afterEntry);
+    (globalThis as any).__novelIdeasRouterEntryHeartbeat = afterEntry;
+    (globalThis as any).__novelIdeasRouterPhaseHistory = history.slice(-160);
+  } catch {
+    // non-fatal instrumentation only
+  }
   const pushGlobalPhase = (phase: string, extra?: Record<string, any>) => {
     const entry = { phase, timestamp: new Date().toISOString(), ...(extra || {}) };
     (globalThis as any).__novelIdeasRouterEntryHeartbeat = entry;
@@ -2647,6 +2661,17 @@ export async function getRecommendations(
       : [];
     history.push(entry);
     (globalThis as any).__novelIdeasRouterPhaseHistory = history.slice(-160);
+  };
+  const pushEarlyReturnDiagnostics = (reason: string, phase: string, extra?: Record<string, any>) => {
+    try {
+      pushGlobalPhase("getRecommendations_early_return", {
+        getRecommendationsEarlyReturnReason: reason,
+        getRecommendationsEarlyReturnPhase: phase,
+        ...(extra || {}),
+      });
+    } catch {
+      // instrumentation only
+    }
   };
   try {
     pushGlobalPhase("getRecommendations_function_entered");
@@ -2711,7 +2736,7 @@ export async function getRecommendations(
       ),
     ]);
     if (!preRouterResult) throw new Error("getRecommendations_pre_router_timeout:unknown");
-    pushGlobalPhase("getRecommendations_after_router_call");
+    pushGlobalPhase("getRecommendations_router_call_skipped_or_not_awaited");
   } catch (err: any) {
     pushGlobalPhase("getRecommendations_pre_router_error", {
       phase: "getRecommendations_pre_router_error",
@@ -2721,12 +2746,15 @@ export async function getRecommendations(
     throw err;
   }
   markRouterPhase("router_entered");
+  markRouterPhase("router_after_entry_marker");
   markRouterPhase("router_query_built");
 
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
+  pushGlobalPhase("before_source_enabled_synthesis");
   const sourceEnabled = resolveSourceEnabled(routedInput);
+  pushGlobalPhase("after_source_enabled_synthesis");
   const withSourceTimeout = async <T>(phaseBefore: string, phaseAfter: string, ms: number, op: () => Promise<T>): Promise<T> => {
     markRouterPhase(phaseBefore);
     try {
@@ -2742,6 +2770,30 @@ export async function getRecommendations(
     }
   };
   const sourceSkippedReason: string[] = [];
+  let googleBooksRouterFetchCount = 0;
+  let openLibraryRouterFetchCount = 0;
+  let kitsuRouterFetchCount = 0;
+  const sourceFetchCapPerRun = 2;
+  const routerRunStartedAtMs = Date.now();
+  const routerRunSoftTimeoutMs = 20_000;
+  let routerFetchLoopStoppedByTimeout = false;
+  let googleBooksConsecutiveTimeouts = 0;
+  const sourceSpecificQueryModeBySource: Record<string, string> = {};
+  const sourceSpecificQueryRejectedReasonBySource: Record<string, string[]> = {
+    googleBooks: [],
+    openLibrary: [],
+    kitsu: [],
+  };
+  const kitsuQuerySanitizedFrom: string[] = [];
+  const kitsuQuerySanitizedTo: string[] = [];
+  const googleBooksProbeDegraded = Boolean((routedInput as any)?.googleBooksProbeDegraded);
+  const sourceHealthProbeStatus = ((routedInput as any)?.sourceHealthProbeStatus || {}) as Record<string, string>;
+  const googleBooksQueriesActuallyFetched = new Set<string>();
+  const openLibraryQueriesActuallyFetched = new Set<string>();
+  const kitsuQueriesActuallyFetched = new Set<string>();
+  const googleBooksFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
+  const openLibraryFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
+  const kitsuFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
   const sourceDisableReasonsDetailed: Record<string, string[]> = {
     googleBooks: [],
     openLibrary: [],
@@ -2802,6 +2854,8 @@ export async function getRecommendations(
   if (!sourceEnabled.kitsu) sourceDisableReasonsDetailed.kitsu.push("disabled_by_admin_or_config");
   if (!sourceEnabled.nyt) sourceDisableReasonsDetailed.nyt.push("disabled_by_admin_or_config");
   if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.comicVine && !sourceEnabled.nyt) {
+    pushGlobalPhase("source_enabled_synthesis_guard");
+    pushEarlyReturnDiagnostics("all_sources_disabled", "source_enabled_guard");
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED", {
       sourceEnabled,
       sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
@@ -2823,6 +2877,8 @@ export async function getRecommendations(
     debugRouterLog("COMICVINE_ONLY_SMOKE_PATH", { deckKey: routedInput.deckKey, includeComicVine });
   }
   if (!hasRunnableSource) {
+    pushGlobalPhase("disabled_empty_pool_guard");
+    pushEarlyReturnDiagnostics("all_sources_disabled_after_synthesis", "runnable_source_guard");
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED_AFTER_SYNTHESIS", {
       sourceEnabled,
       sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
@@ -2976,8 +3032,13 @@ export async function getRecommendations(
   }
 
   rungs = dedupeRungs(rungs as any);
+  pushGlobalPhase("query_rung_guard", {
+    rungCount: Array.isArray(rungs) ? rungs.length : 0,
+    routerFamily,
+  });
 
   if (!rungs.length && routerFamily === "mystery") {
+    pushGlobalPhase("fallback_early_return_guard", { reason: "empty_rungs_mystery_fallback" });
     rungs = [
       { rung: 0, query: "psychological suspense graphic novel" },
       { rung: 1, query: "detective mystery graphic novel" },
@@ -2987,6 +3048,7 @@ export async function getRecommendations(
   }
 
   if (!rungs.length && routerFamily === "science_fiction") {
+    pushGlobalPhase("fallback_early_return_guard", { reason: "empty_rungs_scifi_fallback" });
     rungs = [
       { rung: 0, query: "science fiction novel" },
       { rung: 1, query: "dystopian science fiction novel" },
@@ -2996,6 +3058,7 @@ export async function getRecommendations(
   }
 
   if (!rungs.length && routerFamily === "speculative") {
+    pushGlobalPhase("fallback_early_return_guard", { reason: "empty_rungs_speculative_fallback" });
     rungs = [
       { rung: 0, query: "epic fantasy novel" },
       { rung: 1, query: "dark fantasy novel" },
@@ -3791,6 +3854,44 @@ export async function getRecommendations(
 
     for (let lanei = 0; lanei < queryLanes.length; lanei += 1) {
       try {
+      const googleBooksExhausted =
+        !sourceEnabled.googleBooks ||
+        googleQuotaExhausted ||
+        googleBooksProbeDegraded ||
+        googleBooksRouterFetchCount >= sourceFetchCapPerRun;
+      const openLibraryExhausted =
+        !sourceEnabled.openLibrary ||
+        openLibraryRouterFetchCount >= sourceFetchCapPerRun;
+      const kitsuExhausted =
+        !includeKitsu ||
+        kitsuRouterFetchCount >= sourceFetchCapPerRun;
+      if (googleBooksExhausted && openLibraryExhausted && kitsuExhausted) {
+        pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
+          laneIndex: lanei,
+          googleBooksExhausted,
+          openLibraryExhausted,
+          kitsuExhausted,
+          googleBooksRouterFetchCount,
+          openLibraryRouterFetchCount,
+          kitsuRouterFetchCount,
+        });
+        break;
+      }
+      pushGlobalPhase("router_fetch_loop_iteration", {
+        laneIndex: lanei,
+        totalLanes: queryLanes.length,
+        googleBooksRouterFetchCount,
+        openLibraryRouterFetchCount,
+        kitsuRouterFetchCount,
+      });
+      if (Date.now() - routerRunStartedAtMs >= routerRunSoftTimeoutMs) {
+        routerFetchLoopStoppedByTimeout = true;
+        pushGlobalPhase("router_fetch_loop_stopped_by_timeout", {
+          laneIndex: lanei,
+          elapsedMs: Date.now() - routerRunStartedAtMs,
+        });
+        break;
+      }
       const lane = queryLanes[lanei];
       var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
       var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
@@ -3846,20 +3947,104 @@ export async function getRecommendations(
           forceTastePrimaryForComicVine: querySourceOfTruth === "taste_profile",
         },
       };
+      const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || lane.query || "");
 
       var requests: Array<Promise<RecommendationResult>> = [];
+      const baseLaneQuery = String(lane.query || "").trim();
+      const sanitizeOpenLibraryQuery = (q: string) => {
+        const cleaned = q
+          .replace(/["']/g, " ")
+          .replace(/[-+]\w+/g, " ")
+          .replace(/\b(character[-\s]?focused|graphic novel|novel|book|narrative|consequence|survival)\b/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        return cleaned.split(/\s+/).slice(0, 5).join(" ").trim();
+      };
+      const sanitizeKitsuQuery = (q: string) => {
+        const nq = String(q || "").toLowerCase();
+        const allowed = ["fantasy", "adventure", "drama", "romance", "science fiction", "sci fi", "mystery", "thriller", "horror", "comedy", "action"];
+        const hits = allowed.filter((term) => nq.includes(term));
+        const compact = Array.from(new Set(hits.map((h) => (h === "sci fi" ? "science fiction" : h)))).slice(0, 2).join(" ").trim();
+        return compact || "fantasy adventure";
+      };
+      const googleLaneQuery = baseLaneQuery;
+      const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
+      const kitsuLaneQuery = sanitizeKitsuQuery(baseLaneQuery);
+      sourceSpecificQueryModeBySource.googleBooks = "natural_language_with_exclusions";
+      sourceSpecificQueryModeBySource.openLibrary = "short_subject_title_unquoted";
+      sourceSpecificQueryModeBySource.kitsu = "compact_anime_manga_genre_terms";
+      if (openLibraryLaneQuery !== baseLaneQuery) sourceSpecificQueryRejectedReasonBySource.openLibrary.push("long_or_quoted_query_sanitized");
+      if (kitsuLaneQuery !== baseLaneQuery) {
+        sourceSpecificQueryRejectedReasonBySource.kitsu.push("book_style_or_exclusion_query_sanitized");
+        kitsuQuerySanitizedFrom.push(baseLaneQuery);
+        kitsuQuerySanitizedTo.push(kitsuLaneQuery);
+      }
       var effectiveLaneSource =
         googleQuotaExhausted && lane.source === "googleBooks" && sourceEnabled.openLibrary
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
-        requests.push(withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 10_000, () => runEngine("googleBooks", laneInput)));
+        if (googleBooksProbeDegraded) {
+          pushGlobalPhase("router_fetch_loop_stopped_by_cap", {
+            source: "googleBooks",
+            source_fetch_cap_exceeded: false,
+            source_fetch_skipped_due_to_probe_degraded: true,
+            probeStatus: String(sourceHealthProbeStatus.google_books || ""),
+          });
+          sourceSkippedReason.push("googleBooks_skipped_due_to_probe_degraded");
+        } else
+        if (googleBooksRouterFetchCount >= sourceFetchCapPerRun) {
+          pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "googleBooks", source_fetch_cap_exceeded: true, googleBooksRouterFetchCount });
+          sourceSkippedReason.push("source_fetch_cap_exceeded:googleBooks");
+        } else {
+        laneInput = {
+          ...laneInput,
+          bucketPlan: { ...(laneInput.bucketPlan as any), queries: [googleLaneQuery], preview: googleLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: googleLaneQuery, primary: googleLaneQuery }] },
+        };
+          googleBooksRouterFetchCount += 1;
+        googleBooksQueriesActuallyFetched.add(googleLaneQuery);
+        pushGlobalPhase("before_google_books_router_fetch");
+        requests.push(
+          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 5_000, () => runEngine("googleBooks", laneInput))
+            .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
+        );
+        }
       }
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
-        requests.push(withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput)));
+        if (openLibraryRouterFetchCount >= sourceFetchCapPerRun) {
+          pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "openLibrary", source_fetch_cap_exceeded: true, openLibraryRouterFetchCount });
+          sourceSkippedReason.push("source_fetch_cap_exceeded:openLibrary");
+        } else {
+        laneInput = {
+          ...laneInput,
+          bucketPlan: { ...(laneInput.bucketPlan as any), queries: [openLibraryLaneQuery], preview: openLibraryLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: openLibraryLaneQuery, primary: openLibraryLaneQuery }] },
+        };
+          openLibraryRouterFetchCount += 1;
+        openLibraryQueriesActuallyFetched.add(openLibraryLaneQuery);
+        pushGlobalPhase("before_open_library_router_fetch");
+        requests.push(
+          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput))
+            .finally(() => pushGlobalPhase("after_open_library_router_fetch")) as any
+        );
+        }
       }
       if (includeKitsu) {
-        requests.push(withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput)));
+        if (kitsuRouterFetchCount >= sourceFetchCapPerRun) {
+          pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
+          sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
+        } else {
+        laneInput = {
+          ...laneInput,
+          bucketPlan: { ...(laneInput.bucketPlan as any), queries: [kitsuLaneQuery], preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
+        };
+          kitsuRouterFetchCount += 1;
+        kitsuQueriesActuallyFetched.add(kitsuLaneQuery);
+        pushGlobalPhase("before_kitsu_router_fetch");
+        requests.push(
+          withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
+            .finally(() => pushGlobalPhase("after_kitsu_router_fetch")) as any
+        );
+        }
       }
       var shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
       var comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
@@ -3881,10 +4066,25 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
+        googleBooksFetchResultsByQuery.push({
+          query: googleLaneQuery,
+          status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          rawCount: Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle)),
+          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+        });
         if (results[index]?.status === "rejected" && isGoogleQuotaError((results[index] as PromiseRejectedResult).reason)) {
           googleQuotaExhausted = true;
           sourceSkippedReason.push("googleBooks_quota_exhausted_auto_disabled");
           debugRouterLog("GOOGLE_BOOKS_AUTO_DISABLED_QUOTA", { query: lane.query });
+        }
+        if (results[index]?.status === "rejected" && String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").includes("router_before_google_books_full_fetch_timeout")) {
+          googleBooksConsecutiveTimeouts += 1;
+          if (googleBooksConsecutiveTimeouts >= 1) {
+            googleQuotaExhausted = true;
+            sourceSkippedReason.push("googleBooks_marked_degraded_after_consecutive_timeouts");
+          }
+        } else if (results[index]?.status === "fulfilled") {
+          googleBooksConsecutiveTimeouts = 0;
         }
         index += 1;
       }
@@ -3892,12 +4092,28 @@ export async function getRecommendations(
       const laneOpenLibrary = sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") index += 1;
+      if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
+        openLibraryFetchResultsByQuery.push({
+          query: openLibraryLaneQuery,
+          status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          rawCount: Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)),
+          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+        });
+        index += 1;
+      }
 
       const laneKitsu = includeKitsu && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (includeKitsu) index += 1;
+      if (includeKitsu) {
+        kitsuFetchResultsByQuery.push({
+          query: kitsuLaneQuery,
+          status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          rawCount: Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu)),
+          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+        });
+        index += 1;
+      }
 
       const laneComicVine = comicVineDispatchedOnThisLane && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
@@ -4162,13 +4378,39 @@ export async function getRecommendations(
     (kitsuStarved || !includeKitsu) &&
     (comicVineUnavailableBypass || !includeComicVine);
   if (allRealSourcesStarved) {
+    pushGlobalPhase("source_health_guard");
+    pushEarlyReturnDiagnostics("source_health_failed", "post_fetch_source_health_guard");
     throwSourceFatal("source_health_failed", {
       sourceEnabled,
+      sourceHealthProbeStatus,
+      fetchLoopCounters: {
+        googleBooksRouterFetchCount,
+        openLibraryRouterFetchCount,
+        kitsuRouterFetchCount,
+      },
+      googleBooksQueriesActuallyFetched: Array.from(googleBooksQueriesActuallyFetched),
+      openLibraryQueriesActuallyFetched: Array.from(openLibraryQueriesActuallyFetched),
+      kitsuQueriesActuallyFetched: Array.from(kitsuQueriesActuallyFetched),
+      googleBooksFetchResultsByQuery,
+      openLibraryFetchResultsByQuery,
+      kitsuFetchResultsByQuery,
+      sourceSpecificQueryModeBySource,
+      sourceSpecificQueryRejectedReasonBySource,
+      kitsuQuerySanitizedFrom,
+      kitsuQuerySanitizedTo,
       sourceDisableReasonsDetailed,
       perSourceStatus: {
         googleBooks: { enabled: sourceEnabled.googleBooks, rawFetched: aggregatedRawFetched.googleBooks, starved: googleStarved },
         openLibrary: { enabled: sourceEnabled.openLibrary, rawFetched: aggregatedRawFetched.openLibrary, starved: openLibraryStarved },
-        kitsu: { enabled: includeKitsu, rawFetched: aggregatedRawFetched.kitsu, starved: kitsuStarved },
+        kitsu: {
+          enabled: includeKitsu,
+          rawFetched: aggregatedRawFetched.kitsu,
+          starved: kitsuStarved,
+          kitsuRawCount: aggregatedRawFetched.kitsu,
+          kitsuPostFilterCount: 0,
+          kitsuUsableCount: 0,
+          kitsuSourceHealthRejectedReason: kitsuStarved ? "no_raw_fetch_results" : "no_usable_candidates_before_health_guard",
+        },
         comicVine: { enabled: includeComicVine, bypassed: comicVineUnavailableBypass, status: comicVineAdapterStatus },
       },
       sourceSkippedReason,
@@ -11469,7 +11711,7 @@ const normalizedCandidatesRaw = [
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     routerPhaseHistory,
-    deployedCommitHash: "67a0c19",
+    deployedCommitHash: "be07f19",
     routerBuildTimestamp: ROUTER_BUILD_TIMESTAMP,
     routerInstrumentationVersion: ROUTER_INSTRUMENTATION_VERSION,
     nytFetchAttempted,
