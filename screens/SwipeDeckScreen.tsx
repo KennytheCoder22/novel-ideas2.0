@@ -28,8 +28,8 @@ import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
-const DEPLOYED_COMMIT_MARKER = "4f92874";
-const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-4f92874";
+const DEPLOYED_COMMIT_MARKER = "be07f19";
+const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-be07f19";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -1738,13 +1738,11 @@ function handleLeft() {
           ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
           : [];
         const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
-        const hasAfterRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
         const hasAfterRouterCallWithShapeV2 = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
-        const afterRouterCallEvent = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2")
-          || [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
+        const afterRouterCallEvent = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
         const hasResultShape = Boolean((globalThis as any).__novelIdeasLastGetRecommendationsResultShape) || Boolean(afterRouterCallEvent);
         throw new Error(
-          (hasAfterRouterCallWithShapeV2 || hasAfterRouterCall)
+          hasAfterRouterCallWithShapeV2
             ? ((afterRouterCallEvent as any)?.isUndefined
               ? "getRecommendations_returned_undefined:router_entered_missing"
               : (afterRouterCallEvent as any)?.isEmptyObject

@@ -27,7 +27,7 @@ import { applyAdultCanonicalRungOverrides, adultExpansionQueries } from "./adult
 import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey, teenExpansionQueries } from "./teenRouter";
 
 export type EngineOverride = EngineId | "auto";
-const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-4f92874";
+const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-be07f19";
 const ROUTER_BUILD_TIMESTAMP = "2026-05-26T00:00:00.000Z";
 
 if (typeof getComicVineGraphicNovelRecommendations !== "function") {
@@ -2722,7 +2722,7 @@ export async function getRecommendations(
       ),
     ]);
     if (!preRouterResult) throw new Error("getRecommendations_pre_router_timeout:unknown");
-    pushGlobalPhase("getRecommendations_after_router_call");
+    pushGlobalPhase("getRecommendations_after_router_call_legacy_pre_router");
   } catch (err: any) {
     pushGlobalPhase("getRecommendations_pre_router_error", {
       phase: "getRecommendations_pre_router_error",
@@ -11483,7 +11483,7 @@ const normalizedCandidatesRaw = [
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     routerPhaseHistory,
-    deployedCommitHash: "4f92874",
+    deployedCommitHash: "be07f19",
     routerBuildTimestamp: ROUTER_BUILD_TIMESTAMP,
     routerInstrumentationVersion: ROUTER_INSTRUMENTATION_VERSION,
     nytFetchAttempted,
