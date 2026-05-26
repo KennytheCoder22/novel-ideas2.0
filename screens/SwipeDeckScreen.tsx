@@ -28,8 +28,8 @@ import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
-const DEPLOYED_COMMIT_MARKER = "be07f19";
-const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-be07f19";
+const DEPLOYED_COMMIT_MARKER = "17c4615";
+const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -2448,6 +2448,17 @@ function handleLeft() {
         `kitsuQuerySanitizedFrom: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedFrom || [])}`,
         `kitsuQuerySanitizedTo: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedTo || [])}`,
         `returnedItemsLength: ${String(returnedItemsLength)}`,
+        `zeroItemsCompactSummary: ${JSON.stringify({
+          debugRawPoolLength: Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0,
+          debugCandidatePoolLength: Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0,
+          candidatePoolLength: Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0,
+          returnedItemsLength,
+          finalEligibilityRejectedTitlesByReason: (lastRecommendationResult as any)?.finalEligibilityRejectedTitlesByReason || {},
+          normalFinalGateRecoveryConsidered: Boolean((lastRecommendationResult as any)?.normalFinalGateRecoveryConsidered),
+          kitsuNormalRecoveryConsidered: Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered),
+          kitsuRecoveryPoolTitles: (lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [],
+          kitsuRecoveryBestRejectedReasons: (lastRecommendationResult as any)?.kitsuRecoveryBestRejectedReasons || {},
+        })}`,
         `zeroItemsCause_sourceStarvation: ${String(Boolean((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthFailed || earlyReturnReason === "source_health_failed"))}`,
         `zeroItemsCause_finalGateRejection: ${String(Boolean((lastRecommendationResult as any)?.terminalRejectReasonByTitle || (lastRecommendationResult as any)?.finalEligibilityHardNeverReturnTitles))}`,
         `zeroItemsCause_postTerminalDrop: ${String(Boolean((lastRecommendationResult as any)?.finalRenderDocsDroppedByReason || (lastRecommendationResult as any)?.droppedBeforeRenderReason))}`,
@@ -2459,7 +2470,7 @@ function handleLeft() {
         `finalEligibilityRejectedTitlesByReason: ${JSON.stringify((lastRecommendationResult as any)?.finalEligibilityRejectedTitlesByReason || {})}`,
         `teenPostPassOutputLength: ${String((lastRecommendationResult as any)?.teenPostPassOutputLength ?? "(missing)")}`,
         `normalFinalGateRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.normalFinalGateRecoveryConsidered))}`,
-        `kitsuRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered))}`,
+        `kitsuNormalRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered))}`,
         `kitsuRecoveryAcceptedTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryAcceptedTitles || [])}`,
         `kitsuRecoveryRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryRejectedByTitle || {})}`,
         `kitsuRecoveryPoolTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [])}`,
