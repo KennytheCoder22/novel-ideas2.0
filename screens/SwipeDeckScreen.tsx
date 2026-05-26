@@ -1690,7 +1690,7 @@ function handleLeft() {
         Promise.race([
           routerPromise,
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("router_entry_timeout:20000")), 20_000)
+            setTimeout(() => reject(new Error("router_run_timeout:30000")), 30_000)
           ),
         ]),
         new Promise((_, reject) =>
@@ -2282,6 +2282,7 @@ function handleLeft() {
     const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
+    const routerRunTimeoutRun = String(recommendFunctionError || "").startsWith("router_run_timeout:");
     const routerEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_entry_timeout:");
     const routerPostEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_post_entry_timeout:");
     const routerInvocationSkippedBeforeAwaitRun = String(recommendFunctionError || "").startsWith("router_invocation_skipped_before_await:");
@@ -2305,11 +2306,30 @@ function handleLeft() {
     const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
     const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
     const hasRouterEntered = globalRouterPhases.some((row: any) => String(row?.phase || "") === "router_entered");
-    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
+    const latestEarlyReturnPhase = [...globalRouterPhases]
+      .reverse()
+      .find((row: any) => String(row?.phase || "") === "getRecommendations_early_return");
+    const latestTimeoutPhase = [...globalRouterPhases]
+      .reverse()
+      .find((row: any) => String(row?.phase || "") === "actual_router_invocation_rejected" || String(row?.phase || "") === "after_getRecommendations_call");
+    const parseTs = (v: any) => {
+      const n = Date.parse(String(v || ""));
+      return Number.isFinite(n) ? n : NaN;
+    };
+    const earlyReturnMs = parseTs((latestEarlyReturnPhase as any)?.timestamp);
+    const timeoutMsTs = parseTs((latestTimeoutPhase as any)?.timestamp);
+    const earlyReturnCloseToTimeout = Number.isFinite(earlyReturnMs) && Number.isFinite(timeoutMsTs) && (earlyReturnMs - timeoutMsTs) >= 0 && (earlyReturnMs - timeoutMsTs) <= 1000;
+    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
       const reason = getRecommendationsReturnedUndefinedRun
         ? "getRecommendations_returned_undefined"
         : getRecommendationsReturnedEmptyObjectRun
         ? "getRecommendations_returned_empty_object"
+        : ((routerRunTimeoutRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun) &&
+            earlyReturnCloseToTimeout &&
+            String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason || "") === "source_health_failed")
+        ? "source_health_failed"
+        : routerRunTimeoutRun
+        ? "router_run_timeout"
         : routerPostEntryTimeoutRun
         ? "router_post_entry_timeout"
         : (routerEntryTimeoutRun && hasRouterEntered)
@@ -2335,9 +2355,6 @@ function handleLeft() {
               missingRouterTrace ? "router_result_trace_missing" : "",
             ].filter(Boolean).join(", ");
       setPresetExecutionError(`SESSION_REPORT_EXPORT_BLOCKED:${reason}`);
-      const latestEarlyReturnPhase = [...globalRouterPhases]
-        .reverse()
-        .find((row: any) => String(row?.phase || "") === "getRecommendations_early_return");
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
         `Reason: ${reason || "(unknown)"}`,
@@ -2364,7 +2381,7 @@ function handleLeft() {
         `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,
         `Bundle script sample: ${typeof document !== "undefined" ? Array.from(document.querySelectorAll('script[src]')).map((el) => (el as HTMLScriptElement).src).slice(-5).join(" | ") || "(none)" : "(unavailable)"}`,
         `Captured at: ${new Date().toISOString()}`,
-        `timeoutMs: ${timeoutRun ? "90000" : preflightTimeoutRun ? "10000" : "(n/a)"}`,
+        `timeoutMs: ${timeoutRun ? "90000" : preflightTimeoutRun ? "10000" : (routerRunTimeoutRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun) ? "30000" : "(n/a)"}`,
         `recommendationStartedAt: ${recommendationStartedAt || "(missing)"}`,
         `recommendationTimedOutAt: ${recommendationTimedOutAt || "(not_timed_out)"}`,
         `lastKnownPhase: ${recommendFunctionErrorPhase || "(none)"}`,
@@ -2399,6 +2416,7 @@ function handleLeft() {
         `afterRouterCallEventPayload:${JSON.stringify(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase || null)}`,
         `getRecommendationsEarlyReturnReason: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason ?? "(missing)")}`,
         `getRecommendationsEarlyReturnPhase: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnPhase ?? "(missing)")}`,
+        `earlyReturnCloseToTimeout: ${String(Boolean(earlyReturnCloseToTimeout))}`,
       ].join("\n");
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(

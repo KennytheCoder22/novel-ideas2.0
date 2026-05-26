@@ -3921,7 +3921,7 @@ export async function getRecommendations(
           googleBooksRouterFetchCount += 1;
         pushGlobalPhase("before_google_books_router_fetch");
         requests.push(
-          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 10_000, () => runEngine("googleBooks", laneInput))
+          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 5_000, () => runEngine("googleBooks", laneInput))
             .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
         );
         }
