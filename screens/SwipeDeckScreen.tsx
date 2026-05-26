@@ -28,8 +28,8 @@ import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
-const DEPLOYED_COMMIT_MARKER = "77bbca8";
-const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-77bbca8";
+const DEPLOYED_COMMIT_MARKER = "cad8f5c";
+const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-cad8f5c";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";

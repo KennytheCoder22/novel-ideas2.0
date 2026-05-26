@@ -27,7 +27,7 @@ import { applyAdultCanonicalRungOverrides, adultExpansionQueries } from "./adult
 import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey, teenExpansionQueries } from "./teenRouter";
 
 export type EngineOverride = EngineId | "auto";
-const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-77bbca8";
+const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-cad8f5c";
 const ROUTER_BUILD_TIMESTAMP = "2026-05-26T00:00:00.000Z";
 
 if (typeof getComicVineGraphicNovelRecommendations !== "function") {
@@ -11483,7 +11483,7 @@ const normalizedCandidatesRaw = [
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     routerPhaseHistory,
-    deployedCommitHash: "77bbca8",
+    deployedCommitHash: "cad8f5c",
     routerBuildTimestamp: ROUTER_BUILD_TIMESTAMP,
     routerInstrumentationVersion: ROUTER_INSTRUMENTATION_VERSION,
     nytFetchAttempted,
