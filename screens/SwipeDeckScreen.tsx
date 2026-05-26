@@ -2309,6 +2309,10 @@ function handleLeft() {
     const hasAfterRouterCallEvent = Boolean(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase);
     const returnedItemsLength = Number((resultShape as any)?.itemsLength ?? (afterRouterCallWithShapeV2Payload as any)?.itemsLength ?? -1);
     const zeroItemsReturnedRun = Boolean(recommendFunctionReturned) && !recommendFunctionError && returnedItemsLength === 0;
+    const debugRawPoolLengthTop = Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0;
+    const debugCandidatePoolLengthTop = Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0;
+    const fetchedRawCountTop = Number((lastRecommendationResult as any)?.fetchedRawCount ?? ((lastRecommendationResult as any)?.debugSourceStats ? Object.values((lastRecommendationResult as any).debugSourceStats).reduce((acc: number, row: any) => acc + Number(row?.rawFetched || 0), 0) : 0));
+    const sourceStarvationByZeroPools = fetchedRawCountTop === 0 && debugCandidatePoolLengthTop === 0;
     const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
     const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
     const hasRouterEntered = globalRouterPhases.some((row: any) => String(row?.phase || "") === "router_entered");
@@ -2331,6 +2335,8 @@ function handleLeft() {
         ? "getRecommendations_returned_undefined"
         : getRecommendationsReturnedEmptyObjectRun
         ? "getRecommendations_returned_empty_object"
+        : String(recommendFunctionError || "").includes("kitsu_recovery_lost_at_return_assembly")
+        ? "kitsu_recovery_lost_at_return_assembly"
         : zeroItemsReturnedRun
         ? "zero_items_returned"
         : ((routerRunTimeoutRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun) &&
@@ -2369,16 +2375,22 @@ function handleLeft() {
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
         `Reason: ${reason || "(unknown)"}`,
-        `debugRawPoolLength: ${String(Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0)}`,
-        `debugCandidatePoolLength: ${String(Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0)}`,
-        `candidatePoolLength: ${String(Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0)}`,
-        `fetchedRawCount: ${String((lastRecommendationResult as any)?.fetchedRawCount ?? ((lastRecommendationResult as any)?.debugSourceStats ? Object.values((lastRecommendationResult as any).debugSourceStats).reduce((acc: number, row: any) => acc + Number(row?.rawFetched || 0), 0) : 0))}`,
+        `debugRawPoolLength: ${String(debugRawPoolLengthTop)}`,
+        `debugCandidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
+        `candidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
+        `fetchedRawCount: ${String(fetchedRawCountTop)}`,
         `normalizedCount: ${String((lastRecommendationResult as any)?.normalizedCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
         `candidateCount: ${String((lastRecommendationResult as any)?.candidateCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
         `filteredCount: ${String((lastRecommendationResult as any)?.filteredCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
         `rankedCount: ${String((lastRecommendationResult as any)?.rankedCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
         `finalItemsLength: ${String((lastRecommendationResult as any)?.finalItemsLength ?? (Array.isArray((lastRecommendationResult as any)?.items) ? (lastRecommendationResult as any).items.length : 0))}`,
         `returnedItemsLength: ${String(returnedItemsLength)}`,
+        `activeLaneQueries: ${JSON.stringify((lastRecommendationResult as any)?.activeLaneQueries || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.activeLaneQueries || [])}`,
+        `routerFamily: ${String((lastRecommendationResult as any)?.routerFamily || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerFamily || "(missing)")}`,
+        `rungCount: ${String((lastRecommendationResult as any)?.rungCount ?? (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.rungCount ?? "(missing)")}`,
+        `sourceFetchAttemptedBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchAttemptedBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchAttemptedBySource || {})}`,
+        `sourceFetchTimeoutBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchTimeoutBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchTimeoutBySource || {})}`,
+        `sourceRawCountBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceRawCountBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceRawCountBySource || {})}`,
         `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
         `Router instrumentation marker (client): ${ROUTER_INSTRUMENTATION_MARKER}`,
         `Deployed commit marker: ${(lastRecommendationResult as any)?.deployedCommitHash || "(missing)"}`,
@@ -2468,10 +2480,10 @@ function handleLeft() {
           kitsuRecoveryPoolTitles: (lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [],
           kitsuRecoveryBestRejectedReasons: (lastRecommendationResult as any)?.kitsuRecoveryBestRejectedReasons || {},
         })}`,
-        `zeroItemsCause_sourceStarvation: ${String(Boolean((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthFailed || earlyReturnReason === "source_health_failed"))}`,
-        `zeroItemsCause_finalGateRejection: ${String(Boolean((lastRecommendationResult as any)?.terminalRejectReasonByTitle || (lastRecommendationResult as any)?.finalEligibilityHardNeverReturnTitles))}`,
-        `zeroItemsCause_postTerminalDrop: ${String(Boolean((lastRecommendationResult as any)?.finalRenderDocsDroppedByReason || (lastRecommendationResult as any)?.droppedBeforeRenderReason))}`,
-        `zeroItemsCause_emergencyHandoffBlocked: ${String(Boolean((lastRecommendationResult as any)?.finalHandoffEmptyReason))}`,
+        `zeroItemsCause_sourceStarvation: ${String(sourceStarvationByZeroPools || Boolean((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthFailed || earlyReturnReason === "source_health_failed"))}`,
+        `zeroItemsCause_finalGateRejection: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.terminalRejectReasonByTitle || (lastRecommendationResult as any)?.finalEligibilityHardNeverReturnTitles))}`,
+        `zeroItemsCause_postTerminalDrop: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.finalRenderDocsDroppedByReason || (lastRecommendationResult as any)?.droppedBeforeRenderReason))}`,
+        `zeroItemsCause_emergencyHandoffBlocked: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.finalHandoffEmptyReason))}`,
         `rawSourceCounts: ${JSON.stringify((lastRecommendationResult as any)?.debugSourceStats || {})}`,
         `candidatePoolLength: ${String(Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0)}`,
         `debugRawPool.length: ${String(Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0)}`,
