@@ -2752,7 +2752,9 @@ export async function getRecommendations(
   // Gold-standard 20Q router:
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
+  pushGlobalPhase("before_source_enabled_synthesis");
   const sourceEnabled = resolveSourceEnabled(routedInput);
+  pushGlobalPhase("after_source_enabled_synthesis");
   const withSourceTimeout = async <T>(phaseBefore: string, phaseAfter: string, ms: number, op: () => Promise<T>): Promise<T> => {
     markRouterPhase(phaseBefore);
     try {
@@ -3890,13 +3892,25 @@ export async function getRecommendations(
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
-        requests.push(withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 10_000, () => runEngine("googleBooks", laneInput)));
+        pushGlobalPhase("before_google_books_router_fetch");
+        requests.push(
+          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 10_000, () => runEngine("googleBooks", laneInput))
+            .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
+        );
       }
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
-        requests.push(withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput)));
+        pushGlobalPhase("before_open_library_router_fetch");
+        requests.push(
+          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput))
+            .finally(() => pushGlobalPhase("after_open_library_router_fetch")) as any
+        );
       }
       if (includeKitsu) {
-        requests.push(withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput)));
+        pushGlobalPhase("before_kitsu_router_fetch");
+        requests.push(
+          withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
+            .finally(() => pushGlobalPhase("after_kitsu_router_fetch")) as any
+        );
       }
       var shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
       var comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;

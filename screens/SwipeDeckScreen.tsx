@@ -2283,6 +2283,7 @@ function handleLeft() {
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
     const routerEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_entry_timeout:");
+    const routerPostEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_post_entry_timeout:");
     const routerInvocationSkippedBeforeAwaitRun = String(recommendFunctionError || "").startsWith("router_invocation_skipped_before_await:");
     const routerNotInvokedEmptyResultRun = String(recommendFunctionError || "").startsWith("router_not_invoked_empty_result:");
     const getRecommendationsReturnedUndefinedRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_undefined:");
@@ -2303,11 +2304,16 @@ function handleLeft() {
     const hasAfterRouterCallEvent = Boolean(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase);
     const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
     const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
-    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
+    const hasRouterEntered = globalRouterPhases.some((row: any) => String(row?.phase || "") === "router_entered");
+    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
       const reason = getRecommendationsReturnedUndefinedRun
         ? "getRecommendations_returned_undefined"
         : getRecommendationsReturnedEmptyObjectRun
         ? "getRecommendations_returned_empty_object"
+        : routerPostEntryTimeoutRun
+        ? "router_post_entry_timeout"
+        : (routerEntryTimeoutRun && hasRouterEntered)
+        ? "router_post_entry_timeout"
         : (hasBeforeRouterCall && !hasInvocationAboutToAwait)
         ? "router_invocation_skipped_before_await"
         : (routerEntryTimeoutRun && hasAfterRouterCallEvent && effectiveIsUndefined)
@@ -2366,8 +2372,8 @@ function handleLeft() {
         `queryBuildStatus: ${queryBuildStatus || "(unknown)"}`,
         `lastKnownSourceHealthFetchPhase: ${lastKnownFetchPhase || "(none)"}`,
         `phaseHistory: ${JSON.stringify(phaseHistory || [])}`,
-        `routerPhaseHistory: ${JSON.stringify((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || [])}`,
-        `lastRouterPhase: ${JSON.stringify((((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || [])[((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || []).length - 1] || null))}`,
+        `routerPhaseHistory: ${JSON.stringify((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || globalRouterPhases || [])}`,
+        `lastRouterPhase: ${JSON.stringify(((((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || globalRouterPhases || []))[((lastRecommendationResult as any)?.routerPhaseHistory || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerPhaseHistory || globalRouterPhases || []).length - 1] || null))}`,
         `Expected fingerprint: ${expectedFingerprint}`,
         `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
         `routerResultType: ${typeof (lastRecommendationResult as any)}`,
