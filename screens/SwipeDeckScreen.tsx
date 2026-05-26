@@ -1670,6 +1670,8 @@ function handleLeft() {
       const enabledReal = ["google_books", "open_library", "kitsu"].filter((k) => (k === "google_books" ? sourceEnabled.googleBooks : k === "open_library" ? sourceEnabled.openLibrary : sourceEnabled.kitsu));
       const allRealFailed = enabledReal.length > 0 && enabledReal.every((k) => k !== "google_books" ? String(sourceProbeStatus[k] || "").includes("timeout") || String(sourceProbeStatus[k] || "").includes("failed") : String(sourceProbeStatus[k] || "").includes("timeout"));
       if (allRealFailed) throw new Error(`source_health_failed_pre_source_fetch:${JSON.stringify(sourceProbeStatus)}`);
+      const googleBooksProbeStatus = String(sourceProbeStatus.google_books || "");
+      const googleBooksProbeDegraded = googleBooksProbeStatus.includes("timeout") || googleBooksProbeStatus.includes("failed");
       markPhase("before_source_fetch");
       const recommendationTimeoutMs = 90_000;
       markPhase("before_getRecommendations_call");
@@ -1679,6 +1681,8 @@ function handleLeft() {
           ...inputWithHistory,
           profileOverride: currentLaneOverride,
           sourceEnabled,
+          sourceHealthProbeStatus: sourceProbeStatus,
+          googleBooksProbeDegraded,
           localLibrarySupported: Boolean(props.localLibrarySupported),
         },
         "auto"
@@ -2319,6 +2323,7 @@ function handleLeft() {
     const earlyReturnMs = parseTs((latestEarlyReturnPhase as any)?.timestamp);
     const timeoutMsTs = parseTs((latestTimeoutPhase as any)?.timestamp);
     const earlyReturnCloseToTimeout = Number.isFinite(earlyReturnMs) && Number.isFinite(timeoutMsTs) && (earlyReturnMs - timeoutMsTs) >= 0 && (earlyReturnMs - timeoutMsTs) <= 1000;
+    const earlyReturnReason = String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason || "");
     if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
       const reason = getRecommendationsReturnedUndefinedRun
         ? "getRecommendations_returned_undefined"
@@ -2326,7 +2331,7 @@ function handleLeft() {
         ? "getRecommendations_returned_empty_object"
         : ((routerRunTimeoutRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun) &&
             earlyReturnCloseToTimeout &&
-            String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason || "") === "source_health_failed")
+            earlyReturnReason === "source_health_failed")
         ? "source_health_failed"
         : routerRunTimeoutRun
         ? "router_run_timeout"
@@ -2350,6 +2355,8 @@ function handleLeft() {
         ? "recommendation_timeout"
         : preflightTimeoutRun
           ? "source_health_preflight_timeout"
+          : (earlyReturnReason === "source_health_failed")
+          ? "source_health_failed"
           : [
               staleRuntime ? `stale_runtime_fingerprint:${runtimeFingerprint || "(missing)"}` : "",
               missingRouterTrace ? "router_result_trace_missing" : "",
@@ -2417,6 +2424,15 @@ function handleLeft() {
         `getRecommendationsEarlyReturnReason: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason ?? "(missing)")}`,
         `getRecommendationsEarlyReturnPhase: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnPhase ?? "(missing)")}`,
         `earlyReturnCloseToTimeout: ${String(Boolean(earlyReturnCloseToTimeout))}`,
+        `googleBooksRouterFetchCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchLoopCounters?.googleBooksRouterFetchCount ?? "(missing)")}`,
+        `openLibraryRouterFetchCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchLoopCounters?.openLibraryRouterFetchCount ?? "(missing)")}`,
+        `kitsuRouterFetchCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchLoopCounters?.kitsuRouterFetchCount ?? "(missing)")}`,
+        `perSourceStatus: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus || {})}`,
+        `sourceHealthProbeStatus: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthProbeStatus || {})}`,
+        `kitsuRawCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuRawCount ?? "(missing)")}`,
+        `kitsuPostFilterCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuPostFilterCount ?? "(missing)")}`,
+        `kitsuUsableCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuUsableCount ?? "(missing)")}`,
+        `kitsuSourceHealthRejectedReason: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuSourceHealthRejectedReason ?? "(missing)")}`,
       ].join("\n");
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(

@@ -2777,6 +2777,8 @@ export async function getRecommendations(
   const routerRunStartedAtMs = Date.now();
   const routerRunSoftTimeoutMs = 20_000;
   let routerFetchLoopStoppedByTimeout = false;
+  const googleBooksProbeDegraded = Boolean((routedInput as any)?.googleBooksProbeDegraded);
+  const sourceHealthProbeStatus = ((routedInput as any)?.sourceHealthProbeStatus || {}) as Record<string, string>;
   const sourceDisableReasonsDetailed: Record<string, string[]> = {
     googleBooks: [],
     openLibrary: [],
@@ -3914,6 +3916,15 @@ export async function getRecommendations(
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
+        if (googleBooksProbeDegraded) {
+          pushGlobalPhase("router_fetch_loop_stopped_by_cap", {
+            source: "googleBooks",
+            source_fetch_cap_exceeded: false,
+            source_fetch_skipped_due_to_probe_degraded: true,
+            probeStatus: String(sourceHealthProbeStatus.google_books || ""),
+          });
+          sourceSkippedReason.push("googleBooks_skipped_due_to_probe_degraded");
+        } else
         if (googleBooksRouterFetchCount >= sourceFetchCapPerRun) {
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "googleBooks", source_fetch_cap_exceeded: true, googleBooksRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:googleBooks");
@@ -4257,11 +4268,25 @@ export async function getRecommendations(
     pushEarlyReturnDiagnostics("source_health_failed", "post_fetch_source_health_guard");
     throwSourceFatal("source_health_failed", {
       sourceEnabled,
+      sourceHealthProbeStatus,
+      fetchLoopCounters: {
+        googleBooksRouterFetchCount,
+        openLibraryRouterFetchCount,
+        kitsuRouterFetchCount,
+      },
       sourceDisableReasonsDetailed,
       perSourceStatus: {
         googleBooks: { enabled: sourceEnabled.googleBooks, rawFetched: aggregatedRawFetched.googleBooks, starved: googleStarved },
         openLibrary: { enabled: sourceEnabled.openLibrary, rawFetched: aggregatedRawFetched.openLibrary, starved: openLibraryStarved },
-        kitsu: { enabled: includeKitsu, rawFetched: aggregatedRawFetched.kitsu, starved: kitsuStarved },
+        kitsu: {
+          enabled: includeKitsu,
+          rawFetched: aggregatedRawFetched.kitsu,
+          starved: kitsuStarved,
+          kitsuRawCount: aggregatedRawFetched.kitsu,
+          kitsuPostFilterCount: 0,
+          kitsuUsableCount: 0,
+          kitsuSourceHealthRejectedReason: kitsuStarved ? "no_raw_fetch_results" : "no_usable_candidates_before_health_guard",
+        },
         comicVine: { enabled: includeComicVine, bypassed: comicVineUnavailableBypass, status: comicVineAdapterStatus },
       },
       sourceSkippedReason,
