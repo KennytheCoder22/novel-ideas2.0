@@ -994,6 +994,10 @@ export default function SwipeDeckScreen(props: Props) {
   const [recommendFunctionError, setRecommendFunctionError] = useState<string>("");
   const [recommendFunctionErrorStack, setRecommendFunctionErrorStack] = useState<string>("");
   const [recommendFunctionErrorPhase, setRecommendFunctionErrorPhase] = useState<string>("");
+  const [recommendationStartedAt, setRecommendationStartedAt] = useState<string>("");
+  const [recommendationTimedOutAt, setRecommendationTimedOutAt] = useState<string>("");
+  const [lastKnownBuiltQuery, setLastKnownBuiltQuery] = useState<string>("");
+  const [lastKnownFetchPhase, setLastKnownFetchPhase] = useState<string>("");
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
 
@@ -1575,12 +1579,16 @@ function handleLeft() {
     setRecommendFunctionErrorPhase("init");
     setRecommendFunctionReturned(false);
     setRecommendationResultWasPersisted(false);
+    setRecommendationStartedAt(new Date().toISOString());
+    setRecommendationTimedOutAt("");
+    setLastKnownBuiltQuery("");
+    setLastKnownFetchPhase("starting");
 
     try {
-      setRecommendFunctionErrorPhase("build taste profile");
-      setRecommendFunctionErrorPhase("normalize lane weights");
-      setRecommendFunctionErrorPhase("build ComicVine rungs");
-      setRecommendFunctionErrorPhase("dispatch ComicVine");
+      setRecommendFunctionErrorPhase("before query build");
+      setLastKnownFetchPhase("before_query_build");
+      setRecommendFunctionErrorPhase("before source fetch");
+      setLastKnownFetchPhase("before_source_fetch");
       const recommendationTimeoutMs = 90_000;
       const result = await Promise.race([
         getRecommendations(
@@ -1596,6 +1604,8 @@ function handleLeft() {
           setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
         ),
       ]);
+      setRecommendFunctionErrorPhase("after source fetch");
+      setLastKnownFetchPhase("after_source_fetch");
       const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
       const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
       if (runtimeFingerprint !== expectedFingerprint) {
@@ -1603,9 +1613,10 @@ function handleLeft() {
         throw new Error(`STALE_ROUTER_ARTIFACT:${runtimeFingerprint || "(missing)"} expected:${expectedFingerprint}`);
       }
       setRecommendFunctionReturned(true);
-      setRecommendFunctionErrorPhase("filter candidates");
-      setRecommendFunctionErrorPhase("final recommender");
-      setRecommendFunctionErrorPhase("teen post-pass");
+      setRecommendFunctionErrorPhase("before ranking");
+      setLastKnownFetchPhase("before_ranking");
+      setRecommendFunctionErrorPhase("before final return assembly");
+      setLastKnownFetchPhase("before_final_return_assembly");
 
       console.log("[NovelIdeas] Recommendation source", {
         engineId: (result as any)?.engineId,
@@ -1627,6 +1638,7 @@ function handleLeft() {
       });
 
       setRecQuery(result.builtFromQuery || "");
+      setLastKnownBuiltQuery(String(result.builtFromQuery || ""));
       setRecEngineLabel(result.engineLabel || "");
       setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }>) || null);
       setLastCandidatePool(Array.isArray((result as any)?.debugCandidatePool) ? (result as any).debugCandidatePool : []);
@@ -2112,10 +2124,12 @@ function handleLeft() {
   async function handleCopyDiagnostics() {
     const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
+    const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
     const staleRuntime = runtimeFingerprint !== expectedFingerprint;
     const missingRouterTrace = !Boolean(lastRouterResultTracePresent);
-    if (staleRuntime || missingRouterTrace) {
+    if (timeoutRun || staleRuntime || missingRouterTrace) {
       const reason = [
+        timeoutRun ? "recommendation_timeout" : "",
         staleRuntime ? `stale_runtime_fingerprint:${runtimeFingerprint || "(missing)"}` : "",
         missingRouterTrace ? "router_result_trace_missing" : "",
       ].filter(Boolean).join(", ");
@@ -2128,6 +2142,12 @@ function handleLeft() {
         `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,
         `Bundle script sample: ${typeof document !== "undefined" ? Array.from(document.querySelectorAll('script[src]')).map((el) => (el as HTMLScriptElement).src).slice(-5).join(" | ") || "(none)" : "(unavailable)"}`,
         `Captured at: ${new Date().toISOString()}`,
+        `timeoutMs: ${timeoutRun ? "90000" : "(n/a)"}`,
+        `recommendationStartedAt: ${recommendationStartedAt || "(missing)"}`,
+        `recommendationTimedOutAt: ${recommendationTimedOutAt || "(not_timed_out)"}`,
+        `lastKnownPhase: ${recommendFunctionErrorPhase || "(none)"}`,
+        `lastKnownBuiltQuery: ${lastKnownBuiltQuery || "(none)"}`,
+        `lastKnownSourceHealthFetchPhase: ${lastKnownFetchPhase || "(none)"}`,
         `Expected fingerprint: ${expectedFingerprint}`,
         `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
         `routerResultType: ${typeof (lastRecommendationResult as any)}`,
@@ -2143,7 +2163,9 @@ function handleLeft() {
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(
         "Export blocked",
-        `Session report export blocked due to invalid runtime trace.\n\nExpected fingerprint: ${expectedFingerprint}\nActual fingerprint: ${runtimeFingerprint || "(missing)"}\nrouterResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}\n\nA blocked diagnostics report has been copied to clipboard.`
+        timeoutRun
+          ? `Session report export blocked due to recommendation timeout.\n\nTimeout: 90000ms\nLast phase: ${recommendFunctionErrorPhase || "(none)"}\n\nA blocked diagnostics report has been copied to clipboard.`
+          : `Session report export blocked due to invalid runtime trace.\n\nExpected fingerprint: ${expectedFingerprint}\nActual fingerprint: ${runtimeFingerprint || "(missing)"}\nrouterResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}\n\nA blocked diagnostics report has been copied to clipboard.`
       );
       return;
     }
@@ -3431,3 +3453,6 @@ const styles = StyleSheet.create({
   genreSimButtonText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   countsRow: { marginTop: 10 },
 });
+      if (String(err?.message || "").startsWith("recommendation_timeout:")) {
+        setRecommendationTimedOutAt(new Date().toISOString());
+      }
