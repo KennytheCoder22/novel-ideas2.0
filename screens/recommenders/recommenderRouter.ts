@@ -2722,7 +2722,7 @@ export async function getRecommendations(
       ),
     ]);
     if (!preRouterResult) throw new Error("getRecommendations_pre_router_timeout:unknown");
-    pushGlobalPhase("getRecommendations_after_router_call_legacy_pre_router");
+    pushGlobalPhase("getRecommendations_router_call_skipped_or_not_awaited");
   } catch (err: any) {
     pushGlobalPhase("getRecommendations_pre_router_error", {
       phase: "getRecommendations_pre_router_error",
@@ -2813,6 +2813,7 @@ export async function getRecommendations(
   if (!sourceEnabled.kitsu) sourceDisableReasonsDetailed.kitsu.push("disabled_by_admin_or_config");
   if (!sourceEnabled.nyt) sourceDisableReasonsDetailed.nyt.push("disabled_by_admin_or_config");
   if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.comicVine && !sourceEnabled.nyt) {
+    pushGlobalPhase("source_enabled_synthesis_guard");
     pushEarlyReturnDiagnostics("all_sources_disabled", "source_enabled_guard");
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED", {
       sourceEnabled,
@@ -2835,6 +2836,7 @@ export async function getRecommendations(
     debugRouterLog("COMICVINE_ONLY_SMOKE_PATH", { deckKey: routedInput.deckKey, includeComicVine });
   }
   if (!hasRunnableSource) {
+    pushGlobalPhase("disabled_empty_pool_guard");
     pushEarlyReturnDiagnostics("all_sources_disabled_after_synthesis", "runnable_source_guard");
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED_AFTER_SYNTHESIS", {
       sourceEnabled,
@@ -2989,8 +2991,13 @@ export async function getRecommendations(
   }
 
   rungs = dedupeRungs(rungs as any);
+  pushGlobalPhase("query_rung_guard", {
+    rungCount: Array.isArray(rungs) ? rungs.length : 0,
+    routerFamily,
+  });
 
   if (!rungs.length && routerFamily === "mystery") {
+    pushGlobalPhase("fallback_early_return_guard", { reason: "empty_rungs_mystery_fallback" });
     rungs = [
       { rung: 0, query: "psychological suspense graphic novel" },
       { rung: 1, query: "detective mystery graphic novel" },
@@ -3000,6 +3007,7 @@ export async function getRecommendations(
   }
 
   if (!rungs.length && routerFamily === "science_fiction") {
+    pushGlobalPhase("fallback_early_return_guard", { reason: "empty_rungs_scifi_fallback" });
     rungs = [
       { rung: 0, query: "science fiction novel" },
       { rung: 1, query: "dystopian science fiction novel" },
@@ -3009,6 +3017,7 @@ export async function getRecommendations(
   }
 
   if (!rungs.length && routerFamily === "speculative") {
+    pushGlobalPhase("fallback_early_return_guard", { reason: "empty_rungs_speculative_fallback" });
     rungs = [
       { rung: 0, query: "epic fantasy novel" },
       { rung: 1, query: "dark fantasy novel" },
@@ -4175,6 +4184,7 @@ export async function getRecommendations(
     (kitsuStarved || !includeKitsu) &&
     (comicVineUnavailableBypass || !includeComicVine);
   if (allRealSourcesStarved) {
+    pushGlobalPhase("source_health_guard");
     pushEarlyReturnDiagnostics("source_health_failed", "post_fetch_source_health_guard");
     throwSourceFatal("source_health_failed", {
       sourceEnabled,

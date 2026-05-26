@@ -1685,6 +1685,7 @@ function handleLeft() {
       );
       pendingRecommendationPromiseRef.current = routerPromise;
       setPendingRecommendationPromisePresent(true);
+      markPhase("actual_router_invocation_about_to_await");
       const resolvedRecommendationResult: any = await Promise.race([
         Promise.race([
           routerPromise,
@@ -1697,6 +1698,7 @@ function handleLeft() {
         ),
       ]);
       const recommendationResult: any = resolvedRecommendationResult;
+      markPhase("actual_router_invocation_resolved");
       const result: any = recommendationResult;
       markPhase("after_getRecommendations_call");
       try {
@@ -1826,6 +1828,9 @@ function handleLeft() {
         );
       }
     } catch (err: any) {
+      markPhase("actual_router_invocation_rejected", {
+        error: String(err?.message || err || "unknown"),
+      });
       setPendingRecommendationPromisePresent(false);
       pendingRecommendationPromiseRef.current = null;
       setRecommendFunctionReturned(false);
@@ -2278,6 +2283,7 @@ function handleLeft() {
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
     const routerEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_entry_timeout:");
+    const routerInvocationSkippedBeforeAwaitRun = String(recommendFunctionError || "").startsWith("router_invocation_skipped_before_await:");
     const routerNotInvokedEmptyResultRun = String(recommendFunctionError || "").startsWith("router_not_invoked_empty_result:");
     const getRecommendationsReturnedUndefinedRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_undefined:");
     const getRecommendationsReturnedEmptyObjectRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_empty_object:");
@@ -2295,11 +2301,15 @@ function handleLeft() {
     const effectiveIsUndefined = Boolean((resultShape as any)?.isUndefined ?? (afterRouterCallWithShapeV2Payload as any)?.isUndefined ?? (latestLegacyAfterRouterCallPhase as any)?.isUndefined);
     const effectiveIsEmptyObject = Boolean((resultShape as any)?.isEmptyObject ?? (afterRouterCallWithShapeV2Payload as any)?.isEmptyObject ?? (latestLegacyAfterRouterCallPhase as any)?.isEmptyObject);
     const hasAfterRouterCallEvent = Boolean(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase);
-    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
+    const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
+    const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
+    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
       const reason = getRecommendationsReturnedUndefinedRun
         ? "getRecommendations_returned_undefined"
         : getRecommendationsReturnedEmptyObjectRun
         ? "getRecommendations_returned_empty_object"
+        : (hasBeforeRouterCall && !hasInvocationAboutToAwait)
+        ? "router_invocation_skipped_before_await"
         : (routerEntryTimeoutRun && hasAfterRouterCallEvent && effectiveIsUndefined)
         ? "getRecommendations_returned_undefined"
         : (routerEntryTimeoutRun && hasAfterRouterCallEvent && effectiveIsEmptyObject)
@@ -2339,6 +2349,8 @@ function handleLeft() {
         `currentRecommendationRunId: ${currentRecommendationRunId || "(none)"}`,
         `globalRouterEntryHeartbeat: ${JSON.stringify((globalThis as any).__novelIdeasRouterEntryHeartbeat || null)}`,
         `globalRouterPhaseHistory: ${JSON.stringify((globalThis as any).__novelIdeasRouterPhaseHistory || [])}`,
+        `hasBeforeRouterCall: ${String(hasBeforeRouterCall)}`,
+        `hasActualRouterInvocationAboutToAwait: ${String(hasInvocationAboutToAwait)}`,
         `App URL: ${typeof window !== "undefined" ? window.location.href : "(unavailable)"}`,
         `App Origin: ${typeof window !== "undefined" ? window.location.origin : "(unavailable)"}`,
         `Build ID (best effort): ${typeof document !== "undefined" ? (document.querySelector('meta[name=\"vercel-deployment-url\"]') as HTMLMetaElement | null)?.content || "(none)" : "(unavailable)"}`,
