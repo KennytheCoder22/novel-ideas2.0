@@ -998,6 +998,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [recommendationTimedOutAt, setRecommendationTimedOutAt] = useState<string>("");
   const [lastKnownBuiltQuery, setLastKnownBuiltQuery] = useState<string>("");
   const [lastKnownFetchPhase, setLastKnownFetchPhase] = useState<string>("");
+  const [queryBuildStatus, setQueryBuildStatus] = useState<string>("not_started");
+  const [phaseHistory, setPhaseHistory] = useState<Array<{ phase: string; timestamp: string }>>([]);
   const [sourceHealthPreflightEnabled, setSourceHealthPreflightEnabled] = useState<boolean>(true);
   const [recommendFunctionReturned, setRecommendFunctionReturned] = useState<boolean>(false);
   const [recommendationResultWasPersisted, setRecommendationResultWasPersisted] = useState<boolean>(false);
@@ -1561,6 +1563,12 @@ function handleLeft() {
   }
 
   async function performRecommendationRun(input: RecommenderInput) {
+    const markPhase = (phase: string) => {
+      const timestamp = new Date().toISOString();
+      setRecommendFunctionErrorPhase(phase);
+      setLastKnownFetchPhase(phase);
+      setPhaseHistory((prev) => [...prev, { phase, timestamp }].slice(-80));
+    };
     const allDisabled =
       !sourceEnabled.googleBooks &&
       !sourceEnabled.openLibrary &&
@@ -1593,17 +1601,17 @@ function handleLeft() {
     setRecommendationTimedOutAt("");
     setLastKnownBuiltQuery("");
     setLastKnownFetchPhase("starting");
+    setQueryBuildStatus("not_started");
+    setPhaseHistory([]);
 
     try {
-      setRecommendFunctionErrorPhase("before_query_build");
-      setLastKnownFetchPhase("before_query_build");
+      markPhase("before_query_build");
       const estimatedBuiltQuery = String((inputWithHistory as any)?.bucketPlan?.preview || (inputWithHistory as any)?.bucketPlan?.queries?.[0] || "");
       setLastKnownBuiltQuery(estimatedBuiltQuery);
-      setRecommendFunctionErrorPhase("after_query_build");
-      setLastKnownFetchPhase("after_query_build");
+      setQueryBuildStatus(estimatedBuiltQuery ? "query_available" : "query_unavailable");
+      markPhase("after_query_build");
       if (sourceHealthPreflightEnabled) {
-        setRecommendFunctionErrorPhase("before_source_health_preflight");
-        setLastKnownFetchPhase("before_source_health_preflight");
+        markPhase("before_source_health_preflight");
         const sourceHealthPreflightTimeoutMs = 10_000;
         await Promise.race([
           (async () => {
@@ -1613,13 +1621,33 @@ function handleLeft() {
             setTimeout(() => reject(new Error(`source_health_preflight_timeout:${sourceHealthPreflightTimeoutMs}`)), sourceHealthPreflightTimeoutMs)
           ),
         ]);
-        setRecommendFunctionErrorPhase("after_source_health_preflight");
-        setLastKnownFetchPhase("after_source_health_preflight");
+        markPhase("after_source_health_preflight");
       } else {
         setLastKnownFetchPhase("source_health_preflight_disabled");
       }
-      setRecommendFunctionErrorPhase("before_source_fetch");
-      setLastKnownFetchPhase("before_source_fetch");
+      const sourceProbeTimeoutMs = 10_000;
+      const sourceProbeStatus: Record<string, string> = {};
+      const probe = async (phaseBefore: string, phaseAfter: string, label: string, url: string) => {
+        markPhase(phaseBefore);
+        try {
+          await Promise.race([
+            fetch(url, { method: "GET" }).catch(() => null),
+            new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}_timeout:${sourceProbeTimeoutMs}`)), sourceProbeTimeoutMs)),
+          ]);
+          sourceProbeStatus[label] = "ok_or_reachable";
+        } catch (e: any) {
+          sourceProbeStatus[label] = String(e?.message || "failed");
+        }
+        markPhase(phaseAfter);
+      };
+      if (sourceEnabled.googleBooks) await probe("before_google_books_fetch", "after_google_books_fetch", "google_books", "https://www.googleapis.com/books/v1/volumes?q=novel&maxResults=1");
+      if (sourceEnabled.openLibrary) await probe("before_open_library_fetch", "after_open_library_fetch", "open_library", "/api/openlibrary?health=1");
+      if (sourceEnabled.kitsu) await probe("before_kitsu_fetch", "after_kitsu_fetch", "kitsu", "https://kitsu.io/api/edge/anime?page[limit]=1");
+      if (sourceEnabled.nyt) await probe("before_nyt_fetch", "after_nyt_fetch", "nyt", "/api/nyt-books?health=1");
+      const enabledReal = ["google_books", "open_library", "kitsu"].filter((k) => (k === "google_books" ? sourceEnabled.googleBooks : k === "open_library" ? sourceEnabled.openLibrary : sourceEnabled.kitsu));
+      const allRealFailed = enabledReal.length > 0 && enabledReal.every((k) => k !== "google_books" ? String(sourceProbeStatus[k] || "").includes("timeout") || String(sourceProbeStatus[k] || "").includes("failed") : String(sourceProbeStatus[k] || "").includes("timeout"));
+      if (allRealFailed) throw new Error(`source_health_failed_pre_source_fetch:${JSON.stringify(sourceProbeStatus)}`);
+      markPhase("before_source_fetch");
       const recommendationTimeoutMs = 90_000;
       const result: any = await Promise.race([
         getRecommendations(
@@ -1635,8 +1663,7 @@ function handleLeft() {
           setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
         ),
       ]);
-      setRecommendFunctionErrorPhase("after_source_fetch");
-      setLastKnownFetchPhase("after_source_fetch");
+      markPhase("after_source_fetch");
       const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
       const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
       if (runtimeFingerprint !== expectedFingerprint) {
@@ -1644,10 +1671,8 @@ function handleLeft() {
         throw new Error(`STALE_ROUTER_ARTIFACT:${runtimeFingerprint || "(missing)"} expected:${expectedFingerprint}`);
       }
       setRecommendFunctionReturned(true);
-      setRecommendFunctionErrorPhase("before_ranking");
-      setLastKnownFetchPhase("before_ranking");
-      setRecommendFunctionErrorPhase("before_final_return_assembly");
-      setLastKnownFetchPhase("before_final_return_assembly");
+      markPhase("before_ranking");
+      markPhase("before_final_return_assembly");
 
       console.log("[NovelIdeas] Recommendation source", {
         engineId: (result as any)?.engineId,
@@ -2185,7 +2210,9 @@ function handleLeft() {
         `recommendationTimedOutAt: ${recommendationTimedOutAt || "(not_timed_out)"}`,
         `lastKnownPhase: ${recommendFunctionErrorPhase || "(none)"}`,
         `lastKnownBuiltQuery: ${lastKnownBuiltQuery || "(none)"}`,
+        `queryBuildStatus: ${queryBuildStatus || "(unknown)"}`,
         `lastKnownSourceHealthFetchPhase: ${lastKnownFetchPhase || "(none)"}`,
+        `phaseHistory: ${JSON.stringify(phaseHistory || [])}`,
         `Expected fingerprint: ${expectedFingerprint}`,
         `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
         `routerResultType: ${typeof (lastRecommendationResult as any)}`,
