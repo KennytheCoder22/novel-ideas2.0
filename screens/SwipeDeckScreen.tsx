@@ -1590,7 +1590,7 @@ function handleLeft() {
       setRecommendFunctionErrorPhase("before source fetch");
       setLastKnownFetchPhase("before_source_fetch");
       const recommendationTimeoutMs = 90_000;
-      const result = await Promise.race([
+      const result: any = await Promise.race([
         getRecommendations(
           {
             ...inputWithHistory,
@@ -1684,6 +1684,9 @@ function handleLeft() {
       setRecommendFunctionError(String(err?.message || err || "recommendation_call_failed"));
       setRecommendFunctionErrorStack(String(err?.stack || ""));
       setRecommendFunctionErrorPhase((prev) => prev || "unknown");
+      if (String(err?.message || "").startsWith("recommendation_timeout:")) {
+        setRecommendationTimedOutAt(new Date().toISOString());
+      }
       const diag = (err as any)?.recommenderDiagnostics || null;
       console.log("[NovelIdeas][REC] router_error", { message: err?.message, diagnostics: diag });
       if (diag) {
@@ -3453,6 +3456,3 @@ const styles = StyleSheet.create({
   genreSimButtonText: { color: "#fff", fontSize: 12, fontWeight: "800" },
   countsRow: { marginTop: 10 },
 });
-      if (String(err?.message || "").startsWith("recommendation_timeout:")) {
-        setRecommendationTimedOutAt(new Date().toISOString());
-      }
