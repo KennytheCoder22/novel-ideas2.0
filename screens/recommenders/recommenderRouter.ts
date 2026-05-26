@@ -2779,6 +2779,12 @@ export async function getRecommendations(
   let routerFetchLoopStoppedByTimeout = false;
   const googleBooksProbeDegraded = Boolean((routedInput as any)?.googleBooksProbeDegraded);
   const sourceHealthProbeStatus = ((routedInput as any)?.sourceHealthProbeStatus || {}) as Record<string, string>;
+  const googleBooksQueriesActuallyFetched = new Set<string>();
+  const openLibraryQueriesActuallyFetched = new Set<string>();
+  const kitsuQueriesActuallyFetched = new Set<string>();
+  const googleBooksFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
+  const openLibraryFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
+  const kitsuFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
   const sourceDisableReasonsDetailed: Record<string, string[]> = {
     googleBooks: [],
     openLibrary: [],
@@ -3909,6 +3915,7 @@ export async function getRecommendations(
           forceTastePrimaryForComicVine: querySourceOfTruth === "taste_profile",
         },
       };
+      const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || lane.query || "");
 
       var requests: Array<Promise<RecommendationResult>> = [];
       var effectiveLaneSource =
@@ -3930,6 +3937,7 @@ export async function getRecommendations(
           sourceSkippedReason.push("source_fetch_cap_exceeded:googleBooks");
         } else {
           googleBooksRouterFetchCount += 1;
+        googleBooksQueriesActuallyFetched.add(laneQueryTextForDiagnostics);
         pushGlobalPhase("before_google_books_router_fetch");
         requests.push(
           withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 5_000, () => runEngine("googleBooks", laneInput))
@@ -3943,6 +3951,7 @@ export async function getRecommendations(
           sourceSkippedReason.push("source_fetch_cap_exceeded:openLibrary");
         } else {
           openLibraryRouterFetchCount += 1;
+        openLibraryQueriesActuallyFetched.add(laneQueryTextForDiagnostics);
         pushGlobalPhase("before_open_library_router_fetch");
         requests.push(
           withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput))
@@ -3956,6 +3965,7 @@ export async function getRecommendations(
           sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
         } else {
           kitsuRouterFetchCount += 1;
+        kitsuQueriesActuallyFetched.add(laneQueryTextForDiagnostics);
         pushGlobalPhase("before_kitsu_router_fetch");
         requests.push(
           withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
@@ -3983,6 +3993,12 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
+        googleBooksFetchResultsByQuery.push({
+          query: laneQueryTextForDiagnostics,
+          status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          rawCount: Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle)),
+          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+        });
         if (results[index]?.status === "rejected" && isGoogleQuotaError((results[index] as PromiseRejectedResult).reason)) {
           googleQuotaExhausted = true;
           sourceSkippedReason.push("googleBooks_quota_exhausted_auto_disabled");
@@ -3994,12 +4010,28 @@ export async function getRecommendations(
       const laneOpenLibrary = sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary" && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") index += 1;
+      if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
+        openLibraryFetchResultsByQuery.push({
+          query: laneQueryTextForDiagnostics,
+          status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          rawCount: Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)),
+          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+        });
+        index += 1;
+      }
 
       const laneKitsu = includeKitsu && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (includeKitsu) index += 1;
+      if (includeKitsu) {
+        kitsuFetchResultsByQuery.push({
+          query: laneQueryTextForDiagnostics,
+          status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          rawCount: Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu)),
+          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+        });
+        index += 1;
+      }
 
       const laneComicVine = comicVineDispatchedOnThisLane && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
@@ -4274,6 +4306,12 @@ export async function getRecommendations(
         openLibraryRouterFetchCount,
         kitsuRouterFetchCount,
       },
+      googleBooksQueriesActuallyFetched: Array.from(googleBooksQueriesActuallyFetched),
+      openLibraryQueriesActuallyFetched: Array.from(openLibraryQueriesActuallyFetched),
+      kitsuQueriesActuallyFetched: Array.from(kitsuQueriesActuallyFetched),
+      googleBooksFetchResultsByQuery,
+      openLibraryFetchResultsByQuery,
+      kitsuFetchResultsByQuery,
       sourceDisableReasonsDetailed,
       perSourceStatus: {
         googleBooks: { enabled: sourceEnabled.googleBooks, rawFetched: aggregatedRawFetched.googleBooks, starved: googleStarved },
