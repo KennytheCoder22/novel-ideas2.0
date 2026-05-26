@@ -3971,10 +3971,12 @@ export async function getRecommendations(
       };
       const sanitizeKitsuQuery = (q: string) => {
         const nq = String(q || "").toLowerCase();
-        const allowed = ["fantasy", "adventure", "drama", "romance", "science fiction", "sci fi", "mystery", "thriller", "horror", "comedy", "action"];
-        const hits = allowed.filter((term) => nq.includes(term));
-        const compact = Array.from(new Set(hits.map((h) => (h === "sci fi" ? "science fiction" : h)))).slice(0, 2).join(" ").trim();
-        return compact || "fantasy adventure";
+        const strongestFirst = ["adventure", "fantasy", "science fiction", "drama", "romance", "action", "comedy"];
+        const weakOrUnproven = ["mystery", "horror", "thriller"];
+        const strongestHit = strongestFirst.find((term) => nq.includes(term));
+        if (strongestHit) return strongestHit;
+        const fallbackHit = weakOrUnproven.find((term) => nq.includes(term));
+        return fallbackHit || "fantasy";
       };
       const googleLaneQuery = baseLaneQuery;
       const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
@@ -10829,7 +10831,7 @@ const normalizedCandidatesRaw = [
     || kitsuFetchResultsByQuery.some((row) => Number(row?.rawCount || 0) > 0);
   if (!suppressTopRecommendations) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
-    if (acceptedAfterTerminalSet.size === 0) {
+    if (acceptedAfterTerminalSet.size === 0 || (finalOutputItems.length === 0 && kitsuHasRawCandidates)) {
       const normalFinalGateRecoveryItems =
         teenPostPassOutputTitles.length > 0
           ? (() => {

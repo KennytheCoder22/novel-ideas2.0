@@ -2502,6 +2502,10 @@ function handleLeft() {
         `kitsuRecoveryRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryRejectedByTitle || {})}`,
         `kitsuRecoveryPoolTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [])}`,
         `kitsuRecoveryBestRejectedReasons: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryBestRejectedReasons || {})}`,
+        `kitsuInsufficientPositiveFitRejectedDiagnostics: ${JSON.stringify((lastRecommendationResult as any)?.kitsuInsufficientPositiveFitRejectedDiagnostics || [])}`,
+        `teenPostPassOutputTitles: ${JSON.stringify((lastRecommendationResult as any)?.teenPostPassOutputTitles || [])}`,
+        `teenPostPassRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.teenPostPassRejectedByTitle || {})}`,
+        `teenPostPassNoSafeCandidateReason: ${String((lastRecommendationResult as any)?.teenPostPassNoSafeCandidateReason || "(none)")}`,
         `terminalAssemblyInputTitles: ${JSON.stringify((lastRecommendationResult as any)?.terminalAssemblyInputTitles || [])}`,
         `terminalAssemblyOutputTitles: ${JSON.stringify((lastRecommendationResult as any)?.terminalAssemblyOutputTitles || [])}`,
       ].join("\n");
