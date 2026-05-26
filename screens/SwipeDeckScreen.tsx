@@ -28,8 +28,8 @@ import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
-const DEPLOYED_COMMIT_MARKER = "67a0c19";
-const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-67a0c19";
+const DEPLOYED_COMMIT_MARKER = "77bbca8";
+const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-77bbca8";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -2258,6 +2258,15 @@ function handleLeft() {
               missingRouterTrace ? "router_result_trace_missing" : "",
             ].filter(Boolean).join(", ");
       setPresetExecutionError(`SESSION_REPORT_EXPORT_BLOCKED:${reason}`);
+      const globalRouterPhases = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
+        ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
+        : [];
+      const latestAfterRouterCallPhase = [...globalRouterPhases]
+        .reverse()
+        .find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
+      const latestEarlyReturnPhase = [...globalRouterPhases]
+        .reverse()
+        .find((row: any) => String(row?.phase || "") === "getRecommendations_early_return");
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
         `Reason: ${reason || "(unknown)"}`,
@@ -2301,6 +2310,14 @@ function handleLeft() {
         `recommendFunctionReturned: ${String(Boolean(recommendFunctionReturned))}`,
         `recommendFunctionErrorPhase: ${recommendFunctionErrorPhase || "(none)"}`,
         `recommendFunctionError: ${recommendFunctionError || "(none)"}`,
+        `getRecommendationsReturnType: ${String((latestAfterRouterCallPhase as any)?.getRecommendationsReturnType ?? "(missing)")}`,
+        `getRecommendationsReturnKeys: ${JSON.stringify((latestAfterRouterCallPhase as any)?.getRecommendationsReturnKeys ?? "(missing)")}`,
+        `getRecommendationsReturnItemsLength: ${String((latestAfterRouterCallPhase as any)?.getRecommendationsReturnItemsLength ?? "(missing)")}`,
+        `getRecommendationsReturnDebugRouterVersion: ${String((latestAfterRouterCallPhase as any)?.getRecommendationsReturnDebugRouterVersion ?? "(missing)")}`,
+        `getRecommendationsReturnBuiltFromQuery: ${String((latestAfterRouterCallPhase as any)?.getRecommendationsReturnBuiltFromQuery ?? "(missing)")}`,
+        `getRecommendationsReturnError: ${String((latestAfterRouterCallPhase as any)?.getRecommendationsReturnError ?? "(missing)")}`,
+        `getRecommendationsEarlyReturnReason: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason ?? "(missing)")}`,
+        `getRecommendationsEarlyReturnPhase: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnPhase ?? "(missing)")}`,
       ].join("\n");
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(
