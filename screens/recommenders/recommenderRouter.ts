@@ -2777,6 +2777,15 @@ export async function getRecommendations(
   const routerRunStartedAtMs = Date.now();
   const routerRunSoftTimeoutMs = 20_000;
   let routerFetchLoopStoppedByTimeout = false;
+  let googleBooksConsecutiveTimeouts = 0;
+  const sourceSpecificQueryModeBySource: Record<string, string> = {};
+  const sourceSpecificQueryRejectedReasonBySource: Record<string, string[]> = {
+    googleBooks: [],
+    openLibrary: [],
+    kitsu: [],
+  };
+  const kitsuQuerySanitizedFrom: string[] = [];
+  const kitsuQuerySanitizedTo: string[] = [];
   const googleBooksProbeDegraded = Boolean((routedInput as any)?.googleBooksProbeDegraded);
   const sourceHealthProbeStatus = ((routedInput as any)?.sourceHealthProbeStatus || {}) as Record<string, string>;
   const googleBooksQueriesActuallyFetched = new Set<string>();
@@ -3941,6 +3950,35 @@ export async function getRecommendations(
       const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || lane.query || "");
 
       var requests: Array<Promise<RecommendationResult>> = [];
+      const baseLaneQuery = String(lane.query || "").trim();
+      const sanitizeOpenLibraryQuery = (q: string) => {
+        const cleaned = q
+          .replace(/["']/g, " ")
+          .replace(/[-+]\w+/g, " ")
+          .replace(/\b(character[-\s]?focused|graphic novel|novel|book|narrative|consequence|survival)\b/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        return cleaned.split(/\s+/).slice(0, 5).join(" ").trim();
+      };
+      const sanitizeKitsuQuery = (q: string) => {
+        const nq = String(q || "").toLowerCase();
+        const allowed = ["fantasy", "adventure", "drama", "romance", "science fiction", "sci fi", "mystery", "thriller", "horror", "comedy", "action"];
+        const hits = allowed.filter((term) => nq.includes(term));
+        const compact = Array.from(new Set(hits.map((h) => (h === "sci fi" ? "science fiction" : h)))).slice(0, 2).join(" ").trim();
+        return compact || "fantasy adventure";
+      };
+      const googleLaneQuery = baseLaneQuery;
+      const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
+      const kitsuLaneQuery = sanitizeKitsuQuery(baseLaneQuery);
+      sourceSpecificQueryModeBySource.googleBooks = "natural_language_with_exclusions";
+      sourceSpecificQueryModeBySource.openLibrary = "short_subject_title_unquoted";
+      sourceSpecificQueryModeBySource.kitsu = "compact_anime_manga_genre_terms";
+      if (openLibraryLaneQuery !== baseLaneQuery) sourceSpecificQueryRejectedReasonBySource.openLibrary.push("long_or_quoted_query_sanitized");
+      if (kitsuLaneQuery !== baseLaneQuery) {
+        sourceSpecificQueryRejectedReasonBySource.kitsu.push("book_style_or_exclusion_query_sanitized");
+        kitsuQuerySanitizedFrom.push(baseLaneQuery);
+        kitsuQuerySanitizedTo.push(kitsuLaneQuery);
+      }
       var effectiveLaneSource =
         googleQuotaExhausted && lane.source === "googleBooks" && sourceEnabled.openLibrary
           ? "openLibrary"
@@ -3959,8 +3997,12 @@ export async function getRecommendations(
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "googleBooks", source_fetch_cap_exceeded: true, googleBooksRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:googleBooks");
         } else {
+        laneInput = {
+          ...laneInput,
+          bucketPlan: { ...(laneInput.bucketPlan as any), queries: [googleLaneQuery], preview: googleLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: googleLaneQuery, primary: googleLaneQuery }] },
+        };
           googleBooksRouterFetchCount += 1;
-        googleBooksQueriesActuallyFetched.add(laneQueryTextForDiagnostics);
+        googleBooksQueriesActuallyFetched.add(googleLaneQuery);
         pushGlobalPhase("before_google_books_router_fetch");
         requests.push(
           withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", 5_000, () => runEngine("googleBooks", laneInput))
@@ -3973,8 +4015,12 @@ export async function getRecommendations(
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "openLibrary", source_fetch_cap_exceeded: true, openLibraryRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:openLibrary");
         } else {
+        laneInput = {
+          ...laneInput,
+          bucketPlan: { ...(laneInput.bucketPlan as any), queries: [openLibraryLaneQuery], preview: openLibraryLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: openLibraryLaneQuery, primary: openLibraryLaneQuery }] },
+        };
           openLibraryRouterFetchCount += 1;
-        openLibraryQueriesActuallyFetched.add(laneQueryTextForDiagnostics);
+        openLibraryQueriesActuallyFetched.add(openLibraryLaneQuery);
         pushGlobalPhase("before_open_library_router_fetch");
         requests.push(
           withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 10_000, () => runEngine("openLibrary", laneInput))
@@ -3987,8 +4033,12 @@ export async function getRecommendations(
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
         } else {
+        laneInput = {
+          ...laneInput,
+          bucketPlan: { ...(laneInput.bucketPlan as any), queries: [kitsuLaneQuery], preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
+        };
           kitsuRouterFetchCount += 1;
-        kitsuQueriesActuallyFetched.add(laneQueryTextForDiagnostics);
+        kitsuQueriesActuallyFetched.add(kitsuLaneQuery);
         pushGlobalPhase("before_kitsu_router_fetch");
         requests.push(
           withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
@@ -4017,7 +4067,7 @@ export async function getRecommendations(
         : null;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
         googleBooksFetchResultsByQuery.push({
-          query: laneQueryTextForDiagnostics,
+          query: googleLaneQuery,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
           rawCount: Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle)),
           error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
@@ -4027,6 +4077,15 @@ export async function getRecommendations(
           sourceSkippedReason.push("googleBooks_quota_exhausted_auto_disabled");
           debugRouterLog("GOOGLE_BOOKS_AUTO_DISABLED_QUOTA", { query: lane.query });
         }
+        if (results[index]?.status === "rejected" && String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").includes("router_before_google_books_full_fetch_timeout")) {
+          googleBooksConsecutiveTimeouts += 1;
+          if (googleBooksConsecutiveTimeouts >= 2) {
+            googleQuotaExhausted = true;
+            sourceSkippedReason.push("googleBooks_marked_degraded_after_consecutive_timeouts");
+          }
+        } else if (results[index]?.status === "fulfilled") {
+          googleBooksConsecutiveTimeouts = 0;
+        }
         index += 1;
       }
 
@@ -4035,7 +4094,7 @@ export async function getRecommendations(
         : null;
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
         openLibraryFetchResultsByQuery.push({
-          query: laneQueryTextForDiagnostics,
+          query: openLibraryLaneQuery,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
           rawCount: Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)),
           error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
@@ -4048,7 +4107,7 @@ export async function getRecommendations(
         : null;
       if (includeKitsu) {
         kitsuFetchResultsByQuery.push({
-          query: laneQueryTextForDiagnostics,
+          query: kitsuLaneQuery,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
           rawCount: Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu)),
           error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
@@ -4335,6 +4394,10 @@ export async function getRecommendations(
       googleBooksFetchResultsByQuery,
       openLibraryFetchResultsByQuery,
       kitsuFetchResultsByQuery,
+      sourceSpecificQueryModeBySource,
+      sourceSpecificQueryRejectedReasonBySource,
+      kitsuQuerySanitizedFrom,
+      kitsuQuerySanitizedTo,
       sourceDisableReasonsDetailed,
       perSourceStatus: {
         googleBooks: { enabled: sourceEnabled.googleBooks, rawFetched: aggregatedRawFetched.googleBooks, starved: googleStarved },

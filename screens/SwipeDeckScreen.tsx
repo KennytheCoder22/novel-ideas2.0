@@ -2439,6 +2439,10 @@ function handleLeft() {
         `googleBooksFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksFetchResultsByQuery || [])}`,
         `openLibraryFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryFetchResultsByQuery || [])}`,
         `kitsuFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFetchResultsByQuery || [])}`,
+        `sourceSpecificQueryModeBySource: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceSpecificQueryModeBySource || {})}`,
+        `sourceSpecificQueryRejectedReasonBySource: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceSpecificQueryRejectedReasonBySource || {})}`,
+        `kitsuQuerySanitizedFrom: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedFrom || [])}`,
+        `kitsuQuerySanitizedTo: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedTo || [])}`,
       ].join("\n");
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(
