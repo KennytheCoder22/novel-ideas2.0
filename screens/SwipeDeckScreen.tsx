@@ -28,8 +28,8 @@ import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
-const DEPLOYED_COMMIT_MARKER = "be07f19";
-const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-be07f19";
+const DEPLOYED_COMMIT_MARKER = "17c4615";
+const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -2309,6 +2309,11 @@ function handleLeft() {
     const hasAfterRouterCallEvent = Boolean(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase);
     const returnedItemsLength = Number((resultShape as any)?.itemsLength ?? (afterRouterCallWithShapeV2Payload as any)?.itemsLength ?? -1);
     const zeroItemsReturnedRun = Boolean(recommendFunctionReturned) && !recommendFunctionError && returnedItemsLength === 0;
+    const debugRawPoolLengthTop = Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0;
+    const debugCandidatePoolLengthTop = Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0;
+    const fetchedRawCountTop = Number((lastRecommendationResult as any)?.fetchedRawCount ?? ((lastRecommendationResult as any)?.debugSourceStats ? Object.values((lastRecommendationResult as any).debugSourceStats).reduce((acc: number, row: any) => acc + Number(row?.rawFetched || 0), 0) : 0));
+    const sourceStarvationByZeroPools = fetchedRawCountTop === 0 && debugCandidatePoolLengthTop === 0;
+    const skippedReasons = Array.isArray((lastRecommendationResult as any)?.sourceSkippedReason) ? (lastRecommendationResult as any).sourceSkippedReason : [];
     const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
     const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
     const hasRouterEntered = globalRouterPhases.some((row: any) => String(row?.phase || "") === "router_entered");
@@ -2331,6 +2336,8 @@ function handleLeft() {
         ? "getRecommendations_returned_undefined"
         : getRecommendationsReturnedEmptyObjectRun
         ? "getRecommendations_returned_empty_object"
+        : String(recommendFunctionError || "").includes("kitsu_recovery_lost_at_return_assembly")
+        ? "kitsu_recovery_lost_at_return_assembly"
         : zeroItemsReturnedRun
         ? "zero_items_returned"
         : ((routerRunTimeoutRun || routerEntryTimeoutRun || routerPostEntryTimeoutRun) &&
@@ -2369,6 +2376,24 @@ function handleLeft() {
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
         `Reason: ${reason || "(unknown)"}`,
+        `debugRawPoolLength: ${String(debugRawPoolLengthTop)}`,
+        `debugCandidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
+        `candidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
+        `fetchedRawCount: ${String(fetchedRawCountTop)}`,
+        `normalizedCount: ${String((lastRecommendationResult as any)?.normalizedCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
+        `candidateCount: ${String((lastRecommendationResult as any)?.candidateCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
+        `filteredCount: ${String((lastRecommendationResult as any)?.filteredCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
+        `rankedCount: ${String((lastRecommendationResult as any)?.rankedCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
+        `finalItemsLength: ${String((lastRecommendationResult as any)?.finalItemsLength ?? (Array.isArray((lastRecommendationResult as any)?.items) ? (lastRecommendationResult as any).items.length : 0))}`,
+        `returnedItemsLength: ${String(returnedItemsLength)}`,
+        `activeLaneQueries: ${JSON.stringify((lastRecommendationResult as any)?.activeLaneQueries || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.activeLaneQueries || [])}`,
+        `routerFamily: ${String((lastRecommendationResult as any)?.routerFamily || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerFamily || "(missing)")}`,
+        `rungCount: ${String((lastRecommendationResult as any)?.rungCount ?? (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.rungCount ?? "(missing)")}`,
+        `sourceFetchAttemptedBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchAttemptedBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchAttemptedBySource || {})}`,
+        `sourceFetchTimeoutBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchTimeoutBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchTimeoutBySource || {})}`,
+        `sourceRawCountBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceRawCountBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceRawCountBySource || {})}`,
+        `fetchDiagnosticsSummary: ${JSON.stringify((lastRecommendationResult as any)?.fetchDiagnosticsSummary || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchDiagnosticsSummary || null)}`,
+        `sourceSkippedReason: ${JSON.stringify(skippedReasons)}`,
         `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
         `Router instrumentation marker (client): ${ROUTER_INSTRUMENTATION_MARKER}`,
         `Deployed commit marker: ${(lastRecommendationResult as any)?.deployedCommitHash || "(missing)"}`,
@@ -2405,7 +2430,6 @@ function handleLeft() {
         `Expected fingerprint: ${expectedFingerprint}`,
         `Actual fingerprint: ${runtimeFingerprint || "(missing)"}`,
         `routerResultType: ${typeof (lastRecommendationResult as any)}`,
-        `routerResultKeysRaw: ${Object.keys((lastRecommendationResult as any) || {}).join(", ") || "(none)"}`,
         `routerResult.debugRouterVersion: ${(lastRecommendationResult as any)?.debugRouterVersion || "(missing)"}`,
         `routerResult.trace.debugRouterVersion: ${((lastRecommendationResult as any)?.debugComicVineDispatchTrace || (lastRecommendationResult as any)?.debugGcdDispatchTrace || {})?.debugRouterVersion || "(missing)"}`,
         `routerResultTracePresent: ${String(Boolean(lastRouterResultTracePresent))}`,
@@ -2437,28 +2461,57 @@ function handleLeft() {
         `kitsuPostFilterCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuPostFilterCount ?? "(missing)")}`,
         `kitsuUsableCount: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuUsableCount ?? "(missing)")}`,
         `kitsuSourceHealthRejectedReason: ${String((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.perSourceStatus?.kitsu?.kitsuSourceHealthRejectedReason ?? "(missing)")}`,
-        `googleBooksQueriesActuallyFetched: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksQueriesActuallyFetched || [])}`,
-        `openLibraryQueriesActuallyFetched: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryQueriesActuallyFetched || [])}`,
-        `kitsuQueriesActuallyFetched: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQueriesActuallyFetched || [])}`,
-        `googleBooksFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksFetchResultsByQuery || [])}`,
-        `openLibraryFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryFetchResultsByQuery || [])}`,
-        `kitsuFetchResultsByQuery: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFetchResultsByQuery || [])}`,
+        `googleBooksQueriesActuallyFetched: ${JSON.stringify((lastRecommendationResult as any)?.googleBooksQueriesActuallyFetched || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksQueriesActuallyFetched || [])}`,
+        `openLibraryQueriesActuallyFetched: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryQueriesActuallyFetched || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryQueriesActuallyFetched || [])}`,
+        `kitsuQueriesActuallyFetched: ${JSON.stringify((lastRecommendationResult as any)?.kitsuQueriesActuallyFetched || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQueriesActuallyFetched || [])}`,
+        `googleBooksFetchResultsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.googleBooksFetchResultsByQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksFetchResultsByQuery || [])}`,
+        `openLibraryFetchResultsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryFetchResultsByQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryFetchResultsByQuery || [])}`,
+        `kitsuFetchResultsByQuery: ${JSON.stringify((lastRecommendationResult as any)?.kitsuFetchResultsByQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFetchResultsByQuery || [])}`,
+        `googleBooksQueryUsedByLane: ${JSON.stringify((lastRecommendationResult as any)?.googleBooksQueryUsedByLane || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.googleBooksQueryUsedByLane || [])}`,
+        `openLibraryQueryUsedByLane: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryQueryUsedByLane || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.openLibraryQueryUsedByLane || [])}`,
+        `kitsuQueryUsedByLane: ${JSON.stringify((lastRecommendationResult as any)?.kitsuQueryUsedByLane || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQueryUsedByLane || [])}`,
         `sourceSpecificQueryModeBySource: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceSpecificQueryModeBySource || {})}`,
         `sourceSpecificQueryRejectedReasonBySource: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceSpecificQueryRejectedReasonBySource || {})}`,
         `kitsuQuerySanitizedFrom: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedFrom || [])}`,
         `kitsuQuerySanitizedTo: ${JSON.stringify((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuQuerySanitizedTo || [])}`,
+        `kitsuPreSanitizedQuery: ${String((lastRecommendationResult as any)?.kitsuPreSanitizedQuery || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuPreSanitizedQuery || "(missing)")}`,
+        `kitsuSanitizedQuerySelected: ${String((lastRecommendationResult as any)?.kitsuSanitizedQuerySelected || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuSanitizedQuerySelected || "(missing)")}`,
+        `kitsuFinalQueryUsedForFetch: ${JSON.stringify((lastRecommendationResult as any)?.kitsuFinalQueryUsedForFetch || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFinalQueryUsedForFetch || [])}`,
+        `kitsuFetchQueryMatchesSanitizedSelection: ${String(Boolean((lastRecommendationResult as any)?.kitsuFetchQueryMatchesSanitizedSelection))}`,
         `returnedItemsLength: ${String(returnedItemsLength)}`,
-        `zeroItemsCause_sourceStarvation: ${String(Boolean((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthFailed || earlyReturnReason === "source_health_failed"))}`,
-        `zeroItemsCause_finalGateRejection: ${String(Boolean((lastRecommendationResult as any)?.terminalRejectReasonByTitle || (lastRecommendationResult as any)?.finalEligibilityHardNeverReturnTitles))}`,
-        `zeroItemsCause_postTerminalDrop: ${String(Boolean((lastRecommendationResult as any)?.finalRenderDocsDroppedByReason || (lastRecommendationResult as any)?.droppedBeforeRenderReason))}`,
-        `zeroItemsCause_emergencyHandoffBlocked: ${String(Boolean((lastRecommendationResult as any)?.finalHandoffEmptyReason))}`,
+        `zeroItemsCompactSummary: ${JSON.stringify({
+          debugRawPoolLength: Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0,
+          debugCandidatePoolLength: Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0,
+          candidatePoolLength: Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0,
+          returnedItemsLength,
+          finalEligibilityRejectedTitlesByReason: (lastRecommendationResult as any)?.finalEligibilityRejectedTitlesByReason || {},
+          normalFinalGateRecoveryConsidered: Boolean((lastRecommendationResult as any)?.normalFinalGateRecoveryConsidered),
+          kitsuNormalRecoveryConsidered: Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered),
+          kitsuRecoveryPoolTitles: (lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [],
+          kitsuRecoveryBestRejectedReasons: (lastRecommendationResult as any)?.kitsuRecoveryBestRejectedReasons || {},
+        })}`,
+        `zeroItemsCause_sourceStarvation: ${String(sourceStarvationByZeroPools || Boolean((lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceHealthFailed || earlyReturnReason === "source_health_failed"))}`,
+        `zeroItemsCause_finalGateRejection: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.terminalRejectReasonByTitle || (lastRecommendationResult as any)?.finalEligibilityHardNeverReturnTitles))}`,
+        `zeroItemsCause_postTerminalDrop: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.finalRenderDocsDroppedByReason || (lastRecommendationResult as any)?.droppedBeforeRenderReason))}`,
+        `zeroItemsCause_emergencyHandoffBlocked: ${String(sourceStarvationByZeroPools ? false : Boolean((lastRecommendationResult as any)?.finalHandoffEmptyReason))}`,
         `rawSourceCounts: ${JSON.stringify((lastRecommendationResult as any)?.debugSourceStats || {})}`,
         `candidatePoolLength: ${String(Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0)}`,
+        `debugRawPool.length: ${String(Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0)}`,
+        `debugCandidatePool.length: ${String(Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0)}`,
         `finalEligibilityRejectedTitlesByReason: ${JSON.stringify((lastRecommendationResult as any)?.finalEligibilityRejectedTitlesByReason || {})}`,
         `teenPostPassOutputLength: ${String((lastRecommendationResult as any)?.teenPostPassOutputLength ?? "(missing)")}`,
-        `kitsuRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered))}`,
+        `normalFinalGateRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.normalFinalGateRecoveryConsidered))}`,
+        `kitsuNormalRecoveryConsidered: ${String(Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered))}`,
         `kitsuRecoveryAcceptedTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryAcceptedTitles || [])}`,
         `kitsuRecoveryRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryRejectedByTitle || {})}`,
+        `kitsuRecoveryPoolTitles: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryPoolTitles || [])}`,
+        `kitsuRecoveryBestRejectedReasons: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRecoveryBestRejectedReasons || {})}`,
+        `kitsuInsufficientPositiveFitRejectedDiagnostics: ${JSON.stringify((lastRecommendationResult as any)?.kitsuInsufficientPositiveFitRejectedDiagnostics || [])}`,
+        `teenPostPassOutputTitles: ${JSON.stringify((lastRecommendationResult as any)?.teenPostPassOutputTitles || [])}`,
+        `teenPostPassRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.teenPostPassRejectedByTitle || {})}`,
+        `teenPostPassNoSafeCandidateReason: ${String((lastRecommendationResult as any)?.teenPostPassNoSafeCandidateReason || "(none)")}`,
+        `terminalAssemblyInputTitles: ${JSON.stringify((lastRecommendationResult as any)?.terminalAssemblyInputTitles || [])}`,
+        `terminalAssemblyOutputTitles: ${JSON.stringify((lastRecommendationResult as any)?.terminalAssemblyOutputTitles || [])}`,
       ].join("\n");
       await Clipboard.setStringAsync(blockedReport);
       Alert.alert(
@@ -2578,7 +2631,6 @@ function handleLeft() {
       `recommendFunctionErrorPhase:${recommendFunctionErrorPhase || "(none)"}`,
       `recommendFunctionErrorStack:${recommendFunctionErrorStack || "(none)"}`,
       `routerResultType:${typeof (lastRecommendationResult as any)}`,
-      `routerResultKeysRaw:${Object.keys((lastRecommendationResult as any) || {}).join(", ") || "(none)"}`,
       `routerResult.debugRouterVersion:${(lastRecommendationResult as any)?.debugRouterVersion || "(missing)"}`,
       `routerResult.trace.debugRouterVersion:${((lastRecommendationResult as any)?.debugComicVineDispatchTrace || (lastRecommendationResult as any)?.debugGcdDispatchTrace || {})?.debugRouterVersion || "(missing)"}`,
       `routerResultTracePresent:${Boolean(lastRouterResultTracePresent)}`,
