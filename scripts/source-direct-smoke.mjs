@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 const openLibraryQueries = ["fantasy", "science fiction", "mystery"];
-const kitsuQueries = ["fantasy", "fantasy romance", "mystery"];
+const kitsuQueries = ["adventure", "fantasy", "horror", "fantasy adventure", "psychological horror"];
 
 async function hit(url) {
   const started = Date.now();

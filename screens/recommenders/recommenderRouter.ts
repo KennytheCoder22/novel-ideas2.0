@@ -10825,6 +10825,8 @@ const normalizedCandidatesRaw = [
   const kitsuRecoveryPoolTitles: string[] = [];
   const kitsuRecoveryBestRejectedReasons: Record<string, string> = {};
   let minimalSafeOneBlockedReason = "";
+  const kitsuHasRawCandidates = Number(aggregatedRawFetched.kitsu || 0) > 0
+    || kitsuFetchResultsByQuery.some((row) => Number(row?.rawCount || 0) > 0);
   if (!suppressTopRecommendations) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
     if (acceptedAfterTerminalSet.size === 0) {
@@ -10887,7 +10889,7 @@ const normalizedCandidatesRaw = [
         finalReturnSourceUsed = "normal_final_gate_recovery";
         sourceSkippedReason.push("final_gate_integrity:normal_final_gate_recovery");
       }
-      if (finalOutputItems.length === 0 && teenPostPassOutputTitles.length > 0) {
+      if (finalOutputItems.length === 0 && (teenPostPassOutputTitles.length > 0 || kitsuHasRawCandidates)) {
         kitsuNormalRecoveryConsidered = true;
         const seenRoots = new Set<string>();
         const kitsuPool = dedupeDocs([
@@ -11295,6 +11297,25 @@ const normalizedCandidatesRaw = [
     openLibrary: !sourceFetchAttemptedBySource.openLibrary || openLibraryFetchResultsByQuery.length > 0,
     kitsu: !sourceFetchAttemptedBySource.kitsu || kitsuFetchResultsByQuery.length > 0,
   };
+  const kitsuInsufficientPositiveFitRejectedDiagnostics = (
+    Array.isArray(finalEligibilityRejectedTitlesByReason?.insufficient_positive_fit_score)
+      ? finalEligibilityRejectedTitlesByReason.insufficient_positive_fit_score
+      : []
+  )
+    .map((title: string) => {
+      const t = String(title || "").trim();
+      return {
+        title: t,
+        positiveFitScore: Number(positiveFitScoreByTitle[t] || 0),
+        candidateWeightedTasteScore: Number(candidateWeightedTasteScoreByTitle[t] || 0),
+        candidateDislikePenalty: Number(candidateDislikePenaltyByTitle[t] || 0),
+        semanticSupportFound: Boolean(semanticSupportFoundByTitle[t]),
+        matchedPositiveSignals: Array.isArray(candidateMatchedLikedSignalsByTitle[t]) ? candidateMatchedLikedSignalsByTitle[t] : [],
+        matchedNegativeSignals: Array.isArray(candidateMatchedDislikedSignalsByTitle[t]) ? candidateMatchedDislikedSignalsByTitle[t] : [],
+        finalRejectReason: "insufficient_positive_fit_score",
+      };
+    })
+    .slice(0, 20);
   markRouterPhase("router_before_final_return");
   return {
     engineId: preferredEngine,
@@ -11671,6 +11692,8 @@ const normalizedCandidatesRaw = [
     terminalAssemblyOutputTitles: terminalAssemblyOutputTitlesAtReturn,
     terminalAssemblyDropReasonByTitle,
     teenPostPassOutputTitles,
+    teenPostPassRejectedByTitle: teenPostPassRejectReasons,
+    teenPostPassNoSafeCandidateReason: minimalSafeOneBlockedReason || (teenPostPassOutputLength > 0 && finalOutputItems.length === 0 ? "no_safe_candidate" : ""),
     finalGateAcceptedTitles: acceptedAfterTerminalRejectFilter,
     returnedItemsTitlesPostTerminal,
     terminalReturnDropReasonByTitle,
@@ -11703,6 +11726,7 @@ const normalizedCandidatesRaw = [
     kitsuNormalRecoveryRejectedByTitle,
     kitsuRecoveryPoolTitles,
     kitsuRecoveryBestRejectedReasons,
+    kitsuInsufficientPositiveFitRejectedDiagnostics,
     terminalAssemblyInputTitles: terminalAssemblyInputTitlesAtReturn,
     terminalAssemblyOutputTitles: terminalAssemblyOutputTitlesAtReturn,
     minimalSafeOneBlockedReason,
