@@ -2648,6 +2648,17 @@ export async function getRecommendations(
     history.push(entry);
     (globalThis as any).__novelIdeasRouterPhaseHistory = history.slice(-160);
   };
+  const pushEarlyReturnDiagnostics = (reason: string, phase: string, extra?: Record<string, any>) => {
+    try {
+      pushGlobalPhase("getRecommendations_early_return", {
+        getRecommendationsEarlyReturnReason: reason,
+        getRecommendationsEarlyReturnPhase: phase,
+        ...(extra || {}),
+      });
+    } catch {
+      // instrumentation only
+    }
+  };
   try {
     pushGlobalPhase("getRecommendations_function_entered");
     pushGlobalPhase("getRecommendations_after_entry_heartbeat");
@@ -2802,6 +2813,7 @@ export async function getRecommendations(
   if (!sourceEnabled.kitsu) sourceDisableReasonsDetailed.kitsu.push("disabled_by_admin_or_config");
   if (!sourceEnabled.nyt) sourceDisableReasonsDetailed.nyt.push("disabled_by_admin_or_config");
   if (!sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu && !sourceEnabled.comicVine && !sourceEnabled.nyt) {
+    pushEarlyReturnDiagnostics("all_sources_disabled", "source_enabled_guard");
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED", {
       sourceEnabled,
       sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
@@ -2823,6 +2835,7 @@ export async function getRecommendations(
     debugRouterLog("COMICVINE_ONLY_SMOKE_PATH", { deckKey: routedInput.deckKey, includeComicVine });
   }
   if (!hasRunnableSource) {
+    pushEarlyReturnDiagnostics("all_sources_disabled_after_synthesis", "runnable_source_guard");
     throwSourceFatal("SESSION_FATAL_ALL_SOURCES_DISABLED_AFTER_SYNTHESIS", {
       sourceEnabled,
       sourceEnabledOrigins: buildSourceOrigins((routedInput as any)?.sourceEnabled || {}),
@@ -4162,6 +4175,7 @@ export async function getRecommendations(
     (kitsuStarved || !includeKitsu) &&
     (comicVineUnavailableBypass || !includeComicVine);
   if (allRealSourcesStarved) {
+    pushEarlyReturnDiagnostics("source_health_failed", "post_fetch_source_health_guard");
     throwSourceFatal("source_health_failed", {
       sourceEnabled,
       sourceDisableReasonsDetailed,

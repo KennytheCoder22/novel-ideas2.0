@@ -1687,11 +1687,33 @@ function handleLeft() {
         ),
       ]);
       markPhase("after_getRecommendations_call");
+      try {
+        const returnKeys = result && typeof result === "object" ? Object.keys(result) : [];
+        const returnItemsLength = Array.isArray((result as any)?.items) ? (result as any).items.length : null;
+        markPhase("getRecommendations_after_router_call", {
+          getRecommendationsReturnType: result === null ? "null" : Array.isArray(result) ? "array" : typeof result,
+          getRecommendationsReturnKeys: returnKeys.slice(0, 40),
+          getRecommendationsReturnItemsLength: returnItemsLength,
+          getRecommendationsReturnDebugRouterVersion: typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "",
+          getRecommendationsReturnBuiltFromQuery: typeof (result as any)?.builtFromQuery === "string" ? (result as any).builtFromQuery : "",
+          getRecommendationsReturnError: typeof (result as any)?.error === "string" ? (result as any).error : "",
+        });
+      } catch {
+        // diagnostics only
+      }
       setPendingRecommendationPromisePresent(false);
       pendingRecommendationPromiseRef.current = null;
       const routerHistory = Array.isArray((result as any)?.routerPhaseHistory) ? (result as any).routerPhaseHistory : [];
       if (!routerHistory.some((row: any) => String(row?.phase || "") === "router_entered")) {
-        throw new Error("router_entry_timeout:router_entered_missing");
+        const globalRouterPhases = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
+          ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
+          : [];
+        const hasAfterRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
+        throw new Error(
+          hasAfterRouterCall
+            ? "router_not_invoked_empty_result:router_entered_missing"
+            : "router_entry_timeout:router_entered_missing"
+        );
       }
       markPhase("after_source_fetch");
       const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
@@ -2218,11 +2240,14 @@ function handleLeft() {
     const runtimeFingerprint = lastDebugRouterVersion || "";
     const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
     const routerEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_entry_timeout:");
+    const routerNotInvokedEmptyResultRun = String(recommendFunctionError || "").startsWith("router_not_invoked_empty_result:");
     const preflightTimeoutRun = String(recommendFunctionError || "").startsWith("source_health_preflight_timeout:");
     const staleRuntime = runtimeFingerprint !== expectedFingerprint;
     const missingRouterTrace = !Boolean(lastRouterResultTracePresent);
-    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace) {
-      const reason = routerEntryTimeoutRun
+    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun) {
+      const reason = routerNotInvokedEmptyResultRun
+        ? "router_not_invoked_empty_result"
+        : routerEntryTimeoutRun
         ? "router_entry_timeout"
         : timeoutRun
         ? "recommendation_timeout"
