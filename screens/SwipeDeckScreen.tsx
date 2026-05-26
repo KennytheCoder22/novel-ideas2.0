@@ -1690,7 +1690,7 @@ function handleLeft() {
         Promise.race([
           routerPromise,
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error("router_entry_timeout:10000")), 10_000)
+            setTimeout(() => reject(new Error("router_entry_timeout:20000")), 20_000)
           ),
         ]),
         new Promise((_, reject) =>
@@ -2343,6 +2343,8 @@ function handleLeft() {
         `getRecommendations reference type: ${recommenderCallReferenceType || "(unknown)"}`,
         `getRecommendationsFunctionName: ${typeof getRecommendations === "function" ? (getRecommendations as any).name || "(anonymous)" : "(not_function)"}`,
         `getRecommendationsFunctionSourcePrefix: ${typeof getRecommendations === "function" ? String(getRecommendations).slice(0, 120) : "(not_function)"}`,
+        `routerFunctionName: ${typeof getRecommendations === "function" ? (getRecommendations as any).name || "(anonymous)" : "(not_function)"}`,
+        `routerFunctionSourcePrefix: ${typeof getRecommendations === "function" ? String(getRecommendations).slice(0, 220) : "(not_function)"}`,
         `recommendationLockState: ${recommendationLockState}`,
         `pendingRecommendationPromisePresent: ${String(Boolean(pendingRecommendationPromisePresent || pendingRecommendationPromiseRef.current))}`,
         `activeRecommendationRunId: ${activeRecommendationRunId || "(none)"}`,

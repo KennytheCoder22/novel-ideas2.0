@@ -2639,6 +2639,20 @@ export async function getRecommendations(
   input: RecommenderInput,
   override?: EngineOverride
 ): Promise<RecommendationResult> {
+  try {
+    const entry = { phase: "router_entered", timestamp: new Date().toISOString() };
+    (globalThis as any).__novelIdeasRouterEntryHeartbeat = entry;
+    const history = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
+      ? (globalThis as any).__novelIdeasRouterPhaseHistory
+      : [];
+    history.push(entry);
+    const afterEntry = { phase: "router_after_entry_marker", timestamp: new Date().toISOString() };
+    history.push(afterEntry);
+    (globalThis as any).__novelIdeasRouterEntryHeartbeat = afterEntry;
+    (globalThis as any).__novelIdeasRouterPhaseHistory = history.slice(-160);
+  } catch {
+    // non-fatal instrumentation only
+  }
   const pushGlobalPhase = (phase: string, extra?: Record<string, any>) => {
     const entry = { phase, timestamp: new Date().toISOString(), ...(extra || {}) };
     (globalThis as any).__novelIdeasRouterEntryHeartbeat = entry;
@@ -2732,6 +2746,7 @@ export async function getRecommendations(
     throw err;
   }
   markRouterPhase("router_entered");
+  markRouterPhase("router_after_entry_marker");
   markRouterPhase("router_query_built");
 
   // Gold-standard 20Q router:
