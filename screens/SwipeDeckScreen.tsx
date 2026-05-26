@@ -1581,15 +1581,21 @@ function handleLeft() {
       setRecommendFunctionErrorPhase("normalize lane weights");
       setRecommendFunctionErrorPhase("build ComicVine rungs");
       setRecommendFunctionErrorPhase("dispatch ComicVine");
-      const result = await getRecommendations(
-        {
-          ...inputWithHistory,
-          profileOverride: currentLaneOverride,
-          sourceEnabled,
-          localLibrarySupported: Boolean(props.localLibrarySupported),
-        },
-        "auto"
-      );
+      const recommendationTimeoutMs = 90_000;
+      const result = await Promise.race([
+        getRecommendations(
+          {
+            ...inputWithHistory,
+            profileOverride: currentLaneOverride,
+            sourceEnabled,
+            localLibrarySupported: Boolean(props.localLibrarySupported),
+          },
+          "auto"
+        ),
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
+        ),
+      ]);
       const runtimeFingerprint = typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "";
       const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
       if (runtimeFingerprint !== expectedFingerprint) {

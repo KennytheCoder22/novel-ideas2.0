@@ -10816,6 +10816,27 @@ const normalizedCandidatesRaw = [
     }
   }
   finalOutputItems = itemsForReturn;
+  if (String(returnedItemsBuiltFrom) === "kitsu_normal_recovery" && finalOutputItems.length === 0) {
+    const acceptedSet = new Set(kitsuNormalRecoveryAcceptedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
+    const restored = teenPostPassItems
+      .filter((item: any) => {
+        const title = String(item?.doc?.title || item?.title || "").trim();
+        return acceptedSet.has(normalizeText(title));
+      })
+      .slice(0, Math.max(1, Math.min(3, finalLimit)));
+    if (restored.length > 0) {
+      finalOutputItems = restored;
+      sourceSkippedReason.push("kitsu_recovery_restored_at_return_assembly");
+    }
+  }
+  if (String(returnedItemsBuiltFrom) === "kitsu_normal_recovery" && finalOutputItems.length === 0) {
+    sourceSkippedReason.push("kitsu_recovery_lost_at_return_assembly");
+    throwSourceFatal("kitsu_recovery_lost_at_return_assembly", {
+      kitsuNormalRecoveryAcceptedTitles,
+      returnedItemsBuiltFrom,
+      finalOutputItemsLength: finalOutputItems.length,
+    });
+  }
   const nytFetchAttempted = Boolean(sourceEnabled.nyt) && Boolean(nytAnchorDebug.enabled);
   const nytCandidateTitles = dedupeDocs([
     ...(nytAnchorResult?.docs || []),
