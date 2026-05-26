@@ -1571,11 +1571,21 @@ function handleLeft() {
   }
 
   async function performRecommendationRun(input: RecommenderInput) {
-    const markPhase = (phase: string) => {
+    const markPhase = (phase: string, extra?: Record<string, any>) => {
       const timestamp = new Date().toISOString();
+      const entry = { phase, timestamp, ...(extra || {}) };
       setRecommendFunctionErrorPhase(phase);
       setLastKnownFetchPhase(phase);
-      setPhaseHistory((prev) => [...prev, { phase, timestamp }].slice(-80));
+      setPhaseHistory((prev) => [...prev, entry].slice(-80));
+      try {
+        const globalHistory = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
+          ? (globalThis as any).__novelIdeasRouterPhaseHistory
+          : [];
+        globalHistory.push(entry);
+        (globalThis as any).__novelIdeasRouterPhaseHistory = globalHistory.slice(-200);
+      } catch {
+        // diagnostics only
+      }
     };
     const allDisabled =
       !sourceEnabled.googleBooks &&
@@ -1686,34 +1696,26 @@ function handleLeft() {
           setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
         ),
       ]);
-      const result: any = resolvedRecommendationResult;
+      const recommendationResult: any = resolvedRecommendationResult;
+      const result: any = recommendationResult;
       markPhase("after_getRecommendations_call");
       try {
-        const returnKeys = result && typeof result === "object" ? Object.keys(result) : [];
-        const returnItemsLength = Array.isArray((result as any)?.items) ? (result as any).items.length : null;
-        const returnType = result === null ? "null" : Array.isArray(result) ? "array" : typeof result;
-        const isUndefined = typeof result === "undefined";
-        const isEmptyObject = Boolean(result && typeof result === "object" && !Array.isArray(result) && returnKeys.length === 0);
-        (globalThis as any).__novelIdeasLastGetRecommendationsResultShape = {
-          type: returnType,
-          keys: returnKeys.slice(0, 40),
-          itemsLength: returnItemsLength,
-          debugRouterVersion: typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "",
-          builtFromQuery: typeof (result as any)?.builtFromQuery === "string" ? (result as any).builtFromQuery : "",
-          error: typeof (result as any)?.error === "string" ? (result as any).error : "",
-          isUndefined,
-          isEmptyObject,
+        const resultShape = {
+          returnType: typeof recommendationResult,
+          returnKeys: recommendationResult && typeof recommendationResult === "object" ? Object.keys(recommendationResult).slice(0, 40) : [],
+          itemsLength: Array.isArray(recommendationResult?.items) ? recommendationResult.items.length : null,
+          debugRouterVersion: recommendationResult?.debugRouterVersion ?? null,
+          builtFromQuery: recommendationResult?.builtFromQuery ?? null,
+          error: recommendationResult?.error ?? null,
+          isUndefined: typeof recommendationResult === "undefined",
+          isEmptyObject:
+            recommendationResult &&
+            typeof recommendationResult === "object" &&
+            !Array.isArray(recommendationResult) &&
+            Object.keys(recommendationResult).length === 0,
         };
-        markPhase("getRecommendations_after_router_call", {
-          returnType,
-          returnKeys: returnKeys.slice(0, 40),
-          itemsLength: returnItemsLength,
-          debugRouterVersion: typeof (result as any)?.debugRouterVersion === "string" ? (result as any).debugRouterVersion : "",
-          builtFromQuery: typeof (result as any)?.builtFromQuery === "string" ? (result as any).builtFromQuery : "",
-          error: typeof (result as any)?.error === "string" ? (result as any).error : "",
-          isUndefined,
-          isEmptyObject,
-        });
+        markPhase("getRecommendations_after_router_call", resultShape);
+        (globalThis as any).__novelIdeasLastGetRecommendationsResultShape = resultShape;
       } catch {
         // diagnostics only
       }
@@ -2355,8 +2357,8 @@ function handleLeft() {
         `recommendFunctionReturned: ${String(Boolean(recommendFunctionReturned))}`,
         `recommendFunctionErrorPhase: ${recommendFunctionErrorPhase || "(none)"}`,
         `recommendFunctionError: ${recommendFunctionError || "(none)"}`,
-        `getRecommendationsReturnType: ${String((resultShape as any)?.type ?? (latestAfterRouterCallPhase as any)?.returnType ?? "(missing)")}`,
-        `getRecommendationsReturnKeys: ${JSON.stringify((resultShape as any)?.keys ?? (latestAfterRouterCallPhase as any)?.returnKeys ?? "(missing)")}`,
+        `getRecommendationsReturnType: ${String((resultShape as any)?.returnType ?? (latestAfterRouterCallPhase as any)?.returnType ?? "(missing)")}`,
+        `getRecommendationsReturnKeys: ${JSON.stringify((resultShape as any)?.returnKeys ?? (latestAfterRouterCallPhase as any)?.returnKeys ?? "(missing)")}`,
         `getRecommendationsReturnItemsLength: ${String((resultShape as any)?.itemsLength ?? (latestAfterRouterCallPhase as any)?.itemsLength ?? "(missing)")}`,
         `getRecommendationsReturnDebugRouterVersion: ${String((resultShape as any)?.debugRouterVersion ?? (latestAfterRouterCallPhase as any)?.debugRouterVersion ?? "(missing)")}`,
         `getRecommendationsReturnBuiltFromQuery: ${String((resultShape as any)?.builtFromQuery ?? (latestAfterRouterCallPhase as any)?.builtFromQuery ?? "(missing)")}`,
