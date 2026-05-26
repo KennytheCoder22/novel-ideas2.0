@@ -11273,6 +11273,27 @@ const normalizedCandidatesRaw = [
     acc[fam] = Number(acc[fam] || 0) + 1;
     return acc;
   }, {});
+  const googleBooksQueriesActuallyFetchedArray = Array.from(googleBooksQueriesActuallyFetched);
+  const openLibraryQueriesActuallyFetchedArray = Array.from(openLibraryQueriesActuallyFetched);
+  const kitsuQueriesActuallyFetchedArray = Array.from(kitsuQueriesActuallyFetched);
+  const sourceFetchAttemptedBySource = {
+    googleBooks: googleBooksRouterFetchCount > 0,
+    openLibrary: openLibraryRouterFetchCount > 0,
+    kitsu: kitsuRouterFetchCount > 0,
+  };
+  const fetchDiagnosticsSummary = {
+    gbQueries: googleBooksQueriesActuallyFetchedArray.length,
+    olQueries: openLibraryQueriesActuallyFetchedArray.length,
+    kitsuQueries: kitsuQueriesActuallyFetchedArray.length,
+    gbResults: googleBooksFetchResultsByQuery.length,
+    olResults: openLibraryFetchResultsByQuery.length,
+    kitsuResults: kitsuFetchResultsByQuery.length,
+  };
+  const fetchDiagnosticsCoverageAssertion = {
+    googleBooks: !sourceFetchAttemptedBySource.googleBooks || googleBooksFetchResultsByQuery.length > 0,
+    openLibrary: !sourceFetchAttemptedBySource.openLibrary || openLibraryFetchResultsByQuery.length > 0,
+    kitsu: !sourceFetchAttemptedBySource.kitsu || kitsuFetchResultsByQuery.length > 0,
+  };
   markRouterPhase("router_before_final_return");
   return {
     engineId: preferredEngine,
@@ -11769,11 +11790,7 @@ const normalizedCandidatesRaw = [
     activeLaneQueries: Array.from(new Set(queryLanesUsed.map((q: any) => String(q || "").trim()).filter(Boolean))).slice(0, 60),
     routerFamily,
     rungCount: Array.isArray(rungs) ? rungs.length : 0,
-    sourceFetchAttemptedBySource: {
-      googleBooks: googleBooksRouterFetchCount > 0,
-      openLibrary: openLibraryRouterFetchCount > 0,
-      kitsu: kitsuRouterFetchCount > 0,
-    },
+    sourceFetchAttemptedBySource,
     sourceFetchTimeoutBySource: {
       googleBooks: googleBooksFetchResultsByQuery.some((row) => String(row?.error || "").includes("timeout")),
       openLibrary: openLibraryFetchResultsByQuery.some((row) => String(row?.error || "").includes("timeout")),
@@ -11784,6 +11801,14 @@ const normalizedCandidatesRaw = [
       openLibrary: Number(aggregatedRawFetched.openLibrary || 0),
       kitsu: Number(aggregatedRawFetched.kitsu || 0),
     },
+    fetchDiagnosticsSummary,
+    fetchDiagnosticsCoverageAssertion,
+    googleBooksQueriesActuallyFetched: googleBooksQueriesActuallyFetchedArray,
+    openLibraryQueriesActuallyFetched: openLibraryQueriesActuallyFetchedArray,
+    kitsuQueriesActuallyFetched: kitsuQueriesActuallyFetchedArray,
+    googleBooksFetchResultsByQuery,
+    openLibraryFetchResultsByQuery,
+    kitsuFetchResultsByQuery,
     googleBooksQueryUsedByLane: Array.from(new Set(googleBooksQueryUsedByLane)).slice(0, 60),
     openLibraryQueryUsedByLane: Array.from(new Set(openLibraryQueryUsedByLane)).slice(0, 60),
     kitsuQueryUsedByLane: Array.from(new Set(kitsuQueryUsedByLane)).slice(0, 60),

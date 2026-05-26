@@ -2392,6 +2392,7 @@ function handleLeft() {
         `sourceFetchAttemptedBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchAttemptedBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchAttemptedBySource || {})}`,
         `sourceFetchTimeoutBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchTimeoutBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchTimeoutBySource || {})}`,
         `sourceRawCountBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceRawCountBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceRawCountBySource || {})}`,
+        `fetchDiagnosticsSummary: ${JSON.stringify((lastRecommendationResult as any)?.fetchDiagnosticsSummary || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchDiagnosticsSummary || null)}`,
         `sourceSkippedReason: ${JSON.stringify(skippedReasons)}`,
         `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
         `Router instrumentation marker (client): ${ROUTER_INSTRUMENTATION_MARKER}`,
