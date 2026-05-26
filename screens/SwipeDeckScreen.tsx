@@ -1715,11 +1715,11 @@ function handleLeft() {
             Object.keys(recommendationResult).length === 0,
         };
         (globalThis as any).__novelIdeasAfterRouterCallEventPayload = {
-          phase: "getRecommendations_after_router_call",
+          phase: "getRecommendations_after_router_call_with_shape_v2",
           timestamp: new Date().toISOString(),
           ...resultShape,
         };
-        markPhase("getRecommendations_after_router_call", resultShape);
+        markPhase("getRecommendations_after_router_call_with_shape_v2", resultShape);
         (globalThis as any).__novelIdeasLastGetRecommendationsResultShape = resultShape;
       } catch {
         // diagnostics only
@@ -1739,10 +1739,12 @@ function handleLeft() {
           : [];
         const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
         const hasAfterRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
-        const afterRouterCallEvent = globalRouterPhases.find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
+        const hasAfterRouterCallWithShapeV2 = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
+        const afterRouterCallEvent = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2")
+          || [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
         const hasResultShape = Boolean((globalThis as any).__novelIdeasLastGetRecommendationsResultShape) || Boolean(afterRouterCallEvent);
         throw new Error(
-          hasAfterRouterCall
+          (hasAfterRouterCallWithShapeV2 || hasAfterRouterCall)
             ? ((afterRouterCallEvent as any)?.isUndefined
               ? "getRecommendations_returned_undefined:router_entered_missing"
               : (afterRouterCallEvent as any)?.isEmptyObject
@@ -2287,12 +2289,14 @@ function handleLeft() {
     const globalRouterPhases = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
       ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
       : [];
-    const latestAfterRouterCallPhase = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
+    const legacyAfterRouterCallEvents = globalRouterPhases.filter((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call");
+    const latestLegacyAfterRouterCallPhase = legacyAfterRouterCallEvents.length ? legacyAfterRouterCallEvents[legacyAfterRouterCallEvents.length - 1] : null;
+    const afterRouterCallWithShapeV2Payload = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2") || null;
     const directAfterRouterCallPayload = (globalThis as any).__novelIdeasAfterRouterCallEventPayload || null;
     const resultShape = (globalThis as any).__novelIdeasLastGetRecommendationsResultShape || null;
-    const effectiveIsUndefined = Boolean((resultShape as any)?.isUndefined ?? (latestAfterRouterCallPhase as any)?.isUndefined);
-    const effectiveIsEmptyObject = Boolean((resultShape as any)?.isEmptyObject ?? (latestAfterRouterCallPhase as any)?.isEmptyObject);
-    const hasAfterRouterCallEvent = Boolean(latestAfterRouterCallPhase);
+    const effectiveIsUndefined = Boolean((resultShape as any)?.isUndefined ?? (afterRouterCallWithShapeV2Payload as any)?.isUndefined ?? (latestLegacyAfterRouterCallPhase as any)?.isUndefined);
+    const effectiveIsEmptyObject = Boolean((resultShape as any)?.isEmptyObject ?? (afterRouterCallWithShapeV2Payload as any)?.isEmptyObject ?? (latestLegacyAfterRouterCallPhase as any)?.isEmptyObject);
+    const hasAfterRouterCallEvent = Boolean(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase);
     if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent) {
       const reason = getRecommendationsReturnedUndefinedRun
         ? "getRecommendations_returned_undefined"
@@ -2363,16 +2367,18 @@ function handleLeft() {
         `recommendFunctionReturned: ${String(Boolean(recommendFunctionReturned))}`,
         `recommendFunctionErrorPhase: ${recommendFunctionErrorPhase || "(none)"}`,
         `recommendFunctionError: ${recommendFunctionError || "(none)"}`,
-        `getRecommendationsReturnType: ${String((resultShape as any)?.returnType ?? (latestAfterRouterCallPhase as any)?.returnType ?? "(missing)")}`,
-        `getRecommendationsReturnKeys: ${JSON.stringify((resultShape as any)?.returnKeys ?? (latestAfterRouterCallPhase as any)?.returnKeys ?? "(missing)")}`,
-        `getRecommendationsReturnItemsLength: ${String((resultShape as any)?.itemsLength ?? (latestAfterRouterCallPhase as any)?.itemsLength ?? "(missing)")}`,
-        `getRecommendationsReturnDebugRouterVersion: ${String((resultShape as any)?.debugRouterVersion ?? (latestAfterRouterCallPhase as any)?.debugRouterVersion ?? "(missing)")}`,
-        `getRecommendationsReturnBuiltFromQuery: ${String((resultShape as any)?.builtFromQuery ?? (latestAfterRouterCallPhase as any)?.builtFromQuery ?? "(missing)")}`,
-        `getRecommendationsReturnError: ${String((resultShape as any)?.error ?? (latestAfterRouterCallPhase as any)?.error ?? "(missing)")}`,
+        `getRecommendationsReturnType: ${String((resultShape as any)?.returnType ?? (afterRouterCallWithShapeV2Payload as any)?.returnType ?? (latestLegacyAfterRouterCallPhase as any)?.returnType ?? "(missing)")}`,
+        `getRecommendationsReturnKeys: ${JSON.stringify((resultShape as any)?.returnKeys ?? (afterRouterCallWithShapeV2Payload as any)?.returnKeys ?? (latestLegacyAfterRouterCallPhase as any)?.returnKeys ?? "(missing)")}`,
+        `getRecommendationsReturnItemsLength: ${String((resultShape as any)?.itemsLength ?? (afterRouterCallWithShapeV2Payload as any)?.itemsLength ?? (latestLegacyAfterRouterCallPhase as any)?.itemsLength ?? "(missing)")}`,
+        `getRecommendationsReturnDebugRouterVersion: ${String((resultShape as any)?.debugRouterVersion ?? (afterRouterCallWithShapeV2Payload as any)?.debugRouterVersion ?? (latestLegacyAfterRouterCallPhase as any)?.debugRouterVersion ?? "(missing)")}`,
+        `getRecommendationsReturnBuiltFromQuery: ${String((resultShape as any)?.builtFromQuery ?? (afterRouterCallWithShapeV2Payload as any)?.builtFromQuery ?? (latestLegacyAfterRouterCallPhase as any)?.builtFromQuery ?? "(missing)")}`,
+        `getRecommendationsReturnError: ${String((resultShape as any)?.error ?? (afterRouterCallWithShapeV2Payload as any)?.error ?? (latestLegacyAfterRouterCallPhase as any)?.error ?? "(missing)")}`,
         `directAfterRouterCallPayload:${JSON.stringify(directAfterRouterCallPayload || null)}`,
-        `markPhaseAfterRouterCallPayload:${JSON.stringify(latestAfterRouterCallPhase || null)}`,
+        `markPhaseAfterRouterCallPayload:${JSON.stringify(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase || null)}`,
+        `legacyAfterRouterCallEvents:${JSON.stringify(legacyAfterRouterCallEvents || [])}`,
+        `afterRouterCallWithShapeV2Payload:${JSON.stringify(afterRouterCallWithShapeV2Payload || null)}`,
         `lastGetRecommendationsResultShape:${JSON.stringify(resultShape || null)}`,
-        `afterRouterCallEventPayload:${JSON.stringify(latestAfterRouterCallPhase || null)}`,
+        `afterRouterCallEventPayload:${JSON.stringify(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase || null)}`,
         `getRecommendationsEarlyReturnReason: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason ?? "(missing)")}`,
         `getRecommendationsEarlyReturnPhase: ${String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnPhase ?? "(missing)")}`,
       ].join("\n");
