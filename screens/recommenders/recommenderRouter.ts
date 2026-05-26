@@ -2791,9 +2791,9 @@ export async function getRecommendations(
   const googleBooksQueriesActuallyFetched = new Set<string>();
   const openLibraryQueriesActuallyFetched = new Set<string>();
   const kitsuQueriesActuallyFetched = new Set<string>();
-  const googleBooksFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
-  const openLibraryFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
-  const kitsuFetchResultsByQuery: Array<{ query: string; status: string; rawCount: number; error?: string | null }> = [];
+  const googleBooksFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
   const googleBooksQueryUsedByLane: string[] = [];
   const openLibraryQueryUsedByLane: string[] = [];
@@ -4030,7 +4030,7 @@ export async function getRecommendations(
         openLibraryQueriesActuallyFetched.add(openLibraryLaneQuery);
         pushGlobalPhase("before_open_library_router_fetch");
         requests.push(
-          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 2_000, () => runEngine("openLibrary", laneInput))
+          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => runEngine("openLibrary", laneInput))
             .finally(() => pushGlobalPhase("after_open_library_router_fetch")) as any
         );
         }
@@ -4086,9 +4086,14 @@ export async function getRecommendations(
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
         googleBooksFetchResultsByQuery.push({
           query: googleLaneQuery,
+          url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(googleLaneQuery)}`,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
           rawCount: Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle)),
           error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+          bodyPrefix: results[index]?.status === "rejected"
+            ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
+            : (Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle)) === 0 ? "[empty_google_books_result]" : null),
         });
         if (results[index]?.status === "rejected" && isGoogleQuotaError((results[index] as PromiseRejectedResult).reason)) {
           googleQuotaExhausted = true;
@@ -4113,9 +4118,14 @@ export async function getRecommendations(
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
         openLibraryFetchResultsByQuery.push({
           query: openLibraryLaneQuery,
+          url: `/api/openlibrary?q=${encodeURIComponent(openLibraryLaneQuery)}`,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
           rawCount: Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)),
           error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+          bodyPrefix: results[index]?.status === "rejected"
+            ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
+            : (Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)) === 0 ? "[empty_open_library_result]" : null),
         });
         index += 1;
       }
@@ -4126,9 +4136,14 @@ export async function getRecommendations(
       if (includeKitsu) {
         kitsuFetchResultsByQuery.push({
           query: kitsuLaneQuery,
+          url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(kitsuLaneQuery)}`,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
+          timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
           rawCount: Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu)),
           error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+          bodyPrefix: results[index]?.status === "rejected"
+            ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
+            : (Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu)) === 0 ? "[empty_kitsu_result]" : null),
         });
         index += 1;
       }
