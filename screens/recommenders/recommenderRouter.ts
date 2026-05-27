@@ -4743,6 +4743,41 @@ export async function getRecommendations(
     pushGlobalPhase("source_health_pending", { pendingSourceFetchCount });
     sourceSkippedReason.push(`source_health_pending:${pendingSourceFetchCount}`);
   } else if (allRealSourcesStarved) {
+    let kitsuRecoveryAttemptedForHealthGuard = false;
+    let kitsuRecoveryEligibleForHealthGuard = false;
+    if (Number(aggregatedRawFetched.googleBooks || 0) === 0 && Number(aggregatedRawFetched.openLibrary || 0) === 0 && includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0 && kitsuRouterFetchCount === 0) {
+      kitsuRecoveryEligibleForHealthGuard = true;
+      const kitsuRecoveryQuery =
+        kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) ||
+        kitsuQueryUsedByLane.find((q) => String(q || "").trim().length > 0) ||
+        "adventure";
+      const boundedFallback = [kitsuRecoveryQuery, "adventure", "drama", "mystery"].map((q) => String(q || "").trim()).filter(Boolean);
+      const query = boundedFallback[0];
+      kitsuRecoveryAttemptedForHealthGuard = true;
+      pushGlobalPhase("kitsu_recovery_attempt_before_source_health_failed", { query, boundedFallback });
+      try {
+        const recoveryInput = {
+          ...routedInput,
+          bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
+        } as any;
+        const recoveryRes = await withSourceTimeout("router_before_kitsu_health_guard_recovery_fetch", "router_after_kitsu_health_guard_recovery_fetch", 10_000, () => getKitsuMangaRecommendations(recoveryInput));
+        const raw = Number((recoveryRes as any)?.debugRawFetchedCount ?? countResultItems(recoveryRes));
+        aggregatedRawFetched.kitsu += raw;
+        kitsuRouterFetchCount += 1;
+        kitsuQueriesActuallyFetched.add(query);
+        kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "ok", timedOut: false, rawCount: raw, error: null, bodyPrefix: raw === 0 ? "[empty_kitsu_result]" : "status=ok" });
+      } catch (e: any) {
+        kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "error", timedOut: String(e?.message || e || "").includes("timeout"), rawCount: 0, error: String(e?.message || e || "fetch_failed"), bodyPrefix: String(e?.message || e || "").slice(0, 180) });
+      }
+    }
+    const allRealSourcesStarvedAfterRecovery =
+      Number(aggregatedRawFetched.googleBooks || 0) === 0 &&
+      Number(aggregatedRawFetched.openLibrary || 0) === 0 &&
+      ((includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0) || !includeKitsu) &&
+      (comicVineUnavailableBypass || !includeComicVine);
+    if (!allRealSourcesStarvedAfterRecovery) {
+      sourceSkippedReason.push("source_health_guard_recovered_by_kitsu_or_other_source");
+    } else {
     pushGlobalPhase("source_health_guard");
     pushEarlyReturnDiagnostics("source_health_failed", "post_fetch_source_health_guard");
     throwSourceFatal("source_health_failed", {
@@ -4790,12 +4825,15 @@ export async function getRecommendations(
         comicVine: { enabled: includeComicVine, bypassed: comicVineUnavailableBypass, status: comicVineAdapterStatus },
       },
       sourceSkippedReason,
+      kitsuRecoveryAttemptedForHealthGuard,
+      kitsuRecoveryEligibleForHealthGuard,
       pendingSourceFetchCount_at_source_health_guard: pendingSourceFetchCount,
       pendingSourceFetchCount_incremented: pendingSourceFetchCountIncremented.slice(0, 80),
       pendingSourceFetchCount_decremented: pendingSourceFetchCountDecremented.slice(0, 80),
       builtQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
       deckKey: routedInput.deckKey,
     });
+    }
   }
 
   debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
