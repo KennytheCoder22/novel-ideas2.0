@@ -4005,7 +4005,7 @@ export async function getRecommendations(
       const sanitizeKitsuQuery = (q: string) => {
         const raw = String(q || "").trim().toLowerCase().replace(/\bcharacter[-\s]?focused\b/g, " ").replace(/\s+/g, " ").trim();
         const genericTerms = new Set(["adventure", "drama", "action", "romance", "fantasy", "science", "fiction", "science fiction", "comedy", "mystery", "horror", "thriller"]);
-        const stopTerms = new Set(["character", "focused", "graphic", "novel", "book", "books", "the", "a", "an", "and", "or", "for", "with", "without", "exclude", "literary", "thematic", "emotionally", "rich", "psychologically", "complex"]);
+        const stopTerms = new Set(["character", "focused", "graphic", "novel", "book", "books", "comic", "series", "the", "a", "an", "and", "or", "for", "with", "without", "exclude", "literary", "thematic", "emotionally", "rich", "psychologically", "complex"]);
         const phraseAnchors = ["goldie vance", "science fiction", "coming of age", "fantasy adventure", "psychological horror"];
         const phraseHits = phraseAnchors.filter((ph) => raw.includes(ph));
         const tokens = raw
@@ -4061,10 +4061,17 @@ export async function getRecommendations(
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
       const fallbackBroadTerms = [
         /\b(superhero|miles|batman|spider[\s-]?man)\b/i.test(baseLaneQuery) ? "superhero" : "",
-        /\b(coming\s+of\s+age|identity|teen)\b/i.test(baseLaneQuery) ? "coming of age" : "",
+        /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "detective" : "",
+        /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "mystery" : "",
+        /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "suspense" : "",
+        /\b(identity|teen|school)\b/i.test(baseLaneQuery) ? "school" : "",
+        /\b(identity|teen|school)\b/i.test(baseLaneQuery) ? "drama" : "",
+        /\b(identity|teen|school)\b/i.test(baseLaneQuery) ? "coming of age" : "",
+        /\b(horror|supernatural|occult)\b/i.test(baseLaneQuery) ? "psychological horror" : "",
+        /\b(horror|supernatural|occult)\b/i.test(baseLaneQuery) ? "supernatural" : "",
+        /\b(horror|supernatural|occult)\b/i.test(baseLaneQuery) ? "suspense" : "",
         /\b(science|future|sci[\s-]?fi)\b/i.test(baseLaneQuery) ? "science fiction" : "",
-        /\b(fantasy|adventure)\b/i.test(baseLaneQuery) ? "fantasy adventure" : "",
-        /\b(mystery|detective|investigator)\b/i.test(baseLaneQuery) ? "mystery adventure" : "",
+        /\b(fantasy|adventure)\b/i.test(baseLaneQuery) ? "fantasy" : "",
       ].filter(Boolean);
       const kitsuFallbackCandidates = Array.from(new Set(fallbackBroadTerms)).filter(Boolean);
       const priorCanonicalKitsuQueries = new Set(Array.from(kitsuQueriesActuallyFetched).map((q) => canonicalizeKitsuDispatchQuery(String(q || ""))).filter(Boolean));
@@ -4110,7 +4117,7 @@ export async function getRecommendations(
           sourceSkippedReason.push("source_fetch_cap_exceeded:googleBooks");
         } else {
         const isGoogleRetryLaneAttempt = googleBooksRouterFetchCount >= 1;
-        const googleQueryHasExclusionTokens = /\s-[a-z0-9_]+/i.test(googleLaneQuery) || /(exclude|without)/i.test(googleLaneQuery);
+        const googleQueryHasExclusionTokens = /\s-[a-z0-9_]+/i.test(googleLaneQuery) || /\b(exclude|without)\b/i.test(googleLaneQuery);
         if (isGoogleRetryLaneAttempt && googleQueryHasExclusionTokens) {
           sourceSkippedReason.push("googleBooks_retry_guard_blocked_exclusion_lane");
           pushGlobalPhase("googleBooks_retry_guard_blocked_exclusion_lane", { query: googleLaneQuery, laneIndex: lanei, googleBooksRouterFetchCount });
@@ -4132,7 +4139,7 @@ export async function getRecommendations(
               const msg = String(err?.message || err || "");
               if (!msg.includes("router_before_google_books_full_fetch_timeout")) throw err;
               const builtFallbackGoogleQuery = simplifyGoogleBooksQuery(googleLaneQuery);
-              const fallbackGoogleQuery = isValidGoogleFallbackRetryQuery(builtFallbackGoogleQuery) ? builtFallbackGoogleQuery : (/horror/i.test(googleLaneQuery) ? "horror thriller" : "fantasy adventure");
+              const fallbackGoogleQuery = isValidGoogleFallbackRetryQuery(builtFallbackGoogleQuery) ? builtFallbackGoogleQuery : (/\bhorror\b/i.test(googleLaneQuery) ? "horror thriller" : "fantasy adventure");
               const validated = isValidGoogleFallbackRetryQuery(fallbackGoogleQuery);
               googleBooksTimeoutStageByQuery.push({ query: googleLaneQuery, stage: "timeout_primary", fallbackQuery: fallbackGoogleQuery || "", reason: "primary_timeout" });
               googleBooksRetryQueryMapping.push({ primaryQuery: googleLaneQuery, retryQuery: fallbackGoogleQuery, validated });
