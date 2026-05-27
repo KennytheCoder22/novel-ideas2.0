@@ -11383,8 +11383,11 @@ const normalizedCandidatesRaw = [
       const queryText = String(doc?.queryText || "").toLowerCase();
       const graphicCandidate = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
       if (graphicFantasyRomanceEmergencyContext && !graphicCandidate) {
-        teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_default_blocked_in_graphic_context";
-        return false;
+        const obviousProseDefault = /\b(novel|a novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
+        if (obviousProseDefault && !laneAligned && semantic <= 0 && fit <= 0) {
+          teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_default_blocked_in_graphic_context";
+          return false;
+        }
       }
       if (!laneAligned && fit <= 0 && semantic <= 0) {
         teenPostPassGlobalHandoffRejectedByTitle[title] = "weak_alignment_for_emergency_handoff";
@@ -11518,6 +11521,29 @@ const normalizedCandidatesRaw = [
             itemsForReturn = [fantasyYaRecovery];
             teenPostPassGlobalHandoffAcceptedTitles = [String(fantasyYaRecovery?.doc?.title || fantasyYaRecovery?.title || "").trim()].filter(Boolean);
             sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:fantasy_ya_min_safe_one");
+          } else {
+            const graphicContextFallback = teenPostPassItems.find((item: any) => {
+              const doc = item?.doc || item;
+              const title = String(doc?.title || item?.title || "").trim();
+              const queryText = String(doc?.queryText || "").toLowerCase();
+              if (!title) return false;
+              if (isReferenceArtifactTitle(title) || /\[google_books_fetch_error\]/i.test(title)) return false;
+              const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+              if (scrubReason && scrubReason.includes("artifact")) return false;
+              const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+              const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+              const fit = Number(positiveFitScoreByTitle[title] || 0);
+              const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+              const historicalAdventureGraphic =
+                /\b(historical|history|western|wild west|adventure)\b/.test(queryText) &&
+                /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
+              return laneAligned || semantic >= 1 || fit >= 0 || historicalAdventureGraphic;
+            });
+            if (graphicContextFallback) {
+              itemsForReturn = [graphicContextFallback];
+              teenPostPassGlobalHandoffAcceptedTitles = [String(graphicContextFallback?.doc?.title || graphicContextFallback?.title || "").trim()].filter(Boolean);
+              sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:graphic_min_safe_one");
+            }
           }
         }
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:no_safe_candidate");
