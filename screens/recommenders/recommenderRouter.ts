@@ -3826,6 +3826,7 @@ export async function getRecommendations(
   let comicVineAdapterFailed = false;
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
   let comicVineDispatchedOnce = false;
+  let kitsuDispatchedOnce = false;
   let comicVineResolvedSeedQuery = "";
   let comicVineFallbackReason = "none";
   let comicVineUsedFallbackQuery = false;
@@ -4050,6 +4051,11 @@ export async function getRecommendations(
         }
       }
       if (includeKitsu) {
+        if (kitsuDispatchedOnce) {
+          const duplicateDispatchError = `kitsu_duplicate_dispatch_detected:selected=${kitsuSanitizedQuerySelected[0] || ""}:attempted=${kitsuLaneQuery}:lane=${lanei}`;
+          pushGlobalPhase("kitsu_duplicate_dispatch_detected", { duplicateDispatchError, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
+          throw new Error(duplicateDispatchError);
+        }
         if (kitsuRouterFetchCount >= sourceFetchCapPerRun) {
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
@@ -4059,6 +4065,7 @@ export async function getRecommendations(
           bucketPlan: { ...(laneInput.bucketPlan as any), queries: [kitsuLaneQuery], preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
         };
           kitsuRouterFetchCount += 1;
+          kitsuDispatchedOnce = true;
         kitsuQueryUsedByLane.push(kitsuLaneQuery);
         kitsuFinalQueryUsedForFetch.push(kitsuLaneQuery);
         kitsuQueriesActuallyFetched.add(kitsuLaneQuery);
@@ -4152,16 +4159,24 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (includeKitsu) {
+        const kitsuRawCount = Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu));
+        const kitsuResponseStatus = String((laneKitsu as any)?.debugSourceStatus || (laneKitsu as any)?.kitsuSourceStatus || "").trim();
+        const kitsuParsedDataLength = Number((laneKitsu as any)?.debugParsedDataLength ?? kitsuRawCount);
+        const kitsuRawSnippet = String((laneKitsu as any)?.debugRawJsonSnippet || (laneKitsu as any)?.debugResponseSnippet || "").trim();
         kitsuFetchResultsByQuery.push({
           query: kitsuLaneQuery,
           url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(kitsuLaneQuery)}`,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
           timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
-          rawCount: Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu)),
+          rawCount: kitsuRawCount,
           error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
           bodyPrefix: results[index]?.status === "rejected"
             ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
-            : (Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu)) === 0 ? "[empty_kitsu_result]" : null),
+            : [
+              kitsuResponseStatus ? `status=${kitsuResponseStatus}` : "status=ok",
+              `parsed_data_length=${Number.isFinite(kitsuParsedDataLength) ? kitsuParsedDataLength : 0}`,
+              kitsuRawSnippet ? `raw_json_snippet=${kitsuRawSnippet.slice(0, 120)}` : "raw_json_snippet=(none)",
+            ].join(" | "),
         });
         index += 1;
       }
@@ -11311,9 +11326,13 @@ const normalizedCandidatesRaw = [
     kitsu: !sourceFetchAttemptedBySource.kitsu || kitsuFetchResultsByQuery.length > 0,
   };
   const selectedKitsuQuery = kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) || "";
+  const kitsuSingleQueryEnforced = kitsuFetchResultsByQuery.length === 1;
   const kitsuFetchQueryMatchesSanitizedSelection = kitsuQuerySanitizedTo.length === 0
-    ? true
-    : kitsuFetchResultsByQuery.every((row) => String(row?.query || "").trim() === selectedKitsuQuery);
+    ? kitsuSingleQueryEnforced
+    : kitsuSingleQueryEnforced && kitsuFetchResultsByQuery.every((row) => String(row?.query || "").trim() === selectedKitsuQuery);
+  if (!kitsuSingleQueryEnforced) {
+    throw new Error(`kitsu_single_query_policy_violation:count=${kitsuFetchResultsByQuery.length}:queries=${kitsuFetchResultsByQuery.map((row) => String(row?.query || "")).join("|")}`);
+  }
   const kitsuInsufficientPositiveFitRejectedDiagnostics = (
     Array.isArray(finalEligibilityRejectedTitlesByReason?.insufficient_positive_fit_score)
       ? finalEligibilityRejectedTitlesByReason.insufficient_positive_fit_score
