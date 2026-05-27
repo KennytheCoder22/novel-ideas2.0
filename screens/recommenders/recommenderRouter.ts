@@ -10879,6 +10879,7 @@ const normalizedCandidatesRaw = [
   const normalFinalGateRecoveryRejectedByTitle: Record<string, string> = {};
   let kitsuNormalRecoveryConsidered = false;
   const kitsuNormalRecoveryAcceptedTitles: string[] = [];
+  const kitsuNormalRecoveryAcceptedItems: any[] = [];
   const kitsuNormalRecoveryRejectedByTitle: Record<string, string> = {};
   const kitsuRecoveryPoolTitles: string[] = [];
   const kitsuRecoveryBestRejectedReasons: Record<string, string> = {};
@@ -10947,7 +10948,7 @@ const normalizedCandidatesRaw = [
         finalReturnSourceUsed = "normal_final_gate_recovery";
         sourceSkippedReason.push("final_gate_integrity:normal_final_gate_recovery");
       }
-      if (finalOutputItems.length === 0 && (teenPostPassOutputTitles.length > 0 || kitsuHasRawCandidates)) {
+      if (finalOutputItems.length === 0 && kitsuHasRawCandidates) {
         kitsuNormalRecoveryConsidered = true;
         const seenRoots = new Set<string>();
         const kitsuPool = dedupeDocs([
@@ -11000,13 +11001,14 @@ const normalizedCandidatesRaw = [
               kitsuNormalRecoveryRejectedByTitle[title] = `terminal_safety_reject:${terminalReason}`;
               return false;
             }
+            const fit = Number(positiveFitScoreByTitle[title] || 0);
+            const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
             const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
-            if (scrubReason) {
+            const softFinalEligibilityScrub = Boolean(scrubReason) && /final_eligibility_rejected/.test(String(scrubReason || ""));
+            if (scrubReason && !(softFinalEligibilityScrub && semanticSupportFound && fit >= 0)) {
               kitsuNormalRecoveryRejectedByTitle[title] = `artifact_scrub:${scrubReason}`;
               return false;
             }
-            const fit = Number(positiveFitScoreByTitle[title] || 0);
-            const semanticSupportFound = Boolean(semanticSupportFoundByTitle[title]);
             if (!(fit > 1 && semanticSupportFound)) {
               kitsuNormalRecoveryRejectedByTitle[title] = `fit_or_semantic_gate:fit=${fit.toFixed(2)}:semantic=${semanticSupportFound ? 1 : 0}`;
               kitsuRecoveryBestRejectedReasons[title] = kitsuNormalRecoveryRejectedByTitle[title];
@@ -11036,6 +11038,7 @@ const normalizedCandidatesRaw = [
           .slice(0, 1);
         if (kitsuRecoveryItems.length > 0) {
           finalOutputItems = kitsuRecoveryItems;
+          kitsuNormalRecoveryAcceptedItems.push(...kitsuRecoveryItems);
           kitsuNormalRecoveryAcceptedTitles.push(
             ...kitsuRecoveryItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
           );
@@ -11242,19 +11245,25 @@ const normalizedCandidatesRaw = [
   finalOutputItems = itemsForReturn;
   if (String(returnedItemsBuiltFrom) === "kitsu_normal_recovery" && finalOutputItems.length === 0) {
     const acceptedSet = new Set(kitsuNormalRecoveryAcceptedTitles.map((t) => normalizeText(String(t || ""))).filter(Boolean));
-    const restored = teenPostPassItems
-      .filter((item: any) => {
-        const title = String(item?.doc?.title || item?.title || "").trim();
-        return acceptedSet.has(normalizeText(title));
-      })
-      .slice(0, Math.max(1, Math.min(3, finalLimit)));
-    if (restored.length > 0) {
-      finalOutputItems = restored;
-      sourceSkippedReason.push("kitsu_recovery_restored_at_return_assembly");
+    const restoredFromAccepted = kitsuNormalRecoveryAcceptedItems.filter(Boolean).slice(0, Math.max(1, Math.min(3, finalLimit)));
+    if (restoredFromAccepted.length > 0) {
+      finalOutputItems = restoredFromAccepted;
+      sourceSkippedReason.push("kitsu_recovery_restored_from_accepted_items");
+    } else {
+      const restored = teenPostPassItems
+        .filter((item: any) => {
+          const title = String(item?.doc?.title || item?.title || "").trim();
+          return acceptedSet.has(normalizeText(title));
+        })
+        .slice(0, Math.max(1, Math.min(3, finalLimit)));
+      if (restored.length > 0) {
+        finalOutputItems = restored;
+        sourceSkippedReason.push("kitsu_recovery_restored_at_return_assembly");
+      }
     }
   }
   if (String(returnedItemsBuiltFrom) === "kitsu_normal_recovery" && finalOutputItems.length === 0) {
-    sourceSkippedReason.push("kitsu_recovery_lost_at_return_assembly");
+    sourceSkippedReason.push(`kitsu_recovery_lost_at_return_assembly:accepted=${kitsuNormalRecoveryAcceptedTitles.join("|") || "(none)"}:return_input=${terminalAssemblyInputTitlesAtReturn.join("|") || "(none)"}`);
     // Do not throw: return a clean zero-item result with explicit diagnostics.
   }
   const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
