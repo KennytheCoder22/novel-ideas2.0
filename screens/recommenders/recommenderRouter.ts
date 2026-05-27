@@ -4021,6 +4021,7 @@ export async function getRecommendations(
         const out: string[] = [];
         let seenGraphicNovel = false;
         let seenComicSeries = false;
+        let seenGraphicToken = false;
         for (let i = 0; i < tokens.length; i += 1) {
           const a = tokens[i]?.toLowerCase() || "";
           const b = tokens[i + 1]?.toLowerCase() || "";
@@ -4031,6 +4032,10 @@ export async function getRecommendations(
           if (a === "comic" && b === "series") {
             if (seenComicSeries) { i += 1; continue; }
             seenComicSeries = true;
+          }
+          if (a === "graphic" && b !== "novel") {
+            if (seenGraphicToken) continue;
+            seenGraphicToken = true;
           }
           out.push(tokens[i]);
         }
@@ -11366,6 +11371,7 @@ const normalizedCandidatesRaw = [
   const teenPostPassGlobalHandoffRejectedByTitle: Record<string, string> = {};
   const teenPostPassEmergencyCandidateScores: Array<{ title: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceScore: number; emergencyRank: number }> = [];
   const graphicEmergencyRescueCandidates: Array<{ title: string; rejectReason: string; positiveFitScore: number; semanticEvidenceCount: number; titleLooksGraphic: boolean; selected: boolean }> = [];
+  const terminalEmergencyRankedCandidates: Array<{ title: string; titleLooksGraphic: boolean; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; selected: boolean }> = [];
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
   if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
     teenPostPassGlobalHandoffConsidered = true;
@@ -11403,6 +11409,12 @@ const normalizedCandidatesRaw = [
       const queryText = String(doc?.queryText || "").toLowerCase();
       const graphicCandidate = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
       const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+      const psychSuspenseLane = /\b(psychological|suspense|thriller)\b/.test(String(queryText));
+      const prosePsychFallbackTitle = /\b(sharp objects|the stranger in my bed|the last sacrifice)\b/i.test(title);
+      if (graphicEmergencyContext && prosePsychFallbackTitle && !psychSuspenseLane) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_psych_fallback_blocked_in_graphic_context";
+        return false;
+      }
       if (graphicFantasyRomanceEmergencyContext && !graphicCandidate) {
         const obviousProseDefault = /\b(novel|a novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
         if (obviousProseDefault && !laneAligned && semantic <= 0 && fit <= 0) {
@@ -11471,6 +11483,21 @@ const normalizedCandidatesRaw = [
         };
       }).filter((row: any) => Boolean(row.title))
     );
+    terminalEmergencyRankedCandidates.push(
+      ...fallbackItems.map((item: any) => {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        return {
+          title,
+          titleLooksGraphic: /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title),
+          laneAligned: profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root),
+          positiveFitScore: Number(positiveFitScoreByTitle[title] || 0),
+          semanticEvidenceCount: Number(semanticEvidenceCountByTitle[title] || 0),
+          selected: false,
+        };
+      }).filter((row: any) => Boolean(row.title))
+    );
     if (graphicEmergencyContext) {
       const rejectedLowConfidence = new Set((finalEligibilityRejectedTitlesByReason?.low_recommendation_confidence || []).map((t) => normalizeText(String(t || ""))));
       const rejectedZeroMeaningful = new Set((finalEligibilityRejectedTitlesByReason?.zero_meaningful_signal_without_franchise_or_taste_alignment || []).map((t) => normalizeText(String(t || ""))));
@@ -11506,6 +11533,9 @@ const normalizedCandidatesRaw = [
         .filter(Boolean);
       for (const acceptedTitle of teenPostPassGlobalHandoffAcceptedTitles) {
         delete teenPostPassGlobalHandoffRejectedByTitle[acceptedTitle];
+      }
+      for (const row of terminalEmergencyRankedCandidates) {
+        if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
       }
       returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
       finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
@@ -12206,6 +12236,7 @@ const normalizedCandidatesRaw = [
     teenPostPassGlobalHandoffAcceptedTitles,
     teenPostPassGlobalHandoffRejectedByTitle,
     teenPostPassEmergencyCandidateScores,
+    terminalEmergencyRankedCandidates,
     graphicEmergencyRescueCandidates,
     normalFinalGateRecoveryConsidered,
     normalFinalGateRecoveryAcceptedTitles,
