@@ -7870,10 +7870,11 @@ const normalizedCandidatesRaw = [
     const meaningfulSignalCount = Array.from(new Set(matchedMeaningfulLikedSignals)).length;
     if (meaningfulSignalCount === 0 && weightedTasteScore < 2.5 && !explicitFranchiseSignal) {
       const graphicShapedQuery = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(queryText);
+      const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
       const graphicShapedRescue =
         graphicShapedQuery &&
         !isReferenceArtifactTitle(title) &&
-        (semanticEvidenceCount >= 1 || Number(positiveFitScoreByTitle[title] || 0) >= 4);
+        (semanticEvidenceCount >= 1 || Number(positiveFitScoreByTitle[title] || 0) >= 3 || titleLooksGraphic);
       if (!graphicShapedRescue) {
         registerFinalEligibilityReject("zero_meaningful_signal_without_franchise_or_taste_alignment", title);
         return false;
@@ -7889,8 +7890,17 @@ const normalizedCandidatesRaw = [
       } else {
       if (!teenCuratedTitleFallbackAllow) {
         meaningfulSignalsGateRejectedTitles.push(title);
-        registerFinalEligibilityReject("low_recommendation_confidence", title);
-        return false;
+        const graphicShapedQuery = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(queryText);
+        const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+        const graphicLowConfidenceRescue =
+          graphicShapedQuery &&
+          !isReferenceArtifactTitle(title) &&
+          (semanticEvidenceCount >= 1 || Number(positiveFitScoreByTitle[title] || 0) >= 3 || titleLooksGraphic);
+        if (!graphicLowConfidenceRescue) {
+          registerFinalEligibilityReject("low_recommendation_confidence", title);
+          return false;
+        }
+        markSourceSpecificGate(title, "graphic_shaped_low_confidence_rescue");
       }
       markSourceSpecificGate(title, "curated_title_fallback_low_metadata_ok");
       }
@@ -11355,6 +11365,7 @@ const normalizedCandidatesRaw = [
   let teenPostPassGlobalHandoffAcceptedTitles: string[] = [];
   const teenPostPassGlobalHandoffRejectedByTitle: Record<string, string> = {};
   const teenPostPassEmergencyCandidateScores: Array<{ title: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceScore: number; emergencyRank: number }> = [];
+  const graphicEmergencyRescueCandidates: Array<{ title: string; rejectReason: string; positiveFitScore: number; semanticEvidenceCount: number; titleLooksGraphic: boolean; selected: boolean }> = [];
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
   if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
     teenPostPassGlobalHandoffConsidered = true;
@@ -11446,6 +11457,31 @@ const normalizedCandidatesRaw = [
         };
       }).filter((row: any) => Boolean(row.title))
     );
+    if (graphicEmergencyContext) {
+      const rejectedLowConfidence = new Set((finalEligibilityRejectedTitlesByReason?.low_recommendation_confidence || []).map((t) => normalizeText(String(t || ""))));
+      const rejectedZeroMeaningful = new Set((finalEligibilityRejectedTitlesByReason?.zero_meaningful_signal_without_franchise_or_taste_alignment || []).map((t) => normalizeText(String(t || ""))));
+      for (const item of teenPostPassItems) {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        if (!title) continue;
+        const key = normalizeText(title);
+        const rejectReason = rejectedLowConfidence.has(key)
+          ? "low_recommendation_confidence"
+          : rejectedZeroMeaningful.has(key)
+            ? "zero_meaningful_signal_without_franchise_or_taste_alignment"
+            : "";
+        if (!rejectReason) continue;
+        const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+        graphicEmergencyRescueCandidates.push({
+          title,
+          rejectReason,
+          positiveFitScore: Number(positiveFitScoreByTitle[title] || 0),
+          semanticEvidenceCount: Number(semanticEvidenceCountByTitle[title] || 0),
+          titleLooksGraphic,
+          selected: false,
+        });
+      }
+    }
     if (fallbackItems.length > 0) {
       itemsForReturn = fallbackItems;
       teenPostPassGlobalHandoffAcceptedTitles = fallbackItems
@@ -11457,6 +11493,9 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
       finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
       sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
+      for (const row of graphicEmergencyRescueCandidates) {
+        if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+      }
     } else {
       const minimalSafeOne = teenPostPassItems.find((item: any) => {
         const doc = item?.doc || item;
@@ -11494,6 +11533,9 @@ const normalizedCandidatesRaw = [
           delete teenPostPassGlobalHandoffRejectedByTitle[acceptedTitle];
         }
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:minimal_safe_one");
+        for (const row of graphicEmergencyRescueCandidates) {
+          if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+        }
       } else {
         const psychSuspenseRecovery = teenPostPassItems.find((item: any) => {
           const doc = item?.doc || item;
@@ -11512,6 +11554,9 @@ const normalizedCandidatesRaw = [
           itemsForReturn = [psychSuspenseRecovery];
           teenPostPassGlobalHandoffAcceptedTitles = [String(psychSuspenseRecovery?.doc?.title || psychSuspenseRecovery?.title || "").trim()].filter(Boolean);
           sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:psych_suspense_min_safe_one");
+          for (const row of graphicEmergencyRescueCandidates) {
+            if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+          }
         } else {
           const fantasyYaRecovery = teenPostPassItems.find((item: any) => {
             const doc = item?.doc || item;
@@ -11530,6 +11575,9 @@ const normalizedCandidatesRaw = [
             itemsForReturn = [fantasyYaRecovery];
             teenPostPassGlobalHandoffAcceptedTitles = [String(fantasyYaRecovery?.doc?.title || fantasyYaRecovery?.title || "").trim()].filter(Boolean);
             sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:fantasy_ya_min_safe_one");
+            for (const row of graphicEmergencyRescueCandidates) {
+              if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+            }
           } else {
             const graphicContextFallback = teenPostPassItems.find((item: any) => {
               const doc = item?.doc || item;
@@ -11552,6 +11600,9 @@ const normalizedCandidatesRaw = [
               itemsForReturn = [graphicContextFallback];
               teenPostPassGlobalHandoffAcceptedTitles = [String(graphicContextFallback?.doc?.title || graphicContextFallback?.title || "").trim()].filter(Boolean);
               sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:graphic_min_safe_one");
+              for (const row of graphicEmergencyRescueCandidates) {
+                if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+              }
             }
           }
         }
@@ -12138,6 +12189,7 @@ const normalizedCandidatesRaw = [
     teenPostPassGlobalHandoffAcceptedTitles,
     teenPostPassGlobalHandoffRejectedByTitle,
     teenPostPassEmergencyCandidateScores,
+    graphicEmergencyRescueCandidates,
     normalFinalGateRecoveryConsidered,
     normalFinalGateRecoveryAcceptedTitles,
     normalFinalGateRecoveryRejectedByTitle,
