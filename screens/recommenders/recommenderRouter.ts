@@ -2798,6 +2798,7 @@ export async function getRecommendations(
   const kitsuQueriesActuallyFetched = new Set<string>();
   const googleBooksFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const googleBooksTimeoutStageByQuery: Array<{ query: string; stage: string; fallbackQuery?: string; reason?: string }> = [];
+  const googleBooksRetryQueryMapping: Array<{ primaryQuery: string; retryQuery: string; validated: boolean }> = [];
   const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
@@ -4123,14 +4124,19 @@ export async function getRecommendations(
             } catch (err: any) {
               const msg = String(err?.message || err || "");
               if (!msg.includes("router_before_google_books_full_fetch_timeout")) throw err;
-              const fallbackGoogleQuery = simplifyGoogleBooksQuery(googleLaneQuery);
+              const builtFallbackGoogleQuery = simplifyGoogleBooksQuery(googleLaneQuery);
+              const fallbackGoogleQuery = isValidGoogleFallbackRetryQuery(builtFallbackGoogleQuery) ? builtFallbackGoogleQuery : (/horror/i.test(googleLaneQuery) ? "horror thriller" : "fantasy adventure");
+              const validated = isValidGoogleFallbackRetryQuery(fallbackGoogleQuery);
               googleBooksTimeoutStageByQuery.push({ query: googleLaneQuery, stage: "timeout_primary", fallbackQuery: fallbackGoogleQuery || "", reason: "primary_timeout" });
-              if (!fallbackGoogleQuery || fallbackGoogleQuery === googleLaneQuery) { googleBooksTimeoutStageByQuery.push({ query: googleLaneQuery, stage: "fallback_skipped", fallbackQuery: fallbackGoogleQuery || "", reason: "not_simpler_or_empty" }); throw err; }
+              googleBooksRetryQueryMapping.push({ primaryQuery: googleLaneQuery, retryQuery: fallbackGoogleQuery, validated });
+              if (!fallbackGoogleQuery || !validated || fallbackGoogleQuery === googleLaneQuery) { googleBooksTimeoutStageByQuery.push({ query: googleLaneQuery, stage: "fallback_skipped", fallbackQuery: fallbackGoogleQuery || "", reason: "not_simpler_or_invalid" }); throw err; }
               const fallbackLaneInput = {
                 ...laneInput,
                 bucketPlan: { ...(laneInput.bucketPlan as any), queries: [fallbackGoogleQuery], preview: fallbackGoogleQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: fallbackGoogleQuery, primary: fallbackGoogleQuery }] },
               };
               googleBooksTimeoutStageByQuery.push({ query: googleLaneQuery, stage: "fallback_dispatched", fallbackQuery: fallbackGoogleQuery, reason: "retry_with_simplified_query" });
+              pushGlobalPhase("before_google_books_fallback_router_fetch", { primaryQuery: googleLaneQuery, fallbackQuery: fallbackGoogleQuery });
+              googleBooksRouterFetchCount = Math.max(googleBooksRouterFetchCount, sourceFetchCapPerRun);
               return await withSourceTimeout("router_before_google_books_fallback_fetch", "router_after_google_books_fallback_fetch", 4500, () => runEngine("googleBooks", fallbackLaneInput));
             }
           })
@@ -4583,7 +4589,10 @@ export async function getRecommendations(
       openLibraryFetchResultsByQuery,
       kitsuFetchResultsByQuery,
       googleBooksTimeoutStageByQuery,
+    googleBooksRetryQueryMapping,
+      googleBooksRetryQueryMapping,
     googleBooksTimeoutStageByQuery,
+    googleBooksRetryQueryMapping,
       sourceSpecificQueryModeBySource,
       sourceSpecificQueryRejectedReasonBySource,
       kitsuQuerySanitizedFrom,
@@ -12037,6 +12046,7 @@ const normalizedCandidatesRaw = [
     openLibraryFetchResultsByQuery,
     kitsuFetchResultsByQuery,
     googleBooksTimeoutStageByQuery,
+    googleBooksRetryQueryMapping,
     googleBooksQueryUsedByLane: Array.from(new Set(googleBooksQueryUsedByLane)).slice(0, 60),
     openLibraryQueryUsedByLane: Array.from(new Set(openLibraryQueryUsedByLane)).slice(0, 60),
     kitsuQueryUsedByLane: Array.from(new Set(kitsuQueryUsedByLane)).slice(0, 60),
