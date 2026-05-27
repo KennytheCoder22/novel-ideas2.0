@@ -11509,7 +11509,7 @@ const normalizedCandidatesRaw = [
     .map((row) => canonicalizeKitsuPolicyQuery(String(row?.query || "")))
     .filter(Boolean);
   const kitsuPolicyUniqueCanonicalQueries = Array.from(new Set(kitsuPolicyCanonicalQueries));
-  const kitsuMaxAllowedCanonicalFetches = kitsuPrimaryRawZero ? 2 : 1;
+  const kitsuMaxAllowedCanonicalFetches = kitsuTerminalBroadFallbackDispatched ? 3 : (kitsuPrimaryRawZero ? 2 : 1);
   const kitsuSingleQueryEnforced = kitsuPolicyUniqueCanonicalQueries.length <= kitsuMaxAllowedCanonicalFetches;
   const selectedKitsuQueryCanonical = canonicalizeKitsuPolicyQuery(selectedKitsuQuery);
   const kitsuFetchQueryMatchesSanitizedSelection = kitsuQuerySanitizedTo.length === 0
