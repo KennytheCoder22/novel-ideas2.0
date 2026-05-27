@@ -4689,6 +4689,12 @@ export async function getRecommendations(
     openLibraryStarved &&
     (kitsuStarved || !includeKitsu) &&
     (comicVineUnavailableBypass || !includeComicVine);
+  const kitsuPolicyUniqueCanonicalQueriesForHealthGuard = Array.from(new Set(
+    kitsuFetchResultsByQuery
+      .map((row) => String(row?.query || "").toLowerCase().replace(/[-+][a-z0-9_]+/g, " ").replace(/[^a-z0-9\\s]/g, " ").replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+  ));
+  const kitsuMaxAllowedCanonicalFetchesForHealthGuard = kitsuTerminalBroadFallbackDispatched ? 3 : (kitsuPrimaryRawZero ? 2 : 1);
   if (allRealSourcesStarved) {
     pushGlobalPhase("source_health_guard");
     pushEarlyReturnDiagnostics("source_health_failed", "post_fetch_source_health_guard");
@@ -4715,8 +4721,8 @@ export async function getRecommendations(
       kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
       kitsuSanitizedQuerySelected: kitsuSanitizedQuerySelected[0] || "",
       kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
-      kitsuPolicyUniqueCanonicalQueries,
-      kitsuMaxAllowedCanonicalFetches,
+      kitsuPolicyUniqueCanonicalQueries: kitsuPolicyUniqueCanonicalQueriesForHealthGuard,
+      kitsuMaxAllowedCanonicalFetches: kitsuMaxAllowedCanonicalFetchesForHealthGuard,
       kitsuSanitizationDiagnostics,
       kitsuSanitizationDroppedTokens,
       kitsuSanitizationDiagnostics,
