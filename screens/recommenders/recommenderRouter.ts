@@ -3829,6 +3829,8 @@ export async function getRecommendations(
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
   let comicVineDispatchedOnce = false;
   let kitsuDispatchedOnce = false;
+  let kitsuFallbackDispatchedOnce = false;
+  let kitsuPrimaryRawZero = false;
   let stopKitsuDispatchForRun = false;
   let stopRouterFetchLoop = false;
   let comicVineResolvedSeedQuery = "";
@@ -4011,7 +4013,8 @@ export async function getRecommendations(
           if (t.length <= 2) { dropped.push({ token: t, reason: "too_short" }); continue; }
           anchors.push(t);
         }
-        const mergedAnchors = Array.from(new Set([...phraseHits, ...anchors])).slice(0, 3);
+        const anchorsSansPhraseDupes = anchors.filter((a) => !phraseHits.some((ph) => ph.split(/\s+/).includes(a)));
+        const mergedAnchors = Array.from(new Set([...phraseHits, ...anchorsSansPhraseDupes])).slice(0, 3);
         const genericFallback = raw.includes("science fiction") ? "science fiction" : (raw.includes("mystery") ? "mystery" : "adventure");
         const sanitized = mergedAnchors.length > 0 ? mergedAnchors.join(" ") : genericFallback;
         const genericOnly = mergedAnchors.length === 0;
@@ -4020,7 +4023,12 @@ export async function getRecommendations(
       const googleLaneQuery = baseLaneQuery;
       const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
-      const kitsuLaneQuery = kitsuSanitized.sanitized;
+      const kitsuFallbackCandidates = [
+        (kitsuSanitized.sanitized.split(/\s+/).slice(0, 2).join(" ") || "").trim(),
+        "detective graphic novel",
+        "mystery adventure",
+      ].filter(Boolean);
+      const kitsuLaneQuery = kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce ? kitsuFallbackCandidates[0] || kitsuSanitized.sanitized : kitsuSanitized.sanitized;
       kitsuPreSanitizedQueries.push(baseLaneQuery);
       kitsuSanitizedQuerySelected.push(kitsuLaneQuery);
       kitsuSanitizationDroppedTokens.push(...kitsuSanitized.dropped);
@@ -4090,24 +4098,13 @@ export async function getRecommendations(
         }
       }
       if (includeKitsu && !stopKitsuDispatchForRun) {
-        if (kitsuDispatchedOnce) {
+        if (kitsuDispatchedOnce && !kitsuPrimaryRawZero) {
           const duplicateDispatchError = `kitsu_duplicate_dispatch_detected:selected=${kitsuSanitizedQuerySelected[0] || ""}:attempted=${kitsuLaneQuery}:lane=${lanei}`;
           pushGlobalPhase("kitsu_duplicate_dispatch_detected", { duplicateDispatchError, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
-          stopKitsuDispatchForRun = true;
-          stopRouterFetchLoop = true;
-          sourceSkippedReason.push("kitsu_duplicate_dispatch_stopped");
-          if (!fetchLoopExhaustedMarkerEmitted) {
-            pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
-              laneIndex: lanei,
-              reason: "kitsu_duplicate_dispatch_stopped",
-              googleBooksRouterFetchCount,
-              openLibraryRouterFetchCount,
-              kitsuRouterFetchCount,
-            });
-            fetchLoopExhaustedMarkerEmitted = true;
-          }
-          break;
-        }
+          sourceSkippedReason.push("kitsu_duplicate_dispatch_skipped_non_terminal");
+        } else if (kitsuDispatchedOnce && kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce) {
+          sourceSkippedReason.push("kitsu_fallback_already_attempted");
+        } else {
         if (kitsuRouterFetchCount >= sourceFetchCapPerRun) {
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
@@ -4117,6 +4114,7 @@ export async function getRecommendations(
           bucketPlan: { ...(laneInput.bucketPlan as any), queries: [kitsuLaneQuery], preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
         };
           kitsuRouterFetchCount += 1;
+          if (kitsuDispatchedOnce) kitsuFallbackDispatchedOnce = true;
           kitsuDispatchedOnce = true;
         kitsuQueryUsedByLane.push(kitsuLaneQuery);
         kitsuFinalQueryUsedForFetch.push(kitsuLaneQuery);
@@ -4126,6 +4124,7 @@ export async function getRecommendations(
           withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
             .finally(() => pushGlobalPhase("after_kitsu_router_fetch")) as any
         );
+        }
         }
       }
       var shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
@@ -4212,6 +4211,7 @@ export async function getRecommendations(
         : null;
       if (includeKitsu) {
         const kitsuRawCount = Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu));
+        if (!kitsuFallbackDispatchedOnce && kitsuDispatchedOnce) kitsuPrimaryRawZero = kitsuRawCount === 0;
         const kitsuResponseStatus = String((laneKitsu as any)?.debugSourceStatus || (laneKitsu as any)?.kitsuSourceStatus || "").trim();
         const kitsuParsedDataLength = Number((laneKitsu as any)?.debugParsedDataLength ?? kitsuRawCount);
         const kitsuRawSnippet = String((laneKitsu as any)?.debugRawJsonSnippet || (laneKitsu as any)?.debugResponseSnippet || "").trim();
@@ -11392,7 +11392,7 @@ const normalizedCandidatesRaw = [
     kitsu: !sourceFetchAttemptedBySource.kitsu || kitsuFetchResultsByQuery.length > 0,
   };
   const selectedKitsuQuery = kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) || "";
-  const kitsuSingleQueryEnforced = kitsuFetchResultsByQuery.length === 1;
+  const kitsuSingleQueryEnforced = kitsuFetchResultsByQuery.length === 1 || (kitsuPrimaryRawZero && kitsuFetchResultsByQuery.length === 2);
   const kitsuFetchQueryMatchesSanitizedSelection = kitsuQuerySanitizedTo.length === 0
     ? kitsuSingleQueryEnforced
     : kitsuSingleQueryEnforced && kitsuFetchResultsByQuery.every((row) => String(row?.query || "").trim() === selectedKitsuQuery);
