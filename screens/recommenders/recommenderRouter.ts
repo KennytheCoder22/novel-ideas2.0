@@ -2797,6 +2797,7 @@ export async function getRecommendations(
   const openLibraryQueriesActuallyFetched = new Set<string>();
   const kitsuQueriesActuallyFetched = new Set<string>();
   const googleBooksFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const googleBooksTimeoutStageByQuery: Array<{ query: string; stage: string; fallbackQuery?: string }> = [];
   const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
@@ -4027,6 +4028,15 @@ export async function getRecommendations(
         const genericOnly = mergedAnchors.length === 0;
         return { sanitized, dropped, genericOnly, usedAnchorFallback: genericOnly && anchors.length > 0, genericFallback };
       };
+      const simplifyGoogleBooksQuery = (q: string) => {
+        const cleaned = String(q || "")
+          .replace(/["']/g, " ")
+          .replace(/[-+]\w+/g, " ")
+          .replace(/(character[-\s]?focused|graphic novel|novel|book|narrative|consequence|survival|exclude|without|literary)/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        return cleaned.split(/\s+/).slice(0, 3).join(" ").trim();
+      };
       const googleLaneQuery = baseLaneQuery;
       const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
@@ -4090,7 +4100,22 @@ export async function getRecommendations(
         pushGlobalPhase("before_google_books_router_fetch");
         const googleBooksTimeoutMs = googleBooksRouterFetchCount <= 1 ? 8_000 : 5_000;
         requests.push(
-          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, () => runEngine("googleBooks", laneInput))
+          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, async () => {
+            try {
+              return await runEngine("googleBooks", laneInput);
+            } catch (err: any) {
+              const msg = String(err?.message || err || "");
+              if (!msg.includes("router_before_google_books_full_fetch_timeout")) throw err;
+              const fallbackGoogleQuery = simplifyGoogleBooksQuery(googleLaneQuery);
+              googleBooksTimeoutStageByQuery.push({ query: googleLaneQuery, stage: "timeout_primary", fallbackQuery: fallbackGoogleQuery || "" });
+              if (!fallbackGoogleQuery || fallbackGoogleQuery === googleLaneQuery) throw err;
+              const fallbackLaneInput = {
+                ...laneInput,
+                bucketPlan: { ...(laneInput.bucketPlan as any), queries: [fallbackGoogleQuery], preview: fallbackGoogleQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: fallbackGoogleQuery, primary: fallbackGoogleQuery }] },
+              };
+              return await withSourceTimeout("router_before_google_books_fallback_fetch", "router_after_google_books_fallback_fetch", 4500, () => runEngine("googleBooks", fallbackLaneInput));
+            }
+          })
             .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
         );
         }
@@ -4201,9 +4226,12 @@ export async function getRecommendations(
         }
         if (results[index]?.status === "rejected" && String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").includes("router_before_google_books_full_fetch_timeout")) {
           googleBooksConsecutiveTimeouts += 1;
-          if (googleBooksConsecutiveTimeouts >= 1) {
+          if (googleBooksConsecutiveTimeouts >= 2) {
             googleQuotaExhausted = true;
             sourceSkippedReason.push("googleBooks_marked_degraded_after_consecutive_timeouts");
+          }
+          if (googleBooksConsecutiveTimeouts === 1) {
+            sourceSkippedReason.push("googleBooks_timeout_primary_retry_attempted");
           }
         } else if (results[index]?.status === "fulfilled") {
           googleBooksConsecutiveTimeouts = 0;
@@ -4536,6 +4564,8 @@ export async function getRecommendations(
       googleBooksFetchResultsByQuery,
       openLibraryFetchResultsByQuery,
       kitsuFetchResultsByQuery,
+      googleBooksTimeoutStageByQuery,
+    googleBooksTimeoutStageByQuery,
       sourceSpecificQueryModeBySource,
       sourceSpecificQueryRejectedReasonBySource,
       kitsuQuerySanitizedFrom,
@@ -11988,6 +12018,7 @@ const normalizedCandidatesRaw = [
     googleBooksFetchResultsByQuery,
     openLibraryFetchResultsByQuery,
     kitsuFetchResultsByQuery,
+    googleBooksTimeoutStageByQuery,
     googleBooksQueryUsedByLane: Array.from(new Set(googleBooksQueryUsedByLane)).slice(0, 60),
     openLibraryQueryUsedByLane: Array.from(new Set(openLibraryQueryUsedByLane)).slice(0, 60),
     kitsuQueryUsedByLane: Array.from(new Set(kitsuQueryUsedByLane)).slice(0, 60),
