@@ -198,7 +198,7 @@ function isLikelySubtitleFragmentTitle(title: string): boolean {
 function isReferenceArtifactTitle(title: string): boolean {
   const t = String(title || "").toLowerCase();
   if (!t) return false;
-  return /\b(100 graphic novels for public libraries|public libraries|masters of|index|teaching|literacy|research|screenplays|subject headings|popular culture|focus on)\b/.test(t);
+  return /\b(100 graphic novels for public libraries|public libraries|masters of|index|teaching|literacy|research|screenplays|subject headings|popular culture|focus on|science fiction,\s*fantasy,\s*&\s*horror)\b/.test(t);
 }
 
 function isLikelyIssueFragmentDoc(doc: any): boolean {
@@ -1958,18 +1958,23 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     );
 
   const baseNeedsFictionVariant = base && !/\b(novel|fiction)\b/i.test(base);
+  const explicitPsychologicalSignal = /\b(psychological|thriller|horror)\b/.test(lowered);
+  const explicitRomanticSignal = /\b(romance|romantic|relationship|love)\b/.test(lowered);
+  const explicitInvestigatorSignal = /\b(detective|investigator|noir|case|crime[\s-]?solving|police|sleuth)\b/.test(lowered);
+  const isGraphicNovelShaped = /\b(graphic\s+novel|comic|manga|manhwa|webtoon)\b/i.test(`${base} ${String(bucketPlan?.preview || "")}`);
   const lanes = dedupeNonEmptyQueries([
     base,
     baseNeedsFictionVariant ? `${base} fiction` : "",
     `${base} ${negativeTerms}`,
-    family === "science_fiction" ? "literary science fiction novel" : "",
-    family === "science_fiction" ? "psychological science fiction novel" : "",
-    family === "science_fiction" ? "romantic science fiction novel" : "",
-    family === "science_fiction" ? "dystopian science fiction novel" : "",
+    family === "science_fiction" && !isGraphicNovelShaped && /\b(science fiction|sci[\s-]?fi|dystopian|future society|space|cyberpunk|alien|robot)\b/.test(lowered) ? "literary science fiction novel" : "",
+    family === "science_fiction" && explicitPsychologicalSignal ? "psychological science fiction novel" : "",
+    family === "science_fiction" && explicitRomanticSignal ? "romantic science fiction novel" : "",
+    family === "science_fiction" ? (isGraphicNovelShaped ? "dystopian graphic novel" : "dystopian science fiction novel") : "",
     family === "science_fiction" && /human centered|identity|literary|emotional/.test(lowered) ? "human centered science fiction novel" : "",
     family === "science_fiction" && /identity|literary/.test(lowered) ? "literary science fiction identity novel" : "",
     family === "science_fiction" && /emotional|speculative/.test(lowered) ? "emotional speculative fiction novel" : "",
     family === "fantasy" && /dark/.test(lowered) ? "dark fantasy novel" : "",
+    family === "fantasy" && explicitPsychologicalSignal ? "psychological fantasy novel" : "",
     family === "fantasy" && /magic|wizard|witch/.test(lowered) ? "magic fantasy novel" : "",
     family === "horror" && /psychological/.test(lowered) ? "psychological horror graphic novel" : "",
     family === "horror" && /haunted|ghost/.test(lowered) ? "haunted house horror novel" : "",
@@ -1978,13 +1983,16 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "mystery" && /psychological/.test(lowered) ? "psychological mystery novel" : "",
     family === "mystery" && /murder|investigation|detective/.test(lowered) ? "detective mystery novel" : "",
     family === "mystery" && /murder|investigation|police|procedural/.test(lowered) ? "police procedural mystery novel" : "",
-    family === "mystery" && !/private investigator/.test(lowered) ? "private investigator mystery novel" : "",
+    family === "mystery" && explicitInvestigatorSignal && !/private investigator/.test(lowered) ? "private investigator mystery novel" : "",
     family === "thriller" && /psychological/.test(lowered) ? "psychological suspense graphic novel" : "",
     thrillerAllowsDomestic ? "domestic suspense novel" : "",
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 5) : []),
   ]);
 
   let filteredLanes = lanes;
+  if (isGraphicNovelShaped && !/\b(psychological|suspense|thriller)\b/.test(lowered)) {
+    filteredLanes = filteredLanes.filter((q) => !/\bpsychological suspense novel\b/i.test(String(q || "")));
+  }
   if (family === "horror") {
     filteredLanes = lanes.filter((query) => isHorrorQuery(query));
   }
@@ -3835,6 +3843,11 @@ export async function getRecommendations(
   let kitsuPrimaryRawZero = false;
   let kitsuFallbackRawZero = false;
   let kitsuTerminalBroadFallbackDispatched = false;
+  let kitsuEntityRetryUsedAfterPrimaryRaw = false;
+  let pendingSourceFetchCount = 0;
+  const pendingSourceFetches: Array<Promise<any>> = [];
+  const pendingSourceFetchCountIncremented: Array<{ source: string; laneIndex: number; query: string; pending: number }> = [];
+  const pendingSourceFetchCountDecremented: Array<{ source: string; laneIndex: number; query: string; pending: number }> = [];
   let stopKitsuDispatchForRun = false;
   let stopRouterFetchLoop = false;
   let comicVineResolvedSeedQuery = "";
@@ -3990,13 +4003,70 @@ export async function getRecommendations(
       let kitsuDispatchedOnThisLane = false;
       const baseLaneQuery = String(lane.query || "").trim();
       const sanitizeOpenLibraryQuery = (q: string) => {
-        const cleaned = q
+        const cleaned = String(q || "")
           .replace(/["']/g, " ")
           .replace(/[-+]\w+/g, " ")
-          .replace(/\b(character[-\s]?focused|graphic novel|novel|book|narrative|consequence|survival|exclude|without)\b/gi, " ")
+          .replace(/\b(genre|tone|mood|theme|drive|audience|age|media|format)\s*:/gi, " ")
+          .replace(/\b(character[-\s]?focused|novel|book|narrative|consequence|survival|exclude|without)\b/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
+        const phraseAnchors = ["coming of age", "science fiction", "fantasy adventure", "psychological horror", "dystopian graphic novel", "science fiction graphic novel"];
+        const anchorHits = phraseAnchors.filter((ph) => cleaned.includes(ph));
+        const tokens = cleaned.split(/\s+/).filter(Boolean);
+        const anchorTokenSet = new Set(anchorHits.flatMap((ph) => ph.split(/\s+/)));
+        const residualTokens = tokens.filter((t) => !anchorTokenSet.has(t));
+        const merged = [...anchorHits, ...residualTokens].join(" ")
+          .replace(/\bcharacter pressure\b/gi, " ")
           .replace(/\s+/g, " ")
           .trim();
-        return cleaned.split(/\s+/).slice(0, 3).join(" ").trim();
+        const compact = merged.split(/\s+/).slice(0, 6).join(" ").trim();
+        if (/\bcoming\s+of\b$/.test(compact)) return anchorHits.find((a) => a === "coming of age") || "";
+        return compact;
+      };
+      const normalizeFinalSourceQuery = (q: string) => {
+        const cleaned = String(q || "")
+          .replace(/\b(environmental pressure|procedural problem-solving|setting|stakes)\b/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const tokens = cleaned.split(/\s+/).filter(Boolean);
+        const out: string[] = [];
+        let seenGraphicNovel = false;
+        let seenComicSeries = false;
+        let seenGraphicToken = false;
+        const seenConcept = new Set<string>();
+        const conceptOf = (t: string) => {
+          const n = String(t || "").toLowerCase();
+          if (/^(suspense|thriller|mystery|crime)$/.test(n)) return n;
+          if (/^(graphic|comic|manga|manhwa|webtoon)$/.test(n)) return "graphic_media";
+          if (/^(fantasy|supernatural|romance|romantic|adventure|science|fiction|dystopian)$/.test(n)) return n;
+          return "";
+        };
+        for (let i = 0; i < tokens.length; i += 1) {
+          const a = tokens[i]?.toLowerCase() || "";
+          const b = tokens[i + 1]?.toLowerCase() || "";
+          if (a === "graphic" && b === "novel") {
+            if (seenGraphicNovel) { i += 1; continue; }
+            seenGraphicNovel = true;
+          }
+          if (a === "comic" && b === "series") {
+            if (seenComicSeries) { i += 1; continue; }
+            seenComicSeries = true;
+          }
+          if (a === "graphic" && b !== "novel") {
+            if (seenGraphicToken) continue;
+            seenGraphicToken = true;
+          }
+          const concept = conceptOf(a);
+          if (concept) {
+            if (seenConcept.has(concept)) continue;
+            seenConcept.add(concept);
+          }
+          out.push(tokens[i]);
+        }
+        const normalized = out.join(" ").replace(/\s+/g, " ").trim();
+        if (/^graphic$/i.test(normalized)) return "graphic novel";
+        return normalized;
       };
       const canonicalizeKitsuDispatchQuery = (q: string) => String(q || "")
         .toLowerCase()
@@ -4058,8 +4128,15 @@ export async function getRecommendations(
         if (compact && !/\s-[a-z0-9_]+/i.test(compact)) return compact;
         return themedFallback || compact;
       };
-      const googleLaneQuery = baseLaneQuery;
-      const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
+      const baseLaneQuerySourceSanitized = String(baseLaneQuery || "")
+        .replace(/\b(genre|tone|mood|theme|drive|audience|age|media|format)\s*:/gi, " ")
+        .replace(/\bcharacter[-\s]?focused\b/gi, " ")
+        .replace(/\b(graphic\s+novel)\s+\1\b/gi, "$1")
+        .replace(/\b(comic\s+series)\s+\1\b/gi, "$1")
+        .replace(/\s+/g, " ")
+        .trim();
+      const googleLaneQuery = normalizeFinalSourceQuery(baseLaneQuerySourceSanitized || baseLaneQuery);
+      const openLibraryLaneQuery = normalizeFinalSourceQuery(sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure");
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
       const fallbackBroadTerms = [
         /\b(superhero|miles|batman|spider[\s-]?man)\b/i.test(baseLaneQuery) ? "superhero" : "",
@@ -4108,6 +4185,11 @@ export async function getRecommendations(
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
+        if (googleBooksQueriesActuallyFetched.has(googleLaneQuery)) {
+          sourceSkippedReason.push("googleBooks_exact_query_dedupe_skipped");
+          pushGlobalPhase("googleBooks_exact_query_dedupe_skipped", { query: googleLaneQuery, laneIndex: lanei });
+          continue;
+        }
         const googleProbeStatus = String(sourceHealthProbeStatus.google_books || "").toLowerCase();
         const googleProbeFailed = googleProbeStatus.includes("failed") || googleProbeStatus.includes("timeout") || googleProbeStatus.includes("error");
         if (googleBooksProbeDegraded || googleProbeFailed) {
@@ -4138,10 +4220,12 @@ export async function getRecommendations(
         googleBooksQueriesActuallyFetched.add(googleLaneQuery);
         pushGlobalPhase("before_google_books_router_fetch");
         const googleBooksTimeoutMs = googleBooksRouterFetchCount <= 1 ? 8_000 : 5_000;
-        requests.push(
-          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, async () => {
+        pendingSourceFetchCount += 1;
+        pendingSourceFetchCountIncremented.push({ source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pending: pendingSourceFetchCount });
+        const googlePrimaryFetchPromise = runEngine("googleBooks", laneInput);
+        const googleTrackedRequest = withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, async () => {
             try {
-              return await runEngine("googleBooks", laneInput);
+              return await googlePrimaryFetchPromise;
             } catch (err: any) {
               const msg = String(err?.message || err || "");
               if (!msg.includes("router_before_google_books_full_fetch_timeout")) throw err;
@@ -4158,11 +4242,19 @@ export async function getRecommendations(
               googleBooksTimeoutStageByQuery.push({ query: googleLaneQuery, stage: "fallback_dispatched", fallbackQuery: fallbackGoogleQuery, reason: "retry_with_simplified_query" });
               pushGlobalPhase("before_google_books_fallback_router_fetch", { primaryQuery: googleLaneQuery, fallbackQuery: fallbackGoogleQuery });
               googleBooksRouterFetchCount = Math.max(googleBooksRouterFetchCount, sourceFetchCapPerRun);
-              return await withSourceTimeout("router_before_google_books_fallback_fetch", "router_after_google_books_fallback_fetch", 4500, () => runEngine("googleBooks", fallbackLaneInput));
+              const googleFallbackFetchPromise = runEngine("googleBooks", fallbackLaneInput);
+              pendingSourceFetches.push(googleFallbackFetchPromise.catch(() => null));
+              return await withSourceTimeout("router_before_google_books_fallback_fetch", "router_after_google_books_fallback_fetch", 4500, () => googleFallbackFetchPromise);
             }
           })
-            .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
-        );
+            .finally(() => {
+              pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
+              pendingSourceFetchCountDecremented.push({ source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pending: pendingSourceFetchCount });
+              pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pendingSourceFetchCount });
+              pushGlobalPhase("after_google_books_router_fetch");
+            }) as any;
+        pendingSourceFetches.push(googleTrackedRequest.catch(() => null));
+        requests.push(googleTrackedRequest);
         }
         }
       }
@@ -4179,14 +4271,33 @@ export async function getRecommendations(
         openLibraryQueryUsedByLane.push(openLibraryLaneQuery);
         openLibraryQueriesActuallyFetched.add(openLibraryLaneQuery);
         pushGlobalPhase("before_open_library_router_fetch");
-        requests.push(
-          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => runEngine("openLibrary", laneInput))
-            .finally(() => pushGlobalPhase("after_open_library_router_fetch")) as any
-        );
+        pendingSourceFetchCount += 1;
+        pendingSourceFetchCountIncremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
+        const openLibraryFetchPromise = runEngine("openLibrary", laneInput);
+        const openLibraryTrackedRequest = withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => openLibraryFetchPromise)
+            .finally(() => {
+              pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
+              pendingSourceFetchCountDecremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
+              pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pendingSourceFetchCount });
+              pushGlobalPhase("after_open_library_router_fetch");
+            }) as any;
+        pendingSourceFetches.push(openLibraryTrackedRequest.catch(() => null));
+        requests.push(openLibraryTrackedRequest);
         }
       }
       if (includeKitsu && !stopKitsuDispatchForRun) {
-        if (kitsuDispatchedOnce && !kitsuPrimaryRawZero) {
+        const explicitEntityLane = profileSelectedEntitySeeds.some((seed) => {
+          const nseed = normalizeText(String(seed || ""));
+          return nseed.length >= 3 && normalizeText(baseLaneQuery).includes(nseed);
+        });
+        const graphicContextLane = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(baseLaneQuery);
+        const allowEntityRetryAfterPrimaryRaw =
+          kitsuDispatchedOnce &&
+          !kitsuPrimaryRawZero &&
+          !kitsuEntityRetryUsedAfterPrimaryRaw &&
+          explicitEntityLane &&
+          graphicContextLane;
+        if (kitsuDispatchedOnce && !kitsuPrimaryRawZero && !allowEntityRetryAfterPrimaryRaw) {
           const fallbackSuppressedMessage = `kitsu_fallback_suppressed_primary_had_raw:selected=${kitsuSanitizedQuerySelected[0] || ""}:attempted=${kitsuLaneQuery}:lane=${lanei}`;
           pushGlobalPhase("kitsu_fallback_suppressed_primary_had_raw", { fallbackSuppressedMessage, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
           sourceSkippedReason.push("kitsu_fallback_suppressed_primary_had_raw");
@@ -4194,6 +4305,11 @@ export async function getRecommendations(
         } else if (kitsuDispatchedOnce && kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce && (!kitsuFallbackRawZero || kitsuTerminalBroadFallbackDispatched)) {
           sourceSkippedReason.push("kitsu_fallback_already_attempted");
         } else {
+        if (allowEntityRetryAfterPrimaryRaw) {
+          kitsuEntityRetryUsedAfterPrimaryRaw = true;
+          sourceSkippedReason.push("kitsu_entity_retry_allowed_primary_had_raw");
+          pushGlobalPhase("kitsu_entity_retry_allowed_primary_had_raw", { query: kitsuLaneQuery, laneIndex: lanei, baseLaneQuery });
+        }
         const isFallbackAttempt = kitsuDispatchedOnce && kitsuPrimaryRawZero && !kitsuFallbackDispatchedOnce;
         const isTerminalBroadFallbackAttempt = kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce && kitsuFallbackRawZero && !kitsuTerminalBroadFallbackDispatched;
         const fallbackCanonicalDuplicate = (isFallbackAttempt || isTerminalBroadFallbackAttempt) && priorCanonicalKitsuQueries.has(canonicalizeKitsuDispatchQuery(kitsuLaneQuery));
@@ -4215,10 +4331,18 @@ export async function getRecommendations(
         kitsuFinalQueryUsedForFetch.push(kitsuLaneQuery);
         kitsuQueriesActuallyFetched.add(kitsuLaneQuery);
         pushGlobalPhase("before_kitsu_router_fetch");
-        requests.push(
-          withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
-            .finally(() => pushGlobalPhase("after_kitsu_router_fetch")) as any
-        );
+        pendingSourceFetchCount += 1;
+        pendingSourceFetchCountIncremented.push({ source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pending: pendingSourceFetchCount });
+        const kitsuFetchPromise = getKitsuMangaRecommendations(laneInput);
+        const kitsuTrackedRequest = withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => kitsuFetchPromise)
+            .finally(() => {
+              pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
+              pendingSourceFetchCountDecremented.push({ source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pending: pendingSourceFetchCount });
+              pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pendingSourceFetchCount });
+              pushGlobalPhase("after_kitsu_router_fetch");
+            }) as any;
+        pendingSourceFetches.push(kitsuTrackedRequest.catch(() => null));
+        requests.push(kitsuTrackedRequest);
         kitsuDispatchedOnThisLane = true;
         }
         }
@@ -4245,6 +4369,7 @@ export async function getRecommendations(
       }
 
       const results = await Promise.allSettled(requests);
+      pushGlobalPhase("pendingSourceFetchCount_incremented", { laneIndex: lanei, pendingSourceFetchCount });
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
         query: (lane as any)?.query,
         laneFamily,
@@ -4543,6 +4668,17 @@ export async function getRecommendations(
     }
     if (stopRouterFetchLoop) break;
   }
+  if (pendingSourceFetches.length > 0) {
+    pushGlobalPhase("awaiting_pending_source_fetches_before_post_fetch_health_guard", { pendingSourceFetches: pendingSourceFetches.length });
+    await Promise.allSettled(pendingSourceFetches);
+    if (pendingSourceFetchCount > 0) {
+      await Promise.resolve();
+      await Promise.allSettled(pendingSourceFetches);
+      if (pendingSourceFetchCount > 0) {
+        pushGlobalPhase("pending_fetch_counter_mismatch_after_allSettled", { pendingSourceFetchCount, pendingSourceFetches: pendingSourceFetches.length });
+      }
+    }
+  }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
   const normalizeTitleForPool = (doc: any) => normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
@@ -4596,7 +4732,52 @@ export async function getRecommendations(
     openLibraryStarved &&
     (kitsuStarved || !includeKitsu) &&
     (comicVineUnavailableBypass || !includeComicVine);
-  if (allRealSourcesStarved) {
+  const kitsuPolicyUniqueCanonicalQueriesForHealthGuard = Array.from(new Set(
+    kitsuFetchResultsByQuery
+      .map((row) => String(row?.query || "").toLowerCase().replace(/[-+][a-z0-9_]+/g, " ").replace(/[^a-z0-9\\s]/g, " ").replace(/\s+/g, " ").trim())
+      .filter(Boolean)
+  ));
+  const kitsuMaxAllowedCanonicalFetchesForHealthGuard = kitsuTerminalBroadFallbackDispatched ? 3 : (kitsuPrimaryRawZero ? 2 : 1);
+  pushGlobalPhase("pendingSourceFetchCount_at_source_health_guard", { pendingSourceFetchCount, allRealSourcesStarved });
+  if (allRealSourcesStarved && pendingSourceFetchCount > 0) {
+    pushGlobalPhase("source_health_pending", { pendingSourceFetchCount });
+    sourceSkippedReason.push(`source_health_pending:${pendingSourceFetchCount}`);
+  } else if (allRealSourcesStarved) {
+    let kitsuRecoveryAttemptedForHealthGuard = false;
+    let kitsuRecoveryEligibleForHealthGuard = false;
+    if (Number(aggregatedRawFetched.googleBooks || 0) === 0 && Number(aggregatedRawFetched.openLibrary || 0) === 0 && includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0 && kitsuRouterFetchCount === 0) {
+      kitsuRecoveryEligibleForHealthGuard = true;
+      const kitsuRecoveryQuery =
+        kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) ||
+        kitsuQueryUsedByLane.find((q) => String(q || "").trim().length > 0) ||
+        "adventure";
+      const boundedFallback = [kitsuRecoveryQuery, "adventure", "drama", "mystery"].map((q) => String(q || "").trim()).filter(Boolean);
+      const query = boundedFallback[0];
+      kitsuRecoveryAttemptedForHealthGuard = true;
+      pushGlobalPhase("kitsu_recovery_attempt_before_source_health_failed", { query, boundedFallback });
+      try {
+        const recoveryInput = {
+          ...routedInput,
+          bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
+        } as any;
+        const recoveryRes = await withSourceTimeout("router_before_kitsu_health_guard_recovery_fetch", "router_after_kitsu_health_guard_recovery_fetch", 10_000, () => getKitsuMangaRecommendations(recoveryInput));
+        const raw = Number((recoveryRes as any)?.debugRawFetchedCount ?? countResultItems(recoveryRes));
+        aggregatedRawFetched.kitsu += raw;
+        kitsuRouterFetchCount += 1;
+        kitsuQueriesActuallyFetched.add(query);
+        kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "ok", timedOut: false, rawCount: raw, error: null, bodyPrefix: raw === 0 ? "[empty_kitsu_result]" : "status=ok" });
+      } catch (e: any) {
+        kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "error", timedOut: String(e?.message || e || "").includes("timeout"), rawCount: 0, error: String(e?.message || e || "fetch_failed"), bodyPrefix: String(e?.message || e || "").slice(0, 180) });
+      }
+    }
+    const allRealSourcesStarvedAfterRecovery =
+      Number(aggregatedRawFetched.googleBooks || 0) === 0 &&
+      Number(aggregatedRawFetched.openLibrary || 0) === 0 &&
+      ((includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0) || !includeKitsu) &&
+      (comicVineUnavailableBypass || !includeComicVine);
+    if (!allRealSourcesStarvedAfterRecovery) {
+      sourceSkippedReason.push("source_health_guard_recovered_by_kitsu_or_other_source");
+    } else {
     pushGlobalPhase("source_health_guard");
     pushEarlyReturnDiagnostics("source_health_failed", "post_fetch_source_health_guard");
     throwSourceFatal("source_health_failed", {
@@ -4614,10 +4795,7 @@ export async function getRecommendations(
       openLibraryFetchResultsByQuery,
       kitsuFetchResultsByQuery,
       googleBooksTimeoutStageByQuery,
-    googleBooksRetryQueryMapping,
       googleBooksRetryQueryMapping,
-    googleBooksTimeoutStageByQuery,
-    googleBooksRetryQueryMapping,
       sourceSpecificQueryModeBySource,
       sourceSpecificQueryRejectedReasonBySource,
       kitsuQuerySanitizedFrom,
@@ -4625,10 +4803,10 @@ export async function getRecommendations(
       kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
       kitsuSanitizedQuerySelected: kitsuSanitizedQuerySelected[0] || "",
       kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
-    kitsuPolicyUniqueCanonicalQueries,
-    kitsuMaxAllowedCanonicalFetches,
-    kitsuSanitizationDiagnostics,
-    kitsuSanitizationDroppedTokens,
+      kitsuPolicyUniqueCanonicalQueries: kitsuPolicyUniqueCanonicalQueriesForHealthGuard,
+      kitsuMaxAllowedCanonicalFetches: kitsuMaxAllowedCanonicalFetchesForHealthGuard,
+      kitsuSanitizationDiagnostics,
+      kitsuSanitizationDroppedTokens,
       kitsuSanitizationDiagnostics,
       kitsuSanitizationDroppedTokens,
       sourceDisableReasonsDetailed,
@@ -4647,9 +4825,15 @@ export async function getRecommendations(
         comicVine: { enabled: includeComicVine, bypassed: comicVineUnavailableBypass, status: comicVineAdapterStatus },
       },
       sourceSkippedReason,
+      kitsuRecoveryAttemptedForHealthGuard,
+      kitsuRecoveryEligibleForHealthGuard,
+      pendingSourceFetchCount_at_source_health_guard: pendingSourceFetchCount,
+      pendingSourceFetchCount_incremented: pendingSourceFetchCountIncremented.slice(0, 80),
+      pendingSourceFetchCount_decremented: pendingSourceFetchCountDecremented.slice(0, 80),
       builtQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
       deckKey: routedInput.deckKey,
     });
+    }
   }
 
   debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
@@ -7708,7 +7892,15 @@ const normalizedCandidatesRaw = [
     const root = parentFranchiseRootForDoc(doc);
     const hasParent = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName || doc?.diagnostics?.parentVolumeName);
     const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
-    if (!sourceId) { registerFinalEligibilityReject("missing_source_id", title); return false; }
+    if (!sourceId) {
+      const metadataBag = normalizeText(`${title} ${String(doc?.description || "")} ${String(doc?.queryText || "")}`);
+      const strongGraphicAlignment =
+        /\b(graphic novel|comic|manga|manhwa|webtoon|volume 1|book 1)\b/.test(metadataBag) &&
+        /\b(fantasy|romance|adventure|dystopian|supernatural|young adult|teen)\b/.test(metadataBag) &&
+        (Number(positiveFitScoreByTitle[title] || 0) >= 4 || Number(semanticEvidenceCountByTitle[title] || 0) >= 2);
+      if (!(strongGraphicAlignment && !isReferenceArtifactTitle(title))) { registerFinalEligibilityReject("missing_source_id", title); return false; }
+      markSourceSpecificGate(title, "missing_source_id_strong_graphic_alignment_rescue");
+    }
     if (!queryText) { registerFinalEligibilityReject("missing_query_text", title); return false; }
     const structuralFragment = Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0;
     const queryTermOnlyEvidence = Boolean(queryTermOnlyEvidenceByTitle[title]);
@@ -7815,8 +8007,17 @@ const normalizedCandidatesRaw = [
       .some((token) => /\b(comedy|humor|parody|satire|spoof)\b/.test(token));
     const meaningfulSignalCount = Array.from(new Set(matchedMeaningfulLikedSignals)).length;
     if (meaningfulSignalCount === 0 && weightedTasteScore < 2.5 && !explicitFranchiseSignal) {
-      registerFinalEligibilityReject("zero_meaningful_signal_without_franchise_or_taste_alignment", title);
-      return false;
+      const graphicShapedQuery = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(queryText);
+      const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+      const graphicShapedRescue =
+        graphicShapedQuery &&
+        !isReferenceArtifactTitle(title) &&
+        (semanticEvidenceCount >= 1 || Number(positiveFitScoreByTitle[title] || 0) >= 3 || titleLooksGraphic);
+      if (!graphicShapedRescue) {
+        registerFinalEligibilityReject("zero_meaningful_signal_without_franchise_or_taste_alignment", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "graphic_shaped_meaningful_signal_rescue");
     }
     if (meaningfulSignalCount < 1) {
       const softPassComicVine =
@@ -7827,8 +8028,17 @@ const normalizedCandidatesRaw = [
       } else {
       if (!teenCuratedTitleFallbackAllow) {
         meaningfulSignalsGateRejectedTitles.push(title);
-        registerFinalEligibilityReject("low_recommendation_confidence", title);
-        return false;
+        const graphicShapedQuery = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(queryText);
+        const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+        const graphicLowConfidenceRescue =
+          graphicShapedQuery &&
+          !isReferenceArtifactTitle(title) &&
+          (semanticEvidenceCount >= 1 || Number(positiveFitScoreByTitle[title] || 0) >= 3 || titleLooksGraphic);
+        if (!graphicLowConfidenceRescue) {
+          registerFinalEligibilityReject("low_recommendation_confidence", title);
+          return false;
+        }
+        markSourceSpecificGate(title, "graphic_shaped_low_confidence_rescue");
       }
       markSourceSpecificGate(title, "curated_title_fallback_low_metadata_ok");
       }
@@ -11292,9 +11502,65 @@ const normalizedCandidatesRaw = [
   let teenPostPassGlobalHandoffConsidered = false;
   let teenPostPassGlobalHandoffAcceptedTitles: string[] = [];
   const teenPostPassGlobalHandoffRejectedByTitle: Record<string, string> = {};
+  const teenPostPassEmergencyCandidateScores: Array<{ title: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceScore: number; emergencyRank: number }> = [];
+  const graphicEmergencyRescueCandidates: Array<{ title: string; rejectReason: string; positiveFitScore: number; semanticEvidenceCount: number; titleLooksGraphic: boolean; selected: boolean }> = [];
+  const terminalEmergencyRankedCandidates: Array<{ title: string; titleLooksGraphic: boolean; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; selected: boolean }> = [];
+  const comparableRejectedGraphicCandidates: Array<{ title: string; rejectReason: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; titleLooksGraphic: boolean }> = [];
+  let graphicEmergencyProseBlockReason = "";
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
+  let graphicCandidateAvailableButProseSelected = false;
   if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
     teenPostPassGlobalHandoffConsidered = true;
+    const graphicEmergencyContext = queryLanesUsed.some((q: any) => /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(String(q || "")));
+    const hasGraphicCandidateInPostPass = graphicEmergencyContext && teenPostPassItems.some((item: any) => {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      const queryText = String(doc?.queryText || "");
+      return /\b(graphic novel|comic|manga|manhwa|webtoon|volume\s*1|book\s*1|vol\.?\s*1|omnibus)\b/i.test(`${title} ${queryText}`);
+    });
+    const graphicFantasyRomanceEmergencyContext = graphicEmergencyContext &&
+      queryLanesUsed.some((q: any) => /\b(fantasy|romance|romantic|love)\b/i.test(String(q || "")));
+    const entityDrivenGraphicContext = graphicEmergencyContext && profileSelectedEntitySeeds.length > 0;
+    const rejectedLowConfidenceSet = new Set((finalEligibilityRejectedTitlesByReason?.low_recommendation_confidence || []).map((t) => normalizeText(String(t || ""))));
+    const rejectedTasteThresholdSet = new Set((finalEligibilityRejectedTitlesByReason?.fails_taste_threshold_gate || []).map((t) => normalizeText(String(t || ""))));
+    const rejectedMissingParentOrRootSet = new Set((finalEligibilityRejectedTitlesByReason?.missing_parent_or_title_root_match || []).map((t) => normalizeText(String(t || ""))));
+    const rejectedZeroMeaningfulSet = new Set((finalEligibilityRejectedTitlesByReason?.zero_meaningful_signal_without_franchise_or_taste_alignment || []).map((t) => normalizeText(String(t || ""))));
+    const rejectedMissingSourceIdSet = new Set((finalEligibilityRejectedTitlesByReason?.missing_source_id || []).map((t) => normalizeText(String(t || ""))));
+    const comparableRejectedGraphicExists = graphicEmergencyContext && teenPostPassItems.some((item: any) => {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      const key = normalizeText(title);
+      const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+      const queryText = String(doc?.queryText || "").toLowerCase();
+      const mediaShapedGraphic = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
+      if (!title || !(titleLooksGraphic || mediaShapedGraphic) || isReferenceArtifactTitle(title)) return false;
+      const rejected =
+        rejectedLowConfidenceSet.has(key) ||
+        rejectedTasteThresholdSet.has(key) ||
+        rejectedMissingParentOrRootSet.has(key) ||
+        rejectedZeroMeaningfulSet.has(key) ||
+        rejectedMissingSourceIdSet.has(key);
+      if (!rejected) return false;
+      const fit = Number(positiveFitScoreByTitle[title] || 0);
+      const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+      const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+      const rejectReason =
+        rejectedLowConfidenceSet.has(key) ? "low_recommendation_confidence" :
+        rejectedTasteThresholdSet.has(key) ? "fails_taste_threshold_gate" :
+        rejectedMissingParentOrRootSet.has(key) ? "missing_parent_or_title_root_match" :
+        rejectedZeroMeaningfulSet.has(key) ? "zero_meaningful_signal_without_franchise_or_taste_alignment" :
+        "missing_source_id";
+      comparableRejectedGraphicCandidates.push({
+        title,
+        rejectReason,
+        positiveFitScore: fit,
+        semanticEvidenceCount: semantic,
+        laneAligned,
+        titleLooksGraphic: titleLooksGraphic || mediaShapedGraphic,
+      });
+      return semantic >= 1 || fit >= 3 || laneAligned;
+    });
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
     const seenRoots = new Set<string>();
     const fallbackItems = teenPostPassItems.filter((item: any) => {
@@ -11320,13 +11586,151 @@ const normalizedCandidatesRaw = [
         return false;
       }
       const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      const fit = Number(positiveFitScoreByTitle[title] || 0);
+      const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+      const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+      const queryText = String(doc?.queryText || "").toLowerCase();
+      const graphicCandidate = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
+      const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+      const psychSuspenseLane = /\b(psychological|suspense|thriller)\b/.test(String(queryText));
+      const prosePsychFallbackTitle = /\b(sharp objects|the stranger in my bed|the last sacrifice)\b/i.test(title);
+      if (graphicEmergencyContext && prosePsychFallbackTitle && !psychSuspenseLane) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_psych_fallback_blocked_in_graphic_context";
+        return false;
+      }
+      if (graphicFantasyRomanceEmergencyContext && !graphicCandidate) {
+        const obviousProseDefault = /\b(novel|a novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
+        if (obviousProseDefault && !laneAligned && semantic <= 0 && fit <= 0) {
+          teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_default_blocked_in_graphic_context";
+          return false;
+        }
+      }
+      if (hasGraphicCandidateInPostPass && !graphicCandidate) {
+        const proseDefaultLike = /\b(novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
+        if (proseDefaultLike || comparableRejectedGraphicExists) {
+          teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_blocked_when_graphic_candidate_available";
+          if (!graphicEmergencyProseBlockReason) graphicEmergencyProseBlockReason = proseDefaultLike ? "prose_default_like_with_graphic_candidate_available" : "comparable_rejected_graphic_exists";
+          return false;
+        }
+      }
+      if (entityDrivenGraphicContext && !graphicCandidate) {
+        const rootMatch = profileSelectedEntitySeeds.some((seed) => normalizeText(String(seed || "")).replace(/[^a-z0-9]+/g, "-") === root);
+        const titleEntityMatch = profileSelectedEntitySeeds.some((seed) => normalizeText(title).includes(normalizeText(seed)));
+        if (!(rootMatch || titleEntityMatch)) {
+          teenPostPassGlobalHandoffRejectedByTitle[title] = "entity_graphic_context_prose_blocked";
+          if (!graphicEmergencyProseBlockReason) graphicEmergencyProseBlockReason = "entity_graphic_context_requires_entity_or_graphic_match";
+          return false;
+        }
+      }
+      const returnRejectReason = canReturnTitleRejectReason(title, doc);
+      if (returnRejectReason) {
+        const graphicFailsTasteRescue =
+          graphicEmergencyContext &&
+          /fails_taste_threshold_gate/.test(returnRejectReason) &&
+          titleLooksGraphic &&
+          !isReferenceArtifactTitle(title) &&
+          (semantic >= 1 || fit >= 3 || laneAligned);
+        if (!graphicFailsTasteRescue && !/fallback_no_taste_match|fails_taste_threshold_gate/.test(returnRejectReason)) {
+          teenPostPassGlobalHandoffRejectedByTitle[title] = `return_reject:${returnRejectReason}`;
+          return false;
+        }
+      }
+      if (!laneAligned && fit <= 0 && semantic <= 0) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "weak_alignment_for_emergency_handoff";
+        return false;
+      }
       if (seenRoots.has(root)) {
         teenPostPassGlobalHandoffRejectedByTitle[title] = "duplicate_root";
         return false;
       }
       seenRoots.add(root);
       return true;
+    }).sort((a: any, b: any) => {
+      const ad = a?.doc || a;
+      const bd = b?.doc || b;
+      const at = String(ad?.title || a?.title || "").trim();
+      const bt = String(bd?.title || b?.title || "").trim();
+      if (graphicEmergencyContext) {
+        const aGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${at} ${String(ad?.queryText || "")}`));
+        const bGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${bt} ${String(bd?.queryText || "")}`));
+        if (bGraphic !== aGraphic) return bGraphic - aGraphic;
+      }
+      if (entityDrivenGraphicContext) {
+        const aEntity = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(at).includes(normalizeText(seed)) || normalizeText(String(parentFranchiseRootForDoc(ad) || "")).includes(normalizeText(seed))));
+        const bEntity = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(bt).includes(normalizeText(seed)) || normalizeText(String(parentFranchiseRootForDoc(bd) || "")).includes(normalizeText(seed))));
+        if (bEntity !== aEntity) return bEntity - aEntity;
+      }
+      const aFit = Number(positiveFitScoreByTitle[at] || 0);
+      const bFit = Number(positiveFitScoreByTitle[bt] || 0);
+      if (bFit !== aFit) return bFit - aFit;
+      const aSemantic = Number(semanticEvidenceCountByTitle[at] || 0);
+      const bSemantic = Number(semanticEvidenceCountByTitle[bt] || 0);
+      if (bSemantic !== aSemantic) return bSemantic - aSemantic;
+      const aRoot = String(parentFranchiseRootForDoc(ad) || "");
+      const bRoot = String(parentFranchiseRootForDoc(bd) || "");
+      const aLane = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === aRoot) || profileCompatibleExpansionRoots.has(aRoot));
+      const bLane = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === bRoot) || profileCompatibleExpansionRoots.has(bRoot));
+      if (bLane !== aLane) return bLane - aLane;
+      return 0;
     }).slice(0, Math.max(1, Math.min(3, finalLimit)));
+    teenPostPassEmergencyCandidateScores.push(
+      ...fallbackItems.map((item: any, idx: number) => {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+        return {
+          title,
+          laneAligned,
+          positiveFitScore: Number(positiveFitScoreByTitle[title] || 0),
+          semanticEvidenceScore: Number(semanticEvidenceCountByTitle[title] || 0),
+          emergencyRank: idx + 1,
+        };
+      }).filter((row: any) => Boolean(row.title))
+    );
+    terminalEmergencyRankedCandidates.push(
+      ...fallbackItems.map((item: any) => {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        return {
+          title,
+          titleLooksGraphic: /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title),
+          laneAligned: profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root),
+          positiveFitScore: Number(positiveFitScoreByTitle[title] || 0),
+          semanticEvidenceCount: Number(semanticEvidenceCountByTitle[title] || 0),
+          selected: false,
+        };
+      }).filter((row: any) => Boolean(row.title))
+    );
+    if (graphicEmergencyContext) {
+      const rejectedLowConfidence = new Set((finalEligibilityRejectedTitlesByReason?.low_recommendation_confidence || []).map((t) => normalizeText(String(t || ""))));
+      const rejectedZeroMeaningful = new Set((finalEligibilityRejectedTitlesByReason?.zero_meaningful_signal_without_franchise_or_taste_alignment || []).map((t) => normalizeText(String(t || ""))));
+      const rejectedTasteThreshold = new Set((finalEligibilityRejectedTitlesByReason?.fails_taste_threshold_gate || []).map((t) => normalizeText(String(t || ""))));
+      for (const item of teenPostPassItems) {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        if (!title) continue;
+        const key = normalizeText(title);
+        const rejectReason = rejectedLowConfidence.has(key)
+            ? "low_recommendation_confidence"
+          : rejectedZeroMeaningful.has(key)
+            ? "zero_meaningful_signal_without_franchise_or_taste_alignment"
+            : rejectedTasteThreshold.has(key)
+              ? "fails_taste_threshold_gate"
+            : "";
+        if (!rejectReason) continue;
+        const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+        graphicEmergencyRescueCandidates.push({
+          title,
+          rejectReason,
+          positiveFitScore: Number(positiveFitScoreByTitle[title] || 0),
+          semanticEvidenceCount: Number(semanticEvidenceCountByTitle[title] || 0),
+          titleLooksGraphic,
+          selected: false,
+        });
+      }
+    }
     if (fallbackItems.length > 0) {
       itemsForReturn = fallbackItems;
       teenPostPassGlobalHandoffAcceptedTitles = fallbackItems
@@ -11335,9 +11739,19 @@ const normalizedCandidatesRaw = [
       for (const acceptedTitle of teenPostPassGlobalHandoffAcceptedTitles) {
         delete teenPostPassGlobalHandoffRejectedByTitle[acceptedTitle];
       }
+      if (hasGraphicCandidateInPostPass) {
+        const selectedHasGraphic = teenPostPassGlobalHandoffAcceptedTitles.some((t) => /\b(graphic novel|comic|manga|manhwa|webtoon|volume\s*1|book\s*1|vol\.?\s*1|omnibus)\b/i.test(t));
+        if (!selectedHasGraphic) graphicCandidateAvailableButProseSelected = true;
+      }
+      for (const row of terminalEmergencyRankedCandidates) {
+        if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+      }
       returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
       finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
       sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
+      for (const row of graphicEmergencyRescueCandidates) {
+        if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+      }
     } else {
       const minimalSafeOne = teenPostPassItems.find((item: any) => {
         const doc = item?.doc || item;
@@ -11375,7 +11789,79 @@ const normalizedCandidatesRaw = [
           delete teenPostPassGlobalHandoffRejectedByTitle[acceptedTitle];
         }
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:minimal_safe_one");
+        for (const row of graphicEmergencyRescueCandidates) {
+          if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+        }
       } else {
+        const psychSuspenseRecovery = teenPostPassItems.find((item: any) => {
+          const doc = item?.doc || item;
+          const title = String(doc?.title || item?.title || "").trim();
+          const queryText = String(doc?.queryText || "").toLowerCase();
+          const suspenseLane = /\b(psychological|suspense|thriller)\b/.test(queryText);
+          if (!suspenseLane || !title) return false;
+          if (isReferenceArtifactTitle(title) || /\[google_books_fetch_error\]/i.test(title)) return false;
+          const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+          if (scrubReason && scrubReason.includes("artifact")) return false;
+          const fit = Number(positiveFitScoreByTitle[title] || 0);
+          const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+          return fit >= 0 || semantic >= 1;
+        });
+        if (psychSuspenseRecovery) {
+          itemsForReturn = [psychSuspenseRecovery];
+          teenPostPassGlobalHandoffAcceptedTitles = [String(psychSuspenseRecovery?.doc?.title || psychSuspenseRecovery?.title || "").trim()].filter(Boolean);
+          sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:psych_suspense_min_safe_one");
+          for (const row of graphicEmergencyRescueCandidates) {
+            if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+          }
+        } else {
+          const fantasyYaRecovery = teenPostPassItems.find((item: any) => {
+            const doc = item?.doc || item;
+            const title = String(doc?.title || item?.title || "").trim();
+            const queryText = String(doc?.queryText || "").toLowerCase();
+            const yaFantasyLane = /\b(young adult|ya|teen)\b/.test(queryText) && /\b(fantasy|adventure|found family)\b/.test(queryText);
+            if (!yaFantasyLane || !title) return false;
+            if (isReferenceArtifactTitle(title) || /\[google_books_fetch_error\]/i.test(title)) return false;
+            const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+            if (scrubReason && scrubReason.includes("artifact")) return false;
+            const fit = Number(positiveFitScoreByTitle[title] || 0);
+            const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+            return fit >= 0 || semantic >= 1;
+          });
+          if (fantasyYaRecovery) {
+            itemsForReturn = [fantasyYaRecovery];
+            teenPostPassGlobalHandoffAcceptedTitles = [String(fantasyYaRecovery?.doc?.title || fantasyYaRecovery?.title || "").trim()].filter(Boolean);
+            sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:fantasy_ya_min_safe_one");
+            for (const row of graphicEmergencyRescueCandidates) {
+              if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+            }
+          } else {
+            const graphicContextFallback = teenPostPassItems.find((item: any) => {
+              const doc = item?.doc || item;
+              const title = String(doc?.title || item?.title || "").trim();
+              const queryText = String(doc?.queryText || "").toLowerCase();
+              if (!title) return false;
+              if (isReferenceArtifactTitle(title) || /\[google_books_fetch_error\]/i.test(title)) return false;
+              const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+              if (scrubReason && scrubReason.includes("artifact")) return false;
+              const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+              const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+              const fit = Number(positiveFitScoreByTitle[title] || 0);
+              const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+              const historicalAdventureGraphic =
+                /\b(historical|history|western|wild west|adventure)\b/.test(queryText) &&
+                /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
+              return laneAligned || semantic >= 1 || fit >= 0 || historicalAdventureGraphic;
+            });
+            if (graphicContextFallback) {
+              itemsForReturn = [graphicContextFallback];
+              teenPostPassGlobalHandoffAcceptedTitles = [String(graphicContextFallback?.doc?.title || graphicContextFallback?.title || "").trim()].filter(Boolean);
+              sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:graphic_min_safe_one");
+              for (const row of graphicEmergencyRescueCandidates) {
+                if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
+              }
+            }
+          }
+        }
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:no_safe_candidate");
       }
     }
@@ -11552,6 +12038,8 @@ const normalizedCandidatesRaw = [
       };
     })
     .slice(0, 20);
+  const returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
+  const acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
   markRouterPhase("router_before_final_return");
   return {
     engineId: preferredEngine,
@@ -11950,11 +12438,18 @@ const normalizedCandidatesRaw = [
     finalSeriesCapDroppedReasons,
     finalItemsLength,
     finalItemsTitles,
+    acceptedButNotReturnedTitles,
     returnedItemsLength: finalOutputItems.length,
     returnClassificationReason: finalOutputItems.length > 0 ? "valid_recommendation_returned" : (finalHandoffEmptyReason && finalHandoffEmptyReason !== "none" ? finalHandoffEmptyReason : "unknown_empty_result"),
     teenPostPassGlobalHandoffConsidered,
     teenPostPassGlobalHandoffAcceptedTitles,
     teenPostPassGlobalHandoffRejectedByTitle,
+    teenPostPassEmergencyCandidateScores,
+    terminalEmergencyRankedCandidates,
+    graphicEmergencyRescueCandidates,
+    comparableRejectedGraphicCandidates,
+    graphicEmergencyProseBlockReason,
+    graphicCandidateAvailableButProseSelected,
     normalFinalGateRecoveryConsidered,
     normalFinalGateRecoveryAcceptedTitles,
     normalFinalGateRecoveryRejectedByTitle,
@@ -12049,7 +12544,9 @@ const normalizedCandidatesRaw = [
     nytAdminEnabled: Boolean(sourceEnabled.nyt),
     sourceEnabled,
     sourceSkippedReason,
-    activeLaneQueries: Array.from(new Set(queryLanesUsed.map((q: any) => String(q || "").trim()).filter(Boolean))).slice(0, 60),
+    activeLaneQueries: Array.from(new Set(queryLanesUsed
+      .map((q: any) => String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim())
+      .filter(Boolean))).slice(0, 60),
     routerFamily,
     rungCount: Array.isArray(rungs) ? rungs.length : 0,
     sourceFetchAttemptedBySource,
