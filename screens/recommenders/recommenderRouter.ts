@@ -3845,6 +3845,8 @@ export async function getRecommendations(
   let kitsuTerminalBroadFallbackDispatched = false;
   let kitsuEntityRetryUsedAfterPrimaryRaw = false;
   let pendingSourceFetchCount = 0;
+  const pendingSourceFetchCountIncremented: Array<{ source: string; laneIndex: number; query: string; pending: number }> = [];
+  const pendingSourceFetchCountDecremented: Array<{ source: string; laneIndex: number; query: string; pending: number }> = [];
   let stopKitsuDispatchForRun = false;
   let stopRouterFetchLoop = false;
   let comicVineResolvedSeedQuery = "";
@@ -4217,6 +4219,8 @@ export async function getRecommendations(
         googleBooksQueriesActuallyFetched.add(googleLaneQuery);
         pushGlobalPhase("before_google_books_router_fetch");
         const googleBooksTimeoutMs = googleBooksRouterFetchCount <= 1 ? 8_000 : 5_000;
+        pendingSourceFetchCount += 1;
+        pendingSourceFetchCountIncremented.push({ source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pending: pendingSourceFetchCount });
         requests.push(
           withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, async () => {
             try {
@@ -4240,7 +4244,12 @@ export async function getRecommendations(
               return await withSourceTimeout("router_before_google_books_fallback_fetch", "router_after_google_books_fallback_fetch", 4500, () => runEngine("googleBooks", fallbackLaneInput));
             }
           })
-            .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
+            .finally(() => {
+              pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
+              pendingSourceFetchCountDecremented.push({ source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pending: pendingSourceFetchCount });
+              pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pendingSourceFetchCount });
+              pushGlobalPhase("after_google_books_router_fetch");
+            }) as any
         );
         }
         }
@@ -4258,9 +4267,16 @@ export async function getRecommendations(
         openLibraryQueryUsedByLane.push(openLibraryLaneQuery);
         openLibraryQueriesActuallyFetched.add(openLibraryLaneQuery);
         pushGlobalPhase("before_open_library_router_fetch");
+        pendingSourceFetchCount += 1;
+        pendingSourceFetchCountIncremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
         requests.push(
           withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => runEngine("openLibrary", laneInput))
-            .finally(() => pushGlobalPhase("after_open_library_router_fetch")) as any
+            .finally(() => {
+              pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
+              pendingSourceFetchCountDecremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
+              pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pendingSourceFetchCount });
+              pushGlobalPhase("after_open_library_router_fetch");
+            }) as any
         );
         }
       }
@@ -4310,9 +4326,16 @@ export async function getRecommendations(
         kitsuFinalQueryUsedForFetch.push(kitsuLaneQuery);
         kitsuQueriesActuallyFetched.add(kitsuLaneQuery);
         pushGlobalPhase("before_kitsu_router_fetch");
+        pendingSourceFetchCount += 1;
+        pendingSourceFetchCountIncremented.push({ source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pending: pendingSourceFetchCount });
         requests.push(
           withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
-            .finally(() => pushGlobalPhase("after_kitsu_router_fetch")) as any
+            .finally(() => {
+              pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
+              pendingSourceFetchCountDecremented.push({ source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pending: pendingSourceFetchCount });
+              pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pendingSourceFetchCount });
+              pushGlobalPhase("after_kitsu_router_fetch");
+            }) as any
         );
         kitsuDispatchedOnThisLane = true;
         }
@@ -4339,9 +4362,8 @@ export async function getRecommendations(
         break;
       }
 
-      pendingSourceFetchCount += requests.length;
       const results = await Promise.allSettled(requests);
-      pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - requests.length);
+      pushGlobalPhase("pendingSourceFetchCount_incremented", { laneIndex: lanei, pendingSourceFetchCount });
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
         query: (lane as any)?.query,
         laneFamily,
@@ -4699,6 +4721,7 @@ export async function getRecommendations(
       .filter(Boolean)
   ));
   const kitsuMaxAllowedCanonicalFetchesForHealthGuard = kitsuTerminalBroadFallbackDispatched ? 3 : (kitsuPrimaryRawZero ? 2 : 1);
+  pushGlobalPhase("pendingSourceFetchCount_at_source_health_guard", { pendingSourceFetchCount, allRealSourcesStarved });
   if (allRealSourcesStarved && pendingSourceFetchCount > 0) {
     pushGlobalPhase("source_health_pending", { pendingSourceFetchCount });
     sourceSkippedReason.push(`source_health_pending:${pendingSourceFetchCount}`);
@@ -4750,6 +4773,9 @@ export async function getRecommendations(
         comicVine: { enabled: includeComicVine, bypassed: comicVineUnavailableBypass, status: comicVineAdapterStatus },
       },
       sourceSkippedReason,
+      pendingSourceFetchCount_at_source_health_guard: pendingSourceFetchCount,
+      pendingSourceFetchCount_incremented: pendingSourceFetchCountIncremented.slice(0, 80),
+      pendingSourceFetchCount_decremented: pendingSourceFetchCountDecremented.slice(0, 80),
       builtQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
       deckKey: routedInput.deckKey,
     });
