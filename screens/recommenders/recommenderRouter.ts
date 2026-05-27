@@ -4116,10 +4116,10 @@ export async function getRecommendations(
       }
       if (includeKitsu && !stopKitsuDispatchForRun) {
         if (kitsuDispatchedOnce && !kitsuPrimaryRawZero) {
-          const duplicateDispatchError = `kitsu_duplicate_dispatch_detected:selected=${kitsuSanitizedQuerySelected[0] || ""}:attempted=${kitsuLaneQuery}:lane=${lanei}`;
-          pushGlobalPhase("kitsu_duplicate_dispatch_detected", { duplicateDispatchError, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
-          sourceSkippedReason.push("kitsu_duplicate_dispatch_skipped_non_terminal");
-          pushGlobalPhase("kitsu_duplicate_dispatch_skipped_non_terminal", { attemptedQuery: kitsuLaneQuery, laneIndex: lanei });
+          const fallbackSuppressedMessage = `kitsu_fallback_suppressed_primary_had_raw:selected=${kitsuSanitizedQuerySelected[0] || ""}:attempted=${kitsuLaneQuery}:lane=${lanei}`;
+          pushGlobalPhase("kitsu_fallback_suppressed_primary_had_raw", { fallbackSuppressedMessage, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
+          sourceSkippedReason.push("kitsu_fallback_suppressed_primary_had_raw");
+          pushGlobalPhase("kitsu_fallback_suppressed_primary_had_raw_non_terminal", { attemptedQuery: kitsuLaneQuery, laneIndex: lanei });
         } else if (kitsuDispatchedOnce && kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce) {
           sourceSkippedReason.push("kitsu_fallback_already_attempted");
         } else {
