@@ -198,7 +198,7 @@ function isLikelySubtitleFragmentTitle(title: string): boolean {
 function isReferenceArtifactTitle(title: string): boolean {
   const t = String(title || "").toLowerCase();
   if (!t) return false;
-  return /\b(100 graphic novels for public libraries|public libraries|masters of|index|teaching|literacy|research|screenplays|subject headings|popular culture|focus on)\b/.test(t);
+  return /\b(100 graphic novels for public libraries|public libraries|masters of|index|teaching|literacy|research|screenplays|subject headings|popular culture|focus on|science fiction,\s*fantasy,\s*&\s*horror)\b/.test(t);
 }
 
 function isLikelyIssueFragmentDoc(doc: any): boolean {
@@ -7754,7 +7754,15 @@ const normalizedCandidatesRaw = [
     const root = parentFranchiseRootForDoc(doc);
     const hasParent = Boolean(doc?.parentVolumeName || doc?.parentVolume?.name || doc?.rawDoc?.parentVolumeName || doc?.diagnostics?.parentVolumeName);
     const titleRootMatch = Boolean(root) && normalizeText(title).includes(normalizeText(String(root || "").replace(/-/g, " ")));
-    if (!sourceId) { registerFinalEligibilityReject("missing_source_id", title); return false; }
+    if (!sourceId) {
+      const metadataBag = normalizeText(`${title} ${String(doc?.description || "")} ${String(doc?.queryText || "")}`);
+      const strongGraphicAlignment =
+        /\b(graphic novel|comic|manga|manhwa|webtoon|volume 1|book 1)\b/.test(metadataBag) &&
+        /\b(fantasy|romance|adventure|dystopian|supernatural|young adult|teen)\b/.test(metadataBag) &&
+        (Number(positiveFitScoreByTitle[title] || 0) >= 4 || Number(semanticEvidenceCountByTitle[title] || 0) >= 2);
+      if (!(strongGraphicAlignment && !isReferenceArtifactTitle(title))) { registerFinalEligibilityReject("missing_source_id", title); return false; }
+      markSourceSpecificGate(title, "missing_source_id_strong_graphic_alignment_rescue");
+    }
     if (!queryText) { registerFinalEligibilityReject("missing_query_text", title); return false; }
     const structuralFragment = Number((doc?.diagnostics as any)?.issueFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleFragmentPenalty || 0) < 0 || Number((doc?.diagnostics as any)?.subtitleSideArcPenalty || 0) < 0;
     const queryTermOnlyEvidence = Boolean(queryTermOnlyEvidenceByTitle[title]);
@@ -11342,6 +11350,8 @@ const normalizedCandidatesRaw = [
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
   if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
     teenPostPassGlobalHandoffConsidered = true;
+    const graphicFantasyRomanceEmergencyContext = queryLanesUsed.some((q: any) => /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(String(q || ""))) &&
+      queryLanesUsed.some((q: any) => /\b(fantasy|romance|romantic|love)\b/i.test(String(q || "")));
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
     const seenRoots = new Set<string>();
     const fallbackItems = teenPostPassItems.filter((item: any) => {
@@ -11370,6 +11380,12 @@ const normalizedCandidatesRaw = [
       const fit = Number(positiveFitScoreByTitle[title] || 0);
       const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
       const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+      const queryText = String(doc?.queryText || "").toLowerCase();
+      const graphicCandidate = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
+      if (graphicFantasyRomanceEmergencyContext && !graphicCandidate) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_default_blocked_in_graphic_context";
+        return false;
+      }
       if (!laneAligned && fit <= 0 && semantic <= 0) {
         teenPostPassGlobalHandoffRejectedByTitle[title] = "weak_alignment_for_emergency_handoff";
         return false;
@@ -11391,6 +11407,11 @@ const normalizedCandidatesRaw = [
       const aSemantic = Number(semanticEvidenceCountByTitle[at] || 0);
       const bSemantic = Number(semanticEvidenceCountByTitle[bt] || 0);
       if (bSemantic !== aSemantic) return bSemantic - aSemantic;
+      if (graphicFantasyRomanceEmergencyContext) {
+        const aGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${at} ${String(ad?.queryText || "")}`));
+        const bGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${bt} ${String(bd?.queryText || "")}`));
+        if (bGraphic !== aGraphic) return bGraphic - aGraphic;
+      }
       const aRoot = String(parentFranchiseRootForDoc(ad) || "");
       const bRoot = String(parentFranchiseRootForDoc(bd) || "");
       const aLane = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === aRoot) || profileCompatibleExpansionRoots.has(aRoot));
