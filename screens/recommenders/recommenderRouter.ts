@@ -7869,8 +7869,16 @@ const normalizedCandidatesRaw = [
       .some((token) => /\b(comedy|humor|parody|satire|spoof)\b/.test(token));
     const meaningfulSignalCount = Array.from(new Set(matchedMeaningfulLikedSignals)).length;
     if (meaningfulSignalCount === 0 && weightedTasteScore < 2.5 && !explicitFranchiseSignal) {
-      registerFinalEligibilityReject("zero_meaningful_signal_without_franchise_or_taste_alignment", title);
-      return false;
+      const graphicShapedQuery = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(queryText);
+      const graphicShapedRescue =
+        graphicShapedQuery &&
+        !isReferenceArtifactTitle(title) &&
+        (semanticEvidenceCount >= 1 || Number(positiveFitScoreByTitle[title] || 0) >= 4);
+      if (!graphicShapedRescue) {
+        registerFinalEligibilityReject("zero_meaningful_signal_without_franchise_or_taste_alignment", title);
+        return false;
+      }
+      markSourceSpecificGate(title, "graphic_shaped_meaningful_signal_rescue");
     }
     if (meaningfulSignalCount < 1) {
       const softPassComicVine =
@@ -11350,7 +11358,8 @@ const normalizedCandidatesRaw = [
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
   if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
     teenPostPassGlobalHandoffConsidered = true;
-    const graphicFantasyRomanceEmergencyContext = queryLanesUsed.some((q: any) => /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(String(q || ""))) &&
+    const graphicEmergencyContext = queryLanesUsed.some((q: any) => /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(String(q || "")));
+    const graphicFantasyRomanceEmergencyContext = graphicEmergencyContext &&
       queryLanesUsed.some((q: any) => /\b(fantasy|romance|romantic|love)\b/i.test(String(q || "")));
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
     const seenRoots = new Set<string>();
@@ -11410,10 +11419,10 @@ const normalizedCandidatesRaw = [
       const aSemantic = Number(semanticEvidenceCountByTitle[at] || 0);
       const bSemantic = Number(semanticEvidenceCountByTitle[bt] || 0);
       if (bSemantic !== aSemantic) return bSemantic - aSemantic;
-      if (graphicFantasyRomanceEmergencyContext) {
+      if (graphicEmergencyContext) {
         const aGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${at} ${String(ad?.queryText || "")}`));
         const bGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${bt} ${String(bd?.queryText || "")}`));
-        if (bGraphic !== aGraphic) return bGraphic - aGraphic;
+        if (bGraphic !== aGraphic) return bGraphic - aGraphic; // ranking preference, not hard block
       }
       const aRoot = String(parentFranchiseRootForDoc(ad) || "");
       const bRoot = String(parentFranchiseRootForDoc(bd) || "");
