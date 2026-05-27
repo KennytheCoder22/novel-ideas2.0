@@ -1962,7 +1962,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     base,
     baseNeedsFictionVariant ? `${base} fiction` : "",
     `${base} ${negativeTerms}`,
-    family === "science_fiction" && /\b(science|sci[\s-]?fi|future|dystopian|speculative|space|cyberpunk|android|alien|time travel)\b/.test(lowered) ? "literary science fiction novel" : "",
+    family === "science_fiction" && /\b(science fiction|sci[\s-]?fi|dystopian|future society|space|cyberpunk|alien|robot)\b/.test(lowered) ? "literary science fiction novel" : "",
     family === "science_fiction" ? "psychological science fiction novel" : "",
     family === "science_fiction" ? "romantic science fiction novel" : "",
     family === "science_fiction" ? "dystopian science fiction novel" : "",
@@ -4058,7 +4058,12 @@ export async function getRecommendations(
         if (compact && !/\s-[a-z0-9_]+/i.test(compact)) return compact;
         return themedFallback || compact;
       };
-      const baseLaneQuerySourceSanitized = String(baseLaneQuery || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim();
+      const baseLaneQuerySourceSanitized = String(baseLaneQuery || "")
+        .replace(/\bcharacter[-\s]?focused\b/gi, " ")
+        .replace(/\b(graphic\s+novel)\s+\1\b/gi, "$1")
+        .replace(/\b(comic\s+series)\s+\1\b/gi, "$1")
+        .replace(/\s+/g, " ")
+        .trim();
       const googleLaneQuery = baseLaneQuerySourceSanitized || baseLaneQuery;
       const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure";
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
