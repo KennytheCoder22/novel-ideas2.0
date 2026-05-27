@@ -11394,6 +11394,8 @@ const normalizedCandidatesRaw = [
   const teenPostPassEmergencyCandidateScores: Array<{ title: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceScore: number; emergencyRank: number }> = [];
   const graphicEmergencyRescueCandidates: Array<{ title: string; rejectReason: string; positiveFitScore: number; semanticEvidenceCount: number; titleLooksGraphic: boolean; selected: boolean }> = [];
   const terminalEmergencyRankedCandidates: Array<{ title: string; titleLooksGraphic: boolean; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; selected: boolean }> = [];
+  const comparableRejectedGraphicCandidates: Array<{ title: string; rejectReason: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; titleLooksGraphic: boolean }> = [];
+  let graphicEmergencyProseBlockReason = "";
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
   let graphicCandidateAvailableButProseSelected = false;
   if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
@@ -11407,6 +11409,7 @@ const normalizedCandidatesRaw = [
     });
     const graphicFantasyRomanceEmergencyContext = graphicEmergencyContext &&
       queryLanesUsed.some((q: any) => /\b(fantasy|romance|romantic|love)\b/i.test(String(q || "")));
+    const entityDrivenGraphicContext = graphicEmergencyContext && profileSelectedEntitySeeds.length > 0;
     const rejectedLowConfidenceSet = new Set((finalEligibilityRejectedTitlesByReason?.low_recommendation_confidence || []).map((t) => normalizeText(String(t || ""))));
     const rejectedTasteThresholdSet = new Set((finalEligibilityRejectedTitlesByReason?.fails_taste_threshold_gate || []).map((t) => normalizeText(String(t || ""))));
     const rejectedMissingParentOrRootSet = new Set((finalEligibilityRejectedTitlesByReason?.missing_parent_or_title_root_match || []).map((t) => normalizeText(String(t || ""))));
@@ -11431,6 +11434,20 @@ const normalizedCandidatesRaw = [
       const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
       const root = String(parentFranchiseRootForDoc(doc) || "__none__");
       const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+      const rejectReason =
+        rejectedLowConfidenceSet.has(key) ? "low_recommendation_confidence" :
+        rejectedTasteThresholdSet.has(key) ? "fails_taste_threshold_gate" :
+        rejectedMissingParentOrRootSet.has(key) ? "missing_parent_or_title_root_match" :
+        rejectedZeroMeaningfulSet.has(key) ? "zero_meaningful_signal_without_franchise_or_taste_alignment" :
+        "missing_source_id";
+      comparableRejectedGraphicCandidates.push({
+        title,
+        rejectReason,
+        positiveFitScore: fit,
+        semanticEvidenceCount: semantic,
+        laneAligned,
+        titleLooksGraphic: titleLooksGraphic || mediaShapedGraphic,
+      });
       return semantic >= 1 || fit >= 3 || laneAligned;
     });
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
@@ -11481,6 +11498,16 @@ const normalizedCandidatesRaw = [
         const proseDefaultLike = /\b(novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
         if (proseDefaultLike || comparableRejectedGraphicExists) {
           teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_blocked_when_graphic_candidate_available";
+          if (!graphicEmergencyProseBlockReason) graphicEmergencyProseBlockReason = proseDefaultLike ? "prose_default_like_with_graphic_candidate_available" : "comparable_rejected_graphic_exists";
+          return false;
+        }
+      }
+      if (entityDrivenGraphicContext && !graphicCandidate) {
+        const rootMatch = profileSelectedEntitySeeds.some((seed) => normalizeText(String(seed || "")).replace(/[^a-z0-9]+/g, "-") === root);
+        const titleEntityMatch = profileSelectedEntitySeeds.some((seed) => normalizeText(title).includes(normalizeText(seed)));
+        if (!(rootMatch || titleEntityMatch)) {
+          teenPostPassGlobalHandoffRejectedByTitle[title] = "entity_graphic_context_prose_blocked";
+          if (!graphicEmergencyProseBlockReason) graphicEmergencyProseBlockReason = "entity_graphic_context_requires_entity_or_graphic_match";
           return false;
         }
       }
@@ -11516,6 +11543,11 @@ const normalizedCandidatesRaw = [
         const aGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${at} ${String(ad?.queryText || "")}`));
         const bGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${bt} ${String(bd?.queryText || "")}`));
         if (bGraphic !== aGraphic) return bGraphic - aGraphic;
+      }
+      if (entityDrivenGraphicContext) {
+        const aEntity = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(at).includes(normalizeText(seed)) || normalizeText(String(parentFranchiseRootForDoc(ad) || "")).includes(normalizeText(seed))));
+        const bEntity = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(bt).includes(normalizeText(seed)) || normalizeText(String(parentFranchiseRootForDoc(bd) || "")).includes(normalizeText(seed))));
+        if (bEntity !== aEntity) return bEntity - aEntity;
       }
       const aFit = Number(positiveFitScoreByTitle[at] || 0);
       const bFit = Number(positiveFitScoreByTitle[bt] || 0);
@@ -12304,6 +12336,8 @@ const normalizedCandidatesRaw = [
     teenPostPassEmergencyCandidateScores,
     terminalEmergencyRankedCandidates,
     graphicEmergencyRescueCandidates,
+    comparableRejectedGraphicCandidates,
+    graphicEmergencyProseBlockReason,
     graphicCandidateAvailableButProseSelected,
     normalFinalGateRecoveryConsidered,
     normalFinalGateRecoveryAcceptedTitles,
