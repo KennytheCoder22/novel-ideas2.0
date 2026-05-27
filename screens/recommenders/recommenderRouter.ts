@@ -4017,11 +4017,23 @@ export async function getRecommendations(
         return compact;
       };
       const normalizeFinalSourceQuery = (q: string) => {
-        const tokens = String(q || "").replace(/\s+/g, " ").trim().split(/\s+/).filter(Boolean);
+        const cleaned = String(q || "")
+          .replace(/\b(environmental pressure|procedural problem-solving|setting|stakes)\b/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const tokens = cleaned.split(/\s+/).filter(Boolean);
         const out: string[] = [];
         let seenGraphicNovel = false;
         let seenComicSeries = false;
         let seenGraphicToken = false;
+        const seenConcept = new Set<string>();
+        const conceptOf = (t: string) => {
+          const n = String(t || "").toLowerCase();
+          if (/^(suspense|thriller|mystery|crime)$/.test(n)) return n;
+          if (/^(graphic|comic|manga|manhwa|webtoon)$/.test(n)) return "graphic_media";
+          if (/^(fantasy|supernatural|romance|romantic|adventure|science|fiction|dystopian)$/.test(n)) return n;
+          return "";
+        };
         for (let i = 0; i < tokens.length; i += 1) {
           const a = tokens[i]?.toLowerCase() || "";
           const b = tokens[i + 1]?.toLowerCase() || "";
@@ -4036,6 +4048,11 @@ export async function getRecommendations(
           if (a === "graphic" && b !== "novel") {
             if (seenGraphicToken) continue;
             seenGraphicToken = true;
+          }
+          const concept = conceptOf(a);
+          if (concept) {
+            if (seenConcept.has(concept)) continue;
+            seenConcept.add(concept);
           }
           out.push(tokens[i]);
         }
@@ -11373,9 +11390,16 @@ const normalizedCandidatesRaw = [
   const graphicEmergencyRescueCandidates: Array<{ title: string; rejectReason: string; positiveFitScore: number; semanticEvidenceCount: number; titleLooksGraphic: boolean; selected: boolean }> = [];
   const terminalEmergencyRankedCandidates: Array<{ title: string; titleLooksGraphic: boolean; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; selected: boolean }> = [];
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
+  let graphicCandidateAvailableButProseSelected = false;
   if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
     teenPostPassGlobalHandoffConsidered = true;
     const graphicEmergencyContext = queryLanesUsed.some((q: any) => /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(String(q || "")));
+    const hasGraphicCandidateInPostPass = graphicEmergencyContext && teenPostPassItems.some((item: any) => {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      const queryText = String(doc?.queryText || "");
+      return /\b(graphic novel|comic|manga|manhwa|webtoon|volume\s*1|book\s*1|vol\.?\s*1|omnibus)\b/i.test(`${title} ${queryText}`);
+    });
     const graphicFantasyRomanceEmergencyContext = graphicEmergencyContext &&
       queryLanesUsed.some((q: any) => /\b(fantasy|romance|romantic|love)\b/i.test(String(q || "")));
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
@@ -11419,6 +11443,13 @@ const normalizedCandidatesRaw = [
         const obviousProseDefault = /\b(novel|a novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
         if (obviousProseDefault && !laneAligned && semantic <= 0 && fit <= 0) {
           teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_default_blocked_in_graphic_context";
+          return false;
+        }
+      }
+      if (hasGraphicCandidateInPostPass && !graphicCandidate) {
+        const proseDefaultLike = /\b(novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
+        if (proseDefaultLike) {
+          teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_blocked_when_graphic_candidate_available";
           return false;
         }
       }
@@ -11533,6 +11564,10 @@ const normalizedCandidatesRaw = [
         .filter(Boolean);
       for (const acceptedTitle of teenPostPassGlobalHandoffAcceptedTitles) {
         delete teenPostPassGlobalHandoffRejectedByTitle[acceptedTitle];
+      }
+      if (hasGraphicCandidateInPostPass) {
+        const selectedHasGraphic = teenPostPassGlobalHandoffAcceptedTitles.some((t) => /\b(graphic novel|comic|manga|manhwa|webtoon|volume\s*1|book\s*1|vol\.?\s*1|omnibus)\b/i.test(t));
+        if (!selectedHasGraphic) graphicCandidateAvailableButProseSelected = true;
       }
       for (const row of terminalEmergencyRankedCandidates) {
         if (teenPostPassGlobalHandoffAcceptedTitles.some((t) => normalizeText(t) === normalizeText(row.title))) row.selected = true;
@@ -12238,6 +12273,7 @@ const normalizedCandidatesRaw = [
     teenPostPassEmergencyCandidateScores,
     terminalEmergencyRankedCandidates,
     graphicEmergencyRescueCandidates,
+    graphicCandidateAvailableButProseSelected,
     normalFinalGateRecoveryConsidered,
     normalFinalGateRecoveryAcceptedTitles,
     normalFinalGateRecoveryRejectedByTitle,
