@@ -3844,6 +3844,7 @@ export async function getRecommendations(
   let kitsuFallbackRawZero = false;
   let kitsuTerminalBroadFallbackDispatched = false;
   let kitsuEntityRetryUsedAfterPrimaryRaw = false;
+  let pendingSourceFetchCount = 0;
   let stopKitsuDispatchForRun = false;
   let stopRouterFetchLoop = false;
   let comicVineResolvedSeedQuery = "";
@@ -4125,6 +4126,7 @@ export async function getRecommendations(
         return themedFallback || compact;
       };
       const baseLaneQuerySourceSanitized = String(baseLaneQuery || "")
+        .replace(/\b(genre|tone|mood|theme|drive|audience|age|media|format)\s*:/gi, " ")
         .replace(/\bcharacter[-\s]?focused\b/gi, " ")
         .replace(/\b(graphic\s+novel)\s+\1\b/gi, "$1")
         .replace(/\b(comic\s+series)\s+\1\b/gi, "$1")
@@ -4337,7 +4339,9 @@ export async function getRecommendations(
         break;
       }
 
+      pendingSourceFetchCount += requests.length;
       const results = await Promise.allSettled(requests);
+      pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - requests.length);
       debugRouterLog("QUERY_FAMILY_AFTER_FETCH", {
         query: (lane as any)?.query,
         laneFamily,
@@ -4695,7 +4699,10 @@ export async function getRecommendations(
       .filter(Boolean)
   ));
   const kitsuMaxAllowedCanonicalFetchesForHealthGuard = kitsuTerminalBroadFallbackDispatched ? 3 : (kitsuPrimaryRawZero ? 2 : 1);
-  if (allRealSourcesStarved) {
+  if (allRealSourcesStarved && pendingSourceFetchCount > 0) {
+    pushGlobalPhase("source_health_pending", { pendingSourceFetchCount });
+    sourceSkippedReason.push(`source_health_pending:${pendingSourceFetchCount}`);
+  } else if (allRealSourcesStarved) {
     pushGlobalPhase("source_health_guard");
     pushEarlyReturnDiagnostics("source_health_failed", "post_fetch_source_health_guard");
     throwSourceFatal("source_health_failed", {
