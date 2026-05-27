@@ -3827,6 +3827,8 @@ export async function getRecommendations(
   let comicVineAdapterStatus: RecommendationResult["comicVineAdapterStatus"] = includeComicVine ? "ok" : "disabled";
   let comicVineDispatchedOnce = false;
   let kitsuDispatchedOnce = false;
+  let stopKitsuDispatchForRun = false;
+  let stopRouterFetchLoop = false;
   let comicVineResolvedSeedQuery = "";
   let comicVineFallbackReason = "none";
   let comicVineUsedFallbackQuery = false;
@@ -3887,6 +3889,20 @@ export async function getRecommendations(
           });
           fetchLoopExhaustedMarkerEmitted = true;
         }
+        break;
+      }
+      if (kitsuDispatchedOnce && (!sourceEnabled.openLibrary || openLibraryRouterFetchCount >= sourceFetchCapPerRun)) {
+        if (!fetchLoopExhaustedMarkerEmitted) {
+          pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
+            laneIndex: lanei,
+            reason: "openlibrary_capped_after_single_kitsu_dispatch",
+            googleBooksRouterFetchCount,
+            openLibraryRouterFetchCount,
+            kitsuRouterFetchCount,
+          });
+          fetchLoopExhaustedMarkerEmitted = true;
+        }
+        stopRouterFetchLoop = true;
         break;
       }
       pushGlobalPhase("router_fetch_loop_iteration", {
@@ -4050,11 +4066,24 @@ export async function getRecommendations(
         );
         }
       }
-      if (includeKitsu) {
+      if (includeKitsu && !stopKitsuDispatchForRun) {
         if (kitsuDispatchedOnce) {
           const duplicateDispatchError = `kitsu_duplicate_dispatch_detected:selected=${kitsuSanitizedQuerySelected[0] || ""}:attempted=${kitsuLaneQuery}:lane=${lanei}`;
           pushGlobalPhase("kitsu_duplicate_dispatch_detected", { duplicateDispatchError, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
-          throw new Error(duplicateDispatchError);
+          stopKitsuDispatchForRun = true;
+          stopRouterFetchLoop = true;
+          sourceSkippedReason.push("kitsu_duplicate_dispatch_stopped");
+          if (!fetchLoopExhaustedMarkerEmitted) {
+            pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
+              laneIndex: lanei,
+              reason: "kitsu_duplicate_dispatch_stopped",
+              googleBooksRouterFetchCount,
+              openLibraryRouterFetchCount,
+              kitsuRouterFetchCount,
+            });
+            fetchLoopExhaustedMarkerEmitted = true;
+          }
+          break;
         }
         if (kitsuRouterFetchCount >= sourceFetchCapPerRun) {
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
@@ -4389,6 +4418,7 @@ export async function getRecommendations(
         }
       }
     }
+    if (stopRouterFetchLoop) break;
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
