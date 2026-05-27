@@ -1961,11 +1961,12 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   const explicitPsychologicalSignal = /\b(psychological|thriller|horror)\b/.test(lowered);
   const explicitRomanticSignal = /\b(romance|romantic|relationship|love)\b/.test(lowered);
   const explicitInvestigatorSignal = /\b(detective|investigator|noir|case|crime[\s-]?solving|police|sleuth)\b/.test(lowered);
+  const isGraphicNovelShaped = /\b(graphic\s+novel|comic|manga|manhwa|webtoon)\b/i.test(`${base} ${String(bucketPlan?.preview || "")}`);
   const lanes = dedupeNonEmptyQueries([
     base,
     baseNeedsFictionVariant ? `${base} fiction` : "",
     `${base} ${negativeTerms}`,
-    family === "science_fiction" && /\b(science fiction|sci[\s-]?fi|dystopian|future society|space|cyberpunk|alien|robot)\b/.test(lowered) ? "literary science fiction novel" : "",
+    family === "science_fiction" && !isGraphicNovelShaped && /\b(science fiction|sci[\s-]?fi|dystopian|future society|space|cyberpunk|alien|robot)\b/.test(lowered) ? "literary science fiction novel" : "",
     family === "science_fiction" && explicitPsychologicalSignal ? "psychological science fiction novel" : "",
     family === "science_fiction" && explicitRomanticSignal ? "romantic science fiction novel" : "",
     family === "science_fiction" ? "dystopian science fiction novel" : "",
@@ -4118,6 +4119,11 @@ export async function getRecommendations(
           ? "openLibrary"
           : lane.source;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
+        if (googleBooksQueriesActuallyFetched.has(googleLaneQuery)) {
+          sourceSkippedReason.push("googleBooks_exact_query_dedupe_skipped");
+          pushGlobalPhase("googleBooks_exact_query_dedupe_skipped", { query: googleLaneQuery, laneIndex: lanei });
+          continue;
+        }
         const googleProbeStatus = String(sourceHealthProbeStatus.google_books || "").toLowerCase();
         const googleProbeFailed = googleProbeStatus.includes("failed") || googleProbeStatus.includes("timeout") || googleProbeStatus.includes("error");
         if (googleBooksProbeDegraded || googleProbeFailed) {
