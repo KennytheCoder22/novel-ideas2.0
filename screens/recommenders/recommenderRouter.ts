@@ -3983,6 +3983,7 @@ export async function getRecommendations(
       const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || lane.query || "");
 
       var requests: Array<Promise<RecommendationResult>> = [];
+      let kitsuDispatchedOnThisLane = false;
       const baseLaneQuery = String(lane.query || "").trim();
       const sanitizeOpenLibraryQuery = (q: string) => {
         const cleaned = q
@@ -4124,6 +4125,7 @@ export async function getRecommendations(
           withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
             .finally(() => pushGlobalPhase("after_kitsu_router_fetch")) as any
         );
+        kitsuDispatchedOnThisLane = true;
         }
         }
       }
@@ -4206,10 +4208,10 @@ export async function getRecommendations(
         index += 1;
       }
 
-      const laneKitsu = includeKitsu && results[index]?.status === "fulfilled"
+      const laneKitsu = includeKitsu && kitsuDispatchedOnThisLane && results[index]?.status === "fulfilled"
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
-      if (includeKitsu) {
+      if (includeKitsu && kitsuDispatchedOnThisLane) {
         const kitsuRawCount = Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu));
         if (!kitsuFallbackDispatchedOnce && kitsuDispatchedOnce) kitsuPrimaryRawZero = kitsuRawCount === 0;
         const kitsuResponseStatus = String((laneKitsu as any)?.debugSourceStatus || (laneKitsu as any)?.kitsuSourceStatus || "").trim();
@@ -10915,7 +10917,7 @@ const normalizedCandidatesRaw = [
   let minimalSafeOneBlockedReason = "";
   const kitsuHasRawCandidates = Number(aggregatedRawFetched.kitsu || 0) > 0
     || kitsuFetchResultsByQuery.some((row) => Number(row?.rawCount || 0) > 0);
-  if (!suppressTopRecommendations) {
+  if (!suppressTopRecommendations || (finalOutputItems.length === 0 && kitsuHasRawCandidates)) {
     const acceptedAfterTerminalSet = new Set(acceptedAfterTerminalRejectFilter.map((t) => normalizeText(String(t || ""))).filter(Boolean));
     if (acceptedAfterTerminalSet.size === 0 || (finalOutputItems.length === 0 && kitsuHasRawCandidates)) {
       const normalFinalGateRecoveryItems =
