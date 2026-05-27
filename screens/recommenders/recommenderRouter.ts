@@ -3845,6 +3845,7 @@ export async function getRecommendations(
   let kitsuTerminalBroadFallbackDispatched = false;
   let kitsuEntityRetryUsedAfterPrimaryRaw = false;
   let pendingSourceFetchCount = 0;
+  const pendingSourceFetches: Array<Promise<any>> = [];
   const pendingSourceFetchCountIncremented: Array<{ source: string; laneIndex: number; query: string; pending: number }> = [];
   const pendingSourceFetchCountDecremented: Array<{ source: string; laneIndex: number; query: string; pending: number }> = [];
   let stopKitsuDispatchForRun = false;
@@ -4221,10 +4222,12 @@ export async function getRecommendations(
         const googleBooksTimeoutMs = googleBooksRouterFetchCount <= 1 ? 8_000 : 5_000;
         pendingSourceFetchCount += 1;
         pendingSourceFetchCountIncremented.push({ source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pending: pendingSourceFetchCount });
+        const googlePrimaryFetchPromise = runEngine("googleBooks", laneInput);
+        pendingSourceFetches.push(googlePrimaryFetchPromise.catch(() => null));
         requests.push(
           withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, async () => {
             try {
-              return await runEngine("googleBooks", laneInput);
+              return await googlePrimaryFetchPromise;
             } catch (err: any) {
               const msg = String(err?.message || err || "");
               if (!msg.includes("router_before_google_books_full_fetch_timeout")) throw err;
@@ -4241,7 +4244,9 @@ export async function getRecommendations(
               googleBooksTimeoutStageByQuery.push({ query: googleLaneQuery, stage: "fallback_dispatched", fallbackQuery: fallbackGoogleQuery, reason: "retry_with_simplified_query" });
               pushGlobalPhase("before_google_books_fallback_router_fetch", { primaryQuery: googleLaneQuery, fallbackQuery: fallbackGoogleQuery });
               googleBooksRouterFetchCount = Math.max(googleBooksRouterFetchCount, sourceFetchCapPerRun);
-              return await withSourceTimeout("router_before_google_books_fallback_fetch", "router_after_google_books_fallback_fetch", 4500, () => runEngine("googleBooks", fallbackLaneInput));
+              const googleFallbackFetchPromise = runEngine("googleBooks", fallbackLaneInput);
+              pendingSourceFetches.push(googleFallbackFetchPromise.catch(() => null));
+              return await withSourceTimeout("router_before_google_books_fallback_fetch", "router_after_google_books_fallback_fetch", 4500, () => googleFallbackFetchPromise);
             }
           })
             .finally(() => {
@@ -4269,8 +4274,10 @@ export async function getRecommendations(
         pushGlobalPhase("before_open_library_router_fetch");
         pendingSourceFetchCount += 1;
         pendingSourceFetchCountIncremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
+        const openLibraryFetchPromise = runEngine("openLibrary", laneInput);
+        pendingSourceFetches.push(openLibraryFetchPromise.catch(() => null));
         requests.push(
-          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => runEngine("openLibrary", laneInput))
+          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => openLibraryFetchPromise)
             .finally(() => {
               pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
               pendingSourceFetchCountDecremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
@@ -4328,8 +4335,10 @@ export async function getRecommendations(
         pushGlobalPhase("before_kitsu_router_fetch");
         pendingSourceFetchCount += 1;
         pendingSourceFetchCountIncremented.push({ source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pending: pendingSourceFetchCount });
+        const kitsuFetchPromise = getKitsuMangaRecommendations(laneInput);
+        pendingSourceFetches.push(kitsuFetchPromise.catch(() => null));
         requests.push(
-          withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => getKitsuMangaRecommendations(laneInput))
+          withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => kitsuFetchPromise)
             .finally(() => {
               pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
               pendingSourceFetchCountDecremented.push({ source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pending: pendingSourceFetchCount });
@@ -4661,6 +4670,10 @@ export async function getRecommendations(
       }
     }
     if (stopRouterFetchLoop) break;
+  }
+  if (pendingSourceFetches.length > 0) {
+    pushGlobalPhase("awaiting_pending_source_fetches_before_post_fetch_health_guard", { pendingSourceFetches: pendingSourceFetches.length });
+    await Promise.allSettled(pendingSourceFetches);
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
