@@ -4191,7 +4191,7 @@ export async function getRecommendations(
           pushGlobalPhase("kitsu_fallback_suppressed_primary_had_raw", { fallbackSuppressedMessage, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
           sourceSkippedReason.push("kitsu_fallback_suppressed_primary_had_raw");
           pushGlobalPhase("kitsu_fallback_suppressed_primary_had_raw_non_terminal", { attemptedQuery: kitsuLaneQuery, laneIndex: lanei });
-        } else if (kitsuDispatchedOnce && kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce) {
+        } else if (kitsuDispatchedOnce && kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce && (!kitsuFallbackRawZero || kitsuTerminalBroadFallbackDispatched)) {
           sourceSkippedReason.push("kitsu_fallback_already_attempted");
         } else {
         const isFallbackAttempt = kitsuDispatchedOnce && kitsuPrimaryRawZero && !kitsuFallbackDispatchedOnce;
