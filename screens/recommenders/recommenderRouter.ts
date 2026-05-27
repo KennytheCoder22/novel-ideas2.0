@@ -4072,7 +4072,7 @@ export async function getRecommendations(
         sourceSkippedReason.push("kitsu_fallback_duplicate_canonical_skipped");
       }
       const kitsuLaneQuery = kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce
-        ? (fallbackCandidate || kitsuSanitized.sanitized)
+        ? (fallbackCandidate || "adventure")
         : kitsuSanitized.sanitized;
       kitsuPreSanitizedQueries.push(baseLaneQuery);
       kitsuSanitizedQuerySelected.push(kitsuLaneQuery);
@@ -4257,7 +4257,7 @@ export async function getRecommendations(
         }
         if (results[index]?.status === "rejected" && String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").includes("router_before_google_books_full_fetch_timeout")) {
           googleBooksConsecutiveTimeouts += 1;
-          if (googleBooksConsecutiveTimeouts >= 2) {
+          if (googleBooksConsecutiveTimeouts >= 1) {
             googleQuotaExhausted = true;
             sourceSkippedReason.push("googleBooks_marked_degraded_after_consecutive_timeouts");
           }
@@ -11925,6 +11925,7 @@ const normalizedCandidatesRaw = [
     finalItemsLength,
     finalItemsTitles,
     returnedItemsLength: finalOutputItems.length,
+    returnClassificationReason: finalOutputItems.length > 0 ? "valid_recommendation_returned" : (finalHandoffEmptyReason || "unknown_empty_result"),
     teenPostPassGlobalHandoffConsidered,
     teenPostPassGlobalHandoffAcceptedTitles,
     teenPostPassGlobalHandoffRejectedByTitle,
@@ -12011,7 +12012,7 @@ const normalizedCandidatesRaw = [
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     routerPhaseHistory,
-    deployedCommitHash: "651d347",
+    deployedCommitHash: "d77d823",
     routerBuildTimestamp: ROUTER_BUILD_TIMESTAMP,
     routerInstrumentationVersion: ROUTER_INSTRUMENTATION_VERSION,
     nytFetchAttempted,
