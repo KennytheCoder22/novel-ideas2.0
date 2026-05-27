@@ -4056,7 +4056,9 @@ export async function getRecommendations(
           }
           out.push(tokens[i]);
         }
-        return out.join(" ").replace(/\s+/g, " ").trim();
+        const normalized = out.join(" ").replace(/\s+/g, " ").trim();
+        if (/^graphic$/i.test(normalized)) return "graphic novel";
+        return normalized;
       };
       const canonicalizeKitsuDispatchQuery = (q: string) => String(q || "")
         .toLowerCase()
@@ -11402,6 +11404,22 @@ const normalizedCandidatesRaw = [
     });
     const graphicFantasyRomanceEmergencyContext = graphicEmergencyContext &&
       queryLanesUsed.some((q: any) => /\b(fantasy|romance|romantic|love)\b/i.test(String(q || "")));
+    const rejectedLowConfidenceSet = new Set((finalEligibilityRejectedTitlesByReason?.low_recommendation_confidence || []).map((t) => normalizeText(String(t || ""))));
+    const rejectedTasteThresholdSet = new Set((finalEligibilityRejectedTitlesByReason?.fails_taste_threshold_gate || []).map((t) => normalizeText(String(t || ""))));
+    const comparableRejectedGraphicExists = graphicEmergencyContext && teenPostPassItems.some((item: any) => {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      const key = normalizeText(title);
+      const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
+      if (!title || !titleLooksGraphic || isReferenceArtifactTitle(title)) return false;
+      const rejected = rejectedLowConfidenceSet.has(key) || rejectedTasteThresholdSet.has(key);
+      if (!rejected) return false;
+      const fit = Number(positiveFitScoreByTitle[title] || 0);
+      const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+      const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+      return semantic >= 1 || fit >= 3 || laneAligned;
+    });
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
     const seenRoots = new Set<string>();
     const fallbackItems = teenPostPassItems.filter((item: any) => {
@@ -11448,7 +11466,7 @@ const normalizedCandidatesRaw = [
       }
       if (hasGraphicCandidateInPostPass && !graphicCandidate) {
         const proseDefaultLike = /\b(novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
-        if (proseDefaultLike) {
+        if (proseDefaultLike || comparableRejectedGraphicExists) {
           teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_blocked_when_graphic_candidate_available";
           return false;
         }
