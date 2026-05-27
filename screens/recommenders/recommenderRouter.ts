@@ -3998,6 +3998,7 @@ export async function getRecommendations(
         const cleaned = String(q || "")
           .replace(/["']/g, " ")
           .replace(/[-+]\w+/g, " ")
+          .replace(/\b(genre|tone|mood|theme|drive|audience|age|media|format)\s*:/gi, " ")
           .replace(/\b(character[-\s]?focused|novel|book|narrative|consequence|survival|exclude|without)\b/gi, " ")
           .replace(/\s+/g, " ")
           .trim()
@@ -4008,6 +4009,7 @@ export async function getRecommendations(
         const anchorTokenSet = new Set(anchorHits.flatMap((ph) => ph.split(/\s+/)));
         const residualTokens = tokens.filter((t) => !anchorTokenSet.has(t));
         const merged = [...anchorHits, ...residualTokens].join(" ")
+          .replace(/\bcharacter pressure\b/gi, " ")
           .replace(/\s+/g, " ")
           .trim();
         const compact = merged.split(/\s+/).slice(0, 6).join(" ").trim();
@@ -8502,6 +8504,8 @@ const normalizedCandidatesRaw = [
   }
   const finalItemsLength = outputItems.length;
   const finalItemsTitles = outputItems.map((it:any)=>String(it?.doc?.title || "").trim()).filter(Boolean);
+  const returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
+  const acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
   const postRenderTitles = finalItemsTitles;
   const comicVineFinalScoreByTitle = finalRenderDocs
     .filter((doc:any)=>String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("comicvine"))
@@ -11477,6 +11481,25 @@ const normalizedCandidatesRaw = [
           itemsForReturn = [psychSuspenseRecovery];
           teenPostPassGlobalHandoffAcceptedTitles = [String(psychSuspenseRecovery?.doc?.title || psychSuspenseRecovery?.title || "").trim()].filter(Boolean);
           sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:psych_suspense_min_safe_one");
+        } else {
+          const fantasyYaRecovery = teenPostPassItems.find((item: any) => {
+            const doc = item?.doc || item;
+            const title = String(doc?.title || item?.title || "").trim();
+            const queryText = String(doc?.queryText || "").toLowerCase();
+            const yaFantasyLane = /\b(young adult|ya|teen)\b/.test(queryText) && /\b(fantasy|adventure|found family)\b/.test(queryText);
+            if (!yaFantasyLane || !title) return false;
+            if (isReferenceArtifactTitle(title) || /\[google_books_fetch_error\]/i.test(title)) return false;
+            const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+            if (scrubReason && scrubReason.includes("artifact")) return false;
+            const fit = Number(positiveFitScoreByTitle[title] || 0);
+            const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+            return fit >= 0 || semantic >= 1;
+          });
+          if (fantasyYaRecovery) {
+            itemsForReturn = [fantasyYaRecovery];
+            teenPostPassGlobalHandoffAcceptedTitles = [String(fantasyYaRecovery?.doc?.title || fantasyYaRecovery?.title || "").trim()].filter(Boolean);
+            sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:fantasy_ya_min_safe_one");
+          }
         }
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:no_safe_candidate");
       }
@@ -12052,6 +12075,7 @@ const normalizedCandidatesRaw = [
     finalSeriesCapDroppedReasons,
     finalItemsLength,
     finalItemsTitles,
+    acceptedButNotReturnedTitles,
     returnedItemsLength: finalOutputItems.length,
     returnClassificationReason: finalOutputItems.length > 0 ? "valid_recommendation_returned" : (finalHandoffEmptyReason && finalHandoffEmptyReason !== "none" ? finalHandoffEmptyReason : "unknown_empty_result"),
     teenPostPassGlobalHandoffConsidered,
