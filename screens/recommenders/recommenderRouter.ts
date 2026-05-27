@@ -1958,18 +1958,20 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     );
 
   const baseNeedsFictionVariant = base && !/\b(novel|fiction)\b/i.test(base);
+  const explicitPsychologicalSignal = /\b(psychological|thriller|horror)\b/.test(lowered);
   const lanes = dedupeNonEmptyQueries([
     base,
     baseNeedsFictionVariant ? `${base} fiction` : "",
     `${base} ${negativeTerms}`,
     family === "science_fiction" && /\b(science fiction|sci[\s-]?fi|dystopian|future society|space|cyberpunk|alien|robot)\b/.test(lowered) ? "literary science fiction novel" : "",
-    family === "science_fiction" ? "psychological science fiction novel" : "",
+    family === "science_fiction" && explicitPsychologicalSignal ? "psychological science fiction novel" : "",
     family === "science_fiction" ? "romantic science fiction novel" : "",
     family === "science_fiction" ? "dystopian science fiction novel" : "",
     family === "science_fiction" && /human centered|identity|literary|emotional/.test(lowered) ? "human centered science fiction novel" : "",
     family === "science_fiction" && /identity|literary/.test(lowered) ? "literary science fiction identity novel" : "",
     family === "science_fiction" && /emotional|speculative/.test(lowered) ? "emotional speculative fiction novel" : "",
     family === "fantasy" && /dark/.test(lowered) ? "dark fantasy novel" : "",
+    family === "fantasy" && explicitPsychologicalSignal ? "psychological fantasy novel" : "",
     family === "fantasy" && /magic|wizard|witch/.test(lowered) ? "magic fantasy novel" : "",
     family === "horror" && /psychological/.test(lowered) ? "psychological horror graphic novel" : "",
     family === "horror" && /haunted|ghost/.test(lowered) ? "haunted house horror novel" : "",
@@ -11326,6 +11328,13 @@ const normalizedCandidatesRaw = [
         return false;
       }
       const root = String(parentFranchiseRootForDoc(doc) || "__none__");
+      const fit = Number(positiveFitScoreByTitle[title] || 0);
+      const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+      const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+      if (!laneAligned && fit <= 0 && semantic <= 0) {
+        teenPostPassGlobalHandoffRejectedByTitle[title] = "weak_alignment_for_emergency_handoff";
+        return false;
+      }
       if (seenRoots.has(root)) {
         teenPostPassGlobalHandoffRejectedByTitle[title] = "duplicate_root";
         return false;
