@@ -3843,6 +3843,7 @@ export async function getRecommendations(
   let kitsuPrimaryRawZero = false;
   let kitsuFallbackRawZero = false;
   let kitsuTerminalBroadFallbackDispatched = false;
+  let kitsuEntityRetryUsedAfterPrimaryRaw = false;
   let stopKitsuDispatchForRun = false;
   let stopRouterFetchLoop = false;
   let comicVineResolvedSeedQuery = "";
@@ -4262,7 +4263,18 @@ export async function getRecommendations(
         }
       }
       if (includeKitsu && !stopKitsuDispatchForRun) {
-        if (kitsuDispatchedOnce && !kitsuPrimaryRawZero) {
+        const explicitEntityLane = profileSelectedEntitySeeds.some((seed) => {
+          const nseed = normalizeText(String(seed || ""));
+          return nseed.length >= 3 && normalizeText(baseLaneQuery).includes(nseed);
+        });
+        const graphicContextLane = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(baseLaneQuery);
+        const allowEntityRetryAfterPrimaryRaw =
+          kitsuDispatchedOnce &&
+          !kitsuPrimaryRawZero &&
+          !kitsuEntityRetryUsedAfterPrimaryRaw &&
+          explicitEntityLane &&
+          graphicContextLane;
+        if (kitsuDispatchedOnce && !kitsuPrimaryRawZero && !allowEntityRetryAfterPrimaryRaw) {
           const fallbackSuppressedMessage = `kitsu_fallback_suppressed_primary_had_raw:selected=${kitsuSanitizedQuerySelected[0] || ""}:attempted=${kitsuLaneQuery}:lane=${lanei}`;
           pushGlobalPhase("kitsu_fallback_suppressed_primary_had_raw", { fallbackSuppressedMessage, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
           sourceSkippedReason.push("kitsu_fallback_suppressed_primary_had_raw");
@@ -4270,6 +4282,11 @@ export async function getRecommendations(
         } else if (kitsuDispatchedOnce && kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce && (!kitsuFallbackRawZero || kitsuTerminalBroadFallbackDispatched)) {
           sourceSkippedReason.push("kitsu_fallback_already_attempted");
         } else {
+        if (allowEntityRetryAfterPrimaryRaw) {
+          kitsuEntityRetryUsedAfterPrimaryRaw = true;
+          sourceSkippedReason.push("kitsu_entity_retry_allowed_primary_had_raw");
+          pushGlobalPhase("kitsu_entity_retry_allowed_primary_had_raw", { query: kitsuLaneQuery, laneIndex: lanei, baseLaneQuery });
+        }
         const isFallbackAttempt = kitsuDispatchedOnce && kitsuPrimaryRawZero && !kitsuFallbackDispatchedOnce;
         const isTerminalBroadFallbackAttempt = kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce && kitsuFallbackRawZero && !kitsuTerminalBroadFallbackDispatched;
         const fallbackCanonicalDuplicate = (isFallbackAttempt || isTerminalBroadFallbackAttempt) && priorCanonicalKitsuQueries.has(canonicalizeKitsuDispatchQuery(kitsuLaneQuery));
