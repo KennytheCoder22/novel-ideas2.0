@@ -11402,10 +11402,24 @@ const normalizedCandidatesRaw = [
       const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
       const queryText = String(doc?.queryText || "").toLowerCase();
       const graphicCandidate = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
+      const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
       if (graphicFantasyRomanceEmergencyContext && !graphicCandidate) {
         const obviousProseDefault = /\b(novel|a novel|paperback|hardcover)\b/i.test(`${title} ${queryText}`);
         if (obviousProseDefault && !laneAligned && semantic <= 0 && fit <= 0) {
           teenPostPassGlobalHandoffRejectedByTitle[title] = "prose_default_blocked_in_graphic_context";
+          return false;
+        }
+      }
+      const returnRejectReason = canReturnTitleRejectReason(title, doc);
+      if (returnRejectReason) {
+        const graphicFailsTasteRescue =
+          graphicEmergencyContext &&
+          /fails_taste_threshold_gate/.test(returnRejectReason) &&
+          titleLooksGraphic &&
+          !isReferenceArtifactTitle(title) &&
+          (semantic >= 1 || fit >= 3 || laneAligned);
+        if (!graphicFailsTasteRescue && !/fallback_no_taste_match|fails_taste_threshold_gate/.test(returnRejectReason)) {
+          teenPostPassGlobalHandoffRejectedByTitle[title] = `return_reject:${returnRejectReason}`;
           return false;
         }
       }
@@ -11424,17 +11438,17 @@ const normalizedCandidatesRaw = [
       const bd = b?.doc || b;
       const at = String(ad?.title || a?.title || "").trim();
       const bt = String(bd?.title || b?.title || "").trim();
+      if (graphicEmergencyContext) {
+        const aGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${at} ${String(ad?.queryText || "")}`));
+        const bGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${bt} ${String(bd?.queryText || "")}`));
+        if (bGraphic !== aGraphic) return bGraphic - aGraphic;
+      }
       const aFit = Number(positiveFitScoreByTitle[at] || 0);
       const bFit = Number(positiveFitScoreByTitle[bt] || 0);
       if (bFit !== aFit) return bFit - aFit;
       const aSemantic = Number(semanticEvidenceCountByTitle[at] || 0);
       const bSemantic = Number(semanticEvidenceCountByTitle[bt] || 0);
       if (bSemantic !== aSemantic) return bSemantic - aSemantic;
-      if (graphicEmergencyContext) {
-        const aGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${at} ${String(ad?.queryText || "")}`));
-        const bGraphic = Number(/\b(graphic novel|comic|manga|manhwa|webtoon)\b/i.test(`${bt} ${String(bd?.queryText || "")}`));
-        if (bGraphic !== aGraphic) return bGraphic - aGraphic; // ranking preference, not hard block
-      }
       const aRoot = String(parentFranchiseRootForDoc(ad) || "");
       const bRoot = String(parentFranchiseRootForDoc(bd) || "");
       const aLane = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === aRoot) || profileCompatibleExpansionRoots.has(aRoot));
@@ -11460,15 +11474,18 @@ const normalizedCandidatesRaw = [
     if (graphicEmergencyContext) {
       const rejectedLowConfidence = new Set((finalEligibilityRejectedTitlesByReason?.low_recommendation_confidence || []).map((t) => normalizeText(String(t || ""))));
       const rejectedZeroMeaningful = new Set((finalEligibilityRejectedTitlesByReason?.zero_meaningful_signal_without_franchise_or_taste_alignment || []).map((t) => normalizeText(String(t || ""))));
+      const rejectedTasteThreshold = new Set((finalEligibilityRejectedTitlesByReason?.fails_taste_threshold_gate || []).map((t) => normalizeText(String(t || ""))));
       for (const item of teenPostPassItems) {
         const doc = item?.doc || item;
         const title = String(doc?.title || item?.title || "").trim();
         if (!title) continue;
         const key = normalizeText(title);
         const rejectReason = rejectedLowConfidence.has(key)
-          ? "low_recommendation_confidence"
+            ? "low_recommendation_confidence"
           : rejectedZeroMeaningful.has(key)
             ? "zero_meaningful_signal_without_franchise_or_taste_alignment"
+            : rejectedTasteThreshold.has(key)
+              ? "fails_taste_threshold_gate"
             : "";
         if (!rejectReason) continue;
         const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
