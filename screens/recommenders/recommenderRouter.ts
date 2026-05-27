@@ -1962,7 +1962,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     base,
     baseNeedsFictionVariant ? `${base} fiction` : "",
     `${base} ${negativeTerms}`,
-    family === "science_fiction" ? "literary science fiction novel" : "",
+    family === "science_fiction" && /\b(science|sci[\s-]?fi|future|dystopian|speculative|space|cyberpunk|android|alien|time travel)\b/.test(lowered) ? "literary science fiction novel" : "",
     family === "science_fiction" ? "psychological science fiction novel" : "",
     family === "science_fiction" ? "romantic science fiction novel" : "",
     family === "science_fiction" ? "dystopian science fiction novel" : "",
@@ -4058,8 +4058,9 @@ export async function getRecommendations(
         if (compact && !/\s-[a-z0-9_]+/i.test(compact)) return compact;
         return themedFallback || compact;
       };
-      const googleLaneQuery = baseLaneQuery;
-      const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
+      const baseLaneQuerySourceSanitized = String(baseLaneQuery || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim();
+      const googleLaneQuery = baseLaneQuerySourceSanitized || baseLaneQuery;
+      const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure";
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
       const fallbackBroadTerms = [
         /\b(superhero|miles|batman|spider[\s-]?man)\b/i.test(baseLaneQuery) ? "superhero" : "",
@@ -7696,6 +7697,7 @@ const normalizedCandidatesRaw = [
     const isComicVineCandidate = docSource.includes("comicvine");
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
+    const restoredByKitsuRecovery = Boolean((doc as any)?.restoredByKitsuRecovery || (doc?.diagnostics as any)?.restoredByKitsuRecovery);
     const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
     const isTeenComicVineOnly =
       isTeenDeckKey(input.deckKey) &&
@@ -7752,7 +7754,7 @@ const normalizedCandidatesRaw = [
     const laneSignal = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/i.test(textBag);
     const themeSignal = profileSelectedEntitySeeds.some((seed) => textBag.includes(normalizeText(seed)));
     const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
-    if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
+    if (fitScore <= 0 && !restoredByKitsuRecovery) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
@@ -11171,6 +11173,13 @@ const normalizedCandidatesRaw = [
           })
           .slice(0, 1);
         if (kitsuRecoveryItems.length > 0) {
+          for (const item of kitsuRecoveryItems) {
+            const doc = item?.doc || item;
+            if (doc && typeof doc === "object") {
+              (doc as any).restoredByKitsuRecovery = true;
+              (doc as any).diagnostics = { ...((doc as any).diagnostics || {}), restoredByKitsuRecovery: true };
+            }
+          }
           finalOutputItems = kitsuRecoveryItems;
           kitsuNormalRecoveryAcceptedItems.push(...kitsuRecoveryItems);
           kitsuNormalRecoveryAcceptedTitles.push(
@@ -11318,6 +11327,23 @@ const normalizedCandidatesRaw = [
       }
       seenRoots.add(root);
       return true;
+    }).sort((a: any, b: any) => {
+      const ad = a?.doc || a;
+      const bd = b?.doc || b;
+      const at = String(ad?.title || a?.title || "").trim();
+      const bt = String(bd?.title || b?.title || "").trim();
+      const aFit = Number(positiveFitScoreByTitle[at] || 0);
+      const bFit = Number(positiveFitScoreByTitle[bt] || 0);
+      if (bFit !== aFit) return bFit - aFit;
+      const aSemantic = Number(semanticEvidenceCountByTitle[at] || 0);
+      const bSemantic = Number(semanticEvidenceCountByTitle[bt] || 0);
+      if (bSemantic !== aSemantic) return bSemantic - aSemantic;
+      const aRoot = String(parentFranchiseRootForDoc(ad) || "");
+      const bRoot = String(parentFranchiseRootForDoc(bd) || "");
+      const aLane = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === aRoot) || profileCompatibleExpansionRoots.has(aRoot));
+      const bLane = Number(profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === bRoot) || profileCompatibleExpansionRoots.has(bRoot));
+      if (bLane !== aLane) return bLane - aLane;
+      return 0;
     }).slice(0, Math.max(1, Math.min(3, finalLimit)));
     if (fallbackItems.length > 0) {
       itemsForReturn = fallbackItems;
@@ -11509,7 +11535,7 @@ const normalizedCandidatesRaw = [
     .map((row) => canonicalizeKitsuPolicyQuery(String(row?.query || "")))
     .filter(Boolean);
   const kitsuPolicyUniqueCanonicalQueries = Array.from(new Set(kitsuPolicyCanonicalQueries));
-  const kitsuMaxAllowedCanonicalFetches = kitsuPrimaryRawZero ? 2 : 1;
+  const kitsuMaxAllowedCanonicalFetches = kitsuTerminalBroadFallbackDispatched ? 3 : (kitsuPrimaryRawZero ? 2 : 1);
   const kitsuSingleQueryEnforced = kitsuPolicyUniqueCanonicalQueries.length <= kitsuMaxAllowedCanonicalFetches;
   const selectedKitsuQueryCanonical = canonicalizeKitsuPolicyQuery(selectedKitsuQuery);
   const kitsuFetchQueryMatchesSanitizedSelection = kitsuQuerySanitizedTo.length === 0
