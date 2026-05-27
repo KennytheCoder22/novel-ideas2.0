@@ -4223,9 +4223,7 @@ export async function getRecommendations(
         pendingSourceFetchCount += 1;
         pendingSourceFetchCountIncremented.push({ source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pending: pendingSourceFetchCount });
         const googlePrimaryFetchPromise = runEngine("googleBooks", laneInput);
-        pendingSourceFetches.push(googlePrimaryFetchPromise.catch(() => null));
-        requests.push(
-          withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, async () => {
+        const googleTrackedRequest = withSourceTimeout("router_before_google_books_full_fetch", "router_after_google_books_full_fetch", googleBooksTimeoutMs, async () => {
             try {
               return await googlePrimaryFetchPromise;
             } catch (err: any) {
@@ -4254,8 +4252,9 @@ export async function getRecommendations(
               pendingSourceFetchCountDecremented.push({ source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pending: pendingSourceFetchCount });
               pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "googleBooks", laneIndex: lanei, query: googleLaneQuery, pendingSourceFetchCount });
               pushGlobalPhase("after_google_books_router_fetch");
-            }) as any
-        );
+            }) as any;
+        pendingSourceFetches.push(googleTrackedRequest.catch(() => null));
+        requests.push(googleTrackedRequest);
         }
         }
       }
@@ -4275,16 +4274,15 @@ export async function getRecommendations(
         pendingSourceFetchCount += 1;
         pendingSourceFetchCountIncremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
         const openLibraryFetchPromise = runEngine("openLibrary", laneInput);
-        pendingSourceFetches.push(openLibraryFetchPromise.catch(() => null));
-        requests.push(
-          withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => openLibraryFetchPromise)
+        const openLibraryTrackedRequest = withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => openLibraryFetchPromise)
             .finally(() => {
               pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
               pendingSourceFetchCountDecremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
               pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pendingSourceFetchCount });
               pushGlobalPhase("after_open_library_router_fetch");
-            }) as any
-        );
+            }) as any;
+        pendingSourceFetches.push(openLibraryTrackedRequest.catch(() => null));
+        requests.push(openLibraryTrackedRequest);
         }
       }
       if (includeKitsu && !stopKitsuDispatchForRun) {
@@ -4336,16 +4334,15 @@ export async function getRecommendations(
         pendingSourceFetchCount += 1;
         pendingSourceFetchCountIncremented.push({ source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pending: pendingSourceFetchCount });
         const kitsuFetchPromise = getKitsuMangaRecommendations(laneInput);
-        pendingSourceFetches.push(kitsuFetchPromise.catch(() => null));
-        requests.push(
-          withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => kitsuFetchPromise)
+        const kitsuTrackedRequest = withSourceTimeout("router_before_kitsu_full_fetch", "router_after_kitsu_full_fetch", 10_000, () => kitsuFetchPromise)
             .finally(() => {
               pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
               pendingSourceFetchCountDecremented.push({ source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pending: pendingSourceFetchCount });
               pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "kitsu", laneIndex: lanei, query: kitsuLaneQuery, pendingSourceFetchCount });
               pushGlobalPhase("after_kitsu_router_fetch");
-            }) as any
-        );
+            }) as any;
+        pendingSourceFetches.push(kitsuTrackedRequest.catch(() => null));
+        requests.push(kitsuTrackedRequest);
         kitsuDispatchedOnThisLane = true;
         }
         }
@@ -4674,6 +4671,13 @@ export async function getRecommendations(
   if (pendingSourceFetches.length > 0) {
     pushGlobalPhase("awaiting_pending_source_fetches_before_post_fetch_health_guard", { pendingSourceFetches: pendingSourceFetches.length });
     await Promise.allSettled(pendingSourceFetches);
+    if (pendingSourceFetchCount > 0) {
+      await Promise.resolve();
+      await Promise.allSettled(pendingSourceFetches);
+      if (pendingSourceFetchCount > 0) {
+        pushGlobalPhase("pending_fetch_counter_mismatch_after_allSettled", { pendingSourceFetchCount, pendingSourceFetches: pendingSourceFetches.length });
+      }
+    }
   }
 
   const mergedDocs = dedupeDocs(allMergedDocs);
