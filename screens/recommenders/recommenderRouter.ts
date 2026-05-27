@@ -3994,6 +3994,12 @@ export async function getRecommendations(
           .trim();
         return cleaned.split(/\s+/).slice(0, 3).join(" ").trim();
       };
+      const canonicalizeKitsuDispatchQuery = (q: string) => String(q || "")
+        .toLowerCase()
+        .replace(/[-+][a-z0-9_]+/g, " ")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
       const sanitizeKitsuQuery = (q: string) => {
         const raw = String(q || "").trim().toLowerCase();
         const genericTerms = new Set(["adventure", "drama", "action", "romance", "fantasy", "science", "fiction", "science fiction", "comedy", "mystery", "horror", "thriller"]);
@@ -4024,12 +4030,22 @@ export async function getRecommendations(
       const googleLaneQuery = baseLaneQuery;
       const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
-      const kitsuFallbackCandidates = [
-        (kitsuSanitized.sanitized.split(/\s+/).slice(0, 2).join(" ") || "").trim(),
-        "detective graphic novel",
-        "mystery adventure",
+      const fallbackBroadTerms = [
+        /\b(superhero|miles|batman|spider[\s-]?man)\b/i.test(baseLaneQuery) ? "superhero" : "",
+        /\b(coming\s+of\s+age|identity|teen)\b/i.test(baseLaneQuery) ? "coming of age" : "",
+        /\b(science|future|sci[\s-]?fi)\b/i.test(baseLaneQuery) ? "science fiction" : "",
+        /\b(fantasy|adventure)\b/i.test(baseLaneQuery) ? "fantasy adventure" : "",
+        /\b(mystery|detective|investigator)\b/i.test(baseLaneQuery) ? "mystery adventure" : "",
       ].filter(Boolean);
-      const kitsuLaneQuery = kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce ? kitsuFallbackCandidates[0] || kitsuSanitized.sanitized : kitsuSanitized.sanitized;
+      const kitsuFallbackCandidates = Array.from(new Set(fallbackBroadTerms)).filter(Boolean);
+      const priorCanonicalKitsuQueries = new Set(Array.from(kitsuQueriesActuallyFetched).map((q) => canonicalizeKitsuDispatchQuery(String(q || ""))).filter(Boolean));
+      const fallbackCandidate = kitsuFallbackCandidates.find((candidate) => !priorCanonicalKitsuQueries.has(canonicalizeKitsuDispatchQuery(candidate)));
+      if (kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce && !fallbackCandidate) {
+        sourceSkippedReason.push("kitsu_fallback_duplicate_canonical_skipped");
+      }
+      const kitsuLaneQuery = kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce
+        ? (fallbackCandidate || kitsuSanitized.sanitized)
+        : kitsuSanitized.sanitized;
       kitsuPreSanitizedQueries.push(baseLaneQuery);
       kitsuSanitizedQuerySelected.push(kitsuLaneQuery);
       kitsuSanitizationDroppedTokens.push(...kitsuSanitized.dropped);
@@ -4103,10 +4119,15 @@ export async function getRecommendations(
           const duplicateDispatchError = `kitsu_duplicate_dispatch_detected:selected=${kitsuSanitizedQuerySelected[0] || ""}:attempted=${kitsuLaneQuery}:lane=${lanei}`;
           pushGlobalPhase("kitsu_duplicate_dispatch_detected", { duplicateDispatchError, laneIndex: lanei, selectedKitsuQuery: kitsuSanitizedQuerySelected[0] || "", attemptedQuery: kitsuLaneQuery });
           sourceSkippedReason.push("kitsu_duplicate_dispatch_skipped_non_terminal");
+          pushGlobalPhase("kitsu_duplicate_dispatch_skipped_non_terminal", { attemptedQuery: kitsuLaneQuery, laneIndex: lanei });
         } else if (kitsuDispatchedOnce && kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce) {
           sourceSkippedReason.push("kitsu_fallback_already_attempted");
         } else {
-        if (kitsuRouterFetchCount >= sourceFetchCapPerRun) {
+        const isFallbackAttempt = kitsuDispatchedOnce && kitsuPrimaryRawZero && !kitsuFallbackDispatchedOnce;
+        const fallbackCanonicalDuplicate = isFallbackAttempt && priorCanonicalKitsuQueries.has(canonicalizeKitsuDispatchQuery(kitsuLaneQuery));
+        if (fallbackCanonicalDuplicate) {
+          sourceSkippedReason.push("kitsu_fallback_duplicate_canonical_skipped");
+        } else if (kitsuRouterFetchCount >= sourceFetchCapPerRun) {
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
         } else {
