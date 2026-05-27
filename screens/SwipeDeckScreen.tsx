@@ -2308,6 +2308,7 @@ function handleLeft() {
     const effectiveIsEmptyObject = Boolean((resultShape as any)?.isEmptyObject ?? (afterRouterCallWithShapeV2Payload as any)?.isEmptyObject ?? (latestLegacyAfterRouterCallPhase as any)?.isEmptyObject);
     const hasAfterRouterCallEvent = Boolean(afterRouterCallWithShapeV2Payload || latestLegacyAfterRouterCallPhase);
     const returnedItemsLength = Number((resultShape as any)?.itemsLength ?? (afterRouterCallWithShapeV2Payload as any)?.itemsLength ?? -1);
+    const hasValidReturnedItems = returnedItemsLength > 0 || (Array.isArray((lastRecommendationResult as any)?.items) && (lastRecommendationResult as any).items.length > 0);
     const zeroItemsReturnedRun = Boolean(recommendFunctionReturned) && !recommendFunctionError && returnedItemsLength === 0;
     const debugRawPoolLengthTop = Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0;
     const debugCandidatePoolLengthTop = Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0;
@@ -2332,7 +2333,9 @@ function handleLeft() {
     const earlyReturnCloseToTimeout = Number.isFinite(earlyReturnMs) && Number.isFinite(timeoutMsTs) && (earlyReturnMs - timeoutMsTs) >= 0 && (earlyReturnMs - timeoutMsTs) <= 1000;
     const earlyReturnReason = String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason || "");
     if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent || zeroItemsReturnedRun) {
-      const reason = getRecommendationsReturnedUndefinedRun
+      const reason = hasValidReturnedItems
+        ? "valid_recommendation_returned"
+        : getRecommendationsReturnedUndefinedRun
         ? "getRecommendations_returned_undefined"
         : getRecommendationsReturnedEmptyObjectRun
         ? "getRecommendations_returned_empty_object"
@@ -2386,6 +2389,8 @@ function handleLeft() {
         `rankedCount: ${String((lastRecommendationResult as any)?.rankedCount ?? (Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0))}`,
         `finalItemsLength: ${String((lastRecommendationResult as any)?.finalItemsLength ?? (Array.isArray((lastRecommendationResult as any)?.items) ? (lastRecommendationResult as any).items.length : 0))}`,
         `returnedItemsLength: ${String(returnedItemsLength)}`,
+        `returnedItemsTitles: ${JSON.stringify((lastRecommendationResult as any)?.returnedItemsTitles || (lastRecommendationResult as any)?.items?.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean) || [])}`,
+        `returnedItemsBuiltFrom: ${String((lastRecommendationResult as any)?.returnedItemsBuiltFrom || "(missing)")}`,
         `activeLaneQueries: ${JSON.stringify((lastRecommendationResult as any)?.activeLaneQueries || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.activeLaneQueries || [])}`,
         `routerFamily: ${String((lastRecommendationResult as any)?.routerFamily || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerFamily || "(missing)")}`,
         `rungCount: ${String((lastRecommendationResult as any)?.rungCount ?? (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.rungCount ?? "(missing)")}`,
@@ -2479,6 +2484,8 @@ function handleLeft() {
         `kitsuFinalQueryUsedForFetch: ${JSON.stringify((lastRecommendationResult as any)?.kitsuFinalQueryUsedForFetch || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.kitsuFinalQueryUsedForFetch || [])}`,
         `kitsuFetchQueryMatchesSanitizedSelection: ${String(Boolean((lastRecommendationResult as any)?.kitsuFetchQueryMatchesSanitizedSelection))}`,
         `returnedItemsLength: ${String(returnedItemsLength)}`,
+        `returnedItemsTitles: ${JSON.stringify((lastRecommendationResult as any)?.returnedItemsTitles || (lastRecommendationResult as any)?.items?.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean) || [])}`,
+        `returnedItemsBuiltFrom: ${String((lastRecommendationResult as any)?.returnedItemsBuiltFrom || "(missing)")}`,
         `zeroItemsCompactSummary: ${JSON.stringify({
           debugRawPoolLength: Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0,
           debugCandidatePoolLength: Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0,
