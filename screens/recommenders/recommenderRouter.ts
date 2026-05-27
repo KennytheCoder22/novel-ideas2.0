@@ -4005,8 +4005,8 @@ export async function getRecommendations(
       const sanitizeKitsuQuery = (q: string) => {
         const raw = String(q || "").trim().toLowerCase();
         const genericTerms = new Set(["adventure", "drama", "action", "romance", "fantasy", "science", "fiction", "science fiction", "comedy", "mystery", "horror", "thriller"]);
-        const stopTerms = new Set(["character", "focused", "graphic", "novel", "book", "books", "the", "a", "an", "and", "or", "for", "with", "without", "exclude"]);
-        const phraseAnchors = ["goldie vance", "science fiction"];
+        const stopTerms = new Set(["character", "focused", "graphic", "novel", "book", "books", "the", "a", "an", "and", "or", "for", "with", "without", "exclude", "literary", "thematic", "emotionally", "rich", "psychologically", "complex"]);
+        const phraseAnchors = ["goldie vance", "science fiction", "coming of age", "fantasy adventure", "psychological horror"];
         const phraseHits = phraseAnchors.filter((ph) => raw.includes(ph));
         const tokens = raw
           .replace(/[^a-z0-9\s-]/g, " ")
@@ -11925,7 +11925,7 @@ const normalizedCandidatesRaw = [
     finalItemsLength,
     finalItemsTitles,
     returnedItemsLength: finalOutputItems.length,
-    returnClassificationReason: finalOutputItems.length > 0 ? "valid_recommendation_returned" : (finalHandoffEmptyReason || "unknown_empty_result"),
+    returnClassificationReason: finalOutputItems.length > 0 ? "valid_recommendation_returned" : (finalHandoffEmptyReason && finalHandoffEmptyReason !== "none" ? finalHandoffEmptyReason : "unknown_empty_result"),
     teenPostPassGlobalHandoffConsidered,
     teenPostPassGlobalHandoffAcceptedTitles,
     teenPostPassGlobalHandoffRejectedByTitle,
@@ -12012,7 +12012,7 @@ const normalizedCandidatesRaw = [
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     routerPhaseHistory,
-    deployedCommitHash: "d77d823",
+    deployedCommitHash: "e064c5c",
     routerBuildTimestamp: ROUTER_BUILD_TIMESTAMP,
     routerInstrumentationVersion: ROUTER_INSTRUMENTATION_VERSION,
     nytFetchAttempted,
