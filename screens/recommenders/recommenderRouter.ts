@@ -1990,6 +1990,9 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
   ]);
 
   let filteredLanes = lanes;
+  if (isGraphicNovelShaped && !/\b(psychological|suspense|thriller)\b/.test(lowered)) {
+    filteredLanes = filteredLanes.filter((q) => !/\bpsychological suspense novel\b/i.test(String(q || "")));
+  }
   if (family === "horror") {
     filteredLanes = lanes.filter((query) => isHorrorQuery(query));
   }
@@ -11406,13 +11409,23 @@ const normalizedCandidatesRaw = [
       queryLanesUsed.some((q: any) => /\b(fantasy|romance|romantic|love)\b/i.test(String(q || "")));
     const rejectedLowConfidenceSet = new Set((finalEligibilityRejectedTitlesByReason?.low_recommendation_confidence || []).map((t) => normalizeText(String(t || ""))));
     const rejectedTasteThresholdSet = new Set((finalEligibilityRejectedTitlesByReason?.fails_taste_threshold_gate || []).map((t) => normalizeText(String(t || ""))));
+    const rejectedMissingParentOrRootSet = new Set((finalEligibilityRejectedTitlesByReason?.missing_parent_or_title_root_match || []).map((t) => normalizeText(String(t || ""))));
+    const rejectedZeroMeaningfulSet = new Set((finalEligibilityRejectedTitlesByReason?.zero_meaningful_signal_without_franchise_or_taste_alignment || []).map((t) => normalizeText(String(t || ""))));
+    const rejectedMissingSourceIdSet = new Set((finalEligibilityRejectedTitlesByReason?.missing_source_id || []).map((t) => normalizeText(String(t || ""))));
     const comparableRejectedGraphicExists = graphicEmergencyContext && teenPostPassItems.some((item: any) => {
       const doc = item?.doc || item;
       const title = String(doc?.title || item?.title || "").trim();
       const key = normalizeText(title);
       const titleLooksGraphic = /\b(volume\s*1|book\s*1|vol\.?\s*1|omnibus|graphic novel|comic|manga|manhwa|webtoon)\b/i.test(title);
-      if (!title || !titleLooksGraphic || isReferenceArtifactTitle(title)) return false;
-      const rejected = rejectedLowConfidenceSet.has(key) || rejectedTasteThresholdSet.has(key);
+      const queryText = String(doc?.queryText || "").toLowerCase();
+      const mediaShapedGraphic = /\b(graphic novel|comic|manga|manhwa|webtoon)\b/.test(`${title.toLowerCase()} ${queryText}`);
+      if (!title || !(titleLooksGraphic || mediaShapedGraphic) || isReferenceArtifactTitle(title)) return false;
+      const rejected =
+        rejectedLowConfidenceSet.has(key) ||
+        rejectedTasteThresholdSet.has(key) ||
+        rejectedMissingParentOrRootSet.has(key) ||
+        rejectedZeroMeaningfulSet.has(key) ||
+        rejectedMissingSourceIdSet.has(key);
       if (!rejected) return false;
       const fit = Number(positiveFitScoreByTitle[title] || 0);
       const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
