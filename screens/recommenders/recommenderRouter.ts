@@ -1959,13 +1959,15 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
 
   const baseNeedsFictionVariant = base && !/\b(novel|fiction)\b/i.test(base);
   const explicitPsychologicalSignal = /\b(psychological|thriller|horror)\b/.test(lowered);
+  const explicitRomanticSignal = /\b(romance|romantic|relationship|love)\b/.test(lowered);
+  const explicitInvestigatorSignal = /\b(detective|investigator|noir|case|crime[\s-]?solving|police|sleuth)\b/.test(lowered);
   const lanes = dedupeNonEmptyQueries([
     base,
     baseNeedsFictionVariant ? `${base} fiction` : "",
     `${base} ${negativeTerms}`,
     family === "science_fiction" && /\b(science fiction|sci[\s-]?fi|dystopian|future society|space|cyberpunk|alien|robot)\b/.test(lowered) ? "literary science fiction novel" : "",
     family === "science_fiction" && explicitPsychologicalSignal ? "psychological science fiction novel" : "",
-    family === "science_fiction" ? "romantic science fiction novel" : "",
+    family === "science_fiction" && explicitRomanticSignal ? "romantic science fiction novel" : "",
     family === "science_fiction" ? "dystopian science fiction novel" : "",
     family === "science_fiction" && /human centered|identity|literary|emotional/.test(lowered) ? "human centered science fiction novel" : "",
     family === "science_fiction" && /identity|literary/.test(lowered) ? "literary science fiction identity novel" : "",
@@ -1980,7 +1982,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "mystery" && /psychological/.test(lowered) ? "psychological mystery novel" : "",
     family === "mystery" && /murder|investigation|detective/.test(lowered) ? "detective mystery novel" : "",
     family === "mystery" && /murder|investigation|police|procedural/.test(lowered) ? "police procedural mystery novel" : "",
-    family === "mystery" && !/private investigator/.test(lowered) ? "private investigator mystery novel" : "",
+    family === "mystery" && explicitInvestigatorSignal && !/private investigator/.test(lowered) ? "private investigator mystery novel" : "",
     family === "thriller" && /psychological/.test(lowered) ? "psychological suspense graphic novel" : "",
     thrillerAllowsDomestic ? "domestic suspense novel" : "",
     ...(Array.isArray(bucketPlan?.queries) ? bucketPlan.queries.slice(0, 5) : []),
@@ -11300,6 +11302,7 @@ const normalizedCandidatesRaw = [
   let teenPostPassGlobalHandoffConsidered = false;
   let teenPostPassGlobalHandoffAcceptedTitles: string[] = [];
   const teenPostPassGlobalHandoffRejectedByTitle: Record<string, string> = {};
+  const teenPostPassEmergencyCandidateScores: Array<{ title: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceScore: number; emergencyRank: number }> = [];
   let itemsForReturn = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
   if (Number((finalOutputItems as any[])?.length || 0) === 0 && teenPostPassOutputTitles.length > 0) {
     teenPostPassGlobalHandoffConsidered = true;
@@ -11359,6 +11362,21 @@ const normalizedCandidatesRaw = [
       if (bLane !== aLane) return bLane - aLane;
       return 0;
     }).slice(0, Math.max(1, Math.min(3, finalLimit)));
+    teenPostPassEmergencyCandidateScores.push(
+      ...fallbackItems.map((item: any, idx: number) => {
+        const doc = item?.doc || item;
+        const title = String(doc?.title || item?.title || "").trim();
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+        return {
+          title,
+          laneAligned,
+          positiveFitScore: Number(positiveFitScoreByTitle[title] || 0),
+          semanticEvidenceScore: Number(semanticEvidenceCountByTitle[title] || 0),
+          emergencyRank: idx + 1,
+        };
+      }).filter((row: any) => Boolean(row.title))
+    );
     if (fallbackItems.length > 0) {
       itemsForReturn = fallbackItems;
       teenPostPassGlobalHandoffAcceptedTitles = fallbackItems
@@ -11987,6 +12005,7 @@ const normalizedCandidatesRaw = [
     teenPostPassGlobalHandoffConsidered,
     teenPostPassGlobalHandoffAcceptedTitles,
     teenPostPassGlobalHandoffRejectedByTitle,
+    teenPostPassEmergencyCandidateScores,
     normalFinalGateRecoveryConsidered,
     normalFinalGateRecoveryAcceptedTitles,
     normalFinalGateRecoveryRejectedByTitle,
