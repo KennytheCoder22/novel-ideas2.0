@@ -7696,6 +7696,7 @@ const normalizedCandidatesRaw = [
     const isComicVineCandidate = docSource.includes("comicvine");
     const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
+    const restoredByKitsuRecovery = Boolean((doc as any)?.restoredByKitsuRecovery || (doc?.diagnostics as any)?.restoredByKitsuRecovery);
     const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
     const isTeenComicVineOnly =
       isTeenDeckKey(input.deckKey) &&
@@ -7752,7 +7753,7 @@ const normalizedCandidatesRaw = [
     const laneSignal = /\b(horror|thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/i.test(textBag);
     const themeSignal = profileSelectedEntitySeeds.some((seed) => textBag.includes(normalizeText(seed)));
     const fitScore = (laneSignal ? 2 : 0) + (themeSignal ? 2 : 0) + (seedRootMatch ? 2 : 0) + (starterLike ? 1 : 0) + (strongScore ? 2 : 0) + (expansionRootMatch ? 1 : 0);
-    if (fitScore <= 0) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
+    if (fitScore <= 0 && !restoredByKitsuRecovery) { registerFinalEligibilityReject("insufficient_positive_fit_score", title); return false; }
     const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
     const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
     const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
@@ -11171,6 +11172,13 @@ const normalizedCandidatesRaw = [
           })
           .slice(0, 1);
         if (kitsuRecoveryItems.length > 0) {
+          for (const item of kitsuRecoveryItems) {
+            const doc = item?.doc || item;
+            if (doc && typeof doc === "object") {
+              (doc as any).restoredByKitsuRecovery = true;
+              (doc as any).diagnostics = { ...((doc as any).diagnostics || {}), restoredByKitsuRecovery: true };
+            }
+          }
           finalOutputItems = kitsuRecoveryItems;
           kitsuNormalRecoveryAcceptedItems.push(...kitsuRecoveryItems);
           kitsuNormalRecoveryAcceptedTitles.push(
