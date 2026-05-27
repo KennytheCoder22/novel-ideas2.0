@@ -2789,6 +2789,8 @@ export async function getRecommendations(
   const kitsuPreSanitizedQueries: string[] = [];
   const kitsuSanitizedQuerySelected: string[] = [];
   const kitsuFinalQueryUsedForFetch: string[] = [];
+  const kitsuSanitizationDroppedTokens: Array<{ token: string; reason: string }> = [];
+  const kitsuSanitizationDiagnostics: Array<{ original: string; sanitized: string; droppedTokens: Array<{ token: string; reason: string }>; genericOnly: boolean }> = [];
   const googleBooksProbeDegraded = Boolean((routedInput as any)?.googleBooksProbeDegraded);
   const sourceHealthProbeStatus = ((routedInput as any)?.sourceHealthProbeStatus || {}) as Record<string, string>;
   const googleBooksQueriesActuallyFetched = new Set<string>();
@@ -3990,23 +3992,44 @@ export async function getRecommendations(
         return cleaned.split(/\s+/).slice(0, 3).join(" ").trim();
       };
       const sanitizeKitsuQuery = (q: string) => {
-        const nq = String(q || "").toLowerCase();
-        const strongestFirst = ["adventure", "drama", "action", "romance", "fantasy", "science fiction", "comedy"];
-        const weakOrUnproven = ["mystery", "horror", "thriller"];
-        const strongestHit = strongestFirst.find((term) => nq.includes(term));
-        if (strongestHit) return strongestHit;
-        const fallbackHit = weakOrUnproven.find((term) => nq.includes(term));
-        return fallbackHit || "adventure";
+        const raw = String(q || "").trim().toLowerCase();
+        const genericTerms = new Set(["adventure", "drama", "action", "romance", "fantasy", "science", "fiction", "science fiction", "comedy", "mystery", "horror", "thriller"]);
+        const stopTerms = new Set(["character", "focused", "graphic", "novel", "book", "books", "the", "a", "an", "and", "or", "for", "with", "without", "exclude"]);
+        const phraseAnchors = ["goldie vance", "science fiction"];
+        const phraseHits = phraseAnchors.filter((ph) => raw.includes(ph));
+        const tokens = raw
+          .replace(/[^a-z0-9\s-]/g, " ")
+          .split(/\s+/)
+          .map((t) => t.trim())
+          .filter(Boolean);
+        const dropped: Array<{ token: string; reason: string }> = [];
+        const anchors: string[] = [];
+        for (const t of tokens) {
+          if (stopTerms.has(t)) { dropped.push({ token: t, reason: "book_or_format_stopword" }); continue; }
+          if (/^\d+$/.test(t)) { dropped.push({ token: t, reason: "numeric_only" }); continue; }
+          if (genericTerms.has(t)) { dropped.push({ token: t, reason: "generic_genre_token" }); continue; }
+          if (t.length <= 2) { dropped.push({ token: t, reason: "too_short" }); continue; }
+          anchors.push(t);
+        }
+        const mergedAnchors = Array.from(new Set([...phraseHits, ...anchors])).slice(0, 3);
+        const genericFallback = raw.includes("science fiction") ? "science fiction" : (raw.includes("mystery") ? "mystery" : "adventure");
+        const sanitized = mergedAnchors.length > 0 ? mergedAnchors.join(" ") : genericFallback;
+        const genericOnly = mergedAnchors.length === 0;
+        return { sanitized, dropped, genericOnly, usedAnchorFallback: genericOnly && anchors.length > 0, genericFallback };
       };
       const googleLaneQuery = baseLaneQuery;
       const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuery) || "fantasy adventure";
-      const kitsuLaneQuery = sanitizeKitsuQuery(baseLaneQuery);
+      const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
+      const kitsuLaneQuery = kitsuSanitized.sanitized;
       kitsuPreSanitizedQueries.push(baseLaneQuery);
       kitsuSanitizedQuerySelected.push(kitsuLaneQuery);
+      kitsuSanitizationDroppedTokens.push(...kitsuSanitized.dropped);
+      kitsuSanitizationDiagnostics.push({ original: baseLaneQuery, sanitized: kitsuLaneQuery, droppedTokens: kitsuSanitized.dropped, genericOnly: kitsuSanitized.genericOnly });
       sourceSpecificQueryModeBySource.googleBooks = "natural_language_with_exclusions";
       sourceSpecificQueryModeBySource.openLibrary = "short_subject_title_unquoted";
       sourceSpecificQueryModeBySource.kitsu = "compact_anime_manga_genre_terms";
       if (openLibraryLaneQuery !== baseLaneQuery) sourceSpecificQueryRejectedReasonBySource.openLibrary.push("long_or_quoted_query_sanitized");
+      if (kitsuSanitized.genericOnly) sourceSpecificQueryRejectedReasonBySource.kitsu.push("generic_only_sanitized_query_guard");
       if (kitsuLaneQuery !== baseLaneQuery) {
         sourceSpecificQueryRejectedReasonBySource.kitsu.push("book_style_or_exclusion_query_sanitized");
         kitsuQuerySanitizedFrom.push(baseLaneQuery);
@@ -4497,6 +4520,10 @@ export async function getRecommendations(
       kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
       kitsuSanitizedQuerySelected: kitsuSanitizedQuerySelected[0] || "",
       kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
+    kitsuSanitizationDiagnostics,
+    kitsuSanitizationDroppedTokens,
+      kitsuSanitizationDiagnostics,
+      kitsuSanitizationDroppedTokens,
       sourceDisableReasonsDetailed,
       perSourceStatus: {
         googleBooks: { enabled: sourceEnabled.googleBooks, rawFetched: aggregatedRawFetched.googleBooks, starved: googleStarved },
@@ -11907,6 +11934,8 @@ const normalizedCandidatesRaw = [
     kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
     kitsuSanitizedQuerySelected: selectedKitsuQuery,
     kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
+    kitsuSanitizationDiagnostics,
+    kitsuSanitizationDroppedTokens,
     googleBooksQueriesActuallyFetched: googleBooksQueriesActuallyFetchedArray,
     openLibraryQueriesActuallyFetched: openLibraryQueriesActuallyFetchedArray,
     kitsuQueriesActuallyFetched: kitsuQueriesActuallyFetchedArray,
