@@ -1969,7 +1969,7 @@ function buildHighDiversityQueryLanes(rung: any, bucketPlan: any): RouterQueryLa
     family === "science_fiction" && !isGraphicNovelShaped && /\b(science fiction|sci[\s-]?fi|dystopian|future society|space|cyberpunk|alien|robot)\b/.test(lowered) ? "literary science fiction novel" : "",
     family === "science_fiction" && explicitPsychologicalSignal ? "psychological science fiction novel" : "",
     family === "science_fiction" && explicitRomanticSignal ? "romantic science fiction novel" : "",
-    family === "science_fiction" ? "dystopian science fiction novel" : "",
+    family === "science_fiction" ? (isGraphicNovelShaped ? "dystopian graphic novel" : "dystopian science fiction novel") : "",
     family === "science_fiction" && /human centered|identity|literary|emotional/.test(lowered) ? "human centered science fiction novel" : "",
     family === "science_fiction" && /identity|literary/.test(lowered) ? "literary science fiction identity novel" : "",
     family === "science_fiction" && /emotional|speculative/.test(lowered) ? "emotional speculative fiction novel" : "",
@@ -3995,13 +3995,44 @@ export async function getRecommendations(
       let kitsuDispatchedOnThisLane = false;
       const baseLaneQuery = String(lane.query || "").trim();
       const sanitizeOpenLibraryQuery = (q: string) => {
-        const cleaned = q
+        const cleaned = String(q || "")
           .replace(/["']/g, " ")
           .replace(/[-+]\w+/g, " ")
-          .replace(/\b(character[-\s]?focused|graphic novel|novel|book|narrative|consequence|survival|exclude|without)\b/gi, " ")
+          .replace(/\b(character[-\s]?focused|novel|book|narrative|consequence|survival|exclude|without)\b/gi, " ")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
+        const phraseAnchors = ["coming of age", "science fiction", "fantasy adventure", "psychological horror", "dystopian graphic novel", "science fiction graphic novel"];
+        const anchorHits = phraseAnchors.filter((ph) => cleaned.includes(ph));
+        const tokens = cleaned.split(/\s+/).filter(Boolean);
+        const anchorTokenSet = new Set(anchorHits.flatMap((ph) => ph.split(/\s+/)));
+        const residualTokens = tokens.filter((t) => !anchorTokenSet.has(t));
+        const merged = [...anchorHits, ...residualTokens].join(" ")
           .replace(/\s+/g, " ")
           .trim();
-        return cleaned.split(/\s+/).slice(0, 3).join(" ").trim();
+        const compact = merged.split(/\s+/).slice(0, 6).join(" ").trim();
+        if (/\bcoming\s+of\b$/.test(compact)) return anchorHits.find((a) => a === "coming of age") || "";
+        return compact;
+      };
+      const normalizeFinalSourceQuery = (q: string) => {
+        const tokens = String(q || "").replace(/\s+/g, " ").trim().split(/\s+/).filter(Boolean);
+        const out: string[] = [];
+        let seenGraphicNovel = false;
+        let seenComicSeries = false;
+        for (let i = 0; i < tokens.length; i += 1) {
+          const a = tokens[i]?.toLowerCase() || "";
+          const b = tokens[i + 1]?.toLowerCase() || "";
+          if (a === "graphic" && b === "novel") {
+            if (seenGraphicNovel) { i += 1; continue; }
+            seenGraphicNovel = true;
+          }
+          if (a === "comic" && b === "series") {
+            if (seenComicSeries) { i += 1; continue; }
+            seenComicSeries = true;
+          }
+          out.push(tokens[i]);
+        }
+        return out.join(" ").replace(/\s+/g, " ").trim();
       };
       const canonicalizeKitsuDispatchQuery = (q: string) => String(q || "")
         .toLowerCase()
@@ -4069,8 +4100,8 @@ export async function getRecommendations(
         .replace(/\b(comic\s+series)\s+\1\b/gi, "$1")
         .replace(/\s+/g, " ")
         .trim();
-      const googleLaneQuery = baseLaneQuerySourceSanitized || baseLaneQuery;
-      const openLibraryLaneQuery = sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure";
+      const googleLaneQuery = normalizeFinalSourceQuery(baseLaneQuerySourceSanitized || baseLaneQuery);
+      const openLibraryLaneQuery = normalizeFinalSourceQuery(sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure");
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
       const fallbackBroadTerms = [
         /\b(superhero|miles|batman|spider[\s-]?man)\b/i.test(baseLaneQuery) ? "superhero" : "",
