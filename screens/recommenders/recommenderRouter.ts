@@ -4661,10 +4661,7 @@ export async function getRecommendations(
       openLibraryFetchResultsByQuery,
       kitsuFetchResultsByQuery,
       googleBooksTimeoutStageByQuery,
-    googleBooksRetryQueryMapping,
       googleBooksRetryQueryMapping,
-    googleBooksTimeoutStageByQuery,
-    googleBooksRetryQueryMapping,
       sourceSpecificQueryModeBySource,
       sourceSpecificQueryRejectedReasonBySource,
       kitsuQuerySanitizedFrom,
@@ -4672,10 +4669,10 @@ export async function getRecommendations(
       kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
       kitsuSanitizedQuerySelected: kitsuSanitizedQuerySelected[0] || "",
       kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
-    kitsuPolicyUniqueCanonicalQueries,
-    kitsuMaxAllowedCanonicalFetches,
-    kitsuSanitizationDiagnostics,
-    kitsuSanitizationDroppedTokens,
+      kitsuPolicyUniqueCanonicalQueries,
+      kitsuMaxAllowedCanonicalFetches,
+      kitsuSanitizationDiagnostics,
+      kitsuSanitizationDroppedTokens,
       kitsuSanitizationDiagnostics,
       kitsuSanitizationDroppedTokens,
       sourceDisableReasonsDetailed,
@@ -11463,6 +11460,24 @@ const normalizedCandidatesRaw = [
         }
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:minimal_safe_one");
       } else {
+        const psychSuspenseRecovery = teenPostPassItems.find((item: any) => {
+          const doc = item?.doc || item;
+          const title = String(doc?.title || item?.title || "").trim();
+          const queryText = String(doc?.queryText || "").toLowerCase();
+          const suspenseLane = /\b(psychological|suspense|thriller)\b/.test(queryText);
+          if (!suspenseLane || !title) return false;
+          if (isReferenceArtifactTitle(title) || /\[google_books_fetch_error\]/i.test(title)) return false;
+          const scrubReason = sharedReturnArtifactScrubRejectReason(doc);
+          if (scrubReason && scrubReason.includes("artifact")) return false;
+          const fit = Number(positiveFitScoreByTitle[title] || 0);
+          const semantic = Number(semanticEvidenceCountByTitle[title] || 0);
+          return fit >= 0 || semantic >= 1;
+        });
+        if (psychSuspenseRecovery) {
+          itemsForReturn = [psychSuspenseRecovery];
+          teenPostPassGlobalHandoffAcceptedTitles = [String(psychSuspenseRecovery?.doc?.title || psychSuspenseRecovery?.title || "").trim()].filter(Boolean);
+          sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:psych_suspense_min_safe_one");
+        }
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff:no_safe_candidate");
       }
     }
@@ -12137,7 +12152,9 @@ const normalizedCandidatesRaw = [
     nytAdminEnabled: Boolean(sourceEnabled.nyt),
     sourceEnabled,
     sourceSkippedReason,
-    activeLaneQueries: Array.from(new Set(queryLanesUsed.map((q: any) => String(q || "").trim()).filter(Boolean))).slice(0, 60),
+    activeLaneQueries: Array.from(new Set(queryLanesUsed
+      .map((q: any) => String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim())
+      .filter(Boolean))).slice(0, 60),
     routerFamily,
     rungCount: Array.isArray(rungs) ? rungs.length : 0,
     sourceFetchAttemptedBySource,
