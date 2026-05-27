@@ -4520,6 +4520,8 @@ export async function getRecommendations(
       kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
       kitsuSanitizedQuerySelected: kitsuSanitizedQuerySelected[0] || "",
       kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
+    kitsuPolicyUniqueCanonicalQueries,
+    kitsuMaxAllowedCanonicalFetches,
     kitsuSanitizationDiagnostics,
     kitsuSanitizationDroppedTokens,
       kitsuSanitizationDiagnostics,
@@ -11392,12 +11394,31 @@ const normalizedCandidatesRaw = [
     kitsu: !sourceFetchAttemptedBySource.kitsu || kitsuFetchResultsByQuery.length > 0,
   };
   const selectedKitsuQuery = kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) || "";
-  const kitsuSingleQueryEnforced = kitsuFetchResultsByQuery.length === 1 || (kitsuPrimaryRawZero && kitsuFetchResultsByQuery.length === 2);
+  const canonicalizeKitsuPolicyQuery = (q: string) => String(q || "")
+    .toLowerCase()
+    .replace(/[-+][a-z0-9_]+/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const kitsuPolicyCanonicalQueries = kitsuFetchResultsByQuery
+    .map((row) => canonicalizeKitsuPolicyQuery(String(row?.query || "")))
+    .filter(Boolean);
+  const kitsuPolicyUniqueCanonicalQueries = Array.from(new Set(kitsuPolicyCanonicalQueries));
+  const kitsuMaxAllowedCanonicalFetches = kitsuPrimaryRawZero ? 2 : 1;
+  const kitsuSingleQueryEnforced = kitsuPolicyUniqueCanonicalQueries.length <= kitsuMaxAllowedCanonicalFetches;
+  const selectedKitsuQueryCanonical = canonicalizeKitsuPolicyQuery(selectedKitsuQuery);
   const kitsuFetchQueryMatchesSanitizedSelection = kitsuQuerySanitizedTo.length === 0
     ? kitsuSingleQueryEnforced
-    : kitsuSingleQueryEnforced && kitsuFetchResultsByQuery.every((row) => String(row?.query || "").trim() === selectedKitsuQuery);
+    : kitsuSingleQueryEnforced && kitsuPolicyUniqueCanonicalQueries.every((q) => q === selectedKitsuQueryCanonical || kitsuPrimaryRawZero);
   if (!kitsuSingleQueryEnforced) {
-    throw new Error(`kitsu_single_query_policy_violation:count=${kitsuFetchResultsByQuery.length}:queries=${kitsuFetchResultsByQuery.map((row) => String(row?.query || "")).join("|")}`);
+    const violationMessage = `kitsu_single_query_policy_violation:count=${kitsuPolicyUniqueCanonicalQueries.length}:max=${kitsuMaxAllowedCanonicalFetches}:queries=${kitsuPolicyUniqueCanonicalQueries.join("|")}`;
+    sourceSkippedReason.push(violationMessage);
+    pushGlobalPhase("kitsu_single_query_policy_violation", {
+      violationMessage,
+      maxAllowedCanonicalFetches: kitsuMaxAllowedCanonicalFetches,
+      canonicalQueries: kitsuPolicyUniqueCanonicalQueries,
+      rawQueries: kitsuFetchResultsByQuery.map((row) => String(row?.query || "")),
+    });
   }
   const kitsuInsufficientPositiveFitRejectedDiagnostics = (
     Array.isArray(finalEligibilityRejectedTitlesByReason?.insufficient_positive_fit_score)
@@ -11934,6 +11955,8 @@ const normalizedCandidatesRaw = [
     kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
     kitsuSanitizedQuerySelected: selectedKitsuQuery,
     kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
+    kitsuPolicyUniqueCanonicalQueries,
+    kitsuMaxAllowedCanonicalFetches,
     kitsuSanitizationDiagnostics,
     kitsuSanitizationDroppedTokens,
     googleBooksQueriesActuallyFetched: googleBooksQueriesActuallyFetchedArray,
