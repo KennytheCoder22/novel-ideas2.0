@@ -4003,7 +4003,7 @@ export async function getRecommendations(
         .replace(/\s+/g, " ")
         .trim();
       const sanitizeKitsuQuery = (q: string) => {
-        const raw = String(q || "").trim().toLowerCase();
+        const raw = String(q || "").trim().toLowerCase().replace(/\bcharacter[-\s]?focused\b/g, " ").replace(/\s+/g, " ").trim();
         const genericTerms = new Set(["adventure", "drama", "action", "romance", "fantasy", "science", "fiction", "science fiction", "comedy", "mystery", "horror", "thriller"]);
         const stopTerms = new Set(["character", "focused", "graphic", "novel", "book", "books", "the", "a", "an", "and", "or", "for", "with", "without", "exclude", "literary", "thematic", "emotionally", "rich", "psychologically", "complex"]);
         const phraseAnchors = ["goldie vance", "science fiction", "coming of age", "fantasy adventure", "psychological horror"];
@@ -4016,6 +4016,7 @@ export async function getRecommendations(
         const dropped: Array<{ token: string; reason: string }> = [];
         const anchors: string[] = [];
         for (const t of tokens) {
+          if (t === "character") { dropped.push({ token: t, reason: "descriptor_character_token" }); continue; }
           if (stopTerms.has(t)) { dropped.push({ token: t, reason: "book_or_format_stopword" }); continue; }
           if (/^\d+$/.test(t)) { dropped.push({ token: t, reason: "numeric_only" }); continue; }
           if (genericTerms.has(t)) { dropped.push({ token: t, reason: "generic_genre_token" }); continue; }
