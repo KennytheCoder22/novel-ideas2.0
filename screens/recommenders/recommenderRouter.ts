@@ -4108,6 +4108,12 @@ export async function getRecommendations(
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "googleBooks", source_fetch_cap_exceeded: true, googleBooksRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:googleBooks");
         } else {
+        const isGoogleRetryLaneAttempt = googleBooksRouterFetchCount >= 1;
+        const googleQueryHasExclusionTokens = /\s-[a-z0-9_]+/i.test(googleLaneQuery) || /(exclude|without)/i.test(googleLaneQuery);
+        if (isGoogleRetryLaneAttempt && googleQueryHasExclusionTokens) {
+          sourceSkippedReason.push("googleBooks_retry_guard_blocked_exclusion_lane");
+          pushGlobalPhase("googleBooks_retry_guard_blocked_exclusion_lane", { query: googleLaneQuery, laneIndex: lanei, googleBooksRouterFetchCount });
+        } else {
         laneInput = {
           ...laneInput,
           bucketPlan: { ...(laneInput.bucketPlan as any), queries: [googleLaneQuery], preview: googleLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: googleLaneQuery, primary: googleLaneQuery }] },
@@ -4142,6 +4148,7 @@ export async function getRecommendations(
           })
             .finally(() => pushGlobalPhase("after_google_books_router_fetch")) as any
         );
+        }
         }
       }
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
@@ -12004,7 +12011,7 @@ const normalizedCandidatesRaw = [
     droppedBeforeRenderReason,
     debugNytAnchors: nytAnchorDebug,
     routerPhaseHistory,
-    deployedCommitHash: "17c4615",
+    deployedCommitHash: "651d347",
     routerBuildTimestamp: ROUTER_BUILD_TIMESTAMP,
     routerInstrumentationVersion: ROUTER_INSTRUMENTATION_VERSION,
     nytFetchAttempted,
