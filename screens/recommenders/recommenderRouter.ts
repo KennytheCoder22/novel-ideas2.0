@@ -11433,6 +11433,16 @@ const normalizedCandidatesRaw = [
   const kitsuRescueQualityOrderingVersion = "penalty_first_v1";
   const kitsuRescueExcludedForDislikePenaltyKeys = new Set<string>();
   let kitsuRescueExcludedForDislikePenaltyCount = 0;
+  let kitsuRescueCandidateQualityBuckets = {
+    laneAlignedCount: 0,
+    semanticEvidenceCountGt0: 0,
+    weightedTasteScoreGt0: 0,
+    zeroEvidenceCount: 0,
+    penaltyFreeCount: 0,
+    totalCandidateCount: 0,
+  };
+  let kitsuRescueSlateStrongCount = 0;
+  let kitsuRescueSlateZeroEvidenceCount = 0;
   const kitsuRescueQualityMetricsForDoc = (doc: any) => {
     const title = String(doc?.title || doc?.canonicalTitle || "").trim();
     const root = String(parentFranchiseRootForDoc(doc) || "");
@@ -12630,6 +12640,41 @@ const normalizedCandidatesRaw = [
   if (nytReturnedCount > 0 && nytReturnedCount === finalOutputItems.length) {
     sourceSkippedReason.push("warning_nyt_only_returned_items");
   }
+  const kitsuRescueCandidateQualityRowsByKey = new Map<string, any>();
+  for (const row of kitsuRecoveryRankedCandidates) {
+    if (row.rejectReason) continue;
+    if (isReferenceArtifactTitle(String(row.title || ""))) continue;
+    const title = String(row.title || "").trim();
+    const key = normalizeText(String(row.sourceId || title));
+    if (!key) continue;
+    kitsuRescueCandidateQualityRowsByKey.set(key, {
+      title,
+      sourceId: String(row.sourceId || "").trim(),
+      laneAligned: Boolean(row.laneAligned),
+      semanticEvidenceCount: Number(row.semanticEvidenceCount || 0),
+      weightedTasteScore: Number(candidateWeightedTasteScoreByTitle[title] || 0),
+      dislikePenaltyScore: Number(candidateDislikePenaltyByTitle[title] || 0),
+      positiveFitScore: Number(row.positiveFitScore || 0),
+    });
+  }
+  for (const candidateDoc of ((rankedDocs || []) as any[])) {
+    const doc: any = candidateDoc;
+    if (!String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu")) continue;
+    if (isReferenceArtifactTitle(String(doc?.title || "").trim())) continue;
+    const metrics = kitsuRescueQualityMetricsForDoc(doc);
+    const key = normalizeText(String(metrics.sourceId || metrics.title));
+    if (!key || kitsuRescueCandidateQualityRowsByKey.has(key)) continue;
+    kitsuRescueCandidateQualityRowsByKey.set(key, metrics);
+  }
+  const kitsuRescueCandidateQualityRows = Array.from(kitsuRescueCandidateQualityRowsByKey.values());
+  kitsuRescueCandidateQualityBuckets = {
+    laneAlignedCount: kitsuRescueCandidateQualityRows.filter((row: any) => Boolean(row.laneAligned)).length,
+    semanticEvidenceCountGt0: kitsuRescueCandidateQualityRows.filter((row: any) => Number(row.semanticEvidenceCount || 0) > 0).length,
+    weightedTasteScoreGt0: kitsuRescueCandidateQualityRows.filter((row: any) => Number(row.weightedTasteScore || 0) > 0).length,
+    zeroEvidenceCount: kitsuRescueCandidateQualityRows.filter((row: any) => Number(row.semanticEvidenceCount || 0) === 0 && Number(row.weightedTasteScore || 0) === 0 && !row.laneAligned).length,
+    penaltyFreeCount: kitsuRescueCandidateQualityRows.filter((row: any) => Number(row.dislikePenaltyScore || 0) === 0).length,
+    totalCandidateCount: kitsuRescueCandidateQualityRows.length,
+  };
   const kitsuRescueSlateQualityAudit: Array<{ title: string; sourceId: string; reason: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; weightedTasteScore: number; dislikePenaltyScore: number }> = [];
   if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
     for (const item of finalOutputItems) {
@@ -12655,6 +12700,8 @@ const normalizedCandidatesRaw = [
           : weightedTasteScore > dislikePenaltyScore
           ? "positive_taste_balance"
           : "ranked_pool_backfill_candidate";
+      if (semanticEvidenceCount === 0 && weightedTasteScore === 0 && !laneAligned) kitsuRescueSlateZeroEvidenceCount += 1;
+      else kitsuRescueSlateStrongCount += 1;
       kitsuRescueSlateQualityAudit.push({
         title,
         sourceId,
@@ -13189,6 +13236,9 @@ const normalizedCandidatesRaw = [
     kitsuRescueSlateBackfillCandidateCount,
     kitsuRescueQualityOrderingVersion,
     kitsuRescueExcludedForDislikePenaltyCount,
+    kitsuRescueCandidateQualityBuckets,
+    kitsuRescueSlateStrongCount,
+    kitsuRescueSlateZeroEvidenceCount,
     kitsuLowRankedCountRecoveryTriggered,
     kitsuLowRankedCountRecoveryCandidateCount,
     kitsuLowRankedCountRecoveryBlockedReason,
