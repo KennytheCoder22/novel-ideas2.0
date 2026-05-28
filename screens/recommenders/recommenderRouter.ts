@@ -11349,6 +11349,9 @@ const normalizedCandidatesRaw = [
   let kitsuRankedPoolRescueEligible = false;
   let kitsuRankedPoolRescueCandidateCount = 0;
   let kitsuRankedPoolRescueBlockedReason = "not_evaluated";
+  let finalInvariantKitsuRescueTriggered = false;
+  let finalInvariantKitsuRescueCandidateCount = 0;
+  let finalInvariantKitsuRescuePreviousBuiltFrom = "";
   const kitsuFinalEligibilitySparseMetadataRescueCandidates: Array<{ title: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; positiveFitScore: number; rejectedReasonForRescue: string }> = [];
   let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
@@ -12251,6 +12254,37 @@ const normalizedCandidatesRaw = [
     sourceSkippedReason.push(`kitsu_recovery_lost_at_return_assembly:accepted=${kitsuNormalRecoveryAcceptedTitles.join("|") || "(none)"}:return_input=${terminalAssemblyInputTitlesAtReturn.join("|") || "(none)"}`);
     // Do not throw: return a clean zero-item result with explicit diagnostics.
   }
+  const runFinalInvariantKitsuRescue = () => {
+    const prevBuiltFrom = String(returnedItemsBuiltFrom || "none");
+    const conditionMet =
+      finalOutputItems.length === 0 &&
+      Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+      Number(rankedCount || 0) >= 10;
+    if (!conditionMet) return;
+    const rankedCandidatePool = kitsuRecoveryRankedCandidates
+      .filter((row) => !row.rejectReason)
+      .filter((row) => Boolean(row.sourceId))
+      .filter((row) => !isReferenceArtifactTitle(String(row.title || "")));
+    const rankedDocsFallbackPool = (rankedDocs || [])
+      .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
+      .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()));
+    const rescueSource = rankedCandidatePool.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
+    const rescuePool = rankedCandidatePool.length > 0 ? rankedCandidatePool : rankedDocsFallbackPool;
+    finalInvariantKitsuRescueCandidateCount = rescuePool.length;
+    if (rescuePool.length === 0) return;
+    const topTitle = String((rescuePool[0] as any)?.title || "").trim();
+    const topDoc = teenPostPassItems.map((item: any) => item?.doc || item).find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(topTitle))
+      || rankedDocsFallbackPool.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(topTitle));
+    if (!topDoc) return;
+    finalOutputItems = [{ kind: "open_library", doc: topDoc }];
+    returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
+    finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+    kitsuRankedPoolRescueSource = rescueSource;
+    finalInvariantKitsuRescueTriggered = true;
+    finalInvariantKitsuRescuePreviousBuiltFrom = prevBuiltFrom;
+    sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue_final_invariant");
+  };
+  runFinalInvariantKitsuRescue();
   const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
     ? finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
     : [];
@@ -12829,6 +12863,9 @@ const normalizedCandidatesRaw = [
     kitsuRankedPoolRescueEligible,
     kitsuRankedPoolRescueCandidateCount,
     kitsuRankedPoolRescueBlockedReason,
+    finalInvariantKitsuRescueTriggered,
+    finalInvariantKitsuRescueCandidateCount,
+    finalInvariantKitsuRescuePreviousBuiltFrom,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
     kitsuAcceptedButEmergencyReturned,
