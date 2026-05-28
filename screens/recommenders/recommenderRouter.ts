@@ -11444,6 +11444,7 @@ const normalizedCandidatesRaw = [
   let kitsuRescueSlateStrongCount = 0;
   let kitsuRescueSlateZeroEvidenceCount = 0;
   let kitsuRescueWeakBeforeStrongCorrectionApplied = false;
+  let kitsuRescueFinalSlateReorderedStrongFirst = false;
   let kitsuRescueStrongCandidateCount = 0;
   let kitsuRescueWeakCandidateCount = 0;
   const kitsuRescueQualityMetricsForDoc = (doc: any) => {
@@ -12696,7 +12697,7 @@ const normalizedCandidatesRaw = [
   };
   kitsuRescueStrongCandidateCount = kitsuRescueCandidateQualityRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
   kitsuRescueWeakCandidateCount = kitsuRescueCandidateQualityRows.filter((row: any) => !isKitsuRescueStrongRow(row)).length;
-  const kitsuRescueSlateQualityAudit: Array<{ title: string; sourceId: string; reason: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; weightedTasteScore: number; dislikePenaltyScore: number }> = [];
+  let kitsuRescueSlateQualityAudit: Array<{ title: string; sourceId: string; reason: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; weightedTasteScore: number; dislikePenaltyScore: number }> = [];
   if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
     for (const item of finalOutputItems) {
       const doc = item?.doc || item;
@@ -12733,6 +12734,26 @@ const normalizedCandidatesRaw = [
         weightedTasteScore,
         dislikePenaltyScore,
       });
+    }
+    const auditByTitle = new Map(kitsuRescueSlateQualityAudit.map((row) => [normalizeText(row.title), row]));
+    const isStrongAuditRow = (row: any) => Number(row?.semanticEvidenceCount || 0) > 0 || Number(row?.weightedTasteScore || 0) > 0 || Boolean(row?.laneAligned);
+    const finalSlateRows = finalOutputItems.map((item: any, index: number) => {
+      const title = String(item?.doc?.title || item?.title || "").trim();
+      const audit = auditByTitle.get(normalizeText(title));
+      return { item, audit, index, strong: isStrongAuditRow(audit) };
+    });
+    let sawWeakFinalSlateRow = false;
+    for (const row of finalSlateRows) {
+      if (!row.strong) sawWeakFinalSlateRow = true;
+      else if (sawWeakFinalSlateRow) kitsuRescueFinalSlateReorderedStrongFirst = true;
+    }
+    if (kitsuRescueFinalSlateReorderedStrongFirst) {
+      const orderedFinalSlateRows = [...finalSlateRows].sort((a, b) => {
+        if (Number(b.strong) !== Number(a.strong)) return Number(b.strong) - Number(a.strong);
+        return a.index - b.index;
+      });
+      finalOutputItems = orderedFinalSlateRows.map((row) => row.item);
+      kitsuRescueSlateQualityAudit = orderedFinalSlateRows.map((row) => row.audit).filter(Boolean) as any;
     }
   }
   // Absolute-last contract recompute based on the final visible/persisted list.
@@ -13261,6 +13282,7 @@ const normalizedCandidatesRaw = [
     kitsuRescueSlateStrongCount,
     kitsuRescueSlateZeroEvidenceCount,
     kitsuRescueWeakBeforeStrongCorrectionApplied,
+    kitsuRescueFinalSlateReorderedStrongFirst,
     kitsuRescueStrongCandidateCount,
     kitsuRescueWeakCandidateCount,
     kitsuLowRankedCountRecoveryTriggered,
