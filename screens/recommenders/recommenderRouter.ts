@@ -4761,6 +4761,7 @@ export async function getRecommendations(
           pushGlobalPhase("kitsu_recovery_fetch_started", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex });
           const recoveryInput = {
             ...routedInput,
+            forceKitsuRecoveryFetch: true,
             bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
           } as any;
           const recoveryRes = await withSourceTimeout("router_before_kitsu_health_guard_recovery_fetch", "router_after_kitsu_health_guard_recovery_fetch", 10_000, () => getKitsuMangaRecommendations(recoveryInput));
@@ -4768,6 +4769,14 @@ export async function getRecommendations(
           const recoveryRawPool = Array.isArray((recoveryRes as any)?.debugRawPool) ? (recoveryRes as any).debugRawPool : [];
           const recoveryDocs = dedupeDocs(extractDocs(recoveryRes as any, "kitsu"));
           const raw = Number((recoveryRes as any)?.debugRawFetchedCount ?? countResultItems(recoveryRes));
+          const recoveryFetchUrl = String((recoveryRes as any)?.debugFetchUrl || `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`);
+          const recoveryFetchStatus = String((recoveryRes as any)?.debugSourceStatus || (raw > 0 ? "ok" : "empty"));
+          const recoveryBodyPrefix = String((recoveryRes as any)?.debugRawJsonSnippet || (recoveryRes as any)?.debugResponseSnippet || (raw === 0 ? "[empty_kitsu_result]" : "status=ok")).slice(0, 180);
+          const recoveryFetchError = String((recoveryRes as any)?.debugFetchError || "");
+          pushGlobalPhase("kitsu_recovery_fetch_url", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsu_recovery_fetch_url: recoveryFetchUrl });
+          pushGlobalPhase("kitsu_recovery_fetch_status", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsu_recovery_fetch_status: recoveryFetchStatus });
+          pushGlobalPhase("kitsu_recovery_body_prefix", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsu_recovery_body_prefix: recoveryBodyPrefix });
+          if (recoveryFetchError) pushGlobalPhase("kitsu_recovery_fetch_error", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsu_recovery_fetch_error: recoveryFetchError });
           pushGlobalPhase("kitsu_recovery_raw_count", { query, raw, recoveryRawPoolLength: recoveryRawPool.length, recoveryDocsLength: recoveryDocs.length, kitsu_recovery_attempt_index: recoveryAttemptIndex });
           aggregatedRawFetched.kitsu += raw;
           kitsuRouterFetchCount += 1;
@@ -4800,7 +4809,7 @@ export async function getRecommendations(
             kitsuRouterFetchCount,
             kitsu_recovery_attempt_index: recoveryAttemptIndex,
           });
-          kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "ok", timedOut: false, rawCount: raw, error: null, bodyPrefix: raw === 0 ? "[empty_kitsu_result]" : "status=ok" });
+          kitsuFetchResultsByQuery.push({ query, url: recoveryFetchUrl, status: recoveryFetchStatus, timedOut: false, rawCount: raw, error: recoveryFetchError || null, bodyPrefix: recoveryBodyPrefix });
           if (raw > 0) {
             kitsuRecoverySuccessQuery = query;
             pushGlobalPhase("kitsu_recovery_success_query", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex });

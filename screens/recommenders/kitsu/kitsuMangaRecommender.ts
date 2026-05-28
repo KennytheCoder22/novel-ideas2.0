@@ -214,7 +214,8 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const fetchLimit = Math.max(10, Math.min(20, Math.max(finalLimit * 2, 12)));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
 
-  if (deckKey !== "ms_hs" || !hasTeenMangaIntent(input.tagCounts)) {
+  const forceKitsuRecoveryFetch = Boolean((input as any)?.forceKitsuRecoveryFetch);
+  if (!forceKitsuRecoveryFetch && (deckKey !== "ms_hs" || !hasTeenMangaIntent(input.tagCounts))) {
     return {
       engineId: "kitsu",
       engineLabel: "Kitsu Manga",
@@ -225,7 +226,10 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     };
   }
 
-  const queriesToTry = buildKitsuQueries(input.tagCounts);
+  const forcedBucketQueries = Array.isArray((input as any)?.bucketPlan?.queries)
+    ? (input as any).bucketPlan.queries.map((q: any) => normalizeText(String(q || ""))).filter(Boolean)
+    : [];
+  const queriesToTry = forcedBucketQueries.length > 0 ? forcedBucketQueries : buildKitsuQueries(input.tagCounts);
   if (!queriesToTry.length) {
     return {
       engineId: "kitsu",
@@ -241,6 +245,10 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
 
+  let lastFetchUrl = "";
+  let lastFetchStatus = "not_attempted";
+  let lastFetchError = "";
+  let lastFetchBodyPrefix = "";
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const url =
@@ -248,15 +256,23 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       `?filter[text]=${encodeURIComponent(q)}` +
       `&page[limit]=${encodeURIComponent(String(fetchLimit))}`;
 
+    lastFetchUrl = url;
     let data: any;
     try {
       data = await fetchJsonWithTimeout(url, timeoutMs);
+      lastFetchStatus = "ok";
     } catch {
+      lastFetchStatus = "error";
+      lastFetchError = "fetch_failed_or_timeout";
       continue;
     }
 
     const items = Array.isArray(data?.data) ? data.data : [];
-    if (!items.length) continue;
+    if (!items.length) {
+      lastFetchBodyPrefix = "[empty_kitsu_result]";
+      continue;
+    }
+    lastFetchBodyPrefix = `items=${items.length}`;
     if (!docs.length) builtFromQuery = q;
 
     for (const item of items) {
@@ -290,5 +306,13 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     domainMode,
     builtFromQuery,
     items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "open_library", doc })),
+    debugSourceStatus: lastFetchStatus,
+    debugResponseSnippet: lastFetchBodyPrefix,
+    debugRawJsonSnippet: lastFetchBodyPrefix,
+    debugFetchUrl: lastFetchUrl,
+    debugFetchError: lastFetchError,
+    debugParsedDataLength: docs.length,
+    debugRawFetchedCount: docs.length,
+    debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),
   };
 }
