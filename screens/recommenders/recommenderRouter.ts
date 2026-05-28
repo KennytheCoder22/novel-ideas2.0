@@ -12407,6 +12407,43 @@ const normalizedCandidatesRaw = [
   if (nytReturnedCount > 0 && nytReturnedCount === finalOutputItems.length) {
     sourceSkippedReason.push("warning_nyt_only_returned_items");
   }
+  const kitsuRescueSlateQualityAudit: Array<{ title: string; sourceId: string; reason: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; weightedTasteScore: number; dislikePenaltyScore: number }> = [];
+  if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
+    for (const item of finalOutputItems) {
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      if (!title) continue;
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      const root = String(parentFranchiseRootForDoc(doc) || "");
+      const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+      const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+      const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+      const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+      const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
+      const reason =
+        laneAligned && semanticEvidenceCount >= 1
+          ? "lane_aligned_and_semantically_supported"
+          : laneAligned
+          ? "lane_aligned"
+          : semanticEvidenceCount >= 2
+          ? "strong_semantic_support"
+          : positiveFitScore >= 5
+          ? "high_positive_fit"
+          : weightedTasteScore > dislikePenaltyScore
+          ? "positive_taste_balance"
+          : "ranked_pool_backfill_candidate";
+      kitsuRescueSlateQualityAudit.push({
+        title,
+        sourceId,
+        reason,
+        laneAligned,
+        positiveFitScore,
+        semanticEvidenceCount,
+        weightedTasteScore,
+        dislikePenaltyScore,
+      });
+    }
+  }
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1
@@ -12927,6 +12964,7 @@ const normalizedCandidatesRaw = [
     kitsuRescueSlateBackfillBeforeCount,
     kitsuRescueSlateBackfillAfterCount,
     kitsuRescueSlateBackfillCandidateCount,
+    kitsuRescueSlateQualityAudit,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
     kitsuAcceptedButEmergencyReturned,
