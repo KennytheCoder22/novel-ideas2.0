@@ -4752,54 +4752,66 @@ export async function getRecommendations(
         kitsuQueryUsedByLane.find((q) => String(q || "").trim().length > 0) ||
         "adventure";
       const boundedFallback = Array.from(new Set([kitsuRecoveryQuery, "adventure", "drama", "mystery"].map((q) => String(q || "").trim()).filter(Boolean)));
-      const query = boundedFallback[0];
       kitsuRecoveryAttemptedForHealthGuard = true;
-      pushGlobalPhase("kitsu_recovery_attempt_before_source_health_failed", { query, boundedFallback });
-      try {
-        pushGlobalPhase("kitsu_recovery_fetch_started", { query });
-        const recoveryInput = {
-          ...routedInput,
-          bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
-        } as any;
-        const recoveryRes = await withSourceTimeout("router_before_kitsu_health_guard_recovery_fetch", "router_after_kitsu_health_guard_recovery_fetch", 10_000, () => getKitsuMangaRecommendations(recoveryInput));
-        pushGlobalPhase("kitsu_recovery_fetch_completed", { query });
-        const recoveryRawPool = Array.isArray((recoveryRes as any)?.debugRawPool) ? (recoveryRes as any).debugRawPool : [];
-        const recoveryDocs = dedupeDocs(extractDocs(recoveryRes as any, "kitsu"));
-        const raw = Number((recoveryRes as any)?.debugRawFetchedCount ?? countResultItems(recoveryRes));
-        pushGlobalPhase("kitsu_recovery_raw_count", { query, raw, recoveryRawPoolLength: recoveryRawPool.length, recoveryDocsLength: recoveryDocs.length });
-        aggregatedRawFetched.kitsu += raw;
-        kitsuRouterFetchCount += 1;
-        kitsuQueriesActuallyFetched.add(query);
-        if (recoveryRawPool.length > 0) {
-          debugRawPool.push(...recoveryRawPool.map((row: any) => ({
-            ...row,
-            queryText: row?.queryText ?? query,
-            queryFamily: normalizeRouterFamilyValue(row?.queryFamily) || laneFamily,
-            filterFamily: normalizeRouterFamilyValue(row?.filterFamily) || laneFamily,
-            laneKind: String(row?.laneKind || "core"),
-            primaryLane: routerFamily,
-          })));
+      let kitsuRecoverySuccessQuery = "";
+      for (let recoveryAttemptIndex = 0; recoveryAttemptIndex < boundedFallback.length; recoveryAttemptIndex += 1) {
+        const query = boundedFallback[recoveryAttemptIndex];
+        pushGlobalPhase("kitsu_recovery_attempt_before_source_health_failed", { query, boundedFallback, kitsu_recovery_attempt_index: recoveryAttemptIndex });
+        try {
+          pushGlobalPhase("kitsu_recovery_fetch_started", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex });
+          const recoveryInput = {
+            ...routedInput,
+            bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
+          } as any;
+          const recoveryRes = await withSourceTimeout("router_before_kitsu_health_guard_recovery_fetch", "router_after_kitsu_health_guard_recovery_fetch", 10_000, () => getKitsuMangaRecommendations(recoveryInput));
+          pushGlobalPhase("kitsu_recovery_fetch_completed", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex });
+          const recoveryRawPool = Array.isArray((recoveryRes as any)?.debugRawPool) ? (recoveryRes as any).debugRawPool : [];
+          const recoveryDocs = dedupeDocs(extractDocs(recoveryRes as any, "kitsu"));
+          const raw = Number((recoveryRes as any)?.debugRawFetchedCount ?? countResultItems(recoveryRes));
+          pushGlobalPhase("kitsu_recovery_raw_count", { query, raw, recoveryRawPoolLength: recoveryRawPool.length, recoveryDocsLength: recoveryDocs.length, kitsu_recovery_attempt_index: recoveryAttemptIndex });
+          aggregatedRawFetched.kitsu += raw;
+          kitsuRouterFetchCount += 1;
+          kitsuQueriesActuallyFetched.add(query);
+          if (recoveryRawPool.length > 0) {
+            debugRawPool.push(...recoveryRawPool.map((row: any) => ({
+              ...row,
+              queryText: row?.queryText ?? query,
+              queryFamily: normalizeRouterFamilyValue(row?.queryFamily) || laneFamily,
+              filterFamily: normalizeRouterFamilyValue(row?.filterFamily) || laneFamily,
+              laneKind: String(row?.laneKind || "core"),
+              primaryLane: routerFamily,
+            })));
+          }
+          if (recoveryDocs.length > 0) {
+            allMergedDocs.push(...recoveryDocs.map((doc: any) => ({
+              ...doc,
+              queryText: String(doc?.queryText || query).trim(),
+              queryFamily: normalizeRouterFamilyValue(doc?.queryFamily) || laneFamily,
+              filterFamily: normalizeRouterFamilyValue(doc?.filterFamily) || laneFamily,
+              laneKind: String(doc?.laneKind || "core"),
+              primaryLane: routerFamily,
+            })));
+            mergedDocs = dedupeDocs(allMergedDocs);
+          }
+          pushGlobalPhase("kitsu_recovery_merged_into_raw_pool", { mergedRawRows: recoveryRawPool.length, mergedDocs: recoveryDocs.length, kitsu_recovery_attempt_index: recoveryAttemptIndex });
+          pushGlobalPhase("post_recovery_raw_pool_length", { debugRawPoolLength: debugRawPool.length, mergedDocsLength: mergedDocs.length, kitsu_recovery_attempt_index: recoveryAttemptIndex });
+          pushGlobalPhase("post_recovery_source_counts", {
+            aggregatedRawFetched,
+            kitsuRouterFetchCount,
+            kitsu_recovery_attempt_index: recoveryAttemptIndex,
+          });
+          kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "ok", timedOut: false, rawCount: raw, error: null, bodyPrefix: raw === 0 ? "[empty_kitsu_result]" : "status=ok" });
+          if (raw > 0) {
+            kitsuRecoverySuccessQuery = query;
+            pushGlobalPhase("kitsu_recovery_success_query", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex });
+            break;
+          }
+        } catch (e: any) {
+          kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "error", timedOut: String(e?.message || e || "").includes("timeout"), rawCount: 0, error: String(e?.message || e || "fetch_failed"), bodyPrefix: String(e?.message || e || "").slice(0, 180) });
         }
-        if (recoveryDocs.length > 0) {
-          allMergedDocs.push(...recoveryDocs.map((doc: any) => ({
-            ...doc,
-            queryText: String(doc?.queryText || query).trim(),
-            queryFamily: normalizeRouterFamilyValue(doc?.queryFamily) || laneFamily,
-            filterFamily: normalizeRouterFamilyValue(doc?.filterFamily) || laneFamily,
-            laneKind: String(doc?.laneKind || "core"),
-            primaryLane: routerFamily,
-          })));
-          mergedDocs = dedupeDocs(allMergedDocs);
-        }
-        pushGlobalPhase("kitsu_recovery_merged_into_raw_pool", { mergedRawRows: recoveryRawPool.length, mergedDocs: recoveryDocs.length });
-        pushGlobalPhase("post_recovery_raw_pool_length", { debugRawPoolLength: debugRawPool.length, mergedDocsLength: mergedDocs.length });
-        pushGlobalPhase("post_recovery_source_counts", {
-          aggregatedRawFetched,
-          kitsuRouterFetchCount,
-        });
-        kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "ok", timedOut: false, rawCount: raw, error: null, bodyPrefix: raw === 0 ? "[empty_kitsu_result]" : "status=ok" });
-      } catch (e: any) {
-        kitsuFetchResultsByQuery.push({ query, url: `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(query)}`, status: "error", timedOut: String(e?.message || e || "").includes("timeout"), rawCount: 0, error: String(e?.message || e || "fetch_failed"), bodyPrefix: String(e?.message || e || "").slice(0, 180) });
+      }
+      if (!kitsuRecoverySuccessQuery) {
+        pushGlobalPhase("kitsu_recovery_attempts_exhausted", { boundedFallback, kitsu_recovery_attempts_exhausted: true });
       }
     }
     const allRealSourcesStarvedAfterRecovery =
