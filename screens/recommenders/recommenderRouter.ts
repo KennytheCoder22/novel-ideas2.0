@@ -11354,6 +11354,10 @@ const normalizedCandidatesRaw = [
   let finalInvariantKitsuRescuePreviousBuiltFrom = "";
   let finalMetadataCorrectionApplied = false;
   let finalMetadataCorrectionPreviousBuiltFrom = "";
+  let kitsuRescueSlateBackfillApplied = false;
+  let kitsuRescueSlateBackfillBeforeCount = 0;
+  let kitsuRescueSlateBackfillAfterCount = 0;
+  let kitsuRescueSlateBackfillCandidateCount = 0;
   const kitsuFinalEligibilitySparseMetadataRescueCandidates: Array<{ title: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; positiveFitScore: number; rejectedReasonForRescue: string }> = [];
   let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
@@ -12318,7 +12322,28 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:kitsu_ranked_pool_rescue`);
     }
   }
-  const terminalSelectedSet = new Set(terminalAssemblyOutputTitlesAtReturn.map((t) => normalizeText(String(t || ""))).filter(Boolean));
+  if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue" && finalOutputItems.length < 3) {
+    const rankedDocsKitsuPool = (rankedDocs || [])
+      .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
+      .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()));
+    kitsuRescueSlateBackfillCandidateCount = rankedDocsKitsuPool.length;
+    if (rankedDocsKitsuPool.length >= 3) {
+      kitsuRescueSlateBackfillBeforeCount = finalOutputItems.length;
+      const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))));
+      const target = Math.min(5, rankedDocsKitsuPool.length);
+      const additions = rankedDocsKitsuPool
+        .filter((doc: any) => !seen.has(normalizeText(String(doc?.title || ""))))
+        .slice(0, Math.max(0, target - finalOutputItems.length))
+        .map((doc: any) => ({ kind: "open_library", doc }));
+      if (additions.length > 0) {
+        finalOutputItems = [...finalOutputItems, ...additions].slice(0, target);
+        kitsuRescueSlateBackfillApplied = true;
+        kitsuRescueSlateBackfillAfterCount = finalOutputItems.length;
+        sourceSkippedReason.push(`kitsu_rescue_slate_backfill:${kitsuRescueSlateBackfillBeforeCount}->${kitsuRescueSlateBackfillAfterCount}`);
+      }
+    }
+  }
+  const terminalSelectedSet = new Set(finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
   for (const row of finalEligibilityAudit) {
     row.selected = terminalSelectedSet.has(normalizeText(String(row.title || "")));
   }
@@ -12898,6 +12923,10 @@ const normalizedCandidatesRaw = [
     finalInvariantKitsuRescuePreviousBuiltFrom,
     finalMetadataCorrectionApplied,
     finalMetadataCorrectionPreviousBuiltFrom,
+    kitsuRescueSlateBackfillApplied,
+    kitsuRescueSlateBackfillBeforeCount,
+    kitsuRescueSlateBackfillAfterCount,
+    kitsuRescueSlateBackfillCandidateCount,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
     kitsuAcceptedButEmergencyReturned,
