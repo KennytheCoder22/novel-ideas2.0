@@ -11655,11 +11655,13 @@ const normalizedCandidatesRaw = [
         if (shouldTriggerRankedPoolRescue && rescuePoolToUse.length > 0) {
           const top = rescuePoolToUse[0];
           kitsuRankedPoolRescueSource = rankedKitsuRescue.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
-          const topDoc = teenPostPassItems
-            .map((item: any) => item?.doc || item)
-            .find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(top?.title || "")));
-          if (topDoc) {
-            finalOutputItems = [{ kind: "open_library", doc: topDoc }];
+          const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+          const rankedRescueDocs = rescuePoolToUse
+            .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
+            .filter(Boolean)
+            .slice(0, Math.max(3, Math.min(5, finalLimit)));
+          if (rankedRescueDocs.length > 0) {
+            finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
             returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
             finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
             sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue");
@@ -11674,7 +11676,7 @@ const normalizedCandidatesRaw = [
               reason: `ranked_kitsu_pool_rescue_pre_emergency:${kitsuRankedPoolRescueSource}`,
             };
           }
-          if (!topDoc) kitsuRankedPoolRescueBlockedReason = "top_candidate_not_found_in_teen_postpass_items";
+          if (rankedRescueDocs.length === 0) kitsuRankedPoolRescueBlockedReason = "top_candidate_not_found_in_teen_postpass_items";
         }
       }
       if (finalOutputItems.length === 0) {
@@ -11779,13 +11781,15 @@ const normalizedCandidatesRaw = [
         .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()));
       kitsuRankedPoolRescueEligible = true;
       if (kitsuRankedPoolRescueSource === "not_triggered" && rankedKitsuFallbackFromRankedDocs.length > 0) {
-        const top = rankedKitsuFallbackFromRankedDocs[0];
-        const topTitle = String(top?.title || "").trim();
-        const topDoc = teenPostPassItems.map((item: any) => item?.doc || item).find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(topTitle));
+        const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+        const rankedRescueDocs = rankedKitsuFallbackFromRankedDocs
+          .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
+          .filter(Boolean)
+          .slice(0, Math.max(3, Math.min(5, finalLimit)));
         kitsuRankedPoolRescueCandidateCount = rankedKitsuFallbackFromRankedDocs.length;
         kitsuRankedPoolRescueSource = "rankedDocsFallback";
-        if (topDoc) {
-          finalOutputItems = [{ kind: "open_library", doc: topDoc }];
+        if (rankedRescueDocs.length > 0) {
+          finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
           returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
           finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
           kitsuRankedPoolRescueBlockedReason = "none";
@@ -12274,11 +12278,14 @@ const normalizedCandidatesRaw = [
     const rescuePool = rankedCandidatePool.length > 0 ? rankedCandidatePool : rankedDocsFallbackPool;
     finalInvariantKitsuRescueCandidateCount = rescuePool.length;
     if (rescuePool.length === 0) return;
-    const topTitle = String((rescuePool[0] as any)?.title || "").trim();
-    const topDoc = teenPostPassItems.map((item: any) => item?.doc || item).find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(topTitle))
-      || rankedDocsFallbackPool.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(topTitle));
-    if (!topDoc) return;
-    finalOutputItems = [{ kind: "open_library", doc: topDoc }];
+    const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+    const rankedRescueDocs = rescuePool
+      .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || "")))
+        || rankedDocsFallbackPool.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
+      .filter(Boolean)
+      .slice(0, Math.max(3, Math.min(5, finalLimit)));
+    if (rankedRescueDocs.length === 0) return;
+    finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
     returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
     finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
     kitsuRankedPoolRescueSource = rescueSource;
