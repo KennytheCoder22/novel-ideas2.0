@@ -11352,6 +11352,8 @@ const normalizedCandidatesRaw = [
   let finalInvariantKitsuRescueTriggered = false;
   let finalInvariantKitsuRescueCandidateCount = 0;
   let finalInvariantKitsuRescuePreviousBuiltFrom = "";
+  let finalMetadataCorrectionApplied = false;
+  let finalMetadataCorrectionPreviousBuiltFrom = "";
   const kitsuFinalEligibilitySparseMetadataRescueCandidates: Array<{ title: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; positiveFitScore: number; rejectedReasonForRescue: string }> = [];
   let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
@@ -12288,6 +12290,27 @@ const normalizedCandidatesRaw = [
   const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
     ? finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
     : [];
+  const shouldApplyFinalMetadataCorrection =
+    finalItemsLength === 0 &&
+    finalOutputItems.length > 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+    Number(rankedCount || 0) >= 10 &&
+    finalOutputItems.every((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    });
+  if (shouldApplyFinalMetadataCorrection) {
+    const prev = String(returnedItemsBuiltFrom || "none");
+    if (prev !== "kitsu_ranked_pool_rescue") {
+      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
+      finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+      finalMetadataCorrectionApplied = true;
+      finalMetadataCorrectionPreviousBuiltFrom = prev;
+      sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:kitsu_ranked_pool_rescue`);
+    }
+  }
   const terminalSelectedSet = new Set(terminalAssemblyOutputTitlesAtReturn.map((t) => normalizeText(String(t || ""))).filter(Boolean));
   for (const row of finalEligibilityAudit) {
     row.selected = terminalSelectedSet.has(normalizeText(String(row.title || "")));
@@ -12866,6 +12889,8 @@ const normalizedCandidatesRaw = [
     finalInvariantKitsuRescueTriggered,
     finalInvariantKitsuRescueCandidateCount,
     finalInvariantKitsuRescuePreviousBuiltFrom,
+    finalMetadataCorrectionApplied,
+    finalMetadataCorrectionPreviousBuiltFrom,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
     kitsuAcceptedButEmergencyReturned,
