@@ -11509,6 +11509,9 @@ const normalizedCandidatesRaw = [
   let kitsuSmallRecoveryMetadataCorrectionApplied = false;
   let kitsuSmallRecoveryRawCount = 0;
   let kitsuSmallRecoveryRankedCount = 0;
+  let kitsuSmallRecoveryOutputTriggered = false;
+  let kitsuSmallRecoveryCandidateCount = 0;
+  let kitsuSmallRecoveryReason = "not_evaluated";
   const kitsuFinalEligibilitySparseMetadataRescueCandidates: Array<{ title: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; positiveFitScore: number; rejectedReasonForRescue: string }> = [];
   let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
@@ -12756,6 +12759,31 @@ const normalizedCandidatesRaw = [
       kitsuRescueSlateQualityAudit = orderedFinalSlateRows.map((row) => row.audit).filter(Boolean) as any;
     }
   }
+  const smallKitsuRawCountForAudit = Number(aggregatedRawFetched.kitsu || 0);
+  const shouldAuditSmallKitsuRecoveryOutput =
+    smallKitsuRawCountForAudit > 0 &&
+    smallKitsuRawCountForAudit < 10 &&
+    finalItemsLength === 0 &&
+    finalOutputItems.length <= 1;
+  if (shouldAuditSmallKitsuRecoveryOutput) {
+    const smallRecoveryCandidateKeys = new Set<string>();
+    for (const item of [...(teenPostPassItems || []), ...((rankedDocs || []) as any[])]) {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      if (!source.includes("kitsu")) continue;
+      const title = String(doc?.title || "").trim();
+      if (!title || isReferenceArtifactTitle(title)) continue;
+      const key = normalizeText(String(doc?.sourceId || doc?.canonicalId || doc?.key || title));
+      if (key) smallRecoveryCandidateKeys.add(key);
+    }
+    kitsuSmallRecoveryOutputTriggered = true;
+    kitsuSmallRecoveryCandidateCount = smallRecoveryCandidateKeys.size;
+    kitsuSmallRecoveryReason = kitsuSmallRecoveryCandidateCount > 0
+      ? `small_kitsu_pool_underfilled:raw=${smallKitsuRawCountForAudit}:ranked=${Number(rankedCount || 0)}:returned=${finalOutputItems.length}:builtFrom=${String(returnedItemsBuiltFrom || "none")}`
+      : `small_kitsu_pool_no_visible_candidates:raw=${smallKitsuRawCountForAudit}:ranked=${Number(rankedCount || 0)}:returned=${finalOutputItems.length}:builtFrom=${String(returnedItemsBuiltFrom || "none")}`;
+  } else {
+    kitsuSmallRecoveryReason = `trigger_not_met:raw=${smallKitsuRawCountForAudit}:ranked=${Number(rankedCount || 0)}:finalItems=${finalItemsLength}:returned=${finalOutputItems.length}`;
+  }
   // Absolute-last contract recompute based on the final visible/persisted list.
   const finalVisibleCount = finalOutputItems.length;
   countContractSatisfied = enabledSourceCount <= 1
@@ -13291,6 +13319,9 @@ const normalizedCandidatesRaw = [
     kitsuSmallRecoveryMetadataCorrectionApplied,
     kitsuSmallRecoveryRawCount,
     kitsuSmallRecoveryRankedCount,
+    kitsuSmallRecoveryOutputTriggered,
+    kitsuSmallRecoveryCandidateCount,
+    kitsuSmallRecoveryReason,
     kitsuRescueSlateQualityAudit,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
