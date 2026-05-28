@@ -11336,6 +11336,7 @@ const normalizedCandidatesRaw = [
   const kitsuNormalRecoveryAcceptedTitles: string[] = [];
   const kitsuNormalRecoveryAcceptedItems: any[] = [];
   const kitsuNormalRecoveryRejectedByTitle: Record<string, string> = {};
+  let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
   let kitsuAcceptedButEmergencyReturned: { acceptedTitles: string[]; emergencyReturnedTitles: string[]; reason: string } | null = null;
   const kitsuRecoveryPoolTitles: string[] = [];
@@ -11595,8 +11596,55 @@ const normalizedCandidatesRaw = [
         finalEligibilityAcceptedTitles.push(...viableUnderfillRescue.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
         sourceSkippedReason.push("final_gate_integrity:min_viable_underfill_rescue");
       } else {
-        finalOutputItems = [];
-        sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+        const sparseMetadataFailureReasons = new Set(["low_recommendation_confidence", "zero_meaningful_signal_without_franchise_or_taste_alignment", "insufficient_positive_fit_score", "missing_parent_or_title_root_match"]);
+        const kitsuSparseEligibleRows = finalEligibilityAudit
+          .filter((row) => String(row?.source || "").includes("kitsu"))
+          .filter((row) => Boolean(row?.sourceId))
+          .filter((row) => !isReferenceArtifactTitle(String(row?.title || "")))
+          .filter((row) => row?.laneAligned || Number(semanticEvidenceCountByTitle[String(row?.title || "").trim()] || 0) > 0)
+          .filter((row) => {
+            const fails = Array.isArray(row?.failedChecks) ? row.failedChecks : [];
+            return fails.length > 0 && fails.every((reason: string) => sparseMetadataFailureReasons.has(String(reason || "")));
+          })
+          .sort((a, b) => {
+            if (Number(b.laneAligned) !== Number(a.laneAligned)) return Number(b.laneAligned) - Number(a.laneAligned);
+            const at = String(a?.title || "").trim();
+            const bt = String(b?.title || "").trim();
+            const af = Number(positiveFitScoreByTitle[at] || 0);
+            const bf = Number(positiveFitScoreByTitle[bt] || 0);
+            if (bf !== af) return bf - af;
+            const as = Number(semanticEvidenceCountByTitle[at] || 0);
+            const bs = Number(semanticEvidenceCountByTitle[bt] || 0);
+            return bs - as;
+          });
+        if (kitsuSparseEligibleRows.length > 0) {
+          const chosen = kitsuSparseEligibleRows[0];
+          const chosenTitle = String(chosen?.title || "").trim();
+          const chosenDoc = teenPostPassItems
+            .map((item: any) => item?.doc || item)
+            .find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(chosenTitle));
+          if (chosenDoc) {
+            finalOutputItems = [{ kind: "open_library", doc: chosenDoc }];
+            returnedItemsBuiltFrom = "kitsu_final_eligibility_sparse_metadata_rescue";
+            finalReturnSourceUsed = "kitsu_final_eligibility_sparse_metadata_rescue";
+            sourceSkippedReason.push("final_gate_integrity:kitsu_final_eligibility_sparse_metadata_rescue");
+            kitsuFinalEligibilitySparseMetadataRescue = {
+              activated: true,
+              candidateTitle: chosenTitle,
+              sourceId: String(chosen?.sourceId || ""),
+              failedChecks: Array.isArray(chosen?.failedChecks) ? chosen.failedChecks : [],
+              laneAligned: Boolean(chosen?.laneAligned),
+              semanticEvidenceCount: Number(semanticEvidenceCountByTitle[chosenTitle] || 0),
+              reason: "kitsu_sparse_metadata_only_failures",
+            };
+          } else {
+            finalOutputItems = [];
+            sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+          }
+        } else {
+          finalOutputItems = [];
+          sourceSkippedReason.push("final_gate_integrity:no_final_eligibility_accepts");
+        }
       }
       }
     } else {
@@ -12640,6 +12688,7 @@ const normalizedCandidatesRaw = [
     kitsuNormalRecoveryConsidered,
     kitsuNormalRecoveryAcceptedTitles,
     kitsuRecoveryRankedCandidates,
+    kitsuFinalEligibilitySparseMetadataRescue,
     kitsuAcceptedButEmergencyReturned,
     kitsuNormalRecoveryRejectedByTitle,
     kitsuRecoveryPoolTitles,
