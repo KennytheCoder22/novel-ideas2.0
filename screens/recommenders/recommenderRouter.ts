@@ -11258,6 +11258,7 @@ const normalizedCandidatesRaw = [
   const kitsuNormalRecoveryAcceptedTitles: string[] = [];
   const kitsuNormalRecoveryAcceptedItems: any[] = [];
   const kitsuNormalRecoveryRejectedByTitle: Record<string, string> = {};
+  let kitsuAcceptedButEmergencyReturned: { acceptedTitles: string[]; emergencyReturnedTitles: string[]; reason: string } | null = null;
   const kitsuRecoveryPoolTitles: string[] = [];
   const kitsuRecoveryBestRejectedReasons: Record<string, string> = {};
   let minimalSafeOneBlockedReason = "";
@@ -11431,6 +11432,12 @@ const normalizedCandidatesRaw = [
           sourceSkippedReason.push("final_gate_integrity:kitsu_normal_recovery");
         }
       }
+      if (finalOutputItems.length === 0 && kitsuNormalRecoveryAcceptedItems.length > 0) {
+        finalOutputItems = kitsuNormalRecoveryAcceptedItems.slice(0, Math.max(1, Math.min(3, finalLimit)));
+        returnedItemsBuiltFrom = "kitsu_normal_recovery";
+        finalReturnSourceUsed = "kitsu_normal_recovery";
+        sourceSkippedReason.push("final_gate_integrity:kitsu_normal_recovery_preserved_before_emergency_handoff");
+      }
       const teenPostPassHandoffItems =
         finalOutputItems.length === 0 && teenPostPassOutputLength > 0
           ? teenPostPassItems
@@ -11503,6 +11510,14 @@ const normalizedCandidatesRaw = [
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
+    if (kitsuNormalRecoveryAcceptedItems.length > 0) {
+      finalOutputItems = kitsuNormalRecoveryAcceptedItems.slice(0, Math.max(1, Math.min(3, finalLimit)));
+      returnedItemsBuiltFrom = "kitsu_normal_recovery";
+      finalReturnSourceUsed = "kitsu_normal_recovery";
+      sourceSkippedReason.push("final_gate_integrity:kitsu_normal_recovery_preserved_before_global_emergency_handoff");
+    }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
     const seenRoots = new Set<string>();
     const teenPostPassGlobalHandoff = teenPostPassItems
@@ -11529,6 +11544,13 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = "teen_postpass_global_emergency_handoff";
       finalReturnSourceUsed = "teen_postpass_global_emergency_handoff";
       sourceSkippedReason.push("final_gate_integrity:teen_postpass_global_emergency_handoff");
+      if (kitsuNormalRecoveryAcceptedTitles.length > 0) {
+        kitsuAcceptedButEmergencyReturned = {
+          acceptedTitles: Array.from(new Set(kitsuNormalRecoveryAcceptedTitles)).slice(0, 20),
+          emergencyReturnedTitles: teenPostPassGlobalHandoff.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean),
+          reason: "kitsu_normal_recovery_accepted_but_global_emergency_selected",
+        };
+      }
     }
   }
   let teenPostPassGlobalHandoffConsidered = false;
@@ -11929,6 +11951,13 @@ const normalizedCandidatesRaw = [
   const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
     ? finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
     : [];
+  if (!kitsuAcceptedButEmergencyReturned && kitsuNormalRecoveryAcceptedTitles.length > 0 && /teen_postpass_.*emergency_handoff/.test(String(returnedItemsBuiltFrom || ""))) {
+    kitsuAcceptedButEmergencyReturned = {
+      acceptedTitles: Array.from(new Set(kitsuNormalRecoveryAcceptedTitles)).slice(0, 20),
+      emergencyReturnedTitles: terminalAssemblyOutputTitlesAtReturn,
+      reason: `returned_items_built_from_${String(returnedItemsBuiltFrom || "unknown")}`,
+    };
+  }
   const nytFetchAttempted = Boolean(sourceEnabled.nyt) && Boolean(nytAnchorDebug.enabled);
   const nytCandidateTitles = dedupeDocs([
     ...(nytAnchorResult?.docs || []),
@@ -12487,6 +12516,7 @@ const normalizedCandidatesRaw = [
     normalFinalGateRecoveryRejectedByTitle,
     kitsuNormalRecoveryConsidered,
     kitsuNormalRecoveryAcceptedTitles,
+    kitsuAcceptedButEmergencyReturned,
     kitsuNormalRecoveryRejectedByTitle,
     kitsuRecoveryPoolTitles,
     kitsuRecoveryBestRejectedReasons,
