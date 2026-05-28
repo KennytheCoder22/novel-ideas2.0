@@ -11361,6 +11361,9 @@ const normalizedCandidatesRaw = [
   let kitsuLowRankedCountRecoveryTriggered = false;
   let kitsuLowRankedCountRecoveryCandidateCount = 0;
   let kitsuLowRankedCountRecoveryBlockedReason = "not_evaluated";
+  let kitsuSmallRecoveryMetadataCorrectionApplied = false;
+  let kitsuSmallRecoveryRawCount = 0;
+  let kitsuSmallRecoveryRankedCount = 0;
   const kitsuFinalEligibilitySparseMetadataRescueCandidates: Array<{ title: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; positiveFitScore: number; rejectedReasonForRescue: string }> = [];
   let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
@@ -12378,6 +12381,24 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:kitsu_ranked_pool_rescue`);
     }
   }
+  const shouldApplySmallKitsuMetadataCorrection =
+    finalItemsLength === 0 &&
+    finalOutputItems.length > 0 &&
+    String(returnedItemsBuiltFrom || "none") === "none" &&
+    finalOutputItems.every((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    });
+  if (shouldApplySmallKitsuMetadataCorrection) {
+    returnedItemsBuiltFrom = "kitsu_small_recovery_output";
+    finalReturnSourceUsed = "kitsu_small_recovery_output";
+    kitsuSmallRecoveryMetadataCorrectionApplied = true;
+    kitsuSmallRecoveryRawCount = Number(aggregatedRawFetched.kitsu || 0);
+    kitsuSmallRecoveryRankedCount = Number(rankedCount || 0);
+    sourceSkippedReason.push("final_metadata_corrected_small_kitsu_output");
+  }
   if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue" && finalOutputItems.length < 3) {
     const rankedDocsKitsuPool = (rankedDocs || [])
       .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
@@ -13049,6 +13070,9 @@ const normalizedCandidatesRaw = [
     kitsuLowRankedCountRecoveryTriggered,
     kitsuLowRankedCountRecoveryCandidateCount,
     kitsuLowRankedCountRecoveryBlockedReason,
+    kitsuSmallRecoveryMetadataCorrectionApplied,
+    kitsuSmallRecoveryRawCount,
+    kitsuSmallRecoveryRankedCount,
     kitsuRescueSlateQualityAudit,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
