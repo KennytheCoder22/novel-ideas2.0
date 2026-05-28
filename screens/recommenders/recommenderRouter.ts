@@ -2797,6 +2797,14 @@ export async function getRecommendations(
   const kitsuPreSanitizedQueries: string[] = [];
   const kitsuSanitizedQuerySelected: string[] = [];
   const kitsuFinalQueryUsedForFetch: string[] = [];
+  let kitsuRecoveryOriginalIntentQuery = "";
+  let kitsuRecoverySelectedQuery = "";
+  let kitsuRecoveryQueryTooBroad = false;
+  const kitsuRecoveryQueryDroppedGenreTerms: string[] = [];
+  const isTooBroadKitsuRecoveryQuery = (q: string) => {
+    const normalized = String(q || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+    return ["young", "driven", "story", "character", "identity"].includes(normalized);
+  };
   const kitsuSanitizationDroppedTokens: Array<{ token: string; reason: string }> = [];
   const kitsuSanitizationDiagnostics: Array<{ original: string; sanitized: string; droppedTokens: Array<{ token: string; reason: string }>; genericOnly: boolean }> = [];
   const googleBooksProbeDegraded = Boolean((routedInput as any)?.googleBooksProbeDegraded);
@@ -4202,6 +4210,12 @@ export async function getRecommendations(
           : kitsuSanitized.sanitized);
       kitsuPreSanitizedQueries.push(baseLaneQuery);
       kitsuSanitizedQuerySelected.push(kitsuLaneQuery);
+      if (!kitsuRecoveryOriginalIntentQuery) kitsuRecoveryOriginalIntentQuery = baseLaneQuery;
+      if (!kitsuRecoverySelectedQuery) kitsuRecoverySelectedQuery = kitsuLaneQuery;
+      if (isTooBroadKitsuRecoveryQuery(kitsuLaneQuery)) kitsuRecoveryQueryTooBroad = true;
+      for (const dropped of kitsuSanitized.dropped) {
+        if (dropped?.reason === "generic_genre_token") kitsuRecoveryQueryDroppedGenreTerms.push(String(dropped.token || ""));
+      }
       kitsuSanitizationDroppedTokens.push(...kitsuSanitized.dropped);
       kitsuSanitizationDiagnostics.push({ original: baseLaneQuery, sanitized: kitsuLaneQuery, droppedTokens: kitsuSanitized.dropped, genericOnly: kitsuSanitized.genericOnly });
       sourceSpecificQueryModeBySource.googleBooks = "natural_language_with_exclusions";
@@ -4807,6 +4821,9 @@ export async function getRecommendations(
         kitsuQueryUsedByLane.find((q) => String(q || "").trim().length > 0) ||
         "adventure";
       const boundedFallback = Array.from(new Set([kitsuRecoveryQuery, "adventure", "drama", "mystery"].map((q) => sanitizeKitsuRecoveryQuery(String(q || "")).to).filter(Boolean)));
+      if (!kitsuRecoveryOriginalIntentQuery) kitsuRecoveryOriginalIntentQuery = kitsuRecoveryQuery;
+      if (!kitsuRecoverySelectedQuery && boundedFallback.length > 0) kitsuRecoverySelectedQuery = String(boundedFallback[0] || "");
+      if (boundedFallback.some((q) => isTooBroadKitsuRecoveryQuery(String(q || "")))) kitsuRecoveryQueryTooBroad = true;
       kitsuRecoveryAttemptedForHealthGuard = true;
       let kitsuRecoverySuccessQuery = "";
       for (let recoveryAttemptIndex = 0; recoveryAttemptIndex < boundedFallback.length; recoveryAttemptIndex += 1) {
@@ -4957,6 +4974,10 @@ export async function getRecommendations(
       kitsuQuerySanitizedTo,
       kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
       kitsuSanitizedQuerySelected: kitsuSanitizedQuerySelected[0] || "",
+      kitsuRecoveryOriginalIntentQuery,
+      kitsuRecoverySelectedQuery,
+      kitsuRecoveryQueryTooBroad,
+      kitsuRecoveryQueryDroppedGenreTerms: Array.from(new Set(kitsuRecoveryQueryDroppedGenreTerms.map((t) => String(t || "").trim()).filter(Boolean))).slice(0, 20),
       kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
       kitsuPolicyUniqueCanonicalQueries: kitsuPolicyUniqueCanonicalQueriesForHealthGuard,
       kitsuMaxAllowedCanonicalFetches: kitsuMaxAllowedCanonicalFetchesForHealthGuard,
@@ -13441,6 +13462,10 @@ const normalizedCandidatesRaw = [
     kitsuConfiguredApiBase: KITSU_API_BASE,
     kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
     kitsuSanitizedQuerySelected: selectedKitsuQuery,
+    kitsuRecoveryOriginalIntentQuery,
+    kitsuRecoverySelectedQuery,
+    kitsuRecoveryQueryTooBroad,
+    kitsuRecoveryQueryDroppedGenreTerms: Array.from(new Set(kitsuRecoveryQueryDroppedGenreTerms.map((t) => String(t || "").trim()).filter(Boolean))).slice(0, 20),
     kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
     kitsuPolicyUniqueCanonicalQueries,
     kitsuMaxAllowedCanonicalFetches,
