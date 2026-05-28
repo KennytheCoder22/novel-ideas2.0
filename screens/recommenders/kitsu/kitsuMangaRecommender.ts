@@ -11,7 +11,7 @@ import type { TagCounts } from "../../swipe/openLibraryFromTags";
 export const KITSU_API_BASE = String(
   process.env.EXPO_PUBLIC_KITSU_API_BASE_URL ||
   process.env.KITSU_API_BASE_URL ||
-  "https://kitsu.io/api/edge"
+  "https://kitsu.app/api/edge"
 ).replace(/\/+$/, "");
 
 function normalizeText(value: any): string {

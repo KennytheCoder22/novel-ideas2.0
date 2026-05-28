@@ -40,7 +40,7 @@ async function hit(url) {
 }
 
 async function main() {
-  const kitsuApiBase = String(process.env.EXPO_PUBLIC_KITSU_API_BASE_URL || process.env.KITSU_API_BASE_URL || "https://kitsu.io/api/edge").replace(/\/+$/, "");
+  const kitsuApiBase = String(process.env.EXPO_PUBLIC_KITSU_API_BASE_URL || process.env.KITSU_API_BASE_URL || "https://kitsu.app/api/edge").replace(/\/+$/, "");
   console.log("=== OpenLibrary proxy smoke ===");
   for (const q of openLibraryQueries) {
     const url = `http://localhost:3000/api/openlibrary?q=${encodeURIComponent(q)}`;
