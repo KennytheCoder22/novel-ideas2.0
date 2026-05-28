@@ -12331,10 +12331,34 @@ const normalizedCandidatesRaw = [
       kitsuRescueSlateBackfillBeforeCount = finalOutputItems.length;
       const seen = new Set(finalOutputItems.map((item: any) => normalizeText(String(item?.doc?.title || item?.title || ""))));
       const target = Math.min(5, rankedDocsKitsuPool.length);
-      const additions = rankedDocsKitsuPool
+      const rankedCandidates = rankedDocsKitsuPool
         .filter((doc: any) => !seen.has(normalizeText(String(doc?.title || ""))))
+        .map((doc: any) => {
+          const title = String(doc?.title || "").trim();
+          const root = String(parentFranchiseRootForDoc(doc) || "");
+          const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+          const semanticEvidenceCount = Number(semanticEvidenceCountByTitle[title] || 0);
+          const weightedTasteScore = Number(candidateWeightedTasteScoreByTitle[title] || 0);
+          const dislikePenaltyScore = Number(candidateDislikePenaltyByTitle[title] || 0);
+          const positiveFitScore = Number(positiveFitScoreByTitle[title] || 0);
+          const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "").trim();
+          const weakByPolicy = semanticEvidenceCount === 0 && weightedTasteScore === 0 && !laneAligned;
+          return { doc, laneAligned, semanticEvidenceCount, weightedTasteScore, dislikePenaltyScore, positiveFitScore, sourceId, weakByPolicy };
+        })
+        .sort((a: any, b: any) => {
+          if (Number(b.laneAligned) !== Number(a.laneAligned)) return Number(b.laneAligned) - Number(a.laneAligned);
+          if (Number(b.semanticEvidenceCount > 0) !== Number(a.semanticEvidenceCount > 0)) return Number(b.semanticEvidenceCount > 0) - Number(a.semanticEvidenceCount > 0);
+          if (Number(b.weightedTasteScore > 0) !== Number(a.weightedTasteScore > 0)) return Number(b.weightedTasteScore > 0) - Number(a.weightedTasteScore > 0);
+          if (Number(b.dislikePenaltyScore === 0) !== Number(a.dislikePenaltyScore === 0)) return Number(b.dislikePenaltyScore === 0) - Number(a.dislikePenaltyScore === 0);
+          if (Number(Boolean(b.sourceId)) !== Number(Boolean(a.sourceId))) return Number(Boolean(b.sourceId)) - Number(Boolean(a.sourceId));
+          if (b.positiveFitScore !== a.positiveFitScore) return b.positiveFitScore - a.positiveFitScore;
+          return b.semanticEvidenceCount - a.semanticEvidenceCount;
+        });
+      const strongFirst = rankedCandidates.filter((row: any) => !row.weakByPolicy);
+      const weakFallback = rankedCandidates.filter((row: any) => row.weakByPolicy);
+      const additions = [...strongFirst, ...weakFallback]
         .slice(0, Math.max(0, target - finalOutputItems.length))
-        .map((doc: any) => ({ kind: "open_library", doc }));
+        .map((row: any) => ({ kind: "open_library", doc: row.doc }));
       if (additions.length > 0) {
         finalOutputItems = [...finalOutputItems, ...additions].slice(0, target);
         kitsuRescueSlateBackfillApplied = true;
