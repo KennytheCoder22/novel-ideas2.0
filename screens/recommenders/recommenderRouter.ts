@@ -7923,6 +7923,7 @@ const normalizedCandidatesRaw = [
   if (tasteQueryDriftGatePending) markSourceSpecificGate("__router__", "taste_query_drift:true");
   const profileCompatibleExpansionRoots = new Set(["locke-key", "sweet-tooth", "descender", "spider-man", "runaways", "black-science", "invincible", "the-sandman", "saga"]);
   const finalEligibilityGateApplied = true;
+  const finalEligibilityAudit: Array<{ title: string; sourceId: string; source: string; laneAligned: boolean; passedFinalEligibility: boolean; failedChecks: string[]; teenSafetyState: string; hasDescription: boolean; hasCategories: boolean; hasCover: boolean; selected: boolean }> = [];
   const eligibleWithFitScore: Array<{ doc: any; fitScore: number; recommendableWorkScore: number; artifactRiskScore: number; collectedEditionConfidence: number; narrativeFictionConfidence: number; metaOrReferenceWorkPenalty: number }> = [];
   const formatSignalOnlyRejectedTitles: string[] = [];
   const genericCollectionArtifactRejectedTitles: string[] = [];
@@ -7943,7 +7944,8 @@ const normalizedCandidatesRaw = [
     if (!terminalRejectReasonByTitle[key]) terminalRejectReasonByTitle[key] = reason;
   };
   const teenMaturityHardBlockRe = /\b(explicit sexual|sexually explicit|pornographic|porn|erotica|adult only|adults only|18\+|nc-17|x-rated|rape|sexual assault|incest|gore porn|extreme gore)\b/i;
-  const finalRenderCandidateTitlesBeforeGate = finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
+  const finalRenderCandidateDocsBeforeGate = Array.isArray(finalRenderDocs) ? finalRenderDocs.slice() : [];
+  const finalRenderCandidateTitlesBeforeGate = finalRenderCandidateDocsBeforeGate.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   preSourceSpecificGateTitles.push(...finalRenderCandidateTitlesBeforeGate);
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
@@ -8297,6 +8299,37 @@ const normalizedCandidatesRaw = [
     if (narrativeExpansionAcceptedTitleSet.has(normalizeText(title))) narrativeExpansionFinalAcceptedTitles.push(title);
     return true;
   });
+  const finalAcceptedTitleSet = new Set(finalRenderDocs.map((doc: any) => normalizeText(String(doc?.title || ""))).filter(Boolean));
+  const finalEligibilityRejectReasonsByTitle: Record<string, string[]> = {};
+  for (const [reason, titles] of Object.entries(finalEligibilityRejectedTitlesByReason || {})) {
+    for (const t of (Array.isArray(titles) ? titles : [])) {
+      const nt = normalizeText(String(t || ""));
+      if (!nt) continue;
+      if (!finalEligibilityRejectReasonsByTitle[nt]) finalEligibilityRejectReasonsByTitle[nt] = [];
+      if (!finalEligibilityRejectReasonsByTitle[nt].includes(reason)) finalEligibilityRejectReasonsByTitle[nt].push(reason);
+    }
+  }
+  for (const doc of finalRenderCandidateDocsBeforeGate) {
+    const title = String(doc?.title || "").trim();
+    const nt = normalizeText(title);
+    if (!title || !nt) continue;
+    const root = String(parentFranchiseRootForDoc(doc) || "");
+    const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "").trim();
+    finalEligibilityAudit.push({
+      title,
+      sourceId,
+      source: String(doc?.source || doc?.rawDoc?.source || "").toLowerCase(),
+      laneAligned,
+      passedFinalEligibility: finalAcceptedTitleSet.has(nt),
+      failedChecks: finalEligibilityRejectReasonsByTitle[nt] || [],
+      teenSafetyState: isTeenDeckKey(input.deckKey) ? ((finalEligibilityRejectReasonsByTitle[nt] || []).includes("age_maturity_blocked") ? "blocked" : "allowed_or_unknown") : "not_teen_mode",
+      hasDescription: String(doc?.description || doc?.rawDoc?.description || "").trim().length > 0,
+      hasCategories: Array.isArray(doc?.subject) ? doc.subject.length > 0 : Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories.length > 0 : false,
+      hasCover: Boolean(doc?.cover_i || doc?.volumeInfo?.imageLinks?.thumbnail || doc?.rawDoc?.cover_i),
+      selected: false,
+    });
+  }
   postSourceSpecificGateTitles.push(...finalRenderDocs.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
   const superheroUnderfillRelaxationNeedsUnderfill = eligibleWithFitScore.length < 8;
   const superheroUnderfillRelaxationHasEnoughCandidates = viableCandidateCountBeforeFinalSelection >= 15;
@@ -12036,6 +12069,10 @@ const normalizedCandidatesRaw = [
   const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
     ? finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
     : [];
+  const terminalSelectedSet = new Set(terminalAssemblyOutputTitlesAtReturn.map((t) => normalizeText(String(t || ""))).filter(Boolean));
+  for (const row of finalEligibilityAudit) {
+    row.selected = terminalSelectedSet.has(normalizeText(String(row.title || "")));
+  }
   if (!kitsuAcceptedButEmergencyReturned && kitsuNormalRecoveryAcceptedTitles.length > 0 && /teen_postpass_.*emergency_handoff/.test(String(returnedItemsBuiltFrom || ""))) {
     kitsuAcceptedButEmergencyReturned = {
       acceptedTitles: Array.from(new Set(kitsuNormalRecoveryAcceptedTitles)).slice(0, 20),
@@ -12395,6 +12432,7 @@ const normalizedCandidatesRaw = [
     acceptedNarrativeConfidenceFail,
     finalEligibilityAcceptedTitles: acceptedAfterTerminalRejectFilter,
     finalEligibilityRejectedTitlesByReason,
+    finalEligibilityAudit,
     rejectedButReturnedTitles,
     terminalRejectedButReturnedTitles,
     rejectedButAcceptedTitles,
