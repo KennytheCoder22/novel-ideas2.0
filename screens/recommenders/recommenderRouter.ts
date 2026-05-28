@@ -2810,6 +2810,30 @@ export async function getRecommendations(
   const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
+  const collapseRepeatedQueryPhrases = (value: string) => {
+    let tokens = String(value || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const maxPhraseLength = Math.min(6, Math.floor(tokens.length / 2));
+      for (let phraseLength = maxPhraseLength; phraseLength >= 1 && !changed; phraseLength -= 1) {
+        for (let i = 0; i + phraseLength * 2 <= tokens.length; i += 1) {
+          const first = tokens.slice(i, i + phraseLength).map((t) => t.toLowerCase()).join(" ");
+          const second = tokens.slice(i + phraseLength, i + phraseLength * 2).map((t) => t.toLowerCase()).join(" ");
+          if (first && first === second) {
+            tokens.splice(i + phraseLength, phraseLength);
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+    return tokens.join(" ").replace(/\s+/g, " ").trim();
+  };
   let fetchLoopExhaustedMarkerEmitted = false;
   const googleBooksQueryUsedByLane: string[] = [];
   const openLibraryQueryUsedByLane: string[] = [];
@@ -3942,8 +3966,9 @@ export async function getRecommendations(
         break;
       }
       const lane = queryLanes[lanei];
-      queryLanesUsed.push(String((lane as any)?.query || (lane as any)?.queryText || "").trim());
-      var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
+      const normalizedLaneQuery = collapseRepeatedQueryPhrases(String((lane as any)?.query || (lane as any)?.queryText || "").trim());
+      queryLanesUsed.push(normalizedLaneQuery);
+      var laneQueryText = normalizedLaneQuery;
       var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
       var laneFamily =
         routerFamily === "historical" || inferHistoricalFromQueryText(laneQueryText)
@@ -3978,8 +4003,8 @@ export async function getRecommendations(
         ...routedInput,
         bucketPlan: {
           ...effectiveBucketPlan,
-          queries: [lane.query],
-          preview: lane.query,
+          queries: [normalizedLaneQuery],
+          preview: normalizedLaneQuery,
           // Critical: do not preserve the parent bucketPlan.rungs here. Each lane
           // is a single fetch request. Keeping the parent rungs lets source fetchers
           // re-expand all historical queries under the current lane/rung, which is
@@ -3988,8 +4013,8 @@ export async function getRecommendations(
             {
               ...(rung || {}),
               rung: laneQueryRung,
-              query: lane.query,
-              primary: lane.query,
+              query: normalizedLaneQuery,
+              primary: normalizedLaneQuery,
               secondary: null,
             },
           ],
@@ -3997,11 +4022,11 @@ export async function getRecommendations(
           forceTastePrimaryForComicVine: querySourceOfTruth === "taste_profile",
         },
       };
-      const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || lane.query || "");
+      const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || normalizedLaneQuery || "");
 
       var requests: Array<Promise<RecommendationResult>> = [];
       let kitsuDispatchedOnThisLane = false;
-      const baseLaneQuery = String(lane.query || "").trim();
+      const baseLaneQuery = normalizedLaneQuery;
       const sanitizeOpenLibraryQuery = (q: string) => {
         const cleaned = String(q || "")
           .replace(/["']/g, " ")
@@ -13167,7 +13192,7 @@ const normalizedCandidatesRaw = [
     sourceEnabled,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
-      .map((q: any) => String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim())
+      .map((q: any) => collapseRepeatedQueryPhrases(String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim()))
       .filter(Boolean))).slice(0, 60),
     routerFamily,
     rungCount: Array.isArray(rungs) ? rungs.length : 0,
