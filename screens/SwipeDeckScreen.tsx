@@ -31,8 +31,8 @@ import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
 const DEPLOYED_COMMIT_MARKER = "17c4615";
 const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
 const KITSU_API_BASE = String(
-  (process as any)?.env?.KITSU_API_BASE_URL ||
   (process as any)?.env?.EXPO_PUBLIC_KITSU_API_BASE_URL ||
+  (process as any)?.env?.KITSU_API_BASE_URL ||
   "https://kitsu.io/api/edge"
 ).replace(/\/+$/, "");
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";

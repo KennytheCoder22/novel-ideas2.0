@@ -9,8 +9,8 @@ import type { RecommenderInput, RecommendationResult, RecommendationDoc } from "
 import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
 export const KITSU_API_BASE = String(
-  process.env.KITSU_API_BASE_URL ||
   process.env.EXPO_PUBLIC_KITSU_API_BASE_URL ||
+  process.env.KITSU_API_BASE_URL ||
   "https://kitsu.io/api/edge"
 ).replace(/\/+$/, "");
 

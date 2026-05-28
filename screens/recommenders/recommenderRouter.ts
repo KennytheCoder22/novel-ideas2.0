@@ -4835,12 +4835,12 @@ export async function getRecommendations(
           const recoveryFetchErrorName = String((recoveryRes as any)?.debugFetchErrorName || "");
           const recoveryFetchErrorMessage = String((recoveryRes as any)?.debugFetchErrorMessage || recoveryFetchError || "");
           const recoveryFetchResponsePrefix = String((recoveryRes as any)?.debugFetchResponsePrefix || recoveryBodyPrefix || "").slice(0, 180);
-          pushGlobalPhase("kitsu_recovery_fetch_url", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsu_recovery_fetch_url: recoveryFetchUrl });
+          pushGlobalPhase("kitsu_recovery_fetch_url", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsu_recovery_fetch_url: recoveryFetchUrl });
           pushGlobalPhase("kitsu_recovery_fetch_status", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsu_recovery_fetch_status: recoveryFetchStatus });
-          pushGlobalPhase("kitsu_recovery_fetch_http_status", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryFetchHttpStatus: recoveryFetchHttpStatus });
-          pushGlobalPhase("kitsu_recovery_fetch_error_name", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryFetchErrorName: recoveryFetchErrorName });
-          pushGlobalPhase("kitsu_recovery_fetch_error_message", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryFetchErrorMessage: recoveryFetchErrorMessage });
-          pushGlobalPhase("kitsu_recovery_fetch_response_prefix", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryFetchResponsePrefix: recoveryFetchResponsePrefix });
+          pushGlobalPhase("kitsu_recovery_fetch_http_status", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsuRecoveryFetchHttpStatus: recoveryFetchHttpStatus });
+          pushGlobalPhase("kitsu_recovery_fetch_error_name", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsuRecoveryFetchErrorName: recoveryFetchErrorName });
+          pushGlobalPhase("kitsu_recovery_fetch_error_message", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsuRecoveryFetchErrorMessage: recoveryFetchErrorMessage });
+          pushGlobalPhase("kitsu_recovery_fetch_response_prefix", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsuRecoveryFetchResponsePrefix: recoveryFetchResponsePrefix });
           pushGlobalPhase("kitsu_recovery_body_prefix", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsu_recovery_body_prefix: recoveryBodyPrefix });
           if (recoveryFetchError) pushGlobalPhase("kitsu_recovery_fetch_error", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsu_recovery_fetch_error: recoveryFetchError });
           pushGlobalPhase("kitsu_recovery_raw_count", { query, raw, recoveryRawPoolLength: recoveryRawPool.length, recoveryDocsLength: recoveryDocs.length, kitsu_recovery_attempt_index: recoveryAttemptIndex });
@@ -4895,14 +4895,15 @@ export async function getRecommendations(
             break;
           }
         } catch (e: any) {
+          pushGlobalPhase("kitsu_recovery_fetch_url", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsu_recovery_fetch_url: `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(query)}` });
           const recoveryFetchHttpStatus = Number(e?.httpStatus || 0);
           const recoveryFetchErrorName = String(e?.name || "Error");
           const recoveryFetchErrorMessage = String(e?.message || e || "fetch_failed");
           const recoveryFetchResponsePrefix = String(e?.bodyPrefix || recoveryFetchErrorMessage || "").slice(0, 180);
-          pushGlobalPhase("kitsu_recovery_fetch_http_status", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryFetchHttpStatus: recoveryFetchHttpStatus });
-          pushGlobalPhase("kitsu_recovery_fetch_error_name", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryFetchErrorName: recoveryFetchErrorName });
-          pushGlobalPhase("kitsu_recovery_fetch_error_message", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryFetchErrorMessage: recoveryFetchErrorMessage });
-          pushGlobalPhase("kitsu_recovery_fetch_response_prefix", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryFetchResponsePrefix: recoveryFetchResponsePrefix });
+          pushGlobalPhase("kitsu_recovery_fetch_http_status", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsuRecoveryFetchHttpStatus: recoveryFetchHttpStatus });
+          pushGlobalPhase("kitsu_recovery_fetch_error_name", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsuRecoveryFetchErrorName: recoveryFetchErrorName });
+          pushGlobalPhase("kitsu_recovery_fetch_error_message", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsuRecoveryFetchErrorMessage: recoveryFetchErrorMessage });
+          pushGlobalPhase("kitsu_recovery_fetch_response_prefix", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuConfiguredApiBase: KITSU_API_BASE, kitsuRecoveryFetchResponsePrefix: recoveryFetchResponsePrefix });
           kitsuFetchResultsByQuery.push({
             query,
             url: `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(query)}`,
@@ -4947,6 +4948,7 @@ export async function getRecommendations(
       googleBooksFetchResultsByQuery,
       openLibraryFetchResultsByQuery,
       kitsuFetchResultsByQuery,
+      kitsuConfiguredApiBase: KITSU_API_BASE,
       googleBooksTimeoutStageByQuery,
       googleBooksRetryQueryMapping,
       sourceSpecificQueryModeBySource,
@@ -13255,6 +13257,7 @@ const normalizedCandidatesRaw = [
     fetchDiagnosticsSummary,
     fetchDiagnosticsCoverageAssertion,
     kitsuFetchQueryMatchesSanitizedSelection,
+    kitsuConfiguredApiBase: KITSU_API_BASE,
     kitsuPreSanitizedQuery: kitsuPreSanitizedQueries[0] || "",
     kitsuSanitizedQuerySelected: selectedKitsuQuery,
     kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
