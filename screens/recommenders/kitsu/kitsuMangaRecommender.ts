@@ -8,7 +8,11 @@
 import type { RecommenderInput, RecommendationResult, RecommendationDoc } from "../types";
 import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
-const KITSU_BASE = "https://kitsu.io/api/edge";
+export const KITSU_API_BASE = String(
+  process.env.KITSU_API_BASE_URL ||
+  process.env.EXPO_PUBLIC_KITSU_API_BASE_URL ||
+  "https://kitsu.io/api/edge"
+).replace(/\/+$/, "");
 
 function normalizeText(value: any): string {
   return String(value || "")
@@ -99,7 +103,7 @@ function buildKitsuQueries(tagCounts: TagCounts | undefined): string[] {
   return queries.slice(0, 6);
 }
 
-async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any> {
+async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<{ json: any; status: number; bodyPrefix: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -109,8 +113,16 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
         Accept: "application/vnd.api+json",
       },
     });
-    if (!resp.ok) throw new Error(`Kitsu error: ${resp.status}`);
-    return await resp.json();
+    const text = await resp.text();
+    const bodyPrefix = text.slice(0, 180);
+    if (!resp.ok) {
+      const err: any = new Error(`Kitsu error: ${resp.status}`);
+      err.name = "KitsuHttpError";
+      err.httpStatus = resp.status;
+      err.bodyPrefix = bodyPrefix;
+      throw err;
+    }
+    return { json: text ? JSON.parse(text) : {}, status: resp.status, bodyPrefix };
   } finally {
     clearTimeout(timer);
   }
@@ -156,6 +168,8 @@ function kitsuMangaToDoc(item: any, queryText: string, queryRung: number): Recom
 
   return {
     key: `kitsu:${item.id}`,
+    sourceId: `kitsu:${item.id}`,
+    canonicalId: `kitsu:${item.id}`,
     title,
     author_name: attrs?.mangaType ? [toTitleCase(String(attrs.mangaType))] : ["Kitsu Manga"],
     first_publish_year: parseStartYear(attrs?.startDate),
@@ -214,7 +228,8 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const fetchLimit = Math.max(10, Math.min(20, Math.max(finalLimit * 2, 12)));
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
 
-  if (deckKey !== "ms_hs" || !hasTeenMangaIntent(input.tagCounts)) {
+  const forceKitsuRecoveryFetch = Boolean((input as any)?.forceKitsuRecoveryFetch);
+  if (!forceKitsuRecoveryFetch && (deckKey !== "ms_hs" || !hasTeenMangaIntent(input.tagCounts))) {
     return {
       engineId: "kitsu",
       engineLabel: "Kitsu Manga",
@@ -225,7 +240,10 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     };
   }
 
-  const queriesToTry = buildKitsuQueries(input.tagCounts);
+  const forcedBucketQueries = Array.isArray((input as any)?.bucketPlan?.queries)
+    ? (input as any).bucketPlan.queries.map((q: any) => normalizeText(String(q || ""))).filter(Boolean)
+    : [];
+  const queriesToTry = forcedBucketQueries.length > 0 ? forcedBucketQueries : buildKitsuQueries(input.tagCounts);
   if (!queriesToTry.length) {
     return {
       engineId: "kitsu",
@@ -241,22 +259,47 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
 
+  let lastFetchUrl = "";
+  let lastFetchStatus = "not_attempted";
+  let lastFetchHttpStatus = 0;
+  let lastFetchError = "";
+  let lastFetchErrorName = "";
+  let lastFetchErrorMessage = "";
+  let lastFetchBodyPrefix = "";
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const url =
-      `${KITSU_BASE}/manga` +
+      `${KITSU_API_BASE}/manga` +
       `?filter[text]=${encodeURIComponent(q)}` +
       `&page[limit]=${encodeURIComponent(String(fetchLimit))}`;
 
+    lastFetchUrl = url;
     let data: any;
     try {
-      data = await fetchJsonWithTimeout(url, timeoutMs);
-    } catch {
+      const fetched = await fetchJsonWithTimeout(url, timeoutMs);
+      data = fetched.json;
+      lastFetchStatus = "ok";
+      lastFetchHttpStatus = fetched.status;
+      lastFetchError = "";
+      lastFetchErrorName = "";
+      lastFetchErrorMessage = "";
+      lastFetchBodyPrefix = fetched.bodyPrefix || "status=ok";
+    } catch (e: any) {
+      lastFetchStatus = "error";
+      lastFetchHttpStatus = Number(e?.httpStatus || 0);
+      lastFetchErrorName = String(e?.name || "Error");
+      lastFetchErrorMessage = String(e?.message || e || "fetch_failed_or_timeout");
+      lastFetchError = lastFetchErrorMessage || "fetch_failed_or_timeout";
+      lastFetchBodyPrefix = String(e?.bodyPrefix || lastFetchErrorMessage || "").slice(0, 180);
       continue;
     }
 
     const items = Array.isArray(data?.data) ? data.data : [];
-    if (!items.length) continue;
+    if (!items.length) {
+      lastFetchBodyPrefix = "[empty_kitsu_result]";
+      continue;
+    }
+    lastFetchBodyPrefix = `items=${items.length}`;
     if (!docs.length) builtFromQuery = q;
 
     for (const item of items) {
@@ -290,5 +333,17 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     domainMode,
     builtFromQuery,
     items: docs.slice(0, fetchLimit).map((doc) => ({ kind: "open_library", doc })),
+    debugSourceStatus: lastFetchStatus,
+    debugResponseSnippet: lastFetchBodyPrefix,
+    debugRawJsonSnippet: lastFetchBodyPrefix,
+    debugFetchUrl: lastFetchUrl,
+    debugFetchHttpStatus: lastFetchHttpStatus,
+    debugFetchError: lastFetchError,
+    debugFetchErrorName: lastFetchErrorName,
+    debugFetchErrorMessage: lastFetchErrorMessage,
+    debugFetchResponsePrefix: lastFetchBodyPrefix,
+    debugParsedDataLength: docs.length,
+    debugRawFetchedCount: docs.length,
+    debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),
   };
 }

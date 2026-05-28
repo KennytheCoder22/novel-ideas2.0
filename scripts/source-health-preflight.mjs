@@ -16,9 +16,10 @@ async function timedFetch(url, opts = {}) {
 
 async function run() {
   const gbKey = process.env.EXPO_PUBLIC_GOOGLE_BOOKS_API_KEY || '';
+  const kitsuApiBase = String(process.env.KITSU_API_BASE_URL || process.env.EXPO_PUBLIC_KITSU_API_BASE_URL || 'https://kitsu.io/api/edge').replace(/\/+$/, '');
   const gbUrl = `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent('mystery novel')}&maxResults=3${gbKey ? `&key=${encodeURIComponent(gbKey)}` : ''}`;
   const olUrl = `https://openlibrary.org/search.json?q=${encodeURIComponent('mystery novel')}&limit=3`;
-  const kitsuUrl = `https://kitsu.io/api/edge/manga?filter[text]=${encodeURIComponent('one piece')}&page[limit]=3`;
+  const kitsuUrl = `${kitsuApiBase}/manga?filter[text]=${encodeURIComponent('one piece')}&page[limit]=3`;
 
   const [googleBooks, openLibrary, kitsu] = await Promise.all([
     timedFetch(gbUrl),

@@ -40,6 +40,7 @@ async function hit(url) {
 }
 
 async function main() {
+  const kitsuApiBase = String(process.env.KITSU_API_BASE_URL || process.env.EXPO_PUBLIC_KITSU_API_BASE_URL || "https://kitsu.io/api/edge").replace(/\/+$/, "");
   console.log("=== OpenLibrary proxy smoke ===");
   for (const q of openLibraryQueries) {
     const url = `http://localhost:3000/api/openlibrary?q=${encodeURIComponent(q)}`;
@@ -49,7 +50,7 @@ async function main() {
 
   console.log("=== Kitsu direct smoke ===");
   for (const q of kitsuQueries) {
-    const url = `https://kitsu.io/api/edge/anime?filter[text]=${encodeURIComponent(q)}&page[limit]=10`;
+    const url = `${kitsuApiBase}/manga?filter[text]=${encodeURIComponent(q)}&page[limit]=10`;
     const out = await hit(url);
     console.log(JSON.stringify({ source: "kitsu", query: q, url, ...out }, null, 2));
   }
