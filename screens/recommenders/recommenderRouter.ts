@@ -12537,8 +12537,9 @@ const normalizedCandidatesRaw = [
   }
   const shouldApplySmallKitsuMetadataCorrection =
     finalItemsLength === 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) > 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) < 10 &&
     finalOutputItems.length > 0 &&
-    String(returnedItemsBuiltFrom || "none") === "none" &&
     finalOutputItems.every((item: any) => {
       const doc = item?.doc || item;
       const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
@@ -12546,12 +12547,15 @@ const normalizedCandidatesRaw = [
       return source.includes("kitsu") || sourceId.startsWith("kitsu:");
     });
   if (shouldApplySmallKitsuMetadataCorrection) {
-    returnedItemsBuiltFrom = "kitsu_small_recovery_output";
-    finalReturnSourceUsed = "kitsu_small_recovery_output";
-    kitsuSmallRecoveryMetadataCorrectionApplied = true;
-    kitsuSmallRecoveryRawCount = Number(aggregatedRawFetched.kitsu || 0);
-    kitsuSmallRecoveryRankedCount = Number(rankedCount || 0);
-    sourceSkippedReason.push("final_metadata_corrected_small_kitsu_output");
+    const prev = String(returnedItemsBuiltFrom || "none");
+    if (prev !== "kitsu_small_recovery_output") {
+      returnedItemsBuiltFrom = "kitsu_small_recovery_output";
+      finalReturnSourceUsed = "kitsu_small_recovery_output";
+      kitsuSmallRecoveryMetadataCorrectionApplied = true;
+      kitsuSmallRecoveryRawCount = Number(aggregatedRawFetched.kitsu || 0);
+      kitsuSmallRecoveryRankedCount = Number(rankedCount || 0);
+      sourceSkippedReason.push(`final_metadata_corrected_small_kitsu_output_from:${prev}`);
+    }
   }
   if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue" && finalOutputItems.length > 0) {
     const orderedVisibleKitsuRescueItems = orderKitsuRescueStrongBeforeWeak(finalOutputItems.map((item: any) => {
