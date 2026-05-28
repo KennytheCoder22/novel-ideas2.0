@@ -12412,14 +12412,16 @@ const normalizedCandidatesRaw = [
         });
       const strongFirst = rankedCandidates.filter((row: any) => !row.weakByPolicy);
       const weakFallback = rankedCandidates.filter((row: any) => row.weakByPolicy);
+      const strongCandidateCount = strongFirst.length;
+      const targetMax = strongCandidateCount >= 5 ? 5 : Math.max(3, strongCandidateCount);
       const additions = [...strongFirst, ...weakFallback]
-        .slice(0, Math.max(0, target - finalOutputItems.length))
+        .slice(0, Math.max(0, targetMax - finalOutputItems.length))
         .map((row: any) => ({ kind: "open_library", doc: row.doc }));
       if (additions.length > 0) {
-        finalOutputItems = [...finalOutputItems, ...additions].slice(0, target);
+        finalOutputItems = [...finalOutputItems, ...additions].slice(0, targetMax);
         kitsuRescueSlateBackfillApplied = true;
         kitsuRescueSlateBackfillAfterCount = finalOutputItems.length;
-        sourceSkippedReason.push(`kitsu_rescue_slate_backfill:${kitsuRescueSlateBackfillBeforeCount}->${kitsuRescueSlateBackfillAfterCount}`);
+        sourceSkippedReason.push(`kitsu_rescue_slate_backfill:${kitsuRescueSlateBackfillBeforeCount}->${kitsuRescueSlateBackfillAfterCount}:strong=${strongCandidateCount}:targetMax=${targetMax}`);
       }
     }
   }
