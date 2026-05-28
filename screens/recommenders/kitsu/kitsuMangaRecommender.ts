@@ -156,6 +156,8 @@ function kitsuMangaToDoc(item: any, queryText: string, queryRung: number): Recom
 
   return {
     key: `kitsu:${item.id}`,
+    sourceId: `kitsu:${item.id}`,
+    canonicalId: `kitsu:${item.id}`,
     title,
     author_name: attrs?.mangaType ? [toTitleCase(String(attrs.mangaType))] : ["Kitsu Manga"],
     first_publish_year: parseStartYear(attrs?.startDate),
