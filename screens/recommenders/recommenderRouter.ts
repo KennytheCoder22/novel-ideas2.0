@@ -4745,17 +4745,41 @@ export async function getRecommendations(
   } else if (allRealSourcesStarved) {
     let kitsuRecoveryAttemptedForHealthGuard = false;
     let kitsuRecoveryEligibleForHealthGuard = false;
+    const sanitizeKitsuRecoveryQuery = (q: string) => {
+      const original = String(q || "").trim();
+      const lowered = original.toLowerCase();
+      const domainPreferred = ["science fiction", "dystopian", "crime", "mystery", "supernatural", "horror"];
+      const phraseMatches = domainPreferred.filter((term) => lowered.includes(term));
+      const stripped = lowered
+        .replace(/\b(genre|theme|tone|setting|stakes)\b/gi, " ")
+        .replace(/\b(character|focused|narrative|series|story|stories|abstract|profile|suspense)\b/gi, " ")
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+      const concreteTokens = stripped
+        .split(/\s+/)
+        .map((t) => t.trim())
+        .filter(Boolean)
+        .filter((t) => !["science", "fiction", "supernatural", "horror", "mystery", "crime", "dystopian", "adventure", "drama"].includes(t));
+      const chosen = phraseMatches.length > 0
+        ? phraseMatches[0]
+        : (["science fiction", "dystopian", "crime", "mystery", "supernatural", "horror", "adventure", "drama"].find((term) => stripped.includes(term)) || concreteTokens[0] || "adventure");
+      return { from: original, to: String(chosen || "adventure").trim() };
+    };
     if (Number(aggregatedRawFetched.googleBooks || 0) === 0 && Number(aggregatedRawFetched.openLibrary || 0) === 0 && includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0 && kitsuRouterFetchCount === 0) {
       kitsuRecoveryEligibleForHealthGuard = true;
       const kitsuRecoveryQuery =
         kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) ||
         kitsuQueryUsedByLane.find((q) => String(q || "").trim().length > 0) ||
         "adventure";
-      const boundedFallback = Array.from(new Set([kitsuRecoveryQuery, "adventure", "drama", "mystery"].map((q) => String(q || "").trim()).filter(Boolean)));
+      const boundedFallback = Array.from(new Set([kitsuRecoveryQuery, "adventure", "drama", "mystery"].map((q) => sanitizeKitsuRecoveryQuery(String(q || "")).to).filter(Boolean)));
       kitsuRecoveryAttemptedForHealthGuard = true;
       let kitsuRecoverySuccessQuery = "";
       for (let recoveryAttemptIndex = 0; recoveryAttemptIndex < boundedFallback.length; recoveryAttemptIndex += 1) {
-        const query = boundedFallback[recoveryAttemptIndex];
+        const sanitizedRecovery = sanitizeKitsuRecoveryQuery(String(boundedFallback[recoveryAttemptIndex] || ""));
+        const query = sanitizedRecovery.to;
+        pushGlobalPhase("kitsuRecoveryQuerySanitizedFrom", { kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryQuerySanitizedFrom: sanitizedRecovery.from });
+        pushGlobalPhase("kitsuRecoveryQuerySanitizedTo", { kitsu_recovery_attempt_index: recoveryAttemptIndex, kitsuRecoveryQuerySanitizedTo: sanitizedRecovery.to });
         pushGlobalPhase("kitsu_recovery_attempt_before_source_health_failed", { query, boundedFallback, kitsu_recovery_attempt_index: recoveryAttemptIndex });
         try {
           pushGlobalPhase("kitsu_recovery_fetch_started", { query, kitsu_recovery_attempt_index: recoveryAttemptIndex });
