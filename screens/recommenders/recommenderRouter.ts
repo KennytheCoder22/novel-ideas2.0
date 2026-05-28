@@ -2810,6 +2810,30 @@ export async function getRecommendations(
   const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
+  const collapseRepeatedQueryPhrases = (value: string) => {
+    let tokens = String(value || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      const maxPhraseLength = Math.min(6, Math.floor(tokens.length / 2));
+      for (let phraseLength = maxPhraseLength; phraseLength >= 1 && !changed; phraseLength -= 1) {
+        for (let i = 0; i + phraseLength * 2 <= tokens.length; i += 1) {
+          const first = tokens.slice(i, i + phraseLength).map((t) => t.toLowerCase()).join(" ");
+          const second = tokens.slice(i + phraseLength, i + phraseLength * 2).map((t) => t.toLowerCase()).join(" ");
+          if (first && first === second) {
+            tokens.splice(i + phraseLength, phraseLength);
+            changed = true;
+            break;
+          }
+        }
+      }
+    }
+    return tokens.join(" ").replace(/\s+/g, " ").trim();
+  };
   let fetchLoopExhaustedMarkerEmitted = false;
   const googleBooksQueryUsedByLane: string[] = [];
   const openLibraryQueryUsedByLane: string[] = [];
@@ -3942,8 +3966,9 @@ export async function getRecommendations(
         break;
       }
       const lane = queryLanes[lanei];
-      queryLanesUsed.push(String((lane as any)?.query || (lane as any)?.queryText || "").trim());
-      var laneQueryText = String((lane as any)?.query || (lane as any)?.queryText || "");
+      const normalizedLaneQuery = collapseRepeatedQueryPhrases(String((lane as any)?.query || (lane as any)?.queryText || "").trim());
+      queryLanesUsed.push(normalizedLaneQuery);
+      var laneQueryText = normalizedLaneQuery;
       var inferredQueryFamily = inferFamilyFromQueryText(laneQueryText, rungFamily);
       var laneFamily =
         routerFamily === "historical" || inferHistoricalFromQueryText(laneQueryText)
@@ -3978,8 +4003,8 @@ export async function getRecommendations(
         ...routedInput,
         bucketPlan: {
           ...effectiveBucketPlan,
-          queries: [lane.query],
-          preview: lane.query,
+          queries: [normalizedLaneQuery],
+          preview: normalizedLaneQuery,
           // Critical: do not preserve the parent bucketPlan.rungs here. Each lane
           // is a single fetch request. Keeping the parent rungs lets source fetchers
           // re-expand all historical queries under the current lane/rung, which is
@@ -3988,8 +4013,8 @@ export async function getRecommendations(
             {
               ...(rung || {}),
               rung: laneQueryRung,
-              query: lane.query,
-              primary: lane.query,
+              query: normalizedLaneQuery,
+              primary: normalizedLaneQuery,
               secondary: null,
             },
           ],
@@ -3997,11 +4022,11 @@ export async function getRecommendations(
           forceTastePrimaryForComicVine: querySourceOfTruth === "taste_profile",
         },
       };
-      const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || lane.query || "");
+      const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || normalizedLaneQuery || "");
 
       var requests: Array<Promise<RecommendationResult>> = [];
       let kitsuDispatchedOnThisLane = false;
-      const baseLaneQuery = String(lane.query || "").trim();
+      const baseLaneQuery = normalizedLaneQuery;
       const sanitizeOpenLibraryQuery = (q: string) => {
         const cleaned = String(q || "")
           .replace(/["']/g, " ")
@@ -11358,6 +11383,12 @@ const normalizedCandidatesRaw = [
   let kitsuRescueSlateBackfillBeforeCount = 0;
   let kitsuRescueSlateBackfillAfterCount = 0;
   let kitsuRescueSlateBackfillCandidateCount = 0;
+  let kitsuLowRankedCountRecoveryTriggered = false;
+  let kitsuLowRankedCountRecoveryCandidateCount = 0;
+  let kitsuLowRankedCountRecoveryBlockedReason = "not_evaluated";
+  let kitsuSmallRecoveryMetadataCorrectionApplied = false;
+  let kitsuSmallRecoveryRawCount = 0;
+  let kitsuSmallRecoveryRankedCount = 0;
   const kitsuFinalEligibilitySparseMetadataRescueCandidates: Array<{ title: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; positiveFitScore: number; rejectedReasonForRescue: string }> = [];
   let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
@@ -12264,6 +12295,59 @@ const normalizedCandidatesRaw = [
     sourceSkippedReason.push(`kitsu_recovery_lost_at_return_assembly:accepted=${kitsuNormalRecoveryAcceptedTitles.join("|") || "(none)"}:return_input=${terminalAssemblyInputTitlesAtReturn.join("|") || "(none)"}`);
     // Do not throw: return a clean zero-item result with explicit diagnostics.
   }
+  const runKitsuLowRankedCountRecovery = () => {
+    const conditionMet =
+      finalItemsLength === 0 &&
+      Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+      Number(rankedCount || 0) < 10 &&
+      finalOutputItems.length <= 1;
+    if (!conditionMet) {
+      kitsuLowRankedCountRecoveryBlockedReason = `trigger_not_met:kitsuRaw=${Number(aggregatedRawFetched.kitsu || 0)}:ranked=${Number(rankedCount || 0)}:returned=${finalOutputItems.length}`;
+      return;
+    }
+    const recoveryTitleSet = new Set((kitsuRecoveryPoolTitles || []).map((t) => normalizeText(String(t || ""))).filter(Boolean));
+    const kitsuPool = teenPostPassItems
+      .map((item: any) => item?.doc || item)
+      .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
+      .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
+      .filter((doc: any) => !sharedReturnArtifactScrubRejectReason(doc))
+      .filter((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        return recoveryTitleSet.size === 0 || recoveryTitleSet.has(normalizeText(title));
+      })
+      .map((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const root = String(parentFranchiseRootForDoc(doc) || "");
+        const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+        return {
+          doc,
+          laneAligned,
+          semanticEvidenceCount: Number(semanticEvidenceCountByTitle[title] || 0),
+          weightedTasteScore: Number(candidateWeightedTasteScoreByTitle[title] || 0),
+          dislikePenaltyScore: Number(candidateDislikePenaltyByTitle[title] || 0),
+          positiveFitScore: Number(positiveFitScoreByTitle[title] || 0),
+        };
+      })
+      .sort((a: any, b: any) => {
+        if (Number(b.laneAligned) !== Number(a.laneAligned)) return Number(b.laneAligned) - Number(a.laneAligned);
+        if (b.semanticEvidenceCount !== a.semanticEvidenceCount) return b.semanticEvidenceCount - a.semanticEvidenceCount;
+        if (b.weightedTasteScore !== a.weightedTasteScore) return b.weightedTasteScore - a.weightedTasteScore;
+        if (a.dislikePenaltyScore !== b.dislikePenaltyScore) return a.dislikePenaltyScore - b.dislikePenaltyScore;
+        return b.positiveFitScore - a.positiveFitScore;
+      });
+    kitsuLowRankedCountRecoveryCandidateCount = kitsuPool.length;
+    if (kitsuPool.length === 0) {
+      kitsuLowRankedCountRecoveryBlockedReason = "no_quality_kitsu_candidates_after_artifact_scrub";
+      return;
+    }
+    finalOutputItems = kitsuPool.slice(0, Math.max(1, Math.min(3, finalLimit))).map((row: any) => ({ kind: "open_library", doc: row.doc }));
+    returnedItemsBuiltFrom = "kitsu_low_ranked_count_recovery";
+    finalReturnSourceUsed = "kitsu_low_ranked_count_recovery";
+    kitsuLowRankedCountRecoveryTriggered = true;
+    kitsuLowRankedCountRecoveryBlockedReason = "none";
+    sourceSkippedReason.push("final_gate_integrity:kitsu_low_ranked_count_recovery");
+  };
+  runKitsuLowRankedCountRecovery();
   const runFinalInvariantKitsuRescue = () => {
     const prevBuiltFrom = String(returnedItemsBuiltFrom || "none");
     const conditionMet =
@@ -12322,6 +12406,24 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:kitsu_ranked_pool_rescue`);
     }
   }
+  const shouldApplySmallKitsuMetadataCorrection =
+    finalItemsLength === 0 &&
+    finalOutputItems.length > 0 &&
+    String(returnedItemsBuiltFrom || "none") === "none" &&
+    finalOutputItems.every((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    });
+  if (shouldApplySmallKitsuMetadataCorrection) {
+    returnedItemsBuiltFrom = "kitsu_small_recovery_output";
+    finalReturnSourceUsed = "kitsu_small_recovery_output";
+    kitsuSmallRecoveryMetadataCorrectionApplied = true;
+    kitsuSmallRecoveryRawCount = Number(aggregatedRawFetched.kitsu || 0);
+    kitsuSmallRecoveryRankedCount = Number(rankedCount || 0);
+    sourceSkippedReason.push("final_metadata_corrected_small_kitsu_output");
+  }
   if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue" && finalOutputItems.length < 3) {
     const rankedDocsKitsuPool = (rankedDocs || [])
       .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
@@ -12356,14 +12458,16 @@ const normalizedCandidatesRaw = [
         });
       const strongFirst = rankedCandidates.filter((row: any) => !row.weakByPolicy);
       const weakFallback = rankedCandidates.filter((row: any) => row.weakByPolicy);
+      const strongCandidateCount = strongFirst.length;
+      const targetMax = strongCandidateCount >= 5 ? 5 : Math.max(3, strongCandidateCount);
       const additions = [...strongFirst, ...weakFallback]
-        .slice(0, Math.max(0, target - finalOutputItems.length))
+        .slice(0, Math.max(0, targetMax - finalOutputItems.length))
         .map((row: any) => ({ kind: "open_library", doc: row.doc }));
       if (additions.length > 0) {
-        finalOutputItems = [...finalOutputItems, ...additions].slice(0, target);
+        finalOutputItems = [...finalOutputItems, ...additions].slice(0, targetMax);
         kitsuRescueSlateBackfillApplied = true;
         kitsuRescueSlateBackfillAfterCount = finalOutputItems.length;
-        sourceSkippedReason.push(`kitsu_rescue_slate_backfill:${kitsuRescueSlateBackfillBeforeCount}->${kitsuRescueSlateBackfillAfterCount}`);
+        sourceSkippedReason.push(`kitsu_rescue_slate_backfill:${kitsuRescueSlateBackfillBeforeCount}->${kitsuRescueSlateBackfillAfterCount}:strong=${strongCandidateCount}:targetMax=${targetMax}`);
       }
     }
   }
@@ -12988,6 +13092,12 @@ const normalizedCandidatesRaw = [
     kitsuRescueSlateBackfillBeforeCount,
     kitsuRescueSlateBackfillAfterCount,
     kitsuRescueSlateBackfillCandidateCount,
+    kitsuLowRankedCountRecoveryTriggered,
+    kitsuLowRankedCountRecoveryCandidateCount,
+    kitsuLowRankedCountRecoveryBlockedReason,
+    kitsuSmallRecoveryMetadataCorrectionApplied,
+    kitsuSmallRecoveryRawCount,
+    kitsuSmallRecoveryRankedCount,
     kitsuRescueSlateQualityAudit,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
@@ -13082,7 +13192,7 @@ const normalizedCandidatesRaw = [
     sourceEnabled,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
-      .map((q: any) => String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim())
+      .map((q: any) => collapseRepeatedQueryPhrases(String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim()))
       .filter(Boolean))).slice(0, 60),
     routerFamily,
     rungCount: Array.isArray(rungs) ? rungs.length : 0,
