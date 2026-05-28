@@ -30,6 +30,11 @@ import { getRecommendations } from "./recommenders/recommenderRouter";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
 const DEPLOYED_COMMIT_MARKER = "17c4615";
 const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
+const KITSU_API_BASE = String(
+  (process as any)?.env?.EXPO_PUBLIC_KITSU_API_BASE_URL ||
+  (process as any)?.env?.KITSU_API_BASE_URL ||
+  "https://kitsu.app/api/edge"
+).replace(/\/+$/, "");
 import { RecommenderEqualizerPanel } from "./recommenders/dev/RecommenderEqualizerPanel";
 import { loadProfileOverrides } from "./recommenders/dev/recommenderProfileOverrides";
 import { laneFromDeckKey, type RecommenderLane, type RecommenderProfile } from "./recommenders/recommenderProfiles";
@@ -1665,7 +1670,7 @@ function handleLeft() {
       };
       if (sourceEnabled.googleBooks) await probe("before_google_books_fetch", "after_google_books_fetch", "google_books", "https://www.googleapis.com/books/v1/volumes?q=novel&maxResults=1");
       if (sourceEnabled.openLibrary) await probe("before_open_library_fetch", "after_open_library_fetch", "open_library", "/api/openlibrary?health=1");
-      if (sourceEnabled.kitsu) await probe("before_kitsu_fetch", "after_kitsu_fetch", "kitsu", "https://kitsu.io/api/edge/anime?page[limit]=1");
+      if (sourceEnabled.kitsu) await probe("before_kitsu_fetch", "after_kitsu_fetch", "kitsu", `${KITSU_API_BASE}/manga?page[limit]=1`);
       if (sourceEnabled.nyt) await probe("before_nyt_fetch", "after_nyt_fetch", "nyt", "/api/nyt-books?health=1");
       const enabledReal = ["google_books", "open_library", "kitsu"].filter((k) => (k === "google_books" ? sourceEnabled.googleBooks : k === "open_library" ? sourceEnabled.openLibrary : sourceEnabled.kitsu));
       const allRealFailed = enabledReal.length > 0 && enabledReal.every((k) => k !== "google_books" ? String(sourceProbeStatus[k] || "").includes("timeout") || String(sourceProbeStatus[k] || "").includes("failed") : String(sourceProbeStatus[k] || "").includes("timeout"));
@@ -2402,9 +2407,9 @@ function handleLeft() {
         `sourceSkippedReason: ${JSON.stringify(skippedReasons)}`,
         `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
         `Router instrumentation marker (client): ${ROUTER_INSTRUMENTATION_MARKER}`,
-        `Deployed commit marker: ${(lastRecommendationResult as any)?.deployedCommitHash || "(missing)"}`,
-        `Router build timestamp: ${(lastRecommendationResult as any)?.routerBuildTimestamp || "(missing)"}`,
-        `Router instrumentation version: ${(lastRecommendationResult as any)?.routerInstrumentationVersion || "(missing)"}`,
+        `Deployed commit marker: ${(lastRecommendationResult as any)?.deployedCommitHash || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.deployedCommitHash || "(missing)"}`,
+        `Router build timestamp: ${(lastRecommendationResult as any)?.routerBuildTimestamp || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerBuildTimestamp || "(missing)"}`,
+        `Router instrumentation version: ${(lastRecommendationResult as any)?.routerInstrumentationVersion || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerInstrumentationVersion || "(missing)"}`,
         `getRecommendations reference type: ${recommenderCallReferenceType || "(unknown)"}`,
         `getRecommendationsFunctionName: ${typeof getRecommendations === "function" ? (getRecommendations as any).name || "(anonymous)" : "(not_function)"}`,
         `getRecommendationsFunctionSourcePrefix: ${typeof getRecommendations === "function" ? String(getRecommendations).slice(0, 120) : "(not_function)"}`,

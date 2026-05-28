@@ -8,7 +8,11 @@
 import type { RecommenderInput, RecommendationResult, RecommendationDoc } from "../types";
 import type { TagCounts } from "../../swipe/openLibraryFromTags";
 
-const KITSU_BASE = "https://kitsu.io/api/edge";
+export const KITSU_API_BASE = String(
+  process.env.EXPO_PUBLIC_KITSU_API_BASE_URL ||
+  process.env.KITSU_API_BASE_URL ||
+  "https://kitsu.app/api/edge"
+).replace(/\/+$/, "");
 
 function normalizeText(value: any): string {
   return String(value || "")
@@ -99,7 +103,7 @@ function buildKitsuQueries(tagCounts: TagCounts | undefined): string[] {
   return queries.slice(0, 6);
 }
 
-async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any> {
+async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<{ json: any; status: number; bodyPrefix: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -109,8 +113,16 @@ async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<any
         Accept: "application/vnd.api+json",
       },
     });
-    if (!resp.ok) throw new Error(`Kitsu error: ${resp.status}`);
-    return await resp.json();
+    const text = await resp.text();
+    const bodyPrefix = text.slice(0, 180);
+    if (!resp.ok) {
+      const err: any = new Error(`Kitsu error: ${resp.status}`);
+      err.name = "KitsuHttpError";
+      err.httpStatus = resp.status;
+      err.bodyPrefix = bodyPrefix;
+      throw err;
+    }
+    return { json: text ? JSON.parse(text) : {}, status: resp.status, bodyPrefix };
   } finally {
     clearTimeout(timer);
   }
@@ -249,23 +261,36 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
 
   let lastFetchUrl = "";
   let lastFetchStatus = "not_attempted";
+  let lastFetchHttpStatus = 0;
   let lastFetchError = "";
+  let lastFetchErrorName = "";
+  let lastFetchErrorMessage = "";
   let lastFetchBodyPrefix = "";
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const url =
-      `${KITSU_BASE}/manga` +
+      `${KITSU_API_BASE}/manga` +
       `?filter[text]=${encodeURIComponent(q)}` +
       `&page[limit]=${encodeURIComponent(String(fetchLimit))}`;
 
     lastFetchUrl = url;
     let data: any;
     try {
-      data = await fetchJsonWithTimeout(url, timeoutMs);
+      const fetched = await fetchJsonWithTimeout(url, timeoutMs);
+      data = fetched.json;
       lastFetchStatus = "ok";
-    } catch {
+      lastFetchHttpStatus = fetched.status;
+      lastFetchError = "";
+      lastFetchErrorName = "";
+      lastFetchErrorMessage = "";
+      lastFetchBodyPrefix = fetched.bodyPrefix || "status=ok";
+    } catch (e: any) {
       lastFetchStatus = "error";
-      lastFetchError = "fetch_failed_or_timeout";
+      lastFetchHttpStatus = Number(e?.httpStatus || 0);
+      lastFetchErrorName = String(e?.name || "Error");
+      lastFetchErrorMessage = String(e?.message || e || "fetch_failed_or_timeout");
+      lastFetchError = lastFetchErrorMessage || "fetch_failed_or_timeout";
+      lastFetchBodyPrefix = String(e?.bodyPrefix || lastFetchErrorMessage || "").slice(0, 180);
       continue;
     }
 
@@ -312,7 +337,11 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugResponseSnippet: lastFetchBodyPrefix,
     debugRawJsonSnippet: lastFetchBodyPrefix,
     debugFetchUrl: lastFetchUrl,
+    debugFetchHttpStatus: lastFetchHttpStatus,
     debugFetchError: lastFetchError,
+    debugFetchErrorName: lastFetchErrorName,
+    debugFetchErrorMessage: lastFetchErrorMessage,
+    debugFetchResponsePrefix: lastFetchBodyPrefix,
     debugParsedDataLength: docs.length,
     debugRawFetchedCount: docs.length,
     debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),
