@@ -11346,6 +11346,9 @@ const normalizedCandidatesRaw = [
   const kitsuNormalRecoveryAcceptedItems: any[] = [];
   const kitsuNormalRecoveryRejectedByTitle: Record<string, string> = {};
   let kitsuRankedPoolRescueSource: "kitsuRecoveryRankedCandidates" | "rankedDocsFallback" | "not_triggered" = "not_triggered";
+  let kitsuRankedPoolRescueEligible = false;
+  let kitsuRankedPoolRescueCandidateCount = 0;
+  let kitsuRankedPoolRescueBlockedReason = "not_evaluated";
   const kitsuFinalEligibilitySparseMetadataRescueCandidates: Array<{ title: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; positiveFitScore: number; rejectedReasonForRescue: string }> = [];
   let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
@@ -11639,8 +11642,13 @@ const normalizedCandidatesRaw = [
           });
         const kitsuRawCountForRescue = Number(aggregatedRawFetched.kitsu || 0);
         const shouldTriggerRankedPoolRescue = kitsuRawCountForRescue >= 10 && Number(rankedCount || 0) >= 10;
-        if (shouldTriggerRankedPoolRescue && (rankedKitsuRescue.length > 0 || rankedKitsuFallbackFromRankedDocs.length > 0)) {
-          const top = rankedKitsuRescue.length > 0 ? rankedKitsuRescue[0] : rankedKitsuFallbackFromRankedDocs[0];
+        kitsuRankedPoolRescueEligible = shouldTriggerRankedPoolRescue;
+        const rescuePoolToUse = rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocs;
+        kitsuRankedPoolRescueCandidateCount = rescuePoolToUse.length;
+        if (!shouldTriggerRankedPoolRescue) kitsuRankedPoolRescueBlockedReason = `trigger_not_met:kitsuRaw=${kitsuRawCountForRescue}:ranked=${Number(rankedCount || 0)}`;
+        else if (rescuePoolToUse.length === 0) kitsuRankedPoolRescueBlockedReason = "eligible_but_no_kitsu_rescue_candidates";
+        if (shouldTriggerRankedPoolRescue && rescuePoolToUse.length > 0) {
+          const top = rescuePoolToUse[0];
           kitsuRankedPoolRescueSource = rankedKitsuRescue.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
           const topDoc = teenPostPassItems
             .map((item: any) => item?.doc || item)
@@ -11650,6 +11658,7 @@ const normalizedCandidatesRaw = [
             returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
             finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
             sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue");
+            kitsuRankedPoolRescueBlockedReason = "none";
             kitsuFinalEligibilitySparseMetadataRescue = {
               activated: true,
               candidateTitle: String(top?.title || ""),
@@ -11660,6 +11669,7 @@ const normalizedCandidatesRaw = [
               reason: `ranked_kitsu_pool_rescue_pre_emergency:${kitsuRankedPoolRescueSource}`,
             };
           }
+          if (!topDoc) kitsuRankedPoolRescueBlockedReason = "top_candidate_not_found_in_teen_postpass_items";
         }
       }
       if (finalOutputItems.length === 0) {
@@ -11754,6 +11764,31 @@ const normalizedCandidatesRaw = [
         const title = String(item?.doc?.title || item?.title || "").trim();
         return acceptedAfterTerminalSet.has(normalizeText(title));
       });
+    }
+  }
+  if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
+    const shouldTriggerRankedPoolRescue = Number(aggregatedRawFetched.kitsu || 0) >= 10 && Number(rankedCount || 0) >= 10;
+    if (shouldTriggerRankedPoolRescue) {
+      const rankedKitsuFallbackFromRankedDocs = (rankedDocs || [])
+        .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
+        .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()));
+      kitsuRankedPoolRescueEligible = true;
+      if (kitsuRankedPoolRescueSource === "not_triggered" && rankedKitsuFallbackFromRankedDocs.length > 0) {
+        const top = rankedKitsuFallbackFromRankedDocs[0];
+        const topTitle = String(top?.title || "").trim();
+        const topDoc = teenPostPassItems.map((item: any) => item?.doc || item).find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(topTitle));
+        kitsuRankedPoolRescueCandidateCount = rankedKitsuFallbackFromRankedDocs.length;
+        kitsuRankedPoolRescueSource = "rankedDocsFallback";
+        if (topDoc) {
+          finalOutputItems = [{ kind: "open_library", doc: topDoc }];
+          returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
+          finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+          kitsuRankedPoolRescueBlockedReason = "none";
+          sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue_late_guard");
+        } else {
+          kitsuRankedPoolRescueBlockedReason = "late_guard_top_candidate_not_found_in_teen_postpass_items";
+        }
+      }
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
@@ -12791,6 +12826,9 @@ const normalizedCandidatesRaw = [
     kitsuNormalRecoveryAcceptedTitles,
     kitsuRecoveryRankedCandidates,
     kitsuRankedPoolRescueSource,
+    kitsuRankedPoolRescueEligible,
+    kitsuRankedPoolRescueCandidateCount,
+    kitsuRankedPoolRescueBlockedReason,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
     kitsuAcceptedButEmergencyReturned,
