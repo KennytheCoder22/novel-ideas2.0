@@ -2391,6 +2391,7 @@ function handleLeft() {
         `returnedItemsLength: ${String(returnedItemsLength)}`,
         `returnedItemsTitles: ${JSON.stringify((lastRecommendationResult as any)?.returnedItemsTitles || (lastRecommendationResult as any)?.items?.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean) || [])}`,
         `returnedItemsBuiltFrom: ${String((lastRecommendationResult as any)?.returnedItemsBuiltFrom || "(missing)")}`,
+        `kitsuRescueSlateQualityAudit: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRescueSlateQualityAudit || [])}`,
         `activeLaneQueries: ${JSON.stringify((lastRecommendationResult as any)?.activeLaneQueries || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.activeLaneQueries || [])}`,
         `routerFamily: ${String((lastRecommendationResult as any)?.routerFamily || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerFamily || "(missing)")}`,
         `rungCount: ${String((lastRecommendationResult as any)?.rungCount ?? (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.rungCount ?? "(missing)")}`,
@@ -2486,6 +2487,7 @@ function handleLeft() {
         `returnedItemsLength: ${String(returnedItemsLength)}`,
         `returnedItemsTitles: ${JSON.stringify((lastRecommendationResult as any)?.returnedItemsTitles || (lastRecommendationResult as any)?.items?.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean) || [])}`,
         `returnedItemsBuiltFrom: ${String((lastRecommendationResult as any)?.returnedItemsBuiltFrom || "(missing)")}`,
+        `kitsuRescueSlateQualityAudit: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRescueSlateQualityAudit || [])}`,
         `zeroItemsCompactSummary: ${JSON.stringify({
           debugRawPoolLength: Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0,
           debugCandidatePoolLength: Array.isArray((lastRecommendationResult as any)?.debugCandidatePool) ? (lastRecommendationResult as any).debugCandidatePool.length : 0,
