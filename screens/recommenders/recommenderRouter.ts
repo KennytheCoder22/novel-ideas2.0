@@ -4075,7 +4075,13 @@ export async function getRecommendations(
         .replace(/\s+/g, " ")
         .trim();
       const sanitizeKitsuQuery = (q: string) => {
-        const raw = String(q || "").trim().toLowerCase().replace(/\bcharacter[-\s]?focused\b/g, " ").replace(/\s+/g, " ").trim();
+        const raw = String(q || "")
+          .trim()
+          .toLowerCase()
+          .replace(/\bcharacter[-\s]?focused\b/g, " ")
+          .replace(/\b(graphic novel)\s+\1\b/g, "$1")
+          .replace(/\s+/g, " ")
+          .trim();
         const genericTerms = new Set(["adventure", "drama", "action", "romance", "fantasy", "science", "fiction", "science fiction", "comedy", "mystery", "horror", "thriller"]);
         const stopTerms = new Set(["character", "focused", "graphic", "novel", "book", "books", "comic", "series", "the", "a", "an", "and", "or", "for", "with", "without", "exclude", "literary", "thematic", "emotionally", "rich", "psychologically", "complex"]);
         const phraseAnchors = ["goldie vance", "science fiction", "coming of age", "fantasy adventure", "psychological horror"];
@@ -4098,7 +4104,10 @@ export async function getRecommendations(
         const anchorsSansPhraseDupes = anchors.filter((a) => !phraseHits.some((ph) => ph.split(/\s+/).includes(a)));
         const mergedAnchors = Array.from(new Set([...phraseHits, ...anchorsSansPhraseDupes])).slice(0, 3);
         const genericFallback = raw.includes("science fiction") ? "science fiction" : (raw.includes("mystery") ? "mystery" : "adventure");
-        const sanitized = mergedAnchors.length > 0 ? mergedAnchors.join(" ") : genericFallback;
+        const sanitized = (mergedAnchors.length > 0 ? mergedAnchors.join(" ") : genericFallback)
+          .replace(/\b(graphic novel)\s+\1\b/g, "$1")
+          .replace(/\s+/g, " ")
+          .trim();
         const genericOnly = mergedAnchors.length === 0;
         return { sanitized, dropped, genericOnly, usedAnchorFallback: genericOnly && anchors.length > 0, genericFallback };
       };
@@ -11597,6 +11606,38 @@ const normalizedCandidatesRaw = [
         finalEligibilityAcceptedTitles.push(...viableUnderfillRescue.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean));
         sourceSkippedReason.push("final_gate_integrity:min_viable_underfill_rescue");
       } else {
+        const rankedKitsuRescue = kitsuRecoveryRankedCandidates
+          .filter((row) => !row.rejectReason)
+          .filter((row) => Boolean(row.sourceId))
+          .filter((row) => !isReferenceArtifactTitle(String(row.title || "")))
+          .sort((a, b) => {
+            if (Number(b.laneAligned) !== Number(a.laneAligned)) return Number(b.laneAligned) - Number(a.laneAligned);
+            if (b.positiveFitScore !== a.positiveFitScore) return b.positiveFitScore - a.positiveFitScore;
+            return b.semanticEvidenceCount - a.semanticEvidenceCount;
+          });
+        if (rankedKitsuRescue.length >= 10) {
+          const top = rankedKitsuRescue[0];
+          const topDoc = teenPostPassItems
+            .map((item: any) => item?.doc || item)
+            .find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(top?.title || "")));
+          if (topDoc) {
+            finalOutputItems = [{ kind: "open_library", doc: topDoc }];
+            returnedItemsBuiltFrom = "kitsu_ranked_candidate_rescue_before_emergency_handoff";
+            finalReturnSourceUsed = "kitsu_ranked_candidate_rescue_before_emergency_handoff";
+            sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_candidate_rescue_before_emergency_handoff");
+            kitsuFinalEligibilitySparseMetadataRescue = {
+              activated: true,
+              candidateTitle: String(top?.title || ""),
+              sourceId: String(top?.sourceId || ""),
+              failedChecks: [],
+              laneAligned: Boolean(top?.laneAligned),
+              semanticEvidenceCount: Number(top?.semanticEvidenceCount || 0),
+              reason: "ranked_kitsu_pool_rescue_pre_emergency",
+            };
+          }
+        }
+      }
+      if (finalOutputItems.length === 0) {
         const sparseMetadataFailureReasons = new Set(["low_recommendation_confidence", "zero_meaningful_signal_without_franchise_or_taste_alignment", "insufficient_positive_fit_score", "missing_parent_or_title_root_match"]);
         const kitsuSparseEligibleRows = finalEligibilityAudit
           .filter((row) => String(row?.source || "").includes("kitsu"))
