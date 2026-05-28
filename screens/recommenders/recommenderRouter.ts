@@ -11345,6 +11345,7 @@ const normalizedCandidatesRaw = [
   const kitsuNormalRecoveryAcceptedTitles: string[] = [];
   const kitsuNormalRecoveryAcceptedItems: any[] = [];
   const kitsuNormalRecoveryRejectedByTitle: Record<string, string> = {};
+  let kitsuRankedPoolRescueSource: "kitsuRecoveryRankedCandidates" | "rankedDocsFallback" | "not_triggered" = "not_triggered";
   const kitsuFinalEligibilitySparseMetadataRescueCandidates: Array<{ title: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; positiveFitScore: number; rejectedReasonForRescue: string }> = [];
   let kitsuFinalEligibilitySparseMetadataRescue: { activated: boolean; candidateTitle: string; sourceId: string; failedChecks: string[]; laneAligned: boolean; semanticEvidenceCount: number; reason: string } | null = null;
   const kitsuRecoveryRankedCandidates: Array<{ title: string; sourceId: string; positiveFitScore: number; semanticEvidenceCount: number; laneAligned: boolean; rejectReason: string; selected: boolean }> = [];
@@ -11615,16 +11616,40 @@ const normalizedCandidatesRaw = [
             if (b.positiveFitScore !== a.positiveFitScore) return b.positiveFitScore - a.positiveFitScore;
             return b.semanticEvidenceCount - a.semanticEvidenceCount;
           });
-        if (rankedKitsuRescue.length >= 10) {
-          const top = rankedKitsuRescue[0];
+        const rankedKitsuFallbackFromRankedDocs = (rankedDocs || [])
+          .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
+          .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
+          .map((doc: any) => {
+            const title = String(doc?.title || "").trim();
+            const root = String(parentFranchiseRootForDoc(doc) || "");
+            const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+            return {
+              title,
+              sourceId: String(doc?.sourceId || doc?.canonicalId || doc?.key || ""),
+              positiveFitScore: Number(positiveFitScoreByTitle[title] || 0),
+              semanticEvidenceCount: Number(semanticEvidenceCountByTitle[title] || 0),
+              laneAligned,
+            };
+          })
+          .filter((row: any) => Boolean(row.title))
+          .sort((a: any, b: any) => {
+            if (Number(b.laneAligned) !== Number(a.laneAligned)) return Number(b.laneAligned) - Number(a.laneAligned);
+            if (b.positiveFitScore !== a.positiveFitScore) return b.positiveFitScore - a.positiveFitScore;
+            return b.semanticEvidenceCount - a.semanticEvidenceCount;
+          });
+        const kitsuRawCountForRescue = Number(aggregatedRawFetched.kitsu || 0);
+        const shouldTriggerRankedPoolRescue = kitsuRawCountForRescue >= 10 && Number(rankedCount || 0) >= 10;
+        if (shouldTriggerRankedPoolRescue && (rankedKitsuRescue.length > 0 || rankedKitsuFallbackFromRankedDocs.length > 0)) {
+          const top = rankedKitsuRescue.length > 0 ? rankedKitsuRescue[0] : rankedKitsuFallbackFromRankedDocs[0];
+          kitsuRankedPoolRescueSource = rankedKitsuRescue.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
           const topDoc = teenPostPassItems
             .map((item: any) => item?.doc || item)
             .find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(top?.title || "")));
           if (topDoc) {
             finalOutputItems = [{ kind: "open_library", doc: topDoc }];
-            returnedItemsBuiltFrom = "kitsu_ranked_candidate_rescue_before_emergency_handoff";
-            finalReturnSourceUsed = "kitsu_ranked_candidate_rescue_before_emergency_handoff";
-            sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_candidate_rescue_before_emergency_handoff");
+            returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
+            finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+            sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue");
             kitsuFinalEligibilitySparseMetadataRescue = {
               activated: true,
               candidateTitle: String(top?.title || ""),
@@ -11632,7 +11657,7 @@ const normalizedCandidatesRaw = [
               failedChecks: [],
               laneAligned: Boolean(top?.laneAligned),
               semanticEvidenceCount: Number(top?.semanticEvidenceCount || 0),
-              reason: "ranked_kitsu_pool_rescue_pre_emergency",
+              reason: `ranked_kitsu_pool_rescue_pre_emergency:${kitsuRankedPoolRescueSource}`,
             };
           }
         }
@@ -12765,6 +12790,7 @@ const normalizedCandidatesRaw = [
     kitsuNormalRecoveryConsidered,
     kitsuNormalRecoveryAcceptedTitles,
     kitsuRecoveryRankedCandidates,
+    kitsuRankedPoolRescueSource,
     kitsuFinalEligibilitySparseMetadataRescueCandidates,
     kitsuFinalEligibilitySparseMetadataRescue,
     kitsuAcceptedButEmergencyReturned,
