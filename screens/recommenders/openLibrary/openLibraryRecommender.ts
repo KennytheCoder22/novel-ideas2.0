@@ -269,13 +269,33 @@ function scoreOpenLibraryDoc(doc: any): number {
   return (Math.log10(ratingsCount + 1) * 2.2) + (Math.log10(editionCount + 1) * 1.3) + (hasCover * 0.6) + (knownAuthor * 1.4) + (sentenceLen >= 60 ? 0.5 : 0);
 }
 
-async function fetchJson(url: string, timeoutMs = 3500): Promise<{ ok: boolean; status: number; data: any }> {
+type SourceFetchDiagnostic = {
+  source: "openLibrary";
+  query: string;
+  exactQuerySent: string;
+  requestUrl: string;
+  httpStatus: number;
+  responseBodyPrefix: string;
+  rawApiItemCount: number;
+  parsedItemCount: number;
+  zeroParsedReason: string;
+  error?: string;
+};
+
+async function fetchJson(url: string, timeoutMs = 3500): Promise<{ ok: boolean; status: number; data: any; bodyPrefix: string }> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(url, { signal: controller.signal });
-    const data = await res.json();
-    return { ok: res.ok, status: res.status, data };
+    const text = await res.text();
+    const bodyPrefix = text.slice(0, 240);
+    let data: any = {};
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = {};
+    }
+    return { ok: res.ok, status: res.status, data, bodyPrefix };
   } finally {
     clearTimeout(timer);
   }
@@ -294,6 +314,7 @@ export async function getOpenLibraryRecommendations(
     return inferred;
   })();
   const docsRaw: any[] = [];
+  const sourceFetchDiagnostics: SourceFetchDiagnostic[] = [];
   let rawFetchedTotal = 0;
   const limit = input.limit || 12;
   const intakeLimit = Math.max(limit * 2, 24);
@@ -317,11 +338,43 @@ export async function getOpenLibraryRecommendations(
     queryTasks.map(async ({ q, i }) => {
       const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
       console.log("[OPEN_LIBRARY_URL]", url);
-      const response = await fetchJson(url);
+      let response: Awaited<ReturnType<typeof fetchJson>>;
+      try {
+        response = await fetchJson(url);
+      } catch (err: any) {
+        const errorMessage = err?.message || String(err || "");
+        sourceFetchDiagnostics.push({
+          source: "openLibrary",
+          query: q,
+          exactQuerySent: q,
+          requestUrl: url,
+          httpStatus: Number(err?.httpStatus || 0),
+          responseBodyPrefix: String(err?.bodyPrefix || errorMessage).slice(0, 240),
+          rawApiItemCount: 0,
+          parsedItemCount: 0,
+          zeroParsedReason: "fetch_error",
+          error: errorMessage,
+        });
+        throw err;
+      }
       console.log("[OPEN_LIBRARY_HTTP_STATUS]", { query: q, status: response.status });
-      if (!response.ok) throw new Error(`OpenLibrary error ${response.status}`);
+      if (!response.ok) {
+        sourceFetchDiagnostics.push({
+          source: "openLibrary",
+          query: q,
+          exactQuerySent: q,
+          requestUrl: url,
+          httpStatus: response.status,
+          responseBodyPrefix: response.bodyPrefix,
+          rawApiItemCount: 0,
+          parsedItemCount: 0,
+          zeroParsedReason: "fetch_error",
+          error: `OpenLibrary error ${response.status}`,
+        });
+        throw new Error(`OpenLibrary error ${response.status}`);
+      }
       const docs = Array.isArray(response.data?.docs) ? response.data.docs : [];
-      return { q, i, docs };
+      return { q, i, url, status: response.status, bodyPrefix: response.bodyPrefix, docs };
     })
   );
 
@@ -330,7 +383,7 @@ export async function getOpenLibraryRecommendations(
       console.warn("[OPEN_LIBRARY_FETCH_WARNING]", { error: result.reason?.message || String(result.reason || "") });
       continue;
     }
-    const { q, i, docs } = result.value;
+    const { q, i, url, status, bodyPrefix, docs } = result.value;
     rawFetchedTotal += docs.length;
     console.log("[OPEN_LIBRARY_RAW_COUNT]", { query: q, rawCount: docs.length, accumulatedRawCount: rawFetchedTotal });
     console.log("[OPEN_LIBRARY_FIRST_3_RESULTS]", docs.slice(0, 3).map((doc: any) => ({
@@ -339,6 +392,7 @@ export async function getOpenLibraryRecommendations(
       key: doc?.key,
     })));
 
+    let parsedForQuery = 0;
     for (const d of docs) {
       if (isGarbage(d, family)) continue;
 
@@ -351,7 +405,19 @@ export async function getOpenLibraryRecommendations(
         filterFamily: family === "historical" ? "historical" : family,
         laneKind: family === "historical" ? "historical" : "openlibrary",
       });
+      parsedForQuery += 1;
     }
+    sourceFetchDiagnostics.push({
+      source: "openLibrary",
+      query: q,
+      exactQuerySent: q,
+      requestUrl: url,
+      httpStatus: status,
+      responseBodyPrefix: bodyPrefix,
+      rawApiItemCount: docs.length,
+      parsedItemCount: parsedForQuery,
+      zeroParsedReason: parsedForQuery > 0 ? "none" : (docs.length === 0 ? "api_docs_empty" : "adapter_garbage_filter_removed_all"),
+    });
 
     if (docsRaw.length >= Math.max(limit * 3, 36)) break;
   }
@@ -405,6 +471,7 @@ export async function getOpenLibraryRecommendations(
     builtFromQuery: queries[0] || "",
     items: items.map(doc => ({ kind: "open_library", doc })),
     debugRawFetchedCount: rawFetchedTotal,
+    debugSourceFetchDiagnostics: sourceFetchDiagnostics,
     debugRawPool: docsRaw.slice(0, intakeLimit).map((d) => ({
       title: d.title,
       author: Array.isArray(d.author_name) ? d.author_name[0] : d.author_name,
@@ -416,5 +483,5 @@ export async function getOpenLibraryRecommendations(
       laneKind: d.laneKind,
       key: d.key
     }))
-  };
+  } as any;
 }

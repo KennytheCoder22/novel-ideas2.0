@@ -2920,9 +2920,11 @@ export async function getRecommendations(
   const openLibraryQueriesActuallyFetched = new Set<string>();
   const kitsuQueriesActuallyFetched = new Set<string>();
   const googleBooksFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const googleBooksSourceFetchDiagnostics: Array<{ source: string; query: string; exactQuerySent: string; requestUrl: string; httpStatus: number; responseBodyPrefix: string; rawApiItemCount: number; parsedItemCount: number; zeroParsedReason: string; error?: string }> = [];
   const googleBooksTimeoutStageByQuery: Array<{ query: string; stage: string; fallbackQuery?: string; reason?: string }> = [];
   const googleBooksRetryQueryMapping: Array<{ primaryQuery: string; retryQuery: string; validated: boolean }> = [];
   const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const openLibrarySourceFetchDiagnostics: Array<{ source: string; query: string; exactQuerySent: string; requestUrl: string; httpStatus: number; responseBodyPrefix: string; rawApiItemCount: number; parsedItemCount: number; zeroParsedReason: string; error?: string }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
   const collapseRepeatedQueryPhrases = (value: string) => {
@@ -4555,6 +4557,9 @@ export async function getRecommendations(
             ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
             : (Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle)) === 0 ? "[empty_google_books_result]" : null),
         });
+        if (Array.isArray((laneGoogle as any)?.debugSourceFetchDiagnostics)) {
+          googleBooksSourceFetchDiagnostics.push(...(laneGoogle as any).debugSourceFetchDiagnostics);
+        }
         if (results[index]?.status === "rejected" && isGoogleQuotaError((results[index] as PromiseRejectedResult).reason)) {
           googleQuotaExhausted = true;
           sourceSkippedReason.push("googleBooks_quota_exhausted_auto_disabled");
@@ -4590,6 +4595,9 @@ export async function getRecommendations(
             ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
             : (Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)) === 0 ? "[empty_open_library_result]" : null),
         });
+        if (Array.isArray((laneOpenLibrary as any)?.debugSourceFetchDiagnostics)) {
+          openLibrarySourceFetchDiagnostics.push(...(laneOpenLibrary as any).debugSourceFetchDiagnostics);
+        }
         index += 1;
       }
 
@@ -13160,6 +13168,7 @@ const normalizedCandidatesRaw = [
       nonzeroRawFetchCount: nonzeroRawFetchRows.length,
       zeroRawQueries: zeroRawFetchRows.map((row: any) => String(row?.query || "")).filter(Boolean).slice(0, 10),
       nonzeroRawQueries: nonzeroRawFetchRows.map((row: any) => String(row?.query || "")).filter(Boolean).slice(0, 10),
+      fetchDiagnostics: (source === "googleBooks" ? googleBooksSourceFetchDiagnostics : openLibrarySourceFetchDiagnostics).slice(0, 20),
       stageCounts,
       sourceSkipReasons: sourceSkipReasons.slice(0, 20),
       capOrDedupeSkipReasons: capOrDedupeSkipReasons.slice(0, 20),
@@ -13828,6 +13837,8 @@ const normalizedCandidatesRaw = [
     kitsuQueriesActuallyFetched: kitsuQueriesActuallyFetchedArray,
     googleBooksFetchResultsByQuery,
     openLibraryFetchResultsByQuery,
+    googleBooksSourceFetchDiagnostics,
+    openLibrarySourceFetchDiagnostics,
     kitsuFetchResultsByQuery,
     googleBooksTimeoutStageByQuery,
     googleBooksRetryQueryMapping,
