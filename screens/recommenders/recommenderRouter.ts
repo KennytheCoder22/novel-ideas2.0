@@ -12734,14 +12734,19 @@ const normalizedCandidatesRaw = [
       return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
     });
     const visibleStrongCount = visibleKitsuRescueRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
-    const correctedBuiltFrom = visibleStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+    const normalRecoveryAttribution = /^kitsu_normal_recovery/.test(prev);
+    const correctedBuiltFrom = normalRecoveryAttribution
+      ? (visibleStrongCount > 0 && finalOutputItems.length === 1 ? "kitsu_normal_recovery_single_strong" : prev)
+      : (visibleStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates");
     if (prev !== correctedBuiltFrom) {
       returnedItemsBuiltFrom = correctedBuiltFrom;
       finalReturnSourceUsed = correctedBuiltFrom;
       finalMetadataCorrectionApplied = true;
       finalMetadataCorrectionPreviousBuiltFrom = prev;
       sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:${correctedBuiltFrom}`);
-      if (visibleStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("metadata_correction_visible_slate_all_weak", visibleKitsuRescueRows, finalOutputItems);
+      if (visibleStrongCount === 0 && !normalRecoveryAttribution) markKitsuRankedPoolWeakCandidateOutput("metadata_correction_visible_slate_all_weak", visibleKitsuRescueRows, finalOutputItems);
+    } else if (normalRecoveryAttribution) {
+      sourceSkippedReason.push(`final_metadata_preserved_normal_recovery_attribution:${prev}:strong=${visibleStrongCount}:items=${finalOutputItems.length}`);
     }
   }
   const shouldApplySmallKitsuMetadataCorrection =
