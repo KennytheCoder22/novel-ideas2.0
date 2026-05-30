@@ -11690,6 +11690,12 @@ const normalizedCandidatesRaw = [
   let kitsuRankedPoolRescueWeakCandidateReturnedCount = 0;
   let kitsuRankedPoolRescueWeakCandidateSuppressedCount = 0;
   const kitsuRankedPoolRescueWeakCandidateTitles: string[] = [];
+  let kitsuEmergencyWeakCandidateAttributionCorrected = false;
+  let kitsuEmergencyWeakCandidatePreviousBuiltFrom = "not_evaluated";
+  let kitsuEmergencyWeakCandidatePath = "not_evaluated";
+  let kitsuEmergencyWeakCandidateTitle = "";
+  let kitsuEmergencyWeakCandidateRawCount = 0;
+  let kitsuEmergencyWeakCandidateRankedCount = 0;
   let kitsuSmallRecoveryMetadataCorrectionApplied = false;
   let kitsuSmallRecoveryRawCount = 0;
   let kitsuSmallRecoveryRankedCount = 0;
@@ -12757,6 +12763,30 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push(`final_metadata_corrected_small_kitsu_output_from:${prev}`);
     }
   }
+  const shouldCorrectOneItemKitsuEmergencyAttribution =
+    finalItemsLength === 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+    finalOutputItems.length === 1 &&
+    /^(none|final_gate_accepted_docs)$/.test(String(returnedItemsBuiltFrom || "none")) &&
+    finalOutputItems.every((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    });
+  if (shouldCorrectOneItemKitsuEmergencyAttribution) {
+    const prev = String(returnedItemsBuiltFrom || "none");
+    const emergencyItem = finalOutputItems[0] as any;
+    kitsuEmergencyWeakCandidateAttributionCorrected = true;
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom = prev;
+    kitsuEmergencyWeakCandidatePath = "one_item_kitsu_emergency_attribution_guard";
+    kitsuEmergencyWeakCandidateTitle = String(emergencyItem?.doc?.title || emergencyItem?.title || "").trim();
+    kitsuEmergencyWeakCandidateRawCount = Number(aggregatedRawFetched.kitsu || 0);
+    kitsuEmergencyWeakCandidateRankedCount = Number(rankedCount || 0);
+    returnedItemsBuiltFrom = "kitsu_emergency_weak_candidate";
+    finalReturnSourceUsed = "kitsu_emergency_weak_candidate";
+    sourceSkippedReason.push(`kitsu_emergency_weak_candidate_attribution_corrected:from=${prev}:path=${kitsuEmergencyWeakCandidatePath}:raw=${kitsuEmergencyWeakCandidateRawCount}:ranked=${kitsuEmergencyWeakCandidateRankedCount}`);
+  }
   if (/^kitsu_ranked_pool_rescue/.test(String(returnedItemsBuiltFrom)) && finalOutputItems.length > 0) {
     const orderedVisibleKitsuRescueItems = orderKitsuRescueStrongBeforeWeak(finalOutputItems.map((item: any) => {
       const doc = item?.doc || item;
@@ -13516,6 +13546,12 @@ const normalizedCandidatesRaw = [
     kitsuRankedPoolRescueWeakCandidateReturnedCount,
     kitsuRankedPoolRescueWeakCandidateSuppressedCount,
     kitsuRankedPoolRescueWeakCandidateTitles,
+    kitsuEmergencyWeakCandidateAttributionCorrected,
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom,
+    kitsuEmergencyWeakCandidatePath,
+    kitsuEmergencyWeakCandidateTitle,
+    kitsuEmergencyWeakCandidateRawCount,
+    kitsuEmergencyWeakCandidateRankedCount,
     finalInvariantKitsuRescueTriggered,
     finalInvariantKitsuRescueCandidateCount,
     finalInvariantKitsuRescuePreviousBuiltFrom,
