@@ -11671,9 +11671,25 @@ const normalizedCandidatesRaw = [
     const strongRows = rows.filter((row: any) => isKitsuRescueStrongRow(row));
     return strongRows.length > 0 ? strongRows : rows;
   };
+  const markKitsuRankedPoolWeakCandidateOutput = (reason: string, candidateRows: any[], returnedItems: any[]) => {
+    kitsuRankedPoolRescueWeakCandidateOutput = true;
+    kitsuRankedPoolRescueWeakCandidateReason = reason;
+    kitsuRankedPoolRescueWeakCandidateReturnedCount = returnedItems.length;
+    kitsuRankedPoolRescueWeakCandidateSuppressedCount = Math.max(0, candidateRows.length - returnedItems.length);
+    kitsuRankedPoolRescueWeakCandidateTitles.splice(0, kitsuRankedPoolRescueWeakCandidateTitles.length, ...returnedItems
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter(Boolean)
+      .slice(0, 20));
+    sourceSkippedReason.push(`kitsu_ranked_pool_rescue_weak_candidates:${reason}:returned=${returnedItems.length}:suppressed=${kitsuRankedPoolRescueWeakCandidateSuppressedCount}`);
+  };
   let kitsuLowRankedCountRecoveryTriggered = false;
   let kitsuLowRankedCountRecoveryCandidateCount = 0;
   let kitsuLowRankedCountRecoveryBlockedReason = "not_evaluated";
+  let kitsuRankedPoolRescueWeakCandidateOutput = false;
+  let kitsuRankedPoolRescueWeakCandidateReason = "not_evaluated";
+  let kitsuRankedPoolRescueWeakCandidateReturnedCount = 0;
+  let kitsuRankedPoolRescueWeakCandidateSuppressedCount = 0;
+  const kitsuRankedPoolRescueWeakCandidateTitles: string[] = [];
   let kitsuSmallRecoveryMetadataCorrectionApplied = false;
   let kitsuSmallRecoveryRawCount = 0;
   let kitsuSmallRecoveryRankedCount = 0;
@@ -11980,15 +11996,18 @@ const normalizedCandidatesRaw = [
           const top = rescuePoolToUse[0];
           kitsuRankedPoolRescueSource = rankedKitsuRescue.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
           const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+          const rescuePoolStrongCount = rescuePoolToUse.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+          const rankedRescueLimit = rescuePoolStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
           const rankedRescueDocs = rescuePoolToUse
             .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
             .filter(Boolean)
-            .slice(0, Math.max(3, Math.min(5, finalLimit)));
+            .slice(0, rankedRescueLimit);
           if (rankedRescueDocs.length > 0) {
             finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-            returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-            finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
-            sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue");
+            returnedItemsBuiltFrom = rescuePoolStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+            finalReturnSourceUsed = returnedItemsBuiltFrom;
+            if (rescuePoolStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("pre_emergency_ranked_pool_all_weak", rescuePoolToUse, finalOutputItems);
+            sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}`);
             kitsuRankedPoolRescueBlockedReason = "none";
             kitsuFinalEligibilitySparseMetadataRescue = {
               activated: true,
@@ -12107,18 +12126,21 @@ const normalizedCandidatesRaw = [
       kitsuRankedPoolRescueEligible = true;
       if (kitsuRankedPoolRescueSource === "not_triggered" && rankedKitsuFallbackFromRankedDocs.length > 0) {
         const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+        const rankedKitsuFallbackStrongCount = rankedKitsuFallbackFromRankedDocs.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+        const rankedRescueLimit = rankedKitsuFallbackStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
         const rankedRescueDocs = rankedKitsuFallbackFromRankedDocs
           .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))) || row.doc)
           .filter(Boolean)
-          .slice(0, Math.max(3, Math.min(5, finalLimit)));
+          .slice(0, rankedRescueLimit);
         kitsuRankedPoolRescueCandidateCount = rankedKitsuFallbackFromRankedDocs.length;
         kitsuRankedPoolRescueSource = "rankedDocsFallback";
         if (rankedRescueDocs.length > 0) {
           finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-          returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-          finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+          returnedItemsBuiltFrom = rankedKitsuFallbackStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+          finalReturnSourceUsed = returnedItemsBuiltFrom;
+          if (rankedKitsuFallbackStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("late_guard_ranked_pool_all_weak", rankedKitsuFallbackFromRankedDocs, finalOutputItems);
           kitsuRankedPoolRescueBlockedReason = "none";
-          sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue_late_guard");
+          sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}_late_guard`);
         } else {
           kitsuRankedPoolRescueBlockedReason = "late_guard_top_candidate_not_found_in_teen_postpass_items";
         }
@@ -12662,21 +12684,24 @@ const normalizedCandidatesRaw = [
     const rescuePool = rankedCandidatePool.length > 0 ? rankedCandidatePool : rankedDocsFallbackPool;
     finalInvariantKitsuRescueCandidateCount = rescuePool.length;
     if (rescuePool.length === 0) return;
+    const rescuePoolStrongCount = rescuePool.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+    const rescueLimit = rescuePoolStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
     const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
     const rankedRescueDocs = rescuePool
       .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || "")))
         || row.doc
         || rankedDocsFallbackPool.find((candidate: any) => normalizeText(String(candidate?.title || candidate?.doc?.title || "")) === normalizeText(String(row?.title || "")))?.doc)
       .filter(Boolean)
-      .slice(0, Math.max(3, Math.min(5, finalLimit)));
+      .slice(0, rescueLimit);
     if (rankedRescueDocs.length === 0) return;
     finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-    returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-    finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+    returnedItemsBuiltFrom = rescuePoolStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+    finalReturnSourceUsed = returnedItemsBuiltFrom;
+    if (rescuePoolStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("final_invariant_ranked_pool_all_weak", rescuePool, finalOutputItems);
     kitsuRankedPoolRescueSource = rescueSource;
     finalInvariantKitsuRescueTriggered = true;
     finalInvariantKitsuRescuePreviousBuiltFrom = prevBuiltFrom;
-    sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue_final_invariant");
+    sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}_final_invariant`);
   };
   runFinalInvariantKitsuRescue();
   const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
@@ -12695,12 +12720,19 @@ const normalizedCandidatesRaw = [
     });
   if (shouldApplyFinalMetadataCorrection) {
     const prev = String(returnedItemsBuiltFrom || "none");
-    if (prev !== "kitsu_ranked_pool_rescue") {
-      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-      finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+    const visibleKitsuRescueRows = finalOutputItems.map((item: any) => {
+      const doc = item?.doc || item;
+      return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+    });
+    const visibleStrongCount = visibleKitsuRescueRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+    const correctedBuiltFrom = visibleStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+    if (prev !== correctedBuiltFrom) {
+      returnedItemsBuiltFrom = correctedBuiltFrom;
+      finalReturnSourceUsed = correctedBuiltFrom;
       finalMetadataCorrectionApplied = true;
       finalMetadataCorrectionPreviousBuiltFrom = prev;
-      sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:kitsu_ranked_pool_rescue`);
+      sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:${correctedBuiltFrom}`);
+      if (visibleStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("metadata_correction_visible_slate_all_weak", visibleKitsuRescueRows, finalOutputItems);
     }
   }
   const shouldApplySmallKitsuMetadataCorrection =
@@ -12725,7 +12757,7 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push(`final_metadata_corrected_small_kitsu_output_from:${prev}`);
     }
   }
-  if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue" && finalOutputItems.length > 0) {
+  if (/^kitsu_ranked_pool_rescue/.test(String(returnedItemsBuiltFrom)) && finalOutputItems.length > 0) {
     const orderedVisibleKitsuRescueItems = orderKitsuRescueStrongBeforeWeak(finalOutputItems.map((item: any) => {
       const doc = item?.doc || item;
       return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
@@ -12759,7 +12791,7 @@ const normalizedCandidatesRaw = [
       const strongFirst = penaltyOrderedCandidates.filter((row: any) => !row.weakByPolicy);
       const weakFallback = penaltyOrderedCandidates.filter((row: any) => row.weakByPolicy);
       const strongCandidateCount = strongFirst.length;
-      const targetMax = strongCandidateCount >= 5 ? 5 : Math.max(3, strongCandidateCount);
+      const targetMax = strongCandidateCount >= 5 ? 5 : (strongCandidateCount > 0 ? Math.max(3, strongCandidateCount) : finalOutputItems.length);
       const paddingPool = strongFirst.length > 0 ? strongFirst : weakFallback;
       const additions = paddingPool
         .slice(0, Math.max(0, targetMax - finalOutputItems.length))
@@ -12874,7 +12906,7 @@ const normalizedCandidatesRaw = [
   kitsuRescueStrongCandidateCount = kitsuRescueCandidateQualityRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
   kitsuRescueWeakCandidateCount = kitsuRescueCandidateQualityRows.filter((row: any) => !isKitsuRescueStrongRow(row)).length;
   let kitsuRescueSlateQualityAudit: Array<{ title: string; sourceId: string; reason: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; weightedTasteScore: number; dislikePenaltyScore: number }> = [];
-  if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
+  if (/^kitsu_ranked_pool_rescue/.test(String(returnedItemsBuiltFrom))) {
     for (const item of finalOutputItems) {
       const doc = item?.doc || item;
       const title = String(doc?.title || item?.title || "").trim();
@@ -12930,6 +12962,17 @@ const normalizedCandidatesRaw = [
       });
       finalOutputItems = orderedFinalSlateRows.map((row) => row.item);
       kitsuRescueSlateQualityAudit = orderedFinalSlateRows.map((row) => row.audit).filter(Boolean) as any;
+    }
+    const visibleStrongCount = finalSlateRows.filter((row) => row.strong).length;
+    if (visibleStrongCount === 0 && finalOutputItems.length > 0 && String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
+      const weakCandidateRows = finalOutputItems.map((item: any) => {
+        const doc = item?.doc || item;
+        return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+      });
+      finalOutputItems = finalOutputItems.slice(0, 1);
+      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue_weak_candidates";
+      finalReturnSourceUsed = "kitsu_ranked_pool_rescue_weak_candidates";
+      markKitsuRankedPoolWeakCandidateOutput("post_audit_ranked_pool_all_weak", weakCandidateRows, finalOutputItems);
     }
   }
   const smallKitsuRawCountForAudit = Number(aggregatedRawFetched.kitsu || 0);
@@ -13468,6 +13511,11 @@ const normalizedCandidatesRaw = [
     kitsuRankedPoolRescueEligible,
     kitsuRankedPoolRescueCandidateCount,
     kitsuRankedPoolRescueBlockedReason,
+    kitsuRankedPoolRescueWeakCandidateOutput,
+    kitsuRankedPoolRescueWeakCandidateReason,
+    kitsuRankedPoolRescueWeakCandidateReturnedCount,
+    kitsuRankedPoolRescueWeakCandidateSuppressedCount,
+    kitsuRankedPoolRescueWeakCandidateTitles,
     finalInvariantKitsuRescueTriggered,
     finalInvariantKitsuRescueCandidateCount,
     finalInvariantKitsuRescuePreviousBuiltFrom,
