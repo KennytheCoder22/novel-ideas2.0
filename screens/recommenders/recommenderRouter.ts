@@ -1003,10 +1003,17 @@ function extractDocs(
     ? (result as any).items
         .map((item: any) => {
           if (!item?.doc) return null;
-          return {
-            ...item.doc,
-            source: item.doc?.source || fallbackSource,
-          };
+          const doc = { ...item.doc, source: item.doc?.source || fallbackSource } as any;
+          if (fallbackSource === "kitsu" || String(doc?.source || "").toLowerCase().includes("kitsu")) {
+            const rawId = String(doc?.sourceId || doc?.canonicalId || doc?.key || doc?.id || doc?.rawDoc?.id || "").trim();
+            const fallbackId = rawId || (String(doc?.title || "").trim() ? `title:${String(doc.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+            if (fallbackId) {
+              doc.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+              doc.canonicalId = doc.canonicalId || doc.sourceId;
+              doc.key = doc.key || doc.sourceId;
+            }
+          }
+          return doc;
         })
         .filter(Boolean)
     : [];
@@ -1015,10 +1022,19 @@ function extractDocs(
     ? (result as any).recommendations
         .map((doc: any) =>
           doc
-            ? {
-                ...doc,
-                source: doc?.source || fallbackSource,
-              }
+            ? (() => {
+                const out = { ...doc, source: doc?.source || fallbackSource } as any;
+                if (fallbackSource === "kitsu" || String(out?.source || "").toLowerCase().includes("kitsu")) {
+                  const rawId = String(out?.sourceId || out?.canonicalId || out?.key || out?.id || out?.rawDoc?.id || "").trim();
+                  const fallbackId = rawId || (String(out?.title || "").trim() ? `title:${String(out.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+                  if (fallbackId) {
+                    out.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+                    out.canonicalId = out.canonicalId || out.sourceId;
+                    out.key = out.key || out.sourceId;
+                  }
+                }
+                return out;
+              })()
             : null
         )
         .filter(Boolean)
@@ -1028,10 +1044,19 @@ function extractDocs(
     ? (result as any).docs
         .map((doc: any) =>
           doc
-            ? {
-                ...doc,
-                source: doc?.source || fallbackSource,
-              }
+            ? (() => {
+                const out = { ...doc, source: doc?.source || fallbackSource } as any;
+                if (fallbackSource === "kitsu" || String(out?.source || "").toLowerCase().includes("kitsu")) {
+                  const rawId = String(out?.sourceId || out?.canonicalId || out?.key || out?.id || out?.rawDoc?.id || "").trim();
+                  const fallbackId = rawId || (String(out?.title || "").trim() ? `title:${String(out.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+                  if (fallbackId) {
+                    out.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+                    out.canonicalId = out.canonicalId || out.sourceId;
+                    out.key = out.key || out.sourceId;
+                  }
+                }
+                return out;
+              })()
             : null
         )
         .filter(Boolean)
@@ -2813,6 +2838,11 @@ export async function getRecommendations(
     const current = normalizeKitsuRecoveryQueryForSelection(selected);
     const haystack = normalizeKitsuRecoveryQueryForSelection([selected, ...sourceQueries].join(" "));
     const priorityMatchers: Array<{ query: string; re: RegExp }> = [
+      { query: "batman", re: /\bbatman\b/ },
+      { query: "spider-man", re: /\bspider\s+man\b|\bspider-man\b/ },
+      { query: "superhero", re: /\bsuperhero(?:es)?\b|\bsuper\s+hero(?:es)?\b|\bmarvel\b|\bdc comics?\b/ },
+      { query: "comic", re: /\bcomics?\b/ },
+      { query: "graphic novel", re: /\bgraphic\s+novel\b/ },
       { query: "mystery", re: /\bmystery\b/ },
       { query: "fantasy", re: /\bfantasy\b/ },
       { query: "horror", re: /\bhorror\b/ },
@@ -4258,7 +4288,7 @@ export async function getRecommendations(
       const openLibraryLaneQuery = normalizeFinalSourceQuery(sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure");
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
       const fallbackBroadTerms = [
-        /\b(superhero|miles|batman|spider[\s-]?man)\b/i.test(baseLaneQuery) ? "superhero" : "",
+        /\b(superhero(?:es)?|super hero(?:es)?|miles|batman|spider[\s-]?man|marvel|dc comics?)\b/i.test(baseLaneQuery) ? "superhero" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "detective" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "mystery" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "suspense" : "",
@@ -8172,7 +8202,7 @@ const normalizedCandidatesRaw = [
     }
     const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
     const isComicVineCandidate = docSource.includes("comicvine");
-    const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
     const restoredByKitsuRecovery = Boolean((doc as any)?.restoredByKitsuRecovery || (doc?.diagnostics as any)?.restoredByKitsuRecovery);
     const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
@@ -11637,6 +11667,10 @@ const normalizedCandidatesRaw = [
     }
     return [...strongRows, ...weakRows];
   };
+  const suppressKitsuWeakPadding = (rows: any[]) => {
+    const strongRows = rows.filter((row: any) => isKitsuRescueStrongRow(row));
+    return strongRows.length > 0 ? strongRows : rows;
+  };
   let kitsuLowRankedCountRecoveryTriggered = false;
   let kitsuLowRankedCountRecoveryCandidateCount = 0;
   let kitsuLowRankedCountRecoveryBlockedReason = "not_evaluated";
@@ -11938,7 +11972,7 @@ const normalizedCandidatesRaw = [
         const kitsuRawCountForRescue = Number(aggregatedRawFetched.kitsu || 0);
         const shouldTriggerRankedPoolRescue = kitsuRawCountForRescue >= 10 && Number(rankedCount || 0) >= 10;
         kitsuRankedPoolRescueEligible = shouldTriggerRankedPoolRescue;
-        const rescuePoolToUse = rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocsOrdered;
+        const rescuePoolToUse = suppressKitsuWeakPadding(rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocsOrdered);
         kitsuRankedPoolRescueCandidateCount = rescuePoolToUse.length;
         if (!shouldTriggerRankedPoolRescue) kitsuRankedPoolRescueBlockedReason = `trigger_not_met:kitsuRaw=${kitsuRawCountForRescue}:ranked=${Number(rankedCount || 0)}`;
         else if (rescuePoolToUse.length === 0) kitsuRankedPoolRescueBlockedReason = "eligible_but_no_kitsu_rescue_candidates";
@@ -12066,10 +12100,10 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
     const shouldTriggerRankedPoolRescue = Number(aggregatedRawFetched.kitsu || 0) >= 10 && Number(rankedCount || 0) >= 10;
     if (shouldTriggerRankedPoolRescue) {
-      const rankedKitsuFallbackFromRankedDocs = orderKitsuRescueStrongBeforeWeak((rankedDocs || [])
+      const rankedKitsuFallbackFromRankedDocs = suppressKitsuWeakPadding(orderKitsuRescueStrongBeforeWeak((rankedDocs || [])
         .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
         .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
-        .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3);
+        .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3));
       kitsuRankedPoolRescueEligible = true;
       if (kitsuRankedPoolRescueSource === "not_triggered" && rankedKitsuFallbackFromRankedDocs.length > 0) {
         const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
@@ -12100,13 +12134,13 @@ const normalizedCandidatesRaw = [
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
-    const strongKitsuRecoveryPool = orderKitsuRescueRowsPenaltyFirst(kitsuRecoveryRankedCandidates
+    const strongKitsuRecoveryPool = suppressKitsuWeakPadding(orderKitsuRescueRowsPenaltyFirst(kitsuRecoveryRankedCandidates
       .filter((row) => !row.rejectReason)
       .map((row) => ({
         ...row,
         weightedTasteScore: Number(candidateWeightedTasteScoreByTitle[String(row.title || "").trim()] || 0),
         dislikePenaltyScore: Number(candidateDislikePenaltyByTitle[String(row.title || "").trim()] || 0),
-      })), 3);
+      })), 3));
     if (strongKitsuRecoveryPool.length >= 10) {
       const preferredTitles = new Set(strongKitsuRecoveryPool.map((r) => normalizeText(r.title)));
       const preferredKitsuItems = teenPostPassItems
@@ -12726,7 +12760,8 @@ const normalizedCandidatesRaw = [
       const weakFallback = penaltyOrderedCandidates.filter((row: any) => row.weakByPolicy);
       const strongCandidateCount = strongFirst.length;
       const targetMax = strongCandidateCount >= 5 ? 5 : Math.max(3, strongCandidateCount);
-      const additions = [...strongFirst, ...weakFallback]
+      const paddingPool = strongFirst.length > 0 ? strongFirst : weakFallback;
+      const additions = paddingPool
         .slice(0, Math.max(0, targetMax - finalOutputItems.length))
         .map((row: any) => ({ kind: "open_library", doc: row.doc }));
       if (additions.length > 0) {
