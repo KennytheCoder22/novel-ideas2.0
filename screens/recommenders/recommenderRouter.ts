@@ -1003,10 +1003,17 @@ function extractDocs(
     ? (result as any).items
         .map((item: any) => {
           if (!item?.doc) return null;
-          return {
-            ...item.doc,
-            source: item.doc?.source || fallbackSource,
-          };
+          const doc = { ...item.doc, source: item.doc?.source || fallbackSource } as any;
+          if (fallbackSource === "kitsu" || String(doc?.source || "").toLowerCase().includes("kitsu")) {
+            const rawId = String(doc?.sourceId || doc?.canonicalId || doc?.key || doc?.id || doc?.rawDoc?.id || "").trim();
+            const fallbackId = rawId || (String(doc?.title || "").trim() ? `title:${String(doc.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+            if (fallbackId) {
+              doc.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+              doc.canonicalId = doc.canonicalId || doc.sourceId;
+              doc.key = doc.key || doc.sourceId;
+            }
+          }
+          return doc;
         })
         .filter(Boolean)
     : [];
@@ -1015,10 +1022,19 @@ function extractDocs(
     ? (result as any).recommendations
         .map((doc: any) =>
           doc
-            ? {
-                ...doc,
-                source: doc?.source || fallbackSource,
-              }
+            ? (() => {
+                const out = { ...doc, source: doc?.source || fallbackSource } as any;
+                if (fallbackSource === "kitsu" || String(out?.source || "").toLowerCase().includes("kitsu")) {
+                  const rawId = String(out?.sourceId || out?.canonicalId || out?.key || out?.id || out?.rawDoc?.id || "").trim();
+                  const fallbackId = rawId || (String(out?.title || "").trim() ? `title:${String(out.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+                  if (fallbackId) {
+                    out.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+                    out.canonicalId = out.canonicalId || out.sourceId;
+                    out.key = out.key || out.sourceId;
+                  }
+                }
+                return out;
+              })()
             : null
         )
         .filter(Boolean)
@@ -1028,10 +1044,19 @@ function extractDocs(
     ? (result as any).docs
         .map((doc: any) =>
           doc
-            ? {
-                ...doc,
-                source: doc?.source || fallbackSource,
-              }
+            ? (() => {
+                const out = { ...doc, source: doc?.source || fallbackSource } as any;
+                if (fallbackSource === "kitsu" || String(out?.source || "").toLowerCase().includes("kitsu")) {
+                  const rawId = String(out?.sourceId || out?.canonicalId || out?.key || out?.id || out?.rawDoc?.id || "").trim();
+                  const fallbackId = rawId || (String(out?.title || "").trim() ? `title:${String(out.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+                  if (fallbackId) {
+                    out.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+                    out.canonicalId = out.canonicalId || out.sourceId;
+                    out.key = out.key || out.sourceId;
+                  }
+                }
+                return out;
+              })()
             : null
         )
         .filter(Boolean)
@@ -2813,6 +2838,11 @@ export async function getRecommendations(
     const current = normalizeKitsuRecoveryQueryForSelection(selected);
     const haystack = normalizeKitsuRecoveryQueryForSelection([selected, ...sourceQueries].join(" "));
     const priorityMatchers: Array<{ query: string; re: RegExp }> = [
+      { query: "batman", re: /\bbatman\b/ },
+      { query: "spider-man", re: /\bspider\s+man\b|\bspider-man\b/ },
+      { query: "superhero", re: /\bsuperhero(?:es)?\b|\bsuper\s+hero(?:es)?\b|\bmarvel\b|\bdc comics?\b/ },
+      { query: "comic", re: /\bcomics?\b/ },
+      { query: "graphic novel", re: /\bgraphic\s+novel\b/ },
       { query: "mystery", re: /\bmystery\b/ },
       { query: "fantasy", re: /\bfantasy\b/ },
       { query: "horror", re: /\bhorror\b/ },
@@ -4258,7 +4288,7 @@ export async function getRecommendations(
       const openLibraryLaneQuery = normalizeFinalSourceQuery(sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure");
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
       const fallbackBroadTerms = [
-        /\b(superhero|miles|batman|spider[\s-]?man)\b/i.test(baseLaneQuery) ? "superhero" : "",
+        /\b(superhero(?:es)?|super hero(?:es)?|miles|batman|spider[\s-]?man|marvel|dc comics?)\b/i.test(baseLaneQuery) ? "superhero" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "detective" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "mystery" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "suspense" : "",
@@ -8172,7 +8202,7 @@ const normalizedCandidatesRaw = [
     }
     const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
     const isComicVineCandidate = docSource.includes("comicvine");
-    const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
     const restoredByKitsuRecovery = Boolean((doc as any)?.restoredByKitsuRecovery || (doc?.diagnostics as any)?.restoredByKitsuRecovery);
     const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
@@ -11637,9 +11667,38 @@ const normalizedCandidatesRaw = [
     }
     return [...strongRows, ...weakRows];
   };
+  const suppressKitsuWeakPadding = (rows: any[]) => {
+    const strongRows = rows.filter((row: any) => isKitsuRescueStrongRow(row));
+    return strongRows.length > 0 ? strongRows : rows;
+  };
+  const markKitsuRankedPoolWeakCandidateOutput = (reason: string, candidateRows: any[], returnedItems: any[]) => {
+    kitsuRankedPoolRescueWeakCandidateOutput = true;
+    kitsuRankedPoolRescueWeakCandidateReason = reason;
+    kitsuRankedPoolRescueWeakCandidateReturnedCount = returnedItems.length;
+    kitsuRankedPoolRescueWeakCandidateSuppressedCount = Math.max(0, candidateRows.length - returnedItems.length);
+    kitsuRankedPoolRescueWeakCandidateTitles.splice(0, kitsuRankedPoolRescueWeakCandidateTitles.length, ...returnedItems
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter(Boolean)
+      .slice(0, 20));
+    sourceSkippedReason.push(`kitsu_ranked_pool_rescue_weak_candidates:${reason}:returned=${returnedItems.length}:suppressed=${kitsuRankedPoolRescueWeakCandidateSuppressedCount}`);
+  };
   let kitsuLowRankedCountRecoveryTriggered = false;
   let kitsuLowRankedCountRecoveryCandidateCount = 0;
   let kitsuLowRankedCountRecoveryBlockedReason = "not_evaluated";
+  let kitsuRankedPoolRescueWeakCandidateOutput = false;
+  let kitsuRankedPoolRescueWeakCandidateReason = "not_evaluated";
+  let kitsuRankedPoolRescueWeakCandidateReturnedCount = 0;
+  let kitsuRankedPoolRescueWeakCandidateSuppressedCount = 0;
+  const kitsuRankedPoolRescueWeakCandidateTitles: string[] = [];
+  let kitsuEmergencyWeakCandidateAttributionCorrected = false;
+  let kitsuEmergencyWeakCandidatePreviousBuiltFrom = "not_evaluated";
+  let kitsuEmergencyWeakCandidatePath = "not_evaluated";
+  let kitsuEmergencyWeakCandidateBypassPath = "not_evaluated";
+  let kitsuEmergencyWeakCandidateTitle = "";
+  let kitsuEmergencyWeakCandidatePriorItemCount = 0;
+  const kitsuEmergencyWeakCandidateSuppressedTitles: string[] = [];
+  let kitsuEmergencyWeakCandidateRawCount = 0;
+  let kitsuEmergencyWeakCandidateRankedCount = 0;
   let kitsuSmallRecoveryMetadataCorrectionApplied = false;
   let kitsuSmallRecoveryRawCount = 0;
   let kitsuSmallRecoveryRankedCount = 0;
@@ -11938,7 +11997,7 @@ const normalizedCandidatesRaw = [
         const kitsuRawCountForRescue = Number(aggregatedRawFetched.kitsu || 0);
         const shouldTriggerRankedPoolRescue = kitsuRawCountForRescue >= 10 && Number(rankedCount || 0) >= 10;
         kitsuRankedPoolRescueEligible = shouldTriggerRankedPoolRescue;
-        const rescuePoolToUse = rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocsOrdered;
+        const rescuePoolToUse = suppressKitsuWeakPadding(rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocsOrdered);
         kitsuRankedPoolRescueCandidateCount = rescuePoolToUse.length;
         if (!shouldTriggerRankedPoolRescue) kitsuRankedPoolRescueBlockedReason = `trigger_not_met:kitsuRaw=${kitsuRawCountForRescue}:ranked=${Number(rankedCount || 0)}`;
         else if (rescuePoolToUse.length === 0) kitsuRankedPoolRescueBlockedReason = "eligible_but_no_kitsu_rescue_candidates";
@@ -11946,15 +12005,18 @@ const normalizedCandidatesRaw = [
           const top = rescuePoolToUse[0];
           kitsuRankedPoolRescueSource = rankedKitsuRescue.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
           const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+          const rescuePoolStrongCount = rescuePoolToUse.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+          const rankedRescueLimit = rescuePoolStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
           const rankedRescueDocs = rescuePoolToUse
             .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
             .filter(Boolean)
-            .slice(0, Math.max(3, Math.min(5, finalLimit)));
+            .slice(0, rankedRescueLimit);
           if (rankedRescueDocs.length > 0) {
             finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-            returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-            finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
-            sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue");
+            returnedItemsBuiltFrom = rescuePoolStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+            finalReturnSourceUsed = returnedItemsBuiltFrom;
+            if (rescuePoolStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("pre_emergency_ranked_pool_all_weak", rescuePoolToUse, finalOutputItems);
+            sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}`);
             kitsuRankedPoolRescueBlockedReason = "none";
             kitsuFinalEligibilitySparseMetadataRescue = {
               activated: true,
@@ -12066,25 +12128,28 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
     const shouldTriggerRankedPoolRescue = Number(aggregatedRawFetched.kitsu || 0) >= 10 && Number(rankedCount || 0) >= 10;
     if (shouldTriggerRankedPoolRescue) {
-      const rankedKitsuFallbackFromRankedDocs = orderKitsuRescueStrongBeforeWeak((rankedDocs || [])
+      const rankedKitsuFallbackFromRankedDocs = suppressKitsuWeakPadding(orderKitsuRescueStrongBeforeWeak((rankedDocs || [])
         .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
         .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
-        .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3);
+        .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3));
       kitsuRankedPoolRescueEligible = true;
       if (kitsuRankedPoolRescueSource === "not_triggered" && rankedKitsuFallbackFromRankedDocs.length > 0) {
         const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+        const rankedKitsuFallbackStrongCount = rankedKitsuFallbackFromRankedDocs.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+        const rankedRescueLimit = rankedKitsuFallbackStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
         const rankedRescueDocs = rankedKitsuFallbackFromRankedDocs
           .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))) || row.doc)
           .filter(Boolean)
-          .slice(0, Math.max(3, Math.min(5, finalLimit)));
+          .slice(0, rankedRescueLimit);
         kitsuRankedPoolRescueCandidateCount = rankedKitsuFallbackFromRankedDocs.length;
         kitsuRankedPoolRescueSource = "rankedDocsFallback";
         if (rankedRescueDocs.length > 0) {
           finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-          returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-          finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+          returnedItemsBuiltFrom = rankedKitsuFallbackStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+          finalReturnSourceUsed = returnedItemsBuiltFrom;
+          if (rankedKitsuFallbackStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("late_guard_ranked_pool_all_weak", rankedKitsuFallbackFromRankedDocs, finalOutputItems);
           kitsuRankedPoolRescueBlockedReason = "none";
-          sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue_late_guard");
+          sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}_late_guard`);
         } else {
           kitsuRankedPoolRescueBlockedReason = "late_guard_top_candidate_not_found_in_teen_postpass_items";
         }
@@ -12100,13 +12165,13 @@ const normalizedCandidatesRaw = [
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
-    const strongKitsuRecoveryPool = orderKitsuRescueRowsPenaltyFirst(kitsuRecoveryRankedCandidates
+    const strongKitsuRecoveryPool = suppressKitsuWeakPadding(orderKitsuRescueRowsPenaltyFirst(kitsuRecoveryRankedCandidates
       .filter((row) => !row.rejectReason)
       .map((row) => ({
         ...row,
         weightedTasteScore: Number(candidateWeightedTasteScoreByTitle[String(row.title || "").trim()] || 0),
         dislikePenaltyScore: Number(candidateDislikePenaltyByTitle[String(row.title || "").trim()] || 0),
-      })), 3);
+      })), 3));
     if (strongKitsuRecoveryPool.length >= 10) {
       const preferredTitles = new Set(strongKitsuRecoveryPool.map((r) => normalizeText(r.title)));
       const preferredKitsuItems = teenPostPassItems
@@ -12628,24 +12693,27 @@ const normalizedCandidatesRaw = [
     const rescuePool = rankedCandidatePool.length > 0 ? rankedCandidatePool : rankedDocsFallbackPool;
     finalInvariantKitsuRescueCandidateCount = rescuePool.length;
     if (rescuePool.length === 0) return;
+    const rescuePoolStrongCount = rescuePool.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+    const rescueLimit = rescuePoolStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
     const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
     const rankedRescueDocs = rescuePool
       .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || "")))
         || row.doc
         || rankedDocsFallbackPool.find((candidate: any) => normalizeText(String(candidate?.title || candidate?.doc?.title || "")) === normalizeText(String(row?.title || "")))?.doc)
       .filter(Boolean)
-      .slice(0, Math.max(3, Math.min(5, finalLimit)));
+      .slice(0, rescueLimit);
     if (rankedRescueDocs.length === 0) return;
     finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-    returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-    finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+    returnedItemsBuiltFrom = rescuePoolStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+    finalReturnSourceUsed = returnedItemsBuiltFrom;
+    if (rescuePoolStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("final_invariant_ranked_pool_all_weak", rescuePool, finalOutputItems);
     kitsuRankedPoolRescueSource = rescueSource;
     finalInvariantKitsuRescueTriggered = true;
     finalInvariantKitsuRescuePreviousBuiltFrom = prevBuiltFrom;
-    sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue_final_invariant");
+    sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}_final_invariant`);
   };
   runFinalInvariantKitsuRescue();
-  const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
+  let terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
     ? finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
     : [];
   const shouldApplyFinalMetadataCorrection =
@@ -12661,12 +12729,24 @@ const normalizedCandidatesRaw = [
     });
   if (shouldApplyFinalMetadataCorrection) {
     const prev = String(returnedItemsBuiltFrom || "none");
-    if (prev !== "kitsu_ranked_pool_rescue") {
-      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-      finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+    const visibleKitsuRescueRows = finalOutputItems.map((item: any) => {
+      const doc = item?.doc || item;
+      return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+    });
+    const visibleStrongCount = visibleKitsuRescueRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+    const normalRecoveryAttribution = /^kitsu_normal_recovery/.test(prev);
+    const correctedBuiltFrom = normalRecoveryAttribution
+      ? (visibleStrongCount > 0 && finalOutputItems.length === 1 ? "kitsu_normal_recovery_single_strong" : prev)
+      : (visibleStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates");
+    if (prev !== correctedBuiltFrom) {
+      returnedItemsBuiltFrom = correctedBuiltFrom;
+      finalReturnSourceUsed = correctedBuiltFrom;
       finalMetadataCorrectionApplied = true;
       finalMetadataCorrectionPreviousBuiltFrom = prev;
-      sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:kitsu_ranked_pool_rescue`);
+      sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:${correctedBuiltFrom}`);
+      if (visibleStrongCount === 0 && !normalRecoveryAttribution) markKitsuRankedPoolWeakCandidateOutput("metadata_correction_visible_slate_all_weak", visibleKitsuRescueRows, finalOutputItems);
+    } else if (normalRecoveryAttribution) {
+      sourceSkippedReason.push(`final_metadata_preserved_normal_recovery_attribution:${prev}:strong=${visibleStrongCount}:items=${finalOutputItems.length}`);
     }
   }
   const shouldApplySmallKitsuMetadataCorrection =
@@ -12691,7 +12771,78 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push(`final_metadata_corrected_small_kitsu_output_from:${prev}`);
     }
   }
-  if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue" && finalOutputItems.length > 0) {
+  const shouldCorrectOneItemKitsuEmergencyAttribution =
+    finalItemsLength === 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+    finalOutputItems.length === 1 &&
+    /^(none|final_gate_accepted_docs)$/.test(String(returnedItemsBuiltFrom || "none")) &&
+    finalOutputItems.every((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    });
+  const inferKitsuEmergencyWeakCandidateBypassPath = () => {
+    const recentBypassReason = [...sourceSkippedReason].reverse().find((reason) => /final_gate_integrity|emergency|handoff|rescue|recovery|bypass/i.test(String(reason || "")));
+    return String(recentBypassReason || finalReturnSourceUsed || returnedItemsBuiltFrom || "unknown_bypass_path");
+  };
+  if (shouldCorrectOneItemKitsuEmergencyAttribution) {
+    const prev = String(returnedItemsBuiltFrom || "none");
+    const emergencyItem = finalOutputItems[0] as any;
+    kitsuEmergencyWeakCandidateAttributionCorrected = true;
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom = prev;
+    kitsuEmergencyWeakCandidatePath = "one_item_kitsu_emergency_attribution_guard";
+    kitsuEmergencyWeakCandidateBypassPath = inferKitsuEmergencyWeakCandidateBypassPath();
+    kitsuEmergencyWeakCandidateTitle = String(emergencyItem?.doc?.title || emergencyItem?.title || "").trim();
+    kitsuEmergencyWeakCandidatePriorItemCount = finalOutputItems.length;
+    kitsuEmergencyWeakCandidateSuppressedTitles.splice(0, kitsuEmergencyWeakCandidateSuppressedTitles.length);
+    kitsuEmergencyWeakCandidateRawCount = Number(aggregatedRawFetched.kitsu || 0);
+    kitsuEmergencyWeakCandidateRankedCount = Number(rankedCount || 0);
+    returnedItemsBuiltFrom = "kitsu_emergency_weak_candidate";
+    finalReturnSourceUsed = "kitsu_emergency_weak_candidate";
+    sourceSkippedReason.push(`kitsu_emergency_weak_candidate_attribution_corrected:from=${prev}:path=${kitsuEmergencyWeakCandidatePath}:bypass=${kitsuEmergencyWeakCandidateBypassPath}:raw=${kitsuEmergencyWeakCandidateRawCount}:ranked=${kitsuEmergencyWeakCandidateRankedCount}`);
+  }
+  const multiItemKitsuEmergencyRows = finalOutputItems.map((item: any) => {
+    const doc = item?.doc || item;
+    return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+  });
+  const shouldCorrectMultiItemKitsuEmergencyAttribution =
+    finalItemsLength === 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+    finalOutputItems.length > 1 &&
+    String(returnedItemsBuiltFrom || "none") === "none" &&
+    multiItemKitsuEmergencyRows.every((row: any) => {
+      const doc = row.doc || row.item?.doc || row.item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    }) &&
+    !multiItemKitsuEmergencyRows.some((row: any) => isKitsuRescueStrongRow(row));
+  if (shouldCorrectMultiItemKitsuEmergencyAttribution) {
+    const prev = String(returnedItemsBuiltFrom || "none");
+    const priorItems = finalOutputItems.slice();
+    const suppressedTitles = priorItems
+      .slice(1)
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter(Boolean)
+      .slice(0, 20);
+    finalOutputItems = priorItems.slice(0, 1);
+    terminalAssemblyOutputTitlesAtReturn = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+    kitsuEmergencyWeakCandidateAttributionCorrected = true;
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom = prev;
+    const selectedEmergencyItem = finalOutputItems[0] as any;
+    kitsuEmergencyWeakCandidatePath = "multi_item_kitsu_emergency_attribution_guard";
+    kitsuEmergencyWeakCandidateBypassPath = inferKitsuEmergencyWeakCandidateBypassPath();
+    kitsuEmergencyWeakCandidateTitle = String(selectedEmergencyItem?.doc?.title || selectedEmergencyItem?.title || "").trim();
+    kitsuEmergencyWeakCandidatePriorItemCount = priorItems.length;
+    kitsuEmergencyWeakCandidateSuppressedTitles.splice(0, kitsuEmergencyWeakCandidateSuppressedTitles.length, ...suppressedTitles);
+    kitsuEmergencyWeakCandidateRawCount = Number(aggregatedRawFetched.kitsu || 0);
+    kitsuEmergencyWeakCandidateRankedCount = Number(rankedCount || 0);
+    returnedItemsBuiltFrom = "kitsu_emergency_weak_candidate";
+    finalReturnSourceUsed = "kitsu_emergency_weak_candidate";
+    sourceSkippedReason.push(`kitsu_multi_item_emergency_weak_candidate_attribution_corrected:from=${prev}:priorItems=${priorItems.length}:suppressed=${suppressedTitles.join("|") || "(none)"}:bypass=${kitsuEmergencyWeakCandidateBypassPath}:raw=${kitsuEmergencyWeakCandidateRawCount}:ranked=${kitsuEmergencyWeakCandidateRankedCount}`);
+  }
+  if (/^kitsu_ranked_pool_rescue/.test(String(returnedItemsBuiltFrom)) && finalOutputItems.length > 0) {
     const orderedVisibleKitsuRescueItems = orderKitsuRescueStrongBeforeWeak(finalOutputItems.map((item: any) => {
       const doc = item?.doc || item;
       return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
@@ -12725,8 +12876,9 @@ const normalizedCandidatesRaw = [
       const strongFirst = penaltyOrderedCandidates.filter((row: any) => !row.weakByPolicy);
       const weakFallback = penaltyOrderedCandidates.filter((row: any) => row.weakByPolicy);
       const strongCandidateCount = strongFirst.length;
-      const targetMax = strongCandidateCount >= 5 ? 5 : Math.max(3, strongCandidateCount);
-      const additions = [...strongFirst, ...weakFallback]
+      const targetMax = strongCandidateCount >= 5 ? 5 : (strongCandidateCount > 0 ? Math.max(3, strongCandidateCount) : finalOutputItems.length);
+      const paddingPool = strongFirst.length > 0 ? strongFirst : weakFallback;
+      const additions = paddingPool
         .slice(0, Math.max(0, targetMax - finalOutputItems.length))
         .map((row: any) => ({ kind: "open_library", doc: row.doc }));
       if (additions.length > 0) {
@@ -12839,7 +12991,7 @@ const normalizedCandidatesRaw = [
   kitsuRescueStrongCandidateCount = kitsuRescueCandidateQualityRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
   kitsuRescueWeakCandidateCount = kitsuRescueCandidateQualityRows.filter((row: any) => !isKitsuRescueStrongRow(row)).length;
   let kitsuRescueSlateQualityAudit: Array<{ title: string; sourceId: string; reason: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; weightedTasteScore: number; dislikePenaltyScore: number }> = [];
-  if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
+  if (/^kitsu_ranked_pool_rescue/.test(String(returnedItemsBuiltFrom))) {
     for (const item of finalOutputItems) {
       const doc = item?.doc || item;
       const title = String(doc?.title || item?.title || "").trim();
@@ -12896,6 +13048,17 @@ const normalizedCandidatesRaw = [
       finalOutputItems = orderedFinalSlateRows.map((row) => row.item);
       kitsuRescueSlateQualityAudit = orderedFinalSlateRows.map((row) => row.audit).filter(Boolean) as any;
     }
+    const visibleStrongCount = finalSlateRows.filter((row) => row.strong).length;
+    if (visibleStrongCount === 0 && finalOutputItems.length > 0 && String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
+      const weakCandidateRows = finalOutputItems.map((item: any) => {
+        const doc = item?.doc || item;
+        return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+      });
+      finalOutputItems = finalOutputItems.slice(0, 1);
+      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue_weak_candidates";
+      finalReturnSourceUsed = "kitsu_ranked_pool_rescue_weak_candidates";
+      markKitsuRankedPoolWeakCandidateOutput("post_audit_ranked_pool_all_weak", weakCandidateRows, finalOutputItems);
+    }
   }
   const smallKitsuRawCountForAudit = Number(aggregatedRawFetched.kitsu || 0);
   const shouldAuditSmallKitsuRecoveryOutput =
@@ -12950,6 +13113,61 @@ const normalizedCandidatesRaw = [
     googleBooks: googleBooksRouterFetchCount > 0,
     openLibrary: openLibraryRouterFetchCount > 0,
     kitsu: kitsuRouterFetchCount > 0,
+  };
+  const countSourceDocsForStarvationAudit = (docs: any[], source: CandidateSource) => (Array.isArray(docs) ? docs : []).filter((doc: any) => sourceForDoc(doc?.doc || doc, source) === source).length;
+  const buildSourceStarvationAudit = (source: "googleBooks" | "openLibrary") => {
+    const fetchRows = source === "googleBooks" ? googleBooksFetchResultsByQuery : openLibraryFetchResultsByQuery;
+    const queriesFetched = source === "googleBooks" ? googleBooksQueriesActuallyFetchedArray : openLibraryQueriesActuallyFetchedArray;
+    const rawFetched = Number((aggregatedRawFetched as any)[source] || 0);
+    const fetchAttempted = Boolean((sourceFetchAttemptedBySource as any)[source]);
+    const sourceSkipReasons = sourceSkippedReason.filter((reason) => String(reason || "").toLowerCase().includes(source.toLowerCase()));
+    const capOrDedupeSkipReasons = sourceSkippedReason.filter((reason) => {
+      const text = String(reason || "");
+      return text === `source_fetch_cap_exceeded:${source}` || (source === "googleBooks" && /googleBooks_.*dedupe|googleBooks_retry_guard_blocked_exclusion_lane/.test(text));
+    });
+    const stageCounts = {
+      debugRawPool: countSourceDocsForStarvationAudit(debugRawPool, source),
+      enrichedDocs: countSourceDocsForStarvationAudit(enrichedDocs as any[], source),
+      filteredDocs: countSourceDocsForStarvationAudit(filteredDocs as any[], source),
+      filterKeptDocs: countSourceDocsForStarvationAudit(filterKeptDocs as any[], source),
+      candidateDocs: countSourceDocsForStarvationAudit(candidateDocs as any[], source),
+      normalizedCandidatesRaw: countSourceDocsForStarvationAudit(normalizedCandidatesRaw as any[], source),
+      normalizedCandidates: countSourceDocsForStarvationAudit(normalizedCandidates as any[], source),
+      finalRankedDocs: countSourceDocsForStarvationAudit(finalRankedDocs as any[], source),
+      returnedItems: countSourceDocsForStarvationAudit(finalOutputItems as any[], source),
+    };
+    const zeroRawFetchRows = fetchRows.filter((row: any) => Number(row?.rawCount || 0) === 0);
+    const nonzeroRawFetchRows = fetchRows.filter((row: any) => Number(row?.rawCount || 0) > 0);
+    const primaryClassification = fetchAttempted && rawFetched === 0
+      ? "dispatched_zero_raw_results"
+      : rawFetched > 0 && stageCounts.normalizedCandidates === 0
+      ? "raw_results_removed_by_filters_or_downstream_shaping"
+      : capOrDedupeSkipReasons.length > 0 && !fetchAttempted
+      ? "skipped_due_to_cap_or_dedupe"
+      : !fetchAttempted
+      ? "never_meaningfully_dispatched"
+      : rawFetched > 0 && stageCounts.normalizedCandidates > 0
+      ? "contributed_normalized_candidates"
+      : "indeterminate_source_starvation_state";
+    return {
+      enabled: Boolean((sourceEnabled as any)[source]),
+      fetchAttempted,
+      primaryClassification,
+      rawFetched,
+      queriesFetched,
+      fetchResultCount: fetchRows.length,
+      zeroRawFetchCount: zeroRawFetchRows.length,
+      nonzeroRawFetchCount: nonzeroRawFetchRows.length,
+      zeroRawQueries: zeroRawFetchRows.map((row: any) => String(row?.query || "")).filter(Boolean).slice(0, 10),
+      nonzeroRawQueries: nonzeroRawFetchRows.map((row: any) => String(row?.query || "")).filter(Boolean).slice(0, 10),
+      stageCounts,
+      sourceSkipReasons: sourceSkipReasons.slice(0, 20),
+      capOrDedupeSkipReasons: capOrDedupeSkipReasons.slice(0, 20),
+    };
+  };
+  const sourceStarvationAudit = {
+    googleBooks: buildSourceStarvationAudit("googleBooks"),
+    openLibrary: buildSourceStarvationAudit("openLibrary"),
   };
   const fetchDiagnosticsSummary = {
     gbQueries: googleBooksQueriesActuallyFetchedArray.length,
@@ -13433,6 +13651,20 @@ const normalizedCandidatesRaw = [
     kitsuRankedPoolRescueEligible,
     kitsuRankedPoolRescueCandidateCount,
     kitsuRankedPoolRescueBlockedReason,
+    kitsuRankedPoolRescueWeakCandidateOutput,
+    kitsuRankedPoolRescueWeakCandidateReason,
+    kitsuRankedPoolRescueWeakCandidateReturnedCount,
+    kitsuRankedPoolRescueWeakCandidateSuppressedCount,
+    kitsuRankedPoolRescueWeakCandidateTitles,
+    kitsuEmergencyWeakCandidateAttributionCorrected,
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom,
+    kitsuEmergencyWeakCandidatePath,
+    kitsuEmergencyWeakCandidateBypassPath,
+    kitsuEmergencyWeakCandidateTitle,
+    kitsuEmergencyWeakCandidatePriorItemCount,
+    kitsuEmergencyWeakCandidateSuppressedTitles,
+    kitsuEmergencyWeakCandidateRawCount,
+    kitsuEmergencyWeakCandidateRankedCount,
     finalInvariantKitsuRescueTriggered,
     finalInvariantKitsuRescueCandidateCount,
     finalInvariantKitsuRescuePreviousBuiltFrom,
@@ -13569,6 +13801,7 @@ const normalizedCandidatesRaw = [
       openLibrary: Number(aggregatedRawFetched.openLibrary || 0),
       kitsu: Number(aggregatedRawFetched.kitsu || 0),
     },
+    sourceStarvationAudit,
     fetchDiagnosticsSummary,
     fetchDiagnosticsCoverageAssertion,
     kitsuFetchQueryMatchesSanitizedSelection,
