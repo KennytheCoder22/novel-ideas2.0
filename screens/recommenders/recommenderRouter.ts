@@ -5109,6 +5109,8 @@ export async function getRecommendations(
       kitsuQueriesActuallyFetched: Array.from(kitsuQueriesActuallyFetched),
       googleBooksFetchResultsByQuery,
       openLibraryFetchResultsByQuery,
+      googleBooksSourceFetchDiagnostics,
+      openLibrarySourceFetchDiagnostics,
       kitsuFetchResultsByQuery,
       kitsuConfiguredApiBase: KITSU_API_BASE,
       googleBooksTimeoutStageByQuery,

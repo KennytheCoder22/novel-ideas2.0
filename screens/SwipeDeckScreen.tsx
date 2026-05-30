@@ -2320,6 +2320,22 @@ function handleLeft() {
     const fetchedRawCountTop = Number((lastRecommendationResult as any)?.fetchedRawCount ?? ((lastRecommendationResult as any)?.debugSourceStats ? Object.values((lastRecommendationResult as any).debugSourceStats).reduce((acc: number, row: any) => acc + Number(row?.rawFetched || 0), 0) : 0));
     const sourceStarvationByZeroPools = fetchedRawCountTop === 0 && debugCandidatePoolLengthTop === 0;
     const skippedReasons = Array.isArray((lastRecommendationResult as any)?.sourceSkippedReason) ? (lastRecommendationResult as any).sourceSkippedReason : [];
+    const preFatalDispatchState = (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState || {};
+    const sourceStarvationAuditForReport = (lastRecommendationResult as any)?.sourceStarvationAudit || preFatalDispatchState?.sourceStarvationAudit || null;
+    const googleBooksSourceFetchDiagnosticsForReport = Array.isArray((lastRecommendationResult as any)?.googleBooksSourceFetchDiagnostics)
+      ? (lastRecommendationResult as any).googleBooksSourceFetchDiagnostics
+      : Array.isArray(preFatalDispatchState?.googleBooksSourceFetchDiagnostics)
+        ? preFatalDispatchState.googleBooksSourceFetchDiagnostics
+        : [];
+    const openLibrarySourceFetchDiagnosticsForReport = Array.isArray((lastRecommendationResult as any)?.openLibrarySourceFetchDiagnostics)
+      ? (lastRecommendationResult as any).openLibrarySourceFetchDiagnostics
+      : Array.isArray(preFatalDispatchState?.openLibrarySourceFetchDiagnostics)
+        ? preFatalDispatchState.openLibrarySourceFetchDiagnostics
+        : [];
+    const sourceStarvationFetchDiagnosticsForReport = {
+      googleBooks: Array.isArray(sourceStarvationAuditForReport?.googleBooks?.fetchDiagnostics) ? sourceStarvationAuditForReport.googleBooks.fetchDiagnostics : [],
+      openLibrary: Array.isArray(sourceStarvationAuditForReport?.openLibrary?.fetchDiagnostics) ? sourceStarvationAuditForReport.openLibrary.fetchDiagnostics : [],
+    };
     const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
     const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
     const hasRouterEntered = globalRouterPhases.some((row: any) => String(row?.phase || "") === "router_entered");
@@ -2402,8 +2418,12 @@ function handleLeft() {
         `rungCount: ${String((lastRecommendationResult as any)?.rungCount ?? (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.rungCount ?? "(missing)")}`,
         `sourceFetchAttemptedBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchAttemptedBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchAttemptedBySource || {})}`,
         `sourceFetchTimeoutBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceFetchTimeoutBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceFetchTimeoutBySource || {})}`,
-        `sourceRawCountBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceRawCountBySource || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.sourceRawCountBySource || {})}`,
-        `fetchDiagnosticsSummary: ${JSON.stringify((lastRecommendationResult as any)?.fetchDiagnosticsSummary || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.fetchDiagnosticsSummary || null)}`,
+        `sourceRawCountBySource: ${JSON.stringify((lastRecommendationResult as any)?.sourceRawCountBySource || preFatalDispatchState?.sourceRawCountBySource || {})}`,
+        `sourceStarvationAudit: ${JSON.stringify(sourceStarvationAuditForReport || null)}`,
+        `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
+        `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
+        `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
+        `fetchDiagnosticsSummary: ${JSON.stringify((lastRecommendationResult as any)?.fetchDiagnosticsSummary || preFatalDispatchState?.fetchDiagnosticsSummary || null)}`,
         `sourceSkippedReason: ${JSON.stringify(skippedReasons)}`,
         `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
         `Router instrumentation marker (client): ${ROUTER_INSTRUMENTATION_MARKER}`,
@@ -2977,6 +2997,12 @@ function handleLeft() {
       "",
       "FETCHER COUNTS",
       sourceCountSummary || "(none)",
+      "",
+      "SOURCE STARVATION AUDIT",
+      `sourceStarvationAudit: ${JSON.stringify(sourceStarvationAuditForReport || null)}`,
+      `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
+      `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
+      `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
       "",
       "SOURCE SETTINGS",
       sourceEnabledSummary,
