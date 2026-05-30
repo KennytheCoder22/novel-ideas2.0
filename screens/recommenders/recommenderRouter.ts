@@ -11693,7 +11693,10 @@ const normalizedCandidatesRaw = [
   let kitsuEmergencyWeakCandidateAttributionCorrected = false;
   let kitsuEmergencyWeakCandidatePreviousBuiltFrom = "not_evaluated";
   let kitsuEmergencyWeakCandidatePath = "not_evaluated";
+  let kitsuEmergencyWeakCandidateBypassPath = "not_evaluated";
   let kitsuEmergencyWeakCandidateTitle = "";
+  let kitsuEmergencyWeakCandidatePriorItemCount = 0;
+  const kitsuEmergencyWeakCandidateSuppressedTitles: string[] = [];
   let kitsuEmergencyWeakCandidateRawCount = 0;
   let kitsuEmergencyWeakCandidateRankedCount = 0;
   let kitsuSmallRecoveryMetadataCorrectionApplied = false;
@@ -12710,7 +12713,7 @@ const normalizedCandidatesRaw = [
     sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}_final_invariant`);
   };
   runFinalInvariantKitsuRescue();
-  const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
+  let terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
     ? finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
     : [];
   const shouldApplyFinalMetadataCorrection =
@@ -12774,18 +12777,65 @@ const normalizedCandidatesRaw = [
       const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
       return source.includes("kitsu") || sourceId.startsWith("kitsu:");
     });
+  const inferKitsuEmergencyWeakCandidateBypassPath = () => {
+    const recentBypassReason = [...sourceSkippedReason].reverse().find((reason) => /final_gate_integrity|emergency|handoff|rescue|recovery|bypass/i.test(String(reason || "")));
+    return String(recentBypassReason || finalReturnSourceUsed || returnedItemsBuiltFrom || "unknown_bypass_path");
+  };
   if (shouldCorrectOneItemKitsuEmergencyAttribution) {
     const prev = String(returnedItemsBuiltFrom || "none");
     const emergencyItem = finalOutputItems[0] as any;
     kitsuEmergencyWeakCandidateAttributionCorrected = true;
     kitsuEmergencyWeakCandidatePreviousBuiltFrom = prev;
     kitsuEmergencyWeakCandidatePath = "one_item_kitsu_emergency_attribution_guard";
+    kitsuEmergencyWeakCandidateBypassPath = inferKitsuEmergencyWeakCandidateBypassPath();
     kitsuEmergencyWeakCandidateTitle = String(emergencyItem?.doc?.title || emergencyItem?.title || "").trim();
+    kitsuEmergencyWeakCandidatePriorItemCount = finalOutputItems.length;
+    kitsuEmergencyWeakCandidateSuppressedTitles.splice(0, kitsuEmergencyWeakCandidateSuppressedTitles.length);
     kitsuEmergencyWeakCandidateRawCount = Number(aggregatedRawFetched.kitsu || 0);
     kitsuEmergencyWeakCandidateRankedCount = Number(rankedCount || 0);
     returnedItemsBuiltFrom = "kitsu_emergency_weak_candidate";
     finalReturnSourceUsed = "kitsu_emergency_weak_candidate";
-    sourceSkippedReason.push(`kitsu_emergency_weak_candidate_attribution_corrected:from=${prev}:path=${kitsuEmergencyWeakCandidatePath}:raw=${kitsuEmergencyWeakCandidateRawCount}:ranked=${kitsuEmergencyWeakCandidateRankedCount}`);
+    sourceSkippedReason.push(`kitsu_emergency_weak_candidate_attribution_corrected:from=${prev}:path=${kitsuEmergencyWeakCandidatePath}:bypass=${kitsuEmergencyWeakCandidateBypassPath}:raw=${kitsuEmergencyWeakCandidateRawCount}:ranked=${kitsuEmergencyWeakCandidateRankedCount}`);
+  }
+  const multiItemKitsuEmergencyRows = finalOutputItems.map((item: any) => {
+    const doc = item?.doc || item;
+    return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+  });
+  const shouldCorrectMultiItemKitsuEmergencyAttribution =
+    finalItemsLength === 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+    finalOutputItems.length > 1 &&
+    String(returnedItemsBuiltFrom || "none") === "none" &&
+    multiItemKitsuEmergencyRows.every((row: any) => {
+      const doc = row.doc || row.item?.doc || row.item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    }) &&
+    !multiItemKitsuEmergencyRows.some((row: any) => isKitsuRescueStrongRow(row));
+  if (shouldCorrectMultiItemKitsuEmergencyAttribution) {
+    const prev = String(returnedItemsBuiltFrom || "none");
+    const priorItems = finalOutputItems.slice();
+    const suppressedTitles = priorItems
+      .slice(1)
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter(Boolean)
+      .slice(0, 20);
+    finalOutputItems = priorItems.slice(0, 1);
+    terminalAssemblyOutputTitlesAtReturn = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+    kitsuEmergencyWeakCandidateAttributionCorrected = true;
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom = prev;
+    const selectedEmergencyItem = finalOutputItems[0] as any;
+    kitsuEmergencyWeakCandidatePath = "multi_item_kitsu_emergency_attribution_guard";
+    kitsuEmergencyWeakCandidateBypassPath = inferKitsuEmergencyWeakCandidateBypassPath();
+    kitsuEmergencyWeakCandidateTitle = String(selectedEmergencyItem?.doc?.title || selectedEmergencyItem?.title || "").trim();
+    kitsuEmergencyWeakCandidatePriorItemCount = priorItems.length;
+    kitsuEmergencyWeakCandidateSuppressedTitles.splice(0, kitsuEmergencyWeakCandidateSuppressedTitles.length, ...suppressedTitles);
+    kitsuEmergencyWeakCandidateRawCount = Number(aggregatedRawFetched.kitsu || 0);
+    kitsuEmergencyWeakCandidateRankedCount = Number(rankedCount || 0);
+    returnedItemsBuiltFrom = "kitsu_emergency_weak_candidate";
+    finalReturnSourceUsed = "kitsu_emergency_weak_candidate";
+    sourceSkippedReason.push(`kitsu_multi_item_emergency_weak_candidate_attribution_corrected:from=${prev}:priorItems=${priorItems.length}:suppressed=${suppressedTitles.join("|") || "(none)"}:bypass=${kitsuEmergencyWeakCandidateBypassPath}:raw=${kitsuEmergencyWeakCandidateRawCount}:ranked=${kitsuEmergencyWeakCandidateRankedCount}`);
   }
   if (/^kitsu_ranked_pool_rescue/.test(String(returnedItemsBuiltFrom)) && finalOutputItems.length > 0) {
     const orderedVisibleKitsuRescueItems = orderKitsuRescueStrongBeforeWeak(finalOutputItems.map((item: any) => {
@@ -13549,7 +13599,10 @@ const normalizedCandidatesRaw = [
     kitsuEmergencyWeakCandidateAttributionCorrected,
     kitsuEmergencyWeakCandidatePreviousBuiltFrom,
     kitsuEmergencyWeakCandidatePath,
+    kitsuEmergencyWeakCandidateBypassPath,
     kitsuEmergencyWeakCandidateTitle,
+    kitsuEmergencyWeakCandidatePriorItemCount,
+    kitsuEmergencyWeakCandidateSuppressedTitles,
     kitsuEmergencyWeakCandidateRawCount,
     kitsuEmergencyWeakCandidateRankedCount,
     finalInvariantKitsuRescueTriggered,
