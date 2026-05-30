@@ -2636,7 +2636,6 @@ function handleLeft() {
         return `${label}: raw=${stats?.rawFetched ?? 0}, postFilter=${stats?.postFilterCandidates ?? 0}, final=${stats?.finalSelected ?? 0}`;
       })
       .join("\n");
-    const preFatalDispatchState = (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState || null;
     const reportBuiltQuery =
       recQuery ||
       (typeof preFatalDispatchState?.builtQuery === "string" ? preFatalDispatchState.builtQuery : "") ||
