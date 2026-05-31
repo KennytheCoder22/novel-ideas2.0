@@ -3085,6 +3085,9 @@ export async function getRecommendations(
     !sourceEnabled.nyt;
   let adultKitsuOnlyRouterDispatchEligible = false;
   let adultKitsuOnlyRouterDispatchBlockedReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlyQuerySelected = "";
+  let adultKitsuOnlyQueryFallbackReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  const adultKitsuOnlyQueryDroppedFormatTerms: string[] = [];
   let kitsuAdapterEligibilityPath = "";
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
@@ -4314,6 +4317,61 @@ export async function getRecommendations(
         const genericOnly = mergedAnchors.length === 0;
         return { sanitized, dropped, genericOnly, usedAnchorFallback: genericOnly && anchors.length > 0, genericFallback };
       };
+      const selectAdultKitsuOnlyQuery = (
+        rawQuery: string,
+        fallbackTerms: string[],
+        sanitizedQuery: string,
+        sanitizedWasGenericOnly: boolean,
+      ): { query: string; fallbackReason: string; droppedFormatTerms: string[] } => {
+        const normalizedRaw = String(rawQuery || "")
+          .toLowerCase()
+          .replace(/[_/]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const droppedFormatTerms: string[] = [];
+        const rememberDroppedFormatTerm = (term: string) => {
+          if (term && !droppedFormatTerms.includes(term)) droppedFormatTerms.push(term);
+        };
+        if (/\bgraphic\s+novels?\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("graphic novel");
+        if (/\bcomics?\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("comic");
+        if (/\bstory[-\s]?rich\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("story rich");
+        if (/\bcharacter[-\s]?focused\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("character-focused");
+        const genreCandidates: Array<{ query: string; test: RegExp }> = [
+          { query: "horror", test: /\b(horror|supernatural\s+horror|psychological\s+horror|occult)\b/i },
+          { query: "mystery", test: /\b(mystery|detective|investigator|crime|whodunnit)\b/i },
+          { query: "science fiction", test: /\b(science\s+fiction|sci[\s-]?fi|futuristic|future|dystopian|cyberpunk|space)\b/i },
+          { query: "fantasy", test: /\b(fantasy|magic|magical|supernatural|dragon|quest)\b/i },
+          { query: "romance", test: /\b(romance|romantic|love\s+story)\b/i },
+          { query: "adventure", test: /\b(adventure|action|survival|historical)\b/i },
+          { query: "thriller", test: /\b(thriller|suspense)\b/i },
+        ];
+        const rawGenreHit = genreCandidates.find((candidate) => candidate.test.test(normalizedRaw));
+        const fallbackHaystacks = fallbackTerms.map((term) => String(term || "").toLowerCase()).filter(Boolean);
+        const fallbackGenreHit = rawGenreHit || genreCandidates.find((candidate) => fallbackHaystacks.some((haystack) => candidate.test.test(haystack)));
+        if (fallbackGenreHit) {
+          return {
+            query: fallbackGenreHit.query,
+            fallbackReason: rawGenreHit
+              ? (droppedFormatTerms.length ? "genre_preserved_after_dropping_format_terms" : "genre_preserved_from_adult_lane")
+              : "genre_preserved_from_adult_fallback_terms",
+            droppedFormatTerms,
+          };
+        }
+        const sanitized = String(sanitizedQuery || "").trim();
+        const sanitizedIsOnlyGenericFallback = sanitizedWasGenericOnly && /^(adventure|mystery|science fiction)$/i.test(sanitized);
+        if (sanitized && !sanitizedIsOnlyGenericFallback && !/^graphic\s+novels?$/i.test(sanitized)) {
+          return {
+            query: sanitized,
+            fallbackReason: droppedFormatTerms.length ? "sanitized_non_format_query_after_dropping_format_terms" : "sanitized_query_no_genre_match",
+            droppedFormatTerms,
+          };
+        }
+        return {
+          query: "graphic novel",
+          fallbackReason: droppedFormatTerms.length ? "generic_graphic_novel_after_format_only_lane" : "generic_graphic_novel_no_genre_match",
+          droppedFormatTerms,
+        };
+      };
       const simplifyGoogleBooksQuery = (q: string) => {
         const raw = String(q || "").toLowerCase();
         const exclusionHeavy = /\s-[a-z0-9_]+/i.test(raw) || /\b(exclude|without)\b/i.test(raw);
@@ -4378,8 +4436,20 @@ export async function getRecommendations(
         : (kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce
           ? (fallbackCandidate || "adventure")
           : kitsuSanitized.sanitized);
-      const selectedKitsuLaneQuery = selectSpecificKitsuRecoveryQuery(initialKitsuLaneQuery, [baseLaneQuery, ...fallbackBroadTerms]);
-      const kitsuLaneQuery = selectedKitsuLaneQuery.query;
+      let selectedKitsuLaneQuery = selectSpecificKitsuRecoveryQuery(initialKitsuLaneQuery, [baseLaneQuery, ...fallbackBroadTerms]);
+      let kitsuLaneQuery = selectedKitsuLaneQuery.query;
+      if (adultKitsuOnlyModeDetected) {
+        const adultKitsuOnlySelection = selectAdultKitsuOnlyQuery(baseLaneQuery, fallbackBroadTerms, kitsuSanitized.sanitized, kitsuSanitized.genericOnly);
+        adultKitsuOnlyQuerySelected = adultKitsuOnlySelection.query;
+        adultKitsuOnlyQueryFallbackReason = adultKitsuOnlySelection.fallbackReason;
+        for (const term of adultKitsuOnlySelection.droppedFormatTerms) {
+          if (!adultKitsuOnlyQueryDroppedFormatTerms.includes(term)) adultKitsuOnlyQueryDroppedFormatTerms.push(term);
+        }
+        if (adultKitsuOnlySelection.query !== kitsuLaneQuery) {
+          selectedKitsuLaneQuery = { query: adultKitsuOnlySelection.query, promoted: true };
+          kitsuLaneQuery = adultKitsuOnlySelection.query;
+        }
+      }
       collectKitsuRecoveryComicIntent([baseLaneQuery, initialKitsuLaneQuery, kitsuLaneQuery, ...fallbackBroadTerms]);
       markKitsuRecoveryComicFallbackIfGeneric([kitsuLaneQuery]);
       if (selectedKitsuLaneQuery.promoted && !kitsuRecoveryQueryPromotedFrom) {
@@ -5176,6 +5246,9 @@ export async function getRecommendations(
       adultKitsuOnlyModeDetected,
       adultKitsuOnlyRouterDispatchEligible,
       adultKitsuOnlyRouterDispatchBlockedReason,
+      adultKitsuOnlyQuerySelected,
+      adultKitsuOnlyQueryFallbackReason,
+      adultKitsuOnlyQueryDroppedFormatTerms,
       kitsuAdapterEligibilityPath,
       fetchLoopCounters: {
         googleBooksRouterFetchCount,
@@ -13879,6 +13952,9 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyModeDetected,
     adultKitsuOnlyRouterDispatchEligible,
     adultKitsuOnlyRouterDispatchBlockedReason,
+    adultKitsuOnlyQuerySelected,
+    adultKitsuOnlyQueryFallbackReason,
+    adultKitsuOnlyQueryDroppedFormatTerms,
     kitsuAdapterEligibilityPath,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
