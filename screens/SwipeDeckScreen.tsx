@@ -1682,9 +1682,13 @@ function handleLeft() {
       const recommendationTimeoutMs = 90_000;
       markPhase("before_getRecommendations_call");
       setRecommenderCallReferenceType(typeof getRecommendations);
-      const adultKitsuOnlyForceQueryForValidation = typeof window !== "undefined"
-        ? String(new URLSearchParams(window.location.search || "").get("adultKitsuOnlyForceQueryForValidation") || new URLSearchParams(window.location.search || "").get("debugForceAdultKitsuQuery") || window.localStorage?.getItem("adultKitsuOnlyForceQueryForValidation") || window.localStorage?.getItem("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
+      const debugUrlAdultKitsuForceQuery = typeof window !== "undefined"
+        ? String(new URLSearchParams(window.location.search || "").get("adultKitsuOnlyForceQueryForValidation") || new URLSearchParams(window.location.search || "").get("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
         : "";
+      const debugLocalStorageAdultKitsuForceQuery = typeof window !== "undefined"
+        ? String(window.localStorage?.getItem("adultKitsuOnlyForceQueryForValidation") || window.localStorage?.getItem("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
+        : "";
+      const adultKitsuOnlyForceQueryForValidation = debugUrlAdultKitsuForceQuery || debugLocalStorageAdultKitsuForceQuery;
       const routerPromise = getRecommendations(
         {
           ...inputWithHistory,
@@ -1693,6 +1697,8 @@ function handleLeft() {
           sourceHealthProbeStatus: sourceProbeStatus,
           googleBooksProbeDegraded,
           localLibrarySupported: Boolean(props.localLibrarySupported),
+          debugUrlAdultKitsuForceQuery,
+          debugLocalStorageAdultKitsuForceQuery,
           ...(adultKitsuOnlyForceQueryForValidation ? { adultKitsuOnlyForceQueryForValidation } : {}),
         },
         "auto"
@@ -2358,6 +2364,10 @@ function handleLeft() {
       `adultKitsuOnlyFallbackPublicQueriesExpanded: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPublicQueriesExpanded", "adultKitsuOnlyFallbackPublicArraysExpanded") ?? "(missing)")}`,
       `adultKitsuOnlyFallbackDiagnosticsMismatchReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackDiagnosticsMismatchReason") ?? "(missing)")}`,
       `adultKitsuOnlyForceQueryForValidation: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyForceQueryForValidation") ?? "(missing)")}`,
+      `debugUrlAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugUrlAdultKitsuForceQuery") ?? "(missing)")}`,
+      `debugLocalStorageAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugLocalStorageAdultKitsuForceQuery") ?? "(missing)")}`,
+      `debugRouterReceivedAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugRouterReceivedAdultKitsuForceQuery") ?? "(missing)")}`,
+      `debugAdultKitsuForceQueryApplied: ${String(pickAdultKitsuFallbackDiagnostic("debugAdultKitsuForceQueryApplied") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueGateApplied: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueGateApplied") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueGateReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueGateReason") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueCandidateCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueCandidateCount") ?? "(missing)")}`,

@@ -3086,8 +3086,12 @@ export async function getRecommendations(
   let adultKitsuOnlyRouterDispatchEligible = false;
   let adultKitsuOnlyRouterDispatchBlockedReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let adultKitsuOnlyQuerySelected = "";
+  const debugUrlAdultKitsuForceQuery = String((routedInput as any)?.debugUrlAdultKitsuForceQuery || "").trim().toLowerCase();
+  const debugLocalStorageAdultKitsuForceQuery = String((routedInput as any)?.debugLocalStorageAdultKitsuForceQuery || "").trim().toLowerCase();
   const adultKitsuOnlyForceQueryForValidationRaw = String((routedInput as any)?.adultKitsuOnlyForceQueryForValidation || (routedInput as any)?.debugForceAdultKitsuQuery || "").trim().toLowerCase();
+  const debugRouterReceivedAdultKitsuForceQuery = adultKitsuOnlyForceQueryForValidationRaw;
   const adultKitsuOnlyForceQueryForValidation = adultKitsuOnlyModeDetected && adultKitsuOnlyForceQueryForValidationRaw === "dystopian" ? "dystopian" : "";
+  const debugAdultKitsuForceQueryApplied = adultKitsuOnlyForceQueryForValidation === "dystopian";
   let adultKitsuOnlyQueryFallbackReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   const adultKitsuOnlyQueryDroppedFormatTerms: string[] = [];
   let adultKitsuOnlyFetchUrl = "";
@@ -5402,6 +5406,10 @@ export async function getRecommendations(
       adultKitsuOnlyRouterDispatchBlockedReason,
       adultKitsuOnlyQuerySelected,
       adultKitsuOnlyForceQueryForValidation,
+      debugUrlAdultKitsuForceQuery,
+      debugLocalStorageAdultKitsuForceQuery,
+      debugRouterReceivedAdultKitsuForceQuery,
+      debugAdultKitsuForceQueryApplied,
       adultKitsuOnlyQueryFallbackReason,
       adultKitsuOnlyQueryDroppedFormatTerms,
       adultKitsuOnlyFetchUrl,
@@ -14459,6 +14467,10 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyRouterDispatchBlockedReason,
     adultKitsuOnlyQuerySelected,
     adultKitsuOnlyForceQueryForValidation,
+    debugUrlAdultKitsuForceQuery,
+    debugLocalStorageAdultKitsuForceQuery,
+    debugRouterReceivedAdultKitsuForceQuery,
+    debugAdultKitsuForceQueryApplied,
     adultKitsuOnlyQueryFallbackReason,
     adultKitsuOnlyQueryDroppedFormatTerms,
     adultKitsuOnlyFetchUrl,
