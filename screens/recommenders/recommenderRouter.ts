@@ -13605,6 +13605,94 @@ const normalizedCandidatesRaw = [
     googleBooksQueriesFetchedHaveDiagnostics: googleBooksQueriesActuallyFetchedArray.length === 0 || googleBooksSourceFetchDiagnostics.length > 0,
     openLibraryQueriesFetchedHaveDiagnostics: openLibraryQueriesActuallyFetchedArray.length === 0 || openLibrarySourceFetchDiagnostics.length > 0,
   };
+  const isKitsuBackedDocLike = (value: any) => {
+    const doc = value?.doc || value?.item?.doc || value;
+    const source = String(doc?.source || doc?.rawDoc?.source || value?.source || "").toLowerCase();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || value?.sourceId || value?.canonicalId || value?.key || "");
+    return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+  };
+  const titleForKitsuQualityDiagnostics = (value: any) => {
+    const doc = value?.doc || value?.item?.doc || value;
+    return String(doc?.title || value?.title || "").trim();
+  };
+  const sourceIdForKitsuQualityDiagnostics = (value: any) => {
+    const doc = value?.doc || value?.item?.doc || value;
+    return String(doc?.sourceId || doc?.canonicalId || doc?.key || value?.sourceId || value?.canonicalId || value?.key || "").trim();
+  };
+  const kitsuDiagnosticRowsForStage = (rows: any[]) => (Array.isArray(rows) ? rows : [])
+    .map((row: any) => ({ row, doc: row?.doc || row?.item?.doc || row }))
+    .filter(({ row, doc }: any) => {
+      const title = titleForKitsuQualityDiagnostics(row);
+      return Boolean(title) && (isKitsuBackedDocLike(row) || String(row?.source || doc?.source || "").toLowerCase().includes("kitsu"));
+    });
+  const bucketizeAdultKitsuCount = (value: number) => value <= 0 ? "zero" : value === 1 ? "one" : "twoPlus";
+  const buildAdultKitsuCountHistogram = (values: number[]) => values.reduce((acc: Record<string, number>, value) => {
+    const bucket = bucketizeAdultKitsuCount(Number(value || 0));
+    acc[bucket] = Number(acc[bucket] || 0) + 1;
+    return acc;
+  }, { zero: 0, one: 0, twoPlus: 0 });
+  const buildAdultKitsuPositiveFitHistogram = (values: number[]) => values.reduce((acc: Record<string, number>, value) => {
+    const n = Number(value || 0);
+    const bucket = n < 0 ? "negative" : n === 0 ? "zero" : n < 3 ? "lowPositive" : "strongPositive";
+    acc[bucket] = Number(acc[bucket] || 0) + 1;
+    return acc;
+  }, { negative: 0, zero: 0, lowPositive: 0, strongPositive: 0 });
+  const buildAdultKitsuLaneAlignmentHistogram = (values: boolean[]) => values.reduce((acc: Record<string, number>, value) => {
+    const bucket = value ? "aligned" : "notAligned";
+    acc[bucket] = Number(acc[bucket] || 0) + 1;
+    return acc;
+  }, { aligned: 0, notAligned: 0 });
+  const stageRowsForAdultKitsuDiagnostics = {
+    rawPool: kitsuDiagnosticRowsForStage(debugRawPool),
+    rankedPool: kitsuDiagnosticRowsForStage(rankedDocs || []),
+    finalPool: kitsuDiagnosticRowsForStage(finalOutputItems || []),
+  };
+  const buildAdultKitsuStageHistogram = (metric: "semantic" | "facet" | "positiveFit" | "lane") => {
+    const out: Record<string, any> = {};
+    for (const [stage, rows] of Object.entries(stageRowsForAdultKitsuDiagnostics)) {
+      if (metric === "semantic") {
+        out[stage] = buildAdultKitsuCountHistogram((rows as any[]).map(({ row }: any) => Number(semanticEvidenceCountByTitle[titleForKitsuQualityDiagnostics(row)] || 0)));
+      } else if (metric === "facet") {
+        out[stage] = buildAdultKitsuCountHistogram((rows as any[]).map(({ row, doc }: any) => Number(doc?.kitsuFacetMatches || row?.kitsuFacetMatches || 0)));
+      } else if (metric === "positiveFit") {
+        out[stage] = buildAdultKitsuPositiveFitHistogram((rows as any[]).map(({ row }: any) => Number(positiveFitScoreByTitle[titleForKitsuQualityDiagnostics(row)] || 0)));
+      } else {
+        out[stage] = buildAdultKitsuLaneAlignmentHistogram((rows as any[]).map(({ row, doc }: any) => {
+          const root = String(parentFranchiseRootForDoc(doc) || "");
+          return profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root) || Boolean(row?.laneAligned);
+        }));
+      }
+    }
+    return out;
+  };
+  const adultKitsuOnlySemanticEvidenceHistogram = adultKitsuOnlyModeDetected ? buildAdultKitsuStageHistogram("semantic") : {};
+  const adultKitsuOnlyFacetMatchHistogram = adultKitsuOnlyModeDetected ? buildAdultKitsuStageHistogram("facet") : {};
+  const adultKitsuOnlyPositiveFitHistogram = adultKitsuOnlyModeDetected ? buildAdultKitsuStageHistogram("positiveFit") : {};
+  const adultKitsuOnlyLaneAlignmentHistogram = adultKitsuOnlyModeDetected ? buildAdultKitsuStageHistogram("lane") : {};
+  const missingSourceIdRowsForStage = (rows: any[]) => kitsuDiagnosticRowsForStage(rows).filter(({ row }: any) => !sourceIdForKitsuQualityDiagnostics(row));
+  const summarizeMissingSourceIdStage = (rows: any[]) => {
+    const missing = missingSourceIdRowsForStage(rows);
+    return {
+      count: missing.length,
+      titles: missing.map(({ row }: any) => titleForKitsuQualityDiagnostics(row)).filter(Boolean).slice(0, 30),
+    };
+  };
+  const adultKitsuMissingSourceIdStage = adultKitsuOnlyModeDetected ? {
+    rawPool: summarizeMissingSourceIdStage(debugRawPool),
+    normalizedPool: summarizeMissingSourceIdStage(allMergedDocs),
+    rankedPool: summarizeMissingSourceIdStage(rankedDocs || []),
+    finalEligibility: {
+      count: Array.isArray(finalEligibilityRejectedTitlesByReason?.missing_source_id) ? finalEligibilityRejectedTitlesByReason.missing_source_id.length : 0,
+      titles: (Array.isArray(finalEligibilityRejectedTitlesByReason?.missing_source_id) ? finalEligibilityRejectedTitlesByReason.missing_source_id : []).slice(0, 30),
+    },
+    finalPool: summarizeMissingSourceIdStage(finalOutputItems || []),
+  } : {};
+  const adultKitsuMissingSourceIdCount = adultKitsuOnlyModeDetected && (adultKitsuMissingSourceIdStage as any)?.finalEligibility
+    ? Number((adultKitsuMissingSourceIdStage as any).finalEligibility.count || 0)
+    : 0;
+  const adultKitsuMissingSourceIdTitles = adultKitsuOnlyModeDetected && (adultKitsuMissingSourceIdStage as any)?.finalEligibility
+    ? ((adultKitsuMissingSourceIdStage as any).finalEligibility.titles || [])
+    : [];
   const selectedKitsuQuery = kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) || "";
   const canonicalizeKitsuPolicyQuery = (q: string) => String(q || "")
     .toLowerCase()
@@ -14233,6 +14321,13 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyWeakRescueCandidateCount,
     adultKitsuOnlyWeakRescueSuppressedCount,
     adultKitsuOnlyWeakRescueDiagnostics: adultKitsuOnlyWeakRescueDiagnostics.slice(0, 20),
+    adultKitsuOnlySemanticEvidenceHistogram,
+    adultKitsuOnlyFacetMatchHistogram,
+    adultKitsuOnlyPositiveFitHistogram,
+    adultKitsuOnlyLaneAlignmentHistogram,
+    adultKitsuMissingSourceIdCount,
+    adultKitsuMissingSourceIdTitles,
+    adultKitsuMissingSourceIdStage,
     adultKitsuOnlyFallbackLivePathVersion,
     adultKitsuOnlyFallbackPlannedCount: adultKitsuOnlyFallbackRouterPlannedCount,
     adultKitsuOnlyFallbackRouterPlannedCount,
