@@ -3086,6 +3086,8 @@ export async function getRecommendations(
   let adultKitsuOnlyRouterDispatchEligible = false;
   let adultKitsuOnlyRouterDispatchBlockedReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let adultKitsuOnlyQuerySelected = "";
+  const adultKitsuOnlyForceQueryForValidationRaw = String((routedInput as any)?.adultKitsuOnlyForceQueryForValidation || (routedInput as any)?.debugForceAdultKitsuQuery || "").trim().toLowerCase();
+  const adultKitsuOnlyForceQueryForValidation = adultKitsuOnlyModeDetected && adultKitsuOnlyForceQueryForValidationRaw === "dystopian" ? "dystopian" : "";
   let adultKitsuOnlyQueryFallbackReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   const adultKitsuOnlyQueryDroppedFormatTerms: string[] = [];
   let adultKitsuOnlyFetchUrl = "";
@@ -4481,9 +4483,15 @@ export async function getRecommendations(
         for (const term of adultKitsuOnlySelection.droppedFormatTerms) {
           if (!adultKitsuOnlyQueryDroppedFormatTerms.includes(term)) adultKitsuOnlyQueryDroppedFormatTerms.push(term);
         }
-        if (adultKitsuOnlySelection.query !== kitsuLaneQuery) {
-          selectedKitsuLaneQuery = { query: adultKitsuOnlySelection.query, promoted: true };
-          kitsuLaneQuery = adultKitsuOnlySelection.query;
+        const adultKitsuOnlyProductionQuery = adultKitsuOnlyForceQueryForValidation || adultKitsuOnlySelection.query;
+        if (adultKitsuOnlyForceQueryForValidation) {
+          adultKitsuOnlyQueryFallbackReason = `debug_force_query_for_validation:${adultKitsuOnlySelection.query}->${adultKitsuOnlyForceQueryForValidation}`;
+          sourceSkippedReason.push(`adult_kitsu_only_force_query_for_validation:${adultKitsuOnlyForceQueryForValidation}`);
+        }
+        adultKitsuOnlyQuerySelected = adultKitsuOnlyProductionQuery;
+        if (adultKitsuOnlyProductionQuery !== kitsuLaneQuery) {
+          selectedKitsuLaneQuery = { query: adultKitsuOnlyProductionQuery, promoted: true };
+          kitsuLaneQuery = adultKitsuOnlyProductionQuery;
         }
       }
       collectKitsuRecoveryComicIntent([baseLaneQuery, initialKitsuLaneQuery, kitsuLaneQuery, ...fallbackBroadTerms]);
@@ -5393,6 +5401,7 @@ export async function getRecommendations(
       adultKitsuOnlyRouterDispatchEligible,
       adultKitsuOnlyRouterDispatchBlockedReason,
       adultKitsuOnlyQuerySelected,
+      adultKitsuOnlyForceQueryForValidation,
       adultKitsuOnlyQueryFallbackReason,
       adultKitsuOnlyQueryDroppedFormatTerms,
       adultKitsuOnlyFetchUrl,
@@ -14449,6 +14458,7 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyRouterDispatchEligible,
     adultKitsuOnlyRouterDispatchBlockedReason,
     adultKitsuOnlyQuerySelected,
+    adultKitsuOnlyForceQueryForValidation,
     adultKitsuOnlyQueryFallbackReason,
     adultKitsuOnlyQueryDroppedFormatTerms,
     adultKitsuOnlyFetchUrl,

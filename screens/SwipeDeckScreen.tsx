@@ -1682,6 +1682,9 @@ function handleLeft() {
       const recommendationTimeoutMs = 90_000;
       markPhase("before_getRecommendations_call");
       setRecommenderCallReferenceType(typeof getRecommendations);
+      const adultKitsuOnlyForceQueryForValidation = typeof window !== "undefined"
+        ? String(new URLSearchParams(window.location.search || "").get("adultKitsuOnlyForceQueryForValidation") || new URLSearchParams(window.location.search || "").get("debugForceAdultKitsuQuery") || window.localStorage?.getItem("adultKitsuOnlyForceQueryForValidation") || window.localStorage?.getItem("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
+        : "";
       const routerPromise = getRecommendations(
         {
           ...inputWithHistory,
@@ -1690,6 +1693,7 @@ function handleLeft() {
           sourceHealthProbeStatus: sourceProbeStatus,
           googleBooksProbeDegraded,
           localLibrarySupported: Boolean(props.localLibrarySupported),
+          ...(adultKitsuOnlyForceQueryForValidation ? { adultKitsuOnlyForceQueryForValidation } : {}),
         },
         "auto"
       );
@@ -2353,6 +2357,7 @@ function handleLeft() {
       `adultKitsuOnlyFallbackPublicArraysExpanded: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPublicArraysExpanded", "adultKitsuOnlyFallbackPublicQueriesExpanded") ?? "(missing)")}`,
       `adultKitsuOnlyFallbackPublicQueriesExpanded: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPublicQueriesExpanded", "adultKitsuOnlyFallbackPublicArraysExpanded") ?? "(missing)")}`,
       `adultKitsuOnlyFallbackDiagnosticsMismatchReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackDiagnosticsMismatchReason") ?? "(missing)")}`,
+      `adultKitsuOnlyForceQueryForValidation: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyForceQueryForValidation") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueGateApplied: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueGateApplied") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueGateReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueGateReason") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueCandidateCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueCandidateCount") ?? "(missing)")}`,
