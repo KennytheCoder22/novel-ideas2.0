@@ -2336,6 +2336,27 @@ function handleLeft() {
       googleBooks: Array.isArray(sourceStarvationAuditForReport?.googleBooks?.fetchDiagnostics) ? sourceStarvationAuditForReport.googleBooks.fetchDiagnostics : [],
       openLibrary: Array.isArray(sourceStarvationAuditForReport?.openLibrary?.fetchDiagnostics) ? sourceStarvationAuditForReport.openLibrary.fetchDiagnostics : [],
     };
+    const pickAdultKitsuFallbackDiagnostic = (primaryKey: string, aliasKey?: string) => {
+      const latestResult = lastRecommendationResult as any;
+      const primaryValue = latestResult?.[primaryKey] ?? preFatalDispatchState?.[primaryKey];
+      if (primaryValue !== undefined) return primaryValue;
+      if (!aliasKey) return undefined;
+      return latestResult?.[aliasKey] ?? preFatalDispatchState?.[aliasKey];
+    };
+    const adultKitsuOnlyFallbackReportLines = [
+      `adultKitsuOnlyFallbackLivePathVersion: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackLivePathVersion") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackPlannedCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPlannedCount", "adultKitsuOnlyFallbackRouterPlannedCount") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackRouterPlannedCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackRouterPlannedCount", "adultKitsuOnlyFallbackPlannedCount") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackAdapterAttemptCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackAdapterAttemptCount") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackPublicFetchRowCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPublicFetchRowCount") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackPublicArraysExpanded: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPublicArraysExpanded", "adultKitsuOnlyFallbackPublicQueriesExpanded") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackPublicQueriesExpanded: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPublicQueriesExpanded", "adultKitsuOnlyFallbackPublicArraysExpanded") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackDiagnosticsMismatchReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackDiagnosticsMismatchReason") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackQueriesPlanned: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackQueriesPlanned") || [])}`,
+      `adultKitsuOnlyFallbackQueriesAttempted: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackQueriesAttempted") || [])}`,
+      `adultKitsuOnlyFallbackStoppedReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackStoppedReason") ?? "(missing)")}`,
+      `adultKitsuOnlyFallbackTimeline: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackTimeline") || [])}`,
+    ];
     const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
     const hasInvocationAboutToAwait = globalRouterPhases.some((row: any) => String(row?.phase || "") === "actual_router_invocation_about_to_await");
     const hasRouterEntered = globalRouterPhases.some((row: any) => String(row?.phase || "") === "router_entered");
@@ -2423,6 +2444,8 @@ function handleLeft() {
         `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
         `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
         `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
+        "ADULT KITSU FALLBACK DIAGNOSTICS",
+        ...adultKitsuOnlyFallbackReportLines,
         `fetchDiagnosticsSummary: ${JSON.stringify((lastRecommendationResult as any)?.fetchDiagnosticsSummary || preFatalDispatchState?.fetchDiagnosticsSummary || null)}`,
         `sourceSkippedReason: ${JSON.stringify(skippedReasons)}`,
         `Deployed commit marker (client): ${DEPLOYED_COMMIT_MARKER}`,
@@ -3002,6 +3025,9 @@ function handleLeft() {
       `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
       `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
       `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
+      "",
+      "ADULT KITSU FALLBACK DIAGNOSTICS",
+      ...adultKitsuOnlyFallbackReportLines,
       "",
       "SOURCE SETTINGS",
       sourceEnabledSummary,
