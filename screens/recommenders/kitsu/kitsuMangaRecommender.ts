@@ -41,6 +41,19 @@ function hasTeenMangaIntent(tagCounts: TagCounts | undefined): boolean {
   return getDirectMangaSignalWeight(tagCounts) > 0;
 }
 
+function isAdultKitsuOnlyRun(input: RecommenderInput): boolean {
+  if (input.deckKey !== "adult") return false;
+  const sourceEnabled = (input as any)?.sourceEnabled || {};
+  const kitsuEnabled = sourceEnabled?.kitsu !== false;
+  return kitsuEnabled &&
+    sourceEnabled?.googleBooks === false &&
+    sourceEnabled?.openLibrary === false &&
+    sourceEnabled?.localLibrary === false &&
+    sourceEnabled?.comicVine === false &&
+    sourceEnabled?.gcd === false &&
+    sourceEnabled?.nyt !== true;
+}
+
 function topPositiveTags(tagCounts: TagCounts | undefined, limit: number): string[] {
   return Object.entries(tagCounts || {})
     .filter(([, count]) => Number(count) > 0)
@@ -229,7 +242,9 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
 
   const forceKitsuRecoveryFetch = Boolean((input as any)?.forceKitsuRecoveryFetch);
-  if (!forceKitsuRecoveryFetch && (deckKey !== "ms_hs" || !hasTeenMangaIntent(input.tagCounts))) {
+  const allowNormalTeenKitsuFetch = deckKey === "ms_hs" && hasTeenMangaIntent(input.tagCounts);
+  const allowNormalAdultKitsuFetch = isAdultKitsuOnlyRun(input);
+  if (!forceKitsuRecoveryFetch && !allowNormalTeenKitsuFetch && !allowNormalAdultKitsuFetch) {
     return {
       engineId: "kitsu",
       engineLabel: "Kitsu Manga",
@@ -344,6 +359,8 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugFetchResponsePrefix: lastFetchBodyPrefix,
     debugParsedDataLength: docs.length,
     debugRawFetchedCount: docs.length,
+    debugKitsuAdultOnlyMode: allowNormalAdultKitsuFetch,
+    debugKitsuEligibilityMode: forceKitsuRecoveryFetch ? "forced_recovery" : allowNormalAdultKitsuFetch ? "adult_kitsu_only" : allowNormalTeenKitsuFetch ? "teen_manga_intent" : "not_eligible",
     debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),
   };
 }
