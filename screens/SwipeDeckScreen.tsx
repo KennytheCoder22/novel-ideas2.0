@@ -132,6 +132,7 @@ type Props = {
     localLibrary?: boolean;
     kitsu?: boolean;
     comicVine?: boolean;
+    gcd?: boolean;
     nyt?: boolean;
   };
   localLibrarySupported?: boolean;
@@ -920,7 +921,7 @@ export default function SwipeDeckScreen(props: Props) {
     openLibrary: props.recommendationSourceEnabled?.openLibrary !== false,
     localLibrary: props.localLibrarySupported ? props.recommendationSourceEnabled?.localLibrary !== false : false,
     kitsu: props.recommendationSourceEnabled?.kitsu !== false,
-    comicVine: props.recommendationSourceEnabled?.comicVine !== false,
+    comicVine: (props.recommendationSourceEnabled?.comicVine ?? props.recommendationSourceEnabled?.gcd) !== false,
     nyt: props.recommendationSourceEnabled?.nyt === true,
   };
   const enabledDeckList = useMemo(
