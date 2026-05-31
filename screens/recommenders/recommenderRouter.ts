@@ -12002,6 +12002,7 @@ const normalizedCandidatesRaw = [
     const dislikePenaltyScore = Number(row?.dislikePenaltyScore || 0);
     const acceptable =
       dislikePenaltyScore === 0 &&
+      positiveFitScore >= 0 &&
       (facetMatches > 0 || positiveFitScore >= 3 || ratingCount >= 1000 || popularityRank <= 1000);
     const reason = acceptable
       ? facetMatches > 0
@@ -12013,6 +12014,8 @@ const normalizedCandidatesRaw = [
         : "popularity_rank"
       : dislikePenaltyScore > 0
       ? "dislike_penalty"
+      : positiveFitScore < 0
+      ? "negative_positive_fit"
       : "no_adult_quality_signal";
     return { title, sourceId, gateReason, acceptable, reason, facetMatches, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore };
   };
@@ -13258,6 +13261,42 @@ const normalizedCandidatesRaw = [
       }
     }
   }
+  const applyAdultKitsuOnlyTerminalWeakRescueGate = (path: string) => {
+    if (!adultKitsuOnlyModeDetected || finalOutputItems.length === 0) return;
+    const builtFrom = String(returnedItemsBuiltFrom || "");
+    const allKitsuBacked = finalOutputItems.every((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    });
+    const shouldGate = allKitsuBacked && (
+      /^kitsu_ranked_pool_rescue/.test(builtFrom) ||
+      builtFrom === "kitsu_small_recovery_output" ||
+      /^kitsu_normal_recovery/.test(builtFrom) ||
+      builtFrom === "normal_final_gate_recovery"
+    );
+    if (!shouldGate) return;
+    const rows = finalOutputItems.map((item: any) => {
+      const doc = item?.doc || item;
+      return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+    });
+    const gatedRows = gateAdultKitsuOnlyWeakRescueRows(rows, path);
+    if (gatedRows.length === rows.length) return;
+    const previousBuiltFrom = String(returnedItemsBuiltFrom || "none");
+    finalOutputItems = gatedRows.map((row: any) => row.item || { kind: "open_library", doc: row.doc }).filter(Boolean);
+    sourceSkippedReason.push(`adult_kitsu_only_terminal_weak_rescue_gate:${path}:from=${previousBuiltFrom}:before=${rows.length}:after=${finalOutputItems.length}`);
+    if (finalOutputItems.length === 0) {
+      returnedItemsBuiltFrom = "adult_kitsu_only_weak_rescue_suppressed";
+      finalReturnSourceUsed = "adult_kitsu_only_weak_rescue_suppressed";
+    } else if (/^kitsu_ranked_pool_rescue/.test(previousBuiltFrom) && !gatedRows.some((row: any) => isKitsuRescueStrongRow(row))) {
+      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue_weak_candidates";
+      finalReturnSourceUsed = "kitsu_ranked_pool_rescue_weak_candidates";
+      markKitsuRankedPoolWeakCandidateOutput(`adult_terminal_gate_${path}`, rows, finalOutputItems);
+    }
+  };
+  applyAdultKitsuOnlyTerminalWeakRescueGate("terminal_rescue_topup_post_backfill");
+
   const terminalSelectedSet = new Set(finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
   for (const row of finalEligibilityAudit) {
     row.selected = terminalSelectedSet.has(normalizeText(String(row.title || "")));
