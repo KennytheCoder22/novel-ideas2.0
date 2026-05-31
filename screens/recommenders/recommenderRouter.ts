@@ -27,8 +27,8 @@ import { applyAdultCanonicalRungOverrides, adultExpansionQueries } from "./adult
 import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey, teenExpansionQueries } from "./teenRouter";
 
 export type EngineOverride = EngineId | "auto";
-const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-17c4615";
-const ROUTER_BUILD_TIMESTAMP = "2026-05-26T00:00:00.000Z";
+const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-adult-kitsu-fallback-public-v1";
+const ROUTER_BUILD_TIMESTAMP = "2026-05-31T00:00:00.000Z";
 
 if (typeof getComicVineGraphicNovelRecommendations !== "function") {
   throw new Error("COMICVINE_RECOMMENDER_IMPORT_INVALID: getComicVineGraphicNovelRecommendations must be a function.");
@@ -3103,6 +3103,12 @@ export async function getRecommendations(
   let adultKitsuOnlyKeptDocCount = 0;
   let adultKitsuOnlyFilteredReasonCounts: Record<string, number> = {};
   let adultKitsuOnlyRawSampleTitles: string[] = [];
+  const adultKitsuOnlyFallbackLivePathVersion = "adult_kitsu_only_fallback_public_diagnostics_v1";
+  let adultKitsuOnlyFallbackRouterPlannedCount = 0;
+  let adultKitsuOnlyFallbackAdapterAttemptCount = 0;
+  let adultKitsuOnlyFallbackPublicFetchRowCount = 0;
+  let adultKitsuOnlyFallbackPublicQueriesExpanded = false;
+  let adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let kitsuAdapterEligibilityPath = "";
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
@@ -4638,7 +4644,9 @@ export async function getRecommendations(
           : [kitsuLaneQuery];
         if (adultKitsuOnlyModeDetected) {
           adultKitsuOnlyFallbackQueriesPlanned = adultKitsuOnlyAdapterQueries.slice();
+          adultKitsuOnlyFallbackRouterPlannedCount = adultKitsuOnlyFallbackQueriesPlanned.length;
           adultKitsuOnlyFallbackStoppedReason = "adapter_dispatch_started";
+          adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyFallbackRouterPlannedCount > 1 ? "awaiting_adapter_attempts" : "single_planned_query";
         }
         laneInput = {
           ...laneInput,
@@ -4811,6 +4819,7 @@ export async function getRecommendations(
             ? kitsuFallbackQueriesPlannedFromAdapter
             : adultKitsuOnlyFallbackQueriesPlanned;
           adultKitsuOnlyFallbackQueriesAttempted = kitsuFallbackQueriesAttemptedFromAdapter;
+          adultKitsuOnlyFallbackAdapterAttemptCount = adultKitsuOnlyFallbackQueriesAttempted.length;
           adultKitsuOnlyFallbackStoppedReason = kitsuFallbackStoppedReasonFromAdapter
             || (adultKitsuOnlyFallbackQueriesAttempted.length >= adultKitsuOnlyFallbackQueriesPlanned.length ? "adapter_attempted_all_planned_queries" : "adapter_attempts_missing_from_diagnostics");
           adultKitsuOnlyFallbackTimeline = kitsuFallbackTimelineFromAdapter;
@@ -4825,11 +4834,13 @@ export async function getRecommendations(
           kitsuFetchResultsByQuery.push(row);
         };
         if (adultKitsuOnlyModeDetected && kitsuFetchAttemptsFromAdapter.length > 0) {
+          let adultKitsuOnlyRowsAdded = 0;
           for (const attempt of kitsuFetchAttemptsFromAdapter) {
             const attemptedQuery = String(attempt?.query || "").trim();
             if (!attemptedQuery) continue;
             kitsuQueriesActuallyFetched.add(attemptedQuery);
             if (!kitsuFinalQueryUsedForFetch.includes(attemptedQuery)) kitsuFinalQueryUsedForFetch.push(attemptedQuery);
+            adultKitsuOnlyRowsAdded += 1;
             appendKitsuFetchResultRow({
               query: attemptedQuery,
               url: String(attempt?.url || `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(attemptedQuery)}&page[limit]=20`),
@@ -4847,7 +4858,20 @@ export async function getRecommendations(
               ].join(" | "),
             });
           }
+          adultKitsuOnlyFallbackPublicFetchRowCount = adultKitsuOnlyRowsAdded;
+          adultKitsuOnlyFallbackPublicQueriesExpanded = adultKitsuOnlyRowsAdded >= Math.max(1, adultKitsuOnlyFallbackAdapterAttemptCount || adultKitsuOnlyFallbackRouterPlannedCount);
+          adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyFallbackPublicQueriesExpanded
+            ? "none"
+            : `public_rows_short:planned=${adultKitsuOnlyFallbackRouterPlannedCount}:attempted=${adultKitsuOnlyFallbackAdapterAttemptCount}:rows=${adultKitsuOnlyRowsAdded}`;
         } else {
+          if (adultKitsuOnlyModeDetected) {
+            adultKitsuOnlyFallbackAdapterAttemptCount = 0;
+            adultKitsuOnlyFallbackPublicFetchRowCount = 1;
+            adultKitsuOnlyFallbackPublicQueriesExpanded = false;
+            adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyFallbackRouterPlannedCount > 1
+              ? "adapter_attempts_missing_public_arrays_show_primary_only"
+              : "single_planned_query_no_adapter_attempts";
+          }
           appendKitsuFetchResultRow({
             query: kitsuLaneQuery,
             url: kitsuActualFetchUrl,
@@ -5363,6 +5387,12 @@ export async function getRecommendations(
       adultKitsuOnlyKeptDocCount,
       adultKitsuOnlyFilteredReasonCounts,
       adultKitsuOnlyRawSampleTitles,
+      adultKitsuOnlyFallbackLivePathVersion,
+      adultKitsuOnlyFallbackRouterPlannedCount,
+      adultKitsuOnlyFallbackAdapterAttemptCount,
+      adultKitsuOnlyFallbackPublicFetchRowCount,
+      adultKitsuOnlyFallbackPublicQueriesExpanded,
+      adultKitsuOnlyFallbackDiagnosticsMismatchReason,
       kitsuAdapterEligibilityPath,
       fetchLoopCounters: {
         googleBooksRouterFetchCount,
@@ -14084,6 +14114,12 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyKeptDocCount,
     adultKitsuOnlyFilteredReasonCounts,
     adultKitsuOnlyRawSampleTitles,
+    adultKitsuOnlyFallbackLivePathVersion,
+    adultKitsuOnlyFallbackRouterPlannedCount,
+    adultKitsuOnlyFallbackAdapterAttemptCount,
+    adultKitsuOnlyFallbackPublicFetchRowCount,
+    adultKitsuOnlyFallbackPublicQueriesExpanded,
+    adultKitsuOnlyFallbackDiagnosticsMismatchReason,
     kitsuAdapterEligibilityPath,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
