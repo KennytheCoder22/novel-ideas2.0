@@ -244,6 +244,7 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const forceKitsuRecoveryFetch = Boolean((input as any)?.forceKitsuRecoveryFetch);
   const allowNormalTeenKitsuFetch = deckKey === "ms_hs" && hasTeenMangaIntent(input.tagCounts);
   const allowNormalAdultKitsuFetch = isAdultKitsuOnlyRun(input);
+  const adultKitsuOnlyPerQueryTimeoutMs = allowNormalAdultKitsuFetch ? Math.min(1800, timeoutMs) : timeoutMs;
   if (!forceKitsuRecoveryFetch && !allowNormalTeenKitsuFetch && !allowNormalAdultKitsuFetch) {
     return {
       engineId: "kitsu",
@@ -302,6 +303,7 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     zeroRawReason: string;
     bodyPrefix: string;
   }> = [];
+  const fallbackTimeline: Array<{ phase: string; query: string; timestamp: number; elapsedMs?: number; rawCount?: number; parsedCount?: number; error?: string }> = [];
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const url =
@@ -311,9 +313,11 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
 
     lastFetchUrl = url;
     lastFetchShape = "filter_text_with_page_limit";
+    const queryStartedAt = Date.now();
+    if (allowNormalAdultKitsuFetch) fallbackTimeline.push({ phase: "starting_query", query: q, timestamp: queryStartedAt });
     let data: any;
     try {
-      const fetched = await fetchJsonWithTimeout(url, timeoutMs);
+      const fetched = await fetchJsonWithTimeout(url, adultKitsuOnlyPerQueryTimeoutMs);
       data = fetched.json;
       lastFetchStatus = "ok";
       lastFetchHttpStatus = fetched.status;
@@ -342,7 +346,10 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
         zeroRawReason: lastZeroRawReason,
         bodyPrefix: lastFetchBodyPrefix,
       });
-      if (allowNormalAdultKitsuFetch) adultKitsuOnlyFallbackStoppedReason = "fetch_error_continuing_to_next_fallback";
+      if (allowNormalAdultKitsuFetch) {
+        fallbackTimeline.push({ phase: "query_error", query: q, timestamp: Date.now(), elapsedMs: Date.now() - queryStartedAt, error: lastFetchErrorMessage });
+        adultKitsuOnlyFallbackStoppedReason = "fetch_error_continuing_to_next_fallback";
+      }
       continue;
     }
 
@@ -365,7 +372,10 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
         zeroRawReason: lastZeroRawReason,
         bodyPrefix: lastFetchBodyPrefix,
       });
-      if (allowNormalAdultKitsuFetch) adultKitsuOnlyFallbackStoppedReason = "zero_raw_continuing_to_next_fallback";
+      if (allowNormalAdultKitsuFetch) {
+        fallbackTimeline.push({ phase: "query_complete", query: q, timestamp: Date.now(), elapsedMs: Date.now() - queryStartedAt, rawCount: lastRawApiItemCount, parsedCount: lastParsedItemCount });
+        adultKitsuOnlyFallbackStoppedReason = "zero_raw_continuing_to_next_fallback";
+      }
       continue;
     }
     lastFetchBodyPrefix = `items=${items.length}`;
@@ -395,6 +405,9 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       zeroRawReason: lastZeroRawReason,
       bodyPrefix: lastFetchBodyPrefix,
     });
+    if (allowNormalAdultKitsuFetch) {
+      fallbackTimeline.push({ phase: "query_complete", query: q, timestamp: Date.now(), elapsedMs: Date.now() - queryStartedAt, rawCount: lastRawApiItemCount, parsedCount: lastParsedItemCount });
+    }
 
     if (allowNormalAdultKitsuFetch && items.length > 0) {
       adultKitsuOnlyFallbackStoppedReason = "stopped_after_first_nonzero_raw_result";
@@ -440,6 +453,8 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugKitsuParsedItemCount: lastParsedItemCount,
     debugKitsuZeroRawReason: lastZeroRawReason,
     debugKitsuFetchAttempts: fetchAttempts,
+    debugKitsuFallbackTimeline: fallbackTimeline,
+    debugKitsuAdultOnlyPerQueryTimeoutMs: adultKitsuOnlyPerQueryTimeoutMs,
     debugKitsuFallbackQueriesPlanned: adultKitsuOnlyFallbackQueriesPlanned,
     debugKitsuFallbackQueriesAttempted: fetchAttempts.map((attempt) => attempt.query).filter(Boolean),
     debugKitsuFallbackStoppedReason: adultKitsuOnlyFallbackStoppedReason,
