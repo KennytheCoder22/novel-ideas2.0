@@ -280,6 +280,14 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   let builtFromQuery = queriesToTry[0] || "";
   const adultKitsuOnlyFallbackQueriesPlanned = allowNormalAdultKitsuFetch ? queriesToTry.slice() : [];
   let adultKitsuOnlyFallbackStoppedReason = allowNormalAdultKitsuFetch ? "not_attempted" : "not_adult_kitsu_only";
+  let adultKitsuOnlyRawApiItemTotal = 0;
+  let adultKitsuOnlyConvertedDocCount = 0;
+  let adultKitsuOnlyKeptDocCount = 0;
+  const adultKitsuOnlyFilteredReasonCounts: Record<string, number> = {};
+  const adultKitsuOnlyRawSampleTitles: string[] = [];
+  const noteAdultKitsuOnlyFilter = (reason: string) => {
+    adultKitsuOnlyFilteredReasonCounts[reason] = Number(adultKitsuOnlyFilteredReasonCounts[reason] || 0) + 1;
+  };
 
   let lastFetchUrl = "";
   let lastFetchStatus = "not_attempted";
@@ -354,6 +362,14 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     }
 
     const items = Array.isArray(data?.data) ? data.data : [];
+    if (allowNormalAdultKitsuFetch) {
+      adultKitsuOnlyRawApiItemTotal += items.length;
+      for (const item of items.slice(0, 8)) {
+        const attrs = item?.attributes || {};
+        const sampleTitle = String(attrs?.canonicalTitle || attrs?.titles?.en || attrs?.titles?.en_jp || attrs?.slug || "").trim();
+        if (sampleTitle && !adultKitsuOnlyRawSampleTitles.includes(sampleTitle)) adultKitsuOnlyRawSampleTitles.push(sampleTitle);
+      }
+    }
     lastRawApiItemCount = items.length;
     lastZeroRawReason = items.length > 0
       ? ""
@@ -384,8 +400,32 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     const docsBeforeQuery = docs.length;
     for (const item of items) {
       const doc = kitsuMangaToDoc(item, q, i);
-      if (!doc?.title) continue;
-      if (!shouldKeepKitsuDoc(doc, input.tagCounts)) continue;
+      if (!doc?.title) {
+        if (allowNormalAdultKitsuFetch) noteAdultKitsuOnlyFilter("conversion_missing_title");
+        continue;
+      }
+      if (allowNormalAdultKitsuFetch) {
+        adultKitsuOnlyConvertedDocCount += 1;
+        (doc as any).adultKitsuOnlyCandidate = true;
+        const queryGenreSubject = normalizeText(q);
+        const adultSubjects = Array.from(new Set([
+          ...(Array.isArray(doc.subject) ? doc.subject : []),
+          queryGenreSubject,
+          "fiction",
+          "manga",
+          "graphic novel",
+        ].map((subject) => String(subject || "").trim()).filter(Boolean)));
+        doc.subject = adultSubjects;
+        (doc as any).volumeInfo = {
+          ...((doc as any).volumeInfo || {}),
+          categories: adultSubjects,
+        };
+      }
+      if (!shouldKeepKitsuDoc(doc, input.tagCounts)) {
+        if (allowNormalAdultKitsuFetch) noteAdultKitsuOnlyFilter("adapter_should_keep_rejected");
+        continue;
+      }
+      if (allowNormalAdultKitsuFetch) adultKitsuOnlyKeptDocCount += 1;
       (doc as any).kitsuFacetMatches = facetMatchesForDoc(doc, input.tagCounts);
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
@@ -458,6 +498,11 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugKitsuFallbackQueriesPlanned: adultKitsuOnlyFallbackQueriesPlanned,
     debugKitsuFallbackQueriesAttempted: fetchAttempts.map((attempt) => attempt.query).filter(Boolean),
     debugKitsuFallbackStoppedReason: adultKitsuOnlyFallbackStoppedReason,
+    debugKitsuAdultOnlyRawApiItemTotal: adultKitsuOnlyRawApiItemTotal,
+    debugKitsuAdultOnlyConvertedDocCount: adultKitsuOnlyConvertedDocCount,
+    debugKitsuAdultOnlyKeptDocCount: adultKitsuOnlyKeptDocCount,
+    debugKitsuAdultOnlyFilteredReasonCounts: adultKitsuOnlyFilteredReasonCounts,
+    debugKitsuAdultOnlyRawSampleTitles: adultKitsuOnlyRawSampleTitles.slice(0, 20),
     debugKitsuAdultOnlyMode: allowNormalAdultKitsuFetch,
     debugKitsuEligibilityMode: forceKitsuRecoveryFetch ? "forced_recovery" : allowNormalAdultKitsuFetch ? "adult_kitsu_only" : allowNormalTeenKitsuFetch ? "teen_manga_intent" : "not_eligible",
     debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),

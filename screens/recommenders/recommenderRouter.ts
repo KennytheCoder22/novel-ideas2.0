@@ -3098,6 +3098,11 @@ export async function getRecommendations(
   let adultKitsuOnlyFallbackStoppedReason = adultKitsuOnlyModeDetected ? "not_attempted" : "not_adult_kitsu_only";
   let adultKitsuOnlyFallbackTimeline: any[] = [];
   let adultKitsuOnlyPerQueryTimeoutMs = 0;
+  let adultKitsuOnlyRawApiItemTotal = 0;
+  let adultKitsuOnlyConvertedDocCount = 0;
+  let adultKitsuOnlyKeptDocCount = 0;
+  let adultKitsuOnlyFilteredReasonCounts: Record<string, number> = {};
+  let adultKitsuOnlyRawSampleTitles: string[] = [];
   let kitsuAdapterEligibilityPath = "";
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
@@ -4788,6 +4793,12 @@ export async function getRecommendations(
           ? (laneKitsu as any).debugKitsuFallbackTimeline
           : [];
         const kitsuAdultOnlyPerQueryTimeoutMs = Number((laneKitsu as any)?.debugKitsuAdultOnlyPerQueryTimeoutMs || 0);
+        const kitsuAdultOnlyFilteredReasonCounts = (laneKitsu as any)?.debugKitsuAdultOnlyFilteredReasonCounts && typeof (laneKitsu as any).debugKitsuAdultOnlyFilteredReasonCounts === "object"
+          ? (laneKitsu as any).debugKitsuAdultOnlyFilteredReasonCounts
+          : {};
+        const kitsuAdultOnlyRawSampleTitles = Array.isArray((laneKitsu as any)?.debugKitsuAdultOnlyRawSampleTitles)
+          ? (laneKitsu as any).debugKitsuAdultOnlyRawSampleTitles.map((title: any) => String(title || "").trim()).filter(Boolean)
+          : [];
         if (!kitsuAdapterEligibilityPath) kitsuAdapterEligibilityPath = String((laneKitsu as any)?.debugKitsuEligibilityMode || "").trim();
         if (adultKitsuOnlyModeDetected) {
           adultKitsuOnlyRouterDispatchBlockedReason = "none";
@@ -4804,6 +4815,11 @@ export async function getRecommendations(
             || (adultKitsuOnlyFallbackQueriesAttempted.length >= adultKitsuOnlyFallbackQueriesPlanned.length ? "adapter_attempted_all_planned_queries" : "adapter_attempts_missing_from_diagnostics");
           adultKitsuOnlyFallbackTimeline = kitsuFallbackTimelineFromAdapter;
           adultKitsuOnlyPerQueryTimeoutMs = Number.isFinite(kitsuAdultOnlyPerQueryTimeoutMs) ? kitsuAdultOnlyPerQueryTimeoutMs : 0;
+          adultKitsuOnlyRawApiItemTotal = Number((laneKitsu as any)?.debugKitsuAdultOnlyRawApiItemTotal || 0);
+          adultKitsuOnlyConvertedDocCount = Number((laneKitsu as any)?.debugKitsuAdultOnlyConvertedDocCount || 0);
+          adultKitsuOnlyKeptDocCount = Number((laneKitsu as any)?.debugKitsuAdultOnlyKeptDocCount || 0);
+          adultKitsuOnlyFilteredReasonCounts = kitsuAdultOnlyFilteredReasonCounts;
+          adultKitsuOnlyRawSampleTitles = kitsuAdultOnlyRawSampleTitles;
         }
         const appendKitsuFetchResultRow = (row: { query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }) => {
           kitsuFetchResultsByQuery.push(row);
@@ -5342,6 +5358,11 @@ export async function getRecommendations(
       adultKitsuOnlyFallbackStoppedReason,
       adultKitsuOnlyFallbackTimeline,
       adultKitsuOnlyPerQueryTimeoutMs,
+      adultKitsuOnlyRawApiItemTotal,
+      adultKitsuOnlyConvertedDocCount,
+      adultKitsuOnlyKeptDocCount,
+      adultKitsuOnlyFilteredReasonCounts,
+      adultKitsuOnlyRawSampleTitles,
       kitsuAdapterEligibilityPath,
       fetchLoopCounters: {
         googleBooksRouterFetchCount,
@@ -14058,6 +14079,11 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyFallbackStoppedReason,
     adultKitsuOnlyFallbackTimeline,
     adultKitsuOnlyPerQueryTimeoutMs,
+    adultKitsuOnlyRawApiItemTotal,
+    adultKitsuOnlyConvertedDocCount,
+    adultKitsuOnlyKeptDocCount,
+    adultKitsuOnlyFilteredReasonCounts,
+    adultKitsuOnlyRawSampleTitles,
     kitsuAdapterEligibilityPath,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
