@@ -136,6 +136,7 @@ type Props = {
     nyt?: boolean;
   };
   localLibrarySupported?: boolean;
+  adultKitsuOnlyForceQueryForValidation?: string;
   swipeCategories?: {
     books: boolean;
     movies: boolean;
@@ -1688,7 +1689,8 @@ function handleLeft() {
       const debugLocalStorageAdultKitsuForceQuery = typeof window !== "undefined"
         ? String(window.localStorage?.getItem("adultKitsuOnlyForceQueryForValidation") || window.localStorage?.getItem("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
         : "";
-      const adultKitsuOnlyForceQueryForValidation = debugUrlAdultKitsuForceQuery || debugLocalStorageAdultKitsuForceQuery;
+      const debugAdminConfigAdultKitsuForceQuery = String(props.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
+      const adultKitsuOnlyForceQueryForValidation = debugUrlAdultKitsuForceQuery || debugLocalStorageAdultKitsuForceQuery || debugAdminConfigAdultKitsuForceQuery;
       const routerPromise = getRecommendations(
         {
           ...inputWithHistory,
@@ -1699,6 +1701,7 @@ function handleLeft() {
           localLibrarySupported: Boolean(props.localLibrarySupported),
           debugUrlAdultKitsuForceQuery,
           debugLocalStorageAdultKitsuForceQuery,
+          debugAdminConfigAdultKitsuForceQuery,
           ...(adultKitsuOnlyForceQueryForValidation ? { adultKitsuOnlyForceQueryForValidation } : {}),
         },
         "auto"
@@ -2366,6 +2369,7 @@ function handleLeft() {
       `adultKitsuOnlyForceQueryForValidation: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyForceQueryForValidation") ?? "(missing)")}`,
       `debugUrlAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugUrlAdultKitsuForceQuery") ?? "(missing)")}`,
       `debugLocalStorageAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugLocalStorageAdultKitsuForceQuery") ?? "(missing)")}`,
+      `debugAdminConfigAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugAdminConfigAdultKitsuForceQuery") ?? "(missing)")}`,
       `debugRouterReceivedAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugRouterReceivedAdultKitsuForceQuery") ?? "(missing)")}`,
       `debugAdultKitsuForceQueryApplied: ${String(pickAdultKitsuFallbackDiagnostic("debugAdultKitsuForceQueryApplied") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueGateApplied: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueGateApplied") ?? "(missing)")}`,

@@ -3088,6 +3088,7 @@ export async function getRecommendations(
   let adultKitsuOnlyQuerySelected = "";
   const debugUrlAdultKitsuForceQuery = String((routedInput as any)?.debugUrlAdultKitsuForceQuery || "").trim().toLowerCase();
   const debugLocalStorageAdultKitsuForceQuery = String((routedInput as any)?.debugLocalStorageAdultKitsuForceQuery || "").trim().toLowerCase();
+  const debugAdminConfigAdultKitsuForceQuery = String((routedInput as any)?.debugAdminConfigAdultKitsuForceQuery || "").trim().toLowerCase();
   const adultKitsuOnlyForceQueryForValidationRaw = String((routedInput as any)?.adultKitsuOnlyForceQueryForValidation || (routedInput as any)?.debugForceAdultKitsuQuery || "").trim().toLowerCase();
   const debugRouterReceivedAdultKitsuForceQuery = adultKitsuOnlyForceQueryForValidationRaw;
   const adultKitsuOnlyForceQueryForValidation = adultKitsuOnlyModeDetected && adultKitsuOnlyForceQueryForValidationRaw === "dystopian" ? "dystopian" : "";
@@ -5408,6 +5409,7 @@ export async function getRecommendations(
       adultKitsuOnlyForceQueryForValidation,
       debugUrlAdultKitsuForceQuery,
       debugLocalStorageAdultKitsuForceQuery,
+      debugAdminConfigAdultKitsuForceQuery,
       debugRouterReceivedAdultKitsuForceQuery,
       debugAdultKitsuForceQueryApplied,
       adultKitsuOnlyQueryFallbackReason,
@@ -14469,6 +14471,7 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyForceQueryForValidation,
     debugUrlAdultKitsuForceQuery,
     debugLocalStorageAdultKitsuForceQuery,
+    debugAdminConfigAdultKitsuForceQuery,
     debugRouterReceivedAdultKitsuForceQuery,
     debugAdultKitsuForceQueryApplied,
     adultKitsuOnlyQueryFallbackReason,
