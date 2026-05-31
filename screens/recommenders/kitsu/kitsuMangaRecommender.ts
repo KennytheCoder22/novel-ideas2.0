@@ -258,7 +258,11 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const forcedBucketQueries = Array.isArray((input as any)?.bucketPlan?.queries)
     ? (input as any).bucketPlan.queries.map((q: any) => normalizeText(String(q || ""))).filter(Boolean)
     : [];
-  const queriesToTry = forcedBucketQueries.length > 0 ? forcedBucketQueries : buildKitsuQueries(input.tagCounts);
+  const dedupeQueries = (queries: string[]) => Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean)));
+  const adultKitsuOnlyFallbackQueries = ["adventure", "drama", "fantasy", "mystery"];
+  const queriesToTry = allowNormalAdultKitsuFetch
+    ? dedupeQueries([...(forcedBucketQueries.length > 0 ? forcedBucketQueries.slice(0, 1) : buildKitsuQueries(input.tagCounts).slice(0, 1)), ...adultKitsuOnlyFallbackQueries])
+    : (forcedBucketQueries.length > 0 ? forcedBucketQueries : buildKitsuQueries(input.tagCounts));
   if (!queriesToTry.length) {
     return {
       engineId: "kitsu",
@@ -281,6 +285,21 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   let lastFetchErrorName = "";
   let lastFetchErrorMessage = "";
   let lastFetchBodyPrefix = "";
+  let lastFetchShape = "filter_text_with_page_limit";
+  let lastRawApiItemCount = 0;
+  let lastParsedItemCount = 0;
+  let lastZeroRawReason = "not_attempted";
+  const fetchAttempts: Array<{
+    query: string;
+    url: string;
+    fetchShape: string;
+    status: string;
+    httpStatus: number;
+    rawApiItemCount: number;
+    parsedItemCount: number;
+    zeroRawReason: string;
+    bodyPrefix: string;
+  }> = [];
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const url =
@@ -289,6 +308,7 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       `&page[limit]=${encodeURIComponent(String(fetchLimit))}`;
 
     lastFetchUrl = url;
+    lastFetchShape = "filter_text_with_page_limit";
     let data: any;
     try {
       const fetched = await fetchJsonWithTimeout(url, timeoutMs);
@@ -306,17 +326,48 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       lastFetchErrorMessage = String(e?.message || e || "fetch_failed_or_timeout");
       lastFetchError = lastFetchErrorMessage || "fetch_failed_or_timeout";
       lastFetchBodyPrefix = String(e?.bodyPrefix || lastFetchErrorMessage || "").slice(0, 180);
+      lastRawApiItemCount = 0;
+      lastParsedItemCount = 0;
+      lastZeroRawReason = lastFetchErrorMessage || "fetch_failed";
+      fetchAttempts.push({
+        query: q,
+        url,
+        fetchShape: lastFetchShape,
+        status: lastFetchStatus,
+        httpStatus: lastFetchHttpStatus,
+        rawApiItemCount: lastRawApiItemCount,
+        parsedItemCount: lastParsedItemCount,
+        zeroRawReason: lastZeroRawReason,
+        bodyPrefix: lastFetchBodyPrefix,
+      });
       continue;
     }
 
     const items = Array.isArray(data?.data) ? data.data : [];
+    lastRawApiItemCount = items.length;
+    lastZeroRawReason = items.length > 0
+      ? ""
+      : (Array.isArray(data?.data) ? "zero_data_items_with_page_limit" : "response_data_not_array");
     if (!items.length) {
+      lastParsedItemCount = 0;
       lastFetchBodyPrefix = "[empty_kitsu_result]";
+      fetchAttempts.push({
+        query: q,
+        url,
+        fetchShape: lastFetchShape,
+        status: lastFetchStatus,
+        httpStatus: lastFetchHttpStatus,
+        rawApiItemCount: lastRawApiItemCount,
+        parsedItemCount: lastParsedItemCount,
+        zeroRawReason: lastZeroRawReason,
+        bodyPrefix: lastFetchBodyPrefix,
+      });
       continue;
     }
     lastFetchBodyPrefix = `items=${items.length}`;
     if (!docs.length) builtFromQuery = q;
 
+    const docsBeforeQuery = docs.length;
     for (const item of items) {
       const doc = kitsuMangaToDoc(item, q, i);
       if (!doc?.title) continue;
@@ -328,7 +379,20 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       docs.push(doc);
       if (docs.length >= fetchLimit) break;
     }
+    lastParsedItemCount = docs.length - docsBeforeQuery;
+    fetchAttempts.push({
+      query: q,
+      url,
+      fetchShape: lastFetchShape,
+      status: lastFetchStatus,
+      httpStatus: lastFetchHttpStatus,
+      rawApiItemCount: lastRawApiItemCount,
+      parsedItemCount: lastParsedItemCount,
+      zeroRawReason: lastZeroRawReason,
+      bodyPrefix: lastFetchBodyPrefix,
+    });
 
+    if (allowNormalAdultKitsuFetch && items.length > 0) break;
     if (docs.length >= fetchLimit) break;
     if (i === 0 && docs.length >= Math.max(6, finalLimit)) break;
   }
@@ -352,6 +416,7 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugResponseSnippet: lastFetchBodyPrefix,
     debugRawJsonSnippet: lastFetchBodyPrefix,
     debugFetchUrl: lastFetchUrl,
+    debugKitsuFetchShape: lastFetchShape,
     debugFetchHttpStatus: lastFetchHttpStatus,
     debugFetchError: lastFetchError,
     debugFetchErrorName: lastFetchErrorName,
@@ -359,6 +424,10 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugFetchResponsePrefix: lastFetchBodyPrefix,
     debugParsedDataLength: docs.length,
     debugRawFetchedCount: docs.length,
+    debugKitsuRawApiItemCount: lastRawApiItemCount,
+    debugKitsuParsedItemCount: lastParsedItemCount,
+    debugKitsuZeroRawReason: lastZeroRawReason,
+    debugKitsuFetchAttempts: fetchAttempts,
     debugKitsuAdultOnlyMode: allowNormalAdultKitsuFetch,
     debugKitsuEligibilityMode: forceKitsuRecoveryFetch ? "forced_recovery" : allowNormalAdultKitsuFetch ? "adult_kitsu_only" : allowNormalTeenKitsuFetch ? "teen_manga_intent" : "not_eligible",
     debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),

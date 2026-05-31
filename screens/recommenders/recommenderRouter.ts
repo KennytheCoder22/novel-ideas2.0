@@ -3088,6 +3088,11 @@ export async function getRecommendations(
   let adultKitsuOnlyQuerySelected = "";
   let adultKitsuOnlyQueryFallbackReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   const adultKitsuOnlyQueryDroppedFormatTerms: string[] = [];
+  let adultKitsuOnlyFetchUrl = "";
+  let adultKitsuOnlyFetchShape = "";
+  let adultKitsuOnlyRawApiItemCount = 0;
+  let adultKitsuOnlyParsedItemCount = 0;
+  let adultKitsuOnlyZeroRawReason = adultKitsuOnlyModeDetected ? "not_attempted" : "not_adult_kitsu_only";
   let kitsuAdapterEligibilityPath = "";
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
@@ -4618,9 +4623,12 @@ export async function getRecommendations(
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
         } else {
+        const adultKitsuOnlyAdapterQueries = adultKitsuOnlyModeDetected
+          ? Array.from(new Set([kitsuLaneQuery, "adventure", "drama", "fantasy", "mystery"].map((q) => String(q || "").trim()).filter(Boolean)))
+          : [kitsuLaneQuery];
         laneInput = {
           ...laneInput,
-          bucketPlan: { ...(laneInput.bucketPlan as any), queries: [kitsuLaneQuery], preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
+          bucketPlan: { ...(laneInput.bucketPlan as any), queries: adultKitsuOnlyAdapterQueries, preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
         };
           kitsuRouterFetchCount += 1;
           if (kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce) kitsuFallbackDispatchedOnce = true;
@@ -4752,11 +4760,23 @@ export async function getRecommendations(
         const kitsuResponseStatus = String((laneKitsu as any)?.debugSourceStatus || (laneKitsu as any)?.kitsuSourceStatus || "").trim();
         const kitsuParsedDataLength = Number((laneKitsu as any)?.debugParsedDataLength ?? kitsuRawCount);
         const kitsuRawSnippet = String((laneKitsu as any)?.debugRawJsonSnippet || (laneKitsu as any)?.debugResponseSnippet || "").trim();
+        const kitsuActualFetchUrl = String((laneKitsu as any)?.debugFetchUrl || `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(kitsuLaneQuery)}&page[limit]=20`);
+        const kitsuFetchShape = String((laneKitsu as any)?.debugKitsuFetchShape || (kitsuActualFetchUrl.includes("page[limit]") ? "filter_text_with_page_limit" : "filter_text_no_page_limit"));
+        const kitsuRawApiItemCount = Number((laneKitsu as any)?.debugKitsuRawApiItemCount ?? kitsuRawCount);
+        const kitsuAdapterParsedItemCount = Number((laneKitsu as any)?.debugKitsuParsedItemCount ?? kitsuParsedDataLength);
+        const kitsuZeroRawReason = String((laneKitsu as any)?.debugKitsuZeroRawReason || (kitsuRawApiItemCount === 0 ? "zero_raw_api_items" : "")).trim();
         if (!kitsuAdapterEligibilityPath) kitsuAdapterEligibilityPath = String((laneKitsu as any)?.debugKitsuEligibilityMode || "").trim();
-        if (adultKitsuOnlyModeDetected) adultKitsuOnlyRouterDispatchBlockedReason = "none";
+        if (adultKitsuOnlyModeDetected) {
+          adultKitsuOnlyRouterDispatchBlockedReason = "none";
+          adultKitsuOnlyFetchUrl = kitsuActualFetchUrl;
+          adultKitsuOnlyFetchShape = kitsuFetchShape;
+          adultKitsuOnlyRawApiItemCount = Number.isFinite(kitsuRawApiItemCount) ? kitsuRawApiItemCount : 0;
+          adultKitsuOnlyParsedItemCount = Number.isFinite(kitsuAdapterParsedItemCount) ? kitsuAdapterParsedItemCount : 0;
+          adultKitsuOnlyZeroRawReason = kitsuZeroRawReason || (adultKitsuOnlyRawApiItemCount === 0 ? "zero_raw_api_items" : "");
+        }
         kitsuFetchResultsByQuery.push({
           query: kitsuLaneQuery,
-          url: `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(kitsuLaneQuery)}`,
+          url: kitsuActualFetchUrl,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
           timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
           rawCount: kitsuRawCount,
@@ -4765,7 +4785,11 @@ export async function getRecommendations(
             ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
             : [
               kitsuResponseStatus ? `status=${kitsuResponseStatus}` : "status=ok",
+              `fetch_shape=${kitsuFetchShape}`,
+              `raw_api_item_count=${Number.isFinite(kitsuRawApiItemCount) ? kitsuRawApiItemCount : 0}`,
               `parsed_data_length=${Number.isFinite(kitsuParsedDataLength) ? kitsuParsedDataLength : 0}`,
+              `adapter_parsed_item_count=${Number.isFinite(kitsuAdapterParsedItemCount) ? kitsuAdapterParsedItemCount : 0}`,
+              kitsuZeroRawReason ? `zero_raw_reason=${kitsuZeroRawReason}` : "zero_raw_reason=(none)",
               kitsuRawSnippet ? `raw_json_snippet=${kitsuRawSnippet.slice(0, 120)}` : "raw_json_snippet=(none)",
             ].join(" | "),
         });
@@ -5249,6 +5273,11 @@ export async function getRecommendations(
       adultKitsuOnlyQuerySelected,
       adultKitsuOnlyQueryFallbackReason,
       adultKitsuOnlyQueryDroppedFormatTerms,
+      adultKitsuOnlyFetchUrl,
+      adultKitsuOnlyFetchShape,
+      adultKitsuOnlyRawApiItemCount,
+      adultKitsuOnlyParsedItemCount,
+      adultKitsuOnlyZeroRawReason,
       kitsuAdapterEligibilityPath,
       fetchLoopCounters: {
         googleBooksRouterFetchCount,
@@ -13955,6 +13984,11 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyQuerySelected,
     adultKitsuOnlyQueryFallbackReason,
     adultKitsuOnlyQueryDroppedFormatTerms,
+    adultKitsuOnlyFetchUrl,
+    adultKitsuOnlyFetchShape,
+    adultKitsuOnlyRawApiItemCount,
+    adultKitsuOnlyParsedItemCount,
+    adultKitsuOnlyZeroRawReason,
     kitsuAdapterEligibilityPath,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
