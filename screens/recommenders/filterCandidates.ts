@@ -1339,6 +1339,17 @@ function attachDiagnostics(doc: RecommendationDoc, diagnostics: FilterDiagnostic
 }
 
 
+function isAdultKitsuOnlyDoc(doc: any): boolean {
+  const source = String(
+    doc?.source ||
+    doc?.engine ||
+    doc?.rawDoc?.source ||
+    doc?.rawDoc?.engine ||
+    ""
+  ).toLowerCase();
+  return source.includes("kitsu") && Boolean(doc?.adultKitsuOnlyCandidate || doc?.rawDoc?.adultKitsuOnlyCandidate);
+}
+
 function isOpenLibraryLikeDoc(doc: any): boolean {
   const source = String(
     doc?.source ||
@@ -1797,7 +1808,8 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
     const diagnostics = buildFilterDiagnostics(doc, bucketPlan);
 
     const isOpenLibraryLike = isOpenLibraryLikeDoc(doc);
-    const isWeakSource = isOpenLibraryLike;
+    const isAdultKitsuOnly = isAdultKitsuOnlyDoc(doc);
+    const isWeakSource = isOpenLibraryLike || isAdultKitsuOnly;
 
     if (isOpenLibraryLike && diagnostics.family === "horror") {
       const recoveryReady =
@@ -1907,6 +1919,38 @@ export function filterCandidates(docs: RecommendationDoc[], bucketPlan: any): Re
 
       diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
       diagnostics.passedChecks.push("openlibrary_source_recovery_precheck");
+    }
+
+    if (isAdultKitsuOnly) {
+      const adultKitsuHasUsableShape =
+        diagnostics.flags.fictionPositive ||
+        diagnostics.flags.strongNarrative ||
+        lanePositiveSignalCount(diagnostics) > 0 ||
+        diagnostics.ratingsCount > 0 ||
+        diagnostics.hasDescription ||
+        diagnostics.hasRealLength;
+
+      if (adultKitsuHasUsableShape) {
+        const removed = new Set([
+          "insufficient_length_or_description",
+          "narrative_strength_required",
+          "low_authority_zero_signal",
+          "too_many_soft_failures",
+          "below_shape_floor",
+          "missing_or_low_quality_cover",
+          "missing_horror_alignment_hard",
+          "lane_mismatch_fantasy",
+          "lane_mismatch_thriller",
+          "lane_mismatch_romance",
+          "lane_mismatch_historical",
+          "lane_mismatch_speculative",
+        ]);
+        const before = diagnostics.rejectReasons.length;
+        diagnostics.rejectReasons = diagnostics.rejectReasons.filter((reason) => !removed.has(reason));
+        if (diagnostics.rejectReasons.length !== before) diagnostics.passedChecks.push("adult_kitsu_source_recovery_precheck");
+      } else {
+        diagnostics.passedChecks.push("adult_kitsu_source_recovery_shape_miss");
+      }
     }
 
     if (

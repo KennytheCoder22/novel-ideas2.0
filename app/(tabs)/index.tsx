@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -1479,29 +1480,49 @@ export default function HomeScreen() {
   
 const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
 
-  // Desktop web: whenever the Home screen regains focus, re-hydrate from the
-  // Desktop Admin draft if it exists. This is what makes toggles + library name
-  // updates reflect on the main desktop screen after you press "Save Settings".
-  useFocusEffect(
-    useMemo(
-      () => () => {
-        const draft = tryLoadDesktopAdminDraft();
-        if (!draft) return;
+  const refreshConfigFromDesktopAdminDraft = useCallback(() => {
+    const draft = tryLoadDesktopAdminDraft();
+    if (!draft) return;
 
-        setConfig((prev: any) => {
-          try {
-            // Avoid re-render loops if nothing changed.
-            const a = JSON.stringify(prev);
-            const b = JSON.stringify(draft);
-            return a === b ? prev : draft;
-          } catch {
-            return draft;
-          }
-        });
-      },
-      []
-    )
-  );
+    setConfig((prev: any) => {
+      try {
+        // Avoid re-render loops if nothing changed.
+        const a = JSON.stringify(prev);
+        const b = JSON.stringify(draft);
+        return a === b ? prev : draft;
+      } catch {
+        return draft;
+      }
+    });
+  }, []);
+
+  // Desktop web: keep the main swipe screen aligned with the standalone
+  // /app_admin-web draft. Browser tabs do not remount when the admin tab changes
+  // localStorage, so refresh on navigation focus, browser focus/visibility, and
+  // cross-tab storage events before the next recommendation run reads sources.
+  useFocusEffect(refreshConfigFromDesktopAdminDraft);
+
+  useEffect(() => {
+    if (Platform.OS !== "web" || typeof window === "undefined") return;
+    const onFocus = () => refreshConfigFromDesktopAdminDraft();
+    const onVisibilityChange = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        refreshConfigFromDesktopAdminDraft();
+      }
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === "novelideas_admin_config") refreshConfigFromDesktopAdminDraft();
+    };
+
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("storage", onStorage);
+    document?.addEventListener?.("visibilitychange", onVisibilityChange);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
+      document?.removeEventListener?.("visibilitychange", onVisibilityChange);
+    };
+  }, [refreshConfigFromDesktopAdminDraft]);
 
 
   if (!adminUnlocked && showAdminPinPrompt) {
