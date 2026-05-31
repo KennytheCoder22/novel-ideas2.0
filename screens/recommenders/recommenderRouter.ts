@@ -2925,6 +2925,50 @@ export async function getRecommendations(
   const googleBooksRetryQueryMapping: Array<{ primaryQuery: string; retryQuery: string; validated: boolean }> = [];
   const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const openLibrarySourceFetchDiagnostics: Array<{ source: string; query: string; exactQuerySent: string; requestUrl: string; httpStatus: number; responseBodyPrefix: string; rawApiItemCount: number; parsedItemCount: number; zeroParsedReason: string; error?: string }> = [];
+  const appendMissingSourceFetchDiagnostic = (
+    source: "googleBooks" | "openLibrary",
+    query: string,
+    fetchRow?: { query?: string; url?: string; status?: string; timedOut?: boolean; rawCount?: number; error?: string | null; bodyPrefix?: string | null },
+    reason = "router_fetch_attempt_adapter_diagnostic_missing"
+  ) => {
+    const diagnostics = source === "googleBooks" ? googleBooksSourceFetchDiagnostics : openLibrarySourceFetchDiagnostics;
+    const exactQuerySent = String(fetchRow?.query || query || "").trim();
+    if (!exactQuerySent) return;
+    const alreadyRecorded = diagnostics.some((row) => String(row?.query || row?.exactQuerySent || "").trim() === exactQuerySent);
+    if (alreadyRecorded) return;
+    const rawCount = Math.max(0, Number(fetchRow?.rawCount || 0));
+    const statusText = String(fetchRow?.status || "");
+    const errorText = String(fetchRow?.error || "");
+    const requestUrl = String(fetchRow?.url || (source === "googleBooks"
+      ? `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(exactQuerySent)}`
+      : `/api/openlibrary?q=${encodeURIComponent(exactQuerySent)}`));
+    diagnostics.push({
+      source,
+      query: exactQuerySent,
+      exactQuerySent,
+      requestUrl,
+      httpStatus: statusText === "ok" ? 200 : 0,
+      responseBodyPrefix: String(fetchRow?.bodyPrefix || errorText || (rawCount === 0 ? `[${source}_empty_result_without_adapter_diagnostic]` : `[${source}_adapter_diagnostic_missing]`)).slice(0, 240),
+      rawApiItemCount: rawCount,
+      parsedItemCount: rawCount,
+      zeroParsedReason: errorText
+        ? "fetch_error"
+        : rawCount === 0
+          ? reason
+          : "adapter_diagnostic_missing_after_nonzero_router_result",
+      ...(errorText ? { error: errorText } : {}),
+    });
+  };
+  const ensureSourceFetchDiagnosticsCoverage = () => {
+    for (const query of Array.from(googleBooksQueriesActuallyFetched)) {
+      const row = googleBooksFetchResultsByQuery.find((entry) => String(entry?.query || "").trim() === String(query || "").trim());
+      appendMissingSourceFetchDiagnostic("googleBooks", String(query || ""), row, "router_query_fetched_but_no_adapter_diagnostic");
+    }
+    for (const query of Array.from(openLibraryQueriesActuallyFetched)) {
+      const row = openLibraryFetchResultsByQuery.find((entry) => String(entry?.query || "").trim() === String(query || "").trim());
+      appendMissingSourceFetchDiagnostic("openLibrary", String(query || ""), row, "router_query_fetched_but_no_adapter_diagnostic");
+    }
+  };
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
   const collapseRepeatedQueryPhrases = (value: string) => {
@@ -4546,7 +4590,7 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
-        googleBooksFetchResultsByQuery.push({
+        const googleBooksFetchResultRow = {
           query: googleLaneQuery,
           url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(googleLaneQuery)}`,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
@@ -4556,10 +4600,12 @@ export async function getRecommendations(
           bodyPrefix: results[index]?.status === "rejected"
             ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
             : (Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle)) === 0 ? "[empty_google_books_result]" : null),
-        });
+        };
+        googleBooksFetchResultsByQuery.push(googleBooksFetchResultRow);
         if (Array.isArray((laneGoogle as any)?.debugSourceFetchDiagnostics)) {
           googleBooksSourceFetchDiagnostics.push(...(laneGoogle as any).debugSourceFetchDiagnostics);
         }
+        appendMissingSourceFetchDiagnostic("googleBooks", googleLaneQuery, googleBooksFetchResultRow);
         if (results[index]?.status === "rejected" && isGoogleQuotaError((results[index] as PromiseRejectedResult).reason)) {
           googleQuotaExhausted = true;
           sourceSkippedReason.push("googleBooks_quota_exhausted_auto_disabled");
@@ -4584,7 +4630,7 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
-        openLibraryFetchResultsByQuery.push({
+        const openLibraryFetchResultRow = {
           query: openLibraryLaneQuery,
           url: `/api/openlibrary?q=${encodeURIComponent(openLibraryLaneQuery)}`,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
@@ -4594,10 +4640,12 @@ export async function getRecommendations(
           bodyPrefix: results[index]?.status === "rejected"
             ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
             : (Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)) === 0 ? "[empty_open_library_result]" : null),
-        });
+        };
+        openLibraryFetchResultsByQuery.push(openLibraryFetchResultRow);
         if (Array.isArray((laneOpenLibrary as any)?.debugSourceFetchDiagnostics)) {
           openLibrarySourceFetchDiagnostics.push(...(laneOpenLibrary as any).debugSourceFetchDiagnostics);
         }
+        appendMissingSourceFetchDiagnostic("openLibrary", openLibraryLaneQuery, openLibraryFetchResultRow);
         index += 1;
       }
 
@@ -5091,6 +5139,7 @@ export async function getRecommendations(
       Number(aggregatedRawFetched.openLibrary || 0) === 0 &&
       ((includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0) || !includeKitsu) &&
       (comicVineUnavailableBypass || !includeComicVine);
+    ensureSourceFetchDiagnosticsCoverage();
     if (!allRealSourcesStarvedAfterRecovery) {
       sourceSkippedReason.push("source_health_guard_recovered_by_kitsu_or_other_source");
     } else {
@@ -13116,6 +13165,7 @@ const normalizedCandidatesRaw = [
     acc[fam] = Number(acc[fam] || 0) + 1;
     return acc;
   }, {});
+  ensureSourceFetchDiagnosticsCoverage();
   const googleBooksQueriesActuallyFetchedArray = Array.from(googleBooksQueriesActuallyFetched);
   const openLibraryQueriesActuallyFetchedArray = Array.from(openLibraryQueriesActuallyFetched);
   const kitsuQueriesActuallyFetchedArray = Array.from(kitsuQueriesActuallyFetched);
@@ -13189,9 +13239,11 @@ const normalizedCandidatesRaw = [
     kitsuResults: kitsuFetchResultsByQuery.length,
   };
   const fetchDiagnosticsCoverageAssertion = {
-    googleBooks: !sourceFetchAttemptedBySource.googleBooks || googleBooksFetchResultsByQuery.length > 0,
-    openLibrary: !sourceFetchAttemptedBySource.openLibrary || openLibraryFetchResultsByQuery.length > 0,
+    googleBooks: !sourceFetchAttemptedBySource.googleBooks || (googleBooksFetchResultsByQuery.length > 0 && (googleBooksQueriesActuallyFetchedArray.length === 0 || googleBooksSourceFetchDiagnostics.length > 0)),
+    openLibrary: !sourceFetchAttemptedBySource.openLibrary || (openLibraryFetchResultsByQuery.length > 0 && (openLibraryQueriesActuallyFetchedArray.length === 0 || openLibrarySourceFetchDiagnostics.length > 0)),
     kitsu: !sourceFetchAttemptedBySource.kitsu || kitsuFetchResultsByQuery.length > 0,
+    googleBooksQueriesFetchedHaveDiagnostics: googleBooksQueriesActuallyFetchedArray.length === 0 || googleBooksSourceFetchDiagnostics.length > 0,
+    openLibraryQueriesFetchedHaveDiagnostics: openLibraryQueriesActuallyFetchedArray.length === 0 || openLibrarySourceFetchDiagnostics.length > 0,
   };
   const selectedKitsuQuery = kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) || "";
   const canonicalizeKitsuPolicyQuery = (q: string) => String(q || "")
