@@ -2365,6 +2365,8 @@ function handleLeft() {
       `adultKitsuMissingSourceIdCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuMissingSourceIdCount") ?? "(missing)")}`,
       `adultKitsuMissingSourceIdTitles: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuMissingSourceIdTitles") || [])}`,
       `adultKitsuMissingSourceIdStage: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuMissingSourceIdStage") || {})}`,
+      `adultKitsuOnlyQueryComparisonQueries: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyQueryComparisonQueries") || [])}`,
+      `adultKitsuOnlyQueryQualityComparison: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyQueryQualityComparison") || [])}`,
       `adultKitsuOnlyFallbackQueriesPlanned: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackQueriesPlanned") || [])}`,
       `adultKitsuOnlyFallbackQueriesAttempted: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackQueriesAttempted") || [])}`,
       `adultKitsuOnlyFallbackStoppedReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackStoppedReason") ?? "(missing)")}`,
