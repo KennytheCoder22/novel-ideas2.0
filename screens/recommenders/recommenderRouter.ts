@@ -3093,6 +3093,9 @@ export async function getRecommendations(
   let adultKitsuOnlyRawApiItemCount = 0;
   let adultKitsuOnlyParsedItemCount = 0;
   let adultKitsuOnlyZeroRawReason = adultKitsuOnlyModeDetected ? "not_attempted" : "not_adult_kitsu_only";
+  let adultKitsuOnlyFallbackQueriesPlanned: string[] = [];
+  let adultKitsuOnlyFallbackQueriesAttempted: string[] = [];
+  let adultKitsuOnlyFallbackStoppedReason = adultKitsuOnlyModeDetected ? "not_attempted" : "not_adult_kitsu_only";
   let kitsuAdapterEligibilityPath = "";
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
@@ -4626,6 +4629,10 @@ export async function getRecommendations(
         const adultKitsuOnlyAdapterQueries = adultKitsuOnlyModeDetected
           ? Array.from(new Set([kitsuLaneQuery, "adventure", "drama", "fantasy", "mystery"].map((q) => String(q || "").trim()).filter(Boolean)))
           : [kitsuLaneQuery];
+        if (adultKitsuOnlyModeDetected) {
+          adultKitsuOnlyFallbackQueriesPlanned = adultKitsuOnlyAdapterQueries.slice();
+          adultKitsuOnlyFallbackStoppedReason = "adapter_dispatch_started";
+        }
         laneInput = {
           ...laneInput,
           bucketPlan: { ...(laneInput.bucketPlan as any), queries: adultKitsuOnlyAdapterQueries, preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
@@ -4765,6 +4772,15 @@ export async function getRecommendations(
         const kitsuRawApiItemCount = Number((laneKitsu as any)?.debugKitsuRawApiItemCount ?? kitsuRawCount);
         const kitsuAdapterParsedItemCount = Number((laneKitsu as any)?.debugKitsuParsedItemCount ?? kitsuParsedDataLength);
         const kitsuZeroRawReason = String((laneKitsu as any)?.debugKitsuZeroRawReason || (kitsuRawApiItemCount === 0 ? "zero_raw_api_items" : "")).trim();
+        const kitsuFallbackQueriesPlannedFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFallbackQueriesPlanned)
+          ? (laneKitsu as any).debugKitsuFallbackQueriesPlanned.map((q: any) => String(q || "").trim()).filter(Boolean)
+          : [];
+        const kitsuFallbackQueriesAttemptedFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFallbackQueriesAttempted)
+          ? (laneKitsu as any).debugKitsuFallbackQueriesAttempted.map((q: any) => String(q || "").trim()).filter(Boolean)
+          : (Array.isArray((laneKitsu as any)?.debugKitsuFetchAttempts)
+            ? (laneKitsu as any).debugKitsuFetchAttempts.map((attempt: any) => String(attempt?.query || "").trim()).filter(Boolean)
+            : []);
+        const kitsuFallbackStoppedReasonFromAdapter = String((laneKitsu as any)?.debugKitsuFallbackStoppedReason || "").trim();
         if (!kitsuAdapterEligibilityPath) kitsuAdapterEligibilityPath = String((laneKitsu as any)?.debugKitsuEligibilityMode || "").trim();
         if (adultKitsuOnlyModeDetected) {
           adultKitsuOnlyRouterDispatchBlockedReason = "none";
@@ -4773,6 +4789,12 @@ export async function getRecommendations(
           adultKitsuOnlyRawApiItemCount = Number.isFinite(kitsuRawApiItemCount) ? kitsuRawApiItemCount : 0;
           adultKitsuOnlyParsedItemCount = Number.isFinite(kitsuAdapterParsedItemCount) ? kitsuAdapterParsedItemCount : 0;
           adultKitsuOnlyZeroRawReason = kitsuZeroRawReason || (adultKitsuOnlyRawApiItemCount === 0 ? "zero_raw_api_items" : "");
+          adultKitsuOnlyFallbackQueriesPlanned = kitsuFallbackQueriesPlannedFromAdapter.length
+            ? kitsuFallbackQueriesPlannedFromAdapter
+            : adultKitsuOnlyFallbackQueriesPlanned;
+          adultKitsuOnlyFallbackQueriesAttempted = kitsuFallbackQueriesAttemptedFromAdapter;
+          adultKitsuOnlyFallbackStoppedReason = kitsuFallbackStoppedReasonFromAdapter
+            || (adultKitsuOnlyFallbackQueriesAttempted.length >= adultKitsuOnlyFallbackQueriesPlanned.length ? "adapter_attempted_all_planned_queries" : "adapter_attempts_missing_from_diagnostics");
         }
         kitsuFetchResultsByQuery.push({
           query: kitsuLaneQuery,
@@ -5278,6 +5300,9 @@ export async function getRecommendations(
       adultKitsuOnlyRawApiItemCount,
       adultKitsuOnlyParsedItemCount,
       adultKitsuOnlyZeroRawReason,
+      adultKitsuOnlyFallbackQueriesPlanned,
+      adultKitsuOnlyFallbackQueriesAttempted,
+      adultKitsuOnlyFallbackStoppedReason,
       kitsuAdapterEligibilityPath,
       fetchLoopCounters: {
         googleBooksRouterFetchCount,
@@ -13989,6 +14014,9 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyRawApiItemCount,
     adultKitsuOnlyParsedItemCount,
     adultKitsuOnlyZeroRawReason,
+    adultKitsuOnlyFallbackQueriesPlanned,
+    adultKitsuOnlyFallbackQueriesAttempted,
+    adultKitsuOnlyFallbackStoppedReason,
     kitsuAdapterEligibilityPath,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
