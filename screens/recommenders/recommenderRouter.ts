@@ -11999,30 +11999,41 @@ const normalizedCandidatesRaw = [
     const popularityRank = Number(doc?.kitsuPopularityRank || 999999);
     const facetMatches = Number(doc?.kitsuFacetMatches || 0);
     const positiveFitScore = Number(row?.positiveFitScore || 0);
+    const semanticEvidenceCount = Number(row?.semanticEvidenceCount || 0);
+    const weightedTasteScore = Number(row?.weightedTasteScore || 0);
+    const laneAligned = Boolean(row?.laneAligned);
     const dislikePenaltyScore = Number(row?.dislikePenaltyScore || 0);
+    const hasSubstantiveEvidence = semanticEvidenceCount > 0 || weightedTasteScore > 0 || laneAligned || positiveFitScore >= 3;
+    const hasPopularitySupport = ratingCount >= 1000 || popularityRank <= 1000;
     const acceptable =
       dislikePenaltyScore === 0 &&
       positiveFitScore >= 0 &&
-      (facetMatches > 0 || positiveFitScore >= 3 || ratingCount >= 1000 || popularityRank <= 1000);
+      (hasSubstantiveEvidence || (facetMatches > 0 && hasPopularitySupport));
     const reason = acceptable
-      ? facetMatches > 0
-        ? "facet_match"
+      ? semanticEvidenceCount > 0
+        ? "semantic_evidence"
+        : weightedTasteScore > 0
+        ? "weighted_taste"
+        : laneAligned
+        ? "lane_aligned"
         : positiveFitScore >= 3
         ? "positive_fit"
-        : ratingCount >= 1000
-        ? "rating_count"
-        : "popularity_rank"
+        : facetMatches > 0 && ratingCount >= 1000
+        ? "facet_match_with_rating_count"
+        : "facet_match_with_popularity_rank"
       : dislikePenaltyScore > 0
       ? "dislike_penalty"
       : positiveFitScore < 0
       ? "negative_positive_fit"
+      : facetMatches > 0
+      ? "query_term_only_without_quality_support"
       : "no_adult_quality_signal";
-    return { title, sourceId, gateReason, acceptable, reason, facetMatches, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore };
+    return { title, sourceId, gateReason, acceptable, reason, facetMatches, semanticEvidenceCount, weightedTasteScore, laneAligned, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore };
   };
-  const gateAdultKitsuOnlyWeakRescueRows = (rows: any[], gateReason: string) => {
+  const gateAdultKitsuOnlyWeakRescueRows = (rows: any[], gateReason: string, options?: { force?: boolean }) => {
     if (!adultKitsuOnlyModeDetected) return rows;
     const strongRows = rows.filter((row: any) => isKitsuRescueStrongRow(row));
-    if (strongRows.length > 0) return rows;
+    if (strongRows.length > 0 && !options?.force) return rows;
     adultKitsuOnlyWeakRescueGateApplied = true;
     adultKitsuOnlyWeakRescueGateReason = gateReason;
     adultKitsuOnlyWeakRescueCandidateCount = Math.max(adultKitsuOnlyWeakRescueCandidateCount, rows.length);
@@ -13281,7 +13292,7 @@ const normalizedCandidatesRaw = [
       const doc = item?.doc || item;
       return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
     });
-    const gatedRows = gateAdultKitsuOnlyWeakRescueRows(rows, path);
+    const gatedRows = gateAdultKitsuOnlyWeakRescueRows(rows, path, { force: true });
     if (gatedRows.length === rows.length) return;
     const previousBuiltFrom = String(returnedItemsBuiltFrom || "none");
     finalOutputItems = gatedRows.map((row: any) => row.item || { kind: "open_library", doc: row.doc }).filter(Boolean);
