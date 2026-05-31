@@ -451,6 +451,19 @@ function retryDelayMs(attempt: number, status?: number): number {
   return base * Math.pow(2, attempt) + jitter;
 }
 
+type SourceFetchDiagnostic = {
+  source: "googleBooks";
+  query: string;
+  exactQuerySent: string;
+  requestUrl: string;
+  httpStatus: number;
+  responseBodyPrefix: string;
+  rawApiItemCount: number;
+  parsedItemCount: number;
+  zeroParsedReason: string;
+  error?: string;
+};
+
 async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 4): Promise<any> {
   let attempt = 0;
   while (attempt <= retries) {
@@ -479,6 +492,44 @@ async function fetchJsonWithRetry(url: string, timeoutMs: number, retries = 4): 
     } catch (err) {
       if (attempt === retries) throw err;
       await sleep(retryDelayMs(attempt));
+      attempt += 1;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw new Error("Google Books retry loop exhausted");
+}
+
+async function fetchJsonWithRetryDetailed(url: string, timeoutMs: number, retries = 4): Promise<{ json: any; status: number; bodyPrefix: string }> {
+  let attempt = 0;
+  while (attempt <= retries) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const resp = await fetch(url, { signal: controller.signal, headers: { Accept: "application/json" } });
+      const text = await resp.text();
+      const bodyPrefix = text.slice(0, 240);
+      if (resp.status === 429 || resp.status === 503) {
+        if (attempt === retries) {
+          const err: any = new Error(text ? `Google Books ${resp.status} ${text}` : `Google Books ${resp.status}`);
+          err.httpStatus = resp.status;
+          err.bodyPrefix = bodyPrefix;
+          throw err;
+        }
+        await sleep(retryDelayMs(attempt, resp.status));
+        attempt += 1;
+        continue;
+      }
+      if (!resp.ok) {
+        const err: any = new Error(text ? `Google Books error: ${resp.status} ${text}` : `Google Books error: ${resp.status}`);
+        err.httpStatus = resp.status;
+        err.bodyPrefix = bodyPrefix;
+        throw err;
+      }
+      return { json: text ? JSON.parse(text) : {}, status: resp.status, bodyPrefix };
+    } catch (err) {
+      if (attempt === retries) throw err;
+      await sleep(retryDelayMs(attempt, (err as any)?.httpStatus));
       attempt += 1;
     } finally {
       clearTimeout(timer);
@@ -638,17 +689,47 @@ function inferQueryFamilyFromText(query: string): "thriller" | "mystery" | "horr
   return "general";
 }
 
-async function googleBooksSearch(query: string, limit: number, timeoutMs: number): Promise<any[]> {
+async function googleBooksSearch(query: string, limit: number, timeoutMs: number, diagnostics?: SourceFetchDiagnostic[]): Promise<any[]> {
   const q = toGoogleBooksQuery(query);
-  if (!q) return [];
+  if (!q) {
+    diagnostics?.push({
+      source: "googleBooks",
+      query,
+      exactQuerySent: "",
+      requestUrl: "",
+      httpStatus: 0,
+      responseBodyPrefix: "",
+      rawApiItemCount: 0,
+      parsedItemCount: 0,
+      zeroParsedReason: "empty_query_after_normalization",
+    });
+    return [];
+  }
   const maxResults = Math.max(1, Math.min(10, Number(limit) || 10));
   const apiKey = getGoogleBooksApiKey();
   const params = new URLSearchParams({ q, maxResults: String(maxResults), orderBy: "relevance", printType: "books", projection: "full", langRestrict: "en" });
   if (apiKey) params.set("key", apiKey);
   const url = `https://www.googleapis.com/books/v1/volumes?${params.toString()}`;
-  const json = await fetchJsonWithRetry(url, timeoutMs, 2);
-  const items = Array.isArray(json?.items) ? json.items : [];
-  return items.map((item: any) => {
+  let fetched: { json: any; status: number; bodyPrefix: string };
+  try {
+    fetched = await fetchJsonWithRetryDetailed(url, timeoutMs, 2);
+  } catch (err: any) {
+    diagnostics?.push({
+      source: "googleBooks",
+      query,
+      exactQuerySent: q,
+      requestUrl: url,
+      httpStatus: Number(err?.httpStatus || 0),
+      responseBodyPrefix: String(err?.bodyPrefix || err?.message || err || "").slice(0, 240),
+      rawApiItemCount: 0,
+      parsedItemCount: 0,
+      zeroParsedReason: "fetch_error",
+      error: String(err?.message || err || "fetch_error"),
+    });
+    throw err;
+  }
+  const items = Array.isArray(fetched.json?.items) ? fetched.json.items : [];
+  const parsed = items.map((item: any) => {
     const volumeInfo = item?.volumeInfo ?? {};
     const accessInfo = item?.accessInfo ?? {};
     const saleInfo = item?.saleInfo ?? {};
@@ -696,6 +777,18 @@ async function googleBooksSearch(query: string, limit: number, timeoutMs: number
       volumeInfo,
     };
   }).filter((doc: any) => doc && doc.title);
+  diagnostics?.push({
+    source: "googleBooks",
+    query,
+    exactQuerySent: q,
+    requestUrl: url,
+    httpStatus: fetched.status,
+    responseBodyPrefix: fetched.bodyPrefix,
+    rawApiItemCount: items.length,
+    parsedItemCount: parsed.length,
+    zeroParsedReason: parsed.length > 0 ? "none" : (items.length === 0 ? "api_items_empty" : "parsed_items_missing_title"),
+  });
+  return parsed;
 }
 
 export async function getGoogleBooksRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
@@ -717,6 +810,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
   const minCandidateFloor = Math.max(10, Math.min(fetchLimit, Number((input as any)?.minCandidateFloor ?? 0) || 0));
   const collectedDocsRaw: any[] = [];
   const rawPoolRows: any[] = [];
+  const sourceFetchDiagnostics: SourceFetchDiagnostic[] = [];
   const seenKeys = new Set<string>();
   let primaryDocsRaw: any[] = [];
   let totalRawFetched = 0;
@@ -733,7 +827,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
       let rawDocs: any[] = [];
 
       try {
-        rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs);
+        rawDocs = await googleBooksSearch(engineQuery, fetchLimit, timeoutMs, sourceFetchDiagnostics);
       } catch (err: any) {
         // Retry with a simplified payload before declaring source failure.
         const simplifiedQuery = normalizeStoredQueryText(engineQuery)
@@ -743,7 +837,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
           .trim();
         if (simplifiedQuery && simplifiedQuery !== normalizeStoredQueryText(engineQuery)) {
           try {
-            rawDocs = await googleBooksSearch(simplifiedQuery, fetchLimit, timeoutMs);
+            rawDocs = await googleBooksSearch(simplifiedQuery, fetchLimit, timeoutMs, sourceFetchDiagnostics);
           } catch {
             rawDocs = [];
           }
@@ -835,7 +929,7 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     for (const authorityQuery of buildAuthorityBackfillQueries(primaryFamily).slice(0, 3)) {
       let fallbackDocs: any[] = [];
       try {
-        fallbackDocs = await googleBooksSearch(authorityQuery, fetchLimit, timeoutMs);
+        fallbackDocs = await googleBooksSearch(authorityQuery, fetchLimit, timeoutMs, sourceFetchDiagnostics);
       } catch {
         fallbackDocs = [];
       }
@@ -922,7 +1016,8 @@ export async function getGoogleBooksRecommendations(input: RecommenderInput): Pr
     items: docs.map((doc) => ({ kind: "open_library", doc })),
     debugRawFetchedCount: totalRawFetched,
     debugRawPool: rawPoolRows,
-  };
+    debugSourceFetchDiagnostics: sourceFetchDiagnostics,
+  } as any;
 }
 
 // PATCH APPLIED: revert to working baseline and add only lightweight query normalization + specific noise suppressors

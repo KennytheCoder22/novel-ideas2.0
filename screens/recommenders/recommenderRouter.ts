@@ -27,8 +27,8 @@ import { applyAdultCanonicalRungOverrides, adultExpansionQueries } from "./adult
 import { applyTeenCanonicalRungOverrides, inferTeenLaneFromFacets, isTeenDeckKey, teenExpansionQueries } from "./teenRouter";
 
 export type EngineOverride = EngineId | "auto";
-const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-17c4615";
-const ROUTER_BUILD_TIMESTAMP = "2026-05-26T00:00:00.000Z";
+const ROUTER_INSTRUMENTATION_VERSION = "router-heartbeat-v2-adult-kitsu-fallback-public-v1";
+const ROUTER_BUILD_TIMESTAMP = "2026-05-31T00:00:00.000Z";
 
 if (typeof getComicVineGraphicNovelRecommendations !== "function") {
   throw new Error("COMICVINE_RECOMMENDER_IMPORT_INVALID: getComicVineGraphicNovelRecommendations must be a function.");
@@ -1003,10 +1003,17 @@ function extractDocs(
     ? (result as any).items
         .map((item: any) => {
           if (!item?.doc) return null;
-          return {
-            ...item.doc,
-            source: item.doc?.source || fallbackSource,
-          };
+          const doc = { ...item.doc, source: item.doc?.source || fallbackSource } as any;
+          if (fallbackSource === "kitsu" || String(doc?.source || "").toLowerCase().includes("kitsu")) {
+            const rawId = String(doc?.sourceId || doc?.canonicalId || doc?.key || doc?.id || doc?.rawDoc?.id || "").trim();
+            const fallbackId = rawId || (String(doc?.title || "").trim() ? `title:${String(doc.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+            if (fallbackId) {
+              doc.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+              doc.canonicalId = doc.canonicalId || doc.sourceId;
+              doc.key = doc.key || doc.sourceId;
+            }
+          }
+          return doc;
         })
         .filter(Boolean)
     : [];
@@ -1015,10 +1022,19 @@ function extractDocs(
     ? (result as any).recommendations
         .map((doc: any) =>
           doc
-            ? {
-                ...doc,
-                source: doc?.source || fallbackSource,
-              }
+            ? (() => {
+                const out = { ...doc, source: doc?.source || fallbackSource } as any;
+                if (fallbackSource === "kitsu" || String(out?.source || "").toLowerCase().includes("kitsu")) {
+                  const rawId = String(out?.sourceId || out?.canonicalId || out?.key || out?.id || out?.rawDoc?.id || "").trim();
+                  const fallbackId = rawId || (String(out?.title || "").trim() ? `title:${String(out.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+                  if (fallbackId) {
+                    out.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+                    out.canonicalId = out.canonicalId || out.sourceId;
+                    out.key = out.key || out.sourceId;
+                  }
+                }
+                return out;
+              })()
             : null
         )
         .filter(Boolean)
@@ -1028,10 +1044,19 @@ function extractDocs(
     ? (result as any).docs
         .map((doc: any) =>
           doc
-            ? {
-                ...doc,
-                source: doc?.source || fallbackSource,
-              }
+            ? (() => {
+                const out = { ...doc, source: doc?.source || fallbackSource } as any;
+                if (fallbackSource === "kitsu" || String(out?.source || "").toLowerCase().includes("kitsu")) {
+                  const rawId = String(out?.sourceId || out?.canonicalId || out?.key || out?.id || out?.rawDoc?.id || "").trim();
+                  const fallbackId = rawId || (String(out?.title || "").trim() ? `title:${String(out.title).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")}` : "");
+                  if (fallbackId) {
+                    out.sourceId = fallbackId.startsWith("kitsu:") ? fallbackId : `kitsu:${fallbackId}`;
+                    out.canonicalId = out.canonicalId || out.sourceId;
+                    out.key = out.key || out.sourceId;
+                  }
+                }
+                return out;
+              })()
             : null
         )
         .filter(Boolean)
@@ -2813,6 +2838,11 @@ export async function getRecommendations(
     const current = normalizeKitsuRecoveryQueryForSelection(selected);
     const haystack = normalizeKitsuRecoveryQueryForSelection([selected, ...sourceQueries].join(" "));
     const priorityMatchers: Array<{ query: string; re: RegExp }> = [
+      { query: "batman", re: /\bbatman\b/ },
+      { query: "spider-man", re: /\bspider\s+man\b|\bspider-man\b/ },
+      { query: "superhero", re: /\bsuperhero(?:es)?\b|\bsuper\s+hero(?:es)?\b|\bmarvel\b|\bdc comics?\b/ },
+      { query: "comic", re: /\bcomics?\b/ },
+      { query: "graphic novel", re: /\bgraphic\s+novel\b/ },
       { query: "mystery", re: /\bmystery\b/ },
       { query: "fantasy", re: /\bfantasy\b/ },
       { query: "horror", re: /\bhorror\b/ },
@@ -2890,9 +2920,55 @@ export async function getRecommendations(
   const openLibraryQueriesActuallyFetched = new Set<string>();
   const kitsuQueriesActuallyFetched = new Set<string>();
   const googleBooksFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const googleBooksSourceFetchDiagnostics: Array<{ source: string; query: string; exactQuerySent: string; requestUrl: string; httpStatus: number; responseBodyPrefix: string; rawApiItemCount: number; parsedItemCount: number; zeroParsedReason: string; error?: string }> = [];
   const googleBooksTimeoutStageByQuery: Array<{ query: string; stage: string; fallbackQuery?: string; reason?: string }> = [];
   const googleBooksRetryQueryMapping: Array<{ primaryQuery: string; retryQuery: string; validated: boolean }> = [];
   const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const openLibrarySourceFetchDiagnostics: Array<{ source: string; query: string; exactQuerySent: string; requestUrl: string; httpStatus: number; responseBodyPrefix: string; rawApiItemCount: number; parsedItemCount: number; zeroParsedReason: string; error?: string }> = [];
+  const appendMissingSourceFetchDiagnostic = (
+    source: "googleBooks" | "openLibrary",
+    query: string,
+    fetchRow?: { query?: string; url?: string; status?: string; timedOut?: boolean; rawCount?: number; error?: string | null; bodyPrefix?: string | null },
+    reason = "router_fetch_attempt_adapter_diagnostic_missing"
+  ) => {
+    const diagnostics = source === "googleBooks" ? googleBooksSourceFetchDiagnostics : openLibrarySourceFetchDiagnostics;
+    const exactQuerySent = String(fetchRow?.query || query || "").trim();
+    if (!exactQuerySent) return;
+    const alreadyRecorded = diagnostics.some((row) => String(row?.query || row?.exactQuerySent || "").trim() === exactQuerySent);
+    if (alreadyRecorded) return;
+    const rawCount = Math.max(0, Number(fetchRow?.rawCount || 0));
+    const statusText = String(fetchRow?.status || "");
+    const errorText = String(fetchRow?.error || "");
+    const requestUrl = String(fetchRow?.url || (source === "googleBooks"
+      ? `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(exactQuerySent)}`
+      : `/api/openlibrary?q=${encodeURIComponent(exactQuerySent)}`));
+    diagnostics.push({
+      source,
+      query: exactQuerySent,
+      exactQuerySent,
+      requestUrl,
+      httpStatus: statusText === "ok" ? 200 : 0,
+      responseBodyPrefix: String(fetchRow?.bodyPrefix || errorText || (rawCount === 0 ? `[${source}_empty_result_without_adapter_diagnostic]` : `[${source}_adapter_diagnostic_missing]`)).slice(0, 240),
+      rawApiItemCount: rawCount,
+      parsedItemCount: rawCount,
+      zeroParsedReason: errorText
+        ? "fetch_error"
+        : rawCount === 0
+          ? reason
+          : "adapter_diagnostic_missing_after_nonzero_router_result",
+      ...(errorText ? { error: errorText } : {}),
+    });
+  };
+  const ensureSourceFetchDiagnosticsCoverage = () => {
+    for (const query of Array.from(googleBooksQueriesActuallyFetched)) {
+      const row = googleBooksFetchResultsByQuery.find((entry) => String(entry?.query || "").trim() === String(query || "").trim());
+      appendMissingSourceFetchDiagnostic("googleBooks", String(query || ""), row, "router_query_fetched_but_no_adapter_diagnostic");
+    }
+    for (const query of Array.from(openLibraryQueriesActuallyFetched)) {
+      const row = openLibraryFetchResultsByQuery.find((entry) => String(entry?.query || "").trim() === String(query || "").trim());
+      appendMissingSourceFetchDiagnostic("openLibrary", String(query || ""), row, "router_query_fetched_but_no_adapter_diagnostic");
+    }
+  };
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
   const collapseRepeatedQueryPhrases = (value: string) => {
@@ -3000,6 +3076,47 @@ export async function getRecommendations(
   const comicVineDispatchBypassGuard = true;
   const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
   const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
+  const adultKitsuOnlyModeDetected = routedInput.deckKey === "adult" &&
+    includeKitsu &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeComicVine &&
+    !sourceEnabled.nyt;
+  let adultKitsuOnlyRouterDispatchEligible = false;
+  let adultKitsuOnlyRouterDispatchBlockedReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlyQuerySelected = "";
+  let adultKitsuOnlyQueryFallbackReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  const adultKitsuOnlyQueryDroppedFormatTerms: string[] = [];
+  let adultKitsuOnlyFetchUrl = "";
+  let adultKitsuOnlyFetchShape = "";
+  let adultKitsuOnlyRawApiItemCount = 0;
+  let adultKitsuOnlyParsedItemCount = 0;
+  let adultKitsuOnlyZeroRawReason = adultKitsuOnlyModeDetected ? "not_attempted" : "not_adult_kitsu_only";
+  let adultKitsuOnlyFallbackQueriesPlanned: string[] = [];
+  let adultKitsuOnlyFallbackQueriesAttempted: string[] = [];
+  let adultKitsuOnlyFallbackStoppedReason = adultKitsuOnlyModeDetected ? "not_attempted" : "not_adult_kitsu_only";
+  let adultKitsuOnlyFallbackTimeline: any[] = [];
+  let adultKitsuOnlyPerQueryTimeoutMs = 0;
+  let adultKitsuOnlyRawApiItemTotal = 0;
+  let adultKitsuOnlyConvertedDocCount = 0;
+  let adultKitsuOnlyKeptDocCount = 0;
+  let adultKitsuOnlyFilteredReasonCounts: Record<string, number> = {};
+  let adultKitsuOnlyRawSampleTitles: string[] = [];
+  const adultKitsuOnlyFallbackLivePathVersion = "adult_kitsu_only_fallback_public_diagnostics_v1";
+  let adultKitsuOnlyFallbackRouterPlannedCount = 0;
+  let adultKitsuOnlyFallbackAdapterAttemptCount = 0;
+  let adultKitsuOnlyFallbackPublicFetchRowCount = 0;
+  let adultKitsuOnlyFallbackPublicQueriesExpanded = false;
+  let adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlyWeakRescueGateApplied = false;
+  let adultKitsuOnlyWeakRescueGateReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlyWeakRescueCandidateCount = 0;
+  let adultKitsuOnlyWeakRescueSuppressedCount = 0;
+  const adultKitsuOnlyWeakRescueDiagnostics: any[] = [];
+  let adultKitsuOnlyQueryComparisonQueries: string[] = [];
+  let adultKitsuOnlyQueryQualityComparisonRaw: any[] = [];
+  let kitsuAdapterEligibilityPath = "";
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
   if (routedInput.deckKey === "ms_hs" && sourceEnabled.comicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu) {
@@ -3156,6 +3273,13 @@ export async function getRecommendations(
   const buildComicVineFacetRungsCalled = includeComicVine;
   const comicVineFacetRungs = includeComicVine ? buildComicVineFacetRungs(routedInput.tagCounts) : [];
   const kitsuRungs = includeKitsu ? buildKitsuRungs(routedInput.tagCounts) : [];
+  if (adultKitsuOnlyModeDetected) {
+    adultKitsuOnlyRouterDispatchEligible = kitsuRungs.length > 0;
+    adultKitsuOnlyRouterDispatchBlockedReason = adultKitsuOnlyRouterDispatchEligible ? "none" : "no_kitsu_rungs_built";
+    if (kitsuRungs.length) {
+      rungs = [...kitsuRungs, ...rungs];
+    }
+  }
   if (comicVineFacetRungs.length) {
     rungs = [...comicVineFacetRungs, ...rungs];
   }
@@ -4221,6 +4345,65 @@ export async function getRecommendations(
         const genericOnly = mergedAnchors.length === 0;
         return { sanitized, dropped, genericOnly, usedAnchorFallback: genericOnly && anchors.length > 0, genericFallback };
       };
+      const selectAdultKitsuOnlyQuery = (
+        rawQuery: string,
+        fallbackTerms: string[],
+        sanitizedQuery: string,
+        sanitizedWasGenericOnly: boolean,
+      ): { query: string; fallbackReason: string; droppedFormatTerms: string[] } => {
+        const normalizedRaw = String(rawQuery || "")
+          .toLowerCase()
+          .replace(/[_/]+/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
+        const droppedFormatTerms: string[] = [];
+        const rememberDroppedFormatTerm = (term: string) => {
+          if (term && !droppedFormatTerms.includes(term)) droppedFormatTerms.push(term);
+        };
+        if (/\bgraphic\s+novels?\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("graphic novel");
+        if (/\bcomics?\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("comic");
+        if (/\bmanga\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("manga");
+        if (/\banime\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("anime");
+        if (/\bstory[-\s]?rich\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("story rich");
+        if (/\bcharacter[-\s]?focused\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("character-focused");
+        const genreCandidates: Array<{ query: string; test: RegExp }> = [
+          { query: "horror", test: /\b(horror|supernatural\s+horror|psychological\s+horror|occult)\b/i },
+          { query: "mystery", test: /\b(mystery|detective|investigator|crime|whodunnit)\b/i },
+          { query: "dystopian", test: /\b(dystopian|dystopia|authoritarian|rebellion|post\s+apocalyptic|apocalypse)\b/i },
+          { query: "science fiction", test: /\b(science\s+fiction|sci[\s-]?fi|futuristic|future|cyberpunk|space)\b/i },
+          { query: "fantasy", test: /\b(fantasy|magic|magical|supernatural|dragon|quest)\b/i },
+          { query: "romance", test: /\b(romance|romantic|love\s+story)\b/i },
+          { query: "adventure", test: /\b(adventure|action|survival|historical)\b/i },
+          { query: "thriller", test: /\b(thriller|suspense)\b/i },
+        ];
+        const rawGenreHit = genreCandidates.find((candidate) => candidate.test.test(normalizedRaw));
+        const fallbackHaystacks = fallbackTerms.map((term) => String(term || "").toLowerCase()).filter(Boolean);
+        const fallbackGenreHit = rawGenreHit || genreCandidates.find((candidate) => fallbackHaystacks.some((haystack) => candidate.test.test(haystack)));
+        if (fallbackGenreHit) {
+          return {
+            query: fallbackGenreHit.query,
+            fallbackReason: rawGenreHit
+              ? (droppedFormatTerms.length ? "genre_preserved_after_dropping_format_terms" : "genre_preserved_from_adult_lane")
+              : "genre_preserved_from_adult_fallback_terms",
+            droppedFormatTerms,
+          };
+        }
+        const sanitized = String(sanitizedQuery || "").trim();
+        const sanitizedIsOnlyGenericFallback = sanitizedWasGenericOnly && /^(adventure|mystery|science fiction|anime|manga|popular anime)$/i.test(sanitized);
+        const sanitizedIsFormatOnly = /^(graphic\s+novels?|comics?|anime|manga|popular anime)$/i.test(sanitized);
+        if (sanitized && !sanitizedIsOnlyGenericFallback && !sanitizedIsFormatOnly) {
+          return {
+            query: sanitized,
+            fallbackReason: droppedFormatTerms.length ? "sanitized_non_format_query_after_dropping_format_terms" : "sanitized_query_no_genre_match",
+            droppedFormatTerms,
+          };
+        }
+        return {
+          query: "drama",
+          fallbackReason: droppedFormatTerms.length ? "generic_drama_after_format_only_lane" : "generic_drama_no_genre_match",
+          droppedFormatTerms,
+        };
+      };
       const simplifyGoogleBooksQuery = (q: string) => {
         const raw = String(q || "").toLowerCase();
         const exclusionHeavy = /\s-[a-z0-9_]+/i.test(raw) || /\b(exclude|without)\b/i.test(raw);
@@ -4258,7 +4441,7 @@ export async function getRecommendations(
       const openLibraryLaneQuery = normalizeFinalSourceQuery(sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure");
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
       const fallbackBroadTerms = [
-        /\b(superhero|miles|batman|spider[\s-]?man)\b/i.test(baseLaneQuery) ? "superhero" : "",
+        /\b(superhero(?:es)?|super hero(?:es)?|miles|batman|spider[\s-]?man|marvel|dc comics?)\b/i.test(baseLaneQuery) ? "superhero" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "detective" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "mystery" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "suspense" : "",
@@ -4285,8 +4468,20 @@ export async function getRecommendations(
         : (kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce
           ? (fallbackCandidate || "adventure")
           : kitsuSanitized.sanitized);
-      const selectedKitsuLaneQuery = selectSpecificKitsuRecoveryQuery(initialKitsuLaneQuery, [baseLaneQuery, ...fallbackBroadTerms]);
-      const kitsuLaneQuery = selectedKitsuLaneQuery.query;
+      let selectedKitsuLaneQuery = selectSpecificKitsuRecoveryQuery(initialKitsuLaneQuery, [baseLaneQuery, ...fallbackBroadTerms]);
+      let kitsuLaneQuery = selectedKitsuLaneQuery.query;
+      if (adultKitsuOnlyModeDetected) {
+        const adultKitsuOnlySelection = selectAdultKitsuOnlyQuery(baseLaneQuery, fallbackBroadTerms, kitsuSanitized.sanitized, kitsuSanitized.genericOnly);
+        adultKitsuOnlyQuerySelected = adultKitsuOnlySelection.query;
+        adultKitsuOnlyQueryFallbackReason = adultKitsuOnlySelection.fallbackReason;
+        for (const term of adultKitsuOnlySelection.droppedFormatTerms) {
+          if (!adultKitsuOnlyQueryDroppedFormatTerms.includes(term)) adultKitsuOnlyQueryDroppedFormatTerms.push(term);
+        }
+        if (adultKitsuOnlySelection.query !== kitsuLaneQuery) {
+          selectedKitsuLaneQuery = { query: adultKitsuOnlySelection.query, promoted: true };
+          kitsuLaneQuery = adultKitsuOnlySelection.query;
+        }
+      }
       collectKitsuRecoveryComicIntent([baseLaneQuery, initialKitsuLaneQuery, kitsuLaneQuery, ...fallbackBroadTerms]);
       markKitsuRecoveryComicFallbackIfGeneric([kitsuLaneQuery]);
       if (selectedKitsuLaneQuery.promoted && !kitsuRecoveryQueryPromotedFrom) {
@@ -4419,7 +4614,10 @@ export async function getRecommendations(
         }
       }
       if (includeKitsu && !stopKitsuDispatchForRun) {
-        const explicitEntityLane = profileSelectedEntitySeeds.some((seed) => {
+        const dispatchEntitySeeds = Array.isArray((routedInput as any)?.profileSelectedEntitySeeds)
+          ? (routedInput as any).profileSelectedEntitySeeds
+          : [];
+        const explicitEntityLane = dispatchEntitySeeds.some((seed: any) => {
           const nseed = normalizeText(String(seed || ""));
           return nseed.length >= 3 && normalizeText(baseLaneQuery).includes(nseed);
         });
@@ -4452,9 +4650,18 @@ export async function getRecommendations(
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
         } else {
+        const adultKitsuOnlyAdapterQueries = adultKitsuOnlyModeDetected
+          ? Array.from(new Set([kitsuLaneQuery, "adventure", "drama", "fantasy", "mystery"].map((q) => String(q || "").trim()).filter(Boolean)))
+          : [kitsuLaneQuery];
+        if (adultKitsuOnlyModeDetected) {
+          adultKitsuOnlyFallbackQueriesPlanned = adultKitsuOnlyAdapterQueries.slice();
+          adultKitsuOnlyFallbackRouterPlannedCount = adultKitsuOnlyFallbackQueriesPlanned.length;
+          adultKitsuOnlyFallbackStoppedReason = "adapter_dispatch_started";
+          adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyFallbackRouterPlannedCount > 1 ? "awaiting_adapter_attempts" : "single_planned_query";
+        }
         laneInput = {
           ...laneInput,
-          bucketPlan: { ...(laneInput.bucketPlan as any), queries: [kitsuLaneQuery], preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
+          bucketPlan: { ...(laneInput.bucketPlan as any), queries: adultKitsuOnlyAdapterQueries, preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
         };
           kitsuRouterFetchCount += 1;
           if (kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce) kitsuFallbackDispatchedOnce = true;
@@ -4488,6 +4695,9 @@ export async function getRecommendations(
       }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
       if (requests.length === 0) {
+        if (adultKitsuOnlyModeDetected && adultKitsuOnlyRouterDispatchBlockedReason === "none") {
+          adultKitsuOnlyRouterDispatchBlockedReason = "no_requests_after_source_checks";
+        }
         if (!fetchLoopExhaustedMarkerEmitted) {
           pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
             laneIndex: lanei,
@@ -4514,7 +4724,7 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (sourceEnabled.googleBooks && !googleQuotaExhausted && effectiveLaneSource === "googleBooks") {
-        googleBooksFetchResultsByQuery.push({
+        const googleBooksFetchResultRow = {
           query: googleLaneQuery,
           url: `https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(googleLaneQuery)}`,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
@@ -4524,7 +4734,12 @@ export async function getRecommendations(
           bodyPrefix: results[index]?.status === "rejected"
             ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
             : (Number((laneGoogle as any)?.debugRawFetchedCount ?? countResultItems(laneGoogle)) === 0 ? "[empty_google_books_result]" : null),
-        });
+        };
+        googleBooksFetchResultsByQuery.push(googleBooksFetchResultRow);
+        if (Array.isArray((laneGoogle as any)?.debugSourceFetchDiagnostics)) {
+          googleBooksSourceFetchDiagnostics.push(...(laneGoogle as any).debugSourceFetchDiagnostics);
+        }
+        appendMissingSourceFetchDiagnostic("googleBooks", googleLaneQuery, googleBooksFetchResultRow);
         if (results[index]?.status === "rejected" && isGoogleQuotaError((results[index] as PromiseRejectedResult).reason)) {
           googleQuotaExhausted = true;
           sourceSkippedReason.push("googleBooks_quota_exhausted_auto_disabled");
@@ -4549,7 +4764,7 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
-        openLibraryFetchResultsByQuery.push({
+        const openLibraryFetchResultRow = {
           query: openLibraryLaneQuery,
           url: `/api/openlibrary?q=${encodeURIComponent(openLibraryLaneQuery)}`,
           status: results[index]?.status === "fulfilled" ? "ok" : "error",
@@ -4559,7 +4774,12 @@ export async function getRecommendations(
           bodyPrefix: results[index]?.status === "rejected"
             ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
             : (Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)) === 0 ? "[empty_open_library_result]" : null),
-        });
+        };
+        openLibraryFetchResultsByQuery.push(openLibraryFetchResultRow);
+        if (Array.isArray((laneOpenLibrary as any)?.debugSourceFetchDiagnostics)) {
+          openLibrarySourceFetchDiagnostics.push(...(laneOpenLibrary as any).debugSourceFetchDiagnostics);
+        }
+        appendMissingSourceFetchDiagnostic("openLibrary", openLibraryLaneQuery, openLibraryFetchResultRow);
         index += 1;
       }
 
@@ -4573,21 +4793,124 @@ export async function getRecommendations(
         const kitsuResponseStatus = String((laneKitsu as any)?.debugSourceStatus || (laneKitsu as any)?.kitsuSourceStatus || "").trim();
         const kitsuParsedDataLength = Number((laneKitsu as any)?.debugParsedDataLength ?? kitsuRawCount);
         const kitsuRawSnippet = String((laneKitsu as any)?.debugRawJsonSnippet || (laneKitsu as any)?.debugResponseSnippet || "").trim();
-        kitsuFetchResultsByQuery.push({
-          query: kitsuLaneQuery,
-          url: `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(kitsuLaneQuery)}`,
-          status: results[index]?.status === "fulfilled" ? "ok" : "error",
-          timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
-          rawCount: kitsuRawCount,
-          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
-          bodyPrefix: results[index]?.status === "rejected"
-            ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
-            : [
-              kitsuResponseStatus ? `status=${kitsuResponseStatus}` : "status=ok",
-              `parsed_data_length=${Number.isFinite(kitsuParsedDataLength) ? kitsuParsedDataLength : 0}`,
-              kitsuRawSnippet ? `raw_json_snippet=${kitsuRawSnippet.slice(0, 120)}` : "raw_json_snippet=(none)",
-            ].join(" | "),
-        });
+        const kitsuActualFetchUrl = String((laneKitsu as any)?.debugFetchUrl || `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(kitsuLaneQuery)}&page[limit]=20`);
+        const kitsuFetchShape = String((laneKitsu as any)?.debugKitsuFetchShape || (kitsuActualFetchUrl.includes("page[limit]") ? "filter_text_with_page_limit" : "filter_text_no_page_limit"));
+        const kitsuRawApiItemCount = Number((laneKitsu as any)?.debugKitsuRawApiItemCount ?? kitsuRawCount);
+        const kitsuAdapterParsedItemCount = Number((laneKitsu as any)?.debugKitsuParsedItemCount ?? kitsuParsedDataLength);
+        const kitsuZeroRawReason = String((laneKitsu as any)?.debugKitsuZeroRawReason || (kitsuRawApiItemCount === 0 ? "zero_raw_api_items" : "")).trim();
+        const kitsuFetchAttemptsFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFetchAttempts)
+          ? (laneKitsu as any).debugKitsuFetchAttempts
+          : [];
+        const kitsuFallbackQueriesPlannedFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFallbackQueriesPlanned)
+          ? (laneKitsu as any).debugKitsuFallbackQueriesPlanned.map((q: any) => String(q || "").trim()).filter(Boolean)
+          : [];
+        const kitsuFallbackQueriesAttemptedFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFallbackQueriesAttempted)
+          ? (laneKitsu as any).debugKitsuFallbackQueriesAttempted.map((q: any) => String(q || "").trim()).filter(Boolean)
+          : kitsuFetchAttemptsFromAdapter.map((attempt: any) => String(attempt?.query || "").trim()).filter(Boolean);
+        const kitsuFallbackStoppedReasonFromAdapter = String((laneKitsu as any)?.debugKitsuFallbackStoppedReason || "").trim();
+        const kitsuFallbackTimelineFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFallbackTimeline)
+          ? (laneKitsu as any).debugKitsuFallbackTimeline
+          : [];
+        const kitsuAdultOnlyPerQueryTimeoutMs = Number((laneKitsu as any)?.debugKitsuAdultOnlyPerQueryTimeoutMs || 0);
+        const kitsuAdultOnlyFilteredReasonCounts = (laneKitsu as any)?.debugKitsuAdultOnlyFilteredReasonCounts && typeof (laneKitsu as any).debugKitsuAdultOnlyFilteredReasonCounts === "object"
+          ? (laneKitsu as any).debugKitsuAdultOnlyFilteredReasonCounts
+          : {};
+        const kitsuAdultOnlyRawSampleTitles = Array.isArray((laneKitsu as any)?.debugKitsuAdultOnlyRawSampleTitles)
+          ? (laneKitsu as any).debugKitsuAdultOnlyRawSampleTitles.map((title: any) => String(title || "").trim()).filter(Boolean)
+          : [];
+        const kitsuAdultOnlyQueryComparisonQueries = Array.isArray((laneKitsu as any)?.debugKitsuAdultOnlyQueryComparisonQueries)
+          ? (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonQueries.map((query: any) => String(query || "").trim()).filter(Boolean)
+          : [];
+        const kitsuAdultOnlyQueryQualityComparison = Array.isArray((laneKitsu as any)?.debugKitsuAdultOnlyQueryQualityComparison)
+          ? (laneKitsu as any).debugKitsuAdultOnlyQueryQualityComparison
+          : [];
+        if (!kitsuAdapterEligibilityPath) kitsuAdapterEligibilityPath = String((laneKitsu as any)?.debugKitsuEligibilityMode || "").trim();
+        if (adultKitsuOnlyModeDetected) {
+          adultKitsuOnlyRouterDispatchBlockedReason = "none";
+          adultKitsuOnlyFetchUrl = kitsuActualFetchUrl;
+          adultKitsuOnlyFetchShape = kitsuFetchShape;
+          adultKitsuOnlyRawApiItemCount = Number.isFinite(kitsuRawApiItemCount) ? kitsuRawApiItemCount : 0;
+          adultKitsuOnlyParsedItemCount = Number.isFinite(kitsuAdapterParsedItemCount) ? kitsuAdapterParsedItemCount : 0;
+          adultKitsuOnlyZeroRawReason = kitsuZeroRawReason || (adultKitsuOnlyRawApiItemCount === 0 ? "zero_raw_api_items" : "");
+          adultKitsuOnlyFallbackQueriesPlanned = kitsuFallbackQueriesPlannedFromAdapter.length
+            ? kitsuFallbackQueriesPlannedFromAdapter
+            : adultKitsuOnlyFallbackQueriesPlanned;
+          adultKitsuOnlyFallbackQueriesAttempted = kitsuFallbackQueriesAttemptedFromAdapter;
+          adultKitsuOnlyFallbackAdapterAttemptCount = adultKitsuOnlyFallbackQueriesAttempted.length;
+          adultKitsuOnlyFallbackStoppedReason = kitsuFallbackStoppedReasonFromAdapter
+            || (adultKitsuOnlyFallbackQueriesAttempted.length >= adultKitsuOnlyFallbackQueriesPlanned.length ? "adapter_attempted_all_planned_queries" : "adapter_attempts_missing_from_diagnostics");
+          adultKitsuOnlyFallbackTimeline = kitsuFallbackTimelineFromAdapter;
+          adultKitsuOnlyPerQueryTimeoutMs = Number.isFinite(kitsuAdultOnlyPerQueryTimeoutMs) ? kitsuAdultOnlyPerQueryTimeoutMs : 0;
+          adultKitsuOnlyRawApiItemTotal = Number((laneKitsu as any)?.debugKitsuAdultOnlyRawApiItemTotal || 0);
+          adultKitsuOnlyConvertedDocCount = Number((laneKitsu as any)?.debugKitsuAdultOnlyConvertedDocCount || 0);
+          adultKitsuOnlyKeptDocCount = Number((laneKitsu as any)?.debugKitsuAdultOnlyKeptDocCount || 0);
+          adultKitsuOnlyFilteredReasonCounts = kitsuAdultOnlyFilteredReasonCounts;
+          adultKitsuOnlyRawSampleTitles = kitsuAdultOnlyRawSampleTitles;
+          adultKitsuOnlyQueryComparisonQueries = kitsuAdultOnlyQueryComparisonQueries;
+          adultKitsuOnlyQueryQualityComparisonRaw = kitsuAdultOnlyQueryQualityComparison;
+        }
+        const appendKitsuFetchResultRow = (row: { query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }) => {
+          kitsuFetchResultsByQuery.push(row);
+        };
+        if (adultKitsuOnlyModeDetected && kitsuFetchAttemptsFromAdapter.length > 0) {
+          let adultKitsuOnlyRowsAdded = 0;
+          for (const attempt of kitsuFetchAttemptsFromAdapter) {
+            const attemptedQuery = String(attempt?.query || "").trim();
+            if (!attemptedQuery) continue;
+            kitsuQueriesActuallyFetched.add(attemptedQuery);
+            if (!kitsuFinalQueryUsedForFetch.includes(attemptedQuery)) kitsuFinalQueryUsedForFetch.push(attemptedQuery);
+            adultKitsuOnlyRowsAdded += 1;
+            appendKitsuFetchResultRow({
+              query: attemptedQuery,
+              url: String(attempt?.url || `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(attemptedQuery)}&page[limit]=20`),
+              status: String(attempt?.status || "unknown"),
+              timedOut: /timeout|abort/i.test(`${String(attempt?.zeroRawReason || "")} ${String(attempt?.bodyPrefix || "")}`),
+              rawCount: Number(attempt?.rawApiItemCount || 0),
+              error: String(attempt?.status || "") === "error" ? String(attempt?.zeroRawReason || attempt?.bodyPrefix || "fetch_failed") : null,
+              bodyPrefix: [
+                `status=${String(attempt?.status || "unknown")}`,
+                `fetch_shape=${String(attempt?.fetchShape || kitsuFetchShape)}`,
+                `raw_api_item_count=${Number(attempt?.rawApiItemCount || 0)}`,
+                `parsed_data_length=${Number(attempt?.parsedItemCount || 0)}`,
+                attempt?.zeroRawReason ? `zero_raw_reason=${String(attempt.zeroRawReason).slice(0, 80)}` : "zero_raw_reason=(none)",
+                attempt?.bodyPrefix ? `body=${String(attempt.bodyPrefix).slice(0, 80)}` : "body=(none)",
+              ].join(" | "),
+            });
+          }
+          adultKitsuOnlyFallbackPublicFetchRowCount = adultKitsuOnlyRowsAdded;
+          adultKitsuOnlyFallbackPublicQueriesExpanded = adultKitsuOnlyRowsAdded >= Math.max(1, adultKitsuOnlyFallbackAdapterAttemptCount || adultKitsuOnlyFallbackRouterPlannedCount);
+          adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyFallbackPublicQueriesExpanded
+            ? "none"
+            : `public_rows_short:planned=${adultKitsuOnlyFallbackRouterPlannedCount}:attempted=${adultKitsuOnlyFallbackAdapterAttemptCount}:rows=${adultKitsuOnlyRowsAdded}`;
+        } else {
+          if (adultKitsuOnlyModeDetected) {
+            adultKitsuOnlyFallbackAdapterAttemptCount = 0;
+            adultKitsuOnlyFallbackPublicFetchRowCount = 1;
+            adultKitsuOnlyFallbackPublicQueriesExpanded = false;
+            adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyFallbackRouterPlannedCount > 1
+              ? "adapter_attempts_missing_public_arrays_show_primary_only"
+              : "single_planned_query_no_adapter_attempts";
+          }
+          appendKitsuFetchResultRow({
+            query: kitsuLaneQuery,
+            url: kitsuActualFetchUrl,
+            status: results[index]?.status === "fulfilled" ? "ok" : "error",
+            timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
+            rawCount: kitsuRawCount,
+            error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+            bodyPrefix: results[index]?.status === "rejected"
+              ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
+              : [
+                kitsuResponseStatus ? `status=${kitsuResponseStatus}` : "status=ok",
+                `fetch_shape=${kitsuFetchShape}`,
+                `raw_api_item_count=${Number.isFinite(kitsuRawApiItemCount) ? kitsuRawApiItemCount : 0}`,
+                `parsed_data_length=${Number.isFinite(kitsuParsedDataLength) ? kitsuParsedDataLength : 0}`,
+                `adapter_parsed_item_count=${Number.isFinite(kitsuAdapterParsedItemCount) ? kitsuAdapterParsedItemCount : 0}`,
+                kitsuZeroRawReason ? `zero_raw_reason=${kitsuZeroRawReason}` : "zero_raw_reason=(none)",
+                kitsuRawSnippet ? `raw_json_snippet=${kitsuRawSnippet.slice(0, 120)}` : "raw_json_snippet=(none)",
+              ].join(" | "),
+          });
+        }
         index += 1;
       }
 
@@ -5053,6 +5376,7 @@ export async function getRecommendations(
       Number(aggregatedRawFetched.openLibrary || 0) === 0 &&
       ((includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0) || !includeKitsu) &&
       (comicVineUnavailableBypass || !includeComicVine);
+    ensureSourceFetchDiagnosticsCoverage();
     if (!allRealSourcesStarvedAfterRecovery) {
       sourceSkippedReason.push("source_health_guard_recovered_by_kitsu_or_other_source");
     } else {
@@ -5061,6 +5385,43 @@ export async function getRecommendations(
     throwSourceFatal("source_health_failed", {
       sourceEnabled,
       sourceHealthProbeStatus,
+      adultKitsuOnlyModeDetected,
+      adultKitsuOnlyRouterDispatchEligible,
+      adultKitsuOnlyRouterDispatchBlockedReason,
+      adultKitsuOnlyQuerySelected,
+      adultKitsuOnlyQueryFallbackReason,
+      adultKitsuOnlyQueryDroppedFormatTerms,
+      adultKitsuOnlyFetchUrl,
+      adultKitsuOnlyFetchShape,
+      adultKitsuOnlyRawApiItemCount,
+      adultKitsuOnlyParsedItemCount,
+      adultKitsuOnlyZeroRawReason,
+      adultKitsuOnlyFallbackQueriesPlanned,
+      adultKitsuOnlyFallbackQueriesAttempted,
+      adultKitsuOnlyFallbackStoppedReason,
+      adultKitsuOnlyFallbackTimeline,
+      adultKitsuOnlyPerQueryTimeoutMs,
+      adultKitsuOnlyRawApiItemTotal,
+      adultKitsuOnlyConvertedDocCount,
+      adultKitsuOnlyKeptDocCount,
+      adultKitsuOnlyFilteredReasonCounts,
+      adultKitsuOnlyRawSampleTitles,
+      adultKitsuOnlyWeakRescueGateApplied,
+      adultKitsuOnlyWeakRescueGateReason,
+      adultKitsuOnlyWeakRescueCandidateCount,
+      adultKitsuOnlyWeakRescueSuppressedCount,
+      adultKitsuOnlyWeakRescueDiagnostics: adultKitsuOnlyWeakRescueDiagnostics.slice(0, 20),
+      adultKitsuOnlyQueryComparisonQueries,
+      adultKitsuOnlyQueryQualityComparison: adultKitsuOnlyQueryQualityComparisonRaw,
+      adultKitsuOnlyFallbackLivePathVersion,
+      adultKitsuOnlyFallbackPlannedCount: adultKitsuOnlyFallbackRouterPlannedCount,
+      adultKitsuOnlyFallbackRouterPlannedCount,
+      adultKitsuOnlyFallbackAdapterAttemptCount,
+      adultKitsuOnlyFallbackPublicFetchRowCount,
+      adultKitsuOnlyFallbackPublicArraysExpanded: adultKitsuOnlyFallbackPublicQueriesExpanded,
+      adultKitsuOnlyFallbackPublicQueriesExpanded,
+      adultKitsuOnlyFallbackDiagnosticsMismatchReason,
+      kitsuAdapterEligibilityPath,
       fetchLoopCounters: {
         googleBooksRouterFetchCount,
         openLibraryRouterFetchCount,
@@ -5071,6 +5432,8 @@ export async function getRecommendations(
       kitsuQueriesActuallyFetched: Array.from(kitsuQueriesActuallyFetched),
       googleBooksFetchResultsByQuery,
       openLibraryFetchResultsByQuery,
+      googleBooksSourceFetchDiagnostics,
+      openLibrarySourceFetchDiagnostics,
       kitsuFetchResultsByQuery,
       kitsuConfiguredApiBase: KITSU_API_BASE,
       googleBooksTimeoutStageByQuery,
@@ -8172,7 +8535,7 @@ const normalizedCandidatesRaw = [
     }
     const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
     const isComicVineCandidate = docSource.includes("comicvine");
-    const sourceId = String(doc?.sourceId || doc?.id || doc?.key || "").trim();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "").trim();
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
     const restoredByKitsuRecovery = Boolean((doc as any)?.restoredByKitsuRecovery || (doc?.diagnostics as any)?.restoredByKitsuRecovery);
     const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
@@ -11637,9 +12000,92 @@ const normalizedCandidatesRaw = [
     }
     return [...strongRows, ...weakRows];
   };
+  const suppressKitsuWeakPadding = (rows: any[]) => {
+    const strongRows = rows.filter((row: any) => isKitsuRescueStrongRow(row));
+    return strongRows.length > 0 ? strongRows : rows;
+  };
+  const adultKitsuOnlyWeakRescueQualityForRow = (row: any, gateReason: string) => {
+    const doc = row?.doc || row?.item?.doc || row;
+    const title = String(doc?.title || row?.title || "").trim();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || row?.sourceId || "").trim();
+    const ratingCount = Number(doc?.kitsuRatingCount || doc?.ratingsCount || 0);
+    const popularityRank = Number(doc?.kitsuPopularityRank || 999999);
+    const facetMatches = Number(doc?.kitsuFacetMatches || 0);
+    const positiveFitScore = Number(row?.positiveFitScore || 0);
+    const semanticEvidenceCount = Number(row?.semanticEvidenceCount || 0);
+    const weightedTasteScore = Number(row?.weightedTasteScore || 0);
+    const laneAligned = Boolean(row?.laneAligned);
+    const dislikePenaltyScore = Number(row?.dislikePenaltyScore || 0);
+    const hasSubstantiveEvidence = semanticEvidenceCount > 0 || weightedTasteScore > 0 || laneAligned || positiveFitScore >= 3;
+    const hasPopularitySupport = ratingCount >= 1000 || popularityRank <= 1000;
+    const acceptable =
+      dislikePenaltyScore === 0 &&
+      positiveFitScore >= 0 &&
+      (hasSubstantiveEvidence || (facetMatches > 0 && hasPopularitySupport));
+    const reason = acceptable
+      ? semanticEvidenceCount > 0
+        ? "semantic_evidence"
+        : weightedTasteScore > 0
+        ? "weighted_taste"
+        : laneAligned
+        ? "lane_aligned"
+        : positiveFitScore >= 3
+        ? "positive_fit"
+        : facetMatches > 0 && ratingCount >= 1000
+        ? "facet_match_with_rating_count"
+        : "facet_match_with_popularity_rank"
+      : dislikePenaltyScore > 0
+      ? "dislike_penalty"
+      : positiveFitScore < 0
+      ? "negative_positive_fit"
+      : facetMatches > 0
+      ? "query_term_only_without_quality_support"
+      : "no_adult_quality_signal";
+    return { title, sourceId, gateReason, acceptable, reason, facetMatches, semanticEvidenceCount, weightedTasteScore, laneAligned, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore };
+  };
+  const gateAdultKitsuOnlyWeakRescueRows = (rows: any[], gateReason: string, options?: { force?: boolean }) => {
+    if (!adultKitsuOnlyModeDetected) return rows;
+    const strongRows = rows.filter((row: any) => isKitsuRescueStrongRow(row));
+    if (strongRows.length > 0 && !options?.force) return rows;
+    adultKitsuOnlyWeakRescueGateApplied = true;
+    adultKitsuOnlyWeakRescueGateReason = gateReason;
+    adultKitsuOnlyWeakRescueCandidateCount = Math.max(adultKitsuOnlyWeakRescueCandidateCount, rows.length);
+    const evaluated = rows.map((row: any) => ({ row, quality: adultKitsuOnlyWeakRescueQualityForRow(row, gateReason) }));
+    for (const entry of evaluated) adultKitsuOnlyWeakRescueDiagnostics.push(entry.quality);
+    const kept = evaluated.filter((entry) => entry.quality.acceptable).map((entry) => entry.row);
+    adultKitsuOnlyWeakRescueSuppressedCount += Math.max(0, rows.length - kept.length);
+    if (kept.length === 0) sourceSkippedReason.push(`adult_kitsu_only_weak_rescue_suppressed_all:${gateReason}:candidates=${rows.length}`);
+    else if (kept.length < rows.length) sourceSkippedReason.push(`adult_kitsu_only_weak_rescue_suppressed_some:${gateReason}:kept=${kept.length}:suppressed=${rows.length - kept.length}`);
+    return kept;
+  };
+  const markKitsuRankedPoolWeakCandidateOutput = (reason: string, candidateRows: any[], returnedItems: any[]) => {
+    kitsuRankedPoolRescueWeakCandidateOutput = true;
+    kitsuRankedPoolRescueWeakCandidateReason = reason;
+    kitsuRankedPoolRescueWeakCandidateReturnedCount = returnedItems.length;
+    kitsuRankedPoolRescueWeakCandidateSuppressedCount = Math.max(0, candidateRows.length - returnedItems.length);
+    kitsuRankedPoolRescueWeakCandidateTitles.splice(0, kitsuRankedPoolRescueWeakCandidateTitles.length, ...returnedItems
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter(Boolean)
+      .slice(0, 20));
+    sourceSkippedReason.push(`kitsu_ranked_pool_rescue_weak_candidates:${reason}:returned=${returnedItems.length}:suppressed=${kitsuRankedPoolRescueWeakCandidateSuppressedCount}`);
+  };
   let kitsuLowRankedCountRecoveryTriggered = false;
   let kitsuLowRankedCountRecoveryCandidateCount = 0;
   let kitsuLowRankedCountRecoveryBlockedReason = "not_evaluated";
+  let kitsuRankedPoolRescueWeakCandidateOutput = false;
+  let kitsuRankedPoolRescueWeakCandidateReason = "not_evaluated";
+  let kitsuRankedPoolRescueWeakCandidateReturnedCount = 0;
+  let kitsuRankedPoolRescueWeakCandidateSuppressedCount = 0;
+  const kitsuRankedPoolRescueWeakCandidateTitles: string[] = [];
+  let kitsuEmergencyWeakCandidateAttributionCorrected = false;
+  let kitsuEmergencyWeakCandidatePreviousBuiltFrom = "not_evaluated";
+  let kitsuEmergencyWeakCandidatePath = "not_evaluated";
+  let kitsuEmergencyWeakCandidateBypassPath = "not_evaluated";
+  let kitsuEmergencyWeakCandidateTitle = "";
+  let kitsuEmergencyWeakCandidatePriorItemCount = 0;
+  const kitsuEmergencyWeakCandidateSuppressedTitles: string[] = [];
+  let kitsuEmergencyWeakCandidateRawCount = 0;
+  let kitsuEmergencyWeakCandidateRankedCount = 0;
   let kitsuSmallRecoveryMetadataCorrectionApplied = false;
   let kitsuSmallRecoveryRawCount = 0;
   let kitsuSmallRecoveryRankedCount = 0;
@@ -11938,7 +12384,10 @@ const normalizedCandidatesRaw = [
         const kitsuRawCountForRescue = Number(aggregatedRawFetched.kitsu || 0);
         const shouldTriggerRankedPoolRescue = kitsuRawCountForRescue >= 10 && Number(rankedCount || 0) >= 10;
         kitsuRankedPoolRescueEligible = shouldTriggerRankedPoolRescue;
-        const rescuePoolToUse = rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocsOrdered;
+        const rescuePoolToUse = gateAdultKitsuOnlyWeakRescueRows(
+          suppressKitsuWeakPadding(rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocsOrdered),
+          "pre_emergency_ranked_pool"
+        );
         kitsuRankedPoolRescueCandidateCount = rescuePoolToUse.length;
         if (!shouldTriggerRankedPoolRescue) kitsuRankedPoolRescueBlockedReason = `trigger_not_met:kitsuRaw=${kitsuRawCountForRescue}:ranked=${Number(rankedCount || 0)}`;
         else if (rescuePoolToUse.length === 0) kitsuRankedPoolRescueBlockedReason = "eligible_but_no_kitsu_rescue_candidates";
@@ -11946,15 +12395,18 @@ const normalizedCandidatesRaw = [
           const top = rescuePoolToUse[0];
           kitsuRankedPoolRescueSource = rankedKitsuRescue.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
           const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+          const rescuePoolStrongCount = rescuePoolToUse.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+          const rankedRescueLimit = rescuePoolStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
           const rankedRescueDocs = rescuePoolToUse
             .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
             .filter(Boolean)
-            .slice(0, Math.max(3, Math.min(5, finalLimit)));
+            .slice(0, rankedRescueLimit);
           if (rankedRescueDocs.length > 0) {
             finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-            returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-            finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
-            sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue");
+            returnedItemsBuiltFrom = rescuePoolStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+            finalReturnSourceUsed = returnedItemsBuiltFrom;
+            if (rescuePoolStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("pre_emergency_ranked_pool_all_weak", rescuePoolToUse, finalOutputItems);
+            sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}`);
             kitsuRankedPoolRescueBlockedReason = "none";
             kitsuFinalEligibilitySparseMetadataRescue = {
               activated: true,
@@ -12066,25 +12518,31 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
     const shouldTriggerRankedPoolRescue = Number(aggregatedRawFetched.kitsu || 0) >= 10 && Number(rankedCount || 0) >= 10;
     if (shouldTriggerRankedPoolRescue) {
-      const rankedKitsuFallbackFromRankedDocs = orderKitsuRescueStrongBeforeWeak((rankedDocs || [])
-        .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
-        .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
-        .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3);
+      const rankedKitsuFallbackFromRankedDocs = gateAdultKitsuOnlyWeakRescueRows(
+        suppressKitsuWeakPadding(orderKitsuRescueStrongBeforeWeak((rankedDocs || [])
+          .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
+          .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
+          .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3)),
+        "late_guard_ranked_pool"
+      );
       kitsuRankedPoolRescueEligible = true;
       if (kitsuRankedPoolRescueSource === "not_triggered" && rankedKitsuFallbackFromRankedDocs.length > 0) {
         const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
+        const rankedKitsuFallbackStrongCount = rankedKitsuFallbackFromRankedDocs.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+        const rankedRescueLimit = rankedKitsuFallbackStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
         const rankedRescueDocs = rankedKitsuFallbackFromRankedDocs
           .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))) || row.doc)
           .filter(Boolean)
-          .slice(0, Math.max(3, Math.min(5, finalLimit)));
+          .slice(0, rankedRescueLimit);
         kitsuRankedPoolRescueCandidateCount = rankedKitsuFallbackFromRankedDocs.length;
         kitsuRankedPoolRescueSource = "rankedDocsFallback";
         if (rankedRescueDocs.length > 0) {
           finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-          returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-          finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+          returnedItemsBuiltFrom = rankedKitsuFallbackStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+          finalReturnSourceUsed = returnedItemsBuiltFrom;
+          if (rankedKitsuFallbackStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("late_guard_ranked_pool_all_weak", rankedKitsuFallbackFromRankedDocs, finalOutputItems);
           kitsuRankedPoolRescueBlockedReason = "none";
-          sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue_late_guard");
+          sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}_late_guard`);
         } else {
           kitsuRankedPoolRescueBlockedReason = "late_guard_top_candidate_not_found_in_teen_postpass_items";
         }
@@ -12100,13 +12558,13 @@ const normalizedCandidatesRaw = [
     }
   }
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
-    const strongKitsuRecoveryPool = orderKitsuRescueRowsPenaltyFirst(kitsuRecoveryRankedCandidates
+    const strongKitsuRecoveryPool = suppressKitsuWeakPadding(orderKitsuRescueRowsPenaltyFirst(kitsuRecoveryRankedCandidates
       .filter((row) => !row.rejectReason)
       .map((row) => ({
         ...row,
         weightedTasteScore: Number(candidateWeightedTasteScoreByTitle[String(row.title || "").trim()] || 0),
         dislikePenaltyScore: Number(candidateDislikePenaltyByTitle[String(row.title || "").trim()] || 0),
-      })), 3);
+      })), 3));
     if (strongKitsuRecoveryPool.length >= 10) {
       const preferredTitles = new Set(strongKitsuRecoveryPool.map((r) => normalizeText(r.title)));
       const preferredKitsuItems = teenPostPassItems
@@ -12625,27 +13083,33 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
       .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3);
     const rescueSource = rankedCandidatePool.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
-    const rescuePool = rankedCandidatePool.length > 0 ? rankedCandidatePool : rankedDocsFallbackPool;
+    const rescuePool = gateAdultKitsuOnlyWeakRescueRows(
+      rankedCandidatePool.length > 0 ? rankedCandidatePool : rankedDocsFallbackPool,
+      "final_invariant_ranked_pool"
+    );
     finalInvariantKitsuRescueCandidateCount = rescuePool.length;
     if (rescuePool.length === 0) return;
+    const rescuePoolStrongCount = rescuePool.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+    const rescueLimit = rescuePoolStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
     const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
     const rankedRescueDocs = rescuePool
       .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || "")))
         || row.doc
         || rankedDocsFallbackPool.find((candidate: any) => normalizeText(String(candidate?.title || candidate?.doc?.title || "")) === normalizeText(String(row?.title || "")))?.doc)
       .filter(Boolean)
-      .slice(0, Math.max(3, Math.min(5, finalLimit)));
+      .slice(0, rescueLimit);
     if (rankedRescueDocs.length === 0) return;
     finalOutputItems = rankedRescueDocs.map((doc: any) => ({ kind: "open_library", doc }));
-    returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-    finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+    returnedItemsBuiltFrom = rescuePoolStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates";
+    finalReturnSourceUsed = returnedItemsBuiltFrom;
+    if (rescuePoolStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("final_invariant_ranked_pool_all_weak", rescuePool, finalOutputItems);
     kitsuRankedPoolRescueSource = rescueSource;
     finalInvariantKitsuRescueTriggered = true;
     finalInvariantKitsuRescuePreviousBuiltFrom = prevBuiltFrom;
-    sourceSkippedReason.push("final_gate_integrity:kitsu_ranked_pool_rescue_final_invariant");
+    sourceSkippedReason.push(`final_gate_integrity:${returnedItemsBuiltFrom}_final_invariant`);
   };
   runFinalInvariantKitsuRescue();
-  const terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
+  let terminalAssemblyOutputTitlesAtReturn = Array.isArray(finalOutputItems)
     ? finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
     : [];
   const shouldApplyFinalMetadataCorrection =
@@ -12661,12 +13125,24 @@ const normalizedCandidatesRaw = [
     });
   if (shouldApplyFinalMetadataCorrection) {
     const prev = String(returnedItemsBuiltFrom || "none");
-    if (prev !== "kitsu_ranked_pool_rescue") {
-      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue";
-      finalReturnSourceUsed = "kitsu_ranked_pool_rescue";
+    const visibleKitsuRescueRows = finalOutputItems.map((item: any) => {
+      const doc = item?.doc || item;
+      return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+    });
+    const visibleStrongCount = visibleKitsuRescueRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+    const normalRecoveryAttribution = /^kitsu_normal_recovery/.test(prev);
+    const correctedBuiltFrom = normalRecoveryAttribution
+      ? (visibleStrongCount > 0 && finalOutputItems.length === 1 ? "kitsu_normal_recovery_single_strong" : prev)
+      : (visibleStrongCount > 0 ? "kitsu_ranked_pool_rescue" : "kitsu_ranked_pool_rescue_weak_candidates");
+    if (prev !== correctedBuiltFrom) {
+      returnedItemsBuiltFrom = correctedBuiltFrom;
+      finalReturnSourceUsed = correctedBuiltFrom;
       finalMetadataCorrectionApplied = true;
       finalMetadataCorrectionPreviousBuiltFrom = prev;
-      sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:kitsu_ranked_pool_rescue`);
+      sourceSkippedReason.push(`final_metadata_corrected_from:${prev}:to:${correctedBuiltFrom}`);
+      if (visibleStrongCount === 0 && !normalRecoveryAttribution) markKitsuRankedPoolWeakCandidateOutput("metadata_correction_visible_slate_all_weak", visibleKitsuRescueRows, finalOutputItems);
+    } else if (normalRecoveryAttribution) {
+      sourceSkippedReason.push(`final_metadata_preserved_normal_recovery_attribution:${prev}:strong=${visibleStrongCount}:items=${finalOutputItems.length}`);
     }
   }
   const shouldApplySmallKitsuMetadataCorrection =
@@ -12691,7 +13167,78 @@ const normalizedCandidatesRaw = [
       sourceSkippedReason.push(`final_metadata_corrected_small_kitsu_output_from:${prev}`);
     }
   }
-  if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue" && finalOutputItems.length > 0) {
+  const shouldCorrectOneItemKitsuEmergencyAttribution =
+    finalItemsLength === 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+    finalOutputItems.length === 1 &&
+    /^(none|final_gate_accepted_docs)$/.test(String(returnedItemsBuiltFrom || "none")) &&
+    finalOutputItems.every((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    });
+  const inferKitsuEmergencyWeakCandidateBypassPath = () => {
+    const recentBypassReason = [...sourceSkippedReason].reverse().find((reason) => /final_gate_integrity|emergency|handoff|rescue|recovery|bypass/i.test(String(reason || "")));
+    return String(recentBypassReason || finalReturnSourceUsed || returnedItemsBuiltFrom || "unknown_bypass_path");
+  };
+  if (shouldCorrectOneItemKitsuEmergencyAttribution) {
+    const prev = String(returnedItemsBuiltFrom || "none");
+    const emergencyItem = finalOutputItems[0] as any;
+    kitsuEmergencyWeakCandidateAttributionCorrected = true;
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom = prev;
+    kitsuEmergencyWeakCandidatePath = "one_item_kitsu_emergency_attribution_guard";
+    kitsuEmergencyWeakCandidateBypassPath = inferKitsuEmergencyWeakCandidateBypassPath();
+    kitsuEmergencyWeakCandidateTitle = String(emergencyItem?.doc?.title || emergencyItem?.title || "").trim();
+    kitsuEmergencyWeakCandidatePriorItemCount = finalOutputItems.length;
+    kitsuEmergencyWeakCandidateSuppressedTitles.splice(0, kitsuEmergencyWeakCandidateSuppressedTitles.length);
+    kitsuEmergencyWeakCandidateRawCount = Number(aggregatedRawFetched.kitsu || 0);
+    kitsuEmergencyWeakCandidateRankedCount = Number(rankedCount || 0);
+    returnedItemsBuiltFrom = "kitsu_emergency_weak_candidate";
+    finalReturnSourceUsed = "kitsu_emergency_weak_candidate";
+    sourceSkippedReason.push(`kitsu_emergency_weak_candidate_attribution_corrected:from=${prev}:path=${kitsuEmergencyWeakCandidatePath}:bypass=${kitsuEmergencyWeakCandidateBypassPath}:raw=${kitsuEmergencyWeakCandidateRawCount}:ranked=${kitsuEmergencyWeakCandidateRankedCount}`);
+  }
+  const multiItemKitsuEmergencyRows = finalOutputItems.map((item: any) => {
+    const doc = item?.doc || item;
+    return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+  });
+  const shouldCorrectMultiItemKitsuEmergencyAttribution =
+    finalItemsLength === 0 &&
+    Number(aggregatedRawFetched.kitsu || 0) >= 10 &&
+    finalOutputItems.length > 1 &&
+    String(returnedItemsBuiltFrom || "none") === "none" &&
+    multiItemKitsuEmergencyRows.every((row: any) => {
+      const doc = row.doc || row.item?.doc || row.item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    }) &&
+    !multiItemKitsuEmergencyRows.some((row: any) => isKitsuRescueStrongRow(row));
+  if (shouldCorrectMultiItemKitsuEmergencyAttribution) {
+    const prev = String(returnedItemsBuiltFrom || "none");
+    const priorItems = finalOutputItems.slice();
+    const suppressedTitles = priorItems
+      .slice(1)
+      .map((item: any) => String(item?.doc?.title || item?.title || "").trim())
+      .filter(Boolean)
+      .slice(0, 20);
+    finalOutputItems = priorItems.slice(0, 1);
+    terminalAssemblyOutputTitlesAtReturn = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+    kitsuEmergencyWeakCandidateAttributionCorrected = true;
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom = prev;
+    const selectedEmergencyItem = finalOutputItems[0] as any;
+    kitsuEmergencyWeakCandidatePath = "multi_item_kitsu_emergency_attribution_guard";
+    kitsuEmergencyWeakCandidateBypassPath = inferKitsuEmergencyWeakCandidateBypassPath();
+    kitsuEmergencyWeakCandidateTitle = String(selectedEmergencyItem?.doc?.title || selectedEmergencyItem?.title || "").trim();
+    kitsuEmergencyWeakCandidatePriorItemCount = priorItems.length;
+    kitsuEmergencyWeakCandidateSuppressedTitles.splice(0, kitsuEmergencyWeakCandidateSuppressedTitles.length, ...suppressedTitles);
+    kitsuEmergencyWeakCandidateRawCount = Number(aggregatedRawFetched.kitsu || 0);
+    kitsuEmergencyWeakCandidateRankedCount = Number(rankedCount || 0);
+    returnedItemsBuiltFrom = "kitsu_emergency_weak_candidate";
+    finalReturnSourceUsed = "kitsu_emergency_weak_candidate";
+    sourceSkippedReason.push(`kitsu_multi_item_emergency_weak_candidate_attribution_corrected:from=${prev}:priorItems=${priorItems.length}:suppressed=${suppressedTitles.join("|") || "(none)"}:bypass=${kitsuEmergencyWeakCandidateBypassPath}:raw=${kitsuEmergencyWeakCandidateRawCount}:ranked=${kitsuEmergencyWeakCandidateRankedCount}`);
+  }
+  if (/^kitsu_ranked_pool_rescue/.test(String(returnedItemsBuiltFrom)) && finalOutputItems.length > 0) {
     const orderedVisibleKitsuRescueItems = orderKitsuRescueStrongBeforeWeak(finalOutputItems.map((item: any) => {
       const doc = item?.doc || item;
       return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
@@ -12725,8 +13272,9 @@ const normalizedCandidatesRaw = [
       const strongFirst = penaltyOrderedCandidates.filter((row: any) => !row.weakByPolicy);
       const weakFallback = penaltyOrderedCandidates.filter((row: any) => row.weakByPolicy);
       const strongCandidateCount = strongFirst.length;
-      const targetMax = strongCandidateCount >= 5 ? 5 : Math.max(3, strongCandidateCount);
-      const additions = [...strongFirst, ...weakFallback]
+      const targetMax = strongCandidateCount >= 5 ? 5 : (strongCandidateCount > 0 ? Math.max(3, strongCandidateCount) : finalOutputItems.length);
+      const paddingPool = strongFirst.length > 0 ? strongFirst : weakFallback;
+      const additions = paddingPool
         .slice(0, Math.max(0, targetMax - finalOutputItems.length))
         .map((row: any) => ({ kind: "open_library", doc: row.doc }));
       if (additions.length > 0) {
@@ -12737,6 +13285,42 @@ const normalizedCandidatesRaw = [
       }
     }
   }
+  const applyAdultKitsuOnlyTerminalWeakRescueGate = (path: string) => {
+    if (!adultKitsuOnlyModeDetected || finalOutputItems.length === 0) return;
+    const builtFrom = String(returnedItemsBuiltFrom || "");
+    const allKitsuBacked = finalOutputItems.every((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+    });
+    const shouldGate = allKitsuBacked && (
+      /^kitsu_ranked_pool_rescue/.test(builtFrom) ||
+      builtFrom === "kitsu_small_recovery_output" ||
+      /^kitsu_normal_recovery/.test(builtFrom) ||
+      builtFrom === "normal_final_gate_recovery"
+    );
+    if (!shouldGate) return;
+    const rows = finalOutputItems.map((item: any) => {
+      const doc = item?.doc || item;
+      return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+    });
+    const gatedRows = gateAdultKitsuOnlyWeakRescueRows(rows, path, { force: true });
+    if (gatedRows.length === rows.length) return;
+    const previousBuiltFrom = String(returnedItemsBuiltFrom || "none");
+    finalOutputItems = gatedRows.map((row: any) => row.item || { kind: "open_library", doc: row.doc }).filter(Boolean);
+    sourceSkippedReason.push(`adult_kitsu_only_terminal_weak_rescue_gate:${path}:from=${previousBuiltFrom}:before=${rows.length}:after=${finalOutputItems.length}`);
+    if (finalOutputItems.length === 0) {
+      returnedItemsBuiltFrom = "adult_kitsu_only_weak_rescue_suppressed";
+      finalReturnSourceUsed = "adult_kitsu_only_weak_rescue_suppressed";
+    } else if (/^kitsu_ranked_pool_rescue/.test(previousBuiltFrom) && !gatedRows.some((row: any) => isKitsuRescueStrongRow(row))) {
+      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue_weak_candidates";
+      finalReturnSourceUsed = "kitsu_ranked_pool_rescue_weak_candidates";
+      markKitsuRankedPoolWeakCandidateOutput(`adult_terminal_gate_${path}`, rows, finalOutputItems);
+    }
+  };
+  applyAdultKitsuOnlyTerminalWeakRescueGate("terminal_rescue_topup_post_backfill");
+
   const terminalSelectedSet = new Set(finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
   for (const row of finalEligibilityAudit) {
     row.selected = terminalSelectedSet.has(normalizeText(String(row.title || "")));
@@ -12839,7 +13423,7 @@ const normalizedCandidatesRaw = [
   kitsuRescueStrongCandidateCount = kitsuRescueCandidateQualityRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
   kitsuRescueWeakCandidateCount = kitsuRescueCandidateQualityRows.filter((row: any) => !isKitsuRescueStrongRow(row)).length;
   let kitsuRescueSlateQualityAudit: Array<{ title: string; sourceId: string; reason: string; laneAligned: boolean; positiveFitScore: number; semanticEvidenceCount: number; weightedTasteScore: number; dislikePenaltyScore: number }> = [];
-  if (String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
+  if (/^kitsu_ranked_pool_rescue/.test(String(returnedItemsBuiltFrom))) {
     for (const item of finalOutputItems) {
       const doc = item?.doc || item;
       const title = String(doc?.title || item?.title || "").trim();
@@ -12896,6 +13480,17 @@ const normalizedCandidatesRaw = [
       finalOutputItems = orderedFinalSlateRows.map((row) => row.item);
       kitsuRescueSlateQualityAudit = orderedFinalSlateRows.map((row) => row.audit).filter(Boolean) as any;
     }
+    const visibleStrongCount = finalSlateRows.filter((row) => row.strong).length;
+    if (visibleStrongCount === 0 && finalOutputItems.length > 0 && String(returnedItemsBuiltFrom) === "kitsu_ranked_pool_rescue") {
+      const weakCandidateRows = finalOutputItems.map((item: any) => {
+        const doc = item?.doc || item;
+        return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
+      });
+      finalOutputItems = finalOutputItems.slice(0, 1);
+      returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue_weak_candidates";
+      finalReturnSourceUsed = "kitsu_ranked_pool_rescue_weak_candidates";
+      markKitsuRankedPoolWeakCandidateOutput("post_audit_ranked_pool_all_weak", weakCandidateRows, finalOutputItems);
+    }
   }
   const smallKitsuRawCountForAudit = Number(aggregatedRawFetched.kitsu || 0);
   const shouldAuditSmallKitsuRecoveryOutput =
@@ -12943,6 +13538,7 @@ const normalizedCandidatesRaw = [
     acc[fam] = Number(acc[fam] || 0) + 1;
     return acc;
   }, {});
+  ensureSourceFetchDiagnosticsCoverage();
   const googleBooksQueriesActuallyFetchedArray = Array.from(googleBooksQueriesActuallyFetched);
   const openLibraryQueriesActuallyFetchedArray = Array.from(openLibraryQueriesActuallyFetched);
   const kitsuQueriesActuallyFetchedArray = Array.from(kitsuQueriesActuallyFetched);
@@ -12950,6 +13546,62 @@ const normalizedCandidatesRaw = [
     googleBooks: googleBooksRouterFetchCount > 0,
     openLibrary: openLibraryRouterFetchCount > 0,
     kitsu: kitsuRouterFetchCount > 0,
+  };
+  const countSourceDocsForStarvationAudit = (docs: any[], source: CandidateSource) => (Array.isArray(docs) ? docs : []).filter((doc: any) => sourceForDoc(doc?.doc || doc, source) === source).length;
+  const buildSourceStarvationAudit = (source: "googleBooks" | "openLibrary") => {
+    const fetchRows = source === "googleBooks" ? googleBooksFetchResultsByQuery : openLibraryFetchResultsByQuery;
+    const queriesFetched = source === "googleBooks" ? googleBooksQueriesActuallyFetchedArray : openLibraryQueriesActuallyFetchedArray;
+    const rawFetched = Number((aggregatedRawFetched as any)[source] || 0);
+    const fetchAttempted = Boolean((sourceFetchAttemptedBySource as any)[source]);
+    const sourceSkipReasons = sourceSkippedReason.filter((reason) => String(reason || "").toLowerCase().includes(source.toLowerCase()));
+    const capOrDedupeSkipReasons = sourceSkippedReason.filter((reason) => {
+      const text = String(reason || "");
+      return text === `source_fetch_cap_exceeded:${source}` || (source === "googleBooks" && /googleBooks_.*dedupe|googleBooks_retry_guard_blocked_exclusion_lane/.test(text));
+    });
+    const stageCounts = {
+      debugRawPool: countSourceDocsForStarvationAudit(debugRawPool, source),
+      enrichedDocs: countSourceDocsForStarvationAudit(enrichedDocs as any[], source),
+      filteredDocs: countSourceDocsForStarvationAudit(filteredDocs as any[], source),
+      filterKeptDocs: countSourceDocsForStarvationAudit(filterKeptDocs as any[], source),
+      candidateDocs: countSourceDocsForStarvationAudit(candidateDocs as any[], source),
+      normalizedCandidatesRaw: countSourceDocsForStarvationAudit(normalizedCandidatesRaw as any[], source),
+      normalizedCandidates: countSourceDocsForStarvationAudit(normalizedCandidates as any[], source),
+      finalRankedDocs: countSourceDocsForStarvationAudit(finalRankedDocs as any[], source),
+      returnedItems: countSourceDocsForStarvationAudit(finalOutputItems as any[], source),
+    };
+    const zeroRawFetchRows = fetchRows.filter((row: any) => Number(row?.rawCount || 0) === 0);
+    const nonzeroRawFetchRows = fetchRows.filter((row: any) => Number(row?.rawCount || 0) > 0);
+    const primaryClassification = fetchAttempted && rawFetched === 0
+      ? "dispatched_zero_raw_results"
+      : rawFetched > 0 && stageCounts.normalizedCandidates === 0
+      ? "raw_results_removed_by_filters_or_downstream_shaping"
+      : capOrDedupeSkipReasons.length > 0 && !fetchAttempted
+      ? "skipped_due_to_cap_or_dedupe"
+      : !fetchAttempted
+      ? "never_meaningfully_dispatched"
+      : rawFetched > 0 && stageCounts.normalizedCandidates > 0
+      ? "contributed_normalized_candidates"
+      : "indeterminate_source_starvation_state";
+    return {
+      enabled: Boolean((sourceEnabled as any)[source]),
+      fetchAttempted,
+      primaryClassification,
+      rawFetched,
+      queriesFetched,
+      fetchResultCount: fetchRows.length,
+      zeroRawFetchCount: zeroRawFetchRows.length,
+      nonzeroRawFetchCount: nonzeroRawFetchRows.length,
+      zeroRawQueries: zeroRawFetchRows.map((row: any) => String(row?.query || "")).filter(Boolean).slice(0, 10),
+      nonzeroRawQueries: nonzeroRawFetchRows.map((row: any) => String(row?.query || "")).filter(Boolean).slice(0, 10),
+      fetchDiagnostics: (source === "googleBooks" ? googleBooksSourceFetchDiagnostics : openLibrarySourceFetchDiagnostics).slice(0, 20),
+      stageCounts,
+      sourceSkipReasons: sourceSkipReasons.slice(0, 20),
+      capOrDedupeSkipReasons: capOrDedupeSkipReasons.slice(0, 20),
+    };
+  };
+  const sourceStarvationAudit = {
+    googleBooks: buildSourceStarvationAudit("googleBooks"),
+    openLibrary: buildSourceStarvationAudit("openLibrary"),
   };
   const fetchDiagnosticsSummary = {
     gbQueries: googleBooksQueriesActuallyFetchedArray.length,
@@ -12960,10 +13612,165 @@ const normalizedCandidatesRaw = [
     kitsuResults: kitsuFetchResultsByQuery.length,
   };
   const fetchDiagnosticsCoverageAssertion = {
-    googleBooks: !sourceFetchAttemptedBySource.googleBooks || googleBooksFetchResultsByQuery.length > 0,
-    openLibrary: !sourceFetchAttemptedBySource.openLibrary || openLibraryFetchResultsByQuery.length > 0,
+    googleBooks: !sourceFetchAttemptedBySource.googleBooks || (googleBooksFetchResultsByQuery.length > 0 && (googleBooksQueriesActuallyFetchedArray.length === 0 || googleBooksSourceFetchDiagnostics.length > 0)),
+    openLibrary: !sourceFetchAttemptedBySource.openLibrary || (openLibraryFetchResultsByQuery.length > 0 && (openLibraryQueriesActuallyFetchedArray.length === 0 || openLibrarySourceFetchDiagnostics.length > 0)),
     kitsu: !sourceFetchAttemptedBySource.kitsu || kitsuFetchResultsByQuery.length > 0,
+    googleBooksQueriesFetchedHaveDiagnostics: googleBooksQueriesActuallyFetchedArray.length === 0 || googleBooksSourceFetchDiagnostics.length > 0,
+    openLibraryQueriesFetchedHaveDiagnostics: openLibraryQueriesActuallyFetchedArray.length === 0 || openLibrarySourceFetchDiagnostics.length > 0,
   };
+  const isKitsuBackedDocLike = (value: any) => {
+    const doc = value?.doc || value?.item?.doc || value;
+    const source = String(doc?.source || doc?.rawDoc?.source || value?.source || "").toLowerCase();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || value?.sourceId || value?.canonicalId || value?.key || "");
+    return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+  };
+  const titleForKitsuQualityDiagnostics = (value: any) => {
+    const doc = value?.doc || value?.item?.doc || value;
+    return String(doc?.title || value?.title || "").trim();
+  };
+  const sourceIdForKitsuQualityDiagnostics = (value: any) => {
+    const doc = value?.doc || value?.item?.doc || value;
+    return String(doc?.sourceId || doc?.canonicalId || doc?.key || value?.sourceId || value?.canonicalId || value?.key || "").trim();
+  };
+  const kitsuDiagnosticRowsForStage = (rows: any[]) => (Array.isArray(rows) ? rows : [])
+    .map((row: any) => ({ row, doc: row?.doc || row?.item?.doc || row }))
+    .filter(({ row, doc }: any) => {
+      const title = titleForKitsuQualityDiagnostics(row);
+      return Boolean(title) && (isKitsuBackedDocLike(row) || String(row?.source || doc?.source || "").toLowerCase().includes("kitsu"));
+    });
+  const bucketizeAdultKitsuCount = (value: number) => value <= 0 ? "zero" : value === 1 ? "one" : "twoPlus";
+  const buildAdultKitsuCountHistogram = (values: number[]) => values.reduce((acc: Record<string, number>, value) => {
+    const bucket = bucketizeAdultKitsuCount(Number(value || 0));
+    acc[bucket] = Number(acc[bucket] || 0) + 1;
+    return acc;
+  }, { zero: 0, one: 0, twoPlus: 0 });
+  const buildAdultKitsuPositiveFitHistogram = (values: number[]) => values.reduce((acc: Record<string, number>, value) => {
+    const n = Number(value || 0);
+    const bucket = n < 0 ? "negative" : n === 0 ? "zero" : n < 3 ? "lowPositive" : "strongPositive";
+    acc[bucket] = Number(acc[bucket] || 0) + 1;
+    return acc;
+  }, { negative: 0, zero: 0, lowPositive: 0, strongPositive: 0 });
+  const buildAdultKitsuLaneAlignmentHistogram = (values: boolean[]) => values.reduce((acc: Record<string, number>, value) => {
+    const bucket = value ? "aligned" : "notAligned";
+    acc[bucket] = Number(acc[bucket] || 0) + 1;
+    return acc;
+  }, { aligned: 0, notAligned: 0 });
+  const stageRowsForAdultKitsuDiagnostics = {
+    rawPool: kitsuDiagnosticRowsForStage(debugRawPool),
+    rankedPool: kitsuDiagnosticRowsForStage(rankedDocs || []),
+    finalPool: kitsuDiagnosticRowsForStage(finalOutputItems || []),
+  };
+  const buildAdultKitsuStageHistogram = (metric: "semantic" | "facet" | "positiveFit" | "lane") => {
+    const out: Record<string, any> = {};
+    for (const [stage, rows] of Object.entries(stageRowsForAdultKitsuDiagnostics)) {
+      if (metric === "semantic") {
+        out[stage] = buildAdultKitsuCountHistogram((rows as any[]).map(({ row }: any) => Number(semanticEvidenceCountByTitle[titleForKitsuQualityDiagnostics(row)] || 0)));
+      } else if (metric === "facet") {
+        out[stage] = buildAdultKitsuCountHistogram((rows as any[]).map(({ row, doc }: any) => Number(doc?.kitsuFacetMatches || row?.kitsuFacetMatches || 0)));
+      } else if (metric === "positiveFit") {
+        out[stage] = buildAdultKitsuPositiveFitHistogram((rows as any[]).map(({ row }: any) => Number(positiveFitScoreByTitle[titleForKitsuQualityDiagnostics(row)] || 0)));
+      } else {
+        out[stage] = buildAdultKitsuLaneAlignmentHistogram((rows as any[]).map(({ row, doc }: any) => {
+          const root = String(parentFranchiseRootForDoc(doc) || "");
+          return profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root) || Boolean(row?.laneAligned);
+        }));
+      }
+    }
+    return out;
+  };
+  const adultKitsuOnlySemanticEvidenceHistogram = adultKitsuOnlyModeDetected ? buildAdultKitsuStageHistogram("semantic") : {};
+  const adultKitsuOnlyFacetMatchHistogram = adultKitsuOnlyModeDetected ? buildAdultKitsuStageHistogram("facet") : {};
+  const adultKitsuOnlyPositiveFitHistogram = adultKitsuOnlyModeDetected ? buildAdultKitsuStageHistogram("positiveFit") : {};
+  const adultKitsuOnlyLaneAlignmentHistogram = adultKitsuOnlyModeDetected ? buildAdultKitsuStageHistogram("lane") : {};
+  const missingSourceIdRowsForStage = (rows: any[]) => kitsuDiagnosticRowsForStage(rows).filter(({ row }: any) => !sourceIdForKitsuQualityDiagnostics(row));
+  const summarizeMissingSourceIdStage = (rows: any[]) => {
+    const missing = missingSourceIdRowsForStage(rows);
+    return {
+      count: missing.length,
+      titles: missing.map(({ row }: any) => titleForKitsuQualityDiagnostics(row)).filter(Boolean).slice(0, 30),
+    };
+  };
+  const adultKitsuMissingSourceIdStage = adultKitsuOnlyModeDetected ? {
+    rawPool: summarizeMissingSourceIdStage(debugRawPool),
+    normalizedPool: summarizeMissingSourceIdStage(allMergedDocs),
+    rankedPool: summarizeMissingSourceIdStage(rankedDocs || []),
+    finalEligibility: {
+      count: Array.isArray(finalEligibilityRejectedTitlesByReason?.missing_source_id) ? finalEligibilityRejectedTitlesByReason.missing_source_id.length : 0,
+      titles: (Array.isArray(finalEligibilityRejectedTitlesByReason?.missing_source_id) ? finalEligibilityRejectedTitlesByReason.missing_source_id : []).slice(0, 30),
+    },
+    finalPool: summarizeMissingSourceIdStage(finalOutputItems || []),
+  } : {};
+  const adultKitsuMissingSourceIdCount = adultKitsuOnlyModeDetected && (adultKitsuMissingSourceIdStage as any)?.finalEligibility
+    ? Number((adultKitsuMissingSourceIdStage as any).finalEligibility.count || 0)
+    : 0;
+  const adultKitsuMissingSourceIdTitles = adultKitsuOnlyModeDetected && (adultKitsuMissingSourceIdStage as any)?.finalEligibility
+    ? ((adultKitsuMissingSourceIdStage as any).finalEligibility.titles || [])
+    : [];
+  const adultKitsuDiagnosticSignals = Array.from(new Set([
+    ...profileSelectedEntitySeeds,
+    ...likedGenresSafe,
+    ...likedTonesSafe,
+    ...likedThemesSafe,
+  ]
+    .map((signal: any) => normalizeText(String(signal || "").replace(/^(genre:|tone:|theme:|mood:)/, "").replace(/_/g, " ").trim()))
+    .filter((signal: string) => signal.length >= 3 && !/^(anime|manga|graphic novel|comic|fiction|series)$/.test(signal))));
+  const adultKitsuDiagnosticSemanticEvidenceForDoc = (doc: any) => {
+    const text = normalizeText([doc?.title, doc?.description, ...(Array.isArray(doc?.subject) ? doc.subject : [])].join(" "));
+    return adultKitsuDiagnosticSignals.filter((signal) => text.includes(signal)).length;
+  };
+  const enrichAdultKitsuOnlyQueryQualityComparison = (rows: any[]) => (Array.isArray(rows) ? rows : []).map((row: any) => {
+    const candidateDocs = Array.isArray(row?.candidateDocs) ? row.candidateDocs : [];
+    const enrichedCandidates = candidateDocs.map((doc: any) => {
+      const title = String(doc?.title || "").trim();
+      const facetMatches = Number(doc?.kitsuFacetMatches || 0);
+      const semanticEvidenceCount = Object.prototype.hasOwnProperty.call(semanticEvidenceCountByTitle, title)
+        ? Number(semanticEvidenceCountByTitle[title] || 0)
+        : adultKitsuDiagnosticSemanticEvidenceForDoc(doc);
+      const laneRoot = String(parentFranchiseRootForDoc(doc) || "");
+      const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === laneRoot) || profileCompatibleExpansionRoots.has(laneRoot);
+      const pipelinePositiveFitKnown = Object.prototype.hasOwnProperty.call(positiveFitScoreByTitle, title);
+      const positiveFitScore = pipelinePositiveFitKnown
+        ? Number(positiveFitScoreByTitle[title] || 0)
+        : Number((semanticEvidenceCount * 2) + (facetMatches * 1.25) + (Number(doc?.kitsuRatingCount || 0) >= 1000 ? 0.5 : 0));
+      const quality = adultKitsuOnlyWeakRescueQualityForRow({
+        doc,
+        semanticEvidenceCount,
+        positiveFitScore,
+        laneAligned,
+        weightedTasteScore: semanticEvidenceCount > 0 ? semanticEvidenceCount : 0,
+        dislikePenaltyScore: 0,
+      }, "adult_kitsu_only_query_quality_comparison");
+      return { title, semanticEvidenceCount, facetMatches, positiveFitScore, laneAligned, accepted: Boolean(quality.acceptable), rejectionReason: quality.reason };
+    });
+    const accepted = enrichedCandidates.filter((candidate: any) => candidate.accepted);
+    return {
+      query: String(row?.query || ""),
+      diagnosticOnly: true,
+      status: String(row?.status || "unknown"),
+      rawCount: Number(row?.rawCount || 0),
+      rankedCount: Number(row?.rankedCount || candidateDocs.length || 0),
+      semanticEvidenceHistogram: buildAdultKitsuCountHistogram(enrichedCandidates.map((candidate: any) => Number(candidate.semanticEvidenceCount || 0))),
+      facetMatchHistogram: buildAdultKitsuCountHistogram(enrichedCandidates.map((candidate: any) => Number(candidate.facetMatches || 0))),
+      positiveFitHistogram: buildAdultKitsuPositiveFitHistogram(enrichedCandidates.map((candidate: any) => Number(candidate.positiveFitScore || 0))),
+      laneAlignmentHistogram: buildAdultKitsuLaneAlignmentHistogram(enrichedCandidates.map((candidate: any) => Boolean(candidate.laneAligned))),
+      weakGateAcceptedCount: accepted.length,
+      weakGateSuppressedCount: Math.max(0, enrichedCandidates.length - accepted.length),
+      finalSurvivorTitles: accepted.map((candidate: any) => candidate.title).filter(Boolean).slice(0, 10),
+      rejectedReasonCounts: enrichedCandidates.reduce((acc: Record<string, number>, candidate: any) => {
+        const reason = candidate.accepted ? "accepted" : String(candidate.rejectionReason || "unknown");
+        acc[reason] = Number(acc[reason] || 0) + 1;
+        return acc;
+      }, {}),
+      rawSampleTitles: Array.isArray(row?.rawSampleTitles) ? row.rawSampleTitles.slice(0, 10) : [],
+      elapsedMs: Number(row?.elapsedMs || 0),
+      url: String(row?.url || ""),
+      error: row?.error ? String(row.error) : undefined,
+      positiveFitScoreSource: "pipeline_when_available_else_diagnostic_proxy",
+    };
+  });
+  const adultKitsuOnlyQueryQualityComparison = adultKitsuOnlyModeDetected
+    ? enrichAdultKitsuOnlyQueryQualityComparison(adultKitsuOnlyQueryQualityComparisonRaw)
+    : [];
   const selectedKitsuQuery = kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) || "";
   const canonicalizeKitsuPolicyQuery = (q: string) => String(q || "")
     .toLowerCase()
@@ -13433,6 +14240,20 @@ const normalizedCandidatesRaw = [
     kitsuRankedPoolRescueEligible,
     kitsuRankedPoolRescueCandidateCount,
     kitsuRankedPoolRescueBlockedReason,
+    kitsuRankedPoolRescueWeakCandidateOutput,
+    kitsuRankedPoolRescueWeakCandidateReason,
+    kitsuRankedPoolRescueWeakCandidateReturnedCount,
+    kitsuRankedPoolRescueWeakCandidateSuppressedCount,
+    kitsuRankedPoolRescueWeakCandidateTitles,
+    kitsuEmergencyWeakCandidateAttributionCorrected,
+    kitsuEmergencyWeakCandidatePreviousBuiltFrom,
+    kitsuEmergencyWeakCandidatePath,
+    kitsuEmergencyWeakCandidateBypassPath,
+    kitsuEmergencyWeakCandidateTitle,
+    kitsuEmergencyWeakCandidatePriorItemCount,
+    kitsuEmergencyWeakCandidateSuppressedTitles,
+    kitsuEmergencyWeakCandidateRawCount,
+    kitsuEmergencyWeakCandidateRankedCount,
     finalInvariantKitsuRescueTriggered,
     finalInvariantKitsuRescueCandidateCount,
     finalInvariantKitsuRescuePreviousBuiltFrom,
@@ -13552,6 +14373,50 @@ const normalizedCandidatesRaw = [
     nytReturnedCount,
     nytAdminEnabled: Boolean(sourceEnabled.nyt),
     sourceEnabled,
+    adultKitsuOnlyModeDetected,
+    adultKitsuOnlyRouterDispatchEligible,
+    adultKitsuOnlyRouterDispatchBlockedReason,
+    adultKitsuOnlyQuerySelected,
+    adultKitsuOnlyQueryFallbackReason,
+    adultKitsuOnlyQueryDroppedFormatTerms,
+    adultKitsuOnlyFetchUrl,
+    adultKitsuOnlyFetchShape,
+    adultKitsuOnlyRawApiItemCount,
+    adultKitsuOnlyParsedItemCount,
+    adultKitsuOnlyZeroRawReason,
+    adultKitsuOnlyFallbackQueriesPlanned,
+    adultKitsuOnlyFallbackQueriesAttempted,
+    adultKitsuOnlyFallbackStoppedReason,
+    adultKitsuOnlyFallbackTimeline,
+    adultKitsuOnlyPerQueryTimeoutMs,
+    adultKitsuOnlyRawApiItemTotal,
+    adultKitsuOnlyConvertedDocCount,
+    adultKitsuOnlyKeptDocCount,
+    adultKitsuOnlyFilteredReasonCounts,
+    adultKitsuOnlyRawSampleTitles,
+    adultKitsuOnlyWeakRescueGateApplied,
+    adultKitsuOnlyWeakRescueGateReason,
+    adultKitsuOnlyWeakRescueCandidateCount,
+    adultKitsuOnlyWeakRescueSuppressedCount,
+    adultKitsuOnlyWeakRescueDiagnostics: adultKitsuOnlyWeakRescueDiagnostics.slice(0, 20),
+    adultKitsuOnlySemanticEvidenceHistogram,
+    adultKitsuOnlyFacetMatchHistogram,
+    adultKitsuOnlyPositiveFitHistogram,
+    adultKitsuOnlyLaneAlignmentHistogram,
+    adultKitsuMissingSourceIdCount,
+    adultKitsuMissingSourceIdTitles,
+    adultKitsuMissingSourceIdStage,
+    adultKitsuOnlyQueryComparisonQueries,
+    adultKitsuOnlyQueryQualityComparison,
+    adultKitsuOnlyFallbackLivePathVersion,
+    adultKitsuOnlyFallbackPlannedCount: adultKitsuOnlyFallbackRouterPlannedCount,
+    adultKitsuOnlyFallbackRouterPlannedCount,
+    adultKitsuOnlyFallbackAdapterAttemptCount,
+    adultKitsuOnlyFallbackPublicFetchRowCount,
+    adultKitsuOnlyFallbackPublicArraysExpanded: adultKitsuOnlyFallbackPublicQueriesExpanded,
+    adultKitsuOnlyFallbackPublicQueriesExpanded,
+    adultKitsuOnlyFallbackDiagnosticsMismatchReason,
+    kitsuAdapterEligibilityPath,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
       .map((q: any) => collapseRepeatedQueryPhrases(String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim()))
@@ -13569,6 +14434,7 @@ const normalizedCandidatesRaw = [
       openLibrary: Number(aggregatedRawFetched.openLibrary || 0),
       kitsu: Number(aggregatedRawFetched.kitsu || 0),
     },
+    sourceStarvationAudit,
     fetchDiagnosticsSummary,
     fetchDiagnosticsCoverageAssertion,
     kitsuFetchQueryMatchesSanitizedSelection,
@@ -13595,6 +14461,8 @@ const normalizedCandidatesRaw = [
     kitsuQueriesActuallyFetched: kitsuQueriesActuallyFetchedArray,
     googleBooksFetchResultsByQuery,
     openLibraryFetchResultsByQuery,
+    googleBooksSourceFetchDiagnostics,
+    openLibrarySourceFetchDiagnostics,
     kitsuFetchResultsByQuery,
     googleBooksTimeoutStageByQuery,
     googleBooksRetryQueryMapping,
