@@ -4774,14 +4774,15 @@ export async function getRecommendations(
         const kitsuRawApiItemCount = Number((laneKitsu as any)?.debugKitsuRawApiItemCount ?? kitsuRawCount);
         const kitsuAdapterParsedItemCount = Number((laneKitsu as any)?.debugKitsuParsedItemCount ?? kitsuParsedDataLength);
         const kitsuZeroRawReason = String((laneKitsu as any)?.debugKitsuZeroRawReason || (kitsuRawApiItemCount === 0 ? "zero_raw_api_items" : "")).trim();
+        const kitsuFetchAttemptsFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFetchAttempts)
+          ? (laneKitsu as any).debugKitsuFetchAttempts
+          : [];
         const kitsuFallbackQueriesPlannedFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFallbackQueriesPlanned)
           ? (laneKitsu as any).debugKitsuFallbackQueriesPlanned.map((q: any) => String(q || "").trim()).filter(Boolean)
           : [];
         const kitsuFallbackQueriesAttemptedFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFallbackQueriesAttempted)
           ? (laneKitsu as any).debugKitsuFallbackQueriesAttempted.map((q: any) => String(q || "").trim()).filter(Boolean)
-          : (Array.isArray((laneKitsu as any)?.debugKitsuFetchAttempts)
-            ? (laneKitsu as any).debugKitsuFetchAttempts.map((attempt: any) => String(attempt?.query || "").trim()).filter(Boolean)
-            : []);
+          : kitsuFetchAttemptsFromAdapter.map((attempt: any) => String(attempt?.query || "").trim()).filter(Boolean);
         const kitsuFallbackStoppedReasonFromAdapter = String((laneKitsu as any)?.debugKitsuFallbackStoppedReason || "").trim();
         const kitsuFallbackTimelineFromAdapter = Array.isArray((laneKitsu as any)?.debugKitsuFallbackTimeline)
           ? (laneKitsu as any).debugKitsuFallbackTimeline
@@ -4804,25 +4805,53 @@ export async function getRecommendations(
           adultKitsuOnlyFallbackTimeline = kitsuFallbackTimelineFromAdapter;
           adultKitsuOnlyPerQueryTimeoutMs = Number.isFinite(kitsuAdultOnlyPerQueryTimeoutMs) ? kitsuAdultOnlyPerQueryTimeoutMs : 0;
         }
-        kitsuFetchResultsByQuery.push({
-          query: kitsuLaneQuery,
-          url: kitsuActualFetchUrl,
-          status: results[index]?.status === "fulfilled" ? "ok" : "error",
-          timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
-          rawCount: kitsuRawCount,
-          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
-          bodyPrefix: results[index]?.status === "rejected"
-            ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
-            : [
-              kitsuResponseStatus ? `status=${kitsuResponseStatus}` : "status=ok",
-              `fetch_shape=${kitsuFetchShape}`,
-              `raw_api_item_count=${Number.isFinite(kitsuRawApiItemCount) ? kitsuRawApiItemCount : 0}`,
-              `parsed_data_length=${Number.isFinite(kitsuParsedDataLength) ? kitsuParsedDataLength : 0}`,
-              `adapter_parsed_item_count=${Number.isFinite(kitsuAdapterParsedItemCount) ? kitsuAdapterParsedItemCount : 0}`,
-              kitsuZeroRawReason ? `zero_raw_reason=${kitsuZeroRawReason}` : "zero_raw_reason=(none)",
-              kitsuRawSnippet ? `raw_json_snippet=${kitsuRawSnippet.slice(0, 120)}` : "raw_json_snippet=(none)",
-            ].join(" | "),
-        });
+        const appendKitsuFetchResultRow = (row: { query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }) => {
+          kitsuFetchResultsByQuery.push(row);
+        };
+        if (adultKitsuOnlyModeDetected && kitsuFetchAttemptsFromAdapter.length > 0) {
+          for (const attempt of kitsuFetchAttemptsFromAdapter) {
+            const attemptedQuery = String(attempt?.query || "").trim();
+            if (!attemptedQuery) continue;
+            kitsuQueriesActuallyFetched.add(attemptedQuery);
+            if (!kitsuFinalQueryUsedForFetch.includes(attemptedQuery)) kitsuFinalQueryUsedForFetch.push(attemptedQuery);
+            appendKitsuFetchResultRow({
+              query: attemptedQuery,
+              url: String(attempt?.url || `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(attemptedQuery)}&page[limit]=20`),
+              status: String(attempt?.status || "unknown"),
+              timedOut: /timeout|abort/i.test(`${String(attempt?.zeroRawReason || "")} ${String(attempt?.bodyPrefix || "")}`),
+              rawCount: Number(attempt?.rawApiItemCount || 0),
+              error: String(attempt?.status || "") === "error" ? String(attempt?.zeroRawReason || attempt?.bodyPrefix || "fetch_failed") : null,
+              bodyPrefix: [
+                `status=${String(attempt?.status || "unknown")}`,
+                `fetch_shape=${String(attempt?.fetchShape || kitsuFetchShape)}`,
+                `raw_api_item_count=${Number(attempt?.rawApiItemCount || 0)}`,
+                `parsed_data_length=${Number(attempt?.parsedItemCount || 0)}`,
+                attempt?.zeroRawReason ? `zero_raw_reason=${String(attempt.zeroRawReason).slice(0, 80)}` : "zero_raw_reason=(none)",
+                attempt?.bodyPrefix ? `body=${String(attempt.bodyPrefix).slice(0, 80)}` : "body=(none)",
+              ].join(" | "),
+            });
+          }
+        } else {
+          appendKitsuFetchResultRow({
+            query: kitsuLaneQuery,
+            url: kitsuActualFetchUrl,
+            status: results[index]?.status === "fulfilled" ? "ok" : "error",
+            timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
+            rawCount: kitsuRawCount,
+            error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+            bodyPrefix: results[index]?.status === "rejected"
+              ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
+              : [
+                kitsuResponseStatus ? `status=${kitsuResponseStatus}` : "status=ok",
+                `fetch_shape=${kitsuFetchShape}`,
+                `raw_api_item_count=${Number.isFinite(kitsuRawApiItemCount) ? kitsuRawApiItemCount : 0}`,
+                `parsed_data_length=${Number.isFinite(kitsuParsedDataLength) ? kitsuParsedDataLength : 0}`,
+                `adapter_parsed_item_count=${Number.isFinite(kitsuAdapterParsedItemCount) ? kitsuAdapterParsedItemCount : 0}`,
+                kitsuZeroRawReason ? `zero_raw_reason=${kitsuZeroRawReason}` : "zero_raw_reason=(none)",
+                kitsuRawSnippet ? `raw_json_snippet=${kitsuRawSnippet.slice(0, 120)}` : "raw_json_snippet=(none)",
+              ].join(" | "),
+          });
+        }
         index += 1;
       }
 
