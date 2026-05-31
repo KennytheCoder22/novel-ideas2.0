@@ -49,8 +49,8 @@ function isAdultKitsuOnlyRun(input: RecommenderInput): boolean {
     sourceEnabled?.googleBooks === false &&
     sourceEnabled?.openLibrary === false &&
     sourceEnabled?.localLibrary === false &&
-    sourceEnabled?.comicVine === false &&
-    sourceEnabled?.gcd === false &&
+    sourceEnabled?.comicVine !== true &&
+    sourceEnabled?.gcd !== true &&
     sourceEnabled?.nyt !== true;
 }
 

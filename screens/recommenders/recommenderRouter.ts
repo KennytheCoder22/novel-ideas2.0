@@ -3076,6 +3076,16 @@ export async function getRecommendations(
   const comicVineDispatchBypassGuard = true;
   const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
   const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
+  const adultKitsuOnlyModeDetected = routedInput.deckKey === "adult" &&
+    includeKitsu &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeComicVine &&
+    !sourceEnabled.nyt;
+  let adultKitsuOnlyRouterDispatchEligible = false;
+  let adultKitsuOnlyRouterDispatchBlockedReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let kitsuAdapterEligibilityPath = "";
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
   if (routedInput.deckKey === "ms_hs" && sourceEnabled.comicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu) {
@@ -3232,6 +3242,13 @@ export async function getRecommendations(
   const buildComicVineFacetRungsCalled = includeComicVine;
   const comicVineFacetRungs = includeComicVine ? buildComicVineFacetRungs(routedInput.tagCounts) : [];
   const kitsuRungs = includeKitsu ? buildKitsuRungs(routedInput.tagCounts) : [];
+  if (adultKitsuOnlyModeDetected) {
+    adultKitsuOnlyRouterDispatchEligible = kitsuRungs.length > 0;
+    adultKitsuOnlyRouterDispatchBlockedReason = adultKitsuOnlyRouterDispatchEligible ? "none" : "no_kitsu_rungs_built";
+    if (kitsuRungs.length) {
+      rungs = [...kitsuRungs, ...rungs];
+    }
+  }
   if (comicVineFacetRungs.length) {
     rungs = [...comicVineFacetRungs, ...rungs];
   }
@@ -4495,7 +4512,10 @@ export async function getRecommendations(
         }
       }
       if (includeKitsu && !stopKitsuDispatchForRun) {
-        const explicitEntityLane = profileSelectedEntitySeeds.some((seed) => {
+        const dispatchEntitySeeds = Array.isArray((routedInput as any)?.profileSelectedEntitySeeds)
+          ? (routedInput as any).profileSelectedEntitySeeds
+          : [];
+        const explicitEntityLane = dispatchEntitySeeds.some((seed: any) => {
           const nseed = normalizeText(String(seed || ""));
           return nseed.length >= 3 && normalizeText(baseLaneQuery).includes(nseed);
         });
@@ -4564,6 +4584,9 @@ export async function getRecommendations(
       }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
       if (requests.length === 0) {
+        if (adultKitsuOnlyModeDetected && adultKitsuOnlyRouterDispatchBlockedReason === "none") {
+          adultKitsuOnlyRouterDispatchBlockedReason = "no_requests_after_source_checks";
+        }
         if (!fetchLoopExhaustedMarkerEmitted) {
           pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
             laneIndex: lanei,
@@ -4659,6 +4682,8 @@ export async function getRecommendations(
         const kitsuResponseStatus = String((laneKitsu as any)?.debugSourceStatus || (laneKitsu as any)?.kitsuSourceStatus || "").trim();
         const kitsuParsedDataLength = Number((laneKitsu as any)?.debugParsedDataLength ?? kitsuRawCount);
         const kitsuRawSnippet = String((laneKitsu as any)?.debugRawJsonSnippet || (laneKitsu as any)?.debugResponseSnippet || "").trim();
+        if (!kitsuAdapterEligibilityPath) kitsuAdapterEligibilityPath = String((laneKitsu as any)?.debugKitsuEligibilityMode || "").trim();
+        if (adultKitsuOnlyModeDetected) adultKitsuOnlyRouterDispatchBlockedReason = "none";
         kitsuFetchResultsByQuery.push({
           query: kitsuLaneQuery,
           url: `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(kitsuLaneQuery)}`,
@@ -5148,6 +5173,10 @@ export async function getRecommendations(
     throwSourceFatal("source_health_failed", {
       sourceEnabled,
       sourceHealthProbeStatus,
+      adultKitsuOnlyModeDetected,
+      adultKitsuOnlyRouterDispatchEligible,
+      adultKitsuOnlyRouterDispatchBlockedReason,
+      kitsuAdapterEligibilityPath,
       fetchLoopCounters: {
         googleBooksRouterFetchCount,
         openLibraryRouterFetchCount,
@@ -13847,6 +13876,10 @@ const normalizedCandidatesRaw = [
     nytReturnedCount,
     nytAdminEnabled: Boolean(sourceEnabled.nyt),
     sourceEnabled,
+    adultKitsuOnlyModeDetected,
+    adultKitsuOnlyRouterDispatchEligible,
+    adultKitsuOnlyRouterDispatchBlockedReason,
+    kitsuAdapterEligibilityPath,
     sourceSkippedReason,
     activeLaneQueries: Array.from(new Set(queryLanesUsed
       .map((q: any) => collapseRepeatedQueryPhrases(String(q || "").replace(/\bcharacter[-\s]?focused\b/gi, " ").replace(/\s+/g, " ").trim()))
