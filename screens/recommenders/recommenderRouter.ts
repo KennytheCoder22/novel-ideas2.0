@@ -3109,6 +3109,11 @@ export async function getRecommendations(
   let adultKitsuOnlyFallbackPublicFetchRowCount = 0;
   let adultKitsuOnlyFallbackPublicQueriesExpanded = false;
   let adultKitsuOnlyFallbackDiagnosticsMismatchReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlyWeakRescueGateApplied = false;
+  let adultKitsuOnlyWeakRescueGateReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlyWeakRescueCandidateCount = 0;
+  let adultKitsuOnlyWeakRescueSuppressedCount = 0;
+  const adultKitsuOnlyWeakRescueDiagnostics: any[] = [];
   let kitsuAdapterEligibilityPath = "";
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
@@ -4355,6 +4360,8 @@ export async function getRecommendations(
         };
         if (/\bgraphic\s+novels?\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("graphic novel");
         if (/\bcomics?\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("comic");
+        if (/\bmanga\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("manga");
+        if (/\banime\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("anime");
         if (/\bstory[-\s]?rich\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("story rich");
         if (/\bcharacter[-\s]?focused\b/i.test(normalizedRaw)) rememberDroppedFormatTerm("character-focused");
         const genreCandidates: Array<{ query: string; test: RegExp }> = [
@@ -4379,8 +4386,9 @@ export async function getRecommendations(
           };
         }
         const sanitized = String(sanitizedQuery || "").trim();
-        const sanitizedIsOnlyGenericFallback = sanitizedWasGenericOnly && /^(adventure|mystery|science fiction)$/i.test(sanitized);
-        if (sanitized && !sanitizedIsOnlyGenericFallback && !/^graphic\s+novels?$/i.test(sanitized)) {
+        const sanitizedIsOnlyGenericFallback = sanitizedWasGenericOnly && /^(adventure|mystery|science fiction|anime|manga|popular anime)$/i.test(sanitized);
+        const sanitizedIsFormatOnly = /^(graphic\s+novels?|comics?|anime|manga|popular anime)$/i.test(sanitized);
+        if (sanitized && !sanitizedIsOnlyGenericFallback && !sanitizedIsFormatOnly) {
           return {
             query: sanitized,
             fallbackReason: droppedFormatTerms.length ? "sanitized_non_format_query_after_dropping_format_terms" : "sanitized_query_no_genre_match",
@@ -4388,8 +4396,8 @@ export async function getRecommendations(
           };
         }
         return {
-          query: "graphic novel",
-          fallbackReason: droppedFormatTerms.length ? "generic_graphic_novel_after_format_only_lane" : "generic_graphic_novel_no_genre_match",
+          query: "drama",
+          fallbackReason: droppedFormatTerms.length ? "generic_drama_after_format_only_lane" : "generic_drama_no_genre_match",
           droppedFormatTerms,
         };
       };
@@ -5387,6 +5395,11 @@ export async function getRecommendations(
       adultKitsuOnlyKeptDocCount,
       adultKitsuOnlyFilteredReasonCounts,
       adultKitsuOnlyRawSampleTitles,
+      adultKitsuOnlyWeakRescueGateApplied,
+      adultKitsuOnlyWeakRescueGateReason,
+      adultKitsuOnlyWeakRescueCandidateCount,
+      adultKitsuOnlyWeakRescueSuppressedCount,
+      adultKitsuOnlyWeakRescueDiagnostics: adultKitsuOnlyWeakRescueDiagnostics.slice(0, 20),
       adultKitsuOnlyFallbackLivePathVersion,
       adultKitsuOnlyFallbackPlannedCount: adultKitsuOnlyFallbackRouterPlannedCount,
       adultKitsuOnlyFallbackRouterPlannedCount,
@@ -11978,6 +11991,46 @@ const normalizedCandidatesRaw = [
     const strongRows = rows.filter((row: any) => isKitsuRescueStrongRow(row));
     return strongRows.length > 0 ? strongRows : rows;
   };
+  const adultKitsuOnlyWeakRescueQualityForRow = (row: any, gateReason: string) => {
+    const doc = row?.doc || row?.item?.doc || row;
+    const title = String(doc?.title || row?.title || "").trim();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || row?.sourceId || "").trim();
+    const ratingCount = Number(doc?.kitsuRatingCount || doc?.ratingsCount || 0);
+    const popularityRank = Number(doc?.kitsuPopularityRank || 999999);
+    const facetMatches = Number(doc?.kitsuFacetMatches || 0);
+    const positiveFitScore = Number(row?.positiveFitScore || 0);
+    const dislikePenaltyScore = Number(row?.dislikePenaltyScore || 0);
+    const acceptable =
+      dislikePenaltyScore === 0 &&
+      (facetMatches > 0 || positiveFitScore >= 3 || ratingCount >= 1000 || popularityRank <= 1000);
+    const reason = acceptable
+      ? facetMatches > 0
+        ? "facet_match"
+        : positiveFitScore >= 3
+        ? "positive_fit"
+        : ratingCount >= 1000
+        ? "rating_count"
+        : "popularity_rank"
+      : dislikePenaltyScore > 0
+      ? "dislike_penalty"
+      : "no_adult_quality_signal";
+    return { title, sourceId, gateReason, acceptable, reason, facetMatches, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore };
+  };
+  const gateAdultKitsuOnlyWeakRescueRows = (rows: any[], gateReason: string) => {
+    if (!adultKitsuOnlyModeDetected) return rows;
+    const strongRows = rows.filter((row: any) => isKitsuRescueStrongRow(row));
+    if (strongRows.length > 0) return rows;
+    adultKitsuOnlyWeakRescueGateApplied = true;
+    adultKitsuOnlyWeakRescueGateReason = gateReason;
+    adultKitsuOnlyWeakRescueCandidateCount = Math.max(adultKitsuOnlyWeakRescueCandidateCount, rows.length);
+    const evaluated = rows.map((row: any) => ({ row, quality: adultKitsuOnlyWeakRescueQualityForRow(row, gateReason) }));
+    for (const entry of evaluated) adultKitsuOnlyWeakRescueDiagnostics.push(entry.quality);
+    const kept = evaluated.filter((entry) => entry.quality.acceptable).map((entry) => entry.row);
+    adultKitsuOnlyWeakRescueSuppressedCount += Math.max(0, rows.length - kept.length);
+    if (kept.length === 0) sourceSkippedReason.push(`adult_kitsu_only_weak_rescue_suppressed_all:${gateReason}:candidates=${rows.length}`);
+    else if (kept.length < rows.length) sourceSkippedReason.push(`adult_kitsu_only_weak_rescue_suppressed_some:${gateReason}:kept=${kept.length}:suppressed=${rows.length - kept.length}`);
+    return kept;
+  };
   const markKitsuRankedPoolWeakCandidateOutput = (reason: string, candidateRows: any[], returnedItems: any[]) => {
     kitsuRankedPoolRescueWeakCandidateOutput = true;
     kitsuRankedPoolRescueWeakCandidateReason = reason;
@@ -12304,7 +12357,10 @@ const normalizedCandidatesRaw = [
         const kitsuRawCountForRescue = Number(aggregatedRawFetched.kitsu || 0);
         const shouldTriggerRankedPoolRescue = kitsuRawCountForRescue >= 10 && Number(rankedCount || 0) >= 10;
         kitsuRankedPoolRescueEligible = shouldTriggerRankedPoolRescue;
-        const rescuePoolToUse = suppressKitsuWeakPadding(rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocsOrdered);
+        const rescuePoolToUse = gateAdultKitsuOnlyWeakRescueRows(
+          suppressKitsuWeakPadding(rankedKitsuRescue.length > 0 ? rankedKitsuRescue : rankedKitsuFallbackFromRankedDocsOrdered),
+          "pre_emergency_ranked_pool"
+        );
         kitsuRankedPoolRescueCandidateCount = rescuePoolToUse.length;
         if (!shouldTriggerRankedPoolRescue) kitsuRankedPoolRescueBlockedReason = `trigger_not_met:kitsuRaw=${kitsuRawCountForRescue}:ranked=${Number(rankedCount || 0)}`;
         else if (rescuePoolToUse.length === 0) kitsuRankedPoolRescueBlockedReason = "eligible_but_no_kitsu_rescue_candidates";
@@ -12435,10 +12491,13 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
     const shouldTriggerRankedPoolRescue = Number(aggregatedRawFetched.kitsu || 0) >= 10 && Number(rankedCount || 0) >= 10;
     if (shouldTriggerRankedPoolRescue) {
-      const rankedKitsuFallbackFromRankedDocs = suppressKitsuWeakPadding(orderKitsuRescueStrongBeforeWeak((rankedDocs || [])
-        .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
-        .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
-        .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3));
+      const rankedKitsuFallbackFromRankedDocs = gateAdultKitsuOnlyWeakRescueRows(
+        suppressKitsuWeakPadding(orderKitsuRescueStrongBeforeWeak((rankedDocs || [])
+          .filter((doc: any) => String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu"))
+          .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
+          .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3)),
+        "late_guard_ranked_pool"
+      );
       kitsuRankedPoolRescueEligible = true;
       if (kitsuRankedPoolRescueSource === "not_triggered" && rankedKitsuFallbackFromRankedDocs.length > 0) {
         const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
@@ -12997,7 +13056,10 @@ const normalizedCandidatesRaw = [
       .filter((doc: any) => !isReferenceArtifactTitle(String(doc?.title || "").trim()))
       .map((doc: any) => ({ doc, ...kitsuRescueQualityMetricsForDoc(doc) })), 3);
     const rescueSource = rankedCandidatePool.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
-    const rescuePool = rankedCandidatePool.length > 0 ? rankedCandidatePool : rankedDocsFallbackPool;
+    const rescuePool = gateAdultKitsuOnlyWeakRescueRows(
+      rankedCandidatePool.length > 0 ? rankedCandidatePool : rankedDocsFallbackPool,
+      "final_invariant_ranked_pool"
+    );
     finalInvariantKitsuRescueCandidateCount = rescuePool.length;
     if (rescuePool.length === 0) return;
     const rescuePoolStrongCount = rescuePool.filter((row: any) => isKitsuRescueStrongRow(row)).length;
@@ -14116,6 +14178,11 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyKeptDocCount,
     adultKitsuOnlyFilteredReasonCounts,
     adultKitsuOnlyRawSampleTitles,
+    adultKitsuOnlyWeakRescueGateApplied,
+    adultKitsuOnlyWeakRescueGateReason,
+    adultKitsuOnlyWeakRescueCandidateCount,
+    adultKitsuOnlyWeakRescueSuppressedCount,
+    adultKitsuOnlyWeakRescueDiagnostics: adultKitsuOnlyWeakRescueDiagnostics.slice(0, 20),
     adultKitsuOnlyFallbackLivePathVersion,
     adultKitsuOnlyFallbackPlannedCount: adultKitsuOnlyFallbackRouterPlannedCount,
     adultKitsuOnlyFallbackRouterPlannedCount,
