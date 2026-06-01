@@ -113,7 +113,7 @@ function buildKitsuQueries(tagCounts: TagCounts | undefined): string[] {
   add("anime");
   add("popular anime");
 
-  return queries.slice(0, 6);
+  return queries.slice(0, 10);
 }
 
 async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<{ json: any; status: number; bodyPrefix: string }> {
@@ -247,7 +247,7 @@ function buildAdultKitsuOnlyQueryComparisonQueries(primaryQuery: string, planned
     .slice(0, 6);
 
   if (hasScienceFictionIntent) {
-    return uniqueComparisonQueries([normalizedPrimary, "science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic"]);
+    return uniqueComparisonQueries([normalizedPrimary, "science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic", ...plannedQueries, "thriller", "mystery", "horror", "fantasy"]);
   }
 
   const hasFormatOnlyIntent = normalizedPrimary === "drama" && tags.some((tag) => /^(media:anime|format:manga|topic:manga|format:graphic novel|format:graphic_novel)$/.test(tag));

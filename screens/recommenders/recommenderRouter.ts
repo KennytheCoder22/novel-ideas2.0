@@ -3170,6 +3170,12 @@ export async function getRecommendations(
   let adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough = false;
   let adultKitsuOnlyPromotionBlockedBecauseThresholdOnly = false;
   let adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue = false;
+  let adultKitsuOnlyFamilyComparisonExhausted = false;
+  let adultKitsuOnlyEmergencyFallbackQueriesTried: string[] = [];
+  let adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery: Record<string, number> = {};
+  let adultKitsuOnlyEmergencyFallbackSelectedQuery = "";
+  let adultKitsuOnlyEmergencyFallbackReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery: Record<string, any> = {};
   let adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   const adultKitsuOnlyFamilyPropagationTrace: any[] = [];
   let adultKitsuOnlyComparisonFamilyAnchor = "";
@@ -5557,6 +5563,12 @@ export async function getRecommendations(
       adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough,
       adultKitsuOnlyPromotionBlockedBecauseThresholdOnly,
       adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue,
+      adultKitsuOnlyFamilyComparisonExhausted,
+      adultKitsuOnlyEmergencyFallbackQueriesTried,
+      adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery,
+      adultKitsuOnlyEmergencyFallbackSelectedQuery,
+      adultKitsuOnlyEmergencyFallbackReason,
+      adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery,
       adultKitsuOnlyFamilyPlanningBypassReason,
       adultKitsuOnlyFamilyPropagationTrace,
       adultKitsuOnlyComparisonFamilyAnchor,
@@ -14211,6 +14223,7 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyFamilyScopedBestQuery = familyScopedBest ? `${familyScopedBest.query || familyScopedBest.key}:accepted=${familyScopedBest.acceptedCount}:tier=${familyScopedBest.tier}` : "";
     adultKitsuOnlyBroadBestQuery = broadBest ? `${broadBest.query || broadBest.key}:accepted=${broadBest.acceptedCount}:tier=${broadBest.tier}` : "";
     const selectedFamilyViableCount = familyScopedRows.reduce((max: number, entry: any) => Math.max(max, Number(entry.acceptedCount || 0)), 0);
+    adultKitsuOnlyFamilyComparisonExhausted = selectedFamilyViableCount === 0;
     adultKitsuOnlySelectedFamilyAcceptedCount = selectedFamilyViableCount;
     adultKitsuOnlySelectedFamilyReturnedCount = finalOutputItems.length;
     adultKitsuOnlySelectedFamilyReturnedFrom = String(returnedItemsBuiltFrom || "none");
@@ -14401,6 +14414,101 @@ const normalizedCandidatesRaw = [
       );
       sourceSkippedReason.push(`adult_kitsu_only_selected_query_comparison_rescue:query=${selectedComparisonRaw.query}:accepted=${acceptedRows.length}:returned=${finalOutputItems.length}`);
       if (acceptedStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("selected_query_comparison_rescue_all_weak", acceptedRows, finalOutputItems);
+    }
+  }
+  if (adultKitsuOnlyModeDetected && finalOutputItems.length === 0 && adultKitsuOnlyFamilyComparisonExhausted && adultKitsuOnlyQueryQualityComparisonRaw.length > 0) {
+    const emergencyOrderByFamily: Record<string, string[]> = {
+      science_fiction: ["dystopian", "cyberpunk", "post apocalyptic", "space opera", "thriller", "mystery", "horror", "fantasy"],
+      horror: ["psychological horror", "supernatural", "mystery", "thriller", "dark fantasy", "fantasy"],
+      thriller: ["mystery", "crime", "psychological thriller", "horror", "science fiction", "fantasy"],
+      mystery: ["detective", "thriller", "crime", "psychological mystery", "horror", "science fiction", "fantasy"],
+      fantasy: ["supernatural", "dark fantasy", "adventure", "mystery", "science fiction"],
+      romance: ["drama", "historical", "mystery", "fantasy"],
+      historical: ["mystery", "drama", "romance", "adventure"],
+      speculative: ["dystopian", "science fiction", "horror", "fantasy", "mystery"],
+      general: ["mystery", "thriller", "horror", "science fiction", "fantasy"],
+    };
+    const comparisonRowsByKey = new Map((adultKitsuOnlyQueryQualityComparisonRaw || []).map((row: any) => [normalizeText(String(row?.query || "")), row]));
+    const emergencyQueries = adultKitsuDedupeQueries([
+      ...(emergencyOrderByFamily[routerFamily] || []),
+      ...adultKitsuOnlyQueryComparisonQueries,
+      "mystery",
+      "thriller",
+      "horror",
+      "science fiction",
+      "fantasy",
+    ]);
+    adultKitsuOnlyEmergencyFallbackQueriesTried = emergencyQueries.slice();
+    adultKitsuOnlyEmergencyFallbackReason = "family_comparison_exhausted_evaluating_emergency_fallback";
+    for (const query of emergencyQueries) {
+      const queryKey = normalizeText(query);
+      const comparisonRow: any = comparisonRowsByKey.get(queryKey);
+      if (!comparisonRow) {
+        adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery[queryKey] = "comparison_row_missing";
+        continue;
+      }
+      const candidateDocs = Array.isArray(comparisonRow?.candidateDocs) ? comparisonRow.candidateDocs : [];
+      const emergencyRows = candidateDocs.map((doc: any) => {
+        const title = String(doc?.title || "").trim();
+        const semanticEvidenceCount = Object.prototype.hasOwnProperty.call(semanticEvidenceCountByTitle, title)
+          ? Number(semanticEvidenceCountByTitle[title] || 0)
+          : adultKitsuDiagnosticSemanticEvidenceForDoc(doc);
+        const facetMatches = Number(doc?.kitsuFacetMatches || 0);
+        const positiveFitScore = Object.prototype.hasOwnProperty.call(positiveFitScoreByTitle, title)
+          ? Number(positiveFitScoreByTitle[title] || 0)
+          : Number((semanticEvidenceCount * 2) + (facetMatches * 1.25) + (Number(doc?.kitsuRatingCount || 0) >= 1000 ? 0.5 : 0));
+        const laneRoot = String(parentFranchiseRootForDoc(doc) || "");
+        const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === laneRoot) || profileCompatibleExpansionRoots.has(laneRoot);
+        const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || `kitsu:${normalizeText(title).replace(/\s+/g, "-")}`).trim();
+        return {
+          doc: {
+            ...doc,
+            source: "kitsu",
+            sourceId,
+            canonicalId: String(doc?.canonicalId || sourceId),
+            key: String(doc?.key || sourceId),
+            queryText: String(doc?.queryText || comparisonRow?.query || query || ""),
+            adultKitsuOnlyCandidate: true,
+            kitsuFacetMatches: facetMatches,
+            kitsuRatingCount: Number(doc?.kitsuRatingCount || doc?.ratingCount || doc?.ratingsCount || 0),
+            kitsuPopularityRank: Number(doc?.kitsuPopularityRank || 999999),
+            rawDoc: { ...((doc as any)?.rawDoc || {}), source: "kitsu" },
+          },
+          title,
+          sourceId,
+          semanticEvidenceCount,
+          facetMatches,
+          positiveFitScore,
+          laneAligned,
+          weightedTasteScore: semanticEvidenceCount > 0 ? semanticEvidenceCount : 0,
+          dislikePenaltyScore: 0,
+        };
+      }).filter((row: any) => Boolean(row.title));
+      const evaluatedEmergencyRows = emergencyRows.map((row: any) => ({ row, quality: adultKitsuOnlyWeakRescueQualityForRow(row, "family_exhausted_emergency_fallback") }));
+      for (const entry of evaluatedEmergencyRows) adultKitsuOnlyWeakRescueDiagnostics.push(entry.quality);
+      const acceptedEmergencyRows = evaluatedEmergencyRows.filter((entry: any) => entry.quality.acceptable).map((entry: any) => entry.row);
+      adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery[queryKey] = acceptedEmergencyRows.length;
+      if (!acceptedEmergencyRows.length) {
+        adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery[queryKey] = evaluatedEmergencyRows.reduce((acc: Record<string, number>, entry: any) => {
+          const reason = String(entry?.quality?.reason || "unknown");
+          acc[reason] = Number(acc[reason] || 0) + 1;
+          return acc;
+        }, {});
+        continue;
+      }
+      const acceptedStrongCount = acceptedEmergencyRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
+      const emergencyLimit = adultKitsuOnlyWeakRescueReturnLimit(acceptedEmergencyRows, acceptedStrongCount, "family_exhausted_emergency_fallback");
+      finalOutputItems = acceptedEmergencyRows.slice(0, emergencyLimit).map((row: any) => ({ kind: "open_library", doc: row.doc }));
+      returnedItemsBuiltFrom = "adult_kitsu_only_family_exhausted_emergency_fallback";
+      finalReturnSourceUsed = returnedItemsBuiltFrom;
+      adultKitsuOnlyEmergencyFallbackSelectedQuery = String(comparisonRow?.query || query || "");
+      adultKitsuOnlyEmergencyFallbackReason = `selected:${adultKitsuOnlyEmergencyFallbackSelectedQuery}:accepted=${acceptedEmergencyRows.length}:strong=${acceptedStrongCount}:returned=${finalOutputItems.length}`;
+      sourceSkippedReason.push(`adult_kitsu_only_family_exhausted_emergency_fallback:${adultKitsuOnlyEmergencyFallbackReason}`);
+      if (acceptedStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("family_exhausted_emergency_fallback_all_weak", acceptedEmergencyRows, finalOutputItems);
+      break;
+    }
+    if (finalOutputItems.length === 0 && adultKitsuOnlyEmergencyFallbackReason === "family_comparison_exhausted_evaluating_emergency_fallback") {
+      adultKitsuOnlyEmergencyFallbackReason = "no_emergency_fallback_accepted_candidates";
     }
   }
   const selectedKitsuQuery = kitsuSanitizedQuerySelected.find((q) => String(q || "").trim().length > 0) || "";
@@ -15031,6 +15139,12 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough,
     adultKitsuOnlyPromotionBlockedBecauseThresholdOnly,
     adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue,
+    adultKitsuOnlyFamilyComparisonExhausted,
+    adultKitsuOnlyEmergencyFallbackQueriesTried,
+    adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery,
+    adultKitsuOnlyEmergencyFallbackSelectedQuery,
+    adultKitsuOnlyEmergencyFallbackReason,
+    adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery,
     adultKitsuOnlyFamilyPlanningBypassReason,
     adultKitsuOnlyFamilyPropagationTrace,
     adultKitsuOnlyComparisonFamilyAnchor,
