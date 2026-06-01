@@ -4389,8 +4389,26 @@ export async function getRecommendations(
         ];
         const rawGenreHit = genreCandidates.find((candidate) => candidate.test.test(normalizedRaw));
         const fallbackHaystacks = fallbackTerms.map((term) => String(term || "").toLowerCase()).filter(Boolean);
+        const adultSignalText = `${normalizedRaw} ${fallbackHaystacks.join(" ")} ${String(sanitizedQuery || "").toLowerCase()}`;
+        const selectAdultKitsuNonGenericAlternative = () => {
+          if (/\b(dystopian|dystopia|authoritarian|rebellion|post\s+apocalyptic|apocalypse)\b/i.test(adultSignalText)) return "dystopian";
+          if (/\b(science\s+fiction|sci[\s-]?fi|futuristic|future|cyberpunk|space)\b/i.test(adultSignalText)) return "science fiction";
+          if (/\b(mystery|detective|investigator|crime|whodunnit|noir|suspense|thriller|secret|conspiracy)\b/i.test(adultSignalText)) return "mystery";
+          if (/\b(fantasy|magic|magical|supernatural|dragon|quest|adventure|action|survival|historical)\b/i.test(adultSignalText)) return "fantasy";
+          return "mystery";
+        };
         const fallbackGenreHit = rawGenreHit || genreCandidates.find((candidate) => fallbackHaystacks.some((haystack) => candidate.test.test(haystack)));
         if (fallbackGenreHit) {
+          if (fallbackGenreHit.query === "adventure") {
+            const replacementQuery = selectAdultKitsuNonGenericAlternative();
+            return {
+              query: replacementQuery,
+              fallbackReason: rawGenreHit
+                ? `generic_adventure_replaced_by_${replacementQuery.replace(/\s+/g, "_")}_from_adult_lane_signals`
+                : `generic_adventure_replaced_by_${replacementQuery.replace(/\s+/g, "_")}_from_adult_fallback_terms`,
+              droppedFormatTerms,
+            };
+          }
           return {
             query: fallbackGenreHit.query,
             fallbackReason: rawGenreHit
@@ -4409,9 +4427,12 @@ export async function getRecommendations(
             droppedFormatTerms,
           };
         }
+        const replacementQuery = selectAdultKitsuNonGenericAlternative();
         return {
-          query: "drama",
-          fallbackReason: droppedFormatTerms.length ? "generic_drama_after_format_only_lane" : "generic_drama_no_genre_match",
+          query: replacementQuery,
+          fallbackReason: droppedFormatTerms.length
+            ? `generic_drama_replaced_by_${replacementQuery.replace(/\s+/g, "_")}_after_format_only_lane`
+            : `generic_drama_replaced_by_${replacementQuery.replace(/\s+/g, "_")}_no_genre_match`,
           droppedFormatTerms,
         };
       };
