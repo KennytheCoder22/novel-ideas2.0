@@ -2941,6 +2941,27 @@ export async function getRecommendations(
     "suspense",
     "detective",
   ]);
+  const teenKitsuObservabilityVersion = "teen_kitsu_observability_v1";
+  const teenKitsuDeckDetected = isTeenDeckKey((routedInput as any)?.deckKey || "");
+  const teenKitsuDirectSignalTags = ["topic:manga", "media:anime", "format:graphic_novel", "format:graphic novel", "format:manga"]
+    .filter((tag) => Number(((routedInput as any)?.tagCounts || {})?.[tag] || 0) > 0);
+  const teenKitsuDirectSignalWeight = teenKitsuDirectSignalTags.reduce((sum, tag) => sum + Number(((routedInput as any)?.tagCounts || {})?.[tag] || 0), 0);
+  let teenKitsuEligibilityMode = teenKitsuDeckDetected ? "not_evaluated" : "not_teen_deck";
+  let teenKitsuEligibilitySkippedReason = teenKitsuDeckDetected ? "not_evaluated" : `deck_not_teen:${String((routedInput as any)?.deckKey || "")}`;
+  const teenKitsuIntentSignalsSeen: string[] = teenKitsuDirectSignalTags.slice();
+  let teenKitsuPreFetchLaneCount = 0;
+  let teenKitsuPreFetchPlannedQueryCount = 0;
+  const teenKitsuPreFetchPlannedQueries: string[] = [];
+  let teenKitsuPostFetchRawApiItemCount = 0;
+  let teenKitsuPostFetchParsedItemCount = 0;
+  let teenKitsuPostFetchReturnedItemCount = 0;
+  let teenKitsuPostPassInputKitsuCount = 0;
+  let teenKitsuPostPassOutputKitsuCount = 0;
+  let teenKitsuFinalReturnedKitsuCount = 0;
+  const teenKitsuQuerySourceDiagnostics: any[] = [];
+  const teenKitsuNamedTitleSignals: string[] = [];
+  const teenKitsuActiveLaneTerms: string[] = [];
+  const teenKitsuGeneratedFallbackTerms: string[] = [];
   const collectKitsuRecoveryComicIntent = (queries: string[]) => {
     const haystack = normalizeKitsuRecoveryQueryForSelection(queries.join(" "));
     for (const matcher of kitsuRecoveryComicIntentMatchers) {
@@ -4690,6 +4711,59 @@ export async function getRecommendations(
       const selectedKitsuLaneQuery = selectSpecificKitsuRecoveryQuery(initialKitsuLaneQuery, [baseLaneQuery, ...fallbackBroadTerms]);
       kitsuRecoveryQuerySelectionReason = selectedKitsuLaneQuery.reason || kitsuRecoveryQuerySelectionReason;
       let kitsuLaneQuery = selectedKitsuLaneQuery.query;
+      if (teenKitsuDeckDetected && !adultKitsuOnlyModeDetected) {
+        const normalizedBaseLaneQuery = normalizeKitsuRecoveryQueryForSelection(baseLaneQuery);
+        const activeLaneMatchers: Array<{ term: string; re: RegExp }> = [
+          { term: "Amulet", re: /\bamulet\b/i },
+          { term: "Bone", re: /\bbone\b/i },
+          { term: "Wynd", re: /\bwynd\b/i },
+          { term: "Lightfall", re: /\blightfall\b/i },
+          { term: "graphic novel", re: /\bgraphic\s+novels?\b/i },
+          { term: "comic series", re: /\bcomic\s+series\b/i },
+          { term: "science fiction", re: /\bscience\s+fiction\b|\bsci[\s-]?fi\b|\bscifi\b|\bscience\b/i },
+          { term: "dystopian", re: /\bdystopian\b|\bdystopia\b|\bpost\s+apocalyptic\b/i },
+          { term: "horror", re: /\bhorror\b|\boccult\b|\bsupernatural\s+horror\b/i },
+          { term: "fantasy", re: /\bfantasy\b|\bmagic\b|\bmagical\b/i },
+          { term: "mystery", re: /\bmystery\b|\bdetective\b|\binvestigator\b|\bcrime\b/i },
+        ];
+        const activeLaneTermsForLane = activeLaneMatchers.filter((matcher) => matcher.re.test(baseLaneQuery)).map((matcher) => matcher.term);
+        const namedTitleSignalsForLane = activeLaneTermsForLane.filter((term) => /^(Amulet|Bone|Wynd|Lightfall)$/.test(term));
+        const generatedFallbackTermsForLane = fallbackBroadTerms.map((term) => String(term || "").trim()).filter(Boolean);
+        for (const term of activeLaneTermsForLane) if (!teenKitsuActiveLaneTerms.includes(term)) teenKitsuActiveLaneTerms.push(term);
+        for (const term of namedTitleSignalsForLane) if (!teenKitsuNamedTitleSignals.includes(term)) teenKitsuNamedTitleSignals.push(term);
+        for (const term of generatedFallbackTermsForLane) if (!teenKitsuGeneratedFallbackTerms.includes(term)) teenKitsuGeneratedFallbackTerms.push(term);
+        for (const term of [...activeLaneTermsForLane, ...generatedFallbackTermsForLane]) {
+          if (term && !teenKitsuIntentSignalsSeen.includes(term)) teenKitsuIntentSignalsSeen.push(term);
+        }
+        const selectedNormalized = normalizeKitsuRecoveryQueryForSelection(kitsuLaneQuery);
+        const selectedQuerySource = namedTitleSignalsForLane.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedNormalized)
+          ? "named_title_signal"
+          : activeLaneTermsForLane.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedNormalized)
+          ? "active_lane"
+          : generatedFallbackTermsForLane.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedNormalized)
+          ? "generated_fallback"
+          : normalizeKitsuRecoveryQueryForSelection(kitsuSanitized.sanitized) === selectedNormalized
+          ? "sanitized_lane_query"
+          : shouldUseTerminalBroadFallback
+          ? "terminal_broad_fallback"
+          : normalizedBaseLaneQuery.includes(selectedNormalized)
+          ? "active_lane_subterm"
+          : "selector_or_adapter_other";
+        teenKitsuPreFetchLaneCount += 1;
+        teenKitsuPreFetchPlannedQueryCount += 1;
+        if (kitsuLaneQuery && !teenKitsuPreFetchPlannedQueries.includes(kitsuLaneQuery)) teenKitsuPreFetchPlannedQueries.push(kitsuLaneQuery);
+        teenKitsuQuerySourceDiagnostics.push({
+          laneQuery: baseLaneQuery,
+          sanitizedQuery: kitsuSanitized.sanitized,
+          initialQuery: initialKitsuLaneQuery,
+          selectedQuery: kitsuLaneQuery,
+          selectedQuerySource,
+          activeLaneTerms: activeLaneTermsForLane,
+          generatedFallbackTerms: generatedFallbackTermsForLane,
+          namedTitleSignals: namedTitleSignalsForLane,
+          selectionReason: selectedKitsuLaneQuery.reason || "not_selected",
+        });
+      }
       if (adultKitsuOnlyModeDetected) {
         const adultKitsuOnlySelection = selectAdultKitsuOnlyQuery(baseLaneQuery, fallbackBroadTerms, kitsuSanitized.sanitized, kitsuSanitized.genericOnly);
         adultKitsuOnlyQuerySelected = adultKitsuOnlySelection.query;
@@ -5096,6 +5170,22 @@ export async function getRecommendations(
           : {};
         const kitsuAdultOnlyQueryComparisonLimitHit = Boolean((laneKitsu as any)?.debugKitsuAdultOnlyQueryComparisonLimitHit);
         if (!kitsuAdapterEligibilityPath) kitsuAdapterEligibilityPath = String((laneKitsu as any)?.debugKitsuEligibilityMode || "").trim();
+        if (teenKitsuDeckDetected && !adultKitsuOnlyModeDetected) {
+          teenKitsuEligibilityMode = String((laneKitsu as any)?.debugKitsuTeenEligibilityMode || (laneKitsu as any)?.debugKitsuEligibilityMode || teenKitsuEligibilityMode || "not_evaluated").trim();
+          teenKitsuEligibilitySkippedReason = String((laneKitsu as any)?.debugKitsuTeenEligibilitySkippedReason || (teenKitsuEligibilityMode === "teen_manga_intent" ? "none" : teenKitsuEligibilitySkippedReason || "not_reported_by_adapter")).trim();
+          const adapterIntentSignals = Array.isArray((laneKitsu as any)?.debugKitsuTeenIntentSignalsSeen) ? (laneKitsu as any).debugKitsuTeenIntentSignalsSeen : [];
+          for (const signal of adapterIntentSignals.map((entry: any) => String(entry || "").trim()).filter(Boolean)) {
+            if (!teenKitsuIntentSignalsSeen.includes(signal)) teenKitsuIntentSignalsSeen.push(signal);
+          }
+          const adapterPreFetchQueries = Array.isArray((laneKitsu as any)?.debugKitsuTeenPreFetchQueries) ? (laneKitsu as any).debugKitsuTeenPreFetchQueries : [];
+          for (const query of adapterPreFetchQueries.map((entry: any) => String(entry || "").trim()).filter(Boolean)) {
+            if (!teenKitsuPreFetchPlannedQueries.includes(query)) teenKitsuPreFetchPlannedQueries.push(query);
+          }
+          teenKitsuPreFetchPlannedQueryCount = Math.max(teenKitsuPreFetchPlannedQueryCount, Number((laneKitsu as any)?.debugKitsuTeenPreFetchQueryCount || 0));
+          teenKitsuPostFetchRawApiItemCount += Number((laneKitsu as any)?.debugKitsuTeenPostFetchRawApiItemCount || kitsuRawApiItemCount || 0);
+          teenKitsuPostFetchParsedItemCount += Number((laneKitsu as any)?.debugKitsuTeenPostFetchParsedItemCount || kitsuAdapterParsedItemCount || 0);
+          teenKitsuPostFetchReturnedItemCount += Number((laneKitsu as any)?.debugKitsuTeenPostFetchReturnedItemCount || countResultItems(laneKitsu) || 0);
+        }
         if (adultKitsuOnlyModeDetected) {
           adultKitsuOnlyRouterDispatchBlockedReason = "none";
           adultKitsuOnlyFetchUrl = kitsuActualFetchUrl;
@@ -5814,6 +5904,25 @@ export async function getRecommendations(
       kitsuRecoveryComicIntentDetected,
       kitsuRecoveryComicIntentTerms: Array.from(new Set(kitsuRecoveryComicIntentTerms.map((t) => String(t || "").trim()).filter(Boolean))).slice(0, 20),
       kitsuRecoveryComicIntentFallbackUsed,
+      teenKitsuObservabilityVersion,
+      teenKitsuDeckDetected,
+      teenKitsuEligibilityMode,
+      teenKitsuEligibilitySkippedReason,
+      teenKitsuDirectSignalWeight,
+      teenKitsuIntentSignalsSeen: Array.from(new Set(teenKitsuIntentSignalsSeen)).slice(0, 30),
+      teenKitsuPreFetchLaneCount,
+      teenKitsuPreFetchPlannedQueryCount,
+      teenKitsuPreFetchPlannedQueries: Array.from(new Set(teenKitsuPreFetchPlannedQueries)).slice(0, 30),
+      teenKitsuPostFetchRawApiItemCount,
+      teenKitsuPostFetchParsedItemCount,
+      teenKitsuPostFetchReturnedItemCount,
+      teenKitsuPostPassInputKitsuCount,
+      teenKitsuPostPassOutputKitsuCount,
+      teenKitsuFinalReturnedKitsuCount,
+      teenKitsuActiveLaneTerms: Array.from(new Set(teenKitsuActiveLaneTerms)).slice(0, 30),
+      teenKitsuGeneratedFallbackTerms: Array.from(new Set(teenKitsuGeneratedFallbackTerms)).slice(0, 30),
+      teenKitsuNamedTitleSignals: Array.from(new Set(teenKitsuNamedTitleSignals)).slice(0, 30),
+      teenKitsuQuerySourceDiagnostics: teenKitsuQuerySourceDiagnostics.slice(0, 20),
       kitsuFinalQueryUsedForFetch: Array.from(new Set(kitsuFinalQueryUsedForFetch.map((q) => String(q || "").trim()).filter(Boolean))).slice(0, 20),
       kitsuPolicyUniqueCanonicalQueries: kitsuPolicyUniqueCanonicalQueriesForHealthGuard,
       kitsuMaxAllowedCanonicalFetches: kitsuMaxAllowedCanonicalFetchesForHealthGuard,
@@ -15017,12 +15126,29 @@ const normalizedCandidatesRaw = [
     .slice(0, 20);
   const returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
   const acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
+  const isTeenKitsuBackedDocForDiagnostics = (doc: any) => {
+    const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+    return source.includes("kitsu") || sourceId.startsWith("kitsu:");
+  };
+  teenKitsuPostPassInputKitsuCount = teenKitsuDeckDetected
+    ? teenPostPassInputDocs.filter((doc: any) => isTeenKitsuBackedDocForDiagnostics(doc)).length
+    : 0;
+  teenKitsuPostPassOutputKitsuCount = teenKitsuDeckDetected
+    ? teenPostPassItems.map((item: any) => item?.doc || item).filter((doc: any) => isTeenKitsuBackedDocForDiagnostics(doc)).length
+    : 0;
+  teenKitsuFinalReturnedKitsuCount = teenKitsuDeckDetected
+    ? finalOutputItems.map((item: any) => item?.doc || item).filter((doc: any) => isTeenKitsuBackedDocForDiagnostics(doc)).length
+    : 0;
+  if (teenKitsuDeckDetected && teenKitsuEligibilityMode === "not_evaluated") {
+    teenKitsuEligibilitySkippedReason = includeKitsu
+      ? (kitsuRouterFetchCount > 0 ? "adapter_result_missing_or_not_processed" : "kitsu_not_dispatched_before_postpass")
+      : "kitsu_disabled";
+  }
   const returnedKitsuTeenRowsForStability = finalOutputItems
     .map((item: any) => {
       const doc = item?.doc || item;
-      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
-      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
-      if (!source.includes("kitsu") && !sourceId.startsWith("kitsu:")) return null;
+      if (!isTeenKitsuBackedDocForDiagnostics(doc)) return null;
       return kitsuRescueQualityMetricsForDoc(doc);
     })
     .filter(Boolean) as any[];
@@ -15544,6 +15670,25 @@ const normalizedCandidatesRaw = [
     kitsuRescueHighPenaltyDemotedCount,
     kitsuRescueHighPenaltyUsedAsPaddingCount,
     kitsuTeenBranchStabilityStatus,
+    teenKitsuObservabilityVersion,
+    teenKitsuDeckDetected,
+    teenKitsuEligibilityMode,
+    teenKitsuEligibilitySkippedReason,
+    teenKitsuDirectSignalWeight,
+    teenKitsuIntentSignalsSeen: Array.from(new Set(teenKitsuIntentSignalsSeen)).slice(0, 30),
+    teenKitsuPreFetchLaneCount,
+    teenKitsuPreFetchPlannedQueryCount,
+    teenKitsuPreFetchPlannedQueries: Array.from(new Set(teenKitsuPreFetchPlannedQueries)).slice(0, 30),
+    teenKitsuPostFetchRawApiItemCount,
+    teenKitsuPostFetchParsedItemCount,
+    teenKitsuPostFetchReturnedItemCount,
+    teenKitsuPostPassInputKitsuCount,
+    teenKitsuPostPassOutputKitsuCount,
+    teenKitsuFinalReturnedKitsuCount,
+    teenKitsuActiveLaneTerms: Array.from(new Set(teenKitsuActiveLaneTerms)).slice(0, 30),
+    teenKitsuGeneratedFallbackTerms: Array.from(new Set(teenKitsuGeneratedFallbackTerms)).slice(0, 30),
+    teenKitsuNamedTitleSignals: Array.from(new Set(teenKitsuNamedTitleSignals)).slice(0, 30),
+    teenKitsuQuerySourceDiagnostics: teenKitsuQuerySourceDiagnostics.slice(0, 20),
     kitsuStabilityStatus,
     kitsuStabilityReason,
     kitsuReturnedPathStrength,
