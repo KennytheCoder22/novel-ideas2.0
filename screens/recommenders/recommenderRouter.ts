@@ -14126,7 +14126,7 @@ const normalizedCandidatesRaw = [
   const adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts: Record<string, number> = {};
   const adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles: string[] = [];
   const adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle: Record<string, string> = {};
-  if (adultKitsuOnlyModeDetected && finalOutputItems.length === 0 && adultKitsuOnlyQueryQualityComparison.length > 0) {
+  if (adultKitsuOnlyModeDetected && adultKitsuOnlyQueryQualityComparison.length > 0) {
     const selectedKeyForPromotion = normalizeText(adultKitsuOnlyQuerySelected || kitsuFinalQueryUsedForFetch[0] || "");
     const selectedAcceptedCountForPromotion = Number(adultKitsuOnlyComparisonAcceptedCountsByQuery[selectedKeyForPromotion] || 0);
     const rowsByQueryKey = new Map((adultKitsuOnlyQueryQualityComparisonRaw || []).map((row: any) => [normalizeText(String(row?.query || "")), row]));
@@ -14287,8 +14287,11 @@ const normalizedCandidatesRaw = [
       adultKitsuOnlyPromotionScope = bestRejected
         ? (bestRejected.tier <= 2 ? "router_family" : bestRejected.tier === 3 ? "bridge" : "broad")
         : "none";
+      const selectedPathStrongerOrViable = selectedAcceptedCountForPromotion > 0 && (!bestRejected || !bestRejected.substantiallyBetter);
       adultKitsuOnlyComparisonPromotionReason = bestRejected
-        ? `promotion_blocked:${bestRejected.key}:${bestRejected.rejectedReason}`
+        ? selectedPathStrongerOrViable
+          ? `promotion_blocked_by_existing_stronger_selected_path:selected=${selectedKeyForPromotion || "(missing)"}:selectedAccepted=${selectedAcceptedCountForPromotion}:best=${bestRejected.key}:bestAccepted=${bestRejected.acceptedCount}:tier=${bestRejected.tier}`
+          : `promotion_blocked:${bestRejected.key}:${bestRejected.rejectedReason}`
         : `no_viable_family_query:selected=${selectedKeyForPromotion || "(missing)"}:selectedAccepted=${selectedAcceptedCountForPromotion}`;
     }
   }
