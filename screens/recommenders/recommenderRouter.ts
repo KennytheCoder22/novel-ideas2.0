@@ -13353,6 +13353,11 @@ const normalizedCandidatesRaw = [
       .map((item: any) => normalizeText(String(item?.doc?.title || item?.title || "")))
       .filter(Boolean));
     const seenDystopianCandidateTitles = new Set<string>();
+    const latestDystopianDiagnosticByTitle = new Map<string, any>();
+    for (const row of adultKitsuOnlyWeakRescueDiagnostics) {
+      const key = normalizeText(String(row?.title || ""));
+      if (key) latestDystopianDiagnosticByTitle.set(key, row);
+    }
     adultKitsuOnlyDystopianCandidateOrder = adultKitsuOnlyWeakRescueDiagnostics
       .filter((row: any) => String(row?.title || "").trim())
       .filter((row: any) => {
@@ -13363,21 +13368,26 @@ const normalizedCandidatesRaw = [
       })
       .map((row: any, index: number) => {
         const title = String(row?.title || "").trim();
+        const latestRow = latestDystopianDiagnosticByTitle.get(normalizeText(title)) || row;
         const returned = finalTitleSetForDystopianDiagnostics.has(normalizeText(title));
         return {
           order: index + 1,
           title,
-          sourceId: String(row?.sourceId || ""),
+          sourceId: String(latestRow?.sourceId || row?.sourceId || ""),
           returned,
-          accepted: Boolean(row?.acceptable),
-          selectionReason: String(row?.reason || "unknown"),
-          gateReason: String(row?.gateReason || "unknown"),
-          semanticEvidenceCount: Number(row?.semanticEvidenceCount || 0),
-          positiveFitScore: Number(row?.positiveFitScore || 0),
-          facetMatches: Number(row?.facetMatches || 0),
-          ratingCount: Number(row?.ratingCount || 0),
-          popularityRank: Number(row?.popularityRank || 999999),
-          laneAligned: Boolean(row?.laneAligned),
+          accepted: Boolean(latestRow?.acceptable),
+          selectionReason: String(latestRow?.reason || row?.reason || "unknown"),
+          gateReason: String(latestRow?.gateReason || row?.gateReason || "unknown"),
+          diagnosticStageUpdatedFrom: latestRow === row ? "initial_diagnostic_state" : "latest_terminal_or_late_guard_state",
+          initialSelectionReason: String(row?.reason || "unknown"),
+          initialGateReason: String(row?.gateReason || "unknown"),
+          initialAccepted: Boolean(row?.acceptable),
+          semanticEvidenceCount: Number(latestRow?.semanticEvidenceCount || row?.semanticEvidenceCount || 0),
+          positiveFitScore: Number(latestRow?.positiveFitScore || row?.positiveFitScore || 0),
+          facetMatches: Number(latestRow?.facetMatches || row?.facetMatches || 0),
+          ratingCount: Number(latestRow?.ratingCount || row?.ratingCount || 0),
+          popularityRank: Number(latestRow?.popularityRank || row?.popularityRank || 999999),
+          laneAligned: Boolean(latestRow?.laneAligned || row?.laneAligned),
         };
       });
     adultKitsuOnlyDystopianAcceptedButNotReturned = adultKitsuOnlyDystopianCandidateOrder
@@ -13390,6 +13400,10 @@ const normalizedCandidatesRaw = [
         order: row.order,
         selectionReason: row.selectionReason,
         gateReason: row.gateReason,
+        diagnosticStageUpdatedFrom: row.diagnosticStageUpdatedFrom,
+        initialSelectionReason: row.initialSelectionReason,
+        initialGateReason: row.initialGateReason,
+        initialAccepted: row.initialAccepted,
         semanticEvidenceCount: row.semanticEvidenceCount,
         positiveFitScore: row.positiveFitScore,
         facetMatches: row.facetMatches,
