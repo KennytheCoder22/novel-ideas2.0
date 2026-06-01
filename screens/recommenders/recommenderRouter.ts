@@ -3176,6 +3176,11 @@ export async function getRecommendations(
   let adultKitsuOnlyEmergencyFallbackSelectedQuery = "";
   let adultKitsuOnlyEmergencyFallbackReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery: Record<string, any> = {};
+  let adultKitsuOnlyFormatOnlyLaneDetected = false;
+  let adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily = false;
+  let adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback = false;
+  let adultKitsuOnlySelectedQueryWouldHaveBeenGeneric = "";
+  let adultKitsuOnlySelectedQueryAfterRouterFamilyOverride = "";
   let adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   const adultKitsuOnlyFamilyPropagationTrace: any[] = [];
   let adultKitsuOnlyComparisonFamilyAnchor = "";
@@ -4456,7 +4461,30 @@ export async function getRecommendations(
           if (/\b(fantasy|magic|magical|supernatural|dragon|quest|adventure|action|survival|historical)\b/i.test(adultSignalText)) return "fantasy";
           return "mystery";
         };
+        const sanitized = String(sanitizedQuery || "").trim();
+        const sanitizedIsOnlyGenericFallback = sanitizedWasGenericOnly && /^(adventure|mystery|science fiction|anime|manga|popular anime)$/i.test(sanitized);
+        const sanitizedIsFormatOnly = /^(graphic\s+novels?|comics?|anime|manga|popular anime)$/i.test(sanitized);
         const fallbackGenreHit = rawGenreHit || genreCandidates.find((candidate) => fallbackHaystacks.some((haystack) => candidate.test.test(haystack)));
+        const routerFamilyPrimaryQueryForFormatLane = adultKitsuFamilyQueriesForRouterFamily(routerFamily)[0] || "";
+        const routerFamilyCanOwnFormatLane = routerFamily !== "general" && routerFamily !== "speculative";
+        const rawIsFormatOnlyLane = /^(anime|manga|comic|comics|graphic\s+novels?|graphic\s+novel|popular anime)$/i.test(normalizedRaw);
+        const noExplicitGenreInLane = !rawGenreHit;
+        const shouldUseRouterFamilyPrimaryForFormatLane = routerFamilyPrimaryQueryForFormatLane &&
+          routerFamilyCanOwnFormatLane &&
+          noExplicitGenreInLane &&
+          (rawIsFormatOnlyLane || sanitizedIsOnlyGenericFallback || sanitizedIsFormatOnly || (droppedFormatTerms.length > 0 && !fallbackGenreHit));
+        if (shouldUseRouterFamilyPrimaryForFormatLane) {
+          adultKitsuOnlyFormatOnlyLaneDetected = true;
+          adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily = true;
+          adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback = true;
+          adultKitsuOnlySelectedQueryWouldHaveBeenGeneric = String(fallbackGenreHit?.query || sanitized || selectAdultKitsuNonGenericAlternative() || "");
+          adultKitsuOnlySelectedQueryAfterRouterFamilyOverride = routerFamilyPrimaryQueryForFormatLane;
+          return {
+            query: routerFamilyPrimaryQueryForFormatLane,
+            fallbackReason: "router_family_primary_used_for_format_only_lane",
+            droppedFormatTerms,
+          };
+        }
         if (fallbackGenreHit) {
           if (fallbackGenreHit.query === "adventure") {
             const replacementQuery = selectAdultKitsuNonGenericAlternative();
@@ -4488,9 +4516,6 @@ export async function getRecommendations(
             droppedFormatTerms,
           };
         }
-        const sanitized = String(sanitizedQuery || "").trim();
-        const sanitizedIsOnlyGenericFallback = sanitizedWasGenericOnly && /^(adventure|mystery|science fiction|anime|manga|popular anime)$/i.test(sanitized);
-        const sanitizedIsFormatOnly = /^(graphic\s+novels?|comics?|anime|manga|popular anime)$/i.test(sanitized);
         if (sanitized && !sanitizedIsOnlyGenericFallback && !sanitizedIsFormatOnly) {
           return {
             query: sanitized,
@@ -5569,6 +5594,11 @@ export async function getRecommendations(
       adultKitsuOnlyEmergencyFallbackSelectedQuery,
       adultKitsuOnlyEmergencyFallbackReason,
       adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery,
+      adultKitsuOnlyFormatOnlyLaneDetected,
+      adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily,
+      adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback,
+      adultKitsuOnlySelectedQueryWouldHaveBeenGeneric,
+      adultKitsuOnlySelectedQueryAfterRouterFamilyOverride,
       adultKitsuOnlyFamilyPlanningBypassReason,
       adultKitsuOnlyFamilyPropagationTrace,
       adultKitsuOnlyComparisonFamilyAnchor,
@@ -15145,6 +15175,11 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyEmergencyFallbackSelectedQuery,
     adultKitsuOnlyEmergencyFallbackReason,
     adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery,
+    adultKitsuOnlyFormatOnlyLaneDetected,
+    adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily,
+    adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback,
+    adultKitsuOnlySelectedQueryWouldHaveBeenGeneric,
+    adultKitsuOnlySelectedQueryAfterRouterFamilyOverride,
     adultKitsuOnlyFamilyPlanningBypassReason,
     adultKitsuOnlyFamilyPropagationTrace,
     adultKitsuOnlyComparisonFamilyAnchor,
