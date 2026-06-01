@@ -13656,7 +13656,8 @@ const normalizedCandidatesRaw = [
         const doc = item?.doc || item;
         return { item, doc, ...kitsuRescueQualityMetricsForDoc(doc) };
       });
-      finalOutputItems = finalOutputItems.slice(0, 1);
+      const postAuditWeakLimit = adultKitsuOnlyWeakRescueReturnLimit(weakCandidateRows, 0, "post_audit_ranked_pool_all_weak");
+      finalOutputItems = finalOutputItems.slice(0, postAuditWeakLimit);
       returnedItemsBuiltFrom = "kitsu_ranked_pool_rescue_weak_candidates";
       finalReturnSourceUsed = "kitsu_ranked_pool_rescue_weak_candidates";
       markKitsuRankedPoolWeakCandidateOutput("post_audit_ranked_pool_all_weak", weakCandidateRows, finalOutputItems);
