@@ -1543,6 +1543,27 @@ function normalizeRouterFamilyValue(value: unknown): RouterFamilyKey | null {
   return null;
 }
 
+
+function adultKitsuFamilyQueriesForRouterFamily(family: RouterFamilyKey): string[] {
+  const familyQueriesByRouterFamily: Record<string, string[]> = {
+    science_fiction: ["science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic"],
+    speculative: ["science fiction", "dystopian", "fantasy", "mystery", "horror"],
+    mystery: ["mystery", "psychological mystery", "detective", "thriller", "horror"],
+    thriller: ["thriller", "mystery", "psychological thriller", "suspense", "crime"],
+    horror: ["horror", "psychological horror", "supernatural", "mystery", "thriller"],
+    fantasy: ["fantasy", "dark fantasy", "supernatural", "adventure", "science fiction"],
+    romance: ["romance", "drama", "mystery", "fantasy"],
+    historical: ["historical", "mystery", "drama", "adventure"],
+  };
+  return (familyQueriesByRouterFamily[family] || ["mystery", "fantasy", "science fiction", "horror"])
+    .map((q) => String(q || "").trim())
+    .filter(Boolean);
+}
+
+function adultKitsuDedupeQueries(queries: string[]): string[] {
+  return Array.from(new Set(queries.map((q) => String(q || "").trim()).filter(Boolean)));
+}
+
 function collectHybridSignalText(input: RecommenderInput, bucketPlan: any): string {
   const safeJson = (value: unknown) => {
     try { return JSON.stringify(value || {}); } catch { return ""; }
@@ -3135,7 +3156,17 @@ export async function getRecommendations(
   let adultKitsuOnlyComparisonPromotionReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let adultKitsuOnlyComparisonPromotionAcceptedCount = 0;
   let adultKitsuOnlyComparisonPromotionReturnedTitles: string[] = [];
+  let adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  const adultKitsuOnlyFamilyPropagationTrace: any[] = [];
+  let adultKitsuOnlyComparisonFamilyAnchor = "";
+  let adultKitsuOnlyFinalKitsuFetchQuery = "";
   let kitsuAdapterEligibilityPath = "";
+  if (adultKitsuOnlyModeDetected) {
+    adultKitsuOnlyCandidateFamilyQueries = adultKitsuFamilyQueriesForRouterFamily(routerFamily);
+    adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyCandidateFamilyQueries.length
+      ? "none"
+      : `family_planning_skipped_due_to_no_family_queries:${routerFamily}`;
+  }
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
 
   if (routedInput.deckKey === "ms_hs" && sourceEnabled.comicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu) {
@@ -4419,13 +4450,13 @@ export async function getRecommendations(
           }
           const routerFamilyPreferredQuery = adultKitsuFamilyQueriesForRouterFamily(routerFamily)[0] || "";
           const fallbackHitFamily = normalizeRouterFamilyValue(fallbackGenreHit.query) || inferFamilyFromQueryText(fallbackGenreHit.query, routerFamily);
-          const fallbackHitIsAdjacentGeneric = fallbackGenreHit.query === "fantasy" || fallbackGenreHit.query === "drama" || fallbackGenreHit.query === "romance";
-          if (routerFamilyPreferredQuery && fallbackHitFamily !== routerFamily && fallbackHitIsAdjacentGeneric) {
+          const routerFamilyCanOwnAdultKitsuQuery = routerFamily !== "general" && routerFamily !== "speculative";
+          if (routerFamilyPreferredQuery && routerFamilyCanOwnAdultKitsuQuery && fallbackHitFamily !== routerFamily) {
             return {
               query: routerFamilyPreferredQuery,
               fallbackReason: rawGenreHit
-                ? `router_family_${routerFamily}_replaced_adjacent_${fallbackGenreHit.query.replace(/\s+/g, "_")}_from_adult_lane_signals`
-                : `router_family_${routerFamily}_replaced_adjacent_${fallbackGenreHit.query.replace(/\s+/g, "_")}_from_adult_fallback_terms`,
+                ? `router_family_${routerFamily}_replaced_mismatched_${fallbackHitFamily}_${fallbackGenreHit.query.replace(/\s+/g, "_")}_from_adult_lane_signals`
+                : `router_family_${routerFamily}_replaced_mismatched_${fallbackHitFamily}_${fallbackGenreHit.query.replace(/\s+/g, "_")}_from_adult_fallback_terms`,
               droppedFormatTerms,
             };
           }
@@ -4492,20 +4523,6 @@ export async function getRecommendations(
       const googleLaneQuery = normalizeFinalSourceQuery(baseLaneQuerySourceSanitized || baseLaneQuery);
       const openLibraryLaneQuery = normalizeFinalSourceQuery(sanitizeOpenLibraryQuery(baseLaneQuerySourceSanitized || baseLaneQuery) || "fantasy adventure");
       const kitsuSanitized = sanitizeKitsuQuery(baseLaneQuery);
-      const adultKitsuFamilyQueriesForRouterFamily = (family: RouterFamilyKey): string[] => {
-        const familyQueriesByRouterFamily: Record<string, string[]> = {
-          science_fiction: ["science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic"],
-          speculative: ["science fiction", "dystopian", "fantasy", "mystery", "horror"],
-          mystery: ["mystery", "psychological mystery", "detective", "thriller", "horror"],
-          thriller: ["thriller", "mystery", "psychological thriller", "suspense", "crime"],
-          horror: ["horror", "psychological horror", "supernatural", "mystery", "thriller"],
-          fantasy: ["fantasy", "dark fantasy", "supernatural", "adventure", "science fiction"],
-          romance: ["romance", "drama", "mystery", "fantasy"],
-          historical: ["historical", "mystery", "drama", "adventure"],
-        };
-        return (familyQueriesByRouterFamily[family] || ["mystery", "fantasy", "science fiction", "horror"]).map((q) => String(q || "").trim()).filter(Boolean);
-      };
-      const adultKitsuDedupeQueries = (queries: string[]) => Array.from(new Set(queries.map((q) => String(q || "").trim()).filter(Boolean)));
       const fallbackBroadTerms = [
         /\b(superhero(?:es)?|super hero(?:es)?|miles|batman|spider[\s-]?man|marvel|dc comics?)\b/i.test(baseLaneQuery) ? "superhero" : "",
         /\b(mystery|detective|investigator|crime)\b/i.test(baseLaneQuery) ? "detective" : "",
@@ -4744,6 +4761,23 @@ export async function getRecommendations(
           : [kitsuLaneQuery];
         if (adultKitsuOnlyModeDetected) {
           adultKitsuOnlyCandidateFamilyQueries = adultKitsuRouterFamilyQueries.slice();
+          adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyCandidateFamilyQueries.length ? "none" : `family_planning_skipped_due_to_no_family_queries:${routerFamily}`;
+          adultKitsuOnlyComparisonFamilyAnchor = adultKitsuOnlyAdapterQueries[0] || kitsuLaneQuery || "";
+          adultKitsuOnlyFinalKitsuFetchQuery = kitsuLaneQuery;
+          adultKitsuOnlyFamilyPropagationTrace.push({
+            routerFamily,
+            rungFamily,
+            laneFamily,
+            laneQuery: baseLaneQuery,
+            adapterInputQuery: baseLaneQuery,
+            adapterSelectedQuery: kitsuLaneQuery,
+            selectedQueryReason: adultKitsuOnlySelectedQueryReason,
+            replacementReason: adultKitsuOnlyReplacementReason,
+            candidateFamilyQueries: adultKitsuOnlyCandidateFamilyQueries.slice(),
+            fallbackQueriesPlanned: adultKitsuOnlyAdapterQueries.slice(),
+            comparisonFamilyAnchor: adultKitsuOnlyComparisonFamilyAnchor,
+            finalKitsuFetchQuery: kitsuLaneQuery,
+          });
           adultKitsuOnlyFallbackQueriesPlanned = adultKitsuOnlyAdapterQueries.slice();
           adultKitsuOnlyFallbackRouterPlannedCount = adultKitsuOnlyFallbackQueriesPlanned.length;
           adultKitsuOnlyFallbackStoppedReason = "adapter_dispatch_started";
@@ -4938,6 +4972,14 @@ export async function getRecommendations(
           adultKitsuOnlyRawSampleTitles = kitsuAdultOnlyRawSampleTitles;
           adultKitsuOnlyQueryComparisonQueries = kitsuAdultOnlyQueryComparisonQueries;
           adultKitsuOnlyQueryQualityComparisonRaw = kitsuAdultOnlyQueryQualityComparison;
+          adultKitsuOnlyComparisonFamilyAnchor = kitsuAdultOnlyQueryComparisonQueries[0] || adultKitsuOnlyComparisonFamilyAnchor || adultKitsuOnlyQuerySelected || "";
+          adultKitsuOnlyFinalKitsuFetchQuery = kitsuFallbackQueriesAttemptedFromAdapter[0] || adultKitsuOnlyFinalKitsuFetchQuery || kitsuLaneQuery;
+          const latestPropagationTrace = adultKitsuOnlyFamilyPropagationTrace[adultKitsuOnlyFamilyPropagationTrace.length - 1];
+          if (latestPropagationTrace) {
+            latestPropagationTrace.comparisonFamilyAnchor = adultKitsuOnlyComparisonFamilyAnchor;
+            latestPropagationTrace.finalKitsuFetchQuery = adultKitsuOnlyFinalKitsuFetchQuery;
+            latestPropagationTrace.comparisonQueries = kitsuAdultOnlyQueryComparisonQueries.slice();
+          }
         }
         const appendKitsuFetchResultRow = (row: { query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }) => {
           kitsuFetchResultsByQuery.push(row);
@@ -5487,6 +5529,10 @@ export async function getRecommendations(
       adultKitsuOnlyComparisonPromotionReason,
       adultKitsuOnlyComparisonPromotionAcceptedCount,
       adultKitsuOnlyComparisonPromotionReturnedTitles,
+      adultKitsuOnlyFamilyPlanningBypassReason,
+      adultKitsuOnlyFamilyPropagationTrace,
+      adultKitsuOnlyComparisonFamilyAnchor,
+      adultKitsuOnlyFinalKitsuFetchQuery,
       adultKitsuOnlyForceQueryForValidation,
       debugUrlAdultKitsuForceQuery,
       debugLocalStorageAdultKitsuForceQuery,
@@ -14025,6 +14071,32 @@ const normalizedCandidatesRaw = [
   const adultKitsuOnlyQueryQualityComparison = adultKitsuOnlyModeDetected
     ? enrichAdultKitsuOnlyQueryQualityComparison(adultKitsuOnlyQueryQualityComparisonRaw)
     : [];
+  if (adultKitsuOnlyModeDetected && adultKitsuOnlyFamilyPropagationTrace.length === 0) {
+    const skippedReason = adultKitsuOnlyRouterDispatchBlockedReason !== "none"
+      ? adultKitsuOnlyRouterDispatchBlockedReason
+      : includeKitsu
+      ? "kitsu_dispatch_not_reached"
+      : "kitsu_disabled";
+    adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyCandidateFamilyQueries.length
+      ? `family_planning_entered_but_selection_skipped_due_to_${skippedReason}`
+      : `family_planning_skipped_due_to_${skippedReason}`;
+    if (adultKitsuOnlySelectedQueryReason === "not_evaluated") {
+      adultKitsuOnlySelectedQueryReason = adultKitsuOnlyFamilyPlanningBypassReason;
+      adultKitsuOnlyQueryFallbackReason = adultKitsuOnlyFamilyPlanningBypassReason;
+    }
+    adultKitsuOnlyFamilyPropagationTrace.push({
+      routerFamily,
+      laneFamily: null,
+      laneQuery: "",
+      adapterInputQuery: "",
+      adapterSelectedQuery: "",
+      comparisonFamilyAnchor: "",
+      finalKitsuFetchQuery: "",
+      bypassReason: adultKitsuOnlyFamilyPlanningBypassReason,
+      candidateFamilyQueries: adultKitsuOnlyCandidateFamilyQueries.slice(),
+      fallbackQueriesPlanned: adultKitsuOnlyFallbackQueriesPlanned.slice(),
+    });
+  }
   adultKitsuOnlyComparisonAcceptedCountsByQuery = adultKitsuOnlyQueryQualityComparison.reduce((acc: Record<string, number>, row: any) => {
     const key = normalizeText(String(row?.query || ""));
     if (key) acc[key] = Number(row?.weakGateAcceptedCount || 0);
@@ -14801,6 +14873,10 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyComparisonPromotionReason,
     adultKitsuOnlyComparisonPromotionAcceptedCount,
     adultKitsuOnlyComparisonPromotionReturnedTitles,
+    adultKitsuOnlyFamilyPlanningBypassReason,
+    adultKitsuOnlyFamilyPropagationTrace,
+    adultKitsuOnlyComparisonFamilyAnchor,
+    adultKitsuOnlyFinalKitsuFetchQuery,
     adultKitsuOnlyForceQueryForValidation,
     debugUrlAdultKitsuForceQuery,
     debugLocalStorageAdultKitsuForceQuery,
