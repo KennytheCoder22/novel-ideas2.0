@@ -3207,6 +3207,16 @@ export async function getRecommendations(
   let adultKitsuOnlyEmergencyFallbackSelectedQuery = "";
   let adultKitsuOnlyEmergencyFallbackReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery: Record<string, any> = {};
+  let adultKitsuOnlyEmergencyFallbackRowsBuiltByQuery: Record<string, number> = {};
+  let adultKitsuOnlyEmergencyFallbackRowsMissingByQuery: Record<string, boolean> = {};
+  let adultKitsuOnlyEmergencyFallbackFetchAttemptedByQuery: Record<string, boolean> = {};
+  let adultKitsuOnlyEmergencyFallbackSkipReasonByQuery: Record<string, string> = {};
+  let adultKitsuOnlyEmergencyFallbackComparisonLimitHit = false;
+  let adultKitsuOnlyComparisonRowsBuiltByQuery: Record<string, number> = {};
+  let adultKitsuOnlyComparisonRowsMissingByQuery: Record<string, boolean> = {};
+  let adultKitsuOnlyComparisonFetchAttemptedByQuery: Record<string, boolean> = {};
+  let adultKitsuOnlyComparisonSkipReasonByQuery: Record<string, string> = {};
+  let adultKitsuOnlyComparisonLimitHit = false;
   let adultKitsuOnlyFormatOnlyLaneDetected = false;
   let adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily = false;
   let adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback = false;
@@ -5029,6 +5039,19 @@ export async function getRecommendations(
         const kitsuAdultOnlyQueryQualityComparison = Array.isArray((laneKitsu as any)?.debugKitsuAdultOnlyQueryQualityComparison)
           ? (laneKitsu as any).debugKitsuAdultOnlyQueryQualityComparison
           : [];
+        const kitsuAdultOnlyQueryComparisonRowsBuiltByQuery = (laneKitsu as any)?.debugKitsuAdultOnlyQueryComparisonRowsBuiltByQuery && typeof (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonRowsBuiltByQuery === "object"
+          ? (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonRowsBuiltByQuery
+          : {};
+        const kitsuAdultOnlyQueryComparisonRowsMissingByQuery = (laneKitsu as any)?.debugKitsuAdultOnlyQueryComparisonRowsMissingByQuery && typeof (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonRowsMissingByQuery === "object"
+          ? (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonRowsMissingByQuery
+          : {};
+        const kitsuAdultOnlyQueryComparisonFetchAttemptedByQuery = (laneKitsu as any)?.debugKitsuAdultOnlyQueryComparisonFetchAttemptedByQuery && typeof (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonFetchAttemptedByQuery === "object"
+          ? (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonFetchAttemptedByQuery
+          : {};
+        const kitsuAdultOnlyQueryComparisonSkipReasonByQuery = (laneKitsu as any)?.debugKitsuAdultOnlyQueryComparisonSkipReasonByQuery && typeof (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonSkipReasonByQuery === "object"
+          ? (laneKitsu as any).debugKitsuAdultOnlyQueryComparisonSkipReasonByQuery
+          : {};
+        const kitsuAdultOnlyQueryComparisonLimitHit = Boolean((laneKitsu as any)?.debugKitsuAdultOnlyQueryComparisonLimitHit);
         if (!kitsuAdapterEligibilityPath) kitsuAdapterEligibilityPath = String((laneKitsu as any)?.debugKitsuEligibilityMode || "").trim();
         if (adultKitsuOnlyModeDetected) {
           adultKitsuOnlyRouterDispatchBlockedReason = "none";
@@ -5053,6 +5076,11 @@ export async function getRecommendations(
           adultKitsuOnlyRawSampleTitles = kitsuAdultOnlyRawSampleTitles;
           adultKitsuOnlyQueryComparisonQueries = kitsuAdultOnlyQueryComparisonQueries;
           adultKitsuOnlyQueryQualityComparisonRaw = kitsuAdultOnlyQueryQualityComparison;
+          adultKitsuOnlyComparisonRowsBuiltByQuery = kitsuAdultOnlyQueryComparisonRowsBuiltByQuery;
+          adultKitsuOnlyComparisonRowsMissingByQuery = kitsuAdultOnlyQueryComparisonRowsMissingByQuery;
+          adultKitsuOnlyComparisonFetchAttemptedByQuery = kitsuAdultOnlyQueryComparisonFetchAttemptedByQuery;
+          adultKitsuOnlyComparisonSkipReasonByQuery = kitsuAdultOnlyQueryComparisonSkipReasonByQuery;
+          adultKitsuOnlyComparisonLimitHit = kitsuAdultOnlyQueryComparisonLimitHit;
           adultKitsuOnlyComparisonFamilyAnchor = kitsuAdultOnlyQueryComparisonQueries[0] || adultKitsuOnlyComparisonFamilyAnchor || adultKitsuOnlyQuerySelected || "";
           adultKitsuOnlyFinalKitsuFetchQuery = kitsuFallbackQueriesAttemptedFromAdapter[0] || adultKitsuOnlyFinalKitsuFetchQuery || kitsuLaneQuery;
           const latestPropagationTrace = adultKitsuOnlyFamilyPropagationTrace[adultKitsuOnlyFamilyPropagationTrace.length - 1];
@@ -5631,6 +5659,16 @@ export async function getRecommendations(
       adultKitsuOnlyEmergencyFallbackSelectedQuery,
       adultKitsuOnlyEmergencyFallbackReason,
       adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery,
+      adultKitsuOnlyEmergencyFallbackRowsBuiltByQuery,
+      adultKitsuOnlyEmergencyFallbackRowsMissingByQuery,
+      adultKitsuOnlyEmergencyFallbackFetchAttemptedByQuery,
+      adultKitsuOnlyEmergencyFallbackSkipReasonByQuery,
+      adultKitsuOnlyEmergencyFallbackComparisonLimitHit,
+      adultKitsuOnlyComparisonRowsBuiltByQuery,
+      adultKitsuOnlyComparisonRowsMissingByQuery,
+      adultKitsuOnlyComparisonFetchAttemptedByQuery,
+      adultKitsuOnlyComparisonSkipReasonByQuery,
+      adultKitsuOnlyComparisonLimitHit,
       adultKitsuOnlyFormatOnlyLaneDetected,
       adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily,
       adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback,
@@ -14549,14 +14587,25 @@ const normalizedCandidatesRaw = [
       "fantasy",
     ]);
     adultKitsuOnlyEmergencyFallbackQueriesTried = emergencyQueries.slice();
+    adultKitsuOnlyEmergencyFallbackComparisonLimitHit = adultKitsuOnlyComparisonLimitHit && emergencyQueries.some((query) => !adultKitsuOnlyQueryComparisonQueries.map((q) => normalizeText(q)).includes(normalizeText(query)));
     adultKitsuOnlyEmergencyFallbackReason = "family_comparison_exhausted_evaluating_emergency_fallback";
     for (const query of emergencyQueries) {
       const queryKey = normalizeText(query);
       const comparisonRow: any = comparisonRowsByKey.get(queryKey);
       if (!comparisonRow) {
-        adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery[queryKey] = "comparison_row_missing";
+        adultKitsuOnlyEmergencyFallbackRowsBuiltByQuery[queryKey] = 0;
+        adultKitsuOnlyEmergencyFallbackRowsMissingByQuery[queryKey] = true;
+        adultKitsuOnlyEmergencyFallbackFetchAttemptedByQuery[queryKey] = Boolean(adultKitsuOnlyComparisonFetchAttemptedByQuery[queryKey]);
+        adultKitsuOnlyEmergencyFallbackSkipReasonByQuery[queryKey] = adultKitsuOnlyComparisonLimitHit
+          ? "comparison_row_missing_due_to_comparison_limit"
+          : "comparison_row_missing_not_planned_or_adapter_omitted";
+        adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery[queryKey] = adultKitsuOnlyEmergencyFallbackSkipReasonByQuery[queryKey];
         continue;
       }
+      adultKitsuOnlyEmergencyFallbackFetchAttemptedByQuery[queryKey] = Boolean(adultKitsuOnlyComparisonFetchAttemptedByQuery[queryKey] ?? true);
+      adultKitsuOnlyEmergencyFallbackRowsMissingByQuery[queryKey] = false;
+      adultKitsuOnlyEmergencyFallbackRowsBuiltByQuery[queryKey] = Number(adultKitsuOnlyComparisonRowsBuiltByQuery[queryKey] ?? comparisonRow?.rankedCount ?? 0);
+      adultKitsuOnlyEmergencyFallbackSkipReasonByQuery[queryKey] = String(adultKitsuOnlyComparisonSkipReasonByQuery[queryKey] || "comparison_row_available");
       const candidateDocs = Array.isArray(comparisonRow?.candidateDocs) ? comparisonRow.candidateDocs : [];
       const emergencyRows = candidateDocs.map((doc: any) => {
         const title = String(doc?.title || "").trim();
@@ -14599,6 +14648,9 @@ const normalizedCandidatesRaw = [
       const acceptedEmergencyRows = evaluatedEmergencyRows.filter((entry: any) => entry.quality.acceptable).map((entry: any) => entry.row);
       adultKitsuOnlyEmergencyFallbackAcceptedCountsByQuery[queryKey] = acceptedEmergencyRows.length;
       if (!acceptedEmergencyRows.length) {
+        adultKitsuOnlyEmergencyFallbackSkipReasonByQuery[queryKey] = candidateDocs.length === 0
+          ? String(adultKitsuOnlyComparisonSkipReasonByQuery[queryKey] || "comparison_row_had_no_candidate_docs")
+          : "quality_gate_rejected_all_candidates";
         adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery[queryKey] = evaluatedEmergencyRows.reduce((acc: Record<string, number>, entry: any) => {
           const reason = String(entry?.quality?.reason || "unknown");
           acc[reason] = Number(acc[reason] || 0) + 1;
@@ -14607,15 +14659,17 @@ const normalizedCandidatesRaw = [
         continue;
       }
       const acceptedStrongCount = acceptedEmergencyRows.filter((row: any) => isKitsuRescueStrongRow(row)).length;
-      const emergencyLimit = adultKitsuOnlyWeakRescueReturnLimit(acceptedEmergencyRows, acceptedStrongCount, "family_exhausted_emergency_fallback");
-      finalOutputItems = acceptedEmergencyRows.slice(0, emergencyLimit).map((row: any) => ({ kind: "open_library", doc: row.doc }));
-      returnedItemsBuiltFrom = "adult_kitsu_only_family_exhausted_emergency_fallback";
-      finalReturnSourceUsed = returnedItemsBuiltFrom;
-      adultKitsuOnlyEmergencyFallbackSelectedQuery = String(comparisonRow?.query || query || "");
-      adultKitsuOnlyEmergencyFallbackReason = `selected:${adultKitsuOnlyEmergencyFallbackSelectedQuery}:accepted=${acceptedEmergencyRows.length}:strong=${acceptedStrongCount}:returned=${finalOutputItems.length}`;
-      sourceSkippedReason.push(`adult_kitsu_only_family_exhausted_emergency_fallback:${adultKitsuOnlyEmergencyFallbackReason}`);
-      if (acceptedStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("family_exhausted_emergency_fallback_all_weak", acceptedEmergencyRows, finalOutputItems);
-      break;
+      adultKitsuOnlyEmergencyFallbackSkipReasonByQuery[queryKey] = "accepted_by_adult_quality_gate";
+      if (!adultKitsuOnlyEmergencyFallbackSelectedQuery) {
+        const emergencyLimit = adultKitsuOnlyWeakRescueReturnLimit(acceptedEmergencyRows, acceptedStrongCount, "family_exhausted_emergency_fallback");
+        finalOutputItems = acceptedEmergencyRows.slice(0, emergencyLimit).map((row: any) => ({ kind: "open_library", doc: row.doc }));
+        returnedItemsBuiltFrom = "adult_kitsu_only_family_exhausted_emergency_fallback";
+        finalReturnSourceUsed = returnedItemsBuiltFrom;
+        adultKitsuOnlyEmergencyFallbackSelectedQuery = String(comparisonRow?.query || query || "");
+        adultKitsuOnlyEmergencyFallbackReason = `selected:${adultKitsuOnlyEmergencyFallbackSelectedQuery}:accepted=${acceptedEmergencyRows.length}:strong=${acceptedStrongCount}:returned=${finalOutputItems.length}`;
+        sourceSkippedReason.push(`adult_kitsu_only_family_exhausted_emergency_fallback:${adultKitsuOnlyEmergencyFallbackReason}`);
+        if (acceptedStrongCount === 0) markKitsuRankedPoolWeakCandidateOutput("family_exhausted_emergency_fallback_all_weak", acceptedEmergencyRows, finalOutputItems);
+      }
     }
     if (finalOutputItems.length === 0 && adultKitsuOnlyEmergencyFallbackReason === "family_comparison_exhausted_evaluating_emergency_fallback") {
       adultKitsuOnlyEmergencyFallbackReason = "no_emergency_fallback_accepted_candidates";
@@ -15364,6 +15418,16 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyEmergencyFallbackSelectedQuery,
     adultKitsuOnlyEmergencyFallbackReason,
     adultKitsuOnlyEmergencyFallbackRejectedReasonByQuery,
+    adultKitsuOnlyEmergencyFallbackRowsBuiltByQuery,
+    adultKitsuOnlyEmergencyFallbackRowsMissingByQuery,
+    adultKitsuOnlyEmergencyFallbackFetchAttemptedByQuery,
+    adultKitsuOnlyEmergencyFallbackSkipReasonByQuery,
+    adultKitsuOnlyEmergencyFallbackComparisonLimitHit,
+    adultKitsuOnlyComparisonRowsBuiltByQuery,
+    adultKitsuOnlyComparisonRowsMissingByQuery,
+    adultKitsuOnlyComparisonFetchAttemptedByQuery,
+    adultKitsuOnlyComparisonSkipReasonByQuery,
+    adultKitsuOnlyComparisonLimitHit,
     adultKitsuOnlyFormatOnlyLaneDetected,
     adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily,
     adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback,
