@@ -3156,6 +3156,12 @@ export async function getRecommendations(
   let adultKitsuOnlyComparisonPromotionReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let adultKitsuOnlyComparisonPromotionAcceptedCount = 0;
   let adultKitsuOnlyComparisonPromotionReturnedTitles: string[] = [];
+  let adultKitsuOnlyComparisonQueryTierByQuery: Record<string, number> = {};
+  let adultKitsuOnlyPromotionTier = 0;
+  let adultKitsuOnlyPromotionScope = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlyPromotionRejectedReasonByQuery: Record<string, string> = {};
+  let adultKitsuOnlyFamilyScopedBestQuery = "";
+  let adultKitsuOnlyBroadBestQuery = "";
   let adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   const adultKitsuOnlyFamilyPropagationTrace: any[] = [];
   let adultKitsuOnlyComparisonFamilyAnchor = "";
@@ -5529,6 +5535,12 @@ export async function getRecommendations(
       adultKitsuOnlyComparisonPromotionReason,
       adultKitsuOnlyComparisonPromotionAcceptedCount,
       adultKitsuOnlyComparisonPromotionReturnedTitles,
+      adultKitsuOnlyComparisonQueryTierByQuery,
+      adultKitsuOnlyPromotionTier,
+      adultKitsuOnlyPromotionScope,
+      adultKitsuOnlyPromotionRejectedReasonByQuery,
+      adultKitsuOnlyFamilyScopedBestQuery,
+      adultKitsuOnlyBroadBestQuery,
       adultKitsuOnlyFamilyPlanningBypassReason,
       adultKitsuOnlyFamilyPropagationTrace,
       adultKitsuOnlyComparisonFamilyAnchor,
@@ -14118,20 +14130,105 @@ const normalizedCandidatesRaw = [
     const selectedKeyForPromotion = normalizeText(adultKitsuOnlyQuerySelected || kitsuFinalQueryUsedForFetch[0] || "");
     const selectedAcceptedCountForPromotion = Number(adultKitsuOnlyComparisonAcceptedCountsByQuery[selectedKeyForPromotion] || 0);
     const rowsByQueryKey = new Map((adultKitsuOnlyQueryQualityComparisonRaw || []).map((row: any) => [normalizeText(String(row?.query || "")), row]));
-    const promotionRows = adultKitsuOnlyQueryQualityComparison
-      .map((row: any) => ({ row, key: normalizeText(String(row?.query || "")), acceptedCount: Number(row?.weakGateAcceptedCount || 0), rawCount: Number(row?.rawCount || 0) }))
-      .filter((entry: any) => entry.key && entry.key !== selectedKeyForPromotion && entry.acceptedCount > 0)
-      .sort((a: any, b: any) => {
-        if (b.acceptedCount !== a.acceptedCount) return b.acceptedCount - a.acceptedCount;
-        return b.rawCount - a.rawCount;
-      });
-    const bestPromotion = promotionRows[0];
-    const selectedWasWeak = selectedAcceptedCountForPromotion === 0;
-    const substantiallyBetter = Boolean(bestPromotion) && (
-      selectedWasWeak ||
-      (bestPromotion.acceptedCount >= selectedAcceptedCountForPromotion + 3 && bestPromotion.acceptedCount >= selectedAcceptedCountForPromotion * 2)
+    const bridgeQueriesByFamily: Record<string, string[]> = {
+      horror: ["mystery", "thriller", "psychological mystery", "psychological thriller", "dark fantasy"],
+      thriller: ["mystery", "crime", "psychological mystery", "horror"],
+      mystery: ["thriller", "crime", "psychological thriller", "horror"],
+      fantasy: ["supernatural", "adventure", "science fiction", "dystopian"],
+      science_fiction: ["speculative", "fantasy", "dystopian", "post apocalyptic"],
+      romance: ["drama", "historical"],
+      historical: ["mystery", "romance", "drama"],
+      speculative: ["science fiction", "dystopian", "fantasy", "horror"],
+      general: ["mystery", "fantasy", "science fiction", "horror"],
+    };
+    const explicitBridgeSignalText = normalizeText([
+      ...adultKitsuDiagnosticSignals,
+      ...likedGenresSafe,
+      ...likedTonesSafe,
+      ...likedThemesSafe,
+      ...Object.keys(((routedInput as any)?.tagCounts || {}) as Record<string, number>).filter((key) => Number((((routedInput as any)?.tagCounts || {}) as any)?.[key] || 0) > 0),
+      ...Object.keys(((routedInput as any)?.tasteProfile?.tagCounts || {}) as Record<string, number>).filter((key) => Number((((routedInput as any)?.tasteProfile?.tagCounts || {}) as any)?.[key] || 0) > 0),
+    ].join(" "));
+    const routerFamilyKeys = new Set(adultKitsuOnlyCandidateFamilyQueries.map((query) => normalizeText(query)).filter(Boolean));
+    const bridgeKeys = new Set((bridgeQueriesByFamily[routerFamily] || []).map((query) => normalizeText(query)).filter(Boolean));
+    const queryTierForPromotion = (queryKey: string) => {
+      if (!queryKey) return 4;
+      if (queryKey === selectedKeyForPromotion) return 1;
+      const inferred = inferFamilyFromQueryText(queryKey, "general");
+      if (routerFamilyKeys.has(queryKey) || inferred === routerFamily) return 2;
+      if (bridgeKeys.has(queryKey)) return 3;
+      return 4;
+    };
+    const hasExplicitBridgeEvidence = (queryKey: string) => {
+      if (!queryKey) return false;
+      const inferred = inferFamilyFromQueryText(queryKey, "general");
+      const terms = Array.from(new Set([
+        queryKey,
+        inferred && inferred !== "general" ? inferred.replace("_", " ") : "",
+        ...(queryKey.includes(" ") ? queryKey.split(/\s+/) : []),
+      ].map((term) => normalizeText(term)).filter((term) => term.length >= 4)));
+      return terms.some((term) => explicitBridgeSignalText.includes(term));
+    };
+    adultKitsuOnlyComparisonQueryTierByQuery = adultKitsuOnlyQueryQualityComparison.reduce((acc: Record<string, number>, row: any) => {
+      const key = normalizeText(String(row?.query || ""));
+      if (key) acc[key] = queryTierForPromotion(key);
+      return acc;
+    }, {});
+    const comparisonRowsForPromotion = adultKitsuOnlyQueryQualityComparison
+      .map((row: any) => ({
+        row,
+        key: normalizeText(String(row?.query || "")),
+        query: String(row?.query || ""),
+        acceptedCount: Number(row?.weakGateAcceptedCount || 0),
+        rawCount: Number(row?.rawCount || 0),
+      }))
+      .filter((entry: any) => entry.key && entry.acceptedCount > 0)
+      .map((entry: any) => ({ ...entry, tier: queryTierForPromotion(entry.key), bridgeEvidence: hasExplicitBridgeEvidence(entry.key) }));
+    const familyScopedRows = comparisonRowsForPromotion.filter((entry: any) => entry.tier <= 2);
+    const broadRows = comparisonRowsForPromotion.filter((entry: any) => entry.tier >= 3);
+    const sortByAcceptedThenRaw = (a: any, b: any) => {
+      if (b.acceptedCount !== a.acceptedCount) return b.acceptedCount - a.acceptedCount;
+      return b.rawCount - a.rawCount;
+    };
+    const familyScopedBest = [...familyScopedRows].sort(sortByAcceptedThenRaw)[0];
+    const broadBest = [...broadRows].sort(sortByAcceptedThenRaw)[0];
+    adultKitsuOnlyFamilyScopedBestQuery = familyScopedBest ? `${familyScopedBest.query || familyScopedBest.key}:accepted=${familyScopedBest.acceptedCount}:tier=${familyScopedBest.tier}` : "";
+    adultKitsuOnlyBroadBestQuery = broadBest ? `${broadBest.query || broadBest.key}:accepted=${broadBest.acceptedCount}:tier=${broadBest.tier}` : "";
+    const selectedFamilyViableCount = familyScopedRows.reduce((max: number, entry: any) => Math.max(max, Number(entry.acceptedCount || 0)), 0);
+    const isSubstantiallyBetter = (entry: any) => Boolean(entry) && (
+      selectedAcceptedCountForPromotion === 0 ||
+      (entry.acceptedCount >= selectedAcceptedCountForPromotion + 3 && entry.acceptedCount >= selectedAcceptedCountForPromotion * 2)
     );
-    if (bestPromotion && substantiallyBetter) {
+    const scopedPromotionRows = comparisonRowsForPromotion
+      .filter((entry: any) => entry.key !== selectedKeyForPromotion)
+      .map((entry: any) => {
+        const substantiallyBetter = isSubstantiallyBetter(entry);
+        const allowed = entry.tier <= 2
+          ? substantiallyBetter
+          : entry.tier === 3
+          ? substantiallyBetter && entry.bridgeEvidence
+          : substantiallyBetter && selectedAcceptedCountForPromotion === 0 && selectedFamilyViableCount === 0;
+        const rejectedReason = allowed
+          ? "allowed"
+          : !substantiallyBetter
+          ? `not_substantially_better:tier=${entry.tier}:selectedAccepted=${selectedAcceptedCountForPromotion}:candidateAccepted=${entry.acceptedCount}`
+          : entry.tier === 3 && !entry.bridgeEvidence
+          ? `tier3_bridge_missing_explicit_signal:tier=${entry.tier}:candidateAccepted=${entry.acceptedCount}`
+          : entry.tier >= 4 && selectedFamilyViableCount > 0
+          ? `tier4_blocked_family_viable:familyBestAccepted=${selectedFamilyViableCount}:candidateAccepted=${entry.acceptedCount}`
+          : entry.tier >= 4 && selectedAcceptedCountForPromotion > 0
+          ? `tier4_blocked_selected_viable:selectedAccepted=${selectedAcceptedCountForPromotion}:candidateAccepted=${entry.acceptedCount}`
+          : `promotion_scope_blocked:tier=${entry.tier}:candidateAccepted=${entry.acceptedCount}`;
+        adultKitsuOnlyPromotionRejectedReasonByQuery[entry.key] = rejectedReason;
+        return { ...entry, substantiallyBetter, allowed, rejectedReason };
+      });
+    const bestPromotion = scopedPromotionRows
+      .filter((entry: any) => entry.allowed)
+      .sort((a: any, b: any) => {
+        if (a.tier !== b.tier) return a.tier - b.tier;
+        return sortByAcceptedThenRaw(a, b);
+      })[0];
+    if (bestPromotion) {
       const promotionRawRow: any = rowsByQueryKey.get(bestPromotion.key);
       const promotionCandidateDocs = Array.isArray(promotionRawRow?.candidateDocs) ? promotionRawRow.candidateDocs : [];
       const promotionRowsForGate = promotionCandidateDocs.map((doc: any) => {
@@ -14171,15 +14268,27 @@ const normalizedCandidatesRaw = [
         adultKitsuOnlyComparisonPromotedQuery = String(promotionRawRow?.query || bestPromotion.key || "");
         adultKitsuOnlyComparisonPromotionAcceptedCount = acceptedPromotionRows.length;
         adultKitsuOnlyComparisonPromotionReturnedTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || "").trim()).filter(Boolean);
-        adultKitsuOnlyComparisonPromotionReason = `promoted:${selectedKeyForPromotion || "(missing)"}->${adultKitsuOnlyComparisonPromotedQuery}:selectedAccepted=${selectedAcceptedCountForPromotion}:promotedAccepted=${acceptedPromotionRows.length}`;
+        adultKitsuOnlyPromotionTier = Number(bestPromotion.tier || 0);
+        adultKitsuOnlyPromotionScope = bestPromotion.tier <= 2 ? "router_family" : bestPromotion.tier === 3 ? "bridge_with_explicit_signal" : "broad_emergency";
+        adultKitsuOnlyComparisonPromotionReason = `promoted:${selectedKeyForPromotion || "(missing)"}->${adultKitsuOnlyComparisonPromotedQuery}:selectedAccepted=${selectedAcceptedCountForPromotion}:promotedAccepted=${acceptedPromotionRows.length}:tier=${adultKitsuOnlyPromotionTier}:scope=${adultKitsuOnlyPromotionScope}`;
         adultKitsuOnlyReplacementReason = adultKitsuOnlyComparisonPromotionReason;
         sourceSkippedReason.push(`adult_kitsu_only_family_query_promoted:${adultKitsuOnlyComparisonPromotionReason}`);
       } else {
-        adultKitsuOnlyComparisonPromotionReason = `promotion_candidate_failed_gate:${selectedKeyForPromotion || "(missing)"}->${String(promotionRawRow?.query || bestPromotion.key || "")}:diagnosticAccepted=${bestPromotion.acceptedCount}`;
+        adultKitsuOnlyPromotionTier = Number(bestPromotion.tier || 0);
+        adultKitsuOnlyPromotionScope = bestPromotion.tier <= 2 ? "router_family" : bestPromotion.tier === 3 ? "bridge_with_explicit_signal" : "broad_emergency";
+        adultKitsuOnlyComparisonPromotionReason = `promotion_candidate_failed_gate:${selectedKeyForPromotion || "(missing)"}->${String(promotionRawRow?.query || bestPromotion.key || "")}:diagnosticAccepted=${bestPromotion.acceptedCount}:tier=${bestPromotion.tier}:scope=${adultKitsuOnlyPromotionScope}`;
       }
     } else {
-      adultKitsuOnlyComparisonPromotionReason = bestPromotion
-        ? `not_substantially_better:selected=${selectedKeyForPromotion || "(missing)"}:selectedAccepted=${selectedAcceptedCountForPromotion}:best=${bestPromotion.key}:bestAccepted=${bestPromotion.acceptedCount}`
+      const bestRejected = scopedPromotionRows.sort((a: any, b: any) => {
+        if (a.tier !== b.tier) return a.tier - b.tier;
+        return sortByAcceptedThenRaw(a, b);
+      })[0];
+      adultKitsuOnlyPromotionTier = Number(bestRejected?.tier || 0);
+      adultKitsuOnlyPromotionScope = bestRejected
+        ? (bestRejected.tier <= 2 ? "router_family" : bestRejected.tier === 3 ? "bridge" : "broad")
+        : "none";
+      adultKitsuOnlyComparisonPromotionReason = bestRejected
+        ? `promotion_blocked:${bestRejected.key}:${bestRejected.rejectedReason}`
         : `no_viable_family_query:selected=${selectedKeyForPromotion || "(missing)"}:selectedAccepted=${selectedAcceptedCountForPromotion}`;
     }
   }
@@ -14873,6 +14982,12 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyComparisonPromotionReason,
     adultKitsuOnlyComparisonPromotionAcceptedCount,
     adultKitsuOnlyComparisonPromotionReturnedTitles,
+    adultKitsuOnlyComparisonQueryTierByQuery,
+    adultKitsuOnlyPromotionTier,
+    adultKitsuOnlyPromotionScope,
+    adultKitsuOnlyPromotionRejectedReasonByQuery,
+    adultKitsuOnlyFamilyScopedBestQuery,
+    adultKitsuOnlyBroadBestQuery,
     adultKitsuOnlyFamilyPlanningBypassReason,
     adultKitsuOnlyFamilyPropagationTrace,
     adultKitsuOnlyComparisonFamilyAnchor,
