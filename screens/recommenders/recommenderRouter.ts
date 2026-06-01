@@ -3222,6 +3222,11 @@ export async function getRecommendations(
   let adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback = false;
   let adultKitsuOnlySelectedQueryWouldHaveBeenGeneric = "";
   let adultKitsuOnlySelectedQueryAfterRouterFamilyOverride = "";
+  let adultKitsuOnlyGenericActionLaneDetected = false;
+  let adultKitsuOnlyGenericActionFallbackSuppressedByRouterFamily = false;
+  let adultKitsuOnlyRouterFamilyPrimarySelectedForGenericLane = false;
+  let adultKitsuOnlyGenericLaneOriginalSelectedQuery = "";
+  let adultKitsuOnlyGenericLaneFinalSelectedQuery = "";
   let adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   const adultKitsuOnlyFamilyPropagationTrace: any[] = [];
   let adultKitsuOnlyComparisonFamilyAnchor = "";
@@ -4510,10 +4515,36 @@ export async function getRecommendations(
         const routerFamilyCanOwnFormatLane = routerFamily !== "general" && routerFamily !== "speculative";
         const rawIsFormatOnlyLane = /^(anime|manga|comic|comics|graphic\s+novels?|graphic\s+novel|popular anime)$/i.test(normalizedRaw);
         const noExplicitGenreInLane = !rawGenreHit;
+        const rawHasExplicitNonGenericGenre = Boolean(rawGenreHit && rawGenreHit.query !== "adventure");
+        const fallbackHasExplicitNonGenericGenre = Boolean(fallbackGenreHit && fallbackGenreHit.query !== "adventure");
+        const rawIsGenericActionLane = /^(?:action|adventure|survival|anime|manga|popular anime|action anime|adventure anime|anime action|anime adventure|manga action|manga adventure)$/i.test(normalizedRaw) ||
+          (/\b(action|adventure|survival)\b/i.test(normalizedRaw) && /\b(anime|manga|comic|graphic\s+novels?)\b/i.test(normalizedRaw));
+        const sanitizedIsGenericActionFallback = /^(adventure|action|anime|manga|popular anime)$/i.test(sanitized);
+        const genericActionOriginalSelectedQuery = String(fallbackGenreHit?.query || sanitized || selectAdultKitsuNonGenericAlternative() || "");
+        const shouldUseRouterFamilyPrimaryForGenericActionLane = routerFamilyPrimaryQueryForFormatLane &&
+          routerFamilyCanOwnFormatLane &&
+          !rawHasExplicitNonGenericGenre &&
+          !fallbackHasExplicitNonGenericGenre &&
+          (rawIsGenericActionLane || sanitizedIsGenericActionFallback || (fallbackGenreHit?.query === "adventure" && /\b(action|adventure|anime|manga|survival)\b/i.test(adultSignalText)));
         const shouldUseRouterFamilyPrimaryForFormatLane = routerFamilyPrimaryQueryForFormatLane &&
           routerFamilyCanOwnFormatLane &&
           noExplicitGenreInLane &&
           (rawIsFormatOnlyLane || sanitizedIsOnlyGenericFallback || sanitizedIsFormatOnly || (droppedFormatTerms.length > 0 && !fallbackGenreHit));
+        if (shouldUseRouterFamilyPrimaryForGenericActionLane) {
+          adultKitsuOnlyGenericActionLaneDetected = true;
+          adultKitsuOnlyGenericActionFallbackSuppressedByRouterFamily = true;
+          adultKitsuOnlyRouterFamilyPrimarySelectedForGenericLane = true;
+          adultKitsuOnlyGenericLaneOriginalSelectedQuery = genericActionOriginalSelectedQuery;
+          adultKitsuOnlyGenericLaneFinalSelectedQuery = routerFamilyPrimaryQueryForFormatLane;
+          adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily = true;
+          adultKitsuOnlySelectedQueryWouldHaveBeenGeneric = genericActionOriginalSelectedQuery;
+          adultKitsuOnlySelectedQueryAfterRouterFamilyOverride = routerFamilyPrimaryQueryForFormatLane;
+          return {
+            query: routerFamilyPrimaryQueryForFormatLane,
+            fallbackReason: "router_family_primary_used_for_generic_action_lane",
+            droppedFormatTerms,
+          };
+        }
         if (shouldUseRouterFamilyPrimaryForFormatLane) {
           adultKitsuOnlyFormatOnlyLaneDetected = true;
           adultKitsuOnlyGenericLaneFallbackSuppressedByRouterFamily = true;
@@ -5674,6 +5705,11 @@ export async function getRecommendations(
       adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback,
       adultKitsuOnlySelectedQueryWouldHaveBeenGeneric,
       adultKitsuOnlySelectedQueryAfterRouterFamilyOverride,
+      adultKitsuOnlyGenericActionLaneDetected,
+      adultKitsuOnlyGenericActionFallbackSuppressedByRouterFamily,
+      adultKitsuOnlyRouterFamilyPrimarySelectedForGenericLane,
+      adultKitsuOnlyGenericLaneOriginalSelectedQuery,
+      adultKitsuOnlyGenericLaneFinalSelectedQuery,
       adultKitsuOnlyFamilyPlanningBypassReason,
       adultKitsuOnlyFamilyPropagationTrace,
       adultKitsuOnlyComparisonFamilyAnchor,
@@ -15433,6 +15469,11 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyRouterFamilyPrimarySelectedBeforeAdapterFallback,
     adultKitsuOnlySelectedQueryWouldHaveBeenGeneric,
     adultKitsuOnlySelectedQueryAfterRouterFamilyOverride,
+    adultKitsuOnlyGenericActionLaneDetected,
+    adultKitsuOnlyGenericActionFallbackSuppressedByRouterFamily,
+    adultKitsuOnlyRouterFamilyPrimarySelectedForGenericLane,
+    adultKitsuOnlyGenericLaneOriginalSelectedQuery,
+    adultKitsuOnlyGenericLaneFinalSelectedQuery,
     adultKitsuOnlyFamilyPlanningBypassReason,
     adultKitsuOnlyFamilyPropagationTrace,
     adultKitsuOnlyComparisonFamilyAnchor,
