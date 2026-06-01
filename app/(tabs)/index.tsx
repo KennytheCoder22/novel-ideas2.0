@@ -27,6 +27,13 @@ import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
 import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey, type TitleTextKey } from "../../constants/brandTheme";
 
+const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
+  String(
+    (globalThis as any)?.__NOVEL_IDEAS_SHOW_ADULT_KITSU_DEBUG_CONTROLS__ ||
+      (typeof process !== "undefined" ? (process as any)?.env?.EXPO_PUBLIC_SHOW_ADULT_KITSU_DEBUG_CONTROLS : "") ||
+      ""
+  ).toLowerCase() === "true";
+
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -73,7 +80,7 @@ function syncSchema(cfg: any) {
   const sourceSettings = resolveRecommendationSourceSettings(cfg);
   cfg.recommendations.sourceEnabled = sourceSettings.sourceEnabled;
   const adultKitsuForceQuery = String(cfg.recommendations.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
-  if (adultKitsuForceQuery === "dystopian") cfg.recommendations.adultKitsuOnlyForceQueryForValidation = "dystopian";
+  if (SHOW_ADULT_KITSU_DEBUG_CONTROLS && adultKitsuForceQuery === "dystopian") cfg.recommendations.adultKitsuOnlyForceQueryForValidation = "dystopian";
   else delete cfg.recommendations.adultKitsuOnlyForceQueryForValidation;
   if (typeof cfg.recommendations.localLibrarySupported !== "boolean") {
     cfg.recommendations.localLibrarySupported = false;
@@ -1054,16 +1061,18 @@ setMainThemeKey: (t: ThemeKey) => void;
 ) : null}
 
 
-<View style={[styles.rowBetween, { marginTop: 12 }]}>
-  <View style={{ flex: 1, paddingRight: 12 }}>
-    <Text style={{ color: props.theme.text, fontWeight: "700" }}>Force Adult Kitsu query: dystopian</Text>
-    <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>Debug validation only. Applies only when Adult has Kitsu as the sole enabled source.</Text>
+{SHOW_ADULT_KITSU_DEBUG_CONTROLS ? (
+  <View style={[styles.rowBetween, { marginTop: 12 }]}>
+    <View style={{ flex: 1, paddingRight: 12 }}>
+      <Text style={{ color: props.theme.text, fontWeight: "700" }}>Force Adult Kitsu query: dystopian</Text>
+      <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>Hidden debug validation only. Applies only when Adult has Kitsu as the sole enabled source.</Text>
+    </View>
+    <Switch
+      value={props.adultKitsuOnlyForceQueryForValidation === "dystopian"}
+      onValueChange={props.setAdultKitsuOnlyForceQueryForValidation}
+    />
   </View>
-  <Switch
-    value={props.adultKitsuOnlyForceQueryForValidation === "dystopian"}
-    onValueChange={props.setAdultKitsuOnlyForceQueryForValidation}
-  />
-</View>
+) : null}
 
 {props.localLibrarySupported ? (
   <View style={{ marginTop: 10, gap: 10 }}>
