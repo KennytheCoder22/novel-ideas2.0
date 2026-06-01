@@ -15,6 +15,13 @@ import {
 import QRCode from "react-native-qrcode-svg";
 import configFile from "../NovelIdeas.json";
 
+const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
+  String(
+    (globalThis as any)?.__NOVEL_IDEAS_SHOW_ADULT_KITSU_DEBUG_CONTROLS__ ||
+      (typeof process !== "undefined" ? (process as any)?.env?.EXPO_PUBLIC_SHOW_ADULT_KITSU_DEBUG_CONTROLS : "") ||
+      ""
+  ).toLowerCase() === "true";
+
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -222,6 +229,9 @@ const mainThemeKeys = (["dark_blue", ...themeKeys] as const) satisfies readonly 
   }
 
   cfg.recommendations.sourceEnabled = sourceEnabled;
+  const adultKitsuForceQuery = String(cfg.recommendations.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
+  if (SHOW_ADULT_KITSU_DEBUG_CONTROLS && adultKitsuForceQuery === "dystopian") cfg.recommendations.adultKitsuOnlyForceQueryForValidation = "dystopian";
+  else delete cfg.recommendations.adultKitsuOnlyForceQueryForValidation;
   if (typeof cfg.recommendations.localLibrarySupported !== "boolean") {
     cfg.recommendations.localLibrarySupported = false;
   }
@@ -467,6 +477,7 @@ export default function AdminWebScreen() {
   const hostedConfigUrl = useMemo(() => `https://novelideas.app/c/${libraryId}`, [libraryId]);
 
   const configText = useMemo(() => JSON.stringify(config, null, 2), [config]);
+  const adultKitsuOnlyForceQueryForValidation = config?.recommendations?.adultKitsuOnlyForceQueryForValidation === "dystopian" ? "dystopian" : "";
   const qrPayload = hostedConfigUrl;
   const qrTooBig = qrPayload.length > 2200;
 
@@ -918,6 +929,19 @@ export default function AdminWebScreen() {
           <Text style={[styles.note, { color: theme.danger }]}>
             All recommendation sources are disabled. Enable at least one source.
           </Text>
+        ) : null}
+
+        {SHOW_ADULT_KITSU_DEBUG_CONTROLS ? (
+          <View style={styles.rowBetween}>
+            <View style={{ flex: 1, paddingRight: 12 }}>
+              <Text style={{ color: theme.text, fontWeight: "700" }}>Force Adult Kitsu query: dystopian</Text>
+              <Text style={[styles.note, { color: theme.subtext }]}>Hidden debug validation only. Applies only when Adult has Kitsu as the sole enabled source.</Text>
+            </View>
+            <Switch
+              value={adultKitsuOnlyForceQueryForValidation === "dystopian"}
+              onValueChange={(next) => setPath(["recommendations", "adultKitsuOnlyForceQueryForValidation"], next ? "dystopian" : "")}
+            />
+          </View>
         ) : null}
         <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
           <TouchableOpacity

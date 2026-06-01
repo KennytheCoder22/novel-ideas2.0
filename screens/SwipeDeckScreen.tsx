@@ -136,6 +136,7 @@ type Props = {
     nyt?: boolean;
   };
   localLibrarySupported?: boolean;
+  adultKitsuOnlyForceQueryForValidation?: string;
   swipeCategories?: {
     books: boolean;
     movies: boolean;
@@ -1682,6 +1683,14 @@ function handleLeft() {
       const recommendationTimeoutMs = 90_000;
       markPhase("before_getRecommendations_call");
       setRecommenderCallReferenceType(typeof getRecommendations);
+      const debugUrlAdultKitsuForceQuery = typeof window !== "undefined"
+        ? String(new URLSearchParams(window.location.search || "").get("adultKitsuOnlyForceQueryForValidation") || new URLSearchParams(window.location.search || "").get("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
+        : "";
+      const debugLocalStorageAdultKitsuForceQuery = typeof window !== "undefined"
+        ? String(window.localStorage?.getItem("adultKitsuOnlyForceQueryForValidation") || window.localStorage?.getItem("debugForceAdultKitsuQuery") || "").trim().toLowerCase()
+        : "";
+      const debugAdminConfigAdultKitsuForceQuery = String(props.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
+      const adultKitsuOnlyForceQueryForValidation = debugUrlAdultKitsuForceQuery || debugLocalStorageAdultKitsuForceQuery || debugAdminConfigAdultKitsuForceQuery;
       const routerPromise = getRecommendations(
         {
           ...inputWithHistory,
@@ -1690,6 +1699,10 @@ function handleLeft() {
           sourceHealthProbeStatus: sourceProbeStatus,
           googleBooksProbeDegraded,
           localLibrarySupported: Boolean(props.localLibrarySupported),
+          debugUrlAdultKitsuForceQuery,
+          debugLocalStorageAdultKitsuForceQuery,
+          debugAdminConfigAdultKitsuForceQuery,
+          ...(adultKitsuOnlyForceQueryForValidation ? { adultKitsuOnlyForceQueryForValidation } : {}),
         },
         "auto"
       );
@@ -2353,11 +2366,21 @@ function handleLeft() {
       `adultKitsuOnlyFallbackPublicArraysExpanded: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPublicArraysExpanded", "adultKitsuOnlyFallbackPublicQueriesExpanded") ?? "(missing)")}`,
       `adultKitsuOnlyFallbackPublicQueriesExpanded: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackPublicQueriesExpanded", "adultKitsuOnlyFallbackPublicArraysExpanded") ?? "(missing)")}`,
       `adultKitsuOnlyFallbackDiagnosticsMismatchReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFallbackDiagnosticsMismatchReason") ?? "(missing)")}`,
+      `adultKitsuOnlyForceQueryForValidation: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyForceQueryForValidation") ?? "(missing)")}`,
+      `debugUrlAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugUrlAdultKitsuForceQuery") ?? "(missing)")}`,
+      `debugLocalStorageAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugLocalStorageAdultKitsuForceQuery") ?? "(missing)")}`,
+      `debugAdminConfigAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugAdminConfigAdultKitsuForceQuery") ?? "(missing)")}`,
+      `debugRouterReceivedAdultKitsuForceQuery: ${String(pickAdultKitsuFallbackDiagnostic("debugRouterReceivedAdultKitsuForceQuery") ?? "(missing)")}`,
+      `debugAdultKitsuForceQueryApplied: ${String(pickAdultKitsuFallbackDiagnostic("debugAdultKitsuForceQueryApplied") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueGateApplied: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueGateApplied") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueGateReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueGateReason") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueCandidateCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueCandidateCount") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueSuppressedCount: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueSuppressedCount") ?? "(missing)")}`,
       `adultKitsuOnlyWeakRescueDiagnostics: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyWeakRescueDiagnostics") || [])}`,
+      `adultKitsuOnlyDystopianCandidateOrder: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyDystopianCandidateOrder") || [])}`,
+      `adultKitsuOnlyDystopianAcceptedButNotReturned: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyDystopianAcceptedButNotReturned") || [])}`,
+      `adultKitsuOnlyDystopianReturnLimitReason: ${String(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyDystopianReturnLimitReason") ?? "(missing)")}`,
+      `adultKitsuOnlyDystopianRescueSelectionReasonByTitle: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyDystopianRescueSelectionReasonByTitle") || {})}`,
       `adultKitsuOnlySemanticEvidenceHistogram: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlySemanticEvidenceHistogram") || {})}`,
       `adultKitsuOnlyFacetMatchHistogram: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyFacetMatchHistogram") || {})}`,
       `adultKitsuOnlyPositiveFitHistogram: ${JSON.stringify(pickAdultKitsuFallbackDiagnostic("adultKitsuOnlyPositiveFitHistogram") || {})}`,

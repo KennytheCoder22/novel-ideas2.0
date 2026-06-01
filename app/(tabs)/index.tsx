@@ -27,6 +27,13 @@ import configFile from "../../NovelIdeas.json";
 import SwipeDeckScreen from "../../screens/SwipeDeckScreen";
 import { applyWebHighlightColor, buildTheme, type ThemeKey, type HighlightKey, type TitleTextKey } from "../../constants/brandTheme";
 
+const SHOW_ADULT_KITSU_DEBUG_CONTROLS =
+  String(
+    (globalThis as any)?.__NOVEL_IDEAS_SHOW_ADULT_KITSU_DEBUG_CONTROLS__ ||
+      (typeof process !== "undefined" ? (process as any)?.env?.EXPO_PUBLIC_SHOW_ADULT_KITSU_DEBUG_CONTROLS : "") ||
+      ""
+  ).toLowerCase() === "true";
+
 function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
@@ -72,6 +79,9 @@ function syncSchema(cfg: any) {
   cfg.recommendations = (cfg.recommendations && typeof cfg.recommendations === "object") ? cfg.recommendations : {};
   const sourceSettings = resolveRecommendationSourceSettings(cfg);
   cfg.recommendations.sourceEnabled = sourceSettings.sourceEnabled;
+  const adultKitsuForceQuery = String(cfg.recommendations.adultKitsuOnlyForceQueryForValidation || "").trim().toLowerCase();
+  if (SHOW_ADULT_KITSU_DEBUG_CONTROLS && adultKitsuForceQuery === "dystopian") cfg.recommendations.adultKitsuOnlyForceQueryForValidation = "dystopian";
+  else delete cfg.recommendations.adultKitsuOnlyForceQueryForValidation;
   if (typeof cfg.recommendations.localLibrarySupported !== "boolean") {
     cfg.recommendations.localLibrarySupported = false;
   }
@@ -144,7 +154,7 @@ function resolveRecommendationSourceSettings(cfg: any): {
     }
   }
 
-  return { sourceEnabled, localLibrarySupported };
+  return { sourceEnabled, deckSourceEnabled: { k2: sourceEnabled, "36": sourceEnabled, ms_hs: sourceEnabled, adult: sourceEnabled }, localLibrarySupported };
 }
 
 const DEFAULT_SWIPE_CATEGORIES: SwipeCategories = {
@@ -541,6 +551,8 @@ logoDataUrl?: string | null;
 
   enabledDecks: Record<string, boolean>;
   sourceEnabled: RecommendationSourceEnabled;
+  deckSourceEnabled: Record<DeckKey, RecommendationSourceEnabled>;
+  adultKitsuOnlyForceQueryForValidation: string;
   localLibrarySupported: boolean;
 
   swipeCategories: SwipeCategories;
@@ -564,6 +576,7 @@ setMainThemeKey: (t: ThemeKey) => void;
   toggleDeck: (dk: DeckKey) => void;
   setSourceEnabled: (key: RecommendationSourceToggleKey, enabled: boolean) => void;
   setSourceEnabledForDeck: (deck: DeckKey, key: RecommendationSourceToggleKey, enabled: boolean) => void;
+  setAdultKitsuOnlyForceQueryForValidation: (enabled: boolean) => void;
 
   onExit: () => void;
 
@@ -1047,6 +1060,20 @@ setMainThemeKey: (t: ThemeKey) => void;
   </Text>
 ) : null}
 
+
+{SHOW_ADULT_KITSU_DEBUG_CONTROLS ? (
+  <View style={[styles.rowBetween, { marginTop: 12 }]}>
+    <View style={{ flex: 1, paddingRight: 12 }}>
+      <Text style={{ color: props.theme.text, fontWeight: "700" }}>Force Adult Kitsu query: dystopian</Text>
+      <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>Hidden debug validation only. Applies only when Adult has Kitsu as the sole enabled source.</Text>
+    </View>
+    <Switch
+      value={props.adultKitsuOnlyForceQueryForValidation === "dystopian"}
+      onValueChange={props.setAdultKitsuOnlyForceQueryForValidation}
+    />
+  </View>
+) : null}
+
 {props.localLibrarySupported ? (
   <View style={{ marginTop: 10, gap: 10 }}>
     <Text style={[styles.noteSmall, { color: props.theme.subtext }]}>
@@ -1447,6 +1474,7 @@ export default function HomeScreen() {
     adult: { ...sourceEnabled, ...(config?.recommendations?.sourceEnabledByDeck?.adult || {}) },
   };
   const localLibrarySupported = recommendationSourceSettings.localLibrarySupported;
+  const adultKitsuOnlyForceQueryForValidation = config?.recommendations?.adultKitsuOnlyForceQueryForValidation === "dystopian" ? "dystopian" : "";
   const source: SourceKey = sourceEnabled.openLibrary ? "open_library" : "local_collection";
 
   // Branding state from config (with safe defaults)
@@ -1730,6 +1758,10 @@ const configPreview = useMemo(() => JSON.stringify(config, null, 2), [config]);
     setInConfig(["recommendations", "sourceEnabledByDeck", deckKey, key], enabled);
   }
 
+  function setAdultKitsuOnlyForceQueryForValidationValue(enabled: boolean) {
+    setInConfig(["recommendations", "adultKitsuOnlyForceQueryForValidation"], enabled ? "dystopian" : "");
+  }
+
   function setMainThemeKeyValue(t: ThemeKey) {
     setInConfig(["branding", "mainTheme"], t);
   }
@@ -1871,6 +1903,7 @@ logoDataUrl={logoDataUrl}
           enabledDecks={enabledDecks}
           sourceEnabled={sourceEnabled}
           deckSourceEnabled={deckSourceEnabled}
+          adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
           localLibrarySupported={localLibrarySupported}
           swipeCategories={swipeCategories}
           toggleSwipeCategory={toggleSwipeCategory}
@@ -1889,6 +1922,7 @@ logoDataUrl={logoDataUrl}
           toggleDeck={toggleDeck}
           setSourceEnabled={setSourceEnabledValue}
           setSourceEnabledForDeck={setSourceEnabledForDeckValue}
+          setAdultKitsuOnlyForceQueryForValidation={setAdultKitsuOnlyForceQueryForValidationValue}
           onExit={() => setAdminUnlocked(false)}
           onSaveSettings={saveSettings}
           saveButtonLabel={saveButtonLabel}
@@ -1967,6 +2001,7 @@ logoDataUrl={logoDataUrl}
             swipeCategories={swipeCategories}
             enabledDecks={enabledDecks}
             recommendationSourceEnabled={deckSourceEnabled[deck] || sourceEnabled}
+            adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
             localLibrarySupported={localLibrarySupported}
             onOpenSearch={() => {
               setMode("search");
