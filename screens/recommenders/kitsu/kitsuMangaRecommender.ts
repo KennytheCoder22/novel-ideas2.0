@@ -241,19 +241,21 @@ function buildAdultKitsuOnlyQueryComparisonQueries(primaryQuery: string, planned
     .map(([tag]) => normalizeText(tag));
   const tagText = tags.join(" ");
   const hasScienceFictionIntent = /\b(science fiction|sci fi|scifi|dystopian|cyberpunk|space|future|post apocalyptic|apocalypse)\b/.test(`${normalizedPrimary} ${tagText}`);
+  const uniqueComparisonQueries = (queries: string[]) => Array.from(new Set(queries
+    .map((query) => normalizeText(query))
+    .filter(Boolean)))
+    .slice(0, 6);
+
   if (hasScienceFictionIntent) {
-    return ["science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic"];
+    return uniqueComparisonQueries([normalizedPrimary, "science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic"]);
   }
 
   const hasFormatOnlyIntent = normalizedPrimary === "drama" && tags.some((tag) => /^(media:anime|format:manga|topic:manga|format:graphic novel|format:graphic_novel)$/.test(tag));
   if (hasFormatOnlyIntent) {
-    return ["drama", "adventure", "fantasy", "mystery", "horror", "science fiction"];
+    return uniqueComparisonQueries([normalizedPrimary, "drama", "adventure", "fantasy", "mystery", "horror", "science fiction"]);
   }
 
-  return Array.from(new Set([normalizedPrimary, ...plannedQueries, "adventure", "drama", "fantasy", "mystery"]
-    .map((query) => normalizeText(query))
-    .filter(Boolean)))
-    .slice(0, 6);
+  return uniqueComparisonQueries([normalizedPrimary, ...plannedQueries, "adventure", "drama", "fantasy", "mystery"]);
 }
 
 function histogramFromCounts(values: number[]): Record<string, number> {
@@ -503,7 +505,7 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   }
 
   const adultKitsuOnlyQueryComparisonQueries = allowNormalAdultKitsuFetch
-    ? buildAdultKitsuOnlyQueryComparisonQueries(builtFromQuery || queriesToTry[0] || "", adultKitsuOnlyFallbackQueriesPlanned, input.tagCounts)
+    ? buildAdultKitsuOnlyQueryComparisonQueries(queriesToTry[0] || builtFromQuery || "", adultKitsuOnlyFallbackQueriesPlanned, input.tagCounts)
     : [];
   const adultKitsuOnlyQueryQualityComparison: any[] = [];
   if (allowNormalAdultKitsuFetch) {
