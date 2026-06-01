@@ -11971,6 +11971,28 @@ const normalizedCandidatesRaw = [
   let kitsuRescueFinalSlateReorderedStrongFirst = false;
   let kitsuRescueStrongCandidateCount = 0;
   let kitsuRescueWeakCandidateCount = 0;
+  const isAdultKitsuOnlyDystopianQuery = () => adultKitsuOnlyModeDetected && String(adultKitsuOnlyQuerySelected || "").toLowerCase() === "dystopian";
+  const hasKitsuAdultQualityMetadata = (doc: any) => Number(doc?.kitsuFacetMatches || doc?.rawDoc?.kitsuFacetMatches || 0) > 0 ||
+    Number(doc?.kitsuRatingCount || doc?.ratingCount || doc?.ratingsCount || doc?.rawDoc?.ratingsCount || doc?.rawDoc?.ratings_count || 0) > 0 ||
+    Number(doc?.kitsuPopularityRank || doc?.rawDoc?.kitsuPopularityRank || 999999) < 999999;
+  const findAdultKitsuOnlyQualityDocByTitle = (title: string) => {
+    if (!isAdultKitsuOnlyDystopianQuery()) return null;
+    const titleKey = normalizeText(title);
+    if (!titleKey) return null;
+    const candidates = [
+      ...((rankedDocs || []) as any[]),
+      ...((teenPostPassItems || []).map((item: any) => item?.doc || item).filter(Boolean) as any[]),
+      ...((normalizedCandidates || []) as any[]),
+      ...((allMergedDocs || []) as any[]),
+    ];
+    return candidates.find((doc: any) => {
+      const docTitleKey = normalizeText(String(doc?.title || doc?.canonicalTitle || ""));
+      if (docTitleKey !== titleKey) return false;
+      const source = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+      const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || "");
+      return (source.includes("kitsu") || sourceId.startsWith("kitsu:")) && hasKitsuAdultQualityMetadata(doc);
+    }) || null;
+  };
   const kitsuRescueQualityMetricsForDoc = (doc: any) => {
     const title = String(doc?.title || doc?.canonicalTitle || "").trim();
     const root = String(parentFranchiseRootForDoc(doc) || "");
@@ -12032,12 +12054,26 @@ const normalizedCandidatesRaw = [
     return strongRows.length > 0 ? strongRows : rows;
   };
   const adultKitsuOnlyWeakRescueQualityForRow = (row: any, gateReason: string) => {
-    const doc = row?.doc || row?.item?.doc || row;
-    const title = String(doc?.title || row?.title || "").trim();
+    const rowDoc = row?.doc || row?.item?.doc || row;
+    const title = String(rowDoc?.title || row?.title || "").trim();
+    const fallbackDoc = findAdultKitsuOnlyQualityDocByTitle(title);
+    const doc = fallbackDoc || rowDoc;
     const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || row?.sourceId || "").trim();
-    const ratingCount = Number(doc?.kitsuRatingCount || doc?.ratingsCount || 0);
-    const popularityRank = Number(doc?.kitsuPopularityRank || 999999);
-    const facetMatches = Number(doc?.kitsuFacetMatches || 0);
+    const ratingCount = Math.max(
+      Number(row?.ratingCount || 0),
+      Number(rowDoc?.kitsuRatingCount || rowDoc?.ratingCount || rowDoc?.ratingsCount || rowDoc?.rawDoc?.ratingsCount || rowDoc?.rawDoc?.ratings_count || 0),
+      Number(doc?.kitsuRatingCount || doc?.ratingCount || doc?.ratingsCount || doc?.rawDoc?.ratingsCount || doc?.rawDoc?.ratings_count || 0)
+    );
+    const popularityRank = Math.min(
+      Number(row?.popularityRank || 999999),
+      Number(rowDoc?.kitsuPopularityRank || rowDoc?.rawDoc?.kitsuPopularityRank || 999999),
+      Number(doc?.kitsuPopularityRank || doc?.rawDoc?.kitsuPopularityRank || 999999)
+    );
+    const facetMatches = Math.max(
+      Number(row?.facetMatches || 0),
+      Number(rowDoc?.kitsuFacetMatches || rowDoc?.rawDoc?.kitsuFacetMatches || 0),
+      Number(doc?.kitsuFacetMatches || doc?.rawDoc?.kitsuFacetMatches || 0)
+    );
     const positiveFitScore = Number(row?.positiveFitScore || 0);
     const semanticEvidenceCount = Number(row?.semanticEvidenceCount || 0);
     const weightedTasteScore = Number(row?.weightedTasteScore || 0);
@@ -12068,7 +12104,8 @@ const normalizedCandidatesRaw = [
       : facetMatches > 0
       ? "query_term_only_without_quality_support"
       : "no_adult_quality_signal";
-    return { title, sourceId, gateReason, acceptable, reason, facetMatches, semanticEvidenceCount, weightedTasteScore, laneAligned, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore };
+    const qualitySignalSource = fallbackDoc ? "dystopian_latest_doc_lookup" : "row_payload";
+    return { title, sourceId, gateReason, acceptable, reason, facetMatches, semanticEvidenceCount, weightedTasteScore, laneAligned, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore, qualitySignalSource, qualityFallbackDocFound: Boolean(fallbackDoc) };
   };
   const gateAdultKitsuOnlyWeakRescueRows = (rows: any[], gateReason: string, options?: { force?: boolean }) => {
     if (!adultKitsuOnlyModeDetected) return rows;
@@ -13398,6 +13435,8 @@ const normalizedCandidatesRaw = [
           positiveFitScore: Number(latestRow?.positiveFitScore || row?.positiveFitScore || 0),
           facetMatches: Number(latestRow?.facetMatches || row?.facetMatches || 0),
           ratingCount: Number(latestRow?.ratingCount || row?.ratingCount || 0),
+          qualitySignalSource: String(latestRow?.qualitySignalSource || row?.qualitySignalSource || "unknown"),
+          qualityFallbackDocFound: Boolean(latestRow?.qualityFallbackDocFound || row?.qualityFallbackDocFound),
           popularityRank: Number(latestRow?.popularityRank || row?.popularityRank || 999999),
           laneAligned: Boolean(latestRow?.laneAligned || row?.laneAligned),
         };
@@ -13420,6 +13459,8 @@ const normalizedCandidatesRaw = [
         positiveFitScore: row.positiveFitScore,
         facetMatches: row.facetMatches,
         ratingCount: row.ratingCount,
+        qualitySignalSource: row.qualitySignalSource,
+        qualityFallbackDocFound: row.qualityFallbackDocFound,
       };
       return acc;
     }, {});
