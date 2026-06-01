@@ -12482,7 +12482,9 @@ const normalizedCandidatesRaw = [
           const rescuePoolStrongCount = rescuePoolToUse.filter((row: any) => isKitsuRescueStrongRow(row)).length;
           const rankedRescueLimit = adultKitsuOnlyWeakRescueReturnLimit(rescuePoolToUse, rescuePoolStrongCount, "pre_emergency_ranked_pool");
           const rankedRescueDocs = rescuePoolToUse
-            .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
+            .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || "")))
+              || row.doc
+              || (rankedDocs || []).find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
             .filter(Boolean)
             .slice(0, rankedRescueLimit);
           if (rankedRescueDocs.length > 0) {
