@@ -12085,6 +12085,18 @@ const normalizedCandidatesRaw = [
     else if (kept.length < rows.length) sourceSkippedReason.push(`adult_kitsu_only_weak_rescue_suppressed_some:${gateReason}:kept=${kept.length}:suppressed=${rows.length - kept.length}`);
     return kept;
   };
+  const adultKitsuOnlyWeakRescueReturnLimit = (rows: any[], strongCount: number, path: string) => {
+    if (strongCount > 0) return Math.max(3, Math.min(5, finalLimit));
+    const dystopianFacetRatingSupportedCount = adultKitsuOnlyModeDetected &&
+      String(adultKitsuOnlyQuerySelected || "").toLowerCase() === "dystopian"
+      ? rows.filter((row: any) => adultKitsuOnlyWeakRescueQualityForRow(row, `${path}_return_limit_probe`).reason === "facet_match_with_rating_count").length
+      : 0;
+    if (dystopianFacetRatingSupportedCount >= 2) {
+      sourceSkippedReason.push(`adult_kitsu_only_dystopian_weak_rescue_cap_raised_to_2:${path}:facet_rating_supported=${dystopianFacetRatingSupportedCount}`);
+      return Math.min(2, Math.max(1, finalLimit));
+    }
+    return 1;
+  };
   const markKitsuRankedPoolWeakCandidateOutput = (reason: string, candidateRows: any[], returnedItems: any[]) => {
     kitsuRankedPoolRescueWeakCandidateOutput = true;
     kitsuRankedPoolRescueWeakCandidateReason = reason;
@@ -12423,7 +12435,7 @@ const normalizedCandidatesRaw = [
           kitsuRankedPoolRescueSource = rankedKitsuRescue.length > 0 ? "kitsuRecoveryRankedCandidates" : "rankedDocsFallback";
           const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
           const rescuePoolStrongCount = rescuePoolToUse.filter((row: any) => isKitsuRescueStrongRow(row)).length;
-          const rankedRescueLimit = rescuePoolStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
+          const rankedRescueLimit = adultKitsuOnlyWeakRescueReturnLimit(rescuePoolToUse, rescuePoolStrongCount, "pre_emergency_ranked_pool");
           const rankedRescueDocs = rescuePoolToUse
             .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))))
             .filter(Boolean)
@@ -12556,7 +12568,7 @@ const normalizedCandidatesRaw = [
       if (kitsuRankedPoolRescueSource === "not_triggered" && rankedKitsuFallbackFromRankedDocs.length > 0) {
         const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
         const rankedKitsuFallbackStrongCount = rankedKitsuFallbackFromRankedDocs.filter((row: any) => isKitsuRescueStrongRow(row)).length;
-        const rankedRescueLimit = rankedKitsuFallbackStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
+        const rankedRescueLimit = adultKitsuOnlyWeakRescueReturnLimit(rankedKitsuFallbackFromRankedDocs, rankedKitsuFallbackStrongCount, "late_guard_ranked_pool");
         const rankedRescueDocs = rankedKitsuFallbackFromRankedDocs
           .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || ""))) || row.doc)
           .filter(Boolean)
@@ -13117,7 +13129,7 @@ const normalizedCandidatesRaw = [
     finalInvariantKitsuRescueCandidateCount = rescuePool.length;
     if (rescuePool.length === 0) return;
     const rescuePoolStrongCount = rescuePool.filter((row: any) => isKitsuRescueStrongRow(row)).length;
-    const rescueLimit = rescuePoolStrongCount > 0 ? Math.max(3, Math.min(5, finalLimit)) : 1;
+    const rescueLimit = adultKitsuOnlyWeakRescueReturnLimit(rescuePool, rescuePoolStrongCount, "final_invariant_ranked_pool");
     const teenDocs = teenPostPassItems.map((item: any) => item?.doc || item);
     const rankedRescueDocs = rescuePool
       .map((row: any) => teenDocs.find((doc: any) => normalizeText(String(doc?.title || "")) === normalizeText(String(row?.title || "")))
