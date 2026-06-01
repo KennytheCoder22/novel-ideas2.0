@@ -3190,6 +3190,14 @@ export async function getRecommendations(
   let adultKitsuOnlySelectedFamilyReturnedFrom = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let adultKitsuOnlySelectedFamilyWeakRescueOnly = false;
   let adultKitsuOnlySelectedFamilyStrongEnoughForFinal = false;
+  let kitsuStabilityStatus: "strong_family_result" | "acceptable_family_result" | "weak_rescue_result" | "emergency_fallback_result" | "broad_fallback_blocked" | "high_penalty_padding_suppressed" | "no_viable_family_result" = "no_viable_family_result";
+  let kitsuStabilityReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_kitsu_family_path";
+  let kitsuReturnedPathStrength = "none";
+  let kitsuReturnedEvidenceSummary: Record<string, any> = {};
+  let kitsuWeakRescueButAcceptable = false;
+  let kitsuNeedsMoreTuning = false;
+  let adultKitsuOnlyPromotionBlockedBroadFallback = false;
+  let adultKitsuOnlyPromotionBlockedBroadFallbackReason = "none";
   let adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough = false;
   let adultKitsuOnlyPromotionBlockedBecauseThresholdOnly = false;
   let adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue = false;
@@ -14358,6 +14366,10 @@ const normalizedCandidatesRaw = [
           ? `tier4_blocked_selected_viable:selectedAccepted=${selectedAcceptedCountForPromotion}:candidateAccepted=${entry.acceptedCount}`
           : `promotion_scope_blocked:tier=${entry.tier}:candidateAccepted=${entry.acceptedCount}`;
         adultKitsuOnlyPromotionRejectedReasonByQuery[entry.key] = rejectedReason;
+        if (/tier4_blocked_/.test(rejectedReason)) {
+          adultKitsuOnlyPromotionBlockedBroadFallback = true;
+          adultKitsuOnlyPromotionBlockedBroadFallbackReason = `${entry.key}:${rejectedReason}`;
+        }
         return { ...entry, substantiallyBetter, allowedBecauseSelectedOnlyWeakRescue, allowed, rejectedReason };
       });
     const bestPromotion = scopedPromotionRows
@@ -14679,6 +14691,82 @@ const normalizedCandidatesRaw = [
     : queryLooksWeakForStability
     ? "weak_query"
     : "weak_candidates";
+  const finalReturnedPath = String(returnedItemsBuiltFrom || "none");
+  const finalKitsuReturnedCount = returnedKitsuTeenRowsForStability.length;
+  const finalKitsuWeakRescuePath = /weak_candidates|weak_rescue|weak_candidate|adult_kitsu_only_weak_rescue_suppressed/.test(finalReturnedPath);
+  const finalKitsuEmergencyPath = /emergency|handoff|family_exhausted/.test(finalReturnedPath);
+  const finalKitsuFamilyPath = adultKitsuOnlyModeDetected || finalKitsuReturnedCount > 0 || /kitsu|adult_kitsu_only/.test(finalReturnedPath);
+  const finalKitsuPromotionPath = /family_query_comparison_promotion|selected_query_comparison_rescue/.test(finalReturnedPath);
+  const finalKitsuStrongEvidenceCount = returnedKitsuTeenRowsForStability.filter((row: any) => Number(row?.semanticEvidenceCount || 0) > 0).length;
+  const finalKitsuLaneAlignedCount = returnedKitsuTeenRowsForStability.filter((row: any) => Boolean(row?.laneAligned)).length;
+  const finalKitsuWeightedTasteCount = returnedKitsuTeenRowsForStability.filter((row: any) => Number(row?.weightedTasteScore || 0) > 0).length;
+  const finalKitsuNoEvidenceCount = returnedKitsuTeenRowsForStability.filter((row: any) => Number(row?.semanticEvidenceCount || 0) === 0 && Number(row?.weightedTasteScore || 0) === 0 && !row?.laneAligned).length;
+  const finalKitsuFamilyAcceptedCount = Math.max(
+    adultKitsuOnlySelectedFamilyAcceptedCount,
+    adultKitsuOnlyComparisonPromotionAcceptedCount,
+    adultKitsuOnlySelectedQueryComparisonRescueAcceptedCount,
+    kitsuRankedPoolRescueWeakCandidateReturnedCount
+  );
+  kitsuReturnedEvidenceSummary = {
+    returnedItemsBuiltFrom: finalReturnedPath,
+    kitsuBackedReturnedCount: finalKitsuReturnedCount,
+    totalReturnedCount: finalOutputItems.length,
+    semanticEvidenceReturnedCount: finalKitsuStrongEvidenceCount,
+    laneAlignedReturnedCount: finalKitsuLaneAlignedCount,
+    weightedTasteReturnedCount: finalKitsuWeightedTasteCount,
+    noEvidenceReturnedCount: finalKitsuNoEvidenceCount,
+    highPenaltyReturnedCount: returnedKitsuHighPenaltyCountForStability,
+    selectedFamilyAcceptedCount: adultKitsuOnlySelectedFamilyAcceptedCount,
+    effectiveFamilyAcceptedCount: finalKitsuFamilyAcceptedCount,
+    promotionAcceptedCount: adultKitsuOnlyComparisonPromotionAcceptedCount,
+    selectedFamilyReturnedCount: adultKitsuOnlySelectedFamilyReturnedCount || finalKitsuReturnedCount,
+    selectedFamilyWeakRescueOnly: adultKitsuOnlySelectedFamilyWeakRescueOnly,
+    selectedFamilyStrongEnoughForFinal: adultKitsuOnlySelectedFamilyStrongEnoughForFinal,
+    teenBranchStabilityStatus: kitsuTeenBranchStabilityStatus,
+    broadFallbackBlocked: adultKitsuOnlyPromotionBlockedBroadFallback,
+  };
+  const finalKitsuStrongEnough = adultKitsuOnlySelectedFamilyStrongEnoughForFinal || (finalKitsuReturnedCount >= 3 && (finalKitsuStrongEvidenceCount >= 2 || (finalKitsuPromotionPath && finalKitsuFamilyAcceptedCount >= 3)) && !finalKitsuWeakRescuePath && returnedKitsuHighPenaltyCountForStability === 0);
+  const finalKitsuAcceptable = finalKitsuReturnedCount > 0 && (finalKitsuStrongEvidenceCount > 0 || finalKitsuLaneAlignedCount > 0 || finalKitsuWeightedTasteCount > 0 || finalKitsuFamilyAcceptedCount > 0);
+  kitsuWeakRescueButAcceptable = finalKitsuWeakRescuePath && finalKitsuReturnedCount > 0 && returnedKitsuHighPenaltyCountForStability === 0 && finalKitsuFamilyAcceptedCount > 0;
+  if (!finalKitsuFamilyPath) {
+    kitsuStabilityStatus = "no_viable_family_result";
+    kitsuStabilityReason = "not_kitsu_return_path";
+    kitsuReturnedPathStrength = "none";
+  } else if (kitsuRescueHighPenaltyDemotedCount > 0 && returnedKitsuHighPenaltyCountForStability === 0 && /kitsu_ranked_pool_rescue/.test(finalReturnedPath)) {
+    kitsuStabilityStatus = "high_penalty_padding_suppressed";
+    kitsuStabilityReason = `high_penalty_candidates_demoted_or_suppressed:demoted=${kitsuRescueHighPenaltyDemotedCount}:padding=${kitsuRescueHighPenaltyUsedAsPaddingCount}`;
+    kitsuReturnedPathStrength = finalKitsuStrongEnough ? "strong_with_suppressed_penalty" : "acceptable_with_suppressed_penalty";
+  } else if (finalKitsuEmergencyPath) {
+    kitsuStabilityStatus = "emergency_fallback_result";
+    kitsuStabilityReason = `returned_from_emergency_path:${finalReturnedPath}`;
+    kitsuReturnedPathStrength = "emergency";
+  } else if (finalKitsuWeakRescuePath || kitsuTeenBranchStabilityStatus === "weak_candidates" || kitsuTeenBranchStabilityStatus === "weak_query") {
+    kitsuStabilityStatus = "weak_rescue_result";
+    kitsuStabilityReason = `weak_rescue_path:${finalReturnedPath}:teen=${kitsuTeenBranchStabilityStatus}:acceptable=${kitsuWeakRescueButAcceptable}`;
+    kitsuReturnedPathStrength = kitsuWeakRescueButAcceptable ? "weak_but_acceptable" : "weak";
+  } else if (finalKitsuStrongEnough) {
+    kitsuStabilityStatus = "strong_family_result";
+    kitsuStabilityReason = finalKitsuPromotionPath
+      ? `family_scoped_promotion_strong:${finalReturnedPath}:accepted=${finalKitsuFamilyAcceptedCount}:semantic=${finalKitsuStrongEvidenceCount}`
+      : `family_result_strong:${finalReturnedPath}:accepted=${finalKitsuFamilyAcceptedCount}:semantic=${finalKitsuStrongEvidenceCount}`;
+    kitsuReturnedPathStrength = "strong";
+  } else if (finalKitsuAcceptable) {
+    kitsuStabilityStatus = "acceptable_family_result";
+    kitsuStabilityReason = `family_result_acceptable:${finalReturnedPath}:accepted=${finalKitsuFamilyAcceptedCount}:semantic=${finalKitsuStrongEvidenceCount}:lane=${finalKitsuLaneAlignedCount}:weighted=${finalKitsuWeightedTasteCount}`;
+    kitsuReturnedPathStrength = "acceptable";
+  } else if (adultKitsuOnlyPromotionBlockedBroadFallback) {
+    kitsuStabilityStatus = "broad_fallback_blocked";
+    kitsuStabilityReason = `broad_fallback_blocked:${adultKitsuOnlyPromotionBlockedBroadFallbackReason}`;
+    kitsuReturnedPathStrength = "blocked";
+  } else {
+    kitsuStabilityStatus = "no_viable_family_result";
+    kitsuStabilityReason = `no_viable_family_result:${finalReturnedPath}:accepted=${finalKitsuFamilyAcceptedCount}:returned=${finalKitsuReturnedCount}`;
+    kitsuReturnedPathStrength = "none";
+  }
+  kitsuNeedsMoreTuning = kitsuStabilityStatus === "weak_rescue_result" || kitsuStabilityStatus === "emergency_fallback_result" || kitsuStabilityStatus === "no_viable_family_result";
+  const finalReturnClassificationReason = finalOutputItems.length > 0
+    ? (finalKitsuFamilyPath ? `kitsu_${kitsuStabilityStatus}` : "valid_recommendation_returned")
+    : (finalHandoffEmptyReason && finalHandoffEmptyReason !== "none" ? finalHandoffEmptyReason : (finalKitsuFamilyPath ? `kitsu_${kitsuStabilityStatus}` : "unknown_empty_result"));
   markRouterPhase("router_before_final_return");
   return {
     engineId: preferredEngine,
@@ -15080,7 +15168,7 @@ const normalizedCandidatesRaw = [
     finalItemsTitles,
     acceptedButNotReturnedTitles,
     returnedItemsLength: finalOutputItems.length,
-    returnClassificationReason: finalOutputItems.length > 0 ? "valid_recommendation_returned" : (finalHandoffEmptyReason && finalHandoffEmptyReason !== "none" ? finalHandoffEmptyReason : "unknown_empty_result"),
+    returnClassificationReason: finalReturnClassificationReason,
     teenPostPassGlobalHandoffConsidered,
     teenPostPassGlobalHandoffAcceptedTitles,
     teenPostPassGlobalHandoffRejectedByTitle,
@@ -15108,6 +15196,14 @@ const normalizedCandidatesRaw = [
     kitsuRescueHighPenaltyDemotedCount,
     kitsuRescueHighPenaltyUsedAsPaddingCount,
     kitsuTeenBranchStabilityStatus,
+    kitsuStabilityStatus,
+    kitsuStabilityReason,
+    kitsuReturnedPathStrength,
+    kitsuReturnedEvidenceSummary,
+    kitsuWeakRescueButAcceptable,
+    kitsuNeedsMoreTuning,
+    adultKitsuOnlyPromotionBlockedBroadFallback,
+    adultKitsuOnlyPromotionBlockedBroadFallbackReason,
     kitsuEmergencyWeakCandidateAttributionCorrected,
     kitsuEmergencyWeakCandidatePreviousBuiltFrom,
     kitsuEmergencyWeakCandidatePath,
