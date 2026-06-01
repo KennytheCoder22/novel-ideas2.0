@@ -13947,13 +13947,29 @@ const normalizedCandidatesRaw = [
   let adultKitsuOnlySelectedQueryComparisonRescueApplied = false;
   let adultKitsuOnlySelectedQueryComparisonRescueBlockedReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   let adultKitsuOnlySelectedQueryComparisonRescueCandidateCount = 0;
+  let adultKitsuOnlySelectedQueryComparisonRescueAcceptedCount = 0;
+  let adultKitsuOnlySelectedQueryComparisonRescueSelectedQueryKey = "";
+  let adultKitsuOnlySelectedQueryComparisonRescueRowFound = false;
+  let adultKitsuOnlySelectedQueryComparisonRescueRawCount = 0;
+  let adultKitsuOnlySelectedQueryComparisonRescueRankedCount = 0;
+  const adultKitsuOnlySelectedQueryComparisonRescueAvailableQueries: string[] = [];
+  const adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts: Record<string, number> = {};
   const adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles: string[] = [];
   const adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle: Record<string, string> = {};
   if (adultKitsuOnlyModeDetected && finalOutputItems.length === 0) {
-    const selectedComparisonQueryKey = normalizeText(adultKitsuOnlyQuerySelected || "");
+    const selectedComparisonQueryKey = normalizeText(adultKitsuOnlyQuerySelected || kitsuFinalQueryUsedForFetch[0] || "");
+    adultKitsuOnlySelectedQueryComparisonRescueSelectedQueryKey = selectedComparisonQueryKey;
+    adultKitsuOnlySelectedQueryComparisonRescueAvailableQueries.push(
+      ...Array.from(new Set((adultKitsuOnlyQueryQualityComparisonRaw || [])
+        .map((row: any) => normalizeText(String(row?.query || "")))
+        .filter(Boolean)))
+    );
     const selectedComparisonRaw = (adultKitsuOnlyQueryQualityComparisonRaw || []).find((row: any) =>
       normalizeText(String(row?.query || "")) === selectedComparisonQueryKey
     );
+    adultKitsuOnlySelectedQueryComparisonRescueRowFound = Boolean(selectedComparisonRaw);
+    adultKitsuOnlySelectedQueryComparisonRescueRawCount = Number(selectedComparisonRaw?.rawCount || 0);
+    adultKitsuOnlySelectedQueryComparisonRescueRankedCount = Number(selectedComparisonRaw?.rankedCount || 0);
     const selectedComparisonDocs = Array.isArray(selectedComparisonRaw?.candidateDocs) ? selectedComparisonRaw.candidateDocs : [];
     const selectedRows = selectedComparisonDocs.map((doc: any) => {
       const title = String(doc?.title || "").trim();
@@ -13985,9 +14001,14 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlySelectedQueryComparisonRescueCandidateCount = selectedRows.length;
     const evaluatedRows = selectedRows.map((row: any) => ({ row, quality: adultKitsuOnlyWeakRescueQualityForRow(row, "selected_query_comparison_rescue") }));
     for (const entry of evaluatedRows) {
-      if (!entry.quality.acceptable) adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle[entry.quality.title || "(missing_title)"] = entry.quality.reason;
+      const reason = String(entry?.quality?.reason || "unknown");
+      adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts[entry.quality.acceptable ? "accepted" : reason] =
+        Number(adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts[entry.quality.acceptable ? "accepted" : reason] || 0) + 1;
+      adultKitsuOnlyWeakRescueDiagnostics.push(entry.quality);
+      if (!entry.quality.acceptable) adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle[entry.quality.title || "(missing_title)"] = reason;
     }
     const acceptedRows = evaluatedRows.filter((entry: any) => entry.quality.acceptable).map((entry: any) => entry.row);
+    adultKitsuOnlySelectedQueryComparisonRescueAcceptedCount = acceptedRows.length;
     if (!selectedComparisonQueryKey) {
       adultKitsuOnlySelectedQueryComparisonRescueBlockedReason = "missing_selected_query";
     } else if (!selectedComparisonRaw) {
@@ -14660,7 +14681,14 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyQueryQualityComparison,
     adultKitsuOnlySelectedQueryComparisonRescueApplied,
     adultKitsuOnlySelectedQueryComparisonRescueBlockedReason,
+    adultKitsuOnlySelectedQueryComparisonRescueSelectedQueryKey,
+    adultKitsuOnlySelectedQueryComparisonRescueAvailableQueries,
+    adultKitsuOnlySelectedQueryComparisonRescueRowFound,
+    adultKitsuOnlySelectedQueryComparisonRescueRawCount,
+    adultKitsuOnlySelectedQueryComparisonRescueRankedCount,
     adultKitsuOnlySelectedQueryComparisonRescueCandidateCount,
+    adultKitsuOnlySelectedQueryComparisonRescueAcceptedCount,
+    adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts,
     adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles,
     adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle,
     adultKitsuOnlyFallbackLivePathVersion,
