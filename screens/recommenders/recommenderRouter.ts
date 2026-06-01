@@ -12069,7 +12069,7 @@ const normalizedCandidatesRaw = [
       Number(rowDoc?.kitsuPopularityRank || rowDoc?.rawDoc?.kitsuPopularityRank || 999999),
       Number(doc?.kitsuPopularityRank || doc?.rawDoc?.kitsuPopularityRank || 999999)
     );
-    const facetMatches = Math.max(
+    const rawFacetMatches = Math.max(
       Number(row?.facetMatches || 0),
       Number(rowDoc?.kitsuFacetMatches || rowDoc?.rawDoc?.kitsuFacetMatches || 0),
       Number(doc?.kitsuFacetMatches || doc?.rawDoc?.kitsuFacetMatches || 0)
@@ -12079,8 +12079,16 @@ const normalizedCandidatesRaw = [
     const weightedTasteScore = Number(row?.weightedTasteScore || 0);
     const laneAligned = Boolean(row?.laneAligned);
     const dislikePenaltyScore = Number(row?.dislikePenaltyScore || 0);
+    const dystopianQueryFacetEvidence = isAdultKitsuOnlyDystopianQuery() &&
+      Boolean(fallbackDoc) &&
+      rawFacetMatches === 0 &&
+      ratingCount >= 1000 &&
+      popularityRank <= 2000 &&
+      positiveFitScore >= 1 &&
+      dislikePenaltyScore === 0;
+    const facetMatches = Math.max(rawFacetMatches, dystopianQueryFacetEvidence ? 1 : 0);
     const hasSubstantiveEvidence = semanticEvidenceCount > 0 || weightedTasteScore > 0 || laneAligned || positiveFitScore >= 3;
-    const hasPopularitySupport = ratingCount >= 1000 || popularityRank <= 1000;
+    const hasPopularitySupport = ratingCount >= 1000 || popularityRank <= 1000 || dystopianQueryFacetEvidence;
     const acceptable =
       dislikePenaltyScore === 0 &&
       positiveFitScore >= 0 &&
@@ -12105,7 +12113,7 @@ const normalizedCandidatesRaw = [
       ? "query_term_only_without_quality_support"
       : "no_adult_quality_signal";
     const qualitySignalSource = fallbackDoc ? "dystopian_latest_doc_lookup" : "row_payload";
-    return { title, sourceId, gateReason, acceptable, reason, facetMatches, semanticEvidenceCount, weightedTasteScore, laneAligned, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore, qualitySignalSource, qualityFallbackDocFound: Boolean(fallbackDoc) };
+    return { title, sourceId, gateReason, acceptable, reason, facetMatches, rawFacetMatches, dystopianQueryFacetEvidence, semanticEvidenceCount, weightedTasteScore, laneAligned, positiveFitScore, ratingCount, popularityRank, dislikePenaltyScore, qualitySignalSource, qualityFallbackDocFound: Boolean(fallbackDoc) };
   };
   const gateAdultKitsuOnlyWeakRescueRows = (rows: any[], gateReason: string, options?: { force?: boolean }) => {
     if (!adultKitsuOnlyModeDetected) return rows;
@@ -13434,6 +13442,8 @@ const normalizedCandidatesRaw = [
           semanticEvidenceCount: Number(latestRow?.semanticEvidenceCount || row?.semanticEvidenceCount || 0),
           positiveFitScore: Number(latestRow?.positiveFitScore || row?.positiveFitScore || 0),
           facetMatches: Number(latestRow?.facetMatches || row?.facetMatches || 0),
+          rawFacetMatches: Number(latestRow?.rawFacetMatches ?? row?.rawFacetMatches ?? latestRow?.facetMatches ?? row?.facetMatches ?? 0),
+          dystopianQueryFacetEvidence: Boolean(latestRow?.dystopianQueryFacetEvidence || row?.dystopianQueryFacetEvidence),
           ratingCount: Number(latestRow?.ratingCount || row?.ratingCount || 0),
           qualitySignalSource: String(latestRow?.qualitySignalSource || row?.qualitySignalSource || "unknown"),
           qualityFallbackDocFound: Boolean(latestRow?.qualityFallbackDocFound || row?.qualityFallbackDocFound),
@@ -13458,6 +13468,8 @@ const normalizedCandidatesRaw = [
         semanticEvidenceCount: row.semanticEvidenceCount,
         positiveFitScore: row.positiveFitScore,
         facetMatches: row.facetMatches,
+        rawFacetMatches: row.rawFacetMatches,
+        dystopianQueryFacetEvidence: row.dystopianQueryFacetEvidence,
         ratingCount: row.ratingCount,
         qualitySignalSource: row.qualitySignalSource,
         qualityFallbackDocFound: row.qualityFallbackDocFound,
