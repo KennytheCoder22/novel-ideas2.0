@@ -3162,6 +3162,14 @@ export async function getRecommendations(
   let adultKitsuOnlyPromotionRejectedReasonByQuery: Record<string, string> = {};
   let adultKitsuOnlyFamilyScopedBestQuery = "";
   let adultKitsuOnlyBroadBestQuery = "";
+  let adultKitsuOnlySelectedFamilyAcceptedCount = 0;
+  let adultKitsuOnlySelectedFamilyReturnedCount = 0;
+  let adultKitsuOnlySelectedFamilyReturnedFrom = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
+  let adultKitsuOnlySelectedFamilyWeakRescueOnly = false;
+  let adultKitsuOnlySelectedFamilyStrongEnoughForFinal = false;
+  let adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough = false;
+  let adultKitsuOnlyPromotionBlockedBecauseThresholdOnly = false;
+  let adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue = false;
   let adultKitsuOnlyFamilyPlanningBypassReason = adultKitsuOnlyModeDetected ? "not_evaluated" : "not_adult_kitsu_only";
   const adultKitsuOnlyFamilyPropagationTrace: any[] = [];
   let adultKitsuOnlyComparisonFamilyAnchor = "";
@@ -5541,6 +5549,14 @@ export async function getRecommendations(
       adultKitsuOnlyPromotionRejectedReasonByQuery,
       adultKitsuOnlyFamilyScopedBestQuery,
       adultKitsuOnlyBroadBestQuery,
+      adultKitsuOnlySelectedFamilyAcceptedCount,
+      adultKitsuOnlySelectedFamilyReturnedCount,
+      adultKitsuOnlySelectedFamilyReturnedFrom,
+      adultKitsuOnlySelectedFamilyWeakRescueOnly,
+      adultKitsuOnlySelectedFamilyStrongEnoughForFinal,
+      adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough,
+      adultKitsuOnlyPromotionBlockedBecauseThresholdOnly,
+      adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue,
       adultKitsuOnlyFamilyPlanningBypassReason,
       adultKitsuOnlyFamilyPropagationTrace,
       adultKitsuOnlyComparisonFamilyAnchor,
@@ -14195,6 +14211,14 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyFamilyScopedBestQuery = familyScopedBest ? `${familyScopedBest.query || familyScopedBest.key}:accepted=${familyScopedBest.acceptedCount}:tier=${familyScopedBest.tier}` : "";
     adultKitsuOnlyBroadBestQuery = broadBest ? `${broadBest.query || broadBest.key}:accepted=${broadBest.acceptedCount}:tier=${broadBest.tier}` : "";
     const selectedFamilyViableCount = familyScopedRows.reduce((max: number, entry: any) => Math.max(max, Number(entry.acceptedCount || 0)), 0);
+    adultKitsuOnlySelectedFamilyAcceptedCount = selectedFamilyViableCount;
+    adultKitsuOnlySelectedFamilyReturnedCount = finalOutputItems.length;
+    adultKitsuOnlySelectedFamilyReturnedFrom = String(returnedItemsBuiltFrom || "none");
+    adultKitsuOnlySelectedFamilyWeakRescueOnly = /weak_candidates|weak_rescue|weak_candidate|adult_kitsu_only_weak_rescue_suppressed/.test(adultKitsuOnlySelectedFamilyReturnedFrom);
+    adultKitsuOnlySelectedFamilyStrongEnoughForFinal = !adultKitsuOnlySelectedFamilyWeakRescueOnly && (
+      selectedFamilyViableCount >= 3 ||
+      (adultKitsuOnlySelectedFamilyReturnedCount >= 3 && /comparison_rescue|normal_recovery|ranked_pool_rescue/.test(adultKitsuOnlySelectedFamilyReturnedFrom))
+    );
     const isSubstantiallyBetter = (entry: any) => Boolean(entry) && (
       selectedAcceptedCountForPromotion === 0 ||
       (entry.acceptedCount >= selectedAcceptedCountForPromotion + 3 && entry.acceptedCount >= selectedAcceptedCountForPromotion * 2)
@@ -14203,13 +14227,16 @@ const normalizedCandidatesRaw = [
       .filter((entry: any) => entry.key !== selectedKeyForPromotion)
       .map((entry: any) => {
         const substantiallyBetter = isSubstantiallyBetter(entry);
+        const allowedBecauseSelectedOnlyWeakRescue = adultKitsuOnlySelectedFamilyWeakRescueOnly &&
+          entry.tier <= 2 &&
+          entry.acceptedCount > selectedAcceptedCountForPromotion;
         const allowed = entry.tier <= 2
-          ? substantiallyBetter
+          ? (substantiallyBetter || allowedBecauseSelectedOnlyWeakRescue)
           : entry.tier === 3
           ? substantiallyBetter && entry.bridgeEvidence
           : substantiallyBetter && selectedAcceptedCountForPromotion === 0 && selectedFamilyViableCount === 0;
         const rejectedReason = allowed
-          ? "allowed"
+          ? (allowedBecauseSelectedOnlyWeakRescue ? "allowed_selected_only_weak_rescue" : "allowed")
           : !substantiallyBetter
           ? `not_substantially_better:tier=${entry.tier}:selectedAccepted=${selectedAcceptedCountForPromotion}:candidateAccepted=${entry.acceptedCount}`
           : entry.tier === 3 && !entry.bridgeEvidence
@@ -14220,7 +14247,7 @@ const normalizedCandidatesRaw = [
           ? `tier4_blocked_selected_viable:selectedAccepted=${selectedAcceptedCountForPromotion}:candidateAccepted=${entry.acceptedCount}`
           : `promotion_scope_blocked:tier=${entry.tier}:candidateAccepted=${entry.acceptedCount}`;
         adultKitsuOnlyPromotionRejectedReasonByQuery[entry.key] = rejectedReason;
-        return { ...entry, substantiallyBetter, allowed, rejectedReason };
+        return { ...entry, substantiallyBetter, allowedBecauseSelectedOnlyWeakRescue, allowed, rejectedReason };
       });
     const bestPromotion = scopedPromotionRows
       .filter((entry: any) => entry.allowed)
@@ -14270,7 +14297,8 @@ const normalizedCandidatesRaw = [
         adultKitsuOnlyComparisonPromotionReturnedTitles = finalOutputItems.map((item: any) => String(item?.doc?.title || "").trim()).filter(Boolean);
         adultKitsuOnlyPromotionTier = Number(bestPromotion.tier || 0);
         adultKitsuOnlyPromotionScope = bestPromotion.tier <= 2 ? "router_family" : bestPromotion.tier === 3 ? "bridge_with_explicit_signal" : "broad_emergency";
-        adultKitsuOnlyComparisonPromotionReason = `promoted:${selectedKeyForPromotion || "(missing)"}->${adultKitsuOnlyComparisonPromotedQuery}:selectedAccepted=${selectedAcceptedCountForPromotion}:promotedAccepted=${acceptedPromotionRows.length}:tier=${adultKitsuOnlyPromotionTier}:scope=${adultKitsuOnlyPromotionScope}`;
+        adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue = Boolean(bestPromotion.allowedBecauseSelectedOnlyWeakRescue);
+        adultKitsuOnlyComparisonPromotionReason = `promoted:${selectedKeyForPromotion || "(missing)"}->${adultKitsuOnlyComparisonPromotedQuery}:selectedAccepted=${selectedAcceptedCountForPromotion}:promotedAccepted=${acceptedPromotionRows.length}:tier=${adultKitsuOnlyPromotionTier}:scope=${adultKitsuOnlyPromotionScope}${adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue ? ":selected_only_weak_rescue" : ""}`;
         adultKitsuOnlyReplacementReason = adultKitsuOnlyComparisonPromotionReason;
         sourceSkippedReason.push(`adult_kitsu_only_family_query_promoted:${adultKitsuOnlyComparisonPromotionReason}`);
       } else {
@@ -14287,10 +14315,14 @@ const normalizedCandidatesRaw = [
       adultKitsuOnlyPromotionScope = bestRejected
         ? (bestRejected.tier <= 2 ? "router_family" : bestRejected.tier === 3 ? "bridge" : "broad")
         : "none";
-      const selectedPathStrongerOrViable = selectedAcceptedCountForPromotion > 0 && (!bestRejected || !bestRejected.substantiallyBetter);
+      const selectedPathStrongerOrViable = adultKitsuOnlySelectedFamilyStrongEnoughForFinal && (!bestRejected || !bestRejected.substantiallyBetter);
+      adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough = Boolean(selectedPathStrongerOrViable);
+      adultKitsuOnlyPromotionBlockedBecauseThresholdOnly = Boolean(bestRejected && !bestRejected.substantiallyBetter && !selectedPathStrongerOrViable);
       adultKitsuOnlyComparisonPromotionReason = bestRejected
         ? selectedPathStrongerOrViable
-          ? `promotion_blocked_by_existing_stronger_selected_path:selected=${selectedKeyForPromotion || "(missing)"}:selectedAccepted=${selectedAcceptedCountForPromotion}:best=${bestRejected.key}:bestAccepted=${bestRejected.acceptedCount}:tier=${bestRejected.tier}`
+          ? `promotion_blocked_by_existing_stronger_selected_path:selected=${selectedKeyForPromotion || "(missing)"}:selectedAccepted=${selectedAcceptedCountForPromotion}:selectedFamilyAccepted=${selectedFamilyViableCount}:returned=${adultKitsuOnlySelectedFamilyReturnedCount}:from=${adultKitsuOnlySelectedFamilyReturnedFrom}:best=${bestRejected.key}:bestAccepted=${bestRejected.acceptedCount}:tier=${bestRejected.tier}`
+          : adultKitsuOnlyPromotionBlockedBecauseThresholdOnly
+          ? `promotion_blocked_threshold_only:${bestRejected.key}:${bestRejected.rejectedReason}:selectedWeakRescueOnly=${adultKitsuOnlySelectedFamilyWeakRescueOnly}`
           : `promotion_blocked:${bestRejected.key}:${bestRejected.rejectedReason}`
         : `no_viable_family_query:selected=${selectedKeyForPromotion || "(missing)"}:selectedAccepted=${selectedAcceptedCountForPromotion}`;
     }
@@ -14991,6 +15023,14 @@ const normalizedCandidatesRaw = [
     adultKitsuOnlyPromotionRejectedReasonByQuery,
     adultKitsuOnlyFamilyScopedBestQuery,
     adultKitsuOnlyBroadBestQuery,
+    adultKitsuOnlySelectedFamilyAcceptedCount,
+    adultKitsuOnlySelectedFamilyReturnedCount,
+    adultKitsuOnlySelectedFamilyReturnedFrom,
+    adultKitsuOnlySelectedFamilyWeakRescueOnly,
+    adultKitsuOnlySelectedFamilyStrongEnoughForFinal,
+    adultKitsuOnlyPromotionBlockedBecauseSelectedStrongEnough,
+    adultKitsuOnlyPromotionBlockedBecauseThresholdOnly,
+    adultKitsuOnlyPromotionAllowedBecauseSelectedOnlyWeakRescue,
     adultKitsuOnlyFamilyPlanningBypassReason,
     adultKitsuOnlyFamilyPropagationTrace,
     adultKitsuOnlyComparisonFamilyAnchor,
