@@ -234,29 +234,32 @@ function shouldKeepKitsuDoc(doc: RecommendationDoc, tagCounts: TagCounts | undef
   return true;
 }
 
-function buildAdultKitsuOnlyQueryComparisonQueries(primaryQuery: string, plannedQueries: string[], tagCounts: TagCounts | undefined): string[] {
+function buildAdultKitsuOnlyQueryComparisonPlan(primaryQuery: string, plannedQueries: string[], tagCounts: TagCounts | undefined): { queries: string[]; limitHit: boolean; candidateCount: number; limit: number } {
   const normalizedPrimary = normalizeText(primaryQuery);
   const tags = Object.entries(tagCounts || {})
     .filter(([, count]) => Number(count || 0) > 0)
     .map(([tag]) => normalizeText(tag));
   const tagText = tags.join(" ");
   const hasScienceFictionIntent = /\b(science fiction|sci fi|scifi|dystopian|cyberpunk|space|future|post apocalyptic|apocalypse)\b/.test(`${normalizedPrimary} ${tagText}`);
-  const uniqueComparisonQueries = (queries: string[]) => Array.from(new Set(queries
-    .map((query) => normalizeText(query))
-    .filter(Boolean)))
-    .slice(0, 6);
+  const uniqueComparisonQueries = (queries: string[], limit: number) => {
+    const unique = Array.from(new Set(queries
+      .map((query) => normalizeText(query))
+      .filter(Boolean)));
+    return { queries: unique.slice(0, limit), limitHit: unique.length > limit, candidateCount: unique.length, limit };
+  };
 
   if (hasScienceFictionIntent) {
-    return uniqueComparisonQueries([normalizedPrimary, "science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic", ...plannedQueries, "thriller", "mystery", "horror", "fantasy"]);
+    return uniqueComparisonQueries([normalizedPrimary, "science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic", ...plannedQueries, "thriller", "mystery", "horror", "fantasy"], 12);
   }
 
   const hasFormatOnlyIntent = normalizedPrimary === "drama" && tags.some((tag) => /^(media:anime|format:manga|topic:manga|format:graphic novel|format:graphic_novel)$/.test(tag));
   if (hasFormatOnlyIntent) {
-    return uniqueComparisonQueries([normalizedPrimary, "drama", "adventure", "fantasy", "mystery", "horror", "science fiction"]);
+    return uniqueComparisonQueries([normalizedPrimary, "drama", "adventure", "fantasy", "mystery", "horror", "science fiction"], 8);
   }
 
-  return uniqueComparisonQueries([normalizedPrimary, ...plannedQueries, "adventure", "drama", "fantasy", "mystery"]);
+  return uniqueComparisonQueries([normalizedPrimary, ...plannedQueries, "adventure", "drama", "fantasy", "mystery"], 8);
 }
+
 
 function histogramFromCounts(values: number[]): Record<string, number> {
   return values.reduce((acc: Record<string, number>, value) => {
@@ -504,12 +507,18 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       : "exhausted_all_fallback_queries_zero_raw";
   }
 
-  const adultKitsuOnlyQueryComparisonQueries = allowNormalAdultKitsuFetch
-    ? buildAdultKitsuOnlyQueryComparisonQueries(queriesToTry[0] || builtFromQuery || "", adultKitsuOnlyFallbackQueriesPlanned, input.tagCounts)
-    : [];
+  const adultKitsuOnlyQueryComparisonPlan = allowNormalAdultKitsuFetch
+    ? buildAdultKitsuOnlyQueryComparisonPlan(queriesToTry[0] || builtFromQuery || "", adultKitsuOnlyFallbackQueriesPlanned, input.tagCounts)
+    : { queries: [], limitHit: false, candidateCount: 0, limit: 0 };
+  const adultKitsuOnlyQueryComparisonQueries = adultKitsuOnlyQueryComparisonPlan.queries;
   const adultKitsuOnlyQueryQualityComparison: any[] = [];
+  const adultKitsuOnlyQueryComparisonFetchAttemptedByQuery: Record<string, boolean> = {};
+  const adultKitsuOnlyQueryComparisonRowsBuiltByQuery: Record<string, number> = {};
+  const adultKitsuOnlyQueryComparisonRowsMissingByQuery: Record<string, boolean> = {};
+  const adultKitsuOnlyQueryComparisonSkipReasonByQuery: Record<string, string> = {};
   if (allowNormalAdultKitsuFetch) {
     for (const comparisonQuery of adultKitsuOnlyQueryComparisonQueries) {
+      adultKitsuOnlyQueryComparisonFetchAttemptedByQuery[comparisonQuery] = true;
       const comparisonStartedAt = Date.now();
       const comparisonUrl = `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(comparisonQuery)}&page[limit]=${encodeURIComponent(String(fetchLimit))}`;
       try {
@@ -540,6 +549,9 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
           if (ratingCountDelta !== 0) return ratingCountDelta;
           return Number(a?.kitsuPopularityRank || 999999) - Number(b?.kitsuPopularityRank || 999999);
         });
+        adultKitsuOnlyQueryComparisonRowsBuiltByQuery[comparisonQuery] = comparisonDocs.length;
+        adultKitsuOnlyQueryComparisonRowsMissingByQuery[comparisonQuery] = false;
+        adultKitsuOnlyQueryComparisonSkipReasonByQuery[comparisonQuery] = comparisonDocs.length > 0 ? "evaluated" : (items.length > 0 ? "no_kept_docs_after_filter" : "zero_raw_items");
         adultKitsuOnlyQueryQualityComparison.push({
           query: comparisonQuery,
           diagnosticOnly: true,
@@ -571,6 +583,9 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
           })),
         });
       } catch (e: any) {
+        adultKitsuOnlyQueryComparisonRowsBuiltByQuery[comparisonQuery] = 0;
+        adultKitsuOnlyQueryComparisonRowsMissingByQuery[comparisonQuery] = false;
+        adultKitsuOnlyQueryComparisonSkipReasonByQuery[comparisonQuery] = `fetch_error:${String(e?.message || e || "diagnostic_fetch_failed").slice(0, 120)}`;
         adultKitsuOnlyQueryQualityComparison.push({
           query: comparisonQuery,
           diagnosticOnly: true,
@@ -640,6 +655,13 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugKitsuAdultOnlyRawSampleTitles: adultKitsuOnlyRawSampleTitles.slice(0, 20),
     debugKitsuAdultOnlyQueryComparisonQueries: adultKitsuOnlyQueryComparisonQueries,
     debugKitsuAdultOnlyQueryQualityComparison: adultKitsuOnlyQueryQualityComparison,
+    debugKitsuAdultOnlyQueryComparisonRowsBuiltByQuery: adultKitsuOnlyQueryComparisonRowsBuiltByQuery,
+    debugKitsuAdultOnlyQueryComparisonRowsMissingByQuery: adultKitsuOnlyQueryComparisonRowsMissingByQuery,
+    debugKitsuAdultOnlyQueryComparisonFetchAttemptedByQuery: adultKitsuOnlyQueryComparisonFetchAttemptedByQuery,
+    debugKitsuAdultOnlyQueryComparisonSkipReasonByQuery: adultKitsuOnlyQueryComparisonSkipReasonByQuery,
+    debugKitsuAdultOnlyQueryComparisonLimitHit: Boolean(adultKitsuOnlyQueryComparisonPlan.limitHit),
+    debugKitsuAdultOnlyQueryComparisonLimit: Number(adultKitsuOnlyQueryComparisonPlan.limit || 0),
+    debugKitsuAdultOnlyQueryComparisonCandidateCount: Number(adultKitsuOnlyQueryComparisonPlan.candidateCount || 0),
     debugKitsuAdultOnlyMode: allowNormalAdultKitsuFetch,
     debugKitsuEligibilityMode: forceKitsuRecoveryFetch ? "forced_recovery" : allowNormalAdultKitsuFetch ? "adult_kitsu_only" : allowNormalTeenKitsuFetch ? "teen_manga_intent" : "not_eligible",
     debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),
