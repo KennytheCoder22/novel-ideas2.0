@@ -37,6 +37,11 @@ function getDirectMangaSignalWeight(tagCounts: TagCounts | undefined): number {
   );
 }
 
+function teenKitsuDirectIntentSignals(tagCounts: TagCounts | undefined): string[] {
+  return ["topic:manga", "media:anime", "format:graphic_novel", "format:graphic novel", "format:manga"]
+    .filter((tag) => Number((tagCounts as any)?.[tag] || 0) > 0);
+}
+
 function hasTeenMangaIntent(tagCounts: TagCounts | undefined): boolean {
   return getDirectMangaSignalWeight(tagCounts) > 0;
 }
@@ -287,9 +292,19 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
 
   const forceKitsuRecoveryFetch = Boolean((input as any)?.forceKitsuRecoveryFetch);
+  const teenKitsuDirectSignalWeight = getDirectMangaSignalWeight(input.tagCounts);
+  const teenKitsuIntentSignalsSeen = teenKitsuDirectIntentSignals(input.tagCounts);
   const allowNormalTeenKitsuFetch = deckKey === "ms_hs" && hasTeenMangaIntent(input.tagCounts);
   const allowNormalAdultKitsuFetch = isAdultKitsuOnlyRun(input);
   const adultKitsuOnlyPerQueryTimeoutMs = allowNormalAdultKitsuFetch ? Math.min(1800, timeoutMs) : timeoutMs;
+  const teenKitsuEligibilityMode = forceKitsuRecoveryFetch ? "forced_recovery" : allowNormalAdultKitsuFetch ? "adult_kitsu_only" : allowNormalTeenKitsuFetch ? "teen_manga_intent" : "not_eligible";
+  const teenKitsuEligibilitySkippedReason = allowNormalTeenKitsuFetch
+    ? "none"
+    : deckKey !== "ms_hs"
+    ? `deck_not_ms_hs:${deckKey}`
+    : teenKitsuDirectSignalWeight <= 0
+    ? "missing_direct_manga_anime_graphic_signal"
+    : "not_evaluated";
   if (!forceKitsuRecoveryFetch && !allowNormalTeenKitsuFetch && !allowNormalAdultKitsuFetch) {
     return {
       engineId: "kitsu",
@@ -298,6 +313,14 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       domainMode,
       builtFromQuery: "",
       items: [],
+      debugKitsuTeenEligibilityMode: teenKitsuEligibilityMode,
+      debugKitsuTeenDirectSignalWeight: teenKitsuDirectSignalWeight,
+      debugKitsuTeenIntentSignalsSeen: teenKitsuIntentSignalsSeen,
+      debugKitsuTeenEligibilitySkippedReason: teenKitsuEligibilitySkippedReason,
+      debugKitsuTeenPreFetchQueryCount: 0,
+      debugKitsuTeenPostFetchRawApiItemCount: 0,
+      debugKitsuTeenPostFetchParsedItemCount: 0,
+      debugKitsuTeenPostFetchReturnedItemCount: 0,
     };
   }
 
@@ -317,6 +340,14 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       domainMode,
       builtFromQuery: "",
       items: [],
+      debugKitsuTeenEligibilityMode: teenKitsuEligibilityMode,
+      debugKitsuTeenDirectSignalWeight: teenKitsuDirectSignalWeight,
+      debugKitsuTeenIntentSignalsSeen: teenKitsuIntentSignalsSeen,
+      debugKitsuTeenEligibilitySkippedReason: "eligible_but_no_queries_to_try",
+      debugKitsuTeenPreFetchQueryCount: 0,
+      debugKitsuTeenPostFetchRawApiItemCount: 0,
+      debugKitsuTeenPostFetchParsedItemCount: 0,
+      debugKitsuTeenPostFetchReturnedItemCount: 0,
     };
   }
 
@@ -663,7 +694,16 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugKitsuAdultOnlyQueryComparisonLimit: Number(adultKitsuOnlyQueryComparisonPlan.limit || 0),
     debugKitsuAdultOnlyQueryComparisonCandidateCount: Number(adultKitsuOnlyQueryComparisonPlan.candidateCount || 0),
     debugKitsuAdultOnlyMode: allowNormalAdultKitsuFetch,
-    debugKitsuEligibilityMode: forceKitsuRecoveryFetch ? "forced_recovery" : allowNormalAdultKitsuFetch ? "adult_kitsu_only" : allowNormalTeenKitsuFetch ? "teen_manga_intent" : "not_eligible",
+    debugKitsuEligibilityMode: teenKitsuEligibilityMode,
+    debugKitsuTeenEligibilityMode: teenKitsuEligibilityMode,
+    debugKitsuTeenDirectSignalWeight: teenKitsuDirectSignalWeight,
+    debugKitsuTeenIntentSignalsSeen: teenKitsuIntentSignalsSeen,
+    debugKitsuTeenEligibilitySkippedReason: teenKitsuEligibilitySkippedReason,
+    debugKitsuTeenPreFetchQueryCount: allowNormalTeenKitsuFetch ? queriesToTry.length : 0,
+    debugKitsuTeenPreFetchQueries: allowNormalTeenKitsuFetch ? queriesToTry.slice(0, 20) : [],
+    debugKitsuTeenPostFetchRawApiItemCount: allowNormalTeenKitsuFetch ? fetchAttempts.reduce((sum, attempt) => sum + Number(attempt.rawApiItemCount || 0), 0) : 0,
+    debugKitsuTeenPostFetchParsedItemCount: allowNormalTeenKitsuFetch ? fetchAttempts.reduce((sum, attempt) => sum + Number(attempt.parsedItemCount || 0), 0) : 0,
+    debugKitsuTeenPostFetchReturnedItemCount: allowNormalTeenKitsuFetch ? docs.length : 0,
     debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),
   };
 }
