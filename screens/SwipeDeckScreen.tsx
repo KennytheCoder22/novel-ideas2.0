@@ -2350,6 +2350,24 @@ function handleLeft() {
       googleBooks: Array.isArray(sourceStarvationAuditForReport?.googleBooks?.fetchDiagnostics) ? sourceStarvationAuditForReport.googleBooks.fetchDiagnostics : [],
       openLibrary: Array.isArray(sourceStarvationAuditForReport?.openLibrary?.fetchDiagnostics) ? sourceStarvationAuditForReport.openLibrary.fetchDiagnostics : [],
     };
+    const pickTeenKitsuFinalGuardDiagnostic = (key: string) => {
+      const latestResult = lastRecommendationResult as any;
+      return latestResult?.[key] ?? preFatalDispatchState?.[key];
+    };
+    const teenKitsuFinalGuardReportLines = [
+      `kitsuTeenRescueFinalGuardInputTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardInputTitles") || [])}`,
+      `kitsuTeenRescueFinalGuardAcceptedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardAcceptedTitles") || [])}`,
+      `kitsuTeenRescueFinalGuardSuppressedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardSuppressedTitles") || [])}`,
+      `kitsuTeenRescueFinalGuardSuppressedReasonByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardSuppressedReasonByTitle") || {})}`,
+      `kitsuTeenRescueTierByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueTierByTitle") || {})}`,
+      `kitsuTeenRescueSemanticEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueSemanticEvidenceByTitle") || {})}`,
+      `kitsuTeenRescueTasteEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueTasteEvidenceByTitle") || {})}`,
+      `kitsuTeenRescueLaneAlignmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueLaneAlignmentByTitle") || {})}`,
+      `kitsuTeenRescueFamilyAlignmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFamilyAlignmentByTitle") || {})}`,
+      `kitsuTeenLastSuppressedCandidate: ${String(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenLastSuppressedCandidate") || "")}`,
+      `kitsuTeenLastSuppressedReason: ${String(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenLastSuppressedReason") || "")}`,
+      `kitsuTeenWouldQualifyAsAcceptableUnderfill: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenWouldQualifyAsAcceptableUnderfill")))}`,
+    ];
     const pickAdultKitsuFallbackDiagnostic = (primaryKey: string, aliasKey?: string) => {
       const latestResult = lastRecommendationResult as any;
       const primaryValue = latestResult?.[primaryKey] ?? preFatalDispatchState?.[primaryKey];
@@ -2557,6 +2575,7 @@ function handleLeft() {
         `adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts || {})}`,
         `adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle || {})}`,
         `adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles || [])}`,
+        ...teenKitsuFinalGuardReportLines,
         `kitsuRescueSlateQualityAudit: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRescueSlateQualityAudit || [])}`,
         `activeLaneQueries: ${JSON.stringify((lastRecommendationResult as any)?.activeLaneQueries || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.activeLaneQueries || [])}`,
         `routerFamily: ${String((lastRecommendationResult as any)?.routerFamily || (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState?.routerFamily || "(missing)")}`,
@@ -2708,6 +2727,7 @@ function handleLeft() {
         `adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRejectedReasonCounts || {})}`,
         `adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueRejectedByTitle || {})}`,
         `adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles: ${JSON.stringify((lastRecommendationResult as any)?.adultKitsuOnlySelectedQueryComparisonRescueReturnedTitles || [])}`,
+        ...teenKitsuFinalGuardReportLines,
         `kitsuRescueSlateQualityAudit: ${JSON.stringify((lastRecommendationResult as any)?.kitsuRescueSlateQualityAudit || [])}`,
         `zeroItemsCompactSummary: ${JSON.stringify({
           debugRawPoolLength: Array.isArray((lastRecommendationResult as any)?.debugRawPool) ? (lastRecommendationResult as any).debugRawPool.length : 0,
@@ -2878,6 +2898,7 @@ function handleLeft() {
       `kitsuNormalRecoveryConsidered:${Boolean((lastRecommendationResult as any)?.kitsuNormalRecoveryConsidered)}`,
       `kitsuNormalRecoveryAcceptedTitles:${Array.isArray((lastRecommendationResult as any)?.kitsuNormalRecoveryAcceptedTitles) && (lastRecommendationResult as any).kitsuNormalRecoveryAcceptedTitles.length ? (lastRecommendationResult as any).kitsuNormalRecoveryAcceptedTitles.join(" | ") : "(none)"}`,
       `kitsuNormalRecoveryRejectedByTitle:${JSON.stringify((lastRecommendationResult as any)?.kitsuNormalRecoveryRejectedByTitle || {})}`,
+      ...teenKitsuFinalGuardReportLines,
       `finalItemsLength:${Number((lastRecommendationResult as any)?.finalItemsLength || 0)}`,
       `finalItemsTitles:${Array.isArray((lastRecommendationResult as any)?.finalItemsTitles) && (lastRecommendationResult as any).finalItemsTitles.length ? (lastRecommendationResult as any).finalItemsTitles.join(" | ") : "(none)"}`,
       `returnedItemsLength:${Number((lastRecommendationResult as any)?.returnedItemsLength || 0)}`,

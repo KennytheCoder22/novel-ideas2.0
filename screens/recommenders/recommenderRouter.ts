@@ -11881,6 +11881,17 @@ const normalizedCandidatesRaw = [
   const kitsuTeenReturnedMissingSourceIdTitles: string[] = [];
   const kitsuTeenRescueTierByTitle: Record<string, string> = {};
   const kitsuTeenRescueRejectedReasonByTitle: Record<string, string> = {};
+  const kitsuTeenRescueFinalGuardInputTitles: string[] = [];
+  const kitsuTeenRescueFinalGuardAcceptedTitles: string[] = [];
+  const kitsuTeenRescueFinalGuardSuppressedTitles: string[] = [];
+  const kitsuTeenRescueFinalGuardSuppressedReasonByTitle: Record<string, string> = {};
+  const kitsuTeenRescueSemanticEvidenceByTitle: Record<string, number> = {};
+  const kitsuTeenRescueTasteEvidenceByTitle: Record<string, number> = {};
+  const kitsuTeenRescueLaneAlignmentByTitle: Record<string, boolean> = {};
+  const kitsuTeenRescueFamilyAlignmentByTitle: Record<string, boolean> = {};
+  let kitsuTeenLastSuppressedCandidate = "";
+  let kitsuTeenLastSuppressedReason = "";
+  let kitsuTeenWouldQualifyAsAcceptableUnderfill = false;
   const kitsuTeenRescueUnsafeTitleMatches: Record<string, string> = {};
   let kitsuTeenRescueHighConfidenceCount = 0;
   let kitsuTeenRescueWeakFallbackCount = 0;
@@ -12061,6 +12072,28 @@ const normalizedCandidatesRaw = [
     const withSafety = { ...merged, teenKitsuUnsafeMatch: unsafeMatch };
     const { tier, rejectedReason } = isTeenKitsuRescueContext ? teenKitsuRescueTierForRow(withSafety) : { tier: "legacy", rejectedReason: "" };
     return { ...withSafety, teenKitsuRejectReason: rejectedReason, teenKitsuRescueTier: tier, teenKitsuStrongEnough: tier === "high_confidence" };
+  };
+  const recordTeenKitsuFinalGuardEvidence = (row: any) => {
+    if (!isTeenKitsuRescueContext) return;
+    const title = String(row?.title || row?.doc?.title || "").trim();
+    if (!title) return;
+    kitsuTeenRescueTierByTitle[title] = String(row?.teenKitsuRescueTier || kitsuTeenRescueTierByTitle[title] || "unknown");
+    kitsuTeenRescueSemanticEvidenceByTitle[title] = Number(row?.semanticEvidenceCount || 0);
+    kitsuTeenRescueTasteEvidenceByTitle[title] = Number(row?.weightedTasteScore || 0);
+    kitsuTeenRescueLaneAlignmentByTitle[title] = Boolean(row?.laneAligned);
+    kitsuTeenRescueFamilyAlignmentByTitle[title] = Boolean(row?.familyAligned);
+  };
+  const recordTeenKitsuFinalGuardSuppression = (row: any, reason: string) => {
+    if (!isTeenKitsuRescueContext) return;
+    const title = String(row?.title || row?.doc?.title || "").trim();
+    if (!title) return;
+    pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenRescueFinalGuardSuppressedTitles, title);
+    kitsuTeenRescueFinalGuardSuppressedReasonByTitle[title] = reason;
+    kitsuTeenLastSuppressedCandidate = title;
+    kitsuTeenLastSuppressedReason = reason;
+    if (row?.teenKitsuRescueTier === "weak_family_underfill" && !row?.teenKitsuRejectReason && Boolean(row?.familyAligned) && !row?.teenKitsuUnsafeMatch && Boolean(row?.sourceId) && Number(row?.positiveFitScore || 0) >= 0) {
+      kitsuTeenWouldQualifyAsAcceptableUnderfill = true;
+    }
   };
   const applyTeenKitsuRescuePolicy = (rows: any[], source: string) => {
     if (!isTeenKitsuRescueContext) return rows;
@@ -13344,41 +13377,63 @@ const normalizedCandidatesRaw = [
   );
   if (shouldApplyTeenKitsuFinalRescueGuard) {
     const nonKitsuItems: any[] = [];
-    const highConfidenceItems: any[] = [];
-    const weakFallbackItems: any[] = [];
+    const highConfidenceEntries: Array<{ item: any; checked: any }> = [];
+    const weakFallbackEntries: Array<{ item: any; checked: any }> = [];
+    const rejectedEntries: Array<{ item: any; checked: any; reason: string }> = [];
     for (const item of finalOutputItems) {
-      const doc = item?.doc || item;
-      const source = detectCandidateSourceForGate(item);
+      const itemAny: any = item;
+      const doc = itemAny?.doc || itemAny;
+      const source = detectCandidateSourceForGate(itemAny);
+      const rawTitle = String(doc?.title || itemAny?.title || "").trim();
+      pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenRescueFinalGuardInputTitles, rawTitle);
       if (source !== "kitsu") {
-        nonKitsuItems.push(item);
+        nonKitsuItems.push(itemAny);
+        pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenRescueFinalGuardAcceptedTitles, rawTitle);
         continue;
       }
       ensureKitsuSourceIdForRescue(doc);
-      const checked = teenKitsuRescueRowWithPolicy({ item, doc, ...kitsuRescueQualityMetricsForDoc(doc) });
-      if (checked.title) kitsuTeenRescueTierByTitle[checked.title] = checked.teenKitsuRescueTier;
+      const checked = teenKitsuRescueRowWithPolicy({ item: itemAny, doc, ...kitsuRescueQualityMetricsForDoc(doc) });
+      recordTeenKitsuFinalGuardEvidence(checked);
       if (checked.teenKitsuRejectReason) {
-        recordTeenKitsuRejectedRow(checked, `final_rescue_guard:${checked.teenKitsuRejectReason}`);
+        const reason = `final_rescue_guard:${checked.teenKitsuRejectReason}`;
+        recordTeenKitsuRejectedRow(checked, reason);
+        recordTeenKitsuFinalGuardSuppression(checked, reason);
+        rejectedEntries.push({ item: itemAny, checked, reason });
         continue;
       }
-      if (checked.teenKitsuRescueTier === "high_confidence") highConfidenceItems.push(item);
+      if (checked.teenKitsuRescueTier === "high_confidence") highConfidenceEntries.push({ item: itemAny, checked });
       else {
-        weakFallbackItems.push(item);
+        weakFallbackEntries.push({ item: itemAny, checked });
         kitsuTeenRescueCandidateWeakButReturnedReason = "weak_family_underfill:final_rescue_guard";
         pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedWeakPaddingTitles, checked.title);
       }
       if (!checked.sourceId) pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedMissingSourceIdTitles, checked.title);
     }
     const weakCap = Math.min(2, Math.max(1, finalLimit || 1));
-    const cappedWeakFallbackItems = highConfidenceItems.length > 0 ? [] : weakFallbackItems.slice(0, weakCap);
-    if (weakFallbackItems.length > cappedWeakFallbackItems.length) {
+    const remainingSlotsAfterStrong = Math.max(0, Math.max(1, finalLimit || finalOutputItems.length || 1) - nonKitsuItems.length - highConfidenceEntries.length);
+    const acceptedWeakLimit = Math.min(weakCap, remainingSlotsAfterStrong);
+    const cappedWeakFallbackEntries = weakFallbackEntries.slice(0, acceptedWeakLimit);
+    const suppressedWeakEntries = weakFallbackEntries.slice(acceptedWeakLimit);
+    if (suppressedWeakEntries.length > 0) {
       kitsuTeenRescueWeakFallbackCapApplied = true;
-      kitsuTeenRescuePaddingSuppressedCount += weakFallbackItems.length - cappedWeakFallbackItems.length;
+      for (const entry of suppressedWeakEntries) {
+        const reason = acceptedWeakLimit >= weakCap
+          ? "final_rescue_guard:weak_family_underfill_cap"
+          : "final_rescue_guard:final_limit_reached_after_high_confidence";
+        recordTeenKitsuRejectedRow(entry.checked, reason);
+        recordTeenKitsuFinalGuardSuppression(entry.checked, reason);
+      }
     }
-    kitsuTeenRescueHighConfidenceCount = Math.max(kitsuTeenRescueHighConfidenceCount, highConfidenceItems.length);
-    kitsuTeenRescueWeakFallbackCount = Math.max(kitsuTeenRescueWeakFallbackCount, cappedWeakFallbackItems.length);
+    kitsuTeenRescueHighConfidenceCount = Math.max(kitsuTeenRescueHighConfidenceCount, highConfidenceEntries.length);
+    kitsuTeenRescueWeakFallbackCount = Math.max(kitsuTeenRescueWeakFallbackCount, cappedWeakFallbackEntries.length);
+    for (const entry of highConfidenceEntries) pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenRescueFinalGuardAcceptedTitles, entry.checked.title);
+    for (const entry of cappedWeakFallbackEntries) pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenRescueFinalGuardAcceptedTitles, entry.checked.title);
+    const highConfidenceItems = highConfidenceEntries.map((entry) => entry.item);
+    const cappedWeakFallbackItems = cappedWeakFallbackEntries.map((entry) => entry.item);
     const guardedItems = [...nonKitsuItems, ...highConfidenceItems, ...cappedWeakFallbackItems];
+    const suppressedCount = rejectedEntries.length + suppressedWeakEntries.length;
     if (guardedItems.length !== finalOutputItems.length) {
-      sourceSkippedReason.push(`teen_kitsu_rescue_final_guard_suppressed:${finalOutputItems.length - guardedItems.length}`);
+      sourceSkippedReason.push(`teen_kitsu_rescue_final_guard_suppressed:${suppressedCount || (finalOutputItems.length - guardedItems.length)}`);
       finalOutputItems = guardedItems;
       terminalAssemblyOutputTitlesAtReturn = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
     }
@@ -13386,6 +13441,8 @@ const normalizedCandidatesRaw = [
       returnedItemsBuiltFrom = `${String(returnedItemsBuiltFrom || "kitsu_rescue")}_weak_underfill`;
       finalReturnSourceUsed = returnedItemsBuiltFrom;
       sourceSkippedReason.push(`teen_kitsu_rescue_weak_underfill_returned:${cappedWeakFallbackItems.length}`);
+    } else if (highConfidenceItems.length > 0 && cappedWeakFallbackItems.length > 0) {
+      sourceSkippedReason.push(`teen_kitsu_rescue_acceptable_underfill_returned:${cappedWeakFallbackItems.length}`);
     }
     if (finalOutputItems.length === 0 && kitsuTeenRescueZeroResultReason === "not_evaluated") {
       kitsuTeenRescueZeroResultReason = "all_candidates_suppressed_by_teen_kitsu_rescue_quality_gate";
@@ -14302,8 +14359,19 @@ const normalizedCandidatesRaw = [
     kitsuTeenRescuePaddingSuppressedCount,
     kitsuTeenReturnedWeakPaddingTitles,
     kitsuTeenReturnedMissingSourceIdTitles,
+    kitsuTeenRescueFinalGuardInputTitles,
+    kitsuTeenRescueFinalGuardAcceptedTitles,
+    kitsuTeenRescueFinalGuardSuppressedTitles,
+    kitsuTeenRescueFinalGuardSuppressedReasonByTitle,
     kitsuTeenRescueTierByTitle,
+    kitsuTeenRescueSemanticEvidenceByTitle,
+    kitsuTeenRescueTasteEvidenceByTitle,
+    kitsuTeenRescueLaneAlignmentByTitle,
+    kitsuTeenRescueFamilyAlignmentByTitle,
     kitsuTeenRescueRejectedReasonByTitle,
+    kitsuTeenLastSuppressedCandidate,
+    kitsuTeenLastSuppressedReason,
+    kitsuTeenWouldQualifyAsAcceptableUnderfill,
     kitsuTeenRescueUnsafeTitleMatches,
     kitsuTeenRescueHighConfidenceCount,
     kitsuTeenRescueWeakFallbackCount,
