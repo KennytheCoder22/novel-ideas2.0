@@ -3042,6 +3042,15 @@ export async function getRecommendations(
   const comicVineDispatchBypassGuard = true;
   const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
   const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
+  const kitsuEnabledAtRequestStart = Boolean(enabledSourcesAtRequestStart.kitsu);
+  const kitsuEnabledAfterSynthesis = Boolean(sourceEnabled.kitsu);
+  let kitsuDispatchEligible = Boolean(kitsuEnabledAfterSynthesis);
+  let kitsuDispatchBlockedReason = kitsuDispatchEligible ? "none" : "kitsu_disabled_after_synthesis";
+  let kitsuSkippedBecauseSourceGate = false;
+  let kitsuSkippedBecauseTeenSynthesis = false;
+  let kitsuSkippedBecauseNoDirectMangaSignal = false;
+  let kitsuSkippedBecauseLaneRejected = false;
+  const kitsuDispatchCandidateQueryByLane: Array<{ laneIndex: number; query: string; baseLaneQuery: string; reason: string }> = [];
   const effectiveEnabledSourcesAfterSynthesis = { ...sourceEnabled, comicVine: Boolean(includeComicVine) };
   const sourceAllowedByFinalGate = { ...effectiveEnabledSourcesAfterSynthesis };
   const sourceAllowedByRecoveryPath = { ...effectiveEnabledSourcesAfterSynthesis };
@@ -4364,6 +4373,7 @@ export async function getRecommendations(
           : kitsuSanitized.sanitized);
       const selectedKitsuLaneQuery = selectSpecificKitsuRecoveryQuery(initialKitsuLaneQuery, [baseLaneQuery, ...fallbackBroadTerms]);
       const kitsuLaneQuery = selectedKitsuLaneQuery.query;
+      if (includeKitsu) kitsuDispatchCandidateQueryByLane.push({ laneIndex: lanei, query: kitsuLaneQuery, baseLaneQuery, reason: "lane_candidate_selected" });
       collectKitsuRecoveryComicIntent([baseLaneQuery, initialKitsuLaneQuery, kitsuLaneQuery, ...fallbackBroadTerms]);
       markKitsuRecoveryComicFallbackIfGeneric([kitsuLaneQuery]);
       if (selectedKitsuLaneQuery.promoted && !kitsuRecoveryQueryPromotedFrom) {
@@ -4495,6 +4505,14 @@ export async function getRecommendations(
         requests.push(openLibraryTrackedRequest);
         }
       }
+      if (!includeKitsu) {
+        kitsuDispatchEligible = false;
+        kitsuDispatchBlockedReason = "kitsu_disabled_after_synthesis";
+      } else if (stopKitsuDispatchForRun) {
+        kitsuDispatchEligible = false;
+        kitsuDispatchBlockedReason = "stop_kitsu_dispatch_for_run";
+        kitsuSkippedBecauseSourceGate = true;
+      }
       if (includeKitsu && !stopKitsuDispatchForRun) {
         const explicitEntityLane = profileSelectedEntitySeeds.some((seed) => {
           const nseed = normalizeText(String(seed || ""));
@@ -4529,10 +4547,15 @@ export async function getRecommendations(
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "kitsu", source_fetch_cap_exceeded: true, kitsuRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:kitsu");
         } else {
+        if (kitsuOnlyAtRequestStart && !kitsuEligibility.eligible) {
+          kitsuSkippedBecauseNoDirectMangaSignal = true;
+          sourceSkippedReason.push("kitsu_only_force_dispatch_without_direct_manga_signal");
+        }
         laneInput = {
           ...laneInput,
+          ...(kitsuOnlyAtRequestStart ? { forceKitsuRecoveryFetch: true } : {}),
           bucketPlan: { ...(laneInput.bucketPlan as any), queries: [kitsuLaneQuery], preview: kitsuLaneQuery, rungs: [{ ...((laneInput.bucketPlan as any)?.rungs?.[0] || {}), query: kitsuLaneQuery, primary: kitsuLaneQuery }] },
-        };
+        } as any;
           kitsuRouterFetchCount += 1;
           if (kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce) kitsuFallbackDispatchedOnce = true;
           if (isTerminalBroadFallbackAttempt) { kitsuTerminalBroadFallbackDispatched = true; sourceSkippedReason.push("kitsu_terminal_broad_fallback_attempted"); pushGlobalPhase("kitsu_terminal_broad_fallback_attempted", { query: kitsuLaneQuery, laneIndex: lanei }); }
@@ -4565,6 +4588,10 @@ export async function getRecommendations(
       }
       if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
       if (requests.length === 0) {
+        if (includeKitsu && kitsuRouterFetchCount === 0) {
+          kitsuSkippedBecauseLaneRejected = true;
+          kitsuDispatchBlockedReason = kitsuDispatchBlockedReason === "none" ? "no_requests_after_source_checks" : kitsuDispatchBlockedReason;
+        }
         if (!fetchLoopExhaustedMarkerEmitted) {
           pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
             laneIndex: lanei,
@@ -4887,6 +4914,57 @@ export async function getRecommendations(
       if (pendingSourceFetchCount > 0) {
         pushGlobalPhase("pending_fetch_counter_mismatch_after_allSettled", { pendingSourceFetchCount, pendingSourceFetches: pendingSourceFetches.length });
       }
+    }
+  }
+
+  if (includeKitsu && kitsuOnlyAtRequestStart && kitsuRouterFetchCount === 0) {
+    const fallbackKitsuQuery = String(
+      kitsuSanitizedQuerySelected.find((q) => String(q || "").trim()) ||
+      (bucketPlan as any)?.preview ||
+      ((bucketPlan as any)?.queries || [])[0] ||
+      "anime"
+    ).trim();
+    const fallbackKitsuInput = {
+      ...routedInput,
+      forceKitsuRecoveryFetch: true,
+      bucketPlan: { ...(bucketPlan as any), queries: [fallbackKitsuQuery], preview: fallbackKitsuQuery, rungs: [{ query: fallbackKitsuQuery, primary: fallbackKitsuQuery }] },
+    } as any;
+    kitsuDispatchEligible = true;
+    kitsuDispatchBlockedReason = "none";
+    if (!kitsuEligibility.eligible) kitsuSkippedBecauseNoDirectMangaSignal = true;
+    kitsuDispatchCandidateQueryByLane.push({ laneIndex: -1, query: fallbackKitsuQuery, baseLaneQuery: String((bucketPlan as any)?.preview || ""), reason: "kitsu_only_post_loop_recovery_dispatch" });
+    sourceSkippedReason.push("kitsu_only_post_loop_recovery_dispatch");
+    pushGlobalPhase("kitsu_only_post_loop_recovery_dispatch", { query: fallbackKitsuQuery });
+    kitsuRouterFetchCount += 1;
+    kitsuDispatchedOnce = true;
+    kitsuQueryUsedByLane.push(fallbackKitsuQuery);
+    kitsuFinalQueryUsedForFetch.push(fallbackKitsuQuery);
+    kitsuQueriesActuallyFetched.add(fallbackKitsuQuery);
+    try {
+      const recoveryKitsu = await withSourceTimeout("router_before_kitsu_only_post_loop_fetch", "router_after_kitsu_only_post_loop_fetch", 10_000, () => getKitsuMangaRecommendations(fallbackKitsuInput));
+      const recoveryDocs = dedupeDocs(extractDocs(recoveryKitsu as any, "kitsu"));
+      allMergedDocs.push(...recoveryDocs);
+      debugRawPool.push(...(((recoveryKitsu as any)?.debugRawPool as any[]) || []));
+      aggregatedRawFetched.kitsu += Number((recoveryKitsu as any)?.debugRawFetchedCount ?? countResultItems(recoveryKitsu));
+      kitsuFetchResultsByQuery.push({
+        query: fallbackKitsuQuery,
+        url: String((recoveryKitsu as any)?.debugFetchUrl || `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(fallbackKitsuQuery)}&page[limit]=20`),
+        status: String((recoveryKitsu as any)?.debugSourceStatus || "ok"),
+        timedOut: false,
+        rawCount: Number((recoveryKitsu as any)?.debugRawFetchedCount ?? countResultItems(recoveryKitsu)),
+        error: null,
+        bodyPrefix: String((recoveryKitsu as any)?.debugResponseSnippet || (recoveryDocs.length ? "status=ok" : "[empty_kitsu_result]")).slice(0, 180),
+      });
+    } catch (err: any) {
+      kitsuFetchResultsByQuery.push({
+        query: fallbackKitsuQuery,
+        url: `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(fallbackKitsuQuery)}&page[limit]=20`,
+        status: "error",
+        timedOut: String(err?.message || err || "").includes("timeout"),
+        rawCount: 0,
+        error: String(err?.message || err || "kitsu_only_post_loop_fetch_failed"),
+        bodyPrefix: String(err?.bodyPrefix || err?.message || err || "").slice(0, 180),
+      });
     }
   }
 
@@ -13790,6 +13868,15 @@ const normalizedCandidatesRaw = [
     nytRejectedByTitle,
     nytReturnedCount,
     nytAdminEnabled: Boolean(sourceEnabled.nyt),
+    kitsuDispatchEligible,
+    kitsuDispatchBlockedReason,
+    kitsuEnabledAtRequestStart,
+    kitsuEnabledAfterSynthesis,
+    kitsuSkippedBecauseSourceGate,
+    kitsuSkippedBecauseTeenSynthesis,
+    kitsuSkippedBecauseNoDirectMangaSignal,
+    kitsuSkippedBecauseLaneRejected,
+    kitsuDispatchCandidateQueryByLane,
     enabledSourcesAtRequestStart,
     effectiveEnabledSourcesAfterSynthesis,
     sourceAllowedByFinalGate,
