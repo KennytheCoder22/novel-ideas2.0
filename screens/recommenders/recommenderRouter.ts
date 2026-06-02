@@ -8388,6 +8388,7 @@ const normalizedCandidatesRaw = [
     finalRenderDocs = selected;
   }
   const finalEligibilityRejectedTitlesByReason: Record<string, string[]> = {};
+  const kitsuTeenSourceIdAtFinalEligibilityByTitle: Record<string, string> = {};
   const finalEligibilityAcceptedTitles: string[] = [];
   const cleanCandidateButNotAcceptedReasonByTitle: Record<string, string> = {};
   const acceptedEvidenceButMissingFromFinalEligibilityTitles: string[] = [];
@@ -8447,6 +8448,31 @@ const normalizedCandidatesRaw = [
     if (!key) return;
     if (!terminalRejectReasonByTitle[key]) terminalRejectReasonByTitle[key] = reason;
   };
+  const detectTeenKitsuIdForFinalEligibility = (doc: any): string => {
+    if (!isTeenDeckKey(input.deckKey) || !doc || typeof doc !== "object") return "";
+    const rawDoc = doc?.rawDoc || {};
+    const nestedRawDoc = rawDoc?.rawDoc || {};
+    const raw = doc?.raw || {};
+    const attrs = doc?.attributes || rawDoc?.attributes || nestedRawDoc?.attributes || raw?.attributes || {};
+    const candidates = [
+      doc?.sourceId, doc?.canonicalId, doc?.key, doc?.id, doc?.kitsuId, doc?.kitsu_id,
+      rawDoc?.sourceId, rawDoc?.canonicalId, rawDoc?.key, rawDoc?.id, rawDoc?.kitsuId, rawDoc?.kitsu_id,
+      nestedRawDoc?.sourceId, nestedRawDoc?.canonicalId, nestedRawDoc?.key, nestedRawDoc?.id, nestedRawDoc?.kitsuId, nestedRawDoc?.kitsu_id,
+      raw?.sourceId, raw?.canonicalId, raw?.key, raw?.id, raw?.kitsuId, raw?.kitsu_id,
+      attrs?.id, attrs?.kitsuId, attrs?.kitsu_id,
+    ];
+    for (const candidate of candidates) {
+      const rawId = String(candidate || "").trim();
+      if (!rawId) continue;
+      if (/^kitsu:/i.test(rawId)) return rawId.replace(/^kitsu:/i, "kitsu:");
+      if (/^manga:/i.test(rawId)) {
+        const compact = rawId.replace(/^manga:/i, "").trim();
+        if (compact) return `kitsu:${compact}`;
+      }
+      if (/^\d+$/.test(rawId)) return `kitsu:${rawId}`;
+    }
+    return "";
+  };
   const teenMaturityHardBlockRe = /\b(explicit sexual|sexually explicit|pornographic|porn|erotica|adult only|adults only|18\+|nc-17|x-rated|rape|sexual assault|incest|gore porn|extreme gore)\b/i;
   const finalRenderCandidateDocsBeforeGate = Array.isArray(finalRenderDocs) ? finalRenderDocs.slice() : [];
   const finalRenderCandidateTitlesBeforeGate = finalRenderCandidateDocsBeforeGate.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
@@ -8461,7 +8487,22 @@ const normalizedCandidatesRaw = [
     }
     const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
     const isComicVineCandidate = docSource.includes("comicvine");
-    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "").trim();
+    let sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "").trim();
+    if (!sourceId && docSource.includes("kitsu")) {
+      const recoveredKitsuId = detectTeenKitsuIdForFinalEligibility(doc);
+      if (recoveredKitsuId) {
+        sourceId = recoveredKitsuId;
+        doc.sourceId = doc.sourceId || recoveredKitsuId;
+        doc.canonicalId = doc.canonicalId || recoveredKitsuId;
+        doc.key = doc.key || recoveredKitsuId;
+        if (doc.rawDoc && typeof doc.rawDoc === "object") {
+          doc.rawDoc.sourceId = doc.rawDoc.sourceId || recoveredKitsuId;
+          doc.rawDoc.canonicalId = doc.rawDoc.canonicalId || recoveredKitsuId;
+          doc.rawDoc.key = doc.rawDoc.key || recoveredKitsuId;
+        }
+      }
+    }
+    if (docSource.includes("kitsu") && title) kitsuTeenSourceIdAtFinalEligibilityByTitle[title] = sourceId;
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
     const restoredByKitsuRecovery = Boolean((doc as any)?.restoredByKitsuRecovery || (doc?.diagnostics as any)?.restoredByKitsuRecovery);
     const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
@@ -8820,6 +8861,7 @@ const normalizedCandidatesRaw = [
     const root = String(parentFranchiseRootForDoc(doc) || "");
     const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
     const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "").trim();
+    if (String(doc?.source || doc?.rawDoc?.source || "").toLowerCase().includes("kitsu") && title) kitsuTeenSourceIdAtFinalEligibilityByTitle[title] = sourceId;
     finalEligibilityAudit.push({
       title,
       sourceId,
@@ -11894,8 +11936,13 @@ const normalizedCandidatesRaw = [
   const kitsuTeenHardDislikeRejectedTitles: string[] = [];
   const kitsuTeenSoftNegativeFitAcceptedTitles: string[] = [];
   const kitsuTeenSourceIdAtFinalGuardByTitle: Record<string, string> = {};
+  const kitsuTeenSourceIdAfterFinalGuardByTitle: Record<string, string> = {};
+  const kitsuTeenSourceIdAtReturnedItemByTitle: Record<string, string> = {};
   const kitsuTeenSourceIdLostBeforeFinalGuardByTitle: Record<string, string> = {};
   const kitsuTeenMissingSourceIdButKnownKitsuIdByTitle: Record<string, string> = {};
+  const kitsuTeenFinalEligibilityMissingSourceIdDespiteFinalGuardId: string[] = [];
+  const kitsuTeenReturnedItemMissingSourceIdDespiteFinalGuardId: string[] = [];
+  const kitsuTeenSourceIdPropagationBreakStageByTitle: Record<string, string> = {};
   let kitsuTeenLastSuppressedCandidate = "";
   let kitsuTeenLastSuppressedReason = "";
   let kitsuTeenWouldQualifyAsAcceptableUnderfill = false;
@@ -13464,6 +13511,29 @@ const normalizedCandidatesRaw = [
     /^kitsu_recovery_preferred_over_emergency_handoff/.test(String(returnedItemsBuiltFrom || "")) ||
     /^teen_postpass_.*emergency_handoff/.test(String(returnedItemsBuiltFrom || ""))
   );
+  const propagateTeenKitsuFinalGuardSourceId = (item: any, checked: any) => {
+    if (!isTeenKitsuRescueContext || !checked) return "";
+    const doc = item?.doc || item;
+    const title = String(checked?.title || doc?.title || item?.title || "").trim();
+    const sourceId = String(checked?.sourceId || ensureKitsuSourceIdForRescue(doc) || "").trim();
+    if (!title || !sourceId || !doc || typeof doc !== "object") return sourceId;
+    doc.sourceId = sourceId;
+    doc.canonicalId = doc.canonicalId || sourceId;
+    doc.key = doc.key || sourceId;
+    if (doc.rawDoc && typeof doc.rawDoc === "object") {
+      doc.rawDoc.sourceId = doc.rawDoc.sourceId || sourceId;
+      doc.rawDoc.canonicalId = doc.rawDoc.canonicalId || sourceId;
+      doc.rawDoc.key = doc.rawDoc.key || sourceId;
+    }
+    if (item && typeof item === "object" && item.doc && typeof item.doc === "object") item.doc = doc;
+    kitsuTeenSourceIdAfterFinalGuardByTitle[title] = sourceId;
+    const finalEligibilitySourceId = String(kitsuTeenSourceIdAtFinalEligibilityByTitle[title] || "").trim();
+    if (!finalEligibilitySourceId) {
+      pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenFinalEligibilityMissingSourceIdDespiteFinalGuardId, title);
+      kitsuTeenSourceIdPropagationBreakStageByTitle[title] = "final_eligibility_missing_source_id_before_final_guard_recovery";
+    }
+    return sourceId;
+  };
   if (shouldApplyTeenKitsuFinalRescueGuard) {
     const nonKitsuItems: any[] = [];
     const highConfidenceEntries: Array<{ item: any; checked: any }> = [];
@@ -13490,6 +13560,7 @@ const normalizedCandidatesRaw = [
         rejectedEntries.push({ item: itemAny, checked, reason });
         continue;
       }
+      propagateTeenKitsuFinalGuardSourceId(itemAny, checked);
       if (checked.teenKitsuRescueTier === "high_confidence") highConfidenceEntries.push({ item: itemAny, checked });
       else {
         if (checked.teenKitsuRescueTier === "acceptable_underfill_evidence_override") pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenSoftNegativeFitAcceptedTitles, checked.title);
@@ -13539,9 +13610,38 @@ const normalizedCandidatesRaw = [
       kitsuTeenRescueCandidateWeakButReturnedReason = "all_candidates_suppressed_by_teen_kitsu_rescue_quality_gate";
     }
   }
+  if (isTeenKitsuRescueContext && Array.isArray(finalOutputItems)) {
+    for (const item of finalOutputItems) {
+      const itemAny: any = item;
+      const doc = itemAny?.doc || itemAny;
+      const title = String(doc?.title || itemAny?.title || "").trim();
+      const source = detectCandidateSourceForGate(itemAny);
+      if (!title || source !== "kitsu") continue;
+      const sourceId = ensureKitsuSourceIdForRescue(doc) || String(doc?.sourceId || doc?.canonicalId || doc?.key || "").trim();
+      kitsuTeenSourceIdAtReturnedItemByTitle[title] = sourceId;
+      const finalGuardSourceId = String(kitsuTeenSourceIdAfterFinalGuardByTitle[title] || kitsuTeenSourceIdAtFinalGuardByTitle[title] || "").trim();
+      if (finalGuardSourceId && !sourceId) {
+        pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedItemMissingSourceIdDespiteFinalGuardId, title);
+        kitsuTeenSourceIdPropagationBreakStageByTitle[title] = kitsuTeenSourceIdPropagationBreakStageByTitle[title] || "returned_item_missing_source_id_after_final_guard_recovery";
+      }
+    }
+    const returnedRecoveredTitleSet = new Set(Object.entries(kitsuTeenSourceIdAtReturnedItemByTitle)
+      .filter(([, sourceId]) => String(sourceId || "").trim())
+      .map(([title]) => normalizeText(title)));
+    if (returnedRecoveredTitleSet.size > 0 && Array.isArray(finalEligibilityRejectedTitlesByReason.missing_source_id)) {
+      finalEligibilityRejectedTitlesByReason.missing_source_id = finalEligibilityRejectedTitlesByReason.missing_source_id
+        .filter((title) => !returnedRecoveredTitleSet.has(normalizeText(String(title || ""))));
+      if (finalEligibilityRejectedTitlesByReason.missing_source_id.length === 0) delete finalEligibilityRejectedTitlesByReason.missing_source_id;
+    }
+  }
   const terminalSelectedSet = new Set(finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
   for (const row of finalEligibilityAudit) {
     row.selected = terminalSelectedSet.has(normalizeText(String(row.title || "")));
+    const recoveredSourceId = String(kitsuTeenSourceIdAtReturnedItemByTitle[row.title] || kitsuTeenSourceIdAfterFinalGuardByTitle[row.title] || "").trim();
+    if (row.selected && recoveredSourceId) {
+      if (!row.sourceId) row.sourceId = recoveredSourceId;
+      row.failedChecks = (row.failedChecks || []).filter((reason) => reason !== "missing_source_id");
+    }
   }
   if (!kitsuAcceptedButEmergencyReturned && kitsuNormalRecoveryAcceptedTitles.length > 0 && /teen_postpass_.*emergency_handoff/.test(String(returnedItemsBuiltFrom || ""))) {
     kitsuAcceptedButEmergencyReturned = {
@@ -14463,6 +14563,12 @@ const normalizedCandidatesRaw = [
     kitsuTeenHardDislikeRejectedTitles,
     kitsuTeenSoftNegativeFitAcceptedTitles,
     kitsuTeenSourceIdAtFinalGuardByTitle,
+    kitsuTeenSourceIdAfterFinalGuardByTitle,
+    kitsuTeenSourceIdAtFinalEligibilityByTitle,
+    kitsuTeenSourceIdAtReturnedItemByTitle,
+    kitsuTeenFinalEligibilityMissingSourceIdDespiteFinalGuardId,
+    kitsuTeenReturnedItemMissingSourceIdDespiteFinalGuardId,
+    kitsuTeenSourceIdPropagationBreakStageByTitle,
     kitsuTeenSourceIdLostBeforeFinalGuardByTitle,
     kitsuTeenMissingSourceIdButKnownKitsuIdByTitle,
     kitsuTeenRescueRejectedReasonByTitle,
