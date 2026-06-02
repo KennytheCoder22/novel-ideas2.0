@@ -2807,7 +2807,16 @@ export async function getRecommendations(
   // always carry the bucket plan forward, but do not let the router collapse to one engine.
   const routedInput: RecommenderInput = { ...routingInput, bucketPlan };
   pushGlobalPhase("before_source_enabled_synthesis");
-  const sourceEnabled = resolveSourceEnabled(routedInput);
+  const enabledSourcesAtRequestStartSnapshot = resolveSourceEnabled(routedInput);
+  const enabledSourcesAtRequestStart = { ...enabledSourcesAtRequestStartSnapshot };
+  const sourceEnabled = { ...enabledSourcesAtRequestStartSnapshot };
+  const kitsuOnlyAtRequestStart = Boolean(
+    enabledSourcesAtRequestStart.kitsu &&
+    !enabledSourcesAtRequestStart.googleBooks &&
+    !enabledSourcesAtRequestStart.openLibrary &&
+    !enabledSourcesAtRequestStart.localLibrary &&
+    !enabledSourcesAtRequestStart.nyt
+  );
   pushGlobalPhase("after_source_enabled_synthesis");
   const withSourceTimeout = async <T>(phaseBefore: string, phaseAfter: string, ms: number, op: () => Promise<T>): Promise<T> => {
     markRouterPhase(phaseBefore);
@@ -2972,6 +2981,14 @@ export async function getRecommendations(
   let kitsuTeenFallbackContinuedBecauseNoFinalSurvivors = false;
   const kitsuTeenFallbackContinuationQueries: string[] = [];
   const kitsuTeenFinalKitsuSurvivorTitles: string[] = [];
+  let kitsuTeenSelectedQueryBeforeRouterFamilyOverride = "";
+  let kitsuTeenSelectedQueryAfterRouterFamilyOverride = "";
+  let kitsuTeenRouterFamilyPrimaryUsed = "";
+  let kitsuTeenRouterFamilyMismatchSuppressed = false;
+  let kitsuTeenSelectedQueryReason = "not_evaluated";
+  let kitsuTeenSelectedQuerySourceTier = "not_evaluated";
+  const kitsuTeenExplicitLaneTermsMatched: string[] = [];
+  const kitsuTeenGeneratedFallbackTermsIgnored: string[] = [];
   let kitsuTeenUnderfillReason = teenKitsuDeckDetected ? "not_evaluated" : "not_teen_deck";
   const teenKitsuQuerySourceDiagnostics: any[] = [];
   const teenKitsuNamedTitleSignals: string[] = [];
@@ -3090,7 +3107,7 @@ export async function getRecommendations(
   const teensDeckForceBookSources =
     (routedInput as any)?.deckCategory === "teens" ||
     isTeenDeckKey((routedInput as any)?.deckKey || "");
-  if (teensDeckForceBookSources) {
+  if (teensDeckForceBookSources && !kitsuOnlyAtRequestStart) {
     if (!sourceEnabled.googleBooks) {
       sourceEnabled.googleBooks = true;
       sourceDisableReasonsDetailed.googleBooks.push("force_enabled_for_teens_tdz_recovery");
@@ -3099,6 +3116,10 @@ export async function getRecommendations(
       sourceEnabled.openLibrary = true;
       sourceDisableReasonsDetailed.openLibrary.push("force_enabled_for_teens_tdz_recovery");
     }
+  } else if (teensDeckForceBookSources && kitsuOnlyAtRequestStart) {
+    sourceSkippedReason.push("teen_book_source_force_enable_skipped:kitsu_only_request");
+    sourceDisableReasonsDetailed.googleBooks.push("preserved_disabled_for_kitsu_only_request");
+    sourceDisableReasonsDetailed.openLibrary.push("preserved_disabled_for_kitsu_only_request");
   }
   var tdzGuardedDiagnosticsInitialized = false;
   var postTopUpOutputSnapshot: any[] = [];
@@ -3156,6 +3177,58 @@ export async function getRecommendations(
   const comicVineDispatchBypassGuard = true;
   const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
   const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
+  const effectiveEnabledSourcesAfterSynthesis = { ...sourceEnabled, comicVine: Boolean(includeComicVine) };
+  const sourceAllowedByFinalGate = { ...effectiveEnabledSourcesAfterSynthesis };
+  const sourceAllowedByRecoveryPath = { ...effectiveEnabledSourcesAfterSynthesis };
+  const blockedDisabledSourceCandidateCountBySource: Record<string, number> = {
+    googleBooks: 0,
+    openLibrary: 0,
+    localLibrary: 0,
+    kitsu: 0,
+    comicVine: 0,
+    nyt: 0,
+    unknown: 0,
+  };
+  const disabledSourceCandidateTitlesBySource: Record<string, string[]> = {
+    googleBooks: [],
+    openLibrary: [],
+    localLibrary: [],
+    kitsu: [],
+    comicVine: [],
+    nyt: [],
+    unknown: [],
+  };
+  const detectCandidateSourceForGate = (value: any): string => {
+    const doc = value?.doc || value;
+    const sourceText = String(doc?.source || doc?.rawDoc?.source || value?.source || "").toLowerCase().replace(/[\s_-]+/g, "");
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.key || value?.sourceId || "").toLowerCase();
+    if (sourceText.includes("kitsu") || sourceId.startsWith("kitsu:")) return "kitsu";
+    if (sourceText.includes("google") || sourceId.startsWith("google")) return "googleBooks";
+    if (sourceText.includes("openlibrary") || sourceId.startsWith("ol") || sourceId.includes("openlibrary")) return "openLibrary";
+    if (sourceText.includes("comicvine") || sourceText.includes("gcd") || sourceId.startsWith("comicvine:") || sourceId.startsWith("gcd:")) return "comicVine";
+    if (sourceText.includes("nyt") || sourceText.includes("newyorktimes")) return "nyt";
+    if (sourceText.includes("local")) return "localLibrary";
+    return "unknown";
+  };
+  const noteDisabledSourceCandidate = (value: any, stage: string) => {
+    const source = detectCandidateSourceForGate(value);
+    blockedDisabledSourceCandidateCountBySource[source] = Number(blockedDisabledSourceCandidateCountBySource[source] || 0) + 1;
+    const doc = value?.doc || value;
+    const title = String(doc?.title || value?.title || "").trim();
+    const bucket = disabledSourceCandidateTitlesBySource[source] || (disabledSourceCandidateTitlesBySource[source] = []);
+    const stampedTitle = title ? `${title} (${stage})` : `(untitled:${stage})`;
+    if (bucket.length < 40 && !bucket.includes(stampedTitle)) bucket.push(stampedTitle);
+  };
+  const isSourceAllowedForFinalGate = (value: any) => {
+    const source = detectCandidateSourceForGate(value);
+    return source !== "unknown" && Boolean((sourceAllowedByFinalGate as any)[source]);
+  };
+  const keepAllowedSourceCandidate = (value: any, stage: string) => {
+    const allowed = isSourceAllowedForFinalGate(value);
+    if (!allowed) noteDisabledSourceCandidate(value, stage);
+    return allowed;
+  };
+  const filterAllowedSourceCandidates = <T,>(values: T[], stage: string): T[] => (Array.isArray(values) ? values.filter((value: any) => keepAllowedSourceCandidate(value, stage)) : []);
   const adultKitsuOnlyModeDetected = routedInput.deckKey === "adult" &&
     includeKitsu &&
     !sourceEnabled.googleBooks &&
@@ -4742,20 +4815,70 @@ export async function getRecommendations(
           { term: "fantasy", re: /\bfantasy\b|\bmagic\b|\bmagical\b/i },
           { term: "mystery", re: /\bmystery\b|\bdetective\b|\binvestigator\b|\bcrime\b/i },
         ];
+        const activeLaneTextForTeenKitsu = [
+          baseLaneQuery,
+          ...fallbackBroadTerms,
+          ...rungQueries,
+          ...queryLanes.map((candidateLane: any) => String(candidateLane?.query || "").trim()).filter(Boolean),
+        ].join(" ");
         const activeLaneTermsForLane = activeLaneMatchers.filter((matcher) => matcher.re.test(baseLaneQuery)).map((matcher) => matcher.term);
-        const namedTitleSignalsForLane = activeLaneTermsForLane.filter((term) => /^(Amulet|Bone|Wynd|Lightfall)$/.test(term));
+        const explicitLaneTermsForRouter = activeLaneMatchers.filter((matcher) => matcher.re.test(activeLaneTextForTeenKitsu)).map((matcher) => matcher.term);
+        const namedTitleSignalsForLane = explicitLaneTermsForRouter.filter((term) => /^(Amulet|Bone|Wynd|Lightfall)$/.test(term));
         const generatedFallbackTermsForLane = fallbackBroadTerms.map((term) => String(term || "").trim()).filter(Boolean);
-        for (const term of activeLaneTermsForLane) if (!teenKitsuActiveLaneTerms.includes(term)) teenKitsuActiveLaneTerms.push(term);
+        for (const term of explicitLaneTermsForRouter) if (!teenKitsuActiveLaneTerms.includes(term)) teenKitsuActiveLaneTerms.push(term);
+        for (const term of explicitLaneTermsForRouter) if (!kitsuTeenExplicitLaneTermsMatched.includes(term)) kitsuTeenExplicitLaneTermsMatched.push(term);
         for (const term of namedTitleSignalsForLane) if (!teenKitsuNamedTitleSignals.includes(term)) teenKitsuNamedTitleSignals.push(term);
         for (const term of generatedFallbackTermsForLane) if (!teenKitsuGeneratedFallbackTerms.includes(term)) teenKitsuGeneratedFallbackTerms.push(term);
-        for (const term of [...activeLaneTermsForLane, ...generatedFallbackTermsForLane]) {
+        for (const term of [...explicitLaneTermsForRouter, ...generatedFallbackTermsForLane]) {
           if (term && !teenKitsuIntentSignalsSeen.includes(term)) teenKitsuIntentSignalsSeen.push(term);
         }
+        kitsuTeenSelectedQueryBeforeRouterFamilyOverride = kitsuTeenSelectedQueryBeforeRouterFamilyOverride || kitsuLaneQuery;
+        const routerFamilyTeenPrimaryMap: Record<string, string[]> = {
+          science_fiction: ["science fiction", "dystopian", "cyberpunk", "space opera"],
+          fantasy: ["fantasy", "adventure"],
+          mystery: ["mystery", "detective", "suspense"],
+          thriller: ["thriller", "suspense", "mystery"],
+          horror: ["horror", "psychological horror", "supernatural"],
+          romance: ["romance"],
+          historical: ["historical"],
+        };
+        const routerFamilyPrimaryCandidates = routerFamilyTeenPrimaryMap[routerFamily] || [];
+        const explicitRouterFamilyMatch = routerFamilyPrimaryCandidates.find((candidate) =>
+          explicitLaneTermsForRouter.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === normalizeKitsuRecoveryQueryForSelection(candidate))
+        );
+        const routerFamilyPrimary = explicitRouterFamilyMatch || routerFamilyPrimaryCandidates[0] || "";
+        const selectedBeforeOverrideNormalized = normalizeKitsuRecoveryQueryForSelection(kitsuLaneQuery);
+        const selectedMatchesNamedTitle = namedTitleSignalsForLane.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedBeforeOverrideNormalized);
+        const selectedMatchesRouterFamily = routerFamilyPrimaryCandidates.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedBeforeOverrideNormalized);
+        const selectedMatchesExplicitLane = explicitLaneTermsForRouter.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedBeforeOverrideNormalized);
+        const selectedIsGeneratedOnly = generatedFallbackTermsForLane.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedBeforeOverrideNormalized);
+        const shouldApplyTeenRouterFamilyOverride = Boolean(
+          routerFamilyPrimary &&
+          !shouldUseTerminalBroadFallback &&
+          !selectedMatchesNamedTitle &&
+          !selectedMatchesRouterFamily &&
+          (explicitRouterFamilyMatch || !selectedMatchesExplicitLane) &&
+          (selectedIsGeneratedOnly || selectedBeforeOverrideNormalized === "mystery" || selectedBeforeOverrideNormalized === normalizeKitsuRecoveryQueryForSelection(kitsuSanitized.sanitized))
+        );
+        if (shouldApplyTeenRouterFamilyOverride) {
+          const before = kitsuLaneQuery;
+          kitsuLaneQuery = routerFamilyPrimary;
+          kitsuTeenRouterFamilyPrimaryUsed = routerFamilyPrimary;
+          kitsuTeenRouterFamilyMismatchSuppressed = true;
+          kitsuTeenSelectedQueryReason = `router_family_override:${routerFamily}:${before}->${routerFamilyPrimary}`;
+          kitsuTeenSelectedQuerySourceTier = explicitRouterFamilyMatch ? "router_family_primary_with_explicit_lane" : "router_family_primary";
+          for (const ignored of generatedFallbackTermsForLane) {
+            if (normalizeKitsuRecoveryQueryForSelection(ignored) !== normalizeKitsuRecoveryQueryForSelection(routerFamilyPrimary) && !kitsuTeenGeneratedFallbackTermsIgnored.includes(ignored)) kitsuTeenGeneratedFallbackTermsIgnored.push(ignored);
+          }
+        }
+        kitsuTeenSelectedQueryAfterRouterFamilyOverride = kitsuTeenSelectedQueryAfterRouterFamilyOverride || kitsuLaneQuery;
         const selectedNormalized = normalizeKitsuRecoveryQueryForSelection(kitsuLaneQuery);
         const selectedQuerySource = namedTitleSignalsForLane.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedNormalized)
           ? "named_title_signal"
-          : activeLaneTermsForLane.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedNormalized)
+          : explicitLaneTermsForRouter.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedNormalized)
           ? "active_lane"
+          : routerFamilyPrimaryCandidates.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedNormalized)
+          ? "router_family_primary"
           : generatedFallbackTermsForLane.some((term) => normalizeKitsuRecoveryQueryForSelection(term) === selectedNormalized)
           ? "generated_fallback"
           : normalizeKitsuRecoveryQueryForSelection(kitsuSanitized.sanitized) === selectedNormalized
@@ -4765,6 +4888,8 @@ export async function getRecommendations(
           : normalizedBaseLaneQuery.includes(selectedNormalized)
           ? "active_lane_subterm"
           : "selector_or_adapter_other";
+        kitsuTeenSelectedQueryReason = kitsuTeenSelectedQueryReason === "not_evaluated" ? (selectedKitsuLaneQuery.reason || "not_selected") : kitsuTeenSelectedQueryReason;
+        kitsuTeenSelectedQuerySourceTier = kitsuTeenSelectedQuerySourceTier === "not_evaluated" ? selectedQuerySource : kitsuTeenSelectedQuerySourceTier;
         teenKitsuPreFetchLaneCount += 1;
         teenKitsuPreFetchPlannedQueryCount += 1;
         if (kitsuLaneQuery && !teenKitsuPreFetchPlannedQueries.includes(kitsuLaneQuery)) teenKitsuPreFetchPlannedQueries.push(kitsuLaneQuery);
@@ -5479,7 +5604,7 @@ export async function getRecommendations(
         };
       });
 
-      debugRawPool.push(...laneRawPool);
+      debugRawPool.push(...filterAllowedSourceCandidates(laneRawPool, "debug_raw_pool"));
 
       const taggedDocs = laneMergedDocs.map((doc: any) => {
         const laneQueryRung = Number.isFinite(Number(lane.queryRung))
@@ -5529,7 +5654,7 @@ export async function getRecommendations(
         };
       });
 
-      allMergedDocs.push(...taggedDocs);
+      allMergedDocs.push(...filterAllowedSourceCandidates(taggedDocs, "router_merged_pool"));
       } catch (dispatchError: any) {
         const dispatchMessage = String(dispatchError?.message || dispatchError || "comicvine_dispatch_lane_error");
         comicVineDispatchError = dispatchMessage;
@@ -5561,7 +5686,8 @@ export async function getRecommendations(
     }
   }
 
-  let mergedDocs = dedupeDocs(allMergedDocs);
+  let mergedDocs = dedupeDocs(filterAllowedSourceCandidates(allMergedDocs, "post_fetch_merged_docs"));
+  debugRawPool.splice(0, debugRawPool.length, ...filterAllowedSourceCandidates(debugRawPool, "post_fetch_debug_raw_pool"));
   const normalizeTitleForPool = (doc: any) => normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
   primaryTasteQueryPoolTitles = mergedDocs
     .filter((d: any) => String(d?.laneKind || "").includes("swipe-taste") || generatedComicVineQueriesFromTaste.some((q) => normalizeText(String(d?.queryText || "")).includes(normalizeText(q))))
@@ -5602,7 +5728,12 @@ export async function getRecommendations(
   }
   if (comicVineAdapterStatus === "proxy_403") sourceSkippedReason.push("comicvine_preflight_proxy_403");
 
-  if (googleQuotaExhausted) sourceEnabled.googleBooks = false;
+  if (googleQuotaExhausted) {
+    sourceEnabled.googleBooks = false;
+    effectiveEnabledSourcesAfterSynthesis.googleBooks = false;
+    sourceAllowedByFinalGate.googleBooks = false;
+    sourceAllowedByRecoveryPath.googleBooks = false;
+  }
 
   const googleStarved = sourceEnabled.googleBooks && Number(aggregatedRawFetched.googleBooks || 0) === 0;
   const openLibraryStarved = sourceEnabled.openLibrary && Number(aggregatedRawFetched.openLibrary || 0) === 0;
@@ -5984,6 +6115,14 @@ export async function getRecommendations(
       kitsuTeenFallbackContinuedBecauseNoFinalSurvivors,
       kitsuTeenFallbackContinuationQueries: Array.from(new Set(kitsuTeenFallbackContinuationQueries)).slice(0, 20),
       kitsuTeenFinalKitsuSurvivorTitles: Array.from(new Set(kitsuTeenFinalKitsuSurvivorTitles)).slice(0, 20),
+      kitsuTeenSelectedQueryBeforeRouterFamilyOverride,
+      kitsuTeenSelectedQueryAfterRouterFamilyOverride,
+      kitsuTeenRouterFamilyPrimaryUsed,
+      kitsuTeenRouterFamilyMismatchSuppressed,
+      kitsuTeenSelectedQueryReason,
+      kitsuTeenSelectedQuerySourceTier,
+      kitsuTeenExplicitLaneTermsMatched: Array.from(new Set(kitsuTeenExplicitLaneTermsMatched)).slice(0, 20),
+      kitsuTeenGeneratedFallbackTermsIgnored: Array.from(new Set(kitsuTeenGeneratedFallbackTermsIgnored)).slice(0, 20),
       kitsuTeenUnderfillReason,
       teenKitsuActiveLaneTerms: Array.from(new Set(teenKitsuActiveLaneTerms)).slice(0, 30),
       teenKitsuGeneratedFallbackTerms: Array.from(new Set(teenKitsuGeneratedFallbackTerms)).slice(0, 30),
@@ -5994,6 +6133,12 @@ export async function getRecommendations(
       kitsuMaxAllowedCanonicalFetches: kitsuMaxAllowedCanonicalFetchesForHealthGuard,
       kitsuSanitizationDiagnostics,
       kitsuSanitizationDroppedTokens,
+      enabledSourcesAtRequestStart,
+      effectiveEnabledSourcesAfterSynthesis,
+      sourceAllowedByFinalGate,
+      sourceAllowedByRecoveryPath,
+      blockedDisabledSourceCandidateCountBySource,
+      disabledSourceCandidateTitlesBySource,
       sourceDisableReasonsDetailed,
       perSourceStatus: {
         googleBooks: { enabled: sourceEnabled.googleBooks, rawFetched: aggregatedRawFetched.googleBooks, starved: googleStarved },
@@ -10153,14 +10298,14 @@ const normalizedCandidatesRaw = [
     kitsu: [] as string[],
     comicVine: [] as string[],
   };
-  const teenPostPassItems = finalRankedDocs.map((doc:any) => ({ kind: "open_library", doc }));
-  const finalAcceptedDocsItems = finalRenderDocs.map((doc:any) => ({ kind: "open_library", doc }));
+  const teenPostPassItems = filterAllowedSourceCandidates(finalRankedDocs, "teen_postpass_items_source_gate").map((doc:any) => ({ kind: "open_library", doc }));
+  const finalAcceptedDocsItems = filterAllowedSourceCandidates(finalRenderDocs, "final_accepted_docs_source_gate").map((doc:any) => ({ kind: "open_library", doc }));
   const acceptedTitleSet = new Set(finalEligibilityAcceptedTitles.map((t) => normalizeText(String(t || ""))));
-  const acceptedDocPool = dedupeDocs([
+  const acceptedDocPool = dedupeDocs(filterAllowedSourceCandidates([
     ...finalRenderDocs,
     ...finalRankedDocs,
     ...outputItems.map((it: any) => it?.doc).filter(Boolean),
-  ] as any[]);
+  ] as any[], "accepted_doc_pool_source_gate") as any[]);
   const finalGateAcceptedItems = acceptedDocPool
     .filter((doc: any) => acceptedTitleSet.has(normalizeText(String(doc?.title || ""))))
     .map((doc:any) => ({ kind: "open_library", doc }));
@@ -12751,7 +12896,7 @@ const normalizedCandidatesRaw = [
           ? (() => {
               normalFinalGateRecoveryConsidered = true;
               const seenRoots = new Set<string>();
-              return teenPostPassItems
+              return filterAllowedSourceCandidates(teenPostPassItems, "normal_final_gate_recovery_input")
                 .filter((item: any) => {
                   const doc = item?.doc || item;
                   const title = String(doc?.title || item?.title || "").trim();
@@ -12937,7 +13082,7 @@ const normalizedCandidatesRaw = [
       }
       const teenPostPassHandoffItems =
         finalOutputItems.length === 0 && teenPostPassOutputLength > 0
-          ? teenPostPassItems
+          ? filterAllowedSourceCandidates(teenPostPassItems, "teen_postpass_emergency_handoff_input")
               .filter((item: any) => {
                 const doc = item?.doc || item;
                 const title = String(doc?.title || item?.title || "").trim();
@@ -12970,7 +13115,7 @@ const normalizedCandidatesRaw = [
         finalReturnSourceUsed = "teen_postpass_emergency_handoff";
         sourceSkippedReason.push("final_gate_integrity:teen_postpass_emergency_handoff");
       } else {
-      const viableUnderfillRescue = dedupeDocs([...(finalRenderDocs || []), ...(viableCandidates || []), ...(scoredCanonicalDocs || [])] as any[])
+      const viableUnderfillRescue = dedupeDocs(filterAllowedSourceCandidates([...(finalRenderDocs || []), ...(viableCandidates || []), ...(scoredCanonicalDocs || [])] as any[], "min_viable_underfill_rescue_input") as any[])
         .filter((doc: any) => {
           const title = String(doc?.title || "").trim();
           const nt = normalizeText(title);
@@ -13225,7 +13370,7 @@ const normalizedCandidatesRaw = [
   if (!suppressTopRecommendations && finalOutputItems.length === 0 && teenPostPassOutputLength > 0) {
     const hardArtifactRe = /\[google_books_fetch_error\]|\b(classroom|teaching|index|awards?|reference|bibliograph(?:y|ies)|poetry for children)\b/i;
     const seenRoots = new Set<string>();
-    const teenPostPassGlobalHandoff = teenPostPassItems
+    const teenPostPassGlobalHandoff = filterAllowedSourceCandidates(teenPostPassItems, "teen_postpass_global_handoff_input")
       .filter((item: any) => {
         const doc = item?.doc || item;
         const title = String(doc?.title || item?.title || "").trim();
@@ -15188,6 +15333,21 @@ const normalizedCandidatesRaw = [
       };
     })
     .slice(0, 20);
+  const finalItemsBeforeDisabledSourceGate = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
+  finalOutputItems = filterAllowedSourceCandidates(finalOutputItems, "final_return_disabled_source_gate");
+  if (finalOutputItems.length < finalItemsBeforeDisabledSourceGate.length) {
+    sourceSkippedReason.push(`disabled_source_final_return_gate_removed:${finalItemsBeforeDisabledSourceGate.length - finalOutputItems.length}`);
+    if (kitsuOnlyAtRequestStart && finalOutputItems.length === 0) {
+      minimalSafeOneBlockedReason = minimalSafeOneBlockedReason || "kitsu_only_no_allowed_candidates_after_disabled_source_gate";
+    }
+  }
+  const finalReturnedItemSourceByTitle: Record<string, string> = {};
+  for (const item of finalOutputItems) {
+    const doc = (item as any)?.doc || item;
+    const title = String((doc as any)?.title || (item as any)?.title || "").trim();
+    if (title) finalReturnedItemSourceByTitle[title] = detectCandidateSourceForGate(item);
+  }
+  const finalReturnedDisabledSourceLeakDetected = finalOutputItems.some((item: any) => !isSourceAllowedForFinalGate(item));
   const returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
   const acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
   const isTeenKitsuBackedDocForDiagnostics = (doc: any) => {
@@ -15792,6 +15952,14 @@ const normalizedCandidatesRaw = [
     kitsuTeenFallbackContinuedBecauseNoFinalSurvivors,
     kitsuTeenFallbackContinuationQueries: Array.from(new Set(kitsuTeenFallbackContinuationQueries)).slice(0, 20),
     kitsuTeenFinalKitsuSurvivorTitles: Array.from(new Set(kitsuTeenFinalKitsuSurvivorTitles)).slice(0, 20),
+    kitsuTeenSelectedQueryBeforeRouterFamilyOverride,
+    kitsuTeenSelectedQueryAfterRouterFamilyOverride,
+    kitsuTeenRouterFamilyPrimaryUsed,
+    kitsuTeenRouterFamilyMismatchSuppressed,
+    kitsuTeenSelectedQueryReason,
+    kitsuTeenSelectedQuerySourceTier,
+    kitsuTeenExplicitLaneTermsMatched: Array.from(new Set(kitsuTeenExplicitLaneTermsMatched)).slice(0, 20),
+    kitsuTeenGeneratedFallbackTermsIgnored: Array.from(new Set(kitsuTeenGeneratedFallbackTermsIgnored)).slice(0, 20),
     kitsuTeenUnderfillReason,
     teenKitsuActiveLaneTerms: Array.from(new Set(teenKitsuActiveLaneTerms)).slice(0, 30),
     teenKitsuGeneratedFallbackTerms: Array.from(new Set(teenKitsuGeneratedFallbackTerms)).slice(0, 30),
@@ -15930,6 +16098,14 @@ const normalizedCandidatesRaw = [
     nytRejectedByTitle,
     nytReturnedCount,
     nytAdminEnabled: Boolean(sourceEnabled.nyt),
+    enabledSourcesAtRequestStart,
+    effectiveEnabledSourcesAfterSynthesis,
+    sourceAllowedByFinalGate,
+    sourceAllowedByRecoveryPath,
+    blockedDisabledSourceCandidateCountBySource,
+    disabledSourceCandidateTitlesBySource,
+    finalReturnedItemSourceByTitle,
+    finalReturnedDisabledSourceLeakDetected,
     sourceEnabled,
     adultKitsuOnlyModeDetected,
     adultKitsuOnlyRouterDispatchEligible,
