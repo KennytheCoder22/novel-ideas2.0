@@ -37,26 +37,8 @@ function getDirectMangaSignalWeight(tagCounts: TagCounts | undefined): number {
   );
 }
 
-function teenKitsuDirectIntentSignals(tagCounts: TagCounts | undefined): string[] {
-  return ["topic:manga", "media:anime", "format:graphic_novel", "format:graphic novel", "format:manga"]
-    .filter((tag) => Number((tagCounts as any)?.[tag] || 0) > 0);
-}
-
 function hasTeenMangaIntent(tagCounts: TagCounts | undefined): boolean {
   return getDirectMangaSignalWeight(tagCounts) > 0;
-}
-
-function isAdultKitsuOnlyRun(input: RecommenderInput): boolean {
-  if (input.deckKey !== "adult") return false;
-  const sourceEnabled = (input as any)?.sourceEnabled || {};
-  const kitsuEnabled = sourceEnabled?.kitsu !== false;
-  return kitsuEnabled &&
-    sourceEnabled?.googleBooks === false &&
-    sourceEnabled?.openLibrary === false &&
-    sourceEnabled?.localLibrary === false &&
-    sourceEnabled?.comicVine !== true &&
-    sourceEnabled?.gcd !== true &&
-    sourceEnabled?.nyt !== true;
 }
 
 function topPositiveTags(tagCounts: TagCounts | undefined, limit: number): string[] {
@@ -118,7 +100,7 @@ function buildKitsuQueries(tagCounts: TagCounts | undefined): string[] {
   add("anime");
   add("popular anime");
 
-  return queries.slice(0, 10);
+  return queries.slice(0, 6);
 }
 
 async function fetchJsonWithTimeout(url: string, timeoutMs: number): Promise<{ json: any; status: number; bodyPrefix: string }> {
@@ -239,51 +221,6 @@ function shouldKeepKitsuDoc(doc: RecommendationDoc, tagCounts: TagCounts | undef
   return true;
 }
 
-function buildAdultKitsuOnlyQueryComparisonPlan(primaryQuery: string, plannedQueries: string[], tagCounts: TagCounts | undefined): { queries: string[]; limitHit: boolean; candidateCount: number; limit: number } {
-  const normalizedPrimary = normalizeText(primaryQuery);
-  const tags = Object.entries(tagCounts || {})
-    .filter(([, count]) => Number(count || 0) > 0)
-    .map(([tag]) => normalizeText(tag));
-  const tagText = tags.join(" ");
-  const hasScienceFictionIntent = /\b(science fiction|sci fi|scifi|dystopian|cyberpunk|space|future|post apocalyptic|apocalypse)\b/.test(`${normalizedPrimary} ${tagText}`);
-  const uniqueComparisonQueries = (queries: string[], limit: number) => {
-    const unique = Array.from(new Set(queries
-      .map((query) => normalizeText(query))
-      .filter(Boolean)));
-    return { queries: unique.slice(0, limit), limitHit: unique.length > limit, candidateCount: unique.length, limit };
-  };
-
-  if (hasScienceFictionIntent) {
-    return uniqueComparisonQueries([normalizedPrimary, "science fiction", "dystopian", "cyberpunk", "space opera", "post apocalyptic", ...plannedQueries, "thriller", "mystery", "horror", "fantasy"], 12);
-  }
-
-  const hasFormatOnlyIntent = normalizedPrimary === "drama" && tags.some((tag) => /^(media:anime|format:manga|topic:manga|format:graphic novel|format:graphic_novel)$/.test(tag));
-  if (hasFormatOnlyIntent) {
-    return uniqueComparisonQueries([normalizedPrimary, "drama", "adventure", "fantasy", "mystery", "horror", "science fiction"], 8);
-  }
-
-  return uniqueComparisonQueries([normalizedPrimary, ...plannedQueries, "adventure", "drama", "fantasy", "mystery"], 8);
-}
-
-
-function histogramFromCounts(values: number[]): Record<string, number> {
-  return values.reduce((acc: Record<string, number>, value) => {
-    const n = Number(value || 0);
-    const bucket = n <= 0 ? "zero" : n === 1 ? "one" : "twoPlus";
-    acc[bucket] = Number(acc[bucket] || 0) + 1;
-    return acc;
-  }, { zero: 0, one: 0, twoPlus: 0 });
-}
-
-function positiveFitProxyHistogram(values: number[]): Record<string, number> {
-  return values.reduce((acc: Record<string, number>, value) => {
-    const n = Number(value || 0);
-    const bucket = n < 0 ? "negative" : n === 0 ? "zero" : n < 3 ? "lowPositive" : "strongPositive";
-    acc[bucket] = Number(acc[bucket] || 0) + 1;
-    return acc;
-  }, { negative: 0, zero: 0, lowPositive: 0, strongPositive: 0 });
-}
-
 export async function getKitsuMangaRecommendations(input: RecommenderInput): Promise<RecommendationResult> {
   const deckKey = input.deckKey;
   const domainMode: RecommendationResult["domainMode"] = "default";
@@ -292,20 +229,7 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   const timeoutMs = Math.max(2500, Math.min(15000, input.timeoutMs ?? 10000));
 
   const forceKitsuRecoveryFetch = Boolean((input as any)?.forceKitsuRecoveryFetch);
-  const teenKitsuDirectSignalWeight = getDirectMangaSignalWeight(input.tagCounts);
-  const teenKitsuIntentSignalsSeen = teenKitsuDirectIntentSignals(input.tagCounts);
-  const allowNormalTeenKitsuFetch = deckKey === "ms_hs" && hasTeenMangaIntent(input.tagCounts);
-  const allowNormalAdultKitsuFetch = isAdultKitsuOnlyRun(input);
-  const adultKitsuOnlyPerQueryTimeoutMs = allowNormalAdultKitsuFetch ? Math.min(1800, timeoutMs) : timeoutMs;
-  const teenKitsuEligibilityMode = forceKitsuRecoveryFetch ? "forced_recovery" : allowNormalAdultKitsuFetch ? "adult_kitsu_only" : allowNormalTeenKitsuFetch ? "teen_manga_intent" : "not_eligible";
-  const teenKitsuEligibilitySkippedReason = allowNormalTeenKitsuFetch
-    ? "none"
-    : deckKey !== "ms_hs"
-    ? `deck_not_ms_hs:${deckKey}`
-    : teenKitsuDirectSignalWeight <= 0
-    ? "missing_direct_manga_anime_graphic_signal"
-    : "not_evaluated";
-  if (!forceKitsuRecoveryFetch && !allowNormalTeenKitsuFetch && !allowNormalAdultKitsuFetch) {
+  if (!forceKitsuRecoveryFetch && (deckKey !== "ms_hs" || !hasTeenMangaIntent(input.tagCounts))) {
     return {
       engineId: "kitsu",
       engineLabel: "Kitsu Manga",
@@ -313,25 +237,13 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       domainMode,
       builtFromQuery: "",
       items: [],
-      debugKitsuTeenEligibilityMode: teenKitsuEligibilityMode,
-      debugKitsuTeenDirectSignalWeight: teenKitsuDirectSignalWeight,
-      debugKitsuTeenIntentSignalsSeen: teenKitsuIntentSignalsSeen,
-      debugKitsuTeenEligibilitySkippedReason: teenKitsuEligibilitySkippedReason,
-      debugKitsuTeenPreFetchQueryCount: 0,
-      debugKitsuTeenPostFetchRawApiItemCount: 0,
-      debugKitsuTeenPostFetchParsedItemCount: 0,
-      debugKitsuTeenPostFetchReturnedItemCount: 0,
     };
   }
 
   const forcedBucketQueries = Array.isArray((input as any)?.bucketPlan?.queries)
     ? (input as any).bucketPlan.queries.map((q: any) => normalizeText(String(q || ""))).filter(Boolean)
     : [];
-  const dedupeQueries = (queries: string[]) => Array.from(new Set(queries.map((q) => normalizeText(q)).filter(Boolean)));
-  const adultKitsuOnlyFallbackQueries = ["adventure", "drama", "fantasy", "mystery"];
-  const queriesToTry = allowNormalAdultKitsuFetch
-    ? dedupeQueries([...(forcedBucketQueries.length > 0 ? forcedBucketQueries.slice(0, 1) : buildKitsuQueries(input.tagCounts).slice(0, 1)), ...adultKitsuOnlyFallbackQueries])
-    : (forcedBucketQueries.length > 0 ? forcedBucketQueries : buildKitsuQueries(input.tagCounts));
+  const queriesToTry = forcedBucketQueries.length > 0 ? forcedBucketQueries : buildKitsuQueries(input.tagCounts);
   if (!queriesToTry.length) {
     return {
       engineId: "kitsu",
@@ -340,30 +252,12 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       domainMode,
       builtFromQuery: "",
       items: [],
-      debugKitsuTeenEligibilityMode: teenKitsuEligibilityMode,
-      debugKitsuTeenDirectSignalWeight: teenKitsuDirectSignalWeight,
-      debugKitsuTeenIntentSignalsSeen: teenKitsuIntentSignalsSeen,
-      debugKitsuTeenEligibilitySkippedReason: "eligible_but_no_queries_to_try",
-      debugKitsuTeenPreFetchQueryCount: 0,
-      debugKitsuTeenPostFetchRawApiItemCount: 0,
-      debugKitsuTeenPostFetchParsedItemCount: 0,
-      debugKitsuTeenPostFetchReturnedItemCount: 0,
     };
   }
 
   const docs: RecommendationDoc[] = [];
   const seen = new Set<string>();
   let builtFromQuery = queriesToTry[0] || "";
-  const adultKitsuOnlyFallbackQueriesPlanned = allowNormalAdultKitsuFetch ? queriesToTry.slice() : [];
-  let adultKitsuOnlyFallbackStoppedReason = allowNormalAdultKitsuFetch ? "not_attempted" : "not_adult_kitsu_only";
-  let adultKitsuOnlyRawApiItemTotal = 0;
-  let adultKitsuOnlyConvertedDocCount = 0;
-  let adultKitsuOnlyKeptDocCount = 0;
-  const adultKitsuOnlyFilteredReasonCounts: Record<string, number> = {};
-  const adultKitsuOnlyRawSampleTitles: string[] = [];
-  const noteAdultKitsuOnlyFilter = (reason: string) => {
-    adultKitsuOnlyFilteredReasonCounts[reason] = Number(adultKitsuOnlyFilteredReasonCounts[reason] || 0) + 1;
-  };
 
   let lastFetchUrl = "";
   let lastFetchStatus = "not_attempted";
@@ -372,22 +266,6 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
   let lastFetchErrorName = "";
   let lastFetchErrorMessage = "";
   let lastFetchBodyPrefix = "";
-  let lastFetchShape = "filter_text_with_page_limit";
-  let lastRawApiItemCount = 0;
-  let lastParsedItemCount = 0;
-  let lastZeroRawReason = "not_attempted";
-  const fetchAttempts: Array<{
-    query: string;
-    url: string;
-    fetchShape: string;
-    status: string;
-    httpStatus: number;
-    rawApiItemCount: number;
-    parsedItemCount: number;
-    zeroRawReason: string;
-    bodyPrefix: string;
-  }> = [];
-  const fallbackTimeline: Array<{ phase: string; query: string; timestamp: number; elapsedMs?: number; rawCount?: number; parsedCount?: number; error?: string }> = [];
   for (let i = 0; i < queriesToTry.length; i += 1) {
     const q = queriesToTry[i];
     const url =
@@ -396,12 +274,9 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       `&page[limit]=${encodeURIComponent(String(fetchLimit))}`;
 
     lastFetchUrl = url;
-    lastFetchShape = "filter_text_with_page_limit";
-    const queryStartedAt = Date.now();
-    if (allowNormalAdultKitsuFetch) fallbackTimeline.push({ phase: "starting_query", query: q, timestamp: queryStartedAt });
     let data: any;
     try {
-      const fetched = await fetchJsonWithTimeout(url, adultKitsuOnlyPerQueryTimeoutMs);
+      const fetched = await fetchJsonWithTimeout(url, timeoutMs);
       data = fetched.json;
       lastFetchStatus = "ok";
       lastFetchHttpStatus = fetched.status;
@@ -416,92 +291,21 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       lastFetchErrorMessage = String(e?.message || e || "fetch_failed_or_timeout");
       lastFetchError = lastFetchErrorMessage || "fetch_failed_or_timeout";
       lastFetchBodyPrefix = String(e?.bodyPrefix || lastFetchErrorMessage || "").slice(0, 180);
-      lastRawApiItemCount = 0;
-      lastParsedItemCount = 0;
-      lastZeroRawReason = lastFetchErrorMessage || "fetch_failed";
-      fetchAttempts.push({
-        query: q,
-        url,
-        fetchShape: lastFetchShape,
-        status: lastFetchStatus,
-        httpStatus: lastFetchHttpStatus,
-        rawApiItemCount: lastRawApiItemCount,
-        parsedItemCount: lastParsedItemCount,
-        zeroRawReason: lastZeroRawReason,
-        bodyPrefix: lastFetchBodyPrefix,
-      });
-      if (allowNormalAdultKitsuFetch) {
-        fallbackTimeline.push({ phase: "query_error", query: q, timestamp: Date.now(), elapsedMs: Date.now() - queryStartedAt, error: lastFetchErrorMessage });
-        adultKitsuOnlyFallbackStoppedReason = "fetch_error_continuing_to_next_fallback";
-      }
       continue;
     }
 
     const items = Array.isArray(data?.data) ? data.data : [];
-    if (allowNormalAdultKitsuFetch) {
-      adultKitsuOnlyRawApiItemTotal += items.length;
-      for (const item of items.slice(0, 8)) {
-        const attrs = item?.attributes || {};
-        const sampleTitle = String(attrs?.canonicalTitle || attrs?.titles?.en || attrs?.titles?.en_jp || attrs?.slug || "").trim();
-        if (sampleTitle && !adultKitsuOnlyRawSampleTitles.includes(sampleTitle)) adultKitsuOnlyRawSampleTitles.push(sampleTitle);
-      }
-    }
-    lastRawApiItemCount = items.length;
-    lastZeroRawReason = items.length > 0
-      ? ""
-      : (Array.isArray(data?.data) ? "zero_data_items_with_page_limit" : "response_data_not_array");
     if (!items.length) {
-      lastParsedItemCount = 0;
       lastFetchBodyPrefix = "[empty_kitsu_result]";
-      fetchAttempts.push({
-        query: q,
-        url,
-        fetchShape: lastFetchShape,
-        status: lastFetchStatus,
-        httpStatus: lastFetchHttpStatus,
-        rawApiItemCount: lastRawApiItemCount,
-        parsedItemCount: lastParsedItemCount,
-        zeroRawReason: lastZeroRawReason,
-        bodyPrefix: lastFetchBodyPrefix,
-      });
-      if (allowNormalAdultKitsuFetch) {
-        fallbackTimeline.push({ phase: "query_complete", query: q, timestamp: Date.now(), elapsedMs: Date.now() - queryStartedAt, rawCount: lastRawApiItemCount, parsedCount: lastParsedItemCount });
-        adultKitsuOnlyFallbackStoppedReason = "zero_raw_continuing_to_next_fallback";
-      }
       continue;
     }
     lastFetchBodyPrefix = `items=${items.length}`;
     if (!docs.length) builtFromQuery = q;
 
-    const docsBeforeQuery = docs.length;
     for (const item of items) {
       const doc = kitsuMangaToDoc(item, q, i);
-      if (!doc?.title) {
-        if (allowNormalAdultKitsuFetch) noteAdultKitsuOnlyFilter("conversion_missing_title");
-        continue;
-      }
-      if (allowNormalAdultKitsuFetch) {
-        adultKitsuOnlyConvertedDocCount += 1;
-        (doc as any).adultKitsuOnlyCandidate = true;
-        const queryGenreSubject = normalizeText(q);
-        const adultSubjects = Array.from(new Set([
-          ...(Array.isArray(doc.subject) ? doc.subject : []),
-          queryGenreSubject,
-          "fiction",
-          "manga",
-          "graphic novel",
-        ].map((subject) => String(subject || "").trim()).filter(Boolean)));
-        doc.subject = adultSubjects;
-        (doc as any).volumeInfo = {
-          ...((doc as any).volumeInfo || {}),
-          categories: adultSubjects,
-        };
-      }
-      if (!shouldKeepKitsuDoc(doc, input.tagCounts)) {
-        if (allowNormalAdultKitsuFetch) noteAdultKitsuOnlyFilter("adapter_should_keep_rejected");
-        continue;
-      }
-      if (allowNormalAdultKitsuFetch) adultKitsuOnlyKeptDocCount += 1;
+      if (!doc?.title) continue;
+      if (!shouldKeepKitsuDoc(doc, input.tagCounts)) continue;
       (doc as any).kitsuFacetMatches = facetMatchesForDoc(doc, input.tagCounts);
       const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
       if (seen.has(dedupeKey)) continue;
@@ -509,138 +313,9 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
       docs.push(doc);
       if (docs.length >= fetchLimit) break;
     }
-    lastParsedItemCount = docs.length - docsBeforeQuery;
-    fetchAttempts.push({
-      query: q,
-      url,
-      fetchShape: lastFetchShape,
-      status: lastFetchStatus,
-      httpStatus: lastFetchHttpStatus,
-      rawApiItemCount: lastRawApiItemCount,
-      parsedItemCount: lastParsedItemCount,
-      zeroRawReason: lastZeroRawReason,
-      bodyPrefix: lastFetchBodyPrefix,
-    });
-    if (allowNormalAdultKitsuFetch) {
-      fallbackTimeline.push({ phase: "query_complete", query: q, timestamp: Date.now(), elapsedMs: Date.now() - queryStartedAt, rawCount: lastRawApiItemCount, parsedCount: lastParsedItemCount });
-    }
 
-    if (allowNormalAdultKitsuFetch && items.length > 0) {
-      adultKitsuOnlyFallbackStoppedReason = "stopped_after_first_nonzero_raw_result";
-      break;
-    }
     if (docs.length >= fetchLimit) break;
     if (i === 0 && docs.length >= Math.max(6, finalLimit)) break;
-  }
-  if (allowNormalAdultKitsuFetch && fetchAttempts.length >= queriesToTry.length && !fetchAttempts.some((attempt) => Number(attempt.rawApiItemCount || 0) > 0)) {
-    adultKitsuOnlyFallbackStoppedReason = fetchAttempts.some((attempt) => attempt.status === "error")
-      ? "exhausted_all_fallback_queries_with_errors_or_zero_raw"
-      : "exhausted_all_fallback_queries_zero_raw";
-  }
-
-  const adultKitsuOnlyQueryComparisonPlan = allowNormalAdultKitsuFetch
-    ? buildAdultKitsuOnlyQueryComparisonPlan(queriesToTry[0] || builtFromQuery || "", adultKitsuOnlyFallbackQueriesPlanned, input.tagCounts)
-    : { queries: [], limitHit: false, candidateCount: 0, limit: 0 };
-  const adultKitsuOnlyQueryComparisonQueries = adultKitsuOnlyQueryComparisonPlan.queries;
-  const adultKitsuOnlyQueryQualityComparison: any[] = [];
-  const adultKitsuOnlyQueryComparisonFetchAttemptedByQuery: Record<string, boolean> = {};
-  const adultKitsuOnlyQueryComparisonRowsBuiltByQuery: Record<string, number> = {};
-  const adultKitsuOnlyQueryComparisonRowsMissingByQuery: Record<string, boolean> = {};
-  const adultKitsuOnlyQueryComparisonSkipReasonByQuery: Record<string, string> = {};
-  if (allowNormalAdultKitsuFetch) {
-    for (const comparisonQuery of adultKitsuOnlyQueryComparisonQueries) {
-      adultKitsuOnlyQueryComparisonFetchAttemptedByQuery[comparisonQuery] = true;
-      const comparisonStartedAt = Date.now();
-      const comparisonUrl = `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(comparisonQuery)}&page[limit]=${encodeURIComponent(String(fetchLimit))}`;
-      try {
-        const fetched = await fetchJsonWithTimeout(comparisonUrl, adultKitsuOnlyPerQueryTimeoutMs);
-        const items = Array.isArray(fetched?.json?.data) ? fetched.json.data : [];
-        const comparisonDocs: any[] = [];
-        const comparisonSeen = new Set<string>();
-        let convertedCount = 0;
-        let keptCount = 0;
-        for (const item of items) {
-          const doc = kitsuMangaToDoc(item, comparisonQuery, 0) as any;
-          if (!doc?.title) continue;
-          convertedCount += 1;
-          doc.adultKitsuOnlyCandidate = true;
-          doc.kitsuFacetMatches = facetMatchesForDoc(doc, input.tagCounts);
-          if (!shouldKeepKitsuDoc(doc, input.tagCounts)) continue;
-          keptCount += 1;
-          const dedupeKey = String(doc.key || `${doc.title}|${doc.author_name?.[0] || ""}`).toLowerCase();
-          if (comparisonSeen.has(dedupeKey)) continue;
-          comparisonSeen.add(dedupeKey);
-          comparisonDocs.push(doc);
-          if (comparisonDocs.length >= fetchLimit) break;
-        }
-        comparisonDocs.sort((a: any, b: any) => {
-          const facetDelta = Number(b?.kitsuFacetMatches || 0) - Number(a?.kitsuFacetMatches || 0);
-          if (facetDelta !== 0) return facetDelta;
-          const ratingCountDelta = Number(b?.kitsuRatingCount || 0) - Number(a?.kitsuRatingCount || 0);
-          if (ratingCountDelta !== 0) return ratingCountDelta;
-          return Number(a?.kitsuPopularityRank || 999999) - Number(b?.kitsuPopularityRank || 999999);
-        });
-        adultKitsuOnlyQueryComparisonRowsBuiltByQuery[comparisonQuery] = comparisonDocs.length;
-        adultKitsuOnlyQueryComparisonRowsMissingByQuery[comparisonQuery] = false;
-        adultKitsuOnlyQueryComparisonSkipReasonByQuery[comparisonQuery] = comparisonDocs.length > 0 ? "evaluated" : (items.length > 0 ? "no_kept_docs_after_filter" : "zero_raw_items");
-        adultKitsuOnlyQueryQualityComparison.push({
-          query: comparisonQuery,
-          diagnosticOnly: true,
-          url: comparisonUrl,
-          status: "ok",
-          httpStatus: Number(fetched?.status || 0),
-          elapsedMs: Date.now() - comparisonStartedAt,
-          rawCount: items.length,
-          convertedCount,
-          rankedCount: comparisonDocs.length,
-          keptCount,
-          semanticEvidenceHistogram: histogramFromCounts([]),
-          facetMatchHistogram: histogramFromCounts(comparisonDocs.map((doc: any) => Number(doc?.kitsuFacetMatches || 0))),
-          positiveFitHistogram: positiveFitProxyHistogram([]),
-          laneAlignmentHistogram: { aligned: 0, notAligned: comparisonDocs.length },
-          weakGateAcceptedCount: 0,
-          weakGateSuppressedCount: comparisonDocs.length,
-          finalSurvivorTitles: [],
-          rawSampleTitles: items.slice(0, 10).map((item: any) => String(item?.attributes?.canonicalTitle || item?.attributes?.titles?.en || item?.attributes?.titles?.en_jp || item?.attributes?.slug || "").trim()).filter(Boolean),
-          candidateDocs: comparisonDocs.slice(0, 20).map((doc: any) => ({
-            title: String(doc?.title || ""),
-            sourceId: String(doc?.sourceId || doc?.canonicalId || doc?.key || ""),
-            queryText: comparisonQuery,
-            subject: Array.isArray(doc?.subject) ? doc.subject.slice(0, 12) : [],
-            description: String(doc?.description || "").slice(0, 500),
-            kitsuFacetMatches: Number(doc?.kitsuFacetMatches || 0),
-            kitsuRatingCount: Number(doc?.kitsuRatingCount || doc?.ratingsCount || 0),
-            kitsuPopularityRank: Number(doc?.kitsuPopularityRank || 999999),
-          })),
-        });
-      } catch (e: any) {
-        adultKitsuOnlyQueryComparisonRowsBuiltByQuery[comparisonQuery] = 0;
-        adultKitsuOnlyQueryComparisonRowsMissingByQuery[comparisonQuery] = false;
-        adultKitsuOnlyQueryComparisonSkipReasonByQuery[comparisonQuery] = `fetch_error:${String(e?.message || e || "diagnostic_fetch_failed").slice(0, 120)}`;
-        adultKitsuOnlyQueryQualityComparison.push({
-          query: comparisonQuery,
-          diagnosticOnly: true,
-          url: comparisonUrl,
-          status: "error",
-          httpStatus: Number(e?.httpStatus || 0),
-          elapsedMs: Date.now() - comparisonStartedAt,
-          rawCount: 0,
-          convertedCount: 0,
-          rankedCount: 0,
-          keptCount: 0,
-          semanticEvidenceHistogram: histogramFromCounts([]),
-          facetMatchHistogram: histogramFromCounts([]),
-          positiveFitHistogram: positiveFitProxyHistogram([]),
-          laneAlignmentHistogram: { aligned: 0, notAligned: 0 },
-          weakGateAcceptedCount: 0,
-          weakGateSuppressedCount: 0,
-          finalSurvivorTitles: [],
-          error: String(e?.message || e || "diagnostic_fetch_failed"),
-          bodyPrefix: String(e?.bodyPrefix || "").slice(0, 180),
-          candidateDocs: [],
-        });
-      }
-    }
   }
 
   docs.sort((a: any, b: any) => {
@@ -662,7 +337,6 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugResponseSnippet: lastFetchBodyPrefix,
     debugRawJsonSnippet: lastFetchBodyPrefix,
     debugFetchUrl: lastFetchUrl,
-    debugKitsuFetchShape: lastFetchShape,
     debugFetchHttpStatus: lastFetchHttpStatus,
     debugFetchError: lastFetchError,
     debugFetchErrorName: lastFetchErrorName,
@@ -670,40 +344,6 @@ export async function getKitsuMangaRecommendations(input: RecommenderInput): Pro
     debugFetchResponsePrefix: lastFetchBodyPrefix,
     debugParsedDataLength: docs.length,
     debugRawFetchedCount: docs.length,
-    debugKitsuRawApiItemCount: lastRawApiItemCount,
-    debugKitsuParsedItemCount: lastParsedItemCount,
-    debugKitsuZeroRawReason: lastZeroRawReason,
-    debugKitsuFetchAttempts: fetchAttempts,
-    debugKitsuFallbackTimeline: fallbackTimeline,
-    debugKitsuAdultOnlyPerQueryTimeoutMs: adultKitsuOnlyPerQueryTimeoutMs,
-    debugKitsuFallbackQueriesPlanned: adultKitsuOnlyFallbackQueriesPlanned,
-    debugKitsuFallbackQueriesAttempted: fetchAttempts.map((attempt) => attempt.query).filter(Boolean),
-    debugKitsuFallbackStoppedReason: adultKitsuOnlyFallbackStoppedReason,
-    debugKitsuAdultOnlyRawApiItemTotal: adultKitsuOnlyRawApiItemTotal,
-    debugKitsuAdultOnlyConvertedDocCount: adultKitsuOnlyConvertedDocCount,
-    debugKitsuAdultOnlyKeptDocCount: adultKitsuOnlyKeptDocCount,
-    debugKitsuAdultOnlyFilteredReasonCounts: adultKitsuOnlyFilteredReasonCounts,
-    debugKitsuAdultOnlyRawSampleTitles: adultKitsuOnlyRawSampleTitles.slice(0, 20),
-    debugKitsuAdultOnlyQueryComparisonQueries: adultKitsuOnlyQueryComparisonQueries,
-    debugKitsuAdultOnlyQueryQualityComparison: adultKitsuOnlyQueryQualityComparison,
-    debugKitsuAdultOnlyQueryComparisonRowsBuiltByQuery: adultKitsuOnlyQueryComparisonRowsBuiltByQuery,
-    debugKitsuAdultOnlyQueryComparisonRowsMissingByQuery: adultKitsuOnlyQueryComparisonRowsMissingByQuery,
-    debugKitsuAdultOnlyQueryComparisonFetchAttemptedByQuery: adultKitsuOnlyQueryComparisonFetchAttemptedByQuery,
-    debugKitsuAdultOnlyQueryComparisonSkipReasonByQuery: adultKitsuOnlyQueryComparisonSkipReasonByQuery,
-    debugKitsuAdultOnlyQueryComparisonLimitHit: Boolean(adultKitsuOnlyQueryComparisonPlan.limitHit),
-    debugKitsuAdultOnlyQueryComparisonLimit: Number(adultKitsuOnlyQueryComparisonPlan.limit || 0),
-    debugKitsuAdultOnlyQueryComparisonCandidateCount: Number(adultKitsuOnlyQueryComparisonPlan.candidateCount || 0),
-    debugKitsuAdultOnlyMode: allowNormalAdultKitsuFetch,
-    debugKitsuEligibilityMode: teenKitsuEligibilityMode,
-    debugKitsuTeenEligibilityMode: teenKitsuEligibilityMode,
-    debugKitsuTeenDirectSignalWeight: teenKitsuDirectSignalWeight,
-    debugKitsuTeenIntentSignalsSeen: teenKitsuIntentSignalsSeen,
-    debugKitsuTeenEligibilitySkippedReason: teenKitsuEligibilitySkippedReason,
-    debugKitsuTeenPreFetchQueryCount: allowNormalTeenKitsuFetch ? queriesToTry.length : 0,
-    debugKitsuTeenPreFetchQueries: allowNormalTeenKitsuFetch ? queriesToTry.slice(0, 20) : [],
-    debugKitsuTeenPostFetchRawApiItemCount: allowNormalTeenKitsuFetch ? fetchAttempts.reduce((sum, attempt) => sum + Number(attempt.rawApiItemCount || 0), 0) : 0,
-    debugKitsuTeenPostFetchParsedItemCount: allowNormalTeenKitsuFetch ? fetchAttempts.reduce((sum, attempt) => sum + Number(attempt.parsedItemCount || 0), 0) : 0,
-    debugKitsuTeenPostFetchReturnedItemCount: allowNormalTeenKitsuFetch ? docs.length : 0,
     debugRawPool: docs.slice(0, fetchLimit).map((doc: any) => ({ source: "kitsu", queryText: String(doc?.queryText || builtFromQuery || ""), title: String(doc?.title || "") })),
   };
 }
