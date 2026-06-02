@@ -11879,6 +11879,14 @@ const normalizedCandidatesRaw = [
   let kitsuTeenRescuePaddingSuppressedCount = 0;
   const kitsuTeenReturnedWeakPaddingTitles: string[] = [];
   const kitsuTeenReturnedMissingSourceIdTitles: string[] = [];
+  const kitsuTeenRescueTierByTitle: Record<string, string> = {};
+  const kitsuTeenRescueRejectedReasonByTitle: Record<string, string> = {};
+  const kitsuTeenRescueUnsafeTitleMatches: Record<string, string> = {};
+  let kitsuTeenRescueHighConfidenceCount = 0;
+  let kitsuTeenRescueWeakFallbackCount = 0;
+  let kitsuTeenRescueWeakFallbackCapApplied = false;
+  let kitsuTeenRescueZeroResultReason = "not_evaluated";
+  const kitsuTeenUnsafeFilterMissedTitles: string[] = [];
   const isTeenKitsuRescueContext = Boolean(isTeenDeckKey((routedInput as any)?.deckKey || "") && includeKitsu);
   const pushUniqueTeenKitsuDiagnosticTitle = (target: string[], title: string, limit = 40) => {
     const clean = String(title || "").trim();
@@ -11923,8 +11931,15 @@ const normalizedCandidatesRaw = [
     ];
     return pieces.map((piece) => String(piece || "")).filter(Boolean).join(" ").toLowerCase();
   };
-  const teenKitsuAdultContentPattern = /\b(?:sex|sexual|sexualized|erotic|erotica|hentai|ecchi|smut|porn|porno|pornographic|explicit|nsfw|adult|mature|bdsm|fetish|seduction|virgin|mistress|lover|concubine)\b/i;
-  const isTeenKitsuAdultContentDoc = (doc: any) => teenKitsuAdultContentPattern.test(teenKitsuSearchTextForDoc(doc));
+  const teenKitsuAdultContentPattern = /\b(?:sex|sexual|sexualized|erotic|erotica|hentai|ecchi|smut|porn|porno|pornographic|explicit|nsfw|adult|mature|bdsm|fetish|seduction|virgin|mistress|lover|concubine|harem|shuumatsu\s+no\s+harem|world'?s\s+end\s+harem)\b/i;
+  const teenKitsuUnsafeTitlePattern = /\b(?:sex\s+fantasy|shuumatsu\s+no\s+harem|world'?s\s+end\s+harem|harem[:\s-]+fantasia)\b/i;
+  const teenKitsuUnsafeMatchForDoc = (doc: any) => {
+    const title = String(doc?.title || doc?.canonicalTitle || doc?.rawDoc?.title || "").trim();
+    const searchText = teenKitsuSearchTextForDoc(doc);
+    if (teenKitsuUnsafeTitlePattern.test(title)) return `unsafe_title:${title}`;
+    const adultMatch = searchText.match(teenKitsuAdultContentPattern)?.[0] || "";
+    return adultMatch ? `unsafe_text:${adultMatch}` : "";
+  };
   const teenKitsuFamilyPatterns: Record<string, RegExp> = {
     fantasy: /\b(fantasy|magic|magical|mage|witch|wizard|dragon|fae|fairy|kingdom|quest|isekai|supernatural|adventure)\b/i,
     historical: /\b(historical|history|period|samurai|edo|meiji|victorian|war|world war|ancient|medieval|renaissance)\b/i,
@@ -11984,20 +11999,40 @@ const normalizedCandidatesRaw = [
     }
     return ordered;
   };
-  const isKitsuRescueStrongRow = (row: any) => Number(row?.semanticEvidenceCount || 0) > 0 || Number(row?.weightedTasteScore || 0) > 0 || Boolean(row?.laneAligned) || Boolean(isTeenKitsuRescueContext && row?.familyAligned);
-  const teenKitsuWeakReasonForRow = (row: any) => {
+  const isTeenKitsuHighConfidenceRescueRow = (row: any) => {
+    if (!isTeenKitsuRescueContext) return false;
+    if (!row?.sourceId) return false;
+    if (Number(row?.positiveFitScore || 0) < 0) return false;
+    if (row?.laneAligned) return true;
+    if (row?.familyAligned && Number(row?.semanticEvidenceCount || 0) > 0) return true;
+    if (row?.familyAligned && Number(row?.weightedTasteScore || 0) > 0) return true;
+    return false;
+  };
+  const isKitsuRescueStrongRow = (row: any) => isTeenKitsuRescueContext
+    ? isTeenKitsuHighConfidenceRescueRow(row)
+    : Number(row?.semanticEvidenceCount || 0) > 0 || Number(row?.weightedTasteScore || 0) > 0 || Boolean(row?.laneAligned);
+  const teenKitsuRejectedReasonForRow = (row: any) => {
     if (!row) return "missing_row";
+    if (row.teenKitsuUnsafeMatch) return row.teenKitsuUnsafeMatch;
     if (!row.sourceId) return "missing_source_id";
     if (Number(row.positiveFitScore || 0) < 0) return `negative_positive_fit_score:${Number(row.positiveFitScore || 0).toFixed(2)}`;
     if (!row.laneAligned && !row.familyAligned) return "no_lane_or_router_family_alignment";
-    if (Number(row.semanticEvidenceCount || 0) === 0 && Number(row.weightedTasteScore || 0) === 0 && Number(row.positiveFitScore || 0) === 0) return "zero_semantic_taste_and_fit_signal";
     return "";
+  };
+  const teenKitsuRescueTierForRow = (row: any) => {
+    const rejectedReason = teenKitsuRejectedReasonForRow(row);
+    if (rejectedReason) return { tier: "rejected", rejectedReason };
+    if (isTeenKitsuHighConfidenceRescueRow(row)) return { tier: "high_confidence", rejectedReason: "" };
+    if (row?.familyAligned) return { tier: "weak_family_underfill", rejectedReason: "" };
+    return { tier: "rejected", rejectedReason: "weak_evidence_without_family_alignment" };
   };
   const recordTeenKitsuRejectedRow = (row: any, reason: string) => {
     if (!isTeenKitsuRescueContext) return;
     const title = String(row?.title || row?.doc?.title || "").trim();
-    if (/adult_content|sexual_content/.test(reason)) {
+    if (title) kitsuTeenRescueRejectedReasonByTitle[title] = reason;
+    if (/adult_content|sexual_content|unsafe_/i.test(reason)) {
       kitsuTeenRescueAdultContentRejectedCount += 1;
+      if (title) kitsuTeenRescueUnsafeTitleMatches[title] = reason;
       pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenRescueCandidateSafetyRejectedTitles, title);
       return;
     }
@@ -12022,24 +12057,43 @@ const normalizedCandidatesRaw = [
       positiveFitScore: Number(row?.positiveFitScore ?? metrics?.positiveFitScore ?? 0),
     };
     const textDoc = doc || row;
-    if (isTeenKitsuRescueContext && isTeenKitsuAdultContentDoc(textDoc)) return { ...merged, teenKitsuRejectReason: "adult_content_or_sexual_content" };
-    const weakReason = isTeenKitsuRescueContext ? teenKitsuWeakReasonForRow(merged) : "";
-    return { ...merged, teenKitsuRejectReason: weakReason, teenKitsuStrongEnough: !weakReason };
+    const unsafeMatch = isTeenKitsuRescueContext ? teenKitsuUnsafeMatchForDoc(textDoc) : "";
+    const withSafety = { ...merged, teenKitsuUnsafeMatch: unsafeMatch };
+    const { tier, rejectedReason } = isTeenKitsuRescueContext ? teenKitsuRescueTierForRow(withSafety) : { tier: "legacy", rejectedReason: "" };
+    return { ...withSafety, teenKitsuRejectReason: rejectedReason, teenKitsuRescueTier: tier, teenKitsuStrongEnough: tier === "high_confidence" };
   };
   const applyTeenKitsuRescuePolicy = (rows: any[], source: string) => {
     if (!isTeenKitsuRescueContext) return rows;
-    const accepted: any[] = [];
+    const highConfidence: any[] = [];
+    const weakFamilyFallback: any[] = [];
     for (const row of rows) {
       const checked = teenKitsuRescueRowWithPolicy(row);
+      if (checked.title) kitsuTeenRescueTierByTitle[checked.title] = checked.teenKitsuRescueTier;
       if (checked.teenKitsuRejectReason) {
         recordTeenKitsuRejectedRow(checked, `${source}:${checked.teenKitsuRejectReason}`);
         continue;
       }
-      accepted.push(checked);
+      if (checked.teenKitsuRescueTier === "high_confidence") highConfidence.push(checked);
+      else weakFamilyFallback.push(checked);
     }
-    kitsuTeenRescueFamilyAlignedCount = Math.max(kitsuTeenRescueFamilyAlignedCount, accepted.filter((row: any) => Boolean(row.familyAligned)).length);
-    kitsuTeenRescueLaneAlignedCount = Math.max(kitsuTeenRescueLaneAlignedCount, accepted.filter((row: any) => Boolean(row.laneAligned)).length);
-    return accepted;
+    kitsuTeenRescueHighConfidenceCount = Math.max(kitsuTeenRescueHighConfidenceCount, highConfidence.length);
+    kitsuTeenRescueFamilyAlignedCount = Math.max(kitsuTeenRescueFamilyAlignedCount, [...highConfidence, ...weakFamilyFallback].filter((row: any) => Boolean(row.familyAligned)).length);
+    kitsuTeenRescueLaneAlignedCount = Math.max(kitsuTeenRescueLaneAlignedCount, highConfidence.filter((row: any) => Boolean(row.laneAligned)).length);
+    if (highConfidence.length > 0) return highConfidence;
+    const weakCap = Math.min(2, Math.max(1, finalLimit || 1));
+    const cappedWeak = weakFamilyFallback.slice(0, weakCap);
+    kitsuTeenRescueWeakFallbackCount = Math.max(kitsuTeenRescueWeakFallbackCount, cappedWeak.length);
+    if (weakFamilyFallback.length > cappedWeak.length) {
+      kitsuTeenRescueWeakFallbackCapApplied = true;
+      for (const row of weakFamilyFallback.slice(cappedWeak.length)) recordTeenKitsuRejectedRow(row, `${source}:weak_family_underfill_cap`);
+    }
+    if (cappedWeak.length > 0) {
+      kitsuTeenRescueCandidateWeakButReturnedReason = `weak_family_underfill:${source}`;
+      for (const row of cappedWeak) pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedWeakPaddingTitles, row.title);
+      return cappedWeak;
+    }
+    if (rows.length > 0 && kitsuTeenRescueZeroResultReason === "not_evaluated") kitsuTeenRescueZeroResultReason = `all_candidates_rejected:${source}`;
+    return [];
   };
   const orderKitsuRescueStrongBeforeWeak = (rows: any[], minPenaltyFreeCount = 3, trackCounts = false) => {
     let sawWeak = false;
@@ -13289,35 +13343,53 @@ const normalizedCandidatesRaw = [
     /^teen_postpass_.*emergency_handoff/.test(String(returnedItemsBuiltFrom || ""))
   );
   if (shouldApplyTeenKitsuFinalRescueGuard) {
-    const guardedItems: any[] = [];
+    const nonKitsuItems: any[] = [];
+    const highConfidenceItems: any[] = [];
+    const weakFallbackItems: any[] = [];
     for (const item of finalOutputItems) {
       const doc = item?.doc || item;
       const source = detectCandidateSourceForGate(item);
       if (source !== "kitsu") {
-        guardedItems.push(item);
+        nonKitsuItems.push(item);
         continue;
       }
       ensureKitsuSourceIdForRescue(doc);
       const checked = teenKitsuRescueRowWithPolicy({ item, doc, ...kitsuRescueQualityMetricsForDoc(doc) });
+      if (checked.title) kitsuTeenRescueTierByTitle[checked.title] = checked.teenKitsuRescueTier;
       if (checked.teenKitsuRejectReason) {
         recordTeenKitsuRejectedRow(checked, `final_rescue_guard:${checked.teenKitsuRejectReason}`);
         continue;
       }
-      guardedItems.push(item);
-      const weakReason = teenKitsuWeakReasonForRow(checked);
-      if (weakReason) {
-        kitsuTeenRescueCandidateWeakButReturnedReason = weakReason;
+      if (checked.teenKitsuRescueTier === "high_confidence") highConfidenceItems.push(item);
+      else {
+        weakFallbackItems.push(item);
+        kitsuTeenRescueCandidateWeakButReturnedReason = "weak_family_underfill:final_rescue_guard";
         pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedWeakPaddingTitles, checked.title);
       }
       if (!checked.sourceId) pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedMissingSourceIdTitles, checked.title);
     }
+    const weakCap = Math.min(2, Math.max(1, finalLimit || 1));
+    const cappedWeakFallbackItems = highConfidenceItems.length > 0 ? [] : weakFallbackItems.slice(0, weakCap);
+    if (weakFallbackItems.length > cappedWeakFallbackItems.length) {
+      kitsuTeenRescueWeakFallbackCapApplied = true;
+      kitsuTeenRescuePaddingSuppressedCount += weakFallbackItems.length - cappedWeakFallbackItems.length;
+    }
+    kitsuTeenRescueHighConfidenceCount = Math.max(kitsuTeenRescueHighConfidenceCount, highConfidenceItems.length);
+    kitsuTeenRescueWeakFallbackCount = Math.max(kitsuTeenRescueWeakFallbackCount, cappedWeakFallbackItems.length);
+    const guardedItems = [...nonKitsuItems, ...highConfidenceItems, ...cappedWeakFallbackItems];
     if (guardedItems.length !== finalOutputItems.length) {
       sourceSkippedReason.push(`teen_kitsu_rescue_final_guard_suppressed:${finalOutputItems.length - guardedItems.length}`);
       finalOutputItems = guardedItems;
       terminalAssemblyOutputTitlesAtReturn = finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
-      if (finalOutputItems.length === 0 && kitsuTeenRescueCandidateWeakButReturnedReason === "not_evaluated") {
-        kitsuTeenRescueCandidateWeakButReturnedReason = "all_candidates_suppressed_by_teen_kitsu_rescue_quality_gate";
-      }
+    }
+    if (highConfidenceItems.length === 0 && cappedWeakFallbackItems.length > 0) {
+      returnedItemsBuiltFrom = `${String(returnedItemsBuiltFrom || "kitsu_rescue")}_weak_underfill`;
+      finalReturnSourceUsed = returnedItemsBuiltFrom;
+      sourceSkippedReason.push(`teen_kitsu_rescue_weak_underfill_returned:${cappedWeakFallbackItems.length}`);
+    }
+    if (finalOutputItems.length === 0 && kitsuTeenRescueZeroResultReason === "not_evaluated") {
+      kitsuTeenRescueZeroResultReason = "all_candidates_suppressed_by_teen_kitsu_rescue_quality_gate";
+      kitsuTeenRescueCandidateWeakButReturnedReason = "all_candidates_suppressed_by_teen_kitsu_rescue_quality_gate";
     }
   }
   const terminalSelectedSet = new Set(finalOutputItems.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean).map((t: string) => normalizeText(String(t || ""))).filter(Boolean));
@@ -13606,6 +13678,22 @@ const normalizedCandidatesRaw = [
       };
     })
     .slice(0, 20);
+  if (isTeenKitsuRescueContext && Array.isArray(finalOutputItems) && finalOutputItems.length > 0) {
+    const beforeUnsafeFinalGate = finalOutputItems.length;
+    finalOutputItems = finalOutputItems.filter((item: any) => {
+      if (detectCandidateSourceForGate(item) !== "kitsu") return true;
+      const doc = item?.doc || item;
+      const title = String(doc?.title || item?.title || "").trim();
+      const unsafeMatch = teenKitsuUnsafeMatchForDoc(doc);
+      if (!unsafeMatch) return true;
+      pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenUnsafeFilterMissedTitles, title);
+      if (title) kitsuTeenRescueUnsafeTitleMatches[title] = unsafeMatch;
+      recordTeenKitsuRejectedRow({ title, doc, teenKitsuUnsafeMatch: unsafeMatch }, `final_return_unsafe_gate:${unsafeMatch}`);
+      return false;
+    });
+    if (finalOutputItems.length < beforeUnsafeFinalGate) sourceSkippedReason.push(`teen_kitsu_final_return_unsafe_gate_removed:${beforeUnsafeFinalGate - finalOutputItems.length}`);
+    if (finalOutputItems.length === 0 && kitsuTeenRescueZeroResultReason === "not_evaluated") kitsuTeenRescueZeroResultReason = "all_candidates_removed_by_final_return_unsafe_gate";
+  }
   const finalItemsBeforeDisabledSourceGate = Array.isArray(finalOutputItems) ? finalOutputItems.slice() : [];
   finalOutputItems = filterAllowedSourceCandidates(finalOutputItems, "final_return_disabled_source_gate");
   if (finalOutputItems.length < finalItemsBeforeDisabledSourceGate.length) {
@@ -13620,6 +13708,11 @@ const normalizedCandidatesRaw = [
     if (isTeenKitsuRescueContext && finalSource === "kitsu") {
       const sourceId = ensureKitsuSourceIdForRescue(doc) || String((doc as any)?.sourceId || (doc as any)?.canonicalId || (doc as any)?.key || "").trim();
       if (!sourceId) pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedMissingSourceIdTitles, title);
+      const unsafeMatch = teenKitsuUnsafeMatchForDoc(doc);
+      if (unsafeMatch) {
+        pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenUnsafeFilterMissedTitles, title);
+        if (title) kitsuTeenRescueUnsafeTitleMatches[title] = unsafeMatch;
+      }
     }
   }
   const finalReturnedDisabledSourceLeakDetected = finalOutputItems.some((item: any) => !isSourceAllowedForFinalGate(item));
@@ -14209,6 +14302,14 @@ const normalizedCandidatesRaw = [
     kitsuTeenRescuePaddingSuppressedCount,
     kitsuTeenReturnedWeakPaddingTitles,
     kitsuTeenReturnedMissingSourceIdTitles,
+    kitsuTeenRescueTierByTitle,
+    kitsuTeenRescueRejectedReasonByTitle,
+    kitsuTeenRescueUnsafeTitleMatches,
+    kitsuTeenRescueHighConfidenceCount,
+    kitsuTeenRescueWeakFallbackCount,
+    kitsuTeenRescueWeakFallbackCapApplied,
+    kitsuTeenRescueZeroResultReason,
+    kitsuTeenUnsafeFilterMissedTitles,
     enabledSourcesAtRequestStart,
     effectiveEnabledSourcesAfterSynthesis,
     sourceAllowedByFinalGate,
