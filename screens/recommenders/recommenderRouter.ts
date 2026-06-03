@@ -12186,9 +12186,7 @@ const normalizedCandidatesRaw = [
     if (teenKitsuEvidenceOverridesNegativeFit(row)) return { tier: "acceptable_underfill_evidence_override", rejectedReason: "" };
     if (row?.familyAligned) {
       const hasAnyEvidence = Number(row?.semanticEvidenceCount || 0) > 0 || Number(row?.weightedTasteScore || 0) > 0;
-      const family = String(routerFamily || "").trim();
       if (hasAnyEvidence) return { tier: "weak_family_underfill", rejectedReason: "" };
-      if (family === "fantasy" || family === "science_fiction") return { tier: "rejected", rejectedReason: "evidence_free_family_underfill_blocked" };
       return { tier: "last_resort_family_underfill", rejectedReason: "" };
     }
     return { tier: "rejected", rejectedReason: "weak_evidence_without_family_alignment" };
@@ -13618,17 +13616,28 @@ const normalizedCandidatesRaw = [
       }
       if (!checked.sourceId) pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedMissingSourceIdTitles, checked.title);
     }
+    const evidenceWeakEntries = weakFallbackEntries.filter((entry) => entry.checked?.teenKitsuRescueTier !== "last_resort_family_underfill");
+    const lastResortEntries = weakFallbackEntries.filter((entry) => entry.checked?.teenKitsuRescueTier === "last_resort_family_underfill");
     const weakCap = Math.min(2, Math.max(1, finalLimit || 1));
     const remainingSlotsAfterStrong = Math.max(0, Math.max(1, finalLimit || finalOutputItems.length || 1) - nonKitsuItems.length - highConfidenceEntries.length);
     const acceptedWeakLimit = Math.min(weakCap, remainingSlotsAfterStrong);
-    const cappedWeakFallbackEntries = weakFallbackEntries.slice(0, acceptedWeakLimit);
-    const suppressedWeakEntries = weakFallbackEntries.slice(acceptedWeakLimit);
+    const cappedEvidenceWeakEntries = evidenceWeakEntries.slice(0, acceptedWeakLimit);
+    const remainingSlotsAfterEvidenceWeak = Math.max(0, remainingSlotsAfterStrong - cappedEvidenceWeakEntries.length);
+    const allowLastResortFamilyOnly = !isTeenKitsuOnlyReturnContext && highConfidenceEntries.length === 0 && evidenceWeakEntries.length === 0 && remainingSlotsAfterEvidenceWeak > 0;
+    const cappedLastResortEntries = allowLastResortFamilyOnly ? lastResortEntries.slice(0, 1) : [];
+    const cappedWeakFallbackEntries = [...cappedEvidenceWeakEntries, ...cappedLastResortEntries];
+    const suppressedWeakEntries = [
+      ...evidenceWeakEntries.slice(cappedEvidenceWeakEntries.length),
+      ...lastResortEntries.slice(cappedLastResortEntries.length),
+    ];
     if (suppressedWeakEntries.length > 0) {
       kitsuTeenRescueWeakFallbackCapApplied = true;
       for (const entry of suppressedWeakEntries) {
-        const reason = acceptedWeakLimit >= weakCap
-          ? "final_rescue_guard:weak_family_underfill_cap"
-          : "final_rescue_guard:final_limit_reached_after_high_confidence";
+        const reason = entry.checked?.teenKitsuRescueTier === "last_resort_family_underfill"
+          ? (isTeenKitsuOnlyReturnContext ? "final_rescue_guard:last_resort_family_underfill_suppressed_kitsu_only_quality_floor" : "final_rescue_guard:last_resort_family_underfill_cap")
+          : acceptedWeakLimit >= weakCap
+            ? "final_rescue_guard:weak_family_underfill_cap"
+            : "final_rescue_guard:final_limit_reached_after_high_confidence";
         recordTeenKitsuRejectedRow(entry.checked, reason);
         recordTeenKitsuFinalGuardSuppression(entry.checked, reason);
       }
