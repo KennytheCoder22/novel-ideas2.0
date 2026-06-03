@@ -2357,6 +2357,7 @@ function handleLeft() {
     const teenKitsuFinalGuardReportLines = [
       `kitsuTeenAlternateQueriesPlanned: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueriesPlanned") || [])}`,
       `kitsuTeenAlternateQueriesAttempted: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueriesAttempted") || [])}`,
+      `kitsuTeenAlternateQueryPromotionDecisions: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueryPromotionDecisions") || [])}`,
       `kitsuTeenRescueFinalGuardInputTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardInputTitles") || [])}`,
       `kitsuTeenRescueFinalGuardAcceptedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardAcceptedTitles") || [])}`,
       `kitsuTeenRescueFinalGuardSuppressedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardSuppressedTitles") || [])}`,
