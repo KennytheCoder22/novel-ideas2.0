@@ -2920,7 +2920,7 @@ export async function getRecommendations(
     const current = normalizeKitsuRecoveryQueryForSelection(currentQuery);
     const base = normalizeKitsuRecoveryQueryForSelection(baseLaneQuery);
     const fallbackText = normalizeKitsuRecoveryQueryForSelection(fallbackTerms.join(" "));
-    const allText = `${base} ${fallbackText}`.trim();
+    const allText = `${current} ${base} ${fallbackText}`.trim();
     const activeTerms: string[] = [];
     const addActive = (term: string, re: RegExp) => {
       if (re.test(allText) && !activeTerms.includes(term)) activeTerms.push(term);
@@ -2949,11 +2949,18 @@ export async function getRecommendations(
     };
     const familyTerms = familyTermsByFamily[family] || [];
     const tasteAlignedAlternates = buildTeenKitsuTasteAlignedAlternateQueries(family, allText, "normal_dispatch");
-    const broadFamilyOnlyCurrent = (family === "fantasy" && current === "fantasy") || (family === "horror" && (current === "horror" || current === "psychological horror")) || (family === "science_fiction" && (current === "science fiction" || current === "dystopian"));
-    if (!shouldUseTerminalBroadFallback && broadFamilyOnlyCurrent && tasteAlignedAlternates.length > 0) {
-      return { query: tasteAlignedAlternates[0].query, reason: `taste_aligned_alternate:${tasteAlignedAlternates[0].reason}`, sourceTier: "taste_aligned_alternate", activeTerms, suppressedGeneric: true, genericCandidate: current };
-    }
     const activeFamilyTerm = familyTerms.find((term) => activeTerms.some((active) => normalizeKitsuRecoveryQueryForSelection(active) === normalizeKitsuRecoveryQueryForSelection(term)));
+    const broadQueryByFamily: Record<string, string[]> = {
+      fantasy: ["fantasy", "adventure"],
+      horror: ["psychological horror", "horror", "supernatural"],
+      science_fiction: ["science fiction", "dystopian"],
+    };
+    const broadFamilyQueries = broadQueryByFamily[family] || [];
+    const currentIsBroadFamilyQuery = broadFamilyQueries.includes(current);
+    const activeTermIsBroadFamilyQuery = Boolean(activeFamilyTerm && broadFamilyQueries.includes(normalizeKitsuRecoveryQueryForSelection(activeFamilyTerm)));
+    if (tasteAlignedAlternates.length > 0 && (currentIsBroadFamilyQuery || activeTermIsBroadFamilyQuery)) {
+      return { query: tasteAlignedAlternates[0].query, reason: `taste_aligned_alternate:${tasteAlignedAlternates[0].reason}`, sourceTier: "taste_aligned_alternate", activeTerms, suppressedGeneric: true, genericCandidate: current || String(activeFamilyTerm || "") };
+    }
     const mysteryIsGenericMismatch = current === "mystery" && family !== "mystery" && familyTerms.length > 0;
     if (!shouldUseTerminalBroadFallback && activeFamilyTerm) {
       return { query: activeFamilyTerm, reason: `explicit_active_lane_term:${activeFamilyTerm}`, sourceTier: "explicit_active_lane", activeTerms, suppressedGeneric: current !== normalizeKitsuRecoveryQueryForSelection(activeFamilyTerm), genericCandidate: current };
