@@ -8476,9 +8476,10 @@ const normalizedCandidatesRaw = [
   const recoverTeenKitsuSourceIdBeforeFinalEligibility = (doc: any, stage: string) => {
     if (!isTeenDeckKey(input.deckKey) || !includeKitsu || !doc || typeof doc !== "object") return doc;
     const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
-    if (!docSource.includes("kitsu")) return doc;
+    const recoveredKnownKitsuId = detectTeenKitsuIdForFinalEligibility(doc);
+    if (!docSource.includes("kitsu") && !recoveredKnownKitsuId) return doc;
     const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
-    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || detectTeenKitsuIdForFinalEligibility(doc) || "").trim();
+    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || recoveredKnownKitsuId || "").trim();
     if (!sourceId) return doc;
     doc.sourceId = sourceId;
     doc.canonicalId = doc.canonicalId || sourceId;
@@ -12150,7 +12151,8 @@ const normalizedCandidatesRaw = [
     if (Number(row?.positiveFitScore || 0) >= 0) return false;
     const semanticEvidenceCount = Number(row?.semanticEvidenceCount || 0);
     const weightedTasteScore = Number(row?.weightedTasteScore || 0);
-    if (penaltyType === "generic_penalty_pressure") return semanticEvidenceCount >= 1;
+    const family = String(routerFamily || "").trim();
+    if (penaltyType === "generic_penalty_pressure" && family === "mystery") return semanticEvidenceCount >= 1;
     return semanticEvidenceCount >= 2 && weightedTasteScore >= 1;
   };
   const isTeenKitsuHighConfidenceRescueRow = (row: any) => {
@@ -12182,7 +12184,13 @@ const normalizedCandidatesRaw = [
     if (rejectedReason) return { tier: "rejected", rejectedReason };
     if (isTeenKitsuHighConfidenceRescueRow(row)) return { tier: "high_confidence", rejectedReason: "" };
     if (teenKitsuEvidenceOverridesNegativeFit(row)) return { tier: "acceptable_underfill_evidence_override", rejectedReason: "" };
-    if (row?.familyAligned) return { tier: "weak_family_underfill", rejectedReason: "" };
+    if (row?.familyAligned) {
+      const hasAnyEvidence = Number(row?.semanticEvidenceCount || 0) > 0 || Number(row?.weightedTasteScore || 0) > 0;
+      const family = String(routerFamily || "").trim();
+      if (hasAnyEvidence) return { tier: "weak_family_underfill", rejectedReason: "" };
+      if (family === "fantasy" || family === "science_fiction") return { tier: "rejected", rejectedReason: "evidence_free_family_underfill_blocked" };
+      return { tier: "last_resort_family_underfill", rejectedReason: "" };
+    }
     return { tier: "rejected", rejectedReason: "weak_evidence_without_family_alignment" };
   };
   const recordTeenKitsuRejectedRow = (row: any, reason: string) => {
@@ -13562,10 +13570,7 @@ const normalizedCandidatesRaw = [
     if (item && typeof item === "object" && item.doc && typeof item.doc === "object") item.doc = doc;
     kitsuTeenSourceIdAfterFinalGuardByTitle[title] = sourceId;
     const finalEligibilitySourceId = String(kitsuTeenSourceIdAtFinalEligibilityByTitle[title] || "").trim();
-    if (!finalEligibilitySourceId) {
-      pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenFinalEligibilityMissingSourceIdDespiteFinalGuardId, title);
-      kitsuTeenSourceIdPropagationBreakStageByTitle[title] = "final_eligibility_missing_source_id_before_final_guard_recovery";
-    }
+    if (!finalEligibilitySourceId) kitsuTeenSourceIdAtFinalEligibilityByTitle[title] = sourceId;
     return sourceId;
   };
   if (shouldApplyTeenKitsuFinalRescueGuard) {
@@ -13604,7 +13609,11 @@ const normalizedCandidatesRaw = [
       else {
         if (checked.teenKitsuRescueTier === "acceptable_underfill_evidence_override") pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenSoftNegativeFitAcceptedTitles, checked.title);
         weakFallbackEntries.push({ item: itemAny, checked });
-        kitsuTeenRescueCandidateWeakButReturnedReason = checked.teenKitsuRescueTier === "acceptable_underfill_evidence_override" ? "acceptable_underfill_evidence_override:final_rescue_guard" : "weak_family_underfill:final_rescue_guard";
+        kitsuTeenRescueCandidateWeakButReturnedReason = checked.teenKitsuRescueTier === "acceptable_underfill_evidence_override"
+          ? "acceptable_underfill_evidence_override:final_rescue_guard"
+          : checked.teenKitsuRescueTier === "last_resort_family_underfill"
+            ? "last_resort_family_underfill:final_rescue_guard"
+            : "weak_family_underfill:final_rescue_guard";
         pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedWeakPaddingTitles, checked.title);
       }
       if (!checked.sourceId) pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenReturnedMissingSourceIdTitles, checked.title);
