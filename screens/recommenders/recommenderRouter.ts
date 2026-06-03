@@ -11951,6 +11951,10 @@ const normalizedCandidatesRaw = [
   const kitsuTeenRescueTasteEvidenceByTitle: Record<string, number> = {};
   const kitsuTeenRescueLaneAlignmentByTitle: Record<string, boolean> = {};
   const kitsuTeenRescueFamilyAlignmentByTitle: Record<string, boolean> = {};
+  const kitsuTeenTasteEvidenceSignalsByTitle: Record<string, string[]> = {};
+  const kitsuTeenMeaningfulTasteEvidenceByTitle: Record<string, string[]> = {};
+  const kitsuTeenGenericTasteEvidenceByTitle: Record<string, string[]> = {};
+  const kitsuTeenTitleKeywordOnlyPenaltyByTitle: Record<string, string> = {};
   const kitsuTeenPositiveFitPenaltyTypeByTitle: Record<string, string> = {};
   const kitsuTeenPositiveFitOverriddenByEvidenceTitles: string[] = [];
   const kitsuTeenHardDislikeRejectedTitles: string[] = [];
@@ -12125,6 +12129,41 @@ const normalizedCandidatesRaw = [
     }
     return ordered;
   };
+  const teenKitsuMeaningfulTasteSignalsForTitle = (title: string) => {
+    const family = String(routerFamily || "").trim();
+    const familyBroadSignals: Record<string, Set<string>> = {
+      fantasy: new Set(["fantasy", "genre:fantasy", "adventure", "genre:adventure"]),
+      science_fiction: new Set(["science fiction", "genre:science fiction", "sci fi", "sci-fi", "dystopian", "genre:dystopian", "speculative", "genre:speculative"]),
+      thriller: new Set(["thriller", "genre:thriller", "suspense", "genre:suspense"]),
+    };
+    const matched = Array.isArray(candidateMatchedLikedSignalsByTitle[title]) ? candidateMatchedLikedSignalsByTitle[title] : [];
+    const meaningful: string[] = [];
+    const generic: string[] = [];
+    for (const signal of matched) {
+      const raw = String(signal || "").trim();
+      const normalized = normalizeText(raw);
+      const compact = normalized.replace(/^(genre:|tone:|mood:|theme:|drive:)/, "").trim();
+      const isGeneric = !normalized || genericTasteSignals.has(normalized) || /^(audience:|age:|media:|format:|source:)/.test(normalized) || Boolean(familyBroadSignals[family]?.has(normalized) || familyBroadSignals[family]?.has(compact));
+      if (isGeneric) generic.push(raw);
+      else meaningful.push(raw);
+    }
+    return { all: matched.map((signal: string) => String(signal || "").trim()).filter(Boolean), meaningful, generic };
+  };
+  const teenKitsuHasMeaningfulTasteEvidence = (row: any) => {
+    const title = String(row?.title || row?.doc?.title || "").trim();
+    return teenKitsuMeaningfulTasteSignalsForTitle(title).meaningful.length > 0;
+  };
+  const teenKitsuTitleKeywordOnlyPenaltyReason = (row: any) => {
+    const title = String(row?.title || row?.doc?.title || "").trim();
+    const family = String(routerFamily || "").trim();
+    if (!title || row?.laneAligned) return "";
+    if (family !== "fantasy" && family !== "science_fiction") return "";
+    const titleOnlySignals = Array.isArray(titleOnlyTasteSignalByTitle[title]) ? titleOnlyTasteSignalByTitle[title] : [];
+    const qOnly = Boolean(queryTermOnlyEvidenceByTitle[title]);
+    const meaningfulTaste = teenKitsuHasMeaningfulTasteEvidence(row);
+    if ((qOnly || titleOnlySignals.length > 0) && !meaningfulTaste) return `title_or_query_keyword_only:${titleOnlySignals.join("|") || "query_term_only"}`;
+    return "";
+  };
   const teenKitsuPenaltyTypeForRow = (row: any) => {
     const title = String(row?.title || row?.doc?.title || "").trim();
     const positiveFitScore = Number(row?.positiveFitScore || 0);
@@ -12153,6 +12192,8 @@ const normalizedCandidatesRaw = [
     const weightedTasteScore = Number(row?.weightedTasteScore || 0);
     const family = String(routerFamily || "").trim();
     if (penaltyType === "generic_penalty_pressure" && family === "mystery") return semanticEvidenceCount >= 1;
+    if ((family === "fantasy" || family === "science_fiction") && teenKitsuTitleKeywordOnlyPenaltyReason(row)) return false;
+    if (family === "fantasy" || family === "science_fiction") return semanticEvidenceCount >= 2 && weightedTasteScore >= 1 && teenKitsuHasMeaningfulTasteEvidence(row);
     return semanticEvidenceCount >= 2 && weightedTasteScore >= 1;
   };
   const isTeenKitsuHighConfidenceRescueRow = (row: any) => {
@@ -12171,6 +12212,8 @@ const normalizedCandidatesRaw = [
     if (!row) return "missing_row";
     if (row.teenKitsuUnsafeMatch) return row.teenKitsuUnsafeMatch;
     if (!row.sourceId) return "missing_source_id";
+    const titleKeywordOnlyPenalty = teenKitsuTitleKeywordOnlyPenaltyReason(row);
+    if (titleKeywordOnlyPenalty) return titleKeywordOnlyPenalty;
     if (Number(row.positiveFitScore || 0) < 0) {
       const penaltyType = teenKitsuPenaltyTypeForRow(row);
       if (penaltyType === "hard_dislike_match") return `hard_dislike_match:${Number(row.positiveFitScore || 0).toFixed(2)}`;
@@ -12186,6 +12229,8 @@ const normalizedCandidatesRaw = [
     if (teenKitsuEvidenceOverridesNegativeFit(row)) return { tier: "acceptable_underfill_evidence_override", rejectedReason: "" };
     if (row?.familyAligned) {
       const hasAnyEvidence = Number(row?.semanticEvidenceCount || 0) > 0 || Number(row?.weightedTasteScore || 0) > 0;
+      const family = String(routerFamily || "").trim();
+      if ((family === "fantasy" || family === "science_fiction") && hasAnyEvidence && !row?.laneAligned && !teenKitsuHasMeaningfulTasteEvidence(row)) return { tier: "rejected", rejectedReason: "family_only_or_generic_taste_evidence_without_lane_alignment" };
       if (hasAnyEvidence) return { tier: "weak_family_underfill", rejectedReason: "" };
       return { tier: "last_resort_family_underfill", rejectedReason: "" };
     }
@@ -12239,6 +12284,12 @@ const normalizedCandidatesRaw = [
     kitsuTeenRescueTasteEvidenceByTitle[title] = Number(row?.weightedTasteScore || 0);
     kitsuTeenRescueLaneAlignmentByTitle[title] = Boolean(row?.laneAligned);
     kitsuTeenRescueFamilyAlignmentByTitle[title] = Boolean(row?.familyAligned);
+    const tasteSignals = teenKitsuMeaningfulTasteSignalsForTitle(title);
+    kitsuTeenTasteEvidenceSignalsByTitle[title] = tasteSignals.all;
+    kitsuTeenMeaningfulTasteEvidenceByTitle[title] = tasteSignals.meaningful;
+    kitsuTeenGenericTasteEvidenceByTitle[title] = tasteSignals.generic;
+    const titleKeywordOnlyPenalty = teenKitsuTitleKeywordOnlyPenaltyReason(row);
+    if (titleKeywordOnlyPenalty) kitsuTeenTitleKeywordOnlyPenaltyByTitle[title] = titleKeywordOnlyPenalty;
     kitsuTeenPositiveFitPenaltyTypeByTitle[title] = String(row?.teenKitsuPenaltyType || teenKitsuPenaltyTypeForRow(row));
     kitsuTeenSourceIdAtFinalGuardByTitle[title] = String(row?.sourceId || "");
     if (!row?.sourceId && row?.knownKitsuId) kitsuTeenMissingSourceIdButKnownKitsuIdByTitle[title] = String(row.knownKitsuId);
@@ -14615,6 +14666,10 @@ const normalizedCandidatesRaw = [
     kitsuTeenRescueTasteEvidenceByTitle,
     kitsuTeenRescueLaneAlignmentByTitle,
     kitsuTeenRescueFamilyAlignmentByTitle,
+    kitsuTeenTasteEvidenceSignalsByTitle,
+    kitsuTeenMeaningfulTasteEvidenceByTitle,
+    kitsuTeenGenericTasteEvidenceByTitle,
+    kitsuTeenTitleKeywordOnlyPenaltyByTitle,
     kitsuTeenPositiveFitPenaltyTypeByTitle,
     kitsuTeenPositiveFitOverriddenByEvidenceTitles,
     kitsuTeenHardDislikeRejectedTitles,
