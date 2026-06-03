@@ -2830,6 +2830,8 @@ export async function getRecommendations(
   const kitsuPreSanitizedQueries: string[] = [];
   const kitsuSanitizedQuerySelected: string[] = [];
   const kitsuFinalQueryUsedForFetch: string[] = [];
+  const kitsuTeenAlternateQueriesPlanned: Array<{ query: string; reason: string; family: string; source: string }> = [];
+  const kitsuTeenAlternateQueriesAttempted: Array<{ query: string; reason: string; family: string; source: string }> = [];
   let kitsuRecoveryOriginalIntentQuery = "";
   let kitsuRecoverySelectedQuery = "";
   let kitsuRecoveryQueryTooBroad = false;
@@ -2872,6 +2874,42 @@ export async function getRecommendations(
     const promoted = priorityHit || collapsePromotion || selected;
     return { query: String(promoted || selected || "").trim(), promoted: normalizeKitsuRecoveryQueryForSelection(promoted) !== current };
   };
+  const buildTeenKitsuTasteAlignedAlternateQueries = (family: string, text: string, source: string) => {
+    const normalizedFamily = String(family || "").trim();
+    const haystack = normalizeKitsuRecoveryQueryForSelection(text);
+    const addIf = (out: Array<{ query: string; reason: string; family: string; source: string }>, query: string, reason: string, re?: RegExp) => {
+      if (re && !re.test(haystack)) return;
+      if (!out.some((row) => normalizeKitsuRecoveryQueryForSelection(row.query) === normalizeKitsuRecoveryQueryForSelection(query))) out.push({ query, reason, family: normalizedFamily, source });
+    };
+    const out: Array<{ query: string; reason: string; family: string; source: string }> = [];
+    if (normalizedFamily === "fantasy") {
+      addIf(out, "supernatural adventure", "fantasy_supernatural_adventure", /\b(supernatural|paranormal|ghost|spirit|monster|occult)\b/);
+      addIf(out, "found family adventure", "fantasy_found_family_adventure", /\b(found family|friendship|team|companions?)\b/);
+      addIf(out, "dark fantasy", "fantasy_dark_atmospheric", /\b(dark|atmospheric|haunted|curse|cursed)\b/);
+      addIf(out, "young adult adventure", "fantasy_young_adult_adventure", /\b(young adult|teen|coming of age|school)\b/);
+    } else if (normalizedFamily === "horror") {
+      addIf(out, "supernatural suspense", "horror_safe_supernatural_suspense", /\b(supernatural|ghost|haunted|spirit|curse|cursed)\b/);
+      addIf(out, "psychological suspense", "horror_safe_psychological_suspense", /\b(psychological|suspense|tension|atmospheric)\b/);
+      addIf(out, "monster horror", "horror_monster_safe_alt", /\b(monster|creature|survival)\b/);
+    } else if (normalizedFamily === "science_fiction") {
+      addIf(out, "dystopian adventure", "science_fiction_dystopian_adventure", /\b(dystopian|dystopia|rebellion|authoritarian)\b/);
+      addIf(out, "cyberpunk", "science_fiction_cyberpunk", /\b(cyberpunk|android|robot|technology|ai)\b/);
+      addIf(out, "space adventure", "science_fiction_space_adventure", /\b(space|alien|planet|galaxy)\b/);
+    }
+    const genericFallback = normalizedFamily === "fantasy" ? "supernatural adventure" : normalizedFamily === "horror" ? "supernatural suspense" : normalizedFamily === "science_fiction" ? "dystopian adventure" : "";
+    if (genericFallback && out.length === 0) addIf(out, genericFallback, `${normalizedFamily}_taste_aligned_default`);
+    for (const row of out) {
+      if (!kitsuTeenAlternateQueriesPlanned.some((existing) => existing.query === row.query && existing.source === row.source)) kitsuTeenAlternateQueriesPlanned.push(row);
+    }
+    return out;
+  };
+  const recordTeenKitsuAlternateQueryAttempt = (query: string, reason: string, family: string, source: string) => {
+    const clean = String(query || "").trim();
+    if (!clean) return;
+    if (!kitsuTeenAlternateQueriesAttempted.some((row) => normalizeKitsuRecoveryQueryForSelection(row.query) === normalizeKitsuRecoveryQueryForSelection(clean) && row.source === source)) {
+      kitsuTeenAlternateQueriesAttempted.push({ query: clean, reason, family: String(family || ""), source });
+    }
+  };
   const selectTeenNormalKitsuDispatchQuery = (
     currentQuery: string,
     baseLaneQuery: string,
@@ -2910,6 +2948,11 @@ export async function getRecommendations(
       romance: ["romance", "drama"],
     };
     const familyTerms = familyTermsByFamily[family] || [];
+    const tasteAlignedAlternates = buildTeenKitsuTasteAlignedAlternateQueries(family, allText, "normal_dispatch");
+    const broadFamilyOnlyCurrent = (family === "fantasy" && current === "fantasy") || (family === "horror" && (current === "horror" || current === "psychological horror")) || (family === "science_fiction" && (current === "science fiction" || current === "dystopian"));
+    if (!shouldUseTerminalBroadFallback && broadFamilyOnlyCurrent && tasteAlignedAlternates.length > 0) {
+      return { query: tasteAlignedAlternates[0].query, reason: `taste_aligned_alternate:${tasteAlignedAlternates[0].reason}`, sourceTier: "taste_aligned_alternate", activeTerms, suppressedGeneric: true, genericCandidate: current };
+    }
     const activeFamilyTerm = familyTerms.find((term) => activeTerms.some((active) => normalizeKitsuRecoveryQueryForSelection(active) === normalizeKitsuRecoveryQueryForSelection(term)));
     const mysteryIsGenericMismatch = current === "mystery" && family !== "mystery" && familyTerms.length > 0;
     if (!shouldUseTerminalBroadFallback && activeFamilyTerm) {
@@ -4653,6 +4696,7 @@ export async function getRecommendations(
           kitsuDispatchedOnce = true;
         kitsuQueryUsedByLane.push(kitsuLaneQuery);
         kitsuFinalQueryUsedForFetch.push(kitsuLaneQuery);
+        if (String(teenKitsuDispatchSelection.reason || "").startsWith("taste_aligned_alternate:")) recordTeenKitsuAlternateQueryAttempt(kitsuLaneQuery, teenKitsuDispatchSelection.reason, routerFamily, "normal_dispatch");
         kitsuQueriesActuallyFetched.add(kitsuLaneQuery);
         pushGlobalPhase("before_kitsu_router_fetch");
         pendingSourceFetchCount += 1;
@@ -5042,7 +5086,7 @@ export async function getRecommendations(
       : /graphic\s+novel|manga|anime/.test(postLoopQuerySignals)
       ? (/graphic\s+novel/.test(postLoopQuerySignals) ? "graphic novel" : "anime")
       : "";
-    const fallbackKitsuQuery = String(
+    const rawFallbackKitsuQuery = String(
       explicitKitsuTerm ||
       familyPrimary ||
       kitsuSanitizedQuerySelected.find((q) => String(q || "").trim()) ||
@@ -5050,9 +5094,16 @@ export async function getRecommendations(
       ((bucketPlan as any)?.queries || [])[0] ||
       "anime"
     ).trim();
+    const postLoopAlternateQueries = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "")
+      ? buildTeenKitsuTasteAlignedAlternateQueries(routerFamily, postLoopQuerySignals, "post_loop_recovery")
+      : [];
+    const broadPostLoopFallback = (routerFamily === "fantasy" && normalizeKitsuRecoveryQueryForSelection(rawFallbackKitsuQuery) === "fantasy") ||
+      (routerFamily === "horror" && ["horror", "psychological horror"].includes(normalizeKitsuRecoveryQueryForSelection(rawFallbackKitsuQuery))) ||
+      (routerFamily === "science_fiction" && ["science fiction", "dystopian"].includes(normalizeKitsuRecoveryQueryForSelection(rawFallbackKitsuQuery)));
+    const fallbackKitsuQuery = broadPostLoopFallback && postLoopAlternateQueries.length > 0 ? postLoopAlternateQueries[0].query : rawFallbackKitsuQuery;
     kitsuPostLoopRecoveryWasNeeded = true;
     kitsuPostLoopRecoveryReason = "normal_lane_dispatch_not_attempted";
-    kitsuPostLoopRecoveryQueryReason = explicitKitsuTerm ? "explicit_active_lane_kitsu_term" : familyPrimary ? `router_family_primary:${routerFamily}` : "sanitized_or_bucket_fallback";
+    kitsuPostLoopRecoveryQueryReason = broadPostLoopFallback && postLoopAlternateQueries.length > 0 ? `taste_aligned_alternate:${postLoopAlternateQueries[0].reason}` : explicitKitsuTerm ? "explicit_active_lane_kitsu_term" : familyPrimary ? `router_family_primary:${routerFamily}` : "sanitized_or_bucket_fallback";
     const fallbackKitsuInput = {
       ...routedInput,
       forceKitsuRecoveryFetch: true,
@@ -5068,6 +5119,8 @@ export async function getRecommendations(
     kitsuDispatchedOnce = true;
     kitsuQueryUsedByLane.push(fallbackKitsuQuery);
     kitsuFinalQueryUsedForFetch.push(fallbackKitsuQuery);
+    const postLoopAlternate = postLoopAlternateQueries.find((row) => normalizeKitsuRecoveryQueryForSelection(row.query) === normalizeKitsuRecoveryQueryForSelection(fallbackKitsuQuery));
+    if (postLoopAlternate) recordTeenKitsuAlternateQueryAttempt(fallbackKitsuQuery, postLoopAlternate.reason, routerFamily, "post_loop_recovery");
     kitsuQueriesActuallyFetched.add(fallbackKitsuQuery);
     try {
       const recoveryKitsu = await withSourceTimeout("router_before_kitsu_only_post_loop_fetch", "router_after_kitsu_only_post_loop_fetch", 10_000, () => getKitsuMangaRecommendations(fallbackKitsuInput));
@@ -5170,7 +5223,7 @@ export async function getRecommendations(
     const sanitizeKitsuRecoveryQuery = (q: string) => {
       const original = String(q || "").trim();
       const lowered = original.toLowerCase();
-      const domainPreferred = ["mystery", "fantasy", "horror", "romance", "science fiction", "dystopian", "thriller", "adventure", "drama", "young adult", "graphic novel", "crime", "supernatural"];
+      const domainPreferred = ["supernatural adventure", "found family adventure", "dark fantasy", "young adult adventure", "supernatural suspense", "psychological suspense", "monster horror", "dystopian adventure", "space adventure", "mystery", "fantasy", "horror", "romance", "science fiction", "dystopian", "thriller", "adventure", "drama", "young adult", "graphic novel", "crime", "supernatural", "cyberpunk"];
       const phraseMatches = domainPreferred.filter((term) => lowered.includes(term));
       const stripped = lowered
         .replace(/\b(genre|theme|tone|setting|stakes)\b/gi, " ")
@@ -5185,7 +5238,7 @@ export async function getRecommendations(
         .filter((t) => !["science", "fiction", "supernatural", "horror", "mystery", "crime", "dystopian", "adventure", "drama"].includes(t));
       const chosen = phraseMatches.length > 0
         ? phraseMatches[0]
-        : (["mystery", "fantasy", "horror", "romance", "science fiction", "dystopian", "thriller", "adventure", "drama", "young adult", "graphic novel", "crime", "supernatural"].find((term) => stripped.includes(term)) || concreteTokens[0] || "adventure");
+        : (domainPreferred.find((term) => stripped.includes(term)) || concreteTokens[0] || "adventure");
       return { from: original, to: String(chosen || "adventure").trim() };
     };
     if (Number(aggregatedRawFetched.googleBooks || 0) === 0 && Number(aggregatedRawFetched.openLibrary || 0) === 0 && includeKitsu && Number(aggregatedRawFetched.kitsu || 0) === 0 && kitsuRouterFetchCount === 0) {
@@ -5205,7 +5258,18 @@ export async function getRecommendations(
         kitsuRecoveryQueryPromotedFrom = kitsuRecoveryQuery;
         kitsuRecoveryQueryPromotedTo = promotedRecoveryQuery.query;
       }
-      const boundedFallback = Array.from(new Set([promotedRecoveryQuery.query, "adventure", "drama", "mystery"].map((q) => sanitizeKitsuRecoveryQuery(String(q || "")).to).filter(Boolean)));
+      const healthGuardAlternateQueries = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "")
+        ? buildTeenKitsuTasteAlignedAlternateQueries(routerFamily, [
+          kitsuRecoveryQuery,
+          promotedRecoveryQuery.query,
+          ...kitsuPreSanitizedQueries,
+          ...kitsuSanitizedQuerySelected,
+          ...kitsuQueryUsedByLane,
+          String(bucketPlan.preview || ""),
+          ...((bucketPlan.queries || []) as any[]).map((q) => String(q || "")),
+        ].join(" "), "health_guard_recovery")
+        : [];
+      const boundedFallback = Array.from(new Set([...healthGuardAlternateQueries.map((row) => row.query), promotedRecoveryQuery.query, "adventure", "drama", "mystery"].map((q) => sanitizeKitsuRecoveryQuery(String(q || "")).to).filter(Boolean)));
       collectKitsuRecoveryComicIntent([
         kitsuRecoveryQuery,
         promotedRecoveryQuery.query,
@@ -5259,6 +5323,8 @@ export async function getRecommendations(
           pushGlobalPhase("kitsu_recovery_raw_count", { query, raw, recoveryRawPoolLength: recoveryRawPool.length, recoveryDocsLength: recoveryDocs.length, kitsu_recovery_attempt_index: recoveryAttemptIndex });
           aggregatedRawFetched.kitsu += raw;
           kitsuRouterFetchCount += 1;
+          const healthGuardAlternate = healthGuardAlternateQueries.find((row) => normalizeKitsuRecoveryQueryForSelection(row.query) === normalizeKitsuRecoveryQueryForSelection(query));
+          if (healthGuardAlternate) recordTeenKitsuAlternateQueryAttempt(query, healthGuardAlternate.reason, routerFamily, "health_guard_recovery");
           kitsuQueriesActuallyFetched.add(query);
           if (recoveryRawPool.length > 0) {
             debugRawPool.push(...recoveryRawPool.map((row: any) => ({
@@ -14648,6 +14714,8 @@ const normalizedCandidatesRaw = [
     kitsuNormalDispatchFallbackSuppressed,
     kitsuNormalDispatchWouldHaveSelectedGeneric,
     kitsuNormalDispatchFinalQuery,
+    kitsuTeenAlternateQueriesPlanned,
+    kitsuTeenAlternateQueriesAttempted,
     kitsuTeenRescueCandidateSafetyRejectedTitles,
     kitsuTeenRescueCandidateLaneRejectedTitles,
     kitsuTeenRescueCandidateWeakButReturnedReason,

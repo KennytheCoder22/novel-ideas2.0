@@ -2355,6 +2355,8 @@ function handleLeft() {
       return latestResult?.[key] ?? preFatalDispatchState?.[key];
     };
     const teenKitsuFinalGuardReportLines = [
+      `kitsuTeenAlternateQueriesPlanned: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueriesPlanned") || [])}`,
+      `kitsuTeenAlternateQueriesAttempted: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueriesAttempted") || [])}`,
       `kitsuTeenRescueFinalGuardInputTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardInputTitles") || [])}`,
       `kitsuTeenRescueFinalGuardAcceptedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardAcceptedTitles") || [])}`,
       `kitsuTeenRescueFinalGuardSuppressedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardSuppressedTitles") || [])}`,
