@@ -2833,6 +2833,7 @@ export async function getRecommendations(
   const kitsuTeenAlternateQueriesPlanned: Array<{ query: string; reason: string; family: string; source: string }> = [];
   const kitsuTeenAlternateQueriesAttempted: Array<{ query: string; reason: string; family: string; source: string }> = [];
   const kitsuTeenAlternateQueryPromotionDecisions: Array<{ source: string; family: string; selectedQuery: string; finalQuery: string; plannedQueries: string[]; promoted: boolean; reason: string }> = [];
+  const kitsuTeenAlternateQueryExpansionReasons: Array<{ query: string; family: string; rawCount: number; reason: string }> = [];
   let kitsuRecoveryOriginalIntentQuery = "";
   let kitsuRecoverySelectedQuery = "";
   let kitsuRecoveryQueryTooBroad = false;
@@ -2894,6 +2895,10 @@ export async function getRecommendations(
       addIf(out, "monster horror", "horror_monster_safe_alt", /\b(monster|creature|survival)\b/);
     } else if (normalizedFamily === "science_fiction") {
       addIf(out, "dystopian adventure", "science_fiction_dystopian_adventure", /\b(dystopian|dystopia|rebellion|authoritarian)\b/);
+      addIf(out, "sci fi adventure", "science_fiction_sci_fi_adventure");
+      addIf(out, "survival science fiction", "science_fiction_survival", /\b(survival|survive|stakes|pressure|danger)\b/);
+      addIf(out, "dystopian survival", "science_fiction_dystopian_survival", /\b(dystopian|dystopia|survival|survive|rebellion|authoritarian)\b/);
+      addIf(out, "post apocalyptic adventure", "science_fiction_post_apocalyptic_adventure", /\b(post apocalyptic|post apocalypse|apocalyptic|dystopian|dystopia|survival)\b/);
       addIf(out, "cyberpunk", "science_fiction_cyberpunk", /\b(cyberpunk|android|robot|technology|ai)\b/);
       addIf(out, "space adventure", "science_fiction_space_adventure", /\b(space|alien|planet|galaxy)\b/);
     }
@@ -2972,9 +2977,10 @@ export async function getRecommendations(
     const activeTermIsBroadFamilyQuery = Boolean(activeFamilyTerm && broadFamilyQueries.includes(normalizeKitsuRecoveryQueryForSelection(activeFamilyTerm)));
     const currentIsScienceFictionFormatOnlyQuery = family === "science_fiction" && ["graphic novel", "manga", "anime"].includes(current);
     const plannedAlternateQueries = tasteAlignedAlternates.map((row) => row.query);
-    const shouldPromoteTasteAlignedAlternate = tasteAlignedAlternates.length > 0 && (currentIsBroadFamilyQuery || activeTermIsBroadFamilyQuery || currentIsScienceFictionFormatOnlyQuery);
-    if (shouldPromoteTasteAlignedAlternate) {
-      return { query: tasteAlignedAlternates[0].query, reason: `taste_aligned_alternate:${tasteAlignedAlternates[0].reason}`, sourceTier: "taste_aligned_alternate", activeTerms, suppressedGeneric: true, genericCandidate: current || String(activeFamilyTerm || ""), plannedAlternateQueries, alternatePromotionDecision: "promoted_taste_aligned_alternate" };
+    const selectedTasteAlignedAlternate = tasteAlignedAlternates.find((row) => !kitsuQueriesActuallyFetched.has(row.query)) || tasteAlignedAlternates.find((row) => normalizeKitsuRecoveryQueryForSelection(row.query) !== current) || tasteAlignedAlternates[0];
+    const shouldPromoteTasteAlignedAlternate = Boolean(selectedTasteAlignedAlternate) && tasteAlignedAlternates.length > 0 && (currentIsBroadFamilyQuery || activeTermIsBroadFamilyQuery || currentIsScienceFictionFormatOnlyQuery);
+    if (shouldPromoteTasteAlignedAlternate && selectedTasteAlignedAlternate) {
+      return { query: selectedTasteAlignedAlternate.query, reason: `taste_aligned_alternate:${selectedTasteAlignedAlternate.reason}`, sourceTier: "taste_aligned_alternate", activeTerms, suppressedGeneric: true, genericCandidate: current || String(activeFamilyTerm || ""), plannedAlternateQueries, alternatePromotionDecision: "promoted_taste_aligned_alternate" };
     }
     const alternatePromotionDecision = tasteAlignedAlternates.length === 0
       ? "no_planned_alternate"
@@ -4847,8 +4853,13 @@ export async function getRecommendations(
         : null;
       if (includeKitsu && kitsuDispatchedOnThisLane) {
         const kitsuRawCount = Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu));
-        if (!kitsuFallbackDispatchedOnce && kitsuDispatchedOnce) kitsuPrimaryRawZero = kitsuRawCount === 0;
-        if (kitsuFallbackDispatchedOnce && !kitsuTerminalBroadFallbackDispatched) kitsuFallbackRawZero = kitsuRawCount === 0;
+        const teenKitsuThinSciFiAlternateResult: boolean = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && routerFamily === "science_fiction" && String(teenKitsuDispatchSelection?.reason || "").startsWith("taste_aligned_alternate:") && kitsuRawCount <= 2;
+        if (teenKitsuThinSciFiAlternateResult) {
+          kitsuTeenAlternateQueryExpansionReasons.push({ query: kitsuLaneQuery, family: routerFamily, rawCount: kitsuRawCount, reason: "science_fiction_alternate_raw_pool_too_thin" });
+          sourceSkippedReason.push("teen_kitsu_scifi_alternate_raw_pool_too_thin_try_next");
+        }
+        if (!kitsuFallbackDispatchedOnce && kitsuDispatchedOnce) kitsuPrimaryRawZero = kitsuRawCount === 0 || teenKitsuThinSciFiAlternateResult;
+        if (kitsuFallbackDispatchedOnce && !kitsuTerminalBroadFallbackDispatched) kitsuFallbackRawZero = kitsuRawCount === 0 || teenKitsuThinSciFiAlternateResult;
         const kitsuResponseStatus = String((laneKitsu as any)?.debugSourceStatus || (laneKitsu as any)?.kitsuSourceStatus || "").trim();
         const kitsuParsedDataLength = Number((laneKitsu as any)?.debugParsedDataLength ?? kitsuRawCount);
         const kitsuRawSnippet = String((laneKitsu as any)?.debugRawJsonSnippet || (laneKitsu as any)?.debugResponseSnippet || "").trim();
@@ -14764,6 +14775,7 @@ const normalizedCandidatesRaw = [
     kitsuTeenAlternateQueriesPlanned,
     kitsuTeenAlternateQueriesAttempted,
     kitsuTeenAlternateQueryPromotionDecisions,
+    kitsuTeenAlternateQueryExpansionReasons,
     kitsuTeenRescueCandidateSafetyRejectedTitles,
     kitsuTeenRescueCandidateLaneRejectedTitles,
     kitsuTeenRescueCandidateWeakButReturnedReason,

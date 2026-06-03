@@ -2358,6 +2358,7 @@ function handleLeft() {
       `kitsuTeenAlternateQueriesPlanned: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueriesPlanned") || [])}`,
       `kitsuTeenAlternateQueriesAttempted: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueriesAttempted") || [])}`,
       `kitsuTeenAlternateQueryPromotionDecisions: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueryPromotionDecisions") || [])}`,
+      `kitsuTeenAlternateQueryExpansionReasons: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueryExpansionReasons") || [])}`,
       `kitsuTeenRescueFinalGuardInputTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardInputTitles") || [])}`,
       `kitsuTeenRescueFinalGuardAcceptedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardAcceptedTitles") || [])}`,
       `kitsuTeenRescueFinalGuardSuppressedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardSuppressedTitles") || [])}`,
