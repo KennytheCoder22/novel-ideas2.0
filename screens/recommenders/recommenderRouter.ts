@@ -4853,13 +4853,13 @@ export async function getRecommendations(
         : null;
       if (includeKitsu && kitsuDispatchedOnThisLane) {
         const kitsuRawCount = Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu));
-        const teenKitsuThinSciFiAlternateResult: boolean = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && routerFamily === "science_fiction" && String(teenKitsuDispatchSelection?.reason || "").startsWith("taste_aligned_alternate:") && kitsuRawCount <= 3;
-        if (teenKitsuThinSciFiAlternateResult) {
-          kitsuTeenAlternateQueryExpansionReasons.push({ query: kitsuLaneQuery, family: routerFamily, rawCount: kitsuRawCount, reason: "science_fiction_alternate_raw_pool_too_thin" });
-          sourceSkippedReason.push("teen_kitsu_scifi_alternate_raw_pool_too_thin_try_next");
+        const teenKitsuThinTasteAlignedAlternateResult: boolean = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && String(teenKitsuDispatchSelection?.reason || "").startsWith("taste_aligned_alternate:") && kitsuRawCount <= 3;
+        if (teenKitsuThinTasteAlignedAlternateResult) {
+          kitsuTeenAlternateQueryExpansionReasons.push({ query: kitsuLaneQuery, family: routerFamily, rawCount: kitsuRawCount, reason: `${routerFamily || "unknown"}_alternate_raw_pool_too_thin` });
+          sourceSkippedReason.push("teen_kitsu_taste_aligned_alternate_raw_pool_too_thin_try_next");
         }
-        if (!kitsuFallbackDispatchedOnce && kitsuDispatchedOnce) kitsuPrimaryRawZero = kitsuRawCount === 0 || teenKitsuThinSciFiAlternateResult;
-        if (kitsuFallbackDispatchedOnce && !kitsuTerminalBroadFallbackDispatched) kitsuFallbackRawZero = kitsuRawCount === 0 || teenKitsuThinSciFiAlternateResult;
+        if (!kitsuFallbackDispatchedOnce && kitsuDispatchedOnce) kitsuPrimaryRawZero = kitsuRawCount === 0 || teenKitsuThinTasteAlignedAlternateResult;
+        if (kitsuFallbackDispatchedOnce && !kitsuTerminalBroadFallbackDispatched) kitsuFallbackRawZero = kitsuRawCount === 0 || teenKitsuThinTasteAlignedAlternateResult;
         const kitsuResponseStatus = String((laneKitsu as any)?.debugSourceStatus || (laneKitsu as any)?.kitsuSourceStatus || "").trim();
         const kitsuParsedDataLength = Number((laneKitsu as any)?.debugParsedDataLength ?? kitsuRawCount);
         const kitsuRawSnippet = String((laneKitsu as any)?.debugRawJsonSnippet || (laneKitsu as any)?.debugResponseSnippet || "").trim();
@@ -5205,6 +5205,73 @@ export async function getRecommendations(
         error: String(err?.message || err || "kitsu_only_post_loop_fetch_failed"),
         bodyPrefix: String(err?.bodyPrefix || err?.message || err || "").slice(0, 180),
       });
+    }
+  }
+
+  if (includeKitsu && kitsuOnlyAtRequestStart && isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && kitsuTeenAlternateQueryExpansionReasons.length > 0 && kitsuRouterFetchCount < sourceFetchCapPerRun) {
+    const thinPoolFollowupSignals = [
+      ...kitsuPreSanitizedQueries,
+      ...kitsuSanitizedQuerySelected,
+      ...kitsuQueryUsedByLane,
+      String(bucketPlan.preview || ""),
+      ...((bucketPlan.queries || []) as any[]).map((q) => String(q || "")),
+    ].join(" ");
+    const thinPoolFollowupAlternates = buildTeenKitsuTasteAlignedAlternateQueries(routerFamily, thinPoolFollowupSignals, "thin_pool_followup");
+    const thinPoolFollowup = thinPoolFollowupAlternates.find((row) => !kitsuQueriesActuallyFetched.has(row.query));
+    if (thinPoolFollowup) {
+      const thinPoolFollowupQuery = thinPoolFollowup.query;
+      recordTeenKitsuAlternatePromotionDecision({
+        source: "thin_pool_followup",
+        family: routerFamily,
+        selectedQuery: kitsuSanitizedQuerySelected.find((q) => String(q || "").trim()) || "",
+        finalQuery: thinPoolFollowupQuery,
+        plannedQueries: thinPoolFollowupAlternates.map((row) => row.query),
+        promoted: true,
+        reason: "thin_pool_try_next_taste_aligned_alternate",
+      });
+      recordTeenKitsuAlternateQueryAttempt(thinPoolFollowupQuery, thinPoolFollowup.reason, routerFamily, "thin_pool_followup");
+      sourceSkippedReason.push("teen_kitsu_thin_pool_followup_dispatch");
+      pushGlobalPhase("teen_kitsu_thin_pool_followup_dispatch", { query: thinPoolFollowupQuery, routerFamily });
+      kitsuRouterFetchCount += 1;
+      kitsuDispatchedOnce = true;
+      kitsuQueryUsedByLane.push(thinPoolFollowupQuery);
+      kitsuFinalQueryUsedForFetch.push(thinPoolFollowupQuery);
+      kitsuQueriesActuallyFetched.add(thinPoolFollowupQuery);
+      try {
+        const thinPoolInput = {
+          ...routedInput,
+          forceKitsuRecoveryFetch: true,
+          bucketPlan: { ...(bucketPlan as any), queries: [thinPoolFollowupQuery], preview: thinPoolFollowupQuery, rungs: [{ query: thinPoolFollowupQuery, primary: thinPoolFollowupQuery }] },
+        } as any;
+        const thinPoolKitsu = await withSourceTimeout("router_before_kitsu_thin_pool_followup_fetch", "router_after_kitsu_thin_pool_followup_fetch", 10_000, () => getKitsuMangaRecommendations(thinPoolInput));
+        const thinPoolDocs = dedupeDocs(extractDocs(thinPoolKitsu as any, "kitsu"));
+        const thinPoolRawCount = Number((thinPoolKitsu as any)?.debugRawFetchedCount ?? countResultItems(thinPoolKitsu));
+        allMergedDocs.push(...thinPoolDocs);
+        debugRawPool.push(...(((thinPoolKitsu as any)?.debugRawPool as any[]) || []));
+        aggregatedRawFetched.kitsu += thinPoolRawCount;
+        if (thinPoolRawCount <= 3) kitsuTeenAlternateQueryExpansionReasons.push({ query: thinPoolFollowupQuery, family: routerFamily, rawCount: thinPoolRawCount, reason: `${routerFamily || "unknown"}_followup_alternate_raw_pool_too_thin` });
+        kitsuFetchResultsByQuery.push({
+          query: thinPoolFollowupQuery,
+          url: String((thinPoolKitsu as any)?.debugFetchUrl || `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(thinPoolFollowupQuery)}&page[limit]=20`),
+          status: String((thinPoolKitsu as any)?.debugSourceStatus || "ok"),
+          timedOut: false,
+          rawCount: thinPoolRawCount,
+          error: null,
+          bodyPrefix: String((thinPoolKitsu as any)?.debugResponseSnippet || (thinPoolDocs.length ? "status=ok" : "[empty_kitsu_result]")).slice(0, 180),
+        });
+      } catch (err: any) {
+        kitsuFetchResultsByQuery.push({
+          query: thinPoolFollowupQuery,
+          url: `${KITSU_API_BASE}/manga?filter[text]=${encodeURIComponent(thinPoolFollowupQuery)}&page[limit]=20`,
+          status: "error",
+          timedOut: String(err?.message || err || "").includes("timeout"),
+          rawCount: 0,
+          error: String(err?.message || err || "kitsu_thin_pool_followup_fetch_failed"),
+          bodyPrefix: String(err?.bodyPrefix || err?.message || err || "").slice(0, 180),
+        });
+      }
+    } else {
+      sourceSkippedReason.push("teen_kitsu_thin_pool_followup_exhausted");
     }
   }
 
