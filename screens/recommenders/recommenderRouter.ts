@@ -2958,7 +2958,8 @@ export async function getRecommendations(
     const broadFamilyQueries = broadQueryByFamily[family] || [];
     const currentIsBroadFamilyQuery = broadFamilyQueries.includes(current);
     const activeTermIsBroadFamilyQuery = Boolean(activeFamilyTerm && broadFamilyQueries.includes(normalizeKitsuRecoveryQueryForSelection(activeFamilyTerm)));
-    if (tasteAlignedAlternates.length > 0 && (currentIsBroadFamilyQuery || activeTermIsBroadFamilyQuery)) {
+    const currentIsScienceFictionFormatOnlyQuery = family === "science_fiction" && ["graphic novel", "manga", "anime"].includes(current);
+    if (tasteAlignedAlternates.length > 0 && (currentIsBroadFamilyQuery || activeTermIsBroadFamilyQuery || currentIsScienceFictionFormatOnlyQuery)) {
       return { query: tasteAlignedAlternates[0].query, reason: `taste_aligned_alternate:${tasteAlignedAlternates[0].reason}`, sourceTier: "taste_aligned_alternate", activeTerms, suppressedGeneric: true, genericCandidate: current || String(activeFamilyTerm || "") };
     }
     const mysteryIsGenericMismatch = current === "mystery" && family !== "mystery" && familyTerms.length > 0;
@@ -5106,7 +5107,7 @@ export async function getRecommendations(
       : [];
     const broadPostLoopFallback = (routerFamily === "fantasy" && normalizeKitsuRecoveryQueryForSelection(rawFallbackKitsuQuery) === "fantasy") ||
       (routerFamily === "horror" && ["horror", "psychological horror"].includes(normalizeKitsuRecoveryQueryForSelection(rawFallbackKitsuQuery))) ||
-      (routerFamily === "science_fiction" && ["science fiction", "dystopian"].includes(normalizeKitsuRecoveryQueryForSelection(rawFallbackKitsuQuery)));
+      (routerFamily === "science_fiction" && ["science fiction", "dystopian", "graphic novel", "manga", "anime"].includes(normalizeKitsuRecoveryQueryForSelection(rawFallbackKitsuQuery)));
     const fallbackKitsuQuery = broadPostLoopFallback && postLoopAlternateQueries.length > 0 ? postLoopAlternateQueries[0].query : rawFallbackKitsuQuery;
     kitsuPostLoopRecoveryWasNeeded = true;
     kitsuPostLoopRecoveryReason = "normal_lane_dispatch_not_attempted";
