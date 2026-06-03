@@ -4853,7 +4853,7 @@ export async function getRecommendations(
         : null;
       if (includeKitsu && kitsuDispatchedOnThisLane) {
         const kitsuRawCount = Number((laneKitsu as any)?.debugRawFetchedCount ?? countResultItems(laneKitsu));
-        const teenKitsuThinSciFiAlternateResult: boolean = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && routerFamily === "science_fiction" && String(teenKitsuDispatchSelection?.reason || "").startsWith("taste_aligned_alternate:") && kitsuRawCount <= 2;
+        const teenKitsuThinSciFiAlternateResult: boolean = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && routerFamily === "science_fiction" && String(teenKitsuDispatchSelection?.reason || "").startsWith("taste_aligned_alternate:") && kitsuRawCount <= 3;
         if (teenKitsuThinSciFiAlternateResult) {
           kitsuTeenAlternateQueryExpansionReasons.push({ query: kitsuLaneQuery, family: routerFamily, rawCount: kitsuRawCount, reason: "science_fiction_alternate_raw_pool_too_thin" });
           sourceSkippedReason.push("teen_kitsu_scifi_alternate_raw_pool_too_thin_try_next");
