@@ -2835,6 +2835,13 @@ export async function getRecommendations(
   const kitsuTeenAlternateQueryPromotionDecisions: Array<{ source: string; family: string; selectedQuery: string; finalQuery: string; plannedQueries: string[]; promoted: boolean; reason: string }> = [];
   const kitsuTeenAlternateQueryExpansionReasons: Array<{ query: string; family: string; rawCount: number; reason: string }> = [];
   const kitsuTeenAlternateFamilyInferenceDiagnostics: Array<{ routerFamily: string; selectedQuery: string; laneInferredFamily: string; selectedInferredFamily: string; alternateFamilies: string[] }> = [];
+  let kitsuTeenGcdEnrichmentAttempted = false;
+  let kitsuTeenGcdEnrichmentEnabled = false;
+  let kitsuTeenGcdEnrichmentSkippedReason = "not_evaluated";
+  const kitsuTeenGcdEnrichmentQueries: string[] = [];
+  const kitsuTeenGcdEnrichmentMatchedTitles: string[] = [];
+  const kitsuTeenGcdEnrichmentNoMatchTitles: string[] = [];
+  const kitsuTeenGcdEnrichmentByTitle: Record<string, { query: string; matchedGcdTitle: string; facets: string[]; contributedTextLength: number; laneAligned: boolean }> = {};
   let kitsuRecoveryOriginalIntentQuery = "";
   let kitsuRecoverySelectedQuery = "";
   let kitsuRecoveryQueryTooBroad = false;
@@ -5390,6 +5397,138 @@ export async function getRecommendations(
       sourceSkippedReason.push("teen_kitsu_thin_pool_followup_exhausted");
     }
   }
+
+  const normalizeTeenKitsuGcdMatchKey = (value: any) => normalizeText(String(value || ""))
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\b(the|a|an|manga|comic|comics|graphic|novel|volume|vol)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const pushUniqueTeenKitsuGcdDiagnostic = (target: string[], value: string, limit = 40) => {
+    const clean = String(value || "").trim();
+    if (!clean || target.some((existing) => normalizeText(existing) === normalizeText(clean))) return;
+    if (target.length < limit) target.push(clean);
+  };
+  const gcdEnrichmentFacetTextForDoc = (doc: any) => {
+    const pieces = [
+      doc?.title,
+      doc?.description,
+      doc?.publisher,
+      doc?.publisherName,
+      doc?.imprint,
+      doc?.queryText,
+      doc?.queryFamily,
+      doc?.filterFamily,
+      ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+      ...(Array.isArray(doc?.categories) ? doc.categories : []),
+      ...(Array.isArray(doc?.genres) ? doc.genres : []),
+      ...(Array.isArray(doc?.tags) ? doc.tags : []),
+      ...(Array.isArray(doc?.facets) ? doc.facets : []),
+      ...(Array.isArray(doc?.rawDoc?.subjects) ? doc.rawDoc.subjects : []),
+      ...(Array.isArray(doc?.rawDoc?.categories) ? doc.rawDoc.categories : []),
+      ...(Array.isArray(doc?.rawDoc?.genres) ? doc.rawDoc.genres : []),
+    ].map((piece) => String(piece || "").trim()).filter(Boolean);
+    return Array.from(new Set(pieces)).slice(0, 24);
+  };
+  const enrichTeenKitsuCandidatesWithGcdMetadata = async () => {
+    const teenKitsuDeck = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "");
+    const gcdEnabledForEnrichment = Boolean(sourceEnabled.comicVine && shouldUseComicVine(routedInput));
+    kitsuTeenGcdEnrichmentEnabled = Boolean(teenKitsuDeck && includeKitsu && kitsuOnlyAtRequestStart && gcdEnabledForEnrichment);
+    if (!kitsuTeenGcdEnrichmentEnabled) {
+      kitsuTeenGcdEnrichmentSkippedReason = !teenKitsuDeck
+        ? "not_teen_deck"
+        : !includeKitsu
+          ? "kitsu_disabled"
+          : !kitsuOnlyAtRequestStart
+            ? "not_kitsu_only_mode"
+            : "gcd_disabled_by_config_or_runtime";
+      return;
+    }
+    const kitsuDocs = allMergedDocs.filter((doc: any) => detectCandidateSourceForGate(doc) === "kitsu" || /^kitsu:/i.test(String(doc?.sourceId || doc?.canonicalId || doc?.key || "")));
+    if (kitsuDocs.length === 0) {
+      kitsuTeenGcdEnrichmentSkippedReason = "no_kitsu_candidates_to_enrich";
+      return;
+    }
+    kitsuTeenGcdEnrichmentAttempted = true;
+    kitsuTeenGcdEnrichmentSkippedReason = "attempted";
+    const querySeeds = Array.from(new Set(kitsuDocs.flatMap((doc: any) => [
+      String(doc?.title || doc?.canonicalTitle || "").trim(),
+      String(parentFranchiseRootForDoc(doc) || "").replace(/-/g, " ").trim(),
+    ]).filter((value: string) => value && !/^title:/i.test(value)))).slice(0, 4);
+    if (querySeeds.length === 0) {
+      kitsuTeenGcdEnrichmentSkippedReason = "no_title_or_root_queries";
+      return;
+    }
+    const gcdDocsByKey = new Map<string, any>();
+    for (const query of querySeeds) {
+      kitsuTeenGcdEnrichmentQueries.push(query);
+      try {
+        const gcdInput = {
+          ...routedInput,
+          sourceEnabled: { ...(routedInput as any)?.sourceEnabled, googleBooks: false, openLibrary: false, localLibrary: false, kitsu: false, comicVine: true, gcd: true },
+          bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
+          forceTastePrimaryForComicVine: false,
+        } as any;
+        const gcdResult = await withSourceTimeout("router_before_teen_kitsu_gcd_enrichment_fetch", "router_after_teen_kitsu_gcd_enrichment_fetch", 7_000, () => getComicVineGraphicNovelRecommendations(gcdInput));
+        const gcdDocs = dedupeDocs(extractDocs(gcdResult as any, "comicVine"));
+        for (const gcdDoc of gcdDocs) {
+          const titleKey = normalizeTeenKitsuGcdMatchKey((gcdDoc as any)?.title || (gcdDoc as any)?.rawDoc?.title || "");
+          const rootKey = normalizeTeenKitsuGcdMatchKey(parentFranchiseRootForDoc(gcdDoc) || "");
+          if (titleKey && !gcdDocsByKey.has(titleKey)) gcdDocsByKey.set(titleKey, gcdDoc);
+          if (rootKey && !gcdDocsByKey.has(rootKey)) gcdDocsByKey.set(rootKey, gcdDoc);
+        }
+      } catch (err: any) {
+        sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_fetch_failed:${String(err?.message || err || "unknown").slice(0, 80)}`);
+      }
+    }
+    for (const doc of kitsuDocs as any[]) {
+      const title = String(doc?.title || doc?.canonicalTitle || "").trim();
+      const titleKey = normalizeTeenKitsuGcdMatchKey(title);
+      const rootKey = normalizeTeenKitsuGcdMatchKey(parentFranchiseRootForDoc(doc) || "");
+      const gcdDoc = (titleKey && gcdDocsByKey.get(titleKey)) || (rootKey && gcdDocsByKey.get(rootKey));
+      if (!gcdDoc) {
+        pushUniqueTeenKitsuGcdDiagnostic(kitsuTeenGcdEnrichmentNoMatchTitles, title);
+        continue;
+      }
+      const facets = gcdEnrichmentFacetTextForDoc(gcdDoc);
+      const contributedText = facets.join(" ");
+      const gcdLanePatterns: Record<string, RegExp> = {
+        fantasy: /\b(fantasy|magic|magical|mage|witch|wizard|dragon|fae|fairy|kingdom|quest|isekai|supernatural|adventure)\b/i,
+        historical: /\b(historical|history|period|samurai|edo|meiji|victorian|war|world war|ancient|medieval|renaissance)\b/i,
+        horror: /\b(horror|psychological horror|supernatural|ghost|haunted|occult|monster|zombie|vampire|demon|terror|scary|curse|cursed)\b/i,
+        mystery: /\b(mystery|detective|sleuth|whodunit|case|clue|investigation|crime)\b/i,
+        science_fiction: /\b(science fiction|sci[-\s]?fi|sf|dystopian|cyberpunk|space|robot|android|mecha|future|futuristic|alien|post[-\s]?apocalyptic|apocalypse|time travel)\b/i,
+        speculative: /\b(speculative|science fiction|sci[-\s]?fi|fantasy|dystopian|supernatural|alternate reality|parallel world)\b/i,
+        thriller: /\b(thriller|suspense|psychological|conspiracy|espionage|spy|survival|crime thriller|tension)\b/i,
+      };
+      const lanePattern = gcdLanePatterns[String(routerFamily || "").trim()];
+      const laneAligned = Boolean(lanePattern && lanePattern.test(contributedText));
+      const gcdTitle = String((gcdDoc as any)?.title || (gcdDoc as any)?.rawDoc?.title || "").trim();
+      doc.description = [doc.description, contributedText].map((part) => String(part || "").trim()).filter(Boolean).join(" ");
+      doc.subjects = Array.from(new Set([...(Array.isArray(doc.subjects) ? doc.subjects : []), ...facets]));
+      doc.categories = Array.from(new Set([...(Array.isArray(doc.categories) ? doc.categories : []), ...facets]));
+      doc.gcdEnrichmentOnly = true;
+      doc.gcdEnrichmentOnlyTitle = gcdTitle;
+      doc.gcdEnrichmentOnlyFacets = facets;
+      doc.gcdEnrichmentOnlyLaneAligned = laneAligned;
+      doc.diagnostics = {
+        ...(doc.diagnostics || {}),
+        gcdEnrichmentOnly: true,
+        gcdEnrichmentOnlyTitle: gcdTitle,
+        gcdEnrichmentOnlyFacets: facets,
+        gcdEnrichmentOnlyLaneAligned: laneAligned,
+      };
+      pushUniqueTeenKitsuGcdDiagnostic(kitsuTeenGcdEnrichmentMatchedTitles, title);
+      kitsuTeenGcdEnrichmentByTitle[title] = {
+        query: title,
+        matchedGcdTitle: gcdTitle,
+        facets: facets.slice(0, 12),
+        contributedTextLength: contributedText.length,
+        laneAligned,
+      };
+    }
+  };
+  await enrichTeenKitsuCandidatesWithGcdMetadata();
+
 
   let mergedDocs = dedupeDocs(allMergedDocs);
   const normalizeTitleForPool = (doc: any) => normalizeText(String(doc?.title || doc?.rawDoc?.title || ""));
@@ -12366,6 +12505,10 @@ const normalizedCandidatesRaw = [
       ...(Array.isArray(doc?.genres) ? doc.genres : []),
       ...(Array.isArray(raw?.genres) ? raw.genres.map((genre: any) => genre?.name || genre) : []),
       ...(Array.isArray(raw?.categories) ? raw.categories : []),
+      ...(Array.isArray(doc?.gcdEnrichmentOnlyFacets) ? doc.gcdEnrichmentOnlyFacets : []),
+      ...(Array.isArray(doc?.diagnostics?.gcdEnrichmentOnlyFacets) ? doc.diagnostics.gcdEnrichmentOnlyFacets : []),
+      doc?.gcdEnrichmentOnlyTitle,
+      doc?.diagnostics?.gcdEnrichmentOnlyTitle,
     ];
     return pieces.map((piece) => String(piece || "")).filter(Boolean).join(" ").toLowerCase();
   };
@@ -12397,7 +12540,9 @@ const normalizedCandidatesRaw = [
   const kitsuRescueQualityMetricsForDoc = (doc: any) => {
     const title = String(doc?.title || doc?.canonicalTitle || "").trim();
     const root = String(parentFranchiseRootForDoc(doc) || "");
-    const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root) || profileCompatibleExpansionRoots.has(root);
+    const laneAligned = profileSelectedEntitySeeds.some((seed) => normalizeText(seed).replace(/[^a-z0-9]+/g, "-") === root)
+      || profileCompatibleExpansionRoots.has(root)
+      || Boolean(doc?.gcdEnrichmentOnlyLaneAligned || doc?.diagnostics?.gcdEnrichmentOnlyLaneAligned);
     const sourceId = ensureKitsuSourceIdForRescue(doc) || String(doc?.sourceId || doc?.canonicalId || doc?.key || "").trim();
     return {
       title,
@@ -15058,6 +15203,13 @@ const normalizedCandidatesRaw = [
     kitsuTeenAlternateQueryPromotionDecisions,
     kitsuTeenAlternateQueryExpansionReasons,
     kitsuTeenAlternateFamilyInferenceDiagnostics,
+    kitsuTeenGcdEnrichmentAttempted,
+    kitsuTeenGcdEnrichmentEnabled,
+    kitsuTeenGcdEnrichmentSkippedReason,
+    kitsuTeenGcdEnrichmentQueries,
+    kitsuTeenGcdEnrichmentMatchedTitles,
+    kitsuTeenGcdEnrichmentNoMatchTitles,
+    kitsuTeenGcdEnrichmentByTitle,
     kitsuTeenRescueCandidateSafetyRejectedTitles,
     kitsuTeenRescueCandidateLaneRejectedTitles,
     kitsuTeenRescueCandidateWeakButReturnedReason,
