@@ -2889,10 +2889,16 @@ export async function getRecommendations(
       addIf(out, "supernatural adventure", "fantasy_supernatural_adventure", /\b(supernatural|paranormal|ghost|spirit|monster|occult)\b/);
       addIf(out, "found family adventure", "fantasy_found_family_adventure", /\b(found family|friendship|team|companions?)\b/);
       addIf(out, "young adult adventure", "fantasy_young_adult_adventure", /\b(young adult|teen|coming of age|school)\b/);
+      addIf(out, "adventure fantasy", "fantasy_broader_adventure_fantasy");
+      addIf(out, "fantasy adventure", "fantasy_broader_fantasy_adventure");
+      addIf(out, "shoujo adventure", "fantasy_broader_shoujo_adventure", /\b(shoujo|shojo|friendship|relationship|young adult|teen|school|coming of age)\b/);
       addIf(out, "dark fantasy", "fantasy_dark_atmospheric", /\b(dark|atmospheric|haunted|curse|cursed)\b/);
     } else if (normalizedFamily === "horror") {
       addIf(out, "supernatural suspense", "horror_safe_supernatural_suspense", /\b(supernatural|ghost|haunted|spirit|curse|cursed)\b/);
       addIf(out, "psychological suspense", "horror_safe_psychological_suspense", /\b(psychological|suspense|tension|atmospheric)\b/);
+      addIf(out, "supernatural mystery", "horror_broader_supernatural_mystery");
+      addIf(out, "mystery suspense", "horror_broader_mystery_suspense");
+      addIf(out, "thriller manga", "horror_broader_thriller_manga");
       addIf(out, "monster horror", "horror_monster_safe_alt", /\b(monster|creature|survival)\b/);
     } else if (normalizedFamily === "science_fiction") {
       addIf(out, "dystopian adventure", "science_fiction_dystopian_adventure", /\b(dystopian|dystopia|rebellion|authoritarian)\b/);
@@ -5253,7 +5259,8 @@ export async function getRecommendations(
     }
   }
 
-  if (includeKitsu && kitsuOnlyAtRequestStart && isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && kitsuTeenAlternateQueryExpansionReasons.length > 0 && kitsuRouterFetchCount < sourceFetchCapPerRun) {
+  const teenKitsuThinPoolFollowupFetchCap = 4;
+  if (includeKitsu && kitsuOnlyAtRequestStart && isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && kitsuTeenAlternateQueryExpansionReasons.length > 0 && kitsuRouterFetchCount < teenKitsuThinPoolFollowupFetchCap) {
     const thinPoolFollowupSignals = [
       ...kitsuPreSanitizedQueries,
       ...kitsuSanitizedQuerySelected,
@@ -5271,8 +5278,11 @@ export async function getRecommendations(
       ...plannedFollowupQueries.map((query) => ({ query, reason: "planned_lane_inferred_followup", family: inferTeenKitsuAlternateFamilyFromQuery(query) || routerFamily, source: "thin_pool_followup" })),
       ...thinPoolFollowupAlternatesBuilt,
     ].filter((row, index, arr) => arr.findIndex((other) => normalizeKitsuRecoveryQueryForSelection(other.query) === normalizeKitsuRecoveryQueryForSelection(row.query)) === index);
-    const thinPoolFollowup = thinPoolFollowupAlternates.find((row) => !Array.from(kitsuQueriesActuallyFetched).some((fetched) => normalizeKitsuRecoveryQueryForSelection(fetched) === normalizeKitsuRecoveryQueryForSelection(row.query)));
-    if (thinPoolFollowup) {
+    let teenKitsuThinPoolFollowupDispatched = false;
+    for (const thinPoolFollowup of thinPoolFollowupAlternates) {
+      if (kitsuRouterFetchCount >= teenKitsuThinPoolFollowupFetchCap) break;
+      if (Array.from(kitsuQueriesActuallyFetched).some((fetched) => normalizeKitsuRecoveryQueryForSelection(fetched) === normalizeKitsuRecoveryQueryForSelection(thinPoolFollowup.query))) continue;
+      teenKitsuThinPoolFollowupDispatched = true;
       const thinPoolFollowupQuery = thinPoolFollowup.query;
       recordTeenKitsuAlternatePromotionDecision({
         source: "thin_pool_followup",
@@ -5324,7 +5334,8 @@ export async function getRecommendations(
           bodyPrefix: String(err?.bodyPrefix || err?.message || err || "").slice(0, 180),
         });
       }
-    } else {
+    }
+    if (!teenKitsuThinPoolFollowupDispatched) {
       sourceSkippedReason.push("teen_kitsu_thin_pool_followup_exhausted");
     }
   }
