@@ -3261,9 +3261,22 @@ export async function getRecommendations(
 
   const kitsuEligibility = resolveKitsuEligibility(routedInput);
   const includeKitsu = sourceEnabled.kitsu;
+  const comicVineShouldUseResult = shouldUseComicVine(routedInput);
   const comicVineDispatchBypassGuard = false;
-  const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
-  const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
+  const includeComicVine = comicVineShouldUseResult && !comicVineDispatchBypassGuard;
+  const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && comicVineShouldUseResult);
+  const comicVineEnabledAtRequestStart = Boolean(enabledSourcesAtRequestStart.comicVine);
+  let comicVineDispatchSkippedReason = !comicVineEnabledAtRequestStart
+    ? "disabled_at_request_start"
+    : !sourceEnabled.comicVine
+      ? "disabled_after_source_synthesis"
+      : !comicVineShouldUseResult
+        ? "should_use_comicvine_false"
+        : comicVineDispatchBypassed
+          ? "comicvine_dispatch_bypassed"
+          : includeComicVine
+            ? "not_dispatched_yet"
+            : "not_included_by_router_gate";
   const kitsuEnabledAtRequestStart = Boolean(enabledSourcesAtRequestStart.kitsu);
   const kitsuEnabledAfterSynthesis = Boolean(sourceEnabled.kitsu);
   let kitsuDispatchEligible = Boolean(kitsuEnabledAfterSynthesis);
@@ -4258,6 +4271,29 @@ export async function getRecommendations(
   const comicVineQueriesActuallyFetched = new Set<string>();
   const comicVineTasteQueriesAttempted = new Set<string>();
   const comicVineFetchResults: Array<{ query: string; status: string; rawCount: number; error: string | null }> = [];
+  const comicVineQueriesPlanned = new Set<string>();
+  const comicVineQueriesAttempted = new Set<string>();
+  const comicVineDispatchStageDiagnostics: Array<{
+    laneIndex: number;
+    query: string;
+    stage: string;
+    planned: boolean;
+    attempted: boolean;
+    startedAt: string | null;
+    finishedAt: string | null;
+    timedOut: boolean;
+    status: string;
+    rawCount: number;
+    docCount: number;
+    candidateCount: number;
+    error: string | null;
+    skippedReason: string;
+  }> = [];
+  let comicVineDispatchPlanned = false;
+  let comicVineDispatchAttempted = false;
+  let comicVineFetchStartedAt: string | null = null;
+  let comicVineFetchFinishedAt: string | null = null;
+  let comicVineFetchTimedOut = false;
   const comicVineRawCountByQuery: Record<string, number> = {};
   const comicVineAcceptedCountByQuery: Record<string, number> = {};
   const comicVineRejectedCountByQuery: Record<string, number> = {};
@@ -4430,6 +4466,7 @@ export async function getRecommendations(
           forceTastePrimaryForComicVine: querySourceOfTruth === "taste_profile",
         },
       };
+      const baseLaneInputForSourceDispatch: RecommenderInput = laneInput;
       const laneQueryTextForDiagnostics = String(laneInput?.bucketPlan?.preview || normalizedLaneQuery || "");
 
       var requests: Array<Promise<RecommendationResult>> = [];
@@ -4867,12 +4904,55 @@ export async function getRecommendations(
       }
       var shouldDispatchComicVineForLane = includeComicVine && !comicVineDispatchedOnce;
       var comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
+      const comicVineLaneQuery = String((baseLaneInputForSourceDispatch as any)?.bucketPlan?.preview || (lane as any)?.query || "comicvine_adapter").trim() || "comicvine_adapter";
+      if (includeComicVine) {
+        comicVineDispatchPlanned = true;
+        comicVineQueriesPlanned.add(comicVineLaneQuery);
+        comicVineQueryTexts.add("comicvine_adapter");
+        if (!shouldDispatchComicVineForLane && comicVineDispatchSkippedReason === "not_dispatched_yet") {
+          comicVineDispatchSkippedReason = comicVineDispatchedOnce ? "already_dispatched_once" : "comicvine_lane_not_selected";
+        }
+      }
       if (shouldDispatchComicVineForLane) {
-        requests.push(getComicVineGraphicNovelRecommendations(laneInput));
+        comicVineDispatchAttempted = true;
+        comicVineDispatchSkippedReason = "none";
+        comicVineQueriesAttempted.add(comicVineLaneQuery);
+        comicVineFetchStartedAt = comicVineFetchStartedAt || new Date().toISOString();
+        pendingSourceFetchCount += 1;
+        pendingSourceFetchCountIncremented.push({ source: "comicVine", laneIndex: lanei, query: comicVineLaneQuery, pending: pendingSourceFetchCount });
+        pushGlobalPhase("before_comicvine_router_fetch", { laneIndex: lanei, query: comicVineLaneQuery });
+        const comicVineFetchPromise = getComicVineGraphicNovelRecommendations(baseLaneInputForSourceDispatch);
+        const comicVineTrackedRequest = withSourceTimeout("router_before_comicvine_full_fetch", "router_after_comicvine_full_fetch", 10_000, () => comicVineFetchPromise)
+          .finally(() => {
+            pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
+            pendingSourceFetchCountDecremented.push({ source: "comicVine", laneIndex: lanei, query: comicVineLaneQuery, pending: pendingSourceFetchCount });
+            pushGlobalPhase("pendingSourceFetchCount_decremented", { source: "comicVine", laneIndex: lanei, query: comicVineLaneQuery, pendingSourceFetchCount });
+            pushGlobalPhase("after_comicvine_router_fetch", { laneIndex: lanei, query: comicVineLaneQuery });
+          }) as any;
+        pendingSourceFetches.push(comicVineTrackedRequest.catch(() => null));
+        requests.push(comicVineTrackedRequest);
         comicVineDispatchedOnce = true;
       }
-      if (includeComicVine) comicVineQueryTexts.add("comicvine_adapter");
       if (requests.length === 0) {
+        if (includeComicVine && !comicVineDispatchAttempted && comicVineDispatchSkippedReason === "not_dispatched_yet") {
+          comicVineDispatchSkippedReason = "fetch_loop_exhausted_before_comicvine_dispatch";
+          comicVineDispatchStageDiagnostics.push({
+            laneIndex: lanei,
+            query: comicVineLaneQuery,
+            stage: "no_requests_after_source_checks",
+            planned: comicVineDispatchPlanned,
+            attempted: false,
+            startedAt: comicVineFetchStartedAt,
+            finishedAt: comicVineFetchFinishedAt,
+            timedOut: false,
+            status: "skipped",
+            rawCount: 0,
+            docCount: 0,
+            candidateCount: 0,
+            error: null,
+            skippedReason: comicVineDispatchSkippedReason,
+          });
+        }
         if (includeKitsu && kitsuRouterFetchCount === 0) {
           kitsuSkippedBecauseLaneRejected = true;
           kitsuDispatchBlockedReason = kitsuDispatchBlockedReason === "none" ? "no_requests_after_source_checks" : kitsuDispatchBlockedReason;
@@ -4997,7 +5077,7 @@ export async function getRecommendations(
         : null;
       if (comicVineDispatchedOnThisLane) {
         const gcdResult = results[index];
-        const query = String(lane.query || "comicvine_adapter");
+        const query = comicVineLaneQuery;
         comicVinePreflightQuery = comicVinePreflightQuery || query;
         comicVinePreflightUsesTasteQuery = comicVinePreflightUsesTasteQuery || tasteDerivedQuerySet.has(normalizeText(query));
         if (gcdResult?.status === "fulfilled") {
@@ -5066,6 +5146,29 @@ export async function getRecommendations(
               error: null,
             });
           }
+          const fulfilledAt = new Date().toISOString();
+          comicVineFetchFinishedAt = fulfilledAt;
+          const fulfilledRawCount = Number(value?.debugRawFetchedCount ?? countResultItems(value));
+          const fulfilledDocCount = dedupeDocs(extractDocs(value, "comicVine")).length;
+          const fulfilledCandidateCount = Array.isArray(value?.debugCandidatePool)
+            ? value.debugCandidatePool.length
+            : Number((value as any)?.debugCandidatePoolLength ?? countResultItems(value));
+          comicVineDispatchStageDiagnostics.push({
+            laneIndex: lanei,
+            query,
+            stage: "fetch_and_conversion_completed",
+            planned: comicVineDispatchPlanned,
+            attempted: true,
+            startedAt: comicVineFetchStartedAt,
+            finishedAt: fulfilledAt,
+            timedOut: false,
+            status: "ok",
+            rawCount: fulfilledRawCount,
+            docCount: fulfilledDocCount,
+            candidateCount: fulfilledCandidateCount,
+            error: null,
+            skippedReason: "none",
+          });
         } else if (gcdResult?.status === "rejected") {
           const reason: any = (gcdResult as PromiseRejectedResult).reason;
           const reasonText = String(reason?.message || reason || "comicvine_fetch_failed");
@@ -5075,6 +5178,26 @@ export async function getRecommendations(
             status: "error",
             rawCount: 0,
             error: reasonText,
+          });
+          const rejectedAt = new Date().toISOString();
+          comicVineFetchFinishedAt = rejectedAt;
+          const timedOut = reasonText.includes("router_before_comicvine_full_fetch_timeout") || reasonText.includes("timeout");
+          comicVineFetchTimedOut = comicVineFetchTimedOut || timedOut;
+          comicVineDispatchStageDiagnostics.push({
+            laneIndex: lanei,
+            query,
+            stage: timedOut ? "fetch_timeout" : "fetch_failed",
+            planned: comicVineDispatchPlanned,
+            attempted: true,
+            startedAt: comicVineFetchStartedAt,
+            finishedAt: rejectedAt,
+            timedOut,
+            status: "error",
+            rawCount: 0,
+            docCount: 0,
+            candidateCount: 0,
+            error: reasonText,
+            skippedReason: "none",
           });
         }
       }
@@ -5799,8 +5922,8 @@ export async function getRecommendations(
   previousPrimaryTasteQueryPoolTitles = Array.from(currentPoolTitleSet).slice(0, 200);
   previousPrimaryTasteQueryPoolRoots = Array.from(new Set(primaryTasteQueryPoolRoots)).slice(0, 100);
   previousStaticRungPoolRoots = Array.from(new Set(staticRungPoolRoots)).slice(0, 100);
-  const comicVineFetchAttemptedFlag = (includeComicVine && mainRungQueriesLength > 0) || comicVineDispatchBypassed;
-  const comicVineFetchAttempted = Boolean((comicVineEnabledRuntime && includeComicVine && mainRungQueriesLength > 0) || comicVineDispatchBypassed);
+  const comicVineFetchAttemptedFlag = comicVineDispatchAttempted || comicVineDispatchBypassed;
+  const comicVineFetchAttempted = Boolean(comicVineDispatchAttempted || comicVineDispatchBypassed);
   const proxyHealthError = comicVineFetchResults.find((row) => String(row?.status || "").toLowerCase().includes("rejected") || row?.error)?.error || null;
   const proxyHealthStatus: "ok" | "failed" | "unknown" =
     !includeComicVine ? "unknown" : proxyHealthError ? "failed" : "ok";
@@ -7480,6 +7603,17 @@ const normalizedCandidatesRaw = [
   const comicVineDispatchTrace = {
     comicVineDispatchBypassed,
     comicVineDispatchBypassReason: comicVineDispatchBypassed ? "temporary_tdz_triage_guard" : "none",
+    comicVineEnabledAtRequestStart,
+    comicVineShouldUseResult,
+    comicVineDispatchPlanned,
+    comicVineDispatchAttempted,
+    comicVineDispatchSkippedReason,
+    comicVineQueriesPlanned: Array.from(comicVineQueriesPlanned),
+    comicVineQueriesAttempted: Array.from(comicVineQueriesAttempted),
+    comicVineFetchStartedAt,
+    comicVineFetchFinishedAt,
+    comicVineFetchTimedOut,
+    comicVineDispatchStageDiagnostics,
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
     traceSource: "router" as const,
     includeGcd: Boolean(includeComicVine),
@@ -15814,6 +15948,17 @@ const normalizedCandidatesRaw = [
       builtFromQuery: true,
       routerResultTracePresent: true,
     }),
+    comicVineEnabledAtRequestStart,
+    comicVineShouldUseResult,
+    comicVineDispatchPlanned,
+    comicVineDispatchAttempted,
+    comicVineDispatchSkippedReason,
+    comicVineQueriesPlanned: Array.from(comicVineQueriesPlanned),
+    comicVineQueriesAttempted: Array.from(comicVineQueriesAttempted),
+    comicVineFetchStartedAt,
+    comicVineFetchFinishedAt,
+    comicVineFetchTimedOut,
+    comicVineDispatchStageDiagnostics,
     debugGcdDispatchTrace: comicVineDispatchTrace,
     debugComicVineDispatchTrace: comicVineDispatchTrace,
     deploymentRuntimeMarker,
