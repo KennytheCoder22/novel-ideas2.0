@@ -1,0 +1,154 @@
+export type AgeBandV2 = "kids" | "preteens" | "teens" | "adult";
+
+export type SourceIdV2 = "mock" | "googleBooks" | "openLibrary" | "kitsu" | "comicVine" | "localLibrary" | "nyt";
+
+export type SourceStatusV2 = "planned" | "attempted" | "skipped" | "succeeded" | "failed" | "timed_out" | "empty";
+
+export type CandidateFormatV2 = "book" | "manga" | "comic" | "graphicNovel" | "anime" | "unknown";
+
+export interface SwipeSignalV2 {
+  id?: string;
+  title?: string;
+  action: "like" | "dislike" | "skip";
+  source?: string;
+  format?: CandidateFormatV2;
+  tags?: string[];
+  genres?: string[];
+  tones?: string[];
+  themes?: string[];
+  characterDynamics?: string[];
+  maturity?: AgeBandV2 | string;
+  weight?: number;
+}
+
+export interface SwipeSessionV2 {
+  deckKey?: string;
+  ageBand: AgeBandV2;
+  signals: SwipeSignalV2[];
+  limit?: number;
+  enabledSources?: Partial<Record<SourceIdV2, boolean>>;
+  requestId?: string;
+}
+
+export interface WeightedSignalV2 {
+  value: string;
+  weight: number;
+  evidence: string[];
+}
+
+export interface TasteProfile {
+  ageBand: AgeBandV2;
+  tone: WeightedSignalV2[];
+  pacing: WeightedSignalV2[];
+  genreFamily: WeightedSignalV2[];
+  themes: WeightedSignalV2[];
+  characterDynamics: WeightedSignalV2[];
+  formatPreference: WeightedSignalV2[];
+  maturityBand: AgeBandV2;
+  avoidSignals: WeightedSignalV2[];
+  sourceHints: SourceIdV2[];
+  diagnostics: Record<string, unknown>;
+}
+
+export interface SearchIntentV2 {
+  id: string;
+  query: string;
+  facets: string[];
+  priority: number;
+  rationale: string[];
+}
+
+export interface SourcePlan {
+  source: SourceIdV2;
+  enabled: boolean;
+  status: SourceStatusV2;
+  intents: SearchIntentV2[];
+  skippedReason?: string;
+  timeoutMs: number;
+}
+
+export interface SearchPlan {
+  intents: SearchIntentV2[];
+  sourcePlans: SourcePlan[];
+  diagnostics: Record<string, unknown>;
+}
+
+export interface SourceDiagnosticV2 {
+  source: SourceIdV2;
+  status: SourceStatusV2;
+  planned: boolean;
+  attempted: boolean;
+  skippedReason?: string;
+  failedReason?: string;
+  timedOut: boolean;
+  startedAt?: string;
+  finishedAt?: string;
+  elapsedMs?: number;
+  rawCount: number;
+  normalizedCount?: number;
+  queries: string[];
+}
+
+export interface SourceResult {
+  source: SourceIdV2;
+  status: SourceStatusV2;
+  rawItems: unknown[];
+  diagnostics: SourceDiagnosticV2;
+}
+
+export interface NormalizedCandidate {
+  id: string;
+  source: SourceIdV2;
+  sourceId?: string;
+  title: string;
+  subtitle?: string;
+  creators: string[];
+  description?: string;
+  formats: CandidateFormatV2[];
+  genres: string[];
+  themes: string[];
+  tones: string[];
+  characterDynamics: string[];
+  maturityBand?: AgeBandV2 | string;
+  raw: unknown;
+  diagnostics: Record<string, unknown>;
+}
+
+export interface ScoredCandidate extends NormalizedCandidate {
+  score: number;
+  matchedSignals: string[];
+  rejectedReasons: string[];
+  scoreBreakdown: Record<string, number>;
+}
+
+export interface StageDiagnosticV2 {
+  stage: string;
+  status: "ok" | "warning" | "error";
+  message?: string;
+  counts?: Record<string, number>;
+  details?: Record<string, unknown>;
+}
+
+export interface DiagnosticReportV2 {
+  requestId: string;
+  startedAt: string;
+  finishedAt: string;
+  elapsedMs: number;
+  stages: StageDiagnosticV2[];
+  tasteProfile: TasteProfile;
+  searchPlan: SearchPlan;
+  sources: SourceDiagnosticV2[];
+  rejectedReasons: Record<string, number>;
+  finalSelectionTitles: string[];
+}
+
+export interface RecommendationResultV2 {
+  engineVersion: "recommender-v2-skeleton";
+  items: ScoredCandidate[];
+  diagnostics: DiagnosticReportV2;
+}
+
+export interface SourceAdapterV2 {
+  source: SourceIdV2;
+  search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult>;
+}
