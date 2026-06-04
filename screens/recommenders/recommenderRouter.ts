@@ -4531,17 +4531,29 @@ export async function getRecommendations(
       if (kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce && !fallbackCandidate) {
         sourceSkippedReason.push("kitsu_fallback_duplicate_canonical_skipped");
       }
-      const shouldUseTerminalBroadFallback = kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce && kitsuFallbackRawZero && !kitsuTerminalBroadFallbackDispatched;
+      const shouldUseTerminalBroadFallback: boolean = kitsuPrimaryRawZero && kitsuFallbackDispatchedOnce && kitsuFallbackRawZero && !kitsuTerminalBroadFallbackDispatched;
       const initialKitsuLaneQuery = shouldUseTerminalBroadFallback
         ? (terminalBroadFallbackCandidate || "adventure")
         : (kitsuPrimaryRawZero && kitsuDispatchedOnce && !kitsuFallbackDispatchedOnce
           ? (fallbackCandidate || "adventure")
           : kitsuSanitized.sanitized);
       const selectedKitsuLaneQuery = selectSpecificKitsuRecoveryQuery(initialKitsuLaneQuery, [baseLaneQuery, ...fallbackBroadTerms]);
-      const teenKitsuDispatchSelection = isTeenDeckKey((routedInput as any)?.deckKey || "")
+      let teenKitsuDispatchSelection: any = isTeenDeckKey((routedInput as any)?.deckKey || "")
         ? selectTeenNormalKitsuDispatchQuery(selectedKitsuLaneQuery.query, baseLaneQuery, fallbackBroadTerms, routerFamily, shouldUseTerminalBroadFallback)
         : { query: selectedKitsuLaneQuery.query, reason: "non_teen_kept_selected_query", sourceTier: "selected_query", activeTerms: [] as string[], suppressedGeneric: false, genericCandidate: "" };
-      const kitsuLaneQuery = teenKitsuDispatchSelection.query;
+      let kitsuLaneQuery = teenKitsuDispatchSelection.query;
+      if (isTeenDeckKey((routedInput as any)?.deckKey || "") && isBroadOrFormatKitsuQuery(kitsuLaneQuery) && !String(teenKitsuDispatchSelection.reason || "").startsWith("taste_aligned_alternate:")) {
+        const actualFetchFamily = inferTeenKitsuAlternateFamilyFromQuery(kitsuLaneQuery) || routerFamily;
+        const actualFetchPromotion = selectTeenNormalKitsuDispatchQuery(kitsuLaneQuery, `${baseLaneQuery} ${kitsuLaneQuery}`, fallbackBroadTerms, actualFetchFamily, false);
+        if (String(actualFetchPromotion.reason || "").startsWith("taste_aligned_alternate:")) {
+          teenKitsuDispatchSelection = {
+            ...actualFetchPromotion,
+            alternatePromotionDecision: "promoted_actual_broad_fetch_query_taste_aligned_alternate",
+            genericCandidate: kitsuLaneQuery,
+          } as any;
+          kitsuLaneQuery = actualFetchPromotion.query;
+        }
+      }
       if (includeKitsu) {
         kitsuNormalDispatchSelectedQuery = selectedKitsuLaneQuery.query;
         kitsuNormalDispatchSelectedQueryReason = teenKitsuDispatchSelection.reason;
