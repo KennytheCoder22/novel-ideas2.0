@@ -86,6 +86,8 @@ type RecItem =
   | { kind: "open_library"; doc: OLDoc }
   | { kind: "fallback"; book: FallbackBook };
 
+type RecommendationEngineSelection = "v1" | "v2";
+
 type FeedbackKind = "already_read" | "not_interested" | "next";
 type RecFeedback = { itemId: string; kind: FeedbackKind; rating?: 1 | 2 | 3 | 4 | 5 };
 
@@ -147,6 +149,12 @@ function swipeHistoryToV2Signals(entries: SwipeHistoryEntry[]): SwipeSignalV2[] 
       weight: entry.direction === "skip" ? 0.25 : 1,
     };
   });
+}
+
+function initialRecommendationEngineSelection(): RecommendationEngineSelection {
+  if (typeof window === "undefined") return "v1";
+  const engineParam = new URLSearchParams(window.location.search || "").get("engine");
+  return String(engineParam || "").toLowerCase() === "v2" ? "v2" : "v1";
 }
 
 type TwentyQAxis = keyof TasteVector;
@@ -1004,6 +1012,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [swipeHistory, setSwipeHistory] = useState<SwipeHistoryEntry[]>([]);
 
   const [recQuery, setRecQuery] = useState<string>("");
+  const [selectedRecommendationEngine, setSelectedRecommendationEngine] = useState<RecommendationEngineSelection>(initialRecommendationEngineSelection);
+  const [lastEngineActuallyUsed, setLastEngineActuallyUsed] = useState<RecommendationEngineSelection | "">("");
   const [recEngineLabel, setRecEngineLabel] = useState<string>("");
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
@@ -1353,6 +1363,7 @@ export default function SwipeDeckScreen(props: Props) {
     setTagCounts({});
     setSwipeHistory([]);
     setRecQuery("");
+    setLastEngineActuallyUsed("");
     setRecEngineLabel("");
     setRecLoading(false);
     setRecError(null);
@@ -1630,6 +1641,88 @@ function handleLeft() {
     }));
   }
 
+  function normalizeRecommenderV2Items(rawItems: RecommendationResultV2["items"]): RecItem[] {
+    return rawItems.map((candidate) => ({
+      kind: "open_library",
+      doc: {
+        key: `/recommender-v2/${candidate.source}/${candidate.sourceId || candidate.id}`,
+        title: candidate.title,
+        author_name: candidate.creators.length ? candidate.creators : ["Recommender V2"],
+        source: candidate.source,
+        description: candidate.description,
+        first_publish_year: undefined,
+        diagnostics: {
+          engine: "v2",
+          source: candidate.source,
+          sourceId: candidate.sourceId,
+          score: candidate.score,
+          matchedSignals: candidate.matchedSignals,
+          scoreBreakdown: candidate.scoreBreakdown,
+          formats: candidate.formats,
+          genres: candidate.genres,
+          themes: candidate.themes,
+          tones: candidate.tones,
+          characterDynamics: candidate.characterDynamics,
+        },
+      } as any,
+    }));
+  }
+
+  function buildV2RecommendationResultForDiagnostics(v2Result: RecommendationResultV2, normalizedItems: RecItem[], inputWithHistory: RecommenderInput) {
+    const diagnostics = v2Result.diagnostics;
+    const sourceStats = Object.fromEntries(diagnostics.sources.map((source) => [
+      source.source,
+      {
+        rawFetched: source.rawCount,
+        postFilterCandidates: Number(source.normalizedCount || 0),
+        finalSelected: v2Result.items.filter((item) => item.source === source.source).length,
+      },
+    ]));
+    const normalizedCount = diagnostics.stages.find((stage) => stage.stage === "normalized")?.counts?.normalized ?? 0;
+    const scoredCount = diagnostics.stages.find((stage) => stage.stage === "scored")?.counts?.scored ?? 0;
+    const queries = diagnostics.searchPlan.intents.map((intent) => intent.query);
+    return {
+      engineSelected: "v2",
+      engineActuallyUsed: "v2",
+      engineId: "recommender-v2",
+      engineLabel: "Recommender V2",
+      builtFromQuery: queries.join(" | "),
+      returnedItemsBuiltFrom: "recommender-v2",
+      items: normalizedItems.map((item) => item.kind === "open_library" ? { doc: item.doc } : { doc: item.book }),
+      returnedItemsTitles: normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean),
+      debugSourceStats: sourceStats,
+      debugRawPool: diagnostics.sources.flatMap((source) => Array.from({ length: source.rawCount }, (_unused, index) => ({ title: `${source.source} raw ${index + 1}`, source: source.source, diagnostics: { engine: "v2", placeholder: true } }))),
+      debugCandidatePool: v2Result.items,
+      sourceEnabled,
+      sourceSkippedReason: diagnostics.sources.map((source) => source.skippedReason || source.failedReason || "").filter(Boolean),
+      routerResultTracePresent: true,
+      debugRouterVersion: EXPECTED_ROUTER_FINGERPRINT,
+      engineVersion: v2Result.engineVersion,
+      v2Diagnostics: diagnostics,
+      v2TasteProfile: diagnostics.tasteProfile,
+      v2SearchPlan: diagnostics.searchPlan,
+      normalizedCount,
+      candidateCount: normalizedCount,
+      filteredCount: scoredCount,
+      rankedCount: scoredCount,
+      scoredCount,
+      finalItemsLength: normalizedItems.length,
+      deckKey: inputWithHistory.deckKey,
+    };
+  }
+
+  function selectRecommendationEngine(nextEngine: RecommendationEngineSelection) {
+    setSelectedRecommendationEngine(nextEngine);
+    setLastEngineActuallyUsed("");
+    setRecEngineLabel("");
+    setRecItems([]);
+    setRecIndex(0);
+    setRecError(null);
+    setAutoSearched(false);
+    setLastRecommendationResult(null);
+    setLastRecommendationTimestamp("");
+  }
+
   async function performRecommendationRun(input: RecommenderInput) {
     const markPhase = (phase: string, extra?: Record<string, any>) => {
       const timestamp = new Date().toISOString();
@@ -1647,21 +1740,6 @@ function handleLeft() {
         // diagnostics only
       }
     };
-    const allDisabled =
-      !sourceEnabled.googleBooks &&
-      !sourceEnabled.openLibrary &&
-      !sourceEnabled.localLibrary &&
-      !sourceEnabled.kitsu &&
-      !sourceEnabled.comicVine &&
-      !sourceEnabled.nyt;
-    if (allDisabled) {
-      setRecError("No enabled recommendation sources");
-      setRecItems([]);
-      setLastSourceEnabled(sourceEnabled);
-      setLastSourceSkippedReason(["all_sources_disabled"]);
-      return;
-    }
-
     setRecLoading(true);
     setRecError(null);
     setRecItems([]);
@@ -1669,6 +1747,7 @@ function handleLeft() {
     setShowRating(false);
 
     const inputWithHistory = buildRecommendationInputWithHistory(input);
+    const engineSelectedForRun = selectedRecommendationEngine;
     setRecommendFunctionCalled(true);
     setRecommendFunctionError("");
     setRecommendFunctionErrorStack("");
@@ -1686,6 +1765,103 @@ function handleLeft() {
     setCurrentRecommendationRunId(runId);
     setActiveRecommendationRunId(runId);
     setRecommendationLockState(recLoading ? "already_loading" : "acquired");
+
+    if (engineSelectedForRun === "v2") {
+      try {
+        (globalThis as any).__novelIdeasRouterPhaseHistory = [];
+      } catch {
+        // diagnostics only
+      }
+      try {
+        markPhase("v2_before_engine_call", { engineSelected: engineSelectedForRun });
+        const v2Signals = swipeHistoryToV2Signals(Array.isArray((inputWithHistory as any)?.swipeHistory) ? ((inputWithHistory as any).swipeHistory as SwipeHistoryEntry[]) : swipeHistory);
+        const result = await runRecommenderV2({
+          requestId: `normal-ui-v2-${Date.now()}`,
+          ageBand: deckKeyToAgeBandV2(deckKey),
+          limit: inputWithHistory.limit || 10,
+          enabledSources: {
+            mock: true,
+            googleBooks: sourceEnabled.googleBooks,
+            openLibrary: sourceEnabled.openLibrary,
+            localLibrary: sourceEnabled.localLibrary,
+            kitsu: sourceEnabled.kitsu,
+            comicVine: sourceEnabled.comicVine,
+            nyt: sourceEnabled.nyt,
+          },
+          signals: v2Signals,
+          deckKey,
+        });
+        markPhase("v2_after_engine_call", { selected: result.items.length });
+        setV2DebugResult(result);
+        setV2DebugError("");
+        const normalizedItems = normalizeRecommenderV2Items(result.items);
+        const diagnosticResult = buildV2RecommendationResultForDiagnostics(result, normalizedItems, inputWithHistory);
+        const builtQuery = String(diagnosticResult.builtFromQuery || "");
+        setRecQuery(builtQuery);
+        setLastKnownBuiltQuery(builtQuery);
+        setQueryBuildStatus(builtQuery ? "query_available" : "query_unavailable");
+        setRecEngineLabel("Recommender V2");
+        setLastEngineActuallyUsed("v2");
+        setLastSourceCounts((diagnosticResult as any).debugSourceStats || null);
+        setLastCandidatePool(Array.isArray((diagnosticResult as any).debugCandidatePool) ? (diagnosticResult as any).debugCandidatePool : []);
+        setLastRawPool(Array.isArray((diagnosticResult as any).debugRawPool) ? (diagnosticResult as any).debugRawPool : []);
+        setLastRungStats(null);
+        setLastFilterAudit([]);
+        setLastFilterAuditSummary(null);
+        setLastFinalRecommenderDebug({ engine: "v2", rejectedReasons: result.diagnostics.rejectedReasons, finalSelectionTitles: result.diagnostics.finalSelectionTitles });
+        setLastSourceEnabled(sourceEnabled);
+        setLastSourceSkippedReason(Array.isArray((diagnosticResult as any).sourceSkippedReason) ? (diagnosticResult as any).sourceSkippedReason : []);
+        setLastDebugRouterVersion(EXPECTED_ROUTER_FINGERPRINT);
+        setLastRouterResultTracePresent(true);
+        setLastRouterResultKeys(Object.keys(diagnosticResult));
+        setLastDeploymentRuntimeMarker("recommender-v2");
+        setLastDebugGcdDispatchTrace({ traceSource: "v2", sourceDiagnostics: result.diagnostics.sources });
+        setLastRecommendationInput(inputWithHistory);
+        setLastRecommendationResult(diagnosticResult as any);
+        setLastRecommendationTimestamp(new Date().toISOString());
+        setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
+        setRecommendFunctionReturned(true);
+        if (normalizedItems.length > 0) {
+          rememberRecommendations(input.deckKey, normalizedItems);
+          setRecommendationResultWasPersisted(true);
+          setRecItems(normalizedItems);
+          setRecError(null);
+        } else {
+          setRecItems([]);
+          setRecError("No V2 matches found for this swipe session. Diagnostics are available for comparison.");
+        }
+      } catch (err: any) {
+        markPhase("v2_engine_rejected", { error: String(err?.message || err || "unknown") });
+        setLastEngineActuallyUsed("v2");
+        setV2DebugError(String(err?.message || err || "recommender_v2_failed"));
+        setRecommendFunctionReturned(false);
+        setRecommendFunctionError(String(err?.message || err || "recommender_v2_failed"));
+        setRecommendFunctionErrorStack(String(err?.stack || ""));
+        setRecItems([]);
+        setRecError(err?.message || "Recommender V2 could not be reached.");
+      } finally {
+        setRecommendationLockState("released");
+        setRecLoading(false);
+      }
+      return;
+    }
+
+    const allDisabled =
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !sourceEnabled.kitsu &&
+      !sourceEnabled.comicVine &&
+      !sourceEnabled.nyt;
+    if (allDisabled) {
+      setRecLoading(false);
+      setRecError("No enabled recommendation sources");
+      setRecItems([]);
+      setLastSourceEnabled(sourceEnabled);
+      setLastSourceSkippedReason(["all_sources_disabled"]);
+      setRecommendationLockState("released");
+      return;
+    }
 
     try {
       markPhase("before_query_build");
@@ -1865,6 +2041,7 @@ function handleLeft() {
       setRecQuery(result.builtFromQuery || "");
       setLastKnownBuiltQuery(String(result.builtFromQuery || ""));
       setRecEngineLabel(result.engineLabel || "");
+      setLastEngineActuallyUsed("v1");
       setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }>) || null);
       setLastCandidatePool(Array.isArray((result as any)?.debugCandidatePool) ? (result as any).debugCandidatePool : []);
       setLastRawPool(Array.isArray((result as any)?.debugRawPool) ? (result as any).debugRawPool : []);
@@ -2035,6 +2212,7 @@ function handleLeft() {
     if (typeof window === "undefined") return;
     const engineParam = new URLSearchParams(window.location.search || "").get("engine");
     if (String(engineParam || "").toLowerCase() !== "v2") return;
+    setSelectedRecommendationEngine("v2");
     v2UrlTriggeredRef.current = true;
     void runRecommenderV2DebugFromCurrentSession("url");
   }, [deckKey, swipeHistory, sourceEnabled.googleBooks, sourceEnabled.openLibrary, sourceEnabled.localLibrary, sourceEnabled.kitsu, sourceEnabled.comicVine, sourceEnabled.nyt]);
@@ -2226,6 +2404,7 @@ function handleLeft() {
     setSwipeHistory([]);
     setFeedback([]);
     setRecQuery("");
+    setLastEngineActuallyUsed("");
     setRecEngineLabel("");
     setRecLoading(false);
     setRecError(null);
@@ -2464,6 +2643,8 @@ function handleLeft() {
   async function handleCopyDiagnostics() {
     const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
+    const engineActuallyUsedForReport = String((lastRecommendationResult as any)?.engineActuallyUsed || lastEngineActuallyUsed || "");
+    const lastRunWasV2 = engineActuallyUsedForReport === "v2";
     const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
     const routerRunTimeoutRun = String(recommendFunctionError || "").startsWith("router_run_timeout:");
     const routerEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_entry_timeout:");
@@ -2473,8 +2654,8 @@ function handleLeft() {
     const getRecommendationsReturnedUndefinedRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_undefined:");
     const getRecommendationsReturnedEmptyObjectRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_empty_object:");
     const preflightTimeoutRun = String(recommendFunctionError || "").startsWith("source_health_preflight_timeout:");
-    const staleRuntime = runtimeFingerprint !== expectedFingerprint;
-    const missingRouterTrace = !Boolean(lastRouterResultTracePresent);
+    const staleRuntime = !lastRunWasV2 && runtimeFingerprint !== expectedFingerprint;
+    const missingRouterTrace = !lastRunWasV2 && !Boolean(lastRouterResultTracePresent);
     const globalRouterPhases = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
       ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
       : [];
@@ -2674,7 +2855,7 @@ function handleLeft() {
     const timeoutMsTs = parseTs((latestTimeoutPhase as any)?.timestamp);
     const earlyReturnCloseToTimeout = Number.isFinite(earlyReturnMs) && Number.isFinite(timeoutMsTs) && (earlyReturnMs - timeoutMsTs) >= 0 && (earlyReturnMs - timeoutMsTs) <= 1000;
     const earlyReturnReason = String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason || "");
-    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent || zeroItemsReturnedRun) {
+    if (!lastRunWasV2 && (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent || zeroItemsReturnedRun)) {
       const reason = hasValidReturnedItems
         ? "valid_recommendation_returned"
         : getRecommendationsReturnedUndefinedRun
@@ -2721,6 +2902,8 @@ function handleLeft() {
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
         `Reason: ${reason || "(unknown)"}`,
+        `engineSelected: ${selectedRecommendationEngine}`,
+        `engineActuallyUsed: ${engineActuallyUsedForReport || "(none)"}`,
         `debugRawPoolLength: ${String(debugRawPoolLengthTop)}`,
         `debugCandidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
         `candidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
@@ -3037,16 +3220,23 @@ function handleLeft() {
         }).join("\n")
       : "(none)";
 
-    const v2DiagnosticLines = v2DebugResult
+    const v2DiagnosticsForReport = (lastRecommendationResult as any)?.v2Diagnostics || v2DebugResult?.diagnostics || null;
+    const v2DiagnosticLines = v2DiagnosticsForReport
       ? [
-          `engineVersion:${v2DebugResult.engineVersion}`,
-          `requestId:${v2DebugResult.diagnostics.requestId}`,
-          `items:${v2DebugResult.items.map((item) => item.title).join(" | ") || "(none)"}`,
-          `stages:${v2DebugResult.diagnostics.stages.map((stage) => stage.stage).join(" -> ")}`,
-          `sources:${JSON.stringify(v2DebugResult.diagnostics.sources.map((source) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
-          `rejectedReasons:${JSON.stringify(v2DebugResult.diagnostics.rejectedReasons)}`,
+          `engineVersion:${String((lastRecommendationResult as any)?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-skeleton")}`,
+          `requestId:${v2DiagnosticsForReport.requestId}`,
+          `items:${(Array.isArray(v2DebugResult?.items) ? v2DebugResult?.items : []).map((item) => item.title).join(" | ") || (Array.isArray(v2DiagnosticsForReport.finalSelectionTitles) ? v2DiagnosticsForReport.finalSelectionTitles.join(" | ") : "(none)")}`,
+          `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
+          `searchPlan:${JSON.stringify(v2DiagnosticsForReport.searchPlan || {})}`,
+          `stages:${(v2DiagnosticsForReport.stages || []).map((stage: any) => `${stage.stage}:${JSON.stringify(stage.counts || {})}`).join(" -> ")}`,
+          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
+          `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
+          `rejectedReasons:${JSON.stringify(v2DiagnosticsForReport.rejectedReasons || {})}`,
+          `finalSelectedTitles:${JSON.stringify(v2DiagnosticsForReport.finalSelectionTitles || [])}`,
         ]
       : [`status:${v2DebugLoading ? "running" : v2DebugError ? "error" : "not_run"}`, `error:${v2DebugError || "(none)"}`];
+
 
     const rungQueryMap = new Map<string, string>();
     for (const row of rawPoolRows) {
@@ -3424,6 +3614,8 @@ function handleLeft() {
       "SESSION REPORT",
       `Deck: ${deck.deckLabel}`,
       `Deck Key: ${deckKey}`,
+      `engineSelected: ${selectedRecommendationEngine}`,
+      `engineActuallyUsed: ${engineActuallyUsedForReport || "(none)"}`,
       `Engine: ${recEngineLabel || "—"}`,
       `Saved Query Time: ${lastRecommendationTimestamp || "—"}`,
       `Swipe Summary: ${recomputedSummary}`,
@@ -3549,7 +3741,7 @@ function handleLeft() {
     if (autoSearched) return;
     setAutoSearched(true);
     runAutoRecommendations();
-  }, [isDone, autoSearched, tasteProfileWithMood, currentLaneOverride]);
+  }, [isDone, autoSearched, tasteProfileWithMood, currentLaneOverride, selectedRecommendationEngine]);
 
   const recDone = recItems.length > 0 && recIndex === recItems.length;
 
@@ -3688,6 +3880,9 @@ function handleLeft() {
             20Q: {resolvedTwentyQCount}/{twentyQObjectives.length} resolved
           </Text>
           <Text style={styles.statusText}>
+            Engine selected: {selectedRecommendationEngine.toUpperCase()} • Last used: {(lastEngineActuallyUsed || "—").toUpperCase()}
+          </Text>
+          <Text style={styles.statusText}>
             {activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung}: ${activeTwentyQObjective.label}` : "20Q complete"}
           </Text>
         </View>
@@ -3700,7 +3895,7 @@ function handleLeft() {
               <View style={[styles.doneCard, { borderColor: highlightColor }]}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
                 <Text style={styles.doneSub}>
-                  Deck: {deck.deckLabel} • Engine: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
+                  Deck: {deck.deckLabel} • Selected: {selectedRecommendationEngine.toUpperCase()} • Used: {(lastEngineActuallyUsed || "—").toUpperCase()} • Engine: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
                 </Text>
 
                 {recQuery ? (
@@ -3963,6 +4158,22 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
+          <View style={styles.engineSelectorPanel}>
+            <Text style={styles.v2DebugTitle}>Engine</Text>
+            <View style={styles.engineSelectorRow}>
+              {(["v1", "v2"] as RecommendationEngineSelection[]).map((engine) => (
+                <TouchableOpacity
+                  key={engine}
+                  style={[styles.engineToggleButton, selectedRecommendationEngine === engine && styles.engineToggleButtonActive]}
+                  onPress={() => selectRecommendationEngine(engine)}
+                >
+                  <Text style={styles.debugToggleText}>Engine: {engine.toUpperCase()}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.v2DebugText}>Selected:{selectedRecommendationEngine} • Last used:{lastEngineActuallyUsed || "none"}</Text>
+          </View>
+
           <View style={styles.testPillRow}>
             {testSessionPresets.map((preset) => (
               <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
@@ -4221,6 +4432,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
+  },
+  engineSelectorPanel: {
+    width: 320,
+    maxWidth: "90%",
+    alignSelf: "flex-end",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    padding: 10,
+    gap: 8,
+  },
+  engineSelectorRow: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+  },
+  engineToggleButton: {
+    minWidth: 104,
+    alignItems: "center",
+    backgroundColor: "#334155",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+  },
+  engineToggleButtonActive: {
+    backgroundColor: "#2563eb",
+    borderColor: "#bfdbfe",
   },
   v2DebugToggle: {
     minWidth: 112,
