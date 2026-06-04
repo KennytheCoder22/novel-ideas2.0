@@ -2845,7 +2845,8 @@ export async function getRecommendations(
   const kitsuTeenGcdEnrichmentDocsReturnedButNoMatch: Array<{ query: string; kitsuTitle: string; kitsuMatchKeys: string[]; returnedTitles: string[]; returnedMatchKeys: string[] }> = [];
   const kitsuTeenGcdEnrichmentMatchedTitles: string[] = [];
   const kitsuTeenGcdEnrichmentNoMatchTitles: string[] = [];
-  const kitsuTeenGcdEnrichmentByTitle: Record<string, { query: string; matchedGcdTitle: string; facets: string[]; contributedTextLength: number; laneAligned: boolean }> = {};
+  const kitsuTeenGcdEnrichmentByTitle: Record<string, { query: string; matchedGcdTitle: string; facets: string[]; contributedTextLength: number; laneAligned: boolean; usefulFacetCount?: number; semanticEvidenceAfter?: number; tasteEvidenceAfter?: number; laneAlignedAfter?: boolean; evidenceChangedByEnrichment?: boolean }> = {};
+  const kitsuTeenGcdEnrichmentUnhelpfulMatchByTitle: Record<string, { matchedGcdTitle: string; facets: string[]; reason: string }> = {};
   let kitsuRecoveryOriginalIntentQuery = "";
   let kitsuRecoverySelectedQuery = "";
   let kitsuRecoveryQueryTooBroad = false;
@@ -5648,7 +5649,31 @@ export async function getRecommendations(
       }
       markTeenKitsuGcdDiagnosticMatch(doc);
       const facets = gcdEnrichmentFacetTextForDoc(gcdDoc);
-      const contributedText = facets.join(" ");
+      const normalizedTitleKey = normalizeTeenKitsuGcdMatchKey(title);
+      const normalizedGcdTitleKey = normalizeTeenKitsuGcdMatchKey(String((gcdDoc as any)?.title || (gcdDoc as any)?.rawDoc?.volume?.name || (gcdDoc as any)?.rawDoc?.name || (gcdDoc as any)?.rawDoc?.title || ""));
+      const meaningfulFacetStopKeys = new Set([
+        "comicvine", "grand comics database", "comics", "comic", "graphic novel", "graphic", "novel", "manga", "anime",
+        normalizedTitleKey,
+        normalizedGcdTitleKey,
+      ].filter(Boolean));
+      const usefulFacets = facets.filter((facet) => {
+        const key = normalizeTeenKitsuGcdMatchKey(facet);
+        if (!key || meaningfulFacetStopKeys.has(key)) return false;
+        if (normalizedTitleKey && (key.includes(normalizedTitleKey) || normalizedTitleKey.includes(key))) return false;
+        if (normalizedGcdTitleKey && (key.includes(normalizedGcdTitleKey) || normalizedGcdTitleKey.includes(key))) return false;
+        return key.length >= 4;
+      });
+      if (usefulFacets.length === 0) {
+        const gcdTitle = String((gcdDoc as any)?.title || (gcdDoc as any)?.rawDoc?.volume?.name || (gcdDoc as any)?.rawDoc?.name || (gcdDoc as any)?.rawDoc?.title || "").trim();
+        kitsuTeenGcdEnrichmentUnhelpfulMatchByTitle[title] = {
+          matchedGcdTitle: gcdTitle,
+          facets: facets.slice(0, 12),
+          reason: "title_only_or_generic_metadata",
+        };
+        pushUniqueTeenKitsuGcdDiagnostic(kitsuTeenGcdEnrichmentNoMatchTitles, title);
+        continue;
+      }
+      const contributedText = usefulFacets.join(" ");
       const gcdLanePatterns: Record<string, RegExp> = {
         fantasy: /\b(fantasy|magic|magical|mage|witch|wizard|dragon|fae|fairy|kingdom|quest|isekai|supernatural|adventure)\b/i,
         historical: /\b(historical|history|period|samurai|edo|meiji|victorian|war|world war|ancient|medieval|renaissance)\b/i,
@@ -5679,9 +5704,10 @@ export async function getRecommendations(
       kitsuTeenGcdEnrichmentByTitle[title] = {
         query: title,
         matchedGcdTitle: gcdTitle,
-        facets: facets.slice(0, 12),
+        facets: usefulFacets.slice(0, 12),
         contributedTextLength: contributedText.length,
         laneAligned,
+        usefulFacetCount: usefulFacets.length,
       };
     }
   };
@@ -8597,6 +8623,16 @@ const normalizedCandidatesRaw = [
       candidateWeightedTasteScoreByTitle[title] = tasteMatchScore;
       candidateDislikePenaltyByTitle[title] = dislikePenalty;
       candidateSkipPenaltyByTitle[title] = skipPenalty;
+      if (kitsuTeenGcdEnrichmentByTitle[title]) {
+        const enrichedLaneAligned = Boolean((doc as any)?.gcdEnrichmentOnlyLaneAligned || laneMatch);
+        kitsuTeenGcdEnrichmentByTitle[title] = {
+          ...kitsuTeenGcdEnrichmentByTitle[title],
+          semanticEvidenceAfter: semanticEvidenceCount,
+          tasteEvidenceAfter: matchedLiked.length,
+          laneAlignedAfter: enrichedLaneAligned,
+          evidenceChangedByEnrichment: Boolean((doc as any)?.gcdEnrichmentOnlyLaneAligned) || (Array.isArray((doc as any)?.gcdEnrichmentOnlyFacets) && (doc as any).gcdEnrichmentOnlyFacets.length > 0 && semanticEvidenceCount > 0),
+        };
+      }
       singleTokenQueryHijackPenaltyByTitle[title] = singleTokenQueryHijackPenalty;
       weakLexicalFantasyClusterPenaltyByTitle[title] = weakLexicalFantasyClusterPenalty;
       finalScoreComponentsByTitle[title] = { tasteMatchScore, tastePenaltyScore: -tastePenaltyScore, unsupportedDefaultPenalty: -unsupportedDefaultPenalty, titleRepeatPenalty: -titleRepeatPenalty, rootRepeatPenalty: -rootRepeatPenalty, laneMatch: laneMatch ? 0.25 : 0, themeOverlap: themeOverlap ? 2 : 0, rootMatch: rootMatch ? 0.5 : 0, starterSignal: starterSignalScore, audienceFit: audienceFit ? 1 : 0, provenanceConfidence: provenanceConfidence && semanticSupportFound ? 0.05 : 0, narrativeWorkSignal: narrativeWorkSignal ? 2 : 0, narrativeTitleConfidenceScore, semanticEvidenceCount, curatedFranchiseMetadataSupport: curatedFranchiseMetadataSupport ? 1 : 0, genericSuperheroTitlePenalty: -genericSuperheroTitlePenalty, genericGraphicNovelPlaceholderPenalty: -genericGraphicNovelPlaceholderPenalty, metaReferencePenalty: -metaReferencePenalty, historicalAboutPenalty: -historicalAboutPenalty, retroHorrorArchivePenalty: -retroHorrorArchivePenalty, anthologyHorrorPenalty: -anthologyHorrorPenalty, singleTokenQueryHijackPenalty: -singleTokenQueryHijackPenalty, lexicalTitleOnlyHijackPenalty: -lexicalTitleOnlyHijackPenalty, weakLexicalFantasyClusterPenalty: -weakLexicalFantasyClusterPenalty, baseScorePositive: Number(doc?.score ?? 0) > 0 && semanticSupportFound ? 0.5 : 0 };
@@ -9052,6 +9088,36 @@ const normalizedCandidatesRaw = [
     if (!key) return;
     if (!terminalRejectReasonByTitle[key]) terminalRejectReasonByTitle[key] = reason;
   };
+  const normalizeTeenKitsuSourceIdForFinalEligibility = (value: any): string => {
+    const rawId = String(value || "").trim();
+    if (!rawId) return "";
+    if (/^kitsu:/i.test(rawId)) return rawId.replace(/^kitsu:/i, "kitsu:");
+    if (/^manga:/i.test(rawId)) {
+      const compact = rawId.replace(/^manga:/i, "").trim();
+      return compact ? `kitsu:${compact}` : "";
+    }
+    if (/^\/manga\//i.test(rawId)) {
+      const compact = rawId.replace(/^\/manga\//i, "").replace(/\D.*$/, "").trim();
+      return compact ? `kitsu:${compact}` : "";
+    }
+    if (/^https?:\/\/kitsu\.io\/api\/edge\/manga\//i.test(rawId)) {
+      const compact = rawId.replace(/^https?:\/\/kitsu\.io\/api\/edge\/manga\//i, "").replace(/\D.*$/, "").trim();
+      return compact ? `kitsu:${compact}` : "";
+    }
+    if (/^\d+$/.test(rawId)) return `kitsu:${rawId}`;
+    return "";
+  };
+  const teenKitsuKnownSourceIdByTitle: Record<string, string> = {};
+  const rememberTeenKitsuKnownSourceId = (doc: any) => {
+    if (!isTeenDeckKey(input.deckKey) || !includeKitsu || !doc || typeof doc !== "object") return;
+    const title = String(doc?.title || doc?.canonicalTitle || doc?.rawDoc?.title || doc?.rawDoc?.canonicalTitle || "").trim();
+    if (!title) return;
+    const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
+    const detected = detectTeenKitsuIdForFinalEligibility(doc);
+    if (!docSource.includes("kitsu") && !detected) return;
+    const normalized = detected || normalizeTeenKitsuSourceIdForFinalEligibility(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.rawDoc?.id);
+    if (normalized) teenKitsuKnownSourceIdByTitle[normalizeText(title)] = normalized;
+  };
   const detectTeenKitsuIdForFinalEligibility = (doc: any): string => {
     if (!isTeenDeckKey(input.deckKey) || !doc || typeof doc !== "object") return "";
     const rawDoc = doc?.rawDoc || {};
@@ -9068,12 +9134,8 @@ const normalizedCandidatesRaw = [
     for (const candidate of candidates) {
       const rawId = String(candidate || "").trim();
       if (!rawId) continue;
-      if (/^kitsu:/i.test(rawId)) return rawId.replace(/^kitsu:/i, "kitsu:");
-      if (/^manga:/i.test(rawId)) {
-        const compact = rawId.replace(/^manga:/i, "").trim();
-        if (compact) return `kitsu:${compact}`;
-      }
-      if (/^\d+$/.test(rawId)) return `kitsu:${rawId}`;
+      const normalized = normalizeTeenKitsuSourceIdForFinalEligibility(rawId);
+      if (normalized) return normalized;
     }
     return "";
   };
@@ -9081,9 +9143,11 @@ const normalizedCandidatesRaw = [
     if (!isTeenDeckKey(input.deckKey) || !includeKitsu || !doc || typeof doc !== "object") return doc;
     const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
     const recoveredKnownKitsuId = detectTeenKitsuIdForFinalEligibility(doc);
-    if (!docSource.includes("kitsu") && !recoveredKnownKitsuId) return doc;
     const title = String(doc?.title || doc?.rawDoc?.title || "").trim();
-    const sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || recoveredKnownKitsuId || "").trim();
+    const titleKey = normalizeText(title);
+    const knownTitleSourceId = titleKey ? String(teenKitsuKnownSourceIdByTitle[titleKey] || "").trim() : "";
+    if (!docSource.includes("kitsu") && !recoveredKnownKitsuId && !knownTitleSourceId) return doc;
+    const sourceId = recoveredKnownKitsuId || knownTitleSourceId || normalizeTeenKitsuSourceIdForFinalEligibility(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "");
     if (!sourceId) return doc;
     doc.sourceId = sourceId;
     doc.canonicalId = doc.canonicalId || sourceId;
@@ -9100,6 +9164,10 @@ const normalizedCandidatesRaw = [
     return doc;
   };
   if (isTeenDeckKey(input.deckKey) && includeKitsu) {
+    for (const doc of allMergedDocs || []) rememberTeenKitsuKnownSourceId(doc);
+    for (const doc of finalRankedDocs || []) rememberTeenKitsuKnownSourceId(doc);
+    for (const doc of rankedDocs || []) rememberTeenKitsuKnownSourceId(doc);
+    for (const doc of finalRenderDocs || []) rememberTeenKitsuKnownSourceId(doc);
     for (const doc of finalRankedDocs || []) recoverTeenKitsuSourceIdBeforeFinalEligibility(doc, "final_ranked_docs");
     for (const doc of rankedDocs || []) recoverTeenKitsuSourceIdBeforeFinalEligibility(doc, "ranked_docs");
     finalRenderDocs = (finalRenderDocs || []).map((doc: any) => recoverTeenKitsuSourceIdBeforeFinalEligibility(doc, "final_render_docs"));
@@ -9118,7 +9186,7 @@ const normalizedCandidatesRaw = [
     }
     const docSource = String(doc?.source || doc?.rawDoc?.source || "").toLowerCase();
     const isComicVineCandidate = docSource.includes("comicvine");
-    let sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "").trim();
+    let sourceId = normalizeTeenKitsuSourceIdForFinalEligibility(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || "") || (normalizeText(title) ? String(teenKitsuKnownSourceIdByTitle[normalizeText(title)] || "").trim() : "");
     if (!sourceId && docSource.includes("kitsu")) {
       const recoveredKitsuId = detectTeenKitsuIdForFinalEligibility(doc);
       if (recoveredKitsuId) {
@@ -9126,7 +9194,8 @@ const normalizedCandidatesRaw = [
         sourceId = String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || recoveredKitsuId).trim();
       }
     }
-    if (docSource.includes("kitsu") && title) kitsuTeenSourceIdAtFinalEligibilityByTitle[title] = sourceId;
+    if (sourceId && !String(doc?.sourceId || "").trim()) recoverTeenKitsuSourceIdBeforeFinalEligibility(doc, "final_eligibility_filter_title_map");
+    if ((docSource.includes("kitsu") || sourceId) && title) kitsuTeenSourceIdAtFinalEligibilityByTitle[title] = sourceId;
     const queryText = String(doc?.queryText || doc?.diagnostics?.queryText || "").trim();
     const restoredByKitsuRecovery = Boolean((doc as any)?.restoredByKitsuRecovery || (doc?.diagnostics as any)?.restoredByKitsuRecovery);
     const isComicVineFallbackCandidate = docSource.includes("comicvine") && /comicvine_publisher_facet_fallback/i.test(queryText);
@@ -12625,12 +12694,8 @@ const normalizedCandidatesRaw = [
     for (const candidate of candidates) {
       const rawId = String(candidate || "").trim();
       if (!rawId) continue;
-      if (/^kitsu:/i.test(rawId)) return rawId.replace(/^kitsu:/i, "kitsu:");
-      if (/^manga:/i.test(rawId)) {
-        const compact = rawId.replace(/^manga:/i, "").trim();
-        if (compact) return `kitsu:${compact}`;
-      }
-      if (/^\d+$/.test(rawId)) return `kitsu:${rawId}`;
+      const normalized = normalizeTeenKitsuSourceIdForFinalEligibility(rawId);
+      if (normalized) return normalized;
     }
     return "";
   };
@@ -15369,6 +15434,7 @@ const normalizedCandidatesRaw = [
     kitsuTeenGcdEnrichmentQueryDiagnostics,
     kitsuTeenGcdEnrichmentExactTitleLookupDiagnostics,
     kitsuTeenGcdEnrichmentDocsReturnedButNoMatch,
+    kitsuTeenGcdEnrichmentUnhelpfulMatchByTitle,
     kitsuTeenGcdEnrichmentMatchedTitles,
     kitsuTeenGcdEnrichmentNoMatchTitles,
     kitsuTeenGcdEnrichmentByTitle,
