@@ -1,8 +1,10 @@
-import type { SourceAdapterV2, SourceDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
+import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 
-const OPEN_LIBRARY_QUERY_LIMIT = 2;
+const OPEN_LIBRARY_QUERY_LIMIT = 1;
 const OPEN_LIBRARY_DOC_LIMIT = 10;
 const OPEN_LIBRARY_DOCS_PER_QUERY = 8;
+const OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY = "fantasy";
+const RESPONSE_BODY_PREFIX_LIMIT = 240;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -23,10 +25,15 @@ function uniqueStrings(values: unknown[], limit = 24): string[] {
   return output;
 }
 
-function openLibraryUrl(query: string, limit: number): string {
+function openLibraryRequest(query: string, limit: number): { url: string; fetchPath: "direct" | "proxy" } {
   const params = `q=${encodeURIComponent(query)}&limit=${Math.max(1, Math.min(20, limit))}`;
-  if (typeof window !== "undefined") return `/api/openlibrary?${params}`;
-  return `https://openlibrary.org/search.json?${params}&language=eng`;
+  if (typeof window !== "undefined") return { url: `/api/openlibrary?${params}`, fetchPath: "proxy" };
+  return { url: `https://openlibrary.org/search.json?${params}&language=eng`, fetchPath: "direct" };
+}
+
+function bodyPrefix(value: string): string | undefined {
+  const trimmed = value.trim();
+  return trimmed ? trimmed.slice(0, RESPONSE_BODY_PREFIX_LIMIT) : undefined;
 }
 
 function normalizeOpenLibraryDoc(doc: any, query: string) {
@@ -83,6 +90,53 @@ function emptyDiagnostics(plan: SourcePlan, status: SourceDiagnosticV2["status"]
   };
 }
 
+async function fetchOpenLibraryDocs(query: string, limit: number, signal?: AbortSignal, diagnosticOnly = false): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+  const { url, fetchPath } = openLibraryRequest(query, limit);
+  const fetchStartedAt = nowIso();
+  const startedMs = Date.now();
+  const diagnostic: SourceFetchDiagnosticV2 = {
+    query,
+    fetchStartedAt,
+    timedOut: false,
+    fetchPath,
+    diagnosticOnly,
+  };
+
+  try {
+    const response = await fetch(url, signal ? { signal } : undefined);
+    diagnostic.httpStatus = response.status;
+    const text = await response.text();
+    diagnostic.fetchFinishedAt = nowIso();
+    diagnostic.elapsedMs = Date.now() - startedMs;
+
+    if (!response.ok) {
+      diagnostic.responseBodyPrefix = bodyPrefix(text);
+      diagnostic.failedReason = `openlibrary_http_${response.status}`;
+      return { docs: [], diagnostic, responseBodyPrefix: diagnostic.responseBodyPrefix };
+    }
+
+    try {
+      const json = JSON.parse(text);
+      const docs = Array.isArray(json?.docs) ? json.docs : [];
+      diagnostic.docsReturned = docs.length;
+      return { docs, diagnostic };
+    } catch (error: any) {
+      diagnostic.responseBodyPrefix = bodyPrefix(text);
+      diagnostic.failedReason = `openlibrary_json_parse_failed:${error?.message || String(error)}`;
+      return { docs: [], diagnostic, responseBodyPrefix: diagnostic.responseBodyPrefix };
+    }
+  } catch (error: any) {
+    const cause = error?.cause;
+    const causeDetail = cause?.code || cause?.message || "";
+    const message = [String(error?.message || error || "openlibrary_fetch_failed"), causeDetail ? `cause:${causeDetail}` : ""].filter(Boolean).join(" ");
+    diagnostic.fetchFinishedAt = nowIso();
+    diagnostic.elapsedMs = Date.now() - startedMs;
+    diagnostic.timedOut = Boolean(signal?.aborted || /aborted|abort|timeout/i.test(message));
+    diagnostic.failedReason = message;
+    return { docs: [], diagnostic };
+  }
+}
+
 export const openLibrarySourceAdapter: SourceAdapterV2 = {
   source: "openLibrary",
   async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult> {
@@ -115,6 +169,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const rawItems: unknown[] = [];
     const rawTitles: string[] = [];
     const dropReasons: Record<string, number> = {};
+    const fetches: SourceFetchDiagnosticV2[] = [];
     let rawApiResultCount = 0;
     let failedReason = "";
 
@@ -129,59 +184,78 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             rawCount: rawItems.length,
             normalizedCount: rawItems.length,
             rawTitles,
-            failedReason: "openlibrary_aborted_before_query_complete",
+            failedReason: "openlibrary_aborted_before_query_start",
+            fetches,
           }),
         };
       }
 
-      try {
-        const response = await fetch(openLibraryUrl(query, OPEN_LIBRARY_DOCS_PER_QUERY), context.signal ? { signal: context.signal } : undefined);
-        if (!response.ok) {
-          failedReason = `openlibrary_http_${response.status}`;
-          break;
-        }
-        const json = await response.json();
-        const docs = Array.isArray(json?.docs) ? json.docs : [];
-        rawApiResultCount += docs.length;
-        for (const doc of docs) {
-          const title = String(doc?.title || "").trim();
-          if (title) rawTitles.push(title);
-          if (!title) {
-            dropReasons.missing_title = Number(dropReasons.missing_title || 0) + 1;
-            continue;
-          }
-          if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) {
-            dropReasons.missing_author = Number(dropReasons.missing_author || 0) + 1;
-            continue;
-          }
-          rawItems.push(normalizeOpenLibraryDoc(doc, query));
-          if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
-        }
-      } catch (error: any) {
-        const cause = error?.cause;
-        const causeDetail = cause?.code || cause?.message || "";
-        const message = [String(error?.message || error || "openlibrary_fetch_failed"), causeDetail ? `cause:${causeDetail}` : ""].filter(Boolean).join(" ");
-        if (context.signal?.aborted || /aborted|abort|timeout/i.test(message)) {
-          return {
-            source: "openLibrary",
-            status: "timed_out",
-            rawItems,
-            diagnostics: emptyDiagnostics(plan, "timed_out", startedAt, {
-              queries,
-              rawCount: rawItems.length,
-              normalizedCount: rawItems.length,
-              rawTitles: uniqueStrings(rawTitles, 10),
-              failedReason: message,
-              rawApiResultCount,
-              droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
-              dropReasons,
-            }),
-          };
-        }
-        failedReason = message;
+      const { docs, diagnostic } = await fetchOpenLibraryDocs(query, OPEN_LIBRARY_DOCS_PER_QUERY, context.signal);
+      fetches.push(diagnostic);
+      if (diagnostic.timedOut) {
+        return {
+          source: "openLibrary",
+          status: "timed_out",
+          rawItems,
+          diagnostics: emptyDiagnostics(plan, "timed_out", startedAt, {
+            queries,
+            rawCount: rawItems.length,
+            normalizedCount: rawItems.length,
+            rawTitles: uniqueStrings(rawTitles, 10),
+            failedReason: diagnostic.failedReason || "openlibrary_fetch_timed_out",
+            rawApiResultCount,
+            droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
+            dropReasons,
+            fetches,
+          }),
+        };
+      }
+      if (diagnostic.failedReason) {
+        failedReason = diagnostic.failedReason;
         break;
       }
+
+      rawApiResultCount += docs.length;
+      for (const doc of docs) {
+        const title = String(doc?.title || "").trim();
+        if (title) rawTitles.push(title);
+        if (!title) {
+          dropReasons.missing_title = Number(dropReasons.missing_title || 0) + 1;
+          continue;
+        }
+        if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) {
+          dropReasons.missing_author = Number(dropReasons.missing_author || 0) + 1;
+          continue;
+        }
+        rawItems.push(normalizeOpenLibraryDoc(doc, query));
+        if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
+      }
       if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
+    }
+
+    if (!rawItems.length && !context.signal?.aborted && queries[0]?.toLowerCase() !== OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY) {
+      const { diagnostic } = await fetchOpenLibraryDocs(OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, 1, context.signal, true);
+      fetches.push(diagnostic);
+      if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
+    }
+
+    if (context.signal?.aborted) {
+      return {
+        source: "openLibrary",
+        status: "timed_out",
+        rawItems,
+        diagnostics: emptyDiagnostics(plan, "timed_out", startedAt, {
+          queries,
+          rawCount: rawItems.length,
+          normalizedCount: rawItems.length,
+          rawTitles: uniqueStrings(rawTitles, 10),
+          failedReason: failedReason || "openlibrary_aborted_after_query_complete",
+          rawApiResultCount,
+          droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
+          dropReasons,
+          fetches,
+        }),
+      };
     }
 
     const finishedAt = nowIso();
@@ -208,6 +282,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         rawApiResultCount,
         droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
         dropReasons,
+        fetches,
       },
     };
   },

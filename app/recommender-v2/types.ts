@@ -73,6 +73,21 @@ export interface SearchPlan {
   diagnostics: Record<string, unknown>;
 }
 
+
+export interface SourceFetchDiagnosticV2 {
+  query: string;
+  fetchStartedAt?: string;
+  fetchFinishedAt?: string;
+  elapsedMs?: number;
+  timedOut: boolean;
+  httpStatus?: number;
+  fetchPath?: "direct" | "proxy";
+  responseBodyPrefix?: string;
+  failedReason?: string;
+  docsReturned?: number;
+  diagnosticOnly?: boolean;
+}
+
 export interface SourceDiagnosticV2 {
   source: SourceIdV2;
   status: SourceStatusV2;
@@ -92,6 +107,7 @@ export interface SourceDiagnosticV2 {
   rawApiResultCount?: number;
   droppedBeforeDocCount?: number;
   dropReasons?: Record<string, number>;
+  fetches?: SourceFetchDiagnosticV2[];
 }
 
 export interface SourceResult {
