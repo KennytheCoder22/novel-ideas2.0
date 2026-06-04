@@ -4302,6 +4302,8 @@ export async function getRecommendations(
   const comicVineResultShapeByQuery: Record<string, any> = {};
   const comicVineFirstTitlesByQuery: Record<string, string[]> = {};
   const comicVineAdapterConversionDiagnostics: Record<string, any> = {};
+  const comicVineDirectProbeDiagnostics: Array<{ query: string; httpStatus: number; timedOut: boolean; rawCount: number; returnedTitles: string[]; bodyPrefix: string; error: string }> = [];
+  let comicVineFetchFailureError = "";
   const writeDurableComicVineDispatchState = (extra?: Record<string, any>) => {
     try {
       (globalThis as any).__novelIdeasComicVineDispatchState = {
@@ -4323,6 +4325,8 @@ export async function getRecommendations(
         comicVineResultShapeByQuery,
         comicVineFirstTitlesByQuery,
         comicVineAdapterConversionDiagnostics,
+        comicVineDirectProbeDiagnostics,
+        comicVineFetchFailureError,
         comicVineDispatchStageDiagnostics,
         ...(extra || {}),
       };
@@ -5275,6 +5279,7 @@ export async function getRecommendations(
         } else if (gcdResult?.status === "rejected") {
           const reason: any = (gcdResult as PromiseRejectedResult).reason;
           const reasonText = String(reason?.message || reason || "comicvine_fetch_failed");
+          comicVineFetchFailureError = reasonText;
           comicVineAdapterStatus = reasonText.includes("403") ? "proxy_403" : "proxy_error";
           comicVineFetchResults.push({
             query,
@@ -5291,11 +5296,32 @@ export async function getRecommendations(
           comicVineCandidateCountByQuery[query] = 0;
           comicVineResultShapeByQuery[query] = { resultType: "error", error: reasonText };
           comicVineFirstTitlesByQuery[query] = [];
+          const probeQueries = ["Batman", "Spider-Man", "Ms. Marvel"];
+          const probeResults = await Promise.all(probeQueries.map(async (probeQuery) => {
+            try {
+              const probe = await lookupComicVineExactTitleMetadata(probeQuery, 2_000, 5);
+              return {
+                query: probeQuery,
+                httpStatus: Number(probe.httpStatus || 0),
+                timedOut: Boolean(probe.timedOut),
+                rawCount: Number(probe.rawCount || 0),
+                returnedTitles: Array.isArray(probe.returnedTitles) ? probe.returnedTitles.slice(0, 5) : [],
+                bodyPrefix: String(probe.bodyPrefix || "").slice(0, 240),
+                error: String(probe.error || ""),
+              };
+            } catch (probeErr: any) {
+              const message = String(probeErr?.message || probeErr || "comicvine_probe_failed");
+              return { query: probeQuery, httpStatus: 0, timedOut: message.toLowerCase().includes("timeout"), rawCount: 0, returnedTitles: [], bodyPrefix: message.slice(0, 240), error: message };
+            }
+          }));
+          comicVineDirectProbeDiagnostics.push(...probeResults);
           writeDurableComicVineDispatchState({
             stage: timedOut ? "after_comicvine_fetch_timeout" : "after_comicvine_fetch_failed",
             laneIndex: lanei,
             query,
             error: reasonText,
+            comicVineDirectProbeDiagnostics,
+            comicVineFetchFailureError,
           });
           comicVineDispatchStageDiagnostics.push({
             laneIndex: lanei,
@@ -5533,6 +5559,8 @@ export async function getRecommendations(
       comicVineRawCountByQuery,
       comicVineDocCountByQuery,
       comicVineCandidateCountByQuery,
+      comicVineDirectProbeDiagnostics,
+      comicVineFetchFailureError,
       comicVineDispatchStageDiagnostics,
       routerPhaseHistory,
       debugGcdDispatchTrace: (globalThis as any).__novelIdeasComicVineDispatchState,
@@ -7815,6 +7843,8 @@ const normalizedCandidatesRaw = [
     comicVineFetchStartedAt,
     comicVineFetchFinishedAt,
     comicVineFetchTimedOut,
+    comicVineDirectProbeDiagnostics,
+    comicVineFetchFailureError,
     comicVineDispatchStageDiagnostics,
     sourceEnabledComicVine: Boolean(sourceEnabled.comicVine),
     traceSource: "router" as const,
@@ -16165,6 +16195,8 @@ const normalizedCandidatesRaw = [
     comicVineFetchStartedAt,
     comicVineFetchFinishedAt,
     comicVineFetchTimedOut,
+    comicVineDirectProbeDiagnostics,
+    comicVineFetchFailureError,
     comicVineRawCountByQuery,
     comicVineDocCountByQuery,
     comicVineCandidateCountByQuery,

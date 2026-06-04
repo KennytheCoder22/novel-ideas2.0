@@ -1247,7 +1247,7 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   const followupDropped: Array<{ query: string; reason: string }> = [];
   const baseAnchorsFetched: string[] = [];
   const followupBudgetByAnchor: Record<string, number> = Object.fromEntries(baseAnchors.map((a) => [a, 0]));
-  const selectedAnchorsForFetch = queriesToTry.filter((q) => knownAnchorPattern.test(q));
+  const selectedAnchorsForFetch = queriesToTry.filter((q) => knownAnchorPattern.test(String(q || "")));
   const droppedAnchors = anchorQueries.filter((q) => !selectedAnchorsForFetch.includes(q));
   const fetchBudget = queriesToTry.length;
   let genericBudgetConsumed = 0;
@@ -1696,9 +1696,9 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   };
 }
 
-export async function lookupComicVineExactTitleMetadata(query: string, timeoutMs = 2_500, limit = 8): Promise<{ query: string; rawCount: number; docs: RecommendationDoc[]; returnedTitles: string[]; error: string }> {
+export async function lookupComicVineExactTitleMetadata(query: string, timeoutMs = 2_500, limit = 8): Promise<{ query: string; rawCount: number; docs: RecommendationDoc[]; returnedTitles: string[]; error: string; httpStatus?: number; timedOut?: boolean; bodyPrefix?: string }> {
   const cleanQuery = stripDanglingQuotes(String(query || "").trim());
-  if (!cleanQuery) return { query: cleanQuery, rawCount: 0, docs: [], returnedTitles: [], error: "empty_query" };
+  if (!cleanQuery) return { query: cleanQuery, rawCount: 0, docs: [], returnedTitles: [], error: "empty_query", httpStatus: 0, timedOut: false, bodyPrefix: "" };
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -1706,8 +1706,11 @@ export async function lookupComicVineExactTitleMetadata(query: string, timeoutMs
       signal: controller.signal,
       headers: { Accept: "application/json" },
     });
-    if (!resp.ok) throw new Error(`ComicVine exact title error: ${resp.status}`);
-    const payload = await resp.json();
+    const httpStatus = resp.status;
+    const bodyText = await resp.text();
+    const bodyPrefix = bodyText.slice(0, 240);
+    if (!resp.ok) return { query: cleanQuery, rawCount: 0, docs: [], returnedTitles: [], error: `ComicVine exact title error: ${resp.status}`, httpStatus, timedOut: false, bodyPrefix };
+    const payload = bodyText ? JSON.parse(bodyText) : {};
     const results = Array.isArray(payload?.results) ? payload.results : [];
     const docs = results
       .map((issue: any) => {
@@ -1728,9 +1731,10 @@ export async function lookupComicVineExactTitleMetadata(query: string, timeoutMs
       .map((issue: any) => String(issue?.volume?.name || issue?.series?.name || issue?.series_name || issue?.name || issue?.title || "").trim())
       .filter(Boolean)
       .slice(0, limit);
-    return { query: cleanQuery, rawCount: results.length, docs, returnedTitles, error: "" };
+    return { query: cleanQuery, rawCount: results.length, docs, returnedTitles, error: "", httpStatus, timedOut: false, bodyPrefix };
   } catch (err: any) {
-    return { query: cleanQuery, rawCount: 0, docs: [], returnedTitles: [], error: String(err?.message || err || "unknown") };
+    const message = String(err?.message || err || "unknown");
+    return { query: cleanQuery, rawCount: 0, docs: [], returnedTitles: [], error: message, httpStatus: 0, timedOut: message.toLowerCase().includes("abort") || message.toLowerCase().includes("timeout"), bodyPrefix: message.slice(0, 240) };
   } finally {
     clearTimeout(timer);
   }

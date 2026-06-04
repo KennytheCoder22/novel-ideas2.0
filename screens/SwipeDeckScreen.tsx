@@ -3230,6 +3230,8 @@ function handleLeft() {
       `debugComicVineDispatchTrace.comicVineFetchStartedAt:${String((lastDebugGcdDispatchTrace as any)?.comicVineFetchStartedAt || "(none)")}`,
       `debugComicVineDispatchTrace.comicVineFetchFinishedAt:${String((lastDebugGcdDispatchTrace as any)?.comicVineFetchFinishedAt || "(none)")}`,
       `debugComicVineDispatchTrace.comicVineFetchTimedOut:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineFetchTimedOut)}`,
+      `debugComicVineDispatchTrace.comicVineFetchFailureError:${String((lastDebugGcdDispatchTrace as any)?.comicVineFetchFailureError || "(none)")}`,
+      `debugComicVineDispatchTrace.comicVineDirectProbeDiagnostics:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineDirectProbeDiagnostics || [])}`,
       `debugComicVineDispatchTrace.comicVineRawCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineRawCountByQuery || (lastRecommendationResult as any)?.comicVineRawCountByQuery || {})}`,
       `debugComicVineDispatchTrace.comicVineDocCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineDocCountByQuery || (lastRecommendationResult as any)?.comicVineDocCountByQuery || {})}`,
       `debugComicVineDispatchTrace.comicVineCandidateCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineCandidateCountByQuery || (lastRecommendationResult as any)?.comicVineCandidateCountByQuery || {})}`,
