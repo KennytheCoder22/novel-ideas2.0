@@ -3261,7 +3261,7 @@ export async function getRecommendations(
 
   const kitsuEligibility = resolveKitsuEligibility(routedInput);
   const includeKitsu = sourceEnabled.kitsu;
-  const comicVineDispatchBypassGuard = true;
+  const comicVineDispatchBypassGuard = false;
   const includeComicVine = shouldUseComicVine(routedInput) && !comicVineDispatchBypassGuard;
   const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && shouldUseComicVine(routedInput));
   const kitsuEnabledAtRequestStart = Boolean(enabledSourcesAtRequestStart.kitsu);
