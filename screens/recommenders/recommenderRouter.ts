@@ -8483,6 +8483,8 @@ const normalizedCandidatesRaw = [
   const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
   const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
   const candidateWeightedTasteScoreByTitle: Record<string, number> = {};
+  const kitsuTeenEvidenceTextFieldsByTitle: Record<string, string[]> = {};
+  const kitsuTeenKnownTitleFacetEvidenceByTitle: Record<string, string[]> = {};
   const candidateDislikePenaltyByTitle: Record<string, number> = {};
   const candidateSkipPenaltyByTitle: Record<string, number> = {};
   const singleTokenQueryHijackPenaltyByTitle: Record<string, number> = {};
@@ -8533,9 +8535,49 @@ const normalizedCandidatesRaw = [
     return "";
   };
   const genericNarrativeRoots = new Set(["fantasy","survival","horror","mystery","adventure","dark","apocalypse","thriller","science-fiction","science fiction"]);
+  const knownTeenKitsuTitleFacetRows: Array<{ re: RegExp; facets: string[] }> = [
+    { re: /\bmonster\b/i, facets: ["psychological suspense", "mystery", "crime", "serial killer", "investigation", "murder", "horror"] },
+    { re: /\b(boku dake ga inai machi|erased)\b/i, facets: ["psychological suspense", "mystery", "crime", "time travel", "serial killer", "investigation", "murder"] },
+    { re: /\b(kyokou suiri|in spectre|invented inference)\b/i, facets: ["supernatural mystery", "detective", "investigation", "yokai", "spirit", "mystery"] },
+    { re: /\bundead girl murder farce\b/i, facets: ["supernatural mystery", "detective", "murder", "investigation", "victorian", "horror"] },
+    { re: /\bmystery to iu nakare\b/i, facets: ["mystery", "investigation", "detective", "psychological", "case"] },
+    { re: /\broppyaku page no mystery\b/i, facets: ["mystery", "investigation", "case", "psychological"] },
+  ];
+  const knownTeenKitsuFacetsForTitle = (title: string): string[] => {
+    const clean = String(title || "").trim();
+    if (!clean) return [];
+    return Array.from(new Set(knownTeenKitsuTitleFacetRows.flatMap((row) => row.re.test(clean) ? row.facets : [])));
+  };
+  const teenKitsuEvidencePiecesForDoc = (doc: any): string[] => {
+    const rawDoc = doc?.rawDoc || {};
+    const attrs = doc?.attributes || rawDoc?.attributes || doc?.raw?.attributes || {};
+    const title = String(doc?.title || doc?.canonicalTitle || rawDoc?.title || attrs?.canonicalTitle || "").trim();
+    const rawCategories = Array.isArray(attrs?.categories) ? attrs.categories : [];
+    const pieces = [
+      title,
+      doc?.canonicalTitle,
+      doc?.subtitle,
+      doc?.description,
+      rawDoc?.description,
+      rawDoc?.synopsis,
+      attrs?.synopsis,
+      doc?.queryText,
+      rawDoc?.queryText,
+      doc?.queryFamily,
+      doc?.filterFamily,
+      ...(Array.isArray(doc?.subject) ? doc.subject : []),
+      ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+      ...(Array.isArray(doc?.categories) ? doc.categories : []),
+      ...(Array.isArray(doc?.genres) ? doc.genres : []),
+      ...(Array.isArray(doc?.volumeInfo?.categories) ? doc.volumeInfo.categories : []),
+      ...rawCategories.map((category: any) => category?.title || category?.name || category),
+      ...((detectCandidateSourceForGate(doc) === "kitsu" || String(doc?.source || "").toLowerCase().includes("kitsu")) ? knownTeenKitsuFacetsForTitle(title) : []),
+    ].map((value) => String(value || "").trim()).filter(Boolean);
+    return Array.from(new Set(pieces));
+  };
   const semanticPrefiltered = finalRenderDocs.filter((doc: any) => {
     const title = String(doc?.title || "").trim();
-    const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+    const text = normalizeText(teenKitsuEvidencePiecesForDoc(doc).join(" ") || `${title} ${String(doc?.description || "")}`);
     const packagingOnly = /\b(limited series|collected edition|trade paperback|hardcover|tpb|collection|archives?|anthology)\b/i.test(text);
     const hasNarrative = /\b(story|character|conspiracy|investigation|psychological|survival|identity|relationship|journey|murder|mystery|thriller)\b/i.test(text);
     const hasTasteOverlap = weightedSwipeTasteVector.liked.some((row) => text.includes(normalizeText(row.signal)));
@@ -8557,9 +8599,25 @@ const normalizedCandidatesRaw = [
         pushReason(penaltyReasonsByTitle, title, invalidReason);
         return null;
       }
-      const text = normalizeText(`${title} ${String(doc?.description || "")}`);
+      const evidencePieces = teenKitsuEvidencePiecesForDoc(doc);
+      const text = normalizeText(evidencePieces.join(" ") || `${title} ${String(doc?.description || "")}`);
       const queryText = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
-      const matchedLikedWeighted = weightedSwipeTasteVector.liked.filter((row) => text.includes(normalizeText(row.signal)));
+      const isKitsuScoringDoc = detectCandidateSourceForGate(doc) === "kitsu" || String(doc?.source || "").toLowerCase().includes("kitsu");
+      if (isKitsuScoringDoc) {
+        kitsuTeenEvidenceTextFieldsByTitle[title] = evidencePieces.slice(0, 24);
+        const knownFacets = knownTeenKitsuFacetsForTitle(title);
+        if (knownFacets.length > 0) kitsuTeenKnownTitleFacetEvidenceByTitle[title] = knownFacets;
+      }
+      const normalizedQueryTokensForTaste = queryText.split(/\s+/).filter((token) => token.length >= 4 && !/\b(comic|series|collected|edition|volume|trade|paperback|graphic|novel|manga|anime)\b/.test(token));
+      const queryFacetTasteRows = isKitsuScoringDoc
+        ? normalizedQueryTokensForTaste
+          .filter((token) => text.includes(token) && /^(psychological|suspense|supernatural|mystery|horror|crime|detective|investigation|murder|thriller|fantasy|adventure|dystopian|survival)$/.test(token))
+          .map((token) => ({ signal: `query:${token}`, weight: 1 }))
+        : [];
+      const matchedLikedWeighted = [
+        ...weightedSwipeTasteVector.liked.filter((row) => text.includes(normalizeText(row.signal))),
+        ...queryFacetTasteRows,
+      ];
       const matchedDislikedWeighted = weightedSwipeTasteVector.disliked.filter((row) => text.includes(normalizeText(row.signal)));
       const matchedSkippedWeighted = weightedSwipeTasteVector.skipped.filter((row) => text.includes(normalizeText(row.signal)));
       const matchedLiked = matchedLikedWeighted.map((r) => r.signal).slice(0, 8);
@@ -8569,7 +8627,8 @@ const normalizedCandidatesRaw = [
       const dislikePenalty = matchedDislikedWeighted.reduce((acc, row) => acc + row.weight * 1.25, 0);
       const skipPenalty = matchedSkippedWeighted.reduce((acc, row) => acc + row.weight * 0.45, 0);
       const tastePenaltyScore = dislikePenalty + skipPenalty;
-      const laneMatch = /\b(thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(text);
+      const laneMatch = /\b(thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(text)
+        || (isKitsuScoringDoc && /\b(suspense|crime|detective|investigation|murder|serial killer|horror|supernatural|occult|ghost|monster)\b/.test(text));
       const themeOverlap = profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
       const root = parentFranchiseRootForDoc(doc);
       const isGenericRoot = genericNarrativeRoots.has(String(root || "").toLowerCase());
@@ -8635,7 +8694,8 @@ const normalizedCandidatesRaw = [
         (themeOverlap ? 1 : 0) +
         (franchiseAffinity ? 1 : 0) +
         (narrativeOverlap ? 1 : 0) +
-        (curatedFranchiseMetadataSupport ? 1 : 0);
+        (curatedFranchiseMetadataSupport ? 1 : 0) +
+        (queryFacetTasteRows.length > 0 ? 1 : 0);
       const semanticSupportFound = semanticEvidenceCount > 0 || curatedFranchiseMetadataSupport;
       const structuralBoostsAllowed = semanticSupportFound;
       const starterSignalScore = starterSignal && structuralBoostsAllowed ? 0.8 : 0;
@@ -15583,6 +15643,8 @@ const normalizedCandidatesRaw = [
     kitsuTeenRescueTierByTitle,
     kitsuTeenRescueSemanticEvidenceByTitle,
     kitsuTeenRescueTasteEvidenceByTitle,
+    kitsuTeenEvidenceTextFieldsByTitle,
+    kitsuTeenKnownTitleFacetEvidenceByTitle,
     kitsuTeenRescueLaneAlignmentByTitle,
     kitsuTeenRescueFamilyAlignmentByTitle,
     kitsuTeenTasteEvidenceSignalsByTitle,

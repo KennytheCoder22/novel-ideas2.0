@@ -2388,6 +2388,8 @@ function handleLeft() {
       `kitsuTeenRescueTierByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueTierByTitle") || {})}`,
       `kitsuTeenRescueSemanticEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueSemanticEvidenceByTitle") || {})}`,
       `kitsuTeenRescueTasteEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueTasteEvidenceByTitle") || {})}`,
+      `kitsuTeenEvidenceTextFieldsByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenEvidenceTextFieldsByTitle") || {})}`,
+      `kitsuTeenKnownTitleFacetEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenKnownTitleFacetEvidenceByTitle") || {})}`,
       `kitsuTeenRescueLaneAlignmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueLaneAlignmentByTitle") || {})}`,
       `kitsuTeenRescueFamilyAlignmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFamilyAlignmentByTitle") || {})}`,
       `kitsuTeenTasteEvidenceSignalsByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenTasteEvidenceSignalsByTitle") || {})}`,
