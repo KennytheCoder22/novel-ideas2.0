@@ -88,6 +88,10 @@ export interface SourceFetchDiagnosticV2 {
   firstReturnedTitles?: string[];
   responseShape?: "docs_array" | "missing_docs_array";
   diagnosticOnly?: boolean;
+  originalPlannedQuery?: string;
+  queryCascadeIndex?: number;
+  queryFamily?: string;
+  facets?: string[];
 }
 
 export interface SourceDiagnosticV2 {
@@ -112,6 +116,7 @@ export interface SourceDiagnosticV2 {
   droppedBeforeDocCount?: number;
   dropReasons?: Record<string, number>;
   fetches?: SourceFetchDiagnosticV2[];
+  rawItemPreview?: Record<string, unknown>[];
 }
 
 export interface SourceResult {

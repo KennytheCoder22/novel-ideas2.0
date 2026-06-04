@@ -35,7 +35,16 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
         publicationYear: Number.isFinite(Number(row.publicationYear || row.first_publish_year)) ? Number(row.publicationYear || row.first_publish_year) : undefined,
         sourceUrl: String(row.sourceUrl || row.url || "").trim() || undefined,
         raw,
-        diagnostics: { sourceStatus: result.status, queryText: row.queryText },
+        diagnostics: {
+          sourceStatus: result.status,
+          queryText: row.queryText,
+          originalPlannedQuery: row.originalPlannedQuery,
+          simplifiedOpenLibraryQuery: row.simplifiedOpenLibraryQuery,
+          queryCascadeIndex: row.queryCascadeIndex,
+          queryFamily: row.queryFamily,
+          facets: row.facets,
+          authors: row.authors || row.author_name || row.creators,
+        },
       });
     }
     result.diagnostics.normalizedCount = candidates.filter((candidate) => candidate.source === result.source).length;

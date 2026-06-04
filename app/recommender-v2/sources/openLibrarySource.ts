@@ -6,6 +6,36 @@ const OPEN_LIBRARY_DOCS_PER_QUERY = 8;
 const OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY = "fantasy";
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
 
+type OpenLibraryQueryPlan = {
+  query: string;
+  originalPlannedQuery: string;
+  queryCascadeIndex: number;
+  queryFamily: string;
+  facets: string[];
+};
+
+const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
+  "identity",
+  "family",
+  "friendship",
+  "emotional",
+  "growth",
+  "emotional growth",
+  "self discovery",
+  "coming of age",
+  "relationships",
+  "belonging",
+  "indie",
+  "mshs",
+  "teen",
+  "teens",
+]);
+
+const MEDIA_FORMAT_TERMS = new Set(["anime", "game", "games", "gaming", "tv", "television", "movie", "movies", "film", "films"]);
+const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|graphic novel|manga|comic)\b/i;
+const CLASSIC_DRIFT_AUTHOR = /\b(mark twain|william shakespeare|h\.?\s*g\.? wells|h g wells|charles dickens|jane austen|robert louis stevenson|jules verne|lewis carroll|arthur conan doyle|homer|plato)\b/i;
+const CLASSIC_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain)\b/i;
+
 function nowIso(): string {
   return new Date().toISOString();
 }
@@ -25,20 +55,47 @@ function uniqueStrings(values: unknown[], limit = 24): string[] {
   return output;
 }
 
+function dedupeOpenLibraryTerms(value: string): string {
+  const terms = value.split(/\s+/).filter(Boolean);
+  return uniqueStrings(terms, 6).join(" ");
+}
+
 function cleanOpenLibraryQueryPart(value: unknown): string {
-  return String(value || "")
+  const normalized = String(value || "")
     .toLowerCase()
     .replace(/\b(indie\s+genre|mshs|middle\s+school\s+high\s+school|genre|genres|teen|teens|teenage|ya|young\s+adult|reader\s+discovery)\b/g, " ")
+    .replace(/\b(identity|family|friendship|emotional\s+growth|emotional|growth|self\s+discovery|coming\s+of\s+age|relationships?|belonging)\b/g, " ")
+    .replace(/\b(anime|games?|gaming|tv|television|movies?|films?)\b/g, " ")
     .replace(/\b(book|books|story|stories|novel|novels)\b/g, " ")
     .replace(/[^a-z0-9\s-]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+  return dedupeOpenLibraryTerms(normalized);
 }
 
 function isUsefulOpenLibraryQueryPart(value: string): boolean {
   if (!value) return false;
   if (value.length < 3) return false;
-  return !/^(and|or|the|with|for|adult|kids|preteens|children)$/.test(value);
+  if (/^(and|or|the|with|for|adult|kids|preteens|children)$/.test(value)) return false;
+  if (ABSTRACT_OPEN_LIBRARY_TERMS.has(value)) return false;
+  if (MEDIA_FORMAT_TERMS.has(value)) return false;
+  return true;
+}
+
+function isGenreLikeOpenLibraryPart(value: string): boolean {
+  return isUsefulOpenLibraryQueryPart(value) && GENRE_QUERY_HINT.test(value);
+}
+
+function queryFamilyForOpenLibraryQuery(query: string): string {
+  const q = query.toLowerCase();
+  if (/\bfantasy|paranormal|supernatural\b/.test(q)) return "fantasy";
+  if (/\bromance|historical\b/.test(q)) return "romance_historical";
+  if (/\bmystery|thriller|horror|suspense\b/.test(q)) return "mystery_thriller";
+  if (/\bscience fiction|sci-fi|speculative|dystopian\b/.test(q)) return "speculative";
+  if (/\badventure|action\b/.test(q)) return "adventure";
+  if (/\bcomedy|humor\b/.test(q)) return "comedy";
+  if (/\bgraphic novel|manga|comic\b/.test(q)) return "graphic";
+  return "open_library_broad";
 }
 
 function combineOpenLibraryQueryParts(primary: string, modifier?: string): string {
@@ -47,25 +104,35 @@ function combineOpenLibraryQueryParts(primary: string, modifier?: string): strin
   return uniqueParts.join(" ").trim();
 }
 
-function buildOpenLibraryQueries(plan: SourcePlan, profile: TasteProfile): string[] {
-  const genres = uniqueStrings(profile.genreFamily.map((row) => cleanOpenLibraryQueryPart(row.value)).filter(isUsefulOpenLibraryQueryPart), 2);
-  const modifiers = uniqueStrings([
-    ...profile.themes.map((row) => cleanOpenLibraryQueryPart(row.value)),
-    ...profile.tone.map((row) => cleanOpenLibraryQueryPart(row.value)),
-  ].filter(isUsefulOpenLibraryQueryPart), 4);
-  const plannedFallbacks = plan.intents
-    .map((intent) => cleanOpenLibraryQueryPart(intent.query))
+function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): OpenLibraryQueryPlan[] {
+  const plannedIntents = plan.intents.length ? plan.intents : [{ query: OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, facets: [], id: "open-library-fallback", priority: 0, rationale: [] }];
+  const originalPlannedQuery = String(plannedIntents[0]?.query || "");
+  const genres = uniqueStrings(profile.genreFamily.map((row) => cleanOpenLibraryQueryPart(row.value)).filter(isGenreLikeOpenLibraryPart), 3);
+  const plannedGenreFallbacks = uniqueStrings(plannedIntents
+    .flatMap((intent) => [intent.query, ...(intent.facets || [])])
+    .map(cleanOpenLibraryQueryPart)
+    .filter(isGenreLikeOpenLibraryPart), 3);
+  const genreTerms = uniqueStrings([...genres, ...plannedGenreFallbacks], 3);
+  const fallbackTerms = uniqueStrings(plannedIntents
+    .flatMap((intent) => [intent.query, ...(intent.facets || [])])
+    .map(cleanOpenLibraryQueryPart)
     .filter(isUsefulOpenLibraryQueryPart)
     .map((query) => query.split(" ").filter(isUsefulOpenLibraryQueryPart).slice(0, 2).join(" "))
-    .filter(isUsefulOpenLibraryQueryPart);
+    .filter(isUsefulOpenLibraryQueryPart), 2);
 
-  const candidates = [
-    combineOpenLibraryQueryParts(genres[0] || plannedFallbacks[0] || "", modifiers[0]),
-    combineOpenLibraryQueryParts(genres[1] || "", modifiers.find((modifier) => modifier !== modifiers[0])),
-    genres[0] || plannedFallbacks[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
+  const queryCandidates = [
+    combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
+    combineOpenLibraryQueryParts(genreTerms[1] || "", genreTerms[2]),
+    genreTerms[0] || fallbackTerms[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
   ];
 
-  return uniqueStrings(candidates.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT);
+  return uniqueStrings(queryCandidates.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT).map((query, index) => ({
+    query,
+    originalPlannedQuery,
+    queryCascadeIndex: index,
+    queryFamily: queryFamilyForOpenLibraryQuery(query),
+    facets: uniqueStrings([...(plannedIntents[index]?.facets || []), ...genreTerms].map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+  }));
 }
 
 function openLibraryRequest(query: string, limit: number): { url: string; fetchPath: "direct" | "proxy" } {
@@ -79,7 +146,8 @@ function bodyPrefix(value: string): string | undefined {
   return trimmed ? trimmed.slice(0, RESPONSE_BODY_PREFIX_LIMIT) : undefined;
 }
 
-function normalizeOpenLibraryDoc(doc: any, query: string) {
+function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
+  const query = queryPlan.query;
   const key = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || "").trim();
   const title = String(doc?.title || "").trim();
   const authors = uniqueStrings(Array.isArray(doc?.author_name) ? doc.author_name : []);
@@ -111,6 +179,11 @@ function normalizeOpenLibraryDoc(doc: any, query: string) {
     cover_i: doc?.cover_i,
     source: "openLibrary",
     queryText: query,
+    originalPlannedQuery: queryPlan.originalPlannedQuery,
+    simplifiedOpenLibraryQuery: query,
+    queryCascadeIndex: queryPlan.queryCascadeIndex,
+    queryFamily: queryPlan.queryFamily,
+    facets: queryPlan.facets,
     rawOpenLibraryDoc: doc,
   };
 }
@@ -133,7 +206,8 @@ function emptyDiagnostics(plan: SourcePlan, status: SourceDiagnosticV2["status"]
   };
 }
 
-async function fetchOpenLibraryDocs(query: string, limit: number, signal?: AbortSignal, diagnosticOnly = false): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+  const query = queryPlan.query;
   const { url, fetchPath } = openLibraryRequest(query, limit);
   const fetchStartedAt = nowIso();
   const startedMs = Date.now();
@@ -143,6 +217,10 @@ async function fetchOpenLibraryDocs(query: string, limit: number, signal?: Abort
     timedOut: false,
     fetchPath,
     diagnosticOnly,
+    originalPlannedQuery: queryPlan.originalPlannedQuery,
+    queryCascadeIndex: queryPlan.queryCascadeIndex,
+    queryFamily: queryPlan.queryFamily,
+    facets: queryPlan.facets,
   };
 
   try {
@@ -203,6 +281,39 @@ function openLibraryEmptyReason(rawItems: unknown[], rawApiResultCount: number, 
   return "openlibrary_no_normalized_rows_after_fetch";
 }
 
+function isEnglishOpenLibraryDoc(doc: any): boolean {
+  const languages = Array.isArray(doc?.language) ? doc.language.map((value: any) => String(value || "").toLowerCase()) : [];
+  return languages.length === 0 || languages.includes("eng") || languages.includes("en");
+}
+
+function isClassicDriftOpenLibraryDoc(doc: any, query: string): boolean {
+  if (CLASSIC_QUERY_HINT.test(query)) return false;
+  const title = String(doc?.title || "");
+  const authors = Array.isArray(doc?.author_name) ? doc.author_name.join(" ") : "";
+  const firstPublishYear = Number(doc?.first_publish_year || 0);
+  if (CLASSIC_DRIFT_AUTHOR.test(`${title} ${authors}`)) return true;
+  return Boolean(firstPublishYear > 0 && firstPublishYear < 1900 && !/\bhistorical|history\b/i.test(query));
+}
+
+function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return true;
+  const firstPublishYear = Number(doc?.first_publish_year || 0);
+  if (!firstPublishYear || firstPublishYear >= 1950) return true;
+  const subjects = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+  ].join(" ").toLowerCase();
+  return /young adult|juvenile|teen|adolescent/.test(subjects);
+}
+
+function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile): { keep: boolean; reason?: string } {
+  if (!isEnglishOpenLibraryDoc(doc)) return { keep: false, reason: "non_english" };
+  if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) return { keep: false, reason: "missing_author" };
+  if (isClassicDriftOpenLibraryDoc(doc, query)) return { keep: false, reason: "classic_drift" };
+  if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
+  return { keep: true };
+}
+
 export const openLibrarySourceAdapter: SourceAdapterV2 = {
   source: "openLibrary",
   async search(plan: SourcePlan, context: { profile: TasteProfile; signal?: AbortSignal }): Promise<SourceResult> {
@@ -219,8 +330,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       };
     }
 
-    const queries = buildOpenLibraryQueries(plan, context.profile);
-    if (!queries.length) {
+    const queryPlans = buildOpenLibraryQueryPlans(plan, context.profile);
+    const queries = queryPlans.map((queryPlan) => queryPlan.query);
+    if (!queryPlans.length) {
       return {
         source: "openLibrary",
         status: "skipped",
@@ -239,7 +351,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let rawApiResultCount = 0;
     let failedReason = "";
 
-    for (const query of queries) {
+    for (const queryPlan of queryPlans) {
+      const query = queryPlan.query;
       if (context.signal?.aborted) {
         return {
           source: "openLibrary",
@@ -257,7 +370,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         };
       }
 
-      const { docs, diagnostic } = await fetchOpenLibraryDocs(query, OPEN_LIBRARY_DOCS_PER_QUERY, context.signal);
+      const { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, OPEN_LIBRARY_DOCS_PER_QUERY, context.signal);
       fetches.push(diagnostic);
       if (diagnostic.timedOut) {
         return {
@@ -292,18 +405,20 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           dropReasons.missing_title = Number(dropReasons.missing_title || 0) + 1;
           continue;
         }
-        if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) {
-          dropReasons.missing_author = Number(dropReasons.missing_author || 0) + 1;
+        const quality = shouldKeepOpenLibraryDoc(doc, query, context.profile);
+        if (!quality.keep) {
+          const reason = quality.reason || "quality_filter";
+          dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
           continue;
         }
-        rawItems.push(normalizeOpenLibraryDoc(doc, query));
+        rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
         if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
       }
       if (rawItems.length > 0) break;
     }
 
     if (!rawItems.length && !context.signal?.aborted && !queries.some((query) => query.toLowerCase() === OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY)) {
-      const { diagnostic } = await fetchOpenLibraryDocs(OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, 1, context.signal, true);
+      const { diagnostic } = await fetchOpenLibraryDocs({ query: OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "diagnostic_probe", facets: [] }, 1, context.signal, true);
       fetches.push(diagnostic);
       if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
     }
@@ -356,6 +471,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         rawApiResultCount,
         droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
         dropReasons,
+        rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),
         fetches,
       },
     };
