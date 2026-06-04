@@ -12636,6 +12636,12 @@ const normalizedCandidatesRaw = [
   const kitsuTeenSourceIdAtFinalGuardByTitle: Record<string, string> = {};
   const kitsuTeenSourceIdAfterFinalGuardByTitle: Record<string, string> = {};
   const kitsuTeenSourceIdAtReturnedItemByTitle: Record<string, string> = {};
+  const kitsuTeenSourceIdAtRawDocByTitle: Record<string, string> = {};
+  const kitsuTeenSourceIdAtNormalizedCandidateByTitle: Record<string, string> = {};
+  const kitsuTeenSourceIdAtRankedCandidateByTitle: Record<string, string> = {};
+  const kitsuTeenSourceIdAtFinalEligibilityInputByTitle: Record<string, string> = {};
+  const kitsuTeenSourceIdAtFinalGuardInputByTitle: Record<string, string> = {};
+  const kitsuTeenSourceIdAtSuppressionDecisionByTitle: Record<string, string> = {};
   const kitsuTeenSourceIdLostBeforeFinalGuardByTitle: Record<string, string> = {};
   const kitsuTeenMissingSourceIdButKnownKitsuIdByTitle: Record<string, string> = {};
   const kitsuTeenFinalEligibilityMissingSourceIdDespiteFinalGuardId: string[] = [];
@@ -12702,13 +12708,34 @@ const normalizedCandidatesRaw = [
   const detectKitsuSourceIdFromDoc = (doc: any) => detectKnownKitsuIdFromDoc(doc);
   const ensureKitsuSourceIdForRescue = (doc: any) => {
     if (!doc || typeof doc !== "object") return "";
-    const sourceId = detectKitsuSourceIdFromDoc(doc);
+    const title = String(doc?.title || doc?.canonicalTitle || doc?.rawDoc?.title || doc?.rawDoc?.canonicalTitle || "").trim();
+    const titleKnownSourceId = title ? String(teenKitsuKnownSourceIdByTitle[normalizeText(title)] || "").trim() : "";
+    const sourceId = detectKitsuSourceIdFromDoc(doc) || titleKnownSourceId;
     if (!sourceId) return "";
     doc.sourceId = doc.sourceId || sourceId;
     doc.canonicalId = doc.canonicalId || sourceId;
     doc.key = doc.key || sourceId;
+    if (doc.rawDoc && typeof doc.rawDoc === "object") {
+      doc.rawDoc.sourceId = doc.rawDoc.sourceId || sourceId;
+      doc.rawDoc.canonicalId = doc.rawDoc.canonicalId || sourceId;
+      doc.rawDoc.key = doc.rawDoc.key || sourceId;
+    }
     return sourceId;
   };
+  const recordTeenKitsuSourceIdStage = (doc: any, target: Record<string, string>) => {
+    if (!isTeenKitsuRescueContext || !doc || typeof doc !== "object") return;
+    const title = String(doc?.title || doc?.canonicalTitle || doc?.rawDoc?.title || doc?.rawDoc?.canonicalTitle || "").trim();
+    if (!title) return;
+    const sourceId = ensureKitsuSourceIdForRescue(doc) || detectKnownKitsuIdFromDoc(doc) || String(teenKitsuKnownSourceIdByTitle[normalizeText(title)] || "").trim();
+    if (sourceId) target[title] = sourceId;
+  };
+  for (const doc of (debugRawPool || []) as any[]) recordTeenKitsuSourceIdStage(doc, kitsuTeenSourceIdAtRawDocByTitle);
+  for (const doc of (normalizedCandidates || []) as any[]) recordTeenKitsuSourceIdStage(doc, kitsuTeenSourceIdAtNormalizedCandidateByTitle);
+  for (const doc of (rankedDocs || []) as any[]) recordTeenKitsuSourceIdStage(doc, kitsuTeenSourceIdAtRankedCandidateByTitle);
+  for (const doc of (finalRankedDocsBase || []) as any[]) recordTeenKitsuSourceIdStage(doc, kitsuTeenSourceIdAtRankedCandidateByTitle);
+  for (const doc of (finalRankedDocs || []) as any[]) recordTeenKitsuSourceIdStage(doc, kitsuTeenSourceIdAtRankedCandidateByTitle);
+  for (const doc of (finalRenderCandidateDocsBeforeGate || []) as any[]) recordTeenKitsuSourceIdStage(doc, kitsuTeenSourceIdAtFinalEligibilityInputByTitle);
+  for (const doc of (finalRenderDocs || []) as any[]) recordTeenKitsuSourceIdStage(doc, kitsuTeenSourceIdAtFinalEligibilityInputByTitle);
   const teenKitsuSearchTextForDoc = (doc: any) => {
     const raw = doc?.rawDoc || doc?.raw || {};
     const pieces = [
@@ -12965,7 +12992,9 @@ const normalizedCandidatesRaw = [
     const titleKeywordOnlyPenalty = teenKitsuTitleKeywordOnlyPenaltyReason(row);
     if (titleKeywordOnlyPenalty) kitsuTeenTitleKeywordOnlyPenaltyByTitle[title] = titleKeywordOnlyPenalty;
     kitsuTeenPositiveFitPenaltyTypeByTitle[title] = String(row?.teenKitsuPenaltyType || teenKitsuPenaltyTypeForRow(row));
-    kitsuTeenSourceIdAtFinalGuardByTitle[title] = String(row?.sourceId || "");
+    const finalGuardSourceId = String(row?.sourceId || detectKnownKitsuIdFromDoc(row?.doc || row) || (title ? teenKitsuKnownSourceIdByTitle[normalizeText(title)] || "" : "")).trim();
+    kitsuTeenSourceIdAtFinalGuardByTitle[title] = finalGuardSourceId;
+    kitsuTeenSourceIdAtFinalGuardInputByTitle[title] = finalGuardSourceId;
     if (!row?.sourceId && row?.knownKitsuId) kitsuTeenMissingSourceIdButKnownKitsuIdByTitle[title] = String(row.knownKitsuId);
     const docKnownId = detectKnownKitsuIdFromDoc(row?.doc || row);
     if (!row?.sourceId && docKnownId) kitsuTeenSourceIdLostBeforeFinalGuardByTitle[title] = docKnownId;
@@ -12977,6 +13006,7 @@ const normalizedCandidatesRaw = [
     if (!title) return;
     pushUniqueTeenKitsuDiagnosticTitle(kitsuTeenRescueFinalGuardSuppressedTitles, title);
     kitsuTeenRescueFinalGuardSuppressedReasonByTitle[title] = reason;
+    kitsuTeenSourceIdAtSuppressionDecisionByTitle[title] = String(row?.sourceId || detectKnownKitsuIdFromDoc(row?.doc || row) || teenKitsuKnownSourceIdByTitle[normalizeText(title)] || "").trim();
     kitsuTeenLastSuppressedCandidate = title;
     kitsuTeenLastSuppressedReason = reason;
     if ((row?.teenKitsuRescueTier === "weak_family_underfill" || row?.teenKitsuRescueTier === "acceptable_underfill_evidence_override") && !row?.teenKitsuRejectReason && Boolean(row?.familyAligned) && !row?.teenKitsuUnsafeMatch && Boolean(row?.sourceId)) {
@@ -14749,6 +14779,7 @@ const normalizedCandidatesRaw = [
       if (source !== "kitsu" && !detectKnownKitsuIdFromDoc(doc)) continue;
       const query = queryForDoc(doc);
       if (!query) continue;
+      ensureKitsuSourceIdForRescue(doc);
       const checked = teenKitsuRescueRowWithPolicy({ doc, ...kitsuRescueQualityMetricsForDoc(doc) });
       const title = String(checked?.title || doc?.title || "").trim();
       if (!title) continue;
@@ -14766,7 +14797,7 @@ const normalizedCandidatesRaw = [
         tasteEvidence: Number(checked?.weightedTasteScore || 0),
         laneAligned: Boolean(checked?.laneAligned),
         familyAligned: Boolean(checked?.familyAligned),
-        sourceId: String(checked?.sourceId || ""),
+        sourceId: String(checked?.sourceId || detectKnownKitsuIdFromDoc(doc) || (title ? teenKitsuKnownSourceIdByTitle[normalizeText(title)] || "" : "")),
         tier: String(checked?.teenKitsuRescueTier || "unknown"),
         positiveFitScore: Number(checked?.positiveFitScore || 0),
         meaningfulTasteSignalCount: tasteSignals.meaningful.length,
@@ -15468,6 +15499,12 @@ const normalizedCandidatesRaw = [
     kitsuTeenSourceIdAfterFinalGuardByTitle,
     kitsuTeenSourceIdAtFinalEligibilityByTitle,
     kitsuTeenSourceIdAtReturnedItemByTitle,
+    kitsuTeenSourceIdAtRawDocByTitle,
+    kitsuTeenSourceIdAtNormalizedCandidateByTitle,
+    kitsuTeenSourceIdAtRankedCandidateByTitle,
+    kitsuTeenSourceIdAtFinalEligibilityInputByTitle,
+    kitsuTeenSourceIdAtFinalGuardInputByTitle,
+    kitsuTeenSourceIdAtSuppressionDecisionByTitle,
     kitsuTeenFinalEligibilityMissingSourceIdDespiteFinalGuardId,
     kitsuTeenReturnedItemMissingSourceIdDespiteFinalGuardId,
     kitsuTeenSourceIdPropagationBreakStageByTitle,
