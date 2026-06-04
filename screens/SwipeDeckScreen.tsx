@@ -27,6 +27,8 @@ import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
+import { runRecommenderV2 } from "../app/recommender-v2";
+import type { AgeBandV2, RecommendationResultV2, SwipeSignalV2 } from "../app/recommender-v2";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
 const DEPLOYED_COMMIT_MARKER = "17c4615";
 const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
@@ -106,6 +108,46 @@ type TestSessionPreset = {
   label: string;
   sequence: Array<"like" | "dislike" | "skip">;
 };
+
+function deckKeyToAgeBandV2(deckKey: DeckKey): AgeBandV2 {
+  if (deckKey === "k2") return "kids";
+  if (deckKey === "36") return "preteens";
+  if (deckKey === "adult") return "adult";
+  return "teens";
+}
+
+function formatFromTagsForV2(tags: string[]): SwipeSignalV2["format"] {
+  const joined = tags.join(" ").toLowerCase();
+  if (/\b(manga|anime)\b/.test(joined)) return joined.includes("anime") ? "anime" : "manga";
+  if (/\b(comic|superhero)\b/.test(joined)) return "comic";
+  if (/graphicnovel|graphic novel/.test(joined)) return "graphicNovel";
+  return "book";
+}
+
+function swipeHistoryToV2Signals(entries: SwipeHistoryEntry[]): SwipeSignalV2[] {
+  return entries.map((entry) => {
+    const card: any = entry.card || {};
+    const tags = Array.isArray(card.tags) ? card.tags.map((tag: unknown) => String(tag || "").trim()).filter(Boolean) : [];
+    const bareTags = tags.map((tag: string) => tag.replace(/^[a-zA-Z]+:/, "").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase());
+    const genres = [card.genre, ...tags.filter((tag: string) => /^genre:/i.test(tag)).map((tag: string) => tag.replace(/^genre:/i, ""))].map((value) => String(value || "").trim()).filter(Boolean);
+    const tones = tags.filter((tag: string) => /^(tone|mood):/i.test(tag)).map((tag: string) => tag.replace(/^(tone|mood):/i, ""));
+    const themes = tags.filter((tag: string) => /^(theme|setting|stakes|graphicNovel):/i.test(tag)).map((tag: string) => tag.replace(/^(theme|setting|stakes|graphicNovel):/i, ""));
+    const characterDynamics = tags.filter((tag: string) => /^(character|relationship|dynamic):/i.test(tag)).map((tag: string) => tag.replace(/^(character|relationship|dynamic):/i, ""));
+    return {
+      id: String(card.id || card.key || cardIdentityKey(entry.card)),
+      title: String(card.title || card.prompt || "").trim(),
+      action: entry.direction === "like" ? "like" : entry.direction === "dislike" ? "dislike" : "skip",
+      source: String(card.source || "mock"),
+      format: formatFromTagsForV2(tags),
+      tags: bareTags,
+      genres,
+      tones,
+      themes,
+      characterDynamics,
+      weight: entry.direction === "skip" ? 0.25 : 1,
+    };
+  });
+}
 
 type TwentyQAxis = keyof TasteVector;
 
@@ -989,6 +1031,10 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRecommendationResult, setLastRecommendationResult] = useState<any | null>(null);
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
+  const [v2DebugResult, setV2DebugResult] = useState<RecommendationResultV2 | null>(null);
+  const [v2DebugLoading, setV2DebugLoading] = useState(false);
+  const [v2DebugError, setV2DebugError] = useState<string>("");
+  const v2UrlTriggeredRef = useRef(false);
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
   const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
   const [lastRawPool, setLastRawPool] = useState<any[]>([]);
@@ -1331,6 +1377,9 @@ export default function SwipeDeckScreen(props: Props) {
     setLastRecommendationInput(null);
     setLastRecommendationTimestamp("");
     setLastRecommendationSwipeSummary("");
+    setV2DebugResult(null);
+    setV2DebugError("");
+    setV2DebugLoading(false);
     sessionSwipeStoreRef.current[pipelineSessionId] = [];
     delete moodStoreRef.current[pipelineSessionId];
     position.setValue({ x: 0, y: 0 });
@@ -1944,6 +1993,51 @@ function handleLeft() {
       setRecLoading(false);
     }
   }
+
+  async function runRecommenderV2DebugFromCurrentSession(trigger: "button" | "url" = "button") {
+    setV2DebugLoading(true);
+    setV2DebugError("");
+    try {
+      const result = await runRecommenderV2({
+        requestId: `live-ui-${trigger}-${Date.now()}`,
+        ageBand: deckKeyToAgeBandV2(deckKey),
+        limit: 5,
+        enabledSources: {
+          mock: true,
+          googleBooks: sourceEnabled.googleBooks,
+          openLibrary: sourceEnabled.openLibrary,
+          localLibrary: sourceEnabled.localLibrary,
+          kitsu: sourceEnabled.kitsu,
+          comicVine: sourceEnabled.comicVine,
+          nyt: sourceEnabled.nyt,
+        },
+        signals: swipeHistoryToV2Signals(swipeHistory),
+        deckKey,
+      });
+      setV2DebugResult(result);
+      console.log("[NovelIdeas][V2] debug result", {
+        trigger,
+        items: result.items.map((item) => item.title),
+        stages: result.diagnostics.stages.map((stage) => stage.stage),
+        sources: result.diagnostics.sources.map((source) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount })),
+      });
+    } catch (err: any) {
+      const message = String(err?.message || err || "recommender_v2_debug_failed");
+      setV2DebugError(message);
+      console.log("[NovelIdeas][V2] debug error", { trigger, message });
+    } finally {
+      setV2DebugLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    if (v2UrlTriggeredRef.current) return;
+    if (typeof window === "undefined") return;
+    const engineParam = new URLSearchParams(window.location.search || "").get("engine");
+    if (String(engineParam || "").toLowerCase() !== "v2") return;
+    v2UrlTriggeredRef.current = true;
+    void runRecommenderV2DebugFromCurrentSession("url");
+  }, [deckKey, swipeHistory, sourceEnabled.googleBooks, sourceEnabled.openLibrary, sourceEnabled.localLibrary, sourceEnabled.kitsu, sourceEnabled.comicVine, sourceEnabled.nyt]);
 
   async function runAutoRecommendations() {
     const tagCountsForQuery: any = { ...(tagCounts as any) };
@@ -2943,6 +3037,17 @@ function handleLeft() {
         }).join("\n")
       : "(none)";
 
+    const v2DiagnosticLines = v2DebugResult
+      ? [
+          `engineVersion:${v2DebugResult.engineVersion}`,
+          `requestId:${v2DebugResult.diagnostics.requestId}`,
+          `items:${v2DebugResult.items.map((item) => item.title).join(" | ") || "(none)"}`,
+          `stages:${v2DebugResult.diagnostics.stages.map((stage) => stage.stage).join(" -> ")}`,
+          `sources:${JSON.stringify(v2DebugResult.diagnostics.sources.map((source) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `rejectedReasons:${JSON.stringify(v2DebugResult.diagnostics.rejectedReasons)}`,
+        ]
+      : [`status:${v2DebugLoading ? "running" : v2DebugError ? "error" : "not_run"}`, `error:${v2DebugError || "(none)"}`];
+
     const rungQueryMap = new Map<string, string>();
     for (const row of rawPoolRows) {
       const rungValue = row?.queryRung;
@@ -3357,6 +3462,9 @@ function handleLeft() {
       "",
       "SOURCE SETTINGS",
       sourceEnabledSummary,
+      "",
+      "RECOMMENDER V2 DEBUG",
+      ...v2DiagnosticLines,
       "",
       "RAW POOL SUMMARY",
       `count:${rawPoolRows.length}`,
@@ -3866,6 +3974,21 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.v2DebugToggle} onPress={() => void runRecommenderV2DebugFromCurrentSession("button")}>
+            <Text style={styles.debugToggleText}>{v2DebugLoading ? "V2 Running…" : "Run V2"}</Text>
+          </TouchableOpacity>
+
+          {(v2DebugResult || v2DebugError) ? (
+            <View style={styles.v2DebugPanel}>
+              <Text style={styles.v2DebugTitle}>Recommender V2 Debug</Text>
+              <Text style={styles.v2DebugText}>status:{v2DebugError ? "error" : "ok"}</Text>
+              <Text style={styles.v2DebugText}>items:{v2DebugResult?.items.map((item) => item.title).join(" | ") || "(none)"}</Text>
+              <Text style={styles.v2DebugText}>stages:{v2DebugResult?.diagnostics.stages.map((stage) => stage.stage).join(" → ") || "(none)"}</Text>
+              <Text style={styles.v2DebugText}>sources:{v2DebugResult?.diagnostics.sources.map((source) => `${source.source}:${source.status}:${source.rawCount}`).join(" | ") || "(none)"}</Text>
+              {v2DebugError ? <Text style={styles.v2DebugText}>error:{v2DebugError}</Text> : null}
+            </View>
+          ) : null}
+
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
             <Text style={styles.debugToggleText}>Fresh User</Text>
           </TouchableOpacity>
@@ -4099,6 +4222,27 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
+  v2DebugToggle: {
+    minWidth: 112,
+    alignItems: "center",
+    backgroundColor: "#0f766e",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  v2DebugPanel: {
+    width: 320,
+    maxWidth: "90%",
+    alignSelf: "flex-end",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(10, 20, 35, 0.95)",
+    padding: 10,
+    gap: 4,
+  },
+  v2DebugTitle: { color: "#e5efff", fontWeight: "900", fontSize: 12 },
+  v2DebugText: { color: "#cbd5f5", fontWeight: "700", fontSize: 10 },
   randomizeToggle: {
     minWidth: 112,
     alignItems: "center",
