@@ -8603,6 +8603,13 @@ const normalizedCandidatesRaw = [
       const text = normalizeText(evidencePieces.join(" ") || `${title} ${String(doc?.description || "")}`);
       const queryText = normalizeText(String(doc?.queryText || doc?.rawDoc?.queryText || ""));
       const isKitsuScoringDoc = detectCandidateSourceForGate(doc) === "kitsu" || String(doc?.source || "").toLowerCase().includes("kitsu");
+      const queryEchoFields = new Set([
+        doc?.queryText,
+        doc?.rawDoc?.queryText,
+        doc?.queryFamily,
+        doc?.filterFamily,
+      ].map((value) => normalizeText(String(value || ""))).filter(Boolean));
+      const nonQueryEvidenceText = normalizeText(evidencePieces.filter((piece) => !queryEchoFields.has(normalizeText(piece))).join(" "));
       if (isKitsuScoringDoc) {
         kitsuTeenEvidenceTextFieldsByTitle[title] = evidencePieces.slice(0, 24);
         const knownFacets = knownTeenKitsuFacetsForTitle(title);
@@ -8611,7 +8618,7 @@ const normalizedCandidatesRaw = [
       const normalizedQueryTokensForTaste = queryText.split(/\s+/).filter((token) => token.length >= 4 && !/\b(comic|series|collected|edition|volume|trade|paperback|graphic|novel|manga|anime)\b/.test(token));
       const queryFacetTasteRows = isKitsuScoringDoc
         ? normalizedQueryTokensForTaste
-          .filter((token) => text.includes(token) && /^(psychological|suspense|supernatural|mystery|horror|crime|detective|investigation|murder|thriller|fantasy|adventure|dystopian|survival)$/.test(token))
+          .filter((token) => nonQueryEvidenceText.includes(token) && /^(psychological|suspense|supernatural|mystery|horror|crime|detective|investigation|murder|thriller|fantasy|adventure|dystopian|survival)$/.test(token))
           .map((token) => ({ signal: `query:${token}`, weight: 1 }))
         : [];
       const matchedLikedWeighted = [
@@ -8627,8 +8634,8 @@ const normalizedCandidatesRaw = [
       const dislikePenalty = matchedDislikedWeighted.reduce((acc, row) => acc + row.weight * 1.25, 0);
       const skipPenalty = matchedSkippedWeighted.reduce((acc, row) => acc + row.weight * 0.45, 0);
       const tastePenaltyScore = dislikePenalty + skipPenalty;
-      const laneMatch = /\b(thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(text)
-        || (isKitsuScoringDoc && /\b(suspense|crime|detective|investigation|murder|serial killer|horror|supernatural|occult|ghost|monster)\b/.test(text));
+      const laneMatch = /\b(thriller|mystery|science fiction|superhero|fantasy|adventure|coming of age|psychological|speculative)\b/.test(isKitsuScoringDoc ? nonQueryEvidenceText : text)
+        || (isKitsuScoringDoc && /\b(suspense|crime|detective|investigation|murder|serial killer|horror|supernatural|occult|ghost|monster)\b/.test(nonQueryEvidenceText));
       const themeOverlap = profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
       const root = parentFranchiseRootForDoc(doc);
       const isGenericRoot = genericNarrativeRoots.has(String(root || "").toLowerCase());
@@ -12975,7 +12982,7 @@ const normalizedCandidatesRaw = [
       const raw = String(signal || "").trim();
       const normalized = normalizeText(raw);
       const compact = normalized.replace(/^(genre:|tone:|mood:|theme:|drive:)/, "").trim();
-      const isGeneric = !normalized || genericTasteSignals.has(normalized) || /^(audience:|age:|media:|format:|source:)/.test(normalized) || Boolean(familyBroadSignals[family]?.has(normalized) || familyBroadSignals[family]?.has(compact));
+      const isGeneric = !normalized || normalized.startsWith("query:") || genericTasteSignals.has(normalized) || /^(audience:|age:|media:|format:|source:)/.test(normalized) || Boolean(familyBroadSignals[family]?.has(normalized) || familyBroadSignals[family]?.has(compact));
       if (isGeneric) generic.push(raw);
       else meaningful.push(raw);
     }
@@ -12984,6 +12991,14 @@ const normalizedCandidatesRaw = [
   const teenKitsuHasMeaningfulTasteEvidence = (row: any) => {
     const title = String(row?.title || row?.doc?.title || "").trim();
     return teenKitsuMeaningfulTasteSignalsForTitle(title).meaningful.length > 0;
+  };
+  const teenKitsuHasNonQueryMeaningfulTasteEvidence = (row: any) => {
+    const title = String(row?.title || row?.doc?.title || "").trim();
+    return teenKitsuMeaningfulTasteSignalsForTitle(title).meaningful.some((signal) => !normalizeText(signal).startsWith("query:"));
+  };
+  const teenKitsuHasKnownTitleFacetEvidence = (row: any) => {
+    const title = String(row?.title || row?.doc?.title || "").trim();
+    return Array.isArray(kitsuTeenKnownTitleFacetEvidenceByTitle[title]) && kitsuTeenKnownTitleFacetEvidenceByTitle[title].length > 0;
   };
   const teenKitsuTitleKeywordOnlyPenaltyReason = (row: any) => {
     const title = String(row?.title || row?.doc?.title || "").trim();
@@ -13033,7 +13048,10 @@ const normalizedCandidatesRaw = [
     if (Number(row?.positiveFitScore || 0) < 0) return false;
     if (row?.laneAligned) return true;
     if (!row?.familyAligned) return false;
-    if (!teenKitsuHasMeaningfulTasteEvidence(row)) return false;
+    const hasKnownTitleFacetEvidence = teenKitsuHasKnownTitleFacetEvidence(row);
+    const hasNonQueryMeaningfulTaste = teenKitsuHasNonQueryMeaningfulTasteEvidence(row);
+    if (!hasKnownTitleFacetEvidence && !hasNonQueryMeaningfulTaste) return false;
+    if (Number(row?.positiveFitScore || 0) < 1) return false;
     return Number(row?.semanticEvidenceCount || 0) > 0 || Number(row?.weightedTasteScore || 0) > 0;
   };
   const isKitsuRescueStrongRow = (row: any) => isTeenKitsuRescueContext
