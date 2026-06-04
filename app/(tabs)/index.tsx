@@ -2001,6 +2001,7 @@ logoDataUrl={logoDataUrl}
             swipeCategories={swipeCategories}
             enabledDecks={enabledDecks}
             recommendationSourceEnabled={deckSourceEnabled[deck] || sourceEnabled}
+            recommendationSourceEnabledByDeck={deckSourceEnabled}
             adultKitsuOnlyForceQueryForValidation={adultKitsuOnlyForceQueryForValidation}
             localLibrarySupported={localLibrarySupported}
             onOpenSearch={() => {

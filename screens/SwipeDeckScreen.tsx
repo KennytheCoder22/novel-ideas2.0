@@ -123,18 +123,21 @@ type TwentyQObjectiveStatus = TwentyQObjective & {
   resolved: boolean;
 };
 
+type RecommendationSourceToggleState = {
+  googleBooks?: boolean;
+  openLibrary?: boolean;
+  localLibrary?: boolean;
+  kitsu?: boolean;
+  comicVine?: boolean;
+  gcd?: boolean;
+  nyt?: boolean;
+};
+
 type Props = {
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
-  recommendationSourceEnabled?: {
-    googleBooks?: boolean;
-    openLibrary?: boolean;
-    localLibrary?: boolean;
-    kitsu?: boolean;
-    comicVine?: boolean;
-    gcd?: boolean;
-    nyt?: boolean;
-  };
+  recommendationSourceEnabled?: RecommendationSourceToggleState;
+  recommendationSourceEnabledByDeck?: Partial<Record<DeckKey, RecommendationSourceToggleState>>;
   localLibrarySupported?: boolean;
   adultKitsuOnlyForceQueryForValidation?: string;
   swipeCategories?: {
@@ -917,13 +920,14 @@ export default function SwipeDeckScreen(props: Props) {
   const [deckKey, setDeckKey] = useState<DeckKey>("ms_hs");
 
   const enabledDecks = props.enabledDecks ?? {};
+  const sourceSettingsForDeck = props.recommendationSourceEnabledByDeck?.[deckKey] || props.recommendationSourceEnabled || {};
   const sourceEnabled = {
-    googleBooks: props.recommendationSourceEnabled?.googleBooks !== false,
-    openLibrary: props.recommendationSourceEnabled?.openLibrary !== false,
-    localLibrary: props.localLibrarySupported ? props.recommendationSourceEnabled?.localLibrary !== false : false,
-    kitsu: props.recommendationSourceEnabled?.kitsu !== false,
-    comicVine: (props.recommendationSourceEnabled?.comicVine ?? props.recommendationSourceEnabled?.gcd) !== false,
-    nyt: props.recommendationSourceEnabled?.nyt === true,
+    googleBooks: sourceSettingsForDeck.googleBooks !== false,
+    openLibrary: sourceSettingsForDeck.openLibrary !== false,
+    localLibrary: props.localLibrarySupported ? sourceSettingsForDeck.localLibrary !== false : false,
+    kitsu: sourceSettingsForDeck.kitsu !== false,
+    comicVine: (sourceSettingsForDeck.comicVine ?? sourceSettingsForDeck.gcd) !== false,
+    nyt: sourceSettingsForDeck.nyt === true,
   };
   const enabledDeckList = useMemo(
     () => (["k2", "36", "ms_hs", "adult"] as DeckKey[]).filter((k) => enabledDecks[k] !== false),

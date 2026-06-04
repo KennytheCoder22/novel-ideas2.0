@@ -3180,22 +3180,33 @@ export async function getRecommendations(
     comicVine: [],
     nyt: [],
   };
+  const ageBandForIsolation =
+    routedInput.deckKey === "adult"
+      ? "adult"
+      : routedInput.deckKey === "ms_hs"
+      ? "teens"
+      : routedInput.deckKey === "36"
+      ? "pre_teens"
+      : "kids";
+  const sourceIsolationEnabled = true;
+  const enabledSourceHosesAtRequestStart = Object.entries(enabledSourcesAtRequestStart)
+    .filter(([, enabled]) => Boolean(enabled))
+    .map(([source]) => source);
+  const singleSourceDirectHose = enabledSourceHosesAtRequestStart.length === 1;
+  const sourceIsolationForcedEnableBlockedReasons: string[] = [];
   const teensDeckForceBookSources =
     (routedInput as any)?.deckCategory === "teens" ||
     isTeenDeckKey((routedInput as any)?.deckKey || "");
-  if (teensDeckForceBookSources && !kitsuOnlyAtRequestStart) {
-    if (!sourceEnabled.googleBooks) {
-      sourceEnabled.googleBooks = true;
-      sourceDisableReasonsDetailed.googleBooks.push("force_enabled_for_teens_tdz_recovery");
+  if (teensDeckForceBookSources && (!enabledSourcesAtRequestStart.googleBooks || !enabledSourcesAtRequestStart.openLibrary)) {
+    sourceSkippedReason.push("age_band_source_isolation_preserved_admin_toggles");
+    if (!enabledSourcesAtRequestStart.googleBooks) {
+      sourceDisableReasonsDetailed.googleBooks.push("preserved_disabled_by_age_band_source_isolation");
+      sourceIsolationForcedEnableBlockedReasons.push("googleBooks_force_enable_blocked_for_teen_isolation");
     }
-    if (!sourceEnabled.openLibrary) {
-      sourceEnabled.openLibrary = true;
-      sourceDisableReasonsDetailed.openLibrary.push("force_enabled_for_teens_tdz_recovery");
+    if (!enabledSourcesAtRequestStart.openLibrary) {
+      sourceDisableReasonsDetailed.openLibrary.push("preserved_disabled_by_age_band_source_isolation");
+      sourceIsolationForcedEnableBlockedReasons.push("openLibrary_force_enable_blocked_for_teen_isolation");
     }
-  } else if (teensDeckForceBookSources && kitsuOnlyAtRequestStart) {
-    sourceSkippedReason.push("teen_book_source_force_enable_skipped:kitsu_only_request");
-    sourceDisableReasonsDetailed.googleBooks.push("preserved_disabled_for_kitsu_only_request");
-    sourceDisableReasonsDetailed.openLibrary.push("preserved_disabled_for_kitsu_only_request");
   }
   var tdzGuardedDiagnosticsInitialized = false;
   var postTopUpOutputSnapshot: any[] = [];
@@ -6930,7 +6941,7 @@ const normalizedCandidatesRaw = [
       .map((doc: any) => sourceForDoc(doc, "unknown"))
       .filter((s: string) => s !== "unknown")
   );
-  const shouldRunFinalRecommender = sourceLayerRankedDocs.length > 0 && (activeRecommenderSources.size > 1 || includeComicVine);
+  const shouldRunFinalRecommender = sourceLayerRankedDocs.length > 0 && activeRecommenderSources.size > 1;
   debugRouterLog("PRE_FINAL_SOURCE_LAYER", {
     sourceLayerCount: sourceLayerRankedDocs.length,
     activeRecommenderSources: [...activeRecommenderSources],
@@ -15609,6 +15620,11 @@ const normalizedCandidatesRaw = [
     kitsuTeenRescueZeroResultReason,
     kitsuTeenUnsafeFilterMissedTitles,
     enabledSourcesAtRequestStart,
+    ageBandForIsolation,
+    sourceIsolationEnabled,
+    enabledSourceHosesAtRequestStart,
+    singleSourceDirectHose,
+    sourceIsolationForcedEnableBlockedReasons,
     effectiveEnabledSourcesAfterSynthesis,
     sourceAllowedByFinalGate,
     sourceAllowedByRecoveryPath,
