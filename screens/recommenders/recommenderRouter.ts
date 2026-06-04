@@ -2840,7 +2840,8 @@ export async function getRecommendations(
   let kitsuTeenGcdEnrichmentReturnableGcdDisabled = false;
   let kitsuTeenGcdEnrichmentSkippedReason = "not_evaluated";
   const kitsuTeenGcdEnrichmentQueries: string[] = [];
-  const kitsuTeenGcdEnrichmentQueryDiagnostics: Array<{ query: string; status: string; timedOut: boolean; rawCount: number; docCount: number; matchedTitleCount: number; error: string }> = [];
+  const kitsuTeenGcdEnrichmentQueryDiagnostics: Array<{ query: string; status: string; timedOut: boolean; rawCount: number; docCount: number; matchedTitleCount: number; error: string; returnedTitles: string[]; returnedMatchKeys: string[] }> = [];
+  const kitsuTeenGcdEnrichmentDocsReturnedButNoMatch: Array<{ query: string; kitsuTitle: string; kitsuMatchKeys: string[]; returnedTitles: string[]; returnedMatchKeys: string[] }> = [];
   const kitsuTeenGcdEnrichmentMatchedTitles: string[] = [];
   const kitsuTeenGcdEnrichmentNoMatchTitles: string[] = [];
   const kitsuTeenGcdEnrichmentByTitle: Record<string, { query: string; matchedGcdTitle: string; facets: string[]; contributedTextLength: number; laneAligned: boolean }> = {};
@@ -5410,6 +5411,24 @@ export async function getRecommendations(
     if (!clean || target.some((existing) => normalizeText(existing) === normalizeText(clean))) return;
     if (target.length < limit) target.push(clean);
   };
+  const gcdEnrichmentTitleCandidatesForDoc = (doc: any) => Array.from(new Set([
+    doc?.title,
+    doc?.canonicalTitle,
+    doc?.subtitle,
+    doc?.series,
+    doc?.rawDoc?.title,
+    doc?.rawDoc?.name,
+    doc?.rawDoc?.series_name,
+    doc?.rawDoc?.volume?.name,
+    doc?.raw?.title,
+    doc?.raw?.name,
+    doc?.raw?.series_name,
+    doc?.raw?.volume?.name,
+  ].map((value) => String(value || "").trim()).filter(Boolean)));
+  const gcdEnrichmentMatchKeysForDoc = (doc: any) => Array.from(new Set([
+    ...gcdEnrichmentTitleCandidatesForDoc(doc),
+    parentFranchiseRootForDoc(doc),
+  ].map((value) => normalizeTeenKitsuGcdMatchKey(value)).filter((key) => key.length >= 3)));
   const gcdEnrichmentFacetTextForDoc = (doc: any) => {
     const pieces = [
       doc?.title,
@@ -5503,16 +5522,17 @@ export async function getRecommendations(
         }
         gcdDocsByQuery.set(query, queryDocs);
         for (const gcdDoc of queryDocs) {
-          const titleKey = normalizeTeenKitsuGcdMatchKey((gcdDoc as any)?.title || (gcdDoc as any)?.rawDoc?.title || "");
-          const rootKey = normalizeTeenKitsuGcdMatchKey(parentFranchiseRootForDoc(gcdDoc) || "");
-          if (titleKey && !gcdDocsByKey.has(titleKey)) gcdDocsByKey.set(titleKey, gcdDoc);
-          if (rootKey && !gcdDocsByKey.has(rootKey)) gcdDocsByKey.set(rootKey, gcdDoc);
+          for (const matchKey of gcdEnrichmentMatchKeysForDoc(gcdDoc)) {
+            if (!gcdDocsByKey.has(matchKey)) gcdDocsByKey.set(matchKey, gcdDoc);
+          }
         }
       } catch (err: any) {
         status = "error";
         error = String(err?.message || err || "unknown");
         sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_fetch_failed:${error.slice(0, 80)}`);
       }
+      const returnedTitles = queryDocs.map((doc) => String((doc as any)?.title || (doc as any)?.rawDoc?.title || "").trim()).filter(Boolean).slice(0, 10);
+      const returnedMatchKeys = Array.from(new Set(queryDocs.flatMap((doc) => gcdEnrichmentMatchKeysForDoc(doc)))).slice(0, 20);
       kitsuTeenGcdEnrichmentQueryDiagnostics.push({
         query,
         status,
@@ -5521,16 +5541,17 @@ export async function getRecommendations(
         docCount: queryDocs.length,
         matchedTitleCount: 0,
         error: error.slice(0, 120),
+        returnedTitles,
+        returnedMatchKeys,
       });
       if (Date.now() - startedAt > 3_400) sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_slow_query:${query}`);
     }
     const findGcdDocForKitsuDoc = (doc: any) => {
-      const titleKey = normalizeTeenKitsuGcdMatchKey(doc?.title || doc?.canonicalTitle || "");
-      const rootKey = normalizeTeenKitsuGcdMatchKey(parentFranchiseRootForDoc(doc) || "");
-      const exact = (titleKey && gcdDocsByKey.get(titleKey)) || (rootKey && gcdDocsByKey.get(rootKey));
+      const matchKeys = gcdEnrichmentMatchKeysForDoc(doc);
+      const exact = matchKeys.map((key) => gcdDocsByKey.get(key)).find(Boolean);
       if (exact) return exact;
-      const matchKeys = [titleKey, rootKey].filter((key) => key.length >= 5);
-      for (const key of matchKeys) {
+      const containmentKeys = matchKeys.filter((key) => key.length >= 5);
+      for (const key of containmentKeys) {
         for (const [gcdKey, gcdDoc] of gcdDocsByKey.entries()) {
           if (gcdKey.length >= 5 && (gcdKey.includes(key) || key.includes(gcdKey))) return gcdDoc;
         }
@@ -5542,6 +5563,18 @@ export async function getRecommendations(
       const gcdDoc = findGcdDocForKitsuDoc(doc);
       if (!gcdDoc) {
         pushUniqueTeenKitsuGcdDiagnostic(kitsuTeenGcdEnrichmentNoMatchTitles, title);
+        const kitsuMatchKeys = gcdEnrichmentMatchKeysForDoc(doc);
+        for (const diag of kitsuTeenGcdEnrichmentQueryDiagnostics) {
+          if (diag.docCount > 0 && kitsuTeenGcdEnrichmentDocsReturnedButNoMatch.length < 40) {
+            kitsuTeenGcdEnrichmentDocsReturnedButNoMatch.push({
+              query: diag.query,
+              kitsuTitle: title,
+              kitsuMatchKeys,
+              returnedTitles: diag.returnedTitles,
+              returnedMatchKeys: diag.returnedMatchKeys,
+            });
+          }
+        }
         continue;
       }
       const facets = gcdEnrichmentFacetTextForDoc(gcdDoc);
@@ -15268,6 +15301,7 @@ const normalizedCandidatesRaw = [
     kitsuTeenGcdEnrichmentSkippedReason,
     kitsuTeenGcdEnrichmentQueries,
     kitsuTeenGcdEnrichmentQueryDiagnostics,
+    kitsuTeenGcdEnrichmentDocsReturnedButNoMatch,
     kitsuTeenGcdEnrichmentMatchedTitles,
     kitsuTeenGcdEnrichmentNoMatchTitles,
     kitsuTeenGcdEnrichmentByTitle,
