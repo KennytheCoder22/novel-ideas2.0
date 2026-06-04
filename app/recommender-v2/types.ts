@@ -117,6 +117,8 @@ export interface SourceDiagnosticV2 {
   dropReasons?: Record<string, number>;
   fetches?: SourceFetchDiagnosticV2[];
   rawItemPreview?: Record<string, unknown>[];
+  artifactSuppressedTitles?: string[];
+  seriesSuppressedTitles?: string[];
 }
 
 export interface SourceResult {

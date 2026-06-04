@@ -1702,6 +1702,10 @@ function handleLeft() {
           responseShape: fetch?.responseShape,
           responseBodyPrefix: fetch?.responseBodyPrefix,
           failedReason: fetch?.failedReason,
+          originalPlannedQuery: fetch?.originalPlannedQuery,
+          queryCascadeIndex: fetch?.queryCascadeIndex,
+          queryFamily: fetch?.queryFamily,
+          facets: fetch?.facets,
         }))
       : [];
     const sourceStats = Object.fromEntries(diagnostics.sources.map((source) => [
@@ -1742,7 +1746,18 @@ function handleLeft() {
             diagnostics: { engine: "v2", queryText: item?.queryText, queryFamily: item?.queryFamily, queryCascadeIndex: item?.queryCascadeIndex, authors: item?.authors },
           }))
         : Array.from({ length: source.rawCount }, (_unused, index) => ({ title: `${source.source} raw ${index + 1}`, source: source.source, diagnostics: { engine: "v2", placeholder: true } }))),
-      debugCandidatePool: v2Result.items,
+      debugCandidatePool: v2Result.items.map((candidate: any) => ({
+        ...candidate,
+        author: Array.isArray(candidate.creators) && candidate.creators.length ? candidate.creators[0] : undefined,
+        author_name: Array.isArray(candidate.creators) ? candidate.creators : [],
+        queryText: candidate.diagnostics?.queryText,
+        originalPlannedQuery: candidate.diagnostics?.originalPlannedQuery,
+        simplifiedOpenLibraryQuery: candidate.diagnostics?.simplifiedOpenLibraryQuery,
+        queryCascadeIndex: candidate.diagnostics?.queryCascadeIndex,
+        queryRung: candidate.diagnostics?.queryCascadeIndex,
+        queryFamily: candidate.diagnostics?.queryFamily,
+        facets: candidate.diagnostics?.facets,
+      })),
       sourceEnabled,
       sourceFetchAttemptedBySource: Object.fromEntries(diagnostics.sources.map((source) => [source.source, Boolean(source.attempted)])),
       sourceFetchTimeoutBySource: Object.fromEntries(diagnostics.sources.map((source) => [source.source, Boolean(source.timedOut)])),
@@ -1753,6 +1768,8 @@ function handleLeft() {
       openLibrarySourceRawApiResultCount: Number(openLibrarySourceDiagnostics?.rawApiResultCount || 0),
       openLibrarySourceDroppedBeforeDocCount: Number(openLibrarySourceDiagnostics?.droppedBeforeDocCount || 0),
       openLibrarySourceDropReasons: openLibrarySourceDiagnostics?.dropReasons || {},
+      openLibraryArtifactSuppressedTitles: openLibrarySourceDiagnostics?.artifactSuppressedTitles || [],
+      openLibrarySeriesSuppressedTitles: openLibrarySourceDiagnostics?.seriesSuppressedTitles || [],
       openLibrarySourceStatus: openLibrarySourceDiagnostics?.status || "",
       openLibrarySourceQueries: openLibrarySourceDiagnostics?.queries || [],
       sourceSkippedReason: diagnostics.sources.map((source) => source.skippedReason || source.failedReason || "").filter(Boolean),
@@ -2562,7 +2579,7 @@ function handleLeft() {
 
   function formatQueryFamilyBreakdown(rows: any[]) {
     if (!Array.isArray(rows) || rows.length === 0) return "(none)";
-    return summarizeCounts(rows.map((row) => inferQueryFamily(row?.queryText)));
+    return summarizeCounts(rows.map((row) => row?.queryFamily || inferQueryFamily(row?.queryText)));
   }
 
   function formatLaneBreakdown(rows: any[]) {
@@ -2592,7 +2609,7 @@ function handleLeft() {
       const diagnostics = item.kind === "open_library" ? (item.doc as any)?.diagnostics || {} : {};
 
       const traceBits = [
-        compactFieldBlock("queryFamily", inferQueryFamily(candidate?.queryText ?? diagnostics?.queryText ?? (item.kind === "open_library" ? (item.doc as any)?.queryText : ""))),
+        compactFieldBlock("queryFamily", candidate?.queryFamily || diagnostics?.queryFamily || (item.kind === "open_library" ? (item.doc as any)?.queryFamily : "") || inferQueryFamily(candidate?.queryText ?? diagnostics?.queryText ?? (item.kind === "open_library" ? (item.doc as any)?.queryText : ""))),
         compactFieldBlock("candidateLane", candidate?.laneKind),
         compactFieldBlock("candidateRung", candidate?.queryRung),
         compactFieldBlock("candidateScore", typeof candidate?.score === "number" ? candidate.score.toFixed(3) : ""),
@@ -2611,10 +2628,10 @@ function handleLeft() {
 
     return rows.slice(0, 120).map((row, index) => {
       const title = row?.title || "Untitled";
-      const author = row?.author || "Unknown author";
+      const author = row?.author || (Array.isArray(row?.author_name) && row.author_name.length ? row.author_name[0] : "Unknown author");
       const bits = [
         compactFieldBlock("source", row?.source),
-        compactFieldBlock("queryFamily", inferQueryFamily(row?.queryText)),
+        compactFieldBlock("queryFamily", row?.queryFamily || inferQueryFamily(row?.queryText)),
         compactFieldBlock("queryText", row?.queryText),
         compactFieldBlock("queryRung", row?.queryRung),
         compactFieldBlock("laneKind", row?.laneKind),
@@ -3056,6 +3073,8 @@ function handleLeft() {
         `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
         `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
         `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
+        `openLibraryArtifactSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryArtifactSuppressedTitles || [])}`,
+        `openLibrarySeriesSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibrarySeriesSuppressedTitles || [])}`,
         `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
         "ADULT KITSU FALLBACK DIAGNOSTICS",
         ...adultKitsuOnlyFallbackReportLines,
@@ -3264,7 +3283,7 @@ function handleLeft() {
             return [
               `${i + 1}. ${title} — ${author}${year}`,
               `   source: ${diagnostics.source ?? doc?.source ?? "(unknown)"}`,
-              `   queryFamily: ${inferQueryFamily(queryText)}`,
+              `   queryFamily: ${diagnostics.queryFamily ?? doc?.queryFamily ?? inferQueryFamily(queryText)}`,
               `   preFilterScore: ${diagnostics.preFilterScore ?? "(missing)"}`,
               `   postFilterScore: ${diagnostics.postFilterScore ?? "(missing)"}`,
               `   queryText: ${queryText}`,
@@ -3309,7 +3328,7 @@ function handleLeft() {
           `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
           `searchPlan:${JSON.stringify(v2DiagnosticsForReport.searchPlan || {})}`,
           `stages:${(v2DiagnosticsForReport.stages || []).map((stage: any) => `${stage.stage}:${JSON.stringify(stage.counts || {})}`).join(" -> ")}`,
-          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, rawApiResultCount: source.rawApiResultCount, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, emptyReason: source.emptyReason, openLibraryProbeRan: source.openLibraryProbeRan, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, rawApiResultCount: source.rawApiResultCount, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, artifactSuppressedTitles: source.artifactSuppressedTitles, seriesSuppressedTitles: source.seriesSuppressedTitles, emptyReason: source.emptyReason, openLibraryProbeRan: source.openLibraryProbeRan, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
           `openLibrarySourceFetchDiagnostics:${JSON.stringify((lastRecommendationResult as any)?.openLibrarySourceFetchDiagnostics || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.fetches || []))}`,
           `openLibraryProbeRan:${String(Boolean((lastRecommendationResult as any)?.openLibraryProbeRan || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.openLibraryProbeRan)))}`,
           `openLibraryEmptyReason:${String((lastRecommendationResult as any)?.openLibrarySourceEmptyReason || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.emptyReason || ""))}`,
@@ -3732,6 +3751,8 @@ function handleLeft() {
       `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
       `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
       `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
+      `openLibraryArtifactSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryArtifactSuppressedTitles || [])}`,
+      `openLibrarySeriesSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibrarySeriesSuppressedTitles || [])}`,
       `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
       "",
       "ADULT KITSU FALLBACK DIAGNOSTICS",

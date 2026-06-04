@@ -35,6 +35,8 @@ const MEDIA_FORMAT_TERMS = new Set(["anime", "game", "games", "gaming", "tv", "t
 const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|graphic novel|manga|comic)\b/i;
 const CLASSIC_DRIFT_AUTHOR = /\b(mark twain|william shakespeare|h\.?\s*g\.? wells|h g wells|charles dickens|jane austen|robert louis stevenson|jules verne|lewis carroll|arthur conan doyle|homer|plato)\b/i;
 const CLASSIC_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain)\b/i;
+const ARTIFACT_QUERY_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson|classroom|teacher|writing|write)\b/i;
+const ARTIFACT_TITLE_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson plan|lesson plans|classroom|teacher'?s? guide|study guide|kids write|writing prompts?|write!)\b/i;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -56,8 +58,19 @@ function uniqueStrings(values: unknown[], limit = 24): string[] {
 }
 
 function dedupeOpenLibraryTerms(value: string): string {
-  const terms = value.split(/\s+/).filter(Boolean);
-  return uniqueStrings(terms, 6).join(" ");
+  const protectedPhrases: [RegExp, string][] = [
+    [/\bscience\s+fiction\b/g, "science-fiction"],
+    [/\bgraphic\s+novel\b/g, "graphic-novel"],
+    [/\bsci\s+fi\b/g, "sci-fi"],
+  ];
+  let protectedValue = value;
+  for (const [pattern, replacement] of protectedPhrases) protectedValue = protectedValue.replace(pattern, replacement);
+  const terms = protectedValue.split(/\s+/).filter(Boolean);
+  return uniqueStrings(terms, 6).join(" ").replace(/science-fiction/g, "science fiction").replace(/graphic-novel/g, "graphic novel");
+}
+
+function finalOpenLibraryQueryDedupe(value: string): string {
+  return dedupeOpenLibraryTerms(cleanOpenLibraryQueryPart(value));
 }
 
 function cleanOpenLibraryQueryPart(value: unknown): string {
@@ -101,7 +114,7 @@ function queryFamilyForOpenLibraryQuery(query: string): string {
 function combineOpenLibraryQueryParts(primary: string, modifier?: string): string {
   const parts = [primary, modifier || ""].map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart);
   const uniqueParts = uniqueStrings(parts, 2);
-  return uniqueParts.join(" ").trim();
+  return finalOpenLibraryQueryDedupe(uniqueParts.join(" ").trim());
 }
 
 function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): OpenLibraryQueryPlan[] {
@@ -126,7 +139,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
     genreTerms[0] || fallbackTerms[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
   ];
 
-  return uniqueStrings(queryCandidates.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT).map((query, index) => ({
+  return uniqueStrings(queryCandidates.map(finalOpenLibraryQueryDedupe).filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT).map((query, index) => ({
     query,
     originalPlannedQuery,
     queryCascadeIndex: index,
@@ -295,6 +308,28 @@ function isClassicDriftOpenLibraryDoc(doc: any, query: string): boolean {
   return Boolean(firstPublishYear > 0 && firstPublishYear < 1900 && !/\bhistorical|history\b/i.test(query));
 }
 
+function isOpenLibraryArtifactDoc(doc: any, query: string): boolean {
+  if (ARTIFACT_QUERY_HINT.test(query)) return false;
+  const title = String(doc?.title || "");
+  const subjects = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+  ].join(" ");
+  return ARTIFACT_TITLE_HINT.test(`${title} ${subjects}`);
+}
+
+function openLibrarySeriesKey(doc: any): string {
+  const title = String(doc?.title || "").toLowerCase();
+  const cleaned = title
+    .replace(/\b(volume|vol|book|chapter|episode|part)\s*[:.#-]?\s*\d+\b/g, " ")
+    .replace(/\b(one piece|naruto|bleach|dragon ball|my hero academia|attack on titan|demon slayer|sailor moon)\b.*$/i, "$1")
+    .replace(/\b\d+\b/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return /\b(one piece|naruto|bleach|dragon ball|my hero academia|attack on titan|demon slayer|sailor moon)\b/.test(cleaned) ? cleaned : "";
+}
+
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return true;
   const firstPublishYear = Number(doc?.first_publish_year || 0);
@@ -310,6 +345,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (!isEnglishOpenLibraryDoc(doc)) return { keep: false, reason: "non_english" };
   if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) return { keep: false, reason: "missing_author" };
   if (isClassicDriftOpenLibraryDoc(doc, query)) return { keep: false, reason: "classic_drift" };
+  if (isOpenLibraryArtifactDoc(doc, query)) return { keep: false, reason: "artifact_title" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
   return { keep: true };
 }
@@ -348,6 +384,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const rawTitles: string[] = [];
     const dropReasons: Record<string, number> = {};
     const fetches: SourceFetchDiagnosticV2[] = [];
+    const acceptedSeriesKeys = new Set<string>();
+    const artifactSuppressedTitles: string[] = [];
+    const seriesSuppressedTitles: string[] = [];
     let rawApiResultCount = 0;
     let failedReason = "";
 
@@ -409,8 +448,16 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (!quality.keep) {
           const reason = quality.reason || "quality_filter";
           dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+          if (reason === "artifact_title") artifactSuppressedTitles.push(title);
           continue;
         }
+        const seriesKey = openLibrarySeriesKey(doc);
+        if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+          dropReasons.series_duplicate = Number(dropReasons.series_duplicate || 0) + 1;
+          seriesSuppressedTitles.push(title);
+          continue;
+        }
+        if (seriesKey) acceptedSeriesKeys.add(seriesKey);
         rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
         if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
       }
@@ -471,6 +518,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         rawApiResultCount,
         droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
         dropReasons,
+        artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
+        seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),
         fetches,
       },
