@@ -13000,6 +13000,18 @@ const normalizedCandidatesRaw = [
     const title = String(row?.title || row?.doc?.title || "").trim();
     return Array.isArray(kitsuTeenKnownTitleFacetEvidenceByTitle[title]) && kitsuTeenKnownTitleFacetEvidenceByTitle[title].length > 0;
   };
+  const teenKitsuHasFamilySpecificLaneEvidence = (row: any) => {
+    if (row?.laneAligned) return true;
+    const family = String(kitsuTeenEffectiveFamily || routerFamily || "").trim();
+    if (family !== "science_fiction") return true;
+    const title = String(row?.title || row?.doc?.title || "").trim();
+    const evidenceText = normalizeText([
+      ...(Array.isArray(kitsuTeenEvidenceTextFieldsByTitle[title]) ? kitsuTeenEvidenceTextFieldsByTitle[title] : []),
+      ...(Array.isArray(kitsuTeenKnownTitleFacetEvidenceByTitle[title]) ? kitsuTeenKnownTitleFacetEvidenceByTitle[title] : []),
+      ...teenKitsuMeaningfulTasteSignalsForTitle(title).meaningful,
+    ].join(" "));
+    return /\b(science fiction|sci fi|sci-fi|dystopian|cyberpunk|space|robot|android|mecha|future|futuristic|alien|post apocalyptic|apocalypse|time travel|survival)\b/.test(evidenceText);
+  };
   const teenKitsuTitleKeywordOnlyPenaltyReason = (row: any) => {
     const title = String(row?.title || row?.doc?.title || "").trim();
     const family = String(kitsuTeenEffectiveFamily || routerFamily || "").trim();
@@ -13048,6 +13060,7 @@ const normalizedCandidatesRaw = [
     if (Number(row?.positiveFitScore || 0) < 0) return false;
     if (row?.laneAligned) return true;
     if (!row?.familyAligned) return false;
+    if (!teenKitsuHasFamilySpecificLaneEvidence(row)) return false;
     const hasKnownTitleFacetEvidence = teenKitsuHasKnownTitleFacetEvidence(row);
     const hasNonQueryMeaningfulTaste = teenKitsuHasNonQueryMeaningfulTasteEvidence(row);
     if (!hasKnownTitleFacetEvidence && !hasNonQueryMeaningfulTaste) return false;
@@ -13069,6 +13082,7 @@ const normalizedCandidatesRaw = [
       if (!teenKitsuEvidenceOverridesNegativeFit(row)) return `${penaltyType}:${Number(row.positiveFitScore || 0).toFixed(2)}`;
     }
     if (!row.laneAligned && !row.familyAligned) return "no_lane_or_router_family_alignment";
+    if (!teenKitsuHasFamilySpecificLaneEvidence(row)) return "science_fiction_requires_specific_lane_evidence";
     return "";
   };
   const teenKitsuRescueTierForRow = (row: any) => {
