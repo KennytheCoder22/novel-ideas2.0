@@ -5711,7 +5711,12 @@ export async function getRecommendations(
       };
     }
   };
-  await enrichTeenKitsuCandidatesWithGcdMetadata();
+  if (isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && includeKitsu) {
+    kitsuTeenGcdEnrichmentSkippedReason = "disabled_restore_frozen_teen_kitsu";
+    kitsuTeenGcdEnrichmentEnabled = false;
+    kitsuTeenGcdEnrichmentAttempted = false;
+    sourceSkippedReason.push("teen_kitsu_gcd_enrichment_disabled_restore_frozen_teen_behavior");
+  }
 
 
   let mergedDocs = dedupeDocs(allMergedDocs);
@@ -12970,7 +12975,8 @@ const normalizedCandidatesRaw = [
     };
     const textDoc = doc || row;
     const knownKitsuId = detectKnownKitsuIdFromDoc(textDoc);
-    const resolvedSourceId = String(merged.sourceId || knownKitsuId || "").trim();
+    const titleKnownSourceId = merged.title ? String(teenKitsuKnownSourceIdByTitle[normalizeText(merged.title)] || "").trim() : "";
+    const resolvedSourceId = String(merged.sourceId || knownKitsuId || titleKnownSourceId || "").trim();
     const unsafeMatch = isTeenKitsuRescueContext ? teenKitsuUnsafeMatchForDoc(textDoc) : "";
     const withSafety = { ...merged, sourceId: resolvedSourceId, knownKitsuId, teenKitsuPenaltyType: teenKitsuPenaltyTypeForRow({ ...merged, sourceId: resolvedSourceId }), teenKitsuUnsafeMatch: unsafeMatch };
     const { tier, rejectedReason } = isTeenKitsuRescueContext ? teenKitsuRescueTierForRow(withSafety) : { tier: "legacy", rejectedReason: "" };
@@ -14749,10 +14755,13 @@ const normalizedCandidatesRaw = [
     if (attemptedQueries.length === 0) return;
     const attemptedCanonical = attemptedQueries.map((query) => ({ query, canonical: normalizeKitsuRecoveryQueryForSelection(query) }));
     const candidateDocs = dedupeDocs([
-      ...((debugRawPool || []) as any[]),
-      ...((rankedDocs || []) as any[]),
-      ...((finalRankedDocsBase || []) as any[]),
       ...((finalOutputItems || []) as any[]).map((item: any) => item?.doc || item),
+      ...((finalRankedDocs || []) as any[]),
+      ...((finalRankedDocsBase || []) as any[]),
+      ...((rankedDocs || []) as any[]),
+      ...((normalizedCandidates || []) as any[]),
+      ...((allMergedDocs || []) as any[]),
+      ...((debugRawPool || []) as any[]),
     ] as any[]);
     const scoredRowsByQuery: Record<string, Array<{ title: string; reason: string; semanticEvidence: number; tasteEvidence: number; laneAligned: boolean; familyAligned: boolean; sourceId: string; tier: string; positiveFitScore: number; meaningfulTasteSignalCount: number }>> = {};
     const seenByQueryAndTitle = new Set<string>();
