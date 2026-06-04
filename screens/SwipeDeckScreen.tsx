@@ -1913,6 +1913,29 @@ function handleLeft() {
           comicVineDispatchStageDiagnostics: Array.isArray(durableComicVineState?.comicVineDispatchStageDiagnostics) ? durableComicVineState.comicVineDispatchStageDiagnostics : [],
         };
         setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), ...timeoutTrace }));
+        const fallbackDebugRawPoolLengthRaw = Number(
+          durableComicVineState?.debugRawPoolLength ??
+          durableComicVineState?.mergedPoolLength ??
+          Object.values(durableComicVineState?.comicVineRawCountByQuery || {}).reduce((acc: number, value: any) => acc + Number(value || 0), 0)
+        );
+        const fallbackDebugCandidatePoolLengthRaw = Number(
+          durableComicVineState?.mergedPoolLength ??
+          Object.values(durableComicVineState?.comicVineCandidateCountByQuery || {}).reduce((acc: number, value: any) => acc + Number(value || 0), 0)
+        );
+        const fallbackDebugRawPoolLength = Number.isFinite(fallbackDebugRawPoolLengthRaw) ? fallbackDebugRawPoolLengthRaw : 0;
+        const fallbackDebugCandidatePoolLength = Number.isFinite(fallbackDebugCandidatePoolLengthRaw) ? fallbackDebugCandidatePoolLengthRaw : 0;
+        if (fallbackDebugRawPoolLength > 0 || fallbackDebugCandidatePoolLength > 0) {
+          setLastRecommendationResult({
+            items: [],
+            debugRawPool: Array.from({ length: Math.max(0, fallbackDebugRawPoolLength) }, (_unused, index) => ({ title: `(comicvine raw placeholder ${index + 1})`, source: "comicVine", diagnostics: { timeoutFallbackPlaceholder: true } })),
+            debugCandidatePool: Array.from({ length: Math.max(0, fallbackDebugCandidatePoolLength) }, (_unused, index) => ({ title: `(comicvine candidate placeholder ${index + 1})`, source: "comicVine", diagnostics: { timeoutFallbackPlaceholder: true } })),
+            sourceEnabled,
+            sourceSkippedReason: [],
+            routerResultTracePresent: true,
+            debugComicVineDispatchTrace: timeoutTrace,
+            debugGcdDispatchTrace: timeoutTrace,
+          } as any);
+        }
       }
       setRecItems([]);
       setRecError(err?.message || "Recommendation engine could not be reached (network blocked).");

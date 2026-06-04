@@ -3339,6 +3339,13 @@ export async function getRecommendations(
     return allowed;
   }) : []);
   const hasRunnableSource = sourceEnabled.googleBooks || sourceEnabled.openLibrary || sourceEnabled.localLibrary || includeKitsu || includeComicVine || sourceEnabled.nyt;
+  const comicVineOnlyAtRequestStart = Boolean(
+    includeComicVine &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !sourceEnabled.localLibrary &&
+    !includeKitsu
+  );
 
   if (routedInput.deckKey === "ms_hs" && sourceEnabled.comicVine && !sourceEnabled.googleBooks && !sourceEnabled.openLibrary && !sourceEnabled.localLibrary && !sourceEnabled.kitsu) {
     debugRouterLog("COMICVINE_ONLY_SMOKE_PATH", { deckKey: routedInput.deckKey, includeComicVine });
@@ -4416,6 +4423,26 @@ export async function getRecommendations(
         if (!includeComicVine && comicVineDispatchSkippedReason === "not_dispatched_yet") {
           comicVineDispatchSkippedReason = "comicvine_gate_false_after_other_sources_exhausted";
         }
+        if (includeComicVine && comicVineShouldUseResult && comicVineDispatchSkippedReason === "not_dispatched_yet") {
+          comicVineDispatchSkippedReason = "comicvine_eligible_before_dispatch_after_other_sources_exhausted";
+          comicVineDispatchStageDiagnostics.push({
+            laneIndex: lanei,
+            query: String((queryLanes[lanei] as any)?.query || (rung as any)?.query || "comicvine_adapter"),
+            stage: "eligible_after_other_sources_exhausted_before_dispatch",
+            planned: comicVineDispatchPlanned,
+            attempted: false,
+            startedAt: comicVineFetchStartedAt,
+            finishedAt: comicVineFetchFinishedAt,
+            timedOut: false,
+            status: "skipped",
+            rawCount: 0,
+            docCount: 0,
+            candidateCount: 0,
+            error: null,
+            skippedReason: comicVineDispatchSkippedReason,
+          });
+          writeDurableComicVineDispatchState({ stage: "comicvine_eligible_after_other_sources_exhausted_before_dispatch", laneIndex: lanei });
+        }
       }
       if (googleBooksExhausted && openLibraryExhausted && kitsuExhausted && comicVineExhausted) {
         if (!fetchLoopExhaustedMarkerEmitted) {
@@ -5485,6 +5512,36 @@ export async function getRecommendations(
     }
     if (stopRouterFetchLoop) break;
   }
+  if (includeComicVine && comicVineShouldUseResult && !comicVineDispatchAttempted) {
+    if (comicVineDispatchSkippedReason === "not_dispatched_yet") {
+      comicVineDispatchSkippedReason = routerFetchLoopStoppedByTimeout
+        ? "comicvine_eligible_but_fetch_loop_stopped_by_soft_timeout_before_dispatch"
+        : "comicvine_eligible_but_fetch_loop_completed_without_dispatch";
+    }
+    comicVineDispatchStageDiagnostics.push({
+      laneIndex: -1,
+      query: Array.from(comicVineQueriesPlanned)[0] || String(bucketPlan.preview || bucketPlan.queries?.[0] || "comicvine_adapter"),
+      stage: "post_fetch_loop_eligible_without_dispatch",
+      planned: comicVineDispatchPlanned,
+      attempted: false,
+      startedAt: comicVineFetchStartedAt,
+      finishedAt: comicVineFetchFinishedAt,
+      timedOut: false,
+      status: "skipped",
+      rawCount: 0,
+      docCount: 0,
+      candidateCount: 0,
+      error: null,
+      skippedReason: comicVineDispatchSkippedReason,
+    });
+    pushGlobalPhase("comicvine_eligible_without_dispatch_after_fetch_loop", {
+      comicVineDispatchSkippedReason,
+      comicVineDispatchPlanned,
+      comicVineDispatchAttempted,
+      routerFetchLoopStoppedByTimeout,
+    });
+    writeDurableComicVineDispatchState({ stage: "comicvine_eligible_without_dispatch_after_fetch_loop", comicVineDispatchSkippedReason });
+  }
   if (pendingSourceFetchCount > 0) {
     pushGlobalPhase("awaiting_pending_source_fetches_before_post_fetch_health_guard", { pendingSourceFetches: pendingSourceFetches.length, pendingSourceFetchCount });
     await Promise.allSettled(pendingSourceFetches);
@@ -5500,12 +5557,9 @@ export async function getRecommendations(
   }
 
   const comicVineOnlyCleanZeroAfterFetch = Boolean(
-    includeComicVine &&
+    comicVineOnlyAtRequestStart &&
     comicVineDispatchAttempted &&
     pendingSourceFetchCount === 0 &&
-    !sourceEnabled.googleBooks &&
-    !sourceEnabled.openLibrary &&
-    !includeKitsu &&
     allMergedDocs.length === 0 &&
     debugRawPool.length === 0
   );
@@ -6193,6 +6247,20 @@ export async function getRecommendations(
       .filter(Boolean)
   ));
   const kitsuMaxAllowedCanonicalFetchesForHealthGuard = kitsuTerminalBroadFallbackDispatched ? 3 : (kitsuPrimaryRawZero ? 2 : 1);
+  pushGlobalPhase("before_post_fetch_health_guard", {
+    pendingSourceFetchCount,
+    allRealSourcesStarved,
+    mergedPoolLength: mergedDocs.length,
+    debugRawPoolLength: debugRawPool.length,
+    comicVineDispatchAttempted,
+    comicVineRawFetched: Number(aggregatedRawFetched.comicVine || 0),
+  });
+  writeDurableComicVineDispatchState({
+    stage: "before_post_fetch_health_guard",
+    mergedPoolLength: mergedDocs.length,
+    debugRawPoolLength: debugRawPool.length,
+    allRealSourcesStarved,
+  });
   pushGlobalPhase("pendingSourceFetchCount_at_source_health_guard", { pendingSourceFetchCount, allRealSourcesStarved });
   if (allRealSourcesStarved && pendingSourceFetchCount > 0) {
     pushGlobalPhase("source_health_pending", { pendingSourceFetchCount });
@@ -6437,8 +6505,6 @@ export async function getRecommendations(
       kitsuMaxAllowedCanonicalFetches: kitsuMaxAllowedCanonicalFetchesForHealthGuard,
       kitsuSanitizationDiagnostics,
       kitsuSanitizationDroppedTokens,
-      kitsuSanitizationDiagnostics,
-      kitsuSanitizationDroppedTokens,
       sourceDisableReasonsDetailed,
       perSourceStatus: {
         googleBooks: { enabled: sourceEnabled.googleBooks, rawFetched: aggregatedRawFetched.googleBooks, starved: googleStarved },
@@ -6468,6 +6534,18 @@ export async function getRecommendations(
     });
     }
   }
+  pushGlobalPhase("after_post_fetch_health_guard", {
+    mergedPoolLength: mergedDocs.length,
+    debugRawPoolLength: debugRawPool.length,
+    allRealSourcesStarved,
+    comicVineDispatchAttempted,
+    comicVineRawFetched: Number(aggregatedRawFetched.comicVine || 0),
+  });
+  writeDurableComicVineDispatchState({
+    stage: "after_post_fetch_health_guard",
+    mergedPoolLength: mergedDocs.length,
+    debugRawPoolLength: debugRawPool.length,
+  });
 
   debugDocPreview("RAW MERGED CANDIDATE POOL BEFORE FILTERING", mergedDocs);
   debugRouterLog("RAW FETCHED BY SOURCE", aggregatedRawFetched);
@@ -6475,6 +6553,13 @@ export async function getRecommendations(
   // Open Library gets a lightweight Hardcover pass BEFORE filtering. This is
   // enrichment-only: it never drops rows, but it gives filterCandidates earlier
   // authority signals for sparse OL records.
+  pushGlobalPhase("before_scoring", {
+    stage: "prefilter_enrichment",
+    mergedPoolLength: mergedDocs.length,
+    debugRawPoolLength: debugRawPool.length,
+    comicVineRawFetched: Number(aggregatedRawFetched.comicVine || 0),
+  });
+  writeDurableComicVineDispatchState({ stage: "before_scoring", scoringStage: "prefilter_enrichment", mergedPoolLength: mergedDocs.length, debugRawPoolLength: debugRawPool.length });
   const openLibraryPrefilterEnrichedDocs = await enrichOpenLibraryBeforeFiltering(mergedDocs);
 
   // Hardcover enrichment is non-blocking and runs AFTER merging.
@@ -6549,13 +6634,23 @@ export async function getRecommendations(
     return allDocs;
   };
   let enrichedDocs = enrichComicVineStructuralMetadata(commerciallyEnrichedDocs);
+  const comicVineHasIngestedDocs = Boolean(comicVineDispatchAttempted && mergedDocs.length > 0 && Number(aggregatedRawFetched.comicVine || 0) > 0);
+  const skipComicVinePostIngestionExpansion = Boolean(comicVineOnlyAtRequestStart && comicVineHasIngestedDocs);
   if (includeComicVine) {
     const cleanEligibleBaseline = commerciallyEnrichedDocs.filter((doc: any) => {
       const t = normalizeText(`${doc?.title || ""} ${doc?.subtitle || ""}`);
       return Boolean(t) && !/^(the\s+walking\s+dead:\s*\.\.\.|\.\.\.)$/i.test(String(doc?.title || "").trim());
     });
     expansionCleanEligibleCount = cleanEligibleBaseline.length;
-    if (cleanEligibleBaseline.length < 8) {
+    if (skipComicVinePostIngestionExpansion) {
+      expansionNotTriggeredReason = "comicvine_only_ingested_pool_skip_pre_filter_expansion";
+      pushGlobalPhase("comicvine_post_ingestion_expansion_skipped", {
+        stage: "pre_filter_expansion",
+        cleanEligibleBaseline: cleanEligibleBaseline.length,
+        mergedPoolLength: mergedDocs.length,
+        debugRawPoolLength: debugRawPool.length,
+      });
+    } else if (cleanEligibleBaseline.length < 8) {
       cleanCandidateShortfallExpansionTriggered = true;
       expansionNotTriggeredReason = "clean_eligible_below_threshold";
       const candidateSeeds = Array.from(new Set([
@@ -6616,7 +6711,9 @@ export async function getRecommendations(
   // Strict 20Q router:
   // taste comes only from 20Q-derived rungs. NYT is allowed only after filtering
   // as a procurement/commercial anchor, never as query or taste evidence.
+  pushGlobalPhase("before_scoring", { stage: "filter_candidates", enrichedDocsLength: enrichedDocs.length, debugRawPoolLength: debugRawPool.length });
   const filteredDocs = unwrapFilteredCandidates(filterCandidates(enrichedDocs, bucketPlan));
+  pushGlobalPhase("after_scoring", { stage: "filter_candidates", filteredDocsLength: filteredDocs.length, enrichedDocsLength: enrichedDocs.length, debugRawPoolLength: debugRawPool.length });
   debugDocPreview("FILTERED CANDIDATE POOL", filteredDocs);
   debugRouterLog("FILTER COLLAPSE CHECK", { rawCount: enrichedDocs.length, filteredCount: filteredDocs.length });
   const filterAuditRows = buildFilterAuditRows(enrichedDocs);
@@ -8547,7 +8644,7 @@ const normalizedCandidatesRaw = [
     }
     if (rebuilt.length >= 5) finalRenderDocs = rebuilt;
   }
-  if (includeComicVine && !expansionFetchAttempted && candidateDocs.length < 30) {
+  if (includeComicVine && !expansionFetchAttempted && candidateDocs.length < 30 && !skipComicVinePostIngestionExpansion) {
     cleanCandidateShortfallExpansionTriggered = true;
     const tasteExpansionSeeds = generatedComicVineQueriesFromTaste.length > 0
       ? generatedComicVineQueriesFromTaste.map((q) => q.replace(/\s*graphic novel\s*$/i, "").trim()).filter(Boolean)
@@ -8579,6 +8676,14 @@ const normalizedCandidatesRaw = [
       candidateDocs = dedupeDocs([...(candidateDocs as any[]), ...taggedExpansionDocs]);
       expansionMergedCandidateCount = Math.max(expansionMergedCandidateCount, candidateDocs.length);
     }
+  } else if (includeComicVine && !expansionFetchAttempted && candidateDocs.length < 30 && skipComicVinePostIngestionExpansion) {
+    expansionNotTriggeredReason = "comicvine_only_ingested_pool_skip_pre_scoring_expansion";
+    pushGlobalPhase("comicvine_post_ingestion_expansion_skipped", {
+      stage: "pre_scoring_expansion",
+      candidateDocsLength: candidateDocs.length,
+      mergedPoolLength: mergedDocs.length,
+      debugRawPoolLength: debugRawPool.length,
+    });
   }
   const anchorFranchises = [
     "something is killing the children", "locke & key", "walking dead", "sweet tooth", "descender", "runaways", "batman", "spider-man", "ms. marvel",
@@ -8650,6 +8755,7 @@ const normalizedCandidatesRaw = [
   let entryPointCandidatesSuppressed = 0;
   const finalSuppressedByBetterEntryPoint: string[] = [];
   const suppressedGlobalSeedReason = /\b(horror|dark|survival|apocalypse)\b/.test(profileTextForSeeds) ? "none" : "profile_not_horror";
+  pushGlobalPhase("before_scoring", { stage: "scored_canonical_docs", scoringUniverseCount: scoringUniverse.length, candidateDocsLength: candidateDocs.length });
   const scoredCanonicalDocs = scoringUniverse.map((doc: any) => {
     const title = String(doc?.title || doc?.rawDoc?.title || "");
     const subtitle = String(doc?.subtitle || doc?.rawDoc?.subtitle || "");
@@ -8780,6 +8886,7 @@ const normalizedCandidatesRaw = [
   });
   const scoringPassApplied = scoringPassInputCount > 0;
   const scoringPassOutputCount = scoredCanonicalDocs.length;
+  pushGlobalPhase("after_scoring", { stage: "scored_canonical_docs", scoringPassInputCount, scoringPassOutputCount });
   const topScoredTitles = [...scoredCanonicalDocs]
     .sort((a: any, b: any) => Number(b?.score || 0) - Number(a?.score || 0))
     .slice(0, 10)
@@ -10812,6 +10919,18 @@ const normalizedCandidatesRaw = [
   ].filter(Boolean) as string[];
   const singleSourceMode = activeSources.length === 1;
   const singleSource = singleSourceMode ? activeSources[0] : "";
+  pushGlobalPhase("before_final_assembly", {
+    finalRankedDocsBaseLength: finalRankedDocsBase.length,
+    rankedDocsLength,
+    finalRenderDocsLength: finalRenderDocs.length,
+    comicVineApprovedCandidatesLength: comicVineApprovedCandidates.length,
+  });
+  writeDurableComicVineDispatchState({
+    stage: "before_final_assembly",
+    finalRankedDocsBaseLength: finalRankedDocsBase.length,
+    rankedDocsLength,
+    finalRenderDocsLength: finalRenderDocs.length,
+  });
   const singleSourceItems =
     singleSource === "googleBooks" ? googleBooksApprovedCandidates :
     singleSource === "openLibrary" ? openLibraryApprovedCandidates :
@@ -10940,6 +11059,17 @@ const normalizedCandidatesRaw = [
   const finalGateAcceptedDocsCount = finalGateAcceptedItems.length;
   const terminalAssemblyInputCount = finalOutputItems.length;
   const terminalAssemblyInputTitles = finalOutputItems.map((item:any)=>String(item?.doc?.title || item?.title || "").trim()).filter(Boolean);
+  pushGlobalPhase("after_final_assembly", {
+    terminalAssemblyInputCount,
+    terminalAssemblyInputTitles: terminalAssemblyInputTitles.slice(0, 10),
+    singleSourceDirectReturnTriggered,
+    singleSource,
+  });
+  writeDurableComicVineDispatchState({
+    stage: "after_final_assembly",
+    terminalAssemblyInputCount,
+    terminalAssemblyInputTitles: terminalAssemblyInputTitles.slice(0, 10),
+  });
   nonComicVineReturnedBeforeComicVine = finalOutputItems.filter((item: any) => {
     const s = String(item?.doc?.source || item?.source || "").toLowerCase();
     return s && !s.includes("comicvine");
@@ -15437,6 +15567,17 @@ const normalizedCandidatesRaw = [
   const finalReturnedDisabledSourceLeakDetected = finalOutputItems.some((item: any) => !isSourceAllowedForFinalGate(item));
   const returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
   const acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
+  pushGlobalPhase("after_final_assembly", {
+    stage: "post_final_gates",
+    returnedItemsLength: finalOutputItems.length,
+    returnedItemsTitles: returnedItemsTitlesAtAuditPoint.slice(0, 10),
+    finalReturnedDisabledSourceLeakDetected,
+  });
+  writeDurableComicVineDispatchState({
+    stage: "after_final_assembly_post_final_gates",
+    returnedItemsLength: finalOutputItems.length,
+    returnedItemsTitles: returnedItemsTitlesAtAuditPoint.slice(0, 10),
+  });
   markRouterPhase("router_before_final_return");
   return {
     engineId: preferredEngine,
