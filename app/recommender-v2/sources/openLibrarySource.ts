@@ -1,6 +1,6 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 
-const OPEN_LIBRARY_QUERY_LIMIT = 1;
+const OPEN_LIBRARY_QUERY_LIMIT = 3;
 const OPEN_LIBRARY_DOC_LIMIT = 10;
 const OPEN_LIBRARY_DOCS_PER_QUERY = 8;
 const OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY = "fantasy";
@@ -23,6 +23,49 @@ function uniqueStrings(values: unknown[], limit = 24): string[] {
     if (output.length >= limit) break;
   }
   return output;
+}
+
+function cleanOpenLibraryQueryPart(value: unknown): string {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\b(indie\s+genre|mshs|middle\s+school\s+high\s+school|genre|genres|teen|teens|teenage|ya|young\s+adult|reader\s+discovery)\b/g, " ")
+    .replace(/\b(book|books|story|stories|novel|novels)\b/g, " ")
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isUsefulOpenLibraryQueryPart(value: string): boolean {
+  if (!value) return false;
+  if (value.length < 3) return false;
+  return !/^(and|or|the|with|for|adult|kids|preteens|children)$/.test(value);
+}
+
+function combineOpenLibraryQueryParts(primary: string, modifier?: string): string {
+  const parts = [primary, modifier || ""].map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart);
+  const uniqueParts = uniqueStrings(parts, 2);
+  return uniqueParts.join(" ").trim();
+}
+
+function buildOpenLibraryQueries(plan: SourcePlan, profile: TasteProfile): string[] {
+  const genres = uniqueStrings(profile.genreFamily.map((row) => cleanOpenLibraryQueryPart(row.value)).filter(isUsefulOpenLibraryQueryPart), 2);
+  const modifiers = uniqueStrings([
+    ...profile.themes.map((row) => cleanOpenLibraryQueryPart(row.value)),
+    ...profile.tone.map((row) => cleanOpenLibraryQueryPart(row.value)),
+  ].filter(isUsefulOpenLibraryQueryPart), 4);
+  const plannedFallbacks = plan.intents
+    .map((intent) => cleanOpenLibraryQueryPart(intent.query))
+    .filter(isUsefulOpenLibraryQueryPart)
+    .map((query) => query.split(" ").filter(isUsefulOpenLibraryQueryPart).slice(0, 2).join(" "))
+    .filter(isUsefulOpenLibraryQueryPart);
+
+  const candidates = [
+    combineOpenLibraryQueryParts(genres[0] || plannedFallbacks[0] || "", modifiers[0]),
+    combineOpenLibraryQueryParts(genres[1] || "", modifiers.find((modifier) => modifier !== modifiers[0])),
+    genres[0] || plannedFallbacks[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
+  ];
+
+  return uniqueStrings(candidates.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT);
 }
 
 function openLibraryRequest(query: string, limit: number): { url: string; fetchPath: "direct" | "proxy" } {
@@ -176,7 +219,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       };
     }
 
-    const queries = uniqueStrings(plan.intents.map((intent) => intent.query), OPEN_LIBRARY_QUERY_LIMIT);
+    const queries = buildOpenLibraryQueries(plan, context.profile);
     if (!queries.length) {
       return {
         source: "openLibrary",
@@ -256,10 +299,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         rawItems.push(normalizeOpenLibraryDoc(doc, query));
         if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
       }
-      if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
+      if (rawItems.length > 0) break;
     }
 
-    if (!rawItems.length && !context.signal?.aborted && queries[0]?.toLowerCase() !== OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY) {
+    if (!rawItems.length && !context.signal?.aborted && !queries.some((query) => query.toLowerCase() === OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY)) {
       const { diagnostic } = await fetchOpenLibraryDocs(OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, 1, context.signal, true);
       fetches.push(diagnostic);
       if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
