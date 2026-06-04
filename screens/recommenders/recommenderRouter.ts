@@ -4299,6 +4299,35 @@ export async function getRecommendations(
   const comicVineRawCountByQuery: Record<string, number> = {};
   const comicVineDocCountByQuery: Record<string, number> = {};
   const comicVineCandidateCountByQuery: Record<string, number> = {};
+  const comicVineResultShapeByQuery: Record<string, any> = {};
+  const comicVineFirstTitlesByQuery: Record<string, string[]> = {};
+  const writeDurableComicVineDispatchState = (extra?: Record<string, any>) => {
+    try {
+      (globalThis as any).__novelIdeasComicVineDispatchState = {
+        timestamp: new Date().toISOString(),
+        comicVineEnabledAtRequestStart,
+        comicVineShouldUseResult,
+        includeComicVine,
+        comicVineDispatchPlanned,
+        comicVineDispatchAttempted,
+        comicVineDispatchSkippedReason,
+        comicVineQueriesPlanned: Array.from(comicVineQueriesPlanned),
+        comicVineQueriesAttempted: Array.from(comicVineQueriesAttempted),
+        comicVineFetchStartedAt,
+        comicVineFetchFinishedAt,
+        comicVineFetchTimedOut,
+        comicVineRawCountByQuery,
+        comicVineDocCountByQuery,
+        comicVineCandidateCountByQuery,
+        comicVineResultShapeByQuery,
+        comicVineFirstTitlesByQuery,
+        comicVineDispatchStageDiagnostics,
+        ...(extra || {}),
+      };
+    } catch {
+      // best-effort timeout diagnostics only
+    }
+  };
   const comicVineAcceptedCountByQuery: Record<string, number> = {};
   const comicVineRejectedCountByQuery: Record<string, number> = {};
   const comicVineTopTitlesByQuery: Record<string, string[]> = {};
@@ -4932,6 +4961,7 @@ export async function getRecommendations(
         comicVineQueriesPlanned.add(comicVineLaneQuery);
         comicVineQueryTexts.add("comicvine_adapter");
         pushGlobalPhase("after_comicvine_query_planning", { laneIndex: lanei, query: comicVineLaneQuery, plannedQueries: Array.from(comicVineQueriesPlanned) });
+        writeDurableComicVineDispatchState({ stage: "after_comicvine_query_planning", laneIndex: lanei, query: comicVineLaneQuery });
         if (!shouldDispatchComicVineForLane && comicVineDispatchSkippedReason === "not_dispatched_yet") {
           comicVineDispatchSkippedReason = comicVineDispatchedOnce ? "already_dispatched_once" : "comicvine_lane_not_selected";
         }
@@ -4941,6 +4971,7 @@ export async function getRecommendations(
         comicVineDispatchSkippedReason = "none";
         comicVineQueriesAttempted.add(comicVineLaneQuery);
         comicVineFetchStartedAt = comicVineFetchStartedAt || new Date().toISOString();
+        writeDurableComicVineDispatchState({ stage: "before_comicvine_fetch", laneIndex: lanei, query: comicVineLaneQuery });
         pendingSourceFetchCount += 1;
         pendingSourceFetchCountIncremented.push({ source: "comicVine", laneIndex: lanei, query: comicVineLaneQuery, pending: pendingSourceFetchCount });
         pushGlobalPhase("before_comicvine_router_fetch", { laneIndex: lanei, query: comicVineLaneQuery });
@@ -5172,13 +5203,43 @@ export async function getRecommendations(
           const fulfilledAt = new Date().toISOString();
           comicVineFetchFinishedAt = fulfilledAt;
           const fulfilledRawCount = Number(value?.debugRawFetchedCount ?? countResultItems(value));
-          const fulfilledDocCount = dedupeDocs(extractDocs(value, "comicVine")).length;
+          const fulfilledDocs = dedupeDocs(extractDocs(value, "comicVine"));
+          const fulfilledDocCount = fulfilledDocs.length;
           const fulfilledCandidateCount = Array.isArray(value?.debugCandidatePool)
             ? value.debugCandidatePool.length
             : Number((value as any)?.debugCandidatePoolLength ?? countResultItems(value));
+          const firstTitles = fulfilledDocs
+            .map((doc: any) => String(doc?.title || doc?.rawDoc?.title || "").trim())
+            .filter(Boolean)
+            .slice(0, 3);
           comicVineRawCountByQuery[query] = Number(comicVineRawCountByQuery[query] ?? fulfilledRawCount);
           comicVineDocCountByQuery[query] = fulfilledDocCount;
           comicVineCandidateCountByQuery[query] = fulfilledCandidateCount;
+          comicVineResultShapeByQuery[query] = {
+            resultType: Array.isArray(value) ? "array" : typeof value,
+            keys: value && typeof value === "object" && !Array.isArray(value) ? Object.keys(value).slice(0, 20) : [],
+            itemsLength: Array.isArray((value as any)?.items) ? (value as any).items.length : null,
+            debugRawPoolLength: Array.isArray((value as any)?.debugRawPool) ? (value as any).debugRawPool.length : null,
+            debugCandidatePoolLength: Array.isArray((value as any)?.debugCandidatePool) ? (value as any).debugCandidatePool.length : null,
+          };
+          comicVineFirstTitlesByQuery[query] = firstTitles;
+          writeDurableComicVineDispatchState({
+            stage: "after_comicvine_result_ingestion",
+            laneIndex: lanei,
+            query,
+            rawCount: fulfilledRawCount,
+            docCount: fulfilledDocCount,
+            candidateCount: fulfilledCandidateCount,
+            firstTitles,
+          });
+          pushGlobalPhase("after_comicvine_result_ingestion", {
+            laneIndex: lanei,
+            query,
+            rawCount: fulfilledRawCount,
+            docCount: fulfilledDocCount,
+            candidateCount: fulfilledCandidateCount,
+            mergedPoolLength: allMergedDocs.length,
+          });
           comicVineDispatchStageDiagnostics.push({
             laneIndex: lanei,
             query,
@@ -5209,8 +5270,17 @@ export async function getRecommendations(
           comicVineFetchFinishedAt = rejectedAt;
           const timedOut = reasonText.includes("router_before_comicvine_full_fetch_timeout") || reasonText.includes("timeout");
           comicVineFetchTimedOut = comicVineFetchTimedOut || timedOut;
+          comicVineRawCountByQuery[query] = Number(comicVineRawCountByQuery[query] || 0);
           comicVineDocCountByQuery[query] = 0;
           comicVineCandidateCountByQuery[query] = 0;
+          comicVineResultShapeByQuery[query] = { resultType: "error", error: reasonText };
+          comicVineFirstTitlesByQuery[query] = [];
+          writeDurableComicVineDispatchState({
+            stage: timedOut ? "after_comicvine_fetch_timeout" : "after_comicvine_fetch_failed",
+            laneIndex: lanei,
+            query,
+            error: reasonText,
+          });
           comicVineDispatchStageDiagnostics.push({
             laneIndex: lanei,
             query,
@@ -5336,6 +5406,24 @@ export async function getRecommendations(
       });
 
       allMergedDocs.push(...taggedDocs);
+      if (comicVineDispatchedOnThisLane) {
+        pushGlobalPhase("after_comicvine_result_ingestion", {
+          laneIndex: lanei,
+          query: comicVineLaneQuery,
+          rawCount: Number(comicVineRawCountByQuery[comicVineLaneQuery] || 0),
+          docCount: Number(comicVineDocCountByQuery[comicVineLaneQuery] || 0),
+          candidateCount: Number(comicVineCandidateCountByQuery[comicVineLaneQuery] || 0),
+          mergedPoolLength: allMergedDocs.length,
+          debugRawPoolLength: debugRawPool.length,
+        });
+        writeDurableComicVineDispatchState({
+          stage: "after_comicvine_result_ingestion",
+          laneIndex: lanei,
+          query: comicVineLaneQuery,
+          mergedPoolLength: allMergedDocs.length,
+          debugRawPoolLength: debugRawPool.length,
+        });
+      }
       } catch (dispatchError: any) {
         const dispatchMessage = String(dispatchError?.message || dispatchError || "comicvine_dispatch_lane_error");
         comicVineDispatchError = dispatchMessage;
@@ -5355,8 +5443,8 @@ export async function getRecommendations(
     }
     if (stopRouterFetchLoop) break;
   }
-  if (pendingSourceFetches.length > 0) {
-    pushGlobalPhase("awaiting_pending_source_fetches_before_post_fetch_health_guard", { pendingSourceFetches: pendingSourceFetches.length });
+  if (pendingSourceFetchCount > 0) {
+    pushGlobalPhase("awaiting_pending_source_fetches_before_post_fetch_health_guard", { pendingSourceFetches: pendingSourceFetches.length, pendingSourceFetchCount });
     await Promise.allSettled(pendingSourceFetches);
     if (pendingSourceFetchCount > 0) {
       await Promise.resolve();
@@ -5365,6 +5453,73 @@ export async function getRecommendations(
         pushGlobalPhase("pending_fetch_counter_mismatch_after_allSettled", { pendingSourceFetchCount, pendingSourceFetches: pendingSourceFetches.length });
       }
     }
+  } else if (pendingSourceFetches.length > 0) {
+    pushGlobalPhase("pending_source_fetch_array_contains_only_settled_promises", { pendingSourceFetches: pendingSourceFetches.length, pendingSourceFetchCount });
+  }
+
+  const comicVineOnlyCleanZeroAfterFetch = Boolean(
+    includeComicVine &&
+    comicVineDispatchAttempted &&
+    pendingSourceFetchCount === 0 &&
+    !sourceEnabled.googleBooks &&
+    !sourceEnabled.openLibrary &&
+    !includeKitsu &&
+    allMergedDocs.length === 0 &&
+    debugRawPool.length === 0
+  );
+  if (comicVineOnlyCleanZeroAfterFetch) {
+    const cleanZeroFetchDiagnosticsSummary = {
+      gbQueries: 0,
+      olQueries: 0,
+      kitsuQueries: 0,
+      comicVineQueries: Array.from(comicVineQueriesAttempted).length,
+      gbResults: 0,
+      olResults: 0,
+      kitsuResults: 0,
+      comicVineResults: comicVineFetchResults.length,
+    };
+    pushGlobalPhase("comicvine_clean_zero_return_after_empty_fetch", cleanZeroFetchDiagnosticsSummary);
+    writeDurableComicVineDispatchState({ stage: "comicvine_clean_zero_return_after_empty_fetch", fetchDiagnosticsSummary: cleanZeroFetchDiagnosticsSummary });
+    return {
+      engineId: "comicVine",
+      engineLabel: "ComicVine",
+      deckKey: routedInput.deckKey,
+      domainMode: routedInput.deckKey === "k2" ? (routedInput.domainModeOverride ?? "chapterMiddle") : (routedInput.domainModeOverride ?? "default"),
+      builtFromQuery: bucketPlan.preview || bucketPlan.queries?.[0] || "",
+      items: [],
+      debugRawPool: [],
+      debugCandidatePool: [],
+      debugSourceStats: {
+        googleBooks: { rawFetched: 0, postFilterCandidates: 0, finalSelected: 0 },
+        openLibrary: { rawFetched: 0, postFilterCandidates: 0, finalSelected: 0 },
+        kitsu: { rawFetched: 0, postFilterCandidates: 0, finalSelected: 0 },
+        comicVine: { rawFetched: Number(aggregatedRawFetched.comicVine || 0), postFilterCandidates: 0, finalSelected: 0 },
+      },
+      sourceEnabled,
+      sourceSkippedReason,
+      debugRouterVersion: EXPECTED_ROUTER_FINGERPRINT,
+      routerResultTracePresent: true,
+      fetchDiagnosticsSummary: cleanZeroFetchDiagnosticsSummary,
+      returnedItemsLength: 0,
+      returnedItemsTitles: [],
+      comicVineEnabledAtRequestStart,
+      comicVineShouldUseResult,
+      comicVineDispatchPlanned,
+      comicVineDispatchAttempted,
+      comicVineDispatchSkippedReason,
+      comicVineQueriesPlanned: Array.from(comicVineQueriesPlanned),
+      comicVineQueriesAttempted: Array.from(comicVineQueriesAttempted),
+      comicVineFetchStartedAt,
+      comicVineFetchFinishedAt,
+      comicVineFetchTimedOut,
+      comicVineRawCountByQuery,
+      comicVineDocCountByQuery,
+      comicVineCandidateCountByQuery,
+      comicVineDispatchStageDiagnostics,
+      debugGcdDispatchTrace: (globalThis as any).__novelIdeasComicVineDispatchState,
+      debugComicVineDispatchTrace: (globalThis as any).__novelIdeasComicVineDispatchState,
+      deploymentRuntimeMarker: "comicvine-proxy-phase",
+    } as RecommendationResult;
   }
 
   if (includeKitsu && kitsuOnlyAtRequestStart && kitsuRouterFetchCount === 0) {

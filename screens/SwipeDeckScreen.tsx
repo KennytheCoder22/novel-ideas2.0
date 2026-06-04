@@ -1889,25 +1889,27 @@ function handleLeft() {
         if (Array.isArray(diag?.sourceSkippedReason)) setLastSourceSkippedReason(diag.sourceSkippedReason);
         setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), preFatalDispatchState: diag }));
       } else {
+        const durableComicVineState = (globalThis as any).__novelIdeasComicVineDispatchState || {};
         const timeoutTrace = {
+          ...durableComicVineState,
           traceSource: "fallback" as const,
-          sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
-          comicVineEnabledAtRequestStart: Boolean(sourceEnabled?.comicVine),
-          comicVineShouldUseResult: Boolean(sourceEnabled?.comicVine),
-          comicVineDispatchPlanned: false,
-          comicVineDispatchAttempted: false,
-          comicVineDispatchSkippedReason: String(err?.message || "").startsWith("router_run_timeout:")
+          sourceEnabledComicVine: Boolean(durableComicVineState?.sourceEnabledComicVine ?? sourceEnabled?.comicVine),
+          comicVineEnabledAtRequestStart: Boolean(durableComicVineState?.comicVineEnabledAtRequestStart ?? sourceEnabled?.comicVine),
+          comicVineShouldUseResult: Boolean(durableComicVineState?.comicVineShouldUseResult ?? sourceEnabled?.comicVine),
+          comicVineDispatchPlanned: Boolean(durableComicVineState?.comicVineDispatchPlanned),
+          comicVineDispatchAttempted: Boolean(durableComicVineState?.comicVineDispatchAttempted),
+          comicVineDispatchSkippedReason: String(durableComicVineState?.comicVineDispatchSkippedReason || "").trim() || (String(err?.message || "").startsWith("router_run_timeout:")
             ? "router_timed_out_before_comicvine_dispatch_trace"
-            : "router_rejected_before_comicvine_dispatch_trace",
-          comicVineQueriesPlanned: [],
-          comicVineQueriesAttempted: [],
-          comicVineFetchStartedAt: null,
-          comicVineFetchFinishedAt: null,
-          comicVineFetchTimedOut: String(err?.message || "").startsWith("router_run_timeout:"),
-          comicVineRawCountByQuery: {},
-          comicVineDocCountByQuery: {},
-          comicVineCandidateCountByQuery: {},
-          comicVineDispatchStageDiagnostics: [],
+            : "router_rejected_before_comicvine_dispatch_trace"),
+          comicVineQueriesPlanned: Array.isArray(durableComicVineState?.comicVineQueriesPlanned) ? durableComicVineState.comicVineQueriesPlanned : [],
+          comicVineQueriesAttempted: Array.isArray(durableComicVineState?.comicVineQueriesAttempted) ? durableComicVineState.comicVineQueriesAttempted : [],
+          comicVineFetchStartedAt: durableComicVineState?.comicVineFetchStartedAt || null,
+          comicVineFetchFinishedAt: durableComicVineState?.comicVineFetchFinishedAt || null,
+          comicVineFetchTimedOut: Boolean(durableComicVineState?.comicVineFetchTimedOut || String(err?.message || "").startsWith("router_run_timeout:")),
+          comicVineRawCountByQuery: durableComicVineState?.comicVineRawCountByQuery || {},
+          comicVineDocCountByQuery: durableComicVineState?.comicVineDocCountByQuery || {},
+          comicVineCandidateCountByQuery: durableComicVineState?.comicVineCandidateCountByQuery || {},
+          comicVineDispatchStageDiagnostics: Array.isArray(durableComicVineState?.comicVineDispatchStageDiagnostics) ? durableComicVineState.comicVineDispatchStageDiagnostics : [],
         };
         setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), ...timeoutTrace }));
       }
@@ -3230,6 +3232,8 @@ function handleLeft() {
       `debugComicVineDispatchTrace.comicVineRawCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineRawCountByQuery || (lastRecommendationResult as any)?.comicVineRawCountByQuery || {})}`,
       `debugComicVineDispatchTrace.comicVineDocCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineDocCountByQuery || (lastRecommendationResult as any)?.comicVineDocCountByQuery || {})}`,
       `debugComicVineDispatchTrace.comicVineCandidateCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineCandidateCountByQuery || (lastRecommendationResult as any)?.comicVineCandidateCountByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineResultShapeByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineResultShapeByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineFirstTitlesByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineFirstTitlesByQuery || {})}`,
       `debugComicVineDispatchTrace.comicVineDispatchStageDiagnostics:${Array.isArray((lastDebugGcdDispatchTrace as any)?.comicVineDispatchStageDiagnostics) && (lastDebugGcdDispatchTrace as any).comicVineDispatchStageDiagnostics.length ? JSON.stringify((lastDebugGcdDispatchTrace as any).comicVineDispatchStageDiagnostics) : "[]"}`,
       `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
