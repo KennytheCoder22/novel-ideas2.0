@@ -45,6 +45,9 @@ export type RecommendationResult = {
     comicVineFetchStartedAt?: string | null;
     comicVineFetchFinishedAt?: string | null;
     comicVineFetchTimedOut?: boolean;
+    comicVineRawCountByQuery?: Record<string, number>;
+    comicVineDocCountByQuery?: Record<string, number>;
+    comicVineCandidateCountByQuery?: Record<string, number>;
     comicVineDispatchStageDiagnostics?: Array<{
       laneIndex: number;
       query: string;
@@ -109,6 +112,9 @@ export type RecommendationResult = {
   comicVineFetchStartedAt?: string | null;
   comicVineFetchFinishedAt?: string | null;
   comicVineFetchTimedOut?: boolean;
+  comicVineRawCountByQuery?: Record<string, number>;
+  comicVineDocCountByQuery?: Record<string, number>;
+  comicVineCandidateCountByQuery?: Record<string, number>;
   comicVineDispatchStageDiagnostics?: RecommendationResult["debugGcdDispatchTrace"] extends infer T ? T extends { comicVineDispatchStageDiagnostics?: infer D } ? D : never : never;
   finalAcceptedDocsLength?: number;
   renderedTopRecommendationsLength?: number;

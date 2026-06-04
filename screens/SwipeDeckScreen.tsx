@@ -1832,6 +1832,20 @@ function handleLeft() {
       const fallbackTrace = {
         traceSource: "fallback" as const,
         sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
+        comicVineEnabledAtRequestStart: Boolean(sourceEnabled?.comicVine),
+        comicVineShouldUseResult: Boolean(sourceEnabled?.comicVine),
+        comicVineDispatchPlanned: false,
+        comicVineDispatchAttempted: false,
+        comicVineDispatchSkippedReason: Boolean(sourceEnabled?.comicVine) ? "router_result_missing_before_dispatch_trace" : "comicvine_disabled_in_source_settings",
+        comicVineQueriesPlanned: [],
+        comicVineQueriesAttempted: [],
+        comicVineFetchStartedAt: null,
+        comicVineFetchFinishedAt: null,
+        comicVineFetchTimedOut: false,
+        comicVineRawCountByQuery: {},
+        comicVineDocCountByQuery: {},
+        comicVineCandidateCountByQuery: {},
+        comicVineDispatchStageDiagnostics: [],
         comicVineProxyUrl: "/api/comicvine",
         normalizedComicVineProxyUrl: "/api/comicvine",
         comicVineProxyConfigured: Boolean(sourceEnabled?.comicVine),
@@ -1873,7 +1887,29 @@ function handleLeft() {
         if (typeof diag?.builtQuery === "string") setRecQuery(diag.builtQuery);
         if (diag?.sourceEnabled) setLastSourceEnabled(diag.sourceEnabled);
         if (Array.isArray(diag?.sourceSkippedReason)) setLastSourceSkippedReason(diag.sourceSkippedReason);
-        setLastDebugGcdDispatchTrace((prev) => ({ ...(prev || {}), preFatalDispatchState: diag }));
+        setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), preFatalDispatchState: diag }));
+      } else {
+        const timeoutTrace = {
+          traceSource: "fallback" as const,
+          sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
+          comicVineEnabledAtRequestStart: Boolean(sourceEnabled?.comicVine),
+          comicVineShouldUseResult: Boolean(sourceEnabled?.comicVine),
+          comicVineDispatchPlanned: false,
+          comicVineDispatchAttempted: false,
+          comicVineDispatchSkippedReason: String(err?.message || "").startsWith("router_run_timeout:")
+            ? "router_timed_out_before_comicvine_dispatch_trace"
+            : "router_rejected_before_comicvine_dispatch_trace",
+          comicVineQueriesPlanned: [],
+          comicVineQueriesAttempted: [],
+          comicVineFetchStartedAt: null,
+          comicVineFetchFinishedAt: null,
+          comicVineFetchTimedOut: String(err?.message || "").startsWith("router_run_timeout:"),
+          comicVineRawCountByQuery: {},
+          comicVineDocCountByQuery: {},
+          comicVineCandidateCountByQuery: {},
+          comicVineDispatchStageDiagnostics: [],
+        };
+        setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), ...timeoutTrace }));
       }
       setRecItems([]);
       setRecError(err?.message || "Recommendation engine could not be reached (network blocked).");
@@ -3191,6 +3227,9 @@ function handleLeft() {
       `debugComicVineDispatchTrace.comicVineFetchStartedAt:${String((lastDebugGcdDispatchTrace as any)?.comicVineFetchStartedAt || "(none)")}`,
       `debugComicVineDispatchTrace.comicVineFetchFinishedAt:${String((lastDebugGcdDispatchTrace as any)?.comicVineFetchFinishedAt || "(none)")}`,
       `debugComicVineDispatchTrace.comicVineFetchTimedOut:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineFetchTimedOut)}`,
+      `debugComicVineDispatchTrace.comicVineRawCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineRawCountByQuery || (lastRecommendationResult as any)?.comicVineRawCountByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineDocCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineDocCountByQuery || (lastRecommendationResult as any)?.comicVineDocCountByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineCandidateCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineCandidateCountByQuery || (lastRecommendationResult as any)?.comicVineCandidateCountByQuery || {})}`,
       `debugComicVineDispatchTrace.comicVineDispatchStageDiagnostics:${Array.isArray((lastDebugGcdDispatchTrace as any)?.comicVineDispatchStageDiagnostics) && (lastDebugGcdDispatchTrace as any).comicVineDispatchStageDiagnostics.length ? JSON.stringify((lastDebugGcdDispatchTrace as any).comicVineDispatchStageDiagnostics) : "[]"}`,
       `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,

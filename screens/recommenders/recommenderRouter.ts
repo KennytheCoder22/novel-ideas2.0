@@ -3261,7 +3261,9 @@ export async function getRecommendations(
 
   const kitsuEligibility = resolveKitsuEligibility(routedInput);
   const includeKitsu = sourceEnabled.kitsu;
+  pushGlobalPhase("before_comicvine_source_gate_evaluation", { sourceEnabledComicVine: Boolean(sourceEnabled.comicVine) });
   const comicVineShouldUseResult = shouldUseComicVine(routedInput);
+  pushGlobalPhase("after_comicvine_source_gate_evaluation", { comicVineShouldUseResult, sourceEnabledComicVine: Boolean(sourceEnabled.comicVine) });
   const comicVineDispatchBypassGuard = false;
   const includeComicVine = comicVineShouldUseResult && !comicVineDispatchBypassGuard;
   const comicVineDispatchBypassed = Boolean(comicVineDispatchBypassGuard && comicVineShouldUseResult);
@@ -4295,6 +4297,8 @@ export async function getRecommendations(
   let comicVineFetchFinishedAt: string | null = null;
   let comicVineFetchTimedOut = false;
   const comicVineRawCountByQuery: Record<string, number> = {};
+  const comicVineDocCountByQuery: Record<string, number> = {};
+  const comicVineCandidateCountByQuery: Record<string, number> = {};
   const comicVineAcceptedCountByQuery: Record<string, number> = {};
   const comicVineRejectedCountByQuery: Record<string, number> = {};
   const comicVineTopTitlesByQuery: Record<string, string[]> = {};
@@ -4365,13 +4369,30 @@ export async function getRecommendations(
       const kitsuExhausted =
         !includeKitsu ||
         kitsuRouterFetchCount >= sourceFetchCapPerRun;
-      if (googleBooksExhausted && openLibraryExhausted && kitsuExhausted) {
+      const comicVineExhausted = !includeComicVine || comicVineDispatchedOnce;
+      if (googleBooksExhausted && openLibraryExhausted && kitsuExhausted && sourceEnabled.comicVine && !comicVineDispatchedOnce) {
+        pushGlobalPhase("comicvine_source_loop_assertion_after_other_sources_exhausted", {
+          laneIndex: lanei,
+          includeComicVine,
+          comicVineShouldUseResult,
+          comicVineDispatchSkippedReason,
+          comicVineDispatchAttempted,
+        });
+        if (!includeComicVine && comicVineDispatchSkippedReason === "not_dispatched_yet") {
+          comicVineDispatchSkippedReason = "comicvine_gate_false_after_other_sources_exhausted";
+        }
+      }
+      if (googleBooksExhausted && openLibraryExhausted && kitsuExhausted && comicVineExhausted) {
         if (!fetchLoopExhaustedMarkerEmitted) {
           pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
             laneIndex: lanei,
             googleBooksExhausted,
             openLibraryExhausted,
             kitsuExhausted,
+            comicVineExhausted,
+            includeComicVine,
+            comicVineDispatchAttempted,
+            comicVineDispatchSkippedReason,
             googleBooksRouterFetchCount,
             openLibraryRouterFetchCount,
             kitsuRouterFetchCount,
@@ -4380,7 +4401,7 @@ export async function getRecommendations(
         }
         break;
       }
-      if (kitsuDispatchedOnce && (!sourceEnabled.openLibrary || openLibraryRouterFetchCount >= sourceFetchCapPerRun)) {
+      if (kitsuDispatchedOnce && (!sourceEnabled.openLibrary || openLibraryRouterFetchCount >= sourceFetchCapPerRun) && (!includeComicVine || comicVineDispatchedOnce)) {
         if (!fetchLoopExhaustedMarkerEmitted) {
           pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
             laneIndex: lanei,
@@ -4906,9 +4927,11 @@ export async function getRecommendations(
       var comicVineDispatchedOnThisLane = shouldDispatchComicVineForLane;
       const comicVineLaneQuery = String((baseLaneInputForSourceDispatch as any)?.bucketPlan?.preview || (lane as any)?.query || "comicvine_adapter").trim() || "comicvine_adapter";
       if (includeComicVine) {
+        pushGlobalPhase("before_comicvine_query_planning", { laneIndex: lanei, query: comicVineLaneQuery });
         comicVineDispatchPlanned = true;
         comicVineQueriesPlanned.add(comicVineLaneQuery);
         comicVineQueryTexts.add("comicvine_adapter");
+        pushGlobalPhase("after_comicvine_query_planning", { laneIndex: lanei, query: comicVineLaneQuery, plannedQueries: Array.from(comicVineQueriesPlanned) });
         if (!shouldDispatchComicVineForLane && comicVineDispatchSkippedReason === "not_dispatched_yet") {
           comicVineDispatchSkippedReason = comicVineDispatchedOnce ? "already_dispatched_once" : "comicvine_lane_not_selected";
         }
@@ -5153,6 +5176,9 @@ export async function getRecommendations(
           const fulfilledCandidateCount = Array.isArray(value?.debugCandidatePool)
             ? value.debugCandidatePool.length
             : Number((value as any)?.debugCandidatePoolLength ?? countResultItems(value));
+          comicVineRawCountByQuery[query] = Number(comicVineRawCountByQuery[query] ?? fulfilledRawCount);
+          comicVineDocCountByQuery[query] = fulfilledDocCount;
+          comicVineCandidateCountByQuery[query] = fulfilledCandidateCount;
           comicVineDispatchStageDiagnostics.push({
             laneIndex: lanei,
             query,
@@ -5183,6 +5209,8 @@ export async function getRecommendations(
           comicVineFetchFinishedAt = rejectedAt;
           const timedOut = reasonText.includes("router_before_comicvine_full_fetch_timeout") || reasonText.includes("timeout");
           comicVineFetchTimedOut = comicVineFetchTimedOut || timedOut;
+          comicVineDocCountByQuery[query] = 0;
+          comicVineCandidateCountByQuery[query] = 0;
           comicVineDispatchStageDiagnostics.push({
             laneIndex: lanei,
             query,
@@ -7645,6 +7673,8 @@ const normalizedCandidatesRaw = [
     gcdFetchResults: comicVineFetchResults,
     comicVineFetchResults,
     comicVineRawCountByQuery,
+    comicVineDocCountByQuery,
+    comicVineCandidateCountByQuery,
     comicVineAcceptedCountByQuery,
     comicVineRejectedCountByQuery,
     comicVineTopTitlesByQuery,
@@ -15958,6 +15988,9 @@ const normalizedCandidatesRaw = [
     comicVineFetchStartedAt,
     comicVineFetchFinishedAt,
     comicVineFetchTimedOut,
+    comicVineRawCountByQuery,
+    comicVineDocCountByQuery,
+    comicVineCandidateCountByQuery,
     comicVineDispatchStageDiagnostics,
     debugGcdDispatchTrace: comicVineDispatchTrace,
     debugComicVineDispatchTrace: comicVineDispatchTrace,
