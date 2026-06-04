@@ -2834,6 +2834,7 @@ export async function getRecommendations(
   const kitsuTeenAlternateQueriesAttempted: Array<{ query: string; reason: string; family: string; source: string }> = [];
   const kitsuTeenAlternateQueryPromotionDecisions: Array<{ source: string; family: string; selectedQuery: string; finalQuery: string; plannedQueries: string[]; promoted: boolean; reason: string }> = [];
   const kitsuTeenAlternateQueryExpansionReasons: Array<{ query: string; family: string; rawCount: number; reason: string }> = [];
+  const kitsuTeenAlternateFamilyInferenceDiagnostics: Array<{ routerFamily: string; selectedQuery: string; laneInferredFamily: string; selectedInferredFamily: string; alternateFamilies: string[] }> = [];
   let kitsuRecoveryOriginalIntentQuery = "";
   let kitsuRecoverySelectedQuery = "";
   let kitsuRecoveryQueryTooBroad = false;
@@ -2960,7 +2961,8 @@ export async function getRecommendations(
     const current = normalizeKitsuRecoveryQueryForSelection(currentQuery);
     const base = normalizeKitsuRecoveryQueryForSelection(baseLaneQuery);
     const fallbackText = normalizeKitsuRecoveryQueryForSelection(fallbackTerms.join(" "));
-    const allText = `${current} ${base} ${fallbackText}`.trim();
+    const laneSignalText = `${base} ${fallbackText}`.trim();
+    const allText = `${current} ${laneSignalText}`.trim();
     const activeTerms: string[] = [];
     const addActive = (term: string, re: RegExp) => {
       if (re.test(allText) && !activeTerms.includes(term)) activeTerms.push(term);
@@ -2989,12 +2991,17 @@ export async function getRecommendations(
     };
     const familyTerms = familyTermsByFamily[family] || [];
     const activeFamilyTerm = familyTerms.find((term) => activeTerms.some((active) => normalizeKitsuRecoveryQueryForSelection(active) === normalizeKitsuRecoveryQueryForSelection(term)));
+    const laneInferredFamily = inferTeenKitsuAlternateFamilyFromQuery(laneSignalText);
+    const selectedInferredFamily = inferTeenKitsuAlternateFamilyFromQuery(current);
     const alternateFamilies = Array.from(new Set([
-      family,
-      inferTeenKitsuAlternateFamilyFromQuery(current),
+      laneInferredFamily,
       inferTeenKitsuAlternateFamilyFromQuery(activeFamilyTerm || ""),
-      inferTeenKitsuAlternateFamilyFromQuery(allText),
+      selectedInferredFamily,
+      family,
     ].map((entry) => String(entry || "").trim()).filter(Boolean)));
+    if (isTeenDeckKey((routedInput as any)?.deckKey || "")) {
+      kitsuTeenAlternateFamilyInferenceDiagnostics.push({ routerFamily: String(family || ""), selectedQuery: current, laneInferredFamily, selectedInferredFamily, alternateFamilies });
+    }
     const tasteAlignedAlternates = alternateFamilies.flatMap((alternateFamily) => buildTeenKitsuTasteAlignedAlternateQueries(alternateFamily, allText, "normal_dispatch"));
     const uniqueTasteAlignedAlternates = tasteAlignedAlternates.filter((row, index, arr) => arr.findIndex((other) => normalizeKitsuRecoveryQueryForSelection(other.query) === normalizeKitsuRecoveryQueryForSelection(row.query)) === index);
     const currentIsBroadFamilyQuery = isBroadOrFormatKitsuQuery(current);
@@ -14878,6 +14885,7 @@ const normalizedCandidatesRaw = [
     kitsuTeenAlternateQueriesAttempted,
     kitsuTeenAlternateQueryPromotionDecisions,
     kitsuTeenAlternateQueryExpansionReasons,
+    kitsuTeenAlternateFamilyInferenceDiagnostics,
     kitsuTeenRescueCandidateSafetyRejectedTitles,
     kitsuTeenRescueCandidateLaneRejectedTitles,
     kitsuTeenRescueCandidateWeakButReturnedReason,
