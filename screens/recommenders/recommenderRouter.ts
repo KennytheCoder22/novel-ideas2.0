@@ -2837,6 +2837,7 @@ export async function getRecommendations(
   const kitsuTeenAlternateFamilyInferenceDiagnostics: Array<{ routerFamily: string; selectedQuery: string; laneInferredFamily: string; selectedInferredFamily: string; alternateFamilies: string[] }> = [];
   let kitsuTeenGcdEnrichmentAttempted = false;
   let kitsuTeenGcdEnrichmentEnabled = false;
+  let kitsuTeenGcdEnrichmentReturnableGcdDisabled = false;
   let kitsuTeenGcdEnrichmentSkippedReason = "not_evaluated";
   const kitsuTeenGcdEnrichmentQueries: string[] = [];
   const kitsuTeenGcdEnrichmentMatchedTitles: string[] = [];
@@ -5431,17 +5432,18 @@ export async function getRecommendations(
   };
   const enrichTeenKitsuCandidatesWithGcdMetadata = async () => {
     const teenKitsuDeck = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "");
-    const gcdEnabledForEnrichment = Boolean(sourceEnabled.comicVine && shouldUseComicVine(routedInput));
-    kitsuTeenGcdEnrichmentEnabled = Boolean(teenKitsuDeck && includeKitsu && kitsuOnlyAtRequestStart && gcdEnabledForEnrichment);
+    kitsuTeenGcdEnrichmentReturnableGcdDisabled = !includeComicVine;
+    kitsuTeenGcdEnrichmentEnabled = Boolean(teenKitsuDeck && includeKitsu && kitsuOnlyAtRequestStart);
     if (!kitsuTeenGcdEnrichmentEnabled) {
       kitsuTeenGcdEnrichmentSkippedReason = !teenKitsuDeck
         ? "not_teen_deck"
         : !includeKitsu
           ? "kitsu_disabled"
-          : !kitsuOnlyAtRequestStart
-            ? "not_kitsu_only_mode"
-            : "gcd_disabled_by_config_or_runtime";
+          : "not_kitsu_only_mode";
       return;
+    }
+    if (kitsuTeenGcdEnrichmentReturnableGcdDisabled) {
+      sourceSkippedReason.push("teen_kitsu_gcd_enrichment_allowed_despite_returnable_gcd_disabled");
     }
     const kitsuDocs = allMergedDocs.filter((doc: any) => detectCandidateSourceForGate(doc) === "kitsu" || /^kitsu:/i.test(String(doc?.sourceId || doc?.canonicalId || doc?.key || "")));
     if (kitsuDocs.length === 0) {
@@ -15205,6 +15207,7 @@ const normalizedCandidatesRaw = [
     kitsuTeenAlternateFamilyInferenceDiagnostics,
     kitsuTeenGcdEnrichmentAttempted,
     kitsuTeenGcdEnrichmentEnabled,
+    kitsuTeenGcdEnrichmentReturnableGcdDisabled,
     kitsuTeenGcdEnrichmentSkippedReason,
     kitsuTeenGcdEnrichmentQueries,
     kitsuTeenGcdEnrichmentMatchedTitles,
