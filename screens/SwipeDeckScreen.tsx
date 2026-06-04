@@ -27,6 +27,8 @@ import adultDeck from "../data/swipeDecks/adult";
 import { coverUrlFromCoverId, type TagCounts } from "./swipe/openLibraryFromTags";
 import * as openLibraryFromTags from "./swipe/openLibraryFromTags";
 import { getRecommendations } from "./recommenders/recommenderRouter";
+import { runRecommenderV2 } from "../app/recommender-v2";
+import type { AgeBandV2, RecommendationResultV2, SwipeSignalV2 } from "../app/recommender-v2";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./recommenders/routerFingerprint";
 const DEPLOYED_COMMIT_MARKER = "17c4615";
 const ROUTER_INSTRUMENTATION_MARKER = "router-heartbeat-v2-17c4615";
@@ -84,6 +86,8 @@ type RecItem =
   | { kind: "open_library"; doc: OLDoc }
   | { kind: "fallback"; book: FallbackBook };
 
+type RecommendationEngineSelection = "v1" | "v2";
+
 type FeedbackKind = "already_read" | "not_interested" | "next";
 type RecFeedback = { itemId: string; kind: FeedbackKind; rating?: 1 | 2 | 3 | 4 | 5 };
 
@@ -107,6 +111,52 @@ type TestSessionPreset = {
   sequence: Array<"like" | "dislike" | "skip">;
 };
 
+function deckKeyToAgeBandV2(deckKey: DeckKey): AgeBandV2 {
+  if (deckKey === "k2") return "kids";
+  if (deckKey === "36") return "preteens";
+  if (deckKey === "adult") return "adult";
+  return "teens";
+}
+
+function formatFromTagsForV2(tags: string[]): SwipeSignalV2["format"] {
+  const joined = tags.join(" ").toLowerCase();
+  if (/\b(manga|anime)\b/.test(joined)) return joined.includes("anime") ? "anime" : "manga";
+  if (/\b(comic|superhero)\b/.test(joined)) return "comic";
+  if (/graphicnovel|graphic novel/.test(joined)) return "graphicNovel";
+  return "book";
+}
+
+function swipeHistoryToV2Signals(entries: SwipeHistoryEntry[]): SwipeSignalV2[] {
+  return entries.map((entry) => {
+    const card: any = entry.card || {};
+    const tags = Array.isArray(card.tags) ? card.tags.map((tag: unknown) => String(tag || "").trim()).filter(Boolean) : [];
+    const bareTags = tags.map((tag: string) => tag.replace(/^[a-zA-Z]+:/, "").replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase());
+    const genres = [card.genre, ...tags.filter((tag: string) => /^genre:/i.test(tag)).map((tag: string) => tag.replace(/^genre:/i, ""))].map((value) => String(value || "").trim()).filter(Boolean);
+    const tones = tags.filter((tag: string) => /^(tone|mood):/i.test(tag)).map((tag: string) => tag.replace(/^(tone|mood):/i, ""));
+    const themes = tags.filter((tag: string) => /^(theme|setting|stakes|graphicNovel):/i.test(tag)).map((tag: string) => tag.replace(/^(theme|setting|stakes|graphicNovel):/i, ""));
+    const characterDynamics = tags.filter((tag: string) => /^(character|relationship|dynamic):/i.test(tag)).map((tag: string) => tag.replace(/^(character|relationship|dynamic):/i, ""));
+    return {
+      id: String(card.id || card.key || cardIdentityKey(entry.card)),
+      title: String(card.title || card.prompt || "").trim(),
+      action: entry.direction === "like" ? "like" : entry.direction === "dislike" ? "dislike" : "skip",
+      source: String(card.source || "mock"),
+      format: formatFromTagsForV2(tags),
+      tags: bareTags,
+      genres,
+      tones,
+      themes,
+      characterDynamics,
+      weight: entry.direction === "skip" ? 0.25 : 1,
+    };
+  });
+}
+
+function initialRecommendationEngineSelection(): RecommendationEngineSelection {
+  if (typeof window === "undefined") return "v1";
+  const engineParam = new URLSearchParams(window.location.search || "").get("engine");
+  return String(engineParam || "").toLowerCase() === "v2" ? "v2" : "v1";
+}
+
 type TwentyQAxis = keyof TasteVector;
 
 type TwentyQObjective = {
@@ -123,18 +173,21 @@ type TwentyQObjectiveStatus = TwentyQObjective & {
   resolved: boolean;
 };
 
+type RecommendationSourceToggleState = {
+  googleBooks?: boolean;
+  openLibrary?: boolean;
+  localLibrary?: boolean;
+  kitsu?: boolean;
+  comicVine?: boolean;
+  gcd?: boolean;
+  nyt?: boolean;
+};
+
 type Props = {
   onOpenSearch?: () => void;
   enabledDecks?: Partial<Record<DeckKey, boolean>>;
-  recommendationSourceEnabled?: {
-    googleBooks?: boolean;
-    openLibrary?: boolean;
-    localLibrary?: boolean;
-    kitsu?: boolean;
-    comicVine?: boolean;
-    gcd?: boolean;
-    nyt?: boolean;
-  };
+  recommendationSourceEnabled?: RecommendationSourceToggleState;
+  recommendationSourceEnabledByDeck?: Partial<Record<DeckKey, RecommendationSourceToggleState>>;
   localLibrarySupported?: boolean;
   adultKitsuOnlyForceQueryForValidation?: string;
   swipeCategories?: {
@@ -917,13 +970,14 @@ export default function SwipeDeckScreen(props: Props) {
   const [deckKey, setDeckKey] = useState<DeckKey>("ms_hs");
 
   const enabledDecks = props.enabledDecks ?? {};
+  const sourceSettingsForDeck = props.recommendationSourceEnabledByDeck?.[deckKey] || props.recommendationSourceEnabled || {};
   const sourceEnabled = {
-    googleBooks: props.recommendationSourceEnabled?.googleBooks !== false,
-    openLibrary: props.recommendationSourceEnabled?.openLibrary !== false,
-    localLibrary: props.localLibrarySupported ? props.recommendationSourceEnabled?.localLibrary !== false : false,
-    kitsu: props.recommendationSourceEnabled?.kitsu !== false,
-    comicVine: (props.recommendationSourceEnabled?.comicVine ?? props.recommendationSourceEnabled?.gcd) !== false,
-    nyt: props.recommendationSourceEnabled?.nyt === true,
+    googleBooks: sourceSettingsForDeck.googleBooks !== false,
+    openLibrary: sourceSettingsForDeck.openLibrary !== false,
+    localLibrary: props.localLibrarySupported ? sourceSettingsForDeck.localLibrary !== false : false,
+    kitsu: sourceSettingsForDeck.kitsu !== false,
+    comicVine: (sourceSettingsForDeck.comicVine ?? sourceSettingsForDeck.gcd) !== false,
+    nyt: sourceSettingsForDeck.nyt === true,
   };
   const enabledDeckList = useMemo(
     () => (["k2", "36", "ms_hs", "adult"] as DeckKey[]).filter((k) => enabledDecks[k] !== false),
@@ -958,6 +1012,8 @@ export default function SwipeDeckScreen(props: Props) {
   const [swipeHistory, setSwipeHistory] = useState<SwipeHistoryEntry[]>([]);
 
   const [recQuery, setRecQuery] = useState<string>("");
+  const [selectedRecommendationEngine, setSelectedRecommendationEngine] = useState<RecommendationEngineSelection>(initialRecommendationEngineSelection);
+  const [lastEngineActuallyUsed, setLastEngineActuallyUsed] = useState<RecommendationEngineSelection | "">("");
   const [recEngineLabel, setRecEngineLabel] = useState<string>("");
   const [recLoading, setRecLoading] = useState(false);
   const [recError, setRecError] = useState<string | null>(null);
@@ -985,6 +1041,10 @@ export default function SwipeDeckScreen(props: Props) {
   const [lastRecommendationResult, setLastRecommendationResult] = useState<any | null>(null);
   const [lastRecommendationTimestamp, setLastRecommendationTimestamp] = useState<string>("");
   const [lastRecommendationSwipeSummary, setLastRecommendationSwipeSummary] = useState<string>("");
+  const [v2DebugResult, setV2DebugResult] = useState<RecommendationResultV2 | null>(null);
+  const [v2DebugLoading, setV2DebugLoading] = useState(false);
+  const [v2DebugError, setV2DebugError] = useState<string>("");
+  const v2UrlTriggeredRef = useRef(false);
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
   const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
   const [lastRawPool, setLastRawPool] = useState<any[]>([]);
@@ -1303,6 +1363,7 @@ export default function SwipeDeckScreen(props: Props) {
     setTagCounts({});
     setSwipeHistory([]);
     setRecQuery("");
+    setLastEngineActuallyUsed("");
     setRecEngineLabel("");
     setRecLoading(false);
     setRecError(null);
@@ -1327,6 +1388,9 @@ export default function SwipeDeckScreen(props: Props) {
     setLastRecommendationInput(null);
     setLastRecommendationTimestamp("");
     setLastRecommendationSwipeSummary("");
+    setV2DebugResult(null);
+    setV2DebugError("");
+    setV2DebugLoading(false);
     sessionSwipeStoreRef.current[pipelineSessionId] = [];
     delete moodStoreRef.current[pipelineSessionId];
     position.setValue({ x: 0, y: 0 });
@@ -1577,6 +1641,88 @@ function handleLeft() {
     }));
   }
 
+  function normalizeRecommenderV2Items(rawItems: RecommendationResultV2["items"]): RecItem[] {
+    return rawItems.map((candidate) => ({
+      kind: "open_library",
+      doc: {
+        key: `/recommender-v2/${candidate.source}/${candidate.sourceId || candidate.id}`,
+        title: candidate.title,
+        author_name: candidate.creators.length ? candidate.creators : ["Recommender V2"],
+        source: candidate.source,
+        description: candidate.description,
+        first_publish_year: undefined,
+        diagnostics: {
+          engine: "v2",
+          source: candidate.source,
+          sourceId: candidate.sourceId,
+          score: candidate.score,
+          matchedSignals: candidate.matchedSignals,
+          scoreBreakdown: candidate.scoreBreakdown,
+          formats: candidate.formats,
+          genres: candidate.genres,
+          themes: candidate.themes,
+          tones: candidate.tones,
+          characterDynamics: candidate.characterDynamics,
+        },
+      } as any,
+    }));
+  }
+
+  function buildV2RecommendationResultForDiagnostics(v2Result: RecommendationResultV2, normalizedItems: RecItem[], inputWithHistory: RecommenderInput) {
+    const diagnostics = v2Result.diagnostics;
+    const sourceStats = Object.fromEntries(diagnostics.sources.map((source) => [
+      source.source,
+      {
+        rawFetched: source.rawCount,
+        postFilterCandidates: Number(source.normalizedCount || 0),
+        finalSelected: v2Result.items.filter((item) => item.source === source.source).length,
+      },
+    ]));
+    const normalizedCount = diagnostics.stages.find((stage) => stage.stage === "normalized")?.counts?.normalized ?? 0;
+    const scoredCount = diagnostics.stages.find((stage) => stage.stage === "scored")?.counts?.scored ?? 0;
+    const queries = diagnostics.searchPlan.intents.map((intent) => intent.query);
+    return {
+      engineSelected: "v2",
+      engineActuallyUsed: "v2",
+      engineId: "recommender-v2",
+      engineLabel: "Recommender V2",
+      builtFromQuery: queries.join(" | "),
+      returnedItemsBuiltFrom: "recommender-v2",
+      items: normalizedItems.map((item) => item.kind === "open_library" ? { doc: item.doc } : { doc: item.book }),
+      returnedItemsTitles: normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean),
+      debugSourceStats: sourceStats,
+      debugRawPool: diagnostics.sources.flatMap((source) => Array.from({ length: source.rawCount }, (_unused, index) => ({ title: `${source.source} raw ${index + 1}`, source: source.source, diagnostics: { engine: "v2", placeholder: true } }))),
+      debugCandidatePool: v2Result.items,
+      sourceEnabled,
+      sourceSkippedReason: diagnostics.sources.map((source) => source.skippedReason || source.failedReason || "").filter(Boolean),
+      routerResultTracePresent: true,
+      debugRouterVersion: EXPECTED_ROUTER_FINGERPRINT,
+      engineVersion: v2Result.engineVersion,
+      v2Diagnostics: diagnostics,
+      v2TasteProfile: diagnostics.tasteProfile,
+      v2SearchPlan: diagnostics.searchPlan,
+      normalizedCount,
+      candidateCount: normalizedCount,
+      filteredCount: scoredCount,
+      rankedCount: scoredCount,
+      scoredCount,
+      finalItemsLength: normalizedItems.length,
+      deckKey: inputWithHistory.deckKey,
+    };
+  }
+
+  function selectRecommendationEngine(nextEngine: RecommendationEngineSelection) {
+    setSelectedRecommendationEngine(nextEngine);
+    setLastEngineActuallyUsed("");
+    setRecEngineLabel("");
+    setRecItems([]);
+    setRecIndex(0);
+    setRecError(null);
+    setAutoSearched(false);
+    setLastRecommendationResult(null);
+    setLastRecommendationTimestamp("");
+  }
+
   async function performRecommendationRun(input: RecommenderInput) {
     const markPhase = (phase: string, extra?: Record<string, any>) => {
       const timestamp = new Date().toISOString();
@@ -1594,21 +1740,6 @@ function handleLeft() {
         // diagnostics only
       }
     };
-    const allDisabled =
-      !sourceEnabled.googleBooks &&
-      !sourceEnabled.openLibrary &&
-      !sourceEnabled.localLibrary &&
-      !sourceEnabled.kitsu &&
-      !sourceEnabled.comicVine &&
-      !sourceEnabled.nyt;
-    if (allDisabled) {
-      setRecError("No enabled recommendation sources");
-      setRecItems([]);
-      setLastSourceEnabled(sourceEnabled);
-      setLastSourceSkippedReason(["all_sources_disabled"]);
-      return;
-    }
-
     setRecLoading(true);
     setRecError(null);
     setRecItems([]);
@@ -1616,6 +1747,7 @@ function handleLeft() {
     setShowRating(false);
 
     const inputWithHistory = buildRecommendationInputWithHistory(input);
+    const engineSelectedForRun = selectedRecommendationEngine;
     setRecommendFunctionCalled(true);
     setRecommendFunctionError("");
     setRecommendFunctionErrorStack("");
@@ -1633,6 +1765,103 @@ function handleLeft() {
     setCurrentRecommendationRunId(runId);
     setActiveRecommendationRunId(runId);
     setRecommendationLockState(recLoading ? "already_loading" : "acquired");
+
+    if (engineSelectedForRun === "v2") {
+      try {
+        (globalThis as any).__novelIdeasRouterPhaseHistory = [];
+      } catch {
+        // diagnostics only
+      }
+      try {
+        markPhase("v2_before_engine_call", { engineSelected: engineSelectedForRun });
+        const v2Signals = swipeHistoryToV2Signals(Array.isArray((inputWithHistory as any)?.swipeHistory) ? ((inputWithHistory as any).swipeHistory as SwipeHistoryEntry[]) : swipeHistory);
+        const result = await runRecommenderV2({
+          requestId: `normal-ui-v2-${Date.now()}`,
+          ageBand: deckKeyToAgeBandV2(deckKey),
+          limit: inputWithHistory.limit || 10,
+          enabledSources: {
+            mock: !sourceEnabled.openLibrary,
+            googleBooks: sourceEnabled.googleBooks,
+            openLibrary: sourceEnabled.openLibrary,
+            localLibrary: sourceEnabled.localLibrary,
+            kitsu: sourceEnabled.kitsu,
+            comicVine: sourceEnabled.comicVine,
+            nyt: sourceEnabled.nyt,
+          },
+          signals: v2Signals,
+          deckKey,
+        });
+        markPhase("v2_after_engine_call", { selected: result.items.length });
+        setV2DebugResult(result);
+        setV2DebugError("");
+        const normalizedItems = normalizeRecommenderV2Items(result.items);
+        const diagnosticResult = buildV2RecommendationResultForDiagnostics(result, normalizedItems, inputWithHistory);
+        const builtQuery = String(diagnosticResult.builtFromQuery || "");
+        setRecQuery(builtQuery);
+        setLastKnownBuiltQuery(builtQuery);
+        setQueryBuildStatus(builtQuery ? "query_available" : "query_unavailable");
+        setRecEngineLabel("Recommender V2");
+        setLastEngineActuallyUsed("v2");
+        setLastSourceCounts((diagnosticResult as any).debugSourceStats || null);
+        setLastCandidatePool(Array.isArray((diagnosticResult as any).debugCandidatePool) ? (diagnosticResult as any).debugCandidatePool : []);
+        setLastRawPool(Array.isArray((diagnosticResult as any).debugRawPool) ? (diagnosticResult as any).debugRawPool : []);
+        setLastRungStats(null);
+        setLastFilterAudit([]);
+        setLastFilterAuditSummary(null);
+        setLastFinalRecommenderDebug({ engine: "v2", rejectedReasons: result.diagnostics.rejectedReasons, finalSelectionTitles: result.diagnostics.finalSelectionTitles });
+        setLastSourceEnabled(sourceEnabled);
+        setLastSourceSkippedReason(Array.isArray((diagnosticResult as any).sourceSkippedReason) ? (diagnosticResult as any).sourceSkippedReason : []);
+        setLastDebugRouterVersion(EXPECTED_ROUTER_FINGERPRINT);
+        setLastRouterResultTracePresent(true);
+        setLastRouterResultKeys(Object.keys(diagnosticResult));
+        setLastDeploymentRuntimeMarker("recommender-v2");
+        setLastDebugGcdDispatchTrace({ traceSource: "v2", sourceDiagnostics: result.diagnostics.sources });
+        setLastRecommendationInput(inputWithHistory);
+        setLastRecommendationResult(diagnosticResult as any);
+        setLastRecommendationTimestamp(new Date().toISOString());
+        setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
+        setRecommendFunctionReturned(true);
+        if (normalizedItems.length > 0) {
+          rememberRecommendations(input.deckKey, normalizedItems);
+          setRecommendationResultWasPersisted(true);
+          setRecItems(normalizedItems);
+          setRecError(null);
+        } else {
+          setRecItems([]);
+          setRecError("No V2 matches found for this swipe session. Diagnostics are available for comparison.");
+        }
+      } catch (err: any) {
+        markPhase("v2_engine_rejected", { error: String(err?.message || err || "unknown") });
+        setLastEngineActuallyUsed("v2");
+        setV2DebugError(String(err?.message || err || "recommender_v2_failed"));
+        setRecommendFunctionReturned(false);
+        setRecommendFunctionError(String(err?.message || err || "recommender_v2_failed"));
+        setRecommendFunctionErrorStack(String(err?.stack || ""));
+        setRecItems([]);
+        setRecError(err?.message || "Recommender V2 could not be reached.");
+      } finally {
+        setRecommendationLockState("released");
+        setRecLoading(false);
+      }
+      return;
+    }
+
+    const allDisabled =
+      !sourceEnabled.googleBooks &&
+      !sourceEnabled.openLibrary &&
+      !sourceEnabled.localLibrary &&
+      !sourceEnabled.kitsu &&
+      !sourceEnabled.comicVine &&
+      !sourceEnabled.nyt;
+    if (allDisabled) {
+      setRecLoading(false);
+      setRecError("No enabled recommendation sources");
+      setRecItems([]);
+      setLastSourceEnabled(sourceEnabled);
+      setLastSourceSkippedReason(["all_sources_disabled"]);
+      setRecommendationLockState("released");
+      return;
+    }
 
     try {
       markPhase("before_query_build");
@@ -1757,11 +1986,12 @@ function handleLeft() {
       if (result && typeof result === "object" && !Array.isArray(result) && Object.keys(result).length === 0) {
         throw new Error("getRecommendations_returned_empty_object:result_has_no_keys");
       }
-      const routerHistory = Array.isArray((result as any)?.routerPhaseHistory) ? (result as any).routerPhaseHistory : [];
+      const globalRouterPhasesForResultCheck = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
+        ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
+        : [];
+      const routerHistory = Array.isArray((result as any)?.routerPhaseHistory) ? (result as any).routerPhaseHistory : globalRouterPhasesForResultCheck;
       if (!routerHistory.some((row: any) => String(row?.phase || "") === "router_entered")) {
-        const globalRouterPhases = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
-          ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
-          : [];
+        const globalRouterPhases = globalRouterPhasesForResultCheck;
         const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
         const hasAfterRouterCallWithShapeV2 = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
         const afterRouterCallEvent = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
@@ -1811,6 +2041,7 @@ function handleLeft() {
       setRecQuery(result.builtFromQuery || "");
       setLastKnownBuiltQuery(String(result.builtFromQuery || ""));
       setRecEngineLabel(result.engineLabel || "");
+      setLastEngineActuallyUsed("v1");
       setLastSourceCounts(((result as any)?.debugSourceStats as Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }>) || null);
       setLastCandidatePool(Array.isArray((result as any)?.debugCandidatePool) ? (result as any).debugCandidatePool : []);
       setLastRawPool(Array.isArray((result as any)?.debugRawPool) ? (result as any).debugRawPool : []);
@@ -1828,6 +2059,20 @@ function handleLeft() {
       const fallbackTrace = {
         traceSource: "fallback" as const,
         sourceEnabledComicVine: Boolean(sourceEnabled?.comicVine),
+        comicVineEnabledAtRequestStart: Boolean(sourceEnabled?.comicVine),
+        comicVineShouldUseResult: Boolean(sourceEnabled?.comicVine),
+        comicVineDispatchPlanned: false,
+        comicVineDispatchAttempted: false,
+        comicVineDispatchSkippedReason: Boolean(sourceEnabled?.comicVine) ? "router_result_missing_before_dispatch_trace" : "comicvine_disabled_in_source_settings",
+        comicVineQueriesPlanned: [],
+        comicVineQueriesAttempted: [],
+        comicVineFetchStartedAt: null,
+        comicVineFetchFinishedAt: null,
+        comicVineFetchTimedOut: false,
+        comicVineRawCountByQuery: {},
+        comicVineDocCountByQuery: {},
+        comicVineCandidateCountByQuery: {},
+        comicVineDispatchStageDiagnostics: [],
         comicVineProxyUrl: "/api/comicvine",
         normalizedComicVineProxyUrl: "/api/comicvine",
         comicVineProxyConfigured: Boolean(sourceEnabled?.comicVine),
@@ -1869,7 +2114,54 @@ function handleLeft() {
         if (typeof diag?.builtQuery === "string") setRecQuery(diag.builtQuery);
         if (diag?.sourceEnabled) setLastSourceEnabled(diag.sourceEnabled);
         if (Array.isArray(diag?.sourceSkippedReason)) setLastSourceSkippedReason(diag.sourceSkippedReason);
-        setLastDebugGcdDispatchTrace((prev) => ({ ...(prev || {}), preFatalDispatchState: diag }));
+        setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), preFatalDispatchState: diag }));
+      } else {
+        const durableComicVineState = (globalThis as any).__novelIdeasComicVineDispatchState || {};
+        const timeoutTrace = {
+          ...durableComicVineState,
+          traceSource: "fallback" as const,
+          sourceEnabledComicVine: Boolean(durableComicVineState?.sourceEnabledComicVine ?? sourceEnabled?.comicVine),
+          comicVineEnabledAtRequestStart: Boolean(durableComicVineState?.comicVineEnabledAtRequestStart ?? sourceEnabled?.comicVine),
+          comicVineShouldUseResult: Boolean(durableComicVineState?.comicVineShouldUseResult ?? sourceEnabled?.comicVine),
+          comicVineDispatchPlanned: Boolean(durableComicVineState?.comicVineDispatchPlanned),
+          comicVineDispatchAttempted: Boolean(durableComicVineState?.comicVineDispatchAttempted),
+          comicVineDispatchSkippedReason: String(durableComicVineState?.comicVineDispatchSkippedReason || "").trim() || (String(err?.message || "").startsWith("router_run_timeout:")
+            ? "router_timed_out_before_comicvine_dispatch_trace"
+            : "router_rejected_before_comicvine_dispatch_trace"),
+          comicVineQueriesPlanned: Array.isArray(durableComicVineState?.comicVineQueriesPlanned) ? durableComicVineState.comicVineQueriesPlanned : [],
+          comicVineQueriesAttempted: Array.isArray(durableComicVineState?.comicVineQueriesAttempted) ? durableComicVineState.comicVineQueriesAttempted : [],
+          comicVineFetchStartedAt: durableComicVineState?.comicVineFetchStartedAt || null,
+          comicVineFetchFinishedAt: durableComicVineState?.comicVineFetchFinishedAt || null,
+          comicVineFetchTimedOut: Boolean(durableComicVineState?.comicVineFetchTimedOut || String(err?.message || "").startsWith("router_run_timeout:")),
+          comicVineRawCountByQuery: durableComicVineState?.comicVineRawCountByQuery || {},
+          comicVineDocCountByQuery: durableComicVineState?.comicVineDocCountByQuery || {},
+          comicVineCandidateCountByQuery: durableComicVineState?.comicVineCandidateCountByQuery || {},
+          comicVineDispatchStageDiagnostics: Array.isArray(durableComicVineState?.comicVineDispatchStageDiagnostics) ? durableComicVineState.comicVineDispatchStageDiagnostics : [],
+        };
+        setLastDebugGcdDispatchTrace((prev: any) => ({ ...(prev || {}), ...timeoutTrace }));
+        const fallbackDebugRawPoolLengthRaw = Number(
+          durableComicVineState?.debugRawPoolLength ??
+          durableComicVineState?.mergedPoolLength ??
+          Object.values(durableComicVineState?.comicVineRawCountByQuery || {}).reduce((acc: number, value: any) => acc + Number(value || 0), 0)
+        );
+        const fallbackDebugCandidatePoolLengthRaw = Number(
+          durableComicVineState?.mergedPoolLength ??
+          Object.values(durableComicVineState?.comicVineCandidateCountByQuery || {}).reduce((acc: number, value: any) => acc + Number(value || 0), 0)
+        );
+        const fallbackDebugRawPoolLength = Number.isFinite(fallbackDebugRawPoolLengthRaw) ? fallbackDebugRawPoolLengthRaw : 0;
+        const fallbackDebugCandidatePoolLength = Number.isFinite(fallbackDebugCandidatePoolLengthRaw) ? fallbackDebugCandidatePoolLengthRaw : 0;
+        if (fallbackDebugRawPoolLength > 0 || fallbackDebugCandidatePoolLength > 0) {
+          setLastRecommendationResult({
+            items: [],
+            debugRawPool: Array.from({ length: Math.max(0, fallbackDebugRawPoolLength) }, (_unused, index) => ({ title: `(comicvine raw placeholder ${index + 1})`, source: "comicVine", diagnostics: { timeoutFallbackPlaceholder: true } })),
+            debugCandidatePool: Array.from({ length: Math.max(0, fallbackDebugCandidatePoolLength) }, (_unused, index) => ({ title: `(comicvine candidate placeholder ${index + 1})`, source: "comicVine", diagnostics: { timeoutFallbackPlaceholder: true } })),
+            sourceEnabled,
+            sourceSkippedReason: [],
+            routerResultTracePresent: true,
+            debugComicVineDispatchTrace: timeoutTrace,
+            debugGcdDispatchTrace: timeoutTrace,
+          } as any);
+        }
       }
       setRecItems([]);
       setRecError(err?.message || "Recommendation engine could not be reached (network blocked).");
@@ -1878,6 +2170,52 @@ function handleLeft() {
       setRecLoading(false);
     }
   }
+
+  async function runRecommenderV2DebugFromCurrentSession(trigger: "button" | "url" = "button") {
+    setV2DebugLoading(true);
+    setV2DebugError("");
+    try {
+      const result = await runRecommenderV2({
+        requestId: `live-ui-${trigger}-${Date.now()}`,
+        ageBand: deckKeyToAgeBandV2(deckKey),
+        limit: 5,
+        enabledSources: {
+          mock: true,
+          googleBooks: sourceEnabled.googleBooks,
+          openLibrary: sourceEnabled.openLibrary,
+          localLibrary: sourceEnabled.localLibrary,
+          kitsu: sourceEnabled.kitsu,
+          comicVine: sourceEnabled.comicVine,
+          nyt: sourceEnabled.nyt,
+        },
+        signals: swipeHistoryToV2Signals(swipeHistory),
+        deckKey,
+      });
+      setV2DebugResult(result);
+      console.log("[NovelIdeas][V2] debug result", {
+        trigger,
+        items: result.items.map((item) => item.title),
+        stages: result.diagnostics.stages.map((stage) => stage.stage),
+        sources: result.diagnostics.sources.map((source) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount })),
+      });
+    } catch (err: any) {
+      const message = String(err?.message || err || "recommender_v2_debug_failed");
+      setV2DebugError(message);
+      console.log("[NovelIdeas][V2] debug error", { trigger, message });
+    } finally {
+      setV2DebugLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    if (v2UrlTriggeredRef.current) return;
+    if (typeof window === "undefined") return;
+    const engineParam = new URLSearchParams(window.location.search || "").get("engine");
+    if (String(engineParam || "").toLowerCase() !== "v2") return;
+    setSelectedRecommendationEngine("v2");
+    v2UrlTriggeredRef.current = true;
+    void runRecommenderV2DebugFromCurrentSession("url");
+  }, [deckKey, swipeHistory, sourceEnabled.googleBooks, sourceEnabled.openLibrary, sourceEnabled.localLibrary, sourceEnabled.kitsu, sourceEnabled.comicVine, sourceEnabled.nyt]);
 
   async function runAutoRecommendations() {
     const tagCountsForQuery: any = { ...(tagCounts as any) };
@@ -2066,6 +2404,7 @@ function handleLeft() {
     setSwipeHistory([]);
     setFeedback([]);
     setRecQuery("");
+    setLastEngineActuallyUsed("");
     setRecEngineLabel("");
     setRecLoading(false);
     setRecError(null);
@@ -2304,6 +2643,8 @@ function handleLeft() {
   async function handleCopyDiagnostics() {
     const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
+    const engineActuallyUsedForReport = String((lastRecommendationResult as any)?.engineActuallyUsed || lastEngineActuallyUsed || "");
+    const lastRunWasV2 = engineActuallyUsedForReport === "v2";
     const timeoutRun = String(recommendFunctionError || "").startsWith("recommendation_timeout:");
     const routerRunTimeoutRun = String(recommendFunctionError || "").startsWith("router_run_timeout:");
     const routerEntryTimeoutRun = String(recommendFunctionError || "").startsWith("router_entry_timeout:");
@@ -2313,8 +2654,8 @@ function handleLeft() {
     const getRecommendationsReturnedUndefinedRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_undefined:");
     const getRecommendationsReturnedEmptyObjectRun = String(recommendFunctionError || "").startsWith("getRecommendations_returned_empty_object:");
     const preflightTimeoutRun = String(recommendFunctionError || "").startsWith("source_health_preflight_timeout:");
-    const staleRuntime = runtimeFingerprint !== expectedFingerprint;
-    const missingRouterTrace = !Boolean(lastRouterResultTracePresent);
+    const staleRuntime = !lastRunWasV2 && runtimeFingerprint !== expectedFingerprint;
+    const missingRouterTrace = !lastRunWasV2 && !Boolean(lastRouterResultTracePresent);
     const globalRouterPhases = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
       ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
       : [];
@@ -2360,6 +2701,19 @@ function handleLeft() {
       `kitsuTeenAlternateQueryPromotionDecisions: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueryPromotionDecisions") || [])}`,
       `kitsuTeenAlternateQueryExpansionReasons: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueryExpansionReasons") || [])}`,
       `kitsuTeenAlternateFamilyInferenceDiagnostics: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateFamilyInferenceDiagnostics") || [])}`,
+      `kitsuTeenDominantFamilyUsageDiagnostics: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenDominantFamilyUsageDiagnostics") || [])}`,
+      `kitsuTeenGcdEnrichmentAttempted: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentAttempted")))}`,
+      `kitsuTeenGcdEnrichmentEnabled: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentEnabled")))}`,
+      `kitsuTeenGcdEnrichmentReturnableGcdDisabled: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentReturnableGcdDisabled")))}`,
+      `kitsuTeenGcdEnrichmentSkippedReason: ${String(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentSkippedReason") || "")}`,
+      `kitsuTeenGcdEnrichmentQueries: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentQueries") || [])}`,
+      `kitsuTeenGcdEnrichmentQueryDiagnostics: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentQueryDiagnostics") || [])}`,
+      `kitsuTeenGcdEnrichmentExactTitleLookupDiagnostics: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentExactTitleLookupDiagnostics") || [])}`,
+      `kitsuTeenGcdEnrichmentDocsReturnedButNoMatch: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentDocsReturnedButNoMatch") || [])}`,
+      `kitsuTeenGcdEnrichmentUnhelpfulMatchByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentUnhelpfulMatchByTitle") || {})}`,
+      `kitsuTeenGcdEnrichmentMatchedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentMatchedTitles") || [])}`,
+      `kitsuTeenGcdEnrichmentNoMatchTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentNoMatchTitles") || [])}`,
+      `kitsuTeenGcdEnrichmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentByTitle") || {})}`,
       `teenKitsuMultiQueryRecoveryAllowed: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("teenKitsuMultiQueryRecoveryAllowed")))}`,
       `teenKitsuFetchesArePlannedRecoveryQueries: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("teenKitsuFetchesArePlannedRecoveryQueries")))}`,
       `teenKitsuAllowedRecoveryCanonicalQueries: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("teenKitsuAllowedRecoveryCanonicalQueries") || [])}`,
@@ -2367,9 +2721,12 @@ function handleLeft() {
       `kitsuTeenRescueFinalGuardAcceptedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardAcceptedTitles") || [])}`,
       `kitsuTeenRescueFinalGuardSuppressedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardSuppressedTitles") || [])}`,
       `kitsuTeenRescueFinalGuardSuppressedReasonByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardSuppressedReasonByTitle") || {})}`,
+      `kitsuTeenTopRejectedCandidatesByQuery: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenTopRejectedCandidatesByQuery") || {})}`,
       `kitsuTeenRescueTierByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueTierByTitle") || {})}`,
       `kitsuTeenRescueSemanticEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueSemanticEvidenceByTitle") || {})}`,
       `kitsuTeenRescueTasteEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueTasteEvidenceByTitle") || {})}`,
+      `kitsuTeenEvidenceTextFieldsByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenEvidenceTextFieldsByTitle") || {})}`,
+      `kitsuTeenKnownTitleFacetEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenKnownTitleFacetEvidenceByTitle") || {})}`,
       `kitsuTeenRescueLaneAlignmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueLaneAlignmentByTitle") || {})}`,
       `kitsuTeenRescueFamilyAlignmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFamilyAlignmentByTitle") || {})}`,
       `kitsuTeenTasteEvidenceSignalsByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenTasteEvidenceSignalsByTitle") || {})}`,
@@ -2384,6 +2741,12 @@ function handleLeft() {
       `kitsuTeenSourceIdAfterFinalGuardByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAfterFinalGuardByTitle") || {})}`,
       `kitsuTeenSourceIdAtFinalEligibilityByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAtFinalEligibilityByTitle") || {})}`,
       `kitsuTeenSourceIdAtReturnedItemByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAtReturnedItemByTitle") || {})}`,
+      `kitsuTeenSourceIdAtRawDocByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAtRawDocByTitle") || {})}`,
+      `kitsuTeenSourceIdAtNormalizedCandidateByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAtNormalizedCandidateByTitle") || {})}`,
+      `kitsuTeenSourceIdAtRankedCandidateByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAtRankedCandidateByTitle") || {})}`,
+      `kitsuTeenSourceIdAtFinalEligibilityInputByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAtFinalEligibilityInputByTitle") || {})}`,
+      `kitsuTeenSourceIdAtFinalGuardInputByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAtFinalGuardInputByTitle") || {})}`,
+      `kitsuTeenSourceIdAtSuppressionDecisionByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdAtSuppressionDecisionByTitle") || {})}`,
       `kitsuTeenFinalEligibilityMissingSourceIdDespiteFinalGuardId: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenFinalEligibilityMissingSourceIdDespiteFinalGuardId") || [])}`,
       `kitsuTeenReturnedItemMissingSourceIdDespiteFinalGuardId: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenReturnedItemMissingSourceIdDespiteFinalGuardId") || [])}`,
       `kitsuTeenSourceIdPropagationBreakStageByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenSourceIdPropagationBreakStageByTitle") || {})}`,
@@ -2492,7 +2855,7 @@ function handleLeft() {
     const timeoutMsTs = parseTs((latestTimeoutPhase as any)?.timestamp);
     const earlyReturnCloseToTimeout = Number.isFinite(earlyReturnMs) && Number.isFinite(timeoutMsTs) && (earlyReturnMs - timeoutMsTs) >= 0 && (earlyReturnMs - timeoutMsTs) <= 1000;
     const earlyReturnReason = String((latestEarlyReturnPhase as any)?.getRecommendationsEarlyReturnReason || "");
-    if (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent || zeroItemsReturnedRun) {
+    if (!lastRunWasV2 && (timeoutRun || preflightTimeoutRun || staleRuntime || missingRouterTrace || routerNotInvokedEmptyResultRun || routerEntryTimeoutRun || routerRunTimeoutRun || routerPostEntryTimeoutRun || routerInvocationSkippedBeforeAwaitRun || getRecommendationsReturnedUndefinedRun || getRecommendationsReturnedEmptyObjectRun || hasAfterRouterCallEvent || zeroItemsReturnedRun)) {
       const reason = hasValidReturnedItems
         ? "valid_recommendation_returned"
         : getRecommendationsReturnedUndefinedRun
@@ -2539,6 +2902,8 @@ function handleLeft() {
       const blockedReport = [
         "SESSION REPORT (BLOCKED)",
         `Reason: ${reason || "(unknown)"}`,
+        `engineSelected: ${selectedRecommendationEngine}`,
+        `engineActuallyUsed: ${engineActuallyUsedForReport || "(none)"}`,
         `debugRawPoolLength: ${String(debugRawPoolLengthTop)}`,
         `debugCandidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
         `candidatePoolLength: ${String(debugCandidatePoolLengthTop)}`,
@@ -2855,6 +3220,24 @@ function handleLeft() {
         }).join("\n")
       : "(none)";
 
+    const v2DiagnosticsForReport = (lastRecommendationResult as any)?.v2Diagnostics || v2DebugResult?.diagnostics || null;
+    const v2DiagnosticLines = v2DiagnosticsForReport
+      ? [
+          `engineVersion:${String((lastRecommendationResult as any)?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-skeleton")}`,
+          `requestId:${v2DiagnosticsForReport.requestId}`,
+          `items:${(Array.isArray(v2DebugResult?.items) ? v2DebugResult?.items : []).map((item) => item.title).join(" | ") || (Array.isArray(v2DiagnosticsForReport.finalSelectionTitles) ? v2DiagnosticsForReport.finalSelectionTitles.join(" | ") : "(none)")}`,
+          `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
+          `searchPlan:${JSON.stringify(v2DiagnosticsForReport.searchPlan || {})}`,
+          `stages:${(v2DiagnosticsForReport.stages || []).map((stage: any) => `${stage.stage}:${JSON.stringify(stage.counts || {})}`).join(" -> ")}`,
+          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
+          `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
+          `rejectedReasons:${JSON.stringify(v2DiagnosticsForReport.rejectedReasons || {})}`,
+          `finalSelectedTitles:${JSON.stringify(v2DiagnosticsForReport.finalSelectionTitles || [])}`,
+        ]
+      : [`status:${v2DebugLoading ? "running" : v2DebugError ? "error" : "not_run"}`, `error:${v2DebugError || "(none)"}`];
+
+
     const rungQueryMap = new Map<string, string>();
     for (const row of rawPoolRows) {
       const rungValue = row?.queryRung;
@@ -3155,6 +3538,25 @@ function handleLeft() {
       `stageDropReasons:${JSON.stringify((lastRecommendationResult as any)?.stageDropReasons || {})}`,
       `droppedBeforeRenderReason:${String((lastRecommendationResult as any)?.droppedBeforeRenderReason || "none")}`,
       `debugComicVineDispatchTrace.sourceEnabledComicVine:${Boolean(lastDebugGcdDispatchTrace?.sourceEnabledComicVine)}`,
+      `debugComicVineDispatchTrace.comicVineEnabledAtRequestStart:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineEnabledAtRequestStart)}`,
+      `debugComicVineDispatchTrace.comicVineShouldUseResult:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineShouldUseResult)}`,
+      `debugComicVineDispatchTrace.comicVineDispatchPlanned:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineDispatchPlanned)}`,
+      `debugComicVineDispatchTrace.comicVineDispatchAttempted:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineDispatchAttempted)}`,
+      `debugComicVineDispatchTrace.comicVineDispatchSkippedReason:${String((lastDebugGcdDispatchTrace as any)?.comicVineDispatchSkippedReason || "(none)")}`,
+      `debugComicVineDispatchTrace.comicVineQueriesPlanned:${Array.isArray((lastDebugGcdDispatchTrace as any)?.comicVineQueriesPlanned) && (lastDebugGcdDispatchTrace as any).comicVineQueriesPlanned.length ? (lastDebugGcdDispatchTrace as any).comicVineQueriesPlanned.join(" | ") : "(none)"}`,
+      `debugComicVineDispatchTrace.comicVineQueriesAttempted:${Array.isArray((lastDebugGcdDispatchTrace as any)?.comicVineQueriesAttempted) && (lastDebugGcdDispatchTrace as any).comicVineQueriesAttempted.length ? (lastDebugGcdDispatchTrace as any).comicVineQueriesAttempted.join(" | ") : "(none)"}`,
+      `debugComicVineDispatchTrace.comicVineFetchStartedAt:${String((lastDebugGcdDispatchTrace as any)?.comicVineFetchStartedAt || "(none)")}`,
+      `debugComicVineDispatchTrace.comicVineFetchFinishedAt:${String((lastDebugGcdDispatchTrace as any)?.comicVineFetchFinishedAt || "(none)")}`,
+      `debugComicVineDispatchTrace.comicVineFetchTimedOut:${Boolean((lastDebugGcdDispatchTrace as any)?.comicVineFetchTimedOut)}`,
+      `debugComicVineDispatchTrace.comicVineFetchFailureError:${String((lastDebugGcdDispatchTrace as any)?.comicVineFetchFailureError || "(none)")}`,
+      `debugComicVineDispatchTrace.comicVineDirectProbeDiagnostics:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineDirectProbeDiagnostics || [])}`,
+      `debugComicVineDispatchTrace.comicVineRawCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineRawCountByQuery || (lastRecommendationResult as any)?.comicVineRawCountByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineDocCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineDocCountByQuery || (lastRecommendationResult as any)?.comicVineDocCountByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineCandidateCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineCandidateCountByQuery || (lastRecommendationResult as any)?.comicVineCandidateCountByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineResultShapeByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineResultShapeByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineFirstTitlesByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineFirstTitlesByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineAdapterConversionDiagnostics:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineAdapterConversionDiagnostics || {})}`,
+      `debugComicVineDispatchTrace.comicVineDispatchStageDiagnostics:${Array.isArray((lastDebugGcdDispatchTrace as any)?.comicVineDispatchStageDiagnostics) && (lastDebugGcdDispatchTrace as any).comicVineDispatchStageDiagnostics.length ? JSON.stringify((lastDebugGcdDispatchTrace as any).comicVineDispatchStageDiagnostics) : "[]"}`,
       `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,
       `debugComicVineDispatchTrace.comicVineKeyDetected:${Boolean(lastDebugGcdDispatchTrace?.comicVineKeyDetected)}`,
@@ -3212,6 +3614,8 @@ function handleLeft() {
       "SESSION REPORT",
       `Deck: ${deck.deckLabel}`,
       `Deck Key: ${deckKey}`,
+      `engineSelected: ${selectedRecommendationEngine}`,
+      `engineActuallyUsed: ${engineActuallyUsedForReport || "(none)"}`,
       `Engine: ${recEngineLabel || "—"}`,
       `Saved Query Time: ${lastRecommendationTimestamp || "—"}`,
       `Swipe Summary: ${recomputedSummary}`,
@@ -3250,6 +3654,9 @@ function handleLeft() {
       "",
       "SOURCE SETTINGS",
       sourceEnabledSummary,
+      "",
+      "RECOMMENDER V2 DEBUG",
+      ...v2DiagnosticLines,
       "",
       "RAW POOL SUMMARY",
       `count:${rawPoolRows.length}`,
@@ -3334,7 +3741,7 @@ function handleLeft() {
     if (autoSearched) return;
     setAutoSearched(true);
     runAutoRecommendations();
-  }, [isDone, autoSearched, tasteProfileWithMood, currentLaneOverride]);
+  }, [isDone, autoSearched, tasteProfileWithMood, currentLaneOverride, selectedRecommendationEngine]);
 
   const recDone = recItems.length > 0 && recIndex === recItems.length;
 
@@ -3473,6 +3880,9 @@ function handleLeft() {
             20Q: {resolvedTwentyQCount}/{twentyQObjectives.length} resolved
           </Text>
           <Text style={styles.statusText}>
+            Engine selected: {selectedRecommendationEngine.toUpperCase()} • Last used: {(lastEngineActuallyUsed || "—").toUpperCase()}
+          </Text>
+          <Text style={styles.statusText}>
             {activeTwentyQObjective ? `Rung ${activeTwentyQObjective.rung}: ${activeTwentyQObjective.label}` : "20Q complete"}
           </Text>
         </View>
@@ -3485,7 +3895,7 @@ function handleLeft() {
               <View style={[styles.doneCard, { borderColor: highlightColor }]}>
                 <Text style={styles.doneTitle}>Recommendations</Text>
                 <Text style={styles.doneSub}>
-                  Deck: {deck.deckLabel} • Engine: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
+                  Deck: {deck.deckLabel} • Selected: {selectedRecommendationEngine.toUpperCase()} • Used: {(lastEngineActuallyUsed || "—").toUpperCase()} • Engine: {recEngineLabel || "—"} • 20Q resolved {resolvedTwentyQCount}/{twentyQObjectives.length}
                 </Text>
 
                 {recQuery ? (
@@ -3748,6 +4158,22 @@ function handleLeft() {
 
       <View style={styles.tempButtonsWrap}>
         <View style={styles.tempButtonsColumn}>
+          <View style={styles.engineSelectorPanel}>
+            <Text style={styles.v2DebugTitle}>Engine</Text>
+            <View style={styles.engineSelectorRow}>
+              {(["v1", "v2"] as RecommendationEngineSelection[]).map((engine) => (
+                <TouchableOpacity
+                  key={engine}
+                  style={[styles.engineToggleButton, selectedRecommendationEngine === engine && styles.engineToggleButtonActive]}
+                  onPress={() => selectRecommendationEngine(engine)}
+                >
+                  <Text style={styles.debugToggleText}>Engine: {engine.toUpperCase()}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <Text style={styles.v2DebugText}>Selected:{selectedRecommendationEngine} • Last used:{lastEngineActuallyUsed || "none"}</Text>
+          </View>
+
           <View style={styles.testPillRow}>
             {testSessionPresets.map((preset) => (
               <TouchableOpacity key={preset.id} style={styles.testPillButton} onPress={() => runTestSessionPreset(preset)}>
@@ -3758,6 +4184,21 @@ function handleLeft() {
           <TouchableOpacity style={styles.diagnosticsToggle} onPress={handleCopyDiagnostics}>
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity style={styles.v2DebugToggle} onPress={() => void runRecommenderV2DebugFromCurrentSession("button")}>
+            <Text style={styles.debugToggleText}>{v2DebugLoading ? "V2 Running…" : "Run V2"}</Text>
+          </TouchableOpacity>
+
+          {(v2DebugResult || v2DebugError) ? (
+            <View style={styles.v2DebugPanel}>
+              <Text style={styles.v2DebugTitle}>Recommender V2 Debug</Text>
+              <Text style={styles.v2DebugText}>status:{v2DebugError ? "error" : "ok"}</Text>
+              <Text style={styles.v2DebugText}>items:{v2DebugResult?.items.map((item) => item.title).join(" | ") || "(none)"}</Text>
+              <Text style={styles.v2DebugText}>stages:{v2DebugResult?.diagnostics.stages.map((stage) => stage.stage).join(" → ") || "(none)"}</Text>
+              <Text style={styles.v2DebugText}>sources:{v2DebugResult?.diagnostics.sources.map((source) => `${source.source}:${source.status}:${source.rawCount}`).join(" | ") || "(none)"}</Text>
+              {v2DebugError ? <Text style={styles.v2DebugText}>error:{v2DebugError}</Text> : null}
+            </View>
+          ) : null}
 
           <TouchableOpacity style={styles.freshUserToggle} onPress={handleFreshUserReset}>
             <Text style={styles.debugToggleText}>Fresh User</Text>
@@ -3992,6 +4433,58 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
+  engineSelectorPanel: {
+    width: 320,
+    maxWidth: "90%",
+    alignSelf: "flex-end",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(15, 23, 42, 0.9)",
+    padding: 10,
+    gap: 8,
+  },
+  engineSelectorRow: {
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "flex-end",
+    flexWrap: "wrap",
+  },
+  engineToggleButton: {
+    minWidth: 104,
+    alignItems: "center",
+    backgroundColor: "#334155",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.14)",
+  },
+  engineToggleButtonActive: {
+    backgroundColor: "#2563eb",
+    borderColor: "#bfdbfe",
+  },
+  v2DebugToggle: {
+    minWidth: 112,
+    alignItems: "center",
+    backgroundColor: "#0f766e",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  v2DebugPanel: {
+    width: 320,
+    maxWidth: "90%",
+    alignSelf: "flex-end",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(10, 20, 35, 0.95)",
+    padding: 10,
+    gap: 4,
+  },
+  v2DebugTitle: { color: "#e5efff", fontWeight: "900", fontSize: 12 },
+  v2DebugText: { color: "#cbd5f5", fontWeight: "700", fontSize: 10 },
   randomizeToggle: {
     minWidth: 112,
     alignItems: "center",
