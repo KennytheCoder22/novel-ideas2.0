@@ -2887,8 +2887,8 @@ export async function getRecommendations(
     if (normalizedFamily === "fantasy") {
       addIf(out, "supernatural adventure", "fantasy_supernatural_adventure", /\b(supernatural|paranormal|ghost|spirit|monster|occult)\b/);
       addIf(out, "found family adventure", "fantasy_found_family_adventure", /\b(found family|friendship|team|companions?)\b/);
-      addIf(out, "dark fantasy", "fantasy_dark_atmospheric", /\b(dark|atmospheric|haunted|curse|cursed)\b/);
       addIf(out, "young adult adventure", "fantasy_young_adult_adventure", /\b(young adult|teen|coming of age|school)\b/);
+      addIf(out, "dark fantasy", "fantasy_dark_atmospheric", /\b(dark|atmospheric|haunted|curse|cursed)\b/);
     } else if (normalizedFamily === "horror") {
       addIf(out, "supernatural suspense", "horror_safe_supernatural_suspense", /\b(supernatural|ghost|haunted|spirit|curse|cursed)\b/);
       addIf(out, "psychological suspense", "horror_safe_psychological_suspense", /\b(psychological|suspense|tension|atmospheric)\b/);
