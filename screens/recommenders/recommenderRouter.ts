@@ -2965,6 +2965,17 @@ export async function getRecommendations(
     if (/\b(romance|romantic)\b/.test(normalized)) return "romance";
     return "";
   };
+  const inferTeenKitsuDominantLaneFamily = (text: string, selectedQuery = "") => {
+    const normalized = normalizeKitsuRecoveryQueryForSelection(`${text || ""} ${selectedQuery || ""}`);
+    if (/\b(psychological horror|horror|occult|haunted|ghost|curse|cursed)\b/.test(normalized)) return "horror";
+    if (/\bsupernatural\b/.test(normalized) && /\b(suspense|mystery|psychological|haunted|ghost|curse|cursed)\b/.test(normalized)) return "horror";
+    if (/\b(detective|investigator|investigation|mystery|crime|case)\b/.test(normalized)) return "mystery";
+    if (/\b(science fiction|sci fi|scifi|dystopian|cyberpunk|space|post apocalyptic|future)\b/.test(normalized)) return "science_fiction";
+    if (/\b(thriller|suspense|psychological)\b/.test(normalized)) return "thriller";
+    if (/\b(fantasy|magic|magical|found family adventure|young adult adventure|adventure fantasy|fantasy adventure|dark fantasy)\b/.test(normalized)) return "fantasy";
+    if (/\b(romance|romantic)\b/.test(normalized)) return "romance";
+    return "";
+  };
   const isBroadOrFormatKitsuQuery = (q: string) => {
     const normalized = normalizeKitsuRecoveryQueryForSelection(q);
     return ["fantasy", "adventure", "horror", "psychological horror", "supernatural", "science fiction", "sci fi", "dystopian", "graphic novel", "manga", "anime", "romance", "drama", "thriller", "suspense"].includes(normalized);
@@ -3007,15 +3018,18 @@ export async function getRecommendations(
       fantasy: ["fantasy", "adventure"],
       romance: ["romance", "drama"],
     };
-    const familyTerms = familyTermsByFamily[family] || [];
-    const activeFamilyTerm = familyTerms.find((term) => activeTerms.some((active) => normalizeKitsuRecoveryQueryForSelection(active) === normalizeKitsuRecoveryQueryForSelection(term)));
-    const laneInferredFamily = inferTeenKitsuAlternateFamilyFromQuery(laneSignalText);
+    const laneInferredFamily = inferTeenKitsuDominantLaneFamily(laneSignalText, current);
     const selectedInferredFamily = inferTeenKitsuAlternateFamilyFromQuery(current);
+    const activeInferredFamily = inferTeenKitsuDominantLaneFamily(activeTerms.join(" "), "");
+    const effectiveFamily = laneInferredFamily || activeInferredFamily || selectedInferredFamily || family;
+    const familyTerms = familyTermsByFamily[effectiveFamily] || familyTermsByFamily[family] || [];
+    const activeFamilyTerm = familyTerms.find((term) => activeTerms.some((active) => normalizeKitsuRecoveryQueryForSelection(active) === normalizeKitsuRecoveryQueryForSelection(term)));
     const alternateFamilies = Array.from(new Set([
       laneInferredFamily,
+      activeInferredFamily,
       inferTeenKitsuAlternateFamilyFromQuery(activeFamilyTerm || ""),
-      selectedInferredFamily,
-      family,
+      selectedInferredFamily && !laneInferredFamily && !activeInferredFamily ? selectedInferredFamily : "",
+      !laneInferredFamily && !activeInferredFamily && !selectedInferredFamily ? family : "",
     ].map((entry) => String(entry || "").trim()).filter(Boolean)));
     if (isTeenDeckKey((routedInput as any)?.deckKey || "")) {
       kitsuTeenAlternateFamilyInferenceDiagnostics.push({ routerFamily: String(family || ""), selectedQuery: current, laneInferredFamily, selectedInferredFamily, alternateFamilies });
@@ -5208,8 +5222,9 @@ export async function getRecommendations(
       ((bucketPlan as any)?.queries || [])[0] ||
       "anime"
     ).trim();
+    const postLoopDominantFamily = inferTeenKitsuDominantLaneFamily(postLoopQuerySignals, rawFallbackKitsuQuery) || routerFamily;
     const postLoopAlternateQueries = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "")
-      ? buildTeenKitsuTasteAlignedAlternateQueries(routerFamily, postLoopQuerySignals, "post_loop_recovery")
+      ? buildTeenKitsuTasteAlignedAlternateQueries(postLoopDominantFamily, postLoopQuerySignals, "post_loop_recovery")
       : [];
     const broadPostLoopFallback = isBroadOrFormatKitsuQuery(rawFallbackKitsuQuery);
     const fallbackKitsuQuery = broadPostLoopFallback && postLoopAlternateQueries.length > 0 ? postLoopAlternateQueries[0].query : rawFallbackKitsuQuery;
@@ -5311,9 +5326,10 @@ export async function getRecommendations(
       String(bucketPlan.preview || ""),
       ...((bucketPlan.queries || []) as any[]).map((q) => String(q || "")),
     ].join(" ");
+    const thinPoolDominantFamily = inferTeenKitsuDominantLaneFamily(thinPoolFollowupSignals, kitsuQueryUsedByLane[kitsuQueryUsedByLane.length - 1] || "");
     const thinPoolFollowupFamilies = Array.from(new Set([
-      inferTeenKitsuAlternateFamilyFromQuery(thinPoolFollowupSignals),
-      routerFamily,
+      thinPoolDominantFamily,
+      !thinPoolDominantFamily ? routerFamily : "",
     ].map((entry) => String(entry || "").trim()).filter(Boolean)));
     const plannedFollowupQueries = Array.from(new Set([
       ...kitsuTeenAlternateQueriesPlanned.map((row) => row.query),
@@ -5827,16 +5843,18 @@ export async function getRecommendations(
         kitsuRecoveryQueryPromotedFrom = kitsuRecoveryQuery;
         kitsuRecoveryQueryPromotedTo = promotedRecoveryQuery.query;
       }
+      const healthGuardSignals = [
+        kitsuRecoveryQuery,
+        promotedRecoveryQuery.query,
+        ...kitsuPreSanitizedQueries,
+        ...kitsuSanitizedQuerySelected,
+        ...kitsuQueryUsedByLane,
+        String(bucketPlan.preview || ""),
+        ...((bucketPlan.queries || []) as any[]).map((q) => String(q || "")),
+      ].join(" ");
+      const healthGuardDominantFamily = inferTeenKitsuDominantLaneFamily(healthGuardSignals, promotedRecoveryQuery.query) || routerFamily;
       const healthGuardAlternateQueries = isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "")
-        ? buildTeenKitsuTasteAlignedAlternateQueries(routerFamily, [
-          kitsuRecoveryQuery,
-          promotedRecoveryQuery.query,
-          ...kitsuPreSanitizedQueries,
-          ...kitsuSanitizedQuerySelected,
-          ...kitsuQueryUsedByLane,
-          String(bucketPlan.preview || ""),
-          ...((bucketPlan.queries || []) as any[]).map((q) => String(q || "")),
-        ].join(" "), "health_guard_recovery")
+        ? buildTeenKitsuTasteAlignedAlternateQueries(healthGuardDominantFamily, healthGuardSignals, "health_guard_recovery")
         : [];
       const boundedFallback = Array.from(new Set([...healthGuardAlternateQueries.map((row) => row.query), promotedRecoveryQuery.query, "adventure", "drama", "mystery"].map((q) => sanitizeKitsuRecoveryQuery(String(q || "")).to).filter(Boolean)));
       collectKitsuRecoveryComicIntent([
