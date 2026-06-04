@@ -1780,7 +1780,7 @@ function handleLeft() {
           ageBand: deckKeyToAgeBandV2(deckKey),
           limit: inputWithHistory.limit || 10,
           enabledSources: {
-            mock: true,
+            mock: !sourceEnabled.openLibrary,
             googleBooks: sourceEnabled.googleBooks,
             openLibrary: sourceEnabled.openLibrary,
             localLibrary: sourceEnabled.localLibrary,
@@ -3229,7 +3229,7 @@ function handleLeft() {
           `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
           `searchPlan:${JSON.stringify(v2DiagnosticsForReport.searchPlan || {})}`,
           `stages:${(v2DiagnosticsForReport.stages || []).map((stage: any) => `${stage.stage}:${JSON.stringify(stage.counts || {})}`).join(" -> ")}`,
-          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
           `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
           `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
           `rejectedReasons:${JSON.stringify(v2DiagnosticsForReport.rejectedReasons || {})}`,

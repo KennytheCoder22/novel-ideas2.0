@@ -32,8 +32,10 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
         tones: asStringArray(row.tones),
         characterDynamics: asStringArray(row.characterDynamics),
         maturityBand: String(row.maturityBand || row.maturity || "").trim() || undefined,
+        publicationYear: Number.isFinite(Number(row.publicationYear || row.first_publish_year)) ? Number(row.publicationYear || row.first_publish_year) : undefined,
+        sourceUrl: String(row.sourceUrl || row.url || "").trim() || undefined,
         raw,
-        diagnostics: { sourceStatus: result.status },
+        diagnostics: { sourceStatus: result.status, queryText: row.queryText },
       });
     }
     result.diagnostics.normalizedCount = candidates.filter((candidate) => candidate.source === result.source).length;

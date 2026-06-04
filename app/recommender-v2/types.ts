@@ -87,6 +87,11 @@ export interface SourceDiagnosticV2 {
   rawCount: number;
   normalizedCount?: number;
   queries: string[];
+  rawTitles?: string[];
+  firstReturnedTitles?: string[];
+  rawApiResultCount?: number;
+  droppedBeforeDocCount?: number;
+  dropReasons?: Record<string, number>;
 }
 
 export interface SourceResult {
@@ -110,6 +115,8 @@ export interface NormalizedCandidate {
   tones: string[];
   characterDynamics: string[];
   maturityBand?: AgeBandV2 | string;
+  publicationYear?: number;
+  sourceUrl?: string;
   raw: unknown;
   diagnostics: Record<string, unknown>;
 }
