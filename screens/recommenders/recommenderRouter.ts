@@ -2840,6 +2840,7 @@ export async function getRecommendations(
   let kitsuTeenGcdEnrichmentReturnableGcdDisabled = false;
   let kitsuTeenGcdEnrichmentSkippedReason = "not_evaluated";
   const kitsuTeenGcdEnrichmentQueries: string[] = [];
+  const kitsuTeenGcdEnrichmentQueryDiagnostics: Array<{ query: string; status: string; timedOut: boolean; rawCount: number; docCount: number; matchedTitleCount: number; error: string }> = [];
   const kitsuTeenGcdEnrichmentMatchedTitles: string[] = [];
   const kitsuTeenGcdEnrichmentNoMatchTitles: string[] = [];
   const kitsuTeenGcdEnrichmentByTitle: Record<string, { query: string; matchedGcdTitle: string; facets: string[]; contributedTextLength: number; laneAligned: boolean }> = {};
@@ -5452,41 +5453,93 @@ export async function getRecommendations(
     }
     kitsuTeenGcdEnrichmentAttempted = true;
     kitsuTeenGcdEnrichmentSkippedReason = "attempted";
-    const querySeeds = Array.from(new Set(kitsuDocs.flatMap((doc: any) => [
-      String(doc?.title || doc?.canonicalTitle || "").trim(),
-      String(parentFranchiseRootForDoc(doc) || "").replace(/-/g, " ").trim(),
-    ]).filter((value: string) => value && !/^title:/i.test(value)))).slice(0, 4);
+    const genericGcdRootKeys = new Set(["manga", "anime", "comic", "comics", "graphic novel", "mystery", "fantasy", "horror", "thriller", "adventure", "science fiction", "sci fi"]);
+    const seedRows = kitsuDocs.flatMap((doc: any) => {
+      const title = String(doc?.canonicalTitle || doc?.title || "").trim();
+      const root = String(parentFranchiseRootForDoc(doc) || "").replace(/-/g, " ").trim();
+      return [
+        { query: title, priority: 0, source: "canonical_title" },
+        { query: root, priority: 1, source: "root" },
+      ];
+    }).filter((row: any) => {
+      const clean = String(row.query || "").trim();
+      if (!clean || /^title:/i.test(clean)) return false;
+      const key = normalizeTeenKitsuGcdMatchKey(clean);
+      return key.length >= 3 && !genericGcdRootKeys.has(key);
+    });
+    const querySeeds = Array.from(new Map(seedRows
+      .sort((a: any, b: any) => a.priority - b.priority || String(a.query).length - String(b.query).length)
+      .map((row: any) => [normalizeTeenKitsuGcdMatchKey(row.query), String(row.query || "").trim()])).values()).slice(0, 2);
     if (querySeeds.length === 0) {
-      kitsuTeenGcdEnrichmentSkippedReason = "no_title_or_root_queries";
+      kitsuTeenGcdEnrichmentSkippedReason = "no_precise_title_or_root_queries";
       return;
     }
     const gcdDocsByKey = new Map<string, any>();
+    const gcdDocsByQuery = new Map<string, any[]>();
+    const gcdEnrichmentLookupCache = new Map<string, any[]>();
     for (const query of querySeeds) {
       kitsuTeenGcdEnrichmentQueries.push(query);
+      const startedAt = Date.now();
+      let queryDocs: any[] = [];
+      let rawCount = 0;
+      let status = "ok";
+      let error = "";
       try {
-        const gcdInput = {
-          ...routedInput,
-          sourceEnabled: { ...(routedInput as any)?.sourceEnabled, googleBooks: false, openLibrary: false, localLibrary: false, kitsu: false, comicVine: true, gcd: true },
-          bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
-          forceTastePrimaryForComicVine: false,
-        } as any;
-        const gcdResult = await withSourceTimeout("router_before_teen_kitsu_gcd_enrichment_fetch", "router_after_teen_kitsu_gcd_enrichment_fetch", 7_000, () => getComicVineGraphicNovelRecommendations(gcdInput));
-        const gcdDocs = dedupeDocs(extractDocs(gcdResult as any, "comicVine"));
-        for (const gcdDoc of gcdDocs) {
+        const cacheKey = normalizeTeenKitsuGcdMatchKey(query);
+        if (gcdEnrichmentLookupCache.has(cacheKey)) {
+          queryDocs = gcdEnrichmentLookupCache.get(cacheKey) || [];
+          status = "cache_hit";
+        } else {
+          const gcdInput = {
+            ...routedInput,
+            sourceEnabled: { ...(routedInput as any)?.sourceEnabled, googleBooks: false, openLibrary: false, localLibrary: false, kitsu: false, comicVine: true, gcd: true },
+            bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
+            forceTastePrimaryForComicVine: false,
+          } as any;
+          const gcdResult = await withSourceTimeout("router_before_teen_kitsu_gcd_enrichment_fetch", "router_after_teen_kitsu_gcd_enrichment_fetch", 3_500, () => getComicVineGraphicNovelRecommendations(gcdInput));
+          rawCount = Number((gcdResult as any)?.debugRawFetchedCount ?? countResultItems(gcdResult));
+          queryDocs = dedupeDocs(extractDocs(gcdResult as any, "comicVine"));
+          gcdEnrichmentLookupCache.set(cacheKey, queryDocs);
+        }
+        gcdDocsByQuery.set(query, queryDocs);
+        for (const gcdDoc of queryDocs) {
           const titleKey = normalizeTeenKitsuGcdMatchKey((gcdDoc as any)?.title || (gcdDoc as any)?.rawDoc?.title || "");
           const rootKey = normalizeTeenKitsuGcdMatchKey(parentFranchiseRootForDoc(gcdDoc) || "");
           if (titleKey && !gcdDocsByKey.has(titleKey)) gcdDocsByKey.set(titleKey, gcdDoc);
           if (rootKey && !gcdDocsByKey.has(rootKey)) gcdDocsByKey.set(rootKey, gcdDoc);
         }
       } catch (err: any) {
-        sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_fetch_failed:${String(err?.message || err || "unknown").slice(0, 80)}`);
+        status = "error";
+        error = String(err?.message || err || "unknown");
+        sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_fetch_failed:${error.slice(0, 80)}`);
       }
+      kitsuTeenGcdEnrichmentQueryDiagnostics.push({
+        query,
+        status,
+        timedOut: /timeout/i.test(error),
+        rawCount,
+        docCount: queryDocs.length,
+        matchedTitleCount: 0,
+        error: error.slice(0, 120),
+      });
+      if (Date.now() - startedAt > 3_400) sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_slow_query:${query}`);
     }
+    const findGcdDocForKitsuDoc = (doc: any) => {
+      const titleKey = normalizeTeenKitsuGcdMatchKey(doc?.title || doc?.canonicalTitle || "");
+      const rootKey = normalizeTeenKitsuGcdMatchKey(parentFranchiseRootForDoc(doc) || "");
+      const exact = (titleKey && gcdDocsByKey.get(titleKey)) || (rootKey && gcdDocsByKey.get(rootKey));
+      if (exact) return exact;
+      const matchKeys = [titleKey, rootKey].filter((key) => key.length >= 5);
+      for (const key of matchKeys) {
+        for (const [gcdKey, gcdDoc] of gcdDocsByKey.entries()) {
+          if (gcdKey.length >= 5 && (gcdKey.includes(key) || key.includes(gcdKey))) return gcdDoc;
+        }
+      }
+      return null;
+    };
     for (const doc of kitsuDocs as any[]) {
       const title = String(doc?.title || doc?.canonicalTitle || "").trim();
-      const titleKey = normalizeTeenKitsuGcdMatchKey(title);
-      const rootKey = normalizeTeenKitsuGcdMatchKey(parentFranchiseRootForDoc(doc) || "");
-      const gcdDoc = (titleKey && gcdDocsByKey.get(titleKey)) || (rootKey && gcdDocsByKey.get(rootKey));
+      const gcdDoc = findGcdDocForKitsuDoc(doc);
       if (!gcdDoc) {
         pushUniqueTeenKitsuGcdDiagnostic(kitsuTeenGcdEnrichmentNoMatchTitles, title);
         continue;
@@ -5520,6 +5573,10 @@ export async function getRecommendations(
         gcdEnrichmentOnlyLaneAligned: laneAligned,
       };
       pushUniqueTeenKitsuGcdDiagnostic(kitsuTeenGcdEnrichmentMatchedTitles, title);
+      for (const diag of kitsuTeenGcdEnrichmentQueryDiagnostics) {
+        const docsForQuery = gcdDocsByQuery.get(diag.query) || [];
+        if (docsForQuery.some((candidate) => candidate === gcdDoc)) diag.matchedTitleCount += 1;
+      }
       kitsuTeenGcdEnrichmentByTitle[title] = {
         query: title,
         matchedGcdTitle: gcdTitle,
@@ -15210,6 +15267,7 @@ const normalizedCandidatesRaw = [
     kitsuTeenGcdEnrichmentReturnableGcdDisabled,
     kitsuTeenGcdEnrichmentSkippedReason,
     kitsuTeenGcdEnrichmentQueries,
+    kitsuTeenGcdEnrichmentQueryDiagnostics,
     kitsuTeenGcdEnrichmentMatchedTitles,
     kitsuTeenGcdEnrichmentNoMatchTitles,
     kitsuTeenGcdEnrichmentByTitle,

@@ -2365,6 +2365,7 @@ function handleLeft() {
       `kitsuTeenGcdEnrichmentReturnableGcdDisabled: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentReturnableGcdDisabled")))}`,
       `kitsuTeenGcdEnrichmentSkippedReason: ${String(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentSkippedReason") || "")}`,
       `kitsuTeenGcdEnrichmentQueries: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentQueries") || [])}`,
+      `kitsuTeenGcdEnrichmentQueryDiagnostics: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentQueryDiagnostics") || [])}`,
       `kitsuTeenGcdEnrichmentMatchedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentMatchedTitles") || [])}`,
       `kitsuTeenGcdEnrichmentNoMatchTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentNoMatchTitles") || [])}`,
       `kitsuTeenGcdEnrichmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGcdEnrichmentByTitle") || {})}`,
