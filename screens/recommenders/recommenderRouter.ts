@@ -5260,7 +5260,26 @@ export async function getRecommendations(
   }
 
   const teenKitsuThinPoolFollowupFetchCap = 4;
-  if (includeKitsu && kitsuOnlyAtRequestStart && isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "") && kitsuTeenAlternateQueryExpansionReasons.length > 0 && kitsuRouterFetchCount < teenKitsuThinPoolFollowupFetchCap) {
+  const teenKitsuHasUnfetchedPlannedAlternate = kitsuTeenAlternateQueriesPlanned.some((row) => !Array.from(kitsuQueriesActuallyFetched).some(
+    (fetched) => normalizeKitsuRecoveryQueryForSelection(fetched) === normalizeKitsuRecoveryQueryForSelection(row.query),
+  ));
+  if (
+    includeKitsu
+    && kitsuOnlyAtRequestStart
+    && isTeenDeckKey((routedInput as any)?.deckKey || (input as any)?.deckKey || "")
+    && (kitsuTeenAlternateQueryExpansionReasons.length > 0 || teenKitsuHasUnfetchedPlannedAlternate)
+    && kitsuRouterFetchCount < teenKitsuThinPoolFollowupFetchCap
+  ) {
+    if (kitsuTeenAlternateQueryExpansionReasons.length === 0 && teenKitsuHasUnfetchedPlannedAlternate) {
+      const lastKitsuQuery = kitsuQueryUsedByLane[kitsuQueryUsedByLane.length - 1] || kitsuSanitizedQuerySelected[kitsuSanitizedQuerySelected.length - 1] || "";
+      kitsuTeenAlternateQueryExpansionReasons.push({
+        query: String(lastKitsuQuery || ""),
+        family: routerFamily,
+        rawCount: Number(aggregatedRawFetched.kitsu || 0),
+        reason: "planned_alternates_remaining_before_clean_zero",
+      });
+      sourceSkippedReason.push("teen_kitsu_planned_alternate_followup_before_clean_zero");
+    }
     const thinPoolFollowupSignals = [
       ...kitsuPreSanitizedQueries,
       ...kitsuSanitizedQuerySelected,
@@ -5272,12 +5291,22 @@ export async function getRecommendations(
       inferTeenKitsuAlternateFamilyFromQuery(thinPoolFollowupSignals),
       routerFamily,
     ].map((entry) => String(entry || "").trim()).filter(Boolean)));
-    const plannedFollowupQueries = Array.from(new Set(kitsuTeenAlternateQueryPromotionDecisions.flatMap((row) => Array.isArray(row.plannedQueries) ? row.plannedQueries : []).map((q) => String(q || "").trim()).filter(Boolean)));
+    const plannedFollowupQueries = Array.from(new Set([
+      ...kitsuTeenAlternateQueriesPlanned.map((row) => row.query),
+      ...kitsuTeenAlternateQueryPromotionDecisions.flatMap((row) => Array.isArray(row.plannedQueries) ? row.plannedQueries : []),
+    ].map((q) => String(q || "").trim()).filter(Boolean)));
     const thinPoolFollowupAlternatesBuilt = thinPoolFollowupFamilies.flatMap((family) => buildTeenKitsuTasteAlignedAlternateQueries(family, thinPoolFollowupSignals, "thin_pool_followup"));
     const thinPoolFollowupAlternates = [
-      ...plannedFollowupQueries.map((query) => ({ query, reason: "planned_lane_inferred_followup", family: inferTeenKitsuAlternateFamilyFromQuery(query) || routerFamily, source: "thin_pool_followup" })),
+      ...plannedFollowupQueries.map((query) => ({
+        query,
+        reason: "planned_lane_inferred_followup",
+        family: inferTeenKitsuAlternateFamilyFromQuery(query) || routerFamily,
+        source: "thin_pool_followup",
+      })),
       ...thinPoolFollowupAlternatesBuilt,
-    ].filter((row, index, arr) => arr.findIndex((other) => normalizeKitsuRecoveryQueryForSelection(other.query) === normalizeKitsuRecoveryQueryForSelection(row.query)) === index);
+    ].filter((row, index, arr) => arr.findIndex(
+      (other) => normalizeKitsuRecoveryQueryForSelection(other.query) === normalizeKitsuRecoveryQueryForSelection(row.query),
+    ) === index);
     let teenKitsuThinPoolFollowupDispatched = false;
     for (const thinPoolFollowup of thinPoolFollowupAlternates) {
       if (kitsuRouterFetchCount >= teenKitsuThinPoolFollowupFetchCap) break;
