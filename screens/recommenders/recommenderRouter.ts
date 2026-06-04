@@ -2815,6 +2815,7 @@ export async function getRecommendations(
   let openLibraryRouterFetchCount = 0;
   let kitsuRouterFetchCount = 0;
   const sourceFetchCapPerRun = 2;
+  const openLibrarySourceFetchCapPerRun = 1;
   const routerRunStartedAtMs = Date.now();
   const routerRunSoftTimeoutMs = 20_000;
   let routerFetchLoopStoppedByTimeout = false;
@@ -3094,7 +3095,7 @@ export async function getRecommendations(
   const googleBooksFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const googleBooksTimeoutStageByQuery: Array<{ query: string; stage: string; fallbackQuery?: string; reason?: string }> = [];
   const googleBooksRetryQueryMapping: Array<{ primaryQuery: string; retryQuery: string; validated: boolean }> = [];
-  const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null; fetchStartedAt?: string; fetchFinishedAt?: string; elapsedMs?: number; httpStatus?: number; transport?: "direct" | "proxy"; fallbackFromDirect?: boolean; directFailureReason?: string; directElapsedMs?: number }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
   const collapseRepeatedQueryPhrases = (value: string) => {
@@ -4267,7 +4268,7 @@ export async function getRecommendations(
         googleBooksRouterFetchCount >= sourceFetchCapPerRun;
       const openLibraryExhausted =
         !sourceEnabled.openLibrary ||
-        openLibraryRouterFetchCount >= sourceFetchCapPerRun;
+        openLibraryRouterFetchCount >= openLibrarySourceFetchCapPerRun;
       const kitsuExhausted =
         !includeKitsu ||
         kitsuRouterFetchCount >= sourceFetchCapPerRun;
@@ -4286,7 +4287,7 @@ export async function getRecommendations(
         }
         break;
       }
-      if (kitsuDispatchedOnce && (!sourceEnabled.openLibrary || openLibraryRouterFetchCount >= sourceFetchCapPerRun)) {
+      if (kitsuDispatchedOnce && (!sourceEnabled.openLibrary || openLibraryRouterFetchCount >= openLibrarySourceFetchCapPerRun)) {
         if (!fetchLoopExhaustedMarkerEmitted) {
           pushGlobalPhase("router_fetch_loop_all_sources_exhausted", {
             laneIndex: lanei,
@@ -4692,7 +4693,7 @@ export async function getRecommendations(
         }
       }
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
-        if (openLibraryRouterFetchCount >= sourceFetchCapPerRun) {
+        if (openLibraryRouterFetchCount >= openLibrarySourceFetchCapPerRun) {
           pushGlobalPhase("router_fetch_loop_stopped_by_cap", { source: "openLibrary", source_fetch_cap_exceeded: true, openLibraryRouterFetchCount });
           sourceSkippedReason.push("source_fetch_cap_exceeded:openLibrary");
         } else {
@@ -4707,7 +4708,7 @@ export async function getRecommendations(
         pendingSourceFetchCount += 1;
         pendingSourceFetchCountIncremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
         const openLibraryFetchPromise = runEngine("openLibrary", laneInput);
-        const openLibraryTrackedRequest = withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 4_000, () => openLibraryFetchPromise)
+        const openLibraryTrackedRequest = withSourceTimeout("router_before_open_library_full_fetch", "router_after_open_library_full_fetch", 6_500, () => openLibraryFetchPromise)
             .finally(() => {
               pendingSourceFetchCount = Math.max(0, pendingSourceFetchCount - 1);
               pendingSourceFetchCountDecremented.push({ source: "openLibrary", laneIndex: lanei, query: openLibraryLaneQuery, pending: pendingSourceFetchCount });
@@ -4882,16 +4883,32 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
+        const openLibraryDiagnostics = Array.isArray((laneOpenLibrary as any)?.debugSourceFetchDiagnostics)
+          ? (laneOpenLibrary as any).debugSourceFetchDiagnostics
+          : [];
+        const openLibraryPrimaryDiagnostic = openLibraryDiagnostics.find((row: any) => String(row?.query || "").trim() === openLibraryLaneQuery) || openLibraryDiagnostics[0] || null;
+        const openLibraryRawCount = Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary));
+        const openLibraryRejectedReason = results[index]?.status === "rejected"
+          ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed")
+          : "";
         openLibraryFetchResultsByQuery.push({
           query: openLibraryLaneQuery,
-          url: `/api/openlibrary?q=${encodeURIComponent(openLibraryLaneQuery)}`,
-          status: results[index]?.status === "fulfilled" ? "ok" : "error",
-          timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
-          rawCount: Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)),
-          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
+          url: String(openLibraryPrimaryDiagnostic?.requestUrl || `/api/openlibrary?q=${encodeURIComponent(openLibraryLaneQuery)}`),
+          status: results[index]?.status === "fulfilled" ? "ok" : (/timeout|aborted|abort/i.test(openLibraryRejectedReason) ? "timed_out" : "error"),
+          timedOut: Boolean(openLibraryPrimaryDiagnostic?.timedOut) || /timeout|aborted|abort/i.test(openLibraryRejectedReason),
+          rawCount: openLibraryRawCount,
+          error: results[index]?.status === "rejected" ? openLibraryRejectedReason : null,
           bodyPrefix: results[index]?.status === "rejected"
-            ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
-            : (Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)) === 0 ? "[empty_open_library_result]" : null),
+            ? String(openLibraryPrimaryDiagnostic?.responseBodyPrefix || openLibraryRejectedReason).slice(0, 180)
+            : (openLibraryRawCount === 0 ? String(openLibraryPrimaryDiagnostic?.responseBodyPrefix || "[empty_open_library_result]").slice(0, 180) : null),
+          fetchStartedAt: openLibraryPrimaryDiagnostic?.fetchStartedAt,
+          fetchFinishedAt: openLibraryPrimaryDiagnostic?.fetchFinishedAt,
+          elapsedMs: Number.isFinite(Number(openLibraryPrimaryDiagnostic?.elapsedMs)) ? Number(openLibraryPrimaryDiagnostic.elapsedMs) : undefined,
+          httpStatus: Number.isFinite(Number(openLibraryPrimaryDiagnostic?.httpStatus)) ? Number(openLibraryPrimaryDiagnostic.httpStatus) : undefined,
+          transport: openLibraryPrimaryDiagnostic?.transport === "direct" ? "direct" : (openLibraryPrimaryDiagnostic?.transport === "proxy" ? "proxy" : undefined),
+          fallbackFromDirect: typeof openLibraryPrimaryDiagnostic?.fallbackFromDirect === "boolean" ? openLibraryPrimaryDiagnostic.fallbackFromDirect : undefined,
+          directFailureReason: openLibraryPrimaryDiagnostic?.directFailureReason ? String(openLibraryPrimaryDiagnostic.directFailureReason) : undefined,
+          directElapsedMs: Number.isFinite(Number(openLibraryPrimaryDiagnostic?.directElapsedMs)) ? Number(openLibraryPrimaryDiagnostic.directElapsedMs) : undefined,
         });
         index += 1;
       }
@@ -15021,7 +15038,7 @@ const normalizedCandidatesRaw = [
     sourceFetchAttemptedBySource,
     sourceFetchTimeoutBySource: {
       googleBooks: googleBooksFetchResultsByQuery.some((row) => String(row?.error || "").includes("timeout")),
-      openLibrary: openLibraryFetchResultsByQuery.some((row) => String(row?.error || "").includes("timeout")),
+      openLibrary: openLibraryFetchResultsByQuery.some((row) => Boolean(row?.timedOut) || /timeout|aborted|abort/i.test(String(row?.error || ""))),
       kitsu: kitsuFetchResultsByQuery.some((row) => String(row?.error || "").includes("timeout")),
     },
     sourceRawCountBySource: {
