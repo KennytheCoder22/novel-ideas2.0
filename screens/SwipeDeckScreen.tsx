@@ -1761,11 +1761,12 @@ function handleLeft() {
       if (result && typeof result === "object" && !Array.isArray(result) && Object.keys(result).length === 0) {
         throw new Error("getRecommendations_returned_empty_object:result_has_no_keys");
       }
-      const routerHistory = Array.isArray((result as any)?.routerPhaseHistory) ? (result as any).routerPhaseHistory : [];
+      const globalRouterPhasesForResultCheck = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
+        ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
+        : [];
+      const routerHistory = Array.isArray((result as any)?.routerPhaseHistory) ? (result as any).routerPhaseHistory : globalRouterPhasesForResultCheck;
       if (!routerHistory.some((row: any) => String(row?.phase || "") === "router_entered")) {
-        const globalRouterPhases = Array.isArray((globalThis as any).__novelIdeasRouterPhaseHistory)
-          ? ((globalThis as any).__novelIdeasRouterPhaseHistory as any[])
-          : [];
+        const globalRouterPhases = globalRouterPhasesForResultCheck;
         const hasBeforeRouterCall = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_before_router_call");
         const hasAfterRouterCallWithShapeV2 = globalRouterPhases.some((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
         const afterRouterCallEvent = [...globalRouterPhases].reverse().find((row: any) => String(row?.phase || "") === "getRecommendations_after_router_call_with_shape_v2");
@@ -3234,6 +3235,7 @@ function handleLeft() {
       `debugComicVineDispatchTrace.comicVineCandidateCountByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineCandidateCountByQuery || (lastRecommendationResult as any)?.comicVineCandidateCountByQuery || {})}`,
       `debugComicVineDispatchTrace.comicVineResultShapeByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineResultShapeByQuery || {})}`,
       `debugComicVineDispatchTrace.comicVineFirstTitlesByQuery:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineFirstTitlesByQuery || {})}`,
+      `debugComicVineDispatchTrace.comicVineAdapterConversionDiagnostics:${JSON.stringify((lastDebugGcdDispatchTrace as any)?.comicVineAdapterConversionDiagnostics || {})}`,
       `debugComicVineDispatchTrace.comicVineDispatchStageDiagnostics:${Array.isArray((lastDebugGcdDispatchTrace as any)?.comicVineDispatchStageDiagnostics) && (lastDebugGcdDispatchTrace as any).comicVineDispatchStageDiagnostics.length ? JSON.stringify((lastDebugGcdDispatchTrace as any).comicVineDispatchStageDiagnostics) : "[]"}`,
       `debugComicVineDispatchTrace.traceSource:${String(lastDebugGcdDispatchTrace?.traceSource || "report-default")}`,
       `debugComicVineDispatchTrace.comicVineEnvVarPresent:${Boolean(lastDebugGcdDispatchTrace?.comicVineEnvVarPresent)}`,

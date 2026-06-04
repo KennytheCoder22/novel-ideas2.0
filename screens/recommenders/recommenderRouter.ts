@@ -4301,6 +4301,7 @@ export async function getRecommendations(
   const comicVineCandidateCountByQuery: Record<string, number> = {};
   const comicVineResultShapeByQuery: Record<string, any> = {};
   const comicVineFirstTitlesByQuery: Record<string, string[]> = {};
+  const comicVineAdapterConversionDiagnostics: Record<string, any> = {};
   const writeDurableComicVineDispatchState = (extra?: Record<string, any>) => {
     try {
       (globalThis as any).__novelIdeasComicVineDispatchState = {
@@ -4321,6 +4322,7 @@ export async function getRecommendations(
         comicVineCandidateCountByQuery,
         comicVineResultShapeByQuery,
         comicVineFirstTitlesByQuery,
+        comicVineAdapterConversionDiagnostics,
         comicVineDispatchStageDiagnostics,
         ...(extra || {}),
       };
@@ -5173,6 +5175,19 @@ export async function getRecommendations(
               throw new Error(`TASTE_QUERY_STATIC_LEAKAGE: source=taste_profile but static query fetched (${leakedStaticQuery})`);
             }
           }
+          if (value && typeof value === "object") {
+            Object.assign(comicVineAdapterConversionDiagnostics, {
+              apiResultCountByQuery: value?.comicVineApiResultCountByQuery || {},
+              rawTitlesByQuery: value?.comicVineRawTitlesByQuery || {},
+              rawRowsBeforeDocConversionByQuery: value?.comicVineRawRowsBeforeDocConversionByQuery || {},
+              docConversionAttemptCountByQuery: value?.comicVineDocConversionAttemptCountByQuery || {},
+              docConversionSuccessCountByQuery: value?.comicVineDocConversionSuccessCountByQuery || {},
+              droppedBeforeDocCountByQuery: value?.comicVineDroppedBeforeDocCountByQuery || {},
+              convertedDocTitlesByQuery: value?.comicVineConvertedDocTitlesByQuery || {},
+              dropReasonsByQuery: value?.comicVineAdapterDropReasonsByQuery || {},
+              rejectedDebugRowsByQuery: value?.comicVineRejectedDebugRowsByQuery || {},
+            });
+          }
           if (Array.isArray(value?.comicVineFetchResults) && value.comicVineFetchResults.length) {
             for (let ri = 0; ri < value.comicVineFetchResults.length; ri += 1) {
               const row = value.comicVineFetchResults[ri];
@@ -5231,6 +5246,7 @@ export async function getRecommendations(
             docCount: fulfilledDocCount,
             candidateCount: fulfilledCandidateCount,
             firstTitles,
+            adapterConversionDiagnostics: comicVineAdapterConversionDiagnostics,
           });
           pushGlobalPhase("after_comicvine_result_ingestion", {
             laneIndex: lanei,
@@ -5476,7 +5492,9 @@ export async function getRecommendations(
       gbResults: 0,
       olResults: 0,
       kitsuResults: 0,
-      comicVineResults: comicVineFetchResults.length,
+      comicVineQueriesAttemptedCount: Array.from(comicVineQueriesAttempted).length,
+      comicVineFetchResultRows: comicVineFetchResults.length,
+      comicVineResults: 0,
     };
     pushGlobalPhase("comicvine_clean_zero_return_after_empty_fetch", cleanZeroFetchDiagnosticsSummary);
     writeDurableComicVineDispatchState({ stage: "comicvine_clean_zero_return_after_empty_fetch", fetchDiagnosticsSummary: cleanZeroFetchDiagnosticsSummary });
@@ -5516,6 +5534,7 @@ export async function getRecommendations(
       comicVineDocCountByQuery,
       comicVineCandidateCountByQuery,
       comicVineDispatchStageDiagnostics,
+      routerPhaseHistory,
       debugGcdDispatchTrace: (globalThis as any).__novelIdeasComicVineDispatchState,
       debugComicVineDispatchTrace: (globalThis as any).__novelIdeasComicVineDispatchState,
       deploymentRuntimeMarker: "comicvine-proxy-phase",
@@ -15163,9 +15182,12 @@ const normalizedCandidatesRaw = [
     gbQueries: googleBooksQueriesActuallyFetchedArray.length,
     olQueries: openLibraryQueriesActuallyFetchedArray.length,
     kitsuQueries: kitsuQueriesActuallyFetchedArray.length,
+    comicVineQueriesAttemptedCount: Array.from(comicVineQueriesAttempted).length,
     gbResults: googleBooksFetchResultsByQuery.length,
     olResults: openLibraryFetchResultsByQuery.length,
     kitsuResults: kitsuFetchResultsByQuery.length,
+    comicVineFetchResultRows: comicVineFetchResults.length,
+    comicVineResults: Number(aggregatedRawFetched.comicVine || 0),
   };
   const fetchDiagnosticsCoverageAssertion = {
     googleBooks: !sourceFetchAttemptedBySource.googleBooks || googleBooksFetchResultsByQuery.length > 0,
