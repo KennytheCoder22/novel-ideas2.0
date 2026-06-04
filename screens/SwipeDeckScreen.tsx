@@ -2355,6 +2355,14 @@ function handleLeft() {
       return latestResult?.[key] ?? preFatalDispatchState?.[key];
     };
     const teenKitsuFinalGuardReportLines = [
+      `kitsuTeenAlternateQueriesPlanned: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueriesPlanned") || [])}`,
+      `kitsuTeenAlternateQueriesAttempted: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueriesAttempted") || [])}`,
+      `kitsuTeenAlternateQueryPromotionDecisions: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueryPromotionDecisions") || [])}`,
+      `kitsuTeenAlternateQueryExpansionReasons: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateQueryExpansionReasons") || [])}`,
+      `kitsuTeenAlternateFamilyInferenceDiagnostics: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenAlternateFamilyInferenceDiagnostics") || [])}`,
+      `teenKitsuMultiQueryRecoveryAllowed: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("teenKitsuMultiQueryRecoveryAllowed")))}`,
+      `teenKitsuFetchesArePlannedRecoveryQueries: ${String(Boolean(pickTeenKitsuFinalGuardDiagnostic("teenKitsuFetchesArePlannedRecoveryQueries")))}`,
+      `teenKitsuAllowedRecoveryCanonicalQueries: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("teenKitsuAllowedRecoveryCanonicalQueries") || [])}`,
       `kitsuTeenRescueFinalGuardInputTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardInputTitles") || [])}`,
       `kitsuTeenRescueFinalGuardAcceptedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardAcceptedTitles") || [])}`,
       `kitsuTeenRescueFinalGuardSuppressedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFinalGuardSuppressedTitles") || [])}`,
@@ -2364,6 +2372,10 @@ function handleLeft() {
       `kitsuTeenRescueTasteEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueTasteEvidenceByTitle") || {})}`,
       `kitsuTeenRescueLaneAlignmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueLaneAlignmentByTitle") || {})}`,
       `kitsuTeenRescueFamilyAlignmentByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenRescueFamilyAlignmentByTitle") || {})}`,
+      `kitsuTeenTasteEvidenceSignalsByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenTasteEvidenceSignalsByTitle") || {})}`,
+      `kitsuTeenMeaningfulTasteEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenMeaningfulTasteEvidenceByTitle") || {})}`,
+      `kitsuTeenGenericTasteEvidenceByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenGenericTasteEvidenceByTitle") || {})}`,
+      `kitsuTeenTitleKeywordOnlyPenaltyByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenTitleKeywordOnlyPenaltyByTitle") || {})}`,
       `kitsuTeenPositiveFitPenaltyTypeByTitle: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenPositiveFitPenaltyTypeByTitle") || {})}`,
       `kitsuTeenPositiveFitOverriddenByEvidenceTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenPositiveFitOverriddenByEvidenceTitles") || [])}`,
       `kitsuTeenHardDislikeRejectedTitles: ${JSON.stringify(pickTeenKitsuFinalGuardDiagnostic("kitsuTeenHardDislikeRejectedTitles") || [])}`,
