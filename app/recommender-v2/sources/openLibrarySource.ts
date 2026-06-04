@@ -5,6 +5,7 @@ const OPEN_LIBRARY_DOC_LIMIT = 10;
 const OPEN_LIBRARY_DOCS_PER_QUERY = 8;
 const OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY = "fantasy";
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
+const OPEN_LIBRARY_PER_QUERY_TIMEOUT_MS = 2_000;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -33,8 +34,8 @@ const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
 
 const MEDIA_FORMAT_TERMS = new Set(["anime", "game", "games", "gaming", "tv", "television", "movie", "movies", "film", "films"]);
 const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|graphic novel|manga|comic)\b/i;
-const CLASSIC_DRIFT_AUTHOR = /\b(mark twain|william shakespeare|h\.?\s*g\.? wells|h g wells|charles dickens|jane austen|robert louis stevenson|jules verne|lewis carroll|arthur conan doyle|homer|plato)\b/i;
-const CLASSIC_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain)\b/i;
+const RELEVANCE_DRIFT_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain|literary)\b/i;
+const RELEVANCE_DRIFT_TITLE_HINT = /\b(complete works|selected works|collected works|works of|public domain)\b/i;
 const ARTIFACT_QUERY_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson|classroom|teacher|writing|write)\b/i;
 const ARTIFACT_TITLE_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson plan|lesson plans|classroom|teacher'?s? guide|study guide|kids write|writing prompts?|write!)\b/i;
 
@@ -219,7 +220,7 @@ function emptyDiagnostics(plan: SourcePlan, status: SourceDiagnosticV2["status"]
   };
 }
 
-async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = OPEN_LIBRARY_PER_QUERY_TIMEOUT_MS): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
   const query = queryPlan.query;
   const { url, fetchPath } = openLibraryRequest(query, limit);
   const fetchStartedAt = nowIso();
@@ -236,8 +237,14 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
     facets: queryPlan.facets,
   };
 
+  const queryController = new AbortController();
+  const timeout = setTimeout(() => queryController.abort(), timeoutMs);
+  const abortFromParent = () => queryController.abort();
+  if (signal?.aborted) queryController.abort();
+  else signal?.addEventListener("abort", abortFromParent, { once: true });
+
   try {
-    const response = await fetch(url, signal ? { signal } : undefined);
+    const response = await fetch(url, { signal: queryController.signal });
     diagnostic.httpStatus = response.status;
     const text = await response.text();
     diagnostic.fetchFinishedAt = nowIso();
@@ -274,9 +281,12 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
     const message = [String(error?.message || error || "openlibrary_fetch_failed"), causeDetail ? `cause:${causeDetail}` : ""].filter(Boolean).join(" ");
     diagnostic.fetchFinishedAt = nowIso();
     diagnostic.elapsedMs = Date.now() - startedMs;
-    diagnostic.timedOut = Boolean(signal?.aborted || /aborted|abort|timeout/i.test(message));
+    diagnostic.timedOut = Boolean(queryController.signal.aborted || signal?.aborted || /aborted|abort|timeout/i.test(message));
     diagnostic.failedReason = message;
     return { docs: [], diagnostic };
+  } finally {
+    clearTimeout(timeout);
+    signal?.removeEventListener("abort", abortFromParent);
   }
 }
 
@@ -299,13 +309,16 @@ function isEnglishOpenLibraryDoc(doc: any): boolean {
   return languages.length === 0 || languages.includes("eng") || languages.includes("en");
 }
 
-function isClassicDriftOpenLibraryDoc(doc: any, query: string): boolean {
-  if (CLASSIC_QUERY_HINT.test(query)) return false;
+function isRelevanceDriftOpenLibraryDoc(doc: any, query: string): boolean {
+  if (RELEVANCE_DRIFT_QUERY_HINT.test(query)) return false;
   const title = String(doc?.title || "");
-  const authors = Array.isArray(doc?.author_name) ? doc.author_name.join(" ") : "";
+  const subjects = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+  ].join(" ");
   const firstPublishYear = Number(doc?.first_publish_year || 0);
-  if (CLASSIC_DRIFT_AUTHOR.test(`${title} ${authors}`)) return true;
-  return Boolean(firstPublishYear > 0 && firstPublishYear < 1900 && !/\bhistorical|history\b/i.test(query));
+  if (RELEVANCE_DRIFT_TITLE_HINT.test(`${title} ${subjects}`)) return true;
+  return Boolean(firstPublishYear > 0 && firstPublishYear < 1900 && !/\bclassic|historical|history|literary\b/i.test(query) && !GENRE_QUERY_HINT.test(`${title} ${subjects}`));
 }
 
 function isOpenLibraryArtifactDoc(doc: any, query: string): boolean {
@@ -330,6 +343,27 @@ function openLibrarySeriesKey(doc: any): string {
   return /\b(one piece|naruto|bleach|dragon ball|my hero academia|attack on titan|demon slayer|sailor moon)\b/.test(cleaned) ? cleaned : "";
 }
 
+function isTeenInappropriateOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  const title = String(doc?.title || "");
+  const authors = Array.isArray(doc?.author_name) ? doc.author_name.join(" ") : "";
+  const subjects = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+  ].join(" ");
+  const text = `${title} ${authors} ${subjects}`.toLowerCase();
+  if (/\b(lolita|nabokov|erotic|erotica|sexual abuse|incest|pornography)\b/.test(text)) return true;
+  if (/\bnovels?\s+\d{4}\s*-\s*\d{4}\b/.test(text) && /\b(lolita|nabokov)\b/.test(text)) return true;
+  return false;
+}
+
+function isOmnibusBundleDriftOpenLibraryDoc(doc: any, query: string, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  if (/\bomnibus|collected|complete|screenplay|selected works|collection\b/i.test(query)) return false;
+  const title = String(doc?.title || "");
+  return /\b(omnibus|collected novels|complete novels|novels?\s+\d{4}\s*-\s*\d{4}|screenplay)\b/i.test(title);
+}
+
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return true;
   const firstPublishYear = Number(doc?.first_publish_year || 0);
@@ -344,8 +378,10 @@ function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolea
 function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile): { keep: boolean; reason?: string } {
   if (!isEnglishOpenLibraryDoc(doc)) return { keep: false, reason: "non_english" };
   if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) return { keep: false, reason: "missing_author" };
-  if (isClassicDriftOpenLibraryDoc(doc, query)) return { keep: false, reason: "classic_drift" };
+  if (isRelevanceDriftOpenLibraryDoc(doc, query)) return { keep: false, reason: "relevance_drift" };
   if (isOpenLibraryArtifactDoc(doc, query)) return { keep: false, reason: "artifact_title" };
+  if (isTeenInappropriateOpenLibraryDoc(doc, profile)) return { keep: false, reason: "teen_inappropriate_content" };
+  if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
   return { keep: true };
 }
@@ -412,24 +448,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, OPEN_LIBRARY_DOCS_PER_QUERY, context.signal);
       fetches.push(diagnostic);
       if (diagnostic.timedOut) {
-        return {
-          source: "openLibrary",
-          status: "timed_out",
-          rawItems,
-          diagnostics: emptyDiagnostics(plan, "timed_out", startedAt, {
-            queries,
-            rawCount: rawItems.length,
-            normalizedCount: rawItems.length,
-            rawTitles: uniqueStrings(rawTitles, 10),
-            failedReason: diagnostic.failedReason || "openlibrary_fetch_timed_out",
-            emptyReason: openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, diagnostic.failedReason || "openlibrary_fetch_timed_out"),
-            openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
-            rawApiResultCount,
-            droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
-            dropReasons,
-            fetches,
-          }),
-        };
+        dropReasons.query_timeout = Number(dropReasons.query_timeout || 0) + 1;
+        failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+        if (context.signal?.aborted) break;
+        continue;
       }
       if (diagnostic.failedReason) {
         failedReason = diagnostic.failedReason;
@@ -492,8 +514,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
     const finishedAt = nowIso();
-    const status: SourceResult["status"] = failedReason ? "failed" : rawItems.length ? "succeeded" : "empty";
-    const emptyReason = status === "empty" || (!rawItems.length && failedReason) ? openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason) : undefined;
+    const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
+    const allMainFetchesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
+    const status: SourceResult["status"] = rawItems.length ? "succeeded" : allMainFetchesTimedOut ? "timed_out" : failedReason ? "failed" : "empty";
+    const emptyReason = !rawItems.length && (status === "empty" || status === "failed" || status === "timed_out") ? openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason) : undefined;
     return {
       source: "openLibrary",
       status,
@@ -503,7 +527,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         status,
         planned: true,
         attempted: true,
-        timedOut: false,
+        timedOut: status === "timed_out",
         startedAt,
         finishedAt,
         elapsedMs: Date.parse(finishedAt) - Date.parse(startedAt),
@@ -512,7 +536,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         queries,
         rawTitles: uniqueStrings(rawTitles, 10),
         firstReturnedTitles: uniqueStrings(rawItems.map((item: any) => item?.title), 5),
-        failedReason: failedReason || undefined,
+        failedReason: rawItems.length ? undefined : failedReason || undefined,
         emptyReason,
         openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
         rawApiResultCount,
