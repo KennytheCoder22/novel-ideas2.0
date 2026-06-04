@@ -1670,6 +1670,26 @@ function handleLeft() {
 
   function buildV2RecommendationResultForDiagnostics(v2Result: RecommendationResultV2, normalizedItems: RecItem[], inputWithHistory: RecommenderInput) {
     const diagnostics = v2Result.diagnostics;
+    const openLibrarySourceDiagnostics = diagnostics.sources.find((source) => source.source === "openLibrary") as any;
+    const openLibrarySourceFetchDiagnostics = Array.isArray(openLibrarySourceDiagnostics?.fetches)
+      ? openLibrarySourceDiagnostics.fetches.map((fetch: any) => ({
+          query: String(fetch?.query || ""),
+          diagnosticOnly: Boolean(fetch?.diagnosticOnly),
+          probe: Boolean(fetch?.diagnosticOnly),
+          fetchStartedAt: fetch?.fetchStartedAt,
+          fetchFinishedAt: fetch?.fetchFinishedAt,
+          elapsedMs: typeof fetch?.elapsedMs === "number" ? fetch.elapsedMs : undefined,
+          timedOut: Boolean(fetch?.timedOut),
+          httpStatus: typeof fetch?.httpStatus === "number" ? fetch.httpStatus : undefined,
+          fetchPath: fetch?.fetchPath,
+          returnedDocCount: typeof fetch?.docsReturned === "number" ? fetch.docsReturned : 0,
+          docsReturned: typeof fetch?.docsReturned === "number" ? fetch.docsReturned : 0,
+          firstReturnedTitles: Array.isArray(fetch?.firstReturnedTitles) ? fetch.firstReturnedTitles : [],
+          responseShape: fetch?.responseShape,
+          responseBodyPrefix: fetch?.responseBodyPrefix,
+          failedReason: fetch?.failedReason,
+        }))
+      : [];
     const sourceStats = Object.fromEntries(diagnostics.sources.map((source) => [
       source.source,
       {
@@ -1694,6 +1714,17 @@ function handleLeft() {
       debugRawPool: diagnostics.sources.flatMap((source) => Array.from({ length: source.rawCount }, (_unused, index) => ({ title: `${source.source} raw ${index + 1}`, source: source.source, diagnostics: { engine: "v2", placeholder: true } }))),
       debugCandidatePool: v2Result.items,
       sourceEnabled,
+      sourceFetchAttemptedBySource: Object.fromEntries(diagnostics.sources.map((source) => [source.source, Boolean(source.attempted)])),
+      sourceFetchTimeoutBySource: Object.fromEntries(diagnostics.sources.map((source) => [source.source, Boolean(source.timedOut)])),
+      sourceRawCountBySource: Object.fromEntries(diagnostics.sources.map((source) => [source.source, Number(source.rawCount || 0)])),
+      openLibrarySourceFetchDiagnostics,
+      openLibraryProbeRan: Boolean(openLibrarySourceDiagnostics?.openLibraryProbeRan || openLibrarySourceFetchDiagnostics.some((fetch: any) => fetch.diagnosticOnly)),
+      openLibrarySourceEmptyReason: openLibrarySourceDiagnostics?.emptyReason || "",
+      openLibrarySourceRawApiResultCount: Number(openLibrarySourceDiagnostics?.rawApiResultCount || 0),
+      openLibrarySourceDroppedBeforeDocCount: Number(openLibrarySourceDiagnostics?.droppedBeforeDocCount || 0),
+      openLibrarySourceDropReasons: openLibrarySourceDiagnostics?.dropReasons || {},
+      openLibrarySourceStatus: openLibrarySourceDiagnostics?.status || "",
+      openLibrarySourceQueries: openLibrarySourceDiagnostics?.queries || [],
       sourceSkippedReason: diagnostics.sources.map((source) => source.skippedReason || source.failedReason || "").filter(Boolean),
       routerResultTracePresent: true,
       debugRouterVersion: EXPECTED_ROUTER_FINGERPRINT,
@@ -2676,6 +2707,9 @@ function handleLeft() {
     const sourceStarvationByZeroPools = fetchedRawCountTop === 0 && debugCandidatePoolLengthTop === 0;
     const skippedReasons = Array.isArray((lastRecommendationResult as any)?.sourceSkippedReason) ? (lastRecommendationResult as any).sourceSkippedReason : [];
     const preFatalDispatchState = (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState || {};
+    const v2OpenLibrarySourceDiagnosticsForReport = Array.isArray(v2DebugResult?.diagnostics?.sources)
+      ? v2DebugResult?.diagnostics?.sources.find((source: any) => source.source === "openLibrary")
+      : null;
     const sourceStarvationAuditForReport = (lastRecommendationResult as any)?.sourceStarvationAudit || preFatalDispatchState?.sourceStarvationAudit || null;
     const googleBooksSourceFetchDiagnosticsForReport = Array.isArray((lastRecommendationResult as any)?.googleBooksSourceFetchDiagnostics)
       ? (lastRecommendationResult as any).googleBooksSourceFetchDiagnostics
@@ -2686,7 +2720,21 @@ function handleLeft() {
       ? (lastRecommendationResult as any).openLibrarySourceFetchDiagnostics
       : Array.isArray(preFatalDispatchState?.openLibrarySourceFetchDiagnostics)
         ? preFatalDispatchState.openLibrarySourceFetchDiagnostics
-        : [];
+        : Array.isArray((v2OpenLibrarySourceDiagnosticsForReport as any)?.fetches)
+          ? (v2OpenLibrarySourceDiagnosticsForReport as any).fetches
+          : [];
+    const openLibraryProbeRanForReport = Boolean(
+      (lastRecommendationResult as any)?.openLibraryProbeRan ||
+      preFatalDispatchState?.openLibraryProbeRan ||
+      (v2OpenLibrarySourceDiagnosticsForReport as any)?.openLibraryProbeRan ||
+      openLibrarySourceFetchDiagnosticsForReport.some((fetch: any) => Boolean(fetch?.diagnosticOnly || fetch?.probe))
+    );
+    const openLibraryEmptyReasonForReport = String(
+      (lastRecommendationResult as any)?.openLibrarySourceEmptyReason ||
+      preFatalDispatchState?.openLibrarySourceEmptyReason ||
+      (v2OpenLibrarySourceDiagnosticsForReport as any)?.emptyReason ||
+      ""
+    );
     const sourceStarvationFetchDiagnosticsForReport = {
       googleBooks: Array.isArray(sourceStarvationAuditForReport?.googleBooks?.fetchDiagnostics) ? sourceStarvationAuditForReport.googleBooks.fetchDiagnostics : [],
       openLibrary: Array.isArray(sourceStarvationAuditForReport?.openLibrary?.fetchDiagnostics) ? sourceStarvationAuditForReport.openLibrary.fetchDiagnostics : [],
@@ -2976,6 +3024,8 @@ function handleLeft() {
         `sourceStarvationAudit: ${JSON.stringify(sourceStarvationAuditForReport || null)}`,
         `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
         `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
+        `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
+        `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
         `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
         "ADULT KITSU FALLBACK DIAGNOSTICS",
         ...adultKitsuOnlyFallbackReportLines,
@@ -3229,7 +3279,10 @@ function handleLeft() {
           `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
           `searchPlan:${JSON.stringify(v2DiagnosticsForReport.searchPlan || {})}`,
           `stages:${(v2DiagnosticsForReport.stages || []).map((stage: any) => `${stage.stage}:${JSON.stringify(stage.counts || {})}`).join(" -> ")}`,
-          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, rawApiResultCount: source.rawApiResultCount, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, emptyReason: source.emptyReason, openLibraryProbeRan: source.openLibraryProbeRan, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `openLibrarySourceFetchDiagnostics:${JSON.stringify((lastRecommendationResult as any)?.openLibrarySourceFetchDiagnostics || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.fetches || []))}`,
+          `openLibraryProbeRan:${String(Boolean((lastRecommendationResult as any)?.openLibraryProbeRan || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.openLibraryProbeRan)))}`,
+          `openLibraryEmptyReason:${String((lastRecommendationResult as any)?.openLibrarySourceEmptyReason || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.emptyReason || ""))}`,
           `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
           `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
           `rejectedReasons:${JSON.stringify(v2DiagnosticsForReport.rejectedReasons || {})}`,
@@ -3647,6 +3700,8 @@ function handleLeft() {
       `sourceStarvationAudit: ${JSON.stringify(sourceStarvationAuditForReport || null)}`,
       `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
       `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
+      `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
+      `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
       `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
       "",
       "ADULT KITSU FALLBACK DIAGNOSTICS",

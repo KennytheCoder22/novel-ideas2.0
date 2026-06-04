@@ -85,6 +85,8 @@ export interface SourceFetchDiagnosticV2 {
   responseBodyPrefix?: string;
   failedReason?: string;
   docsReturned?: number;
+  firstReturnedTitles?: string[];
+  responseShape?: "docs_array" | "missing_docs_array";
   diagnosticOnly?: boolean;
 }
 
@@ -95,6 +97,8 @@ export interface SourceDiagnosticV2 {
   attempted: boolean;
   skippedReason?: string;
   failedReason?: string;
+  emptyReason?: string;
+  openLibraryProbeRan?: boolean;
   timedOut: boolean;
   startedAt?: string;
   finishedAt?: string;

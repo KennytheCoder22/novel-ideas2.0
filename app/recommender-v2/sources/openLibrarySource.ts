@@ -117,8 +117,17 @@ async function fetchOpenLibraryDocs(query: string, limit: number, signal?: Abort
 
     try {
       const json = JSON.parse(text);
-      const docs = Array.isArray(json?.docs) ? json.docs : [];
+      if (!Array.isArray(json?.docs)) {
+        diagnostic.responseShape = "missing_docs_array";
+        diagnostic.docsReturned = 0;
+        diagnostic.responseBodyPrefix = bodyPrefix(text);
+        diagnostic.failedReason = "openlibrary_unexpected_response_shape_missing_docs";
+        return { docs: [], diagnostic, responseBodyPrefix: diagnostic.responseBodyPrefix };
+      }
+      const docs = json.docs;
+      diagnostic.responseShape = "docs_array";
       diagnostic.docsReturned = docs.length;
+      diagnostic.firstReturnedTitles = uniqueStrings(docs.map((doc: any) => doc?.title), 5);
       return { docs, diagnostic };
     } catch (error: any) {
       diagnostic.responseBodyPrefix = bodyPrefix(text);
@@ -135,6 +144,20 @@ async function fetchOpenLibraryDocs(query: string, limit: number, signal?: Abort
     diagnostic.failedReason = message;
     return { docs: [], diagnostic };
   }
+}
+
+function openLibraryEmptyReason(rawItems: unknown[], rawApiResultCount: number, dropReasons: Record<string, number>, fetches: SourceFetchDiagnosticV2[], failedReason: string): string | undefined {
+  if (rawItems.length > 0) return undefined;
+  const mainFetch = fetches.find((fetch) => !fetch.diagnosticOnly);
+  const droppedBeforeDocCount = Object.values(dropReasons).reduce((sum, count) => sum + count, 0);
+  if (!mainFetch) return "openlibrary_no_main_fetch_diagnostic";
+  if (mainFetch.timedOut) return "openlibrary_main_fetch_timed_out";
+  if (mainFetch.responseShape === "missing_docs_array") return "openlibrary_unexpected_response_shape";
+  if (Number(mainFetch.docsReturned || 0) === 0) return "openlibrary_returned_zero_docs";
+  if (rawApiResultCount > 0 && droppedBeforeDocCount >= rawApiResultCount) return "openlibrary_docs_dropped_before_normalization";
+  if (rawApiResultCount > 0 && droppedBeforeDocCount > 0) return "openlibrary_docs_partially_dropped_before_normalization";
+  if (failedReason) return `openlibrary_failed_before_normalized_rows:${failedReason}`;
+  return "openlibrary_no_normalized_rows_after_fetch";
 }
 
 export const openLibrarySourceAdapter: SourceAdapterV2 = {
@@ -185,6 +208,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             normalizedCount: rawItems.length,
             rawTitles,
             failedReason: "openlibrary_aborted_before_query_start",
+            openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
             fetches,
           }),
         };
@@ -203,6 +227,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             normalizedCount: rawItems.length,
             rawTitles: uniqueStrings(rawTitles, 10),
             failedReason: diagnostic.failedReason || "openlibrary_fetch_timed_out",
+            emptyReason: openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, diagnostic.failedReason || "openlibrary_fetch_timed_out"),
+            openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
             rawApiResultCount,
             droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
             dropReasons,
@@ -250,6 +276,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           normalizedCount: rawItems.length,
           rawTitles: uniqueStrings(rawTitles, 10),
           failedReason: failedReason || "openlibrary_aborted_after_query_complete",
+          emptyReason: openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason || "openlibrary_aborted_after_query_complete"),
+          openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
           rawApiResultCount,
           droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
           dropReasons,
@@ -260,6 +288,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
     const finishedAt = nowIso();
     const status: SourceResult["status"] = failedReason ? "failed" : rawItems.length ? "succeeded" : "empty";
+    const emptyReason = status === "empty" || (!rawItems.length && failedReason) ? openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason) : undefined;
     return {
       source: "openLibrary",
       status,
@@ -279,6 +308,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         rawTitles: uniqueStrings(rawTitles, 10),
         firstReturnedTitles: uniqueStrings(rawItems.map((item: any) => item?.title), 5),
         failedReason: failedReason || undefined,
+        emptyReason,
+        openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
         rawApiResultCount,
         droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
         dropReasons,
