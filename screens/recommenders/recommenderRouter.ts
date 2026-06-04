@@ -11,7 +11,7 @@ import type {
 import { getGoogleBooksRecommendations } from "./googleBooks/googleBooksRecommender";
 import { getOpenLibraryRecommendations } from "./openLibrary/openLibraryRecommender";
 import { KITSU_API_BASE, getKitsuMangaRecommendations } from "./kitsu/kitsuMangaRecommender";
-import { getComicVineGraphicNovelRecommendations } from "./gcd/gcdGraphicNovelRecommender";
+import { getComicVineGraphicNovelRecommendations, lookupComicVineExactTitleMetadata } from "./gcd/gcdGraphicNovelRecommender";
 import { EXPECTED_ROUTER_FINGERPRINT } from "./routerFingerprint";
 import { normalizeCandidates, type CandidateSource } from "./normalizeCandidate";
 import { finalRecommenderForDeck, getLastFinalRecommenderDebug } from "./finalRecommender";
@@ -2840,7 +2840,8 @@ export async function getRecommendations(
   let kitsuTeenGcdEnrichmentReturnableGcdDisabled = false;
   let kitsuTeenGcdEnrichmentSkippedReason = "not_evaluated";
   const kitsuTeenGcdEnrichmentQueries: string[] = [];
-  const kitsuTeenGcdEnrichmentQueryDiagnostics: Array<{ query: string; status: string; timedOut: boolean; rawCount: number; docCount: number; matchedTitleCount: number; error: string; returnedTitles: string[]; returnedMatchKeys: string[] }> = [];
+  const kitsuTeenGcdEnrichmentQueryDiagnostics: Array<{ query: string; status: string; timedOut: boolean; rawCount: number; docCount: number; matchedTitleCount: number; error: string; returnedTitles: string[]; returnedMatchKeys: string[]; lookupMode?: string }> = [];
+  const kitsuTeenGcdEnrichmentExactTitleLookupDiagnostics: Array<{ query: string; status: string; timedOut: boolean; rawCount: number; docCount: number; matchedTitleCount: number; error: string; returnedTitles: string[]; returnedMatchKeys: string[]; knownProbe: boolean }> = [];
   const kitsuTeenGcdEnrichmentDocsReturnedButNoMatch: Array<{ query: string; kitsuTitle: string; kitsuMatchKeys: string[]; returnedTitles: string[]; returnedMatchKeys: string[] }> = [];
   const kitsuTeenGcdEnrichmentMatchedTitles: string[] = [];
   const kitsuTeenGcdEnrichmentNoMatchTitles: string[] = [];
@@ -5493,43 +5494,100 @@ export async function getRecommendations(
       kitsuTeenGcdEnrichmentSkippedReason = "no_precise_title_or_root_queries";
       return;
     }
+    const knownTeenKitsuGcdProbeKeys = new Set([
+      "boku dake ga inai machi",
+      "erased",
+      "monster",
+      "kyokou suiri",
+      "in spectre",
+      "mystery to iu nakare",
+      "do not say mystery",
+      "roppyaku page no mystery",
+    ].map((value) => normalizeTeenKitsuGcdMatchKey(value)));
     const gcdDocsByKey = new Map<string, any>();
     const gcdDocsByQuery = new Map<string, any[]>();
     const gcdEnrichmentLookupCache = new Map<string, any[]>();
+    const registerGcdDocsForQuery = (query: string, queryDocs: any[]) => {
+      const existing = gcdDocsByQuery.get(query) || [];
+      const merged = dedupeDocs([...existing, ...queryDocs]);
+      gcdDocsByQuery.set(query, merged);
+      for (const gcdDoc of queryDocs) {
+        for (const matchKey of gcdEnrichmentMatchKeysForDoc(gcdDoc)) {
+          if (!gcdDocsByKey.has(matchKey)) gcdDocsByKey.set(matchKey, gcdDoc);
+        }
+      }
+    };
     for (const query of querySeeds) {
       kitsuTeenGcdEnrichmentQueries.push(query);
+
+      const exactStartedAt = Date.now();
+      let exactDocs: any[] = [];
+      let exactRawCount = 0;
+      let exactStatus = "ok";
+      let exactError = "";
+      let exactReturnedTitlesFromLookup: string[] = [];
+      try {
+        const exactResult = await lookupComicVineExactTitleMetadata(query, 2_500, 8);
+        exactRawCount = Number(exactResult.rawCount || 0);
+        exactDocs = dedupeDocs(Array.isArray(exactResult.docs) ? exactResult.docs : []);
+        exactReturnedTitlesFromLookup = Array.isArray(exactResult.returnedTitles) ? exactResult.returnedTitles : [];
+        exactError = String(exactResult.error || "");
+        if (exactError) exactStatus = "error";
+        registerGcdDocsForQuery(query, exactDocs);
+      } catch (err: any) {
+        exactStatus = "error";
+        exactError = String(err?.message || err || "unknown");
+      }
+      const exactReturnedTitles = Array.from(new Set([
+        ...exactReturnedTitlesFromLookup,
+        ...exactDocs.map((doc) => String((doc as any)?.title || (doc as any)?.rawDoc?.volume?.name || (doc as any)?.rawDoc?.name || (doc as any)?.rawDoc?.title || "").trim()),
+      ].filter(Boolean))).slice(0, 10);
+      const exactReturnedMatchKeys = Array.from(new Set(exactDocs.flatMap((doc) => gcdEnrichmentMatchKeysForDoc(doc)))).slice(0, 20);
+      kitsuTeenGcdEnrichmentExactTitleLookupDiagnostics.push({
+        query,
+        status: exactStatus,
+        timedOut: /timeout|abort/i.test(exactError),
+        rawCount: exactRawCount,
+        docCount: exactDocs.length,
+        matchedTitleCount: 0,
+        error: exactError.slice(0, 120),
+        returnedTitles: exactReturnedTitles,
+        returnedMatchKeys: exactReturnedMatchKeys,
+        knownProbe: knownTeenKitsuGcdProbeKeys.has(normalizeTeenKitsuGcdMatchKey(query)),
+      });
+      if (exactError) sourceSkippedReason.push(`teen_kitsu_gcd_exact_title_lookup_failed:${query}:${exactError.slice(0, 60)}`);
+      if (Date.now() - exactStartedAt > 2_400) sourceSkippedReason.push(`teen_kitsu_gcd_exact_title_lookup_slow:${query}`);
+
+      const shouldRunBroadGraphicLookup = exactRawCount <= 0 || Boolean(exactError);
       const startedAt = Date.now();
       let queryDocs: any[] = [];
       let rawCount = 0;
-      let status = "ok";
+      let status = shouldRunBroadGraphicLookup ? "ok" : "skipped_exact_title_lookup_returned_docs";
       let error = "";
-      try {
-        const cacheKey = normalizeTeenKitsuGcdMatchKey(query);
-        if (gcdEnrichmentLookupCache.has(cacheKey)) {
-          queryDocs = gcdEnrichmentLookupCache.get(cacheKey) || [];
-          status = "cache_hit";
-        } else {
-          const gcdInput = {
-            ...routedInput,
-            sourceEnabled: { ...(routedInput as any)?.sourceEnabled, googleBooks: false, openLibrary: false, localLibrary: false, kitsu: false, comicVine: true, gcd: true },
-            bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
-            forceTastePrimaryForComicVine: false,
-          } as any;
-          const gcdResult = await withSourceTimeout("router_before_teen_kitsu_gcd_enrichment_fetch", "router_after_teen_kitsu_gcd_enrichment_fetch", 3_500, () => getComicVineGraphicNovelRecommendations(gcdInput));
-          rawCount = Number((gcdResult as any)?.debugRawFetchedCount ?? countResultItems(gcdResult));
-          queryDocs = dedupeDocs(extractDocs(gcdResult as any, "comicVine"));
-          gcdEnrichmentLookupCache.set(cacheKey, queryDocs);
-        }
-        gcdDocsByQuery.set(query, queryDocs);
-        for (const gcdDoc of queryDocs) {
-          for (const matchKey of gcdEnrichmentMatchKeysForDoc(gcdDoc)) {
-            if (!gcdDocsByKey.has(matchKey)) gcdDocsByKey.set(matchKey, gcdDoc);
+      if (shouldRunBroadGraphicLookup) {
+        try {
+          const cacheKey = normalizeTeenKitsuGcdMatchKey(query);
+          if (gcdEnrichmentLookupCache.has(cacheKey)) {
+            queryDocs = gcdEnrichmentLookupCache.get(cacheKey) || [];
+            status = "cache_hit";
+          } else {
+            const gcdInput = {
+              ...routedInput,
+              sourceEnabled: { ...(routedInput as any)?.sourceEnabled, googleBooks: false, openLibrary: false, localLibrary: false, kitsu: false, comicVine: true, gcd: true },
+              bucketPlan: { ...(bucketPlan as any), queries: [query], preview: query, rungs: [{ query, primary: query }] },
+              forceTastePrimaryForComicVine: false,
+            } as any;
+            const gcdResult = await withSourceTimeout("router_before_teen_kitsu_gcd_enrichment_fetch", "router_after_teen_kitsu_gcd_enrichment_fetch", 3_500, () => getComicVineGraphicNovelRecommendations(gcdInput));
+            rawCount = Number((gcdResult as any)?.debugRawFetchedCount ?? countResultItems(gcdResult));
+            queryDocs = dedupeDocs(extractDocs(gcdResult as any, "comicVine"));
+            gcdEnrichmentLookupCache.set(cacheKey, queryDocs);
           }
+          registerGcdDocsForQuery(query, queryDocs);
+        } catch (err: any) {
+          status = "error";
+          error = String(err?.message || err || "unknown");
+          sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_fetch_failed:${error.slice(0, 80)}`);
         }
-      } catch (err: any) {
-        status = "error";
-        error = String(err?.message || err || "unknown");
-        sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_fetch_failed:${error.slice(0, 80)}`);
       }
       const returnedTitles = queryDocs.map((doc) => String((doc as any)?.title || (doc as any)?.rawDoc?.title || "").trim()).filter(Boolean).slice(0, 10);
       const returnedMatchKeys = Array.from(new Set(queryDocs.flatMap((doc) => gcdEnrichmentMatchKeysForDoc(doc)))).slice(0, 20);
@@ -5543,8 +5601,9 @@ export async function getRecommendations(
         error: error.slice(0, 120),
         returnedTitles,
         returnedMatchKeys,
+        lookupMode: shouldRunBroadGraphicLookup ? "graphic_recommender_fallback" : "skipped_after_exact_title_lookup",
       });
-      if (Date.now() - startedAt > 3_400) sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_slow_query:${query}`);
+      if (shouldRunBroadGraphicLookup && Date.now() - startedAt > 3_400) sourceSkippedReason.push(`teen_kitsu_gcd_enrichment_slow_query:${query}`);
     }
     const findGcdDocForKitsuDoc = (doc: any) => {
       const matchKeys = gcdEnrichmentMatchKeysForDoc(doc);
@@ -5558,14 +5617,24 @@ export async function getRecommendations(
       }
       return null;
     };
+    const markTeenKitsuGcdDiagnosticMatch = (doc: any) => {
+      const kitsuKeys = new Set(gcdEnrichmentMatchKeysForDoc(doc));
+      const overlaps = (keys: string[]) => keys.some((key) => kitsuKeys.has(key) || Array.from(kitsuKeys).some((kitsuKey) => key.length >= 5 && kitsuKey.length >= 5 && (key.includes(kitsuKey) || kitsuKey.includes(key))));
+      for (const diag of kitsuTeenGcdEnrichmentQueryDiagnostics) {
+        if (overlaps(diag.returnedMatchKeys)) diag.matchedTitleCount += 1;
+      }
+      for (const diag of kitsuTeenGcdEnrichmentExactTitleLookupDiagnostics) {
+        if (overlaps(diag.returnedMatchKeys)) diag.matchedTitleCount += 1;
+      }
+    };
     for (const doc of kitsuDocs as any[]) {
       const title = String(doc?.title || doc?.canonicalTitle || "").trim();
       const gcdDoc = findGcdDocForKitsuDoc(doc);
       if (!gcdDoc) {
         pushUniqueTeenKitsuGcdDiagnostic(kitsuTeenGcdEnrichmentNoMatchTitles, title);
         const kitsuMatchKeys = gcdEnrichmentMatchKeysForDoc(doc);
-        for (const diag of kitsuTeenGcdEnrichmentQueryDiagnostics) {
-          if (diag.docCount > 0 && kitsuTeenGcdEnrichmentDocsReturnedButNoMatch.length < 40) {
+        for (const diag of [...kitsuTeenGcdEnrichmentExactTitleLookupDiagnostics, ...kitsuTeenGcdEnrichmentQueryDiagnostics]) {
+          if ((diag.docCount > 0 || diag.returnedTitles.length > 0) && kitsuTeenGcdEnrichmentDocsReturnedButNoMatch.length < 40) {
             kitsuTeenGcdEnrichmentDocsReturnedButNoMatch.push({
               query: diag.query,
               kitsuTitle: title,
@@ -5577,6 +5646,7 @@ export async function getRecommendations(
         }
         continue;
       }
+      markTeenKitsuGcdDiagnosticMatch(doc);
       const facets = gcdEnrichmentFacetTextForDoc(gcdDoc);
       const contributedText = facets.join(" ");
       const gcdLanePatterns: Record<string, RegExp> = {
@@ -5590,7 +5660,7 @@ export async function getRecommendations(
       };
       const lanePattern = gcdLanePatterns[String(routerFamily || "").trim()];
       const laneAligned = Boolean(lanePattern && lanePattern.test(contributedText));
-      const gcdTitle = String((gcdDoc as any)?.title || (gcdDoc as any)?.rawDoc?.title || "").trim();
+      const gcdTitle = String((gcdDoc as any)?.title || (gcdDoc as any)?.rawDoc?.volume?.name || (gcdDoc as any)?.rawDoc?.name || (gcdDoc as any)?.rawDoc?.title || "").trim();
       doc.description = [doc.description, contributedText].map((part) => String(part || "").trim()).filter(Boolean).join(" ");
       doc.subjects = Array.from(new Set([...(Array.isArray(doc.subjects) ? doc.subjects : []), ...facets]));
       doc.categories = Array.from(new Set([...(Array.isArray(doc.categories) ? doc.categories : []), ...facets]));
@@ -5606,10 +5676,6 @@ export async function getRecommendations(
         gcdEnrichmentOnlyLaneAligned: laneAligned,
       };
       pushUniqueTeenKitsuGcdDiagnostic(kitsuTeenGcdEnrichmentMatchedTitles, title);
-      for (const diag of kitsuTeenGcdEnrichmentQueryDiagnostics) {
-        const docsForQuery = gcdDocsByQuery.get(diag.query) || [];
-        if (docsForQuery.some((candidate) => candidate === gcdDoc)) diag.matchedTitleCount += 1;
-      }
       kitsuTeenGcdEnrichmentByTitle[title] = {
         query: title,
         matchedGcdTitle: gcdTitle,
@@ -15301,6 +15367,7 @@ const normalizedCandidatesRaw = [
     kitsuTeenGcdEnrichmentSkippedReason,
     kitsuTeenGcdEnrichmentQueries,
     kitsuTeenGcdEnrichmentQueryDiagnostics,
+    kitsuTeenGcdEnrichmentExactTitleLookupDiagnostics,
     kitsuTeenGcdEnrichmentDocsReturnedButNoMatch,
     kitsuTeenGcdEnrichmentMatchedTitles,
     kitsuTeenGcdEnrichmentNoMatchTitles,

@@ -1674,4 +1674,44 @@ export async function getGcdGraphicNovelRecommendations(input: RecommenderInput)
   };
 }
 
+export async function lookupComicVineExactTitleMetadata(query: string, timeoutMs = 2_500, limit = 8): Promise<{ query: string; rawCount: number; docs: RecommendationDoc[]; returnedTitles: string[]; error: string }> {
+  const cleanQuery = stripDanglingQuotes(String(query || "").trim());
+  if (!cleanQuery) return { query: cleanQuery, rawCount: 0, docs: [], returnedTitles: [], error: "empty_query" };
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(buildComicVineProxySearchUrl(cleanQuery, Math.max(1, Math.min(10, limit))), {
+      signal: controller.signal,
+      headers: { Accept: "application/json" },
+    });
+    if (!resp.ok) throw new Error(`ComicVine exact title error: ${resp.status}`);
+    const payload = await resp.json();
+    const results = Array.isArray(payload?.results) ? payload.results : [];
+    const docs = results
+      .map((issue: any) => {
+        const doc = comicVineIssueToDoc(issue, cleanQuery, 0);
+        if (!doc) return null;
+        return {
+          ...doc,
+          rawDoc: issue,
+          diagnostics: {
+            ...((doc as any)?.diagnostics || {}),
+            comicVineExactTitleMetadataLookup: true,
+            exactTitleQuery: cleanQuery,
+          },
+        } as RecommendationDoc;
+      })
+      .filter(Boolean) as RecommendationDoc[];
+    const returnedTitles = results
+      .map((issue: any) => String(issue?.volume?.name || issue?.series?.name || issue?.series_name || issue?.name || issue?.title || "").trim())
+      .filter(Boolean)
+      .slice(0, limit);
+    return { query: cleanQuery, rawCount: results.length, docs, returnedTitles, error: "" };
+  } catch (err: any) {
+    return { query: cleanQuery, rawCount: 0, docs: [], returnedTitles: [], error: String(err?.message || err || "unknown") };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export const getComicVineGraphicNovelRecommendations = getGcdGraphicNovelRecommendations;
