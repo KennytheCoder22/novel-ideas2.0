@@ -26,6 +26,8 @@ const COMMON_ARTIFACT_REASON_LABELS = [
   "survival_guide_artifact",
   "literal_title_match_artifact",
   "author_name_title_drift",
+  "keyword_stuffed_marketing_artifact",
+  "media_study_artifact",
 ];
 
 const TEEN_ARTIFACT_REASON_LABELS = [
