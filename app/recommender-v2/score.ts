@@ -28,6 +28,26 @@ function signalMatches(text: string, signals: WeightedSignalV2[]): WeightedSigna
   });
 }
 
+const BROAD_AVOID_SIGNAL = /^(book|books|novel|novels|fiction|story|stories|teen|teens|young adult|ya|series|fantasy|dystopia|dystopian|adventure|romance|drama|comedy|mystery)$/i;
+
+function addAvoidSignalBucket(matches: WeightedSignalV2[], matched: string[], breakdown: Record<string, number>): void {
+  let broadPenalty = 0;
+  let precisePenalty = 0;
+  for (const signal of matches) {
+    const value = normalized(signal.value);
+    if (!value) continue;
+    if (BROAD_AVOID_SIGNAL.test(value)) {
+      broadPenalty -= Math.min(0.8, Math.max(0.2, Math.abs(signal.weight) * 0.35));
+      matched.push(`avoidSignalPenalty:broad:${signal.value}`);
+    } else {
+      precisePenalty -= Math.min(4, Math.max(1, Math.abs(signal.weight) * 2.25));
+      matched.push(`avoidSignalPenalty:precise:${signal.value}`);
+    }
+  }
+  if (broadPenalty) breakdown.broadAvoidSignalPenalty = Number(breakdown.broadAvoidSignalPenalty || 0) + Math.max(-1.6, broadPenalty);
+  if (precisePenalty) breakdown.avoidSignalPenalty = Number(breakdown.avoidSignalPenalty || 0) + precisePenalty;
+}
+
 function addSignalBucket(matches: WeightedSignalV2[], multiplier: number, matched: string[], breakdown: Record<string, number>, bucket: string): void {
   for (const signal of matches) {
     const magnitude = Math.abs(signal.weight) * Math.abs(multiplier);
@@ -114,7 +134,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     addSignalBucket(toneMatches, 1.2, matchedSignals, scoreBreakdown, "positiveTasteMatch");
     addSignalBucket(characterMatches, 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
     addSignalBucket(formatMatches, 0.8, matchedSignals, scoreBreakdown, "positiveTasteMatch");
-    addSignalBucket(avoidMatches, -4, matchedSignals, scoreBreakdown, "avoidSignalPenalty");
+    addAvoidSignalBucket(avoidMatches, matchedSignals, scoreBreakdown);
 
     scoreBreakdown.ageTeenSuitability = ageSuitabilityScore(candidate, profile);
     scoreBreakdown.sourceQualityRelevance = sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches);

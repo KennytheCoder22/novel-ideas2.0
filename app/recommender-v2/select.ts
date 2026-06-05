@@ -39,6 +39,32 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
   return null;
 }
 
+function nonPositiveScoreDetail(candidate: ScoredCandidate): string {
+  const breakdown = candidate.scoreBreakdown || {};
+  return [
+    "non_positive_score_detail",
+    `score=${candidate.score.toFixed(2)}`,
+    `genre=${Number(breakdown.genreFacetMatch || 0).toFixed(2)}`,
+    `positive=${Number(breakdown.positiveTasteMatch || 0).toFixed(2)}`,
+    `avoid=${Number(breakdown.avoidSignalPenalty || 0).toFixed(2)}`,
+    `broadAvoid=${Number(breakdown.broadAvoidSignalPenalty || 0).toFixed(2)}`,
+    `age=${Number(breakdown.ageTeenSuitability || 0).toFixed(2)}`,
+    `sourceQuality=${Number(breakdown.sourceQualityRelevance || 0).toFixed(2)}`,
+    `queryRung=${Number(breakdown.queryRungBonus || 0).toFixed(2)}`,
+  ].join(":");
+}
+
+function isLowScoreRescueCandidate(candidate: ScoredCandidate): boolean {
+  const breakdown = candidate.scoreBreakdown || {};
+  const sourceQuality = Number(breakdown.sourceQualityRelevance || 0);
+  const genreMatch = Number(breakdown.genreFacetMatch || 0);
+  const positiveMatch = Number(breakdown.positiveTasteMatch || 0);
+  const ageSuitability = Number(breakdown.ageTeenSuitability || 0);
+  const queryRung = Number(breakdown.queryRungBonus || 0);
+  const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
+  return candidate.score > -4 && ageSuitability > -3 && preciseAvoid > -3.5 && (sourceQuality >= 1.1 || genreMatch > 0 || positiveMatch > 0 || queryRung >= 0.55);
+}
+
 function recordRejected(candidate: ScoredCandidate, rejectedReasons: Record<string, number>, reason: string): void {
   candidate.rejectedReasons.push(reason);
   rejectedReasons[reason] = Number(rejectedReasons[reason] || 0) + 1;
@@ -48,14 +74,21 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const rejectedReasons: Record<string, number> = {};
   const selected: ScoredCandidate[] = [];
   const deferred: { candidate: ScoredCandidate; reason: string }[] = [];
+  const lowScoreRescue: ScoredCandidate[] = [];
   const seenTitles = new Set<string>();
   const seenAuthors = new Set<string>();
   const seenSeries = new Set<string>();
 
-  for (const candidate of candidates) {
+  const rankedCandidates = [...candidates].sort((a, b) => b.score - a.score);
+
+  for (const candidate of rankedCandidates) {
     const reason = rejectReason(candidate, profile);
     if (reason) {
       recordRejected(candidate, rejectedReasons, reason);
+      if (reason === "non_positive_score") {
+        candidate.rejectedReasons.push(nonPositiveScoreDetail(candidate));
+        if (isLowScoreRescueCandidate(candidate)) lowScoreRescue.push(candidate);
+      }
       continue;
     }
     if (candidate.score <= 0) {
@@ -84,6 +117,23 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     if (selected.length >= limit) break;
   }
 
+  if (selected.length === 0 && lowScoreRescue.length > 0) {
+    rejectedReasons.low_score_rescue_candidates_available = lowScoreRescue.length;
+    for (const candidate of lowScoreRescue.sort((a, b) => b.score - a.score)) {
+      const titleKey = normalized(candidate.title);
+      const authorKey = primaryAuthor(candidate);
+      const rootKey = seriesKey(candidate);
+      if (seenTitles.has(titleKey) || (authorKey && seenAuthors.has(authorKey)) || (rootKey && seenSeries.has(rootKey))) continue;
+      candidate.rejectedReasons.push("accepted_low_score_rescue_source_quality_or_query_alignment");
+      rejectedReasons.accepted_low_score_rescue = Number(rejectedReasons.accepted_low_score_rescue || 0) + 1;
+      seenTitles.add(titleKey);
+      if (authorKey) seenAuthors.add(authorKey);
+      if (rootKey) seenSeries.add(rootKey);
+      selected.push(candidate);
+      if (selected.length >= Math.min(5, Math.max(3, lowScoreRescue.length))) break;
+    }
+  }
+
   const underfillTarget = selected.length === 0 ? 1 : selected.length;
   if (selected.length < underfillTarget) {
     rejectedReasons.underfill_deferred_available = deferred.length;
@@ -106,7 +156,11 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   }
 
   const openLibraryOnlySlate = selected.length > 0 && selected.every((candidate) => candidate.source === "openLibrary");
-  const meaningfulQualityCount = selected.filter((candidate) => candidate.score >= 3.25 && Number(candidate.scoreBreakdown?.sourceQualityRelevance || 0) >= 0.75).length;
+  const meaningfulQualityCount = selected.filter((candidate) => {
+    const breakdown = candidate.scoreBreakdown || {};
+    const avoidTotal = Number(breakdown.avoidSignalPenalty || 0) + Number(breakdown.broadAvoidSignalPenalty || 0);
+    return candidate.score >= 5 && Number(breakdown.sourceQualityRelevance || 0) >= 1.5 && Number(breakdown.ageTeenSuitability || 0) >= 0.35 && avoidTotal > -1.2;
+  }).length;
   if (openLibraryOnlySlate && selected.length > 5 && meaningfulQualityCount < 6) {
     const removed = selected.splice(5);
     rejectedReasons.openlibrary_quality_cap_weak_slate = removed.length;
