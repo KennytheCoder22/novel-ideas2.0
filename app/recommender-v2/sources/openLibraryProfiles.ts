@@ -13,6 +13,7 @@ export interface OpenLibraryAgeProfile {
   diagnosticProbeQuery: string;
   perQueryTimeoutMs: number;
   probeTimeoutMs: number;
+  probeReserveBufferMs: number;
   commonArtifactReasonLabels: string[];
   ageSpecificArtifactReasonLabels: string[];
   lockedBaseline: boolean;
@@ -31,6 +32,7 @@ const TEEN_ARTIFACT_REASON_LABELS = [
   "adult_dark_romance_artifact",
   "weak_odd_title_teen_fit",
   "teen_inappropriate_content",
+  "too_young_for_teen_artifact",
 ];
 
 const BASE_OPEN_LIBRARY_PROFILE = {
@@ -40,6 +42,7 @@ const BASE_OPEN_LIBRARY_PROFILE = {
   docsPerQuery: 8,
   perQueryTimeoutMs: 2_000,
   probeTimeoutMs: 1_500,
+  probeReserveBufferMs: 250,
   commonArtifactReasonLabels: COMMON_ARTIFACT_REASON_LABELS,
   lockedBaseline: false,
 };
