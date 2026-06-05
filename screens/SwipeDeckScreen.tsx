@@ -1780,6 +1780,10 @@ function handleLeft() {
       openLibrarySourceRawApiResultCount: Number(openLibrarySourceDiagnostics?.rawApiResultCount || 0),
       openLibrarySourceDroppedBeforeDocCount: Number(openLibrarySourceDiagnostics?.droppedBeforeDocCount || 0),
       openLibrarySourceDropReasons: openLibrarySourceDiagnostics?.dropReasons || {},
+      openLibraryTopUpRan: Boolean(openLibrarySourceDiagnostics?.openLibraryTopUpRan),
+      openLibraryTopUpTarget: Number(openLibrarySourceDiagnostics?.openLibraryTopUpTarget || 0),
+      openLibraryFallbackQueriesExhausted: Boolean(openLibrarySourceDiagnostics?.openLibraryFallbackQueriesExhausted),
+      openLibraryUsableRowsAfterFiltering: Number(openLibrarySourceDiagnostics?.usableRowsAfterFiltering || 0),
       openLibraryArtifactSuppressedTitles: openLibrarySourceDiagnostics?.artifactSuppressedTitles || [],
       openLibrarySeriesSuppressedTitles: openLibrarySourceDiagnostics?.seriesSuppressedTitles || [],
       openLibrarySourceStatus: openLibrarySourceDiagnostics?.status || "",
@@ -3091,6 +3095,7 @@ function handleLeft() {
         `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
         `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
         `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
+        `openLibraryTopUp: ${JSON.stringify({ ran: Boolean((lastRecommendationResult as any)?.openLibraryTopUpRan), target: (lastRecommendationResult as any)?.openLibraryTopUpTarget, exhausted: Boolean((lastRecommendationResult as any)?.openLibraryFallbackQueriesExhausted), usableRowsAfterFiltering: (lastRecommendationResult as any)?.openLibraryUsableRowsAfterFiltering })}`,
         `openLibraryArtifactSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryArtifactSuppressedTitles || [])}`,
         `openLibrarySeriesSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibrarySeriesSuppressedTitles || [])}`,
         `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
@@ -3344,18 +3349,30 @@ function handleLeft() {
       : "(none)";
 
     const v2DiagnosticsForReport = (lastRecommendationResult as any)?.v2Diagnostics || v2DebugResult?.diagnostics || null;
+    const openLibraryDiagnosticsForExport = (v2DiagnosticsForReport?.sources || []).find((source: any) => source.source === "openLibrary") || {};
+    const lastResultForExport = lastRecommendationResult as any;
+    const openLibraryEmptyReasonExport = String(lastResultForExport?.openLibrarySourceEmptyReason || openLibraryDiagnosticsForExport.emptyReason || "");
+    const openLibraryTopUpTargetExport = lastResultForExport?.openLibraryTopUpTarget !== undefined ? lastResultForExport.openLibraryTopUpTarget : openLibraryDiagnosticsForExport.openLibraryTopUpTarget;
+    const openLibraryUsableRowsExport = lastResultForExport?.openLibraryUsableRowsAfterFiltering !== undefined ? lastResultForExport.openLibraryUsableRowsAfterFiltering : openLibraryDiagnosticsForExport.usableRowsAfterFiltering;
+    const openLibraryTopUpExport = {
+      ran: Boolean(lastResultForExport?.openLibraryTopUpRan || openLibraryDiagnosticsForExport.openLibraryTopUpRan),
+      target: openLibraryTopUpTargetExport,
+      exhausted: Boolean(lastResultForExport?.openLibraryFallbackQueriesExhausted || openLibraryDiagnosticsForExport.openLibraryFallbackQueriesExhausted),
+      usableRowsAfterFiltering: openLibraryUsableRowsExport,
+    };
     const v2DiagnosticLines = v2DiagnosticsForReport
       ? [
-          `engineVersion:${String((lastRecommendationResult as any)?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-skeleton")}`,
+          `engineVersion:${String(lastResultForExport?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-skeleton")}`,
           `requestId:${v2DiagnosticsForReport.requestId}`,
           `items:${(Array.isArray(v2DebugResult?.items) ? v2DebugResult?.items : []).map((item) => item.title).join(" | ") || (Array.isArray(v2DiagnosticsForReport.finalSelectionTitles) ? v2DiagnosticsForReport.finalSelectionTitles.join(" | ") : "(none)")}`,
           `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
           `searchPlan:${JSON.stringify(v2DiagnosticsForReport.searchPlan || {})}`,
           `stages:${(v2DiagnosticsForReport.stages || []).map((stage: any) => `${stage.stage}:${JSON.stringify(stage.counts || {})}`).join(" -> ")}`,
-          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, rawApiResultCount: source.rawApiResultCount, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, artifactSuppressedTitles: source.artifactSuppressedTitles, seriesSuppressedTitles: source.seriesSuppressedTitles, emptyReason: source.emptyReason, openLibraryProbeRan: source.openLibraryProbeRan, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
-          `openLibrarySourceFetchDiagnostics:${JSON.stringify((lastRecommendationResult as any)?.openLibrarySourceFetchDiagnostics || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.fetches || []))}`,
-          `openLibraryProbeRan:${String(Boolean((lastRecommendationResult as any)?.openLibraryProbeRan || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.openLibraryProbeRan)))}`,
-          `openLibraryEmptyReason:${String((lastRecommendationResult as any)?.openLibrarySourceEmptyReason || ((v2DiagnosticsForReport.sources || []).find((source: any) => source.source === "openLibrary")?.emptyReason || ""))}`,
+          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, rawApiResultCount: source.rawApiResultCount, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, openLibraryTopUpRan: source.openLibraryTopUpRan, openLibraryTopUpTarget: source.openLibraryTopUpTarget, openLibraryFallbackQueriesExhausted: source.openLibraryFallbackQueriesExhausted, usableRowsAfterFiltering: source.usableRowsAfterFiltering, artifactSuppressedTitles: source.artifactSuppressedTitles, seriesSuppressedTitles: source.seriesSuppressedTitles, emptyReason: source.emptyReason, openLibraryProbeRan: source.openLibraryProbeRan, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `openLibrarySourceFetchDiagnostics:${JSON.stringify(lastResultForExport?.openLibrarySourceFetchDiagnostics || openLibraryDiagnosticsForExport.fetches || [])}`,
+          `openLibraryProbeRan:${String(Boolean(lastResultForExport?.openLibraryProbeRan || openLibraryDiagnosticsForExport.openLibraryProbeRan))}`,
+          `openLibraryEmptyReason:${openLibraryEmptyReasonExport}`,
+          `openLibraryTopUp:${JSON.stringify(openLibraryTopUpExport)}`,
           `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
           `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
           `rejectedReasons:${JSON.stringify(v2DiagnosticsForReport.rejectedReasons || {})}`,

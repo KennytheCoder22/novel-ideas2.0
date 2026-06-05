@@ -2,6 +2,7 @@ import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, Sour
 
 const OPEN_LIBRARY_QUERY_LIMIT = 3;
 const OPEN_LIBRARY_DOC_LIMIT = 10;
+const OPEN_LIBRARY_MIN_CLEAN_DOCS = 6;
 const OPEN_LIBRARY_DOCS_PER_QUERY = 8;
 const OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY = "fantasy";
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
@@ -37,6 +38,8 @@ const RELEVANCE_DRIFT_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dicken
 const RELEVANCE_DRIFT_TITLE_HINT = /\b(complete works|selected works|collected works|works of|public domain)\b/i;
 const ARTIFACT_QUERY_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson|classroom|teacher|writing|write)\b/i;
 const ARTIFACT_TITLE_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson plan|lesson plans|classroom|teacher'?s? guide|study guide|kids write|writing prompts?|write!)\b/i;
+const LITERARY_ANALYSIS_ARTIFACT_HINT = /\b(literary criticism|critical studies|critical study|criticism|analysis|analyses|case studies|essays on|companion to|guide to|teaching literature|about literature|consumption and identity)\b/i;
+const ADULT_LOW_TEEN_FIT_HINT = /\b(erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker)\b/i;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -120,7 +123,7 @@ function combineOpenLibraryQueryParts(primary: string, modifier?: string): strin
 
 function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): OpenLibraryQueryPlan[] {
   const plannedIntents = plan.intents.length ? plan.intents : [{ query: OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, facets: [], id: "open-library-fallback", priority: 0, rationale: [] }];
-  const originalPlannedQuery = String(plannedIntents[0]?.query || "");
+  const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ""));
   const genres = uniqueStrings(profile.genreFamily.map((row) => cleanOpenLibraryQueryPart(row.value)).filter(isGenreLikeOpenLibraryPart), 3);
   const plannedGenreFallbacks = uniqueStrings(plannedIntents
     .flatMap((intent) => [intent.query, ...(intent.facets || [])])
@@ -335,14 +338,24 @@ function isRelevanceDriftOpenLibraryDoc(doc: any, query: string): boolean {
   return Boolean(firstPublishYear > 0 && firstPublishYear < 1900 && !/\bclassic|historical|history|literary\b/i.test(query) && !GENRE_QUERY_HINT.test(`${title} ${subjects}`));
 }
 
-function isOpenLibraryArtifactDoc(doc: any, query: string): boolean {
-  if (ARTIFACT_QUERY_HINT.test(query)) return false;
-  const title = String(doc?.title || "");
-  const subjects = [
+function openLibraryDocText(doc: any): string {
+  return [
+    String(doc?.title || ""),
+    String(doc?.subtitle || ""),
+    Array.isArray(doc?.author_name) ? doc.author_name.join(" ") : "",
     ...(Array.isArray(doc?.subject) ? doc.subject : []),
     ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
   ].join(" ");
-  return ARTIFACT_TITLE_HINT.test(`${title} ${subjects}`);
+}
+
+function isOpenLibraryArtifactDoc(doc: any, query: string): boolean {
+  if (ARTIFACT_QUERY_HINT.test(query)) return false;
+  return ARTIFACT_TITLE_HINT.test(openLibraryDocText(doc));
+}
+
+function isLiteraryAnalysisArtifactDoc(doc: any, query: string): boolean {
+  if (/\b(criticism|critical|analysis|study guide|literary study)\b/i.test(query)) return false;
+  return LITERARY_ANALYSIS_ARTIFACT_HINT.test(openLibraryDocText(doc));
 }
 
 function openLibrarySeriesKey(doc: any): string {
@@ -359,15 +372,10 @@ function openLibrarySeriesKey(doc: any): string {
 
 function isTeenInappropriateOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
-  const title = String(doc?.title || "");
-  const authors = Array.isArray(doc?.author_name) ? doc.author_name.join(" ") : "";
-  const subjects = [
-    ...(Array.isArray(doc?.subject) ? doc.subject : []),
-    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
-  ].join(" ");
-  const text = `${title} ${authors} ${subjects}`.toLowerCase();
+  const text = openLibraryDocText(doc).toLowerCase();
   if (/\b(lolita|nabokov|erotic|erotica|sexual abuse|incest|pornography)\b/.test(text)) return true;
   if (/\bnovels?\s+\d{4}\s*-\s*\d{4}\b/.test(text) && /\b(lolita|nabokov)\b/.test(text)) return true;
+  if (ADULT_LOW_TEEN_FIT_HINT.test(text) && !/\b(young adult|juvenile|teen|adolescent)\b/.test(text)) return true;
   return false;
 }
 
@@ -394,6 +402,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) return { keep: false, reason: "missing_author" };
   if (isRelevanceDriftOpenLibraryDoc(doc, query)) return { keep: false, reason: "relevance_drift" };
   if (isOpenLibraryArtifactDoc(doc, query)) return { keep: false, reason: "artifact_title" };
+  if (isLiteraryAnalysisArtifactDoc(doc, query)) return { keep: false, reason: "literary_analysis_artifact" };
   if (isTeenInappropriateOpenLibraryDoc(doc, profile)) return { keep: false, reason: "teen_inappropriate_content" };
   if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
@@ -435,10 +444,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const dropReasons: Record<string, number> = {};
     const fetches: SourceFetchDiagnosticV2[] = [];
     const acceptedSeriesKeys = new Set<string>();
+    const acceptedDocKeys = new Set<string>();
     const artifactSuppressedTitles: string[] = [];
     const seriesSuppressedTitles: string[] = [];
     let rawApiResultCount = 0;
     let failedReason = "";
+    let openLibraryTopUpRan = false;
 
     for (const queryPlan of queryPlans) {
       const query = queryPlan.query;
@@ -484,7 +495,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (!quality.keep) {
           const reason = quality.reason || "quality_filter";
           dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
-          if (reason === "artifact_title") artifactSuppressedTitles.push(title);
+          if (reason === "artifact_title" || reason === "literary_analysis_artifact" || reason === "teen_inappropriate_content") artifactSuppressedTitles.push(title);
+          continue;
+        }
+        const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+        if (acceptedDocKeys.has(docKey)) {
+          dropReasons.duplicate_doc = Number(dropReasons.duplicate_doc || 0) + 1;
           continue;
         }
         const seriesKey = openLibrarySeriesKey(doc);
@@ -494,10 +510,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           continue;
         }
         if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+        acceptedDocKeys.add(docKey);
         rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
         if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
       }
-      if (rawItems.length > 0) break;
+      if (rawItems.length >= OPEN_LIBRARY_MIN_CLEAN_DOCS || rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
+      if (rawItems.length > 0) openLibraryTopUpRan = true;
     }
 
     if (!rawItems.length && !context.signal?.aborted && !queries.some((query) => query.toLowerCase() === OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY)) {
@@ -522,6 +540,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           rawApiResultCount,
           droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
           dropReasons,
+          openLibraryTopUpRan,
+          openLibraryTopUpTarget: OPEN_LIBRARY_MIN_CLEAN_DOCS,
+          openLibraryFallbackQueriesExhausted: rawItems.length < OPEN_LIBRARY_MIN_CLEAN_DOCS && fetches.filter((fetch) => !fetch.diagnosticOnly).length >= queryPlans.length,
+          usableRowsAfterFiltering: rawItems.length,
           fetches,
         }),
       };
@@ -556,6 +578,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         rawApiResultCount,
         droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
         dropReasons,
+        openLibraryTopUpRan,
+        openLibraryTopUpTarget: OPEN_LIBRARY_MIN_CLEAN_DOCS,
+        openLibraryFallbackQueriesExhausted: rawItems.length < OPEN_LIBRARY_MIN_CLEAN_DOCS && mainFetches.length >= queryPlans.length,
+        usableRowsAfterFiltering: rawItems.length,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),

@@ -115,6 +115,10 @@ export interface SourceDiagnosticV2 {
   rawApiResultCount?: number;
   droppedBeforeDocCount?: number;
   dropReasons?: Record<string, number>;
+  openLibraryTopUpRan?: boolean;
+  openLibraryTopUpTarget?: number;
+  openLibraryFallbackQueriesExhausted?: boolean;
+  usableRowsAfterFiltering?: number;
   fetches?: SourceFetchDiagnosticV2[];
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];
