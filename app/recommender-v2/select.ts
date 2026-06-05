@@ -150,14 +150,14 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
-  const underfillTarget = selected.length === 0 ? 1 : selected.length;
+  const underfillTarget = deferred.length > 0 ? Math.min(3, limit) : (selected.length === 0 ? 1 : selected.length);
   if (selected.length < underfillTarget) {
     rejectedReasons.underfill_deferred_available = deferred.length;
     for (const row of deferred) {
       const titleKey = normalized(row.candidate.title);
       if (seenTitles.has(titleKey)) continue;
-      row.candidate.rejectedReasons.push(`underfill_allowed_empty_slate:${row.reason}`);
-      rejectedReasons.underfill_allowed_empty_slate = Number(rejectedReasons.underfill_allowed_empty_slate || 0) + 1;
+      row.candidate.rejectedReasons.push(`underfill_relaxed_diversity:${row.reason}`);
+      rejectedReasons.underfill_relaxed_diversity = Number(rejectedReasons.underfill_relaxed_diversity || 0) + 1;
       seenTitles.add(titleKey);
       selected.push(row.candidate);
       if (selected.length >= underfillTarget) break;
