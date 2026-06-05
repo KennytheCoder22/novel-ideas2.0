@@ -37,7 +37,7 @@ const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
 ]);
 
 const MEDIA_FORMAT_TERMS = new Set(["anime", "game", "games", "gaming", "tv", "television", "movie", "movies", "film", "films"]);
-const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopia|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|coming of age|graphic novel|manga|comic)\b/i;
+const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopia|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|coming of age|graphic novel|manga|comic|heist|sandbox)\b/i;
 const RELEVANCE_DRIFT_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain|literary)\b/i;
 const RELEVANCE_DRIFT_TITLE_HINT = /\b(complete works|selected works|collected works|works of|public domain)\b/i;
 const ARTIFACT_QUERY_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson|classroom|teacher|writing|write)\b/i;
@@ -46,7 +46,7 @@ const PROGRAMMING_GUIDE_ARTIFACT_HINT = /\b(library programs? for teens|library 
 const SURVIVAL_GUIDE_ARTIFACT_HINT = /\b(survival guide|survival handbook|survival manual|field guide|handbook|choose your own adventure|mountain survival|star trek survival|kane chronicles survival guide|survival of the richest|cultural survival|survival culture|survival skills?)\b/i;
 const ADULT_DARK_ROMANCE_ARTIFACT_HINT = /\b(king of flesh and bone|married to a pirate|flesh and bone|dark romance|dark romantasy|monster romance|alien sex|alien romance|alien lover|pirate romance|captive bride|reverse harem|why choose|possessive alpha|mafia romance)\b/i;
 const LITERARY_ANALYSIS_ARTIFACT_HINT = /\b(literary criticism|critical studies|critical study|criticism|analysis|analyses|case studies|essays on|companion to|guide to|teaching literature|about literature|consumption and identity|young adult fantasy fiction|literature for young adults|fiction\s*-\s*history and criticism|history and criticism)\b/i;
-const ADULT_LOW_TEEN_FIT_HINT = /\b(erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire|temptation|passion)\b/i;
+const ADULT_LOW_TEEN_FIT_HINT = /\b(my secret garden|sexual fantasies|women\s+sexual fantasies|erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire|temptation|passion)\b/i;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -172,33 +172,43 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
   const hasDrama = /\b(drama)\b/.test(facetText);
   const hasThriller = /\b(thriller|suspense)\b/.test(facetText);
   const hasRomance = /\b(romance|romantic)\b/.test(facetText);
+  const hasHeist = /\b(heist|caper|thief|thieves|sandbox)\b/.test(facetText);
   const fantasyWeight = signalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/);
   const contemporaryWeight = signalWeight(signalRows, /\b(contemporary|realistic|coming of age)\b/);
   const mysteryWeight = signalWeight(signalRows, /\b(mystery|thriller|horror|suspense)\b/);
   const actionComedyWeight = signalWeight(signalRows, /\b(action|adventure|comedy|humor)\b/);
   const romanceWeight = signalWeight(signalRows, /\b(romance|romantic)\b/);
+  const heistWeight = signalWeight(signalRows, /\b(heist|caper|thief|thieves|sandbox)\b/);
   const historicalWeight = signalWeight(signalRows, /\b(historical|history)\b/);
   const dystopianWeight = signalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative)\b/);
   const survivalWeight = signalWeight(signalRows, /\b(survival)\b/);
-  const dominanceScores = { fantasy: fantasyWeight, contemporary: contemporaryWeight, mystery: mysteryWeight, actionComedy: actionComedyWeight, romance: romanceWeight, historical: historicalWeight, dystopian: dystopianWeight, survival: survivalWeight };
+  const dominanceScores = { fantasy: fantasyWeight, contemporary: contemporaryWeight, mystery: mysteryWeight, actionComedy: actionComedyWeight, romance: romanceWeight, heist: heistWeight, historical: historicalWeight, dystopian: dystopianWeight, survival: survivalWeight };
   const sortedDominance = Object.entries(dominanceScores).sort((a, b) => b[1] - a[1]);
   const dominantFamily = sortedDominance[0]?.[0] || "generic";
   const dominantWeight = Number(sortedDominance[0]?.[1] || 0);
   const runnerUpWeight = Number(sortedDominance[1]?.[1] || 0);
   const dominanceRatio = runnerUpWeight > 0 ? dominantWeight / runnerUpWeight : dominantWeight > 0 ? 99 : 0;
-  const hasStrongGenreSpecific = hasFantasy || hasAdventure || hasSpeculative || hasMystery || hasComedy || hasRomance;
+  const hasStrongGenreSpecific = hasFantasy || hasAdventure || hasSpeculative || hasMystery || hasComedy || hasRomance || hasHeist;
   const hasClearContemporarySignal = /\b(contemporary|realistic|coming of age)\b/.test(profileText);
   const paranormalFantasyHorrorWeight = Math.max(fantasyWeight, hasHorror || hasParanormal ? mysteryWeight : 0, romanceWeight);
   const wantsContemporaryDrama = hasClearContemporarySignal && contemporaryWeight > 0 && (dominantFamily === "contemporary" || contemporaryWeight >= Math.max(fantasyWeight, mysteryWeight, dystopianWeight) * 1.15) && contemporaryWeight > paranormalFantasyHorrorWeight * 1.2;
   const wantsFantasy = hasFantasy && fantasyWeight > 0 && dominantFamily === "fantasy" && dominanceRatio >= 1.2;
   const wantsSurvival = /\bsurvival\b/.test(facetText) && survivalWeight > 0 && dominantFamily === "survival" && dominanceRatio >= 1.25;
   const wantsHistorical = hasHistorical && historicalWeight > 0 && dominantFamily === "historical" && dominanceRatio >= 1.2;
-  const wantsDystopianHistoricalThriller = hasDystopian && (hasThriller || hasHistorical) && dystopianWeight > 0 && dystopianWeight + mysteryWeight + historicalWeight >= Math.max(contemporaryWeight, fantasyWeight) * 1.15;
+  const wantsMysteryHeist = hasMystery && hasHeist && dystopianWeight <= Math.max(1, mysteryWeight + heistWeight) * 1.5;
+  const wantsDystopianHistoricalThriller = hasDystopian && !wantsMysteryHeist && (hasThriller || hasHistorical) && dystopianWeight > 0 && dystopianWeight + mysteryWeight + historicalWeight >= Math.max(contemporaryWeight, fantasyWeight) * 1.15;
   const wantsFantasyAdventureSurvival = hasFantasy && hasAdventure && !hasParanormal && (fantasyWeight + actionComedyWeight + survivalWeight >= Math.max(mysteryWeight, contemporaryWeight, dystopianWeight));
   const wantsParanormalHorrorRomance = hasParanormal && (hasHorror || hasRomance || romanceWeight > 0) && fantasyWeight + mysteryWeight + romanceWeight >= contemporaryWeight;
   const wantsHorrorThrillerFantasy = hasHorror && hasThriller && hasFantasy && (fantasyWeight + mysteryWeight >= Math.max(contemporaryWeight, dystopianWeight, historicalWeight) * 1.1);
-  const wantsActionComedyMystery = hasMystery && (hasAction || hasComedy) && !wantsFantasyAdventureSurvival && (mysteryWeight + actionComedyWeight >= Math.max(fantasyWeight, dystopianWeight, contemporaryWeight));
-  const genreSpecificQueries = wantsFantasyAdventureSurvival
+  const wantsActionComedyMystery = hasMystery && (hasAction || hasComedy) && !wantsFantasyAdventureSurvival && !wantsMysteryHeist && (mysteryWeight + actionComedyWeight >= Math.max(fantasyWeight, dystopianWeight, contemporaryWeight));
+  const genreSpecificQueries = wantsMysteryHeist
+    ? [
+        "teen mystery",
+        "heist novel",
+        "mystery adventure",
+        "young adult thriller",
+      ]
+    : wantsFantasyAdventureSurvival
     ? [
         "young adult fantasy",
         "fantasy school",
@@ -283,7 +293,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
     combineOpenLibraryQueryParts(genreTerms[1] || "", genreTerms[2]),
     genreTerms[0] || fallbackTerms[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
   ];
-  const queryCandidates = wantsFantasyAdventureSurvival || wantsParanormalHorrorRomance || wantsDystopianHistoricalThriller
+  const queryCandidates = wantsMysteryHeist || wantsFantasyAdventureSurvival || wantsParanormalHorrorRomance || wantsDystopianHistoricalThriller
     ? genreSpecificQueries
     : wantsContemporaryDrama
       ? [...contemporaryQueries, ...genreSpecificQueries]
@@ -291,12 +301,14 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
         ? genreSpecificQueries
         : genericQueries;
 
-  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|young adult mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror)$/;
+  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT);
   const specificQueryCount = uniqueQueries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/.test(query)).length;
   const broadFallbackUsed = uniqueQueries.some((query) => /^(young adult fantasy|fantasy|mystery novel)$/.test(query));
-  const routingReason = wantsFantasyAdventureSurvival
+  const routingReason = wantsMysteryHeist
+    ? "dominant_mystery_heist"
+    : wantsFantasyAdventureSurvival
     ? "dominant_fantasy_adventure_survival"
     : wantsParanormalHorrorRomance
       ? "dominant_paranormal_horror_romance"
@@ -317,7 +329,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
               : broadFallbackUsed
                 ? "no_specific_mixed_facets_broad_fallback"
                 : "generic_facets";
-  const routingDominance = { dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasy, wantsSurvival, wantsHistorical, wantsFantasyAdventureSurvival, wantsParanormalHorrorRomance, wantsDystopianHistoricalThriller, wantsHorrorThrillerFantasy, wantsContemporaryDrama, wantsActionComedyMystery };
+  const routingDominance = { dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasy, wantsSurvival, wantsHistorical, wantsMysteryHeist, wantsFantasyAdventureSurvival, wantsParanormalHorrorRomance, wantsDystopianHistoricalThriller, wantsHorrorThrillerFantasy, wantsContemporaryDrama, wantsActionComedyMystery };
   return uniqueQueries.map((query, index) => ({
     query,
     originalPlannedQuery,
@@ -615,6 +627,16 @@ function isOmnibusBundleDriftOpenLibraryDoc(doc: any, query: string, profile: Ta
   return /\b(omnibus|collected novels|complete novels|novels?\s+\d{4}\s*-\s*\d{4}|screenplay)\b/i.test(title);
 }
 
+function emergencyFallbackHasMeaningfulOverlap(doc: any, queryPlans: OpenLibraryQueryPlan[]): boolean {
+  const docText = cleanOpenLibraryQueryPart(openLibraryDocText(doc));
+  const genericTokens = new Set(["young", "adult", "teen", "fiction", "novel", "story", "book", "books", "mystery", "general", "literary"]);
+  const sourceText = queryPlans.flatMap((plan) => [plan.originalPlannedQuery, plan.query, ...(plan.facets || [])]).join(" ");
+  const tokens = uniqueStrings(cleanOpenLibraryQueryPart(sourceText)
+    .split(" ")
+    .filter((token) => token.length >= 5 && !genericTokens.has(token)), 12);
+  return tokens.length > 0 && tokens.some((token) => docText.includes(token));
+}
+
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return true;
   const firstPublishYear = Number(doc?.first_publish_year || 0);
@@ -783,6 +805,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             const reason = `emergency_fallback_${quality.reason || "quality_filter"}`;
             dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
             if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+            continue;
+          }
+          if (!emergencyFallbackHasMeaningfulOverlap(doc, queryPlans)) {
+            dropReasons.emergency_fallback_no_meaningful_overlap = Number(dropReasons.emergency_fallback_no_meaningful_overlap || 0) + 1;
             continue;
           }
           rawItems.push(normalizeOpenLibraryDoc(doc, probePlan));

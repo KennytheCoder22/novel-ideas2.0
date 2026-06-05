@@ -139,7 +139,9 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (positiveMatches.length > 0) score += 0.4 + Math.min(0.3, positiveMatches.length * 0.06);
   if (strongTeenMetadata) score += 0.25;
   if (normalizedTitle.split(" ").length <= 2 && !strongTeenMetadata && !strongGenreMetadata) score -= 0.7;
-  if (/^(deception|departures|the departures|end is here|the end is here)$/.test(normalizedTitle) && metadataCount < 12) score -= 2.4;
+  if (/^(deception|departures|the departures|end is here|the end is here|refigurations of freedom|tell freedom i said hello|facility|fang)$/.test(normalizedTitle) && metadataCount < 12) score -= 2.8;
+  if (profile.ageBand === "teens" && /\b(my secret garden|sexual fantasies|women\s+sexual fantasies)\b/.test(text)) score -= 8;
+  if (metadataCount <= 4 && !strongTeenMetadata && !strongGenreMetadata) score -= 1.2;
   if (/^(the clown hunt|clown hunt|pope|phantoms)$/.test(normalizedTitle) && profile.ageBand === "teens" && !strongTeenMetadata) score -= 3.2;
   if (/\b(survival guide|survival handbook|survival manual|field guide|handbook|choose your own adventure|mountain survival|star trek survival|kane chronicles survival guide|survival of the richest|cultural survival|survival culture|survival skills?)\b/.test(text) && !strongTeenMetadata) score -= 5;
   if (profile.ageBand === "teens" && /\b(king of flesh and bone|married to a pirate|flesh and bone|dark romance|dark romantasy|monster romance|alien sex|alien romance|alien lover|pirate romance|captive bride|reverse harem|why choose|possessive alpha|mafia romance)\b/.test(text) && !strongTeenMetadata) score -= 5;
