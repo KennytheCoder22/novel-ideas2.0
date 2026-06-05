@@ -15,6 +15,7 @@ type OpenLibraryQueryPlan = {
   queryCascadeIndex: number;
   queryFamily: string;
   facets: string[];
+  routingReason?: string;
 };
 
 const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
@@ -39,7 +40,7 @@ const RELEVANCE_DRIFT_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dicken
 const RELEVANCE_DRIFT_TITLE_HINT = /\b(complete works|selected works|collected works|works of|public domain)\b/i;
 const ARTIFACT_QUERY_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson|classroom|teacher|writing|write)\b/i;
 const ARTIFACT_TITLE_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson plan|lesson plans|classroom|teacher'?s? guide|study guide|kids write|writing prompts?|write!)\b/i;
-const LITERARY_ANALYSIS_ARTIFACT_HINT = /\b(literary criticism|critical studies|critical study|criticism|analysis|analyses|case studies|essays on|companion to|guide to|teaching literature|about literature|consumption and identity)\b/i;
+const LITERARY_ANALYSIS_ARTIFACT_HINT = /\b(literary criticism|critical studies|critical study|criticism|analysis|analyses|case studies|essays on|companion to|guide to|teaching literature|about literature|consumption and identity|young adult fantasy fiction|fiction\s*-\s*history and criticism|history and criticism)\b/i;
 const ADULT_LOW_TEEN_FIT_HINT = /\b(erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker)\b/i;
 
 function nowIso(): string {
@@ -150,23 +151,35 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
   ].join(" ").toLowerCase();
   const facetText = [...genreTerms, ...fallbackTerms, originalPlannedQuery].join(" ").toLowerCase();
   const hasFantasy = /\b(fantasy|paranormal|supernatural)\b/.test(facetText);
+  const hasParanormal = /\b(paranormal|supernatural)\b/.test(facetText);
   const hasAdventure = /\b(adventure|action|survival)\b/.test(facetText);
-  const hasSpeculative = /\b(dystopian|science fiction|sci-fi|speculative)\b/.test(facetText);
+  const hasAction = /\b(action)\b/.test(facetText);
+  const hasComedy = /\b(comedy|humor)\b/.test(facetText);
+  const hasDystopian = /\b(dystopian)\b/.test(facetText);
+  const hasSciFi = /\b(science fiction|sci-fi|speculative)\b/.test(facetText);
+  const hasSpeculative = hasDystopian || hasSciFi;
   const hasMystery = /\b(mystery|thriller|horror|suspense)\b/.test(facetText);
-  const hasStrongGenreSpecific = hasFantasy || hasAdventure || hasSpeculative || hasMystery;
+  const hasThriller = /\b(thriller|suspense)\b/.test(facetText);
+  const hasStrongGenreSpecific = hasFantasy || hasAdventure || hasSpeculative || hasMystery || hasComedy;
   const contemporaryWeight = signalWeight([...profile.genreFamily, ...profile.themes], /\b(contemporary|realistic|coming of age)\b/);
   const speculativeWeight = signalWeight(profile.genreFamily, /\b(fantasy|adventure|action|survival|dystopian|science fiction|sci-fi|speculative|paranormal|supernatural|mystery|thriller|horror|suspense)\b/);
   const hasClearContemporarySignal = /\b(contemporary|realistic|coming of age)\b/.test(profileText);
   const wantsContemporaryDrama = hasClearContemporarySignal && (!hasStrongGenreSpecific || contemporaryWeight > speculativeWeight * 1.35);
   const genreSpecificQueries = [
-    hasFantasy && hasAdventure ? "fantasy adventure" : "",
-    hasFantasy ? "young adult fantasy" : "",
+    hasDystopian && hasMystery ? "dystopian mystery" : "",
+    hasParanormal && hasMystery ? "paranormal mystery" : "",
+    hasFantasy && hasMystery ? "fantasy mystery" : "",
+    hasSciFi && hasThriller ? "sci-fi thriller" : "",
+    hasAction && hasComedy && hasAdventure ? "action comedy adventure" : "",
+    hasFantasy && hasDystopian ? "fantasy dystopian" : "",
     hasSpeculative && hasAdventure ? "dystopian adventure" : hasSpeculative ? "young adult dystopian" : "",
+    hasFantasy && hasAdventure ? "fantasy adventure" : "",
     hasFantasy && /\bdrama\b/.test(facetText) ? "fantasy drama" : "",
     hasMystery && hasAdventure ? "mystery adventure" : "",
     hasMystery ? "mystery novel" : "",
-    hasFantasy ? "fantasy" : "",
     combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
+    hasFantasy ? "young adult fantasy" : "",
+    hasFantasy ? "fantasy" : "",
   ];
   const contemporaryQueries = [
     "young adult contemporary drama",
@@ -187,12 +200,25 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
 
   const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|coming of age novel|young adult fantasy|young adult dystopian|mystery novel)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
-  return uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT).map((query, index) => ({
+  const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT);
+  const specificQueryCount = uniqueQueries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/.test(query)).length;
+  const broadFallbackUsed = uniqueQueries.some((query) => /^(young adult fantasy|fantasy|mystery novel)$/.test(query));
+  const routingReason = wantsContemporaryDrama
+    ? "contemporary_dominant"
+    : hasStrongGenreSpecific
+      ? broadFallbackUsed && specificQueryCount > 0
+        ? "specific_facets_first_then_broad_fallback"
+        : "specific_facets_preserved"
+      : broadFallbackUsed
+        ? "no_specific_mixed_facets_broad_fallback"
+        : "generic_facets";
+  return uniqueQueries.map((query, index) => ({
     query,
     originalPlannedQuery,
     queryCascadeIndex: index,
     queryFamily: queryFamilyForOpenLibraryQuery(query),
     facets: uniqueStrings([...(plannedIntents[index]?.facets || []), ...genreTerms].map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+    routingReason,
   }));
 }
 
@@ -457,6 +483,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
     const queryPlans = buildOpenLibraryQueryPlans(plan, context.profile);
     const queries = queryPlans.map((queryPlan) => queryPlan.query);
+    const openLibraryQueryRouting = {
+      reason: queryPlans[0]?.routingReason || "unknown",
+      broadFallbackQueries: queries.filter((query) => /^(young adult fantasy|fantasy|mystery novel)$/i.test(query)),
+      specificQueries: queries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/i.test(query)),
+      originalPlannedQuery: queryPlans[0]?.originalPlannedQuery || "",
+    };
     if (!queryPlans.length) {
       return {
         source: "openLibrary",
@@ -495,6 +527,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             rawTitles,
             failedReason: "openlibrary_aborted_before_query_start",
             openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
+            openLibraryQueryRouting,
             fetches,
           }),
         };
@@ -575,6 +608,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           openLibraryTopUpTarget: OPEN_LIBRARY_MIN_CLEAN_DOCS,
           openLibraryFallbackQueriesExhausted: rawItems.length < OPEN_LIBRARY_MIN_CLEAN_DOCS && fetches.filter((fetch) => !fetch.diagnosticOnly).length >= queryPlans.length,
           usableRowsAfterFiltering: rawItems.length,
+          openLibraryQueryRouting,
           fetches,
         }),
       };
@@ -613,6 +647,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         openLibraryTopUpTarget: OPEN_LIBRARY_MIN_CLEAN_DOCS,
         openLibraryFallbackQueriesExhausted: rawItems.length < OPEN_LIBRARY_MIN_CLEAN_DOCS && mainFetches.length >= queryPlans.length,
         usableRowsAfterFiltering: rawItems.length,
+        openLibraryQueryRouting,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),

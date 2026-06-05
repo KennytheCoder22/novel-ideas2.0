@@ -96,6 +96,8 @@ type RecommendationHistoryBucket = {
   recommendedKeys: Set<string>;
   authors: Set<string>;
   seriesKeys: Set<string>;
+  titles: Set<string>;
+  titleRoots: Set<string>;
   rejectedIds: Set<string>;
   rejectedKeys: Set<string>;
 };
@@ -534,6 +536,8 @@ function createRecommendationHistoryBucket(): RecommendationHistoryBucket {
     recommendedKeys: new Set<string>(),
     authors: new Set<string>(),
     seriesKeys: new Set<string>(),
+    titles: new Set<string>(),
+    titleRoots: new Set<string>(),
     rejectedIds: new Set<string>(),
     rejectedKeys: new Set<string>(),
   };
@@ -551,11 +555,12 @@ function uniqueMemoryValues(...groups: Array<Array<string | undefined> | undefin
   return Array.from(out);
 }
 
-function historyIdentityFromDoc(doc: OLDoc | undefined): { id?: string; key?: string; authors: string[]; seriesKey?: string } {
+function historyIdentityFromDoc(doc: OLDoc | undefined): { id?: string; key?: string; title?: string; authors: string[]; seriesKey?: string } {
   if (!doc) return { authors: [] };
 
   const normalizedKey = normalizeMemoryToken(doc.key);
   const normalizedId = normalizeMemoryToken(docId(doc));
+  const title = normalizeMemoryToken(doc.title);
   const authors = Array.isArray(doc.author_name)
     ? doc.author_name.map((name) => normalizeMemoryToken(name)).filter(Boolean)
     : [];
@@ -564,6 +569,7 @@ function historyIdentityFromDoc(doc: OLDoc | undefined): { id?: string; key?: st
   return {
     id: normalizedId || undefined,
     key: normalizedKey || undefined,
+    title: title || undefined,
     authors,
     seriesKey: seriesKey || undefined,
   };
@@ -1325,17 +1331,26 @@ export default function SwipeDeckScreen(props: Props) {
         const identity = historyIdentityFromDoc(item.doc);
         if (identity.id) history.recommendedIds.add(identity.id);
         if (identity.key) history.recommendedKeys.add(identity.key);
+        if (identity.title) history.titles.add(identity.title);
         for (const author of identity.authors) history.authors.add(author);
-        if (identity.seriesKey) history.seriesKeys.add(identity.seriesKey);
+        if (identity.seriesKey) {
+          history.seriesKeys.add(identity.seriesKey);
+          history.titleRoots.add(identity.seriesKey);
+        }
         continue;
       }
 
       const itemId = normalizeMemoryToken(fallbackId(item.book));
       if (itemId) history.recommendedIds.add(itemId);
+      const title = normalizeMemoryToken(item.book?.title);
+      if (title) history.titles.add(title);
       const author = normalizeMemoryToken(item.book?.author);
       if (author) history.authors.add(author);
       const seriesKey = deriveSeriesKeyFromTitle(item.book?.title);
-      if (seriesKey) history.seriesKeys.add(seriesKey);
+      if (seriesKey) {
+        history.seriesKeys.add(seriesKey);
+        history.titleRoots.add(seriesKey);
+      }
     }
   }
 
@@ -1714,6 +1729,9 @@ function handleLeft() {
           facets: fetch?.facets,
         }))
       : [];
+    const history = getRecommendationHistoryBucket(inputWithHistory.deckKey || deckKey);
+    const crossSessionRepeatedTitles = normalizedItems.map((item) => normalizeMemoryToken(item.kind === "open_library" ? item.doc.title : item.book.title)).filter((title) => title && history.titles.has(title));
+    const crossSessionRepeatedRoots = normalizedItems.map((item) => deriveSeriesKeyFromTitle(item.kind === "open_library" ? item.doc.title : item.book.title)).filter((root) => root && history.titleRoots.has(root));
     const sourceStats = Object.fromEntries(diagnostics.sources.map((source) => [
       source.source,
       {
@@ -1788,6 +1806,11 @@ function handleLeft() {
       openLibrarySeriesSuppressedTitles: openLibrarySourceDiagnostics?.seriesSuppressedTitles || [],
       openLibrarySourceStatus: openLibrarySourceDiagnostics?.status || "",
       openLibrarySourceQueries: openLibrarySourceDiagnostics?.queries || [],
+      openLibraryQueryRouting: openLibrarySourceDiagnostics?.openLibraryQueryRouting || {},
+      openLibraryCrossSessionRepeatedTitles: Array.from(new Set(crossSessionRepeatedTitles)),
+      openLibraryCrossSessionRepeatedRoots: Array.from(new Set(crossSessionRepeatedRoots)),
+      openLibraryRecentHistoryTitleCount: history.titles.size,
+      openLibraryRecentHistoryRootCount: history.titleRoots.size,
       sourceSkippedReason: diagnostics.sources.map((source) => source.skippedReason || source.failedReason || "").filter(Boolean),
       routerResultTracePresent: true,
       debugRouterVersion: EXPECTED_ROUTER_FINGERPRINT,
@@ -3096,6 +3119,9 @@ function handleLeft() {
         `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
         `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
         `openLibraryTopUp: ${JSON.stringify({ ran: Boolean((lastRecommendationResult as any)?.openLibraryTopUpRan), target: (lastRecommendationResult as any)?.openLibraryTopUpTarget, exhausted: Boolean((lastRecommendationResult as any)?.openLibraryFallbackQueriesExhausted), usableRowsAfterFiltering: (lastRecommendationResult as any)?.openLibraryUsableRowsAfterFiltering })}`,
+        `openLibraryQueryRouting: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryQueryRouting || {})}`,
+        `openLibraryCrossSessionRepeatedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryCrossSessionRepeatedTitles || [])}`,
+        `openLibraryCrossSessionRepeatedRoots: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryCrossSessionRepeatedRoots || [])}`,
         `openLibraryArtifactSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryArtifactSuppressedTitles || [])}`,
         `openLibrarySeriesSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibrarySeriesSuppressedTitles || [])}`,
         `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
@@ -3368,11 +3394,14 @@ function handleLeft() {
           `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
           `searchPlan:${JSON.stringify(v2DiagnosticsForReport.searchPlan || {})}`,
           `stages:${(v2DiagnosticsForReport.stages || []).map((stage: any) => `${stage.stage}:${JSON.stringify(stage.counts || {})}`).join(" -> ")}`,
-          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, rawApiResultCount: source.rawApiResultCount, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, openLibraryTopUpRan: source.openLibraryTopUpRan, openLibraryTopUpTarget: source.openLibraryTopUpTarget, openLibraryFallbackQueriesExhausted: source.openLibraryFallbackQueriesExhausted, usableRowsAfterFiltering: source.usableRowsAfterFiltering, artifactSuppressedTitles: source.artifactSuppressedTitles, seriesSuppressedTitles: source.seriesSuppressedTitles, emptyReason: source.emptyReason, openLibraryProbeRan: source.openLibraryProbeRan, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, rawApiResultCount: source.rawApiResultCount, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, openLibraryTopUpRan: source.openLibraryTopUpRan, openLibraryTopUpTarget: source.openLibraryTopUpTarget, openLibraryFallbackQueriesExhausted: source.openLibraryFallbackQueriesExhausted, usableRowsAfterFiltering: source.usableRowsAfterFiltering, openLibraryQueryRouting: source.openLibraryQueryRouting, artifactSuppressedTitles: source.artifactSuppressedTitles, seriesSuppressedTitles: source.seriesSuppressedTitles, emptyReason: source.emptyReason, openLibraryProbeRan: source.openLibraryProbeRan, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
           `openLibrarySourceFetchDiagnostics:${JSON.stringify(lastResultForExport?.openLibrarySourceFetchDiagnostics || openLibraryDiagnosticsForExport.fetches || [])}`,
           `openLibraryProbeRan:${String(Boolean(lastResultForExport?.openLibraryProbeRan || openLibraryDiagnosticsForExport.openLibraryProbeRan))}`,
           `openLibraryEmptyReason:${openLibraryEmptyReasonExport}`,
           `openLibraryTopUp:${JSON.stringify(openLibraryTopUpExport)}`,
+          `openLibraryQueryRouting:${JSON.stringify(lastResultForExport?.openLibraryQueryRouting || openLibraryDiagnosticsForExport.openLibraryQueryRouting || {})}`,
+          `openLibraryCrossSessionRepeatedTitles:${JSON.stringify(lastResultForExport?.openLibraryCrossSessionRepeatedTitles || [])}`,
+          `openLibraryCrossSessionRepeatedRoots:${JSON.stringify(lastResultForExport?.openLibraryCrossSessionRepeatedRoots || [])}`,
           `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
           `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
           `rejectedReasons:${JSON.stringify(v2DiagnosticsForReport.rejectedReasons || {})}`,
@@ -3873,7 +3902,7 @@ function handleLeft() {
       "RECOMMENDATION MEMORY",
       (() => {
         const history = getRecommendationHistoryBucket(deckKey);
-        return `shownIds:${history.recommendedIds.size} • shownKeys:${history.recommendedKeys.size} • authors:${history.authors.size} • series:${history.seriesKeys.size} • rejected:${history.rejectedIds.size}`;
+        return `shownIds:${history.recommendedIds.size} • shownKeys:${history.recommendedKeys.size} • titles:${history.titles.size} • roots:${history.titleRoots.size} • authors:${history.authors.size} • series:${history.seriesKeys.size} • rejected:${history.rejectedIds.size}`;
       })(),
     ].join("\n");
 

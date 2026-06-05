@@ -119,6 +119,7 @@ export interface SourceDiagnosticV2 {
   openLibraryTopUpTarget?: number;
   openLibraryFallbackQueriesExhausted?: boolean;
   usableRowsAfterFiltering?: number;
+  openLibraryQueryRouting?: Record<string, unknown>;
   fetches?: SourceFetchDiagnosticV2[];
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];

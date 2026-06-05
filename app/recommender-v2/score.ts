@@ -55,9 +55,24 @@ function ageSuitabilityScore(candidate: NormalizedCandidate, profile: TasteProfi
   return -0.5;
 }
 
+function meaningfulTokens(value: string): string[] {
+  return normalized(value).split(" ").filter((token) => token.length >= 4 && !/^(young|adult|book|novel|story|fiction)$/.test(token));
+}
+
+function querySpecificityScore(candidate: NormalizedCandidate): number {
+  const query = String(candidate.diagnostics?.queryText || "");
+  const queryTokens = meaningfulTokens(query);
+  if (!queryTokens.length) return 0;
+  const itemTokens = new Set(meaningfulTokens([candidate.title, candidate.subtitle, candidate.description, ...candidate.genres, ...candidate.themes].join(" ")));
+  const matches = queryTokens.filter((token) => itemTokens.has(token));
+  let score = Math.min(1.4, matches.length * 0.35);
+  if (/^(young adult fantasy|fantasy)$/i.test(query.trim()) && matches.length <= 1) score -= 0.6;
+  return score;
+}
+
 function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
   const text = candidateText(candidate);
-  let score = 0;
+  let score = querySpecificityScore(candidate);
   if (candidate.creators.length > 0) score += 0.4;
   if (candidate.sourceUrl) score += 0.2;
   if (candidate.publicationYear && candidate.publicationYear >= 1950) score += 0.25;
