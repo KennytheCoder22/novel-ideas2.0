@@ -156,6 +156,11 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     for (const row of deferred) {
       const titleKey = normalized(row.candidate.title);
       if (seenTitles.has(titleKey)) continue;
+      if (row.reason === "recurring_openlibrary_cluster_deferred") {
+        row.candidate.rejectedReasons.push("underfill_blocked_recurring_openlibrary_cluster");
+        rejectedReasons.underfill_blocked_recurring_openlibrary_cluster = Number(rejectedReasons.underfill_blocked_recurring_openlibrary_cluster || 0) + 1;
+        continue;
+      }
       row.candidate.rejectedReasons.push(`underfill_relaxed_diversity:${row.reason}`);
       rejectedReasons.underfill_relaxed_diversity = Number(rejectedReasons.underfill_relaxed_diversity || 0) + 1;
       seenTitles.add(titleKey);

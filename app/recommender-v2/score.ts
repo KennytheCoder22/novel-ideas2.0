@@ -133,11 +133,14 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (metadataCount >= 12) score += 0.2;
   if (metadataCount >= 16) score += 0.15;
   if (metadataCount >= 10 && strongTeenMetadata && strongGenreMetadata) score += 0.45;
+  if (metadataCount >= 14 && candidate.creators.length > 0 && strongGenreMetadata) score += 0.3;
   if (metadataCount <= 2) score -= 1.25;
   if (metadataCount <= 5 && !strongGenreMetadata) score -= 0.8;
+  if (metadataCount <= 6 && !strongTeenMetadata) score -= 0.45;
   if (genreMatches.length > 0) score += 0.7 + Math.min(0.35, genreMatches.length * 0.08);
   if (positiveMatches.length > 0) score += 0.4 + Math.min(0.3, positiveMatches.length * 0.06);
   if (strongTeenMetadata) score += 0.25;
+  if (normalizedTitle.split(" ").length >= 3 && strongGenreMetadata) score += 0.15;
   if (normalizedTitle.split(" ").length <= 2 && !strongTeenMetadata && !strongGenreMetadata) score -= 0.7;
   if (/^(deception|departures|the departures|end is here|the end is here|refigurations of freedom|tell freedom i said hello|facility|fang)$/.test(normalizedTitle) && metadataCount < 12) score -= 2.8;
   if (profile.ageBand === "teens" && /\b(my secret garden|sexual fantasies|women\s+sexual fantasies)\b/.test(text)) score -= 8;
