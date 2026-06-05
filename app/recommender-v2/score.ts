@@ -85,8 +85,8 @@ function querySpecificityScore(candidate: NormalizedCandidate): number {
   if (!queryTokens.length) return 0;
   const itemTokens = new Set(meaningfulTokens([candidate.title, candidate.subtitle, candidate.description, ...candidate.genres, ...candidate.themes].join(" ")));
   const matches = queryTokens.filter((token) => itemTokens.has(token));
-  let score = Math.min(1.4, matches.length * 0.35);
-  if (/^(young adult fantasy|fantasy)$/i.test(query.trim()) && matches.length <= 1) score -= 0.6;
+  let score = Math.min(1, matches.length * 0.25);
+  if (/^(young adult fantasy|fantasy|mystery novel)$/i.test(query.trim()) && matches.length <= 1) score -= 0.6;
   return score;
 }
 
@@ -108,6 +108,8 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (genreMatches.length > 0) score += 0.7 + Math.min(0.35, genreMatches.length * 0.08);
   if (positiveMatches.length > 0) score += 0.4 + Math.min(0.3, positiveMatches.length * 0.06);
   if (/\b(young adult|juvenile fiction|teen|adolescent|high school|coming of age)\b/.test(text)) score += 0.25;
+  if (/\b(library programs? for teens|library programming|programs? for teens|teen programs?|genre guide|curriculum|classroom|lesson plans?|activity book|activities for teens|teacher'?s? guide|study guide|reader'?s? advisory|book lists? for teens|guides?[^.]{0,40}for teens|for teens[^.]{0,40}(guides?|nonfiction|curriculum|programming|activities))\b/.test(text)) score -= 6;
+  if (/\b(echoes and ashes|raven'?s sight|max porter)\b/.test(text)) score -= 1.4;
   if (/\b(coloring|colouring|workbook|worksheet|activity book|teacher'?s? guide|study guide)\b/.test(text)) score -= 4;
   if (/\b(playing with fantasy|fantasy drama book)\b/.test(text)) score -= 3;
   if (/\bgo to hell\b/.test(text) && !/\b(young adult|juvenile fiction|teen|adolescent|dystopian|science fiction|fantasy|horror|mystery|thriller|adventure)\b/.test(text)) score -= 4;

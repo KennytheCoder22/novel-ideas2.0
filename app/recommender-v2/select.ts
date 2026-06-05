@@ -26,6 +26,13 @@ function primaryAuthor(candidate: ScoredCandidate): string {
   return normalized(candidate.creators[0] || "");
 }
 
+function recurringOpenLibraryClusterKey(candidate: ScoredCandidate): string {
+  if (candidate.source !== "openLibrary") return "";
+  const text = normalized([candidate.title, candidate.subtitle, candidate.creators.join(" ")].filter(Boolean).join(" "));
+  const known = text.match(/\b(max porter|echoes and ashes|raven s sight|ravens sight)\b/);
+  return known ? known[1] : "";
+}
+
 function isContemporaryLowScoreAcceptable(candidate: ScoredCandidate, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
   const text = normalized([candidate.diagnostics?.queryFamily, candidate.diagnostics?.queryText, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
@@ -78,6 +85,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const seenTitles = new Set<string>();
   const seenAuthors = new Set<string>();
   const seenSeries = new Set<string>();
+  const seenRecurringOpenLibraryClusters = new Set<string>();
 
   const rankedCandidates = [...candidates].sort((a, b) => b.score - a.score);
 
@@ -110,9 +118,15 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       deferred.push({ candidate, reason: "same_series_or_root_deferred" });
       continue;
     }
+    const recurringClusterKey = recurringOpenLibraryClusterKey(candidate);
+    if (recurringClusterKey && (selected.length > 0 || seenRecurringOpenLibraryClusters.has(recurringClusterKey))) {
+      deferred.push({ candidate, reason: "recurring_openlibrary_cluster_deferred" });
+      continue;
+    }
     seenTitles.add(titleKey);
     if (authorKey) seenAuthors.add(authorKey);
     if (rootKey) seenSeries.add(rootKey);
+    if (recurringClusterKey) seenRecurringOpenLibraryClusters.add(recurringClusterKey);
     selected.push(candidate);
     if (selected.length >= limit) break;
   }
@@ -123,12 +137,14 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       const titleKey = normalized(candidate.title);
       const authorKey = primaryAuthor(candidate);
       const rootKey = seriesKey(candidate);
-      if (seenTitles.has(titleKey) || (authorKey && seenAuthors.has(authorKey)) || (rootKey && seenSeries.has(rootKey))) continue;
+      const recurringClusterKey = recurringOpenLibraryClusterKey(candidate);
+      if (seenTitles.has(titleKey) || (authorKey && seenAuthors.has(authorKey)) || (rootKey && seenSeries.has(rootKey)) || (recurringClusterKey && seenRecurringOpenLibraryClusters.has(recurringClusterKey))) continue;
       candidate.rejectedReasons.push("accepted_low_score_rescue_source_quality_or_query_alignment");
       rejectedReasons.accepted_low_score_rescue = Number(rejectedReasons.accepted_low_score_rescue || 0) + 1;
       seenTitles.add(titleKey);
       if (authorKey) seenAuthors.add(authorKey);
       if (rootKey) seenSeries.add(rootKey);
+      if (recurringClusterKey) seenRecurringOpenLibraryClusters.add(recurringClusterKey);
       selected.push(candidate);
       if (selected.length >= Math.min(5, Math.max(3, lowScoreRescue.length))) break;
     }
