@@ -1,13 +1,7 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
+import { DEFAULT_OPEN_LIBRARY_PROFILE, openLibraryArtifactReasonLabels, openLibraryProfileForAgeBand, type OpenLibraryAgeProfile } from "./openLibraryProfiles";
 
-const OPEN_LIBRARY_QUERY_LIMIT = 4;
-const OPEN_LIBRARY_DOC_LIMIT = 10;
-const OPEN_LIBRARY_MIN_CLEAN_DOCS = 6;
-const OPEN_LIBRARY_DOCS_PER_QUERY = 8;
-const OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY = "fantasy";
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
-const OPEN_LIBRARY_PER_QUERY_TIMEOUT_MS = 2_000;
-const OPEN_LIBRARY_PROBE_TIMEOUT_MS = 1_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -145,8 +139,8 @@ function combineOpenLibraryQueryParts(primary: string, modifier?: string): strin
   return finalOpenLibraryQueryDedupe(uniqueParts.join(" ").trim());
 }
 
-function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): OpenLibraryQueryPlan[] {
-  const plannedIntents = plan.intents.length ? plan.intents : [{ query: OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, facets: [], id: "open-library-fallback", priority: 0, rationale: [] }];
+function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
+  const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: "open-library-fallback", priority: 0, rationale: [] }];
   const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ""));
   const genres = uniqueStrings(profile.genreFamily.map((row) => cleanOpenLibraryQueryPart(row.value)).filter(isGenreLikeOpenLibraryPart), 3);
   const plannedGenreFallbacks = uniqueStrings(plannedIntents
@@ -312,7 +306,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
   const genericQueries = [
     combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
     combineOpenLibraryQueryParts(genreTerms[1] || "", genreTerms[2]),
-    genreTerms[0] || fallbackTerms[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
+    genreTerms[0] || fallbackTerms[0] || ageProfile.diagnosticProbeQuery,
   ];
   const queryCandidates = wantsContemporaryRomanceFantasy || wantsMysteryHeist || wantsFantasyAdventureSurvival || wantsParanormalHorrorRomance || wantsDystopianHistoricalThriller
     ? genreSpecificQueries
@@ -324,7 +318,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
 
   const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
-  const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT);
+  const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), ageProfile.queryLimit);
   const specificQueryCount = uniqueQueries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/.test(query)).length;
   const broadFallbackUsed = uniqueQueries.some((query) => /^(young adult fantasy|fantasy|mystery novel)$/.test(query));
   const routingReason = wantsContemporaryRomanceFantasy
@@ -362,6 +356,30 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
     routingReason,
     routingDominance,
   }));
+}
+
+function buildGenericOpenLibraryQueryPlans(plan: SourcePlan, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
+  const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: `${ageProfile.key}-open-library-fallback`, priority: 0, rationale: [] }];
+  const rawQueries = plannedIntents.flatMap((intent) => [intent.query, ...(intent.facets || [])]);
+  const uniqueQueries = uniqueStrings(rawQueries
+    .map(cleanOpenLibraryQueryPart)
+    .filter(isUsefulOpenLibraryQueryPart)
+    .map(finalOpenLibraryQueryDedupe), ageProfile.queryLimit);
+  const queries = uniqueQueries.length ? uniqueQueries : [ageProfile.diagnosticProbeQuery];
+  return queries.map((query, index) => ({
+    query,
+    originalPlannedQuery: finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ageProfile.diagnosticProbeQuery)),
+    queryCascadeIndex: index,
+    queryFamily: queryFamilyForOpenLibraryQuery(query),
+    facets: uniqueStrings((plannedIntents[index]?.facets || []).map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+    routingReason: `${ageProfile.key}_openlibrary_profile_pending`,
+    routingDominance: { ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline },
+  }));
+}
+
+function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
+  if (ageProfile.key === "teen") return buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile);
+  return buildGenericOpenLibraryQueryPlans(plan, ageProfile);
 }
 
 function openLibraryRequest(query: string, limit: number): { url: string; fetchPath: "direct" | "proxy" } {
@@ -436,7 +454,7 @@ function emptyDiagnostics(plan: SourcePlan, status: SourceDiagnosticV2["status"]
   };
 }
 
-async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = OPEN_LIBRARY_PER_QUERY_TIMEOUT_MS): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
   const query = queryPlan.query;
   const { url, fetchPath } = openLibraryRequest(query, limit);
   const fetchStartedAt = nowIso();
@@ -713,7 +731,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       };
     }
 
-    const queryPlans = buildOpenLibraryQueryPlans(plan, context.profile);
+    const ageProfile = openLibraryProfileForAgeBand(context.profile.ageBand);
+    const artifactReasonLabels = openLibraryArtifactReasonLabels(ageProfile);
+    const queryPlans = buildOpenLibraryQueryPlans(plan, context.profile, ageProfile);
     const queries = queryPlans.map((queryPlan) => queryPlan.query);
     const openLibraryQueryRouting = {
       reason: queryPlans[0]?.routingReason || "unknown",
@@ -730,6 +750,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         diagnostics: emptyDiagnostics(plan, "skipped", startedAt, {
           skippedReason: "no_search_intents",
           attempted: false,
+          openLibraryAgeProfile: ageProfile.key,
+          openLibraryProfileLabel: ageProfile.behaviorLabel,
         }),
       };
     }
@@ -761,12 +783,14 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             failedReason: "openlibrary_aborted_before_query_start",
             openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
             openLibraryQueryRouting,
+            openLibraryAgeProfile: ageProfile.key,
+            openLibraryProfileLabel: ageProfile.behaviorLabel,
             fetches,
           }),
         };
       }
 
-      const { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, OPEN_LIBRARY_DOCS_PER_QUERY, context.signal);
+      const { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal);
       fetches.push(diagnostic);
       if (diagnostic.timedOut) {
         dropReasons.query_timeout = Number(dropReasons.query_timeout || 0) + 1;
@@ -791,7 +815,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (!quality.keep) {
           const reason = quality.reason || "quality_filter";
           dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
-          if (reason === "artifact_title" || reason === "literary_analysis_artifact" || reason === "programming_guide_artifact" || reason === "survival_guide_artifact" || reason === "adult_dark_romance_artifact" || reason === "literal_title_match_artifact" || reason === "author_name_title_drift" || reason === "weak_odd_title_teen_fit" || reason === "teen_inappropriate_content") artifactSuppressedTitles.push(title);
+          if (artifactReasonLabels.has(reason)) artifactSuppressedTitles.push(title);
           continue;
         }
         const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
@@ -808,9 +832,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (seriesKey) acceptedSeriesKeys.add(seriesKey);
         acceptedDocKeys.add(docKey);
         rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
-        if (rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
+        if (rawItems.length >= ageProfile.docLimit) break;
       }
-      if (rawItems.length >= OPEN_LIBRARY_MIN_CLEAN_DOCS || rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
+      if (rawItems.length >= ageProfile.minCleanDocs || rawItems.length >= ageProfile.docLimit) break;
       if (rawItems.length > 0) openLibraryTopUpRan = true;
     }
 
@@ -820,9 +844,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
     if (!rawItems.length && !context.signal?.aborted) {
-      const probeQuery = queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "mystery novel" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY : "young adult fantasy";
+      const probeQuery = queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "mystery novel" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
       const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
-      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, OPEN_LIBRARY_DOCS_PER_QUERY, context.signal, true, OPEN_LIBRARY_PROBE_TIMEOUT_MS);
+      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs);
       fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (probeDocs.length ? "emergency_fallback_probe_returned_docs" : undefined) });
       if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
       if (probeDocs.length) {
@@ -844,7 +868,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           }
           rawItems.push(normalizeOpenLibraryDoc(doc, probePlan));
           dropReasons.emergency_fallback_accepted = Number(dropReasons.emergency_fallback_accepted || 0) + 1;
-          if (rawItems.length >= Math.min(OPEN_LIBRARY_MIN_CLEAN_DOCS, 4)) break;
+          if (rawItems.length >= Math.min(ageProfile.minCleanDocs, 4)) break;
         }
       }
     }
@@ -866,10 +890,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
           dropReasons,
           openLibraryTopUpRan,
-          openLibraryTopUpTarget: OPEN_LIBRARY_MIN_CLEAN_DOCS,
-          openLibraryFallbackQueriesExhausted: rawItems.length < OPEN_LIBRARY_MIN_CLEAN_DOCS && fetches.filter((fetch) => !fetch.diagnosticOnly).length >= queryPlans.length,
+          openLibraryTopUpTarget: ageProfile.minCleanDocs,
+          openLibraryFallbackQueriesExhausted: rawItems.length < ageProfile.minCleanDocs && fetches.filter((fetch) => !fetch.diagnosticOnly).length >= queryPlans.length,
           usableRowsAfterFiltering: rawItems.length,
           openLibraryQueryRouting,
+          openLibraryAgeProfile: ageProfile.key,
+          openLibraryProfileLabel: ageProfile.behaviorLabel,
           fetches,
         }),
       };
@@ -905,10 +931,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         droppedBeforeDocCount: Object.values(dropReasons).reduce((sum, count) => sum + count, 0),
         dropReasons,
         openLibraryTopUpRan,
-        openLibraryTopUpTarget: OPEN_LIBRARY_MIN_CLEAN_DOCS,
-        openLibraryFallbackQueriesExhausted: rawItems.length < OPEN_LIBRARY_MIN_CLEAN_DOCS && mainFetches.length >= queryPlans.length,
+        openLibraryTopUpTarget: ageProfile.minCleanDocs,
+        openLibraryFallbackQueriesExhausted: rawItems.length < ageProfile.minCleanDocs && mainFetches.length >= queryPlans.length,
         usableRowsAfterFiltering: rawItems.length,
         openLibraryQueryRouting,
+        openLibraryAgeProfile: ageProfile.key,
+        openLibraryProfileLabel: ageProfile.behaviorLabel,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),

@@ -120,6 +120,8 @@ export interface SourceDiagnosticV2 {
   openLibraryFallbackQueriesExhausted?: boolean;
   usableRowsAfterFiltering?: number;
   openLibraryQueryRouting?: Record<string, unknown>;
+  openLibraryAgeProfile?: string;
+  openLibraryProfileLabel?: string;
   fetches?: SourceFetchDiagnosticV2[];
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];
