@@ -105,5 +105,13 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     if (!selected.includes(row.candidate)) recordRejected(row.candidate, rejectedReasons, row.reason);
   }
 
+  const openLibraryOnlySlate = selected.length > 0 && selected.every((candidate) => candidate.source === "openLibrary");
+  const meaningfulQualityCount = selected.filter((candidate) => candidate.score >= 3.25 && Number(candidate.scoreBreakdown?.sourceQualityRelevance || 0) >= 0.75).length;
+  if (openLibraryOnlySlate && selected.length > 5 && meaningfulQualityCount < 6) {
+    const removed = selected.splice(5);
+    rejectedReasons.openlibrary_quality_cap_weak_slate = removed.length;
+    for (const candidate of removed) recordRejected(candidate, rejectedReasons, "openlibrary_quality_cap_weak_slate");
+  }
+
   return { selected, rejectedReasons };
 }

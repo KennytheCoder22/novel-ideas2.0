@@ -72,16 +72,25 @@ function querySpecificityScore(candidate: NormalizedCandidate): number {
 
 function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
   const text = candidateText(candidate);
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const metadataCount = candidate.genres.length + candidate.themes.length;
   let score = querySpecificityScore(candidate);
   if (candidate.creators.length > 0) score += 0.4;
+  else score -= 1;
   if (candidate.sourceUrl) score += 0.2;
+  if (candidate.sourceId) score += 0.2;
   if (candidate.publicationYear && candidate.publicationYear >= 1950) score += 0.25;
+  if (raw.cover_i) score += 0.15;
+  if (metadataCount >= 8 && candidate.creators.length > 0 && candidate.sourceId) score += 0.75;
+  if (metadataCount <= 2) score -= 1.25;
   if (genreMatches.length > 0) score += 0.7;
   if (positiveMatches.length > 0) score += 0.4;
   if (/\b(coloring|colouring|workbook|worksheet|activity book|teacher'?s? guide|study guide)\b/.test(text)) score -= 4;
+  if (/\b(go to hell|playing with fantasy|fantasy drama book)\b/.test(text)) score -= 3;
   if (/\bdrunk\b/.test(text) && genreMatches.length === 0) score -= 2.5;
   if (profile.ageBand === "teens" && /\b(demoness|vixen|seductress|sensual|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) score -= 2.5;
   if (/^[A-Z0-9\s:;,'!?.-]{12,}$/.test(candidate.title) && candidate.title !== candidate.title.toLowerCase()) score -= 1.25;
+  if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(candidate.title) && metadataCount <= 2) score -= 1.5;
   if (genreMatches.length === 0 && positiveMatches.length === 0) score -= 1.5;
   return score;
 }
