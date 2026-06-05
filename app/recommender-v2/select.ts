@@ -26,9 +26,15 @@ function primaryAuthor(candidate: ScoredCandidate): string {
   return normalized(candidate.creators[0] || "");
 }
 
+function isContemporaryLowScoreAcceptable(candidate: ScoredCandidate, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  const text = normalized([candidate.diagnostics?.queryFamily, candidate.diagnostics?.queryText, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  return candidate.score > -1.5 && /\b(contemporary|realistic|coming of age|teen realistic fiction|school|drama)\b/.test(text);
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
-  if (candidate.score <= 0) return "non_positive_score";
+  if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
   if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand && profile.ageBand !== "adult") return "maturity_band_mismatch";
   return null;
 }
@@ -51,6 +57,10 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     if (reason) {
       recordRejected(candidate, rejectedReasons, reason);
       continue;
+    }
+    if (candidate.score <= 0) {
+      candidate.rejectedReasons.push("accepted_despite_low_score");
+      rejectedReasons.accepted_despite_low_score = Number(rejectedReasons.accepted_despite_low_score || 0) + 1;
     }
     const titleKey = normalized(candidate.title);
     if (seenTitles.has(titleKey)) {

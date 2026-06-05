@@ -43,6 +43,7 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           queryCascadeIndex: row.queryCascadeIndex,
           queryFamily: row.queryFamily,
           facets: row.facets,
+          emergencyFallback: row.emergencyFallback,
           authors: row.authors || row.author_name || row.creators,
         },
       });

@@ -16,6 +16,7 @@ type OpenLibraryQueryPlan = {
   queryFamily: string;
   facets: string[];
   routingReason?: string;
+  emergencyFallback?: boolean;
 };
 
 const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
@@ -170,9 +171,11 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
   const hasClearContemporarySignal = /\b(contemporary|realistic|coming of age)\b/.test(profileText);
   const wantsContemporaryDrama = hasClearContemporarySignal && (!hasStrongGenreSpecific || contemporaryWeight > speculativeWeight * 1.35);
   const genreSpecificQueries = [
-    hasDystopian && hasMystery ? "dystopian mystery" : "",
-    hasDystopian ? "dystopian fiction" : "",
     hasDystopian ? "young adult dystopian" : "",
+    hasDystopian ? "dystopian fiction" : "",
+    hasDystopian ? "dystopian novel" : "",
+    hasDystopian || /\bsurvival\b/.test(facetText) ? "survival fiction" : "",
+    hasDystopian && hasMystery ? "dystopian mystery" : "",
     hasHistorical && hasDrama ? "historical drama novel" : "",
     hasHistorical ? "teen historical fiction" : "",
     hasHorror ? "young adult horror" : "",
@@ -184,7 +187,8 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
     hasFantasy && hasDystopian ? "fantasy dystopian" : "",
     hasSpeculative && hasAdventure ? "dystopian adventure" : "",
     hasFantasy && hasAdventure ? "fantasy adventure" : "",
-    hasFantasy && hasDrama ? "fantasy drama" : "",
+    hasFantasy && hasDrama ? "fantasy coming of age" : "",
+    hasFantasy && hasAdventure ? "magical adventure" : "",
     hasMystery && hasAdventure ? "mystery adventure" : "",
     hasMystery ? "mystery novel" : "",
     combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
@@ -208,7 +212,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
       ? contemporaryQueries
       : genericQueries;
 
-  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|coming of age novel|young adult fantasy|young adult dystopian|mystery novel|dystopian fiction|historical drama novel|teen historical fiction|young adult horror)$/;
+  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|coming of age novel|young adult fantasy|young adult dystopian|mystery novel|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT);
   const specificQueryCount = uniqueQueries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/.test(query)).length;
@@ -281,6 +285,7 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
     queryCascadeIndex: queryPlan.queryCascadeIndex,
     queryFamily: queryPlan.queryFamily,
     facets: queryPlan.facets,
+    emergencyFallback: Boolean(queryPlan.emergencyFallback),
     rawOpenLibraryDoc: doc,
   };
 }
@@ -424,6 +429,21 @@ function isLiteraryAnalysisArtifactDoc(doc: any, query: string): boolean {
   return LITERARY_ANALYSIS_ARTIFACT_HINT.test(openLibraryDocText(doc));
 }
 
+function isLiteralTitleMatchArtifactDoc(doc: any, query: string): boolean {
+  const title = String(doc?.title || "").toLowerCase();
+  if (/\b(fantasy drama book|playing with fantasy)\b/.test(title)) return true;
+  const queryTokens = cleanOpenLibraryQueryPart(query).split(" ").filter((token) => token.length >= 5 && !/^(young|adult|fiction|novel|story)$/.test(token));
+  if (!queryTokens.length) return false;
+  const titleMatches = queryTokens.filter((token) => title.includes(token)).length;
+  if (titleMatches < Math.min(2, queryTokens.length)) return false;
+  const subjects = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+  ].join(" ").toLowerCase();
+  const hasMetadataEvidence = /young adult|juvenile|teen|adolescent|dystopian|horror|mystery|thriller|paranormal|fantasy|adventure|historical fiction|coming of age/.test(subjects);
+  return !hasMetadataEvidence;
+}
+
 function openLibrarySeriesKey(doc: any): string {
   const title = String(doc?.title || "").toLowerCase();
   const hasSeriesMarker = /\b(volume|vol|book|chapter|episode|part)\s*[:.#-]?\s*\d+\b|\b\d+\b/.test(title);
@@ -471,6 +491,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isRelevanceDriftOpenLibraryDoc(doc, query)) return { keep: false, reason: "relevance_drift" };
   if (isOpenLibraryArtifactDoc(doc, query)) return { keep: false, reason: "artifact_title" };
   if (isLiteraryAnalysisArtifactDoc(doc, query)) return { keep: false, reason: "literary_analysis_artifact" };
+  if (isLiteralTitleMatchArtifactDoc(doc, query)) return { keep: false, reason: "literal_title_match_artifact" };
   if (isTeenInappropriateOpenLibraryDoc(doc, profile)) return { keep: false, reason: "teen_inappropriate_content" };
   if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
@@ -570,7 +591,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (!quality.keep) {
           const reason = quality.reason || "quality_filter";
           dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
-          if (reason === "artifact_title" || reason === "literary_analysis_artifact" || reason === "teen_inappropriate_content") artifactSuppressedTitles.push(title);
+          if (reason === "artifact_title" || reason === "literary_analysis_artifact" || reason === "literal_title_match_artifact" || reason === "teen_inappropriate_content") artifactSuppressedTitles.push(title);
           continue;
         }
         const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
@@ -594,10 +615,29 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
     if (!rawItems.length && !context.signal?.aborted) {
-      const probeQuery = queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "mystery novel" : "young adult fantasy";
-      const { diagnostic } = await fetchOpenLibraryDocs({ query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "diagnostic_probe", facets: [] }, 1, context.signal, true, OPEN_LIBRARY_PROBE_TIMEOUT_MS);
-      fetches.push(diagnostic);
+      const probeQuery = queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "mystery novel" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY : "young adult fantasy";
+      const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
+      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, OPEN_LIBRARY_DOCS_PER_QUERY, context.signal, true, OPEN_LIBRARY_PROBE_TIMEOUT_MS);
+      fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (probeDocs.length ? "emergency_fallback_probe_returned_docs" : undefined) });
       if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
+      if (probeDocs.length) {
+        dropReasons.emergency_fallback_probe_docs = Number(dropReasons.emergency_fallback_probe_docs || 0) + probeDocs.length;
+        for (const doc of probeDocs) {
+          const title = String(doc?.title || "").trim();
+          if (title) rawTitles.push(title);
+          if (!title) continue;
+          const quality = shouldKeepOpenLibraryDoc(doc, probeQuery, context.profile);
+          if (!quality.keep) {
+            const reason = `emergency_fallback_${quality.reason || "quality_filter"}`;
+            dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+            if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+            continue;
+          }
+          rawItems.push(normalizeOpenLibraryDoc(doc, probePlan));
+          dropReasons.emergency_fallback_accepted = Number(dropReasons.emergency_fallback_accepted || 0) + 1;
+          if (rawItems.length >= Math.min(OPEN_LIBRARY_MIN_CLEAN_DOCS, 4)) break;
+        }
+      }
     }
 
     if (context.signal?.aborted) {
