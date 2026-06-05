@@ -1,12 +1,12 @@
 import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, SourcePlan, SourceResult, TasteProfile } from "../types";
 
-const OPEN_LIBRARY_QUERY_LIMIT = 3;
+const OPEN_LIBRARY_QUERY_LIMIT = 4;
 const OPEN_LIBRARY_DOC_LIMIT = 10;
 const OPEN_LIBRARY_MIN_CLEAN_DOCS = 6;
 const OPEN_LIBRARY_DOCS_PER_QUERY = 8;
 const OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY = "fantasy";
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
-const OPEN_LIBRARY_PER_QUERY_TIMEOUT_MS = 2_000;
+const OPEN_LIBRARY_PER_QUERY_TIMEOUT_MS = 1_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -104,15 +104,20 @@ function isGenreLikeOpenLibraryPart(value: string): boolean {
 
 function queryFamilyForOpenLibraryQuery(query: string): string {
   const q = query.toLowerCase();
-  if (/\b(contemporary|realistic|drama|coming of age)\b/.test(q)) return "contemporary_drama";
+  if (/\b(contemporary|realistic|coming of age)\b/.test(q)) return "contemporary_drama";
   if (/\bfantasy|paranormal|supernatural\b/.test(q)) return "fantasy";
+  if (/\bscience fiction|sci-fi|speculative|dystopian\b/.test(q)) return "speculative";
+  if (/\badventure|action|survival\b/.test(q)) return "adventure";
+  if (/\bdrama\b/.test(q)) return "contemporary_drama";
   if (/\bromance|historical\b/.test(q)) return "romance_historical";
   if (/\bmystery|thriller|horror|suspense\b/.test(q)) return "mystery_thriller";
-  if (/\bscience fiction|sci-fi|speculative|dystopian\b/.test(q)) return "speculative";
-  if (/\badventure|action\b/.test(q)) return "adventure";
   if (/\bcomedy|humor\b/.test(q)) return "comedy";
   if (/\bgraphic novel|manga|comic\b/.test(q)) return "graphic";
   return "open_library_broad";
+}
+
+function signalWeight(rows: { value: string; weight: number }[], pattern: RegExp): number {
+  return rows.reduce((sum, row) => sum + (pattern.test(String(row.value || "").toLowerCase()) ? Math.abs(Number(row.weight || 0)) : 0), 0);
 }
 
 function combineOpenLibraryQueryParts(primary: string, modifier?: string): string {
@@ -142,21 +147,40 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
     ...profile.themes.map((row) => row.value),
     originalPlannedQuery,
   ].join(" ").toLowerCase();
-  const wantsContemporaryDrama = /\b(contemporary|realistic|drama|coming of age)\b/.test(profileText);
-  const queryCandidates = wantsContemporaryDrama
-    ? [
-        "young adult contemporary drama",
-        "teen realistic fiction",
-        "coming of age novel",
-        combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
-      ]
-    : [
-        combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
-        combineOpenLibraryQueryParts(genreTerms[1] || "", genreTerms[2]),
-        genreTerms[0] || fallbackTerms[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
-      ];
+  const facetText = [...genreTerms, ...fallbackTerms, originalPlannedQuery].join(" ").toLowerCase();
+  const hasFantasy = /\b(fantasy|paranormal|supernatural)\b/.test(facetText);
+  const hasAdventure = /\b(adventure|action|survival)\b/.test(facetText);
+  const hasSpeculative = /\b(dystopian|science fiction|sci-fi|speculative)\b/.test(facetText);
+  const hasStrongGenreSpecific = hasFantasy || hasAdventure || hasSpeculative;
+  const contemporaryWeight = signalWeight([...profile.genreFamily, ...profile.themes], /\b(contemporary|realistic|coming of age)\b/);
+  const speculativeWeight = signalWeight(profile.genreFamily, /\b(fantasy|adventure|action|survival|dystopian|science fiction|sci-fi|speculative|paranormal|supernatural)\b/);
+  const hasClearContemporarySignal = /\b(contemporary|realistic|coming of age)\b/.test(profileText);
+  const wantsContemporaryDrama = hasClearContemporarySignal && (!hasStrongGenreSpecific || contemporaryWeight > speculativeWeight * 1.35);
+  const genreSpecificQueries = [
+    hasFantasy && hasAdventure ? "fantasy adventure" : "",
+    hasFantasy ? "young adult fantasy" : "",
+    hasSpeculative && hasAdventure ? "dystopian adventure" : hasSpeculative ? "young adult dystopian" : "",
+    hasFantasy && /\bdrama\b/.test(facetText) ? "fantasy drama" : "",
+    combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
+  ];
+  const contemporaryQueries = [
+    "young adult contemporary drama",
+    "teen realistic fiction",
+    "coming of age novel",
+    combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
+  ];
+  const genericQueries = [
+    combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
+    combineOpenLibraryQueryParts(genreTerms[1] || "", genreTerms[2]),
+    genreTerms[0] || fallbackTerms[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
+  ];
+  const queryCandidates = hasStrongGenreSpecific
+    ? [...genreSpecificQueries, ...(wantsContemporaryDrama ? contemporaryQueries : [])]
+    : wantsContemporaryDrama
+      ? contemporaryQueries
+      : genericQueries;
 
-  const preparedQueries = queryCandidates.map((query) => wantsContemporaryDrama && /^(young adult contemporary drama|teen realistic fiction|coming of age novel)$/.test(query) ? query : finalOpenLibraryQueryDedupe(query));
+  const preparedQueries = queryCandidates.map((query) => wantsContemporaryDrama && !hasStrongGenreSpecific && /^(young adult contemporary drama|teen realistic fiction|coming of age novel)$/.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   return uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT).map((query, index) => ({
     query,
     originalPlannedQuery,
@@ -519,7 +543,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
     if (!rawItems.length && !context.signal?.aborted && !queries.some((query) => query.toLowerCase() === OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY)) {
-      const { diagnostic } = await fetchOpenLibraryDocs({ query: OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "diagnostic_probe", facets: [] }, 1, context.signal, true);
+      const probeQuery = queries.some((query) => /\bfantasy\b/i.test(query)) ? "young adult fantasy" : OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY;
+      const { diagnostic } = await fetchOpenLibraryDocs({ query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "diagnostic_probe", facets: [] }, 1, context.signal, true, 1_200);
       fetches.push(diagnostic);
       if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
     }
