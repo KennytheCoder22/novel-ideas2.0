@@ -43,6 +43,8 @@ const RELEVANCE_DRIFT_TITLE_HINT = /\b(complete works|selected works|collected w
 const ARTIFACT_QUERY_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson|classroom|teacher|writing|write)\b/i;
 const ARTIFACT_TITLE_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson plan|lesson plans|classroom|teacher'?s? guide|study guide|kids write|writing prompts?|write!)\b/i;
 const PROGRAMMING_GUIDE_ARTIFACT_HINT = /\b(library programs? for teens|library programming|programs? for teens|teen programs?|genre guide|curriculum|classroom|lesson plans?|activity book|activities for teens|teacher'?s? guide|study guide|reader'?s? advisory|book lists? for teens|guides?[^.]{0,40}for teens|for teens[^.]{0,40}(guides?|nonfiction|curriculum|programming|activities))\b/i;
+const SURVIVAL_GUIDE_ARTIFACT_HINT = /\b(survival guide|survival handbook|survival manual|field guide|handbook|choose your own adventure|mountain survival|star trek survival|kane chronicles survival guide|survival of the richest|cultural survival|survival culture|survival skills?)\b/i;
+const ADULT_DARK_ROMANCE_ARTIFACT_HINT = /\b(king of flesh and bone|married to a pirate|flesh and bone|dark romance|dark romantasy|monster romance|alien sex|alien romance|alien lover|pirate romance|captive bride|reverse harem|why choose|possessive alpha|mafia romance)\b/i;
 const LITERARY_ANALYSIS_ARTIFACT_HINT = /\b(literary criticism|critical studies|critical study|criticism|analysis|analyses|case studies|essays on|companion to|guide to|teaching literature|about literature|consumption and identity|young adult fantasy fiction|literature for young adults|fiction\s*-\s*history and criticism|history and criticism)\b/i;
 const ADULT_LOW_TEEN_FIT_HINT = /\b(erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire|temptation|passion)\b/i;
 
@@ -198,10 +200,13 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
   const wantsActionComedyMystery = hasMystery && (hasAction || hasComedy) && !wantsFantasyAdventureSurvival && (mysteryWeight + actionComedyWeight >= Math.max(fantasyWeight, dystopianWeight, contemporaryWeight));
   const genreSpecificQueries = wantsFantasyAdventureSurvival
     ? [
-        "fantasy adventure",
         "young adult fantasy",
-        "fantasy survival",
+        "fantasy school",
+        "science fiction adventure",
+        "space adventure",
+        "fantasy adventure",
         "magical adventure",
+        "fantasy survival",
       ]
     : wantsParanormalHorrorRomance
       ? [
@@ -286,7 +291,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
         ? genreSpecificQueries
         : genericQueries;
 
-  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|young adult mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror)$/;
+  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|young adult mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT);
   const specificQueryCount = uniqueQueries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/.test(query)).length;
@@ -521,6 +526,19 @@ function isProgrammingGuideArtifactDoc(doc: any): boolean {
   return PROGRAMMING_GUIDE_ARTIFACT_HINT.test(openLibraryDocText(doc));
 }
 
+function isSurvivalGuideArtifactDoc(doc: any): boolean {
+  const text = openLibraryDocText(doc);
+  if (!SURVIVAL_GUIDE_ARTIFACT_HINT.test(text)) return false;
+  if (/\b(choose your own adventure|survival guide|survival handbook|survival manual|handbook|field guide|star trek survival|kane chronicles survival guide)\b/i.test(text)) return true;
+  return !hasStrongTeenFictionMetadataEvidence(doc);
+}
+
+function isAdultDarkRomanceArtifactDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  const text = openLibraryDocText(doc);
+  return ADULT_DARK_ROMANCE_ARTIFACT_HINT.test(text) && !hasStrongTeenFictionMetadataEvidence(doc);
+}
+
 function hasFictionMetadataEvidence(doc: any): boolean {
   const subjects = [
     ...(Array.isArray(doc?.subject) ? doc.subject : []),
@@ -615,6 +633,8 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isOpenLibraryArtifactDoc(doc, query)) return { keep: false, reason: "artifact_title" };
   if (isLiteraryAnalysisArtifactDoc(doc, query)) return { keep: false, reason: "literary_analysis_artifact" };
   if (isProgrammingGuideArtifactDoc(doc)) return { keep: false, reason: "programming_guide_artifact" };
+  if (isSurvivalGuideArtifactDoc(doc)) return { keep: false, reason: "survival_guide_artifact" };
+  if (isAdultDarkRomanceArtifactDoc(doc, profile)) return { keep: false, reason: "adult_dark_romance_artifact" };
   if (isLiteralTitleMatchArtifactDoc(doc, query)) return { keep: false, reason: "literal_title_match_artifact" };
   if (isAuthorNameTitleDriftDoc(doc)) return { keep: false, reason: "author_name_title_drift" };
   if (isWeakTeenFitOddTitleDoc(doc, profile)) return { keep: false, reason: "weak_odd_title_teen_fit" };
@@ -718,7 +738,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (!quality.keep) {
           const reason = quality.reason || "quality_filter";
           dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
-          if (reason === "artifact_title" || reason === "literary_analysis_artifact" || reason === "programming_guide_artifact" || reason === "literal_title_match_artifact" || reason === "author_name_title_drift" || reason === "weak_odd_title_teen_fit" || reason === "teen_inappropriate_content") artifactSuppressedTitles.push(title);
+          if (reason === "artifact_title" || reason === "literary_analysis_artifact" || reason === "programming_guide_artifact" || reason === "survival_guide_artifact" || reason === "adult_dark_romance_artifact" || reason === "literal_title_match_artifact" || reason === "author_name_title_drift" || reason === "weak_odd_title_teen_fit" || reason === "teen_inappropriate_content") artifactSuppressedTitles.push(title);
           continue;
         }
         const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
@@ -739,6 +759,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
       if (rawItems.length >= OPEN_LIBRARY_MIN_CLEAN_DOCS || rawItems.length >= OPEN_LIBRARY_DOC_LIMIT) break;
       if (rawItems.length > 0) openLibraryTopUpRan = true;
+    }
+
+    if (!rawItems.length && context.signal?.aborted && !fetches.some((fetch) => fetch.diagnosticOnly)) {
+      dropReasons.probe_skipped_due_to_source_timeout = Number(dropReasons.probe_skipped_due_to_source_timeout || 0) + 1;
+      failedReason = failedReason || "probe_skipped_due_to_source_timeout";
     }
 
     if (!rawItems.length && !context.signal?.aborted) {

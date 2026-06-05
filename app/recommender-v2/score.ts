@@ -141,6 +141,8 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (normalizedTitle.split(" ").length <= 2 && !strongTeenMetadata && !strongGenreMetadata) score -= 0.7;
   if (/^(deception|departures|the departures|end is here|the end is here)$/.test(normalizedTitle) && metadataCount < 12) score -= 2.4;
   if (/^(the clown hunt|clown hunt|pope|phantoms)$/.test(normalizedTitle) && profile.ageBand === "teens" && !strongTeenMetadata) score -= 3.2;
+  if (/\b(survival guide|survival handbook|survival manual|field guide|handbook|choose your own adventure|mountain survival|star trek survival|kane chronicles survival guide|survival of the richest|cultural survival|survival culture|survival skills?)\b/.test(text) && !strongTeenMetadata) score -= 5;
+  if (profile.ageBand === "teens" && /\b(king of flesh and bone|married to a pirate|flesh and bone|dark romance|dark romantasy|monster romance|alien sex|alien romance|alien lover|pirate romance|captive bride|reverse harem|why choose|possessive alpha|mafia romance)\b/.test(text) && !strongTeenMetadata) score -= 5;
   if (/\b(library programs? for teens|library programming|programs? for teens|teen programs?|genre guide|curriculum|classroom|lesson plans?|activity book|activities for teens|teacher'?s? guide|study guide|reader'?s? advisory|book lists? for teens|guides?[^.]{0,40}for teens|for teens[^.]{0,40}(guides?|nonfiction|curriculum|programming|activities))\b/.test(text)) score -= 6;
   if (/\b(echoes and ashes|raven'?s sight|max porter)\b/.test(text)) score -= 1.4;
   if (/\b(coloring|colouring|workbook|worksheet|activity book|teacher'?s? guide|study guide)\b/.test(text)) score -= 4;
