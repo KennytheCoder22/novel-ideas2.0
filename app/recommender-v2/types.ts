@@ -182,7 +182,7 @@ export interface DiagnosticReportV2 {
 }
 
 export interface RecommendationResultV2 {
-  engineVersion: "recommender-v2-skeleton";
+  engineVersion: "recommender-v2-openlibrary-baseline";
   items: ScoredCandidate[];
   diagnostics: DiagnosticReportV2;
 }

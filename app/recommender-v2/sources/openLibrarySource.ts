@@ -45,7 +45,9 @@ const ARTIFACT_TITLE_HINT = /\b(coloring|colouring|activity|activities|workbook|
 const PROGRAMMING_GUIDE_ARTIFACT_HINT = /\b(library programs? for teens|library programming|programs? for teens|teen programs?|genre guide|curriculum|classroom|lesson plans?|activity book|activities for teens|teacher'?s? guide|study guide|reader'?s? advisory|book lists? for teens|guides?[^.]{0,40}for teens|for teens[^.]{0,40}(guides?|nonfiction|curriculum|programming|activities))\b/i;
 const SURVIVAL_GUIDE_ARTIFACT_HINT = /\b(survival guide|survival handbook|survival manual|field guide|handbook|choose your own adventure|mountain survival|star trek survival|kane chronicles survival guide|survival of the richest|cultural survival|survival culture|survival skills?)\b/i;
 const ADULT_DARK_ROMANCE_ARTIFACT_HINT = /\b(king of flesh and bone|married to a pirate|flesh and bone|dark romance|dark romantasy|monster romance|alien sex|alien romance|alien lover|pirate romance|captive bride|reverse harem|why choose|possessive alpha|mafia romance)\b/i;
-const LITERARY_ANALYSIS_ARTIFACT_HINT = /\b(literary criticism|critical studies|critical study|criticism|analysis|analyses|case studies|essays on|companion to|guide to|teaching literature|about literature|consumption and identity|young adult fantasy fiction|literature for young adults|fiction\s*-\s*history and criticism|history and criticism)\b/i;
+const LITERARY_ANALYSIS_ARTIFACT_HINT = /\b(literary criticism|literary studies|literary analysis|critical studies|critical study|critical essays?|critical perspectives?|critical approaches?|criticism|analysis|analyses|case studies|essays on|companion to|guide to|teaching literature|teaching young adult literature|about literature|curriculum|consumption and identity|young adult fantasy fiction|young adult literature|adolescent literature|literature for young adults|fiction\s*-\s*history and criticism|history and criticism)\b/i;
+const LITERARY_ANALYSIS_TITLE_ARTIFACT_HINT = /\b(death,?\s+gender,?\s+and sexuality in contemporary adolescent literature|in contemporary adolescent literature|discovering their voices|teaching young adult literature|guide to young adult literature|companion to young adult literature|critical perspectives?|critical approaches?|critical essays?|literary analysis|literary studies)\b/i;
+const LITERARY_ANALYSIS_SUBJECT_ARTIFACT_HINT = /\b(young adult fiction|young adult literature|adolescent literature|children'?s literature|fiction|literature)\b[^.]{0,80}\b(history and criticism|criticism|analysis|analyses|study|studies|essays|teaching|curriculum|study guide|teacher'?s? guide)\b|\b(history and criticism|criticism|analysis|analyses|study|studies|essays|teaching|curriculum|study guide|teacher'?s? guide)\b[^.]{0,80}\b(young adult fiction|young adult literature|adolescent literature|children'?s literature|fiction|literature)\b/i;
 const ADULT_LOW_TEEN_FIT_HINT = /\b(my secret garden|sexual fantasies|women\s+sexual fantasies|erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire|temptation|passion)\b/i;
 
 function nowIso(): string {
@@ -552,7 +554,15 @@ function isOpenLibraryArtifactDoc(doc: any, query: string): boolean {
 
 function isLiteraryAnalysisArtifactDoc(doc: any, query: string): boolean {
   if (/\b(criticism|critical|analysis|study guide|literary study)\b/i.test(query)) return false;
-  return LITERARY_ANALYSIS_ARTIFACT_HINT.test(openLibraryDocText(doc));
+  const titleText = [String(doc?.title || ""), String(doc?.subtitle || "")].join(" ");
+  const subjectText = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+  ].join(" ");
+  const fullText = openLibraryDocText(doc);
+  if (LITERARY_ANALYSIS_TITLE_ARTIFACT_HINT.test(titleText)) return true;
+  if (LITERARY_ANALYSIS_SUBJECT_ARTIFACT_HINT.test(subjectText)) return true;
+  return LITERARY_ANALYSIS_ARTIFACT_HINT.test(fullText) && !hasFictionMetadataEvidence(doc);
 }
 
 function isProgrammingGuideArtifactDoc(doc: any): boolean {

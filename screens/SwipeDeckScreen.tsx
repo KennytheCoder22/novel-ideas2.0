@@ -3394,7 +3394,7 @@ function handleLeft() {
     };
     const v2DiagnosticLines = v2DiagnosticsForReport
       ? [
-          `engineVersion:${String(lastResultForExport?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-skeleton")}`,
+          `engineVersion:${String(lastResultForExport?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-openlibrary-baseline")}`,
           `requestId:${v2DiagnosticsForReport.requestId}`,
           `items:${(Array.isArray(v2DebugResult?.items) ? v2DebugResult?.items : []).map((item) => item.title).join(" | ") || (Array.isArray(v2DiagnosticsForReport.finalSelectionTitles) ? v2DiagnosticsForReport.finalSelectionTitles.join(" | ") : "(none)")}`,
           `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
