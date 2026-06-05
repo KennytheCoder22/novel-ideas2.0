@@ -23,7 +23,6 @@ const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
   "growth",
   "emotional growth",
   "self discovery",
-  "coming of age",
   "relationships",
   "belonging",
   "indie",
@@ -33,7 +32,7 @@ const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
 ]);
 
 const MEDIA_FORMAT_TERMS = new Set(["anime", "game", "games", "gaming", "tv", "television", "movie", "movies", "film", "films"]);
-const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|graphic novel|manga|comic)\b/i;
+const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|coming of age|graphic novel|manga|comic)\b/i;
 const RELEVANCE_DRIFT_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain|literary)\b/i;
 const RELEVANCE_DRIFT_TITLE_HINT = /\b(complete works|selected works|collected works|works of|public domain)\b/i;
 const ARTIFACT_QUERY_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson|classroom|teacher|writing|write)\b/i;
@@ -78,7 +77,7 @@ function cleanOpenLibraryQueryPart(value: unknown): string {
   const normalized = String(value || "")
     .toLowerCase()
     .replace(/\b(indie\s+genre|mshs|middle\s+school\s+high\s+school|genre|genres|teen|teens|teenage|ya|young\s+adult|reader\s+discovery)\b/g, " ")
-    .replace(/\b(identity|family|friendship|emotional\s+growth|emotional|growth|self\s+discovery|coming\s+of\s+age|relationships?|belonging)\b/g, " ")
+    .replace(/\b(identity|family|friendship|emotional\s+growth|emotional|growth|self\s+discovery|relationships?|belonging)\b/g, " ")
     .replace(/\b(anime|games?|gaming|tv|television|movies?|films?)\b/g, " ")
     .replace(/\b(book|books|story|stories|novel|novels)\b/g, " ")
     .replace(/[^a-z0-9\s-]/g, " ")
@@ -102,6 +101,7 @@ function isGenreLikeOpenLibraryPart(value: string): boolean {
 
 function queryFamilyForOpenLibraryQuery(query: string): string {
   const q = query.toLowerCase();
+  if (/\b(contemporary|realistic|drama|coming of age)\b/.test(q)) return "contemporary_drama";
   if (/\bfantasy|paranormal|supernatural\b/.test(q)) return "fantasy";
   if (/\bromance|historical\b/.test(q)) return "romance_historical";
   if (/\bmystery|thriller|horror|suspense\b/.test(q)) return "mystery_thriller";
@@ -134,13 +134,27 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
     .map((query) => query.split(" ").filter(isUsefulOpenLibraryQueryPart).slice(0, 2).join(" "))
     .filter(isUsefulOpenLibraryQueryPart), 2);
 
-  const queryCandidates = [
-    combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
-    combineOpenLibraryQueryParts(genreTerms[1] || "", genreTerms[2]),
-    genreTerms[0] || fallbackTerms[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
-  ];
+  const profileText = [
+    ...profile.genreFamily.map((row) => row.value),
+    ...profile.themes.map((row) => row.value),
+    originalPlannedQuery,
+  ].join(" ").toLowerCase();
+  const wantsContemporaryDrama = /\b(contemporary|realistic|drama|coming of age)\b/.test(profileText);
+  const queryCandidates = wantsContemporaryDrama
+    ? [
+        "young adult contemporary drama",
+        "teen realistic fiction",
+        "coming of age novel",
+        combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
+      ]
+    : [
+        combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
+        combineOpenLibraryQueryParts(genreTerms[1] || "", genreTerms[2]),
+        genreTerms[0] || fallbackTerms[0] || OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY,
+      ];
 
-  return uniqueStrings(queryCandidates.map(finalOpenLibraryQueryDedupe).filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT).map((query, index) => ({
+  const preparedQueries = queryCandidates.map((query) => wantsContemporaryDrama && /^(young adult contemporary drama|teen realistic fiction|coming of age novel)$/.test(query) ? query : finalOpenLibraryQueryDedupe(query));
+  return uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT).map((query, index) => ({
     query,
     originalPlannedQuery,
     queryCascadeIndex: index,

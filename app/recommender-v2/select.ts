@@ -15,7 +15,8 @@ function rootTitle(title: string): string {
 
 function seriesKey(candidate: ScoredCandidate): string {
   const text = normalized([candidate.title, candidate.subtitle, candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
-  const known = text.match(/\b(hunger games|one piece|naruto|throne of glass|divergent|maze runner|twilight)\b/);
+  if (/\b(hunger games|catching fire|mockingjay)\b/.test(text)) return "hunger games";
+  const known = text.match(/\b(one piece|naruto|throne of glass|divergent|maze runner|twilight)\b/);
   if (known) return known[1];
   return rootTitle(candidate.title);
 }
@@ -72,14 +73,17 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     if (selected.length >= limit) break;
   }
 
-  if (selected.length < limit) {
+  const underfillTarget = Math.min(limit, 3);
+  if (selected.length < underfillTarget) {
+    rejectedReasons.underfill_deferred_available = deferred.length;
     for (const row of deferred) {
       const titleKey = normalized(row.candidate.title);
       if (seenTitles.has(titleKey)) continue;
       row.candidate.rejectedReasons.push(`underfill_allowed:${row.reason}`);
+      rejectedReasons.underfill_allowed = Number(rejectedReasons.underfill_allowed || 0) + 1;
       seenTitles.add(titleKey);
       selected.push(row.candidate);
-      if (selected.length >= limit) break;
+      if (selected.length >= underfillTarget) break;
     }
   }
 
