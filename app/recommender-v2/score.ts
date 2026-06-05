@@ -5,21 +5,114 @@ function candidateText(candidate: NormalizedCandidate): string {
     candidate.title,
     candidate.subtitle,
     candidate.description,
+    ...candidate.creators,
     ...candidate.genres,
     ...candidate.themes,
     ...candidate.tones,
     ...candidate.characterDynamics,
     ...candidate.formats,
+    String(candidate.diagnostics?.queryText || ""),
+    String(candidate.diagnostics?.queryFamily || ""),
+    ...(Array.isArray(candidate.diagnostics?.facets) ? candidate.diagnostics.facets.map(String) : []),
   ].join(" ").toLowerCase();
 }
 
-function applySignalMatches(text: string, signals: WeightedSignalV2[], multiplier: number, matched: string[], breakdown: Record<string, number>, bucket: string): void {
-  for (const signal of signals) {
-    if (!signal.value || !text.includes(signal.value.toLowerCase())) continue;
-    const points = signal.weight * multiplier;
+function normalized(value: unknown): string {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function signalMatches(text: string, signals: WeightedSignalV2[]): WeightedSignalV2[] {
+  return signals.filter((signal) => {
+    const value = normalized(signal.value);
+    return Boolean(value && text.includes(value));
+  });
+}
+
+const BROAD_AVOID_SIGNAL = /^(book|books|novel|novels|fiction|story|stories|teen|teens|young adult|ya|series|fantasy|dystopia|dystopian|adventure|romance|drama|comedy|mystery)$/i;
+
+function addAvoidSignalBucket(matches: WeightedSignalV2[], matched: string[], breakdown: Record<string, number>): void {
+  let broadPenalty = 0;
+  let precisePenalty = 0;
+  for (const signal of matches) {
+    const value = normalized(signal.value);
+    if (!value) continue;
+    if (BROAD_AVOID_SIGNAL.test(value)) {
+      broadPenalty -= Math.min(0.8, Math.max(0.2, Math.abs(signal.weight) * 0.35));
+      matched.push(`avoidSignalPenalty:broad:${signal.value}`);
+    } else {
+      precisePenalty -= Math.min(4, Math.max(1, Math.abs(signal.weight) * 2.25));
+      matched.push(`avoidSignalPenalty:precise:${signal.value}`);
+    }
+  }
+  if (broadPenalty) breakdown.broadAvoidSignalPenalty = Number(breakdown.broadAvoidSignalPenalty || 0) + Math.max(-1.6, broadPenalty);
+  if (precisePenalty) breakdown.avoidSignalPenalty = Number(breakdown.avoidSignalPenalty || 0) + precisePenalty;
+}
+
+function addSignalBucket(matches: WeightedSignalV2[], multiplier: number, matched: string[], breakdown: Record<string, number>, bucket: string): void {
+  for (const signal of matches) {
+    const magnitude = Math.abs(signal.weight) * Math.abs(multiplier);
+    const points = multiplier < 0 ? -magnitude : magnitude;
     breakdown[bucket] = Number(breakdown[bucket] || 0) + points;
     matched.push(`${bucket}:${signal.value}`);
   }
+}
+
+function queryRungBonus(candidate: NormalizedCandidate): number {
+  const rung = Number(candidate.diagnostics?.queryCascadeIndex ?? candidate.diagnostics?.queryRung ?? 2);
+  if (!Number.isFinite(rung) || rung <= 0) return 1;
+  if (rung === 1) return 0.55;
+  return 0.2;
+}
+
+function ageSuitabilityScore(candidate: NormalizedCandidate, profile: TasteProfile): number {
+  if (profile.ageBand !== "teens") return 0.25;
+  const text = candidateText(candidate);
+  if (/\b(lolita|nabokov|erotic|erotica|pornography|incest|sexual abuse)\b/.test(text)) return -6;
+  if (/\b(demoness|vixen|seductress|sensual|forbidden desire|dark lover|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) return -4.5;
+  if (/\b(young adult|juvenile|teen|adolescent|coming of age|school)\b/.test(text)) return 1;
+  if (candidate.publicationYear && candidate.publicationYear >= 2000) return 0.8;
+  if (candidate.publicationYear && candidate.publicationYear >= 1950) return 0.35;
+  return -0.5;
+}
+
+function meaningfulTokens(value: string): string[] {
+  return normalized(value).split(" ").filter((token) => token.length >= 4 && !/^(young|adult|book|novel|story|fiction)$/.test(token));
+}
+
+function querySpecificityScore(candidate: NormalizedCandidate): number {
+  const query = String(candidate.diagnostics?.queryText || "");
+  const queryTokens = meaningfulTokens(query);
+  if (!queryTokens.length) return 0;
+  const itemTokens = new Set(meaningfulTokens([candidate.title, candidate.subtitle, candidate.description, ...candidate.genres, ...candidate.themes].join(" ")));
+  const matches = queryTokens.filter((token) => itemTokens.has(token));
+  let score = Math.min(1.4, matches.length * 0.35);
+  if (/^(young adult fantasy|fantasy)$/i.test(query.trim()) && matches.length <= 1) score -= 0.6;
+  return score;
+}
+
+function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
+  const text = candidateText(candidate);
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const metadataCount = candidate.genres.length + candidate.themes.length;
+  let score = querySpecificityScore(candidate);
+  if (candidate.creators.length > 0) score += 0.4;
+  else score -= 1;
+  if (candidate.sourceUrl) score += 0.2;
+  if (candidate.sourceId) score += 0.2;
+  if (candidate.publicationYear && candidate.publicationYear >= 1950) score += 0.25;
+  if (raw.cover_i) score += 0.15;
+  if (metadataCount >= 8 && candidate.creators.length > 0 && candidate.sourceId) score += 0.75;
+  if (metadataCount <= 2) score -= 1.25;
+  if (genreMatches.length > 0) score += 0.7;
+  if (positiveMatches.length > 0) score += 0.4;
+  if (/\b(coloring|colouring|workbook|worksheet|activity book|teacher'?s? guide|study guide)\b/.test(text)) score -= 4;
+  if (/\b(go to hell|playing with fantasy|fantasy drama book)\b/.test(text)) score -= 3;
+  if (/\bdrunk\b/.test(text) && genreMatches.length === 0) score -= 2.5;
+  if (profile.ageBand === "teens" && /\b(demoness|vixen|seductress|sensual|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) score -= 2.5;
+  if (/^[A-Z0-9\s:;,'!?.-]{12,}$/.test(candidate.title) && candidate.title !== candidate.title.toLowerCase()) score -= 1.25;
+  if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(candidate.title) && metadataCount <= 2) score -= 1.5;
+  if (genreMatches.length === 0 && positiveMatches.length === 0) score -= 1.5;
+  return score;
 }
 
 export function scoreCandidates(candidates: NormalizedCandidate[], profile: TasteProfile): ScoredCandidate[] {
@@ -27,12 +120,26 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const text = candidateText(candidate);
     const matchedSignals: string[] = [];
     const scoreBreakdown: Record<string, number> = { base: 1 };
-    applySignalMatches(text, profile.genreFamily, 3, matchedSignals, scoreBreakdown, "genre");
-    applySignalMatches(text, profile.themes, 2, matchedSignals, scoreBreakdown, "theme");
-    applySignalMatches(text, profile.tone, 1.5, matchedSignals, scoreBreakdown, "tone");
-    applySignalMatches(text, profile.characterDynamics, 2, matchedSignals, scoreBreakdown, "character");
-    applySignalMatches(text, profile.formatPreference, 1, matchedSignals, scoreBreakdown, "format");
-    applySignalMatches(text, profile.avoidSignals, -4, matchedSignals, scoreBreakdown, "avoid");
+
+    const genreMatches = signalMatches(text, profile.genreFamily);
+    const themeMatches = signalMatches(text, profile.themes);
+    const toneMatches = signalMatches(text, profile.tone);
+    const characterMatches = signalMatches(text, profile.characterDynamics);
+    const formatMatches = signalMatches(text, profile.formatPreference);
+    const avoidMatches = signalMatches(text, profile.avoidSignals);
+    const positiveMatches = [...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
+
+    addSignalBucket(genreMatches, 3, matchedSignals, scoreBreakdown, "genreFacetMatch");
+    addSignalBucket(themeMatches, 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    addSignalBucket(toneMatches, 1.2, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    addSignalBucket(characterMatches, 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    addSignalBucket(formatMatches, 0.8, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    addAvoidSignalBucket(avoidMatches, matchedSignals, scoreBreakdown);
+
+    scoreBreakdown.ageTeenSuitability = ageSuitabilityScore(candidate, profile);
+    scoreBreakdown.sourceQualityRelevance = sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches);
+    scoreBreakdown.queryRungBonus = queryRungBonus(candidate);
+
     const score = Object.values(scoreBreakdown).reduce((sum, value) => sum + Number(value || 0), 0);
     return {
       ...candidate,

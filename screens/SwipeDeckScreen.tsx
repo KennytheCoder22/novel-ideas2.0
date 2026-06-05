@@ -96,6 +96,8 @@ type RecommendationHistoryBucket = {
   recommendedKeys: Set<string>;
   authors: Set<string>;
   seriesKeys: Set<string>;
+  titles: Set<string>;
+  titleRoots: Set<string>;
   rejectedIds: Set<string>;
   rejectedKeys: Set<string>;
 };
@@ -534,6 +536,8 @@ function createRecommendationHistoryBucket(): RecommendationHistoryBucket {
     recommendedKeys: new Set<string>(),
     authors: new Set<string>(),
     seriesKeys: new Set<string>(),
+    titles: new Set<string>(),
+    titleRoots: new Set<string>(),
     rejectedIds: new Set<string>(),
     rejectedKeys: new Set<string>(),
   };
@@ -551,11 +555,12 @@ function uniqueMemoryValues(...groups: Array<Array<string | undefined> | undefin
   return Array.from(out);
 }
 
-function historyIdentityFromDoc(doc: OLDoc | undefined): { id?: string; key?: string; authors: string[]; seriesKey?: string } {
+function historyIdentityFromDoc(doc: OLDoc | undefined): { id?: string; key?: string; title?: string; authors: string[]; seriesKey?: string } {
   if (!doc) return { authors: [] };
 
   const normalizedKey = normalizeMemoryToken(doc.key);
   const normalizedId = normalizeMemoryToken(docId(doc));
+  const title = normalizeMemoryToken(doc.title);
   const authors = Array.isArray(doc.author_name)
     ? doc.author_name.map((name) => normalizeMemoryToken(name)).filter(Boolean)
     : [];
@@ -564,6 +569,7 @@ function historyIdentityFromDoc(doc: OLDoc | undefined): { id?: string; key?: st
   return {
     id: normalizedId || undefined,
     key: normalizedKey || undefined,
+    title: title || undefined,
     authors,
     seriesKey: seriesKey || undefined,
   };
@@ -1325,17 +1331,26 @@ export default function SwipeDeckScreen(props: Props) {
         const identity = historyIdentityFromDoc(item.doc);
         if (identity.id) history.recommendedIds.add(identity.id);
         if (identity.key) history.recommendedKeys.add(identity.key);
+        if (identity.title) history.titles.add(identity.title);
         for (const author of identity.authors) history.authors.add(author);
-        if (identity.seriesKey) history.seriesKeys.add(identity.seriesKey);
+        if (identity.seriesKey) {
+          history.seriesKeys.add(identity.seriesKey);
+          history.titleRoots.add(identity.seriesKey);
+        }
         continue;
       }
 
       const itemId = normalizeMemoryToken(fallbackId(item.book));
       if (itemId) history.recommendedIds.add(itemId);
+      const title = normalizeMemoryToken(item.book?.title);
+      if (title) history.titles.add(title);
       const author = normalizeMemoryToken(item.book?.author);
       if (author) history.authors.add(author);
       const seriesKey = deriveSeriesKeyFromTitle(item.book?.title);
-      if (seriesKey) history.seriesKeys.add(seriesKey);
+      if (seriesKey) {
+        history.seriesKeys.add(seriesKey);
+        history.titleRoots.add(seriesKey);
+      }
     }
   }
 
@@ -1658,18 +1673,65 @@ function handleLeft() {
           score: candidate.score,
           matchedSignals: candidate.matchedSignals,
           scoreBreakdown: candidate.scoreBreakdown,
+          genreFacetMatch: candidate.scoreBreakdown?.genreFacetMatch ?? 0,
+          positiveTasteMatch: candidate.scoreBreakdown?.positiveTasteMatch ?? 0,
+          avoidSignalPenalty: candidate.scoreBreakdown?.avoidSignalPenalty ?? 0,
+          ageTeenSuitability: candidate.scoreBreakdown?.ageTeenSuitability ?? 0,
+          sourceQualityRelevance: candidate.scoreBreakdown?.sourceQualityRelevance ?? 0,
+          queryRungBonus: candidate.scoreBreakdown?.queryRungBonus ?? 0,
           formats: candidate.formats,
           genres: candidate.genres,
           themes: candidate.themes,
           tones: candidate.tones,
           characterDynamics: candidate.characterDynamics,
+          queryText: candidate.diagnostics?.queryText,
+          originalPlannedQuery: candidate.diagnostics?.originalPlannedQuery,
+          simplifiedOpenLibraryQuery: candidate.diagnostics?.simplifiedOpenLibraryQuery,
+          queryCascadeIndex: candidate.diagnostics?.queryCascadeIndex,
+          queryFamily: candidate.diagnostics?.queryFamily,
+          facets: candidate.diagnostics?.facets,
+          authors: candidate.creators,
         },
+        queryText: candidate.diagnostics?.queryText,
+        originalPlannedQuery: candidate.diagnostics?.originalPlannedQuery,
+        simplifiedOpenLibraryQuery: candidate.diagnostics?.simplifiedOpenLibraryQuery,
+        queryCascadeIndex: candidate.diagnostics?.queryCascadeIndex,
+        queryRung: candidate.diagnostics?.queryCascadeIndex,
+        queryFamily: candidate.diagnostics?.queryFamily,
+        facets: candidate.diagnostics?.facets,
       } as any,
     }));
   }
 
   function buildV2RecommendationResultForDiagnostics(v2Result: RecommendationResultV2, normalizedItems: RecItem[], inputWithHistory: RecommenderInput) {
     const diagnostics = v2Result.diagnostics;
+    const openLibrarySourceDiagnostics = diagnostics.sources.find((source) => source.source === "openLibrary") as any;
+    const openLibrarySourceFetchDiagnostics = Array.isArray(openLibrarySourceDiagnostics?.fetches)
+      ? openLibrarySourceDiagnostics.fetches.map((fetch: any) => ({
+          query: String(fetch?.query || ""),
+          diagnosticOnly: Boolean(fetch?.diagnosticOnly),
+          probe: Boolean(fetch?.diagnosticOnly),
+          fetchStartedAt: fetch?.fetchStartedAt,
+          fetchFinishedAt: fetch?.fetchFinishedAt,
+          elapsedMs: typeof fetch?.elapsedMs === "number" ? fetch.elapsedMs : undefined,
+          timedOut: Boolean(fetch?.timedOut),
+          httpStatus: typeof fetch?.httpStatus === "number" ? fetch.httpStatus : undefined,
+          fetchPath: fetch?.fetchPath,
+          returnedDocCount: typeof fetch?.docsReturned === "number" ? fetch.docsReturned : 0,
+          docsReturned: typeof fetch?.docsReturned === "number" ? fetch.docsReturned : 0,
+          firstReturnedTitles: Array.isArray(fetch?.firstReturnedTitles) ? fetch.firstReturnedTitles : [],
+          responseShape: fetch?.responseShape,
+          responseBodyPrefix: fetch?.responseBodyPrefix,
+          failedReason: fetch?.failedReason,
+          originalPlannedQuery: fetch?.originalPlannedQuery,
+          queryCascadeIndex: fetch?.queryCascadeIndex,
+          queryFamily: fetch?.queryFamily,
+          facets: fetch?.facets,
+        }))
+      : [];
+    const history = getRecommendationHistoryBucket(inputWithHistory.deckKey || deckKey);
+    const crossSessionRepeatedTitles = normalizedItems.map((item) => normalizeMemoryToken(item.kind === "open_library" ? item.doc.title : item.book.title)).filter((title) => title && history.titles.has(title));
+    const crossSessionRepeatedRoots = normalizedItems.map((item) => deriveSeriesKeyFromTitle(item.kind === "open_library" ? item.doc.title : item.book.title)).filter((root) => root && history.titleRoots.has(root));
     const sourceStats = Object.fromEntries(diagnostics.sources.map((source) => [
       source.source,
       {
@@ -1691,9 +1753,64 @@ function handleLeft() {
       items: normalizedItems.map((item) => item.kind === "open_library" ? { doc: item.doc } : { doc: item.book }),
       returnedItemsTitles: normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean),
       debugSourceStats: sourceStats,
-      debugRawPool: diagnostics.sources.flatMap((source) => Array.from({ length: source.rawCount }, (_unused, index) => ({ title: `${source.source} raw ${index + 1}`, source: source.source, diagnostics: { engine: "v2", placeholder: true } }))),
-      debugCandidatePool: v2Result.items,
+      debugRawPool: diagnostics.sources.flatMap((source: any) => Array.isArray(source.rawItemPreview) && source.rawItemPreview.length
+        ? source.rawItemPreview.map((item: any) => ({
+            title: item?.title || `${source.source} raw`,
+            author_name: Array.isArray(item?.authors) ? item.authors : [],
+            authors: Array.isArray(item?.authors) ? item.authors : [],
+            source: item?.source || source.source,
+            queryText: item?.queryText,
+            originalPlannedQuery: item?.originalPlannedQuery,
+            simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery,
+            queryCascadeIndex: item?.queryCascadeIndex,
+            queryRung: item?.queryCascadeIndex,
+            queryFamily: item?.queryFamily,
+            facets: item?.facets,
+            first_publish_year: item?.first_publish_year,
+            diagnostics: { engine: "v2", queryText: item?.queryText, queryFamily: item?.queryFamily, queryCascadeIndex: item?.queryCascadeIndex, authors: item?.authors },
+          }))
+        : Array.from({ length: source.rawCount }, (_unused, index) => ({ title: `${source.source} raw ${index + 1}`, source: source.source, diagnostics: { engine: "v2", placeholder: true } }))),
+      debugCandidatePool: v2Result.items.map((candidate: any) => ({
+        ...candidate,
+        author: Array.isArray(candidate.creators) && candidate.creators.length ? candidate.creators[0] : undefined,
+        author_name: Array.isArray(candidate.creators) ? candidate.creators : [],
+        queryText: candidate.diagnostics?.queryText,
+        originalPlannedQuery: candidate.diagnostics?.originalPlannedQuery,
+        simplifiedOpenLibraryQuery: candidate.diagnostics?.simplifiedOpenLibraryQuery,
+        queryCascadeIndex: candidate.diagnostics?.queryCascadeIndex,
+        queryRung: candidate.diagnostics?.queryCascadeIndex,
+        queryFamily: candidate.diagnostics?.queryFamily,
+        facets: candidate.diagnostics?.facets,
+        genreFacetMatch: candidate.scoreBreakdown?.genreFacetMatch ?? 0,
+        positiveTasteMatch: candidate.scoreBreakdown?.positiveTasteMatch ?? 0,
+        avoidSignalPenalty: candidate.scoreBreakdown?.avoidSignalPenalty ?? 0,
+        ageTeenSuitability: candidate.scoreBreakdown?.ageTeenSuitability ?? 0,
+        sourceQualityRelevance: candidate.scoreBreakdown?.sourceQualityRelevance ?? 0,
+        queryRungBonus: candidate.scoreBreakdown?.queryRungBonus ?? 0,
+      })),
       sourceEnabled,
+      sourceFetchAttemptedBySource: Object.fromEntries(diagnostics.sources.map((source) => [source.source, Boolean(source.attempted)])),
+      sourceFetchTimeoutBySource: Object.fromEntries(diagnostics.sources.map((source) => [source.source, Boolean(source.timedOut)])),
+      sourceRawCountBySource: Object.fromEntries(diagnostics.sources.map((source) => [source.source, Number(source.rawCount || 0)])),
+      openLibrarySourceFetchDiagnostics,
+      openLibraryProbeRan: Boolean(openLibrarySourceDiagnostics?.openLibraryProbeRan || openLibrarySourceFetchDiagnostics.some((fetch: any) => fetch.diagnosticOnly)),
+      openLibrarySourceEmptyReason: openLibrarySourceDiagnostics?.emptyReason || "",
+      openLibrarySourceRawApiResultCount: Number(openLibrarySourceDiagnostics?.rawApiResultCount || 0),
+      openLibrarySourceDroppedBeforeDocCount: Number(openLibrarySourceDiagnostics?.droppedBeforeDocCount || 0),
+      openLibrarySourceDropReasons: openLibrarySourceDiagnostics?.dropReasons || {},
+      openLibraryTopUpRan: Boolean(openLibrarySourceDiagnostics?.openLibraryTopUpRan),
+      openLibraryTopUpTarget: Number(openLibrarySourceDiagnostics?.openLibraryTopUpTarget || 0),
+      openLibraryFallbackQueriesExhausted: Boolean(openLibrarySourceDiagnostics?.openLibraryFallbackQueriesExhausted),
+      openLibraryUsableRowsAfterFiltering: Number(openLibrarySourceDiagnostics?.usableRowsAfterFiltering || 0),
+      openLibraryArtifactSuppressedTitles: openLibrarySourceDiagnostics?.artifactSuppressedTitles || [],
+      openLibrarySeriesSuppressedTitles: openLibrarySourceDiagnostics?.seriesSuppressedTitles || [],
+      openLibrarySourceStatus: openLibrarySourceDiagnostics?.status || "",
+      openLibrarySourceQueries: openLibrarySourceDiagnostics?.queries || [],
+      openLibraryQueryRouting: openLibrarySourceDiagnostics?.openLibraryQueryRouting || {},
+      openLibraryCrossSessionRepeatedTitles: Array.from(new Set(crossSessionRepeatedTitles)),
+      openLibraryCrossSessionRepeatedRoots: Array.from(new Set(crossSessionRepeatedRoots)),
+      openLibraryRecentHistoryTitleCount: history.titles.size,
+      openLibraryRecentHistoryRootCount: history.titleRoots.size,
       sourceSkippedReason: diagnostics.sources.map((source) => source.skippedReason || source.failedReason || "").filter(Boolean),
       routerResultTracePresent: true,
       debugRouterVersion: EXPECTED_ROUTER_FINGERPRINT,
@@ -2501,7 +2618,7 @@ function handleLeft() {
 
   function formatQueryFamilyBreakdown(rows: any[]) {
     if (!Array.isArray(rows) || rows.length === 0) return "(none)";
-    return summarizeCounts(rows.map((row) => inferQueryFamily(row?.queryText)));
+    return summarizeCounts(rows.map((row) => row?.queryFamily || inferQueryFamily(row?.queryText)));
   }
 
   function formatLaneBreakdown(rows: any[]) {
@@ -2531,13 +2648,13 @@ function handleLeft() {
       const diagnostics = item.kind === "open_library" ? (item.doc as any)?.diagnostics || {} : {};
 
       const traceBits = [
-        compactFieldBlock("queryFamily", inferQueryFamily(candidate?.queryText ?? diagnostics?.queryText ?? (item.kind === "open_library" ? (item.doc as any)?.queryText : ""))),
+        compactFieldBlock("queryFamily", candidate?.queryFamily || diagnostics?.queryFamily || (item.kind === "open_library" ? (item.doc as any)?.queryFamily : "") || inferQueryFamily(candidate?.queryText ?? diagnostics?.queryText ?? (item.kind === "open_library" ? (item.doc as any)?.queryText : ""))),
         compactFieldBlock("candidateLane", candidate?.laneKind),
         compactFieldBlock("candidateRung", candidate?.queryRung),
         compactFieldBlock("candidateScore", typeof candidate?.score === "number" ? candidate.score.toFixed(3) : ""),
         compactFieldBlock("rawMatches", matchingRawRows.length),
-        ...formatDiagnosticObject(diagnostics, ["source", "preFilterScore", "postFilterScore", "finalScore", "comicVineRelevanceScore", "titleMatchScore", "descriptionMatchScore", "tasteMatchScore", "reasonAccepted", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
-        ...formatDiagnosticObject(candidate, ["queryText", "queryRung", "laneKind", "score", "baseIntent", "queryFamily", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]),
+        ...formatDiagnosticObject(diagnostics, ["source", "score", "genreFacetMatch", "positiveTasteMatch", "avoidSignalPenalty", "ageTeenSuitability", "sourceQualityRelevance", "queryRungBonus", "scoreBreakdown", "preFilterScore", "postFilterScore", "finalScore", "comicVineRelevanceScore", "titleMatchScore", "descriptionMatchScore", "tasteMatchScore", "reasonAccepted", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
+        ...formatDiagnosticObject(candidate, ["queryText", "queryRung", "laneKind", "score", "genreFacetMatch", "positiveTasteMatch", "avoidSignalPenalty", "ageTeenSuitability", "sourceQualityRelevance", "queryRungBonus", "baseIntent", "queryFamily", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]),
       ].filter(Boolean);
 
       return [`${index + 1}. ${title || "Untitled"} — ${author || "Unknown author"}`, ...traceBits.map((line) => `   ${line}`)].join("\n");
@@ -2550,14 +2667,20 @@ function handleLeft() {
 
     return rows.slice(0, 120).map((row, index) => {
       const title = row?.title || "Untitled";
-      const author = row?.author || "Unknown author";
+      const author = row?.author || (Array.isArray(row?.author_name) && row.author_name.length ? row.author_name[0] : "Unknown author");
       const bits = [
         compactFieldBlock("source", row?.source),
-        compactFieldBlock("queryFamily", inferQueryFamily(row?.queryText)),
+        compactFieldBlock("queryFamily", row?.queryFamily || inferQueryFamily(row?.queryText)),
         compactFieldBlock("queryText", row?.queryText),
         compactFieldBlock("queryRung", row?.queryRung),
         compactFieldBlock("laneKind", row?.laneKind),
         compactFieldBlock("score", typeof row?.score === "number" ? row.score.toFixed(3) : row?.score),
+        compactFieldBlock("genreFacetMatch", row?.genreFacetMatch),
+        compactFieldBlock("positiveTasteMatch", row?.positiveTasteMatch),
+        compactFieldBlock("avoidSignalPenalty", row?.avoidSignalPenalty),
+        compactFieldBlock("ageTeenSuitability", row?.ageTeenSuitability),
+        compactFieldBlock("sourceQualityRelevance", row?.sourceQualityRelevance),
+        compactFieldBlock("queryRungBonus", row?.queryRungBonus),
         compactFieldBlock("filterKept", row?.filterKept),
         compactFieldBlock("filterFamily", row?.filterFamily),
         compactFieldBlock("rejectReasons", Array.isArray(row?.filterRejectReasons) && row.filterRejectReasons.length ? row.filterRejectReasons.join(", ") : (Array.isArray(row?.rejectReasons) && row.rejectReasons.length ? row.rejectReasons.join(", ") : "")),
@@ -2676,6 +2799,9 @@ function handleLeft() {
     const sourceStarvationByZeroPools = fetchedRawCountTop === 0 && debugCandidatePoolLengthTop === 0;
     const skippedReasons = Array.isArray((lastRecommendationResult as any)?.sourceSkippedReason) ? (lastRecommendationResult as any).sourceSkippedReason : [];
     const preFatalDispatchState = (lastDebugGcdDispatchTrace as any)?.preFatalDispatchState || {};
+    const v2OpenLibrarySourceDiagnosticsForReport = Array.isArray(v2DebugResult?.diagnostics?.sources)
+      ? v2DebugResult?.diagnostics?.sources.find((source: any) => source.source === "openLibrary")
+      : null;
     const sourceStarvationAuditForReport = (lastRecommendationResult as any)?.sourceStarvationAudit || preFatalDispatchState?.sourceStarvationAudit || null;
     const googleBooksSourceFetchDiagnosticsForReport = Array.isArray((lastRecommendationResult as any)?.googleBooksSourceFetchDiagnostics)
       ? (lastRecommendationResult as any).googleBooksSourceFetchDiagnostics
@@ -2686,7 +2812,21 @@ function handleLeft() {
       ? (lastRecommendationResult as any).openLibrarySourceFetchDiagnostics
       : Array.isArray(preFatalDispatchState?.openLibrarySourceFetchDiagnostics)
         ? preFatalDispatchState.openLibrarySourceFetchDiagnostics
-        : [];
+        : Array.isArray((v2OpenLibrarySourceDiagnosticsForReport as any)?.fetches)
+          ? (v2OpenLibrarySourceDiagnosticsForReport as any).fetches
+          : [];
+    const openLibraryProbeRanForReport = Boolean(
+      (lastRecommendationResult as any)?.openLibraryProbeRan ||
+      preFatalDispatchState?.openLibraryProbeRan ||
+      (v2OpenLibrarySourceDiagnosticsForReport as any)?.openLibraryProbeRan ||
+      openLibrarySourceFetchDiagnosticsForReport.some((fetch: any) => Boolean(fetch?.diagnosticOnly || fetch?.probe))
+    );
+    const openLibraryEmptyReasonForReport = String(
+      (lastRecommendationResult as any)?.openLibrarySourceEmptyReason ||
+      preFatalDispatchState?.openLibrarySourceEmptyReason ||
+      (v2OpenLibrarySourceDiagnosticsForReport as any)?.emptyReason ||
+      ""
+    );
     const sourceStarvationFetchDiagnosticsForReport = {
       googleBooks: Array.isArray(sourceStarvationAuditForReport?.googleBooks?.fetchDiagnostics) ? sourceStarvationAuditForReport.googleBooks.fetchDiagnostics : [],
       openLibrary: Array.isArray(sourceStarvationAuditForReport?.openLibrary?.fetchDiagnostics) ? sourceStarvationAuditForReport.openLibrary.fetchDiagnostics : [],
@@ -2976,6 +3116,14 @@ function handleLeft() {
         `sourceStarvationAudit: ${JSON.stringify(sourceStarvationAuditForReport || null)}`,
         `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
         `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
+        `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
+        `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
+        `openLibraryTopUp: ${JSON.stringify({ ran: Boolean((lastRecommendationResult as any)?.openLibraryTopUpRan), target: (lastRecommendationResult as any)?.openLibraryTopUpTarget, exhausted: Boolean((lastRecommendationResult as any)?.openLibraryFallbackQueriesExhausted), usableRowsAfterFiltering: (lastRecommendationResult as any)?.openLibraryUsableRowsAfterFiltering })}`,
+        `openLibraryQueryRouting: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryQueryRouting || {})}`,
+        `openLibraryCrossSessionRepeatedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryCrossSessionRepeatedTitles || [])}`,
+        `openLibraryCrossSessionRepeatedRoots: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryCrossSessionRepeatedRoots || [])}`,
+        `openLibraryArtifactSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryArtifactSuppressedTitles || [])}`,
+        `openLibrarySeriesSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibrarySeriesSuppressedTitles || [])}`,
         `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
         "ADULT KITSU FALLBACK DIAGNOSTICS",
         ...adultKitsuOnlyFallbackReportLines,
@@ -3184,9 +3332,15 @@ function handleLeft() {
             return [
               `${i + 1}. ${title} — ${author}${year}`,
               `   source: ${diagnostics.source ?? doc?.source ?? "(unknown)"}`,
-              `   queryFamily: ${inferQueryFamily(queryText)}`,
+              `   queryFamily: ${diagnostics.queryFamily ?? doc?.queryFamily ?? inferQueryFamily(queryText)}`,
               `   preFilterScore: ${diagnostics.preFilterScore ?? "(missing)"}`,
               `   postFilterScore: ${diagnostics.postFilterScore ?? "(missing)"}`,
+              `   genreFacetMatch: ${diagnostics.genreFacetMatch ?? diagnostics.scoreBreakdown?.genreFacetMatch ?? "(missing)"}`,
+              `   positiveTasteMatch: ${diagnostics.positiveTasteMatch ?? diagnostics.scoreBreakdown?.positiveTasteMatch ?? "(missing)"}`,
+              `   avoidSignalPenalty: ${diagnostics.avoidSignalPenalty ?? diagnostics.scoreBreakdown?.avoidSignalPenalty ?? "(missing)"}`,
+              `   ageTeenSuitability: ${diagnostics.ageTeenSuitability ?? diagnostics.scoreBreakdown?.ageTeenSuitability ?? "(missing)"}`,
+              `   sourceQualityRelevance: ${diagnostics.sourceQualityRelevance ?? diagnostics.scoreBreakdown?.sourceQualityRelevance ?? "(missing)"}`,
+              `   queryRungBonus: ${diagnostics.queryRungBonus ?? diagnostics.scoreBreakdown?.queryRungBonus ?? "(missing)"}`,
               `   queryText: ${queryText}`,
               `   queryRung: ${diagnostics.queryRung ?? doc?.queryRung ?? "(missing)"}`,
               ...formatDiagnosticObject(diagnostics, ["baseIntent", "baseIntentLocked", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]).map((line) => `   ${line}`),
@@ -3221,15 +3375,33 @@ function handleLeft() {
       : "(none)";
 
     const v2DiagnosticsForReport = (lastRecommendationResult as any)?.v2Diagnostics || v2DebugResult?.diagnostics || null;
+    const openLibraryDiagnosticsForExport = (v2DiagnosticsForReport?.sources || []).find((source: any) => source.source === "openLibrary") || {};
+    const lastResultForExport = lastRecommendationResult as any;
+    const openLibraryEmptyReasonExport = String(lastResultForExport?.openLibrarySourceEmptyReason || openLibraryDiagnosticsForExport.emptyReason || "");
+    const openLibraryTopUpTargetExport = lastResultForExport?.openLibraryTopUpTarget !== undefined ? lastResultForExport.openLibraryTopUpTarget : openLibraryDiagnosticsForExport.openLibraryTopUpTarget;
+    const openLibraryUsableRowsExport = lastResultForExport?.openLibraryUsableRowsAfterFiltering !== undefined ? lastResultForExport.openLibraryUsableRowsAfterFiltering : openLibraryDiagnosticsForExport.usableRowsAfterFiltering;
+    const openLibraryTopUpExport = {
+      ran: Boolean(lastResultForExport?.openLibraryTopUpRan || openLibraryDiagnosticsForExport.openLibraryTopUpRan),
+      target: openLibraryTopUpTargetExport,
+      exhausted: Boolean(lastResultForExport?.openLibraryFallbackQueriesExhausted || openLibraryDiagnosticsForExport.openLibraryFallbackQueriesExhausted),
+      usableRowsAfterFiltering: openLibraryUsableRowsExport,
+    };
     const v2DiagnosticLines = v2DiagnosticsForReport
       ? [
-          `engineVersion:${String((lastRecommendationResult as any)?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-skeleton")}`,
+          `engineVersion:${String(lastResultForExport?.engineVersion || v2DebugResult?.engineVersion || "recommender-v2-skeleton")}`,
           `requestId:${v2DiagnosticsForReport.requestId}`,
           `items:${(Array.isArray(v2DebugResult?.items) ? v2DebugResult?.items : []).map((item) => item.title).join(" | ") || (Array.isArray(v2DiagnosticsForReport.finalSelectionTitles) ? v2DiagnosticsForReport.finalSelectionTitles.join(" | ") : "(none)")}`,
           `tasteProfile:${JSON.stringify(v2DiagnosticsForReport.tasteProfile || {})}`,
           `searchPlan:${JSON.stringify(v2DiagnosticsForReport.searchPlan || {})}`,
           `stages:${(v2DiagnosticsForReport.stages || []).map((stage: any) => `${stage.stage}:${JSON.stringify(stage.counts || {})}`).join(" -> ")}`,
-          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `sources:${JSON.stringify((v2DiagnosticsForReport.sources || []).map((source: any) => ({ source: source.source, status: source.status, rawCount: source.rawCount, normalizedCount: source.normalizedCount, queries: source.queries, rawTitles: source.rawTitles, firstReturnedTitles: source.firstReturnedTitles, rawApiResultCount: source.rawApiResultCount, droppedBeforeDocCount: source.droppedBeforeDocCount, dropReasons: source.dropReasons, openLibraryTopUpRan: source.openLibraryTopUpRan, openLibraryTopUpTarget: source.openLibraryTopUpTarget, openLibraryFallbackQueriesExhausted: source.openLibraryFallbackQueriesExhausted, usableRowsAfterFiltering: source.usableRowsAfterFiltering, openLibraryQueryRouting: source.openLibraryQueryRouting, artifactSuppressedTitles: source.artifactSuppressedTitles, seriesSuppressedTitles: source.seriesSuppressedTitles, emptyReason: source.emptyReason, openLibraryProbeRan: source.openLibraryProbeRan, skippedReason: source.skippedReason, failedReason: source.failedReason })))}`,
+          `openLibrarySourceFetchDiagnostics:${JSON.stringify(lastResultForExport?.openLibrarySourceFetchDiagnostics || openLibraryDiagnosticsForExport.fetches || [])}`,
+          `openLibraryProbeRan:${String(Boolean(lastResultForExport?.openLibraryProbeRan || openLibraryDiagnosticsForExport.openLibraryProbeRan))}`,
+          `openLibraryEmptyReason:${openLibraryEmptyReasonExport}`,
+          `openLibraryTopUp:${JSON.stringify(openLibraryTopUpExport)}`,
+          `openLibraryQueryRouting:${JSON.stringify(lastResultForExport?.openLibraryQueryRouting || openLibraryDiagnosticsForExport.openLibraryQueryRouting || {})}`,
+          `openLibraryCrossSessionRepeatedTitles:${JSON.stringify(lastResultForExport?.openLibraryCrossSessionRepeatedTitles || [])}`,
+          `openLibraryCrossSessionRepeatedRoots:${JSON.stringify(lastResultForExport?.openLibraryCrossSessionRepeatedRoots || [])}`,
           `normalizedCount:${String((lastRecommendationResult as any)?.normalizedCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "normalized")?.counts?.normalized ?? 0))}`,
           `scoredCount:${String((lastRecommendationResult as any)?.scoredCount ?? ((v2DiagnosticsForReport.stages || []).find((stage: any) => stage.stage === "scored")?.counts?.scored ?? 0))}`,
           `rejectedReasons:${JSON.stringify(v2DiagnosticsForReport.rejectedReasons || {})}`,
@@ -3647,6 +3819,10 @@ function handleLeft() {
       `sourceStarvationAudit: ${JSON.stringify(sourceStarvationAuditForReport || null)}`,
       `googleBooksSourceFetchDiagnostics: ${JSON.stringify(googleBooksSourceFetchDiagnosticsForReport)}`,
       `openLibrarySourceFetchDiagnostics: ${JSON.stringify(openLibrarySourceFetchDiagnosticsForReport)}`,
+      `openLibraryProbeRan: ${String(openLibraryProbeRanForReport)}`,
+      `openLibraryEmptyReason: ${openLibraryEmptyReasonForReport || "(none)"}`,
+      `openLibraryArtifactSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibraryArtifactSuppressedTitles || [])}`,
+      `openLibrarySeriesSuppressedTitles: ${JSON.stringify((lastRecommendationResult as any)?.openLibrarySeriesSuppressedTitles || [])}`,
       `sourceStarvationAudit.fetchDiagnostics: ${JSON.stringify(sourceStarvationFetchDiagnosticsForReport)}`,
       "",
       "ADULT KITSU FALLBACK DIAGNOSTICS",
@@ -3726,7 +3902,7 @@ function handleLeft() {
       "RECOMMENDATION MEMORY",
       (() => {
         const history = getRecommendationHistoryBucket(deckKey);
-        return `shownIds:${history.recommendedIds.size} • shownKeys:${history.recommendedKeys.size} • authors:${history.authors.size} • series:${history.seriesKeys.size} • rejected:${history.rejectedIds.size}`;
+        return `shownIds:${history.recommendedIds.size} • shownKeys:${history.recommendedKeys.size} • titles:${history.titles.size} • roots:${history.titleRoots.size} • authors:${history.authors.size} • series:${history.seriesKeys.size} • rejected:${history.rejectedIds.size}`;
       })(),
     ].join("\n");
 
