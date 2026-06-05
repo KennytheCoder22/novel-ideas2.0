@@ -35,13 +35,13 @@ const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
 ]);
 
 const MEDIA_FORMAT_TERMS = new Set(["anime", "game", "games", "gaming", "tv", "television", "movie", "movies", "film", "films"]);
-const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|coming of age|graphic novel|manga|comic)\b/i;
+const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopia|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|coming of age|graphic novel|manga|comic)\b/i;
 const RELEVANCE_DRIFT_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain|literary)\b/i;
 const RELEVANCE_DRIFT_TITLE_HINT = /\b(complete works|selected works|collected works|works of|public domain)\b/i;
 const ARTIFACT_QUERY_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson|classroom|teacher|writing|write)\b/i;
 const ARTIFACT_TITLE_HINT = /\b(coloring|colouring|activity|activities|workbook|worksheet|lesson plan|lesson plans|classroom|teacher'?s? guide|study guide|kids write|writing prompts?|write!)\b/i;
 const LITERARY_ANALYSIS_ARTIFACT_HINT = /\b(literary criticism|critical studies|critical study|criticism|analysis|analyses|case studies|essays on|companion to|guide to|teaching literature|about literature|consumption and identity|young adult fantasy fiction|fiction\s*-\s*history and criticism|history and criticism)\b/i;
-const ADULT_LOW_TEEN_FIT_HINT = /\b(erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker)\b/i;
+const ADULT_LOW_TEEN_FIT_HINT = /\b(erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire|temptation|passion)\b/i;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -106,10 +106,11 @@ function isGenreLikeOpenLibraryPart(value: string): boolean {
 
 function queryFamilyForOpenLibraryQuery(query: string): string {
   const q = query.toLowerCase();
+  if (/\b(horror|paranormal|supernatural|dark fantasy)\b/.test(q)) return "horror_paranormal";
+  if (/\bmystery|thriller|suspense\b/.test(q)) return "mystery_thriller";
   if (/\b(contemporary|realistic|coming of age)\b/.test(q)) return "contemporary_drama";
-  if (/\bfantasy|paranormal|supernatural\b/.test(q)) return "fantasy";
-  if (/\bscience fiction|sci-fi|speculative|dystopian\b/.test(q)) return "speculative";
-  if (/\bmystery|thriller|horror|suspense\b/.test(q)) return "mystery_thriller";
+  if (/\bfantasy\b/.test(q)) return "fantasy";
+  if (/\bscience fiction|sci-fi|speculative|dystopia|dystopian\b/.test(q)) return "speculative";
   if (/\badventure|action|survival\b/.test(q)) return "adventure";
   if (/\bdrama\b/.test(q)) return "contemporary_drama";
   if (/\bromance|historical\b/.test(q)) return "romance_historical";
@@ -155,26 +156,35 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
   const hasAdventure = /\b(adventure|action|survival)\b/.test(facetText);
   const hasAction = /\b(action)\b/.test(facetText);
   const hasComedy = /\b(comedy|humor)\b/.test(facetText);
-  const hasDystopian = /\b(dystopian)\b/.test(facetText);
+  const hasDystopian = /\b(dystopia|dystopian)\b/.test(facetText);
   const hasSciFi = /\b(science fiction|sci-fi|speculative)\b/.test(facetText);
   const hasSpeculative = hasDystopian || hasSciFi;
   const hasMystery = /\b(mystery|thriller|horror|suspense)\b/.test(facetText);
+  const hasHorror = /\b(horror)\b/.test(facetText);
+  const hasHistorical = /\b(historical|history)\b/.test(facetText);
+  const hasDrama = /\b(drama)\b/.test(facetText);
   const hasThriller = /\b(thriller|suspense)\b/.test(facetText);
   const hasStrongGenreSpecific = hasFantasy || hasAdventure || hasSpeculative || hasMystery || hasComedy;
   const contemporaryWeight = signalWeight([...profile.genreFamily, ...profile.themes], /\b(contemporary|realistic|coming of age)\b/);
-  const speculativeWeight = signalWeight(profile.genreFamily, /\b(fantasy|adventure|action|survival|dystopian|science fiction|sci-fi|speculative|paranormal|supernatural|mystery|thriller|horror|suspense)\b/);
+  const speculativeWeight = signalWeight(profile.genreFamily, /\b(fantasy|adventure|action|survival|dystopia|dystopian|science fiction|sci-fi|speculative|paranormal|supernatural|mystery|thriller|horror|suspense)\b/);
   const hasClearContemporarySignal = /\b(contemporary|realistic|coming of age)\b/.test(profileText);
   const wantsContemporaryDrama = hasClearContemporarySignal && (!hasStrongGenreSpecific || contemporaryWeight > speculativeWeight * 1.35);
   const genreSpecificQueries = [
     hasDystopian && hasMystery ? "dystopian mystery" : "",
+    hasDystopian ? "dystopian fiction" : "",
+    hasDystopian ? "young adult dystopian" : "",
+    hasHistorical && hasDrama ? "historical drama novel" : "",
+    hasHistorical ? "teen historical fiction" : "",
+    hasHorror ? "young adult horror" : "",
     hasParanormal && hasMystery ? "paranormal mystery" : "",
     hasFantasy && hasMystery ? "fantasy mystery" : "",
     hasSciFi && hasThriller ? "sci-fi thriller" : "",
+    hasHorror || hasParanormal ? "dark fantasy" : "",
     hasAction && hasComedy && hasAdventure ? "action comedy adventure" : "",
     hasFantasy && hasDystopian ? "fantasy dystopian" : "",
-    hasSpeculative && hasAdventure ? "dystopian adventure" : hasSpeculative ? "young adult dystopian" : "",
+    hasSpeculative && hasAdventure ? "dystopian adventure" : "",
     hasFantasy && hasAdventure ? "fantasy adventure" : "",
-    hasFantasy && /\bdrama\b/.test(facetText) ? "fantasy drama" : "",
+    hasFantasy && hasDrama ? "fantasy drama" : "",
     hasMystery && hasAdventure ? "mystery adventure" : "",
     hasMystery ? "mystery novel" : "",
     combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
@@ -198,7 +208,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile): Op
       ? contemporaryQueries
       : genericQueries;
 
-  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|coming of age novel|young adult fantasy|young adult dystopian|mystery novel)$/;
+  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|coming of age novel|young adult fantasy|young adult dystopian|mystery novel|dystopian fiction|historical drama novel|teen historical fiction|young adult horror)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), OPEN_LIBRARY_QUERY_LIMIT);
   const specificQueryCount = uniqueQueries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/.test(query)).length;
@@ -416,14 +426,16 @@ function isLiteraryAnalysisArtifactDoc(doc: any, query: string): boolean {
 
 function openLibrarySeriesKey(doc: any): string {
   const title = String(doc?.title || "").toLowerCase();
+  const hasSeriesMarker = /\b(volume|vol|book|chapter|episode|part)\s*[:.#-]?\s*\d+\b|\b\d+\b/.test(title);
   const cleaned = title
     .replace(/\b(volume|vol|book|chapter|episode|part)\s*[:.#-]?\s*\d+\b/g, " ")
-    .replace(/\b(one piece|naruto|bleach|dragon ball|my hero academia|attack on titan|demon slayer|sailor moon)\b.*$/i, "$1")
+    .replace(/\b(one piece|naruto|bleach|dragon ball|my hero academia|attack on titan|demon slayer|sailor moon|grande ritorno|diadem|chosen)\b.*$/i, "$1")
+    .replace(/\b(chosen)\s+\w+\b/i, "$1")
     .replace(/\b\d+\b/g, " ")
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return /\b(one piece|naruto|bleach|dragon ball|my hero academia|attack on titan|demon slayer|sailor moon)\b/.test(cleaned) ? cleaned : "";
+  return hasSeriesMarker || /\b(one piece|naruto|bleach|dragon ball|my hero academia|attack on titan|demon slayer|sailor moon|grande ritorno|diadem|chosen)\b/.test(cleaned) ? cleaned : "";
 }
 
 function isTeenInappropriateOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {

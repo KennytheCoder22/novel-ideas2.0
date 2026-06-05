@@ -48,7 +48,7 @@ function ageSuitabilityScore(candidate: NormalizedCandidate, profile: TasteProfi
   if (profile.ageBand !== "teens") return 0.25;
   const text = candidateText(candidate);
   if (/\b(lolita|nabokov|erotic|erotica|pornography|incest|sexual abuse)\b/.test(text)) return -6;
-  if (/\b(demoness|vixen|seductress|sensual|forbidden desire|dark lover|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker)\b/.test(text)) return -4.5;
+  if (/\b(demoness|vixen|seductress|sensual|forbidden desire|dark lover|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) return -4.5;
   if (/\b(young adult|juvenile|teen|adolescent|coming of age|school)\b/.test(text)) return 1;
   if (candidate.publicationYear && candidate.publicationYear >= 2000) return 0.8;
   if (candidate.publicationYear && candidate.publicationYear >= 1950) return 0.35;
@@ -80,7 +80,7 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (positiveMatches.length > 0) score += 0.4;
   if (/\b(coloring|colouring|workbook|worksheet|activity book|teacher'?s? guide|study guide)\b/.test(text)) score -= 4;
   if (/\bdrunk\b/.test(text) && genreMatches.length === 0) score -= 2.5;
-  if (profile.ageBand === "teens" && /\b(demoness|vixen|seductress|sensual|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker)\b/.test(text)) score -= 2.5;
+  if (profile.ageBand === "teens" && /\b(demoness|vixen|seductress|sensual|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) score -= 2.5;
   if (/^[A-Z0-9\s:;,'!?.-]{12,}$/.test(candidate.title) && candidate.title !== candidate.title.toLowerCase()) score -= 1.25;
   if (genreMatches.length === 0 && positiveMatches.length === 0) score -= 1.5;
   return score;
