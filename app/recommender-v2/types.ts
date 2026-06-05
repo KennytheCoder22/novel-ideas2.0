@@ -120,6 +120,8 @@ export interface SourceDiagnosticV2 {
   openLibraryFallbackQueriesExhausted?: boolean;
   usableRowsAfterFiltering?: number;
   openLibraryQueryRouting?: Record<string, unknown>;
+  openLibraryAgeProfile?: string;
+  openLibraryProfileLabel?: string;
   fetches?: SourceFetchDiagnosticV2[];
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];
@@ -182,7 +184,7 @@ export interface DiagnosticReportV2 {
 }
 
 export interface RecommendationResultV2 {
-  engineVersion: "recommender-v2-skeleton";
+  engineVersion: "recommender-v2-openlibrary-baseline";
   items: ScoredCandidate[];
   diagnostics: DiagnosticReportV2;
 }
