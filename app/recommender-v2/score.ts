@@ -160,7 +160,7 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (/\bdrunk\b/.test(text) && genreMatches.length === 0) score -= 2.5;
   if (profile.ageBand === "teens" && /\b(demoness|vixen|seductress|sensual|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) score -= 2.5;
   if (profile.ageBand === "adult" && /\b(corpus of ancient near eastern seals|archaeological catalog|museum collections?|king of flesh and bone|married to a pirate|pirate romance|dark romance|dark romantasy|monster romance|reverse harem|writing guide|horror criticism|genre history)\b/.test(text)) score -= 5;
-  if (profile.ageBand === "adult" && metadataCount <= 5 && !strongGenreMetadata) score -= 1.5;
+  if (profile.ageBand === "adult" && metadataCount <= 5 && !strongGenreMetadata) score -= 0.6;
   if (/^[A-Z0-9\s:;,'!?.-]{12,}$/.test(candidate.title) && candidate.title !== candidate.title.toLowerCase()) score -= 1.25;
   if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(candidate.title) && metadataCount <= 2) score -= 1.5;
   if (genreMatches.length === 0 && positiveMatches.length === 0) score -= 1.5;

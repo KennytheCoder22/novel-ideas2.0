@@ -39,11 +39,12 @@ function isContemporaryLowScoreAcceptable(candidate: ScoredCandidate, profile: T
   return candidate.score > -1.5 && /\b(contemporary|realistic|coming of age|teen realistic fiction|school|drama)\b/.test(text);
 }
 
-function isAdultWeakOpenLibraryCandidate(candidate: ScoredCandidate, profile: TasteProfile): boolean {
+function needsAdultWeakOpenLibraryEmptySlateFallback(candidate: ScoredCandidate, profile: TasteProfile): boolean {
   if (profile.ageBand !== "adult" || candidate.source !== "openLibrary") return false;
   const breakdown = candidate.scoreBreakdown || {};
   const metadataCount = candidate.genres.length + candidate.themes.length;
-  return metadataCount <= 5 && Number(breakdown.sourceQualityRelevance || 0) <= 0.25;
+  const sourceQuality = Number(breakdown.sourceQualityRelevance || 0);
+  return metadataCount <= 2 && sourceQuality <= -2.5 && candidate.score < 2.5;
 }
 
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
@@ -107,7 +108,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       }
       continue;
     }
-    if (isAdultWeakOpenLibraryCandidate(candidate, profile)) {
+    if (needsAdultWeakOpenLibraryEmptySlateFallback(candidate, profile)) {
       adultWeakOpenLibraryCandidates.push(candidate);
       rejectedReasons.adult_weak_openlibrary_source_quality_deferred = Number(rejectedReasons.adult_weak_openlibrary_source_quality_deferred || 0) + 1;
       continue;
