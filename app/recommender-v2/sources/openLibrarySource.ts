@@ -572,6 +572,7 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
     simplifiedOpenLibraryQuery: query,
     queryCascadeIndex: queryPlan.queryCascadeIndex,
     queryFamily: queryPlan.queryFamily,
+    routingReason: queryPlan.routingReason,
     facets: queryPlan.facets,
     emergencyFallback: Boolean(queryPlan.emergencyFallback),
     rawOpenLibraryDoc: doc,

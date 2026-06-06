@@ -47,6 +47,97 @@ function needsAdultWeakOpenLibraryEmptySlateFallback(candidate: ScoredCandidate,
   return metadataCount <= 2 && sourceQuality <= -2.5 && candidate.score < 2.5;
 }
 
+function adultQueryFamily(candidate: ScoredCandidate): string {
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+  if (/\b(science fiction|sci fi|speculative|dystopia|dystopian|space)\b/.test(text)) return "speculative";
+  if (/\b(cozy|cosy)\b/.test(text)) return "cozy_fantasy";
+  if (/\bfantasy\b/.test(text)) return "fantasy";
+  if (/\b(historical|history|period)\b/.test(text)) return "historical";
+  if (/\b(crime|mystery|thriller|detective|noir|suspense)\b/.test(text)) return "crime_thriller";
+  if (/\bhorror\b/.test(text)) return "horror";
+  return "other";
+}
+
+function adultSignalWeight(profile: TasteProfile, pattern: RegExp): number {
+  return [...profile.genreFamily, ...profile.themes].reduce((sum, row) => {
+    if (!pattern.test(normalized(row.value))) return sum;
+    const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+    const allSkip = evidence.length > 0 && evidence.every((item) => String(item || "").startsWith("skip:"));
+    return sum + Math.abs(Number(row.weight || 0)) * (allSkip ? 0.2 : 1);
+  }, 0);
+}
+
+function adultSpeculativeReserveTarget(candidates: ScoredCandidate[], profile: TasteProfile): number {
+  if (profile.ageBand !== "adult") return 0;
+  const usesSpeculativeCozyRoute = candidates.some((candidate) => candidate.diagnostics?.routingReason === "adult_speculative_cozy_fantasy");
+  if (!usesSpeculativeCozyRoute) return 0;
+  const speculativeWeight = adultSignalWeight(profile, /\b(science fiction|sci fi|sci-fi|speculative|space|dystopia|dystopian|alternate history)\b/);
+  const cozyFantasyWeight = adultSignalWeight(profile, /\b(fantasy|magic|cozy|cosy|comfort|whimsical|slice of life|low stakes|lighthearted)\b/);
+  if (speculativeWeight <= 0) return 0;
+  return speculativeWeight >= cozyFantasyWeight ? 2 : 1;
+}
+
+function addAdultFamilyDiagnostics(candidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "adult") return;
+  const scoredCounts: Record<string, number> = {};
+  const selectedCounts: Record<string, number> = {};
+  for (const candidate of candidates) scoredCounts[adultQueryFamily(candidate)] = Number(scoredCounts[adultQueryFamily(candidate)] || 0) + 1;
+  for (const candidate of selected) selectedCounts[adultQueryFamily(candidate)] = Number(selectedCounts[adultQueryFamily(candidate)] || 0) + 1;
+  for (const family of Object.keys(scoredCounts)) {
+    const scored = scoredCounts[family];
+    const accepted = Number(selectedCounts[family] || 0);
+    rejectedReasons[`adult_query_family_scored_${family}`] = scored;
+    rejectedReasons[`adult_query_family_selected_${family}`] = accepted;
+    rejectedReasons[`adult_query_family_rejected_${family}`] = Math.max(0, scored - accepted);
+    rejectedReasons[`adult_query_family_acceptance_pct_${family}`] = scored ? Math.round((accepted / scored) * 100) : 0;
+  }
+}
+
+function applyAdultSpeculativeFamilyBalance(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
+  const reserveTarget = adultSpeculativeReserveTarget(rankedCandidates, profile);
+  if (reserveTarget <= 0) return;
+  let selectedSpeculative = selected.filter((candidate) => adultQueryFamily(candidate) === "speculative").length;
+  if (selectedSpeculative >= reserveTarget) return;
+  const selectedSet = new Set(selected);
+  const selectedTitles = new Set(selected.map((candidate) => normalized(candidate.title)));
+  const speculativePool = rankedCandidates.filter((candidate) => {
+    if (selectedSet.has(candidate) || selectedTitles.has(normalized(candidate.title))) return false;
+    if (adultQueryFamily(candidate) !== "speculative") return false;
+    if (rejectReason(candidate, profile)) return false;
+    if (needsAdultWeakOpenLibraryEmptySlateFallback(candidate, profile)) return false;
+    return candidate.score > 0;
+  });
+  rejectedReasons.adult_speculative_family_balance_target = reserveTarget;
+  rejectedReasons.adult_speculative_family_balance_candidates = speculativePool.length;
+  for (const candidate of speculativePool) {
+    if (selectedSpeculative >= reserveTarget || selected.length >= Math.max(3, Math.min(5, limit))) break;
+    candidate.rejectedReasons.push("accepted_adult_speculative_family_balance");
+    selected.push(candidate);
+    selectedSet.add(candidate);
+    selectedTitles.add(normalized(candidate.title));
+    selectedSpeculative += 1;
+    rejectedReasons.accepted_adult_speculative_family_balance = Number(rejectedReasons.accepted_adult_speculative_family_balance || 0) + 1;
+  }
+  for (const candidate of speculativePool) {
+    if (selectedSpeculative >= reserveTarget) break;
+    if (selectedSet.has(candidate)) continue;
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => !["speculative", "historical"].includes(adultQueryFamily(row)))
+      .sort((a, b) => a.row.score - b.row.score)[0]?.index;
+    if (replacementIndex === undefined) break;
+    const replaced = selected[replacementIndex];
+    replaced.rejectedReasons.push("adult_speculative_family_balance_replaced_by_speculative");
+    candidate.rejectedReasons.push("accepted_adult_speculative_family_balance");
+    selected[replacementIndex] = candidate;
+    selectedSet.add(candidate);
+    selectedTitles.add(normalized(candidate.title));
+    selectedSpeculative += 1;
+    rejectedReasons.adult_speculative_family_balance_replacements = Number(rejectedReasons.adult_speculative_family_balance_replacements || 0) + 1;
+    rejectedReasons.accepted_adult_speculative_family_balance = Number(rejectedReasons.accepted_adult_speculative_family_balance || 0) + 1;
+  }
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
@@ -193,6 +284,8 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     rejectedReasons.underfill_blocked_by_minimum_acceptable_slate = deferred.length;
   }
 
+  applyAdultSpeculativeFamilyBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
+
   for (const row of deferred) {
     if (!selected.includes(row.candidate)) recordRejected(row.candidate, rejectedReasons, row.reason);
   }
@@ -211,6 +304,8 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     rejectedReasons.openlibrary_quality_cap_weak_slate = removed.length;
     for (const candidate of removed) recordRejected(candidate, rejectedReasons, "openlibrary_quality_cap_weak_slate");
   }
+
+  addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };
 }
