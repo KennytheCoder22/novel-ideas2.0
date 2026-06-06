@@ -28,6 +28,7 @@ const COMMON_ARTIFACT_REASON_LABELS = [
   "author_name_title_drift",
   "keyword_stuffed_marketing_artifact",
   "media_study_artifact",
+  "adult_profile_artifact",
 ];
 
 const TEEN_ARTIFACT_REASON_LABELS = [

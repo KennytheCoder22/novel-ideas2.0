@@ -1679,6 +1679,7 @@ function handleLeft() {
           preciseAvoidSignalPenalty: candidate.scoreBreakdown?.avoidSignalPenalty ?? 0,
           broadAvoidSignalPenalty: candidate.scoreBreakdown?.broadAvoidSignalPenalty ?? 0,
           ageTeenSuitability: candidate.scoreBreakdown?.ageTeenSuitability ?? 0,
+          ageBandSuitability: candidate.scoreBreakdown?.ageBandSuitability ?? candidate.scoreBreakdown?.ageTeenSuitability ?? 0,
           sourceQualityRelevance: candidate.scoreBreakdown?.sourceQualityRelevance ?? 0,
           queryRungBonus: candidate.scoreBreakdown?.queryRungBonus ?? 0,
           formats: candidate.formats,
@@ -1789,6 +1790,7 @@ function handleLeft() {
         preciseAvoidSignalPenalty: candidate.scoreBreakdown?.avoidSignalPenalty ?? 0,
         broadAvoidSignalPenalty: candidate.scoreBreakdown?.broadAvoidSignalPenalty ?? 0,
         ageTeenSuitability: candidate.scoreBreakdown?.ageTeenSuitability ?? 0,
+        ageBandSuitability: candidate.scoreBreakdown?.ageBandSuitability ?? candidate.scoreBreakdown?.ageTeenSuitability ?? 0,
         sourceQualityRelevance: candidate.scoreBreakdown?.sourceQualityRelevance ?? 0,
         queryRungBonus: candidate.scoreBreakdown?.queryRungBonus ?? 0,
       })),
@@ -2657,8 +2659,8 @@ function handleLeft() {
         compactFieldBlock("candidateRung", candidate?.queryRung),
         compactFieldBlock("candidateScore", typeof candidate?.score === "number" ? candidate.score.toFixed(3) : ""),
         compactFieldBlock("rawMatches", matchingRawRows.length),
-        ...formatDiagnosticObject(diagnostics, ["source", "score", "genreFacetMatch", "positiveTasteMatch", "avoidSignalPenalty", "ageTeenSuitability", "sourceQualityRelevance", "queryRungBonus", "scoreBreakdown", "preFilterScore", "postFilterScore", "finalScore", "comicVineRelevanceScore", "titleMatchScore", "descriptionMatchScore", "tasteMatchScore", "reasonAccepted", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
-        ...formatDiagnosticObject(candidate, ["queryText", "queryRung", "laneKind", "score", "genreFacetMatch", "positiveTasteMatch", "avoidSignalPenalty", "ageTeenSuitability", "sourceQualityRelevance", "queryRungBonus", "baseIntent", "queryFamily", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]),
+        ...formatDiagnosticObject(diagnostics, ["source", "score", "genreFacetMatch", "positiveTasteMatch", "avoidSignalPenalty", "ageTeenSuitability", "ageBandSuitability", "sourceQualityRelevance", "queryRungBonus", "scoreBreakdown", "preFilterScore", "postFilterScore", "finalScore", "comicVineRelevanceScore", "titleMatchScore", "descriptionMatchScore", "tasteMatchScore", "reasonAccepted", "queryText", "queryRung", "filterTrace", "queryFamily", "baseIntent", "baseIntentLocked", "matchedQueryTokens", "rejectedBy"]),
+        ...formatDiagnosticObject(candidate, ["queryText", "queryRung", "laneKind", "score", "genreFacetMatch", "positiveTasteMatch", "avoidSignalPenalty", "ageTeenSuitability", "ageBandSuitability", "sourceQualityRelevance", "queryRungBonus", "baseIntent", "queryFamily", "matchedQueryTokens", "filterTrace", "filterType", "rejectedBy"]),
       ].filter(Boolean);
 
       return [`${index + 1}. ${title || "Untitled"} — ${author || "Unknown author"}`, ...traceBits.map((line) => `   ${line}`)].join("\n");
@@ -2683,6 +2685,7 @@ function handleLeft() {
         compactFieldBlock("positiveTasteMatch", row?.positiveTasteMatch),
         compactFieldBlock("avoidSignalPenalty", row?.avoidSignalPenalty),
         compactFieldBlock("ageTeenSuitability", row?.ageTeenSuitability),
+        compactFieldBlock("ageBandSuitability", row?.ageBandSuitability),
         compactFieldBlock("sourceQualityRelevance", row?.sourceQualityRelevance),
         compactFieldBlock("queryRungBonus", row?.queryRungBonus),
         compactFieldBlock("filterKept", row?.filterKept),
@@ -3345,6 +3348,7 @@ function handleLeft() {
               `   preciseAvoidSignalPenalty: ${diagnostics.preciseAvoidSignalPenalty ?? diagnostics.scoreBreakdown?.avoidSignalPenalty ?? "(missing)"}`,
               `   broadAvoidSignalPenalty: ${diagnostics.broadAvoidSignalPenalty ?? diagnostics.scoreBreakdown?.broadAvoidSignalPenalty ?? "(missing)"}`,
               `   ageTeenSuitability: ${diagnostics.ageTeenSuitability ?? diagnostics.scoreBreakdown?.ageTeenSuitability ?? "(missing)"}`,
+              `   ageBandSuitability: ${diagnostics.ageBandSuitability ?? diagnostics.scoreBreakdown?.ageBandSuitability ?? diagnostics.scoreBreakdown?.ageTeenSuitability ?? "(missing)"}`,
               `   sourceQualityRelevance: ${diagnostics.sourceQualityRelevance ?? diagnostics.scoreBreakdown?.sourceQualityRelevance ?? "(missing)"}`,
               `   queryRungBonus: ${diagnostics.queryRungBonus ?? diagnostics.scoreBreakdown?.queryRungBonus ?? "(missing)"}`,
               `   queryText: ${queryText}`,

@@ -39,6 +39,13 @@ function isContemporaryLowScoreAcceptable(candidate: ScoredCandidate, profile: T
   return candidate.score > -1.5 && /\b(contemporary|realistic|coming of age|teen realistic fiction|school|drama)\b/.test(text);
 }
 
+function isAdultWeakOpenLibraryCandidate(candidate: ScoredCandidate, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "adult" || candidate.source !== "openLibrary") return false;
+  const breakdown = candidate.scoreBreakdown || {};
+  const metadataCount = candidate.genres.length + candidate.themes.length;
+  return metadataCount <= 5 && Number(breakdown.sourceQualityRelevance || 0) <= 0.25;
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
@@ -82,6 +89,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const selected: ScoredCandidate[] = [];
   const deferred: { candidate: ScoredCandidate; reason: string }[] = [];
   const lowScoreRescue: ScoredCandidate[] = [];
+  const adultWeakOpenLibraryCandidates: ScoredCandidate[] = [];
   const seenTitles = new Set<string>();
   const seenAuthors = new Set<string>();
   const seenSeries = new Set<string>();
@@ -97,6 +105,11 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
         candidate.rejectedReasons.push(nonPositiveScoreDetail(candidate));
         if (isLowScoreRescueCandidate(candidate)) lowScoreRescue.push(candidate);
       }
+      continue;
+    }
+    if (isAdultWeakOpenLibraryCandidate(candidate, profile)) {
+      adultWeakOpenLibraryCandidates.push(candidate);
+      rejectedReasons.adult_weak_openlibrary_source_quality_deferred = Number(rejectedReasons.adult_weak_openlibrary_source_quality_deferred || 0) + 1;
       continue;
     }
     if (candidate.score <= 0) {
@@ -150,6 +163,13 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
+  if (selected.length === 0 && adultWeakOpenLibraryCandidates.length > 0) {
+    const candidate = adultWeakOpenLibraryCandidates.sort((a, b) => b.score - a.score)[0];
+    candidate.rejectedReasons.push("accepted_empty_slate_adult_weak_openlibrary_fallback");
+    rejectedReasons.accepted_empty_slate_adult_weak_openlibrary_fallback = 1;
+    selected.push(candidate);
+  }
+
   const underfillTarget = deferred.length > 0 ? Math.min(3, limit) : (selected.length === 0 ? 1 : selected.length);
   if (selected.length < underfillTarget) {
     rejectedReasons.underfill_deferred_available = deferred.length;
@@ -174,6 +194,9 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
 
   for (const row of deferred) {
     if (!selected.includes(row.candidate)) recordRejected(row.candidate, rejectedReasons, row.reason);
+  }
+  for (const candidate of adultWeakOpenLibraryCandidates) {
+    if (!selected.includes(candidate)) recordRejected(candidate, rejectedReasons, "adult_weak_openlibrary_source_quality");
   }
 
   const openLibraryOnlySlate = selected.length > 0 && selected.every((candidate) => candidate.source === "openLibrary");
