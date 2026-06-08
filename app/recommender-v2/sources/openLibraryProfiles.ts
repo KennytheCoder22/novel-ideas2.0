@@ -28,6 +28,7 @@ const COMMON_ARTIFACT_REASON_LABELS = [
   "author_name_title_drift",
   "keyword_stuffed_marketing_artifact",
   "media_study_artifact",
+  "adult_profile_artifact",
 ];
 
 const TEEN_ARTIFACT_REASON_LABELS = [
@@ -63,7 +64,7 @@ export const OPEN_LIBRARY_AGE_PROFILES: Record<AgeBandV2, OpenLibraryAgeProfile>
     ...BASE_OPEN_LIBRARY_PROFILE,
     key: "adult",
     ageBand: "adult",
-    behaviorLabel: "adult_openlibrary_profile_pending",
+    behaviorLabel: "adult_openlibrary_initial_profile",
     diagnosticProbeQuery: "fiction",
     ageSpecificArtifactReasonLabels: [],
   },

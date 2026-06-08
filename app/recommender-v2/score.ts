@@ -87,8 +87,12 @@ function queryRungBonus(candidate: NormalizedCandidate): number {
 }
 
 function ageSuitabilityScore(candidate: NormalizedCandidate, profile: TasteProfile): number {
-  if (profile.ageBand !== "teens") return 0.25;
   const text = candidateMetadataText(candidate);
+  if (profile.ageBand === "adult") {
+    if (/\b(juvenile fiction|children'?s books?|easy readers?|middle grade|rainbow magic)\b/.test(text)) return -2;
+    return 0.5;
+  }
+  if (profile.ageBand !== "teens") return 0.25;
   const normalizedTitle = normalized(candidate.title);
   if (/\b(lolita|nabokov|erotic|erotica|pornography|incest|sexual abuse)\b/.test(text)) return -6;
   if (/\b(demoness|vixen|seductress|sensual|forbidden desire|dark lover|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) return -4.5;
@@ -155,6 +159,8 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (/\bgo to hell\b/.test(text) && !/\b(young adult|juvenile fiction|teen|adolescent|dystopian|science fiction|fantasy|horror|mystery|thriller|adventure)\b/.test(text)) score -= 4;
   if (/\bdrunk\b/.test(text) && genreMatches.length === 0) score -= 2.5;
   if (profile.ageBand === "teens" && /\b(demoness|vixen|seductress|sensual|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) score -= 2.5;
+  if (profile.ageBand === "adult" && /\b(corpus of ancient near eastern seals|archaeological catalog|museum collections?|king of flesh and bone|married to a pirate|pirate romance|dark romance|dark romantasy|monster romance|reverse harem|writing guide|horror criticism|genre history)\b/.test(text)) score -= 5;
+  if (profile.ageBand === "adult" && metadataCount <= 5 && !strongGenreMetadata) score -= 0.6;
   if (/^[A-Z0-9\s:;,'!?.-]{12,}$/.test(candidate.title) && candidate.title !== candidate.title.toLowerCase()) score -= 1.25;
   if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(candidate.title) && metadataCount <= 2) score -= 1.5;
   if (genreMatches.length === 0 && positiveMatches.length === 0) score -= 1.5;
@@ -182,11 +188,13 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     addSignalBucket(formatMatches, 0.8, matchedSignals, scoreBreakdown, "positiveTasteMatch");
     addAvoidSignalBucket(avoidMatches, matchedSignals, scoreBreakdown);
 
-    scoreBreakdown.ageTeenSuitability = ageSuitabilityScore(candidate, profile);
+    const suitabilityScore = ageSuitabilityScore(candidate, profile);
+    scoreBreakdown.ageTeenSuitability = suitabilityScore;
+    scoreBreakdown.ageBandSuitability = suitabilityScore;
     scoreBreakdown.sourceQualityRelevance = sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches);
     scoreBreakdown.queryRungBonus = queryRungBonus(candidate);
 
-    const score = Object.values(scoreBreakdown).reduce((sum, value) => sum + Number(value || 0), 0);
+    const score = Object.entries(scoreBreakdown).reduce((sum, [key, value]) => sum + (key === "ageBandSuitability" ? 0 : Number(value || 0)), 0);
     return {
       ...candidate,
       score,
