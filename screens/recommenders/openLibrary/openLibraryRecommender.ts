@@ -274,17 +274,52 @@ type SourceFetchDiagnostic = {
   query: string;
   exactQuerySent: string;
   requestUrl: string;
+  fetchTransport: "proxy" | "direct";
+  fetchStartedAt: string;
+  fetchFinishedAt: string;
+  elapsedMs: number;
+  timedOut: boolean;
   httpStatus: number;
   responseBodyPrefix: string;
   rawApiItemCount: number;
   parsedItemCount: number;
   zeroParsedReason: string;
+  diagnosticProbe?: boolean;
   error?: string;
 };
 
-async function fetchJson(url: string, timeoutMs = 3500): Promise<{ ok: boolean; status: number; data: any; bodyPrefix: string }> {
+type OpenLibraryFetchJsonResult = {
+  ok: boolean;
+  status: number;
+  data: any;
+  bodyPrefix: string;
+  fetchStartedAt: string;
+  fetchFinishedAt: string;
+  elapsedMs: number;
+  timedOut: boolean;
+};
+
+const OPEN_LIBRARY_FETCH_TIMEOUT_MS = 5000;
+const OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY = "fantasy";
+
+function buildOpenLibraryProxyUrl(query: string, limit: number): string {
+  return `/api/openlibrary?q=${encodeURIComponent(query)}&limit=${limit}`;
+}
+
+function elapsedSince(startedAtMs: number): number {
+  return Math.max(0, Math.round(Date.now() - startedAtMs));
+}
+
+async function fetchJson(url: string, timeoutMs = OPEN_LIBRARY_FETCH_TIMEOUT_MS): Promise<OpenLibraryFetchJsonResult> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const startedAtMs = Date.now();
+  const fetchStartedAt = new Date(startedAtMs).toISOString();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
+
   try {
     const res = await fetch(url, { signal: controller.signal });
     const text = await res.text();
@@ -295,7 +330,22 @@ async function fetchJson(url: string, timeoutMs = 3500): Promise<{ ok: boolean; 
     } catch {
       data = {};
     }
-    return { ok: res.ok, status: res.status, data, bodyPrefix };
+    return {
+      ok: res.ok,
+      status: res.status,
+      data,
+      bodyPrefix,
+      fetchStartedAt,
+      fetchFinishedAt: new Date().toISOString(),
+      elapsedMs: elapsedSince(startedAtMs),
+      timedOut,
+    };
+  } catch (err: any) {
+    err.fetchStartedAt = fetchStartedAt;
+    err.fetchFinishedAt = new Date().toISOString();
+    err.elapsedMs = elapsedSince(startedAtMs);
+    err.timedOut = timedOut || err?.name === "AbortError" || /aborted|abort/i.test(String(err?.message || err || ""));
+    throw err;
   } finally {
     clearTimeout(timer);
   }
@@ -304,7 +354,8 @@ async function fetchJson(url: string, timeoutMs = 3500): Promise<{ ok: boolean; 
 export async function getOpenLibraryRecommendations(
   input: RecommenderInput
 ): Promise<RecommendationResult> {
-  const queries = buildQueries(input).slice(0, 4);
+  const allQueries = buildQueries(input);
+  const queries = allQueries.slice(0, 1);
   const family = (() => {
     const inferred = inferFamily(input);
     const text = queries.join(" ").toLowerCase();
@@ -320,7 +371,7 @@ export async function getOpenLibraryRecommendations(
   const intakeLimit = Math.max(limit * 2, 24);
   const sourceEnabled = (input as any)?.sourceEnabled || {};
   console.log("[OPEN_LIBRARY_ENABLED]", { enabled: sourceEnabled?.openLibrary !== false });
-  console.log("[OPEN_LIBRARY_QUERY_LANES]", queries);
+  console.log("[OPEN_LIBRARY_QUERY_LANES]", { selected: queries, suppressedUntilLiveFetchWorks: allQueries.slice(1) });
 
   if (!hasUsableSignal(input) || !queries.length) {
     return {
@@ -334,56 +385,82 @@ export async function getOpenLibraryRecommendations(
   }
 
   const queryTasks = queries.map((q, i) => ({ q, i }));
-  const responses = await Promise.allSettled(
-    queryTasks.map(async ({ q, i }) => {
-      const url = `/api/openlibrary?q=${encodeURIComponent(q)}&limit=40`;
-      console.log("[OPEN_LIBRARY_URL]", url);
-      let response: Awaited<ReturnType<typeof fetchJson>>;
-      try {
-        response = await fetchJson(url);
-      } catch (err: any) {
-        const errorMessage = err?.message || String(err || "");
-        sourceFetchDiagnostics.push({
-          source: "openLibrary",
-          query: q,
-          exactQuerySent: q,
-          requestUrl: url,
-          httpStatus: Number(err?.httpStatus || 0),
-          responseBodyPrefix: String(err?.bodyPrefix || errorMessage).slice(0, 240),
-          rawApiItemCount: 0,
-          parsedItemCount: 0,
-          zeroParsedReason: "fetch_error",
-          error: errorMessage,
-        });
-        throw err;
-      }
-      console.log("[OPEN_LIBRARY_HTTP_STATUS]", { query: q, status: response.status });
-      if (!response.ok) {
-        sourceFetchDiagnostics.push({
-          source: "openLibrary",
-          query: q,
-          exactQuerySent: q,
-          requestUrl: url,
-          httpStatus: response.status,
-          responseBodyPrefix: response.bodyPrefix,
-          rawApiItemCount: 0,
-          parsedItemCount: 0,
-          zeroParsedReason: "fetch_error",
-          error: `OpenLibrary error ${response.status}`,
-        });
-        throw new Error(`OpenLibrary error ${response.status}`);
-      }
-      const docs = Array.isArray(response.data?.docs) ? response.data.docs : [];
-      return { q, i, url, status: response.status, bodyPrefix: response.bodyPrefix, docs };
-    })
-  );
+  const fetchOpenLibraryQuery = async ({ q, i, diagnosticProbe = false }: { q: string; i: number; diagnosticProbe?: boolean }) => {
+    const url = buildOpenLibraryProxyUrl(q, 40);
+    const fetchTransport: "proxy" = "proxy";
+    console.log("[OPEN_LIBRARY_URL]", { url, fetchTransport, diagnosticProbe });
+    let response: Awaited<ReturnType<typeof fetchJson>>;
+    try {
+      response = await fetchJson(url);
+    } catch (err: any) {
+      const errorMessage = err?.message || String(err || "");
+      sourceFetchDiagnostics.push({
+        source: "openLibrary",
+        query: q,
+        exactQuerySent: q,
+        requestUrl: url,
+        fetchTransport,
+        fetchStartedAt: String(err?.fetchStartedAt || ""),
+        fetchFinishedAt: String(err?.fetchFinishedAt || ""),
+        elapsedMs: Number(err?.elapsedMs || 0),
+        timedOut: Boolean(err?.timedOut),
+        httpStatus: Number(err?.httpStatus || 0),
+        responseBodyPrefix: String(err?.bodyPrefix || errorMessage).slice(0, 240),
+        rawApiItemCount: 0,
+        parsedItemCount: 0,
+        zeroParsedReason: Boolean(err?.timedOut) ? "fetch_timeout" : "fetch_error",
+        diagnosticProbe,
+        error: errorMessage,
+      });
+      throw err;
+    }
+    console.log("[OPEN_LIBRARY_HTTP_STATUS]", { query: q, status: response.status, elapsedMs: response.elapsedMs, timedOut: response.timedOut, fetchTransport });
+    if (!response.ok) {
+      sourceFetchDiagnostics.push({
+        source: "openLibrary",
+        query: q,
+        exactQuerySent: q,
+        requestUrl: url,
+        fetchTransport,
+        fetchStartedAt: response.fetchStartedAt,
+        fetchFinishedAt: response.fetchFinishedAt,
+        elapsedMs: response.elapsedMs,
+        timedOut: response.timedOut,
+        httpStatus: response.status,
+        responseBodyPrefix: response.bodyPrefix,
+        rawApiItemCount: 0,
+        parsedItemCount: 0,
+        zeroParsedReason: "fetch_error",
+        diagnosticProbe,
+        error: `OpenLibrary error ${response.status}`,
+      });
+      throw new Error(`OpenLibrary error ${response.status}`);
+    }
+    const docs = Array.isArray(response.data?.docs) ? response.data.docs : [];
+    return {
+      q,
+      i,
+      url,
+      fetchTransport,
+      status: response.status,
+      bodyPrefix: response.bodyPrefix,
+      fetchStartedAt: response.fetchStartedAt,
+      fetchFinishedAt: response.fetchFinishedAt,
+      elapsedMs: response.elapsedMs,
+      timedOut: response.timedOut,
+      docs,
+      diagnosticProbe,
+    };
+  };
+
+  const responses = await Promise.allSettled(queryTasks.map(fetchOpenLibraryQuery));
 
   for (const result of responses) {
     if (result.status !== "fulfilled") {
       console.warn("[OPEN_LIBRARY_FETCH_WARNING]", { error: result.reason?.message || String(result.reason || "") });
       continue;
     }
-    const { q, i, url, status, bodyPrefix, docs } = result.value;
+    const { q, i, url, fetchTransport, status, bodyPrefix, fetchStartedAt, fetchFinishedAt, elapsedMs, timedOut, docs } = result.value;
     rawFetchedTotal += docs.length;
     console.log("[OPEN_LIBRARY_RAW_COUNT]", { query: q, rawCount: docs.length, accumulatedRawCount: rawFetchedTotal });
     console.log("[OPEN_LIBRARY_FIRST_3_RESULTS]", docs.slice(0, 3).map((doc: any) => ({
@@ -412,6 +489,11 @@ export async function getOpenLibraryRecommendations(
       query: q,
       exactQuerySent: q,
       requestUrl: url,
+      fetchTransport,
+      fetchStartedAt,
+      fetchFinishedAt,
+      elapsedMs,
+      timedOut,
       httpStatus: status,
       responseBodyPrefix: bodyPrefix,
       rawApiItemCount: docs.length,
@@ -420,6 +502,30 @@ export async function getOpenLibraryRecommendations(
     });
 
     if (docsRaw.length >= Math.max(limit * 3, 36)) break;
+  }
+
+  if (rawFetchedTotal === 0 && queries[0] && normalizeText(queries[0]) !== OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY) {
+    const probeResult = await Promise.allSettled([fetchOpenLibraryQuery({ q: OPEN_LIBRARY_DIAGNOSTIC_PROBE_QUERY, i: -1, diagnosticProbe: true })]);
+    const fulfilledProbe = probeResult[0]?.status === "fulfilled" ? (probeResult[0] as PromiseFulfilledResult<Awaited<ReturnType<typeof fetchOpenLibraryQuery>>>).value : null;
+    if (fulfilledProbe) {
+      sourceFetchDiagnostics.push({
+        source: "openLibrary",
+        query: fulfilledProbe.q,
+        exactQuerySent: fulfilledProbe.q,
+        requestUrl: fulfilledProbe.url,
+        fetchTransport: fulfilledProbe.fetchTransport,
+        fetchStartedAt: fulfilledProbe.fetchStartedAt,
+        fetchFinishedAt: fulfilledProbe.fetchFinishedAt,
+        elapsedMs: fulfilledProbe.elapsedMs,
+        timedOut: fulfilledProbe.timedOut,
+        httpStatus: fulfilledProbe.status,
+        responseBodyPrefix: fulfilledProbe.bodyPrefix,
+        rawApiItemCount: fulfilledProbe.docs.length,
+        parsedItemCount: 0,
+        zeroParsedReason: "diagnostic_probe_only_not_added_to_pool",
+        diagnosticProbe: true,
+      });
+    }
   }
 
   const seenKeys = new Set<string>();

@@ -3141,7 +3141,7 @@ export async function getRecommendations(
   const googleBooksFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const googleBooksTimeoutStageByQuery: Array<{ query: string; stage: string; fallbackQuery?: string; reason?: string }> = [];
   const googleBooksRetryQueryMapping: Array<{ primaryQuery: string; retryQuery: string; validated: boolean }> = [];
-  const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
+  const openLibraryFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null; fetchStartedAt?: string; fetchFinishedAt?: string; elapsedMs?: number; httpStatus?: number; fetchTransport?: string; diagnosticProbe?: boolean }> = [];
   const kitsuFetchResultsByQuery: Array<{ query: string; url: string; status: string; timedOut: boolean; rawCount: number; error?: string | null; bodyPrefix?: string | null }> = [];
   const queryLanesUsed: string[] = [];
   const collapseRepeatedQueryPhrases = (value: string) => {
@@ -5107,17 +5107,49 @@ export async function getRecommendations(
         ? (results[index] as PromiseFulfilledResult<RecommendationResult>).value
         : null;
       if (sourceEnabled.openLibrary && effectiveLaneSource === "openLibrary") {
+        const openLibraryDiagnostics = Array.isArray((laneOpenLibrary as any)?.debugSourceFetchDiagnostics)
+          ? (laneOpenLibrary as any).debugSourceFetchDiagnostics
+          : [];
+        const primaryOpenLibraryDiagnostic = openLibraryDiagnostics.find((row: any) => !row?.diagnosticProbe) || openLibraryDiagnostics[0] || null;
+        const openLibraryRejectedError = results[index]?.status === "rejected"
+          ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed")
+          : null;
+        const openLibraryTimedOut = Boolean(primaryOpenLibraryDiagnostic?.timedOut) || /timeout|aborted|abort/i.test(String(openLibraryRejectedError || ""));
+        const openLibraryRawCount = Number(primaryOpenLibraryDiagnostic?.rawApiItemCount ?? (laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary));
         openLibraryFetchResultsByQuery.push({
-          query: openLibraryLaneQuery,
-          url: `/api/openlibrary?q=${encodeURIComponent(openLibraryLaneQuery)}`,
-          status: results[index]?.status === "fulfilled" ? "ok" : "error",
-          timedOut: String((results[index] as any)?.reason?.message || (results[index] as any)?.reason || "").includes("timeout"),
-          rawCount: Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)),
-          error: results[index]?.status === "rejected" ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "fetch_failed") : null,
-          bodyPrefix: results[index]?.status === "rejected"
-            ? String((results[index] as PromiseRejectedResult).reason?.message || (results[index] as PromiseRejectedResult).reason || "").slice(0, 180)
-            : (Number((laneOpenLibrary as any)?.debugRawFetchedCount ?? countResultItems(laneOpenLibrary)) === 0 ? "[empty_open_library_result]" : null),
+          query: String(primaryOpenLibraryDiagnostic?.query || openLibraryLaneQuery),
+          url: String(primaryOpenLibraryDiagnostic?.requestUrl || `/api/openlibrary?q=${encodeURIComponent(openLibraryLaneQuery)}`),
+          status: openLibraryTimedOut ? "timed_out" : (results[index]?.status === "fulfilled" ? "ok" : "error"),
+          timedOut: openLibraryTimedOut,
+          rawCount: openLibraryRawCount,
+          error: openLibraryRejectedError || primaryOpenLibraryDiagnostic?.error || null,
+          bodyPrefix: primaryOpenLibraryDiagnostic?.responseBodyPrefix
+            ? String(primaryOpenLibraryDiagnostic.responseBodyPrefix).slice(0, 180)
+            : (openLibraryRejectedError ? openLibraryRejectedError.slice(0, 180) : (openLibraryRawCount === 0 ? "[empty_open_library_result]" : null)),
+          fetchStartedAt: primaryOpenLibraryDiagnostic?.fetchStartedAt,
+          fetchFinishedAt: primaryOpenLibraryDiagnostic?.fetchFinishedAt,
+          elapsedMs: typeof primaryOpenLibraryDiagnostic?.elapsedMs === "number" ? primaryOpenLibraryDiagnostic.elapsedMs : undefined,
+          httpStatus: typeof primaryOpenLibraryDiagnostic?.httpStatus === "number" ? primaryOpenLibraryDiagnostic.httpStatus : undefined,
+          fetchTransport: primaryOpenLibraryDiagnostic?.fetchTransport,
+          diagnosticProbe: Boolean(primaryOpenLibraryDiagnostic?.diagnosticProbe),
         });
+        for (const probeDiagnostic of openLibraryDiagnostics.filter((row: any) => row?.diagnosticProbe)) {
+          openLibraryFetchResultsByQuery.push({
+            query: String(probeDiagnostic?.query || ""),
+            url: String(probeDiagnostic?.requestUrl || ""),
+            status: probeDiagnostic?.timedOut ? "timed_out" : (Number(probeDiagnostic?.httpStatus || 0) >= 400 ? "error" : "diagnostic_probe"),
+            timedOut: Boolean(probeDiagnostic?.timedOut),
+            rawCount: Number(probeDiagnostic?.rawApiItemCount || 0),
+            error: probeDiagnostic?.error || null,
+            bodyPrefix: probeDiagnostic?.responseBodyPrefix ? String(probeDiagnostic.responseBodyPrefix).slice(0, 180) : null,
+            fetchStartedAt: probeDiagnostic?.fetchStartedAt,
+            fetchFinishedAt: probeDiagnostic?.fetchFinishedAt,
+            elapsedMs: typeof probeDiagnostic?.elapsedMs === "number" ? probeDiagnostic.elapsedMs : undefined,
+            httpStatus: typeof probeDiagnostic?.httpStatus === "number" ? probeDiagnostic.httpStatus : undefined,
+            fetchTransport: probeDiagnostic?.fetchTransport,
+            diagnosticProbe: true,
+          });
+        }
         index += 1;
       }
 
