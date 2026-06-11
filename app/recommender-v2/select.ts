@@ -69,8 +69,8 @@ function adultSignalWeight(profile: TasteProfile, pattern: RegExp): number {
 
 function adultSpeculativeReserveTarget(candidates: ScoredCandidate[], profile: TasteProfile): number {
   if (profile.ageBand !== "adult") return 0;
-  const usesSpeculativeCozyRoute = candidates.some((candidate) => candidate.diagnostics?.routingReason === "adult_speculative_cozy_fantasy");
-  if (!usesSpeculativeCozyRoute) return 0;
+  const usesSpeculativeRoute = candidates.some((candidate) => ["adult_scifi", "adult_historical_speculative_thriller"].includes(String(candidate.diagnostics?.routingReason || "")));
+  if (!usesSpeculativeRoute) return 0;
   const speculativeWeight = adultSignalWeight(profile, /\b(science fiction|sci fi|sci-fi|speculative|space|dystopia|dystopian|alternate history)\b/);
   const cozyFantasyWeight = adultSignalWeight(profile, /\b(fantasy|magic|cozy|cosy|comfort|whimsical|slice of life|low stakes|lighthearted)\b/);
   if (speculativeWeight <= 0) return 0;

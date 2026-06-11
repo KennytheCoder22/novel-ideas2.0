@@ -124,6 +124,9 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   const normalizedTitle = normalized(candidate.title);
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const metadataCount = candidate.genres.length + candidate.themes.length;
+  const authorCount = candidate.creators.length;
+  const uniqueSubjectCount = new Set([...candidate.genres, ...candidate.themes].map(normalized)).size;
+  const titleWordCount = normalizedTitle.split(" ").filter(Boolean).length;
   const strongTeenMetadata = hasStrongTeenMetadata(metadataText);
   const strongGenreMetadata = hasStrongGenreMetadata(metadataText);
   let score = querySpecificityScore(candidate);
@@ -138,6 +141,10 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (metadataCount >= 16) score += 0.15;
   if (metadataCount >= 10 && strongTeenMetadata && strongGenreMetadata) score += 0.45;
   if (metadataCount >= 14 && candidate.creators.length > 0 && strongGenreMetadata) score += 0.3;
+  if (profile.ageBand === "adult" && authorCount === 1 && uniqueSubjectCount >= 8 && strongGenreMetadata) score += 0.35;
+  if (profile.ageBand === "adult" && titleWordCount >= 2 && titleWordCount <= 6 && uniqueSubjectCount >= 6) score += 0.25;
+  if (profile.ageBand === "adult" && titleWordCount >= 10 && !strongGenreMetadata) score -= 0.7;
+  if (profile.ageBand === "adult" && authorCount === 0) score -= 0.5;
   if (metadataCount <= 2) score -= 1.25;
   if (metadataCount <= 5 && !strongGenreMetadata) score -= 0.8;
   if (metadataCount <= 6 && !strongTeenMetadata) score -= 0.45;
@@ -159,7 +166,7 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
   if (/\bgo to hell\b/.test(text) && !/\b(young adult|juvenile fiction|teen|adolescent|dystopian|science fiction|fantasy|horror|mystery|thriller|adventure)\b/.test(text)) score -= 4;
   if (/\bdrunk\b/.test(text) && genreMatches.length === 0) score -= 2.5;
   if (profile.ageBand === "teens" && /\b(demoness|vixen|seductress|sensual|new adult|adult romance|college romance|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire)\b/.test(text)) score -= 2.5;
-  if (profile.ageBand === "adult" && /\b(corpus of ancient near eastern seals|archaeological catalog|museum collections?|king of flesh and bone|married to a pirate|pirate romance|dark romance|dark romantasy|monster romance|reverse harem|writing guide|horror criticism|genre history)\b/.test(text)) score -= 5;
+  if (profile.ageBand === "adult" && /\b(corpus of ancient near eastern seals|archaeological catalog|museum collections?|crime and punishment notes|the poet and the murderer|mystery in the mainstream|study notes?|notes on|book notes?|study aids?|companions? to|criticism|critical essays?|literary history|bibliograph(?:y|ies)|true crime nonfiction|wizardry and wild romance|king of flesh and bone|married to a pirate|pirate romance|dark romance|dark romantasy|monster romance|reverse harem|writing guide|horror criticism|genre history)\b/.test(text)) score -= 5;
   if (profile.ageBand === "adult" && metadataCount <= 5 && !strongGenreMetadata) score -= 0.6;
   if (/^[A-Z0-9\s:;,'!?.-]{12,}$/.test(candidate.title) && candidate.title !== candidate.title.toLowerCase()) score -= 1.25;
   if (/^[A-Z][a-z]+\s+[A-Z][a-z]+$/.test(candidate.title) && metadataCount <= 2) score -= 1.5;
