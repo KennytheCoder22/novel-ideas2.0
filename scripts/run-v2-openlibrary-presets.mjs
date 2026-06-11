@@ -116,8 +116,14 @@ function printSummary(preset, result) {
   }));
 }
 
+function selectedPresets() {
+  if (process.argv.includes("--adult-only")) return PRESETS.filter((preset) => preset.ageBand === "adult");
+  if (process.argv.includes("--teen-only")) return PRESETS.filter((preset) => preset.ageBand === "teens");
+  return PRESETS;
+}
+
 function printOfflineManifest() {
-  for (const preset of PRESETS) {
+  for (const preset of selectedPresets()) {
     console.log(JSON.stringify({ deck: preset.deck, ageBand: preset.ageBand, status: preset.placeholder ? "placeholder" : "manual_live_run_available" }));
   }
 }
@@ -141,8 +147,8 @@ async function main() {
     return;
   }
   compileHarnessDependencies();
-  const { runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/app/recommender-v2/engine.js`).href);
-  for (const preset of PRESETS) {
+  const { runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/engine.js`).href);
+  for (const preset of selectedPresets()) {
     if (preset.placeholder) {
       console.log(JSON.stringify({ deck: preset.deck, ageProfile: preset.ageBand, pass: "PLACEHOLDER", note: "profile preset reserved for later MG/K-2 work" }));
       continue;
