@@ -31,7 +31,7 @@ export function buildDiagnosticReport(input: {
 
 export function buildRecommendationResultV2(items: ScoredCandidate[], diagnostics: DiagnosticReportV2): RecommendationResultV2 {
   return {
-    engineVersion: "recommender-v2-skeleton",
+    engineVersion: "recommender-v2-openlibrary-baseline",
     items,
     diagnostics,
   };

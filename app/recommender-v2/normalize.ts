@@ -42,6 +42,7 @@ export function normalizeSourceResults(results: SourceResult[]): NormalizedCandi
           simplifiedOpenLibraryQuery: row.simplifiedOpenLibraryQuery,
           queryCascadeIndex: row.queryCascadeIndex,
           queryFamily: row.queryFamily,
+          routingReason: row.routingReason,
           facets: row.facets,
           emergencyFallback: row.emergencyFallback,
           authors: row.authors || row.author_name || row.creators,
