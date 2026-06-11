@@ -31,6 +31,7 @@ const COMMON_ARTIFACT_REASON_LABELS = [
   "adult_profile_artifact",
   "packaging_artifact",
   "adult_route_containment_artifact",
+  "adult_dystopian_meta_artifact",
 ];
 
 const TEEN_ARTIFACT_REASON_LABELS = [
