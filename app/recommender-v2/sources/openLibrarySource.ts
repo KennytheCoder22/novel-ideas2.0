@@ -877,6 +877,23 @@ function hasAdultFantasyHistoricalFallbackOverlap(doc: any): boolean {
   return /\b(fantasy|magic|magical|historical|history|romance|romantic|adventure|action|comedy|humou?r)\b/.test(text);
 }
 
+function isAdultMixedHistoricalMysteryRomanceProfile(profile: TasteProfile): boolean {
+  if (profile.ageBand !== "adult") return false;
+  const profileText = [
+    ...profile.genreFamily.map((row) => row.value),
+    ...profile.themes.map((row) => row.value),
+    ...profile.formatPreference.map((row) => row.value),
+  ].join(" ").toLowerCase();
+  return /\b(historical|history|period)\b/.test(profileText)
+    && /\b(mystery|thriller|crime|suspense|detective)\b/.test(profileText)
+    && /\b(romance|romantic|love|science fiction|sci-fi|speculative)\b/.test(profileText);
+}
+
+function hasAdultMixedHistoricalMysteryFallbackOverlap(doc: any): boolean {
+  const text = openLibraryDocText(doc).toLowerCase();
+  return /\b(mystery|crime|thriller|suspense|detective|historical|history|romance|romantic)\b/.test(text);
+}
+
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return true;
   const firstPublishYear = Number(doc?.first_publish_year || 0);
@@ -1016,6 +1033,69 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       if (diagnostic.timedOut) {
         dropReasons.query_timeout = Number(dropReasons.query_timeout || 0) + 1;
         failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+        if (retryAttempted && !retrySucceeded && firstRunFetchTimeout && isAdultMixedHistoricalMysteryRomanceProfile(context.profile) && !context.signal?.aborted) {
+          const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+          for (const fallbackQuery of ["mystery thriller", "crime fiction", "historical mystery", "romantic suspense"].filter((query) => !attemptedMainQueries.has(query.toLowerCase()))) {
+            const fallbackPlan: OpenLibraryQueryPlan = {
+              query: fallbackQuery,
+              originalPlannedQuery: queries[0] || "",
+              queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+              queryFamily: queryFamilyForOpenLibraryQuery(fallbackQuery),
+              facets: ["mystery", "crime", "thriller", "historical", "romance"],
+              routingReason: "adult_mixed_historical_mystery_first_run_timeout_fallback",
+            };
+            const { docs: fallbackDocs, diagnostic: fallbackDiagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs);
+            fetches.push(fallbackDiagnostic);
+            if (fallbackDiagnostic.timedOut) {
+              dropReasons.adult_mixed_first_run_fallback_timeout = Number(dropReasons.adult_mixed_first_run_fallback_timeout || 0) + 1;
+              if (context.signal?.aborted) break;
+              continue;
+            }
+            if (fallbackDiagnostic.failedReason) {
+              dropReasons.adult_mixed_first_run_fallback_failed = Number(dropReasons.adult_mixed_first_run_fallback_failed || 0) + 1;
+              continue;
+            }
+            rawApiResultCount += fallbackDocs.length;
+            for (const doc of fallbackDocs) {
+              const title = String(doc?.title || "").trim();
+              if (title) rawTitles.push(title);
+              if (!title) {
+                dropReasons.adult_mixed_first_run_fallback_missing_title = Number(dropReasons.adult_mixed_first_run_fallback_missing_title || 0) + 1;
+                continue;
+              }
+              const quality = shouldKeepOpenLibraryDoc(doc, fallbackQuery, context.profile);
+              if (!quality.keep) {
+                const reason = `adult_mixed_first_run_fallback_${quality.reason || "quality_filter"}`;
+                dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+                if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+                continue;
+              }
+              if (!hasAdultMixedHistoricalMysteryFallbackOverlap(doc)) {
+                dropReasons.adult_mixed_first_run_fallback_no_route_overlap = Number(dropReasons.adult_mixed_first_run_fallback_no_route_overlap || 0) + 1;
+                continue;
+              }
+              const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+              if (acceptedDocKeys.has(docKey)) {
+                dropReasons.adult_mixed_first_run_fallback_duplicate_doc = Number(dropReasons.adult_mixed_first_run_fallback_duplicate_doc || 0) + 1;
+                continue;
+              }
+              const seriesKey = openLibrarySeriesKey(doc);
+              if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+                dropReasons.adult_mixed_first_run_fallback_series_duplicate = Number(dropReasons.adult_mixed_first_run_fallback_series_duplicate || 0) + 1;
+                seriesSuppressedTitles.push(title);
+                continue;
+              }
+              if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+              acceptedDocKeys.add(docKey);
+              rawItems.push(normalizeOpenLibraryDoc(doc, fallbackPlan));
+              dropReasons.adult_mixed_first_run_fallback_accepted = Number(dropReasons.adult_mixed_first_run_fallback_accepted || 0) + 1;
+              if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+            }
+            if (rawItems.length >= 3 || rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+          }
+          if (rawItems.length > 0) openLibraryTopUpRan = true;
+        }
+        if (rawItems.length >= 3 || rawItems.length >= ageProfile.docLimit) break;
         if (context.signal?.aborted) break;
         continue;
       }
@@ -1205,7 +1285,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
             continue;
           }
-          if (!emergencyFallbackHasMeaningfulOverlap(doc, queryPlans)) {
+          const hasEmergencyOverlap = isAdultMixedHistoricalMysteryRomanceProfile(context.profile)
+            ? hasAdultMixedHistoricalMysteryFallbackOverlap(doc)
+            : emergencyFallbackHasMeaningfulOverlap(doc, queryPlans);
+          if (!hasEmergencyOverlap) {
             dropReasons.emergency_fallback_no_meaningful_overlap = Number(dropReasons.emergency_fallback_no_meaningful_overlap || 0) + 1;
             continue;
           }
