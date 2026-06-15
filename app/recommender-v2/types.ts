@@ -92,6 +92,10 @@ export interface SourceFetchDiagnosticV2 {
   queryCascadeIndex?: number;
   queryFamily?: string;
   facets?: string[];
+  firstRunFetchTimeout?: boolean;
+  retryAttempted?: boolean;
+  retrySucceeded?: boolean;
+  proxyColdStartSuspected?: boolean;
 }
 
 export interface SourceDiagnosticV2 {
@@ -122,6 +126,10 @@ export interface SourceDiagnosticV2 {
   openLibraryQueryRouting?: Record<string, unknown>;
   openLibraryAgeProfile?: string;
   openLibraryProfileLabel?: string;
+  firstRunFetchTimeout?: boolean;
+  retryAttempted?: boolean;
+  retrySucceeded?: boolean;
+  proxyColdStartSuspected?: boolean;
   fetches?: SourceFetchDiagnosticV2[];
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];

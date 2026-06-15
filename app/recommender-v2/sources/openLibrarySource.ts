@@ -2,6 +2,7 @@ import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, Sour
 import { DEFAULT_OPEN_LIBRARY_PROFILE, openLibraryArtifactReasonLabels, openLibraryProfileForAgeBand, type OpenLibraryAgeProfile } from "./openLibraryProfiles";
 
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
+const ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS = 4_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -971,6 +972,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let rawApiResultCount = 0;
     let failedReason = "";
     let openLibraryTopUpRan = false;
+    let firstRunFetchTimeout = false;
+    let retryAttempted = false;
+    let retrySucceeded = false;
+    let proxyColdStartSuspected = false;
 
     for (const queryPlan of queryPlans) {
       const query = queryPlan.query;
@@ -986,7 +991,27 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         break;
       }
 
-      const { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs);
+      let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs);
+      const isAdultFirstMainFetch = ageProfile.key === "adult" && fetches.filter((fetch) => !fetch.diagnosticOnly).length === 0;
+      if (diagnostic.timedOut && isAdultFirstMainFetch && !context.signal?.aborted) {
+        firstRunFetchTimeout = true;
+        retryAttempted = true;
+        proxyColdStartSuspected = diagnostic.fetchPath === "proxy" || Number(diagnostic.elapsedMs || 0) >= ageProfile.perQueryTimeoutMs - 50;
+        diagnostic.firstRunFetchTimeout = true;
+        diagnostic.retryAttempted = true;
+        diagnostic.proxyColdStartSuspected = proxyColdStartSuspected;
+        fetches.push(diagnostic);
+
+        const retryResult = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS);
+        docs = retryResult.docs;
+        diagnostic = {
+          ...retryResult.diagnostic,
+          retryAttempted: true,
+          retrySucceeded: retryResult.docs.length > 0 && !retryResult.diagnostic.timedOut && !retryResult.diagnostic.failedReason,
+          proxyColdStartSuspected,
+        };
+        retrySucceeded = Boolean(diagnostic.retrySucceeded);
+      }
       fetches.push(diagnostic);
       if (diagnostic.timedOut) {
         dropReasons.query_timeout = Number(dropReasons.query_timeout || 0) + 1;
@@ -1219,6 +1244,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           openLibraryQueryRouting,
           openLibraryAgeProfile: ageProfile.key,
           openLibraryProfileLabel: ageProfile.behaviorLabel,
+          firstRunFetchTimeout,
+          retryAttempted,
+          retrySucceeded,
+          proxyColdStartSuspected,
           fetches,
         }),
       };
@@ -1260,6 +1289,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         openLibraryQueryRouting,
         openLibraryAgeProfile: ageProfile.key,
         openLibraryProfileLabel: ageProfile.behaviorLabel,
+        firstRunFetchTimeout,
+        retryAttempted,
+        retrySucceeded,
+        proxyColdStartSuspected,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),
