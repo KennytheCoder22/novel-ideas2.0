@@ -29,6 +29,10 @@ const COMMON_ARTIFACT_REASON_LABELS = [
   "keyword_stuffed_marketing_artifact",
   "media_study_artifact",
   "adult_profile_artifact",
+  "packaging_artifact",
+  "adult_route_containment_artifact",
+  "adult_dystopian_meta_artifact",
+  "adult_too_young_survival_artifact",
 ];
 
 const TEEN_ARTIFACT_REASON_LABELS = [
