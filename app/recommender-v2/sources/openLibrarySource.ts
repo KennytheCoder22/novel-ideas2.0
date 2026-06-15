@@ -443,13 +443,14 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
   const adultScienceFictionWeight = nonSkipSignalWeight(signalRows, /\b(science fiction|sci-fi|speculative|space|dystopia|dystopian|alternate history)\b/);
   const adultHistoricalWeight = nonSkipSignalWeight(signalRows, /\b(historical|history|period)\b/);
   const adultAdventureWeight = nonSkipSignalWeight(signalRows, /\b(adventure|action|quest|survival)\b/);
+  const adultSurvivalWeight = nonSkipSignalWeight(signalRows, /\b(survival|survive|survivor)\b/);
   const adultRomanceWeight = nonSkipSignalWeight(signalRows, /\b(romance|romantic|love story)\b/);
   const adultWarWeight = nonSkipSignalWeight(signalRows, /\b(war|military|battle|revolution|political)\b/);
   const adultCozyWeight = nonSkipSignalWeight(signalRows, /\b(cozy|cosy|comfort|whimsical|slice of life|low stakes|lighthearted|light fantasy|romantasy|romance|romantic)\b/);
   const adultDramaWeight = nonSkipSignalWeight(signalRows, /\b(drama|literary|family|relationships|book club|realistic)\b/);
   const adultMixedSpeculativeWeight = adultFantasyWeight + adultScienceFictionWeight + adultHistoricalWeight + adultCozyWeight + adultDramaWeight;
   const wantsAdultFantasyWarCrime = hasFantasy && hasMysteryThriller && (hasWarPolitical || adultWarWeight > 0) && adultFantasyWeight + adultCrimeWeight + adultWarWeight >= Math.max(1, adultHorrorWeight);
-  const wantsAdultDystopianFantasySurvival = hasDystopian && hasFantasy && hasAdventure && adultFantasyWeight + adultScienceFictionWeight + adultAdventureWeight >= Math.max(1.5, adultCrimeWeight * 0.8, adultHorrorWeight * 1.2);
+  const wantsAdultDystopianFantasySurvival = hasDystopian && hasAdventure && adultAdventureWeight >= adultScienceFictionWeight && (adultAdventureWeight >= 2 || adultSurvivalWeight > 0);
   const hasAdultHistoricalCrimeActivationEvidence = adultCrimePositiveWeight >= 1 || (adultMysteryThrillerPositiveWeight >= 1.25 && adultHistoricalWeight >= 1);
   const wantsAdultHistoricalCrimeDrama = hasHistorical && hasAdultHistoricalCrimeActivationEvidence && (hasContemporaryDrama || adultDramaWeight > 0) && adultHistoricalWeight + adultCrimeWeight + adultDramaWeight >= Math.max(1.5, adultRomanceWeight * 1.25, adultFantasyWeight * 0.9);
   const wantsAdultGothicHorrorFantasy = (hasGothic || hasHorror) && !wantsAdultDystopianFantasySurvival && !wantsAdultHistoricalCrimeDrama && (hasFantasy || hasContemporaryDrama || adultHorrorWeight >= adultScienceFictionWeight * 0.8) && adultHorrorWeight >= Math.max(1, adultCrimeWeight * 0.9, adultScienceFictionWeight * 0.9, adultAdventureWeight * 0.9) && adultHorrorWeight + adultFantasyWeight + adultDramaWeight >= Math.max(1, adultScienceFictionWeight);
@@ -468,7 +469,7 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
   const wantsAdultHorror = hasHorror && !wantsAdultFantasyWarCrime && !wantsAdultGothicHorrorFantasy && !wantsAdultFantasyHistoricalSurvival && !wantsAdultSciFi && !wantsAdultHistoricalSpeculativeThriller && !wantsAdultCrimeThriller && adultHorrorWeight >= Math.max(0.5, adultCrimeWeight * 1.25);
   const queryCandidates = (() => {
     if (wantsAdultFantasyWarCrime) return ["dark fantasy", "fantasy war", "political fantasy", "crime thriller"];
-    if (wantsAdultDystopianFantasySurvival) return ["dystopian adventure", "post-apocalyptic fiction", "survival fiction", "fantasy adventure"];
+    if (wantsAdultDystopianFantasySurvival) return ["dystopian adventure", "post-apocalyptic fiction", "survival fiction", "adventure fiction"];
     if (wantsAdultHistoricalCrimeDrama) return ["crime drama", "historical thriller", "historical mystery", wantsAdultLiteraryCrime ? "literary crime" : "realistic drama"];
     if (wantsAdultGothicHorrorFantasy) return ["gothic horror", "supernatural horror", "dark fantasy", "contemporary gothic fiction"];
     if (wantsAdultFantasyHistoricalSurvival) return adultRomanceWeight >= Math.max(1.25, adultCrimeWeight)
@@ -518,7 +519,7 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
     if (hasContemporaryDrama) return "adult_contemporary_literary";
     return "adult_broad_reliable";
   })();
-  const routingDominance = { openLibraryPlanner: "adult_initial_profile", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, hasMysteryThriller, hasHorror, hasGothic, hasFantasy, hasScienceFiction, hasDystopian, hasRomance, hasHistorical, hasAdventure, hasWarPolitical, hasCozy, hasLightFantasy, hasContemporaryDrama, adultCrimeWeight, adultCrimePositiveWeight, adultMysteryThrillerPositiveWeight, adultHorrorWeight, adultFantasyWeight, adultScienceFictionWeight, adultHistoricalWeight, adultAdventureWeight, adultRomanceWeight, adultWarWeight, adultCozyWeight, adultDramaWeight, adultMixedSpeculativeWeight, wantsAdultFantasyWarCrime, wantsAdultDystopianFantasySurvival, hasAdultHistoricalCrimeActivationEvidence, wantsAdultHistoricalCrimeDrama, wantsAdultGothicHorrorFantasy, wantsAdultFantasyHistoricalSurvival, wantsAdultSciFi, wantsAdultCozyFantasy, wantsAdultHistoricalSpeculativeThriller, wantsAdultLiteraryCrime, wantsAdultCrimeThriller, wantsAdultHorror };
+  const routingDominance = { openLibraryPlanner: "adult_initial_profile", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, hasMysteryThriller, hasHorror, hasGothic, hasFantasy, hasScienceFiction, hasDystopian, hasRomance, hasHistorical, hasAdventure, hasWarPolitical, hasCozy, hasLightFantasy, hasContemporaryDrama, adultCrimeWeight, adultCrimePositiveWeight, adultMysteryThrillerPositiveWeight, adultHorrorWeight, adultFantasyWeight, adultScienceFictionWeight, adultHistoricalWeight, adultAdventureWeight, adultSurvivalWeight, adultRomanceWeight, adultWarWeight, adultCozyWeight, adultDramaWeight, adultMixedSpeculativeWeight, wantsAdultFantasyWarCrime, wantsAdultDystopianFantasySurvival, hasAdultHistoricalCrimeActivationEvidence, wantsAdultHistoricalCrimeDrama, wantsAdultGothicHorrorFantasy, wantsAdultFantasyHistoricalSurvival, wantsAdultSciFi, wantsAdultCozyFantasy, wantsAdultHistoricalSpeculativeThriller, wantsAdultLiteraryCrime, wantsAdultCrimeThriller, wantsAdultHorror };
   return queries.map((query, index) => ({
     query,
     originalPlannedQuery,
