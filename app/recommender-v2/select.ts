@@ -262,7 +262,9 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     selected.push(candidate);
   }
 
-  const underfillTarget = deferred.length > 0 ? Math.min(3, limit) : (selected.length === 0 ? 1 : selected.length);
+  const underfillTarget = deferred.length > 0
+    ? Math.min(profile.ageBand === "adult" ? 5 : 3, limit)
+    : (selected.length === 0 ? 1 : selected.length);
   if (selected.length < underfillTarget) {
     rejectedReasons.underfill_deferred_available = deferred.length;
     for (const row of deferred) {
