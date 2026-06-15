@@ -2,7 +2,8 @@ import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, Sour
 import { DEFAULT_OPEN_LIBRARY_PROFILE, openLibraryArtifactReasonLabels, openLibraryProfileForAgeBand, type OpenLibraryAgeProfile } from "./openLibraryProfiles";
 
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
-const ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS = 4_500;
+const ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS = 4_500;
+const ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS = 2_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -627,7 +628,7 @@ function emptyDiagnostics(plan: SourcePlan, status: SourceDiagnosticV2["status"]
   };
 }
 
-async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs, attemptNumber = 1): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
   const query = queryPlan.query;
   const { url, fetchPath } = openLibraryRequest(query, limit);
   const fetchStartedAt = nowIso();
@@ -635,6 +636,8 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   const diagnostic: SourceFetchDiagnosticV2 = {
     query,
     fetchStartedAt,
+    requestStart: fetchStartedAt,
+    attemptNumber,
     timedOut: false,
     fetchPath,
     diagnosticOnly,
@@ -645,16 +648,30 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   };
 
   const queryController = new AbortController();
-  const timeout = setTimeout(() => queryController.abort(), timeoutMs);
-  const abortFromParent = () => queryController.abort();
-  if (signal?.aborted) queryController.abort();
+  let abortReason = "";
+  const timeout = setTimeout(() => {
+    abortReason = "per_query_timeout";
+    queryController.abort();
+  }, timeoutMs);
+  const abortFromParent = () => {
+    abortReason = "source_timeout_or_parent_abort";
+    queryController.abort();
+  };
+  if (signal?.aborted) {
+    abortReason = "source_already_aborted";
+    queryController.abort();
+  }
   else signal?.addEventListener("abort", abortFromParent, { once: true });
 
   try {
     const response = await fetch(url, { signal: queryController.signal });
     diagnostic.httpStatus = response.status;
+    diagnostic.responseHeadersReceived = nowIso();
+    diagnostic.bodyStarted = nowIso();
     const text = await response.text();
+    diagnostic.bodyCompleted = nowIso();
     diagnostic.fetchFinishedAt = nowIso();
+    diagnostic.requestEnd = diagnostic.fetchFinishedAt;
     diagnostic.elapsedMs = Date.now() - startedMs;
 
     if (!response.ok) {
@@ -687,8 +704,10 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
     const causeDetail = cause?.code || cause?.message || "";
     const message = [String(error?.message || error || "openlibrary_fetch_failed"), causeDetail ? `cause:${causeDetail}` : ""].filter(Boolean).join(" ");
     diagnostic.fetchFinishedAt = nowIso();
+    diagnostic.requestEnd = diagnostic.fetchFinishedAt;
     diagnostic.elapsedMs = Date.now() - startedMs;
     diagnostic.timedOut = Boolean(queryController.signal.aborted || signal?.aborted || /aborted|abort|timeout/i.test(message));
+    diagnostic.abortReason = abortReason || (diagnostic.timedOut ? "abort_or_timeout" : undefined);
     diagnostic.failedReason = message;
     return { docs: [], diagnostic };
   } finally {
@@ -1022,18 +1041,19 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         break;
       }
 
-      let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs);
       const isAdultFirstMainFetch = ageProfile.key === "adult" && fetches.filter((fetch) => !fetch.diagnosticOnly).length === 0;
+      const firstAttemptTimeoutMs = isAdultFirstMainFetch ? ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS : ageProfile.perQueryTimeoutMs;
+      let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, firstAttemptTimeoutMs, 1);
       if (diagnostic.timedOut && isAdultFirstMainFetch && !context.signal?.aborted) {
         firstRunFetchTimeout = true;
         retryAttempted = true;
-        proxyColdStartSuspected = diagnostic.fetchPath === "proxy" || Number(diagnostic.elapsedMs || 0) >= ageProfile.perQueryTimeoutMs - 50;
+        proxyColdStartSuspected = diagnostic.fetchPath === "proxy" || Number(diagnostic.elapsedMs || 0) >= firstAttemptTimeoutMs - 50;
         diagnostic.firstRunFetchTimeout = true;
         diagnostic.retryAttempted = true;
         diagnostic.proxyColdStartSuspected = proxyColdStartSuspected;
         fetches.push(diagnostic);
 
-        const retryResult = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS);
+        const retryResult = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS, 2);
         docs = retryResult.docs;
         diagnostic = {
           ...retryResult.diagnostic,

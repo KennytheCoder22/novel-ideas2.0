@@ -78,6 +78,13 @@ export interface SourceFetchDiagnosticV2 {
   query: string;
   fetchStartedAt?: string;
   fetchFinishedAt?: string;
+  attemptNumber?: number;
+  requestStart?: string;
+  requestEnd?: string;
+  abortReason?: string;
+  responseHeadersReceived?: string;
+  bodyStarted?: string;
+  bodyCompleted?: string;
   elapsedMs?: number;
   timedOut: boolean;
   httpStatus?: number;
