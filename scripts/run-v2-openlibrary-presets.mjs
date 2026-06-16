@@ -71,6 +71,22 @@ function summarizeFetches(source) {
   return fetches.length ? `${fetches.filter((fetch) => fetch.timedOut).length}/${fetches.length} timeouts` : "0/0 timeouts";
 }
 
+function summarizeFetchPaths(source) {
+  const fetches = (source?.fetches || []).filter((fetch) => !fetch.diagnosticOnly);
+  return [...new Set(fetches.map((fetch) => fetch.fetchPath || "missing"))];
+}
+
+function summarizeProxyAttempts(source) {
+  const attempts = (source?.fetches || [])
+    .filter((fetch) => !fetch.diagnosticOnly && Number.isFinite(Number(fetch.proxyAttempts)))
+    .map((fetch) => Number(fetch.proxyAttempts));
+  return attempts;
+}
+
+function openLibraryProxyConfigured() {
+  return Boolean(process.env.OPEN_LIBRARY_PROXY_BASE_URL || process.env.EXPO_PUBLIC_OPEN_LIBRARY_PROXY_BASE_URL || process.env.VERCEL_URL);
+}
+
 function allMainFetchesTimedOut(source) {
   const fetches = (source?.fetches || []).filter((fetch) => !fetch.diagnosticOnly);
   return fetches.length > 0 && fetches.every((fetch) => fetch.timedOut);
@@ -112,6 +128,9 @@ function printSummary(preset, result) {
     artifactSuppressedTitles: source?.artifactSuppressedTitles || [],
     topRejectionReasons: topReasons(rejectedReasons),
     timeoutSummary: summarizeFetches(source),
+    fetchPaths: summarizeFetchPaths(source),
+    proxyAttempts: summarizeProxyAttempts(source),
+    openLibraryProxyConfigured: openLibraryProxyConfigured(),
     adultFamilyDiagnostics: familyDiagnostics(rejectedReasons),
   }));
 }

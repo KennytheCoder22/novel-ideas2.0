@@ -89,6 +89,7 @@ export interface SourceFetchDiagnosticV2 {
   timedOut: boolean;
   httpStatus?: number;
   fetchPath?: "direct" | "proxy";
+  proxyAttempts?: number;
   responseBodyPrefix?: string;
   failedReason?: string;
   docsReturned?: number;

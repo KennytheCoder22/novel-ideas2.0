@@ -610,9 +610,20 @@ export function buildOpenLibraryQueryPlansForRegression(plan: SourcePlan, profil
   return buildOpenLibraryQueryPlans(plan, profile, ageProfile);
 }
 
+function configuredOpenLibraryProxyBase(): string {
+  const env = typeof process !== "undefined" ? (process as any)?.env || {} : {};
+  const explicit = String(env.OPEN_LIBRARY_PROXY_BASE_URL || env.EXPO_PUBLIC_OPEN_LIBRARY_PROXY_BASE_URL || "").trim();
+  if (explicit) return explicit.replace(/\/+$/, "");
+  const vercelUrl = String(env.VERCEL_URL || "").trim();
+  if (vercelUrl) return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
+  return "";
+}
+
 function openLibraryRequest(query: string, limit: number): { url: string; fetchPath: "direct" | "proxy" } {
   const params = `q=${encodeURIComponent(query)}&limit=${Math.max(1, Math.min(20, limit))}`;
   if (typeof window !== "undefined") return { url: `/api/openlibrary?${params}`, fetchPath: "proxy" };
+  const proxyBase = configuredOpenLibraryProxyBase();
+  if (proxyBase) return { url: `${proxyBase}/api/openlibrary?${params}`, fetchPath: "proxy" };
   return { url: `https://openlibrary.org/search.json?${params}&language=eng`, fetchPath: "direct" };
 }
 
@@ -745,6 +756,7 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
         return { docs: [], diagnostic, responseBodyPrefix: diagnostic.responseBodyPrefix };
       }
       const docs = json.docs;
+      if (Number.isFinite(Number(json?.proxyAttempts))) diagnostic.proxyAttempts = Number(json.proxyAttempts);
       diagnostic.responseShape = "docs_array";
       diagnostic.docsReturned = docs.length;
       diagnostic.firstReturnedTitles = uniqueStrings(docs.map((doc: any) => doc?.title), 5);

@@ -58,7 +58,7 @@ function assertDeepEqual(actual, expected, message) {
 }
 
 function fakeDoc(query, index) {
-  const label = index === 1 ? "Alpha" : index === 2 ? "Beta" : "Gamma";
+  const label = index === 1 ? "Alpha" : index === 2 ? "Beta" : index === 3 ? "Gamma" : `Extra${index}`;
   return {
     key: `/works/${query.replace(/\s+/g, "-")}-${label.toLowerCase()}`,
     title: `${query} ${label}`,
@@ -219,6 +219,34 @@ async function main() {
     assertEqual(Boolean(result.diagnostics.dropReasons?.adult_delayed_final_retry_accepted), true, "delayed final retry should mark accepted rows");
     console.log(JSON.stringify({ name: "delayed final retry recovers after adult double timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: delayedRetryFetchCalls }));
   } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const proxyFetchUrls = [];
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    proxyFetchUrls.push(String(url));
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 2, docs: [1, 2, 3, 4, 5, 6, 7, 8].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "adult",
+      signals: cases[4].signals,
+    });
+    const result = await openLibrarySourceAdapter.search(sourcePlan, { profile });
+    assertEqual(proxyFetchUrls[0].startsWith("https://proxy.example.test/api/openlibrary?"), true, "configured proxy base should route Open Library fetches through proxy");
+    assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "fetch diagnostics should mark configured proxy path");
+    assertEqual(result.diagnostics.fetches?.[0]?.proxyAttempts, 2, "fetch diagnostics should surface proxy attempt count");
+    console.log(JSON.stringify({ name: "configured proxy path surfaces proxy attempts", pass: true, fetchPath: result.diagnostics.fetches?.[0]?.fetchPath, proxyAttempts: result.diagnostics.fetches?.[0]?.proxyAttempts }));
+  } finally {
+    if (previousProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousProxyBase;
     globalThis.fetch = originalFetch;
   }
 
