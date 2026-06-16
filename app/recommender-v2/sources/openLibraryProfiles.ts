@@ -64,9 +64,10 @@ export const OPEN_LIBRARY_AGE_PROFILES: Record<AgeBandV2, OpenLibraryAgeProfile>
     ...BASE_OPEN_LIBRARY_PROFILE,
     key: "adult",
     ageBand: "adult",
-    behaviorLabel: "adult_openlibrary_initial_profile",
+    behaviorLabel: "adult_openlibrary_locked_baseline",
     diagnosticProbeQuery: "fiction",
     ageSpecificArtifactReasonLabels: [],
+    lockedBaseline: true,
   },
   preteens: {
     ...BASE_OPEN_LIBRARY_PROFILE,
