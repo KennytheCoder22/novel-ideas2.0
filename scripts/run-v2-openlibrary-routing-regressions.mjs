@@ -129,6 +129,20 @@ async function main() {
         assertEqual(summary.dominance.hasAdultHistoricalCrimeActivationEvidence, true, `${this.name} should expose activation evidence`);
       },
     },
+    {
+      name: "fantasy romance adventure avoids mixed speculative without counter evidence",
+      signals: [
+        { action: "like", title: "Fantasy Romance", genres: ["fantasy", "romance"], themes: ["magic", "romantic"], format: "book" },
+        { action: "like", title: "Myth Action", genres: ["fantasy"], themes: ["mythology", "action", "adventure"], format: "book" },
+        { action: "skip", title: "Skipped Space", genres: ["science fiction"], themes: ["space"], format: "book" },
+      ],
+      expectedReason: "adult_fantasy_romance_adventure",
+      expectedQueries: ["fantasy romance", "fantasy adventure", "mythological fantasy", "romantic fantasy"],
+      extra(summary) {
+        assertEqual(summary.dominance.wantsAdultMixedSpeculative, false, `${this.name} should not route through mixed speculative`);
+        assertEqual(summary.dominance.wantsAdultFantasyRomanceAdventure, true, `${this.name} should expose fantasy romance adventure routing`);
+      },
+    },
   ];
 
   for (const testCase of cases) {
