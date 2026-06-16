@@ -137,6 +137,15 @@ function nonSkipSignalWeight(rows: { value: string; weight: number; evidence?: s
   }, 0);
 }
 
+function likedSignalWeight(rows: { value: string; weight: number; evidence?: string[] }[], pattern: RegExp): number {
+  return rows.reduce((sum, row) => {
+    if (!pattern.test(String(row.value || "").toLowerCase())) return sum;
+    const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+    const hasLike = evidence.some((item) => String(item || "").startsWith("like:"));
+    return hasLike ? sum + Math.abs(Number(row.weight || 0)) : sum;
+  }, 0);
+}
+
 function hasNonSkipSignal(rows: { value: string; weight: number; evidence?: string[] }[], pattern: RegExp): boolean {
   return rows.some((row) => pattern.test(String(row.value || "").toLowerCase()) && !(Array.isArray(row.evidence) && row.evidence.length > 0 && row.evidence.every((item) => String(item || "").startsWith("skip:"))));
 }
@@ -441,7 +450,7 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
   const adultHorrorWeight = nonSkipSignalWeight(signalRows, /\b(horror|ghost|occult|supernatural|gothic)\b/);
   const adultFantasyWeight = nonSkipSignalWeight(signalRows, /\b(fantasy|magic|magical|dark fantasy|magical realism)\b/);
   const adultScienceFictionWeight = nonSkipSignalWeight(signalRows, /\b(science fiction|sci-fi|speculative|space|dystopia|dystopian|alternate history)\b/);
-  const adultDystopianWeight = nonSkipSignalWeight(signalRows, /\b(dystopia|dystopian|post-apocalyptic|post apocalyptic)\b/);
+  const adultDystopianWeight = likedSignalWeight(signalRows, /\b(dystopia|dystopian|post-apocalyptic|post apocalyptic)\b/);
   const adultHistoricalWeight = nonSkipSignalWeight(signalRows, /\b(historical|history|period)\b/);
   const adultAdventureWeight = nonSkipSignalWeight(signalRows, /\b(adventure|action|quest|survival)\b/);
   const adultSurvivalWeight = nonSkipSignalWeight(signalRows, /\b(survival|survive|survivor)\b/);
@@ -578,6 +587,10 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, age
   if (ageProfile.key === "teen") return buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile);
   if (ageProfile.key === "adult") return buildAdultOpenLibraryQueryPlans(plan, profile, ageProfile);
   return buildGenericOpenLibraryQueryPlans(plan, ageProfile);
+}
+
+export function buildOpenLibraryQueryPlansForRegression(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
+  return buildOpenLibraryQueryPlans(plan, profile, ageProfile);
 }
 
 function openLibraryRequest(query: string, limit: number): { url: string; fetchPath: "direct" | "proxy" } {
