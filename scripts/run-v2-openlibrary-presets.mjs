@@ -83,6 +83,12 @@ function summarizeProxyAttempts(source) {
   return attempts;
 }
 
+function summarizeClientTimeouts(source) {
+  return (source?.fetches || [])
+    .filter((fetch) => !fetch.diagnosticOnly && Number.isFinite(Number(fetch.clientTimeoutMs)))
+    .map((fetch) => Number(fetch.clientTimeoutMs));
+}
+
 function openLibraryProxyConfigured() {
   return Boolean(process.env.OPEN_LIBRARY_PROXY_BASE_URL || process.env.EXPO_PUBLIC_OPEN_LIBRARY_PROXY_BASE_URL || process.env.VERCEL_URL);
 }
@@ -130,6 +136,7 @@ function printSummary(preset, result) {
     timeoutSummary: summarizeFetches(source),
     fetchPaths: summarizeFetchPaths(source),
     proxyAttempts: summarizeProxyAttempts(source),
+    clientTimeouts: summarizeClientTimeouts(source),
     openLibraryProxyConfigured: openLibraryProxyConfigured(),
     adultFamilyDiagnostics: familyDiagnostics(rejectedReasons),
   }));

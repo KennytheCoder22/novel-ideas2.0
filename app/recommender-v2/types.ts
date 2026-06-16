@@ -85,6 +85,8 @@ export interface SourceFetchDiagnosticV2 {
   responseHeadersReceived?: string;
   bodyStarted?: string;
   bodyCompleted?: string;
+  clientTimeoutMs?: number;
+  proxyRetryWindowEnabled?: boolean;
   elapsedMs?: number;
   timedOut: boolean;
   httpStatus?: number;

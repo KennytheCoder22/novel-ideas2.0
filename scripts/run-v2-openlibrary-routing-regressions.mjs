@@ -243,7 +243,9 @@ async function main() {
     assertEqual(proxyFetchUrls[0].startsWith("https://proxy.example.test/api/openlibrary?"), true, "configured proxy base should route Open Library fetches through proxy");
     assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "fetch diagnostics should mark configured proxy path");
     assertEqual(result.diagnostics.fetches?.[0]?.proxyAttempts, 2, "fetch diagnostics should surface proxy attempt count");
-    console.log(JSON.stringify({ name: "configured proxy path surfaces proxy attempts", pass: true, fetchPath: result.diagnostics.fetches?.[0]?.fetchPath, proxyAttempts: result.diagnostics.fetches?.[0]?.proxyAttempts }));
+    assertEqual(result.diagnostics.fetches?.[0]?.proxyRetryWindowEnabled, true, "adult proxy fetch should use proxy retry client window");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 19000, true, "adult proxy fetch should not abort before proxy retries can finish");
+    console.log(JSON.stringify({ name: "configured proxy path surfaces proxy attempts", pass: true, fetchPath: result.diagnostics.fetches?.[0]?.fetchPath, proxyAttempts: result.diagnostics.fetches?.[0]?.proxyAttempts, clientTimeoutMs: result.diagnostics.fetches?.[0]?.clientTimeoutMs }));
   } finally {
     if (previousProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousProxyBase;
