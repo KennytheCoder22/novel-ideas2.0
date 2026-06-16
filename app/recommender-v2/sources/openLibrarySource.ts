@@ -1064,12 +1064,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let retryAttempted = false;
     let retrySucceeded = false;
     let proxyColdStartSuspected = false;
+    let adultPrimaryQueryTimedOutTwice = false;
 
     for (const queryPlan of queryPlans) {
       const query = queryPlan.query;
       const elapsedBeforeQueryMs = Date.now() - Date.parse(startedAt);
       const reserveProbeTimeMs = ageProfile.probeTimeoutMs + ageProfile.probeReserveBufferMs;
-      if (!rawItems.length && fetches.length > 0 && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
+      if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
         dropReasons.main_query_reserved_probe_time = Number(dropReasons.main_query_reserved_probe_time || 0) + 1;
         break;
       }
@@ -1100,6 +1101,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           proxyColdStartSuspected,
         };
         retrySucceeded = Boolean(diagnostic.retrySucceeded);
+        adultPrimaryQueryTimedOutTwice = Boolean(retryResult.diagnostic.timedOut);
       }
       fetches.push(diagnostic);
       if (diagnostic.timedOut) {
@@ -1163,11 +1165,17 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               dropReasons.adult_mixed_first_run_fallback_accepted = Number(dropReasons.adult_mixed_first_run_fallback_accepted || 0) + 1;
               if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
             }
-            if (rawItems.length >= 3 || rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+            const timeoutRecoveryTarget = adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : 3;
+            if (rawItems.length >= timeoutRecoveryTarget || rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
           }
           if (rawItems.length > 0) openLibraryTopUpRan = true;
         }
-        if (rawItems.length >= 3 || rawItems.length >= ageProfile.docLimit) break;
+        const timeoutRecoveryTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : 3;
+        if (rawItems.length >= timeoutRecoveryTarget || rawItems.length >= ageProfile.docLimit) break;
+        if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice && rawItems.length > 0) {
+          openLibraryTopUpRan = true;
+          dropReasons.adult_timeout_recovery_continued_underfilled = Number(dropReasons.adult_timeout_recovery_continued_underfilled || 0) + 1;
+        }
         if (context.signal?.aborted) break;
         continue;
       }
@@ -1205,10 +1213,17 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (seriesKey) acceptedSeriesKeys.add(seriesKey);
         acceptedDocKeys.add(docKey);
         rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
-        if (rawItems.length >= ageProfile.docLimit) break;
+        const acceptTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : ageProfile.docLimit;
+        if (rawItems.length >= acceptTarget) break;
       }
-      if (rawItems.length >= ageProfile.minCleanDocs || rawItems.length >= ageProfile.docLimit) break;
-      if (rawItems.length > 0) openLibraryTopUpRan = true;
+      const cleanDocTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : ageProfile.minCleanDocs;
+      if (rawItems.length >= cleanDocTarget || rawItems.length >= ageProfile.docLimit) break;
+      if (rawItems.length > 0) {
+        openLibraryTopUpRan = true;
+        if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) {
+          dropReasons.adult_timeout_recovery_continued_underfilled = Number(dropReasons.adult_timeout_recovery_continued_underfilled || 0) + 1;
+        }
+      }
     }
 
     if (queryPlans[0]?.routingReason === "adult_fantasy_historical_survival" && rawItems.length < 3 && !context.signal?.aborted) {

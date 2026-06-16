@@ -57,10 +57,22 @@ function assertDeepEqual(actual, expected, message) {
   if (actualJson !== expectedJson) throw new Error(`${message}: expected ${expectedJson}, got ${actualJson}`);
 }
 
+function fakeDoc(query, index) {
+  const label = index === 1 ? "Alpha" : "Beta";
+  return {
+    key: `/works/${query.replace(/\s+/g, "-")}-${label.toLowerCase()}`,
+    title: `${query} ${label}`,
+    author_name: [`Author ${query} ${label}`],
+    subject: ["Fiction", "Novel", "Mystery", "Thriller", "Fantasy", "Science fiction", "Drama"],
+    language: ["eng"],
+    first_publish_year: 2010 + index,
+  };
+}
+
 async function main() {
   compileHarnessDependencies();
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
-  const { buildOpenLibraryQueryPlansForRegression } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
+  const { buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
   const { openLibraryProfileForAgeBand } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibraryProfiles.js`).href);
   const adultProfile = openLibraryProfileForAgeBand("adult");
 
@@ -126,6 +138,38 @@ async function main() {
     assertDeepEqual(summary.queries, testCase.expectedQueries, `${testCase.name} query list`);
     testCase.extra?.(summary);
     console.log(JSON.stringify({ name: testCase.name, pass: true, reason: summary.reason, queries: summary.queries }));
+  }
+
+  const originalFetch = globalThis.fetch;
+  const fetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    fetchCalls.push(query);
+    if (query === "speculative thriller") throw new Error("timeout");
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [fakeDoc(query, 1), fakeDoc(query, 2)] }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "adult",
+      signals: cases[0].signals,
+    });
+    const result = await openLibrarySourceAdapter.search(sourcePlan, { profile });
+    assertEqual(result.rawItems.length, 5, "timeout recovery should continue planned fallbacks until five candidates");
+    assertDeepEqual(fetchCalls, [
+      "speculative thriller",
+      "speculative thriller",
+      "science fiction thriller",
+      "fantasy romance",
+      "mystery drama",
+    ], "timeout recovery fetch chain");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.adult_timeout_recovery_continued_underfilled), true, "timeout recovery should mark underfilled continuation");
+    console.log(JSON.stringify({ name: "timeout recovery continues planned fallbacks", pass: true, rawItems: result.rawItems.length, fetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 }
 
