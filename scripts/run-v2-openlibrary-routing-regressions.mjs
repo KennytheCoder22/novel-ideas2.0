@@ -172,6 +172,42 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const delayedRetryFetchCalls = [];
+  const delayedRetryCounts = new Map();
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    delayedRetryFetchCalls.push(query);
+    delayedRetryCounts.set(query, (delayedRetryCounts.get(query) || 0) + 1);
+    if (query === "speculative thriller" && delayedRetryCounts.get(query) >= 3) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ docs: [fakeDoc(query, 1), fakeDoc(query, 2), fakeDoc(query, 3)] }),
+      };
+    }
+    throw new Error("timeout");
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "adult",
+      signals: cases[0].signals,
+    });
+    const result = await openLibrarySourceAdapter.search(sourcePlan, { profile });
+    assertEqual(result.rawItems.length, 3, "delayed final retry should recover rows when all immediate fallbacks time out");
+    assertDeepEqual(delayedRetryFetchCalls, [
+      "speculative thriller",
+      "speculative thriller",
+      "science fiction thriller",
+      "fantasy romance",
+      "mystery drama",
+      "speculative thriller",
+    ], "delayed final retry fetch chain");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.adult_delayed_final_retry_accepted), true, "delayed final retry should mark accepted rows");
+    console.log(JSON.stringify({ name: "delayed final retry recovers after adult double timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: delayedRetryFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const underfillFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";

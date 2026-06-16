@@ -1376,6 +1376,67 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
     }
 
+    if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+      const delayedRetryQuery = queryPlans[0]?.query || adultUnderfillRecoveryQueries(queryPlans)[0] || "";
+      if (delayedRetryQuery) {
+        const delayedRetryPlan: OpenLibraryQueryPlan = {
+          query: delayedRetryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+          queryFamily: queryFamilyForOpenLibraryQuery(delayedRetryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "adult"}_delayed_final_retry`,
+        };
+        const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS, 3);
+        fetches.push(diagnostic);
+        dropReasons.adult_delayed_final_retry_attempted = Number(dropReasons.adult_delayed_final_retry_attempted || 0) + 1;
+        openLibraryTopUpRan = true;
+        if (diagnostic.timedOut) {
+          dropReasons.adult_delayed_final_retry_timeout = Number(dropReasons.adult_delayed_final_retry_timeout || 0) + 1;
+          if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+        } else if (diagnostic.failedReason) {
+          dropReasons.adult_delayed_final_retry_failed = Number(dropReasons.adult_delayed_final_retry_failed || 0) + 1;
+          if (!failedReason) failedReason = diagnostic.failedReason;
+        } else {
+          rawApiResultCount += delayedRetryDocs.length;
+          for (const doc of delayedRetryDocs) {
+            const title = String(doc?.title || "").trim();
+            if (title) rawTitles.push(title);
+            if (!title) {
+              dropReasons.adult_delayed_final_retry_missing_title = Number(dropReasons.adult_delayed_final_retry_missing_title || 0) + 1;
+              continue;
+            }
+            const quality = shouldKeepOpenLibraryDoc(doc, delayedRetryQuery, context.profile);
+            if (!quality.keep) {
+              const reason = `adult_delayed_final_retry_${quality.reason || "quality_filter"}`;
+              dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+              if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+              continue;
+            }
+            const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+            if (acceptedDocKeys.has(docKey)) {
+              dropReasons.adult_delayed_final_retry_duplicate_doc = Number(dropReasons.adult_delayed_final_retry_duplicate_doc || 0) + 1;
+              continue;
+            }
+            const seriesKey = openLibrarySeriesKey(doc);
+            if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+              dropReasons.adult_delayed_final_retry_series_duplicate = Number(dropReasons.adult_delayed_final_retry_series_duplicate || 0) + 1;
+              seriesSuppressedTitles.push(title);
+              continue;
+            }
+            if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+            acceptedDocKeys.add(docKey);
+            rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
+            dropReasons.adult_delayed_final_retry_accepted = Number(dropReasons.adult_delayed_final_retry_accepted || 0) + 1;
+            if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+          }
+          if (delayedRetryDocs.length > 0 && !dropReasons.adult_delayed_final_retry_accepted) {
+            dropReasons.adult_delayed_final_retry_all_rejected = Number(dropReasons.adult_delayed_final_retry_all_rejected || 0) + 1;
+          }
+        }
+      }
+    }
+
     if (rawItems.length === 1 && queryPlans[0]?.routingReason === "dominant_horror_survival_psychological" && !context.signal?.aborted) {
       const fallbackQuery = "young adult survival horror";
       const fallbackPlan: OpenLibraryQueryPlan = { query: fallbackQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "horror_survival", facets: ["horror", "survival", "psychological"], emergencyFallback: true, routingReason: "horror_survival_underfill_fallback" };
