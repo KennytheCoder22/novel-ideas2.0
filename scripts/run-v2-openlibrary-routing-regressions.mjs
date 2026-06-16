@@ -58,7 +58,7 @@ function assertDeepEqual(actual, expected, message) {
 }
 
 function fakeDoc(query, index) {
-  const label = index === 1 ? "Alpha" : "Beta";
+  const label = index === 1 ? "Alpha" : index === 2 ? "Beta" : "Gamma";
   return {
     key: `/works/${query.replace(/\s+/g, "-")}-${label.toLowerCase()}`,
     title: `${query} ${label}`,
@@ -168,6 +168,36 @@ async function main() {
     ], "timeout recovery fetch chain");
     assertEqual(Boolean(result.diagnostics.dropReasons?.adult_timeout_recovery_continued_underfilled), true, "timeout recovery should mark underfilled continuation");
     console.log(JSON.stringify({ name: "timeout recovery continues planned fallbacks", pass: true, rawItems: result.rawItems.length, fetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const underfillFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    underfillFetchCalls.push(query);
+    const docs = query === "horror fiction"
+      ? [fakeDoc(query, 1), fakeDoc(query, 2), fakeDoc(query, 3)]
+      : [fakeDoc(query, 1), fakeDoc(query, 2)];
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "adult",
+      signals: [
+        { action: "like", title: "Horror One", genres: ["horror"], themes: ["supernatural", "dark"], format: "book" },
+        { action: "like", title: "Horror Two", genres: ["horror"], themes: ["psychological"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search(sourcePlan, { profile });
+    assertEqual(result.rawItems.length, 8, "adult underfill recovery should add lane-safe slack for final selection filters");
+    assertDeepEqual(underfillFetchCalls, ["gothic horror", "supernatural horror", "dark fantasy", "contemporary gothic fiction"], "adult underfill recovery should try remaining planned lane queries first");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.adult_underfill_recovery_accepted), true, "adult underfill recovery should mark accepted rows");
+    console.log(JSON.stringify({ name: "adult underfill recovery tops up short lane-safe slates", pass: true, rawItems: result.rawItems.length, fetchCalls: underfillFetchCalls }));
   } finally {
     globalThis.fetch = originalFetch;
   }

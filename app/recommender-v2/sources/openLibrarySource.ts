@@ -965,6 +965,21 @@ function hasAdultMixedHistoricalMysteryFallbackOverlap(doc: any): boolean {
   return /\b(mystery|crime|thriller|suspense|detective|historical|history|romance|romantic)\b/.test(text);
 }
 
+function adultUnderfillRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string[] {
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  const plannedQueries = queryPlans.map((plan) => plan.query);
+  const routeFallbacks = (() => {
+    if (routingReason === "adult_fantasy_adventure_mystery") return ["fantasy mystery", "speculative fiction", "adventure fantasy"];
+    if (routingReason === "adult_horror" || routingReason === "adult_gothic_horror_fantasy") return ["horror fiction", "supernatural thriller", "dark suspense"];
+    if (routingReason === "adult_mixed_speculative") return ["speculative fiction", "science fiction thriller", "speculative thriller"];
+    if (routingReason === "adult_historical_crime_drama") return ["crime fiction", "historical mystery", "mystery thriller"];
+    if (routingReason === "adult_crime_thriller") return ["crime fiction", "mystery thriller", "psychological thriller"];
+    if (routingReason === "adult_fantasy_historical_survival") return ["fantasy adventure", "historical fantasy", "fantasy romance"];
+    return [];
+  })();
+  return uniqueStrings([...plannedQueries, ...routeFallbacks], 8);
+}
+
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return true;
   const firstPublishYear = Number(doc?.first_publish_year || 0);
@@ -1290,6 +1305,75 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (rawItems.length >= 3 || rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
       }
       if (fallbackQueries.length > 0) openLibraryTopUpRan = true;
+    }
+
+    const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
+    if (ageProfile.key === "adult" && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
+      const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+      const recoveryQueries = adultUnderfillRecoveryQueries(queryPlans)
+        .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
+      const recoveryTarget = adultUnderfillRecoveryTarget;
+      for (const recoveryQuery of recoveryQueries) {
+        const recoveryPlan: OpenLibraryQueryPlan = {
+          query: recoveryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+          queryFamily: queryFamilyForOpenLibraryQuery(recoveryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "adult"}_underfill_recovery`,
+        };
+        const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs);
+        fetches.push(diagnostic);
+        dropReasons.adult_underfill_recovery_query_attempted = Number(dropReasons.adult_underfill_recovery_query_attempted || 0) + 1;
+        if (diagnostic.timedOut) {
+          dropReasons.adult_underfill_recovery_timeout = Number(dropReasons.adult_underfill_recovery_timeout || 0) + 1;
+          if (context.signal?.aborted) break;
+          continue;
+        }
+        if (diagnostic.failedReason) {
+          dropReasons.adult_underfill_recovery_failed = Number(dropReasons.adult_underfill_recovery_failed || 0) + 1;
+          continue;
+        }
+        rawApiResultCount += recoveryDocs.length;
+        for (const doc of recoveryDocs) {
+          const title = String(doc?.title || "").trim();
+          if (title) rawTitles.push(title);
+          if (!title) {
+            dropReasons.adult_underfill_recovery_missing_title = Number(dropReasons.adult_underfill_recovery_missing_title || 0) + 1;
+            continue;
+          }
+          const quality = shouldKeepOpenLibraryDoc(doc, recoveryQuery, context.profile);
+          if (!quality.keep) {
+            const reason = `adult_underfill_recovery_${quality.reason || "quality_filter"}`;
+            dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+            if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+            continue;
+          }
+          const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+          if (acceptedDocKeys.has(docKey)) {
+            dropReasons.adult_underfill_recovery_duplicate_doc = Number(dropReasons.adult_underfill_recovery_duplicate_doc || 0) + 1;
+            continue;
+          }
+          const seriesKey = openLibrarySeriesKey(doc);
+          if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+            dropReasons.adult_underfill_recovery_series_duplicate = Number(dropReasons.adult_underfill_recovery_series_duplicate || 0) + 1;
+            seriesSuppressedTitles.push(title);
+            continue;
+          }
+          if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+          acceptedDocKeys.add(docKey);
+          rawItems.push(normalizeOpenLibraryDoc(doc, recoveryPlan));
+          dropReasons.adult_underfill_recovery_accepted = Number(dropReasons.adult_underfill_recovery_accepted || 0) + 1;
+          if (rawItems.length >= recoveryTarget) break;
+        }
+        if (rawItems.length >= recoveryTarget) break;
+      }
+      if (recoveryQueries.length > 0) {
+        openLibraryTopUpRan = true;
+        if (rawItems.length < recoveryTarget) {
+          dropReasons.adult_underfill_recovery_exhausted = Number(dropReasons.adult_underfill_recovery_exhausted || 0) + 1;
+        }
+      }
     }
 
     if (rawItems.length === 1 && queryPlans[0]?.routingReason === "dominant_horror_survival_psychological" && !context.signal?.aborted) {
