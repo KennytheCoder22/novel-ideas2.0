@@ -2,6 +2,9 @@ import type { SourceAdapterV2, SourceDiagnosticV2, SourceFetchDiagnosticV2, Sour
 import { DEFAULT_OPEN_LIBRARY_PROFILE, openLibraryArtifactReasonLabels, openLibraryProfileForAgeBand, type OpenLibraryAgeProfile } from "./openLibraryProfiles";
 
 const RESPONSE_BODY_PREFIX_LIMIT = 240;
+const ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS = 4_500;
+const ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS = 2_500;
+const ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 19_000;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -132,6 +135,15 @@ function nonSkipSignalWeight(rows: { value: string; weight: number; evidence?: s
     const evidence = Array.isArray(row.evidence) ? row.evidence : [];
     const allSkip = evidence.length > 0 && evidence.every((item) => String(item || "").startsWith("skip:"));
     return sum + Math.abs(Number(row.weight || 0)) * (allSkip ? 0.2 : 1);
+  }, 0);
+}
+
+function likedSignalWeight(rows: { value: string; weight: number; evidence?: string[] }[], pattern: RegExp): number {
+  return rows.reduce((sum, row) => {
+    if (!pattern.test(String(row.value || "").toLowerCase())) return sum;
+    const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+    const hasLike = evidence.some((item) => String(item || "").startsWith("like:"));
+    return hasLike ? sum + Math.abs(Number(row.weight || 0)) : sum;
   }, 0);
 }
 
@@ -424,7 +436,9 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
   const hasGothic = /\b(gothic|gothic horror|gothic fiction|dark academia)\b/.test(profileText);
   const hasFantasy = /\b(fantasy|magic|magical|epic fantasy|dark fantasy)\b/.test(profileText);
   const hasScienceFiction = /\b(science fiction|sci-fi|speculative|space|dystopia|dystopian|alternate history)\b/.test(profileText);
+  const hasDystopian = /\b(dystopia|dystopian|post-apocalyptic|apocalyptic)\b/.test(profileText);
   const hasRomance = /\b(romance|romantic|love story)\b/.test(profileText);
+  const hasMythology = /\b(myth|mythology|mythological|gods?|legend|folklore)\b/.test(profileText);
   const hasHistorical = /\b(historical|history|period)\b/.test(profileText);
   const hasAdventure = /\b(adventure|action|quest|survival)\b/.test(profileText);
   const hasWarPolitical = /\b(war|military|battle|revolution|political|empire|kingdom)\b/.test(profileText);
@@ -433,20 +447,60 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
   const hasContemporaryDrama = /\b(contemporary|realistic|literary|drama|family|relationships|book club)\b/.test(profileText);
   const signalRows = [...profile.genreFamily, ...profile.themes];
   const adultCrimeWeight = nonSkipSignalWeight(signalRows, /\b(crime|thriller|mystery|detective|noir|suspense)\b/);
+  const adultCrimePositiveWeight = nonSkipSignalWeight(signalRows, /\b(crime|detective|noir)\b/);
+  const adultMysteryThrillerPositiveWeight = nonSkipSignalWeight(signalRows, /\b(mystery|thriller|suspense)\b/);
   const adultHorrorWeight = nonSkipSignalWeight(signalRows, /\b(horror|ghost|occult|supernatural|gothic)\b/);
   const adultFantasyWeight = nonSkipSignalWeight(signalRows, /\b(fantasy|magic|magical|dark fantasy|magical realism)\b/);
   const adultScienceFictionWeight = nonSkipSignalWeight(signalRows, /\b(science fiction|sci-fi|speculative|space|dystopia|dystopian|alternate history)\b/);
+  const adultDystopianWeight = likedSignalWeight(signalRows, /\b(dystopia|dystopian|post-apocalyptic|post apocalyptic)\b/);
   const adultHistoricalWeight = nonSkipSignalWeight(signalRows, /\b(historical|history|period)\b/);
+  const adultAdventureWeight = nonSkipSignalWeight(signalRows, /\b(adventure|action|quest|survival)\b/);
+  const adultMythologyWeight = nonSkipSignalWeight(signalRows, /\b(myth|mythology|mythological|gods?|legend|folklore)\b/);
+  const adultSurvivalWeight = nonSkipSignalWeight(signalRows, /\b(survival|survive|survivor)\b/);
+  const adultRomanceWeight = nonSkipSignalWeight(signalRows, /\b(romance|romantic|love story)\b/);
   const adultWarWeight = nonSkipSignalWeight(signalRows, /\b(war|military|battle|revolution|political)\b/);
   const adultCozyWeight = nonSkipSignalWeight(signalRows, /\b(cozy|cosy|comfort|whimsical|slice of life|low stakes|lighthearted|light fantasy|romantasy|romance|romantic)\b/);
   const adultDramaWeight = nonSkipSignalWeight(signalRows, /\b(drama|literary|family|relationships|book club|realistic)\b/);
   const adultMixedSpeculativeWeight = adultFantasyWeight + adultScienceFictionWeight + adultHistoricalWeight + adultCozyWeight + adultDramaWeight;
+  const adultDramaRealisticDominant = adultDramaWeight >= Math.max(2, adultScienceFictionWeight * 1.2) && (adultCrimeWeight > 0 || hasContemporaryDrama);
+  const adultMixedSpeculativeCompanionSignalCount = [
+    hasDystopian,
+    hasAdventure || adultAdventureWeight >= 1,
+    hasContemporaryDrama || adultDramaWeight >= 1,
+    adultSurvivalWeight > 0,
+    hasMysteryThriller || adultMysteryThrillerPositiveWeight > 0,
+  ].filter(Boolean).length;
   const wantsAdultFantasyWarCrime = hasFantasy && hasMysteryThriller && (hasWarPolitical || adultWarWeight > 0) && adultFantasyWeight + adultCrimeWeight + adultWarWeight >= Math.max(1, adultHorrorWeight);
-  const wantsAdultGothicHorrorFantasy = (hasGothic || hasHorror) && (hasFantasy || hasContemporaryDrama || adultHorrorWeight >= adultScienceFictionWeight * 0.8) && adultHorrorWeight + adultFantasyWeight + adultDramaWeight >= Math.max(1, adultScienceFictionWeight);
-  const wantsAdultFantasyHistoricalSurvival = hasFantasy && hasHistorical && (hasAdventure || /\b(survival|quest|journey)\b/.test(profileText)) && adultFantasyWeight + adultHistoricalWeight >= Math.max(1, adultScienceFictionWeight * 0.8);
+  const wantsAdultDystopianFantasySurvival = hasDystopian && hasAdventure && adultAdventureWeight >= adultScienceFictionWeight && (adultAdventureWeight >= 2 || adultSurvivalWeight > 0);
+  const hasAdultHistoricalCrimeActivationEvidence = adultCrimePositiveWeight > 0 || (adultMysteryThrillerPositiveWeight >= 2 && adultHistoricalWeight >= 1.5 && adultScienceFictionWeight <= adultMysteryThrillerPositiveWeight + adultHistoricalWeight);
+  const adultFantasyRomanceAdventureSignalCount = [
+    hasRomance || adultRomanceWeight >= 0.75,
+    hasMythology || adultMythologyWeight >= 0.75,
+    hasAdventure || adultAdventureWeight >= 0.75,
+  ].filter(Boolean).length;
+  const adultMixedSpeculativeHasMeaningfulCounterEvidence = adultScienceFictionWeight >= 1
+    || adultDystopianWeight > 0
+    || adultMysteryThrillerPositiveWeight >= 1
+    || adultSurvivalWeight > 0;
+  const wantsAdultFantasyRomanceAdventure = hasFantasy
+    && adultFantasyWeight >= Math.max(1.5, adultScienceFictionWeight * 1.05, adultMysteryThrillerPositiveWeight * 1.1, adultHorrorWeight * 1.1)
+    && adultFantasyRomanceAdventureSignalCount >= 2;
+  const wantsAdultMixedSpeculative = hasScienceFiction
+    && !(wantsAdultFantasyRomanceAdventure && !adultMixedSpeculativeHasMeaningfulCounterEvidence)
+    && (hasDystopian || hasFantasy || hasAdventure || hasContemporaryDrama || hasMysteryThriller)
+    && (
+      (adultScienceFictionWeight >= 1.25 && adultMixedSpeculativeCompanionSignalCount >= 2)
+      || Math.max(hasDystopian ? 1.5 : 0, adultFantasyWeight, adultAdventureWeight, adultDramaWeight, adultCrimeWeight) >= adultScienceFictionWeight * 0.6
+    );
+  const adultHistoricalCrimeBlockedByMixedSpeculative = wantsAdultMixedSpeculative && adultHistoricalWeight <= 1.5 && adultCrimePositiveWeight < 1;
+  const wantsAdultHistoricalCrimeDrama = hasHistorical && !adultHistoricalCrimeBlockedByMixedSpeculative && hasAdultHistoricalCrimeActivationEvidence && (hasContemporaryDrama || adultDramaWeight > 0) && adultHistoricalWeight + adultCrimeWeight + adultDramaWeight >= Math.max(1.5, adultRomanceWeight * 1.25, adultFantasyWeight * 0.9);
+  const wantsAdultDystopianFirstMixedSpeculativeQueries = wantsAdultMixedSpeculative && adultDystopianWeight > 0;
+  const wantsAdultGothicHorrorFantasy = (hasGothic || hasHorror) && !wantsAdultDystopianFantasySurvival && !wantsAdultHistoricalCrimeDrama && (hasFantasy || hasContemporaryDrama || adultHorrorWeight >= adultScienceFictionWeight * 0.8) && adultHorrorWeight >= Math.max(1, adultCrimeWeight * 0.9, adultScienceFictionWeight * 0.9, adultAdventureWeight * 0.9) && adultHorrorWeight + adultFantasyWeight + adultDramaWeight >= Math.max(1, adultScienceFictionWeight);
+  const wantsAdultFantasyHistoricalSurvival = hasFantasy && hasHistorical && adultHistoricalWeight >= 1 && !wantsAdultHistoricalCrimeDrama && (hasAdventure || /\b(survival|quest|journey)\b/.test(profileText)) && adultFantasyWeight >= 1 && adultFantasyWeight + adultHistoricalWeight >= Math.max(1, adultScienceFictionWeight * 0.8, adultCrimeWeight * 0.75);
+  const wantsAdultFantasyAdventureMystery = hasFantasy && hasAdventure && hasMysteryThriller && adultHistoricalWeight < 1 && adultFantasyWeight >= 1;
   const wantsAdultCozyFantasy = hasFantasy && (hasCozy || hasRomance || hasLightFantasy) && adultCozyWeight >= Math.max(0.75, adultScienceFictionWeight * 0.75);
-  const wantsAdultSciFi = hasScienceFiction && !wantsAdultGothicHorrorFantasy && !wantsAdultFantasyHistoricalSurvival && adultScienceFictionWeight >= Math.max(1.25, adultFantasyWeight * 1.1, adultHistoricalWeight * 1.1, adultHorrorWeight * 1.1);
-  const wantsAdultHistoricalSpeculativeThriller = hasHistorical && hasScienceFiction && (hasMysteryThriller || hasContemporaryDrama) && !wantsAdultFantasyHistoricalSurvival && adultHistoricalWeight + adultScienceFictionWeight + adultDramaWeight >= Math.max(1, adultCrimeWeight * 0.75);
+  const wantsAdultSciFi = hasScienceFiction && !wantsAdultMixedSpeculative && !adultDramaRealisticDominant && !wantsAdultDystopianFantasySurvival && !wantsAdultGothicHorrorFantasy && !wantsAdultFantasyHistoricalSurvival && adultScienceFictionWeight >= Math.max(1.25, adultFantasyWeight * 1.1, adultHistoricalWeight * 1.1, adultHorrorWeight * 1.1);
+  const wantsAdultHistoricalSpeculativeThriller = hasHistorical && hasScienceFiction && !wantsAdultMixedSpeculative && (hasMysteryThriller || hasContemporaryDrama) && !wantsAdultFantasyHistoricalSurvival && adultHistoricalWeight + adultScienceFictionWeight + adultDramaWeight >= Math.max(1, adultCrimeWeight * 0.75);
   const wantsAdultLiteraryCrime = adultCrimeWeight >= 1.25 && adultDramaWeight >= 1 && /\b(literary|literary crime|crime drama)\b/.test(profileText);
   const wantsAdultCrimeThriller = hasMysteryThriller
     && !wantsAdultGothicHorrorFantasy
@@ -458,15 +512,24 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
   const wantsAdultHorror = hasHorror && !wantsAdultFantasyWarCrime && !wantsAdultGothicHorrorFantasy && !wantsAdultFantasyHistoricalSurvival && !wantsAdultSciFi && !wantsAdultHistoricalSpeculativeThriller && !wantsAdultCrimeThriller && adultHorrorWeight >= Math.max(0.5, adultCrimeWeight * 1.25);
   const queryCandidates = (() => {
     if (wantsAdultFantasyWarCrime) return ["dark fantasy", "fantasy war", "political fantasy", "crime thriller"];
+    if (wantsAdultDystopianFantasySurvival) return ["dystopian adventure", "post-apocalyptic fiction", "survival fiction", "adventure fiction"];
+    if (wantsAdultHistoricalCrimeDrama) return ["crime drama", "historical thriller", "historical mystery", wantsAdultLiteraryCrime ? "literary crime" : "realistic drama"];
     if (wantsAdultGothicHorrorFantasy) return ["gothic horror", "supernatural horror", "dark fantasy", "contemporary gothic fiction"];
-    if (wantsAdultFantasyHistoricalSurvival) return ["historical fantasy", "survival fiction", "historical adventure", "fantasy adventure"];
+    if (wantsAdultFantasyHistoricalSurvival) return adultRomanceWeight >= Math.max(1.25, adultCrimeWeight)
+      ? ["historical romance", "fantasy romance", "historical fiction", "fantasy adventure"]
+      : ["historical fiction", "fantasy adventure", "survival fiction", "historical adventure"];
+    if (wantsAdultFantasyRomanceAdventure) return ["fantasy romance", "fantasy adventure", "mythological fantasy", "romantic fantasy"];
+    if (wantsAdultFantasyAdventureMystery) return ["fantasy adventure", "dark fantasy", "speculative mystery", "science fiction mystery"];
+    if (wantsAdultMixedSpeculative) return wantsAdultDystopianFirstMixedSpeculativeQueries
+      ? ["dystopian adventure", "science fiction adventure", "post-apocalyptic fiction", "survival fiction"]
+      : ["speculative thriller", "science fiction thriller", "fantasy romance", "mystery drama"];
     if (wantsAdultSciFi) return ["science fiction thriller", "speculative fiction", "science fiction adventure"];
     if (wantsAdultCozyFantasy) return ["cozy fantasy", "contemporary fantasy", "fantasy fiction", "romance fantasy"];
     if (wantsAdultHistoricalSpeculativeThriller) return ["historical fiction", "historical thriller", "literary fiction", "speculative fiction"];
     if (wantsAdultCrimeThriller) return ["psychological thriller", "mystery thriller", "crime fiction", wantsAdultLiteraryCrime ? "literary crime" : "crime thriller"];
     if (wantsAdultHorror) return ["horror fiction", "psychological horror", "supernatural horror", "dark fantasy"];
-    if (hasScienceFiction && hasHistorical) return ["alternate history fiction", "science fiction", "historical fiction", "speculative fiction"];
-    if (hasScienceFiction) return ["science fiction", "speculative fiction", "space opera", "dystopian fiction"];
+    if (hasScienceFiction && hasHistorical) return ["speculative thriller", "dystopian drama", "historical fiction", "survival fiction"];
+    if (hasScienceFiction) return ["speculative thriller", "dystopian drama", "survival fiction", "science fiction"];
     if (hasFantasy) return ["fantasy fiction", "epic fantasy", "dark fantasy", "historical fantasy"];
     if (hasRomance && hasHistorical) return ["historical romance", "romance novel", "romantic suspense", "historical fiction"];
     if (hasRomance) return ["contemporary romance", "romance novel", "romantic suspense", "women fiction"];
@@ -481,20 +544,25 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
       ageProfile.diagnosticProbeQuery,
     ];
   })();
-  const preservedAdultQueries = /^(gothic horror|contemporary gothic fiction|horror fiction|psychological horror|supernatural horror|dark fantasy|fantasy war|political fantasy|fantasy adventure|romance fantasy|science fiction thriller|science fiction adventure|cozy fantasy|contemporary fantasy|historical thriller|crime thriller|noir thriller|literary crime|mystery thriller|crime fiction|psychological thriller|detective fiction|alternate history fiction|science fiction|historical fiction|speculative fiction|space opera|dystopian fiction|fantasy fiction|epic fantasy|historical fantasy|historical romance|romance novel|romantic suspense|contemporary romance|women fiction|historical adventure|adventure fiction|historical mystery|biographical fiction|action adventure|survival fiction|thriller|literary fiction|contemporary fiction|family drama fiction|book club fiction|fiction)$/;
+  const preservedAdultQueries = /^(gothic horror|contemporary gothic fiction|horror fiction|psychological horror|supernatural horror|dark fantasy|fantasy war|political fantasy|fantasy adventure|fantasy romance|mythological fantasy|romantic fantasy|romance fantasy|science fiction thriller|science fiction adventure|science fiction mystery|cozy fantasy|contemporary fantasy|dystopian adventure|dystopian drama|post-apocalyptic fiction|speculative thriller|speculative mystery|historical thriller|crime drama|realistic drama|mystery drama|crime thriller|noir thriller|literary crime|mystery thriller|crime fiction|psychological thriller|detective fiction|alternate history fiction|science fiction|historical fiction|speculative fiction|space opera|dystopian fiction|fantasy fiction|epic fantasy|historical fantasy|historical romance|romance novel|romantic suspense|contemporary romance|women fiction|historical adventure|adventure fiction|historical mystery|biographical fiction|action adventure|survival fiction|thriller|literary fiction|contemporary fiction|family drama fiction|book club fiction|fiction)$/;
   const preparedQueries = queryCandidates.map((query) => preservedAdultQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), ageProfile.queryLimit);
   const queries = uniqueQueries.length ? uniqueQueries : [ageProfile.diagnosticProbeQuery];
   const routingReason = (() => {
     if (wantsAdultFantasyWarCrime) return "adult_fantasy_war_crime";
+    if (wantsAdultDystopianFantasySurvival) return "adult_dystopian_fantasy_survival";
+    if (wantsAdultHistoricalCrimeDrama) return "adult_historical_crime_drama";
     if (wantsAdultGothicHorrorFantasy) return "adult_gothic_horror_fantasy";
     if (wantsAdultFantasyHistoricalSurvival) return "adult_fantasy_historical_survival";
+    if (wantsAdultFantasyRomanceAdventure) return "adult_fantasy_romance_adventure";
+    if (wantsAdultFantasyAdventureMystery) return "adult_fantasy_adventure_mystery";
+    if (wantsAdultMixedSpeculative) return "adult_mixed_speculative";
     if (wantsAdultSciFi) return "adult_scifi";
     if (wantsAdultCozyFantasy) return "adult_cozy_fantasy";
     if (wantsAdultHistoricalSpeculativeThriller) return "adult_historical_speculative_thriller";
     if (wantsAdultCrimeThriller) return "adult_crime_thriller";
     if (wantsAdultHorror) return "adult_horror";
-    if (hasScienceFiction) return "adult_speculative";
+    if (hasScienceFiction) return "adult_mixed_speculative_fallback";
     if (hasFantasy) return "adult_fantasy";
     if (hasRomance) return "adult_romance";
     if (hasHistorical) return "adult_historical";
@@ -502,7 +570,7 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
     if (hasContemporaryDrama) return "adult_contemporary_literary";
     return "adult_broad_reliable";
   })();
-  const routingDominance = { openLibraryPlanner: "adult_initial_profile", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, hasMysteryThriller, hasHorror, hasGothic, hasFantasy, hasScienceFiction, hasRomance, hasHistorical, hasAdventure, hasWarPolitical, hasCozy, hasLightFantasy, hasContemporaryDrama, adultCrimeWeight, adultHorrorWeight, adultFantasyWeight, adultScienceFictionWeight, adultHistoricalWeight, adultWarWeight, adultCozyWeight, adultDramaWeight, adultMixedSpeculativeWeight, wantsAdultFantasyWarCrime, wantsAdultGothicHorrorFantasy, wantsAdultFantasyHistoricalSurvival, wantsAdultSciFi, wantsAdultCozyFantasy, wantsAdultHistoricalSpeculativeThriller, wantsAdultLiteraryCrime, wantsAdultCrimeThriller, wantsAdultHorror };
+  const routingDominance = { openLibraryPlanner: "adult_locked_baseline", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, hasMysteryThriller, hasHorror, hasGothic, hasFantasy, hasScienceFiction, hasDystopian, hasRomance, hasMythology, hasHistorical, hasAdventure, hasWarPolitical, hasCozy, hasLightFantasy, hasContemporaryDrama, adultCrimeWeight, adultCrimePositiveWeight, adultMysteryThrillerPositiveWeight, adultHorrorWeight, adultFantasyWeight, adultScienceFictionWeight, adultDystopianWeight, adultHistoricalWeight, adultAdventureWeight, adultMythologyWeight, adultSurvivalWeight, adultRomanceWeight, adultWarWeight, adultCozyWeight, adultDramaWeight, adultMixedSpeculativeWeight, adultMixedSpeculativeCompanionSignalCount, adultFantasyRomanceAdventureSignalCount, adultMixedSpeculativeHasMeaningfulCounterEvidence, adultDramaRealisticDominant, wantsAdultFantasyWarCrime, wantsAdultDystopianFantasySurvival, hasAdultHistoricalCrimeActivationEvidence, adultHistoricalCrimeBlockedByMixedSpeculative, wantsAdultHistoricalCrimeDrama, wantsAdultDystopianFirstMixedSpeculativeQueries, wantsAdultGothicHorrorFantasy, wantsAdultFantasyHistoricalSurvival, wantsAdultFantasyRomanceAdventure, wantsAdultFantasyAdventureMystery, wantsAdultMixedSpeculative, wantsAdultSciFi, wantsAdultCozyFantasy, wantsAdultHistoricalSpeculativeThriller, wantsAdultLiteraryCrime, wantsAdultCrimeThriller, wantsAdultHorror };
   return queries.map((query, index) => ({
     query,
     originalPlannedQuery,
@@ -539,9 +607,24 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, age
   return buildGenericOpenLibraryQueryPlans(plan, ageProfile);
 }
 
+export function buildOpenLibraryQueryPlansForRegression(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
+  return buildOpenLibraryQueryPlans(plan, profile, ageProfile);
+}
+
+function configuredOpenLibraryProxyBase(): string {
+  const env = typeof process !== "undefined" ? (process as any)?.env || {} : {};
+  const explicit = String(env.OPEN_LIBRARY_PROXY_BASE_URL || env.EXPO_PUBLIC_OPEN_LIBRARY_PROXY_BASE_URL || "").trim();
+  if (explicit) return explicit.replace(/\/+$/, "");
+  const vercelUrl = String(env.VERCEL_URL || "").trim();
+  if (vercelUrl) return `https://${vercelUrl.replace(/^https?:\/\//, "").replace(/\/+$/, "")}`;
+  return "";
+}
+
 function openLibraryRequest(query: string, limit: number): { url: string; fetchPath: "direct" | "proxy" } {
   const params = `q=${encodeURIComponent(query)}&limit=${Math.max(1, Math.min(20, limit))}`;
   if (typeof window !== "undefined") return { url: `/api/openlibrary?${params}`, fetchPath: "proxy" };
+  const proxyBase = configuredOpenLibraryProxyBase();
+  if (proxyBase) return { url: `${proxyBase}/api/openlibrary?${params}`, fetchPath: "proxy" };
   return { url: `https://openlibrary.org/search.json?${params}&language=eng`, fetchPath: "direct" };
 }
 
@@ -612,16 +695,23 @@ function emptyDiagnostics(plan: SourcePlan, status: SourceDiagnosticV2["status"]
   };
 }
 
-async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs, attemptNumber = 1, allowProxyRetryWindow = false): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
   const query = queryPlan.query;
   const { url, fetchPath } = openLibraryRequest(query, limit);
+  const effectiveTimeoutMs = allowProxyRetryWindow && fetchPath === "proxy"
+    ? Math.max(timeoutMs, ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS)
+    : timeoutMs;
   const fetchStartedAt = nowIso();
   const startedMs = Date.now();
   const diagnostic: SourceFetchDiagnosticV2 = {
     query,
     fetchStartedAt,
+    requestStart: fetchStartedAt,
+    attemptNumber,
     timedOut: false,
     fetchPath,
+    clientTimeoutMs: effectiveTimeoutMs,
+    proxyRetryWindowEnabled: allowProxyRetryWindow && fetchPath === "proxy",
     diagnosticOnly,
     originalPlannedQuery: queryPlan.originalPlannedQuery,
     queryCascadeIndex: queryPlan.queryCascadeIndex,
@@ -630,16 +720,30 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
   };
 
   const queryController = new AbortController();
-  const timeout = setTimeout(() => queryController.abort(), timeoutMs);
-  const abortFromParent = () => queryController.abort();
-  if (signal?.aborted) queryController.abort();
+  let abortReason = "";
+  const timeout = setTimeout(() => {
+    abortReason = "per_query_timeout";
+    queryController.abort();
+  }, effectiveTimeoutMs);
+  const abortFromParent = () => {
+    abortReason = "source_timeout_or_parent_abort";
+    queryController.abort();
+  };
+  if (signal?.aborted) {
+    abortReason = "source_already_aborted";
+    queryController.abort();
+  }
   else signal?.addEventListener("abort", abortFromParent, { once: true });
 
   try {
     const response = await fetch(url, { signal: queryController.signal });
     diagnostic.httpStatus = response.status;
+    diagnostic.responseHeadersReceived = nowIso();
+    diagnostic.bodyStarted = nowIso();
     const text = await response.text();
+    diagnostic.bodyCompleted = nowIso();
     diagnostic.fetchFinishedAt = nowIso();
+    diagnostic.requestEnd = diagnostic.fetchFinishedAt;
     diagnostic.elapsedMs = Date.now() - startedMs;
 
     if (!response.ok) {
@@ -658,6 +762,7 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
         return { docs: [], diagnostic, responseBodyPrefix: diagnostic.responseBodyPrefix };
       }
       const docs = json.docs;
+      if (Number.isFinite(Number(json?.proxyAttempts))) diagnostic.proxyAttempts = Number(json.proxyAttempts);
       diagnostic.responseShape = "docs_array";
       diagnostic.docsReturned = docs.length;
       diagnostic.firstReturnedTitles = uniqueStrings(docs.map((doc: any) => doc?.title), 5);
@@ -672,8 +777,10 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
     const causeDetail = cause?.code || cause?.message || "";
     const message = [String(error?.message || error || "openlibrary_fetch_failed"), causeDetail ? `cause:${causeDetail}` : ""].filter(Boolean).join(" ");
     diagnostic.fetchFinishedAt = nowIso();
+    diagnostic.requestEnd = diagnostic.fetchFinishedAt;
     diagnostic.elapsedMs = Date.now() - startedMs;
     diagnostic.timedOut = Boolean(queryController.signal.aborted || signal?.aborted || /aborted|abort|timeout/i.test(message));
+    diagnostic.abortReason = abortReason || (diagnostic.timedOut ? "abort_or_timeout" : undefined);
     diagnostic.failedReason = message;
     return { docs: [], diagnostic };
   } finally {
@@ -871,6 +978,44 @@ function emergencyFallbackHasMeaningfulOverlap(doc: any, queryPlans: OpenLibrary
   return tokens.length > 0 && tokens.some((token) => docText.includes(token));
 }
 
+function hasAdultFantasyHistoricalFallbackOverlap(doc: any): boolean {
+  const text = openLibraryDocText(doc).toLowerCase();
+  return /\b(fantasy|magic|magical|historical|history|romance|romantic|adventure|action|comedy|humou?r)\b/.test(text);
+}
+
+function isAdultMixedHistoricalMysteryRomanceProfile(profile: TasteProfile): boolean {
+  if (profile.ageBand !== "adult") return false;
+  const profileText = [
+    ...profile.genreFamily.map((row) => row.value),
+    ...profile.themes.map((row) => row.value),
+    ...profile.formatPreference.map((row) => row.value),
+  ].join(" ").toLowerCase();
+  return /\b(historical|history|period)\b/.test(profileText)
+    && /\b(mystery|thriller|crime|suspense|detective)\b/.test(profileText)
+    && /\b(romance|romantic|love|science fiction|sci-fi|speculative)\b/.test(profileText);
+}
+
+function hasAdultMixedHistoricalMysteryFallbackOverlap(doc: any): boolean {
+  const text = openLibraryDocText(doc).toLowerCase();
+  return /\b(mystery|crime|thriller|suspense|detective|historical|history|romance|romantic)\b/.test(text);
+}
+
+function adultUnderfillRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string[] {
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  const plannedQueries = queryPlans.map((plan) => plan.query);
+  const routeFallbacks = (() => {
+    if (routingReason === "adult_fantasy_adventure_mystery") return ["fantasy mystery", "speculative fiction", "adventure fantasy"];
+    if (routingReason === "adult_fantasy_romance_adventure") return ["romantic fantasy", "mythological fantasy", "adventure fantasy"];
+    if (routingReason === "adult_horror" || routingReason === "adult_gothic_horror_fantasy") return ["horror fiction", "supernatural thriller", "dark suspense"];
+    if (routingReason === "adult_mixed_speculative") return ["speculative fiction", "science fiction thriller", "speculative thriller"];
+    if (routingReason === "adult_historical_crime_drama") return ["crime fiction", "historical mystery", "mystery thriller"];
+    if (routingReason === "adult_crime_thriller") return ["crime fiction", "mystery thriller", "psychological thriller"];
+    if (routingReason === "adult_fantasy_historical_survival") return ["fantasy adventure", "historical fantasy", "fantasy romance"];
+    return [];
+  })();
+  return uniqueStrings([...plannedQueries, ...routeFallbacks], 8);
+}
+
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return true;
   const firstPublishYear = Number(doc?.first_publish_year || 0);
@@ -966,12 +1111,17 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let rawApiResultCount = 0;
     let failedReason = "";
     let openLibraryTopUpRan = false;
+    let firstRunFetchTimeout = false;
+    let retryAttempted = false;
+    let retrySucceeded = false;
+    let proxyColdStartSuspected = false;
+    let adultPrimaryQueryTimedOutTwice = false;
 
     for (const queryPlan of queryPlans) {
       const query = queryPlan.query;
       const elapsedBeforeQueryMs = Date.now() - Date.parse(startedAt);
       const reserveProbeTimeMs = ageProfile.probeTimeoutMs + ageProfile.probeReserveBufferMs;
-      if (!rawItems.length && fetches.length > 0 && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
+      if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
         dropReasons.main_query_reserved_probe_time = Number(dropReasons.main_query_reserved_probe_time || 0) + 1;
         break;
       }
@@ -981,11 +1131,102 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         break;
       }
 
-      const { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs);
+      const isAdultFirstMainFetch = ageProfile.key === "adult" && fetches.filter((fetch) => !fetch.diagnosticOnly).length === 0;
+      const firstAttemptTimeoutMs = isAdultFirstMainFetch ? ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS : ageProfile.perQueryTimeoutMs;
+      let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, firstAttemptTimeoutMs, 1, ageProfile.key === "adult");
+      if (diagnostic.timedOut && isAdultFirstMainFetch && !context.signal?.aborted) {
+        firstRunFetchTimeout = true;
+        retryAttempted = true;
+        proxyColdStartSuspected = diagnostic.fetchPath === "proxy" || Number(diagnostic.elapsedMs || 0) >= firstAttemptTimeoutMs - 50;
+        diagnostic.firstRunFetchTimeout = true;
+        diagnostic.retryAttempted = true;
+        diagnostic.proxyColdStartSuspected = proxyColdStartSuspected;
+        fetches.push(diagnostic);
+
+        const retryResult = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS, 2, ageProfile.key === "adult");
+        docs = retryResult.docs;
+        diagnostic = {
+          ...retryResult.diagnostic,
+          retryAttempted: true,
+          retrySucceeded: retryResult.docs.length > 0 && !retryResult.diagnostic.timedOut && !retryResult.diagnostic.failedReason,
+          proxyColdStartSuspected,
+        };
+        retrySucceeded = Boolean(diagnostic.retrySucceeded);
+        adultPrimaryQueryTimedOutTwice = Boolean(retryResult.diagnostic.timedOut);
+      }
       fetches.push(diagnostic);
       if (diagnostic.timedOut) {
         dropReasons.query_timeout = Number(dropReasons.query_timeout || 0) + 1;
         failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+        if (retryAttempted && !retrySucceeded && firstRunFetchTimeout && isAdultMixedHistoricalMysteryRomanceProfile(context.profile) && !context.signal?.aborted) {
+          const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+          for (const fallbackQuery of ["mystery thriller", "crime fiction", "historical mystery", "romantic suspense"].filter((query) => !attemptedMainQueries.has(query.toLowerCase()))) {
+            const fallbackPlan: OpenLibraryQueryPlan = {
+              query: fallbackQuery,
+              originalPlannedQuery: queries[0] || "",
+              queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+              queryFamily: queryFamilyForOpenLibraryQuery(fallbackQuery),
+              facets: ["mystery", "crime", "thriller", "historical", "romance"],
+              routingReason: "adult_mixed_historical_mystery_first_run_timeout_fallback",
+            };
+            const { docs: fallbackDocs, diagnostic: fallbackDiagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, ageProfile.key === "adult");
+            fetches.push(fallbackDiagnostic);
+            if (fallbackDiagnostic.timedOut) {
+              dropReasons.adult_mixed_first_run_fallback_timeout = Number(dropReasons.adult_mixed_first_run_fallback_timeout || 0) + 1;
+              if (context.signal?.aborted) break;
+              continue;
+            }
+            if (fallbackDiagnostic.failedReason) {
+              dropReasons.adult_mixed_first_run_fallback_failed = Number(dropReasons.adult_mixed_first_run_fallback_failed || 0) + 1;
+              continue;
+            }
+            rawApiResultCount += fallbackDocs.length;
+            for (const doc of fallbackDocs) {
+              const title = String(doc?.title || "").trim();
+              if (title) rawTitles.push(title);
+              if (!title) {
+                dropReasons.adult_mixed_first_run_fallback_missing_title = Number(dropReasons.adult_mixed_first_run_fallback_missing_title || 0) + 1;
+                continue;
+              }
+              const quality = shouldKeepOpenLibraryDoc(doc, fallbackQuery, context.profile);
+              if (!quality.keep) {
+                const reason = `adult_mixed_first_run_fallback_${quality.reason || "quality_filter"}`;
+                dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+                if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+                continue;
+              }
+              if (!hasAdultMixedHistoricalMysteryFallbackOverlap(doc)) {
+                dropReasons.adult_mixed_first_run_fallback_no_route_overlap = Number(dropReasons.adult_mixed_first_run_fallback_no_route_overlap || 0) + 1;
+                continue;
+              }
+              const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+              if (acceptedDocKeys.has(docKey)) {
+                dropReasons.adult_mixed_first_run_fallback_duplicate_doc = Number(dropReasons.adult_mixed_first_run_fallback_duplicate_doc || 0) + 1;
+                continue;
+              }
+              const seriesKey = openLibrarySeriesKey(doc);
+              if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+                dropReasons.adult_mixed_first_run_fallback_series_duplicate = Number(dropReasons.adult_mixed_first_run_fallback_series_duplicate || 0) + 1;
+                seriesSuppressedTitles.push(title);
+                continue;
+              }
+              if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+              acceptedDocKeys.add(docKey);
+              rawItems.push(normalizeOpenLibraryDoc(doc, fallbackPlan));
+              dropReasons.adult_mixed_first_run_fallback_accepted = Number(dropReasons.adult_mixed_first_run_fallback_accepted || 0) + 1;
+              if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+            }
+            const timeoutRecoveryTarget = adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : 3;
+            if (rawItems.length >= timeoutRecoveryTarget || rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+          }
+          if (rawItems.length > 0) openLibraryTopUpRan = true;
+        }
+        const timeoutRecoveryTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : 3;
+        if (rawItems.length >= timeoutRecoveryTarget || rawItems.length >= ageProfile.docLimit) break;
+        if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice && rawItems.length > 0) {
+          openLibraryTopUpRan = true;
+          dropReasons.adult_timeout_recovery_continued_underfilled = Number(dropReasons.adult_timeout_recovery_continued_underfilled || 0) + 1;
+        }
         if (context.signal?.aborted) break;
         continue;
       }
@@ -1023,16 +1264,219 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (seriesKey) acceptedSeriesKeys.add(seriesKey);
         acceptedDocKeys.add(docKey);
         rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
-        if (rawItems.length >= ageProfile.docLimit) break;
+        const acceptTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : ageProfile.docLimit;
+        if (rawItems.length >= acceptTarget) break;
       }
-      if (rawItems.length >= ageProfile.minCleanDocs || rawItems.length >= ageProfile.docLimit) break;
-      if (rawItems.length > 0) openLibraryTopUpRan = true;
+      const cleanDocTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : ageProfile.minCleanDocs;
+      if (rawItems.length >= cleanDocTarget || rawItems.length >= ageProfile.docLimit) break;
+      if (rawItems.length > 0) {
+        openLibraryTopUpRan = true;
+        if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) {
+          dropReasons.adult_timeout_recovery_continued_underfilled = Number(dropReasons.adult_timeout_recovery_continued_underfilled || 0) + 1;
+        }
+      }
+    }
+
+    if (queryPlans[0]?.routingReason === "adult_fantasy_historical_survival" && rawItems.length < 3 && !context.signal?.aborted) {
+      const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+      const fallbackQueries = ["historical romance", "fantasy romance", "historical fiction", "fantasy adventure"]
+        .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
+      for (const fallbackQuery of fallbackQueries) {
+        const fallbackPlan: OpenLibraryQueryPlan = {
+          query: fallbackQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+          queryFamily: queryFamilyForOpenLibraryQuery(fallbackQuery),
+          facets: ["fantasy", "historical", "romance", "adventure", "comedy"],
+          routingReason: "adult_fantasy_historical_survival_underfill_fallback",
+        };
+        const { docs: fallbackDocs, diagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, ageProfile.key === "adult");
+        fetches.push(diagnostic);
+        if (diagnostic.timedOut) {
+          dropReasons.adult_fantasy_historical_survival_fallback_timeout = Number(dropReasons.adult_fantasy_historical_survival_fallback_timeout || 0) + 1;
+          if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+          if (context.signal?.aborted) break;
+          continue;
+        }
+        if (diagnostic.failedReason) {
+          failedReason = diagnostic.failedReason;
+          break;
+        }
+        rawApiResultCount += fallbackDocs.length;
+        for (const doc of fallbackDocs) {
+          const title = String(doc?.title || "").trim();
+          if (title) rawTitles.push(title);
+          if (!title) {
+            dropReasons.adult_fantasy_historical_survival_fallback_missing_title = Number(dropReasons.adult_fantasy_historical_survival_fallback_missing_title || 0) + 1;
+            continue;
+          }
+          const quality = shouldKeepOpenLibraryDoc(doc, fallbackQuery, context.profile);
+          if (!quality.keep) {
+            const reason = `adult_fantasy_historical_survival_fallback_${quality.reason || "quality_filter"}`;
+            dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+            if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+            continue;
+          }
+          if (!hasAdultFantasyHistoricalFallbackOverlap(doc)) {
+            dropReasons.adult_fantasy_historical_survival_fallback_no_route_overlap = Number(dropReasons.adult_fantasy_historical_survival_fallback_no_route_overlap || 0) + 1;
+            continue;
+          }
+          const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+          if (acceptedDocKeys.has(docKey)) {
+            dropReasons.adult_fantasy_historical_survival_fallback_duplicate_doc = Number(dropReasons.adult_fantasy_historical_survival_fallback_duplicate_doc || 0) + 1;
+            continue;
+          }
+          const seriesKey = openLibrarySeriesKey(doc);
+          if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+            dropReasons.adult_fantasy_historical_survival_fallback_series_duplicate = Number(dropReasons.adult_fantasy_historical_survival_fallback_series_duplicate || 0) + 1;
+            seriesSuppressedTitles.push(title);
+            continue;
+          }
+          if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+          acceptedDocKeys.add(docKey);
+          rawItems.push(normalizeOpenLibraryDoc(doc, fallbackPlan));
+          dropReasons.adult_fantasy_historical_survival_fallback_accepted = Number(dropReasons.adult_fantasy_historical_survival_fallback_accepted || 0) + 1;
+          if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+        }
+        if (rawItems.length >= 3 || rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+      }
+      if (fallbackQueries.length > 0) openLibraryTopUpRan = true;
+    }
+
+    const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
+    if (ageProfile.key === "adult" && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
+      const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+      const recoveryQueries = adultUnderfillRecoveryQueries(queryPlans)
+        .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
+      const recoveryTarget = adultUnderfillRecoveryTarget;
+      for (const recoveryQuery of recoveryQueries) {
+        const recoveryPlan: OpenLibraryQueryPlan = {
+          query: recoveryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+          queryFamily: queryFamilyForOpenLibraryQuery(recoveryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "adult"}_underfill_recovery`,
+        };
+        const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, ageProfile.key === "adult");
+        fetches.push(diagnostic);
+        dropReasons.adult_underfill_recovery_query_attempted = Number(dropReasons.adult_underfill_recovery_query_attempted || 0) + 1;
+        if (diagnostic.timedOut) {
+          dropReasons.adult_underfill_recovery_timeout = Number(dropReasons.adult_underfill_recovery_timeout || 0) + 1;
+          if (context.signal?.aborted) break;
+          continue;
+        }
+        if (diagnostic.failedReason) {
+          dropReasons.adult_underfill_recovery_failed = Number(dropReasons.adult_underfill_recovery_failed || 0) + 1;
+          continue;
+        }
+        rawApiResultCount += recoveryDocs.length;
+        for (const doc of recoveryDocs) {
+          const title = String(doc?.title || "").trim();
+          if (title) rawTitles.push(title);
+          if (!title) {
+            dropReasons.adult_underfill_recovery_missing_title = Number(dropReasons.adult_underfill_recovery_missing_title || 0) + 1;
+            continue;
+          }
+          const quality = shouldKeepOpenLibraryDoc(doc, recoveryQuery, context.profile);
+          if (!quality.keep) {
+            const reason = `adult_underfill_recovery_${quality.reason || "quality_filter"}`;
+            dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+            if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+            continue;
+          }
+          const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+          if (acceptedDocKeys.has(docKey)) {
+            dropReasons.adult_underfill_recovery_duplicate_doc = Number(dropReasons.adult_underfill_recovery_duplicate_doc || 0) + 1;
+            continue;
+          }
+          const seriesKey = openLibrarySeriesKey(doc);
+          if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+            dropReasons.adult_underfill_recovery_series_duplicate = Number(dropReasons.adult_underfill_recovery_series_duplicate || 0) + 1;
+            seriesSuppressedTitles.push(title);
+            continue;
+          }
+          if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+          acceptedDocKeys.add(docKey);
+          rawItems.push(normalizeOpenLibraryDoc(doc, recoveryPlan));
+          dropReasons.adult_underfill_recovery_accepted = Number(dropReasons.adult_underfill_recovery_accepted || 0) + 1;
+          if (rawItems.length >= recoveryTarget) break;
+        }
+        if (rawItems.length >= recoveryTarget) break;
+      }
+      if (recoveryQueries.length > 0) {
+        openLibraryTopUpRan = true;
+        if (rawItems.length < recoveryTarget) {
+          dropReasons.adult_underfill_recovery_exhausted = Number(dropReasons.adult_underfill_recovery_exhausted || 0) + 1;
+        }
+      }
+    }
+
+    if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+      const delayedRetryQuery = queryPlans[0]?.query || adultUnderfillRecoveryQueries(queryPlans)[0] || "";
+      if (delayedRetryQuery) {
+        const delayedRetryPlan: OpenLibraryQueryPlan = {
+          query: delayedRetryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+          queryFamily: queryFamilyForOpenLibraryQuery(delayedRetryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "adult"}_delayed_final_retry`,
+        };
+        const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS, 3, ageProfile.key === "adult");
+        fetches.push(diagnostic);
+        dropReasons.adult_delayed_final_retry_attempted = Number(dropReasons.adult_delayed_final_retry_attempted || 0) + 1;
+        openLibraryTopUpRan = true;
+        if (diagnostic.timedOut) {
+          dropReasons.adult_delayed_final_retry_timeout = Number(dropReasons.adult_delayed_final_retry_timeout || 0) + 1;
+          if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+        } else if (diagnostic.failedReason) {
+          dropReasons.adult_delayed_final_retry_failed = Number(dropReasons.adult_delayed_final_retry_failed || 0) + 1;
+          if (!failedReason) failedReason = diagnostic.failedReason;
+        } else {
+          rawApiResultCount += delayedRetryDocs.length;
+          for (const doc of delayedRetryDocs) {
+            const title = String(doc?.title || "").trim();
+            if (title) rawTitles.push(title);
+            if (!title) {
+              dropReasons.adult_delayed_final_retry_missing_title = Number(dropReasons.adult_delayed_final_retry_missing_title || 0) + 1;
+              continue;
+            }
+            const quality = shouldKeepOpenLibraryDoc(doc, delayedRetryQuery, context.profile);
+            if (!quality.keep) {
+              const reason = `adult_delayed_final_retry_${quality.reason || "quality_filter"}`;
+              dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+              if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+              continue;
+            }
+            const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+            if (acceptedDocKeys.has(docKey)) {
+              dropReasons.adult_delayed_final_retry_duplicate_doc = Number(dropReasons.adult_delayed_final_retry_duplicate_doc || 0) + 1;
+              continue;
+            }
+            const seriesKey = openLibrarySeriesKey(doc);
+            if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+              dropReasons.adult_delayed_final_retry_series_duplicate = Number(dropReasons.adult_delayed_final_retry_series_duplicate || 0) + 1;
+              seriesSuppressedTitles.push(title);
+              continue;
+            }
+            if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+            acceptedDocKeys.add(docKey);
+            rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
+            dropReasons.adult_delayed_final_retry_accepted = Number(dropReasons.adult_delayed_final_retry_accepted || 0) + 1;
+            if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+          }
+          if (delayedRetryDocs.length > 0 && !dropReasons.adult_delayed_final_retry_accepted) {
+            dropReasons.adult_delayed_final_retry_all_rejected = Number(dropReasons.adult_delayed_final_retry_all_rejected || 0) + 1;
+          }
+        }
+      }
     }
 
     if (rawItems.length === 1 && queryPlans[0]?.routingReason === "dominant_horror_survival_psychological" && !context.signal?.aborted) {
       const fallbackQuery = "young adult survival horror";
       const fallbackPlan: OpenLibraryQueryPlan = { query: fallbackQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "horror_survival", facets: ["horror", "survival", "psychological"], emergencyFallback: true, routingReason: "horror_survival_underfill_fallback" };
-      const { docs: fallbackDocs, diagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs);
+      const { docs: fallbackDocs, diagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1, ageProfile.key === "adult");
       fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (fallbackDocs.length ? "horror_survival_underfill_returned_docs" : undefined) });
       rawApiResultCount += fallbackDocs.length;
       let acceptedFallbackDocs = 0;
@@ -1092,7 +1536,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               : ageProfile.diagnosticProbeQuery)
         : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
       const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
-      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs);
+      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1, ageProfile.key === "adult");
       fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (probeDocs.length ? "emergency_fallback_probe_returned_docs" : undefined) });
       if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
       if (probeDocs.length) {
@@ -1109,7 +1553,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
             continue;
           }
-          if (!emergencyFallbackHasMeaningfulOverlap(doc, queryPlans)) {
+          const hasEmergencyOverlap = isAdultMixedHistoricalMysteryRomanceProfile(context.profile)
+            ? hasAdultMixedHistoricalMysteryFallbackOverlap(doc)
+            : emergencyFallbackHasMeaningfulOverlap(doc, queryPlans);
+          if (!hasEmergencyOverlap) {
             dropReasons.emergency_fallback_no_meaningful_overlap = Number(dropReasons.emergency_fallback_no_meaningful_overlap || 0) + 1;
             continue;
           }
@@ -1148,6 +1595,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           openLibraryQueryRouting,
           openLibraryAgeProfile: ageProfile.key,
           openLibraryProfileLabel: ageProfile.behaviorLabel,
+          firstRunFetchTimeout,
+          retryAttempted,
+          retrySucceeded,
+          proxyColdStartSuspected,
           fetches,
         }),
       };
@@ -1189,6 +1640,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         openLibraryQueryRouting,
         openLibraryAgeProfile: ageProfile.key,
         openLibraryProfileLabel: ageProfile.behaviorLabel,
+        firstRunFetchTimeout,
+        retryAttempted,
+        retrySucceeded,
+        proxyColdStartSuspected,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),

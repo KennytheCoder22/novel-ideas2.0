@@ -2,6 +2,7 @@ import type { SearchIntentV2, SearchPlan, SourceIdV2, SourcePlan, TasteProfile }
 
 const DEFAULT_SOURCE_TIMEOUT_MS = 2_500;
 const OPEN_LIBRARY_SOURCE_TIMEOUT_MS = 8_000;
+const ADULT_OPEN_LIBRARY_SOURCE_TIMEOUT_MS = 22_000;
 
 function topValues(rows: { value: string; weight: number }[], count: number): string[] {
   return rows.slice(0, count).map((row) => row.value).filter(Boolean);
@@ -42,7 +43,9 @@ export function buildSearchPlan(profile: TasteProfile, enabledSources: Partial<R
       status: enabled ? "planned" : "skipped",
       intents: enabled ? intents : [],
       skippedReason: enabled ? undefined : "source_disabled",
-      timeoutMs: source === "openLibrary" ? OPEN_LIBRARY_SOURCE_TIMEOUT_MS : DEFAULT_SOURCE_TIMEOUT_MS,
+      timeoutMs: source === "openLibrary"
+        ? profile.ageBand === "adult" ? ADULT_OPEN_LIBRARY_SOURCE_TIMEOUT_MS : OPEN_LIBRARY_SOURCE_TIMEOUT_MS
+        : DEFAULT_SOURCE_TIMEOUT_MS,
     };
   });
 

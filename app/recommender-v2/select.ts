@@ -1,11 +1,19 @@
 import type { ScoredCandidate, TasteProfile } from "./types";
 
 function normalized(value: unknown): string {
-  return String(value || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function rootTitle(title: string): string {
   return normalized(title)
+    .replace(/\b(illustrated|annotated|unabridged|abridged|complete|collector'?s?|deluxe|special|critical|revised|updated|movie tie in|tie in|edition|editions|version|versions|translation|translated|spanish|french|german|italian|romanian|penguin|oxford|cambridge|modern library|classics?|classic)\b/g, " ")
+    .replace(/\b(a|an|the|new)\b(?=\s+\w+\s*$)/g, " ")
     .replace(/\b(the hunger games|catching fire|mockingjay)\b.*$/, "hunger games")
     .replace(/\b(grande ritorno|diadem|chosen)\b.*$/, "$1")
     .replace(/\b(volume|vol|book|part|chapter)\s*\d+\b/g, " ")
@@ -262,15 +270,18 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     selected.push(candidate);
   }
 
-  const underfillTarget = deferred.length > 0 ? Math.min(3, limit) : (selected.length === 0 ? 1 : selected.length);
+  const underfillTarget = deferred.length > 0
+    ? Math.min(profile.ageBand === "adult" ? 5 : 3, limit)
+    : (selected.length === 0 ? 1 : selected.length);
   if (selected.length < underfillTarget) {
     rejectedReasons.underfill_deferred_available = deferred.length;
     for (const row of deferred) {
       const titleKey = normalized(row.candidate.title);
       if (seenTitles.has(titleKey)) continue;
-      if (row.reason === "recurring_openlibrary_cluster_deferred") {
-        row.candidate.rejectedReasons.push("underfill_blocked_recurring_openlibrary_cluster");
-        rejectedReasons.underfill_blocked_recurring_openlibrary_cluster = Number(rejectedReasons.underfill_blocked_recurring_openlibrary_cluster || 0) + 1;
+      if (row.reason === "recurring_openlibrary_cluster_deferred" || row.reason === "same_series_or_root_deferred") {
+        const blockedReason = row.reason === "same_series_or_root_deferred" ? "underfill_blocked_same_root_variant" : "underfill_blocked_recurring_openlibrary_cluster";
+        row.candidate.rejectedReasons.push(blockedReason);
+        rejectedReasons[blockedReason] = Number(rejectedReasons[blockedReason] || 0) + 1;
         continue;
       }
       row.candidate.rejectedReasons.push(`underfill_relaxed_diversity:${row.reason}`);

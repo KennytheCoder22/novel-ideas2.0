@@ -78,10 +78,20 @@ export interface SourceFetchDiagnosticV2 {
   query: string;
   fetchStartedAt?: string;
   fetchFinishedAt?: string;
+  attemptNumber?: number;
+  requestStart?: string;
+  requestEnd?: string;
+  abortReason?: string;
+  responseHeadersReceived?: string;
+  bodyStarted?: string;
+  bodyCompleted?: string;
+  clientTimeoutMs?: number;
+  proxyRetryWindowEnabled?: boolean;
   elapsedMs?: number;
   timedOut: boolean;
   httpStatus?: number;
   fetchPath?: "direct" | "proxy";
+  proxyAttempts?: number;
   responseBodyPrefix?: string;
   failedReason?: string;
   docsReturned?: number;
@@ -92,6 +102,10 @@ export interface SourceFetchDiagnosticV2 {
   queryCascadeIndex?: number;
   queryFamily?: string;
   facets?: string[];
+  firstRunFetchTimeout?: boolean;
+  retryAttempted?: boolean;
+  retrySucceeded?: boolean;
+  proxyColdStartSuspected?: boolean;
 }
 
 export interface SourceDiagnosticV2 {
@@ -122,6 +136,10 @@ export interface SourceDiagnosticV2 {
   openLibraryQueryRouting?: Record<string, unknown>;
   openLibraryAgeProfile?: string;
   openLibraryProfileLabel?: string;
+  firstRunFetchTimeout?: boolean;
+  retryAttempted?: boolean;
+  retrySucceeded?: boolean;
+  proxyColdStartSuspected?: boolean;
   fetches?: SourceFetchDiagnosticV2[];
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];
