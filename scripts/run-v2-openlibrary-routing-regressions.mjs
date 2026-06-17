@@ -403,7 +403,7 @@ async function main() {
     assertEqual(result.diagnostics.openLibraryProfileLabel, "teen_openlibrary_locked_baseline", "teen profile label should remain locked baseline");
     assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "teen fetch diagnostics should mark configured proxy path");
     assertEqual(result.diagnostics.fetches?.[0]?.proxyRetryWindowEnabled, true, "teen proxy fetch should use proxy retry client window");
-    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 6500, true, "teen proxy fetch should not abort at the 2s per-query baseline");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 4500 && result.diagnostics.fetches?.[0]?.clientTimeoutMs < 6500, true, "teen proxy fetch should leave source-budget room for locked cascade fallbacks");
     console.log(JSON.stringify({ name: "teen proxy path uses resilience window without route changes", pass: true, fetchPath: result.diagnostics.fetches?.[0]?.fetchPath, clientTimeoutMs: result.diagnostics.fetches?.[0]?.clientTimeoutMs, profileLabel: result.diagnostics.openLibraryProfileLabel }));
   } finally {
     if (previousTeenProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
@@ -447,6 +447,42 @@ async function main() {
     Date.now = originalDateNow;
     if (previousTeenTimeoutProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousTeenTimeoutProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const teenIsolationFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    teenIsolationFetchCalls.push(query);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 30),
+        key: `/works/teen-isolation-${query}-${index}`,
+        title: `Teen Isolation ${query} ${index}`,
+        author_name: [`Teen Author ${index}`],
+        subject: ["Young adult fiction", "Fantasy", "Adventure", "Teen"],
+        first_publish_year: 2016 + index,
+      })) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "teens",
+      signals: [
+        { action: "like", title: "Magic Trial", genres: ["fantasy"], themes: ["adventure", "school"], format: "book" },
+        { action: "like", title: "Quest Team", genres: ["fantasy"], themes: ["friendship"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.diagnostics.openLibraryProfileLabel, "teen_openlibrary_locked_baseline", "teen isolation should keep locked profile label");
+    assertEqual(result.diagnostics.openLibraryQueryRouting?.dominance?.openLibraryPlanner, "teen_locked_baseline", "teen isolation should keep teen planner");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_recovery_query_attempted), false, "teen isolation should not run middle grades recovery");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_age_shape_mismatch), false, "teen isolation should not apply middle grades age-shape gate");
+    assertEqual(teenIsolationFetchCalls.some((query) => /children|middle grade/i.test(query)), false, "teen isolation should not fetch middle grades recovery queries");
+    console.log(JSON.stringify({ name: "teen isolation excludes middle grades recovery and age-shape gate", pass: true, rawItems: result.rawItems.length, fetchCalls: teenIsolationFetchCalls }));
+  } finally {
     globalThis.fetch = originalFetch;
   }
 
