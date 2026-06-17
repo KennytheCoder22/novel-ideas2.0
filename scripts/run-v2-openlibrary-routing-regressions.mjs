@@ -526,6 +526,50 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousTeenContemporaryTimeoutProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalContemporaryDateNow = Date.now;
+  const teenContemporaryCascadeFetchCalls = [];
+  let fakeContemporaryNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalContemporaryDateNow() + fakeContemporaryNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    teenContemporaryCascadeFetchCalls.push(query);
+    if (teenContemporaryCascadeFetchCalls.length === 1) {
+      fakeContemporaryNowOffsetMs = 4_500;
+      throw new Error("timeout");
+    }
+    if (teenContemporaryCascadeFetchCalls.length === 2) {
+      fakeContemporaryNowOffsetMs = 5_650;
+      throw new Error("timeout");
+    }
+    fakeContemporaryNowOffsetMs = 5_800;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "teens",
+      signals: [
+        { action: "like", title: "Modern Spell", genres: ["fantasy"], themes: ["romance", "coming of age"], format: "book" },
+        { action: "like", title: "Heart Quest", genres: ["romance"], themes: ["friendship", "contemporary"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length, 5, "teen contemporary-romance-fantasy cascade should recover after two same-lane timeouts");
+    assertDeepEqual(teenContemporaryCascadeFetchCalls, ["young adult contemporary fantasy", "contemporary fantasy teen", "coming of age fantasy"], "teen contemporary-romance-fantasy cascade should rotate through remaining specific queries");
+    assertEqual(result.diagnostics.fetches?.[1]?.clientTimeoutMs < 1_600, true, "teen cascade should cap the second same-lane timeout to preserve budget");
+    console.log(JSON.stringify({ name: "teen contemporary romance fantasy rotates through specific queries under timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: teenContemporaryCascadeFetchCalls, secondTimeoutMs: result.diagnostics.fetches?.[1]?.clientTimeoutMs }));
+  } finally {
+    Date.now = originalContemporaryDateNow;
+    if (previousTeenContemporaryTimeoutProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousTeenContemporaryTimeoutProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const previousTeenSpecificTimeoutProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalSpecificDateNow = Date.now;
   const teenSpecificBeforeBroadFetchCalls = [];

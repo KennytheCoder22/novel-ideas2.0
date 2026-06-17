@@ -6,6 +6,8 @@ const ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS = 4_500;
 const ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS = 2_500;
 const ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 19_000;
 const TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 4_500;
+const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS = 1_500;
+const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -1274,7 +1276,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let proxyColdStartSuspected = false;
     let adultPrimaryQueryTimedOutTwice = false;
 
-    for (const queryPlan of queryPlans) {
+    for (const [queryPlanIndex, queryPlan] of queryPlans.entries()) {
       const query = queryPlan.query;
       const elapsedBeforeQueryMs = Date.now() - Date.parse(startedAt);
       const reserveProbeTimeMs = ageProfile.probeTimeoutMs + ageProfile.probeReserveBufferMs;
@@ -1298,8 +1300,23 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const teenTimeoutCascadeRemainingMs = ageProfile.key === "teen" && teenMainQueryTimedOut
         ? Math.max(250, plan.timeoutMs - elapsedBeforeQueryMs)
         : undefined;
-      const mainFetchTimeoutMs = teenTimeoutCascadeRemainingMs ?? firstAttemptTimeoutMs;
-      const mainProxyClientTimeoutMs = teenTimeoutCascadeRemainingMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
+      const teenSpecificTimeoutCascadeRemainingQueries = ageProfile.key === "teen" && teenMainQueryTimedOut && !isTeenBroadFallbackOpenLibraryQuery(query)
+        ? queryPlans.slice(queryPlanIndex).filter((plan) => !isTeenBroadFallbackOpenLibraryQuery(plan.query)).length
+        : 0;
+      const teenDistributedSpecificTimeoutMs = teenTimeoutCascadeRemainingMs !== undefined && teenSpecificTimeoutCascadeRemainingQueries > 0
+        ? Math.min(
+          teenTimeoutCascadeRemainingMs,
+          Math.max(
+            TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS,
+            Math.min(
+              TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS,
+              Math.floor(teenTimeoutCascadeRemainingMs / teenSpecificTimeoutCascadeRemainingQueries),
+            ),
+          ),
+        )
+        : undefined;
+      const mainFetchTimeoutMs = teenDistributedSpecificTimeoutMs ?? teenTimeoutCascadeRemainingMs ?? firstAttemptTimeoutMs;
+      const mainProxyClientTimeoutMs = teenDistributedSpecificTimeoutMs ?? teenTimeoutCascadeRemainingMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
       let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, mainFetchTimeoutMs, 1, mainProxyClientTimeoutMs);
       if (diagnostic.timedOut && isAdultFirstMainFetch && !context.signal?.aborted) {
         firstRunFetchTimeout = true;
