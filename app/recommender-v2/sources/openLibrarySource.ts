@@ -1119,6 +1119,19 @@ function adultUnderfillRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): stri
   return uniqueStrings([...plannedQueries, ...routeFallbacks], 8);
 }
 
+function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string[] {
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  const plannedQueries = queryPlans.map((plan) => plan.query);
+  const routeFallbacks = (() => {
+    if (/scifi|science|dystopian/i.test(routingReason)) return ["children's adventure fiction", "children's fantasy adventure", "middle grade adventure"];
+    if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "children's adventure fiction", "middle grade adventure"];
+    if (/humor|funny/i.test(routingReason)) return ["children's funny books", "middle grade humor", "children's school stories"];
+    if (/contemporary|school|friendship/i.test(routingReason)) return ["children's school stories", "middle grade adventure", "middle grade humor"];
+    return ["children's adventure fiction", "children's fantasy adventure", "children's funny books", "children's school stories", "middle grade adventure", "middle grade humor"];
+  })();
+  return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 8);
+}
+
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return true;
   const firstPublishYear = Number(doc?.first_publish_year || 0);
@@ -1138,9 +1151,9 @@ function hasMiddleGradesAgeShapeEvidence(doc: any, query: string, profile: Taste
     ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
   ].join(" ").toLowerCase();
   const text = `${title} ${subjects}`;
-  const hasExplicitMiddleGradesEvidence = /\b(middle grade|juvenile fiction|juvenile literature|children'?s fiction|children fiction|children'?s stories|preteens?|pre-teens?|school stories?|schools? fiction|students? fiction|classmates? fiction|humorous stories|mystery and detective stories|adventure stories|fantasy fiction, juvenile|science fiction, juvenile)\b/.test(text);
+  const hasExplicitMiddleGradesEvidence = /\b(middle grade|juvenile fiction|juvenile literature|children'?s fiction|children fiction|children'?s literature|children'?s stories|preteens?|pre-teens?|school stories?|schools? fiction|students? fiction|classmates? fiction|humorous stories|mystery and detective stories|adventure stories|fantasy fiction, juvenile|science fiction, juvenile)\b/.test(text);
   if (hasExplicitMiddleGradesEvidence) return true;
-  const queryIsAgeAnchored = /\bmiddle grade|school story|school mystery|magic school\b/i.test(query);
+  const queryIsAgeAnchored = /\bmiddle grade|children'?s|school story|school mystery|magic school\b/i.test(query);
   const hasGenreShape = /\b(fantasy|magic|adventure|mystery|detective|school|students?|humor|humorous|science fiction|space|juvenile)\b/.test(subjects);
   if (queryIsAgeAnchored && hasGenreShape) return true;
   return false;
@@ -1479,6 +1492,74 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       if (fallbackQueries.length > 0) openLibraryTopUpRan = true;
     }
 
+    if (ageProfile.key === "middleGrades" && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+      const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+      const recoveryQueries = middleGradesRecoveryQueries(queryPlans)
+        .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
+      const recoveryTarget = Math.min(ageProfile.docLimit, 5);
+      for (const recoveryQuery of recoveryQueries) {
+        const recoveryPlan: OpenLibraryQueryPlan = {
+          query: recoveryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+          queryFamily: queryFamilyForOpenLibraryQuery(recoveryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_age_anchored_recovery`,
+        };
+        const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, openLibraryProxyClientTimeoutMs(ageProfile));
+        fetches.push(diagnostic);
+        dropReasons.middle_grades_recovery_query_attempted = Number(dropReasons.middle_grades_recovery_query_attempted || 0) + 1;
+        if (diagnostic.timedOut) {
+          dropReasons.middle_grades_recovery_timeout = Number(dropReasons.middle_grades_recovery_timeout || 0) + 1;
+          if (context.signal?.aborted) break;
+          continue;
+        }
+        if (diagnostic.failedReason) {
+          dropReasons.middle_grades_recovery_failed = Number(dropReasons.middle_grades_recovery_failed || 0) + 1;
+          continue;
+        }
+        rawApiResultCount += recoveryDocs.length;
+        for (const doc of recoveryDocs) {
+          const title = String(doc?.title || "").trim();
+          if (title) rawTitles.push(title);
+          if (!title) {
+            dropReasons.middle_grades_recovery_missing_title = Number(dropReasons.middle_grades_recovery_missing_title || 0) + 1;
+            continue;
+          }
+          const quality = shouldKeepOpenLibraryDoc(doc, recoveryQuery, context.profile);
+          if (!quality.keep) {
+            const reason = `middle_grades_recovery_${quality.reason || "quality_filter"}`;
+            dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+            if (/artifact|inappropriate|middle_grades_age_shape/.test(reason)) artifactSuppressedTitles.push(title);
+            continue;
+          }
+          const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+          if (acceptedDocKeys.has(docKey)) {
+            dropReasons.middle_grades_recovery_duplicate_doc = Number(dropReasons.middle_grades_recovery_duplicate_doc || 0) + 1;
+            continue;
+          }
+          const seriesKey = openLibrarySeriesKey(doc);
+          if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+            dropReasons.middle_grades_recovery_series_duplicate = Number(dropReasons.middle_grades_recovery_series_duplicate || 0) + 1;
+            seriesSuppressedTitles.push(title);
+            continue;
+          }
+          if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+          acceptedDocKeys.add(docKey);
+          rawItems.push(normalizeOpenLibraryDoc(doc, recoveryPlan));
+          dropReasons.middle_grades_recovery_accepted = Number(dropReasons.middle_grades_recovery_accepted || 0) + 1;
+          if (rawItems.length >= recoveryTarget) break;
+        }
+        if (rawItems.length >= recoveryTarget) break;
+      }
+      if (recoveryQueries.length > 0) {
+        openLibraryTopUpRan = true;
+        if (rawItems.length < recoveryTarget) {
+          dropReasons.middle_grades_recovery_exhausted = Number(dropReasons.middle_grades_recovery_exhausted || 0) + 1;
+        }
+      }
+    }
+
     const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
     if (ageProfile.key === "adult" && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
       const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
@@ -1671,7 +1752,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             : queries.some((query) => /\b(contemporary|literary|drama)\b/i.test(query))
               ? "contemporary fiction"
               : ageProfile.diagnosticProbeQuery)
-        : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
+        : ageProfile.key === "middleGrades"
+          ? queries.some((query) => /\b(science fiction|sci-fi|space|dystopian|dystopia)\b/i.test(query)) ? "middle grade adventure" : queries.some((query) => /\b(humor|funny|school|friendship|contemporary|realistic)\b/i.test(query)) ? "middle grade humor" : queries.some((query) => /\b(mystery|detective|suspense)\b/i.test(query)) ? "middle grade adventure" : "middle grade adventure"
+          : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
       const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
       const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1);
       fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (probeDocs.length ? "emergency_fallback_probe_returned_docs" : undefined) });

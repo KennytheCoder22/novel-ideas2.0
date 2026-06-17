@@ -239,6 +239,50 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const middleGradesRecoveryFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesRecoveryFetchCalls.push(query);
+    if (/^middle grade realistic fiction|middle grade school story|middle grade friendship|middle grade adventure$/.test(query)) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ docs: [
+          { ...fakeDoc(query, 1), key: `/works/adult-recovery-${query}-1`, title: `Adult ${query} 1`, author_name: ["Adult Author"], subject: ["Fiction", "Friendship", "Literary fiction"], first_publish_year: 1990 },
+          { ...fakeDoc(query, 2), key: `/works/adult-recovery-${query}-2`, title: `Adult ${query} 2`, author_name: ["Adult Author"], subject: ["Fiction", "Friendship", "Short stories"], first_publish_year: 1995 },
+        ] }),
+      };
+    }
+    const docs = ["Pine Hill Quest", "Cafeteria Clues", "Field Day Plan", "Bus Ride Team", "Library Map"].map((title, index) => ({
+      ...fakeDoc(query, index + 20),
+      key: `/works/mg-recovery-${index}`,
+      title,
+      author_name: [`Recovery Author ${index}`],
+      subject: ["Children's fiction", "Adventure stories", "Schools"],
+      first_publish_year: 2018 + index,
+    }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[2].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length, 5, "middle grades recovery should reach five age-shaped candidates");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_recovery_query_attempted), true, "middle grades recovery should run age-anchored recovery queries");
+    assertEqual(middleGradesRecoveryFetchCalls.includes("friendship fiction"), false, "middle grades recovery should not use broad friendship fiction");
+    assertEqual(middleGradesRecoveryFetchCalls.includes("young adult fantasy"), false, "middle grades recovery should not use YA fantasy emergency probe");
+    assertEqual(middleGradesRecoveryFetchCalls.includes("middle grade adventure"), true, "middle grades recovery should use middle grade adventure");
+    console.log(JSON.stringify({ name: "middle grades recovery uses age-anchored safe queries", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesRecoveryFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const fetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
