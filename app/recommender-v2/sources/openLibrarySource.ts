@@ -35,7 +35,11 @@ type MiddleGradesAgeShapeDiagnosticSample = {
   evidence: {
     hasExplicitMiddleGradesEvidence: boolean;
     queryIsAgeAnchored: boolean;
+    hasSubjectGenreShape: boolean;
+    hasQueryGenreShape: boolean;
+    hasTitleGenreShape: boolean;
     hasGenreShape: boolean;
+    hasAdultLeakageShape: boolean;
   };
   subjectPreview: string[];
 };
@@ -1207,8 +1211,13 @@ function middleGradesAgeShapeDiagnostic(doc: any, query: string, profile: TasteP
   const text = `${title} ${subjects}`;
   const hasExplicitMiddleGradesEvidence = /\b(middle grade|juvenile fiction|juvenile literature|children'?s fiction|children fiction|children'?s literature|children'?s stories|preteens?|pre-teens?|school stories?|schools? fiction|students? fiction|classmates? fiction|humorous stories|mystery and detective stories|adventure stories|fantasy fiction, juvenile|science fiction, juvenile)\b/.test(text);
   const queryIsAgeAnchored = /\bmiddle grade|children'?s|school story|school mystery|magic school\b/i.test(query);
-  const hasGenreShape = /\b(fantasy|magic|adventure|mystery|detective|school|students?|humor|humorous|science fiction|space|juvenile)\b/.test(subjects);
-  const keep = hasExplicitMiddleGradesEvidence || (queryIsAgeAnchored && hasGenreShape);
+  const genreShapePattern = /\b(fantasy|magic|adventure|mystery|detective|school|students?|humor|humorous|funny|science fiction|sci-fi|space|survival|juvenile)\b/i;
+  const hasSubjectGenreShape = genreShapePattern.test(subjects);
+  const hasQueryGenreShape = genreShapePattern.test(query);
+  const hasTitleGenreShape = genreShapePattern.test(title);
+  const hasGenreShape = hasSubjectGenreShape || hasQueryGenreShape || hasTitleGenreShape;
+  const hasAdultLeakageShape = /\b(short stories|literary fiction|classic literature|adult fiction|booker prize|pulitzer|nobel|erotica|dark romance)\b/.test(text);
+  const keep = hasExplicitMiddleGradesEvidence || (queryIsAgeAnchored && hasGenreShape && !hasAdultLeakageShape);
   return {
     query,
     title: String(doc?.title || "").trim(),
@@ -1218,7 +1227,11 @@ function middleGradesAgeShapeDiagnostic(doc: any, query: string, profile: TasteP
     evidence: {
       hasExplicitMiddleGradesEvidence,
       queryIsAgeAnchored,
+      hasSubjectGenreShape,
+      hasQueryGenreShape,
+      hasTitleGenreShape,
       hasGenreShape,
+      hasAdultLeakageShape,
     },
     subjectPreview: uniqueStrings(subjectValues, 8),
   };

@@ -384,6 +384,39 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const middleGradesWeakMetadataFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesWeakMetadataFetchCalls.push(query);
+    const docs = ["Signal Station", "Moonbase Map", "Robot Relay", "Asteroid Team", "Orbit Club"].map((title, index) => ({
+      ...fakeDoc(query, index + 40),
+      key: `/works/mg-weak-metadata-${index}`,
+      title,
+      author_name: [`MG SciFi Author ${index}`],
+      subject: ["Fiction"],
+      first_publish_year: 2018 + index,
+    }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[0].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "middle grades age-shape gate should accept age-anchored query results with query genre shape");
+    const ageShapeDiagnostics = result.diagnostics.middleGradesAgeShapeDiagnostics || {};
+    const ageShapeSamples = Array.isArray(ageShapeDiagnostics.samples) ? ageShapeDiagnostics.samples : [];
+    assertEqual(ageShapeSamples.some((sample) => sample.keep === true && sample.evidence?.hasQueryGenreShape === true && sample.evidence?.hasSubjectGenreShape === false), true, "middle grades age-shape diagnostics should show query-genre acceptance for weak metadata");
+    console.log(JSON.stringify({ name: "middle grades age-shape accepts age-anchored query genre shape", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesWeakMetadataFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const middleGradesRecoveryFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
