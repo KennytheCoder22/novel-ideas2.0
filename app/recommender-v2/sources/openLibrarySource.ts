@@ -9,6 +9,10 @@ const TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 4_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS = 1_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
 const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
+const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 3_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 1_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 600;
+const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -659,11 +663,11 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
   const wantsContemporarySchool = hasContemporary && !wantsFantasyAdventure && !wantsMysteryAdventure && !wantsHistoricalAdventure && !wantsSciFiAdventure;
   const wantsHumor = hasHumor && !wantsMysteryAdventure && !wantsFantasyAdventure;
   const queryCandidates = wantsFantasyAdventure
-    ? ["middle grade fantasy", "fantasy adventure", "magic school", "adventure fiction"]
+    ? ["middle grade fantasy", "fantasy adventure", "magic school", "middle grade adventure"]
     : wantsMysteryAdventure
       ? ["middle grade mystery", "mystery adventure", "school mystery", "detective fiction"]
       : wantsHistoricalAdventure
-        ? ["middle grade historical fiction", "historical adventure", "historical mystery", "adventure fiction"]
+        ? ["middle grade historical fiction", "historical adventure", "historical mystery", "middle grade adventure"]
         : wantsSciFiAdventure
           ? ["middle grade science fiction", "science fiction adventure", "space adventure", hasAdventure ? "survival fiction" : "dystopian adventure"]
           : wantsContemporarySchool
@@ -676,7 +680,7 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
                   ageProfile.diagnosticProbeQuery,
                   "middle grade adventure",
                 ];
-  const preservedKnownGoodQueries = /^(middle grade fantasy|fantasy adventure|magic school|adventure fiction|middle grade mystery|mystery adventure|school mystery|detective fiction|middle grade historical fiction|historical adventure|historical mystery|middle grade science fiction|science fiction adventure|space adventure|survival fiction|dystopian adventure|middle grade realistic fiction|middle grade school story|middle grade friendship|middle grade humor|humorous fiction|middle grade fiction|middle grade adventure)$/;
+  const preservedKnownGoodQueries = /^(middle grade fantasy|fantasy adventure|magic school|middle grade mystery|mystery adventure|school mystery|detective fiction|middle grade historical fiction|historical adventure|historical mystery|middle grade science fiction|science fiction adventure|space adventure|survival fiction|dystopian adventure|middle grade realistic fiction|middle grade school story|middle grade friendship|middle grade humor|humorous fiction|middle grade fiction|middle grade adventure)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), ageProfile.queryLimit);
   const routingReason = wantsFantasyAdventure
@@ -821,6 +825,7 @@ function emptyDiagnostics(plan: SourcePlan, status: SourceDiagnosticV2["status"]
 function openLibraryProxyClientTimeoutMs(ageProfile: OpenLibraryAgeProfile): number | undefined {
   if (ageProfile.key === "adult") return ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
   if (ageProfile.key === "teen") return TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
+  if (ageProfile.key === "middleGrades") return MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
   return undefined;
 }
 
@@ -1165,13 +1170,19 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const plannedQueries = queryPlans.map((plan) => plan.query);
   const routeFallbacks = (() => {
-    if (/scifi|science|dystopian/i.test(routingReason)) return ["children's adventure fiction", "children's fantasy adventure", "middle grade adventure"];
-    if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "children's adventure fiction", "middle grade adventure"];
+    if (/scifi|science|dystopian/i.test(routingReason)) return ["middle grade adventure", "children's fantasy adventure", "middle grade fantasy"];
+    if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "middle grade fantasy", "middle grade adventure"];
     if (/humor|funny/i.test(routingReason)) return ["children's funny books", "middle grade humor", "children's school stories"];
     if (/contemporary|school|friendship/i.test(routingReason)) return ["children's school stories", "middle grade adventure", "middle grade humor"];
-    return ["children's adventure fiction", "children's fantasy adventure", "children's funny books", "children's school stories", "middle grade adventure", "middle grade humor"];
+    return ["middle grade adventure", "children's fantasy adventure", "middle grade fantasy", "children's school stories", "middle grade humor", "children's funny books"];
   })();
   return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 8);
+}
+
+function middleGradesStrongestRetryQuery(queryPlans: OpenLibraryQueryPlan[]): string {
+  return queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query))?.query
+    || queryPlans[0]?.query
+    || "middle grade adventure";
 }
 
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
@@ -1339,6 +1350,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const elapsedBeforeQueryMs = Date.now() - Date.parse(startedAt);
       const reserveProbeTimeMs = ageProfile.probeTimeoutMs + ageProfile.probeReserveBufferMs;
       const teenMainQueryTimedOut = ageProfile.key === "teen" && fetches.some((fetch) => !fetch.diagnosticOnly && fetch.timedOut);
+      const middleGradesMainQueryTimedOut = ageProfile.key === "middleGrades" && fetches.some((fetch) => !fetch.diagnosticOnly && fetch.timedOut);
       if (ageProfile.key === "teen" && teenMainQueryTimedOut && rawItems.length < Math.min(ageProfile.docLimit, 5) && elapsedBeforeQueryMs >= plan.timeoutMs) {
         dropReasons.teen_timeout_cascade_source_budget_exhausted = Number(dropReasons.teen_timeout_cascade_source_budget_exhausted || 0) + 1;
         break;
@@ -1347,7 +1359,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         dropReasons.teen_delayed_final_retry_budget_reserved = Number(dropReasons.teen_delayed_final_retry_budget_reserved || 0) + 1;
         break;
       }
-      if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && !teenMainQueryTimedOut && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
+      if (ageProfile.key === "middleGrades" && middleGradesMainQueryTimedOut && rawItems.length === 0 && elapsedBeforeQueryMs + MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS >= plan.timeoutMs) {
+        dropReasons.middle_grades_delayed_final_retry_budget_reserved = Number(dropReasons.middle_grades_delayed_final_retry_budget_reserved || 0) + 1;
+        break;
+      }
+      if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && !teenMainQueryTimedOut && !middleGradesMainQueryTimedOut && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
         dropReasons.main_query_reserved_probe_time = Number(dropReasons.main_query_reserved_probe_time || 0) + 1;
         break;
       }
@@ -1377,8 +1393,26 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           ),
         )
         : undefined;
-      const mainFetchTimeoutMs = teenDistributedSpecificTimeoutMs ?? teenTimeoutCascadeRemainingMs ?? firstAttemptTimeoutMs;
-      const mainProxyClientTimeoutMs = teenDistributedSpecificTimeoutMs ?? teenTimeoutCascadeRemainingMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
+      const middleGradesTimeoutCascadeRemainingMs = ageProfile.key === "middleGrades" && middleGradesMainQueryTimedOut
+        ? Math.max(250, plan.timeoutMs - elapsedBeforeQueryMs - (rawItems.length === 0 ? MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS : 0))
+        : undefined;
+      const middleGradesTimeoutCascadeRemainingQueries = ageProfile.key === "middleGrades" && middleGradesMainQueryTimedOut
+        ? queryPlans.slice(queryPlanIndex).length
+        : 0;
+      const middleGradesDistributedTimeoutMs = middleGradesTimeoutCascadeRemainingMs !== undefined && middleGradesTimeoutCascadeRemainingQueries > 0
+        ? Math.min(
+          middleGradesTimeoutCascadeRemainingMs,
+          Math.max(
+            MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS,
+            Math.min(
+              MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS,
+              Math.floor(middleGradesTimeoutCascadeRemainingMs / middleGradesTimeoutCascadeRemainingQueries),
+            ),
+          ),
+        )
+        : undefined;
+      const mainFetchTimeoutMs = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? firstAttemptTimeoutMs;
+      const mainProxyClientTimeoutMs = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
       let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, mainFetchTimeoutMs, 1, mainProxyClientTimeoutMs);
       if (diagnostic.timedOut && isAdultFirstMainFetch && !context.signal?.aborted) {
         firstRunFetchTimeout = true;
@@ -1942,6 +1976,78 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           }
             if (delayedRetryDocs.length > 0 && !dropReasons.teen_delayed_final_retry_accepted) {
               dropReasons.teen_delayed_final_retry_all_rejected = Number(dropReasons.teen_delayed_final_retry_all_rejected || 0) + 1;
+            }
+          }
+        }
+      }
+    }
+
+    if (ageProfile.key === "middleGrades" && rawItems.length === 0 && !context.signal?.aborted) {
+      const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
+      const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
+      const delayedRetryQuery = middleGradesStrongestRetryQuery(queryPlans);
+      if (allAttemptedLaneQueriesTimedOut && delayedRetryQuery) {
+        const delayedRetryPlan: OpenLibraryQueryPlan = {
+          query: delayedRetryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + mainFetches.length,
+          queryFamily: queryFamilyForOpenLibraryQuery(delayedRetryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_delayed_final_retry`,
+          routingDominance: queryPlans[0]?.routingDominance,
+        };
+        const elapsedBeforeDelayedRetryMs = Date.now() - Date.parse(startedAt);
+        const delayedRetryRemainingBudgetMs = plan.timeoutMs - elapsedBeforeDelayedRetryMs;
+        if (delayedRetryRemainingBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS) {
+          dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget = Number(dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget || 0) + 1;
+        } else {
+          const delayedRetryTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, delayedRetryRemainingBudgetMs);
+          const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, delayedRetryTimeoutMs, 3, delayedRetryTimeoutMs);
+          fetches.push(diagnostic);
+          dropReasons.middle_grades_delayed_final_retry_attempted = Number(dropReasons.middle_grades_delayed_final_retry_attempted || 0) + 1;
+          openLibraryTopUpRan = true;
+          if (diagnostic.timedOut) {
+            dropReasons.middle_grades_delayed_final_retry_timeout = Number(dropReasons.middle_grades_delayed_final_retry_timeout || 0) + 1;
+            if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+          } else if (diagnostic.failedReason) {
+            dropReasons.middle_grades_delayed_final_retry_failed = Number(dropReasons.middle_grades_delayed_final_retry_failed || 0) + 1;
+            if (!failedReason) failedReason = diagnostic.failedReason;
+          } else {
+            rawApiResultCount += delayedRetryDocs.length;
+            for (const doc of delayedRetryDocs) {
+              const title = String(doc?.title || "").trim();
+              if (title) rawTitles.push(title);
+              if (!title) {
+                dropReasons.middle_grades_delayed_final_retry_missing_title = Number(dropReasons.middle_grades_delayed_final_retry_missing_title || 0) + 1;
+                continue;
+              }
+              recordMiddleGradesAgeShapeDiagnostic(doc, delayedRetryQuery, "middle_grades_delayed_retry");
+              const quality = shouldKeepOpenLibraryDoc(doc, delayedRetryQuery, context.profile);
+              if (!quality.keep) {
+                const reason = `middle_grades_delayed_final_retry_${quality.reason || "quality_filter"}`;
+                dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+                if (/artifact|inappropriate|middle_grades_age_shape/.test(reason)) artifactSuppressedTitles.push(title);
+                continue;
+              }
+              const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+              if (acceptedDocKeys.has(docKey)) {
+                dropReasons.middle_grades_delayed_final_retry_duplicate_doc = Number(dropReasons.middle_grades_delayed_final_retry_duplicate_doc || 0) + 1;
+                continue;
+              }
+              const seriesKey = openLibrarySeriesKey(doc);
+              if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+                dropReasons.middle_grades_delayed_final_retry_series_duplicate = Number(dropReasons.middle_grades_delayed_final_retry_series_duplicate || 0) + 1;
+                seriesSuppressedTitles.push(title);
+                continue;
+              }
+              if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+              acceptedDocKeys.add(docKey);
+              rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
+              dropReasons.middle_grades_delayed_final_retry_accepted = Number(dropReasons.middle_grades_delayed_final_retry_accepted || 0) + 1;
+              if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+            }
+            if (delayedRetryDocs.length > 0 && !dropReasons.middle_grades_delayed_final_retry_accepted) {
+              dropReasons.middle_grades_delayed_final_retry_all_rejected = Number(dropReasons.middle_grades_delayed_final_retry_all_rejected || 0) + 1;
             }
           }
         }

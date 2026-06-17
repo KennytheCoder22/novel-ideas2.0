@@ -196,7 +196,7 @@ async function main() {
         { action: "like", title: "School Adventure", genres: ["adventure"], themes: ["school", "friendship"], format: "book" },
       ],
       expectedReason: "middle_grades_fantasy_adventure",
-      expectedQueries: ["middle grade fantasy", "fantasy adventure", "magic school", "adventure fiction"],
+      expectedQueries: ["middle grade fantasy", "fantasy adventure", "magic school", "middle grade adventure"],
     },
     {
       name: "middle grades mystery adventure candidate baseline",
@@ -556,6 +556,36 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousMiddleGradesProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const middleGradesProxyFetchUrls = [];
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    middleGradesProxyFetchUrls.push(String(url));
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 2, docs: [1, 2, 3, 4, 5, 6, 7, 8].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[0].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(middleGradesProxyFetchUrls[0].startsWith("https://proxy.example.test/api/openlibrary?"), true, "configured proxy base should route middle grades Open Library fetches through proxy");
+    assertEqual(result.diagnostics.openLibraryProfileLabel, "middle_grades_openlibrary_profile_pending", "middle grades profile label should remain pending/unlocked");
+    assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "middle grades fetch diagnostics should mark configured proxy path");
+    assertEqual(result.diagnostics.fetches?.[0]?.proxyRetryWindowEnabled, true, "middle grades proxy fetch should use proxy retry client window");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 3500 && result.diagnostics.fetches?.[0]?.clientTimeoutMs < 4500, true, "middle grades proxy fetch should use a middle-grades-specific resilience window");
+    console.log(JSON.stringify({ name: "middle grades proxy path uses age-specific resilience window", pass: true, fetchPath: result.diagnostics.fetches?.[0]?.fetchPath, clientTimeoutMs: result.diagnostics.fetches?.[0]?.clientTimeoutMs, profileLabel: result.diagnostics.openLibraryProfileLabel }));
+  } finally {
+    if (previousMiddleGradesProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const teenSelectionProfile = buildTasteProfile({
     ageBand: "teens",
     signals: [
@@ -578,6 +608,48 @@ async function main() {
   assertEqual(Boolean(teenSelectionResult.rejectedReasons.duplicate_title), true, "teen selection should record duplicate title rejection before safe underfill recovery");
   assertEqual(Boolean(teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_relaxed_diversity || teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_safe_candidate_accepted), true, "teen selection should emit teen-only Open Library underfill diagnostics");
   console.log(JSON.stringify({ name: "teen selection relaxes Open Library diversity underfill to five", pass: true, selected: teenSelectionResult.selected.length, rejectedReasons: teenSelectionResult.rejectedReasons }));
+
+  const previousMiddleGradesCascadeProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalMiddleGradesCascadeDateNow = Date.now;
+  const middleGradesCascadeFetchCalls = [];
+  let fakeMiddleGradesCascadeNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalMiddleGradesCascadeDateNow() + fakeMiddleGradesCascadeNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesCascadeFetchCalls.push(query);
+    if (middleGradesCascadeFetchCalls.length === 1) {
+      fakeMiddleGradesCascadeNowOffsetMs = 3_500;
+      throw new Error("timeout");
+    }
+    if (middleGradesCascadeFetchCalls.length === 2) {
+      fakeMiddleGradesCascadeNowOffsetMs = 4_700;
+      throw new Error("timeout");
+    }
+    fakeMiddleGradesCascadeNowOffsetMs = 4_900;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[0].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "middle grades cascade should preserve budget and recover after initial proxy timeouts");
+    assertDeepEqual(middleGradesCascadeFetchCalls, ["middle grade fantasy", "fantasy adventure", "magic school"], "middle grades cascade should rotate through planned lane queries before recovery");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs, 3500, "middle grades first proxy fetch should use resilience window");
+    assertEqual(result.diagnostics.fetches?.[1]?.clientTimeoutMs < 1600, true, "middle grades cascade should cap later query timeouts to preserve retry/recovery budget");
+    console.log(JSON.stringify({ name: "middle grades cascade rotates through planned queries under timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesCascadeFetchCalls, secondTimeoutMs: result.diagnostics.fetches?.[1]?.clientTimeoutMs }));
+  } finally {
+    Date.now = originalMiddleGradesCascadeDateNow;
+    if (previousMiddleGradesCascadeProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesCascadeProxyBase;
+    globalThis.fetch = originalFetch;
+  }
 
   const previousTeenContemporaryTimeoutProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalContemporaryDateNow = Date.now;
