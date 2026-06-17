@@ -314,6 +314,25 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       seenTitles.add(titleKey);
       selected.push(row.candidate);
     }
+    for (const candidate of rankedCandidates) {
+      if (selected.length >= teenOpenLibraryTarget) break;
+      if (candidate.source !== "openLibrary") continue;
+      if (selected.includes(candidate)) continue;
+      if (rejectReason(candidate, profile)) continue;
+      const titleKey = normalized(candidate.title);
+      if (seenTitles.has(titleKey)) continue;
+      const rootKey = seriesKey(candidate);
+      if (rootKey && seenSeries.has(rootKey)) {
+        candidate.rejectedReasons.push("teen_openlibrary_underfill_blocked_same_root_variant");
+        rejectedReasons.teen_openlibrary_underfill_blocked_same_root_variant = Number(rejectedReasons.teen_openlibrary_underfill_blocked_same_root_variant || 0) + 1;
+        continue;
+      }
+      candidate.rejectedReasons.push("teen_openlibrary_underfill_safe_candidate_accepted");
+      rejectedReasons.teen_openlibrary_underfill_safe_candidate_accepted = Number(rejectedReasons.teen_openlibrary_underfill_safe_candidate_accepted || 0) + 1;
+      seenTitles.add(titleKey);
+      if (rootKey) seenSeries.add(rootKey);
+      selected.push(candidate);
+    }
   }
 
   applyAdultSpeculativeFamilyBalance(rankedCandidates, selected, rejectedReasons, profile, limit);

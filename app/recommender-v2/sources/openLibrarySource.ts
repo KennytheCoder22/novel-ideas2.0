@@ -8,6 +8,7 @@ const ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 19_000;
 const TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 4_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS = 1_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
+const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -1285,6 +1286,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         dropReasons.teen_timeout_cascade_source_budget_exhausted = Number(dropReasons.teen_timeout_cascade_source_budget_exhausted || 0) + 1;
         break;
       }
+      if (ageProfile.key === "teen" && teenMainQueryTimedOut && rawItems.length === 0 && elapsedBeforeQueryMs + TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS >= plan.timeoutMs) {
+        dropReasons.teen_delayed_final_retry_budget_reserved = Number(dropReasons.teen_delayed_final_retry_budget_reserved || 0) + 1;
+        break;
+      }
       if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && !teenMainQueryTimedOut && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
         dropReasons.main_query_reserved_probe_time = Number(dropReasons.main_query_reserved_probe_time || 0) + 1;
         break;
@@ -1298,7 +1303,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const isAdultFirstMainFetch = ageProfile.key === "adult" && fetches.filter((fetch) => !fetch.diagnosticOnly).length === 0;
       const firstAttemptTimeoutMs = isAdultFirstMainFetch ? ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS : ageProfile.perQueryTimeoutMs;
       const teenTimeoutCascadeRemainingMs = ageProfile.key === "teen" && teenMainQueryTimedOut
-        ? Math.max(250, plan.timeoutMs - elapsedBeforeQueryMs)
+        ? Math.max(250, plan.timeoutMs - elapsedBeforeQueryMs - (rawItems.length === 0 ? TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS : 0))
         : undefined;
       const teenSpecificTimeoutCascadeRemainingQueries = ageProfile.key === "teen" && teenMainQueryTimedOut && !isTeenBroadFallbackOpenLibraryQuery(query)
         ? queryPlans.slice(queryPlanIndex).filter((plan) => !isTeenBroadFallbackOpenLibraryQuery(plan.query)).length
@@ -1821,11 +1826,17 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           routingReason: `${queryPlans[0]?.routingReason || "teen"}_delayed_final_retry`,
           routingDominance: queryPlans[0]?.routingDominance,
         };
-        const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, 3, TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS);
-        fetches.push(diagnostic);
-        dropReasons.teen_delayed_final_retry_attempted = Number(dropReasons.teen_delayed_final_retry_attempted || 0) + 1;
-        openLibraryTopUpRan = true;
-        if (diagnostic.timedOut) {
+        const elapsedBeforeDelayedRetryMs = Date.now() - Date.parse(startedAt);
+        const delayedRetryRemainingBudgetMs = plan.timeoutMs - elapsedBeforeDelayedRetryMs;
+        if (delayedRetryRemainingBudgetMs < TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS) {
+          dropReasons.teen_delayed_final_retry_skipped_insufficient_budget = Number(dropReasons.teen_delayed_final_retry_skipped_insufficient_budget || 0) + 1;
+        } else {
+          const delayedRetryTimeoutMs = Math.min(TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, delayedRetryRemainingBudgetMs);
+          const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, delayedRetryTimeoutMs, 3, delayedRetryTimeoutMs);
+          fetches.push(diagnostic);
+          dropReasons.teen_delayed_final_retry_attempted = Number(dropReasons.teen_delayed_final_retry_attempted || 0) + 1;
+          openLibraryTopUpRan = true;
+          if (diagnostic.timedOut) {
           dropReasons.teen_delayed_final_retry_timeout = Number(dropReasons.teen_delayed_final_retry_timeout || 0) + 1;
           if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
         } else if (diagnostic.failedReason) {
@@ -1864,8 +1875,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             dropReasons.teen_delayed_final_retry_accepted = Number(dropReasons.teen_delayed_final_retry_accepted || 0) + 1;
             if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
           }
-          if (delayedRetryDocs.length > 0 && !dropReasons.teen_delayed_final_retry_accepted) {
-            dropReasons.teen_delayed_final_retry_all_rejected = Number(dropReasons.teen_delayed_final_retry_all_rejected || 0) + 1;
+            if (delayedRetryDocs.length > 0 && !dropReasons.teen_delayed_final_retry_accepted) {
+              dropReasons.teen_delayed_final_retry_all_rejected = Number(dropReasons.teen_delayed_final_retry_all_rejected || 0) + 1;
+            }
           }
         }
       }

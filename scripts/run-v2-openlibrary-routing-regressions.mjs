@@ -555,15 +555,21 @@ async function main() {
       { action: "like", title: "Modern Spell", genres: ["fantasy"], themes: ["romance", "coming of age"], format: "book" },
     ],
   });
-  const teenSelectionCandidates = ["Aster", "Briar", "Cinder", "Dahlia", "Ember", "Fable"].map((seed, index) => fakeScoredCandidate({
-    id: `teen-selection-${index}`,
-    title: `Teen Selection ${seed}`,
-    creators: ["Shared Teen Author"],
-    score: 10 - index * 0.1,
-  }));
+  const teenSelectionCandidates = [
+    fakeScoredCandidate({ id: "teen-selection-aster", title: "Teen Selection Aster", creators: ["Shared Teen Author"], score: 10 }),
+    fakeScoredCandidate({ id: "teen-selection-aster-duplicate", title: "Teen Selection Aster", creators: ["Second Teen Author"], score: 9.95 }),
+    ...["Briar", "Cinder", "Dahlia", "Ember", "Fable"].map((seed, index) => fakeScoredCandidate({
+      id: `teen-selection-${index}`,
+      title: `Teen Selection ${seed}`,
+      creators: ["Shared Teen Author"],
+      score: 9.9 - index * 0.1,
+    })),
+  ];
   const teenSelectionResult = selectRecommendations(teenSelectionCandidates, teenSelectionProfile, 10);
   assertEqual(teenSelectionResult.selected.length, 5, "teen selection should relax Open Library diversity underfill to five");
-  assertEqual(Boolean(teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_relaxed_diversity), true, "teen selection should emit teen-only Open Library underfill diagnostics");
+  assertEqual(new Set(teenSelectionResult.selected.map((candidate) => candidate.title)).size, 5, "teen selection underfill recovery should keep duplicate titles blocked");
+  assertEqual(Boolean(teenSelectionResult.rejectedReasons.duplicate_title), true, "teen selection should record duplicate title rejection before safe underfill recovery");
+  assertEqual(Boolean(teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_relaxed_diversity || teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_safe_candidate_accepted), true, "teen selection should emit teen-only Open Library underfill diagnostics");
   console.log(JSON.stringify({ name: "teen selection relaxes Open Library diversity underfill to five", pass: true, selected: teenSelectionResult.selected.length, rejectedReasons: teenSelectionResult.rejectedReasons }));
 
   const previousTeenContemporaryTimeoutProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
@@ -620,10 +626,10 @@ async function main() {
     const query = new URL(String(url)).searchParams.get("q") || "";
     teenSpecificBeforeBroadFetchCalls.push(query);
     if (teenSpecificBeforeBroadFetchCalls.length === 1) {
-      fakeSpecificNowOffsetMs = 7_100;
+      fakeSpecificNowOffsetMs = 6_000;
       throw new Error("timeout");
     }
-    fakeSpecificNowOffsetMs = 7_200;
+    fakeSpecificNowOffsetMs = 6_200;
     return {
       ok: true,
       status: 200,
@@ -654,10 +660,10 @@ async function main() {
     const query = new URL(String(url)).searchParams.get("q") || "";
     teenTimeoutCascadeFetchCalls.push(query);
     if (teenTimeoutCascadeFetchCalls.length === 1) {
-      fakeNowOffsetMs = 7_100;
+      fakeNowOffsetMs = 6_000;
       throw new Error("timeout");
     }
-    fakeNowOffsetMs = 7_200;
+    fakeNowOffsetMs = 6_200;
     return {
       ok: true,
       status: 200,
@@ -769,7 +775,7 @@ async function main() {
     const query = new URL(String(url)).searchParams.get("q") || "";
     teenDelayedRetryFetchCalls.push(query);
     if (teenDelayedRetryFetchCalls.length <= 3) {
-      fakeTeenDelayedRetryNowOffsetMs = teenDelayedRetryFetchCalls.length === 1 ? 4_500 : teenDelayedRetryFetchCalls.length === 2 ? 6_000 : 8_000;
+      fakeTeenDelayedRetryNowOffsetMs = teenDelayedRetryFetchCalls.length === 1 ? 4_500 : teenDelayedRetryFetchCalls.length === 2 ? 6_000 : 6_500;
       throw new Error("timeout");
     }
     fakeTeenDelayedRetryNowOffsetMs = 8_100;
