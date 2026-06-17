@@ -486,6 +486,46 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const teenUnderfillRecoveryFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    teenUnderfillRecoveryFetchCalls.push(query);
+    const acceptedCount = teenUnderfillRecoveryFetchCalls.length === 1 ? 3 : /teen mystery|young adult mystery|mystery adventure/.test(query) ? 4 : 0;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => {
+        const teenRecoveryTitles = ["The Caper Map", "Signal at Midnight", "The Hidden Pass", "Rooftop Clue", "The Last Envelope", "Harbor Puzzle"];
+        return JSON.stringify({ docs: Array.from({ length: acceptedCount }, (_unused, index) => ({
+          ...fakeDoc(query, index + 50),
+          key: `/works/teen-underfill-${query}-${index}`,
+          title: teenRecoveryTitles[index] || `Teen Recovery Pick ${index}`,
+          author_name: [`Teen Recovery Author ${index}`],
+          subject: ["Young adult fiction", "Mystery", "Adventure", "Teen"],
+          first_publish_year: 2018 + index,
+        })) });
+      },
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "teens",
+      signals: [
+        { action: "like", title: "Puzzle Run", genres: ["mystery"], themes: ["heist", "adventure"], format: "book" },
+        { action: "like", title: "Caper Crew", genres: ["mystery"], themes: ["friendship"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length, 5, "teen underfill recovery should reach five locked-lane candidates");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.teen_underfill_recovery_query_attempted), true, "teen underfill recovery should run teen-only recovery");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_recovery_query_attempted), false, "teen underfill recovery should not run middle grades recovery");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_age_shape_mismatch), false, "teen underfill recovery should not apply middle grades age-shape gate");
+    assertEqual(teenUnderfillRecoveryFetchCalls.some((query) => /children|middle grade/i.test(query)), false, "teen underfill recovery should not fetch middle grades recovery queries");
+    console.log(JSON.stringify({ name: "teen underfill recovery stays teen-only and reaches five", pass: true, rawItems: result.rawItems.length, fetchCalls: teenUnderfillRecoveryFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const underfillFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";

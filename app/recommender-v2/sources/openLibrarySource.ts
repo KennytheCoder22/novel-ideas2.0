@@ -1119,6 +1119,21 @@ function adultUnderfillRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): stri
   return uniqueStrings([...plannedQueries, ...routeFallbacks], 8);
 }
 
+function teenUnderfillRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string[] {
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  const plannedQueries = queryPlans.map((plan) => plan.query);
+  const routeFallbacks = (() => {
+    if (/dystopian|scifi|science/i.test(routingReason)) return ["young adult dystopian fiction", "dystopian adventure", "science fiction adventure"];
+    if (/mystery|heist|psychological|thriller/i.test(routingReason)) return ["young adult mystery", "teen mystery", "mystery adventure"];
+    if (/historical/i.test(routingReason)) return ["teen historical fiction", "historical adventure", "young adult mystery"];
+    if (/horror|paranormal/i.test(routingReason)) return ["young adult horror", "paranormal mystery", "dark fantasy"];
+    if (/contemporary|romance/i.test(routingReason)) return ["young adult contemporary", "teen realistic fiction", "coming of age novel"];
+    if (/fantasy|adventure|survival/i.test(routingReason)) return ["young adult fantasy", "fantasy adventure", "magical adventure"];
+    return ["young adult fantasy", "young adult mystery", "fantasy adventure", "mystery adventure"];
+  })();
+  return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 8);
+}
+
 function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string[] {
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const plannedQueries = queryPlans.map((plan) => plan.query);
@@ -1490,6 +1505,82 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (rawItems.length >= 3 || rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
       }
       if (fallbackQueries.length > 0) openLibraryTopUpRan = true;
+    }
+
+    if (ageProfile.key === "teen" && rawItems.length > 0 && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+      const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+      const recoveryQueries = teenUnderfillRecoveryQueries(queryPlans)
+        .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
+      const recoveryTarget = Math.min(ageProfile.docLimit, 5);
+      for (const recoveryQuery of recoveryQueries) {
+        const elapsedBeforeRecoveryMs = Date.now() - Date.parse(startedAt);
+        const remainingBudgetMs = plan.timeoutMs - elapsedBeforeRecoveryMs;
+        if (remainingBudgetMs <= 250) {
+          dropReasons.teen_underfill_recovery_source_budget_exhausted = Number(dropReasons.teen_underfill_recovery_source_budget_exhausted || 0) + 1;
+          break;
+        }
+        const recoveryTimeoutMs = Math.max(500, Math.min(3_000, remainingBudgetMs));
+        const recoveryPlan: OpenLibraryQueryPlan = {
+          query: recoveryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+          queryFamily: queryFamilyForOpenLibraryQuery(recoveryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "teen"}_locked_underfill_recovery`,
+          routingDominance: queryPlans[0]?.routingDominance,
+        };
+        const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, recoveryTimeoutMs, 1, recoveryTimeoutMs);
+        fetches.push(diagnostic);
+        dropReasons.teen_underfill_recovery_query_attempted = Number(dropReasons.teen_underfill_recovery_query_attempted || 0) + 1;
+        if (diagnostic.timedOut) {
+          dropReasons.teen_underfill_recovery_timeout = Number(dropReasons.teen_underfill_recovery_timeout || 0) + 1;
+          if (context.signal?.aborted) break;
+          continue;
+        }
+        if (diagnostic.failedReason) {
+          dropReasons.teen_underfill_recovery_failed = Number(dropReasons.teen_underfill_recovery_failed || 0) + 1;
+          continue;
+        }
+        rawApiResultCount += recoveryDocs.length;
+        for (const doc of recoveryDocs) {
+          const title = String(doc?.title || "").trim();
+          if (title) rawTitles.push(title);
+          if (!title) {
+            dropReasons.teen_underfill_recovery_missing_title = Number(dropReasons.teen_underfill_recovery_missing_title || 0) + 1;
+            continue;
+          }
+          const quality = shouldKeepOpenLibraryDoc(doc, recoveryQuery, context.profile);
+          if (!quality.keep) {
+            const reason = `teen_underfill_recovery_${quality.reason || "quality_filter"}`;
+            dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+            if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+            continue;
+          }
+          const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+          if (acceptedDocKeys.has(docKey)) {
+            dropReasons.teen_underfill_recovery_duplicate_doc = Number(dropReasons.teen_underfill_recovery_duplicate_doc || 0) + 1;
+            continue;
+          }
+          const seriesKey = openLibrarySeriesKey(doc);
+          if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+            dropReasons.teen_underfill_recovery_series_duplicate = Number(dropReasons.teen_underfill_recovery_series_duplicate || 0) + 1;
+            seriesSuppressedTitles.push(title);
+            continue;
+          }
+          if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+          acceptedDocKeys.add(docKey);
+          rawItems.push(normalizeOpenLibraryDoc(doc, recoveryPlan));
+          dropReasons.teen_underfill_recovery_accepted = Number(dropReasons.teen_underfill_recovery_accepted || 0) + 1;
+          if (rawItems.length >= recoveryTarget) break;
+        }
+        if (rawItems.length >= recoveryTarget) break;
+      }
+      if (recoveryQueries.length > 0) {
+        openLibraryTopUpRan = true;
+        if (rawItems.length < recoveryTarget) {
+          dropReasons.teen_underfill_recovery_exhausted = Number(dropReasons.teen_underfill_recovery_exhausted || 0) + 1;
+        }
+      }
     }
 
     if (ageProfile.key === "middleGrades" && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
