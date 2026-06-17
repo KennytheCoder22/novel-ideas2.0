@@ -144,6 +144,7 @@ export interface SourceDiagnosticV2 {
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];
   seriesSuppressedTitles?: string[];
+  middleGradesAgeShapeDiagnostics?: Record<string, unknown>;
 }
 
 export interface SourceResult {

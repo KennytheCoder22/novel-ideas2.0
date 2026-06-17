@@ -21,6 +21,21 @@ type OpenLibraryQueryPlan = {
   emergencyFallback?: boolean;
 };
 
+type MiddleGradesAgeShapeDiagnosticSample = {
+  stage: string;
+  query: string;
+  title: string;
+  firstPublishYear?: number;
+  keep: boolean;
+  reason: "accepted" | "middle_grades_age_shape_mismatch";
+  evidence: {
+    hasExplicitMiddleGradesEvidence: boolean;
+    queryIsAgeAnchored: boolean;
+    hasGenreShape: boolean;
+  };
+  subjectPreview: string[];
+};
+
 const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
   "identity",
   "family",
@@ -1170,20 +1185,38 @@ function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolea
   return /young adult|juvenile|teen|adolescent/.test(subjects);
 }
 
-function hasMiddleGradesAgeShapeEvidence(doc: any, query: string, profile: TasteProfile): boolean {
-  if (profile.ageBand !== "preteens") return true;
+function middleGradesAgeShapeDiagnostic(doc: any, query: string, profile: TasteProfile): Omit<MiddleGradesAgeShapeDiagnosticSample, "stage"> | undefined {
+  if (profile.ageBand !== "preteens") return undefined;
   const title = String(doc?.title || "").toLowerCase();
-  const subjects = [
+  const subjectValues = [
     ...(Array.isArray(doc?.subject) ? doc.subject : []),
     ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
-  ].join(" ").toLowerCase();
+  ];
+  const subjects = subjectValues.join(" ").toLowerCase();
   const text = `${title} ${subjects}`;
   const hasExplicitMiddleGradesEvidence = /\b(middle grade|juvenile fiction|juvenile literature|children'?s fiction|children fiction|children'?s literature|children'?s stories|preteens?|pre-teens?|school stories?|schools? fiction|students? fiction|classmates? fiction|humorous stories|mystery and detective stories|adventure stories|fantasy fiction, juvenile|science fiction, juvenile)\b/.test(text);
-  if (hasExplicitMiddleGradesEvidence) return true;
   const queryIsAgeAnchored = /\bmiddle grade|children'?s|school story|school mystery|magic school\b/i.test(query);
   const hasGenreShape = /\b(fantasy|magic|adventure|mystery|detective|school|students?|humor|humorous|science fiction|space|juvenile)\b/.test(subjects);
-  if (queryIsAgeAnchored && hasGenreShape) return true;
-  return false;
+  const keep = hasExplicitMiddleGradesEvidence || (queryIsAgeAnchored && hasGenreShape);
+  return {
+    query,
+    title: String(doc?.title || "").trim(),
+    firstPublishYear: typeof doc?.first_publish_year === "number" ? doc.first_publish_year : undefined,
+    keep,
+    reason: keep ? "accepted" : "middle_grades_age_shape_mismatch",
+    evidence: {
+      hasExplicitMiddleGradesEvidence,
+      queryIsAgeAnchored,
+      hasGenreShape,
+    },
+    subjectPreview: uniqueStrings(subjectValues, 8),
+  };
+}
+
+function hasMiddleGradesAgeShapeEvidence(doc: any, query: string, profile: TasteProfile): boolean {
+  const diagnostic = middleGradesAgeShapeDiagnostic(doc, query, profile);
+  if (!diagnostic) return true;
+  return diagnostic.keep;
 }
 
 function isTooYoungTeenOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
@@ -1276,6 +1309,30 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let retrySucceeded = false;
     let proxyColdStartSuspected = false;
     let adultPrimaryQueryTimedOutTwice = false;
+    const middleGradesAgeShapeSamples: MiddleGradesAgeShapeDiagnosticSample[] = [];
+    let middleGradesAgeShapeObserved = 0;
+    let middleGradesAgeShapeAccepted = 0;
+    let middleGradesAgeShapeRejected = 0;
+    const recordMiddleGradesAgeShapeDiagnostic = (doc: any, query: string, stage: string): void => {
+      const diagnostic = middleGradesAgeShapeDiagnostic(doc, query, context.profile);
+      if (!diagnostic) return;
+      middleGradesAgeShapeObserved += 1;
+      if (diagnostic.keep) middleGradesAgeShapeAccepted += 1;
+      else middleGradesAgeShapeRejected += 1;
+      if (middleGradesAgeShapeSamples.length < 12) {
+        middleGradesAgeShapeSamples.push({ stage, ...diagnostic });
+      }
+    };
+    const middleGradesAgeShapeDiagnostics = (): Record<string, unknown> | undefined => {
+      if (middleGradesAgeShapeObserved === 0) return undefined;
+      return {
+        observed: middleGradesAgeShapeObserved,
+        accepted: middleGradesAgeShapeAccepted,
+        rejected: middleGradesAgeShapeRejected,
+        mismatch: middleGradesAgeShapeRejected,
+        samples: middleGradesAgeShapeSamples,
+      };
+    };
 
     for (const [queryPlanIndex, queryPlan] of queryPlans.entries()) {
       const query = queryPlan.query;
@@ -1377,6 +1434,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
                 dropReasons.adult_mixed_first_run_fallback_missing_title = Number(dropReasons.adult_mixed_first_run_fallback_missing_title || 0) + 1;
                 continue;
               }
+              recordMiddleGradesAgeShapeDiagnostic(doc, fallbackQuery, "adult_mixed_first_run_fallback");
               const quality = shouldKeepOpenLibraryDoc(doc, fallbackQuery, context.profile);
               if (!quality.keep) {
                 const reason = `adult_mixed_first_run_fallback_${quality.reason || "quality_filter"}`;
@@ -1435,6 +1493,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           dropReasons.missing_title = Number(dropReasons.missing_title || 0) + 1;
           continue;
         }
+        recordMiddleGradesAgeShapeDiagnostic(doc, query, "main");
         const quality = shouldKeepOpenLibraryDoc(doc, query, context.profile);
         if (!quality.keep) {
           const reason = quality.reason || "quality_filter";
@@ -1505,6 +1564,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             dropReasons.adult_fantasy_historical_survival_fallback_missing_title = Number(dropReasons.adult_fantasy_historical_survival_fallback_missing_title || 0) + 1;
             continue;
           }
+          recordMiddleGradesAgeShapeDiagnostic(doc, fallbackQuery, "adult_fantasy_historical_survival_fallback");
           const quality = shouldKeepOpenLibraryDoc(doc, fallbackQuery, context.profile);
           if (!quality.keep) {
             const reason = `adult_fantasy_historical_survival_fallback_${quality.reason || "quality_filter"}`;
@@ -1580,6 +1640,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             dropReasons.teen_underfill_recovery_missing_title = Number(dropReasons.teen_underfill_recovery_missing_title || 0) + 1;
             continue;
           }
+          recordMiddleGradesAgeShapeDiagnostic(doc, recoveryQuery, "recovery");
           const quality = shouldKeepOpenLibraryDoc(doc, recoveryQuery, context.profile);
           if (!quality.keep) {
             const reason = `teen_underfill_recovery_${quality.reason || "quality_filter"}`;
@@ -1648,6 +1709,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             dropReasons.middle_grades_recovery_missing_title = Number(dropReasons.middle_grades_recovery_missing_title || 0) + 1;
             continue;
           }
+          recordMiddleGradesAgeShapeDiagnostic(doc, recoveryQuery, "recovery");
           const quality = shouldKeepOpenLibraryDoc(doc, recoveryQuery, context.profile);
           if (!quality.keep) {
             const reason = `middle_grades_recovery_${quality.reason || "quality_filter"}`;
@@ -1717,6 +1779,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             dropReasons.adult_underfill_recovery_missing_title = Number(dropReasons.adult_underfill_recovery_missing_title || 0) + 1;
             continue;
           }
+          recordMiddleGradesAgeShapeDiagnostic(doc, recoveryQuery, "recovery");
           const quality = shouldKeepOpenLibraryDoc(doc, recoveryQuery, context.profile);
           if (!quality.keep) {
             const reason = `adult_underfill_recovery_${quality.reason || "quality_filter"}`;
@@ -1781,6 +1844,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               dropReasons.adult_delayed_final_retry_missing_title = Number(dropReasons.adult_delayed_final_retry_missing_title || 0) + 1;
               continue;
             }
+            recordMiddleGradesAgeShapeDiagnostic(doc, delayedRetryQuery, "delayed_retry");
             const quality = shouldKeepOpenLibraryDoc(doc, delayedRetryQuery, context.profile);
             if (!quality.keep) {
               const reason = `adult_delayed_final_retry_${quality.reason || "quality_filter"}`;
@@ -1851,6 +1915,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               dropReasons.teen_delayed_final_retry_missing_title = Number(dropReasons.teen_delayed_final_retry_missing_title || 0) + 1;
               continue;
             }
+            recordMiddleGradesAgeShapeDiagnostic(doc, delayedRetryQuery, "delayed_retry");
             const quality = shouldKeepOpenLibraryDoc(doc, delayedRetryQuery, context.profile);
             if (!quality.keep) {
               const reason = `teen_delayed_final_retry_${quality.reason || "quality_filter"}`;
@@ -1894,6 +1959,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         const title = String(doc?.title || "").trim();
         if (title) rawTitles.push(title);
         if (!title) continue;
+        recordMiddleGradesAgeShapeDiagnostic(doc, fallbackQuery, "horror_survival_underfill");
         const quality = shouldKeepOpenLibraryDoc(doc, fallbackQuery, context.profile);
         if (!quality.keep) {
           const reason = `horror_survival_underfill_${quality.reason || "quality_filter"}`;
@@ -1959,6 +2025,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           const title = String(doc?.title || "").trim();
           if (title) rawTitles.push(title);
           if (!title) continue;
+          recordMiddleGradesAgeShapeDiagnostic(doc, probeQuery, "probe");
           const quality = shouldKeepOpenLibraryDoc(doc, probeQuery, context.profile);
           if (!quality.keep) {
             const reason = `emergency_fallback_${quality.reason || "quality_filter"}`;
@@ -2012,6 +2079,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           retryAttempted,
           retrySucceeded,
           proxyColdStartSuspected,
+          middleGradesAgeShapeDiagnostics: middleGradesAgeShapeDiagnostics(),
           fetches,
         }),
       };
@@ -2057,6 +2125,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         retryAttempted,
         retrySucceeded,
         proxyColdStartSuspected,
+        middleGradesAgeShapeDiagnostics: middleGradesAgeShapeDiagnostics(),
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),

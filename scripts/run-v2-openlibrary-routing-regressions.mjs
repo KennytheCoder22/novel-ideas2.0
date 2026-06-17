@@ -371,6 +371,13 @@ async function main() {
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, `middle grades age-shape filter should preserve age-shaped docs raw=${result.rawItems.length} drops=${JSON.stringify(result.diagnostics.dropReasons)}`);
     assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_age_shape_mismatch), true, "middle grades age-shape filter should reject adult literary friendship docs");
+    const ageShapeDiagnostics = result.diagnostics.middleGradesAgeShapeDiagnostics || {};
+    const ageShapeSamples = Array.isArray(ageShapeDiagnostics.samples) ? ageShapeDiagnostics.samples : [];
+    assertEqual(Number(ageShapeDiagnostics.observed) >= 7, true, "middle grades age-shape observability should count evaluated candidates");
+    assertEqual(Number(ageShapeDiagnostics.accepted) >= 5, true, "middle grades age-shape observability should count accepted candidates");
+    assertEqual(Number(ageShapeDiagnostics.rejected) >= 1, true, "middle grades age-shape observability should count rejected candidates");
+    assertEqual(ageShapeSamples.some((sample) => sample.reason === "middle_grades_age_shape_mismatch" && sample.evidence?.hasExplicitMiddleGradesEvidence === false), true, "middle grades age-shape observability should sample mismatch evidence");
+    assertEqual(ageShapeSamples.some((sample) => sample.keep === true && sample.evidence?.hasExplicitMiddleGradesEvidence === true), true, "middle grades age-shape observability should sample accepted evidence");
     assertEqual(middleGradesAgeShapeFetchCalls.includes("friendship fiction"), false, "middle grades fetch cascade should avoid broad friendship fiction");
     console.log(JSON.stringify({ name: "middle grades age-shape filter rejects adult friendship drift", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesAgeShapeFetchCalls }));
   } finally {
