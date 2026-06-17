@@ -254,6 +254,37 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousTeenProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const teenProxyFetchUrls = [];
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    teenProxyFetchUrls.push(String(url));
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 2, docs: [1, 2, 3, 4, 5, 6, 7, 8].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "teens",
+      signals: cases[2].signals,
+    });
+    const teenSourcePlan = { ...sourcePlan, timeoutMs: 8_000 };
+    const result = await openLibrarySourceAdapter.search(teenSourcePlan, { profile });
+    assertEqual(teenProxyFetchUrls[0].startsWith("https://proxy.example.test/api/openlibrary?"), true, "configured proxy base should route teen Open Library fetches through proxy");
+    assertEqual(result.diagnostics.openLibraryProfileLabel, "teen_openlibrary_locked_baseline", "teen profile label should remain locked baseline");
+    assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "teen fetch diagnostics should mark configured proxy path");
+    assertEqual(result.diagnostics.fetches?.[0]?.proxyRetryWindowEnabled, true, "teen proxy fetch should use proxy retry client window");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 6500, true, "teen proxy fetch should not abort at the 2s per-query baseline");
+    console.log(JSON.stringify({ name: "teen proxy path uses resilience window without route changes", pass: true, fetchPath: result.diagnostics.fetches?.[0]?.fetchPath, clientTimeoutMs: result.diagnostics.fetches?.[0]?.clientTimeoutMs, profileLabel: result.diagnostics.openLibraryProfileLabel }));
+  } finally {
+    if (previousTeenProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousTeenProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const underfillFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";

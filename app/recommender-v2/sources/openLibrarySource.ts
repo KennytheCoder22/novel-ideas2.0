@@ -5,6 +5,7 @@ const RESPONSE_BODY_PREFIX_LIMIT = 240;
 const ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS = 4_500;
 const ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS = 2_500;
 const ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 19_000;
+const TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 6_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -695,11 +696,18 @@ function emptyDiagnostics(plan: SourcePlan, status: SourceDiagnosticV2["status"]
   };
 }
 
-async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs, attemptNumber = 1, allowProxyRetryWindow = false): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+function openLibraryProxyClientTimeoutMs(ageProfile: OpenLibraryAgeProfile): number | undefined {
+  if (ageProfile.key === "adult") return ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
+  if (ageProfile.key === "teen") return TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
+  return undefined;
+}
+
+async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs, attemptNumber = 1, proxyClientTimeoutMs?: number): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
   const query = queryPlan.query;
   const { url, fetchPath } = openLibraryRequest(query, limit);
-  const effectiveTimeoutMs = allowProxyRetryWindow && fetchPath === "proxy"
-    ? Math.max(timeoutMs, ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS)
+  const proxyRetryWindowEnabled = Number.isFinite(Number(proxyClientTimeoutMs)) && fetchPath === "proxy";
+  const effectiveTimeoutMs = proxyRetryWindowEnabled
+    ? Math.max(timeoutMs, Number(proxyClientTimeoutMs))
     : timeoutMs;
   const fetchStartedAt = nowIso();
   const startedMs = Date.now();
@@ -711,7 +719,7 @@ async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: numb
     timedOut: false,
     fetchPath,
     clientTimeoutMs: effectiveTimeoutMs,
-    proxyRetryWindowEnabled: allowProxyRetryWindow && fetchPath === "proxy",
+    proxyRetryWindowEnabled,
     diagnosticOnly,
     originalPlannedQuery: queryPlan.originalPlannedQuery,
     queryCascadeIndex: queryPlan.queryCascadeIndex,
@@ -1133,7 +1141,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
       const isAdultFirstMainFetch = ageProfile.key === "adult" && fetches.filter((fetch) => !fetch.diagnosticOnly).length === 0;
       const firstAttemptTimeoutMs = isAdultFirstMainFetch ? ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS : ageProfile.perQueryTimeoutMs;
-      let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, firstAttemptTimeoutMs, 1, ageProfile.key === "adult");
+      let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, firstAttemptTimeoutMs, 1, openLibraryProxyClientTimeoutMs(ageProfile));
       if (diagnostic.timedOut && isAdultFirstMainFetch && !context.signal?.aborted) {
         firstRunFetchTimeout = true;
         retryAttempted = true;
@@ -1143,7 +1151,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         diagnostic.proxyColdStartSuspected = proxyColdStartSuspected;
         fetches.push(diagnostic);
 
-        const retryResult = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS, 2, ageProfile.key === "adult");
+        const retryResult = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_RETRY_TIMEOUT_MS, 2, openLibraryProxyClientTimeoutMs(ageProfile));
         docs = retryResult.docs;
         diagnostic = {
           ...retryResult.diagnostic,
@@ -1169,7 +1177,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               facets: ["mystery", "crime", "thriller", "historical", "romance"],
               routingReason: "adult_mixed_historical_mystery_first_run_timeout_fallback",
             };
-            const { docs: fallbackDocs, diagnostic: fallbackDiagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, ageProfile.key === "adult");
+            const { docs: fallbackDocs, diagnostic: fallbackDiagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, openLibraryProxyClientTimeoutMs(ageProfile));
             fetches.push(fallbackDiagnostic);
             if (fallbackDiagnostic.timedOut) {
               dropReasons.adult_mixed_first_run_fallback_timeout = Number(dropReasons.adult_mixed_first_run_fallback_timeout || 0) + 1;
@@ -1290,7 +1298,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           facets: ["fantasy", "historical", "romance", "adventure", "comedy"],
           routingReason: "adult_fantasy_historical_survival_underfill_fallback",
         };
-        const { docs: fallbackDocs, diagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, ageProfile.key === "adult");
+        const { docs: fallbackDocs, diagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, openLibraryProxyClientTimeoutMs(ageProfile));
         fetches.push(diagnostic);
         if (diagnostic.timedOut) {
           dropReasons.adult_fantasy_historical_survival_fallback_timeout = Number(dropReasons.adult_fantasy_historical_survival_fallback_timeout || 0) + 1;
@@ -1358,7 +1366,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           facets: queryPlans[0]?.facets || [],
           routingReason: `${queryPlans[0]?.routingReason || "adult"}_underfill_recovery`,
         };
-        const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, ageProfile.key === "adult");
+        const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, openLibraryProxyClientTimeoutMs(ageProfile));
         fetches.push(diagnostic);
         dropReasons.adult_underfill_recovery_query_attempted = Number(dropReasons.adult_underfill_recovery_query_attempted || 0) + 1;
         if (diagnostic.timedOut) {
@@ -1423,7 +1431,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           facets: queryPlans[0]?.facets || [],
           routingReason: `${queryPlans[0]?.routingReason || "adult"}_delayed_final_retry`,
         };
-        const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS, 3, ageProfile.key === "adult");
+        const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS, 3, openLibraryProxyClientTimeoutMs(ageProfile));
         fetches.push(diagnostic);
         dropReasons.adult_delayed_final_retry_attempted = Number(dropReasons.adult_delayed_final_retry_attempted || 0) + 1;
         openLibraryTopUpRan = true;
@@ -1476,7 +1484,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     if (rawItems.length === 1 && queryPlans[0]?.routingReason === "dominant_horror_survival_psychological" && !context.signal?.aborted) {
       const fallbackQuery = "young adult survival horror";
       const fallbackPlan: OpenLibraryQueryPlan = { query: fallbackQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "horror_survival", facets: ["horror", "survival", "psychological"], emergencyFallback: true, routingReason: "horror_survival_underfill_fallback" };
-      const { docs: fallbackDocs, diagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1, ageProfile.key === "adult");
+      const { docs: fallbackDocs, diagnostic } = await fetchOpenLibraryDocs(fallbackPlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1);
       fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (fallbackDocs.length ? "horror_survival_underfill_returned_docs" : undefined) });
       rawApiResultCount += fallbackDocs.length;
       let acceptedFallbackDocs = 0;
@@ -1536,7 +1544,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               : ageProfile.diagnosticProbeQuery)
         : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
       const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
-      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1, ageProfile.key === "adult");
+      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1);
       fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (probeDocs.length ? "emergency_fallback_probe_returned_docs" : undefined) });
       if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
       if (probeDocs.length) {
