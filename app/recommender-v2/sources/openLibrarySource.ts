@@ -1807,6 +1807,70 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
     }
 
+    if (ageProfile.key === "teen" && rawItems.length === 0 && !context.signal?.aborted) {
+      const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
+      const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
+      const delayedRetryQuery = queryPlans[0]?.query || "";
+      if (allAttemptedLaneQueriesTimedOut && delayedRetryQuery) {
+        const delayedRetryPlan: OpenLibraryQueryPlan = {
+          query: delayedRetryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + mainFetches.length,
+          queryFamily: queryFamilyForOpenLibraryQuery(delayedRetryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "teen"}_delayed_final_retry`,
+          routingDominance: queryPlans[0]?.routingDominance,
+        };
+        const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, 3, TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS);
+        fetches.push(diagnostic);
+        dropReasons.teen_delayed_final_retry_attempted = Number(dropReasons.teen_delayed_final_retry_attempted || 0) + 1;
+        openLibraryTopUpRan = true;
+        if (diagnostic.timedOut) {
+          dropReasons.teen_delayed_final_retry_timeout = Number(dropReasons.teen_delayed_final_retry_timeout || 0) + 1;
+          if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+        } else if (diagnostic.failedReason) {
+          dropReasons.teen_delayed_final_retry_failed = Number(dropReasons.teen_delayed_final_retry_failed || 0) + 1;
+          if (!failedReason) failedReason = diagnostic.failedReason;
+        } else {
+          rawApiResultCount += delayedRetryDocs.length;
+          for (const doc of delayedRetryDocs) {
+            const title = String(doc?.title || "").trim();
+            if (title) rawTitles.push(title);
+            if (!title) {
+              dropReasons.teen_delayed_final_retry_missing_title = Number(dropReasons.teen_delayed_final_retry_missing_title || 0) + 1;
+              continue;
+            }
+            const quality = shouldKeepOpenLibraryDoc(doc, delayedRetryQuery, context.profile);
+            if (!quality.keep) {
+              const reason = `teen_delayed_final_retry_${quality.reason || "quality_filter"}`;
+              dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+              if (/artifact|inappropriate/.test(reason)) artifactSuppressedTitles.push(title);
+              continue;
+            }
+            const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+            if (acceptedDocKeys.has(docKey)) {
+              dropReasons.teen_delayed_final_retry_duplicate_doc = Number(dropReasons.teen_delayed_final_retry_duplicate_doc || 0) + 1;
+              continue;
+            }
+            const seriesKey = openLibrarySeriesKey(doc);
+            if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+              dropReasons.teen_delayed_final_retry_series_duplicate = Number(dropReasons.teen_delayed_final_retry_series_duplicate || 0) + 1;
+              seriesSuppressedTitles.push(title);
+              continue;
+            }
+            if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+            acceptedDocKeys.add(docKey);
+            rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
+            dropReasons.teen_delayed_final_retry_accepted = Number(dropReasons.teen_delayed_final_retry_accepted || 0) + 1;
+            if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+          }
+          if (delayedRetryDocs.length > 0 && !dropReasons.teen_delayed_final_retry_accepted) {
+            dropReasons.teen_delayed_final_retry_all_rejected = Number(dropReasons.teen_delayed_final_retry_all_rejected || 0) + 1;
+          }
+        }
+      }
+    }
+
     if (rawItems.length === 1 && queryPlans[0]?.routingReason === "dominant_horror_survival_psychological" && !context.signal?.aborted) {
       const fallbackQuery = "young adult survival horror";
       const fallbackPlan: OpenLibraryQueryPlan = { query: fallbackQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "horror_survival", facets: ["horror", "survival", "psychological"], emergencyFallback: true, routingReason: "horror_survival_underfill_fallback" };

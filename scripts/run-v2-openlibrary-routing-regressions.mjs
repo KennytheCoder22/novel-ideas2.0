@@ -5,6 +5,7 @@ const OUT_DIR = ".tmp/v2-openlibrary-routing-regressions";
 const TS_FILES = [
   "app/recommender-v2/tasteProfile.ts",
   "app/recommender-v2/types.ts",
+  "app/recommender-v2/select.ts",
   "app/recommender-v2/sources/openLibrarySource.ts",
   "app/recommender-v2/sources/openLibraryProfiles.ts",
 ];
@@ -57,6 +58,27 @@ function assertDeepEqual(actual, expected, message) {
   if (actualJson !== expectedJson) throw new Error(`${message}: expected ${expectedJson}, got ${actualJson}`);
 }
 
+function fakeScoredCandidate(overrides = {}) {
+  const title = overrides.title || "Teen Selection Candidate";
+  return {
+    id: overrides.id || title.toLowerCase().replace(/\s+/g, "-"),
+    source: overrides.source || "openLibrary",
+    title,
+    subtitle: overrides.subtitle || "",
+    creators: overrides.creators || ["Shared Teen Author"],
+    description: overrides.description || "",
+    coverUrl: overrides.coverUrl || "",
+    maturityBand: overrides.maturityBand,
+    genres: overrides.genres || ["Fantasy"],
+    themes: overrides.themes || ["Romance"],
+    score: overrides.score ?? 8,
+    scoreBreakdown: overrides.scoreBreakdown || { sourceQualityRelevance: 2, ageTeenSuitability: 1 },
+    diagnostics: overrides.diagnostics || { queryText: "young adult contemporary fantasy", queryFamily: "fantasy_romance", routingReason: "dominant_contemporary_romance_fantasy" },
+    rejectedReasons: [],
+    raw: overrides.raw || {},
+  };
+}
+
 function fakeDoc(query, index) {
   const label = index === 1 ? "Alpha" : index === 2 ? "Beta" : index === 3 ? "Gamma" : `Extra${index}`;
   return {
@@ -72,6 +94,7 @@ function fakeDoc(query, index) {
 async function main() {
   compileHarnessDependencies();
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
+  const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/select.js`).href);
   const { buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
   const { openLibraryProfileForAgeBand } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibraryProfiles.js`).href);
   const adultProfile = openLibraryProfileForAgeBand("adult");
@@ -526,6 +549,23 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const teenSelectionProfile = buildTasteProfile({
+    ageBand: "teens",
+    signals: [
+      { action: "like", title: "Modern Spell", genres: ["fantasy"], themes: ["romance", "coming of age"], format: "book" },
+    ],
+  });
+  const teenSelectionCandidates = ["Aster", "Briar", "Cinder", "Dahlia", "Ember", "Fable"].map((seed, index) => fakeScoredCandidate({
+    id: `teen-selection-${index}`,
+    title: `Teen Selection ${seed}`,
+    creators: ["Shared Teen Author"],
+    score: 10 - index * 0.1,
+  }));
+  const teenSelectionResult = selectRecommendations(teenSelectionCandidates, teenSelectionProfile, 10);
+  assertEqual(teenSelectionResult.selected.length, 5, "teen selection should relax Open Library diversity underfill to five");
+  assertEqual(Boolean(teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_relaxed_diversity), true, "teen selection should emit teen-only Open Library underfill diagnostics");
+  console.log(JSON.stringify({ name: "teen selection relaxes Open Library diversity underfill to five", pass: true, selected: teenSelectionResult.selected.length, rejectedReasons: teenSelectionResult.rejectedReasons }));
+
   const previousTeenContemporaryTimeoutProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalContemporaryDateNow = Date.now;
   const teenContemporaryCascadeFetchCalls = [];
@@ -716,6 +756,51 @@ async function main() {
     assertEqual(teenUnderfillRecoveryFetchCalls.some((query) => /children|middle grade/i.test(query)), false, "teen underfill recovery should not fetch middle grades recovery queries");
     console.log(JSON.stringify({ name: "teen underfill recovery stays teen-only and reaches five", pass: true, rawItems: result.rawItems.length, fetchCalls: teenUnderfillRecoveryFetchCalls }));
   } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const teenDelayedRetryFetchCalls = [];
+  const previousTeenDelayedRetryProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalTeenDelayedRetryDateNow = Date.now;
+  let fakeTeenDelayedRetryNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalTeenDelayedRetryDateNow() + fakeTeenDelayedRetryNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    teenDelayedRetryFetchCalls.push(query);
+    if (teenDelayedRetryFetchCalls.length <= 3) {
+      fakeTeenDelayedRetryNowOffsetMs = teenDelayedRetryFetchCalls.length === 1 ? 4_500 : teenDelayedRetryFetchCalls.length === 2 ? 6_000 : 8_000;
+      throw new Error("timeout");
+    }
+    fakeTeenDelayedRetryNowOffsetMs = 8_100;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => {
+        const retrySeeds = ["Aster Road", "Briar Gate", "Cinder Map", "Dahlia Quest", "Ember Trail", "Fable Key"];
+        return JSON.stringify({ proxyAttempts: 1, docs: retrySeeds.map((title, index) => ({
+          ...fakeDoc(query, index + 80),
+          key: `/works/teen-delayed-retry-${index}`,
+          title,
+          author_name: [`Teen Retry Author ${index}`],
+          subject: ["Young adult fiction", "Fantasy", "Adventure", "Teen"],
+          first_publish_year: 2017 + index,
+        })) });
+      },
+    };
+  };
+  try {
+    const profile = teenBroadFallbackProfile;
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length, 5, "teen delayed retry should recover five candidates after all lane queries time out");
+    assertDeepEqual(teenDelayedRetryFetchCalls, ["fantasy school", "action adventure", "young adult fantasy", "fantasy school"], "teen delayed retry should reuse strongest lane query after all lane timeouts");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.teen_delayed_final_retry_attempted), true, "teen delayed retry should mark attempted");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.teen_delayed_final_retry_accepted), true, "teen delayed retry should mark accepted docs");
+    console.log(JSON.stringify({ name: "teen delayed retry recovers after all lane queries time out", pass: true, rawItems: result.rawItems.length, fetchCalls: teenDelayedRetryFetchCalls }));
+  } finally {
+    Date.now = originalTeenDelayedRetryDateNow;
+    if (previousTeenDelayedRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousTeenDelayedRetryProxyBase;
     globalThis.fetch = originalFetch;
   }
 

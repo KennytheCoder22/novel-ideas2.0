@@ -295,6 +295,27 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     rejectedReasons.underfill_blocked_by_minimum_acceptable_slate = deferred.length;
   }
 
+  if (profile.ageBand === "teens" && selected.length < Math.min(5, limit) && candidates.some((candidate) => candidate.source === "openLibrary")) {
+    const teenOpenLibraryTarget = Math.min(5, limit);
+    rejectedReasons.teen_openlibrary_underfill_deferred_available = deferred.filter((row) => row.candidate.source === "openLibrary").length;
+    for (const row of deferred) {
+      if (selected.length >= teenOpenLibraryTarget) break;
+      if (row.candidate.source !== "openLibrary") continue;
+      if (selected.includes(row.candidate)) continue;
+      const titleKey = normalized(row.candidate.title);
+      if (seenTitles.has(titleKey)) continue;
+      if (row.reason === "same_series_or_root_deferred") {
+        row.candidate.rejectedReasons.push("teen_openlibrary_underfill_blocked_same_root_variant");
+        rejectedReasons.teen_openlibrary_underfill_blocked_same_root_variant = Number(rejectedReasons.teen_openlibrary_underfill_blocked_same_root_variant || 0) + 1;
+        continue;
+      }
+      row.candidate.rejectedReasons.push(`teen_openlibrary_underfill_relaxed_diversity:${row.reason}`);
+      rejectedReasons.teen_openlibrary_underfill_relaxed_diversity = Number(rejectedReasons.teen_openlibrary_underfill_relaxed_diversity || 0) + 1;
+      seenTitles.add(titleKey);
+      selected.push(row.candidate);
+    }
+  }
+
   applyAdultSpeculativeFamilyBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   for (const row of deferred) {
