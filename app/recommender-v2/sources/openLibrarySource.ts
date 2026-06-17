@@ -158,6 +158,10 @@ function combineOpenLibraryQueryParts(primary: string, modifier?: string): strin
   return finalOpenLibraryQueryDedupe(uniqueParts.join(" ").trim());
 }
 
+function isTeenBroadFallbackOpenLibraryQuery(query: string): boolean {
+  return /^(young adult fantasy|fantasy|mystery novel)$/i.test(String(query || "").trim());
+}
+
 function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
   const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: "open-library-fallback", priority: 0, rationale: [] }];
   const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ""));
@@ -371,9 +375,14 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
 
   const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|science fiction dystopian|action adventure|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|psychological mystery|teen mystery thriller|realistic mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror|survival horror|psychological thriller|historical adventure|teen adventure|alternate history fiction)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
-  const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), ageProfile.queryLimit);
-  const specificQueryCount = uniqueQueries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/.test(query)).length;
-  const broadFallbackUsed = uniqueQueries.some((query) => /^(young adult fantasy|fantasy|mystery novel)$/.test(query));
+  const usefulQueries = preparedQueries.filter(isUsefulOpenLibraryQueryPart);
+  const orderedQueries = [
+    ...usefulQueries.filter((query) => !isTeenBroadFallbackOpenLibraryQuery(query)),
+    ...usefulQueries.filter(isTeenBroadFallbackOpenLibraryQuery),
+  ];
+  const uniqueQueries = uniqueStrings(orderedQueries, ageProfile.queryLimit);
+  const specificQueryCount = uniqueQueries.filter((query) => !isTeenBroadFallbackOpenLibraryQuery(query)).length;
+  const broadFallbackUsed = uniqueQueries.some(isTeenBroadFallbackOpenLibraryQuery);
   const routingReason = wantsHorrorSurvivalPsychological
     ? "dominant_horror_survival_psychological"
     : wantsHistoricalSciFiAdventure
@@ -1230,8 +1239,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       profileLabel: ageProfile.behaviorLabel,
       lockedBaseline: ageProfile.lockedBaseline,
       dominance: queryPlans[0]?.routingDominance || {},
-      broadFallbackQueries: queries.filter((query) => /^(young adult fantasy|fantasy|mystery novel)$/i.test(query)),
-      specificQueries: queries.filter((query) => !/^(young adult fantasy|fantasy|mystery novel)$/i.test(query)),
+      broadFallbackQueries: queries.filter(isTeenBroadFallbackOpenLibraryQuery),
+      specificQueries: queries.filter((query) => !isTeenBroadFallbackOpenLibraryQuery(query)),
       originalPlannedQuery: queryPlans[0]?.originalPlannedQuery || "",
     };
     if (!queryPlans.length) {

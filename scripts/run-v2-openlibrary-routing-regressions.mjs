@@ -206,6 +206,18 @@ async function main() {
     console.log(JSON.stringify({ name: testCase.name, pass: true, reason: summary.reason, queries: summary.queries }));
   }
 
+  const teenBroadFallbackProfile = buildTasteProfile({
+    ageBand: "teens",
+    signals: [
+      { action: "like", title: "Magic Academy", genres: ["fantasy"], themes: ["school", "action"], format: "book" },
+      { action: "like", title: "Action Quest", genres: ["fantasy"], themes: ["adventure"], format: "book" },
+    ],
+  });
+  const teenBroadFallbackSummary = summarizePlans(buildOpenLibraryQueryPlansForRegression(sourcePlan, teenBroadFallbackProfile, teenProfile));
+  assertDeepEqual(teenBroadFallbackSummary.queries, ["fantasy school", "action adventure", "young adult fantasy"], "teen locked lane should attempt specific queries before broad fallback");
+  assertEqual(teenBroadFallbackSummary.dominance.openLibraryPlanner, "teen_locked_baseline", "teen broad fallback ordering should preserve locked planner");
+  console.log(JSON.stringify({ name: "teen locked lane tries specific queries before broad fallback", pass: true, queries: teenBroadFallbackSummary.queries }));
+
   const originalFetch = globalThis.fetch;
 
   const ageBandIsolationCases = [
@@ -511,6 +523,40 @@ async function main() {
   } finally {
     if (previousTeenProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousTeenProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousTeenSpecificTimeoutProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalSpecificDateNow = Date.now;
+  const teenSpecificBeforeBroadFetchCalls = [];
+  let fakeSpecificNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalSpecificDateNow() + fakeSpecificNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    teenSpecificBeforeBroadFetchCalls.push(query);
+    if (teenSpecificBeforeBroadFetchCalls.length === 1) {
+      fakeSpecificNowOffsetMs = 7_100;
+      throw new Error("timeout");
+    }
+    fakeSpecificNowOffsetMs = 7_200;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = teenBroadFallbackProfile;
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length, 5, "teen timeout cascade should recover from specific locked lane before broad fallback");
+    assertDeepEqual(teenSpecificBeforeBroadFetchCalls, ["fantasy school", "action adventure"], "teen timeout cascade should not spend remaining budget on broad fallback before specific locked-lane queries");
+    assertEqual(teenSpecificBeforeBroadFetchCalls.includes("young adult fantasy"), false, "teen timeout cascade should skip broad fallback once specific locked lane reaches target");
+    console.log(JSON.stringify({ name: "teen timeout cascade keeps broad fallback behind specific lane queries", pass: true, rawItems: result.rawItems.length, fetchCalls: teenSpecificBeforeBroadFetchCalls }));
+  } finally {
+    Date.now = originalSpecificDateNow;
+    if (previousTeenSpecificTimeoutProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousTeenSpecificTimeoutProxyBase;
     globalThis.fetch = originalFetch;
   }
 
