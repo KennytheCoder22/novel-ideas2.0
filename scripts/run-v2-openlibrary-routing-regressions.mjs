@@ -80,6 +80,12 @@ async function main() {
   const middleGradesProfile = openLibraryProfileForAgeBand("preteens");
   assertEqual(middleGradesProfile.lockedBaseline, false, "middle grades Open Library profile should remain unlocked while under review");
   assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_profile_pending", "middle grades Open Library profile should expose pending label");
+  const teenProfile = openLibraryProfileForAgeBand("teens");
+  assertEqual(teenProfile.lockedBaseline, true, "teen Open Library profile should remain locked");
+  assertEqual(teenProfile.behaviorLabel, "teen_openlibrary_locked_baseline", "teen Open Library profile should expose locked label");
+  const kidsProfile = openLibraryProfileForAgeBand("kids");
+  assertEqual(kidsProfile.lockedBaseline, false, "kids Open Library profile should remain pending");
+  assertEqual(kidsProfile.behaviorLabel, "k2_openlibrary_profile_pending", "kids Open Library profile should expose pending label");
 
   const cases = [
     {
@@ -201,6 +207,103 @@ async function main() {
   }
 
   const originalFetch = globalThis.fetch;
+
+  const ageBandIsolationCases = [
+    {
+      name: "adult Open Library lane isolation",
+      ageBand: "adult",
+      profile: adultProfile,
+      signals: cases[3].signals,
+      expectedAgeProfile: "adult",
+      expectedPlanner: "adult_locked_baseline",
+      subjects: ["Fiction", "Mystery", "Historical fiction", "Drama"],
+      titlePrefix: "Adult Lane",
+    },
+    {
+      name: "teen Open Library lane isolation",
+      ageBand: "teens",
+      profile: teenProfile,
+      signals: [
+        { action: "like", title: "Teen Quest", genres: ["fantasy"], themes: ["adventure", "school"], format: "book" },
+        { action: "like", title: "Teen Puzzle", genres: ["mystery"], themes: ["friendship"], format: "book" },
+      ],
+      expectedAgeProfile: "teen",
+      expectedPlanner: "teen_locked_baseline",
+      subjects: ["Young adult fiction", "Teen", "Fantasy", "Adventure"],
+      titlePrefix: "Teen Lane",
+    },
+    {
+      name: "middle grades Open Library lane isolation",
+      ageBand: "preteens",
+      profile: middleGradesProfile,
+      signals: middleGradesCases[0].signals,
+      expectedAgeProfile: "middleGrades",
+      expectedPlanner: "middle_grades_profile_candidate",
+      subjects: ["Juvenile fiction", "Children's stories", "Fantasy", "Adventure"],
+      titlePrefix: "Middle Grade Lane",
+    },
+    {
+      name: "kids Open Library lane isolation",
+      ageBand: "kids",
+      profile: kidsProfile,
+      signals: [
+        { action: "like", title: "Picture Book", genres: ["adventure"], themes: ["animals"], format: "book" },
+        { action: "like", title: "Read Aloud", genres: ["humor"], themes: ["friendship"], format: "book" },
+      ],
+      expectedAgeProfile: "k2",
+      expectedPlanner: "generic_pending_profile",
+      subjects: ["Juvenile fiction", "Children's stories", "Easy readers", "Animals"],
+      titlePrefix: "Kids Lane",
+    },
+  ];
+
+  for (const isolationCase of ageBandIsolationCases) {
+    const fetchCalls = [];
+    globalThis.fetch = async (url) => {
+      const query = new URL(String(url)).searchParams.get("q") || "";
+      fetchCalls.push(query);
+      const titleSeeds = ["River", "Harbor", "Forest", "Garden", "Comet", "Lantern", "Meadow", "Bridge"];
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ docs: titleSeeds.map((seed, index) => ({
+          ...fakeDoc(query, index + 70),
+          key: `/works/${isolationCase.expectedAgeProfile}-isolation-${index}`,
+          title: `${isolationCase.titlePrefix} ${seed}`,
+          author_name: [`${isolationCase.titlePrefix} Author ${index}`],
+          subject: isolationCase.subjects,
+          first_publish_year: 2012 + index,
+        })) }),
+      };
+    };
+    try {
+      const profile = buildTasteProfile({ ageBand: isolationCase.ageBand, signals: isolationCase.signals });
+      const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+      assertEqual(result.diagnostics.openLibraryAgeProfile, isolationCase.expectedAgeProfile, `${isolationCase.name} should report its own age profile`);
+      assertEqual(result.diagnostics.openLibraryQueryRouting?.dominance?.openLibraryPlanner, isolationCase.expectedPlanner, `${isolationCase.name} should use its own planner`);
+      if (isolationCase.ageBand !== "teens") {
+        assertEqual(Boolean(result.diagnostics.dropReasons?.teen_underfill_recovery_query_attempted), false, `${isolationCase.name} should not run teen recovery outside teens`);
+      }
+      if (isolationCase.ageBand !== "preteens") {
+        assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_recovery_query_attempted), false, `${isolationCase.name} should not run middle grades recovery outside preteens`);
+        assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_age_shape_mismatch), false, `${isolationCase.name} should not apply middle grades age-shape outside preteens`);
+      }
+      if (isolationCase.ageBand !== "adult") {
+        assertEqual(Boolean(result.diagnostics.dropReasons?.adult_underfill_recovery_query_attempted), false, `${isolationCase.name} should not run adult underfill recovery outside adults`);
+      }
+      const illegalQueryPattern = isolationCase.ageBand === "teens"
+        ? /children|middle grade/i
+        : isolationCase.ageBand === "preteens"
+          ? /young adult|teen realistic|teen mystery/i
+          : isolationCase.ageBand === "kids"
+            ? /young adult|teen mystery|middle grade|children's adventure fiction/i
+            : /middle grade|children's|teen mystery/i;
+      assertEqual(fetchCalls.some((query) => illegalQueryPattern.test(query)), false, `${isolationCase.name} should not fetch another age lane's recovery queries`);
+      console.log(JSON.stringify({ name: isolationCase.name, pass: true, rawItems: result.rawItems.length, fetchCalls }));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  }
 
   const middleGradesAgeShapeFetchCalls = [];
   globalThis.fetch = async (url) => {
