@@ -78,8 +78,8 @@ async function main() {
   assertEqual(adultProfile.lockedBaseline, true, "adult Open Library profile should be locked");
   assertEqual(adultProfile.behaviorLabel, "adult_openlibrary_locked_baseline", "adult Open Library profile should expose locked label");
   const middleGradesProfile = openLibraryProfileForAgeBand("preteens");
-  assertEqual(middleGradesProfile.lockedBaseline, true, "middle grades Open Library profile should be locked");
-  assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_locked_baseline", "middle grades Open Library profile should expose locked label");
+  assertEqual(middleGradesProfile.lockedBaseline, false, "middle grades Open Library profile should remain unlocked while under review");
+  assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_profile_pending", "middle grades Open Library profile should expose pending label");
 
   const cases = [
     {
@@ -161,7 +161,7 @@ async function main() {
 
   const middleGradesCases = [
     {
-      name: "middle grades fantasy adventure locked baseline",
+      name: "middle grades fantasy adventure candidate baseline",
       signals: [
         { action: "like", title: "Magic Quest", genres: ["fantasy"], themes: ["magic", "adventure"], format: "book" },
         { action: "like", title: "School Adventure", genres: ["adventure"], themes: ["school", "friendship"], format: "book" },
@@ -170,7 +170,7 @@ async function main() {
       expectedQueries: ["middle grade fantasy", "fantasy adventure", "magic school", "adventure fiction"],
     },
     {
-      name: "middle grades mystery adventure locked baseline",
+      name: "middle grades mystery adventure candidate baseline",
       signals: [
         { action: "like", title: "Puzzle Club", genres: ["mystery"], themes: ["detective", "school"], format: "book" },
         { action: "like", title: "Clue Chase", genres: ["adventure"], themes: ["investigation"], format: "book" },
@@ -178,19 +178,67 @@ async function main() {
       expectedReason: "middle_grades_mystery_adventure",
       expectedQueries: ["middle grade mystery", "mystery adventure", "school mystery", "detective fiction"],
     },
+    {
+      name: "middle grades contemporary school uses age-anchored fallback",
+      signals: [
+        { action: "like", title: "Classroom Friends", genres: ["realistic fiction"], themes: ["school", "friendship"], format: "book" },
+        { action: "like", title: "Family Project", genres: ["contemporary"], themes: ["family", "coming of age"], format: "book" },
+      ],
+      expectedReason: "middle_grades_contemporary_school",
+      expectedQueries: ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "middle grade adventure"],
+    },
   ];
 
   for (const testCase of middleGradesCases) {
     const profile = buildTasteProfile({ ageBand: "preteens", signals: testCase.signals });
     const summary = summarizePlans(buildOpenLibraryQueryPlansForRegression(sourcePlan, profile, middleGradesProfile));
-    assertEqual(summary.dominance.openLibraryPlanner, "middle_grades_locked_baseline", `${testCase.name} should use locked planner`);
-    assertEqual(summary.dominance.lockedBaseline, true, `${testCase.name} should expose locked baseline`);
+    assertEqual(summary.dominance.openLibraryPlanner, "middle_grades_profile_candidate", `${testCase.name} should use middle grades candidate planner`);
+    assertEqual(summary.dominance.lockedBaseline, false, `${testCase.name} should remain unlocked`);
     assertEqual(summary.reason, testCase.expectedReason, `${testCase.name} routing reason`);
     assertDeepEqual(summary.queries, testCase.expectedQueries, `${testCase.name} query list`);
+    assertEqual(summary.queries.includes("friendship fiction"), false, `${testCase.name} should not use broad friendship fiction`);
     console.log(JSON.stringify({ name: testCase.name, pass: true, reason: summary.reason, queries: summary.queries }));
   }
 
   const originalFetch = globalThis.fetch;
+
+  const middleGradesAgeShapeFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesAgeShapeFetchCalls.push(query);
+    const adultLiteraryFriendshipDocs = [
+      { ...fakeDoc(query, 1), key: "/works/adult-friendship-1", title: "Adult Friendship Stories", author_name: ["Adult Author"], subject: ["Fiction", "Friendship", "Short stories", "Literary fiction"], first_publish_year: 1985 },
+      { ...fakeDoc(query, 2), key: "/works/adult-friendship-2", title: "Classic Friendship", author_name: ["Classic Author"], subject: ["Fiction", "Friendship", "Classic literature"], first_publish_year: 1905 },
+    ];
+    const middleGradesTitles = ["The River Club", "Locker Notes", "The Cafeteria Map", "Project Week", "The New Neighbor", "Field Trip Team"];
+    const middleGradesDocs = middleGradesTitles.map((title, index) => ({
+      ...fakeDoc(query, index + 10),
+      key: `/works/mg-school-${index}`,
+      title,
+      author_name: [`MG Author ${index}`],
+      subject: ["Juvenile fiction", "Schools", "Friendship", "Children's stories"],
+      first_publish_year: 2015 + index,
+    }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [...adultLiteraryFriendshipDocs, ...middleGradesDocs] }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[2].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, `middle grades age-shape filter should preserve age-shaped docs raw=${result.rawItems.length} drops=${JSON.stringify(result.diagnostics.dropReasons)}`);
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_age_shape_mismatch), true, "middle grades age-shape filter should reject adult literary friendship docs");
+    assertEqual(middleGradesAgeShapeFetchCalls.includes("friendship fiction"), false, "middle grades fetch cascade should avoid broad friendship fiction");
+    console.log(JSON.stringify({ name: "middle grades age-shape filter rejects adult friendship drift", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesAgeShapeFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const fetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";

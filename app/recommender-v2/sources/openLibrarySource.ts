@@ -640,16 +640,16 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
         : wantsSciFiAdventure
           ? ["middle grade science fiction", "science fiction adventure", "space adventure", hasAdventure ? "survival fiction" : "dystopian adventure"]
           : wantsContemporarySchool
-            ? ["middle grade realistic fiction", "school story", "friendship fiction", "coming of age"]
+            ? ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "middle grade adventure"]
             : wantsHumor
-              ? ["middle grade humor", "funny school story", "humorous fiction", "friendship fiction"]
+              ? ["middle grade humor", "middle grade school story", "humorous fiction", "middle grade adventure"]
               : [
                   combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
                   genreTerms[0] || fallbackTerms[0] || "middle grade fiction",
                   ageProfile.diagnosticProbeQuery,
                   "middle grade adventure",
                 ];
-  const preservedKnownGoodQueries = /^(middle grade fantasy|fantasy adventure|magic school|adventure fiction|middle grade mystery|mystery adventure|school mystery|detective fiction|middle grade historical fiction|historical adventure|historical mystery|middle grade science fiction|science fiction adventure|space adventure|survival fiction|dystopian adventure|middle grade realistic fiction|school story|friendship fiction|coming of age|middle grade humor|funny school story|humorous fiction|middle grade fiction|middle grade adventure)$/;
+  const preservedKnownGoodQueries = /^(middle grade fantasy|fantasy adventure|magic school|adventure fiction|middle grade mystery|mystery adventure|school mystery|detective fiction|middle grade historical fiction|historical adventure|historical mystery|middle grade science fiction|science fiction adventure|space adventure|survival fiction|dystopian adventure|middle grade realistic fiction|middle grade school story|middle grade friendship|middle grade humor|humorous fiction|middle grade fiction|middle grade adventure)$/;
   const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), ageProfile.queryLimit);
   const routingReason = wantsFantasyAdventure
@@ -665,7 +665,7 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
             : wantsHumor
               ? "middle_grades_humor"
               : "middle_grades_generic_facets";
-  const routingDominance = { openLibraryPlanner: "middle_grades_locked_baseline", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasyAdventure, wantsMysteryAdventure, wantsHistoricalAdventure, wantsSciFiAdventure, wantsContemporarySchool, wantsHumor };
+  const routingDominance = { openLibraryPlanner: "middle_grades_profile_candidate", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasyAdventure, wantsMysteryAdventure, wantsHistoricalAdventure, wantsSciFiAdventure, wantsContemporarySchool, wantsHumor };
   return uniqueQueries.map((query, index) => ({
     query,
     originalPlannedQuery,
@@ -1130,6 +1130,22 @@ function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolea
   return /young adult|juvenile|teen|adolescent/.test(subjects);
 }
 
+function hasMiddleGradesAgeShapeEvidence(doc: any, query: string, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "preteens") return true;
+  const title = String(doc?.title || "").toLowerCase();
+  const subjects = [
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+  ].join(" ").toLowerCase();
+  const text = `${title} ${subjects}`;
+  const hasExplicitMiddleGradesEvidence = /\b(middle grade|juvenile fiction|juvenile literature|children'?s fiction|children fiction|children'?s stories|preteens?|pre-teens?|school stories?|schools? fiction|students? fiction|classmates? fiction|humorous stories|mystery and detective stories|adventure stories|fantasy fiction, juvenile|science fiction, juvenile)\b/.test(text);
+  if (hasExplicitMiddleGradesEvidence) return true;
+  const queryIsAgeAnchored = /\bmiddle grade|school story|school mystery|magic school\b/i.test(query);
+  const hasGenreShape = /\b(fantasy|magic|adventure|mystery|detective|school|students?|humor|humorous|science fiction|space|juvenile)\b/.test(subjects);
+  if (queryIsAgeAnchored && hasGenreShape) return true;
+  return false;
+}
+
 function isTooYoungTeenOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
   if (hasStrongTeenFictionMetadataEvidence(doc)) return false;
@@ -1156,6 +1172,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isTooYoungTeenOpenLibraryDoc(doc, profile)) return { keep: false, reason: "too_young_for_teen_artifact" };
   if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
+  if (!hasMiddleGradesAgeShapeEvidence(doc, query, profile)) return { keep: false, reason: "middle_grades_age_shape_mismatch" };
   return { keep: true };
 }
 
