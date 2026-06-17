@@ -77,6 +77,9 @@ async function main() {
   const adultProfile = openLibraryProfileForAgeBand("adult");
   assertEqual(adultProfile.lockedBaseline, true, "adult Open Library profile should be locked");
   assertEqual(adultProfile.behaviorLabel, "adult_openlibrary_locked_baseline", "adult Open Library profile should expose locked label");
+  const middleGradesProfile = openLibraryProfileForAgeBand("preteens");
+  assertEqual(middleGradesProfile.lockedBaseline, true, "middle grades Open Library profile should be locked");
+  assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_locked_baseline", "middle grades Open Library profile should expose locked label");
 
   const cases = [
     {
@@ -153,6 +156,37 @@ async function main() {
     assertEqual(summary.reason, testCase.expectedReason, `${testCase.name} routing reason`);
     assertDeepEqual(summary.queries, testCase.expectedQueries, `${testCase.name} query list`);
     testCase.extra?.(summary);
+    console.log(JSON.stringify({ name: testCase.name, pass: true, reason: summary.reason, queries: summary.queries }));
+  }
+
+  const middleGradesCases = [
+    {
+      name: "middle grades fantasy adventure locked baseline",
+      signals: [
+        { action: "like", title: "Magic Quest", genres: ["fantasy"], themes: ["magic", "adventure"], format: "book" },
+        { action: "like", title: "School Adventure", genres: ["adventure"], themes: ["school", "friendship"], format: "book" },
+      ],
+      expectedReason: "middle_grades_fantasy_adventure",
+      expectedQueries: ["middle grade fantasy", "fantasy adventure", "magic school", "adventure fiction"],
+    },
+    {
+      name: "middle grades mystery adventure locked baseline",
+      signals: [
+        { action: "like", title: "Puzzle Club", genres: ["mystery"], themes: ["detective", "school"], format: "book" },
+        { action: "like", title: "Clue Chase", genres: ["adventure"], themes: ["investigation"], format: "book" },
+      ],
+      expectedReason: "middle_grades_mystery_adventure",
+      expectedQueries: ["middle grade mystery", "mystery adventure", "school mystery", "detective fiction"],
+    },
+  ];
+
+  for (const testCase of middleGradesCases) {
+    const profile = buildTasteProfile({ ageBand: "preteens", signals: testCase.signals });
+    const summary = summarizePlans(buildOpenLibraryQueryPlansForRegression(sourcePlan, profile, middleGradesProfile));
+    assertEqual(summary.dominance.openLibraryPlanner, "middle_grades_locked_baseline", `${testCase.name} should use locked planner`);
+    assertEqual(summary.dominance.lockedBaseline, true, `${testCase.name} should expose locked baseline`);
+    assertEqual(summary.reason, testCase.expectedReason, `${testCase.name} routing reason`);
+    assertDeepEqual(summary.queries, testCase.expectedQueries, `${testCase.name} query list`);
     console.log(JSON.stringify({ name: testCase.name, pass: true, reason: summary.reason, queries: summary.queries }));
   }
 

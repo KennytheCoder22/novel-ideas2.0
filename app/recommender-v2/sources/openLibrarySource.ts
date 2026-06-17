@@ -583,6 +583,100 @@ function buildAdultOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile
   }));
 }
 
+function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
+  const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: "middle-grades-open-library-fallback", priority: 0, rationale: [] }];
+  const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ageProfile.diagnosticProbeQuery));
+  const genres = uniqueStrings(profile.genreFamily.map((row) => cleanOpenLibraryQueryPart(row.value)).filter(isGenreLikeOpenLibraryPart), 3);
+  const plannedGenreFallbacks = uniqueStrings(plannedIntents
+    .flatMap((intent) => [intent.query, ...(intent.facets || [])])
+    .map(cleanOpenLibraryQueryPart)
+    .filter(isGenreLikeOpenLibraryPart), 3);
+  const genreTerms = uniqueStrings([...genres, ...plannedGenreFallbacks], 3);
+  const fallbackTerms = uniqueStrings(plannedIntents
+    .flatMap((intent) => [intent.query, ...(intent.facets || [])])
+    .map(cleanOpenLibraryQueryPart)
+    .filter(isUsefulOpenLibraryQueryPart)
+    .map((query) => query.split(" ").filter(isUsefulOpenLibraryQueryPart).slice(0, 2).join(" "))
+    .filter(isUsefulOpenLibraryQueryPart), 2);
+  const profileText = [
+    ...profile.genreFamily.map((row) => row.value),
+    ...profile.themes.map((row) => row.value),
+    originalPlannedQuery,
+  ].join(" ").toLowerCase();
+  const facetText = [...genreTerms, ...fallbackTerms, originalPlannedQuery].join(" ").toLowerCase();
+  const signalRows = [...profile.genreFamily, ...profile.themes];
+  const hasFantasy = /\b(fantasy|magic|magical|paranormal|supernatural)\b/.test(facetText);
+  const hasAdventure = /\b(adventure|action|quest|survival)\b/.test(facetText);
+  const hasMystery = /\b(mystery|detective|puzzle|investigation|suspense)\b/.test(facetText);
+  const hasHistorical = /\b(historical|history)\b/.test(facetText);
+  const hasSciFi = /\b(science fiction|sci-fi|space|robot|speculative|dystopia|dystopian)\b/.test(facetText);
+  const hasContemporary = /\b(contemporary|realistic|school|friendship|family|coming of age)\b/.test(`${facetText} ${profileText}`);
+  const hasHumor = /\b(humor|humorous|comedy|funny)\b/.test(facetText);
+  const fantasyWeight = nonSkipSignalWeight(signalRows, /\b(fantasy|magic|magical|paranormal|supernatural)\b/);
+  const adventureWeight = nonSkipSignalWeight(signalRows, /\b(adventure|action|quest|survival)\b/);
+  const mysteryWeight = nonSkipSignalWeight(signalRows, /\b(mystery|detective|puzzle|investigation|suspense)\b/);
+  const historicalWeight = nonSkipSignalWeight(signalRows, /\b(historical|history)\b/);
+  const sciFiWeight = nonSkipSignalWeight(signalRows, /\b(science fiction|sci-fi|space|robot|speculative|dystopia|dystopian)\b/);
+  const contemporaryWeight = nonSkipSignalWeight(signalRows, /\b(contemporary|realistic|school|friendship|family|coming of age)\b/);
+  const humorWeight = nonSkipSignalWeight(signalRows, /\b(humor|humorous|comedy|funny)\b/);
+  const dominanceScores = { fantasy: fantasyWeight, adventure: adventureWeight, mystery: mysteryWeight, historical: historicalWeight, sciFi: sciFiWeight, contemporary: contemporaryWeight, humor: humorWeight };
+  const sortedDominance = Object.entries(dominanceScores).sort((a, b) => b[1] - a[1]);
+  const dominantFamily = sortedDominance[0]?.[0] || "generic";
+  const dominantWeight = Number(sortedDominance[0]?.[1] || 0);
+  const runnerUpWeight = Number(sortedDominance[1]?.[1] || 0);
+  const dominanceRatio = runnerUpWeight > 0 ? dominantWeight / runnerUpWeight : dominantWeight > 0 ? 99 : 0;
+  const wantsFantasyAdventure = hasFantasy && (hasAdventure || dominantFamily === "fantasy" || dominantFamily === "adventure");
+  const wantsMysteryAdventure = hasMystery && (hasAdventure || dominantFamily === "mystery");
+  const wantsHistoricalAdventure = hasHistorical && (hasAdventure || hasMystery || dominantFamily === "historical");
+  const wantsSciFiAdventure = hasSciFi && (hasAdventure || dominantFamily === "sciFi");
+  const wantsContemporarySchool = hasContemporary && !wantsFantasyAdventure && !wantsMysteryAdventure && !wantsHistoricalAdventure && !wantsSciFiAdventure;
+  const wantsHumor = hasHumor && !wantsMysteryAdventure && !wantsFantasyAdventure;
+  const queryCandidates = wantsFantasyAdventure
+    ? ["middle grade fantasy", "fantasy adventure", "magic school", "adventure fiction"]
+    : wantsMysteryAdventure
+      ? ["middle grade mystery", "mystery adventure", "school mystery", "detective fiction"]
+      : wantsHistoricalAdventure
+        ? ["middle grade historical fiction", "historical adventure", "historical mystery", "adventure fiction"]
+        : wantsSciFiAdventure
+          ? ["middle grade science fiction", "science fiction adventure", "space adventure", hasAdventure ? "survival fiction" : "dystopian adventure"]
+          : wantsContemporarySchool
+            ? ["middle grade realistic fiction", "school story", "friendship fiction", "coming of age"]
+            : wantsHumor
+              ? ["middle grade humor", "funny school story", "humorous fiction", "friendship fiction"]
+              : [
+                  combineOpenLibraryQueryParts(genreTerms[0] || fallbackTerms[0] || "", genreTerms[1]),
+                  genreTerms[0] || fallbackTerms[0] || "middle grade fiction",
+                  ageProfile.diagnosticProbeQuery,
+                  "middle grade adventure",
+                ];
+  const preservedKnownGoodQueries = /^(middle grade fantasy|fantasy adventure|magic school|adventure fiction|middle grade mystery|mystery adventure|school mystery|detective fiction|middle grade historical fiction|historical adventure|historical mystery|middle grade science fiction|science fiction adventure|space adventure|survival fiction|dystopian adventure|middle grade realistic fiction|school story|friendship fiction|coming of age|middle grade humor|funny school story|humorous fiction|middle grade fiction|middle grade adventure)$/;
+  const preparedQueries = queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
+  const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), ageProfile.queryLimit);
+  const routingReason = wantsFantasyAdventure
+    ? "middle_grades_fantasy_adventure"
+    : wantsMysteryAdventure
+      ? "middle_grades_mystery_adventure"
+      : wantsHistoricalAdventure
+        ? "middle_grades_historical_adventure"
+        : wantsSciFiAdventure
+          ? "middle_grades_scifi_adventure"
+          : wantsContemporarySchool
+            ? "middle_grades_contemporary_school"
+            : wantsHumor
+              ? "middle_grades_humor"
+              : "middle_grades_generic_facets";
+  const routingDominance = { openLibraryPlanner: "middle_grades_locked_baseline", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasyAdventure, wantsMysteryAdventure, wantsHistoricalAdventure, wantsSciFiAdventure, wantsContemporarySchool, wantsHumor };
+  return uniqueQueries.map((query, index) => ({
+    query,
+    originalPlannedQuery,
+    queryCascadeIndex: index,
+    queryFamily: queryFamilyForOpenLibraryQuery(query),
+    facets: uniqueStrings([...(plannedIntents[index]?.facets || []), ...genreTerms].map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+    routingReason,
+    routingDominance,
+  }));
+}
+
 function buildGenericOpenLibraryQueryPlans(plan: SourcePlan, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
   const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: `${ageProfile.key}-open-library-fallback`, priority: 0, rationale: [] }];
   const rawQueries = plannedIntents.flatMap((intent) => [intent.query, ...(intent.facets || [])]);
@@ -605,6 +699,7 @@ function buildGenericOpenLibraryQueryPlans(plan: SourcePlan, ageProfile: OpenLib
 function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
   if (ageProfile.key === "teen") return buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile);
   if (ageProfile.key === "adult") return buildAdultOpenLibraryQueryPlans(plan, profile, ageProfile);
+  if (ageProfile.key === "middleGrades") return buildMiddleGradesOpenLibraryQueryPlans(plan, profile, ageProfile);
   return buildGenericOpenLibraryQueryPlans(plan, ageProfile);
 }
 
