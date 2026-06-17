@@ -1129,7 +1129,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const query = queryPlan.query;
       const elapsedBeforeQueryMs = Date.now() - Date.parse(startedAt);
       const reserveProbeTimeMs = ageProfile.probeTimeoutMs + ageProfile.probeReserveBufferMs;
-      if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
+      const teenMainQueryTimedOut = ageProfile.key === "teen" && fetches.some((fetch) => !fetch.diagnosticOnly && fetch.timedOut);
+      if (ageProfile.key === "teen" && teenMainQueryTimedOut && rawItems.length < Math.min(ageProfile.docLimit, 5) && elapsedBeforeQueryMs >= plan.timeoutMs) {
+        dropReasons.teen_timeout_cascade_source_budget_exhausted = Number(dropReasons.teen_timeout_cascade_source_budget_exhausted || 0) + 1;
+        break;
+      }
+      if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && !teenMainQueryTimedOut && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= plan.timeoutMs) {
         dropReasons.main_query_reserved_probe_time = Number(dropReasons.main_query_reserved_probe_time || 0) + 1;
         break;
       }
@@ -1141,7 +1146,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
       const isAdultFirstMainFetch = ageProfile.key === "adult" && fetches.filter((fetch) => !fetch.diagnosticOnly).length === 0;
       const firstAttemptTimeoutMs = isAdultFirstMainFetch ? ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS : ageProfile.perQueryTimeoutMs;
-      let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, firstAttemptTimeoutMs, 1, openLibraryProxyClientTimeoutMs(ageProfile));
+      const teenTimeoutCascadeRemainingMs = ageProfile.key === "teen" && teenMainQueryTimedOut
+        ? Math.max(250, plan.timeoutMs - elapsedBeforeQueryMs)
+        : undefined;
+      const mainFetchTimeoutMs = teenTimeoutCascadeRemainingMs ?? firstAttemptTimeoutMs;
+      const mainProxyClientTimeoutMs = teenTimeoutCascadeRemainingMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
+      let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, mainFetchTimeoutMs, 1, mainProxyClientTimeoutMs);
       if (diagnostic.timedOut && isAdultFirstMainFetch && !context.signal?.aborted) {
         firstRunFetchTimeout = true;
         retryAttempted = true;
@@ -1235,6 +1245,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           openLibraryTopUpRan = true;
           dropReasons.adult_timeout_recovery_continued_underfilled = Number(dropReasons.adult_timeout_recovery_continued_underfilled || 0) + 1;
         }
+        if (ageProfile.key === "teen" && rawItems.length < Math.min(ageProfile.docLimit, 5)) {
+          dropReasons.teen_timeout_cascade_continued_underfilled = Number(dropReasons.teen_timeout_cascade_continued_underfilled || 0) + 1;
+        }
         if (context.signal?.aborted) break;
         continue;
       }
@@ -1272,15 +1285,18 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (seriesKey) acceptedSeriesKeys.add(seriesKey);
         acceptedDocKeys.add(docKey);
         rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
-        const acceptTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : ageProfile.docLimit;
+        const acceptTarget = (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.docLimit;
         if (rawItems.length >= acceptTarget) break;
       }
-      const cleanDocTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : ageProfile.minCleanDocs;
+      const cleanDocTarget = (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.minCleanDocs;
       if (rawItems.length >= cleanDocTarget || rawItems.length >= ageProfile.docLimit) break;
       if (rawItems.length > 0) {
         openLibraryTopUpRan = true;
         if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) {
           dropReasons.adult_timeout_recovery_continued_underfilled = Number(dropReasons.adult_timeout_recovery_continued_underfilled || 0) + 1;
+        }
+        if (teenMainQueryTimedOut) {
+          dropReasons.teen_timeout_cascade_continued_underfilled = Number(dropReasons.teen_timeout_cascade_continued_underfilled || 0) + 1;
         }
       }
     }
@@ -1527,7 +1543,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       failedReason = failedReason || "probe_skipped_due_to_source_timeout";
     }
 
-    if (!rawItems.length && !context.signal?.aborted) {
+    const teenMainQueryTimedOutDuringRun = ageProfile.key === "teen" && fetches.some((fetch) => !fetch.diagnosticOnly && fetch.timedOut);
+    if (!rawItems.length && !context.signal?.aborted && !teenMainQueryTimedOutDuringRun) {
       const probeQuery = context.profile.ageBand === "adult"
         ? (queryPlans[0]?.routingReason === "adult_scifi"
           ? "science fiction thriller"

@@ -285,6 +285,45 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousTeenTimeoutProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalDateNow = Date.now;
+  const teenTimeoutCascadeFetchCalls = [];
+  let fakeNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalDateNow() + fakeNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    teenTimeoutCascadeFetchCalls.push(query);
+    if (teenTimeoutCascadeFetchCalls.length === 1) {
+      fakeNowOffsetMs = 7_100;
+      throw new Error("timeout");
+    }
+    fakeNowOffsetMs = 7_200;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6, 7, 8].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "teens",
+      signals: cases[2].signals,
+    });
+    const teenSourcePlan = { ...sourcePlan, timeoutMs: 8_000 };
+    const result = await openLibrarySourceAdapter.search(teenSourcePlan, { profile });
+    assertEqual(result.rawItems.length, 5, "teen timeout cascade should continue planned queries until five candidates");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.main_query_reserved_probe_time), false, "teen timeout cascade should not reserve emergency probe time after a main timeout");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.teen_timeout_cascade_continued_underfilled), true, "teen timeout cascade should mark underfilled continuation");
+    assertEqual(result.diagnostics.fetches?.some((fetch) => fetch.queryFamily === "emergency_fallback"), false, "teen timeout cascade should not spend remaining budget on emergency probe");
+    console.log(JSON.stringify({ name: "teen timeout cascade continues planned queries without probe reserve", pass: true, rawItems: result.rawItems.length, fetchCalls: teenTimeoutCascadeFetchCalls }));
+  } finally {
+    Date.now = originalDateNow;
+    if (previousTeenTimeoutProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousTeenTimeoutProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const underfillFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
