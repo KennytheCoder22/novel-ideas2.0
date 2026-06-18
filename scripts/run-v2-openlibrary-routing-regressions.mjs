@@ -831,8 +831,32 @@ async function main() {
   const middleGradesFantasyHumorAlignedSelected = middleGradesFantasyHumorBalanceResult.selected.filter((candidate) => /\b(adventure|friendship)\b/i.test(String(candidate.diagnostics?.queryText || ""))).length;
   assertEqual(middleGradesFantasyHumorBalanceResult.selected.length, 5, "middle grades fantasy humor balance should keep the requested slate size");
   assertEqual(middleGradesFantasyHumorAlignedSelected >= 2, true, "middle grades fantasy humor balance should include more than one aligned non-humor candidate");
-  assertEqual(Boolean(middleGradesFantasyHumorBalanceResult.rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted), true, "middle grades fantasy humor balance should emit aligned balance diagnostics");
+  assertEqual(Boolean(middleGradesFantasyHumorBalanceResult.rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted || middleGradesFantasyHumorBalanceResult.rejectedReasons.middle_grades_humor_default_query_family_cap_accepted), true, "middle grades fantasy humor balance should emit aligned/default-cap diagnostics");
   console.log(JSON.stringify({ name: "middle grades fantasy humor selection balances aligned candidates", pass: true, selected: middleGradesFantasyHumorBalanceResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesFantasyHumorBalanceResult.rejectedReasons }));
+
+  const middleGradesHumorDefaultCapCandidates = [
+    ...["Joke One", "Joke Two", "Joke Three", "Joke Four", "Joke Five"].map((title, index) => fakeScoredCandidate({
+      id: `middle-humor-cap-default-${index}`,
+      title,
+      creators: [`Humor Cap Author ${index}`],
+      score: 10 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: index % 2 === 0 ? "middle grade humor" : "children's funny books", queryFamily: "humor", routingReason: "middle_grades_humor" },
+    })),
+    ...["School Laughs", "Friendship Laughs"].map((title, index) => fakeScoredCandidate({
+      id: `middle-humor-cap-alt-${index}`,
+      title,
+      creators: [`Humor Alt Author ${index}`],
+      score: 8 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: index === 0 ? "middle grade school story" : "middle grade friendship", queryFamily: index === 0 ? "school" : "friendship", routingReason: "middle_grades_humor" },
+    })),
+  ];
+  const middleGradesHumorDefaultCapResult = selectRecommendations(middleGradesHumorDefaultCapCandidates, middleGradesFantasyHumorBalanceProfile, 5);
+  const middleGradesHumorDefaultSelected = middleGradesHumorDefaultCapResult.selected.filter((candidate) => /\b(humor|funny)\b/i.test(String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || ""))).length;
+  assertEqual(middleGradesHumorDefaultSelected <= 3, true, "middle grades humor selection should cap humor/default query-family candidates when safe alternatives exist");
+  assertEqual(Boolean(middleGradesHumorDefaultCapResult.rejectedReasons.middle_grades_humor_default_query_family_cap_accepted), true, "middle grades humor default cap should emit replacement diagnostics");
+  console.log(JSON.stringify({ name: "middle grades humor selection caps default query family", pass: true, selected: middleGradesHumorDefaultCapResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesHumorDefaultCapResult.rejectedReasons }));
 
   const middleGradesFantasyHumorEnforceCandidates = [
     fakeScoredCandidate({
