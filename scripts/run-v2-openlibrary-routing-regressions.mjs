@@ -243,6 +243,16 @@ async function main() {
       expectedReason: "middle_grades_contemporary_school",
       expectedQueries: ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "middle grade adventure"],
     },
+    {
+      name: "middle grades playful comedy resists weak nonfiction sci-fi override",
+      signals: [
+        { action: "like", title: "Joke Quest", genres: ["comedy"], themes: ["playful", "adventure"], format: "book" },
+        { action: "like", title: "Funny Trail", genres: ["humor"], themes: ["funny", "friendship"], format: "book" },
+        { action: "like", title: "Science Facts", genres: ["nonfiction"], themes: ["science fiction"], format: "book" },
+      ],
+      expectedReason: "middle_grades_humor",
+      expectedQueries: ["middle grade humor", "middle grade school story", "humorous fiction", "middle grade adventure"],
+    },
   ];
 
   for (const testCase of middleGradesCases) {

@@ -152,20 +152,22 @@ function isMiddleGradesFantasyHumorCandidate(candidate: ScoredCandidate): boolea
 
 function isMiddleGradesFantasyHumorAlignedCandidate(candidate: ScoredCandidate): boolean {
   if (!isMiddleGradesFantasyHumorCandidate(candidate)) return false;
-  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
-  return /\b(adventure|fantasy adventure|friendship)\b/.test(text) && !/\b(humor|funny)\b/.test(text);
+  const queryText = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+  const fallbackText = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  if (/\b(adventure|fantasy adventure|friendship)\b/.test(queryText) && !/\b(humor|funny)\b/.test(queryText)) return true;
+  return !queryText && /\b(adventure|fantasy adventure|friendship)\b/.test(fallbackText) && !/\b(humor|funny)\b/.test(fallbackText);
 }
 
 function isMiddleGradesFantasyHumorDefaultCandidate(candidate: ScoredCandidate): boolean {
   if (!isMiddleGradesFantasyHumorCandidate(candidate)) return false;
-  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
   return /\b(humor|funny)\b/.test(text);
 }
 
 function applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
   if (profile.ageBand !== "preteens") return;
   const routeCandidates = rankedCandidates.filter(isMiddleGradesFantasyHumorCandidate);
-  if (!routeCandidates.some(isMiddleGradesFantasyHumorDefaultCandidate)) return;
+  if (!routeCandidates.length) return;
   const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
   const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
   const safeAlignedPool = routeCandidates.filter((candidate) => {

@@ -646,14 +646,14 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
   const hasHistorical = /\b(historical|history)\b/.test(facetText);
   const hasSciFi = /\b(science fiction|sci-fi|space|robot|speculative|dystopia|dystopian)\b/.test(facetText);
   const hasContemporary = /\b(contemporary|realistic|school|friendship|family|coming of age)\b/.test(`${facetText} ${profileText}`);
-  const hasHumor = /\b(humor|humorous|comedy|funny)\b/.test(facetText);
+  const hasHumor = /\b(humor|humorous|comedy|funny|playful)\b/.test(`${facetText} ${profileText}`);
   const fantasyWeight = nonSkipSignalWeight(signalRows, /\b(fantasy|magic|magical|paranormal|supernatural)\b/);
   const adventureWeight = nonSkipSignalWeight(signalRows, /\b(adventure|action|quest|survival)\b/);
   const mysteryWeight = nonSkipSignalWeight(signalRows, /\b(mystery|detective|puzzle|investigation|suspense)\b/);
   const historicalWeight = nonSkipSignalWeight(signalRows, /\b(historical|history)\b/);
   const sciFiWeight = nonSkipSignalWeight(signalRows, /\b(science fiction|sci-fi|space|robot|speculative|dystopia|dystopian)\b/);
   const contemporaryWeight = nonSkipSignalWeight(signalRows, /\b(contemporary|realistic|school|friendship|family|coming of age)\b/);
-  const humorWeight = nonSkipSignalWeight(signalRows, /\b(humor|humorous|comedy|funny)\b/);
+  const humorWeight = nonSkipSignalWeight(signalRows, /\b(humor|humorous|comedy|funny|playful)\b/);
   const dominanceScores = { fantasy: fantasyWeight, adventure: adventureWeight, mystery: mysteryWeight, historical: historicalWeight, sciFi: sciFiWeight, contemporary: contemporaryWeight, humor: humorWeight };
   const sortedDominance = Object.entries(dominanceScores).sort((a, b) => b[1] - a[1]);
   const dominantFamily = sortedDominance[0]?.[0] || "generic";
@@ -666,8 +666,9 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
   const wantsFantasyAdventure = hasFantasy && !wantsFantasyMystery && !wantsFantasyHumor && !wantsFantasySchoolFamily && (hasAdventure || dominantFamily === "fantasy" || dominantFamily === "adventure");
   const wantsMysteryAdventure = hasMystery && (hasAdventure || dominantFamily === "mystery");
   const wantsHistoricalAdventure = hasHistorical && (hasAdventure || hasMystery || dominantFamily === "historical");
-  const wantsSciFiAdventure = hasSciFi && (hasAdventure || dominantFamily === "sciFi");
-  const wantsContemporarySchool = hasContemporary && !wantsFantasyAdventure && !wantsMysteryAdventure && !wantsHistoricalAdventure && !wantsSciFiAdventure;
+  const sciFiDominant = sciFiWeight > 0 && sciFiWeight >= Math.max(1, fantasyWeight, adventureWeight, mysteryWeight, historicalWeight, contemporaryWeight, humorWeight);
+  const wantsSciFiAdventure = hasSciFi && (dominantFamily === "sciFi" || (sciFiDominant && hasAdventure));
+  const wantsContemporarySchool = hasContemporary && !wantsFantasyAdventure && !wantsMysteryAdventure && !wantsHistoricalAdventure && !wantsSciFiAdventure && !(hasHumor && humorWeight >= Math.max(1, contemporaryWeight));
   const wantsHumor = hasHumor && !wantsMysteryAdventure && !wantsFantasyAdventure;
   const queryCandidates = wantsFantasyMystery
     ? ["middle grade fantasy mystery", "middle grade mystery", "school mystery", "middle grade adventure"]
