@@ -12,7 +12,7 @@ const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 3_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 600;
-const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
+const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 2_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -1333,6 +1333,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let retrySucceeded = false;
     let proxyColdStartSuspected = false;
     let adultPrimaryQueryTimedOutTwice = false;
+    let middleGradesDelayedRetryAttempted = false;
+    let middleGradesDelayedRetrySkippedReason = "";
+    let middleGradesDelayedRetryTimeoutMs: number | undefined;
+    let middleGradesTimeoutBudgetRemainingBeforeRetry: number | undefined;
     const middleGradesAgeShapeSamples: MiddleGradesAgeShapeDiagnosticSample[] = [];
     let middleGradesAgeShapeObserved = 0;
     let middleGradesAgeShapeAccepted = 0;
@@ -1372,7 +1376,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         dropReasons.teen_delayed_final_retry_budget_reserved = Number(dropReasons.teen_delayed_final_retry_budget_reserved || 0) + 1;
         break;
       }
-      if (ageProfile.key === "middleGrades" && middleGradesMainQueryTimedOut && rawItems.length === 0 && elapsedBeforeQueryMs + MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS >= plan.timeoutMs) {
+      if (ageProfile.key === "middleGrades" && middleGradesMainQueryTimedOut && rawItems.length === 0 && elapsedBeforeQueryMs + MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS + MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS >= plan.timeoutMs) {
         dropReasons.middle_grades_delayed_final_retry_budget_reserved = Number(dropReasons.middle_grades_delayed_final_retry_budget_reserved || 0) + 1;
         break;
       }
@@ -1722,6 +1726,82 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
     }
 
+    if (ageProfile.key === "middleGrades" && rawItems.length === 0 && !context.signal?.aborted) {
+      const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
+      const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
+      const delayedRetryQuery = middleGradesStrongestRetryQuery(queryPlans);
+      if (allAttemptedLaneQueriesTimedOut && delayedRetryQuery) {
+        const delayedRetryPlan: OpenLibraryQueryPlan = {
+          query: delayedRetryQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + mainFetches.length,
+          queryFamily: queryFamilyForOpenLibraryQuery(delayedRetryQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_delayed_final_retry`,
+          routingDominance: queryPlans[0]?.routingDominance,
+        };
+        const elapsedBeforeDelayedRetryMs = Date.now() - Date.parse(startedAt);
+        const delayedRetryRemainingBudgetMs = plan.timeoutMs - elapsedBeforeDelayedRetryMs;
+        middleGradesTimeoutBudgetRemainingBeforeRetry = delayedRetryRemainingBudgetMs;
+        if (delayedRetryRemainingBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS) {
+          middleGradesDelayedRetrySkippedReason = "insufficient_budget";
+          dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget = Number(dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget || 0) + 1;
+        } else {
+          const delayedRetryTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, delayedRetryRemainingBudgetMs);
+          middleGradesDelayedRetryAttempted = true;
+          middleGradesDelayedRetryTimeoutMs = delayedRetryTimeoutMs;
+          const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, delayedRetryTimeoutMs, 3, delayedRetryTimeoutMs);
+          fetches.push(diagnostic);
+          dropReasons.middle_grades_delayed_final_retry_attempted = Number(dropReasons.middle_grades_delayed_final_retry_attempted || 0) + 1;
+          openLibraryTopUpRan = true;
+          if (diagnostic.timedOut) {
+            dropReasons.middle_grades_delayed_final_retry_timeout = Number(dropReasons.middle_grades_delayed_final_retry_timeout || 0) + 1;
+            if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
+          } else if (diagnostic.failedReason) {
+            dropReasons.middle_grades_delayed_final_retry_failed = Number(dropReasons.middle_grades_delayed_final_retry_failed || 0) + 1;
+            if (!failedReason) failedReason = diagnostic.failedReason;
+          } else {
+            rawApiResultCount += delayedRetryDocs.length;
+            for (const doc of delayedRetryDocs) {
+              const title = String(doc?.title || "").trim();
+              if (title) rawTitles.push(title);
+              if (!title) {
+                dropReasons.middle_grades_delayed_final_retry_missing_title = Number(dropReasons.middle_grades_delayed_final_retry_missing_title || 0) + 1;
+                continue;
+              }
+              recordMiddleGradesAgeShapeDiagnostic(doc, delayedRetryQuery, "middle_grades_delayed_retry");
+              const quality = shouldKeepOpenLibraryDoc(doc, delayedRetryQuery, context.profile);
+              if (!quality.keep) {
+                const reason = `middle_grades_delayed_final_retry_${quality.reason || "quality_filter"}`;
+                dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+                if (/artifact|inappropriate|middle_grades_age_shape/.test(reason)) artifactSuppressedTitles.push(title);
+                continue;
+              }
+              const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+              if (acceptedDocKeys.has(docKey)) {
+                dropReasons.middle_grades_delayed_final_retry_duplicate_doc = Number(dropReasons.middle_grades_delayed_final_retry_duplicate_doc || 0) + 1;
+                continue;
+              }
+              const seriesKey = openLibrarySeriesKey(doc);
+              if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+                dropReasons.middle_grades_delayed_final_retry_series_duplicate = Number(dropReasons.middle_grades_delayed_final_retry_series_duplicate || 0) + 1;
+                seriesSuppressedTitles.push(title);
+                continue;
+              }
+              if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+              acceptedDocKeys.add(docKey);
+              rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
+              dropReasons.middle_grades_delayed_final_retry_accepted = Number(dropReasons.middle_grades_delayed_final_retry_accepted || 0) + 1;
+              if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+            }
+            if (delayedRetryDocs.length > 0 && !dropReasons.middle_grades_delayed_final_retry_accepted) {
+              dropReasons.middle_grades_delayed_final_retry_all_rejected = Number(dropReasons.middle_grades_delayed_final_retry_all_rejected || 0) + 1;
+            }
+          }
+        }
+      }
+    }
+
     if (ageProfile.key === "middleGrades" && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
       const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
       const recoveryQueries = middleGradesRecoveryQueries(queryPlans)
@@ -1995,78 +2075,6 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
     }
 
-    if (ageProfile.key === "middleGrades" && rawItems.length === 0 && !context.signal?.aborted) {
-      const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
-      const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
-      const delayedRetryQuery = middleGradesStrongestRetryQuery(queryPlans);
-      if (allAttemptedLaneQueriesTimedOut && delayedRetryQuery) {
-        const delayedRetryPlan: OpenLibraryQueryPlan = {
-          query: delayedRetryQuery,
-          originalPlannedQuery: queries[0] || "",
-          queryCascadeIndex: queryPlans.length + mainFetches.length,
-          queryFamily: queryFamilyForOpenLibraryQuery(delayedRetryQuery),
-          facets: queryPlans[0]?.facets || [],
-          routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_delayed_final_retry`,
-          routingDominance: queryPlans[0]?.routingDominance,
-        };
-        const elapsedBeforeDelayedRetryMs = Date.now() - Date.parse(startedAt);
-        const delayedRetryRemainingBudgetMs = plan.timeoutMs - elapsedBeforeDelayedRetryMs;
-        if (delayedRetryRemainingBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS) {
-          dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget = Number(dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget || 0) + 1;
-        } else {
-          const delayedRetryTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, delayedRetryRemainingBudgetMs);
-          const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, delayedRetryTimeoutMs, 3, delayedRetryTimeoutMs);
-          fetches.push(diagnostic);
-          dropReasons.middle_grades_delayed_final_retry_attempted = Number(dropReasons.middle_grades_delayed_final_retry_attempted || 0) + 1;
-          openLibraryTopUpRan = true;
-          if (diagnostic.timedOut) {
-            dropReasons.middle_grades_delayed_final_retry_timeout = Number(dropReasons.middle_grades_delayed_final_retry_timeout || 0) + 1;
-            if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
-          } else if (diagnostic.failedReason) {
-            dropReasons.middle_grades_delayed_final_retry_failed = Number(dropReasons.middle_grades_delayed_final_retry_failed || 0) + 1;
-            if (!failedReason) failedReason = diagnostic.failedReason;
-          } else {
-            rawApiResultCount += delayedRetryDocs.length;
-            for (const doc of delayedRetryDocs) {
-              const title = String(doc?.title || "").trim();
-              if (title) rawTitles.push(title);
-              if (!title) {
-                dropReasons.middle_grades_delayed_final_retry_missing_title = Number(dropReasons.middle_grades_delayed_final_retry_missing_title || 0) + 1;
-                continue;
-              }
-              recordMiddleGradesAgeShapeDiagnostic(doc, delayedRetryQuery, "middle_grades_delayed_retry");
-              const quality = shouldKeepOpenLibraryDoc(doc, delayedRetryQuery, context.profile);
-              if (!quality.keep) {
-                const reason = `middle_grades_delayed_final_retry_${quality.reason || "quality_filter"}`;
-                dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
-                if (/artifact|inappropriate|middle_grades_age_shape/.test(reason)) artifactSuppressedTitles.push(title);
-                continue;
-              }
-              const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
-              if (acceptedDocKeys.has(docKey)) {
-                dropReasons.middle_grades_delayed_final_retry_duplicate_doc = Number(dropReasons.middle_grades_delayed_final_retry_duplicate_doc || 0) + 1;
-                continue;
-              }
-              const seriesKey = openLibrarySeriesKey(doc);
-              if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
-                dropReasons.middle_grades_delayed_final_retry_series_duplicate = Number(dropReasons.middle_grades_delayed_final_retry_series_duplicate || 0) + 1;
-                seriesSuppressedTitles.push(title);
-                continue;
-              }
-              if (seriesKey) acceptedSeriesKeys.add(seriesKey);
-              acceptedDocKeys.add(docKey);
-              rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
-              dropReasons.middle_grades_delayed_final_retry_accepted = Number(dropReasons.middle_grades_delayed_final_retry_accepted || 0) + 1;
-              if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
-            }
-            if (delayedRetryDocs.length > 0 && !dropReasons.middle_grades_delayed_final_retry_accepted) {
-              dropReasons.middle_grades_delayed_final_retry_all_rejected = Number(dropReasons.middle_grades_delayed_final_retry_all_rejected || 0) + 1;
-            }
-          }
-        }
-      }
-    }
-
     if (rawItems.length === 1 && queryPlans[0]?.routingReason === "dominant_horror_survival_psychological" && !context.signal?.aborted) {
       const fallbackQuery = "young adult survival horror";
       const fallbackPlan: OpenLibraryQueryPlan = { query: fallbackQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "horror_survival", facets: ["horror", "survival", "psychological"], emergencyFallback: true, routingReason: "horror_survival_underfill_fallback" };
@@ -2199,6 +2207,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           retrySucceeded,
           proxyColdStartSuspected,
           middleGradesAgeShapeDiagnostics: middleGradesAgeShapeDiagnostics(),
+          middleGradesDelayedRetryAttempted,
+          middleGradesDelayedRetrySkippedReason: middleGradesDelayedRetrySkippedReason || undefined,
+          middleGradesDelayedRetryTimeoutMs,
+          middleGradesTimeoutBudgetRemainingBeforeRetry,
           fetches,
         }),
       };
@@ -2245,6 +2257,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         retrySucceeded,
         proxyColdStartSuspected,
         middleGradesAgeShapeDiagnostics: middleGradesAgeShapeDiagnostics(),
+        middleGradesDelayedRetryAttempted,
+        middleGradesDelayedRetrySkippedReason: middleGradesDelayedRetrySkippedReason || undefined,
+        middleGradesDelayedRetryTimeoutMs,
+        middleGradesTimeoutBudgetRemainingBeforeRetry,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),

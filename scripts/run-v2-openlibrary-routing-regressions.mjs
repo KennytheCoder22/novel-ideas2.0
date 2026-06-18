@@ -684,6 +684,54 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousMiddleGradesDelayedRetryProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalMiddleGradesDelayedRetryDateNow = Date.now;
+  const middleGradesDelayedRetryFetchCalls = [];
+  let fakeMiddleGradesDelayedRetryNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalMiddleGradesDelayedRetryDateNow() + fakeMiddleGradesDelayedRetryNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesDelayedRetryFetchCalls.push(query);
+    if (middleGradesDelayedRetryFetchCalls.length === 1) {
+      fakeMiddleGradesDelayedRetryNowOffsetMs = 3_500;
+      throw new Error("timeout");
+    }
+    if (middleGradesDelayedRetryFetchCalls.length === 2) {
+      fakeMiddleGradesDelayedRetryNowOffsetMs = 4_200;
+      throw new Error("timeout");
+    }
+    if (middleGradesDelayedRetryFetchCalls.length === 3) {
+      fakeMiddleGradesDelayedRetryNowOffsetMs = 5_000;
+      throw new Error("timeout");
+    }
+    fakeMiddleGradesDelayedRetryNowOffsetMs = 5_100;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[0].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "middle grades delayed retry should have enough reserved budget to recover rows");
+    assertDeepEqual(middleGradesDelayedRetryFetchCalls, ["middle grade fantasy", "fantasy adventure", "magic school", "middle grade fantasy"], "middle grades delayed retry should retry strongest age-anchored query after timed-out lane attempts");
+    assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades delayed retry diagnostics should mark attempted");
+    assertEqual(result.diagnostics.middleGradesDelayedRetrySkippedReason, undefined, "middle grades delayed retry should not be skipped when budget was reserved");
+    assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 2500, true, "middle grades delayed retry should run with a real timeout budget");
+    assertEqual(result.diagnostics.middleGradesTimeoutBudgetRemainingBeforeRetry >= 2500, true, "middle grades delayed retry diagnostics should report reserved remaining budget");
+    console.log(JSON.stringify({ name: "middle grades delayed retry reserves usable budget", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesDelayedRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs, retryBudgetMs: result.diagnostics.middleGradesTimeoutBudgetRemainingBeforeRetry }));
+  } finally {
+    Date.now = originalMiddleGradesDelayedRetryDateNow;
+    if (previousMiddleGradesDelayedRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesDelayedRetryProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const previousTeenContemporaryTimeoutProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalContemporaryDateNow = Date.now;
   const teenContemporaryCascadeFetchCalls = [];
