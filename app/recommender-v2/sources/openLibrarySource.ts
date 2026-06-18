@@ -40,6 +40,7 @@ type MiddleGradesAgeShapeDiagnosticSample = {
     hasTitleGenreShape: boolean;
     hasGenreShape: boolean;
     hasAdultLeakageShape: boolean;
+    isBroadFunnyBooksQuery?: boolean;
   };
   subjectPreview: string[];
 };
@@ -1233,7 +1234,7 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
     .find((query) => !attemptedQueries.has(query.toLowerCase()));
-  if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade friendship", "middle grade adventure", "children's funny books", "funny children's books"]) || "middle grade adventure";
+  if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade fantasy adventure", "middle grade friendship", "middle grade school story", "middle grade adventure", "children's funny books", "funny children's books"]) || "middle grade adventure";
   if (/fantasy_mystery|mystery/i.test(routingReason)) return firstUnattempted(["middle grade fantasy mystery", "middle grade mystery", "school mystery", "mystery adventure", "middle grade adventure", "middle grade fantasy"]) || "middle grade mystery";
   if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade realistic fiction", "children's funny books", "middle grade family story", "middle grade adventure", "middle grade friendship books"]) || "middle grade school story";
   if (/fantasy/i.test(routingReason)) return "middle grade fantasy";
@@ -1282,8 +1283,12 @@ function middleGradesAgeShapeDiagnostic(doc: any, query: string, profile: TasteP
   const hasQueryGenreShape = genreShapePattern.test(query);
   const hasTitleGenreShape = genreShapePattern.test(title);
   const hasGenreShape = hasSubjectGenreShape || hasQueryGenreShape || hasTitleGenreShape;
-  const hasAdultLeakageShape = /\b(short stories|literary fiction|classic literature|adult fiction|booker prize|pulitzer|nobel|erotica|dark romance)\b/.test(text);
-  const keep = hasExplicitMiddleGradesEvidence || (queryIsAgeAnchored && hasGenreShape && !hasAdultLeakageShape);
+  const isBroadFunnyBooksQuery = /\b(children'?s funny books|funny children'?s books)\b/i.test(query);
+  const hasAdultLeakageShape = /\b(short stories|literary fiction|classic literature|adult fiction|booker prize|pulitzer|nobel|erotica|erotic|sex(?:ual|uality)?|sex education|puberty|dating|pregnancy|contraception|dark romance|new adult|young adult|ya fiction|adult humor)\b/.test(text);
+  const keep = !hasAdultLeakageShape && (
+    hasExplicitMiddleGradesEvidence
+    || (!isBroadFunnyBooksQuery && queryIsAgeAnchored && hasGenreShape)
+  );
   return {
     query,
     title: String(doc?.title || "").trim(),
@@ -1298,6 +1303,7 @@ function middleGradesAgeShapeDiagnostic(doc: any, query: string, profile: TasteP
       hasTitleGenreShape,
       hasGenreShape,
       hasAdultLeakageShape,
+      isBroadFunnyBooksQuery,
     },
     subjectPreview: uniqueStrings(subjectValues, 8),
   };
