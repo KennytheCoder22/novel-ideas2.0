@@ -195,10 +195,14 @@ function applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates: ScoredCan
       .map((row, index) => ({ row, index }))
       .filter(({ row }) => isMiddleGradesFantasyHumorDefaultCandidate(row) && !isMiddleGradesFantasyHumorAlignedCandidate(row))
       .sort((a, b) => a.row.score - b.row.score)[0]?.index;
-    if (replacementIndex === undefined) break;
-    selected[replacementIndex].rejectedReasons.push("middle_grades_fantasy_humor_aligned_balance_replaced_by_aligned");
+    const fallbackReplacementIndex = replacementIndex ?? selected
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => !isMiddleGradesFantasyHumorAlignedCandidate(row))
+      .sort((a, b) => a.row.score - b.row.score)[0]?.index;
+    if (fallbackReplacementIndex === undefined) break;
+    selected[fallbackReplacementIndex].rejectedReasons.push("middle_grades_fantasy_humor_aligned_balance_replaced_by_aligned");
     candidate.rejectedReasons.push("middle_grades_fantasy_humor_aligned_balance_accepted");
-    selected[replacementIndex] = candidate;
+    selected[fallbackReplacementIndex] = candidate;
     rejectedReasons.middle_grades_fantasy_humor_aligned_balance_replacements = Number(rejectedReasons.middle_grades_fantasy_humor_aligned_balance_replacements || 0) + 1;
     rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted = Number(rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted || 0) + 1;
   }

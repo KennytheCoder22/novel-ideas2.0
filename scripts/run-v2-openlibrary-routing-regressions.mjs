@@ -794,6 +794,46 @@ async function main() {
   assertEqual(Boolean(middleGradesFantasyHumorBalanceResult.rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted), true, "middle grades fantasy humor balance should emit aligned balance diagnostics");
   console.log(JSON.stringify({ name: "middle grades fantasy humor selection balances aligned candidates", pass: true, selected: middleGradesFantasyHumorBalanceResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesFantasyHumorBalanceResult.rejectedReasons }));
 
+  const middleGradesFantasyHumorEnforceCandidates = [
+    fakeScoredCandidate({
+      id: "middle-humor-enforce-aligned-1",
+      title: "Quest Anchor",
+      creators: ["Adventure Author A"],
+      score: 10,
+      maturityBand: "preteens",
+      diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_humor" },
+    }),
+    ...["School One", "School Two", "School Three", "School Four"].map((title, index) => fakeScoredCandidate({
+      id: `middle-humor-enforce-school-${index}`,
+      title,
+      creators: [`School Author ${index}`],
+      score: 9.9 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: "middle grade school story", queryFamily: "school", routingReason: "middle_grades_contemporary_school" },
+    })),
+    fakeScoredCandidate({
+      id: "middle-humor-enforce-aligned-2",
+      title: "Friendship Quest",
+      creators: ["Adventure Author B"],
+      score: 8,
+      maturityBand: "preteens",
+      diagnostics: { queryText: "middle grade friendship", queryFamily: "friendship", routingReason: "middle_grades_fantasy_humor" },
+    }),
+    fakeScoredCandidate({
+      id: "middle-humor-enforce-default",
+      title: "Joke Portal",
+      creators: ["Humor Author Z"],
+      score: 1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+    }),
+  ];
+  const middleGradesFantasyHumorEnforceResult = selectRecommendations(middleGradesFantasyHumorEnforceCandidates, middleGradesFantasyHumorBalanceProfile, 5);
+  const enforcedAlignedSelected = middleGradesFantasyHumorEnforceResult.selected.filter((candidate) => /\b(adventure|friendship)\b/i.test(String(candidate.diagnostics?.queryText || "")) && /middle_grades_fantasy_humor/i.test(String(candidate.diagnostics?.routingReason || ""))).length;
+  assertEqual(enforcedAlignedSelected >= 2, true, "middle grades fantasy humor balance should enforce two aligned candidates even if only one initially ranks into a full slate");
+  assertEqual(Boolean(middleGradesFantasyHumorEnforceResult.rejectedReasons.middle_grades_fantasy_humor_aligned_balance_replacements), true, "middle grades fantasy humor enforced balance should record replacement diagnostics");
+  console.log(JSON.stringify({ name: "middle grades fantasy humor selection enforces second aligned candidate", pass: true, selected: middleGradesFantasyHumorEnforceResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesFantasyHumorEnforceResult.rejectedReasons }));
+
   const previousMiddleGradesCascadeProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalMiddleGradesCascadeDateNow = Date.now;
   const middleGradesCascadeFetchCalls = [];
