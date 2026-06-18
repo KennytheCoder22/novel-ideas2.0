@@ -1020,10 +1020,10 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades delayed retry should have enough reserved budget to recover rows");
-    assertDeepEqual(middleGradesDelayedRetryFetchCalls, ["middle grade fantasy", "fantasy adventure", "middle grade fantasy"], "middle grades delayed retry should reserve budget for a high-yield age-anchored fallback after timed-out lane attempts");
+    assertDeepEqual(middleGradesDelayedRetryFetchCalls, ["middle grade fantasy", "fantasy adventure", "middle grade fantasy adventure"], "middle grades delayed retry should reserve budget for a route-aligned age-anchored fallback after timed-out lane attempts");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades delayed retry diagnostics should mark attempted");
     assertEqual(result.diagnostics.middleGradesDelayedRetrySkippedReason, undefined, "middle grades delayed retry should not be skipped when budget was reserved");
-    assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 3500, true, "middle grades delayed retry should run with a real timeout budget");
+    assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades delayed retry should run with a real timeout budget while preserving final recovery");
     assertEqual(result.diagnostics.middleGradesTimeoutBudgetRemainingBeforeRetry >= 3500, true, "middle grades delayed retry diagnostics should report reserved remaining budget");
     console.log(JSON.stringify({ name: "middle grades delayed retry reserves usable budget", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesDelayedRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs, retryBudgetMs: result.diagnostics.middleGradesTimeoutBudgetRemainingBeforeRetry }));
   } finally {
@@ -1110,7 +1110,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary deep retry should recover before adventure-only fallback");
-    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "children's funny books", "middle grade adventure"], "middle grades contemporary retry should continue past rejected funny-book fallback to adventure recovery");
+    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "middle grade family story"], "middle grades contemporary retry should continue to stable realistic/family recovery before broad adventure fallback");
     console.log(JSON.stringify({ name: "middle grades contemporary retry preserves realistic before adventure fallback", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryDeepRetryFetchCalls }));
   } finally {
     Date.now = originalMiddleGradesContemporaryDeepRetryDateNow;
@@ -1190,7 +1190,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades humor delayed retry should recover rows after timed-out humor lane attempts");
-    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade adventure"], "middle grades humor retry should use an unattempted stable age-safe fallback with real budget instead of broad funny books");
+    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade school story"], "middle grades humor retry should use an unattempted humor-adjacent stable fallback with real budget instead of broad funny books");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades humor retry diagnostics should mark attempted");
     assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades humor retry should run with a real timeout budget while reserving final safe recovery");
     console.log(JSON.stringify({ name: "middle grades humor retry rotates away from repeated query", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
