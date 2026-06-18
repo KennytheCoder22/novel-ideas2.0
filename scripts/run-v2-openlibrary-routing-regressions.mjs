@@ -748,10 +748,6 @@ async function main() {
       fakeMiddleGradesDelayedRetryNowOffsetMs = 4_200;
       throw new Error("timeout");
     }
-    if (middleGradesDelayedRetryFetchCalls.length === 3) {
-      fakeMiddleGradesDelayedRetryNowOffsetMs = 5_000;
-      throw new Error("timeout");
-    }
     fakeMiddleGradesDelayedRetryNowOffsetMs = 5_100;
     return {
       ok: true,
@@ -766,11 +762,11 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades delayed retry should have enough reserved budget to recover rows");
-    assertDeepEqual(middleGradesDelayedRetryFetchCalls, ["middle grade fantasy", "fantasy adventure", "magic school", "middle grade fantasy"], "middle grades delayed retry should retry strongest age-anchored query after timed-out lane attempts");
+    assertDeepEqual(middleGradesDelayedRetryFetchCalls, ["middle grade fantasy", "fantasy adventure", "middle grade fantasy"], "middle grades delayed retry should reserve budget for a high-yield age-anchored fallback after timed-out lane attempts");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades delayed retry diagnostics should mark attempted");
     assertEqual(result.diagnostics.middleGradesDelayedRetrySkippedReason, undefined, "middle grades delayed retry should not be skipped when budget was reserved");
-    assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 2500, true, "middle grades delayed retry should run with a real timeout budget");
-    assertEqual(result.diagnostics.middleGradesTimeoutBudgetRemainingBeforeRetry >= 2500, true, "middle grades delayed retry diagnostics should report reserved remaining budget");
+    assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 3500, true, "middle grades delayed retry should run with a real timeout budget");
+    assertEqual(result.diagnostics.middleGradesTimeoutBudgetRemainingBeforeRetry >= 3500, true, "middle grades delayed retry diagnostics should report reserved remaining budget");
     console.log(JSON.stringify({ name: "middle grades delayed retry reserves usable budget", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesDelayedRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs, retryBudgetMs: result.diagnostics.middleGradesTimeoutBudgetRemainingBeforeRetry }));
   } finally {
     Date.now = originalMiddleGradesDelayedRetryDateNow;

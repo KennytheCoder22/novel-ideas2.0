@@ -12,7 +12,7 @@ const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 3_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 600;
-const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 2_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 3_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -1184,9 +1184,12 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
   return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 12);
 }
 
-function middleGradesStrongestRetryQuery(queryPlans: OpenLibraryQueryPlan[]): string {
+function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan[]): string {
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  if (/humor|funny/i.test(routingReason)) return "middle grade humor";
+  if (/fantasy/i.test(routingReason)) return "middle grade fantasy";
+  if (/scifi|science|dystopian|mystery|historical|adventure/i.test(routingReason)) return "middle grade adventure";
   return queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query))?.query
-    || queryPlans[0]?.query
     || "middle grade adventure";
 }
 
@@ -1730,7 +1733,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     if (ageProfile.key === "middleGrades" && rawItems.length === 0 && !context.signal?.aborted) {
       const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
       const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
-      const delayedRetryQuery = middleGradesStrongestRetryQuery(queryPlans);
+      const delayedRetryQuery = middleGradesZeroCandidateFallbackQuery(queryPlans);
       if (allAttemptedLaneQueriesTimedOut && delayedRetryQuery) {
         const delayedRetryPlan: OpenLibraryQueryPlan = {
           query: delayedRetryQuery,
