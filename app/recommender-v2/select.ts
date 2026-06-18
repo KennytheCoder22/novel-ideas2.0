@@ -169,6 +169,14 @@ function middleGradesRouteKey(candidate: ScoredCandidate): string {
     .replace(/_(?:age_anchored_recovery|delayed_final_retry|final_safe_recovery|locked_underfill_recovery)$/i, "");
 }
 
+
+function middleGradesHumorCapBucketKey(candidate: ScoredCandidate): string {
+  const routeKey = middleGradesRouteKey(candidate);
+  if (/mystery|contemporary_school/i.test(routeKey)) return routeKey;
+  if (/humor|adventure/i.test(routeKey)) return "middle_grades_humor_adventure";
+  return routeKey;
+}
+
 function isMiddleGradesHumorDefaultQueryFamily(candidate: ScoredCandidate): boolean {
   if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
   const text = normalized([
@@ -202,13 +210,13 @@ function applyMiddleGradesHumorDefaultCap(rankedCandidates: ScoredCandidate[], s
   const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
   const routeKeys = Array.from(new Set(rankedCandidates
     .filter((candidate) => candidate.source === "openLibrary" && /middle_grades_/i.test(String(candidate.diagnostics?.routingReason || "")))
-    .map(middleGradesRouteKey)
+    .map(middleGradesHumorCapBucketKey)
     .filter((key) => !/mystery|contemporary_school/i.test(key))
     .filter((key) => /humor|adventure/i.test(key)))).slice(0, 12);
   for (const routeKey of routeKeys) {
-    const routeCandidates = rankedCandidates.filter((candidate) => middleGradesRouteKey(candidate) === routeKey);
+    const routeCandidates = rankedCandidates.filter((candidate) => middleGradesHumorCapBucketKey(candidate) === routeKey);
     if (!routeCandidates.length) continue;
-    const selectedDefaults = selected.filter((candidate) => middleGradesRouteKey(candidate) === routeKey && isMiddleGradesHumorDefaultQueryFamily(candidate));
+    const selectedDefaults = selected.filter((candidate) => middleGradesHumorCapBucketKey(candidate) === routeKey && isMiddleGradesHumorDefaultQueryFamily(candidate));
     if (selectedDefaults.length <= 3) continue;
     const safeAlternatives = routeCandidates.filter((candidate) => {
       if (!isMiddleGradesHumorCapAlternative(candidate)) return false;
@@ -222,11 +230,11 @@ function applyMiddleGradesHumorDefaultCap(rankedCandidates: ScoredCandidate[], s
     if (safeAlternatives.length < 2) continue;
     rejectedReasons.middle_grades_humor_default_query_family_candidates = safeAlternatives.length;
     for (const candidate of safeAlternatives) {
-      const currentDefaults = selected.filter((row) => middleGradesRouteKey(row) === routeKey && isMiddleGradesHumorDefaultQueryFamily(row));
+      const currentDefaults = selected.filter((row) => middleGradesHumorCapBucketKey(row) === routeKey && isMiddleGradesHumorDefaultQueryFamily(row));
       if (currentDefaults.length <= 3) break;
       const replacementIndex = selected
         .map((row, index) => ({ row, index }))
-        .filter(({ row }) => middleGradesRouteKey(row) === routeKey && isMiddleGradesHumorDefaultQueryFamily(row))
+        .filter(({ row }) => middleGradesHumorCapBucketKey(row) === routeKey && isMiddleGradesHumorDefaultQueryFamily(row))
         .sort((a, b) => a.row.score - b.row.score)[0]?.index;
       if (replacementIndex === undefined) break;
       const titleKey = normalized(candidate.title);

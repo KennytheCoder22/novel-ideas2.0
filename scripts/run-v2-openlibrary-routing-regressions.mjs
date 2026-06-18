@@ -888,7 +888,7 @@ async function main() {
       creators: [`Adventure Humor Default Author ${index}`],
       score: 10 - index * 0.1,
       maturityBand: "preteens",
-      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_fantasy_adventure_age_anchored_recovery" },
+      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
     })),
     ...["Adventure Path", "Friendship Quest"].map((title, index) => fakeScoredCandidate({
       id: `middle-adventure-humor-alt-${index}`,
