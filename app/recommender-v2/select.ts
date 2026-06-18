@@ -146,6 +146,64 @@ function applyAdultSpeculativeFamilyBalance(rankedCandidates: ScoredCandidate[],
   }
 }
 
+function isMiddleGradesFantasyHumorCandidate(candidate: ScoredCandidate): boolean {
+  return candidate.source === "openLibrary" && /middle_grades_fantasy_humor/i.test(String(candidate.diagnostics?.routingReason || ""));
+}
+
+function isMiddleGradesFantasyHumorAlignedCandidate(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesFantasyHumorCandidate(candidate)) return false;
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+  return /\b(adventure|fantasy adventure|friendship)\b/.test(text) && !/\b(humor|funny)\b/.test(text);
+}
+
+function isMiddleGradesFantasyHumorDefaultCandidate(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesFantasyHumorCandidate(candidate)) return false;
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+  return /\b(humor|funny)\b/.test(text);
+}
+
+function applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
+  if (profile.ageBand !== "preteens") return;
+  const routeCandidates = rankedCandidates.filter(isMiddleGradesFantasyHumorCandidate);
+  if (!routeCandidates.some(isMiddleGradesFantasyHumorDefaultCandidate)) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
+  const safeAlignedPool = routeCandidates.filter((candidate) => {
+    if (!isMiddleGradesFantasyHumorAlignedCandidate(candidate)) return false;
+    if (selected.includes(candidate)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    return true;
+  });
+  const targetAligned = Math.min(2, selected.filter(isMiddleGradesFantasyHumorAlignedCandidate).length + safeAlignedPool.length);
+  if (targetAligned < 2 || selected.filter(isMiddleGradesFantasyHumorAlignedCandidate).length >= targetAligned) return;
+  rejectedReasons.middle_grades_fantasy_humor_aligned_balance_candidates = safeAlignedPool.length;
+  for (const candidate of safeAlignedPool) {
+    if (selected.filter(isMiddleGradesFantasyHumorAlignedCandidate).length >= targetAligned) break;
+    const titleKey = normalized(candidate.title);
+    const rootKey = seriesKey(candidate);
+    if (selectedTitles().has(titleKey) || (rootKey && selectedRoots().has(rootKey))) continue;
+    if (selected.length < limit) {
+      candidate.rejectedReasons.push("middle_grades_fantasy_humor_aligned_balance_accepted");
+      rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted = Number(rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted || 0) + 1;
+      selected.push(candidate);
+      continue;
+    }
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => isMiddleGradesFantasyHumorDefaultCandidate(row) && !isMiddleGradesFantasyHumorAlignedCandidate(row))
+      .sort((a, b) => a.row.score - b.row.score)[0]?.index;
+    if (replacementIndex === undefined) break;
+    selected[replacementIndex].rejectedReasons.push("middle_grades_fantasy_humor_aligned_balance_replaced_by_aligned");
+    candidate.rejectedReasons.push("middle_grades_fantasy_humor_aligned_balance_accepted");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_fantasy_humor_aligned_balance_replacements = Number(rejectedReasons.middle_grades_fantasy_humor_aligned_balance_replacements || 0) + 1;
+    rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted = Number(rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted || 0) + 1;
+  }
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
@@ -375,6 +433,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
+  applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
   applyAdultSpeculativeFamilyBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   for (const row of deferred) {
