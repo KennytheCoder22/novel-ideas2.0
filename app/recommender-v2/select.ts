@@ -651,6 +651,8 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     for (const candidate of removed) recordRejected(candidate, rejectedReasons, "openlibrary_quality_cap_weak_slate");
   }
 
+  applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
+
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };
