@@ -10,6 +10,7 @@ const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS = 1_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
 const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 3_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_INITIAL_QUERY_TIMEOUT_MS = 1_600;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 600;
 const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 3_500;
@@ -1196,16 +1197,17 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
     const nonAdventurePlannedQueries = plannedQueries.slice(1).filter((query) => !/\badventure\b/i.test(query));
     return uniqueStrings([
       ...nonAdventurePlannedQueries,
-      "middle grade fantasy adventure",
-      "middle grade friendship",
-      "funny children's books",
-      "children's funny books",
-      "middle grade school story",
       "middle grade adventure",
-      "children's school stories",
+      "middle grade fantasy adventure",
+      "middle grade mystery",
+      "middle grade school story",
+      "middle grade friendship",
       "middle grade fiction",
       "middle grade fantasy",
+      "children's school stories",
       "children's fantasy adventure",
+      "funny children's books",
+      "children's funny books",
     ], 12);
   }
   if (/contemporary|school|friendship|realistic/i.test(routingReason)) {
@@ -1235,7 +1237,7 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
     .find((query) => !attemptedQueries.has(query.toLowerCase()));
-  if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade adventure", "middle grade fantasy adventure", "middle grade friendship", "middle grade school story"]) || "middle grade adventure";
+  if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade adventure", "middle grade fantasy adventure", "middle grade mystery", "middle grade school story", "middle grade friendship"]) || "middle grade adventure";
   if (/fantasy_mystery|mystery/i.test(routingReason)) return firstUnattempted(["middle grade fantasy mystery", "middle grade mystery", "school mystery", "mystery adventure", "middle grade adventure", "middle grade fantasy"]) || "middle grade mystery";
   if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade realistic fiction", "children's funny books", "middle grade family story", "middle grade adventure", "middle grade friendship books"]) || "middle grade school story";
   if (/fantasy/i.test(routingReason)) return "middle grade fantasy";
@@ -1465,6 +1467,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
       const isAdultFirstMainFetch = ageProfile.key === "adult" && fetches.filter((fetch) => !fetch.diagnosticOnly).length === 0;
       const firstAttemptTimeoutMs = isAdultFirstMainFetch ? ADULT_OPEN_LIBRARY_FIRST_RUN_TIMEOUT_MS : ageProfile.perQueryTimeoutMs;
+      const middleGradesInitialTimeoutMs = ageProfile.key === "middleGrades" && fetches.filter((fetch) => !fetch.diagnosticOnly).length === 0
+        ? Math.min(MIDDLE_GRADES_OPEN_LIBRARY_INITIAL_QUERY_TIMEOUT_MS, firstAttemptTimeoutMs)
+        : undefined;
       const teenTimeoutCascadeRemainingMs = ageProfile.key === "teen" && teenMainQueryTimedOut
         ? Math.max(250, plan.timeoutMs - elapsedBeforeQueryMs - (rawItems.length === 0 ? TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS : 0))
         : undefined;
@@ -1484,7 +1489,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         )
         : undefined;
       const middleGradesTimeoutCascadeRemainingMs = ageProfile.key === "middleGrades" && middleGradesMainQueryTimedOut
-        ? Math.max(250, plan.timeoutMs - elapsedBeforeQueryMs - (rawItems.length === 0 ? MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS : 0))
+        ? Math.max(250, plan.timeoutMs - elapsedBeforeQueryMs - (rawItems.length === 0 ? MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS + MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS : 0))
         : undefined;
       const middleGradesTimeoutCascadeRemainingQueries = ageProfile.key === "middleGrades" && middleGradesMainQueryTimedOut
         ? queryPlans.slice(queryPlanIndex).length
@@ -1501,8 +1506,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           ),
         )
         : undefined;
-      const mainFetchTimeoutMs = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? firstAttemptTimeoutMs;
-      const mainProxyClientTimeoutMs = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
+      const mainFetchTimeoutMs = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? middleGradesInitialTimeoutMs ?? firstAttemptTimeoutMs;
+      const mainProxyClientTimeoutMs = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? middleGradesInitialTimeoutMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
       let { docs, diagnostic } = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, mainFetchTimeoutMs, 1, mainProxyClientTimeoutMs);
       if (diagnostic.timedOut && isAdultFirstMainFetch && !context.signal?.aborted) {
         firstRunFetchTimeout = true;
@@ -1903,11 +1908,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       for (const recoveryQuery of recoveryQueries) {
         const elapsedBeforeRecoveryMs = Date.now() - Date.parse(startedAt);
         const remainingBudgetMs = plan.timeoutMs - elapsedBeforeRecoveryMs;
-        if (remainingBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS) {
+        const reserveFinalSafeRecoveryMs = rawItems.length === 0 ? MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS : 0;
+        const recoveryUsableBudgetMs = remainingBudgetMs - reserveFinalSafeRecoveryMs;
+        if (recoveryUsableBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS) {
           dropReasons.middle_grades_underfill_recovery_source_budget_exhausted = Number(dropReasons.middle_grades_underfill_recovery_source_budget_exhausted || 0) + 1;
           break;
         }
-        const recoveryTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, remainingBudgetMs));
+        const recoveryTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, recoveryUsableBudgetMs));
         const recoveryPlan: OpenLibraryQueryPlan = {
           query: recoveryQuery,
           originalPlannedQuery: queries[0] || "",

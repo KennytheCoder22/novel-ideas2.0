@@ -718,7 +718,7 @@ async function main() {
     assertEqual(result.diagnostics.openLibraryProfileLabel, "middle_grades_openlibrary_profile_pending", "middle grades profile label should remain pending/unlocked");
     assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "middle grades fetch diagnostics should mark configured proxy path");
     assertEqual(result.diagnostics.fetches?.[0]?.proxyRetryWindowEnabled, true, "middle grades proxy fetch should use proxy retry client window");
-    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 3500 && result.diagnostics.fetches?.[0]?.clientTimeoutMs < 4500, true, "middle grades proxy fetch should use a middle-grades-specific resilience window");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 1600 && result.diagnostics.fetches?.[0]?.clientTimeoutMs < 2500, true, "middle grades proxy fetch should use a reduced middle-grades-specific resilience window");
     console.log(JSON.stringify({ name: "middle grades proxy path uses age-specific resilience window", pass: true, fetchPath: result.diagnostics.fetches?.[0]?.fetchPath, clientTimeoutMs: result.diagnostics.fetches?.[0]?.clientTimeoutMs, profileLabel: result.diagnostics.openLibraryProfileLabel }));
   } finally {
     if (previousMiddleGradesProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
@@ -979,7 +979,7 @@ async function main() {
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades cascade should preserve budget and recover after initial proxy timeouts");
     assertDeepEqual(middleGradesCascadeFetchCalls, ["middle grade fantasy", "fantasy adventure", "magic school"], "middle grades cascade should rotate through planned lane queries before recovery");
-    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs, 3500, "middle grades first proxy fetch should use resilience window");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs, 1600, "middle grades first proxy fetch should use reduced resilience window");
     assertEqual(result.diagnostics.fetches?.[1]?.clientTimeoutMs < 1600, true, "middle grades cascade should cap later query timeouts to preserve retry/recovery budget");
     console.log(JSON.stringify({ name: "middle grades cascade rotates through planned queries under timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesCascadeFetchCalls, secondTimeoutMs: result.diagnostics.fetches?.[1]?.clientTimeoutMs }));
   } finally {
