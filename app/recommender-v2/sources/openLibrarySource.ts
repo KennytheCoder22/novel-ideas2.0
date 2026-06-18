@@ -1192,8 +1192,9 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
   const routeFallbacks = (() => {
     if (/humor|funny/i.test(routingReason)) return ["middle grade adventure", "middle grade fantasy adventure", "middle grade friendship", "middle grade school story", "children's funny books", "funny children's books", "children's school stories", "middle grade fiction", "middle grade fantasy", "children's fantasy adventure"];
     if (/scifi|science|dystopian/i.test(routingReason)) return ["middle grade adventure", "middle grade science fiction", "children's fantasy adventure", "middle grade fantasy", ...ageAnchoredUnderfillQueries];
+    if (/fantasy_mystery|mystery/i.test(routingReason)) return ["middle grade fantasy mystery", "middle grade mystery", "school mystery", "mystery adventure", "middle grade adventure", "middle grade fantasy"];
     if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "middle grade fantasy", "middle grade adventure", "middle grade fiction", "children's school stories", "middle grade humor"];
-    if (/contemporary|school|friendship|realistic/i.test(routingReason)) return ["middle grade school story", "middle grade friendship", "middle grade adventure", "children's funny books", "children's school stories", "middle grade fiction", "middle grade humor", "children's fantasy adventure"];
+    if (/contemporary|school|friendship|realistic/i.test(routingReason)) return ["middle grade school story", "middle grade friendship", "middle grade realistic fiction", "children's school stories", "middle grade adventure", "children's funny books", "middle grade fiction", "middle grade humor", "children's fantasy adventure"];
     return [...ageAnchoredUnderfillQueries, "children's funny books"];
   })();
   return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 12);
@@ -1204,7 +1205,8 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
     .find((query) => !attemptedQueries.has(query.toLowerCase()));
   if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade adventure", "middle grade fantasy adventure", "middle grade friendship", "middle grade school story", "children's funny books", "funny children's books"]) || "middle grade adventure";
-  if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade adventure", "children's funny books", "middle grade realistic fiction"]) || "middle grade school story";
+  if (/fantasy_mystery|mystery/i.test(routingReason)) return firstUnattempted(["middle grade fantasy mystery", "middle grade mystery", "school mystery", "mystery adventure", "middle grade adventure", "middle grade fantasy"]) || "middle grade mystery";
+  if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade realistic fiction", "children's school stories", "middle grade adventure", "children's funny books"]) || "middle grade school story";
   if (/fantasy/i.test(routingReason)) return "middle grade fantasy";
   if (/scifi|science|dystopian|mystery|historical|adventure/i.test(routingReason)) return "middle grade adventure";
   return queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query) && !attemptedQueries.has(plan.query.toLowerCase()))?.query

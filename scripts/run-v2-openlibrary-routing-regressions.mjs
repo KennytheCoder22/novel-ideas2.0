@@ -962,6 +962,90 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousMiddleGradesContemporaryDeepRetryProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalMiddleGradesContemporaryDeepRetryDateNow = Date.now;
+  const middleGradesContemporaryDeepRetryFetchCalls = [];
+  let fakeMiddleGradesContemporaryDeepRetryNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalMiddleGradesContemporaryDeepRetryDateNow() + fakeMiddleGradesContemporaryDeepRetryNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesContemporaryDeepRetryFetchCalls.push(query);
+    if (middleGradesContemporaryDeepRetryFetchCalls.length === 1) {
+      fakeMiddleGradesContemporaryDeepRetryNowOffsetMs = 3_000;
+      throw new Error("timeout");
+    }
+    if (middleGradesContemporaryDeepRetryFetchCalls.length === 2) {
+      fakeMiddleGradesContemporaryDeepRetryNowOffsetMs = 3_600;
+      throw new Error("timeout");
+    }
+    if (middleGradesContemporaryDeepRetryFetchCalls.length === 3) {
+      fakeMiddleGradesContemporaryDeepRetryNowOffsetMs = 4_100;
+      throw new Error("timeout");
+    }
+    fakeMiddleGradesContemporaryDeepRetryNowOffsetMs = 5_100;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[5].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary deep retry should recover before adventure-only fallback");
+    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "children's school stories"], "middle grades contemporary retry should preserve school/realistic intent before adventure-only recovery");
+    console.log(JSON.stringify({ name: "middle grades contemporary retry preserves realistic before adventure fallback", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryDeepRetryFetchCalls }));
+  } finally {
+    Date.now = originalMiddleGradesContemporaryDeepRetryDateNow;
+    if (previousMiddleGradesContemporaryDeepRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesContemporaryDeepRetryProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousMiddleGradesFantasyMysteryRetryProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalMiddleGradesFantasyMysteryRetryDateNow = Date.now;
+  const middleGradesFantasyMysteryRetryFetchCalls = [];
+  let fakeMiddleGradesFantasyMysteryRetryNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalMiddleGradesFantasyMysteryRetryDateNow() + fakeMiddleGradesFantasyMysteryRetryNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesFantasyMysteryRetryFetchCalls.push(query);
+    if (middleGradesFantasyMysteryRetryFetchCalls.length === 1) {
+      fakeMiddleGradesFantasyMysteryRetryNowOffsetMs = 3_500;
+      throw new Error("timeout");
+    }
+    if (middleGradesFantasyMysteryRetryFetchCalls.length === 2) {
+      fakeMiddleGradesFantasyMysteryRetryNowOffsetMs = 4_200;
+      throw new Error("timeout");
+    }
+    fakeMiddleGradesFantasyMysteryRetryNowOffsetMs = 5_100;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[2].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "middle grades fantasy mystery retry should recover via mystery route before generic fantasy");
+    assertDeepEqual(middleGradesFantasyMysteryRetryFetchCalls, ["middle grade fantasy mystery", "middle grade mystery", "school mystery"], "middle grades fantasy mystery retry should preserve mystery intent before generic fantasy recovery");
+    console.log(JSON.stringify({ name: "middle grades fantasy mystery retry preserves mystery intent", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesFantasyMysteryRetryFetchCalls }));
+  } finally {
+    Date.now = originalMiddleGradesFantasyMysteryRetryDateNow;
+    if (previousMiddleGradesFantasyMysteryRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesFantasyMysteryRetryProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const previousMiddleGradesHumorRetryProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalMiddleGradesHumorRetryDateNow = Date.now;
   const middleGradesHumorRetryFetchCalls = [];
