@@ -765,6 +765,36 @@ async function main() {
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.middle_grades_openlibrary_underfill_relaxed_diversity || middleGradesSelectionResult.rejectedReasons.middle_grades_openlibrary_underfill_safe_candidate_accepted), true, "middle grades selection should emit middle-grades Open Library underfill diagnostics");
   console.log(JSON.stringify({ name: "middle grades selection relaxes Open Library diversity underfill to five", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
 
+  const middleGradesContemporarySelectionProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: middleGradesCases[5].signals,
+  });
+  const middleGradesContemporarySelectionCandidates = [
+    ...["Portal Quest", "Dragon Trail", "Magic Road", "Castle Run"].map((title, index) => fakeScoredCandidate({
+      id: `middle-contemporary-adventure-${index}`,
+      title,
+      creators: [`Adventure Fallback Author ${index}`],
+      score: 10 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_contemporary_school" },
+    })),
+    ...["Classroom Friends", "Family Project", "Lunchroom Team", "After School Club"].map((title, index) => fakeScoredCandidate({
+      id: `middle-contemporary-aligned-${index}`,
+      title,
+      creators: [`School Author ${index}`],
+      score: 8 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: index === 1 ? "middle grade realistic fiction" : index === 2 ? "middle grade friendship" : "middle grade school story", queryFamily: index === 1 ? "realistic" : index === 2 ? "friendship" : "school", routingReason: "middle_grades_contemporary_school" },
+    })),
+  ];
+  const middleGradesContemporarySelectionResult = selectRecommendations(middleGradesContemporarySelectionCandidates, middleGradesContemporarySelectionProfile, 5);
+  const contemporaryAlignedSelected = middleGradesContemporarySelectionResult.selected.filter((candidate) => /\b(realistic|school|friendship|classroom|family|contemporary)\b/i.test(String(candidate.diagnostics?.queryText || ""))).length;
+  const contemporaryAdventureSelected = middleGradesContemporarySelectionResult.selected.filter((candidate) => /\b(adventure|fantasy|magic|quest)\b/i.test(String(candidate.diagnostics?.queryText || "")) && /middle_grades_contemporary_school/i.test(String(candidate.diagnostics?.routingReason || ""))).length;
+  assertEqual(contemporaryAlignedSelected, 4, "middle grades contemporary selection should exhaust aligned school/friendship/realistic candidates before adventure fallback");
+  assertEqual(contemporaryAdventureSelected, 1, "middle grades contemporary selection should leave adventure fallback only for true shortage slots");
+  assertEqual(Boolean(middleGradesContemporarySelectionResult.rejectedReasons.middle_grades_contemporary_school_alignment_accepted), true, "middle grades contemporary selection should emit alignment diagnostics");
+  console.log(JSON.stringify({ name: "middle grades contemporary selection prefers aligned school candidates", pass: true, selected: middleGradesContemporarySelectionResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesContemporarySelectionResult.rejectedReasons }));
+
   const middleGradesFantasyHumorBalanceProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: middleGradesCases[3].signals,

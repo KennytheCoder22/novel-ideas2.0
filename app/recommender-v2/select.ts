@@ -208,6 +208,56 @@ function applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates: ScoredCan
   }
 }
 
+function isMiddleGradesContemporarySchoolCandidate(candidate: ScoredCandidate): boolean {
+  return candidate.source === "openLibrary" && /middle_grades_contemporary_school/i.test(String(candidate.diagnostics?.routingReason || ""));
+}
+
+function isMiddleGradesContemporarySchoolAlignedCandidate(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesContemporarySchoolCandidate(candidate)) return false;
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  return /\b(realistic|school|friendship|classroom|family|family life|contemporary)\b/.test(text);
+}
+
+function isMiddleGradesContemporarySchoolAdventureFallback(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesContemporarySchoolCandidate(candidate)) return false;
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  return /\b(adventure|fantasy|magic|magical|quest)\b/.test(text) && !isMiddleGradesContemporarySchoolAlignedCandidate(candidate);
+}
+
+function applyMiddleGradesContemporarySchoolAlignment(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens") return;
+  const routeCandidates = rankedCandidates.filter(isMiddleGradesContemporarySchoolCandidate);
+  if (!routeCandidates.some(isMiddleGradesContemporarySchoolAdventureFallback)) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
+  const safeAlignedPool = routeCandidates.filter((candidate) => {
+    if (!isMiddleGradesContemporarySchoolAlignedCandidate(candidate)) return false;
+    if (selected.includes(candidate)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    return true;
+  });
+  if (!safeAlignedPool.length) return;
+  rejectedReasons.middle_grades_contemporary_school_alignment_candidates = safeAlignedPool.length;
+  for (const candidate of safeAlignedPool) {
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => isMiddleGradesContemporarySchoolAdventureFallback(row))
+      .sort((a, b) => a.row.score - b.row.score)[0]?.index;
+    if (replacementIndex === undefined) break;
+    const titleKey = normalized(candidate.title);
+    const rootKey = seriesKey(candidate);
+    if (selectedTitles().has(titleKey) || (rootKey && selectedRoots().has(rootKey))) continue;
+    selected[replacementIndex].rejectedReasons.push("middle_grades_contemporary_school_alignment_replaced_by_aligned");
+    candidate.rejectedReasons.push("middle_grades_contemporary_school_alignment_accepted");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_contemporary_school_alignment_replacements = Number(rejectedReasons.middle_grades_contemporary_school_alignment_replacements || 0) + 1;
+    rejectedReasons.middle_grades_contemporary_school_alignment_accepted = Number(rejectedReasons.middle_grades_contemporary_school_alignment_accepted || 0) + 1;
+  }
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
@@ -437,6 +487,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
+  applyMiddleGradesContemporarySchoolAlignment(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
   applyAdultSpeculativeFamilyBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
 
