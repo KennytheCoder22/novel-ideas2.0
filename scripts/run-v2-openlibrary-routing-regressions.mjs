@@ -193,10 +193,37 @@ async function main() {
       name: "middle grades fantasy adventure candidate baseline",
       signals: [
         { action: "like", title: "Magic Quest", genres: ["fantasy"], themes: ["magic", "adventure"], format: "book" },
-        { action: "like", title: "School Adventure", genres: ["adventure"], themes: ["school", "friendship"], format: "book" },
+        { action: "like", title: "Quest Trail", genres: ["adventure"], themes: ["quest", "survival"], format: "book" },
       ],
       expectedReason: "middle_grades_fantasy_adventure",
       expectedQueries: ["middle grade fantasy", "fantasy adventure", "magic school", "middle grade adventure"],
+    },
+    {
+      name: "middle grades fantasy school-family avoids generic fantasy slate",
+      signals: [
+        { action: "like", title: "Magic Homeroom", genres: ["fantasy"], themes: ["magic", "school"], format: "book" },
+        { action: "like", title: "Family Spell Project", genres: ["adventure"], themes: ["family", "friendship"], format: "book" },
+      ],
+      expectedReason: "middle_grades_fantasy_school_family",
+      expectedQueries: ["magic school", "middle grade school story", "middle grade friendship", "middle grade adventure"],
+    },
+    {
+      name: "middle grades fantasy mystery avoids generic fantasy slate",
+      signals: [
+        { action: "like", title: "Spell Clue", genres: ["fantasy"], themes: ["magic", "mystery"], format: "book" },
+        { action: "like", title: "Puzzle Portal", genres: ["mystery"], themes: ["school", "investigation"], format: "book" },
+      ],
+      expectedReason: "middle_grades_fantasy_mystery",
+      expectedQueries: ["middle grade fantasy mystery", "middle grade mystery", "school mystery", "middle grade adventure"],
+    },
+    {
+      name: "middle grades fantasy humor avoids generic fantasy slate",
+      signals: [
+        { action: "like", title: "Silly Spell", genres: ["fantasy"], themes: ["magic", "humor"], format: "book" },
+        { action: "like", title: "Dragon Jokes", genres: ["comedy"], themes: ["funny", "friendship"], format: "book" },
+      ],
+      expectedReason: "middle_grades_fantasy_humor",
+      expectedQueries: ["middle grade humor", "funny fantasy", "children's funny books", "middle grade adventure"],
     },
     {
       name: "middle grades mystery adventure candidate baseline",
@@ -366,7 +393,7 @@ async function main() {
   try {
     const profile = buildTasteProfile({
       ageBand: "preteens",
-      signals: middleGradesCases[2].signals,
+      signals: middleGradesCases[5].signals,
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, `middle grades age-shape filter should preserve age-shaped docs raw=${result.rawItems.length} drops=${JSON.stringify(result.diagnostics.dropReasons)}`);
@@ -448,7 +475,7 @@ async function main() {
   try {
     const profile = buildTasteProfile({
       ageBand: "preteens",
-      signals: middleGradesCases[2].signals,
+      signals: middleGradesCases[5].signals,
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length, 5, "middle grades recovery should reach five age-shaped candidates");
