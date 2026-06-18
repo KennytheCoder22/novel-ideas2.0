@@ -171,14 +171,28 @@ function middleGradesRouteKey(candidate: ScoredCandidate): string {
 
 function isMiddleGradesHumorDefaultQueryFamily(candidate: ScoredCandidate): boolean {
   if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
-  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
-  return /\b(humor|humorous|funny)\b/.test(text);
+  const text = normalized([
+    candidate.diagnostics?.queryText,
+    candidate.diagnostics?.queryFamily,
+    candidate.title,
+    candidate.subtitle,
+    ...(candidate.genres || []),
+    ...(candidate.themes || []),
+  ].filter(Boolean).join(" "));
+  return /\b(humor|humorous|funny|comedy|comic)\b/.test(text);
 }
 
 function isMiddleGradesHumorCapAlternative(candidate: ScoredCandidate): boolean {
   if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
   if (isMiddleGradesHumorDefaultQueryFamily(candidate)) return false;
-  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  const text = normalized([
+    candidate.diagnostics?.queryText,
+    candidate.diagnostics?.queryFamily,
+    candidate.title,
+    candidate.subtitle,
+    ...(candidate.genres || []),
+    ...(candidate.themes || []),
+  ].filter(Boolean).join(" "));
   return /\b(adventure|fantasy adventure|friendship|school)\b/.test(text);
 }
 

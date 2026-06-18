@@ -13,6 +13,7 @@ const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 3_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 600;
 const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 3_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS = 1_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -1824,7 +1825,22 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           middleGradesDelayedRetrySkippedReason = "insufficient_budget";
           dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget = Number(dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget || 0) + 1;
         } else {
-          const delayedRetryTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, delayedRetryRemainingBudgetMs);
+          const attemptedAfterDelayedRetry = new Set([...attemptedMainQueries, delayedRetryQuery.toLowerCase()]);
+          const finalSafeFallbackAfterDelayedRetry = middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedAfterDelayedRetry);
+          const reserveFinalSafeRecoveryBudgetMs = finalSafeFallbackAfterDelayedRetry && !attemptedAfterDelayedRetry.has(finalSafeFallbackAfterDelayedRetry.toLowerCase())
+            ? Math.min(
+              MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS,
+              Math.max(0, delayedRetryRemainingBudgetMs - MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS),
+            )
+            : 0;
+          if (reserveFinalSafeRecoveryBudgetMs > 0) {
+            dropReasons.middle_grades_final_safe_recovery_budget_reserved = Number(dropReasons.middle_grades_final_safe_recovery_budget_reserved || 0) + 1;
+          }
+          const delayedRetryBudgetAfterReserveMs = Math.max(
+            MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS,
+            delayedRetryRemainingBudgetMs - reserveFinalSafeRecoveryBudgetMs,
+          );
+          const delayedRetryTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, delayedRetryBudgetAfterReserveMs);
           middleGradesDelayedRetryAttempted = true;
           middleGradesDelayedRetryTimeoutMs = delayedRetryTimeoutMs;
           const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, delayedRetryTimeoutMs, 3, delayedRetryTimeoutMs);
@@ -1962,7 +1978,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const finalSafeQuery = middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedRealQueries);
       const elapsedBeforeFinalSafeRecoveryMs = Date.now() - Date.parse(startedAt);
       const remainingFinalSafeRecoveryBudgetMs = plan.timeoutMs - elapsedBeforeFinalSafeRecoveryMs;
-      if (allRealFetchesTimedOut && finalSafeQuery && !attemptedRealQueries.has(finalSafeQuery.toLowerCase()) && remainingFinalSafeRecoveryBudgetMs >= MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS) {
+      if (allRealFetchesTimedOut && finalSafeQuery && !attemptedRealQueries.has(finalSafeQuery.toLowerCase()) && remainingFinalSafeRecoveryBudgetMs >= MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS) {
         const finalSafeTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingFinalSafeRecoveryBudgetMs);
         const finalSafePlan: OpenLibraryQueryPlan = {
           query: finalSafeQuery,
