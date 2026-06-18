@@ -215,6 +215,55 @@ function applyMiddleGradesHumorDefaultCap(rankedCandidates: ScoredCandidate[], s
   }
 }
 
+function isMiddleGradesContemporarySchoolDefaultCandidate(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesContemporarySchoolCandidate(candidate)) return false;
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  if (/\b(humor|humorous|funny)\b/.test(text)) return true;
+  return /\bschool\b/.test(text) && !/\b(realistic|friendship|family|family life|classroom|contemporary)\b/.test(text);
+}
+
+function isMiddleGradesContemporarySchoolSaferAlignedCandidate(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesContemporarySchoolCandidate(candidate)) return false;
+  if (isMiddleGradesContemporarySchoolDefaultCandidate(candidate)) return false;
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  return /\b(realistic|school|friendship|classroom|family|family life|contemporary)\b/.test(text);
+}
+
+function applyMiddleGradesContemporarySchoolDefaultCap(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens") return;
+  const selectedDefaults = selected.filter(isMiddleGradesContemporarySchoolDefaultCandidate);
+  if (selectedDefaults.length <= 3) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
+  const safeAlignedPool = rankedCandidates.filter((candidate) => {
+    if (!isMiddleGradesContemporarySchoolSaferAlignedCandidate(candidate)) return false;
+    if (selected.includes(candidate)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    return true;
+  });
+  if (!safeAlignedPool.length) return;
+  rejectedReasons.middle_grades_contemporary_school_default_cap_candidates = safeAlignedPool.length;
+  for (const candidate of safeAlignedPool) {
+    if (selected.filter(isMiddleGradesContemporarySchoolDefaultCandidate).length <= 3) break;
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => isMiddleGradesContemporarySchoolDefaultCandidate(row))
+      .sort((a, b) => a.row.score - b.row.score)[0]?.index;
+    if (replacementIndex === undefined) break;
+    const titleKey = normalized(candidate.title);
+    const rootKey = seriesKey(candidate);
+    if (selectedTitles().has(titleKey) || (rootKey && selectedRoots().has(rootKey))) continue;
+    selected[replacementIndex].rejectedReasons.push("middle_grades_contemporary_school_default_replaced_by_aligned");
+    candidate.rejectedReasons.push("middle_grades_contemporary_school_default_cap_accepted");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_contemporary_school_default_cap_replacements = Number(rejectedReasons.middle_grades_contemporary_school_default_cap_replacements || 0) + 1;
+    rejectedReasons.middle_grades_contemporary_school_default_cap_accepted = Number(rejectedReasons.middle_grades_contemporary_school_default_cap_accepted || 0) + 1;
+  }
+}
+
 function applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
   if (profile.ageBand !== "preteens") return;
   const routeCandidates = rankedCandidates.filter(isMiddleGradesFantasyHumorCandidate);
@@ -540,9 +589,10 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
-  applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesContemporarySchoolAlignment(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
+  applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesContemporarySchoolDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
   applyAdultSpeculativeFamilyBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   for (const row of deferred) {

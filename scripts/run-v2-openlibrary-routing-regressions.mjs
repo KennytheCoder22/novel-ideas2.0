@@ -805,6 +805,30 @@ async function main() {
   assertEqual(Boolean(middleGradesContemporarySelectionResult.rejectedReasons.middle_grades_contemporary_school_alignment_accepted), true, "middle grades contemporary selection should emit alignment diagnostics");
   console.log(JSON.stringify({ name: "middle grades contemporary selection prefers aligned school candidates", pass: true, selected: middleGradesContemporarySelectionResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesContemporarySelectionResult.rejectedReasons }));
 
+  const middleGradesContemporaryDefaultCapCandidates = [
+    ...["School Gag One", "School Gag Two", "School Gag Three", "School Gag Four", "School Gag Five"].map((title, index) => fakeScoredCandidate({
+      id: `middle-contemporary-default-${index}`,
+      title,
+      creators: [`School Default Author ${index}`],
+      score: 10 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: "middle grade school story", queryFamily: "school", routingReason: "middle_grades_contemporary_school" },
+    })),
+    ...["Family Class Project", "Friendship Class Team"].map((title, index) => fakeScoredCandidate({
+      id: `middle-contemporary-safer-${index}`,
+      title,
+      creators: [`School Safer Author ${index}`],
+      score: 8 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: index === 0 ? "middle grade family story" : "middle grade friendship", queryFamily: index === 0 ? "family" : "friendship", routingReason: "middle_grades_contemporary_school" },
+    })),
+  ];
+  const middleGradesContemporaryDefaultCapResult = selectRecommendations(middleGradesContemporaryDefaultCapCandidates, middleGradesContemporarySelectionProfile, 5);
+  const contemporaryDefaultSelected = middleGradesContemporaryDefaultCapResult.selected.filter((candidate) => /middle grade school story/i.test(String(candidate.diagnostics?.queryText || ""))).length;
+  assertEqual(contemporaryDefaultSelected <= 3, true, "middle grades contemporary selection should cap generic school/default candidates when safer aligned candidates exist");
+  assertEqual(Boolean(middleGradesContemporaryDefaultCapResult.rejectedReasons.middle_grades_contemporary_school_default_cap_accepted), true, "middle grades contemporary default cap should emit replacement diagnostics");
+  console.log(JSON.stringify({ name: "middle grades contemporary selection caps generic school defaults", pass: true, selected: middleGradesContemporaryDefaultCapResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesContemporaryDefaultCapResult.rejectedReasons }));
+
   const middleGradesFantasyHumorBalanceProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: middleGradesCases[3].signals,
