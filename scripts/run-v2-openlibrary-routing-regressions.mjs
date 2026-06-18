@@ -978,10 +978,10 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades cascade should preserve budget and recover after initial proxy timeouts");
-    assertDeepEqual(middleGradesCascadeFetchCalls, ["middle grade fantasy", "fantasy adventure", "magic school"], "middle grades cascade should rotate through planned lane queries before recovery");
+    assertDeepEqual(middleGradesCascadeFetchCalls, ["middle grade fantasy", "fantasy adventure", "middle grade fantasy adventure"], "middle grades cascade should jump to route-safe stable fallback after repeated timeouts");
     assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs, 1600, "middle grades first proxy fetch should use reduced resilience window");
     assertEqual(result.diagnostics.fetches?.[1]?.clientTimeoutMs < 1600, true, "middle grades cascade should cap later query timeouts to preserve retry/recovery budget");
-    console.log(JSON.stringify({ name: "middle grades cascade rotates through planned queries under timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesCascadeFetchCalls, secondTimeoutMs: result.diagnostics.fetches?.[1]?.clientTimeoutMs }));
+    console.log(JSON.stringify({ name: "middle grades cascade jumps to stable fallback under repeated timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesCascadeFetchCalls, secondTimeoutMs: result.diagnostics.fetches?.[1]?.clientTimeoutMs }));
   } finally {
     Date.now = originalMiddleGradesCascadeDateNow;
     if (previousMiddleGradesCascadeProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;

@@ -1195,19 +1195,18 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
   const ageAnchoredUnderfillQueries = ["middle grade fiction", "middle grade adventure", "middle grade fantasy", "children's fantasy adventure", "children's school stories", "middle grade humor"];
   if (/humor|funny/i.test(routingReason)) {
     const nonAdventurePlannedQueries = plannedQueries.slice(1).filter((query) => !/\badventure\b/i.test(query));
+    const fantasyAlignedQueries = /fantasy/i.test(routingReason) ? ["middle grade fantasy adventure"] : [];
     return uniqueStrings([
       ...nonAdventurePlannedQueries,
       "middle grade school story",
-      "middle grade fantasy adventure",
       "middle grade friendship",
+      ...fantasyAlignedQueries,
       "middle grade adventure",
       "middle grade mystery",
       "middle grade fiction",
       "middle grade fantasy",
       "children's school stories",
       "children's fantasy adventure",
-      "funny children's books",
-      "children's funny books",
     ], 12);
   }
   if (/contemporary|school|friendship|realistic/i.test(routingReason)) {
@@ -1240,7 +1239,10 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
     .find((query) => !attemptedQueries.has(query.toLowerCase()));
-  if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade fantasy adventure", "middle grade friendship", "middle grade adventure", "middle grade mystery"]) || "middle grade school story";
+  if (/humor|funny/i.test(routingReason)) {
+    const fantasyAlignedQueries = /fantasy/i.test(routingReason) ? ["middle grade fantasy adventure"] : [];
+    return firstUnattempted(["middle grade school story", "middle grade friendship", ...fantasyAlignedQueries, "middle grade adventure", "middle grade mystery"]) || "middle grade school story";
+  }
   if (/fantasy_mystery|mystery/i.test(routingReason)) return firstUnattempted(["middle grade mystery", "school mystery", "mystery adventure", "middle grade fantasy mystery"]) || "middle grade mystery";
   if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "middle grade family story", "middle grade friendship books", "middle grade adventure", "children's funny books"]) || "middle grade realistic fiction";
   if (/fantasy/i.test(routingReason)) return firstUnattempted(["middle grade fantasy adventure", "middle grade fantasy", "children's fantasy adventure", "middle grade adventure"]) || "middle grade fantasy adventure";
@@ -1910,8 +1912,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
     if (ageProfile.key === "middleGrades" && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
       const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
-      const recoveryQueries = middleGradesRecoveryQueries(queryPlans)
+      const repeatedTimeoutsWithoutRows = rawItems.length === 0 && fetches.filter((fetch) => !fetch.diagnosticOnly && fetch.timedOut).length >= 2;
+      const recoveryQueries = repeatedTimeoutsWithoutRows ? [] : middleGradesRecoveryQueries(queryPlans)
         .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
+      if (repeatedTimeoutsWithoutRows) {
+        dropReasons.middle_grades_underfill_recovery_skipped_for_stable_final_fallback = Number(dropReasons.middle_grades_underfill_recovery_skipped_for_stable_final_fallback || 0) + 1;
+      }
       const recoveryTarget = Math.min(ageProfile.docLimit, 5);
       for (const recoveryQuery of recoveryQueries) {
         const elapsedBeforeRecoveryMs = Date.now() - Date.parse(startedAt);
