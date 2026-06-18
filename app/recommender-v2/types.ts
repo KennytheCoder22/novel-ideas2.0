@@ -144,6 +144,11 @@ export interface SourceDiagnosticV2 {
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];
   seriesSuppressedTitles?: string[];
+  middleGradesAgeShapeDiagnostics?: Record<string, unknown>;
+  middleGradesDelayedRetryAttempted?: boolean;
+  middleGradesDelayedRetrySkippedReason?: string;
+  middleGradesDelayedRetryTimeoutMs?: number;
+  middleGradesTimeoutBudgetRemainingBeforeRetry?: number;
 }
 
 export interface SourceResult {
