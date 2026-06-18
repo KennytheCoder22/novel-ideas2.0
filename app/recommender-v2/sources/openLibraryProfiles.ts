@@ -38,6 +38,10 @@ const TEEN_ARTIFACT_REASON_LABELS = [
   "too_young_for_teen_artifact",
 ];
 
+const MIDDLE_GRADES_ARTIFACT_REASON_LABELS = [
+  "middle_grades_age_shape_mismatch",
+];
+
 const BASE_OPEN_LIBRARY_PROFILE = {
   queryLimit: 4,
   docLimit: 10,
@@ -75,7 +79,7 @@ export const OPEN_LIBRARY_AGE_PROFILES: Record<AgeBandV2, OpenLibraryAgeProfile>
     ageBand: "preteens",
     behaviorLabel: "middle_grades_openlibrary_profile_pending",
     diagnosticProbeQuery: "middle grade fantasy",
-    ageSpecificArtifactReasonLabels: [],
+    ageSpecificArtifactReasonLabels: MIDDLE_GRADES_ARTIFACT_REASON_LABELS,
   },
   kids: {
     ...BASE_OPEN_LIBRARY_PROFILE,
