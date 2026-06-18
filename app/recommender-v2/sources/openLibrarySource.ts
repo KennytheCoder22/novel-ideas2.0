@@ -1190,7 +1190,7 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
   const plannedQueries = queryPlans.map((plan) => plan.query);
   const ageAnchoredUnderfillQueries = ["middle grade fiction", "middle grade adventure", "middle grade fantasy", "children's fantasy adventure", "children's school stories", "middle grade humor"];
   const routeFallbacks = (() => {
-    if (/humor|funny/i.test(routingReason)) return ["funny children's books", "middle grade school story", "middle grade adventure", "children's funny books", "children's school stories", "middle grade fiction", "middle grade fantasy", "children's fantasy adventure"];
+    if (/humor|funny/i.test(routingReason)) return ["middle grade school story", "middle grade adventure", "middle grade friendship", "children's funny books", "funny children's books", "children's school stories", "middle grade fiction", "middle grade fantasy", "children's fantasy adventure"];
     if (/scifi|science|dystopian/i.test(routingReason)) return ["middle grade adventure", "middle grade science fiction", "children's fantasy adventure", "middle grade fantasy", ...ageAnchoredUnderfillQueries];
     if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "middle grade fantasy", "middle grade adventure", "middle grade fiction", "children's school stories", "middle grade humor"];
     if (/contemporary|school|friendship/i.test(routingReason)) return ["children's school stories", "middle grade fiction", "middle grade adventure", "middle grade humor", "children's fantasy adventure"];
@@ -1201,7 +1201,7 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
 
 function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan[]): string {
   const routingReason = String(queryPlans[0]?.routingReason || "");
-  if (/humor|funny/i.test(routingReason)) return "funny children's books";
+  if (/humor|funny/i.test(routingReason)) return "middle grade school story";
   if (/fantasy/i.test(routingReason)) return "middle grade fantasy";
   if (/scifi|science|dystopian|mystery|historical|adventure/i.test(routingReason)) return "middle grade adventure";
   return queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query))?.query
@@ -2165,7 +2165,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               ? "contemporary fiction"
               : ageProfile.diagnosticProbeQuery)
         : ageProfile.key === "middleGrades"
-          ? queries.some((query) => /\b(science fiction|sci-fi|space|dystopian|dystopia)\b/i.test(query)) ? "middle grade adventure" : queries.some((query) => /\b(humor|funny|school|friendship|contemporary|realistic)\b/i.test(query)) ? "middle grade humor" : queries.some((query) => /\b(mystery|detective|suspense)\b/i.test(query)) ? "middle grade adventure" : "middle grade adventure"
+          ? queries.some((query) => /\b(science fiction|sci-fi|space|dystopian|dystopia)\b/i.test(query)) ? "middle grade adventure" : queries.some((query) => /\b(humor|funny|school|friendship|contemporary|realistic)\b/i.test(query)) ? "middle grade school story" : queries.some((query) => /\b(mystery|detective|suspense)\b/i.test(query)) ? "middle grade adventure" : "middle grade adventure"
           : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
       const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
       const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1);
