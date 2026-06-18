@@ -1193,18 +1193,22 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
     if (/humor|funny/i.test(routingReason)) return ["middle grade school story", "middle grade adventure", "middle grade friendship", "children's funny books", "funny children's books", "children's school stories", "middle grade fiction", "middle grade fantasy", "children's fantasy adventure"];
     if (/scifi|science|dystopian/i.test(routingReason)) return ["middle grade adventure", "middle grade science fiction", "children's fantasy adventure", "middle grade fantasy", ...ageAnchoredUnderfillQueries];
     if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "middle grade fantasy", "middle grade adventure", "middle grade fiction", "children's school stories", "middle grade humor"];
-    if (/contemporary|school|friendship/i.test(routingReason)) return ["children's school stories", "middle grade fiction", "middle grade adventure", "middle grade humor", "children's fantasy adventure"];
+    if (/contemporary|school|friendship|realistic/i.test(routingReason)) return ["middle grade school story", "middle grade friendship", "middle grade adventure", "children's funny books", "children's school stories", "middle grade fiction", "middle grade humor", "children's fantasy adventure"];
     return [...ageAnchoredUnderfillQueries, "children's funny books"];
   })();
   return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 12);
 }
 
-function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan[]): string {
+function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string {
   const routingReason = String(queryPlans[0]?.routingReason || "");
-  if (/humor|funny/i.test(routingReason)) return "middle grade school story";
+  const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
+    .find((query) => !attemptedQueries.has(query.toLowerCase()));
+  if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade adventure", "middle grade friendship", "children's funny books", "funny children's books"]) || "middle grade school story";
+  if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade adventure", "children's funny books", "middle grade realistic fiction"]) || "middle grade school story";
   if (/fantasy/i.test(routingReason)) return "middle grade fantasy";
   if (/scifi|science|dystopian|mystery|historical|adventure/i.test(routingReason)) return "middle grade adventure";
-  return queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query))?.query
+  return queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query) && !attemptedQueries.has(plan.query.toLowerCase()))?.query
+    || queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query))?.query
     || "middle grade adventure";
 }
 
@@ -1748,7 +1752,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     if (ageProfile.key === "middleGrades" && rawItems.length === 0 && !context.signal?.aborted) {
       const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
       const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
-      const delayedRetryQuery = middleGradesZeroCandidateFallbackQuery(queryPlans);
+      const attemptedMainQueries = new Set(mainFetches.map((fetch) => String(fetch.query || "").toLowerCase()));
+      const delayedRetryQuery = middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedMainQueries);
       if (allAttemptedLaneQueriesTimedOut && delayedRetryQuery) {
         const delayedRetryPlan: OpenLibraryQueryPlan = {
           query: delayedRetryQuery,

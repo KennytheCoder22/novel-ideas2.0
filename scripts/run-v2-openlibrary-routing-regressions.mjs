@@ -827,6 +827,48 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousMiddleGradesContemporaryRetryProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalMiddleGradesContemporaryRetryDateNow = Date.now;
+  const middleGradesContemporaryRetryFetchCalls = [];
+  let fakeMiddleGradesContemporaryRetryNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalMiddleGradesContemporaryRetryDateNow() + fakeMiddleGradesContemporaryRetryNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesContemporaryRetryFetchCalls.push(query);
+    if (middleGradesContemporaryRetryFetchCalls.length === 1) {
+      fakeMiddleGradesContemporaryRetryNowOffsetMs = 3_500;
+      throw new Error("timeout");
+    }
+    if (middleGradesContemporaryRetryFetchCalls.length === 2) {
+      fakeMiddleGradesContemporaryRetryNowOffsetMs = 4_200;
+      throw new Error("timeout");
+    }
+    fakeMiddleGradesContemporaryRetryNowOffsetMs = 5_100;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[5].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary delayed retry should recover rows after timed-out realistic/school lane attempts");
+    assertDeepEqual(middleGradesContemporaryRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship"], "middle grades contemporary retry should rotate through distinct age-safe queries before repeating realistic fiction");
+    assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades contemporary retry diagnostics should mark attempted");
+    assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 3500, true, "middle grades contemporary retry should run with a real timeout budget");
+    console.log(JSON.stringify({ name: "middle grades contemporary retry rotates before repeating realistic fiction", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
+  } finally {
+    Date.now = originalMiddleGradesContemporaryRetryDateNow;
+    if (previousMiddleGradesContemporaryRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesContemporaryRetryProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const previousMiddleGradesHumorRetryProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalMiddleGradesHumorRetryDateNow = Date.now;
   const middleGradesHumorRetryFetchCalls = [];
