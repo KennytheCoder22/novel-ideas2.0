@@ -164,28 +164,40 @@ function isMiddleGradesFantasyHumorDefaultCandidate(candidate: ScoredCandidate):
   return /\b(humor|funny)\b/.test(text);
 }
 
-function isMiddleGradesHumorRouteCandidate(candidate: ScoredCandidate): boolean {
-  return candidate.source === "openLibrary" && /middle_grades_(?:fantasy_)?humor/i.test(String(candidate.diagnostics?.routingReason || ""));
+function middleGradesRouteKey(candidate: ScoredCandidate): string {
+  return String(candidate.diagnostics?.routingReason || "")
+    .replace(/_(?:age_anchored_recovery|delayed_final_retry|final_safe_recovery|locked_underfill_recovery)$/i, "");
 }
 
 function isMiddleGradesHumorDefaultQueryFamily(candidate: ScoredCandidate): boolean {
-  if (!isMiddleGradesHumorRouteCandidate(candidate)) return false;
+  if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
   const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
   return /\b(humor|humorous|funny)\b/.test(text);
+}
+
+function isMiddleGradesHumorCapAlternative(candidate: ScoredCandidate): boolean {
+  if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
+  if (isMiddleGradesHumorDefaultQueryFamily(candidate)) return false;
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  return /\b(adventure|fantasy adventure|friendship|school)\b/.test(text);
 }
 
 function applyMiddleGradesHumorDefaultCap(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   if (profile.ageBand !== "preteens") return;
   const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
   const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
-  const routePatterns = [/middle_grades_fantasy_humor/i, /middle_grades_humor/i];
-  for (const routePattern of routePatterns) {
-    const routeCandidates = rankedCandidates.filter((candidate) => candidate.source === "openLibrary" && routePattern.test(String(candidate.diagnostics?.routingReason || "")));
+  const routeKeys = Array.from(new Set(rankedCandidates
+    .filter((candidate) => candidate.source === "openLibrary" && /middle_grades_/i.test(String(candidate.diagnostics?.routingReason || "")))
+    .map(middleGradesRouteKey)
+    .filter((key) => !/mystery|contemporary_school/i.test(key))
+    .filter((key) => /humor|adventure/i.test(key)))).slice(0, 12);
+  for (const routeKey of routeKeys) {
+    const routeCandidates = rankedCandidates.filter((candidate) => middleGradesRouteKey(candidate) === routeKey);
     if (!routeCandidates.length) continue;
-    const selectedDefaults = selected.filter((candidate) => routePattern.test(String(candidate.diagnostics?.routingReason || "")) && isMiddleGradesHumorDefaultQueryFamily(candidate));
+    const selectedDefaults = selected.filter((candidate) => middleGradesRouteKey(candidate) === routeKey && isMiddleGradesHumorDefaultQueryFamily(candidate));
     if (selectedDefaults.length <= 3) continue;
     const safeAlternatives = routeCandidates.filter((candidate) => {
-      if (isMiddleGradesHumorDefaultQueryFamily(candidate)) return false;
+      if (!isMiddleGradesHumorCapAlternative(candidate)) return false;
       if (selected.includes(candidate)) return false;
       if (rejectReason(candidate, profile)) return false;
       if (selectedTitles().has(normalized(candidate.title))) return false;
@@ -193,14 +205,14 @@ function applyMiddleGradesHumorDefaultCap(rankedCandidates: ScoredCandidate[], s
       if (rootKey && selectedRoots().has(rootKey)) return false;
       return true;
     });
-    if (!safeAlternatives.length) continue;
+    if (safeAlternatives.length < 2) continue;
     rejectedReasons.middle_grades_humor_default_query_family_candidates = safeAlternatives.length;
     for (const candidate of safeAlternatives) {
-      const currentDefaults = selected.filter((row) => routePattern.test(String(row.diagnostics?.routingReason || "")) && isMiddleGradesHumorDefaultQueryFamily(row));
+      const currentDefaults = selected.filter((row) => middleGradesRouteKey(row) === routeKey && isMiddleGradesHumorDefaultQueryFamily(row));
       if (currentDefaults.length <= 3) break;
       const replacementIndex = selected
         .map((row, index) => ({ row, index }))
-        .filter(({ row }) => routePattern.test(String(row.diagnostics?.routingReason || "")) && isMiddleGradesHumorDefaultQueryFamily(row))
+        .filter(({ row }) => middleGradesRouteKey(row) === routeKey && isMiddleGradesHumorDefaultQueryFamily(row))
         .sort((a, b) => a.row.score - b.row.score)[0]?.index;
       if (replacementIndex === undefined) break;
       const titleKey = normalized(candidate.title);
