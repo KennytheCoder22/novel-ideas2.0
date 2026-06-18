@@ -1027,7 +1027,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary deep retry should recover before adventure-only fallback");
-    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "children's school stories"], "middle grades contemporary retry should preserve school/realistic intent before adventure-only recovery");
+    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "children's funny books"], "middle grades contemporary retry should use an unattempted age-safe fallback before adventure-only recovery");
     console.log(JSON.stringify({ name: "middle grades contemporary retry preserves realistic before adventure fallback", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryDeepRetryFetchCalls }));
   } finally {
     Date.now = originalMiddleGradesContemporaryDeepRetryDateNow;

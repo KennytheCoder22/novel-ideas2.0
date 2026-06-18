@@ -1205,11 +1205,24 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
       "children's fantasy adventure",
     ], 12);
   }
+  if (/contemporary|school|friendship|realistic/i.test(routingReason)) {
+    const nonAdventurePlannedQueries = plannedQueries.slice(1).filter((query) => !/\badventure\b/i.test(query));
+    return uniqueStrings([
+      ...nonAdventurePlannedQueries,
+      "children's funny books",
+      "middle grade adventure",
+      "middle grade family story",
+      "middle grade friendship books",
+      "children's school stories",
+      "middle grade fiction",
+      "middle grade humor",
+      "children's fantasy adventure",
+    ], 12);
+  }
   const routeFallbacks = (() => {
     if (/scifi|science|dystopian/i.test(routingReason)) return ["middle grade adventure", "middle grade science fiction", "children's fantasy adventure", "middle grade fantasy", ...ageAnchoredUnderfillQueries];
     if (/fantasy_mystery|mystery/i.test(routingReason)) return ["middle grade fantasy mystery", "middle grade mystery", "school mystery", "mystery adventure", "middle grade adventure", "middle grade fantasy"];
     if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "middle grade fantasy", "middle grade adventure", "middle grade fiction", "children's school stories", "middle grade humor"];
-    if (/contemporary|school|friendship|realistic/i.test(routingReason)) return ["middle grade school story", "middle grade friendship", "middle grade realistic fiction", "children's school stories", "middle grade adventure", "children's funny books", "middle grade fiction", "middle grade humor", "children's fantasy adventure"];
     return [...ageAnchoredUnderfillQueries, "children's funny books"];
   })();
   return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 12);
@@ -1221,7 +1234,7 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
     .find((query) => !attemptedQueries.has(query.toLowerCase()));
   if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade fantasy adventure", "middle grade friendship", "funny children's books", "children's funny books", "middle grade school story", "middle grade adventure"]) || "middle grade adventure";
   if (/fantasy_mystery|mystery/i.test(routingReason)) return firstUnattempted(["middle grade fantasy mystery", "middle grade mystery", "school mystery", "mystery adventure", "middle grade adventure", "middle grade fantasy"]) || "middle grade mystery";
-  if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade realistic fiction", "children's school stories", "middle grade adventure", "children's funny books"]) || "middle grade school story";
+  if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade realistic fiction", "children's funny books", "middle grade adventure", "middle grade family story", "middle grade friendship books", "children's school stories"]) || "middle grade school story";
   if (/fantasy/i.test(routingReason)) return "middle grade fantasy";
   if (/scifi|science|dystopian|mystery|historical|adventure/i.test(routingReason)) return "middle grade adventure";
   return queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query) && !attemptedQueries.has(plan.query.toLowerCase()))?.query
@@ -2203,7 +2216,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               ? "contemporary fiction"
               : ageProfile.diagnosticProbeQuery)
         : ageProfile.key === "middleGrades"
-          ? queries.some((query) => /\b(science fiction|sci-fi|space|dystopian|dystopia)\b/i.test(query)) ? "middle grade adventure" : queries.some((query) => /\b(humor|funny)\b/i.test(query)) ? middleGradesZeroCandidateFallbackQuery(queryPlans, new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()))) : queries.some((query) => /\b(school|friendship|contemporary|realistic)\b/i.test(query)) ? "middle grade school story" : queries.some((query) => /\b(mystery|detective|suspense)\b/i.test(query)) ? "middle grade adventure" : "middle grade adventure"
+          ? queries.some((query) => /\b(science fiction|sci-fi|space|dystopian|dystopia)\b/i.test(query)) ? "middle grade adventure" : queries.some((query) => /\b(humor|funny|school|friendship|contemporary|realistic)\b/i.test(query)) ? middleGradesZeroCandidateFallbackQuery(queryPlans, new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()))) : queries.some((query) => /\b(mystery|detective|suspense)\b/i.test(query)) ? "middle grade adventure" : "middle grade adventure"
           : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
       const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
       const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1);
