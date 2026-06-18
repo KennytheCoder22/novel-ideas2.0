@@ -1212,6 +1212,18 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
     || "middle grade adventure";
 }
 
+function isMiddleGradesFantasyHumorRoute(queryPlans: OpenLibraryQueryPlan[]): boolean {
+  return /middle_grades_fantasy_humor/i.test(String(queryPlans[0]?.routingReason || ""));
+}
+
+function isMiddleGradesHumorDefaultQuery(query: string): boolean {
+  return /\b(humor|funny)\b/i.test(query);
+}
+
+function hasMiddleGradesFantasyHumorAlignedQuery(rawItems: any[]): boolean {
+  return rawItems.some((item) => /\b(adventure|fantasy adventure|friendship)\b/i.test(String(item?.queryText || "")));
+}
+
 function isTeenCompatibleOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return true;
   const firstPublishYear = Number(doc?.first_publish_year || 0);
@@ -1584,6 +1596,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
           dropReasons.series_duplicate = Number(dropReasons.series_duplicate || 0) + 1;
           seriesSuppressedTitles.push(title);
+          continue;
+        }
+        if (isMiddleGradesFantasyHumorRoute(queryPlans) && isMiddleGradesHumorDefaultQuery(query) && !hasMiddleGradesFantasyHumorAlignedQuery(rawItems) && rawItems.length >= Math.min(5, ageProfile.docLimit)) {
+          dropReasons.middle_grades_fantasy_humor_default_slate_soft_cap = Number(dropReasons.middle_grades_fantasy_humor_default_slate_soft_cap || 0) + 1;
           continue;
         }
         if (seriesKey) acceptedSeriesKeys.add(seriesKey);

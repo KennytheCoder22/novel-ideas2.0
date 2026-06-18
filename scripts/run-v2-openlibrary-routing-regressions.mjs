@@ -535,6 +535,30 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const middleGradesHumorContinuationFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesHumorContinuationFetchCalls.push(query);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [1, 2, 3, 4, 5, 6, 7, 8].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[3].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.some((item) => item.queryText === "middle grade adventure"), true, "middle grades fantasy humor should continue to an aligned adventure query after weak successful humor results");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_fantasy_humor_default_slate_soft_cap), true, "middle grades fantasy humor continuation should record default slate soft cap");
+    assertDeepEqual(middleGradesHumorContinuationFetchCalls, ["middle grade humor", "funny fantasy", "children's funny books", "middle grade adventure"], "middle grades fantasy humor should not stop on successful humor/funny-book queries before adventure");
+    console.log(JSON.stringify({ name: "middle grades fantasy humor continues after weak successful humor slate", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorContinuationFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const fetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
