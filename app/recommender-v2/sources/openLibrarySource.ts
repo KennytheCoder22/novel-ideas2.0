@@ -1173,14 +1173,15 @@ function teenUnderfillRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): strin
 function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string[] {
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const plannedQueries = queryPlans.map((plan) => plan.query);
+  const ageAnchoredUnderfillQueries = ["middle grade fiction", "middle grade adventure", "middle grade fantasy", "children's fantasy adventure", "children's school stories", "middle grade humor"];
   const routeFallbacks = (() => {
-    if (/scifi|science|dystopian/i.test(routingReason)) return ["middle grade adventure", "children's fantasy adventure", "middle grade fantasy"];
-    if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "middle grade fantasy", "middle grade adventure"];
-    if (/humor|funny/i.test(routingReason)) return ["children's funny books", "middle grade humor", "children's school stories"];
-    if (/contemporary|school|friendship/i.test(routingReason)) return ["children's school stories", "middle grade adventure", "middle grade humor"];
-    return ["middle grade adventure", "children's fantasy adventure", "middle grade fantasy", "children's school stories", "middle grade humor", "children's funny books"];
+    if (/scifi|science|dystopian/i.test(routingReason)) return ["middle grade adventure", "middle grade science fiction", "children's fantasy adventure", "middle grade fantasy", ...ageAnchoredUnderfillQueries];
+    if (/fantasy/i.test(routingReason)) return ["children's fantasy adventure", "middle grade fantasy", "middle grade adventure", "middle grade fiction", "children's school stories", "middle grade humor"];
+    if (/humor|funny/i.test(routingReason)) return ["children's funny books", "middle grade humor", "children's school stories", ...ageAnchoredUnderfillQueries];
+    if (/contemporary|school|friendship/i.test(routingReason)) return ["children's school stories", "middle grade fiction", "middle grade adventure", "middle grade humor", "children's fantasy adventure"];
+    return [...ageAnchoredUnderfillQueries, "children's funny books"];
   })();
-  return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 8);
+  return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 12);
 }
 
 function middleGradesStrongestRetryQuery(queryPlans: OpenLibraryQueryPlan[]): string {
@@ -1808,6 +1809,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         .filter((query) => !attemptedMainQueries.has(query.toLowerCase()));
       const recoveryTarget = Math.min(ageProfile.docLimit, 5);
       for (const recoveryQuery of recoveryQueries) {
+        const elapsedBeforeRecoveryMs = Date.now() - Date.parse(startedAt);
+        const remainingBudgetMs = plan.timeoutMs - elapsedBeforeRecoveryMs;
+        if (remainingBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS) {
+          dropReasons.middle_grades_underfill_recovery_source_budget_exhausted = Number(dropReasons.middle_grades_underfill_recovery_source_budget_exhausted || 0) + 1;
+          break;
+        }
+        const recoveryTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, remainingBudgetMs));
         const recoveryPlan: OpenLibraryQueryPlan = {
           query: recoveryQuery,
           originalPlannedQuery: queries[0] || "",
@@ -1816,7 +1824,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           facets: queryPlans[0]?.facets || [],
           routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_age_anchored_recovery`,
         };
-        const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, ageProfile.perQueryTimeoutMs, 1, openLibraryProxyClientTimeoutMs(ageProfile));
+        const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, recoveryTimeoutMs, 1, recoveryTimeoutMs);
         fetches.push(diagnostic);
         dropReasons.middle_grades_recovery_query_attempted = Number(dropReasons.middle_grades_recovery_query_attempted || 0) + 1;
         if (diagnostic.timedOut) {

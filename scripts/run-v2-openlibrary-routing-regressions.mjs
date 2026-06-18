@@ -461,6 +461,53 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const middleGradesUnderfillFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesUnderfillFetchCalls.push(query);
+    if (/^middle grade fantasy|fantasy adventure|magic school|middle grade adventure$/.test(query)) {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ docs: [
+          { ...fakeDoc(query, 1), key: `/works/adult-underfill-${query}-1`, title: `Adult ${query} 1`, author_name: ["Adult Author"], subject: ["Fiction", "Literary fiction"], first_publish_year: 1990 },
+          { ...fakeDoc(query, 2), key: `/works/adult-underfill-${query}-2`, title: `Adult ${query} 2`, author_name: ["Adult Author"], subject: ["Fiction", "Short stories"], first_publish_year: 1995 },
+        ] }),
+      };
+    }
+    const docsForQuery = query === "children's fantasy adventure"
+      ? ["Lantern Gate", "Cloud Dragon", "River Spell"]
+      : query === "middle grade fiction"
+        ? ["Library Quest", "After-School Portal", "Cafeteria Compass"]
+        : [];
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: docsForQuery.map((title, index) => ({
+        ...fakeDoc(query, index + 50),
+        key: `/works/mg-underfill-${query}-${index}`,
+        title,
+        author_name: [`Underfill Author ${index}`],
+        subject: ["Children's fiction", "Adventure stories", "Fantasy"],
+        first_publish_year: 2020 + index,
+      })) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[0].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length, 5, "middle grades underfill recovery should continue age-anchored recovery queries until five candidates survive");
+    assertEqual(middleGradesUnderfillFetchCalls.includes("children's fantasy adventure"), true, "middle grades underfill recovery should use age-anchored fantasy recovery");
+    assertEqual(middleGradesUnderfillFetchCalls.includes("middle grade fiction"), true, "middle grades underfill recovery should continue after a partial recovery slate");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_recovery_accepted), true, "middle grades underfill recovery should record accepted recovery candidates");
+    console.log(JSON.stringify({ name: "middle grades underfill recovery continues to five", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesUnderfillFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const fetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
