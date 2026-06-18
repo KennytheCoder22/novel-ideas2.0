@@ -218,18 +218,21 @@ function applyMiddleGradesHumorDefaultCap(rankedCandidates: ScoredCandidate[], s
     if (!routeCandidates.length) continue;
     const selectedDefaults = selected.filter((candidate) => middleGradesHumorCapBucketKey(candidate) === routeKey && isMiddleGradesHumorDefaultQueryFamily(candidate));
     if (selectedDefaults.length <= 3) continue;
-    const safeAlternatives = routeCandidates.filter((candidate) => {
+    const safeAlignedPool = routeCandidates.filter((candidate) => {
       if (!isMiddleGradesHumorCapAlternative(candidate)) return false;
-      if (selected.includes(candidate)) return false;
       if (rejectReason(candidate, profile)) return false;
+      return true;
+    });
+    if (safeAlignedPool.length < 2) continue;
+    const safeReplacementAlternatives = safeAlignedPool.filter((candidate) => {
+      if (selected.includes(candidate)) return false;
       if (selectedTitles().has(normalized(candidate.title))) return false;
       const rootKey = seriesKey(candidate);
       if (rootKey && selectedRoots().has(rootKey)) return false;
       return true;
     });
-    if (safeAlternatives.length < 2) continue;
-    rejectedReasons.middle_grades_humor_default_query_family_candidates = safeAlternatives.length;
-    for (const candidate of safeAlternatives) {
+    rejectedReasons.middle_grades_humor_default_query_family_candidates = safeAlignedPool.length;
+    for (const candidate of safeReplacementAlternatives) {
       const currentDefaults = selected.filter((row) => middleGradesHumorCapBucketKey(row) === routeKey && isMiddleGradesHumorDefaultQueryFamily(row));
       if (currentDefaults.length <= 3) break;
       const replacementIndex = selected

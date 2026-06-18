@@ -1235,7 +1235,7 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
     .find((query) => !attemptedQueries.has(query.toLowerCase()));
-  if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade fantasy adventure", "middle grade friendship", "middle grade school story", "middle grade adventure", "children's funny books", "funny children's books"]) || "middle grade adventure";
+  if (/humor|funny/i.test(routingReason)) return firstUnattempted(["middle grade adventure", "middle grade fantasy adventure", "middle grade friendship", "middle grade school story"]) || "middle grade adventure";
   if (/fantasy_mystery|mystery/i.test(routingReason)) return firstUnattempted(["middle grade fantasy mystery", "middle grade mystery", "school mystery", "mystery adventure", "middle grade adventure", "middle grade fantasy"]) || "middle grade mystery";
   if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade realistic fiction", "children's funny books", "middle grade family story", "middle grade adventure", "middle grade friendship books"]) || "middle grade school story";
   if (/fantasy/i.test(routingReason)) return "middle grade fantasy";
