@@ -335,6 +335,46 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
+  if (profile.ageBand === "preteens" && selected.length < Math.min(5, limit) && candidates.some((candidate) => candidate.source === "openLibrary")) {
+    const middleGradesOpenLibraryTarget = Math.min(5, limit);
+    rejectedReasons.middle_grades_openlibrary_underfill_deferred_available = deferred.filter((row) => row.candidate.source === "openLibrary").length;
+    for (const row of deferred) {
+      if (selected.length >= middleGradesOpenLibraryTarget) break;
+      if (row.candidate.source !== "openLibrary") continue;
+      if (selected.includes(row.candidate)) continue;
+      const titleKey = normalized(row.candidate.title);
+      if (seenTitles.has(titleKey)) continue;
+      if (row.reason === "same_series_or_root_deferred") {
+        row.candidate.rejectedReasons.push("middle_grades_openlibrary_underfill_blocked_same_root_variant");
+        rejectedReasons.middle_grades_openlibrary_underfill_blocked_same_root_variant = Number(rejectedReasons.middle_grades_openlibrary_underfill_blocked_same_root_variant || 0) + 1;
+        continue;
+      }
+      row.candidate.rejectedReasons.push(`middle_grades_openlibrary_underfill_relaxed_diversity:${row.reason}`);
+      rejectedReasons.middle_grades_openlibrary_underfill_relaxed_diversity = Number(rejectedReasons.middle_grades_openlibrary_underfill_relaxed_diversity || 0) + 1;
+      seenTitles.add(titleKey);
+      selected.push(row.candidate);
+    }
+    for (const candidate of rankedCandidates) {
+      if (selected.length >= middleGradesOpenLibraryTarget) break;
+      if (candidate.source !== "openLibrary") continue;
+      if (selected.includes(candidate)) continue;
+      if (rejectReason(candidate, profile)) continue;
+      const titleKey = normalized(candidate.title);
+      if (seenTitles.has(titleKey)) continue;
+      const rootKey = seriesKey(candidate);
+      if (rootKey && seenSeries.has(rootKey)) {
+        candidate.rejectedReasons.push("middle_grades_openlibrary_underfill_blocked_same_root_variant");
+        rejectedReasons.middle_grades_openlibrary_underfill_blocked_same_root_variant = Number(rejectedReasons.middle_grades_openlibrary_underfill_blocked_same_root_variant || 0) + 1;
+        continue;
+      }
+      candidate.rejectedReasons.push("middle_grades_openlibrary_underfill_safe_candidate_accepted");
+      rejectedReasons.middle_grades_openlibrary_underfill_safe_candidate_accepted = Number(rejectedReasons.middle_grades_openlibrary_underfill_safe_candidate_accepted || 0) + 1;
+      seenTitles.add(titleKey);
+      if (rootKey) seenSeries.add(rootKey);
+      selected.push(candidate);
+    }
+  }
+
   applyAdultSpeculativeFamilyBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   for (const row of deferred) {

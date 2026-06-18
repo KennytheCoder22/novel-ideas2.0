@@ -716,6 +716,31 @@ async function main() {
   assertEqual(Boolean(teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_relaxed_diversity || teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_safe_candidate_accepted), true, "teen selection should emit teen-only Open Library underfill diagnostics");
   console.log(JSON.stringify({ name: "teen selection relaxes Open Library diversity underfill to five", pass: true, selected: teenSelectionResult.selected.length, rejectedReasons: teenSelectionResult.rejectedReasons }));
 
+  const middleGradesSelectionProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Funny Hallway", genres: ["comedy"], themes: ["school", "friendship"], format: "book" },
+    ],
+  });
+  const middleGradesSelectionCandidates = [
+    fakeScoredCandidate({ id: "middle-selection-aster", title: "Middle Selection Aster", creators: ["Shared Middle Author"], score: 10, maturityBand: "preteens" }),
+    fakeScoredCandidate({ id: "middle-selection-aster-duplicate", title: "Middle Selection Aster", creators: ["Second Middle Author"], score: 9.95, maturityBand: "preteens" }),
+    ...["Briar", "Cinder", "Dahlia", "Ember", "Fable"].map((seed, index) => fakeScoredCandidate({
+      id: `middle-selection-${index}`,
+      title: `Middle Selection ${seed}`,
+      creators: ["Shared Middle Author"],
+      score: 9.9 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+    })),
+  ];
+  const middleGradesSelectionResult = selectRecommendations(middleGradesSelectionCandidates, middleGradesSelectionProfile, 10);
+  assertEqual(middleGradesSelectionResult.selected.length, 5, "middle grades selection should relax Open Library diversity underfill to five");
+  assertEqual(new Set(middleGradesSelectionResult.selected.map((candidate) => candidate.title)).size, 5, "middle grades selection underfill recovery should keep duplicate titles blocked");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.duplicate_title), true, "middle grades selection should record duplicate title rejection before safe underfill recovery");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.middle_grades_openlibrary_underfill_relaxed_diversity || middleGradesSelectionResult.rejectedReasons.middle_grades_openlibrary_underfill_safe_candidate_accepted), true, "middle grades selection should emit middle-grades Open Library underfill diagnostics");
+  console.log(JSON.stringify({ name: "middle grades selection relaxes Open Library diversity underfill to five", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
+
   const previousMiddleGradesCascadeProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalMiddleGradesCascadeDateNow = Date.now;
   const middleGradesCascadeFetchCalls = [];
@@ -799,6 +824,48 @@ async function main() {
     Date.now = originalMiddleGradesDelayedRetryDateNow;
     if (previousMiddleGradesDelayedRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesDelayedRetryProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousMiddleGradesHumorRetryProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalMiddleGradesHumorRetryDateNow = Date.now;
+  const middleGradesHumorRetryFetchCalls = [];
+  let fakeMiddleGradesHumorRetryNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalMiddleGradesHumorRetryDateNow() + fakeMiddleGradesHumorRetryNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesHumorRetryFetchCalls.push(query);
+    if (middleGradesHumorRetryFetchCalls.length === 1) {
+      fakeMiddleGradesHumorRetryNowOffsetMs = 3_500;
+      throw new Error("timeout");
+    }
+    if (middleGradesHumorRetryFetchCalls.length === 2) {
+      fakeMiddleGradesHumorRetryNowOffsetMs = 4_200;
+      throw new Error("timeout");
+    }
+    fakeMiddleGradesHumorRetryNowOffsetMs = 5_100;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[3].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "middle grades humor delayed retry should recover rows after timed-out humor lane attempts");
+    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "funny children's books"], "middle grades humor retry should rotate away from repeated middle grade humor");
+    assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades humor retry diagnostics should mark attempted");
+    assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 3500, true, "middle grades humor retry should run with a real timeout budget");
+    console.log(JSON.stringify({ name: "middle grades humor retry rotates away from repeated query", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
+  } finally {
+    Date.now = originalMiddleGradesHumorRetryDateNow;
+    if (previousMiddleGradesHumorRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesHumorRetryProxyBase;
     globalThis.fetch = originalFetch;
   }
 
