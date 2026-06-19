@@ -1248,6 +1248,8 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
   reliabilityByQuery: Record<string, number>;
   selectedReason: string;
   whyHigherTasteFallbackLost?: string;
+  specificityScore: number;
+  strongerSignalDroppedFromFallbackQuery?: string;
 } | undefined {
   const routingReason = String(queryPlans[0]?.routingReason || "");
   if (/fantasy_mystery|mystery/i.test(routingReason)) return undefined;
@@ -1260,6 +1262,7 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)), evidence: Array.isArray(row.evidence) ? row.evidence : [] }))
     .filter((row) => row.value);
   const fallbackCandidates = [
+    { query: "middle grade AI robot superhero comedy", family: "ai_robot_superhero_comedy", reliability: 0.45, patterns: [/\b(ai|artificial intelligence|robots?|robotics|technology|superheroes?|superhero|powers?)\b/i, /\b(comedy|funny|humor|humorous|playful)\b/i] },
     { query: "middle grade family fantasy", family: "family_fantasy", reliability: 0.8, patterns: [/\b(family|redemption|warm|kindness)\b/i, /\b(fantasy|magic|magical|heroic)\b/i] },
     { query: "middle grade funny family story", family: "funny_family", reliability: 0.75, patterns: [/\b(comedy|funny|humor|humorous|playful)\b/i, /\b(family|redemption|school|friendship|community)\b/i] },
     { query: "middle grade fantasy adventure", family: "fantasy_adventure", reliability: 0.65, patterns: [/\b(fantasy|magic|magical|heroic)\b/i, /\badventure\b/i] },
@@ -1275,6 +1278,7 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
   const candidateQueries = fallbackCandidates.map((candidate) => candidate.query);
   if (!fallbackCandidates.length) return undefined;
   const hasNonGenericIntersection = fallbackCandidates.some((candidate) => candidate.family !== "generic_adventure" && candidate.patterns.filter((pattern) => positiveRows.some((row) => pattern.test(row.value))).length >= 2);
+  const unusualStrongSignals = positiveRows.filter((row) => /\b(ai|artificial intelligence|robots?|robotics|technology|superheroes?|superhero|powers?)\b/i.test(row.value));
   const queryScores: Record<string, number> = {};
   const positiveEvidenceByQuery: Record<string, string[]> = {};
   const avoidEvidenceByQuery: Record<string, string[]> = {};
@@ -1286,13 +1290,15 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     const positiveScore = positiveMatches.reduce((sum, row) => sum + row.weight, 0);
     const avoidScore = avoidMatches.reduce((sum, row) => sum + row.weight, 0);
     const recurrenceBoost = Math.max(0, positiveMatches.length - 1) * 0.35;
+    const unusualSpecificityBoost = candidate.family === "ai_robot_superhero_comedy" && matchedPatternCount >= 1 ? 0.9 : 0;
     const intersectionBoost = matchedPatternCount >= 2 ? 1.2 : 0;
     const isolatedPenalty = positiveMatches.length <= 1 && matchedPatternCount < 2 ? 0.6 : 1;
-    const tasteScore = (positiveScore * isolatedPenalty) + recurrenceBoost + intersectionBoost - (avoidScore * 1.4);
+    const tasteScore = (positiveScore * isolatedPenalty) + recurrenceBoost + intersectionBoost + unusualSpecificityBoost - (avoidScore * 1.4);
     const genericAdventurePenalty = candidate.family === "generic_adventure" && hasNonGenericIntersection ? 1.15 : 0;
+    const missingRequiredAiSignalPenalty = candidate.family === "ai_robot_superhero_comedy" && !positiveRows.some((row) => /\b(ai|artificial intelligence|robots?|robotics|technology|superheroes?|superhero|powers?)\b/i.test(row.value)) ? 2.75 : 0;
     const missingRequiredFamilyFantasySignalPenalty = candidate.family === "family_fantasy" && !positiveRows.some((row) => /\b(fantasy|magic|magical|heroic)\b/i.test(row.value)) ? 2.5 : 0;
     const missingRequiredFunnyFamilySignalPenalty = candidate.family === "funny_family" && !positiveRows.some((row) => /\b(comedy|funny|humor|humorous|playful)\b/i.test(row.value)) ? 2.5 : 0;
-    const score = tasteScore + candidate.reliability - genericAdventurePenalty - missingRequiredFamilyFantasySignalPenalty - missingRequiredFunnyFamilySignalPenalty;
+    const score = tasteScore + candidate.reliability - genericAdventurePenalty - missingRequiredAiSignalPenalty - missingRequiredFamilyFantasySignalPenalty - missingRequiredFunnyFamilySignalPenalty;
     const roundedTasteScore = Math.round(tasteScore * 1000) / 1000;
     const roundedScore = Math.round(score * 1000) / 1000;
     queryScores[candidate.query] = roundedScore;
@@ -1308,6 +1314,10 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
   const whyHigherTasteFallbackLost = topTasteCandidate && topTasteCandidate.query !== selected.query
     ? `${topTasteCandidate.query} had higher taste score ${topTasteCandidate.tasteScore} but lower reliability ${topTasteCandidate.reliability}; selected ${selected.query} with net score ${selected.score} and reliability ${selected.reliability}`
     : undefined;
+  const specificityScore = selected.matchedPatternCount + Math.min(2, selected.positiveMatches.length * 0.25) + (selected.family === "generic_adventure" ? -0.75 : 0);
+  const strongerSignalDroppedFromFallbackQuery = unusualStrongSignals.length > 0 && selected.family !== "ai_robot_superhero_comedy"
+    ? `specific_signal_not_selected:${uniqueStrings(unusualStrongSignals.map((row) => row.value), 4).join("|")}`
+    : undefined;
   const lowConfidence = selected.score <= 0.5 || (selected.positiveMatches.length <= 1 && runnerUp && selected.score - runnerUp.score < 1.25);
   return {
     query: selected.query,
@@ -1319,6 +1329,8 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     avoidEvidenceByQuery,
     selectedReason: lowConfidence ? `fallback_only_low_confidence:${selected.family}` : `net_positive:${selected.family}`,
     whyHigherTasteFallbackLost,
+    specificityScore: Math.round(specificityScore * 1000) / 1000,
+    strongerSignalDroppedFromFallbackQuery,
   };
 }
 
@@ -1541,6 +1553,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesFallbackAttemptOrder: string[] = [];
     const middleGradesRemainingBudgetBeforeEachFallback: Record<string, number> = {};
     const middleGradesFallbackOutcomes: string[] = [];
+    let middleGradesFallbackSlateSpecificityScore: number | undefined;
+    let middleGradesStrongerSignalDroppedFromFallbackQuery: string | undefined;
     let middleGradesWhyFallbackOnlyAcceptedAsFinal: string | undefined;
     let middleGradesRouteAlignedRecoveryAttemptedAfterFallback = false;
     let middleGradesRouteAlignedRecoverySkippedReason: string | undefined;
@@ -1555,6 +1569,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       middleGradesAvoidEvidenceByFallbackQuery = fallback.avoidEvidenceByQuery;
       middleGradesSelectedFallbackQueryReason = fallback.selectedReason;
       middleGradesWhyHigherTasteFallbackLost = fallback.whyHigherTasteFallbackLost;
+      middleGradesFallbackSlateSpecificityScore = fallback.specificityScore;
+      middleGradesStrongerSignalDroppedFromFallbackQuery = fallback.strongerSignalDroppedFromFallbackQuery;
     };
     const middleGradesAgeShapeSamples: MiddleGradesAgeShapeDiagnosticSample[] = [];
     let middleGradesAgeShapeObserved = 0;
@@ -2642,6 +2658,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesFallbackOnlySlate = ageProfile.key === "middleGrades" && rawItems.length > 0
       ? Number(middleGradesAntiZeroFallbackSuccessCount || 0) > 0 && Number(middleGradesRouteAlignedSuccessCount || 0) === 0
       : undefined;
+    const middleGradesGenericDefaultSlateDetected = ageProfile.key === "middleGrades" && rawItems.length > 0
+      ? rawItems.filter((item: any) => /\b(humor|funny|school story|school adventure|adventure)\b/i.test(String(item?.queryText || item?.queryFamily || "")) && !/\b(friendship|family|contemporary|realistic|mystery|ai|robot|superhero)\b/i.test([item?.title, item?.subtitle, item?.subjects, item?.description].flat().join(" "))).length >= Math.min(4, rawItems.length)
+      : undefined;
+    const middleGradesGenericDefaultSlateReason = middleGradesGenericDefaultSlateDetected ? "query_text_default_family_without_doc_level_school_friendship_family_contemporary_specificity" : undefined;
     if (ageProfile.key === "middleGrades" && middleGradesFallbackOnlySlate) {
       middleGradesWhyFallbackOnlyAcceptedAsFinal = middleGradesRouteAlignedRecoveryAttemptedAfterFallback
         ? "post_fallback_route_aligned_recovery_produced_no_accepted_rows"
@@ -2714,6 +2734,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         fallbackAttemptOrder: middleGradesFallbackAttemptOrder.length ? middleGradesFallbackAttemptOrder : undefined,
         remainingBudgetBeforeEachFallback: Object.keys(middleGradesRemainingBudgetBeforeEachFallback).length ? middleGradesRemainingBudgetBeforeEachFallback : undefined,
         lockQualityStatus: middleGradesLockQualityStatus,
+        fallbackSlateSpecificityScore: middleGradesFallbackSlateSpecificityScore,
+        genericDefaultSlateDetected: middleGradesGenericDefaultSlateDetected,
+        genericDefaultSlateReason: middleGradesGenericDefaultSlateReason,
+        strongerSignalDroppedFromFallbackQuery: middleGradesStrongerSignalDroppedFromFallbackQuery,
         whyFallbackOnlyAcceptedAsFinal: middleGradesWhyFallbackOnlyAcceptedAsFinal,
         routeAlignedRecoveryAttemptedAfterFallback: ageProfile.key === "middleGrades" ? middleGradesRouteAlignedRecoveryAttemptedAfterFallback : undefined,
         routeAlignedRecoverySkippedReason: middleGradesRouteAlignedRecoverySkippedReason,

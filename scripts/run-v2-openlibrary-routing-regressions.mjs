@@ -742,6 +742,11 @@ async function main() {
       expected: "middle grade friendship adventure",
       signals: [{ action: "like", title: "Friend Group", source: "mock", format: "book", genres: ["Friendship / Community / School"], tags: ["friendship", "community", "school"] }],
     },
+    {
+      name: "robot comedy",
+      expected: "middle grade AI robot superhero comedy",
+      signals: [{ action: "like", title: "Robot Hero Laughs", source: "mock", format: "book", genres: ["Comedy / Superhero / AI"], tags: ["robots", "superhero", "comedy", "playful"] }],
+    },
   ];
   const shapedAntiZeroFallbackQueries = [];
   for (const fallbackCase of shapedAntiZeroFallbackCases) {
@@ -784,7 +789,7 @@ async function main() {
       globalThis.fetch = originalFetch;
     }
   }
-  assertEqual(new Set(shapedAntiZeroFallbackQueries).size, 3, "different preteen profiles should not all collapse to the same anti-zero fallback query");
+  assertEqual(new Set(shapedAntiZeroFallbackQueries).size, 4, "different preteen profiles should not all collapse to the same anti-zero fallback query");
   console.log(JSON.stringify({ name: "middle grades anti-zero fallback is shaped by swipe profile", pass: true, fallbackQueries: shapedAntiZeroFallbackQueries }));
 
   const teenSelectionProfile = buildTasteProfile({

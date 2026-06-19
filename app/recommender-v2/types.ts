@@ -168,6 +168,11 @@ export interface SourceDiagnosticV2 {
   whyFallbackOnlyAcceptedAsFinal?: string;
   routeAlignedRecoveryAttemptedAfterFallback?: boolean;
   routeAlignedRecoverySkippedReason?: string;
+  slateGenreFacetMatchAverage?: number;
+  fallbackSlateSpecificityScore?: number;
+  genericDefaultSlateDetected?: boolean;
+  genericDefaultSlateReason?: string;
+  strongerSignalDroppedFromFallbackQuery?: string;
 }
 
 export interface SourceResult {

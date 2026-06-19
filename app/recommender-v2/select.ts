@@ -182,6 +182,45 @@ function isMiddleGradesRouteAlignedSuccessCandidate(candidate: ScoredCandidate):
   return true;
 }
 
+
+function addMiddleGradesSlateDiagnostics(selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens" || selected.length === 0) return;
+  const averageGenreFacetMatch = selected.reduce((sum, candidate) => sum + Number(candidate.scoreBreakdown?.genreFacetMatch || 0), 0) / selected.length;
+  const roundedAverage = Math.round(averageGenreFacetMatch * 1000) / 1000;
+  const antiZeroCount = selected.filter(isMiddleGradesAntiZeroFallbackCandidate).length;
+  const genericDefaults = selected.filter((candidate) => {
+    const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+    const evidenceText = normalized([candidate.title, candidate.subtitle, candidate.description, candidate.genres.join(" "), candidate.themes.join(" ")].filter(Boolean).join(" "));
+    return /\b(humor|funny|school story|school adventure|adventure)\b/.test(text)
+      && !/\b(friendship|family|contemporary|realistic|mystery|ai|robot|superhero|science|nature|animal)\b/.test(evidenceText);
+  });
+  const fallbackSpecificityScore = selected.reduce((sum, candidate) => {
+    const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle, candidate.genres.join(" "), candidate.themes.join(" ")].filter(Boolean).join(" "));
+    let score = 0;
+    if (/\b(friendship|family|contemporary|realistic|school|mystery|ai|robot|superhero|animal|nature|science fiction|dystopian)\b/.test(text)) score += 1;
+    if (/\b(fantasy adventure|family fantasy|funny family|school adventure|mystery adventure|friendship adventure|animal adventure|robot|superhero)\b/.test(text)) score += 1;
+    if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) score -= 0.25;
+    return sum + score;
+  }, 0) / selected.length;
+  rejectedReasons.slateGenreFacetMatchAverage = roundedAverage;
+  rejectedReasons.fallbackSlateSpecificityScore = Math.round(fallbackSpecificityScore * 1000) / 1000;
+  if (antiZeroCount >= Math.ceil(selected.length / 2) && roundedAverage <= 0) {
+    rejectedReasons.middle_grades_mostly_fallback_zero_genre_match_penalty = antiZeroCount;
+    for (const candidate of selected.filter(isMiddleGradesAntiZeroFallbackCandidate)) candidate.rejectedReasons.push("middle_grades_mostly_fallback_zero_genre_match_penalty");
+  }
+  if (genericDefaults.length >= Math.min(4, selected.length)) {
+    rejectedReasons.genericDefaultSlateDetected = 1;
+    rejectedReasons.genericDefaultSlateReason_query_text_without_doc_specificity = genericDefaults.length;
+    for (const candidate of genericDefaults) candidate.rejectedReasons.push("generic_default_slate_detected_query_text_without_doc_specificity");
+  }
+  for (const candidate of selected) {
+    candidate.diagnostics.slateGenreFacetMatchAverage = roundedAverage;
+    candidate.diagnostics.fallbackSlateSpecificityScore = Math.round(fallbackSpecificityScore * 1000) / 1000;
+    candidate.diagnostics.genericDefaultSlateDetected = genericDefaults.length >= Math.min(4, selected.length);
+    if (genericDefaults.length >= Math.min(4, selected.length)) candidate.diagnostics.genericDefaultSlateReason = "query_text_without_doc_specificity";
+  }
+}
+
 function applyMiddleGradesAntiZeroFallbackGate(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   if (profile.ageBand !== "preteens") return;
   const selectedAntiZero = selected.filter(isMiddleGradesAntiZeroFallbackCandidate);
@@ -718,6 +757,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
 
+  addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };
