@@ -1240,8 +1240,8 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
     .find((query) => !attemptedQueries.has(query.toLowerCase()));
   if (/humor|funny/i.test(routingReason)) {
-    const fantasyAlignedQueries = /fantasy/i.test(routingReason) ? ["middle grade fantasy adventure"] : [];
-    return firstUnattempted(["middle grade school story", "middle grade friendship", ...fantasyAlignedQueries, "middle grade adventure", "middle grade mystery"]) || "middle grade school story";
+    const primaryStable = /fantasy/i.test(routingReason) ? ["middle grade fantasy adventure", "middle grade adventure"] : ["middle grade adventure"];
+    return firstUnattempted([...primaryStable, "middle grade school story", "middle grade friendship", "middle grade mystery"]) || primaryStable[0];
   }
   if (/fantasy_mystery|mystery/i.test(routingReason)) return firstUnattempted(["middle grade mystery", "school mystery", "mystery adventure", "middle grade fantasy mystery"]) || "middle grade mystery";
   if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "middle grade family story", "middle grade friendship books", "middle grade adventure", "children's funny books"]) || "middle grade realistic fiction";
@@ -1250,6 +1250,21 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
   return queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query) && !attemptedQueries.has(plan.query.toLowerCase()))?.query
     || queryPlans.find((plan) => /\b(middle grade|children'?s|school)\b/i.test(plan.query))?.query
     || "middle grade adventure";
+}
+
+function middleGradesRejectedRowsAntiZeroFallbackQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries: Set<string>, fetches: SourceFetchDiagnosticV2[]): string | undefined {
+  const hadReturnedRejectedRows = fetches.some((fetch) => !fetch.diagnosticOnly && !fetch.timedOut && Number(fetch.docsReturned || 0) > 0);
+  if (!hadReturnedRejectedRows) return undefined;
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
+    .find((query) => !attemptedQueries.has(query.toLowerCase()));
+  if (/fantasy_mystery|mystery/i.test(routingReason)) return firstUnattempted(["middle grade adventure"]);
+  if (/humor|funny/i.test(routingReason)) {
+    const primaryStable = /fantasy/i.test(routingReason) ? ["middle grade fantasy adventure", "middle grade adventure"] : ["middle grade adventure"];
+    return firstUnattempted([...primaryStable, "middle grade school story", "middle grade friendship"]);
+  }
+  if (/contemporary|school|friendship|realistic/i.test(routingReason)) return firstUnattempted(["middle grade adventure"]);
+  return firstUnattempted(["middle grade adventure", "middle grade fantasy adventure", "middle grade school story"]);
 }
 
 function isMiddleGradesFantasyHumorRoute(queryPlans: OpenLibraryQueryPlan[]): boolean {
@@ -1996,10 +2011,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const realFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
       const allRealFetchesTimedOut = realFetches.length > 0 && realFetches.every((fetch) => fetch.timedOut);
       const attemptedRealQueries = new Set(realFetches.map((fetch) => String(fetch.query || "").toLowerCase()));
-      const finalSafeQuery = middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedRealQueries);
+      const rejectedRowsAntiZeroFallbackQuery = middleGradesRejectedRowsAntiZeroFallbackQuery(queryPlans, attemptedRealQueries, realFetches);
+      const finalSafeQuery = rejectedRowsAntiZeroFallbackQuery || middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedRealQueries);
+      const shouldRunFinalSafeRecovery = allRealFetchesTimedOut || Boolean(rejectedRowsAntiZeroFallbackQuery);
       const elapsedBeforeFinalSafeRecoveryMs = Date.now() - Date.parse(startedAt);
       const remainingFinalSafeRecoveryBudgetMs = plan.timeoutMs - elapsedBeforeFinalSafeRecoveryMs;
-      if (allRealFetchesTimedOut && finalSafeQuery && !attemptedRealQueries.has(finalSafeQuery.toLowerCase()) && remainingFinalSafeRecoveryBudgetMs >= MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS) {
+      if (shouldRunFinalSafeRecovery && finalSafeQuery && !attemptedRealQueries.has(finalSafeQuery.toLowerCase()) && remainingFinalSafeRecoveryBudgetMs >= MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS) {
         const finalSafeTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingFinalSafeRecoveryBudgetMs);
         const finalSafePlan: OpenLibraryQueryPlan = {
           query: finalSafeQuery,

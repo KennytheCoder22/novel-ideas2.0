@@ -1190,10 +1190,10 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades humor delayed retry should recover rows after timed-out humor lane attempts");
-    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade school story"], "middle grades humor retry should use an unattempted humor-adjacent stable fallback with real budget instead of broad funny books");
+    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade fantasy adventure"], "middle grades fantasy-humor retry should jump to the stable fantasy-adventure anti-zero fallback after two timed-out humor lane attempts");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades humor retry diagnostics should mark attempted");
     assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades humor retry should run with a real timeout budget while reserving final safe recovery");
-    console.log(JSON.stringify({ name: "middle grades humor retry rotates away from repeated query", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
+    console.log(JSON.stringify({ name: "middle grades fantasy-humor retry jumps to stable fantasy fallback", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
   } finally {
     Date.now = originalMiddleGradesHumorRetryDateNow;
     if (previousMiddleGradesHumorRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
