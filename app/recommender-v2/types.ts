@@ -156,6 +156,7 @@ export interface SourceDiagnosticV2 {
   middleGradesAntiZeroFallbackShapingSignals?: string[];
   fallbackCandidateQueries?: string[];
   fallbackQueryScores?: Record<string, number>;
+  fallbackQueryReliability?: Record<string, number>;
   positiveEvidenceByFallbackQuery?: Record<string, string[]>;
   avoidEvidenceByFallbackQuery?: Record<string, string[]>;
   selectedFallbackQueryReason?: string;

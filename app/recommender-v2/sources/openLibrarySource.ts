@@ -1244,6 +1244,7 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
   queryScores: Record<string, number>;
   positiveEvidenceByQuery: Record<string, string[]>;
   avoidEvidenceByQuery: Record<string, string[]>;
+  reliabilityByQuery: Record<string, number>;
   selectedReason: string;
 } | undefined {
   const routingReason = String(queryPlans[0]?.routingReason || "");
@@ -1257,20 +1258,22 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)), evidence: Array.isArray(row.evidence) ? row.evidence : [] }))
     .filter((row) => row.value);
   const fallbackCandidates = [
-    { query: "middle grade fantasy adventure", family: "fantasy_adventure", patterns: [/\b(fantasy|magic|magical|heroic)\b/i, /\badventure\b/i] },
-    { query: "middle grade school adventure", family: "school_adventure", patterns: [/\b(school|classroom|community|family)\b/i, /\b(adventure|playful|friendship)\b/i] },
-    { query: "middle grade animal adventure", family: "animal_adventure", patterns: [/\b(animals?|nature|wildlife|nonfiction)\b/i, /\badventure\b/i] },
-    { query: "middle grade science fiction", family: "science_fiction_adventure", patterns: [/\b(science fiction|sci fi|sci-fi|space|dystopian|dystopia|speculative)\b/i, /\badventure\b/i] },
-    { query: "middle grade dystopian science fiction", family: "science_fiction_adventure", patterns: [/\b(dystopian|dystopia|science fiction|sci fi|sci-fi|space|speculative)\b/i, /\badventure\b/i] },
-    { query: "middle grade mystery adventure", family: "mystery_adventure", patterns: [/\b(mystery|detective)\b/i, /\b(adventure|friendship)\b/i] },
-    { query: "middle grade friendship adventure", family: "friendship_adventure", patterns: [/\b(friendship|friends?|community)\b/i, /\b(adventure|playful|school)\b/i] },
-    { query: "middle grade adventure", family: "generic_adventure", patterns: [/\badventure\b/i] },
+    { query: "middle grade fantasy adventure", family: "fantasy_adventure", reliability: 0.65, patterns: [/\b(fantasy|magic|magical|heroic)\b/i, /\badventure\b/i] },
+    { query: "middle grade school adventure", family: "school_adventure", reliability: 0.85, patterns: [/\b(school|classroom|community|family)\b/i, /\b(adventure|playful|friendship)\b/i] },
+    { query: "middle grade animal adventure", family: "animal_adventure", reliability: 0.65, patterns: [/\b(animals?|nature|wildlife|nonfiction)\b/i, /\badventure\b/i] },
+    { query: "middle grade dystopian adventure", family: "science_fiction_adventure", reliability: 0.55, patterns: [/\b(dystopian|dystopia|science fiction|sci fi|sci-fi|space|speculative)\b/i, /\badventure\b/i] },
+    { query: "middle grade mystery adventure", family: "mystery_adventure", reliability: 0.85, patterns: [/\b(mystery|detective)\b/i, /\b(adventure|friendship)\b/i] },
+    { query: "middle grade friendship adventure", family: "friendship_adventure", reliability: 0.65, patterns: [/\b(friendship|friends?|community)\b/i, /\b(adventure|playful|school)\b/i] },
+    { query: "middle grade adventure", family: "generic_adventure", reliability: 1.05, patterns: [/\badventure\b/i] },
+    { query: "middle grade science fiction", family: "science_fiction_adventure", reliability: -2.5, patterns: [/\b(science fiction|sci fi|sci-fi|space|dystopian|dystopia|speculative)\b/i, /\badventure\b/i] },
+    { query: "middle grade dystopian science fiction", family: "science_fiction_adventure", reliability: -2.7, patterns: [/\b(dystopian|dystopia|science fiction|sci fi|sci-fi|space|speculative)\b/i, /\badventure\b/i] },
   ].filter((candidate) => !attemptedQueries.has(candidate.query.toLowerCase()));
   const candidateQueries = fallbackCandidates.map((candidate) => candidate.query);
   if (!fallbackCandidates.length) return undefined;
   const queryScores: Record<string, number> = {};
   const positiveEvidenceByQuery: Record<string, string[]> = {};
   const avoidEvidenceByQuery: Record<string, string[]> = {};
+  const reliabilityByQuery: Record<string, number> = {};
   const scored = fallbackCandidates.map((candidate) => {
     const positiveMatches = positiveRows.filter((row) => candidate.patterns.some((pattern) => pattern.test(row.value)));
     const avoidMatches = avoidRows.filter((row) => candidate.patterns.some((pattern) => pattern.test(row.value)));
@@ -1280,9 +1283,11 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     const recurrenceBoost = Math.max(0, positiveMatches.length - 1) * 0.35;
     const intersectionBoost = matchedPatternCount >= 2 ? 1.2 : 0;
     const isolatedPenalty = positiveMatches.length <= 1 && matchedPatternCount < 2 ? 0.6 : 1;
-    const score = (positiveScore * isolatedPenalty) + recurrenceBoost + intersectionBoost - (avoidScore * 1.4);
+    const tasteScore = (positiveScore * isolatedPenalty) + recurrenceBoost + intersectionBoost - (avoidScore * 1.4);
+    const score = tasteScore + candidate.reliability;
     const roundedScore = Math.round(score * 1000) / 1000;
     queryScores[candidate.query] = roundedScore;
+    reliabilityByQuery[candidate.query] = candidate.reliability;
     positiveEvidenceByQuery[candidate.query] = uniqueStrings(positiveMatches.map((row) => row.value), 6);
     avoidEvidenceByQuery[candidate.query] = uniqueStrings(avoidMatches.map((row) => row.value), 6);
     return { ...candidate, score: roundedScore, positiveMatches, avoidMatches, matchedPatternCount };
@@ -1296,6 +1301,7 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     shapingSignals: positiveEvidenceByQuery[selected.query],
     candidateQueries,
     queryScores,
+    reliabilityByQuery,
     positiveEvidenceByQuery,
     avoidEvidenceByQuery,
     selectedReason: lowConfidence ? `fallback_only_low_confidence:${selected.family}` : `net_positive:${selected.family}`,
@@ -1513,6 +1519,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesAntiZeroFallbackShapingSignals: string[] | undefined;
     let middleGradesFallbackCandidateQueries: string[] | undefined;
     let middleGradesFallbackQueryScores: Record<string, number> | undefined;
+    let middleGradesFallbackQueryReliability: Record<string, number> | undefined;
     let middleGradesPositiveEvidenceByFallbackQuery: Record<string, string[]> | undefined;
     let middleGradesAvoidEvidenceByFallbackQuery: Record<string, string[]> | undefined;
     let middleGradesSelectedFallbackQueryReason: string | undefined;
@@ -1522,6 +1529,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       middleGradesAntiZeroFallbackShapingSignals = fallback.shapingSignals;
       middleGradesFallbackCandidateQueries = fallback.candidateQueries;
       middleGradesFallbackQueryScores = fallback.queryScores;
+      middleGradesFallbackQueryReliability = fallback.reliabilityByQuery;
       middleGradesPositiveEvidenceByFallbackQuery = fallback.positiveEvidenceByQuery;
       middleGradesAvoidEvidenceByFallbackQuery = fallback.avoidEvidenceByQuery;
       middleGradesSelectedFallbackQueryReason = fallback.selectedReason;
@@ -2580,6 +2588,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         middleGradesAntiZeroFallbackShapingSignals,
         fallbackCandidateQueries: middleGradesFallbackCandidateQueries,
         fallbackQueryScores: middleGradesFallbackQueryScores,
+        fallbackQueryReliability: middleGradesFallbackQueryReliability,
         positiveEvidenceByFallbackQuery: middleGradesPositiveEvidenceByFallbackQuery,
         avoidEvidenceByFallbackQuery: middleGradesAvoidEvidenceByFallbackQuery,
         selectedFallbackQueryReason: middleGradesSelectedFallbackQueryReason,

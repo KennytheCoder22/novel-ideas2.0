@@ -729,7 +729,7 @@ async function main() {
   const shapedAntiZeroFallbackCases = [
     {
       name: "science",
-      expected: "middle grade dystopian science fiction",
+      expected: "middle grade dystopian adventure",
       signals: [{ action: "like", title: "Space Science", source: "mock", format: "book", genres: ["Science Fiction / Space / Dystopian"], tags: ["science fiction", "space", "dystopian"] }],
     },
     {
@@ -772,7 +772,7 @@ async function main() {
     try {
       const profile = buildTasteProfile({ ageBand: "preteens", signals: fallbackCase.signals });
       const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
-      shapedAntiZeroFallbackQueries.push(fetchCalls[fetchCalls.length - 1]);
+      shapedAntiZeroFallbackQueries.push(result.diagnostics.middleGradesAntiZeroFallbackShapedQuery);
       assertEqual(result.rawItems.length >= 5, true, `${fallbackCase.name} anti-zero fallback should recover rows`);
       assertEqual(fetchCalls.includes(fallbackCase.expected), true, `${fallbackCase.name} anti-zero fallback should use the swipe-shaped query`);
       assertEqual(result.diagnostics.middleGradesAntiZeroFallbackShapedQuery, fallbackCase.expected, `${fallbackCase.name} diagnostics should expose shaped anti-zero query`);
