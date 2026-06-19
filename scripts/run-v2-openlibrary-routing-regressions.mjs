@@ -726,6 +726,67 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const shapedAntiZeroFallbackCases = [
+    {
+      name: "science",
+      expected: "middle grade dystopian science fiction",
+      signals: [{ action: "like", title: "Space Science", source: "mock", format: "book", genres: ["Science Fiction / Space / Dystopian"], tags: ["science fiction", "space", "dystopian"] }],
+    },
+    {
+      name: "nature",
+      expected: "middle grade animal adventure",
+      signals: [{ action: "like", title: "Wild Nature", source: "mock", format: "book", genres: ["Nonfiction / Animals / Nature"], tags: ["nonfiction", "animals", "nature"] }],
+    },
+    {
+      name: "friendship",
+      expected: "middle grade friendship adventure",
+      signals: [{ action: "like", title: "Friend Group", source: "mock", format: "book", genres: ["Friendship / Community / School"], tags: ["friendship", "community", "school"] }],
+    },
+  ];
+  const shapedAntiZeroFallbackQueries = [];
+  for (const fallbackCase of shapedAntiZeroFallbackCases) {
+    const previousFallbackProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    const originalFallbackDateNow = Date.now;
+    const fetchCalls = [];
+    let fakeNowOffsetMs = 0;
+    process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+    Date.now = () => originalFallbackDateNow() + fakeNowOffsetMs;
+    globalThis.fetch = async (url) => {
+      const query = new URL(String(url)).searchParams.get("q") || "";
+      fetchCalls.push(query);
+      if (fetchCalls.length === 1) {
+        fakeNowOffsetMs = 3_500;
+        throw new Error("timeout");
+      }
+      if (fetchCalls.length === 2) {
+        fakeNowOffsetMs = 4_200;
+        throw new Error("timeout");
+      }
+      fakeNowOffsetMs = 5_100;
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+      };
+    };
+    try {
+      const profile = buildTasteProfile({ ageBand: "preteens", signals: fallbackCase.signals });
+      const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+      shapedAntiZeroFallbackQueries.push(fetchCalls[fetchCalls.length - 1]);
+      assertEqual(result.rawItems.length >= 5, true, `${fallbackCase.name} anti-zero fallback should recover rows`);
+      assertEqual(fetchCalls.includes(fallbackCase.expected), true, `${fallbackCase.name} anti-zero fallback should use the swipe-shaped query`);
+      assertEqual(result.diagnostics.middleGradesAntiZeroFallbackShapedQuery, fallbackCase.expected, `${fallbackCase.name} diagnostics should expose shaped anti-zero query`);
+      assertEqual(Array.isArray(result.diagnostics.middleGradesAntiZeroFallbackShapingSignals), true, `${fallbackCase.name} diagnostics should expose shaping signals`);
+    } finally {
+      Date.now = originalFallbackDateNow;
+      if (previousFallbackProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+      else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousFallbackProxyBase;
+      globalThis.fetch = originalFetch;
+    }
+  }
+  assertEqual(new Set(shapedAntiZeroFallbackQueries).size, 3, "different preteen profiles should not all collapse to the same anti-zero fallback query");
+  console.log(JSON.stringify({ name: "middle grades anti-zero fallback is shaped by swipe profile", pass: true, fallbackQueries: shapedAntiZeroFallbackQueries }));
+
   const teenSelectionProfile = buildTasteProfile({
     ageBand: "teens",
     signals: [
@@ -1091,10 +1152,10 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary delayed retry should recover rows after timed-out realistic/school lane attempts");
-    assertDeepEqual(middleGradesContemporaryRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship"], "middle grades contemporary retry should rotate through distinct age-safe queries before repeating realistic fiction");
+    assertDeepEqual(middleGradesContemporaryRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship adventure"], "middle grades contemporary retry should shape anti-zero fallback from friendship/community signals after timed-out aligned queries");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades contemporary retry diagnostics should mark attempted");
     assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades contemporary retry should run with a real timeout budget while reserving final safe recovery");
-    console.log(JSON.stringify({ name: "middle grades contemporary retry rotates before repeating realistic fiction", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
+    console.log(JSON.stringify({ name: "middle grades contemporary retry shapes anti-zero fallback from friendship signals", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
   } finally {
     Date.now = originalMiddleGradesContemporaryRetryDateNow;
     if (previousMiddleGradesContemporaryRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
@@ -1137,8 +1198,8 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary deep retry should recover before adventure-only fallback");
-    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "middle grade family story"], "middle grades contemporary retry should continue to stable realistic/family recovery before broad adventure fallback");
-    console.log(JSON.stringify({ name: "middle grades contemporary retry preserves realistic before adventure fallback", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryDeepRetryFetchCalls }));
+    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade friendship adventure", "middle grade school adventure"], "middle grades contemporary retry should keep anti-zero recovery shaped by friendship/school signals before generic adventure");
+    console.log(JSON.stringify({ name: "middle grades contemporary retry shapes fallback before generic adventure", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryDeepRetryFetchCalls }));
   } finally {
     Date.now = originalMiddleGradesContemporaryDeepRetryDateNow;
     if (previousMiddleGradesContemporaryDeepRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;

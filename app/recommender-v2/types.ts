@@ -152,6 +152,8 @@ export interface SourceDiagnosticV2 {
   middleGradesRouteAlignedSuccessCount?: number;
   middleGradesAntiZeroFallbackSuccessCount?: number;
   middleGradesFallbackOnlySlate?: boolean;
+  middleGradesAntiZeroFallbackShapedQuery?: string;
+  middleGradesAntiZeroFallbackShapingSignals?: string[];
 }
 
 export interface SourceResult {

@@ -1237,6 +1237,32 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
   return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 12);
 }
 
+function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPlan[], attemptedQueries: Set<string>, profile: TasteProfile): { query: string; shapingSignals: string[] } | undefined {
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  if (/fantasy_mystery|mystery/i.test(routingReason)) return undefined;
+  const positiveSignals = uniqueStrings(
+    [...profile.genreFamily, ...profile.themes]
+      .filter((row) => Number(row.weight || 0) > 0)
+      .sort((a, b) => Math.abs(Number(b.weight || 0)) - Math.abs(Number(a.weight || 0)))
+      .map((row) => cleanOpenLibraryQueryPart(row.value))
+      .filter(Boolean),
+    8,
+  );
+  const signalText = positiveSignals.join(" ").toLowerCase();
+  const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
+    .find((query) => !attemptedQueries.has(query.toLowerCase()));
+  const shaped = (pattern: RegExp, queries: string[]): { query: string; shapingSignals: string[] } | undefined => {
+    if (!pattern.test(signalText)) return undefined;
+    const query = firstUnattempted(queries);
+    if (!query) return undefined;
+    return { query, shapingSignals: positiveSignals.filter((signal) => pattern.test(signal)).slice(0, 4) };
+  };
+  return shaped(/\b(science fiction|sci fi|sci-fi|space|dystopian|dystopia|speculative)\b/i, ["middle grade science fiction", "middle grade dystopian science fiction", "middle grade space adventure", "middle grade adventure"])
+    || shaped(/\b(animals?|nature|wildlife|nonfiction)\b/i, ["middle grade animal adventure", "children's nature adventure", "middle grade nature fiction", "middle grade adventure"])
+    || shaped(/\b(community|friendship|friends?|playful|school|classroom|family)\b/i, ["middle grade friendship adventure", "middle grade school adventure", "middle grade friendship", "middle grade adventure"])
+    || shaped(/\b(fantasy|heroic|adventure|magic|magical)\b/i, ["middle grade fantasy adventure", "middle grade adventure"]);
+}
+
 function middleGradesRouteAlignedRecoveryQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string | undefined {
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
@@ -1444,6 +1470,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesDelayedRetrySkippedReason = "";
     let middleGradesDelayedRetryTimeoutMs: number | undefined;
     let middleGradesTimeoutBudgetRemainingBeforeRetry: number | undefined;
+    let middleGradesAntiZeroFallbackShapedQuery: string | undefined;
+    let middleGradesAntiZeroFallbackShapingSignals: string[] | undefined;
+    const rememberMiddleGradesAntiZeroFallbackShape = (fallback?: { query: string; shapingSignals: string[] }): void => {
+      if (!fallback) return;
+      middleGradesAntiZeroFallbackShapedQuery = fallback.query;
+      middleGradesAntiZeroFallbackShapingSignals = fallback.shapingSignals;
+    };
     const middleGradesAgeShapeSamples: MiddleGradesAgeShapeDiagnosticSample[] = [];
     let middleGradesAgeShapeObserved = 0;
     let middleGradesAgeShapeAccepted = 0;
@@ -1850,8 +1883,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
       const attemptedMainQueries = new Set(mainFetches.map((fetch) => String(fetch.query || "").toLowerCase()));
       const routeAlignedDelayedRetryQuery = middleGradesRouteAlignedRecoveryQuery(queryPlans, attemptedMainQueries);
-      const delayedRetryQuery = routeAlignedDelayedRetryQuery || middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedMainQueries);
+      const signalShapedDelayedRetryFallback = routeAlignedDelayedRetryQuery ? undefined : middleGradesSignalShapedAntiZeroFallback(queryPlans, attemptedMainQueries, context.profile);
+      const delayedRetryQuery = routeAlignedDelayedRetryQuery || signalShapedDelayedRetryFallback?.query || middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedMainQueries);
       const delayedRetryIsAntiZeroFallback = !routeAlignedDelayedRetryQuery;
+      if (delayedRetryIsAntiZeroFallback) rememberMiddleGradesAntiZeroFallbackShape(signalShapedDelayedRetryFallback);
       if (allAttemptedLaneQueriesTimedOut && delayedRetryQuery) {
         const delayedRetryPlan: OpenLibraryQueryPlan = {
           query: delayedRetryQuery,
@@ -2028,7 +2063,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const allRealFetchesTimedOut = realFetches.length > 0 && realFetches.every((fetch) => fetch.timedOut);
       const attemptedRealQueries = new Set(realFetches.map((fetch) => String(fetch.query || "").toLowerCase()));
       const rejectedRowsAntiZeroFallbackQuery = middleGradesRejectedRowsAntiZeroFallbackQuery(queryPlans, attemptedRealQueries, realFetches);
-      const finalSafeQuery = rejectedRowsAntiZeroFallbackQuery || middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedRealQueries);
+      const signalShapedFinalSafeFallback = middleGradesSignalShapedAntiZeroFallback(queryPlans, attemptedRealQueries, context.profile);
+      const finalSafeQuery = signalShapedFinalSafeFallback?.query || rejectedRowsAntiZeroFallbackQuery || middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedRealQueries);
+      rememberMiddleGradesAntiZeroFallbackShape(signalShapedFinalSafeFallback);
       const shouldRunFinalSafeRecovery = allRealFetchesTimedOut || Boolean(rejectedRowsAntiZeroFallbackQuery);
       const elapsedBeforeFinalSafeRecoveryMs = Date.now() - Date.parse(startedAt);
       const remainingFinalSafeRecoveryBudgetMs = plan.timeoutMs - elapsedBeforeFinalSafeRecoveryMs;
@@ -2490,6 +2527,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         middleGradesRouteAlignedSuccessCount,
         middleGradesAntiZeroFallbackSuccessCount,
         middleGradesFallbackOnlySlate,
+        middleGradesAntiZeroFallbackShapedQuery,
+        middleGradesAntiZeroFallbackShapingSignals,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year })),
