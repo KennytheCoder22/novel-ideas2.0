@@ -15,6 +15,7 @@ const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 600;
 const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 3_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS = 1_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_POST_FALLBACK_ROUTE_RECOVERY_MIN_BUDGET_MS = 1_500;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -1259,8 +1260,10 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)), evidence: Array.isArray(row.evidence) ? row.evidence : [] }))
     .filter((row) => row.value);
   const fallbackCandidates = [
+    { query: "middle grade family fantasy", family: "family_fantasy", reliability: 0.8, patterns: [/\b(family|redemption|warm|kindness)\b/i, /\b(fantasy|magic|magical|heroic)\b/i] },
+    { query: "middle grade funny family story", family: "funny_family", reliability: 0.75, patterns: [/\b(comedy|funny|humor|humorous|playful)\b/i, /\b(family|redemption|school|friendship|community)\b/i] },
     { query: "middle grade fantasy adventure", family: "fantasy_adventure", reliability: 0.65, patterns: [/\b(fantasy|magic|magical|heroic)\b/i, /\badventure\b/i] },
-    { query: "middle grade school adventure", family: "school_adventure", reliability: 0.85, patterns: [/\b(school|classroom|community|family)\b/i, /\b(adventure|playful|friendship)\b/i] },
+    { query: "middle grade school adventure", family: "school_adventure", reliability: 0.85, patterns: [/\b(school|classroom|community|family)\b/i, /\b(adventure|playful|friendship|mystery)\b/i] },
     { query: "middle grade animal adventure", family: "animal_adventure", reliability: 0.65, patterns: [/\b(animals?|nature|wildlife|nonfiction)\b/i, /\badventure\b/i] },
     { query: "middle grade dystopian adventure", family: "science_fiction_adventure", reliability: 0.55, patterns: [/\b(dystopian|dystopia|science fiction|sci fi|sci-fi|space|speculative)\b/i, /\badventure\b/i] },
     { query: "middle grade mystery adventure", family: "mystery_adventure", reliability: 0.85, patterns: [/\b(mystery|detective)\b/i, /\b(adventure|friendship)\b/i] },
@@ -1271,6 +1274,7 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
   ].filter((candidate) => !attemptedQueries.has(candidate.query.toLowerCase()));
   const candidateQueries = fallbackCandidates.map((candidate) => candidate.query);
   if (!fallbackCandidates.length) return undefined;
+  const hasNonGenericIntersection = fallbackCandidates.some((candidate) => candidate.family !== "generic_adventure" && candidate.patterns.filter((pattern) => positiveRows.some((row) => pattern.test(row.value))).length >= 2);
   const queryScores: Record<string, number> = {};
   const positiveEvidenceByQuery: Record<string, string[]> = {};
   const avoidEvidenceByQuery: Record<string, string[]> = {};
@@ -1285,7 +1289,10 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     const intersectionBoost = matchedPatternCount >= 2 ? 1.2 : 0;
     const isolatedPenalty = positiveMatches.length <= 1 && matchedPatternCount < 2 ? 0.6 : 1;
     const tasteScore = (positiveScore * isolatedPenalty) + recurrenceBoost + intersectionBoost - (avoidScore * 1.4);
-    const score = tasteScore + candidate.reliability;
+    const genericAdventurePenalty = candidate.family === "generic_adventure" && hasNonGenericIntersection ? 1.15 : 0;
+    const missingRequiredFamilyFantasySignalPenalty = candidate.family === "family_fantasy" && !positiveRows.some((row) => /\b(fantasy|magic|magical|heroic)\b/i.test(row.value)) ? 2.5 : 0;
+    const missingRequiredFunnyFamilySignalPenalty = candidate.family === "funny_family" && !positiveRows.some((row) => /\b(comedy|funny|humor|humorous|playful)\b/i.test(row.value)) ? 2.5 : 0;
+    const score = tasteScore + candidate.reliability - genericAdventurePenalty - missingRequiredFamilyFantasySignalPenalty - missingRequiredFunnyFamilySignalPenalty;
     const roundedTasteScore = Math.round(tasteScore * 1000) / 1000;
     const roundedScore = Math.round(score * 1000) / 1000;
     queryScores[candidate.query] = roundedScore;
@@ -1534,6 +1541,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesFallbackAttemptOrder: string[] = [];
     const middleGradesRemainingBudgetBeforeEachFallback: Record<string, number> = {};
     const middleGradesFallbackOutcomes: string[] = [];
+    let middleGradesWhyFallbackOnlyAcceptedAsFinal: string | undefined;
+    let middleGradesRouteAlignedRecoveryAttemptedAfterFallback = false;
+    let middleGradesRouteAlignedRecoverySkippedReason: string | undefined;
     const rememberMiddleGradesAntiZeroFallbackShape = (fallback?: ReturnType<typeof middleGradesSignalShapedAntiZeroFallback>): void => {
       if (!fallback) return;
       middleGradesAntiZeroFallbackShapedQuery = fallback.query;
@@ -2206,6 +2216,74 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
     }
 
+    if (ageProfile.key === "middleGrades" && rawItems.length > 0 && !context.signal?.aborted) {
+      const fallbackOnlySoFar = rawItems.every((item: any) => item?.fallbackAlignment === "anti_zero" || item?.emergencyFallback);
+      if (fallbackOnlySoFar) {
+        const attemptedRealQueriesAfterFallback = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+        const routeAlignedAfterFallbackQuery = middleGradesRouteAlignedRecoveryQuery(queryPlans, attemptedRealQueriesAfterFallback);
+        const elapsedBeforeRouteAlignedAfterFallbackMs = Date.now() - Date.parse(startedAt);
+        const remainingRouteAlignedAfterFallbackBudgetMs = plan.timeoutMs - elapsedBeforeRouteAlignedAfterFallbackMs;
+        if (!routeAlignedAfterFallbackQuery) {
+          middleGradesRouteAlignedRecoverySkippedReason = "no_unattempted_route_aligned_query";
+        } else if (remainingRouteAlignedAfterFallbackBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_POST_FALLBACK_ROUTE_RECOVERY_MIN_BUDGET_MS) {
+          middleGradesRouteAlignedRecoverySkippedReason = "insufficient_budget_after_fallback";
+        } else {
+          middleGradesRouteAlignedRecoveryAttemptedAfterFallback = true;
+          const routeAlignedAfterFallbackTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingRouteAlignedAfterFallbackBudgetMs);
+          const routeAlignedAfterFallbackPlan: OpenLibraryQueryPlan = {
+            query: routeAlignedAfterFallbackQuery,
+            originalPlannedQuery: queries[0] || "",
+            queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+            queryFamily: queryFamilyForOpenLibraryQuery(routeAlignedAfterFallbackQuery),
+            facets: queryPlans[0]?.facets || [],
+            routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_post_fallback_route_recovery`,
+            routingDominance: queryPlans[0]?.routingDominance,
+            fallbackAlignment: "route_aligned",
+          };
+          const { docs: routeAlignedAfterFallbackDocs, diagnostic } = await fetchOpenLibraryDocs(routeAlignedAfterFallbackPlan, ageProfile.docsPerQuery, context.signal, false, routeAlignedAfterFallbackTimeoutMs, 1, routeAlignedAfterFallbackTimeoutMs);
+          fetches.push(diagnostic);
+          dropReasons.middle_grades_post_fallback_route_recovery_attempted = Number(dropReasons.middle_grades_post_fallback_route_recovery_attempted || 0) + 1;
+          if (diagnostic.timedOut) {
+            dropReasons.middle_grades_post_fallback_route_recovery_timeout = Number(dropReasons.middle_grades_post_fallback_route_recovery_timeout || 0) + 1;
+          } else if (diagnostic.failedReason) {
+            dropReasons.middle_grades_post_fallback_route_recovery_failed = Number(dropReasons.middle_grades_post_fallback_route_recovery_failed || 0) + 1;
+          } else {
+            rawApiResultCount += routeAlignedAfterFallbackDocs.length;
+            for (const doc of routeAlignedAfterFallbackDocs) {
+              const title = String(doc?.title || "").trim();
+              if (title) rawTitles.push(title);
+              if (!title) continue;
+              recordMiddleGradesAgeShapeDiagnostic(doc, routeAlignedAfterFallbackQuery, "middle_grades_post_fallback_route_recovery");
+              const quality = shouldKeepOpenLibraryDoc(doc, routeAlignedAfterFallbackQuery, context.profile);
+              if (!quality.keep) {
+                const reason = `middle_grades_post_fallback_route_recovery_${quality.reason || "quality_filter"}`;
+                dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+                if (/artifact|inappropriate|middle_grades_age_shape/.test(reason)) artifactSuppressedTitles.push(title);
+                continue;
+              }
+              const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+              if (acceptedDocKeys.has(docKey)) {
+                dropReasons.middle_grades_post_fallback_route_recovery_duplicate_doc = Number(dropReasons.middle_grades_post_fallback_route_recovery_duplicate_doc || 0) + 1;
+                continue;
+              }
+              const seriesKey = openLibrarySeriesKey(doc);
+              if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+                dropReasons.middle_grades_post_fallback_route_recovery_series_duplicate = Number(dropReasons.middle_grades_post_fallback_route_recovery_series_duplicate || 0) + 1;
+                seriesSuppressedTitles.push(title);
+                continue;
+              }
+              if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+              acceptedDocKeys.add(docKey);
+              rawItems.push(normalizeOpenLibraryDoc(doc, routeAlignedAfterFallbackPlan));
+              dropReasons.middle_grades_post_fallback_route_recovery_accepted = Number(dropReasons.middle_grades_post_fallback_route_recovery_accepted || 0) + 1;
+              if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
+            }
+          }
+        }
+      }
+    }
+
+
     const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
     if (ageProfile.key === "adult" && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
       const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
@@ -2564,6 +2642,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesFallbackOnlySlate = ageProfile.key === "middleGrades" && rawItems.length > 0
       ? Number(middleGradesAntiZeroFallbackSuccessCount || 0) > 0 && Number(middleGradesRouteAlignedSuccessCount || 0) === 0
       : undefined;
+    if (ageProfile.key === "middleGrades" && middleGradesFallbackOnlySlate) {
+      middleGradesWhyFallbackOnlyAcceptedAsFinal = middleGradesRouteAlignedRecoveryAttemptedAfterFallback
+        ? "post_fallback_route_aligned_recovery_produced_no_accepted_rows"
+        : middleGradesRouteAlignedRecoverySkippedReason || "anti_zero_fallback_preserved_count_stability";
+    }
     const middleGradesLockQualityStatus = ageProfile.key === "middleGrades"
       ? rawItems.length === 0
         ? "zero_result_failure"
@@ -2631,6 +2714,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         fallbackAttemptOrder: middleGradesFallbackAttemptOrder.length ? middleGradesFallbackAttemptOrder : undefined,
         remainingBudgetBeforeEachFallback: Object.keys(middleGradesRemainingBudgetBeforeEachFallback).length ? middleGradesRemainingBudgetBeforeEachFallback : undefined,
         lockQualityStatus: middleGradesLockQualityStatus,
+        whyFallbackOnlyAcceptedAsFinal: middleGradesWhyFallbackOnlyAcceptedAsFinal,
+        routeAlignedRecoveryAttemptedAfterFallback: ageProfile.key === "middleGrades" ? middleGradesRouteAlignedRecoveryAttemptedAfterFallback : undefined,
+        routeAlignedRecoverySkippedReason: middleGradesRouteAlignedRecoverySkippedReason,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year })),

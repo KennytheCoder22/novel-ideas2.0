@@ -165,6 +165,9 @@ export interface SourceDiagnosticV2 {
   fallbackAttemptOrder?: string[];
   remainingBudgetBeforeEachFallback?: Record<string, number>;
   lockQualityStatus?: "route_aligned_success" | "mixed_recovery_success" | "fallback_only_success" | "fallback_only_low_confidence" | "zero_result_failure";
+  whyFallbackOnlyAcceptedAsFinal?: string;
+  routeAlignedRecoveryAttemptedAfterFallback?: boolean;
+  routeAlignedRecoverySkippedReason?: string;
 }
 
 export interface SourceResult {

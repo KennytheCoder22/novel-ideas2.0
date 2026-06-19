@@ -1278,12 +1278,13 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades humor delayed retry should recover rows after timed-out humor lane attempts");
-    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade fantasy adventure"], "middle grades fantasy-humor retry should jump to reliability-weighted anti-zero fallback after two zero-row timeouts");
+    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade funny family story", "middle grade school story"], "middle grades fantasy-humor retry should jump to reliability-weighted anti-zero fallback after two zero-row timeouts and then try a route-aligned recovery with spare budget");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades humor retry diagnostics should mark attempted");
     assertEqual(result.diagnostics.middleGradesAntiZeroFallbackSuccessCount >= 5, true, "middle grades humor retry diagnostics should distinguish anti-zero fallback success");
-    assertEqual(Boolean(result.diagnostics.middleGradesFallbackOnlySlate), true, "middle grades humor retry should mark fallback-only when anti-zero fallback supplies the slate");
-    assertDeepEqual(result.diagnostics.fallbackAttemptOrder, ["middle grade fantasy adventure"], "middle grades humor retry should record anti-zero fallback attempt order");
-    assertEqual(result.diagnostics.lockQualityStatus, "fallback_only_success", "middle grades humor retry should expose fallback-only lock quality status");
+    assertEqual(Boolean(result.diagnostics.middleGradesFallbackOnlySlate), false, "middle grades humor retry should avoid fallback-only status when post-fallback route recovery succeeds");
+    assertDeepEqual(result.diagnostics.fallbackAttemptOrder, ["middle grade funny family story"], "middle grades humor retry should record anti-zero fallback attempt order");
+    assertEqual(result.diagnostics.routeAlignedRecoveryAttemptedAfterFallback, true, "middle grades humor retry should try route-aligned recovery after fallback when budget remains");
+    assertEqual(result.diagnostics.lockQualityStatus, "mixed_recovery_success", "middle grades humor retry should expose mixed recovery lock quality status");
     assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades humor retry should run with a real timeout budget while reserving final safe recovery");
     console.log(JSON.stringify({ name: "middle grades fantasy-humor retry jumps to anti-zero fallback", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs, lockQualityStatus: result.diagnostics.lockQualityStatus }));
   } finally {
@@ -1332,12 +1333,13 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades fantasy-humor should allow anti-zero fallback after route-aligned recovery rows reject");
-    assertDeepEqual(middleGradesHumorRejectedFetchCalls, ["middle grade humor", "funny fantasy", "middle grade fantasy adventure", "middle grade adventure"], "middle grades fantasy-humor should skip route-adjacent recovery after two zero-row timeouts and move to next reliable fallback when the shaped fallback rejects");
-    assertDeepEqual(result.diagnostics.fallbackAttemptOrder, ["middle grade fantasy adventure", "middle grade adventure"], "middle grades fantasy-humor should record selected and next-best reliable fallback attempts");
-    assertEqual(result.diagnostics.whySelectedFallbackTimedOutOrSucceeded.some((row) => row.startsWith("middle grade fantasy adventure:succeeded")), true, "middle grades fantasy-humor should record the shaped fallback fetch outcome before filtering");
-    assertEqual(result.diagnostics.whySelectedFallbackTimedOutOrSucceeded.some((row) => row.startsWith("middle grade adventure:succeeded")), true, "middle grades fantasy-humor should record the next reliable fallback success");
+    assertDeepEqual(middleGradesHumorRejectedFetchCalls, ["middle grade humor", "funny fantasy", "middle grade funny family story", "middle grade family fantasy", "middle grade school story"], "middle grades fantasy-humor should skip route-adjacent recovery after two zero-row timeouts, move to the next reliable shaped fallback, then try route-aligned recovery when budget remains");
+    assertDeepEqual(result.diagnostics.fallbackAttemptOrder, ["middle grade funny family story", "middle grade family fantasy"], "middle grades fantasy-humor should record selected and next-best reliable fallback attempts");
+    assertEqual(result.diagnostics.whySelectedFallbackTimedOutOrSucceeded.some((row) => row.startsWith("middle grade funny family story:succeeded")), true, "middle grades fantasy-humor should record the shaped fallback fetch outcome before filtering");
+    assertEqual(result.diagnostics.whySelectedFallbackTimedOutOrSucceeded.some((row) => row.startsWith("middle grade family fantasy:succeeded")), true, "middle grades fantasy-humor should record the next reliable fallback success");
     assertEqual(result.diagnostics.middleGradesAntiZeroFallbackSuccessCount >= 5, true, "middle grades fantasy-humor rejected route recovery should distinguish anti-zero fallback success");
-    assertEqual(result.diagnostics.middleGradesFallbackOnlySlate, true, "middle grades fantasy-humor rejected route recovery should keep fallback-only diagnostics");
+    assertEqual(result.diagnostics.middleGradesFallbackOnlySlate, false, "middle grades fantasy-humor rejected fallback should avoid fallback-only diagnostics when post-fallback route recovery succeeds");
+    assertEqual(result.diagnostics.routeAlignedRecoveryAttemptedAfterFallback, true, "middle grades fantasy-humor rejected fallback should try post-fallback route recovery with remaining budget");
     console.log(JSON.stringify({ name: "middle grades fantasy-humor anti-zero skips late route recovery", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRejectedFetchCalls, fallbackOnly: result.diagnostics.middleGradesFallbackOnlySlate }));
   } finally {
     Date.now = originalMiddleGradesHumorRejectedDateNow;
