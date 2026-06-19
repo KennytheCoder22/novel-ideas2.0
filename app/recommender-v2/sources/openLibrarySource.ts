@@ -1246,6 +1246,7 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
   avoidEvidenceByQuery: Record<string, string[]>;
   reliabilityByQuery: Record<string, number>;
   selectedReason: string;
+  whyHigherTasteFallbackLost?: string;
 } | undefined {
   const routingReason = String(queryPlans[0]?.routingReason || "");
   if (/fantasy_mystery|mystery/i.test(routingReason)) return undefined;
@@ -1285,16 +1286,21 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     const isolatedPenalty = positiveMatches.length <= 1 && matchedPatternCount < 2 ? 0.6 : 1;
     const tasteScore = (positiveScore * isolatedPenalty) + recurrenceBoost + intersectionBoost - (avoidScore * 1.4);
     const score = tasteScore + candidate.reliability;
+    const roundedTasteScore = Math.round(tasteScore * 1000) / 1000;
     const roundedScore = Math.round(score * 1000) / 1000;
     queryScores[candidate.query] = roundedScore;
     reliabilityByQuery[candidate.query] = candidate.reliability;
     positiveEvidenceByQuery[candidate.query] = uniqueStrings(positiveMatches.map((row) => row.value), 6);
     avoidEvidenceByQuery[candidate.query] = uniqueStrings(avoidMatches.map((row) => row.value), 6);
-    return { ...candidate, score: roundedScore, positiveMatches, avoidMatches, matchedPatternCount };
+    return { ...candidate, score: roundedScore, tasteScore: roundedTasteScore, positiveMatches, avoidMatches, matchedPatternCount };
   }).sort((a, b) => b.score - a.score || b.matchedPatternCount - a.matchedPatternCount || candidateQueries.indexOf(a.query) - candidateQueries.indexOf(b.query));
   const selected = scored[0];
   if (!selected) return undefined;
   const runnerUp = scored[1];
+  const topTasteCandidate = [...scored].sort((a, b) => b.tasteScore - a.tasteScore)[0];
+  const whyHigherTasteFallbackLost = topTasteCandidate && topTasteCandidate.query !== selected.query
+    ? `${topTasteCandidate.query} had higher taste score ${topTasteCandidate.tasteScore} but lower reliability ${topTasteCandidate.reliability}; selected ${selected.query} with net score ${selected.score} and reliability ${selected.reliability}`
+    : undefined;
   const lowConfidence = selected.score <= 0.5 || (selected.positiveMatches.length <= 1 && runnerUp && selected.score - runnerUp.score < 1.25);
   return {
     query: selected.query,
@@ -1305,6 +1311,7 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
     positiveEvidenceByQuery,
     avoidEvidenceByQuery,
     selectedReason: lowConfidence ? `fallback_only_low_confidence:${selected.family}` : `net_positive:${selected.family}`,
+    whyHigherTasteFallbackLost,
   };
 }
 
@@ -1523,6 +1530,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesPositiveEvidenceByFallbackQuery: Record<string, string[]> | undefined;
     let middleGradesAvoidEvidenceByFallbackQuery: Record<string, string[]> | undefined;
     let middleGradesSelectedFallbackQueryReason: string | undefined;
+    let middleGradesWhyHigherTasteFallbackLost: string | undefined;
+    const middleGradesFallbackAttemptOrder: string[] = [];
+    const middleGradesRemainingBudgetBeforeEachFallback: Record<string, number> = {};
+    const middleGradesFallbackOutcomes: string[] = [];
     const rememberMiddleGradesAntiZeroFallbackShape = (fallback?: ReturnType<typeof middleGradesSignalShapedAntiZeroFallback>): void => {
       if (!fallback) return;
       middleGradesAntiZeroFallbackShapedQuery = fallback.query;
@@ -1533,6 +1544,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       middleGradesPositiveEvidenceByFallbackQuery = fallback.positiveEvidenceByQuery;
       middleGradesAvoidEvidenceByFallbackQuery = fallback.avoidEvidenceByQuery;
       middleGradesSelectedFallbackQueryReason = fallback.selectedReason;
+      middleGradesWhyHigherTasteFallbackLost = fallback.whyHigherTasteFallbackLost;
     };
     const middleGradesAgeShapeSamples: MiddleGradesAgeShapeDiagnosticSample[] = [];
     let middleGradesAgeShapeObserved = 0;
@@ -1939,7 +1951,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
       const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
       const attemptedMainQueries = new Set(mainFetches.map((fetch) => String(fetch.query || "").toLowerCase()));
-      const routeAlignedDelayedRetryQuery = middleGradesRouteAlignedRecoveryQuery(queryPlans, attemptedMainQueries);
+      const timedOutMainFetchCount = mainFetches.filter((fetch) => fetch.timedOut).length;
+      const routeAlignedDelayedRetryQuery = timedOutMainFetchCount >= 2 ? undefined : middleGradesRouteAlignedRecoveryQuery(queryPlans, attemptedMainQueries);
       const signalShapedDelayedRetryFallback = routeAlignedDelayedRetryQuery ? undefined : middleGradesSignalShapedAntiZeroFallback(queryPlans, attemptedMainQueries, context.profile);
       const delayedRetryQuery = routeAlignedDelayedRetryQuery || signalShapedDelayedRetryFallback?.query || middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedMainQueries);
       const delayedRetryIsAntiZeroFallback = !routeAlignedDelayedRetryQuery;
@@ -1959,6 +1972,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         const elapsedBeforeDelayedRetryMs = Date.now() - Date.parse(startedAt);
         const delayedRetryRemainingBudgetMs = plan.timeoutMs - elapsedBeforeDelayedRetryMs;
         middleGradesTimeoutBudgetRemainingBeforeRetry = delayedRetryRemainingBudgetMs;
+        if (delayedRetryIsAntiZeroFallback) {
+          middleGradesFallbackAttemptOrder.push(delayedRetryQuery);
+          middleGradesRemainingBudgetBeforeEachFallback[delayedRetryQuery] = delayedRetryRemainingBudgetMs;
+        }
         if (delayedRetryRemainingBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS) {
           middleGradesDelayedRetrySkippedReason = "insufficient_budget";
           dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget = Number(dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget || 0) + 1;
@@ -1986,12 +2003,15 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           dropReasons.middle_grades_delayed_final_retry_attempted = Number(dropReasons.middle_grades_delayed_final_retry_attempted || 0) + 1;
           openLibraryTopUpRan = true;
           if (diagnostic.timedOut) {
+            if (delayedRetryIsAntiZeroFallback) middleGradesFallbackOutcomes.push(`${delayedRetryQuery}:timed_out`);
             dropReasons.middle_grades_delayed_final_retry_timeout = Number(dropReasons.middle_grades_delayed_final_retry_timeout || 0) + 1;
             if (!failedReason) failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
           } else if (diagnostic.failedReason) {
+            if (delayedRetryIsAntiZeroFallback) middleGradesFallbackOutcomes.push(`${delayedRetryQuery}:failed:${diagnostic.failedReason}`);
             dropReasons.middle_grades_delayed_final_retry_failed = Number(dropReasons.middle_grades_delayed_final_retry_failed || 0) + 1;
             if (!failedReason) failedReason = diagnostic.failedReason;
           } else {
+            if (delayedRetryIsAntiZeroFallback) middleGradesFallbackOutcomes.push(`${delayedRetryQuery}:succeeded:${delayedRetryDocs.length}`);
             rawApiResultCount += delayedRetryDocs.length;
             for (const doc of delayedRetryDocs) {
               const title = String(doc?.title || "").trim();
@@ -2127,6 +2147,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const elapsedBeforeFinalSafeRecoveryMs = Date.now() - Date.parse(startedAt);
       const remainingFinalSafeRecoveryBudgetMs = plan.timeoutMs - elapsedBeforeFinalSafeRecoveryMs;
       if (shouldRunFinalSafeRecovery && finalSafeQuery && !attemptedRealQueries.has(finalSafeQuery.toLowerCase()) && remainingFinalSafeRecoveryBudgetMs >= MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS) {
+        middleGradesFallbackAttemptOrder.push(finalSafeQuery);
+        middleGradesRemainingBudgetBeforeEachFallback[finalSafeQuery] = remainingFinalSafeRecoveryBudgetMs;
         const finalSafeTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingFinalSafeRecoveryBudgetMs);
         const finalSafePlan: OpenLibraryQueryPlan = {
           query: finalSafeQuery,
@@ -2143,10 +2165,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         fetches.push(diagnostic);
         dropReasons.middle_grades_final_safe_recovery_attempted = Number(dropReasons.middle_grades_final_safe_recovery_attempted || 0) + 1;
         if (diagnostic.timedOut) {
+          middleGradesFallbackOutcomes.push(`${finalSafeQuery}:timed_out`);
           dropReasons.middle_grades_final_safe_recovery_timeout = Number(dropReasons.middle_grades_final_safe_recovery_timeout || 0) + 1;
         } else if (diagnostic.failedReason) {
+          middleGradesFallbackOutcomes.push(`${finalSafeQuery}:failed:${diagnostic.failedReason}`);
           dropReasons.middle_grades_final_safe_recovery_failed = Number(dropReasons.middle_grades_final_safe_recovery_failed || 0) + 1;
         } else {
+          middleGradesFallbackOutcomes.push(`${finalSafeQuery}:succeeded:${finalSafeDocs.length}`);
           rawApiResultCount += finalSafeDocs.length;
           for (const doc of finalSafeDocs) {
             const title = String(doc?.title || "").trim();
@@ -2539,6 +2564,15 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesFallbackOnlySlate = ageProfile.key === "middleGrades" && rawItems.length > 0
       ? Number(middleGradesAntiZeroFallbackSuccessCount || 0) > 0 && Number(middleGradesRouteAlignedSuccessCount || 0) === 0
       : undefined;
+    const middleGradesLockQualityStatus = ageProfile.key === "middleGrades"
+      ? rawItems.length === 0
+        ? "zero_result_failure"
+        : middleGradesFallbackOnlySlate
+          ? /fallback_only_low_confidence/.test(String(middleGradesSelectedFallbackQueryReason || "")) ? "fallback_only_low_confidence" : "fallback_only_success"
+          : Number(middleGradesAntiZeroFallbackSuccessCount || 0) > 0
+            ? "mixed_recovery_success"
+            : "route_aligned_success"
+      : undefined;
     const status: SourceResult["status"] = rawItems.length ? "succeeded" : allMainFetchesTimedOut ? "timed_out" : failedReason ? "failed" : "empty";
     const emptyReason = !rawItems.length && (status === "empty" || status === "failed" || status === "timed_out") ? openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason) : undefined;
     return {
@@ -2592,6 +2626,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         positiveEvidenceByFallbackQuery: middleGradesPositiveEvidenceByFallbackQuery,
         avoidEvidenceByFallbackQuery: middleGradesAvoidEvidenceByFallbackQuery,
         selectedFallbackQueryReason: middleGradesSelectedFallbackQueryReason,
+        whyHigherTasteFallbackLost: middleGradesWhyHigherTasteFallbackLost,
+        whySelectedFallbackTimedOutOrSucceeded: middleGradesFallbackOutcomes.length ? middleGradesFallbackOutcomes : undefined,
+        fallbackAttemptOrder: middleGradesFallbackAttemptOrder.length ? middleGradesFallbackAttemptOrder : undefined,
+        remainingBudgetBeforeEachFallback: Object.keys(middleGradesRemainingBudgetBeforeEachFallback).length ? middleGradesRemainingBudgetBeforeEachFallback : undefined,
+        lockQualityStatus: middleGradesLockQualityStatus,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year })),
