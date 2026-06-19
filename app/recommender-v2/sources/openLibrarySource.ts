@@ -1237,30 +1237,69 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
   return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 12);
 }
 
-function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPlan[], attemptedQueries: Set<string>, profile: TasteProfile): { query: string; shapingSignals: string[] } | undefined {
+function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPlan[], attemptedQueries: Set<string>, profile: TasteProfile): {
+  query: string;
+  shapingSignals: string[];
+  candidateQueries: string[];
+  queryScores: Record<string, number>;
+  positiveEvidenceByQuery: Record<string, string[]>;
+  avoidEvidenceByQuery: Record<string, string[]>;
+  selectedReason: string;
+} | undefined {
   const routingReason = String(queryPlans[0]?.routingReason || "");
   if (/fantasy_mystery|mystery/i.test(routingReason)) return undefined;
-  const positiveSignals = uniqueStrings(
-    [...profile.genreFamily, ...profile.themes]
-      .filter((row) => Number(row.weight || 0) > 0)
-      .sort((a, b) => Math.abs(Number(b.weight || 0)) - Math.abs(Number(a.weight || 0)))
-      .map((row) => cleanOpenLibraryQueryPart(row.value))
-      .filter(Boolean),
-    8,
-  );
-  const signalText = positiveSignals.join(" ").toLowerCase();
-  const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
-    .find((query) => !attemptedQueries.has(query.toLowerCase()));
-  const shaped = (pattern: RegExp, queries: string[]): { query: string; shapingSignals: string[] } | undefined => {
-    if (!pattern.test(signalText)) return undefined;
-    const query = firstUnattempted(queries);
-    if (!query) return undefined;
-    return { query, shapingSignals: positiveSignals.filter((signal) => pattern.test(signal)).slice(0, 4) };
+  const positiveRows = [...profile.genreFamily, ...profile.themes]
+    .filter((row) => Number(row.weight || 0) > 0)
+    .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)), evidence: Array.isArray(row.evidence) ? row.evidence : [] }))
+    .filter((row) => row.value);
+  const avoidRows = profile.avoidSignals
+    .filter((row) => Number(row.weight || 0) < 0)
+    .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)), evidence: Array.isArray(row.evidence) ? row.evidence : [] }))
+    .filter((row) => row.value);
+  const fallbackCandidates = [
+    { query: "middle grade fantasy adventure", family: "fantasy_adventure", patterns: [/\b(fantasy|magic|magical|heroic)\b/i, /\badventure\b/i] },
+    { query: "middle grade school adventure", family: "school_adventure", patterns: [/\b(school|classroom|community|family)\b/i, /\b(adventure|playful|friendship)\b/i] },
+    { query: "middle grade animal adventure", family: "animal_adventure", patterns: [/\b(animals?|nature|wildlife|nonfiction)\b/i, /\badventure\b/i] },
+    { query: "middle grade science fiction", family: "science_fiction_adventure", patterns: [/\b(science fiction|sci fi|sci-fi|space|dystopian|dystopia|speculative)\b/i, /\badventure\b/i] },
+    { query: "middle grade dystopian science fiction", family: "science_fiction_adventure", patterns: [/\b(dystopian|dystopia|science fiction|sci fi|sci-fi|space|speculative)\b/i, /\badventure\b/i] },
+    { query: "middle grade mystery adventure", family: "mystery_adventure", patterns: [/\b(mystery|detective)\b/i, /\b(adventure|friendship)\b/i] },
+    { query: "middle grade friendship adventure", family: "friendship_adventure", patterns: [/\b(friendship|friends?|community)\b/i, /\b(adventure|playful|school)\b/i] },
+    { query: "middle grade adventure", family: "generic_adventure", patterns: [/\badventure\b/i] },
+  ].filter((candidate) => !attemptedQueries.has(candidate.query.toLowerCase()));
+  const candidateQueries = fallbackCandidates.map((candidate) => candidate.query);
+  if (!fallbackCandidates.length) return undefined;
+  const queryScores: Record<string, number> = {};
+  const positiveEvidenceByQuery: Record<string, string[]> = {};
+  const avoidEvidenceByQuery: Record<string, string[]> = {};
+  const scored = fallbackCandidates.map((candidate) => {
+    const positiveMatches = positiveRows.filter((row) => candidate.patterns.some((pattern) => pattern.test(row.value)));
+    const avoidMatches = avoidRows.filter((row) => candidate.patterns.some((pattern) => pattern.test(row.value)));
+    const matchedPatternCount = candidate.patterns.filter((pattern) => positiveRows.some((row) => pattern.test(row.value))).length;
+    const positiveScore = positiveMatches.reduce((sum, row) => sum + row.weight, 0);
+    const avoidScore = avoidMatches.reduce((sum, row) => sum + row.weight, 0);
+    const recurrenceBoost = Math.max(0, positiveMatches.length - 1) * 0.35;
+    const intersectionBoost = matchedPatternCount >= 2 ? 1.2 : 0;
+    const isolatedPenalty = positiveMatches.length <= 1 && matchedPatternCount < 2 ? 0.6 : 1;
+    const score = (positiveScore * isolatedPenalty) + recurrenceBoost + intersectionBoost - (avoidScore * 1.4);
+    const roundedScore = Math.round(score * 1000) / 1000;
+    queryScores[candidate.query] = roundedScore;
+    positiveEvidenceByQuery[candidate.query] = uniqueStrings(positiveMatches.map((row) => row.value), 6);
+    avoidEvidenceByQuery[candidate.query] = uniqueStrings(avoidMatches.map((row) => row.value), 6);
+    return { ...candidate, score: roundedScore, positiveMatches, avoidMatches, matchedPatternCount };
+  }).sort((a, b) => b.score - a.score || b.matchedPatternCount - a.matchedPatternCount || candidateQueries.indexOf(a.query) - candidateQueries.indexOf(b.query));
+  const selected = scored[0];
+  if (!selected) return undefined;
+  const runnerUp = scored[1];
+  const lowConfidence = selected.score <= 0.5 || (selected.positiveMatches.length <= 1 && runnerUp && selected.score - runnerUp.score < 1.25);
+  return {
+    query: selected.query,
+    shapingSignals: positiveEvidenceByQuery[selected.query],
+    candidateQueries,
+    queryScores,
+    positiveEvidenceByQuery,
+    avoidEvidenceByQuery,
+    selectedReason: lowConfidence ? `fallback_only_low_confidence:${selected.family}` : `net_positive:${selected.family}`,
   };
-  return shaped(/\b(science fiction|sci fi|sci-fi|space|dystopian|dystopia|speculative)\b/i, ["middle grade science fiction", "middle grade dystopian science fiction", "middle grade space adventure", "middle grade adventure"])
-    || shaped(/\b(animals?|nature|wildlife|nonfiction)\b/i, ["middle grade animal adventure", "children's nature adventure", "middle grade nature fiction", "middle grade adventure"])
-    || shaped(/\b(community|friendship|friends?|playful|school|classroom|family)\b/i, ["middle grade friendship adventure", "middle grade school adventure", "middle grade friendship", "middle grade adventure"])
-    || shaped(/\b(fantasy|heroic|adventure|magic|magical)\b/i, ["middle grade fantasy adventure", "middle grade adventure"]);
 }
 
 function middleGradesRouteAlignedRecoveryQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string | undefined {
@@ -1472,10 +1511,20 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesTimeoutBudgetRemainingBeforeRetry: number | undefined;
     let middleGradesAntiZeroFallbackShapedQuery: string | undefined;
     let middleGradesAntiZeroFallbackShapingSignals: string[] | undefined;
-    const rememberMiddleGradesAntiZeroFallbackShape = (fallback?: { query: string; shapingSignals: string[] }): void => {
+    let middleGradesFallbackCandidateQueries: string[] | undefined;
+    let middleGradesFallbackQueryScores: Record<string, number> | undefined;
+    let middleGradesPositiveEvidenceByFallbackQuery: Record<string, string[]> | undefined;
+    let middleGradesAvoidEvidenceByFallbackQuery: Record<string, string[]> | undefined;
+    let middleGradesSelectedFallbackQueryReason: string | undefined;
+    const rememberMiddleGradesAntiZeroFallbackShape = (fallback?: ReturnType<typeof middleGradesSignalShapedAntiZeroFallback>): void => {
       if (!fallback) return;
       middleGradesAntiZeroFallbackShapedQuery = fallback.query;
       middleGradesAntiZeroFallbackShapingSignals = fallback.shapingSignals;
+      middleGradesFallbackCandidateQueries = fallback.candidateQueries;
+      middleGradesFallbackQueryScores = fallback.queryScores;
+      middleGradesPositiveEvidenceByFallbackQuery = fallback.positiveEvidenceByQuery;
+      middleGradesAvoidEvidenceByFallbackQuery = fallback.avoidEvidenceByQuery;
+      middleGradesSelectedFallbackQueryReason = fallback.selectedReason;
     };
     const middleGradesAgeShapeSamples: MiddleGradesAgeShapeDiagnosticSample[] = [];
     let middleGradesAgeShapeObserved = 0;
@@ -2529,6 +2578,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         middleGradesFallbackOnlySlate,
         middleGradesAntiZeroFallbackShapedQuery,
         middleGradesAntiZeroFallbackShapingSignals,
+        fallbackCandidateQueries: middleGradesFallbackCandidateQueries,
+        fallbackQueryScores: middleGradesFallbackQueryScores,
+        positiveEvidenceByFallbackQuery: middleGradesPositiveEvidenceByFallbackQuery,
+        avoidEvidenceByFallbackQuery: middleGradesAvoidEvidenceByFallbackQuery,
+        selectedFallbackQueryReason: middleGradesSelectedFallbackQueryReason,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year })),

@@ -154,6 +154,11 @@ export interface SourceDiagnosticV2 {
   middleGradesFallbackOnlySlate?: boolean;
   middleGradesAntiZeroFallbackShapedQuery?: string;
   middleGradesAntiZeroFallbackShapingSignals?: string[];
+  fallbackCandidateQueries?: string[];
+  fallbackQueryScores?: Record<string, number>;
+  positiveEvidenceByFallbackQuery?: Record<string, string[]>;
+  avoidEvidenceByFallbackQuery?: Record<string, string[]>;
+  selectedFallbackQueryReason?: string;
 }
 
 export interface SourceResult {
