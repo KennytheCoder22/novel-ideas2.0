@@ -499,6 +499,123 @@ function applyMiddleGradesContemporarySchoolAlignment(rankedCandidates: ScoredCa
   }
 }
 
+
+function middleGradesRouteAlignmentScore(candidate: ScoredCandidate): number {
+  if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return 0;
+  const breakdown = candidate.scoreBreakdown || {};
+  const routeKey = middleGradesRouteKey(candidate);
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle, candidate.genres.join(" "), candidate.themes.join(" ")].filter(Boolean).join(" "));
+  let score = 0;
+  if (isMiddleGradesRouteAlignedSuccessCandidate(candidate)) score += 1.6;
+  if (/fantasy_humor|humor/i.test(routeKey) && /\b(humor|funny|friendship|school|family|comedy|adventure)\b/.test(text)) score += 0.7;
+  if (/contemporary_school|contemporary|school|realistic/i.test(routeKey) && /\b(realistic|contemporary|school|classroom|friendship|family)\b/.test(text)) score += 0.9;
+  if (/mystery/i.test(routeKey) && /\b(mystery|detective|clue|school mystery)\b/.test(text)) score += 0.9;
+  if (/\b(ai|robot|superhero|animal|nature|dystopian|science fiction)\b/.test(text)) score += 0.5;
+  score += Math.min(1, Math.max(0, Number(breakdown.genreFacetMatch || 0) / 3));
+  if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) score -= 0.8;
+  return Math.round(score * 1000) / 1000;
+}
+
+function middleGradesFallbackPenalty(candidate: ScoredCandidate): number {
+  if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return 0;
+  const breakdown = candidate.scoreBreakdown || {};
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  let penalty = 0;
+  if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) penalty += 1.1;
+  if (/\b(middle grade adventure|fantasy adventure|school adventure|school story|humor|funny)\b/.test(text) && Number(breakdown.genreFacetMatch || 0) <= 0) penalty += 0.7;
+  return Math.round(penalty * 1000) / 1000;
+}
+
+function middleGradesSelectionScore(candidate: ScoredCandidate, profile: TasteProfile): number {
+  if (profile.ageBand !== "preteens") return candidate.score;
+  return candidate.score + (middleGradesRouteAlignmentScore(candidate) * 1.2) - (middleGradesFallbackPenalty(candidate) * 1.4);
+}
+
+
+function applyMiddleGradesRouteAlignmentReplacement(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens") return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
+  const routeAlignedPool = rankedCandidates.filter((candidate) => {
+    if (!isMiddleGradesRouteAlignedSuccessCandidate(candidate)) return false;
+    if (isMiddleGradesHumorDefaultQueryFamily(candidate) || isMiddleGradesContemporarySchoolDefaultCandidate(candidate)) return false;
+    if (selected.includes(candidate)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    return true;
+  }).sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
+  if (!routeAlignedPool.length) return;
+  rejectedReasons.top_rejected_route_aligned_candidates_available = routeAlignedPool.length;
+  for (const candidate of routeAlignedPool) {
+    const candidateAdjusted = middleGradesSelectionScore(candidate, profile);
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index, adjusted: middleGradesSelectionScore(row, profile), alignment: middleGradesRouteAlignmentScore(row), fallbackPenalty: middleGradesFallbackPenalty(row) }))
+      .filter(({ row, alignment, fallbackPenalty }) => row.source === "openLibrary" && /middle_grades_/i.test(String(row.diagnostics?.routingReason || "")) && (fallbackPenalty > 0 || alignment < middleGradesRouteAlignmentScore(candidate)))
+      .sort((a, b) => a.adjusted - b.adjusted)[0]?.index;
+    if (replacementIndex === undefined) break;
+    const replaced = selected[replacementIndex];
+    if (candidateAdjusted + 0.35 < middleGradesSelectionScore(replaced, profile)) continue;
+    replaced.rejectedReasons.push("middle_grades_route_aligned_replaced_weaker_generic_or_fallback");
+    candidate.rejectedReasons.push("middle_grades_route_aligned_selected_over_generic_or_fallback");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_route_aligned_replacements = Number(rejectedReasons.middle_grades_route_aligned_replacements || 0) + 1;
+  }
+}
+
+function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens") return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const selectedTitles = new Set(selected.map((candidate) => normalized(candidate.title)));
+  const routeAlignmentScoreByTitle: Record<string, number> = {};
+  const genreFacetMatchScoreByTitle: Record<string, number> = {};
+  const fallbackPenaltyByTitle: Record<string, number> = {};
+  const finalSelectionReasonByTitle: Record<string, string> = {};
+  for (const candidate of rankedCandidates) {
+    routeAlignmentScoreByTitle[candidate.title] = middleGradesRouteAlignmentScore(candidate);
+    genreFacetMatchScoreByTitle[candidate.title] = Number(candidate.scoreBreakdown?.genreFacetMatch || 0);
+    fallbackPenaltyByTitle[candidate.title] = middleGradesFallbackPenalty(candidate);
+    if (selectedTitles.has(normalized(candidate.title))) {
+      finalSelectionReasonByTitle[candidate.title] = isMiddleGradesAntiZeroFallbackCandidate(candidate)
+        ? "selected_fallback_candidate"
+        : isMiddleGradesRouteAlignedSuccessCandidate(candidate)
+          ? "selected_route_aligned_candidate"
+          : "selected_ranked_candidate";
+    } else if (isMiddleGradesRouteAlignedSuccessCandidate(candidate)) {
+      finalSelectionReasonByTitle[candidate.title] = "rejected_or_deferred_route_aligned_candidate";
+    } else if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) {
+      finalSelectionReasonByTitle[candidate.title] = "rejected_or_deferred_fallback_candidate";
+    } else {
+      finalSelectionReasonByTitle[candidate.title] = "rejected_or_deferred_candidate";
+    }
+    candidate.diagnostics.routeAlignmentScore = routeAlignmentScoreByTitle[candidate.title];
+    candidate.diagnostics.genreFacetMatchScore = genreFacetMatchScoreByTitle[candidate.title];
+    candidate.diagnostics.fallbackPenalty = fallbackPenaltyByTitle[candidate.title];
+    candidate.diagnostics.finalSelectionReason = finalSelectionReasonByTitle[candidate.title];
+  }
+  const rejectedRouteAligned = rankedCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && isMiddleGradesRouteAlignedSuccessCandidate(candidate))
+    .sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile))
+    .slice(0, 8)
+    .map((candidate) => candidate.title);
+  const selectedRouteAlignedCount = selected.filter(isMiddleGradesRouteAlignedSuccessCandidate).length;
+  const selectedFallbackCount = selected.filter(isMiddleGradesAntiZeroFallbackCandidate).length;
+  const rejectedRouteAlignedCount = rankedCandidates.filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && isMiddleGradesRouteAlignedSuccessCandidate(candidate)).length;
+  diagnostics.routeAlignmentScoreByTitle = routeAlignmentScoreByTitle;
+  diagnostics.genreFacetMatchScoreByTitle = genreFacetMatchScoreByTitle;
+  diagnostics.fallbackPenaltyByTitle = fallbackPenaltyByTitle;
+  diagnostics.finalSelectionReasonByTitle = finalSelectionReasonByTitle;
+  diagnostics.topRejectedRouteAlignedCandidates = rejectedRouteAligned;
+  diagnostics.selectedVsRejectedRouteAlignmentSummary = {
+    selectedRouteAlignedCount,
+    selectedFallbackCount,
+    rejectedRouteAlignedCount,
+    fallbackSurvivedWithRejectedRouteAligned: selectedFallbackCount > 0 && rejectedRouteAlignedCount > 0,
+  };
+  if (selectedFallbackCount > 0 && rejectedRouteAlignedCount > 0) rejectedReasons.middle_grades_fallback_survived_with_route_aligned_available = selectedFallbackCount;
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
@@ -613,6 +730,15 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
       if (recurringClusterKey) seenRecurringOpenLibraryClusters.add(recurringClusterKey);
       selected.push(candidate);
       if (selected.length >= Math.min(5, Math.max(3, lowScoreRescue.length))) break;
+    }
+  }
+
+  if (selected.length === 0 && profile.ageBand === "preteens") {
+    const middleGradesEmergency = rankedCandidates.find((candidate) => candidate.source === "openLibrary" && !rejectReason(candidate, profile) && candidate.score > -4);
+    if (middleGradesEmergency) {
+      middleGradesEmergency.rejectedReasons.push("accepted_middle_grades_zero_final_items_guard");
+      rejectedReasons.accepted_middle_grades_zero_final_items_guard = 1;
+      selected.push(middleGradesEmergency);
     }
   }
 
@@ -756,8 +882,10 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
 
   applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesRouteAlignmentReplacement(rankedCandidates, selected, rejectedReasons, profile);
 
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
+  addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };

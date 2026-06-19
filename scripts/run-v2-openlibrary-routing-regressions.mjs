@@ -838,6 +838,10 @@ async function main() {
   assertEqual(new Set(middleGradesSelectionResult.selected.map((candidate) => candidate.title)).size, 5, "middle grades selection underfill recovery should keep duplicate titles blocked");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.duplicate_title), true, "middle grades selection should record duplicate title rejection before safe underfill recovery");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.middle_grades_openlibrary_underfill_relaxed_diversity || middleGradesSelectionResult.rejectedReasons.middle_grades_openlibrary_underfill_safe_candidate_accepted), true, "middle grades selection should emit middle-grades Open Library underfill diagnostics");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.routeAlignmentScoreByTitle), true, "middle grades selection should expose route alignment scores by title");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.genreFacetMatchScoreByTitle), true, "middle grades selection should expose genre facet match scores by title");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.fallbackPenaltyByTitle), true, "middle grades selection should expose fallback penalties by title");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.finalSelectionReasonByTitle), true, "middle grades selection should expose final selection reasons by title");
   console.log(JSON.stringify({ name: "middle grades selection relaxes Open Library diversity underfill to five", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
 
   const middleGradesContemporarySelectionProfile = buildTasteProfile({
@@ -1038,6 +1042,8 @@ async function main() {
   assertEqual(antiZeroSelected <= 2, true, "middle grades anti-zero fallback should only fill true shortages after aligned candidates are exhausted");
   assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.middle_grades_anti_zero_fallback_replacements), true, "middle grades anti-zero fallback gate should emit replacement diagnostics");
   assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.middle_grades_route_aligned_success), true, "middle grades anti-zero fallback gate should emit route-aligned success diagnostics");
+  assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.topRejectedRouteAlignedCandidates), true, "middle grades anti-zero fallback diagnostics should include top rejected route-aligned candidates");
+  assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.selectedVsRejectedRouteAlignmentSummary), true, "middle grades anti-zero fallback diagnostics should compare selected and rejected route alignment");
   console.log(JSON.stringify({ name: "middle grades anti-zero fallback fills only true shortages", pass: true, selected: middleGradesAntiZeroFallbackResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesAntiZeroFallbackResult.rejectedReasons }));
 
   const previousMiddleGradesCascadeProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
