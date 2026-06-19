@@ -947,6 +947,33 @@ async function main() {
   assertEqual(Boolean(middleGradesFantasyHumorEnforceResult.rejectedReasons.middle_grades_fantasy_humor_aligned_balance_replacements), true, "middle grades fantasy humor enforced balance should record replacement diagnostics");
   console.log(JSON.stringify({ name: "middle grades fantasy humor selection enforces second aligned candidate", pass: true, selected: middleGradesFantasyHumorEnforceResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesFantasyHumorEnforceResult.rejectedReasons }));
 
+  const middleGradesAntiZeroFallbackCandidates = [
+    ...["Fallback Quest One", "Fallback Quest Two", "Fallback Quest Three", "Fallback Quest Four", "Fallback Quest Five"].map((title, index) => fakeScoredCandidate({
+      id: `middle-antizero-fallback-${index}`,
+      title,
+      creators: [`Fallback Author ${index}`],
+      score: 10 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: "middle grade fantasy adventure", queryFamily: "fantasy", routingReason: "middle_grades_fantasy_humor_delayed_final_retry", emergencyFallback: true, fallbackAlignment: "anti_zero" },
+    })),
+    ...["Humor Survivor", "School Survivor", "Friendship Survivor"].map((title, index) => fakeScoredCandidate({
+      id: `middle-antizero-aligned-${index}`,
+      title,
+      creators: [`Aligned Author ${index}`],
+      score: 6 - index * 0.1,
+      maturityBand: "preteens",
+      diagnostics: { queryText: index === 0 ? "middle grade humor" : index === 1 ? "middle grade school story" : "middle grade friendship", queryFamily: index === 0 ? "humor" : index === 1 ? "school" : "friendship", routingReason: "middle_grades_fantasy_humor" },
+    })),
+  ];
+  const middleGradesAntiZeroFallbackResult = selectRecommendations(middleGradesAntiZeroFallbackCandidates, middleGradesFantasyHumorBalanceProfile, 5);
+  const antiZeroSelected = middleGradesAntiZeroFallbackResult.selected.filter((candidate) => candidate.diagnostics?.fallbackAlignment === "anti_zero" || candidate.diagnostics?.emergencyFallback).length;
+  const alignedSurvivorSelected = middleGradesAntiZeroFallbackResult.selected.filter((candidate) => /Survivor/.test(candidate.title)).length;
+  assertEqual(alignedSurvivorSelected >= 3, true, "middle grades anti-zero fallback should not displace surviving humor/school/friendship candidates");
+  assertEqual(antiZeroSelected <= 2, true, "middle grades anti-zero fallback should only fill true shortages after aligned candidates are exhausted");
+  assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.middle_grades_anti_zero_fallback_replacements), true, "middle grades anti-zero fallback gate should emit replacement diagnostics");
+  assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.middle_grades_route_aligned_success), true, "middle grades anti-zero fallback gate should emit route-aligned success diagnostics");
+  console.log(JSON.stringify({ name: "middle grades anti-zero fallback fills only true shortages", pass: true, selected: middleGradesAntiZeroFallbackResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesAntiZeroFallbackResult.rejectedReasons }));
+
   const previousMiddleGradesCascadeProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalMiddleGradesCascadeDateNow = Date.now;
   const middleGradesCascadeFetchCalls = [];
@@ -1192,6 +1219,8 @@ async function main() {
     assertEqual(result.rawItems.length >= 5, true, "middle grades humor delayed retry should recover rows after timed-out humor lane attempts");
     assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade fantasy adventure"], "middle grades fantasy-humor retry should jump to the stable fantasy-adventure anti-zero fallback after two timed-out humor lane attempts");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades humor retry diagnostics should mark attempted");
+    assertEqual(result.diagnostics.middleGradesAntiZeroFallbackSuccessCount >= 5, true, "middle grades humor retry diagnostics should distinguish anti-zero fallback success");
+    assertEqual(result.diagnostics.middleGradesFallbackOnlySlate, true, "middle grades humor retry diagnostics should mark fallback-only slates when no route-aligned rows survive");
     assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades humor retry should run with a real timeout budget while reserving final safe recovery");
     console.log(JSON.stringify({ name: "middle grades fantasy-humor retry jumps to stable fantasy fallback", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
   } finally {

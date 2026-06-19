@@ -164,6 +164,69 @@ function isMiddleGradesFantasyHumorDefaultCandidate(candidate: ScoredCandidate):
   return /\b(humor|funny)\b/.test(text);
 }
 
+function isMiddleGradesAntiZeroFallbackCandidate(candidate: ScoredCandidate): boolean {
+  if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
+  return Boolean(candidate.diagnostics?.emergencyFallback)
+    || candidate.diagnostics?.fallbackAlignment === "anti_zero"
+    || /_(?:delayed_final_retry|final_safe_recovery)$/i.test(String(candidate.diagnostics?.routingReason || ""));
+}
+
+function isMiddleGradesRouteAlignedSuccessCandidate(candidate: ScoredCandidate): boolean {
+  if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
+  if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) return false;
+  const routeKey = middleGradesRouteKey(candidate);
+  const text = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily, candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  if (/fantasy_humor|humor/i.test(routeKey)) return /\b(humor|funny|school|friendship)\b/.test(text);
+  if (/contemporary_school|contemporary|school|friendship|realistic/i.test(routeKey)) return /\b(realistic|school|friendship|classroom|family|family life|contemporary)\b/.test(text) && !/\b(fantasy adventure|magic|magical quest)\b/.test(text);
+  if (/mystery/i.test(routeKey)) return /\b(mystery|detective)\b/.test(text);
+  return true;
+}
+
+function applyMiddleGradesAntiZeroFallbackGate(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens") return;
+  const selectedAntiZero = selected.filter(isMiddleGradesAntiZeroFallbackCandidate);
+  if (!selectedAntiZero.length) {
+    const routeAlignedCount = selected.filter(isMiddleGradesRouteAlignedSuccessCandidate).length;
+    if (routeAlignedCount > 0) rejectedReasons.middle_grades_route_aligned_success = routeAlignedCount;
+    return;
+  }
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
+  const safeRouteAlignedPool = rankedCandidates.filter((candidate) => {
+    if (!isMiddleGradesRouteAlignedSuccessCandidate(candidate)) return false;
+    if (selected.includes(candidate)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    return true;
+  });
+  rejectedReasons.middle_grades_anti_zero_fallback_success = selectedAntiZero.length;
+  if (selected.filter(isMiddleGradesRouteAlignedSuccessCandidate).length === 0 && safeRouteAlignedPool.length === 0) {
+    rejectedReasons.middle_grades_fallback_only_slate = 1;
+    for (const candidate of selectedAntiZero) candidate.rejectedReasons.push("middle_grades_anti_zero_fallback_only_slate");
+    return;
+  }
+  for (const candidate of safeRouteAlignedPool) {
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => isMiddleGradesAntiZeroFallbackCandidate(row))
+      .sort((a, b) => a.row.score - b.row.score)[0]?.index;
+    if (replacementIndex === undefined) break;
+    const titleKey = normalized(candidate.title);
+    const rootKey = seriesKey(candidate);
+    if (selectedTitles().has(titleKey) || (rootKey && selectedRoots().has(rootKey))) continue;
+    selected[replacementIndex].rejectedReasons.push("middle_grades_anti_zero_fallback_replaced_by_route_aligned");
+    candidate.rejectedReasons.push("middle_grades_route_aligned_success_recovered_from_anti_zero");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_anti_zero_fallback_replacements = Number(rejectedReasons.middle_grades_anti_zero_fallback_replacements || 0) + 1;
+  }
+  const routeAlignedCount = selected.filter(isMiddleGradesRouteAlignedSuccessCandidate).length;
+  if (routeAlignedCount > 0) rejectedReasons.middle_grades_route_aligned_success = routeAlignedCount;
+  const remainingAntiZero = selected.filter(isMiddleGradesAntiZeroFallbackCandidate).length;
+  if (remainingAntiZero > 0) rejectedReasons.middle_grades_anti_zero_fallback_success = remainingAntiZero;
+}
+
 function middleGradesRouteKey(candidate: ScoredCandidate): string {
   return String(candidate.diagnostics?.routingReason || "")
     .replace(/_(?:age_anchored_recovery|delayed_final_retry|final_safe_recovery|locked_underfill_recovery)$/i, "");
@@ -626,6 +689,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
+  applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesContemporarySchoolAlignment(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
   applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
@@ -652,6 +716,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   }
 
   applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
 
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 

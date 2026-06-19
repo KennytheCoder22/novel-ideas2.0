@@ -149,6 +149,9 @@ export interface SourceDiagnosticV2 {
   middleGradesDelayedRetrySkippedReason?: string;
   middleGradesDelayedRetryTimeoutMs?: number;
   middleGradesTimeoutBudgetRemainingBeforeRetry?: number;
+  middleGradesRouteAlignedSuccessCount?: number;
+  middleGradesAntiZeroFallbackSuccessCount?: number;
+  middleGradesFallbackOnlySlate?: boolean;
 }
 
 export interface SourceResult {

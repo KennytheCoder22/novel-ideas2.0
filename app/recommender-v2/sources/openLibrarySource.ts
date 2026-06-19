@@ -25,6 +25,7 @@ type OpenLibraryQueryPlan = {
   routingReason?: string;
   routingDominance?: Record<string, number | string | boolean>;
   emergencyFallback?: boolean;
+  fallbackAlignment?: "route_aligned" | "anti_zero";
 };
 
 type MiddleGradesAgeShapeDiagnosticSample = {
@@ -823,6 +824,7 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
     routingReason: queryPlan.routingReason,
     facets: queryPlan.facets,
     emergencyFallback: Boolean(queryPlan.emergencyFallback),
+    fallbackAlignment: queryPlan.fallbackAlignment,
     rawOpenLibraryDoc: doc,
   };
 }
@@ -1847,6 +1849,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           facets: queryPlans[0]?.facets || [],
           routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_delayed_final_retry`,
           routingDominance: queryPlans[0]?.routingDominance,
+          emergencyFallback: true,
+          fallbackAlignment: "anti_zero",
         };
         const elapsedBeforeDelayedRetryMs = Date.now() - Date.parse(startedAt);
         const delayedRetryRemainingBudgetMs = plan.timeoutMs - elapsedBeforeDelayedRetryMs;
@@ -2026,6 +2030,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           facets: queryPlans[0]?.facets || [],
           routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_final_safe_recovery`,
           routingDominance: queryPlans[0]?.routingDominance,
+          emergencyFallback: true,
+          fallbackAlignment: "anti_zero",
         };
         const { docs: finalSafeDocs, diagnostic } = await fetchOpenLibraryDocs(finalSafePlan, ageProfile.docsPerQuery, context.signal, false, finalSafeTimeoutMs, 1, finalSafeTimeoutMs);
         fetches.push(diagnostic);
@@ -2418,6 +2424,15 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const finishedAt = nowIso();
     const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
     const allMainFetchesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
+    const middleGradesAntiZeroFallbackSuccessCount = ageProfile.key === "middleGrades"
+      ? rawItems.filter((item: any) => item?.fallbackAlignment === "anti_zero" || item?.emergencyFallback).length
+      : undefined;
+    const middleGradesRouteAlignedSuccessCount = ageProfile.key === "middleGrades"
+      ? rawItems.filter((item: any) => item?.fallbackAlignment !== "anti_zero" && !item?.emergencyFallback).length
+      : undefined;
+    const middleGradesFallbackOnlySlate = ageProfile.key === "middleGrades" && rawItems.length > 0
+      ? Number(middleGradesAntiZeroFallbackSuccessCount || 0) > 0 && Number(middleGradesRouteAlignedSuccessCount || 0) === 0
+      : undefined;
     const status: SourceResult["status"] = rawItems.length ? "succeeded" : allMainFetchesTimedOut ? "timed_out" : failedReason ? "failed" : "empty";
     const emptyReason = !rawItems.length && (status === "empty" || status === "failed" || status === "timed_out") ? openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason) : undefined;
     return {
@@ -2460,9 +2475,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         middleGradesDelayedRetrySkippedReason: middleGradesDelayedRetrySkippedReason || undefined,
         middleGradesDelayedRetryTimeoutMs,
         middleGradesTimeoutBudgetRemainingBeforeRetry,
+        middleGradesRouteAlignedSuccessCount,
+        middleGradesAntiZeroFallbackSuccessCount,
+        middleGradesFallbackOnlySlate,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
-        rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, facets: item?.facets, first_publish_year: item?.first_publish_year })),
+        rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year })),
         fetches,
       },
     };
