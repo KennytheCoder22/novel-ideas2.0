@@ -1237,6 +1237,16 @@ function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string
   return uniqueStrings([...plannedQueries.slice(1), ...routeFallbacks], 12);
 }
 
+function middleGradesRouteAlignedRecoveryQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string | undefined {
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
+    .find((query) => !attemptedQueries.has(query.toLowerCase()));
+  if (/fantasy_humor|humor|funny/i.test(routingReason)) {
+    return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade fantasy humor"]);
+  }
+  return undefined;
+}
+
 function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string {
   const routingReason = String(queryPlans[0]?.routingReason || "");
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
@@ -1839,7 +1849,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const mainFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
       const allAttemptedLaneQueriesTimedOut = mainFetches.length > 0 && mainFetches.every((fetch) => fetch.timedOut);
       const attemptedMainQueries = new Set(mainFetches.map((fetch) => String(fetch.query || "").toLowerCase()));
-      const delayedRetryQuery = middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedMainQueries);
+      const routeAlignedDelayedRetryQuery = middleGradesRouteAlignedRecoveryQuery(queryPlans, attemptedMainQueries);
+      const delayedRetryQuery = routeAlignedDelayedRetryQuery || middleGradesZeroCandidateFallbackQuery(queryPlans, attemptedMainQueries);
+      const delayedRetryIsAntiZeroFallback = !routeAlignedDelayedRetryQuery;
       if (allAttemptedLaneQueriesTimedOut && delayedRetryQuery) {
         const delayedRetryPlan: OpenLibraryQueryPlan = {
           query: delayedRetryQuery,
@@ -1849,8 +1861,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           facets: queryPlans[0]?.facets || [],
           routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_delayed_final_retry`,
           routingDominance: queryPlans[0]?.routingDominance,
-          emergencyFallback: true,
-          fallbackAlignment: "anti_zero",
+          emergencyFallback: delayedRetryIsAntiZeroFallback,
+          fallbackAlignment: delayedRetryIsAntiZeroFallback ? "anti_zero" : "route_aligned",
         };
         const elapsedBeforeDelayedRetryMs = Date.now() - Date.parse(startedAt);
         const delayedRetryRemainingBudgetMs = plan.timeoutMs - elapsedBeforeDelayedRetryMs;

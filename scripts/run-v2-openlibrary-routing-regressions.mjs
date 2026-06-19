@@ -1217,16 +1217,66 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades humor delayed retry should recover rows after timed-out humor lane attempts");
-    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade fantasy adventure"], "middle grades fantasy-humor retry should jump to the stable fantasy-adventure anti-zero fallback after two timed-out humor lane attempts");
+    assertDeepEqual(middleGradesHumorRetryFetchCalls, ["middle grade humor", "funny fantasy", "middle grade school story"], "middle grades fantasy-humor retry should try a route-aligned school recovery before anti-zero fallback");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades humor retry diagnostics should mark attempted");
-    assertEqual(result.diagnostics.middleGradesAntiZeroFallbackSuccessCount >= 5, true, "middle grades humor retry diagnostics should distinguish anti-zero fallback success");
-    assertEqual(result.diagnostics.middleGradesFallbackOnlySlate, true, "middle grades humor retry diagnostics should mark fallback-only slates when no route-aligned rows survive");
+    assertEqual(result.diagnostics.middleGradesRouteAlignedSuccessCount >= 5, true, "middle grades humor retry diagnostics should distinguish route-aligned recovery success");
+    assertEqual(Boolean(result.diagnostics.middleGradesFallbackOnlySlate), false, "middle grades humor retry should not mark fallback-only when school recovery succeeds");
     assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades humor retry should run with a real timeout budget while reserving final safe recovery");
-    console.log(JSON.stringify({ name: "middle grades fantasy-humor retry jumps to stable fantasy fallback", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
+    console.log(JSON.stringify({ name: "middle grades fantasy-humor retry tries route-aligned recovery", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
   } finally {
     Date.now = originalMiddleGradesHumorRetryDateNow;
     if (previousMiddleGradesHumorRetryProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesHumorRetryProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousMiddleGradesHumorRejectedProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalMiddleGradesHumorRejectedDateNow = Date.now;
+  const middleGradesHumorRejectedFetchCalls = [];
+  let fakeMiddleGradesHumorRejectedNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalMiddleGradesHumorRejectedDateNow() + fakeMiddleGradesHumorRejectedNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesHumorRejectedFetchCalls.push(query);
+    if (middleGradesHumorRejectedFetchCalls.length === 1) {
+      fakeMiddleGradesHumorRejectedNowOffsetMs = 3_500;
+      throw new Error("timeout");
+    }
+    if (middleGradesHumorRejectedFetchCalls.length === 2) {
+      fakeMiddleGradesHumorRejectedNowOffsetMs = 4_200;
+      throw new Error("timeout");
+    }
+    if (middleGradesHumorRejectedFetchCalls.length === 3) {
+      fakeMiddleGradesHumorRejectedNowOffsetMs = 4_500;
+      return {
+        ok: true,
+        status: 200,
+        text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => ({ ...fakeDoc(query, index), author_name: [] })) }),
+      };
+    }
+    fakeMiddleGradesHumorRejectedNowOffsetMs = 5_300;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6].map((index) => fakeDoc(query, index)) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[3].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "middle grades fantasy-humor should allow anti-zero fallback after route-aligned recovery rows reject");
+    assertDeepEqual(middleGradesHumorRejectedFetchCalls, ["middle grade humor", "funny fantasy", "middle grade school story", "middle grade fantasy adventure"], "middle grades fantasy-humor should try route-aligned recovery before anti-zero fallback when rows reject");
+    assertEqual(result.diagnostics.middleGradesAntiZeroFallbackSuccessCount >= 5, true, "middle grades fantasy-humor rejected route recovery should distinguish anti-zero fallback success");
+    assertEqual(result.diagnostics.middleGradesFallbackOnlySlate, true, "middle grades fantasy-humor rejected route recovery should keep fallback-only diagnostics");
+    console.log(JSON.stringify({ name: "middle grades fantasy-humor anti-zero follows rejected route recovery", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesHumorRejectedFetchCalls, fallbackOnly: result.diagnostics.middleGradesFallbackOnlySlate }));
+  } finally {
+    Date.now = originalMiddleGradesHumorRejectedDateNow;
+    if (previousMiddleGradesHumorRejectedProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesHumorRejectedProxyBase;
     globalThis.fetch = originalFetch;
   }
 
