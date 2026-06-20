@@ -1361,6 +1361,18 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
     || "middle grade adventure";
 }
 
+function middleGradesUnderfillSafeRecoveryQueries(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string[] {
+  const routingReason = String(queryPlans[0]?.routingReason || "");
+  const preferred = /mystery/i.test(routingReason)
+    ? ["middle grade mystery", "middle grade adventure", "middle grade fantasy adventure", "middle grade school story"]
+    : /fantasy/i.test(routingReason)
+      ? ["middle grade fantasy adventure", "middle grade adventure", "middle grade mystery", "middle grade school story"]
+      : /school|contemporary|friendship|humor|funny/i.test(routingReason)
+        ? ["middle grade school story", "middle grade adventure", "middle grade fantasy adventure", "middle grade mystery"]
+        : ["middle grade adventure", "middle grade fantasy adventure", "middle grade mystery", "middle grade school story"];
+  return uniqueStrings(preferred, 6).filter((query) => !attemptedQueries.has(query.toLowerCase()));
+}
+
 function middleGradesRejectedRowsAntiZeroFallbackQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries: Set<string>, fetches: SourceFetchDiagnosticV2[]): string | undefined {
   const hadReturnedRejectedRows = fetches.some((fetch) => !fetch.diagnosticOnly && !fetch.timedOut && Number(fetch.docsReturned || 0) > 0);
   if (!hadReturnedRejectedRows) return undefined;
@@ -1558,6 +1570,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesWhyFallbackOnlyAcceptedAsFinal: string | undefined;
     let middleGradesRouteAlignedRecoveryAttemptedAfterFallback = false;
     let middleGradesRouteAlignedRecoverySkippedReason: string | undefined;
+    let middleGradesUnderfillSafeRecoveryAttempted = false;
+    const middleGradesUnderfillSafeRecoveryQueriesAttempted: string[] = [];
+    let middleGradesUnderfillSafeRecoveryAcceptedCount = 0;
+    let middleGradesUnderfillSafeRecoverySkippedReason: string | undefined;
     const rememberMiddleGradesAntiZeroFallbackShape = (fallback?: ReturnType<typeof middleGradesSignalShapedAntiZeroFallback>): void => {
       if (!fallback) return;
       middleGradesAntiZeroFallbackShapedQuery = fallback.query;
@@ -2300,6 +2316,79 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
 
+    if (ageProfile.key === "middleGrades" && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+      const underfillTarget = Math.min(ageProfile.docLimit, 5);
+      const attemptedQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
+      const safeRecoveryQueries = middleGradesUnderfillSafeRecoveryQueries(queryPlans, attemptedQueries);
+      if (!safeRecoveryQueries.length) middleGradesUnderfillSafeRecoverySkippedReason = "no_unattempted_reliable_underfill_query";
+      for (const underfillQuery of safeRecoveryQueries) {
+        if (rawItems.length >= underfillTarget || context.signal?.aborted) break;
+        const remainingUnderfillBudgetMs = plan.timeoutMs - (Date.now() - Date.parse(startedAt));
+        if (remainingUnderfillBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS) {
+          middleGradesUnderfillSafeRecoverySkippedReason = "insufficient_budget";
+          break;
+        }
+        middleGradesUnderfillSafeRecoveryAttempted = true;
+        middleGradesUnderfillSafeRecoveryQueriesAttempted.push(underfillQuery);
+        const underfillTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingUnderfillBudgetMs);
+        const underfillPlan: OpenLibraryQueryPlan = {
+          query: underfillQuery,
+          originalPlannedQuery: queries[0] || "",
+          queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+          queryFamily: queryFamilyForOpenLibraryQuery(underfillQuery),
+          facets: queryPlans[0]?.facets || [],
+          routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_underfill_safe_recovery`,
+          routingDominance: queryPlans[0]?.routingDominance,
+          emergencyFallback: true,
+          fallbackAlignment: "anti_zero",
+        };
+        const { docs: underfillDocs, diagnostic } = await fetchOpenLibraryDocs(underfillPlan, ageProfile.docsPerQuery, context.signal, false, underfillTimeoutMs, 1, underfillTimeoutMs);
+        fetches.push(diagnostic);
+        dropReasons.middle_grades_underfill_safe_recovery_attempted = Number(dropReasons.middle_grades_underfill_safe_recovery_attempted || 0) + 1;
+        if (diagnostic.timedOut) {
+          dropReasons.middle_grades_underfill_safe_recovery_timeout = Number(dropReasons.middle_grades_underfill_safe_recovery_timeout || 0) + 1;
+          continue;
+        }
+        if (diagnostic.failedReason) {
+          dropReasons.middle_grades_underfill_safe_recovery_failed = Number(dropReasons.middle_grades_underfill_safe_recovery_failed || 0) + 1;
+          continue;
+        }
+        rawApiResultCount += underfillDocs.length;
+        for (const doc of underfillDocs) {
+          const title = String(doc?.title || "").trim();
+          if (title) rawTitles.push(title);
+          if (!title) continue;
+          recordMiddleGradesAgeShapeDiagnostic(doc, underfillQuery, "middle_grades_underfill_safe_recovery");
+          const quality = shouldKeepOpenLibraryDoc(doc, underfillQuery, context.profile);
+          if (!quality.keep) {
+            const reason = `middle_grades_underfill_safe_recovery_${quality.reason || "quality_filter"}`;
+            dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+            if (/artifact|inappropriate|middle_grades_age_shape/.test(reason)) artifactSuppressedTitles.push(title);
+            continue;
+          }
+          const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+          if (acceptedDocKeys.has(docKey)) {
+            dropReasons.middle_grades_underfill_safe_recovery_duplicate_doc = Number(dropReasons.middle_grades_underfill_safe_recovery_duplicate_doc || 0) + 1;
+            continue;
+          }
+          const seriesKey = openLibrarySeriesKey(doc);
+          if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+            dropReasons.middle_grades_underfill_safe_recovery_series_duplicate = Number(dropReasons.middle_grades_underfill_safe_recovery_series_duplicate || 0) + 1;
+            seriesSuppressedTitles.push(title);
+            continue;
+          }
+          if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+          acceptedDocKeys.add(docKey);
+          rawItems.push(normalizeOpenLibraryDoc(doc, underfillPlan));
+          middleGradesUnderfillSafeRecoveryAcceptedCount += 1;
+          dropReasons.middle_grades_underfill_safe_recovery_accepted = Number(dropReasons.middle_grades_underfill_safe_recovery_accepted || 0) + 1;
+          if (rawItems.length >= underfillTarget) break;
+        }
+      }
+      if (!middleGradesUnderfillSafeRecoverySkippedReason && rawItems.length < underfillTarget && middleGradesUnderfillSafeRecoveryAttempted) middleGradesUnderfillSafeRecoverySkippedReason = "reliable_underfill_queries_exhausted";
+    }
+
+
     const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
     if (ageProfile.key === "adult" && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
       const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
@@ -2667,6 +2756,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         ? "post_fallback_route_aligned_recovery_produced_no_accepted_rows"
         : middleGradesRouteAlignedRecoverySkippedReason || "anti_zero_fallback_preserved_count_stability";
     }
+    const middleGradesFinalCountContractStatus = ageProfile.key === "middleGrades"
+      ? rawItems.length >= Math.min(ageProfile.docLimit, 5)
+        ? "satisfied"
+        : rawItems.length > 0
+          ? "underfilled_after_recovery"
+          : "zero_after_recovery"
+      : undefined;
     const middleGradesLockQualityStatus = ageProfile.key === "middleGrades"
       ? rawItems.length === 0
         ? "zero_result_failure"
@@ -2741,6 +2837,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         whyFallbackOnlyAcceptedAsFinal: middleGradesWhyFallbackOnlyAcceptedAsFinal,
         routeAlignedRecoveryAttemptedAfterFallback: ageProfile.key === "middleGrades" ? middleGradesRouteAlignedRecoveryAttemptedAfterFallback : undefined,
         routeAlignedRecoverySkippedReason: middleGradesRouteAlignedRecoverySkippedReason,
+        underfillSafeRecoveryAttempted: ageProfile.key === "middleGrades" ? middleGradesUnderfillSafeRecoveryAttempted : undefined,
+        underfillSafeRecoveryQueries: middleGradesUnderfillSafeRecoveryQueriesAttempted.length ? middleGradesUnderfillSafeRecoveryQueriesAttempted : undefined,
+        underfillSafeRecoveryAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesUnderfillSafeRecoveryAcceptedCount : undefined,
+        underfillSafeRecoverySkippedReason: middleGradesUnderfillSafeRecoverySkippedReason,
+        finalCountContractStatus: middleGradesFinalCountContractStatus,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year })),

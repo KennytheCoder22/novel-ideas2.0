@@ -173,6 +173,11 @@ export interface SourceDiagnosticV2 {
   genericDefaultSlateDetected?: boolean;
   genericDefaultSlateReason?: string;
   strongerSignalDroppedFromFallbackQuery?: string;
+  underfillSafeRecoveryAttempted?: boolean;
+  underfillSafeRecoveryQueries?: string[];
+  underfillSafeRecoveryAcceptedCount?: number;
+  underfillSafeRecoverySkippedReason?: string;
+  finalCountContractStatus?: "satisfied" | "underfilled_after_recovery" | "zero_after_recovery";
 }
 
 export interface SourceResult {

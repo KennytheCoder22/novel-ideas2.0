@@ -539,6 +539,9 @@ async function main() {
     assertEqual(result.rawItems.length >= 3, true, "middle grades underfill recovery should preserve age-anchored recovery candidates that survive stricter age-shape filters");
     assertEqual(middleGradesUnderfillFetchCalls.includes("children's fantasy adventure"), true, "middle grades underfill recovery should use age-anchored fantasy recovery");
     assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_recovery_accepted), true, "middle grades underfill recovery should record accepted recovery candidates");
+    assertEqual(Boolean(result.diagnostics.finalCountContractStatus), true, "middle grades underfill-safe recovery should expose final count-contract status");
+    assertEqual(Boolean(result.diagnostics.underfillSafeRecoveryAttempted), true, "middle grades underfill-safe recovery should expose attempted diagnostics");
+    assertEqual(typeof result.diagnostics.underfillSafeRecoveryAcceptedCount === "number", true, "middle grades underfill-safe recovery should expose accepted-count diagnostics");
     console.log(JSON.stringify({ name: "middle grades underfill recovery continues to five", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesUnderfillFetchCalls }));
   } finally {
     globalThis.fetch = originalFetch;
