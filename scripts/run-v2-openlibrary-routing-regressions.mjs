@@ -845,6 +845,11 @@ async function main() {
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.genreFacetMatchScoreByTitle), true, "middle grades selection should expose genre facet match scores by title");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.fallbackPenaltyByTitle), true, "middle grades selection should expose fallback penalties by title");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.finalSelectionReasonByTitle), true, "middle grades selection should expose final selection reasons by title");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.queryLevelRouteAlignmentByTitle), true, "middle grades selection should expose query-level route alignment by title");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.documentLevelRouteAlignmentByTitle), true, "middle grades selection should expose document-level route alignment by title");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.routeAlignmentEvidenceFieldsByTitle), true, "middle grades selection should expose route alignment evidence fields by title");
+  assertEqual(Number(middleGradesSelectionResult.rejectedReasons.falseRouteAlignedDueToQueryOnlyCount || 0) > 0, true, "middle grades selection should demote query-only route alignment");
+  assertEqual(middleGradesSelectionResult.rejectedReasons.finalCountContractStatus, "full_fallback_only", "middle grades query-only underfill slate should be count-success but fallback-only quality");
   console.log(JSON.stringify({ name: "middle grades selection relaxes Open Library diversity underfill to five", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
 
   const middleGradesZeroFinalGuardResult = selectRecommendations([fakeScoredCandidate({
