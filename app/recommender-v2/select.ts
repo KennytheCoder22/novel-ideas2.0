@@ -228,7 +228,7 @@ function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { query
   ];
   const queryLevel = pattern ? pattern.test(queryText) : false;
   const fields = pattern ? docFields.filter(([, value]) => pattern.test(value)).map(([field]) => field) : [];
-  const documentLevel = fields.length > 0 || Number(candidate.scoreBreakdown?.genreFacetMatch || 0) > 0;
+  const documentLevel = fields.length > 0;
   return {
     queryLevel,
     documentLevel,
@@ -598,6 +598,46 @@ function middleGradesSelectionScore(candidate: ScoredCandidate, profile: TastePr
   return candidate.score + (middleGradesRouteAlignmentScore(candidate) * 1.2) - (middleGradesFallbackPenalty(candidate) * 1.4);
 }
 
+function applyMiddleGradesFinalCountRecovery(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
+  if (profile.ageBand !== "preteens" || selected.length >= Math.min(5, limit)) return;
+  const target = Math.min(5, limit);
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
+  const safePool = rankedCandidates.filter((candidate) => {
+    if (selected.includes(candidate)) return false;
+    if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
+    if (!candidate.title.trim()) return false;
+    if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    const breakdown = candidate.scoreBreakdown || {};
+    const ageSuitability = Number(breakdown.ageTeenSuitability || breakdown.ageBandSuitability || 0);
+    const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
+    return candidate.score > -8 && ageSuitability > -4 && preciseAvoid > -4;
+  }).sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
+  rejectedReasons.middle_grades_final_count_recovery_candidates = safePool.length;
+  for (const candidate of safePool) {
+    if (selected.length >= target) break;
+    if (selectedTitles().has(normalized(candidate.title))) continue;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) continue;
+    const reason = rejectReason(candidate, profile);
+    candidate.rejectedReasons.push(reason === "non_positive_score" ? "middle_grades_final_count_recovery_low_score_safe_candidate" : "middle_grades_final_count_recovery_safe_candidate");
+    rejectedReasons.middle_grades_final_count_recovery_accepted = Number(rejectedReasons.middle_grades_final_count_recovery_accepted || 0) + 1;
+    selected.push(candidate);
+  }
+  if (selected.length < target) {
+    (rejectedReasons as Record<string, unknown>).underfillRecoveryStoppedReason = safePool.length ? "safe_recovery_candidates_exhausted_before_target" : "no_safe_recovery_candidates_remaining";
+  } else {
+    (rejectedReasons as Record<string, unknown>).underfillRecoveryStoppedReason = "count_contract_satisfied_after_final_recovery";
+  }
+  (rejectedReasons as Record<string, unknown>).remainingUnattemptedReliableFallbacks = safePool
+    .filter((candidate) => !selected.includes(candidate))
+    .map((candidate) => String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || "unknown"))
+    .filter((value, index, array) => value && array.indexOf(value) === index)
+    .slice(0, 8);
+}
 
 function applyMiddleGradesRouteAlignmentReplacement(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   if (profile.ageBand !== "preteens") return;
@@ -696,6 +736,18 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
       : selectedRouteAlignedCount === 0
         ? "underfilled_fallback_only"
         : "underfilled_mixed";
+  const documentRouteAlignmentEvidenceMissingButTrueCount = Object.values(documentLevelRouteAlignmentByTitle)
+    .filter(Boolean).length - Object.values(routeAlignmentEvidenceFieldsByTitle).filter((fields) => fields.length > 0).length;
+  const selectedGenericAdventureCount = selected.filter((candidate) => /(^|\b)middle grade adventure(\b|$)/i.test(String(candidate.diagnostics?.queryText || ""))).length;
+  const genericAdventureUsedAsLastResortOnly = selectedGenericAdventureCount === 0 || selected.length < 5 || selectedRouteAlignedCount >= 2;
+  const lockQualityFailReasons: string[] = [];
+  if (selected.length !== 5) lockQualityFailReasons.push("final_items_length_not_five");
+  if (finalCountContractStatus === "underfilled_fallback_only" || finalCountContractStatus === "full_fallback_only") lockQualityFailReasons.push(finalCountContractStatus);
+  if (finalCountContractStatus === "full_mixed_recovery" && selectedRouteAlignedCount < 2) lockQualityFailReasons.push("mixed_recovery_has_fewer_than_two_route_aligned_items");
+  if (documentRouteAlignmentEvidenceMissingButTrueCount > 0) lockQualityFailReasons.push("document_route_alignment_missing_evidence_fields");
+  if (rejectedReasons.genericDefaultSlateDetected && selected.length >= 5) lockQualityFailReasons.push("generic_default_slate_detected_without_true_shortage");
+  if (!genericAdventureUsedAsLastResortOnly) lockQualityFailReasons.push("generic_adventure_used_before_last_resort");
+  const lockQualityPass = lockQualityFailReasons.length === 0;
   diagnostics.routeAlignmentScoreByTitle = routeAlignmentScoreByTitle;
   diagnostics.genreFacetMatchScoreByTitle = genreFacetMatchScoreByTitle;
   diagnostics.fallbackPenaltyByTitle = fallbackPenaltyByTitle;
@@ -705,7 +757,13 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.routeAlignmentEvidenceFieldsByTitle = routeAlignmentEvidenceFieldsByTitle;
   diagnostics.routeAlignmentDemotedReasonByTitle = routeAlignmentDemotedReasonByTitle;
   diagnostics.falseRouteAlignedDueToQueryOnlyCount = Object.keys(routeAlignmentDemotedReasonByTitle).length;
+  diagnostics.documentRouteAlignmentEvidenceMissingButTrueCount = Math.max(0, documentRouteAlignmentEvidenceMissingButTrueCount);
   diagnostics.finalCountContractStatus = finalCountContractStatus;
+  diagnostics.genericAdventureUsedAsLastResortOnly = genericAdventureUsedAsLastResortOnly;
+  diagnostics.lockQualityPass = lockQualityPass;
+  diagnostics.lockQualityFailReasons = lockQualityFailReasons;
+  if (!diagnostics.underfillRecoveryStoppedReason) diagnostics.underfillRecoveryStoppedReason = selected.length >= 5 ? "count_contract_satisfied" : "not_enough_safe_candidates_after_selection";
+  if (!diagnostics.remainingUnattemptedReliableFallbacks) diagnostics.remainingUnattemptedReliableFallbacks = [];
   diagnostics.topRejectedRouteAlignedCandidates = rejectedRouteAligned;
   diagnostics.selectedVsRejectedRouteAlignmentSummary = {
     selectedRouteAlignedCount,
@@ -991,6 +1049,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesRouteAlignmentReplacement(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesFinalCountRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
