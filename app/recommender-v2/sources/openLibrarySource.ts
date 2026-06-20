@@ -1335,11 +1335,28 @@ function middleGradesSignalShapedAntiZeroFallback(queryPlans: OpenLibraryQueryPl
 }
 
 function middleGradesRouteAlignedRecoveryQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string | undefined {
-  const routingReason = String(queryPlans[0]?.routingReason || "");
+  const routeText = queryPlans
+    .map((plan) => [plan.routingReason, plan.query, plan.originalPlannedQuery, ...(plan.facets || [])].filter(Boolean).join(" "))
+    .join(" ");
   const firstUnattempted = (queries: string[]): string | undefined => uniqueStrings(queries, queries.length)
     .find((query) => !attemptedQueries.has(query.toLowerCase()));
-  if (/fantasy_humor|humor|funny/i.test(routingReason)) {
-    return firstUnattempted(["middle grade school story", "middle grade friendship", "middle grade fantasy humor"]);
+  if (/ai|robot|superhero/i.test(routeText)) {
+    return firstUnattempted(["middle grade superhero adventure", "middle grade robot adventure", "middle grade science adventure"]);
+  }
+  if (/nonfiction|science|nature|animal/i.test(routeText)) {
+    return firstUnattempted(["middle grade science adventure", "middle grade animal adventure", "children's science fiction"]);
+  }
+  if (/fantasy_mystery|mystery/i.test(routeText)) {
+    return firstUnattempted(["middle grade mystery", "middle grade fantasy mystery", "middle grade mystery adventure"]);
+  }
+  if (/fantasy_humor|humor|funny/i.test(routeText)) {
+    return firstUnattempted(["middle grade funny family story", "middle grade school story", "middle grade friendship", "middle grade fantasy humor"]);
+  }
+  if (/fantasy/i.test(routeText)) {
+    return firstUnattempted(["middle grade fantasy adventure", "middle grade fantasy mystery"]);
+  }
+  if (/friendship|community|school|contemporary|realistic/i.test(routeText)) {
+    return firstUnattempted(["middle grade friendship", "children's school stories", "middle grade school story"]);
   }
   return undefined;
 }
@@ -1362,15 +1379,21 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
 }
 
 function middleGradesUnderfillSafeRecoveryQueries(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string[] {
-  const routingReason = String(queryPlans[0]?.routingReason || "");
-  const preferred = /mystery/i.test(routingReason)
-    ? ["middle grade mystery", "middle grade adventure", "middle grade fantasy adventure", "middle grade school story"]
-    : /fantasy/i.test(routingReason)
-      ? ["middle grade fantasy adventure", "middle grade adventure", "middle grade mystery", "middle grade school story"]
-      : /school|contemporary|friendship|humor|funny/i.test(routingReason)
-        ? ["middle grade school story", "middle grade adventure", "middle grade fantasy adventure", "middle grade mystery"]
-        : ["middle grade adventure", "middle grade fantasy adventure", "middle grade mystery", "middle grade school story"];
-  return uniqueStrings(preferred, 6).filter((query) => !attemptedQueries.has(query.toLowerCase()));
+  const routeText = queryPlans
+    .map((plan) => [plan.routingReason, plan.query, plan.originalPlannedQuery, ...(plan.facets || [])].filter(Boolean).join(" "))
+    .join(" ");
+  const preferred = /ai|robot|superhero/i.test(routeText)
+    ? ["middle grade superhero adventure", "middle grade robot adventure", "middle grade science adventure", "middle grade fantasy adventure", "middle grade adventure"]
+    : /nonfiction|science|nature|animal/i.test(routeText)
+      ? ["middle grade science adventure", "middle grade animal adventure", "children's science fiction", "middle grade mystery", "middle grade adventure"]
+      : /mystery/i.test(routeText)
+        ? ["middle grade mystery", "middle grade fantasy mystery", "middle grade mystery adventure", "middle grade school story", "middle grade adventure"]
+        : /fantasy/i.test(routeText)
+          ? ["middle grade fantasy adventure", "middle grade fantasy mystery", "middle grade mystery", "middle grade school story", "middle grade adventure"]
+          : /friendship|community|school|contemporary|humor|funny/i.test(routeText)
+            ? ["middle grade friendship", "children's school stories", "middle grade school story", "middle grade mystery", "middle grade fantasy adventure", "middle grade adventure"]
+            : ["middle grade mystery", "middle grade school story", "middle grade fantasy adventure", "middle grade adventure"];
+  return uniqueStrings(preferred, 8).filter((query) => !attemptedQueries.has(query.toLowerCase()));
 }
 
 function middleGradesRejectedRowsAntiZeroFallbackQuery(queryPlans: OpenLibraryQueryPlan[], attemptedQueries: Set<string>, fetches: SourceFetchDiagnosticV2[]): string | undefined {
@@ -2331,6 +2354,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         middleGradesUnderfillSafeRecoveryAttempted = true;
         middleGradesUnderfillSafeRecoveryQueriesAttempted.push(underfillQuery);
         const underfillTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingUnderfillBudgetMs);
+        const underfillQueryIsLastResortGeneric = /^middle grade adventure$/i.test(underfillQuery);
         const underfillPlan: OpenLibraryQueryPlan = {
           query: underfillQuery,
           originalPlannedQuery: queries[0] || "",
@@ -2339,8 +2363,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           facets: queryPlans[0]?.facets || [],
           routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_underfill_safe_recovery`,
           routingDominance: queryPlans[0]?.routingDominance,
-          emergencyFallback: true,
-          fallbackAlignment: "anti_zero",
+          emergencyFallback: underfillQueryIsLastResortGeneric,
+          fallbackAlignment: underfillQueryIsLastResortGeneric ? "anti_zero" : "route_aligned",
         };
         const { docs: underfillDocs, diagnostic } = await fetchOpenLibraryDocs(underfillPlan, ageProfile.docsPerQuery, context.signal, false, underfillTimeoutMs, 1, underfillTimeoutMs);
         fetches.push(diagnostic);
@@ -2757,11 +2781,17 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         : middleGradesRouteAlignedRecoverySkippedReason || "anti_zero_fallback_preserved_count_stability";
     }
     const middleGradesFinalCountContractStatus = ageProfile.key === "middleGrades"
-      ? rawItems.length >= Math.min(ageProfile.docLimit, 5)
-        ? "satisfied"
-        : rawItems.length > 0
-          ? "underfilled_after_recovery"
-          : "zero_after_recovery"
+      ? rawItems.length === 0
+        ? "zero_result_failure"
+        : rawItems.length >= Math.min(ageProfile.docLimit, 5)
+          ? Number(middleGradesRouteAlignedSuccessCount || 0) >= Math.min(ageProfile.docLimit, 5)
+            ? "full_route_aligned"
+            : middleGradesFallbackOnlySlate
+              ? "full_fallback_only"
+              : "full_mixed_recovery"
+          : middleGradesFallbackOnlySlate
+            ? "underfilled_fallback_only"
+            : "underfilled_mixed"
       : undefined;
     const middleGradesLockQualityStatus = ageProfile.key === "middleGrades"
       ? rawItems.length === 0

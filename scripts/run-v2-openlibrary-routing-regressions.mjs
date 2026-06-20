@@ -1093,7 +1093,8 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades cascade should preserve budget and recover after initial proxy timeouts");
-    assertDeepEqual(middleGradesCascadeFetchCalls, ["middle grade fantasy", "fantasy adventure", "middle grade fantasy adventure"], "middle grades cascade should jump to route-safe stable fallback after repeated timeouts");
+    assertDeepEqual(middleGradesCascadeFetchCalls, ["middle grade fantasy", "fantasy adventure", "middle grade fantasy adventure", "middle grade fantasy mystery"], "middle grades cascade should keep underfill-safe recovery route-specific before generic adventure after repeated timeouts");
+    assertEqual(result.diagnostics.finalCountContractStatus !== "full_fallback_only", true, "middle grades cascade should not label route-specific underfill recovery as fallback-only lock quality");
     assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs, 1600, "middle grades first proxy fetch should use reduced resilience window");
     assertEqual(result.diagnostics.fetches?.[1]?.clientTimeoutMs < 1600, true, "middle grades cascade should cap later query timeouts to preserve retry/recovery budget");
     console.log(JSON.stringify({ name: "middle grades cascade jumps to stable fallback under repeated timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesCascadeFetchCalls, secondTimeoutMs: result.diagnostics.fetches?.[1]?.clientTimeoutMs }));
@@ -1135,7 +1136,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades delayed retry should have enough reserved budget to recover rows");
-    assertDeepEqual(middleGradesDelayedRetryFetchCalls, ["middle grade fantasy", "fantasy adventure", "middle grade fantasy adventure"], "middle grades delayed retry should reserve budget for a route-aligned age-anchored fallback after timed-out lane attempts");
+    assertDeepEqual(middleGradesDelayedRetryFetchCalls, ["middle grade fantasy", "fantasy adventure", "middle grade fantasy adventure", "middle grade fantasy mystery"], "middle grades delayed retry should reserve budget for route-specific underfill-safe recovery after timed-out lane attempts");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades delayed retry diagnostics should mark attempted");
     assertEqual(result.diagnostics.middleGradesDelayedRetrySkippedReason, undefined, "middle grades delayed retry should not be skipped when budget was reserved");
     assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades delayed retry should run with a real timeout budget while preserving final recovery");
@@ -1179,7 +1180,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary delayed retry should recover rows after timed-out realistic/school lane attempts");
-    assertDeepEqual(middleGradesContemporaryRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade school adventure"], "middle grades contemporary retry should shape anti-zero fallback from net-positive school/community signals after timed-out aligned queries");
+    assertDeepEqual(middleGradesContemporaryRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade school adventure", "middle grade friendship"], "middle grades contemporary retry should continue to route-specific underfill-safe recovery after shaped school/community fallback");
     assertEqual(result.diagnostics.middleGradesDelayedRetryAttempted, true, "middle grades contemporary retry diagnostics should mark attempted");
     assertEqual(result.diagnostics.middleGradesDelayedRetryTimeoutMs >= 1500, true, "middle grades contemporary retry should run with a real timeout budget while reserving final safe recovery");
     console.log(JSON.stringify({ name: "middle grades contemporary retry shapes anti-zero fallback from school signals", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
@@ -1225,7 +1226,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary deep retry should recover before adventure-only fallback");
-    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade school adventure", "middle grade friendship adventure"], "middle grades contemporary retry should keep anti-zero recovery shaped by school/friendship signals before generic adventure");
+    assertDeepEqual(middleGradesContemporaryDeepRetryFetchCalls, ["middle grade realistic fiction", "middle grade school story", "middle grade school adventure", "middle grade friendship adventure", "middle grade friendship"], "middle grades contemporary retry should keep route-specific recovery before generic adventure when shaped school/friendship fallback underfills");
     console.log(JSON.stringify({ name: "middle grades contemporary retry shapes fallback before generic adventure", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryDeepRetryFetchCalls }));
   } finally {
     Date.now = originalMiddleGradesContemporaryDeepRetryDateNow;
@@ -1265,7 +1266,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades fantasy mystery retry should recover via mystery route before generic fantasy");
-    assertDeepEqual(middleGradesFantasyMysteryRetryFetchCalls, ["middle grade fantasy mystery", "middle grade mystery", "school mystery"], "middle grades fantasy mystery retry should preserve mystery intent before generic fantasy recovery");
+    assertDeepEqual(middleGradesFantasyMysteryRetryFetchCalls, ["middle grade fantasy mystery", "middle grade mystery", "school mystery", "middle grade mystery adventure"], "middle grades fantasy mystery retry should preserve mystery intent through underfill-safe recovery before generic adventure");
     console.log(JSON.stringify({ name: "middle grades fantasy mystery retry preserves mystery intent", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesFantasyMysteryRetryFetchCalls }));
   } finally {
     Date.now = originalMiddleGradesFantasyMysteryRetryDateNow;
