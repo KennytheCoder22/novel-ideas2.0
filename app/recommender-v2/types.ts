@@ -177,6 +177,14 @@ export interface SourceDiagnosticV2 {
   underfillSafeRecoveryQueries?: string[];
   underfillSafeRecoveryAcceptedCount?: number;
   underfillSafeRecoverySkippedReason?: string;
+  profileSpecificQueriesAttempted?: string[];
+  profileSpecificQueriesTimedOut?: number;
+  profileSpecificQueriesAcceptedCount?: number;
+  fallbackStartedOnlyAfterProfileQueriesExhausted?: boolean;
+  lockQualityRetryAttempted?: boolean;
+  lockQualityRetryQueries?: string[];
+  lockQualityRetryAcceptedCount?: number;
+  finalReturnedDespiteLockQualityFailReason?: string;
   finalCountContractStatus?: "full_route_aligned" | "full_mixed_recovery" | "full_fallback_only" | "underfilled_mixed" | "underfilled_fallback_only" | "zero_result_failure";
 }
 
