@@ -844,6 +844,19 @@ async function main() {
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.finalSelectionReasonByTitle), true, "middle grades selection should expose final selection reasons by title");
   console.log(JSON.stringify({ name: "middle grades selection relaxes Open Library diversity underfill to five", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
 
+  const middleGradesZeroFinalGuardResult = selectRecommendations([fakeScoredCandidate({
+    id: "middle-zero-final-guard",
+    title: "Middle Zero Final Guard",
+    creators: ["Guard Author"],
+    score: -5,
+    maturityBand: "preteens",
+    diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_humor_final_safe_recovery", emergencyFallback: true, fallbackAlignment: "anti_zero" },
+    scoreBreakdown: { ageTeenSuitability: 0.25, avoidSignalPenalty: 0, genreFacetMatch: 0 },
+  })], middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesZeroFinalGuardResult.selected.length, 1, "middle grades zero-final-items guard should preserve safe Open Library docs");
+  assertEqual(Boolean(middleGradesZeroFinalGuardResult.rejectedReasons.accepted_middle_grades_zero_final_items_guard), true, "middle grades zero-final-items guard should emit diagnostics");
+  console.log(JSON.stringify({ name: "middle grades zero-final-items guard preserves safe Open Library docs", pass: true, selected: middleGradesZeroFinalGuardResult.selected.length, rejectedReasons: middleGradesZeroFinalGuardResult.rejectedReasons }));
+
   const middleGradesContemporarySelectionProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: middleGradesCases[5].signals,

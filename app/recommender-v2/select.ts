@@ -523,6 +523,7 @@ function middleGradesFallbackPenalty(candidate: ScoredCandidate): number {
   let penalty = 0;
   if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) penalty += 1.1;
   if (/\b(middle grade adventure|fantasy adventure|school adventure|school story|humor|funny)\b/.test(text) && Number(breakdown.genreFacetMatch || 0) <= 0) penalty += 0.7;
+  if (/\b(school story|school adventure|humor|funny|middle grade humor|children s funny books)\b/.test(text) && Number(breakdown.genreFacetMatch || 0) <= 0 && (!candidate.matchedSignals || candidate.matchedSignals.length === 0)) penalty += 0.9;
   return Math.round(penalty * 1000) / 1000;
 }
 
@@ -734,7 +735,15 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   }
 
   if (selected.length === 0 && profile.ageBand === "preteens") {
-    const middleGradesEmergency = rankedCandidates.find((candidate) => candidate.source === "openLibrary" && !rejectReason(candidate, profile) && candidate.score > -4);
+    const middleGradesEmergency = rankedCandidates.find((candidate) => {
+      if (candidate.source !== "openLibrary") return false;
+      if (!candidate.title.trim()) return false;
+      if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand) return false;
+      const breakdown = candidate.scoreBreakdown || {};
+      const ageSuitability = Number(breakdown.ageTeenSuitability || breakdown.ageBandSuitability || 0);
+      const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
+      return candidate.score > -8 && ageSuitability > -4 && preciseAvoid > -4;
+    });
     if (middleGradesEmergency) {
       middleGradesEmergency.rejectedReasons.push("accepted_middle_grades_zero_final_items_guard");
       rejectedReasons.accepted_middle_grades_zero_final_items_guard = 1;
