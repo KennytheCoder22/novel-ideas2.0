@@ -51,41 +51,6 @@ type MiddleGradesAgeShapeDiagnosticSample = {
   subjectPreview: string[];
 };
 
-type MiddleGradesAgeShapeDiagnosticSample = {
-  stage: string;
-  query: string;
-  title: string;
-  firstPublishYear?: number;
-  keep: boolean;
-  reason: "accepted" | "middle_grades_age_shape_mismatch";
-  evidence: {
-    hasExplicitMiddleGradesEvidence: boolean;
-    queryIsAgeAnchored: boolean;
-    hasSubjectGenreShape: boolean;
-    hasQueryGenreShape: boolean;
-    hasTitleGenreShape: boolean;
-    hasGenreShape: boolean;
-    hasAdultLeakageShape: boolean;
-  };
-  subjectPreview: string[];
-};
-
-const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
-  "identity",
-  "family",
-  "friendship",
-  "emotional",
-  "growth",
-  "emotional growth",
-  "self discovery",
-  "relationships",
-  "belonging",
-  "indie",
-  "mshs",
-  "teen",
-  "teens",
-]);
-
 const MEDIA_FORMAT_TERMS = new Set(["anime", "game", "games", "gaming", "tv", "television", "movie", "movies", "film", "films"]);
 const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopia|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|coming of age|graphic novel|manga|comic|heist|sandbox)\b/i;
 const RELEVANCE_DRIFT_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain|literary)\b/i;
