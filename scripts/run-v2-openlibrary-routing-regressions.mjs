@@ -541,6 +541,97 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const dragonEvidenceRecoveryFetchCalls = [];
+  globalThis.fetch = async (url, init = {}) => {
+    const parsed = new URL(String(url));
+    const query = parsed.searchParams.get("q") || "";
+    dragonEvidenceRecoveryFetchCalls.push(query);
+    if (/dragon|mythology/i.test(query) && !/children|chapter/i.test(query)) {
+      init?.signal?.dispatchEvent?.(new Event("abort"));
+      throw new DOMException("The operation was aborted.", "AbortError");
+    }
+    const docs = /dragon fantasy children|dragon adventure children|children'?s dragon books|mythology adventure children|fantasy adventure children/i.test(query)
+      ? [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 460),
+        key: `/works/dragon-evidence-recovery-${query.replace(/\s+/g, "-")}-${index}`,
+        title: ["Dragon Cave Quest", "Mythology Adventure Map", "Young Dragon Riders", "Creature Kingdom Trail", "Fantasy Dragon Team", "Magic Myth Quest"][index - 1],
+        subject: ["Juvenile fiction", "Dragons", "Mythology", "Fantasy fiction", "Adventure stories"],
+      }))
+      : [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 450),
+        key: `/works/dragon-query-only-${query.replace(/\s+/g, "-")}-${index}`,
+        title: `Sparse Fantasy Row ${index}`,
+        subject: ["Juvenile fiction"],
+      }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Dragon Riders", genres: ["fantasy"], themes: ["dragon", "mythology", "adventure"], format: "book" },
+        { action: "like", title: "Creature Quest", genres: ["fantasy"], themes: ["creature", "magic"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 18_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "dragon/fantasy evidence-aware recovery should reach five evidence-supported candidates");
+    assertEqual(result.diagnostics.evidenceAwareRecoveryAttempted, true, "dragon/fantasy recovery should attempt evidence-aware children-style queries");
+    assertEqual(Number(result.diagnostics.evidenceAwareRecoveryAcceptedCount || 0) >= 5, true, "dragon/fantasy evidence-aware recovery should accept evidence-supported rows");
+    assertEqual(result.diagnostics.brittleQueryTimedOutThenShortQueryAttempted, true, "timed-out dragon/mythology query should trigger shorter child/children recovery");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_query_only_source_rejected), true, "dragon/fantasy recovery should keep rejecting query-only rows");
+    assertEqual(dragonEvidenceRecoveryFetchCalls.some((query) => /dragon fantasy children|dragon adventure children|children'?s dragon books|mythology adventure children/i.test(query)), true, "dragon/fantasy recovery should use evidence-aware children-style queries");
+    console.log(JSON.stringify({ name: "middle grades dragon evidence-aware recovery fills without query-only rows", pass: true, rawItems: result.rawItems.length, fetchCalls: dragonEvidenceRecoveryFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const schoolEvidenceRecoveryFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    const query = parsed.searchParams.get("q") || "";
+    schoolEvidenceRecoveryFetchCalls.push(query);
+    const docs = /funny middle school fiction|school friendship chapter book|realistic school friendship fiction|illustrated middle school fiction/i.test(query)
+      ? [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 490),
+        key: `/works/school-evidence-recovery-${query.replace(/\s+/g, "-")}-${index}`,
+        title: ["Funny Middle School Club", "School Friendship Project", "Illustrated Classroom Crew", "Realistic School Team", "Friendship Chapter Book", "Middle School Comedy Map"][index - 1],
+        subject: ["Juvenile fiction", "Schools", "Friendship", "Humorous stories", "Middle schools"],
+      }))
+      : [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 480),
+        key: `/works/school-query-only-${query.replace(/\s+/g, "-")}-${index}`,
+        title: `Sparse Catalog Row ${index}`,
+        subject: ["Juvenile fiction"],
+      }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Lunchroom Laughs", genres: ["comedy"], themes: ["school", "friendship", "funny"], format: "book" },
+        { action: "like", title: "Classroom Friends", genres: ["realistic fiction"], themes: ["middle school", "community"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 18_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "school/comedy/friendship evidence-aware recovery should not return zero after query-only school rows");
+    assertEqual(result.diagnostics.rejectedAllRowsAsQueryOnly, true, "school/comedy/friendship recovery should diagnose query-only rejection");
+    assertEqual(result.diagnostics.evidenceAwareRecoveryAttempted, true, "school/comedy/friendship recovery should attempt evidence-aware chapter-book queries");
+    assertEqual(Number(result.diagnostics.queryOnlyRejectedThenRecoveredCount || 0) >= 5, true, "school/comedy/friendship recovery should count query-only rejection followed by accepted recovery rows");
+    assertEqual(schoolEvidenceRecoveryFetchCalls.some((query) => /funny middle school fiction|school friendship chapter book|realistic school friendship fiction|illustrated middle school fiction/i.test(query)), true, "school/comedy/friendship recovery should use evidence-aware school/friendship queries");
+    console.log(JSON.stringify({ name: "middle grades school evidence-aware recovery fills after query-only rows", pass: true, rawItems: result.rawItems.length, fetchCalls: schoolEvidenceRecoveryFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const middleGradesRecoveryFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";

@@ -185,6 +185,12 @@ export interface SourceDiagnosticV2 {
   lockQualityRetryQueries?: string[];
   lockQualityRetryAcceptedCount?: number;
   finalReturnedDespiteLockQualityFailReason?: string;
+  evidenceAwareRecoveryQueries?: string[];
+  evidenceAwareRecoveryAttempted?: boolean;
+  evidenceAwareRecoveryAcceptedCount?: number;
+  queryOnlyRejectedThenRecoveredCount?: number;
+  brittleQueryTimedOutThenShortQueryAttempted?: boolean;
+  underfillDespiteUnattemptedEvidenceQueries?: boolean;
   rejectedAllRowsAsQueryOnly?: boolean;
   queryOnlyRejectionTriggeredContinuation?: boolean;
   unattemptedSpecificQueriesAfterQueryOnlyRejection?: string[];
