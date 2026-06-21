@@ -50,7 +50,22 @@ type MiddleGradesAgeShapeDiagnosticSample = {
   };
   subjectPreview: string[];
 };
-
+const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
+  "identity",
+  "family",
+  "friendship",
+  "community",
+  "coming of age",
+  "emotional growth",
+  "kindness",
+  "hopeful",
+  "warm",
+  "gentle",
+  "cozy",
+  "quirky",
+  "playful",
+  "uplifting",
+]);
 const MEDIA_FORMAT_TERMS = new Set(["anime", "game", "games", "gaming", "tv", "television", "movie", "movies", "film", "films"]);
 const GENRE_QUERY_HINT = /\b(fantasy|romance|historical|history|mystery|thriller|horror|adventure|action|comedy|humor|science fiction|sci-fi|speculative|dystopia|dystopian|paranormal|supernatural|western|sports|memoir|biography|realistic|contemporary|literary|drama|coming of age|graphic novel|manga|comic|heist|sandbox)\b/i;
 const RELEVANCE_DRIFT_QUERY_HINT = /\b(classic|classics|shakespeare|twain|dickens|austen|wells|public domain|literary)\b/i;
