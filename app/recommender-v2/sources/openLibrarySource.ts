@@ -51,6 +51,25 @@ type MiddleGradesAgeShapeDiagnosticSample = {
   subjectPreview: string[];
 };
 
+type MiddleGradesAgeShapeDiagnosticSample = {
+  stage: string;
+  query: string;
+  title: string;
+  firstPublishYear?: number;
+  keep: boolean;
+  reason: "accepted" | "middle_grades_age_shape_mismatch";
+  evidence: {
+    hasExplicitMiddleGradesEvidence: boolean;
+    queryIsAgeAnchored: boolean;
+    hasSubjectGenreShape: boolean;
+    hasQueryGenreShape: boolean;
+    hasTitleGenreShape: boolean;
+    hasGenreShape: boolean;
+    hasAdultLeakageShape: boolean;
+  };
+  subjectPreview: string[];
+};
+
 const ABSTRACT_OPEN_LIBRARY_TERMS = new Set([
   "identity",
   "family",
