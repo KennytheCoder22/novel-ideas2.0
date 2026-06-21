@@ -906,10 +906,10 @@ async function main() {
     })),
   ];
   const middleGradesSelectionResult = selectRecommendations(middleGradesSelectionCandidates, middleGradesSelectionProfile, 10);
-  assertEqual(middleGradesSelectionResult.selected.length, 5, "middle grades selection should relax Open Library diversity underfill to five");
-  assertEqual(new Set(middleGradesSelectionResult.selected.map((candidate) => candidate.title)).size, 5, "middle grades selection underfill recovery should keep duplicate titles blocked");
+  assertEqual(middleGradesSelectionResult.selected.length < 5, true, "middle grades query-only candidates should not fill the slate without document evidence");
+  assertEqual(new Set(middleGradesSelectionResult.selected.map((candidate) => candidate.title)).size, middleGradesSelectionResult.selected.length, "middle grades query-only filtering should keep duplicate titles blocked among survivors");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.duplicate_title), true, "middle grades selection should record duplicate title rejection before safe underfill recovery");
-  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.middle_grades_openlibrary_underfill_relaxed_diversity || middleGradesSelectionResult.rejectedReasons.middle_grades_openlibrary_underfill_safe_candidate_accepted), true, "middle grades selection should emit middle-grades Open Library underfill diagnostics");
+  assertEqual(Number(middleGradesSelectionResult.rejectedReasons.documentEvidenceRequiredButMissingCount || 0) > 0, true, "middle grades selection should emit query-only score cap diagnostics");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.routeAlignmentScoreByTitle), true, "middle grades selection should expose route alignment scores by title");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.genreFacetMatchScoreByTitle), true, "middle grades selection should expose genre facet match scores by title");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.fallbackPenaltyByTitle), true, "middle grades selection should expose fallback penalties by title");
@@ -918,14 +918,14 @@ async function main() {
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.documentLevelRouteAlignmentByTitle), true, "middle grades selection should expose document-level route alignment by title");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.routeAlignmentEvidenceFieldsByTitle), true, "middle grades selection should expose route alignment evidence fields by title");
   assertEqual(Number(middleGradesSelectionResult.rejectedReasons.falseRouteAlignedDueToQueryOnlyCount || 0) > 0, true, "middle grades selection should demote query-only route alignment");
-  assertEqual(middleGradesSelectionResult.rejectedReasons.finalCountContractStatus, "full_fallback_only", "middle grades query-only underfill slate should be count-success but fallback-only quality");
-  console.log(JSON.stringify({ name: "middle grades selection relaxes Open Library diversity underfill to five", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
+  assertEqual(middleGradesSelectionResult.rejectedReasons.finalCountContractStatus, "underfilled_fallback_only", "middle grades query-only underfill slate should not masquerade as full fallback success");
+  console.log(JSON.stringify({ name: "middle grades selection rejects query-only underfill slate", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
 
   const middleGradesZeroFinalGuardResult = selectRecommendations([fakeScoredCandidate({
     id: "middle-zero-final-guard",
     title: "Middle Zero Final Guard",
     creators: ["Guard Author"],
-    score: -5,
+    score: 2,
     maturityBand: "preteens",
     diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_humor_final_safe_recovery", emergencyFallback: true, fallbackAlignment: "anti_zero" },
     scoreBreakdown: { ageTeenSuitability: 0.25, avoidSignalPenalty: 0, genreFacetMatch: 0 },
@@ -933,6 +933,55 @@ async function main() {
   assertEqual(middleGradesZeroFinalGuardResult.selected.length, 1, "middle grades zero-final-items guard should preserve safe Open Library docs");
   assertEqual(Boolean(middleGradesZeroFinalGuardResult.rejectedReasons.accepted_middle_grades_zero_final_items_guard), true, "middle grades zero-final-items guard should emit diagnostics");
   console.log(JSON.stringify({ name: "middle grades zero-final-items guard preserves safe Open Library docs", pass: true, selected: middleGradesZeroFinalGuardResult.selected.length, rejectedReasons: middleGradesZeroFinalGuardResult.rejectedReasons }));
+
+
+  const middleGradesQueryOnlyVsAlignedCandidates = [
+    ...["Fallback One", "Fallback Two", "Fallback Three", "Fallback Four", "Fallback Five"].map((title, index) => fakeScoredCandidate({
+      id: `middle-query-only-${index}`,
+      title,
+      creators: [`Fallback Author ${index}`],
+      score: 12 - index * 0.1,
+      maturityBand: "preteens",
+      genres: [],
+      themes: [],
+      scoreBreakdown: { genreFacetMatch: 7, positiveTasteMatch: 7, queryRungBonus: 1, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Juvenile fiction"] },
+    })),
+    fakeScoredCandidate({
+      id: "middle-document-aligned",
+      title: "Funny Friendship Robot",
+      creators: ["Aligned Author"],
+      score: 4,
+      maturityBand: "preteens",
+      genres: ["Humor"],
+      themes: ["Friendship", "Robots"],
+      scoreBreakdown: { genreFacetMatch: 1, positiveTasteMatch: 1, queryRungBonus: 0, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Juvenile fiction", "Robots", "Friendship", "Humor"] },
+    }),
+  ];
+  const middleGradesQueryOnlyVsAlignedResult = selectRecommendations(middleGradesQueryOnlyVsAlignedCandidates, middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesQueryOnlyVsAlignedResult.selected.some((candidate) => candidate.title === "Funny Friendship Robot"), true, "document-aligned middle grades candidate should beat higher-scoring query-only fallback candidates");
+  assertEqual(middleGradesQueryOnlyVsAlignedResult.selected.some((candidate) => /^Fallback/.test(candidate.title)), false, "query-only fallback candidates should not be selected when document evidence is missing");
+  assertEqual(Number(middleGradesQueryOnlyVsAlignedResult.rejectedReasons.documentEvidenceRequiredButMissingCount || 0) >= 5, true, "query-only fallback candidates should be score-capped and counted");
+  console.log(JSON.stringify({ name: "middle grades query-only candidates cannot beat document-aligned candidates", pass: true, selected: middleGradesQueryOnlyVsAlignedResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesQueryOnlyVsAlignedResult.rejectedReasons }));
+
+  const middleGradesLocalHistoryArtifactResult = selectRecommendations([fakeScoredCandidate({
+    id: "middle-local-history-artifact",
+    title: "A Regional History Compendium",
+    creators: ["Reference Author"],
+    score: 20,
+    maturityBand: "preteens",
+    genres: ["History", "Reference", "Nonfiction"],
+    themes: ["Local history"],
+    scoreBreakdown: { genreFacetMatch: 8, positiveTasteMatch: 8, queryRungBonus: 1, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+    diagnostics: { queryText: "middle grade friendship school novel", queryFamily: "school", routingReason: "middle_grades_contemporary_school" },
+    raw: { subject: ["Local history", "Reference", "Nonfiction", "Bibliography"] },
+  })], middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesLocalHistoryArtifactResult.selected.length, 0, "local-history/reference nonfiction artifact should not be returned for preteen fiction profile");
+  assertEqual(Boolean(middleGradesLocalHistoryArtifactResult.rejectedReasons.middle_grades_reference_or_local_history_artifact), true, "local-history/reference artifact should be rejected by generic evidence rules");
+  console.log(JSON.stringify({ name: "middle grades local-history reference artifact is rejected generically", pass: true, rejectedReasons: middleGradesLocalHistoryArtifactResult.rejectedReasons }));
 
   const middleGradesContemporarySelectionProfile = buildTasteProfile({
     ageBand: "preteens",
@@ -954,14 +1003,15 @@ async function main() {
       score: index === 0 ? 11 : 5,
       maturityBand: "preteens",
       diagnostics: { queryText: index === 1 ? "middle grade realistic fiction" : index === 2 ? "middle grade friendship" : "middle grade school story", queryFamily: index === 1 ? "realistic" : index === 2 ? "friendship" : "school", routingReason: "middle_grades_contemporary_school" },
+      raw: { subject: ["Juvenile fiction", "School", "Friendship", "Family", "Classroom"] },
     })),
   ];
   const middleGradesContemporarySelectionResult = selectRecommendations(middleGradesContemporarySelectionCandidates, middleGradesContemporarySelectionProfile, 5);
   const contemporaryAlignedSelected = middleGradesContemporarySelectionResult.selected.filter((candidate) => /\b(realistic|school|friendship|classroom|family|contemporary)\b/i.test(String(candidate.diagnostics?.queryText || ""))).length;
   const contemporaryAdventureSelected = middleGradesContemporarySelectionResult.selected.filter((candidate) => /\b(adventure|fantasy|magic|quest)\b/i.test(String(candidate.diagnostics?.queryText || "")) && /middle_grades_contemporary_school/i.test(String(candidate.diagnostics?.routingReason || ""))).length;
   assertEqual(contemporaryAlignedSelected, 4, "middle grades contemporary selection should exhaust aligned school/friendship/realistic candidates before adventure fallback");
-  assertEqual(contemporaryAdventureSelected, 1, "middle grades contemporary selection should leave adventure fallback only for true shortage slots");
-  assertEqual(Boolean(middleGradesContemporarySelectionResult.rejectedReasons.middle_grades_contemporary_school_alignment_accepted), true, "middle grades contemporary selection should emit alignment diagnostics");
+  assertEqual(contemporaryAdventureSelected, 0, "middle grades contemporary selection should reject query-only adventure fallback when aligned evidence exists");
+  assertEqual(Number(middleGradesContemporarySelectionResult.rejectedReasons.middle_grades_route_aligned_success || 0) >= 4, true, "middle grades contemporary selection should emit route-aligned diagnostics");
   console.log(JSON.stringify({ name: "middle grades contemporary selection prefers aligned school candidates", pass: true, selected: middleGradesContemporarySelectionResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesContemporarySelectionResult.rejectedReasons }));
 
   const middleGradesContemporaryDefaultCapCandidates = [
