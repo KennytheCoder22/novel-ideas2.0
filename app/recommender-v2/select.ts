@@ -198,7 +198,7 @@ function middleGradesRouteEvidencePattern(candidate: ScoredCandidate): RegExp | 
   const queryText = middleGradesQueryText(candidate);
   const routeKey = middleGradesRouteKey(candidate);
   const routeText = `${routeKey} ${queryText}`;
-  if (/\b(science adventure|science fiction|sci fi|sci-fi|space|dystopian|dystopia)\b/.test(routeText)) return /\b(science|scientist|experiment|space|planet|galaxy|robot|robots?|technology|invention|dystopian|dystopia|sci fi|sci-fi|science fiction|nonfiction)\b/;
+  if (/\b(science adventure|science fiction|sci fi|sci-fi|space|dystopian|dystopia)\b/.test(routeText)) return /\b(science|scientist|experiment|space|planet|galaxy|robot|robots?|technology|invention|dystopian|dystopia|sci fi|sci-fi|science fiction|nonfiction|animals?|nature|wildlife|wolf|wolves)\b/;
   if (/\b(robot|ai|artificial intelligence|superhero|superheroes)\b/.test(routeText)) return /\b(robot|robots?|ai|artificial intelligence|technology|invention|superhero|superheroes|powers?)\b/;
   if (/\b(animal adventure|animals?|nature|wildlife)\b/.test(routeText)) return /\b(animal|animals|dog|cat|horse|wolf|wolves|wildlife|nature|forest|woods|survival|cozy|community|farm|creature|creatures)\b/;
   if (/\b(school adventure|school story|school|classroom|children s school stories)\b/.test(routeText)) return /\b(school|class|classroom|teacher|student|students|friendship|friends?|community|family|comedy|funny|humor|humour)\b/;
@@ -210,8 +210,17 @@ function middleGradesRouteEvidencePattern(candidate: ScoredCandidate): RegExp | 
   return undefined;
 }
 
-function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { queryLevel: boolean; documentLevel: boolean; fields: string[]; demotedReason?: string } {
-  if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return { queryLevel: false, documentLevel: false, fields: [] };
+type MiddleGradesDocumentEvidenceTier = "strong_evidence" | "medium_evidence" | "weak_evidence" | "query_only";
+
+function middleGradesEvidenceTierRank(tier: MiddleGradesDocumentEvidenceTier): number {
+  if (tier === "strong_evidence") return 3;
+  if (tier === "medium_evidence") return 2;
+  if (tier === "weak_evidence") return 1;
+  return 0;
+}
+
+function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { queryLevel: boolean; documentLevel: boolean; fields: string[]; evidenceTextByField: Record<string, string>; tier: MiddleGradesDocumentEvidenceTier; demotedReason?: string } {
+  if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return { queryLevel: false, documentLevel: false, fields: [], evidenceTextByField: {}, tier: "query_only" };
   const pattern = middleGradesRouteEvidencePattern(candidate);
   const queryText = middleGradesQueryText(candidate);
   const raw = candidate.raw as any;
@@ -227,12 +236,25 @@ function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { query
     ["subjects", normalized([Array.isArray(raw?.subject) ? raw.subject.join(" ") : raw?.subject, Array.isArray(raw?.subjects) ? raw.subjects.join(" ") : raw?.subjects, Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet].filter(Boolean).join(" "))],
   ];
   const queryLevel = pattern ? pattern.test(queryText) : false;
-  const fields = pattern ? docFields.filter(([, value]) => pattern.test(value)).map(([field]) => field) : [];
+  const matchedFields = pattern ? docFields.filter(([, value]) => pattern.test(value)) : [];
+  const fields = matchedFields.map(([field]) => field);
+  const evidenceTextByField = Object.fromEntries(matchedFields.map(([field, value]) => [field, value.slice(0, 180)]));
   const documentLevel = fields.length > 0;
+  const richFields = fields.filter((field) => ["subjects", "description", "genres", "themes", "characterDynamics"].includes(field));
+  const titleFields = fields.filter((field) => ["title", "subtitle"].includes(field));
+  const tier: MiddleGradesDocumentEvidenceTier = richFields.length > 0 && (titleFields.length > 0 || richFields.some((field) => ["subjects", "description"].includes(field)))
+    ? "strong_evidence"
+    : titleFields.length > 0 && middleGradesFictionAgeEvidence(candidate)
+      ? "medium_evidence"
+      : titleFields.length > 0
+        ? "weak_evidence"
+        : "query_only";
   return {
     queryLevel,
     documentLevel,
     fields,
+    evidenceTextByField,
+    tier,
     demotedReason: queryLevel && !documentLevel ? "query_level_only_no_document_evidence" : undefined,
   };
 }
@@ -638,7 +660,9 @@ function middleGradesRouteAlignmentScore(candidate: ScoredCandidate): number {
   const docText = middleGradesRawText(candidate);
   const evidence = middleGradesRouteAlignmentEvidence(candidate);
   let score = 0;
-  if (evidence.documentLevel) score += 1.6;
+  if (evidence.tier === "strong_evidence") score += 2.5;
+  else if (evidence.tier === "medium_evidence") score += 1.5;
+  else if (evidence.tier === "weak_evidence") score += 0.35;
   if (/fantasy_humor|humor/i.test(routeKey) && /\b(humor|funny|friendship|school|family|comedy|adventure)\b/.test(docText)) score += 0.7;
   if (/contemporary_school|contemporary|school|realistic/i.test(routeKey) && /\b(realistic|contemporary|school|classroom|friendship|family)\b/.test(docText)) score += 0.9;
   if (/mystery/i.test(routeKey) && /\b(mystery|detective|clue|school mystery)\b/.test(docText)) score += 0.9;
@@ -657,6 +681,7 @@ function middleGradesFallbackPenalty(candidate: ScoredCandidate): number {
   let penalty = 0;
   if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) penalty += 1.1;
   if (evidence.queryLevel && !evidence.documentLevel) penalty += 1.2;
+  if (evidence.tier === "weak_evidence") penalty += 0.8;
   if (/\b(middle grade adventure|fantasy adventure|school adventure|school story|science adventure|animal adventure|humor|funny)\b/.test(text) && Number(breakdown.genreFacetMatch || 0) <= 0) penalty += 0.7;
   if (/\b(school story|school adventure|humor|funny|middle grade humor|children s funny books)\b/.test(text) && Number(breakdown.genreFacetMatch || 0) <= 0 && (!candidate.matchedSignals || candidate.matchedSignals.length === 0)) penalty += 0.9;
   return Math.round(penalty * 1000) / 1000;
@@ -730,12 +755,14 @@ function applyMiddleGradesRouteAlignmentReplacement(rankedCandidates: ScoredCand
   for (const candidate of routeAlignedPool) {
     const candidateAdjusted = middleGradesSelectionScore(candidate, profile);
     const replacementIndex = selected
-      .map((row, index) => ({ row, index, adjusted: middleGradesSelectionScore(row, profile), alignment: middleGradesRouteAlignmentScore(row), fallbackPenalty: middleGradesFallbackPenalty(row) }))
-      .filter(({ row, alignment, fallbackPenalty }) => row.source === "openLibrary" && /middle_grades_/i.test(String(row.diagnostics?.routingReason || "")) && (fallbackPenalty > 0 || alignment < middleGradesRouteAlignmentScore(candidate)))
+      .map((row, index) => ({ row, index, adjusted: middleGradesSelectionScore(row, profile), alignment: middleGradesRouteAlignmentScore(row), fallbackPenalty: middleGradesFallbackPenalty(row), tierRank: middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(row).tier) }))
+      .filter(({ row, alignment, fallbackPenalty, tierRank }) => row.source === "openLibrary" && /middle_grades_/i.test(String(row.diagnostics?.routingReason || "")) && (fallbackPenalty > 0 || alignment < middleGradesRouteAlignmentScore(candidate) || tierRank < middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(candidate).tier)))
       .sort((a, b) => a.adjusted - b.adjusted)[0]?.index;
     if (replacementIndex === undefined) break;
     const replaced = selected[replacementIndex];
-    if (candidateAdjusted + 0.35 < middleGradesSelectionScore(replaced, profile)) continue;
+    const candidateTierRank = middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(candidate).tier);
+    const replacedTierRank = middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(replaced).tier);
+    if (candidateTierRank <= replacedTierRank && candidateAdjusted + 0.35 < middleGradesSelectionScore(replaced, profile)) continue;
     replaced.rejectedReasons.push("middle_grades_route_aligned_replaced_weaker_generic_or_fallback");
     candidate.rejectedReasons.push("middle_grades_route_aligned_selected_over_generic_or_fallback");
     selected[replacementIndex] = candidate;
@@ -754,6 +781,8 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const queryLevelRouteAlignmentByTitle: Record<string, boolean> = {};
   const documentLevelRouteAlignmentByTitle: Record<string, boolean> = {};
   const routeAlignmentEvidenceFieldsByTitle: Record<string, string[]> = {};
+  const documentEvidenceTierByTitle: Record<string, MiddleGradesDocumentEvidenceTier> = {};
+  const documentEvidenceTextByTitle: Record<string, Record<string, string>> = {};
   const routeAlignmentDemotedReasonByTitle: Record<string, string> = {};
   const finalEligibilityEvidenceByTitle: Record<string, string[]> = {};
   const emergencyFallbackOverrideUsedByTitle: Record<string, string> = {};
@@ -768,6 +797,8 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     queryLevelRouteAlignmentByTitle[candidate.title] = routeEvidence.queryLevel;
     documentLevelRouteAlignmentByTitle[candidate.title] = routeEvidence.documentLevel;
     routeAlignmentEvidenceFieldsByTitle[candidate.title] = routeEvidence.fields;
+    documentEvidenceTierByTitle[candidate.title] = routeEvidence.tier;
+    documentEvidenceTextByTitle[candidate.title] = routeEvidence.evidenceTextByField;
     finalEligibilityEvidenceByTitle[candidate.title] = finalEligibility.evidence;
     if (finalEligibility.emergencyOverride && selectedTitles.has(normalized(candidate.title))) emergencyFallbackOverrideUsedByTitle[candidate.title] = "explicit_emergency_fallback_after_better_options_failed";
     if (!finalEligibility.allowed && routeEvidence.queryLevel && !routeEvidence.documentLevel) finalEligibilityRejectedQueryOnlyTitles.push(candidate.title);
@@ -795,6 +826,8 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     candidate.diagnostics.queryLevelRouteAlignment = routeEvidence.queryLevel;
     candidate.diagnostics.documentLevelRouteAlignment = routeEvidence.documentLevel;
     candidate.diagnostics.routeAlignmentEvidenceFields = routeEvidence.fields;
+    candidate.diagnostics.documentEvidenceTier = routeEvidence.tier;
+    candidate.diagnostics.documentEvidenceText = routeEvidence.evidenceTextByField;
     candidate.diagnostics.finalEligibilityEvidence = finalEligibility.evidence;
     if (finalEligibility.emergencyOverride && selectedTitles.has(normalized(candidate.title))) candidate.diagnostics.emergencyFallbackOverrideUsed = true;
     if (routeEvidence.demotedReason) candidate.diagnostics.routeAlignmentDemotedReason = routeEvidence.demotedReason;
@@ -809,6 +842,10 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     .sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile))
     .slice(0, 8)
     .map((candidate) => candidate.title);
+  const strongEvidenceRejected = rankedCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && middleGradesRouteAlignmentEvidence(candidate).tier === "strong_evidence")
+    .sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
+  const weakEvidenceSelectedOverStrongEvidence = selected.some((candidate) => middleGradesRouteAlignmentEvidence(candidate).tier === "weak_evidence") && strongEvidenceRejected.length > 0;
   const selectedRouteAlignedCount = selected.filter(isMiddleGradesRouteAlignedSuccessCandidate).length;
   const selectedFallbackCount = selected.filter((candidate) => isMiddleGradesAntiZeroFallbackCandidate(candidate) || (middleGradesRouteAlignmentEvidence(candidate).queryLevel && !middleGradesRouteAlignmentEvidence(candidate).documentLevel)).length;
   const rejectedRouteAlignedCount = rankedCandidates.filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && isMiddleGradesRouteAlignedSuccessCandidate(candidate)).length;
@@ -834,6 +871,7 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   if (documentRouteAlignmentEvidenceMissingButTrueCount > 0) lockQualityFailReasons.push("document_route_alignment_missing_evidence_fields");
   if (rejectedReasons.genericDefaultSlateDetected && selected.length >= 5) lockQualityFailReasons.push("generic_default_slate_detected_without_true_shortage");
   if (!genericAdventureUsedAsLastResortOnly) lockQualityFailReasons.push("generic_adventure_used_before_last_resort");
+  if (weakEvidenceSelectedOverStrongEvidence) lockQualityFailReasons.push("weak_evidence_selected_over_strong_evidence");
   const lockQualityPass = lockQualityFailReasons.length === 0;
   diagnostics.routeAlignmentScoreByTitle = routeAlignmentScoreByTitle;
   diagnostics.genreFacetMatchScoreByTitle = genreFacetMatchScoreByTitle;
@@ -842,6 +880,8 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.queryLevelRouteAlignmentByTitle = queryLevelRouteAlignmentByTitle;
   diagnostics.documentLevelRouteAlignmentByTitle = documentLevelRouteAlignmentByTitle;
   diagnostics.routeAlignmentEvidenceFieldsByTitle = routeAlignmentEvidenceFieldsByTitle;
+  diagnostics.documentEvidenceTierByTitle = documentEvidenceTierByTitle;
+  diagnostics.documentEvidenceTextByTitle = documentEvidenceTextByTitle;
   diagnostics.routeAlignmentDemotedReasonByTitle = routeAlignmentDemotedReasonByTitle;
   diagnostics.finalEligibilityEvidenceByTitle = finalEligibilityEvidenceByTitle;
   diagnostics.finalEligibilityRejectedQueryOnlyTitles = finalEligibilityRejectedQueryOnlyTitles;
@@ -853,6 +893,11 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.genericAdventureUsedAsLastResortOnly = genericAdventureUsedAsLastResortOnly;
   diagnostics.lockQualityPass = lockQualityPass;
   diagnostics.lockQualityFailReasons = lockQualityFailReasons;
+  diagnostics.strongEvidenceRejectedTitles = strongEvidenceRejected.slice(0, 8).map((candidate) => candidate.title);
+  diagnostics.strongEvidenceRejectedReasons = Object.fromEntries(strongEvidenceRejected.slice(0, 8).map((candidate) => [candidate.title, candidate.rejectedReasons.join(",") || "strong_evidence_candidate_not_selected"]));
+  diagnostics.weakEvidenceSelectedOverStrongEvidence = weakEvidenceSelectedOverStrongEvidence;
+  diagnostics.evidenceGateTooStrictSuspected = selected.length < 5 && strongEvidenceRejected.length > 0;
+  diagnostics.evidenceGateTooLooseSuspected = weakEvidenceSelectedOverStrongEvidence || (selected.some((candidate) => middleGradesRouteAlignmentEvidence(candidate).tier === "weak_evidence") && Boolean(rejectedReasons.genericDefaultSlateDetected));
   if (!diagnostics.underfillRecoveryStoppedReason) diagnostics.underfillRecoveryStoppedReason = selected.length >= 5 ? "count_contract_satisfied" : "not_enough_safe_candidates_after_selection";
   if (!diagnostics.remainingUnattemptedReliableFallbacks) diagnostics.remainingUnattemptedReliableFallbacks = [];
   diagnostics.topRejectedRouteAlignedCandidates = rejectedRouteAligned;

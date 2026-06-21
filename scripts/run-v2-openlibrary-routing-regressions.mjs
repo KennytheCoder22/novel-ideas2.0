@@ -632,6 +632,56 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const animalScienceRecoveryFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    const query = parsed.searchParams.get("q") || "";
+    animalScienceRecoveryFetchCalls.push(query);
+    const docs = /children'?s animal adventure|wildlife adventure children|animal chapter book|nature adventure children|robot animal adventure children/i.test(query)
+      ? [
+        { title: "The Wild Robot", subject: ["Juvenile fiction", "Robots", "Animals", "Nature", "Survival"], description: "A robot learns from animals in the wilderness." },
+        { title: "Flora and Ulysses", subject: ["Juvenile fiction", "Animals", "Squirrels", "Humorous stories"], description: "A funny animal adventure about friendship and family." },
+        { title: "A Wolf Called Wander", subject: ["Juvenile fiction", "Wolves", "Wildlife", "Nature"], description: "A wolf survives a wilderness journey." },
+        { title: "Forest Science Club", subject: ["Juvenile fiction", "Nature", "Science", "Animals"], description: "Kids explore animal habitats and science." },
+        { title: "Robot Wildlife Rescue", subject: ["Juvenile fiction", "Robots", "Wildlife rescue", "Adventure stories"], description: "A robot helps animals during an adventure." },
+      ].map((doc, index) => ({
+        ...fakeDoc(query, index + 520),
+        key: `/works/animal-science-recovery-${query.replace(/\s+/g, "-")}-${index}`,
+        title: doc.title,
+        subject: doc.subject,
+        description: doc.description,
+      }))
+      : [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 510),
+        key: `/works/animal-query-only-${query.replace(/\s+/g, "-")}-${index}`,
+        title: `Sparse Catalog Row ${index}`,
+        subject: ["Juvenile fiction"],
+      }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Nat Geo Kids", genres: ["nonfiction", "animals", "nature"], themes: ["science", "wildlife"], format: "book" },
+        { action: "like", title: "Robot Adventure", genres: ["science fiction"], themes: ["robots", "family", "adventure"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 18_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "animal/science recovery should preserve evidence-supported animal/nature/robot candidates");
+    assertEqual(result.rawItems.some((item) => /wild robot|flora|wolf/i.test(String(item.title || ""))), true, "animal/science recovery should not suppress plausible animal/nature candidates");
+    assertEqual(result.diagnostics.evidenceAwareRecoveryAttempted, true, "animal/science recovery should attempt evidence-aware animal/nature queries");
+    assertEqual(Number(result.diagnostics.evidenceAwareRecoveryAcceptedCount || 0) >= 5, true, "animal/science recovery should accept evidence-rich animal/nature candidates");
+    assertEqual(animalScienceRecoveryFetchCalls.some((query) => /animal|wildlife|nature/i.test(query)), true, "animal/science recovery should use animal/nature evidence-aware query variants");
+    console.log(JSON.stringify({ name: "middle grades animal science evidence-aware recovery preserves plausible candidates", pass: true, rawItems: result.rawItems.length, fetchCalls: animalScienceRecoveryFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const middleGradesRecoveryFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
@@ -1141,6 +1191,44 @@ async function main() {
   assertEqual(middleGradesQueryOnlyVsAlignedResult.selected.some((candidate) => /^Fallback/.test(candidate.title)), false, "query-only fallback candidates should not be selected when document evidence is missing");
   assertEqual(Number(middleGradesQueryOnlyVsAlignedResult.rejectedReasons.documentEvidenceRequiredButMissingCount || 0) >= 5, true, "query-only fallback candidates should be score-capped and counted");
   console.log(JSON.stringify({ name: "middle grades query-only candidates cannot beat document-aligned candidates", pass: true, selected: middleGradesQueryOnlyVsAlignedResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesQueryOnlyVsAlignedResult.rejectedReasons }));
+
+  const middleGradesEvidenceTierResult = selectRecommendations([
+    ...["Max School Laugh", "School Magic Title", "Classroom Quest Joke", "Funny Hallway Tale", "Alanna School Adventure"].map((title, index) => fakeScoredCandidate({
+      id: `middle-weak-school-${index}`,
+      title,
+      creators: [`Weak School Author ${index}`],
+      score: 13 - index * 0.1,
+      maturityBand: "preteens",
+      genres: [],
+      themes: [],
+      scoreBreakdown: { genreFacetMatch: 5, positiveTasteMatch: 5, queryRungBonus: 1, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "middle grade school story", queryFamily: "school", routingReason: "middle_grades_contemporary_school" },
+      raw: { subject: ["Juvenile fiction"] },
+    })),
+    ...[
+      ["The Wild Robot", ["Juvenile fiction", "Robots", "Animals", "Nature", "Survival"], "A robot survives with animals in the wilderness."],
+      ["Flora and Ulysses", ["Juvenile fiction", "Animals", "Humorous stories", "Friendship"], "A funny animal friendship adventure."],
+      ["A Wolf Called Wander", ["Juvenile fiction", "Wolves", "Wildlife", "Nature"], "A wolf journeys through wild places."],
+      ["Forest Science Club", ["Juvenile fiction", "Science", "Nature", "Animals"], "Kids study animals and habitats."],
+      ["Robot Wildlife Rescue", ["Juvenile fiction", "Robots", "Wildlife", "Adventure stories"], "A robot protects animals."],
+    ].map(([title, subjects, description], index) => fakeScoredCandidate({
+      id: `middle-strong-animal-${index}`,
+      title,
+      creators: [`Strong Animal Author ${index}`],
+      description,
+      score: 6 - index * 0.1,
+      maturityBand: "preteens",
+      genres: ["Science fiction"],
+      themes: ["Animals", "Nature", "Robots"],
+      scoreBreakdown: { genreFacetMatch: 1, positiveTasteMatch: 1, queryRungBonus: 0, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "children's animal adventure", queryFamily: "adventure", routingReason: "middle_grades_science_adventure" },
+      raw: { subject: subjects, description },
+    })),
+  ], middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesEvidenceTierResult.selected.every((candidate) => /wild robot|flora|wolf|forest science|wildlife rescue/i.test(candidate.title)), true, "strong subject/description animal-science evidence should beat weak title-only school defaults");
+  assertEqual(Object.values(middleGradesEvidenceTierResult.rejectedReasons.documentEvidenceTierByTitle || {}).includes("strong_evidence"), true, "selection diagnostics should expose strong evidence tiers");
+  assertEqual(Boolean(middleGradesEvidenceTierResult.rejectedReasons.weakEvidenceSelectedOverStrongEvidence), false, "weak title-only evidence must not beat strong subject/description evidence");
+  console.log(JSON.stringify({ name: "middle grades evidence tiers prefer strong animal science evidence over weak defaults", pass: true, selected: middleGradesEvidenceTierResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesEvidenceTierResult.rejectedReasons }));
 
   const middleGradesLocalHistoryArtifactResult = selectRecommendations([fakeScoredCandidate({
     id: "middle-local-history-artifact",

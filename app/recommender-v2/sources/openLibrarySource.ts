@@ -1465,9 +1465,13 @@ function middleGradesEvidenceAwareRecoveryQueries(queryPlans: OpenLibraryQueryPl
     .map((row) => row.value)
     .join(" ");
   const signalText = `${routeText} ${positiveText}`;
-  const evidenceQueries = /dragon|myth|mythology|creature|fantasy|magic|magical/i.test(signalText)
+  const evidenceQueries = /dragon|myth|mythology|creature/i.test(positiveText)
     ? ["dragon fantasy children", "dragon adventure children", "children's dragon books", "mythology adventure children", "fantasy adventure children"]
-    : /school|friendship|friends?|community|comedy|funny|humou?r|realistic|contemporary/i.test(signalText)
+    : /animal|nature|wildlife|wolf|wolves|forest/i.test(signalText)
+    ? ["children's animal adventure", "wildlife adventure children", "animal chapter book", "nature adventure children", "robot animal adventure children"]
+    : /dragon|myth|mythology|creature|fantasy|magic|magical/i.test(signalText)
+      ? ["dragon fantasy children", "dragon adventure children", "children's dragon books", "mythology adventure children", "fantasy adventure children"]
+      : /school|friendship|friends?|community|comedy|funny|humou?r|realistic|contemporary/i.test(signalText)
       ? ["funny middle school fiction", "school friendship chapter book", "realistic school friendship fiction", "illustrated middle school fiction"]
       : /science|space|robot|technology|sci-fi|sci fi|science fiction/i.test(signalText)
         ? ["children's science fiction adventure", "space adventure children", "robot adventure children", "science fiction chapter book"]
@@ -1480,7 +1484,7 @@ function middleGradesEvidenceAwareRecoveryQueries(queryPlans: OpenLibraryQueryPl
 function middleGradesSourceRouteEvidencePattern(query: string, routingReason = ""): RegExp | undefined {
   const routeText = String(`${routingReason} ${query}`).toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
   if (/\b(dragon|mythology|mythological|creature)\b/.test(routeText)) return /\b(dragon|dragons|myth|myths|mythology|mythological|creature|creatures|magic|magical|fantasy|quest|adventure)\b/i;
-  if (/\b(science adventure|science fiction|sci fi|sci-fi|space|dystopian|dystopia)\b/.test(routeText)) return /\b(science|scientist|experiment|space|planet|galaxy|robot|robots?|technology|invention|dystopian|dystopia|sci fi|sci-fi|science fiction|nonfiction)\b/i;
+  if (/\b(science adventure|science fiction|sci fi|sci-fi|space|dystopian|dystopia)\b/.test(routeText)) return /\b(science|scientist|experiment|space|planet|galaxy|robot|robots?|technology|invention|dystopian|dystopia|sci fi|sci-fi|science fiction|nonfiction|animals?|nature|wildlife|wolf|wolves)\b/i;
   if (/\b(robot|ai|artificial intelligence|superhero|superheroes)\b/.test(routeText)) return /\b(robot|robots?|ai|artificial intelligence|technology|invention|superhero|superheroes|powers?)\b/i;
   if (/\b(animal adventure|animals?|nature|wildlife)\b/.test(routeText)) return /\b(animal|animals|dog|cat|horse|wolf|wolves|wildlife|nature|forest|woods|survival|cozy|community|farm|creature|creatures)\b/i;
   if (/\b(school adventure|school story|school|classroom|children s school stories)\b/.test(routeText)) return /\b(school|class|classroom|teacher|student|students|friendship|friends?|community|family|comedy|funny|humor|humour)\b/i;
@@ -3274,6 +3278,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         lockQualityRetryAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesLockQualityRetryAcceptedCount : undefined,
         finalReturnedDespiteLockQualityFailReason: middleGradesFinalReturnedDespiteLockQualityFailReason,
         evidenceAwareRecoveryQueries: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesEvidenceAwareRecoveryQueriesAttempted.length ? middleGradesEvidenceAwareRecoveryQueriesAttempted : middleGradesUnattemptedEvidenceAwareQueries(), 20) : undefined,
+        evidenceAwareRecoveryRemainingQueries: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesUnattemptedEvidenceAwareQueries(), 20) : undefined,
         evidenceAwareRecoveryAttempted: ageProfile.key === "middleGrades" ? middleGradesEvidenceAwareRecoveryAttempted : undefined,
         evidenceAwareRecoveryAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesEvidenceAwareRecoveryAcceptedCount : undefined,
         queryOnlyRejectedThenRecoveredCount: ageProfile.key === "middleGrades" && middleGradesRejectedAllRowsAsQueryOnly ? middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount : undefined,

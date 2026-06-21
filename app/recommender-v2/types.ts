@@ -186,6 +186,7 @@ export interface SourceDiagnosticV2 {
   lockQualityRetryAcceptedCount?: number;
   finalReturnedDespiteLockQualityFailReason?: string;
   evidenceAwareRecoveryQueries?: string[];
+  evidenceAwareRecoveryRemainingQueries?: string[];
   evidenceAwareRecoveryAttempted?: boolean;
   evidenceAwareRecoveryAcceptedCount?: number;
   queryOnlyRejectedThenRecoveredCount?: number;
