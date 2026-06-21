@@ -1209,6 +1209,8 @@ function middleGradesProfileSpecificQueries(profile: TasteProfile): string[] {
     .filter((row) => Number(row.weight || 0) < 0)
     .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)) }))
     .filter((row) => row.value);
+  const ageQueryPattern = /\b(middle grade|middle school|chapter book|children'?s)\b/i;
+  const genreQueryPattern = /\b(fiction|novel|story|book|adventure|fantasy|mystery|comedy|school|science|technology|robot|ocean|sea|animal|nature|mythology|graphic|illustrated)\b/i;
   const score = (patterns: RegExp[]): number => {
     const positive = positiveRows
       .filter((row) => patterns.some((pattern) => pattern.test(row.value)))
@@ -1219,28 +1221,30 @@ function middleGradesProfileSpecificQueries(profile: TasteProfile): string[] {
     const recurrence = positiveRows.filter((row) => patterns.some((pattern) => pattern.test(row.value))).length;
     return positive + Math.max(0, recurrence - 1) * 0.35 - avoided * 1.5;
   };
+  const hasDistinctivePositiveSignal = (patterns: RegExp[]): boolean => positiveRows.some((row) => patterns.some((pattern) => pattern.test(row.value)));
   const candidates = [
-    { query: "middle grade robot fiction", patterns: [/\b(ai|artificial intelligence|robots?|robotics|technology)\b/i] },
-    { query: "middle grade technology adventure", patterns: [/\b(ai|artificial intelligence|robots?|robotics|technology|science)\b/i, /\badventure\b/i] },
-    { query: "funny robot chapter book", patterns: [/\b(robots?|robotics|technology|ai|artificial intelligence)\b/i, /\b(comedy|funny|humou?r|playful)\b/i] },
-    { query: "middle grade science fiction family", patterns: [/\b(science fiction|sci-fi|sci fi|space|robots?|technology|ai|artificial intelligence)\b/i, /\b(family|friendship|community)\b/i] },
-    { query: "middle grade fantasy family", patterns: [/\b(fantasy|magic|magical|heroic)\b/i, /\b(family|redemption|kindness|warm)\b/i] },
-    { query: "middle grade friendship fantasy", patterns: [/\b(fantasy|magic|magical)\b/i, /\b(friendship|friends?|community)\b/i] },
-    { query: "middle grade magical family story", patterns: [/\b(magic|magical|fantasy)\b/i, /\b(family|redemption|kindness|warm)\b/i] },
-    { query: "middle grade community fantasy", patterns: [/\b(fantasy|magic|magical)\b/i, /\b(community|friendship|family)\b/i] },
-    { query: "funny middle school novel", patterns: [/\b(comedy|funny|humou?r|playful)\b/i, /\b(school|middle school|realistic)\b/i] },
-    { query: "realistic middle grade school story", patterns: [/\b(realistic|contemporary|school|middle school)\b/i] },
-    { query: "middle grade friendship school novel", patterns: [/\b(friendship|friends?|community)\b/i, /\b(school|middle school|realistic)\b/i] },
-    { query: "middle school comedy novel", patterns: [/\b(comedy|funny|humou?r|playful)\b/i, /\b(school|middle school)\b/i] },
-    { query: "middle grade ocean fantasy", patterns: [/\b(ocean|sea|water|marine)\b/i, /\b(fantasy|magic|magical)\b/i] },
-    { query: "middle grade sea adventure fantasy", patterns: [/\b(ocean|sea|water|marine)\b/i, /\badventure\b/i, /\b(fantasy|magic|magical)\b/i] },
-    { query: "middle grade magical adventure", patterns: [/\b(fantasy|magic|magical|heroic)\b/i, /\badventure\b/i] },
-    { query: "middle grade mythology adventure", patterns: [/\b(mythology|mythological|legend|heroic)\b/i, /\badventure\b/i] },
-    { query: "middle grade mystery adventure", patterns: [/\b(mystery|detective|puzzle|investigation)\b/i, /\badventure\b/i] },
-    { query: "middle grade animal fantasy", patterns: [/\b(animals?|nature|wildlife)\b/i, /\b(fantasy|magic|magical)\b/i] },
-    { query: "middle grade animal adventure", patterns: [/\b(animals?|nature|wildlife)\b/i, /\badventure\b/i] },
-  ].map((candidate) => ({ ...candidate, score: score(candidate.patterns) }))
-    .filter((candidate) => candidate.score > 0.65)
+    { query: "middle grade robot fiction", distinctive: [/\b(ai|artificial intelligence|robots?|robotics|technology)\b/i], support: [] },
+    { query: "middle grade technology adventure", distinctive: [/\b(ai|artificial intelligence|robots?|robotics|technology)\b/i], support: [/\badventure\b/i] },
+    { query: "funny robot chapter book", distinctive: [/\b(robots?|robotics|technology|ai|artificial intelligence)\b/i], support: [/\b(comedy|funny|humou?r|playful|silly)\b/i] },
+    { query: "middle grade science fiction family", distinctive: [/\b(science fiction|sci-fi|sci fi|space|robots?|technology|ai|artificial intelligence)\b/i], support: [/\b(family|friendship|community)\b/i] },
+    { query: "funny middle school novel", distinctive: [/\b(comedy|funny|humou?r|playful|silly)\b/i], support: [/\b(school|middle school|realistic)\b/i] },
+    { query: "realistic middle grade school story", distinctive: [/\b(realistic|contemporary|school|middle school)\b/i], support: [] },
+    { query: "middle grade friendship school novel", distinctive: [/\b(friendship|friends?|community|cozy)\b/i], support: [/\b(school|middle school|realistic)\b/i] },
+    { query: "middle school comedy novel", distinctive: [/\b(comedy|funny|humou?r|playful|silly)\b/i], support: [/\b(school|middle school)\b/i] },
+    { query: "middle grade ocean fantasy", distinctive: [/\b(ocean|sea|island|water|marine|music)\b/i], support: [/\b(fantasy|magic|magical)\b/i] },
+    { query: "middle grade sea adventure fantasy", distinctive: [/\b(ocean|sea|island|water|marine)\b/i], support: [/\badventure\b/i, /\b(fantasy|magic|magical)\b/i] },
+    { query: "middle grade mythology adventure", distinctive: [/\b(mythology|mythological|legend|dragon|creature)\b/i], support: [/\badventure\b/i] },
+    { query: "middle grade dragon fantasy", distinctive: [/\b(dragon|creature|mythology|mythological)\b/i], support: [/\b(fantasy|magic|magical)\b/i] },
+    { query: "middle grade treasure mystery", distinctive: [/\b(treasure|mystery|clue|detective|puzzle|investigation)\b/i], support: [] },
+    { query: "middle grade mystery adventure", distinctive: [/\b(mystery|detective|puzzle|investigation|clue|treasure)\b/i], support: [/\badventure\b/i] },
+    { query: "middle grade animal fantasy", distinctive: [/\b(animals?|nature|wildlife|creature)\b/i], support: [/\b(fantasy|magic|magical)\b/i] },
+    { query: "middle grade animal adventure", distinctive: [/\b(animals?|nature|wildlife)\b/i], support: [/\badventure\b/i] },
+    { query: "middle grade graphic novel silly", distinctive: [/\b(graphic novel|illustrated|silly|comics?)\b/i], support: [/\b(comedy|funny|humou?r|playful)\b/i] },
+  ].map((candidate) => {
+      const patterns = [...candidate.distinctive, ...candidate.support];
+      return { query: candidate.query, patterns, score: score(patterns), hasDistinctiveSignal: hasDistinctivePositiveSignal(candidate.distinctive) };
+    })
+    .filter((candidate) => candidate.score > 0.65 && candidate.hasDistinctiveSignal && ageQueryPattern.test(candidate.query) && genreQueryPattern.test(candidate.query))
     .sort((a, b) => b.score - a.score);
   return uniqueStrings(candidates.map((candidate) => candidate.query), 6);
 }

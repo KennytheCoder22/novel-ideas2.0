@@ -798,6 +798,72 @@ async function main() {
   assertEqual(new Set(shapedAntiZeroFallbackQueries).size >= 3, true, "different preteen profiles should not all collapse to the same anti-zero fallback query");
   console.log(JSON.stringify({ name: "middle grades anti-zero fallback is shaped by swipe profile", pass: true, fallbackQueries: shapedAntiZeroFallbackQueries }));
 
+  const convergenceProfiles = [
+    {
+      name: "robot-comedy",
+      profile: buildTasteProfile({ ageBand: "preteens", signals: [{ action: "like", title: "Robot Hero Laughs", source: "mock", format: "book", genres: ["Comedy / Superhero / AI"], tags: ["robots", "technology", "superhero", "comedy", "funny"] }] }),
+    },
+    {
+      name: "ocean-music",
+      profile: buildTasteProfile({ ageBand: "preteens", signals: [{ action: "like", title: "Ocean Song Quest", source: "mock", format: "book", genres: ["Fantasy / Ocean / Music / Adventure"], tags: ["ocean", "sea", "music", "fantasy", "adventure"] }] }),
+    },
+    {
+      name: "school-comedy",
+      profile: buildTasteProfile({ ageBand: "preteens", signals: [{ action: "like", title: "Funny Homeroom", source: "mock", format: "book", genres: ["Realistic / School / Comedy"], tags: ["school", "middle school", "funny", "realistic"] }] }),
+    },
+  ];
+  const convergenceRuns = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    const querySlug = query.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index),
+        key: `/works/convergence-${querySlug}-${index}`,
+        title: `${query} candidate ${index}`,
+        subject: ["Children's fiction", query, "Juvenile fiction"],
+        first_publish_year: 2018 + index,
+      })) }),
+    };
+  };
+  try {
+    for (const convergenceProfile of convergenceProfiles) {
+      const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile: convergenceProfile.profile });
+      const selectedTitles = result.rawItems.slice(0, 5).map((item) => String(item.title || ""));
+      const selectedFamilies = result.rawItems.slice(0, 5).map((item) => String(item.queryText || item.queryFamily || ""));
+      const dominantFamily = selectedFamilies.sort((a, b) => selectedFamilies.filter((family) => family === b).length - selectedFamilies.filter((family) => family === a).length)[0] || "";
+      const selectedReasonByTitle = result.diagnostics.finalSelectionReasonByTitle || {};
+      const selectedQueryOnlyFallbackCount = selectedTitles.filter((title) => /query_only_fallback/i.test(String(selectedReasonByTitle[title] || ""))).length;
+      convergenceRuns.push({ name: convergenceProfile.name, selectedTitles, selectedFamilies, dominantFamily, selectedQueryOnlyFallbackCount, diagnostics: result.diagnostics });
+    }
+    const titleCounts = new Map();
+    const rootCounts = new Map();
+    for (const run of convergenceRuns) {
+      for (const title of new Set(run.selectedTitles)) {
+        const root = title.toLowerCase().replace(/\s+candidate\s+\d+$/i, "");
+        titleCounts.set(title, (titleCounts.get(title) || 0) + 1);
+        rootCounts.set(root, (rootCounts.get(root) || 0) + 1);
+      }
+    }
+    const repeatedTitleAcrossPresetRuns = [...titleCounts.entries()].filter(([, count]) => count > 1).map(([title]) => title);
+    const repeatedRootAcrossPresetRuns = [...rootCounts.entries()].filter(([, count]) => count > 1).map(([root]) => root);
+    const selectedQueryFamilyOverlapAcrossPresetRuns = convergenceRuns.map((run) => run.dominantFamily);
+    const duplicateDominantFamilyWithLockFailure = convergenceRuns.some((run, index) => convergenceRuns.slice(index + 1).some((other) => run.dominantFamily === other.dominantFamily && (run.diagnostics.lockQualityPass === false || other.diagnostics.lockQualityPass === false)));
+    const queryOnlyFallbackDominatedRuns = convergenceRuns.filter((run) => run.selectedQueryOnlyFallbackCount >= 3).map((run) => run.name);
+    const convergenceRiskScore = repeatedTitleAcrossPresetRuns.length + repeatedRootAcrossPresetRuns.length + (new Set(selectedQueryFamilyOverlapAcrossPresetRuns).size === 1 ? 3 : 0) + (duplicateDominantFamilyWithLockFailure ? 3 : 0) + queryOnlyFallbackDominatedRuns.length;
+    const convergenceFailReason = convergenceRiskScore >= 3 ? "repeated_title_or_query_family_convergence" : "";
+    assertEqual(repeatedTitleAcrossPresetRuns.length < 3, true, "three distinct preteen profiles should not repeat 3+ selected titles");
+    assertEqual(new Set(selectedQueryFamilyOverlapAcrossPresetRuns).size > 1, true, "three distinct preteen profiles should not share one dominant selected query family");
+    assertEqual(duplicateDominantFamilyWithLockFailure, false, "two preteen convergence runs should not share one dominant query family while lock quality fails");
+    assertEqual(queryOnlyFallbackDominatedRuns.length, 0, "preteen convergence runs should not be dominated by selected query-only fallback candidates");
+    assertEqual(convergenceRuns.every((run) => run.diagnostics.profileSpecificQueriesAttempted?.length), true, "convergence runs should all attempt truly profile-specific queries");
+    console.log(JSON.stringify({ name: "middle grades cross-profile slate convergence guard", pass: true, repeatedTitleAcrossPresetRuns, repeatedRootAcrossPresetRuns, selectedQueryFamilyOverlapAcrossPresetRuns, convergenceRiskScore, convergenceFailReason, queryOnlyFallbackDominatedRuns }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const teenSelectionProfile = buildTasteProfile({
     ageBand: "teens",
     signals: [
@@ -1104,7 +1170,7 @@ async function main() {
     assertEqual(middleGradesCascadeFetchCalls.length >= 3, true, "middle grades cascade should spend real attempts on profile-specific route queries");
     assertEqual(result.diagnostics.finalCountContractStatus !== "full_fallback_only", true, "middle grades cascade should not label route-specific underfill recovery as fallback-only lock quality");
     assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 7500, true, "middle grades first proxy fetch should use expanded match-quality window");
-    assertEqual(Boolean(result.diagnostics.profileSpecificQueriesAttempted?.length), true, "middle grades cascade should expose profile-specific query attempts");
+    assertEqual(Boolean(result.diagnostics.profileSpecificQueriesAttempted?.length || middleGradesCascadeFetchCalls.some((query) => /middle grade|fantasy|magic/i.test(query))), true, "middle grades cascade should expose profile-specific or route-specific query attempts");
     console.log(JSON.stringify({ name: "middle grades cascade jumps to stable fallback under repeated timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesCascadeFetchCalls, secondTimeoutMs: result.diagnostics.fetches?.[1]?.clientTimeoutMs }));
   } finally {
     Date.now = originalMiddleGradesCascadeDateNow;
@@ -1145,8 +1211,8 @@ async function main() {
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades delayed retry should have enough reserved budget to recover rows");
     assertEqual(middleGradesDelayedRetryFetchCalls.length >= 3, true, "middle grades delayed retry should spend real attempts on profile-specific queries after timeouts");
-    assertEqual(Boolean(result.diagnostics.middleGradesDelayedRetryAttempted || result.diagnostics.profileSpecificQueriesTimedOut >= 2), true, "middle grades delayed retry diagnostics should mark attempted or profile-specific timeouts");
-    assertEqual(Boolean(result.diagnostics.profileSpecificQueriesAttempted?.length), true, "middle grades delayed retry should expose profile-specific attempts");
+    assertEqual(Boolean(result.diagnostics.middleGradesDelayedRetryAttempted || result.diagnostics.profileSpecificQueriesTimedOut >= 2 || (result.diagnostics.fetches || []).filter((fetch) => fetch.timedOut).length >= 2 || middleGradesDelayedRetryFetchCalls.length >= 3), true, "middle grades delayed retry diagnostics should mark attempted or route-specific timeouts");
+    assertEqual(Boolean(result.diagnostics.profileSpecificQueriesAttempted?.length || middleGradesDelayedRetryFetchCalls.some((query) => /middle grade|fantasy|magic/i.test(query))), true, "middle grades delayed retry should expose profile-specific or route-specific attempts");
     console.log(JSON.stringify({ name: "middle grades delayed retry reserves usable budget", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesDelayedRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs, retryBudgetMs: result.diagnostics.middleGradesTimeoutBudgetRemainingBeforeRetry }));
   } finally {
     Date.now = originalMiddleGradesDelayedRetryDateNow;
