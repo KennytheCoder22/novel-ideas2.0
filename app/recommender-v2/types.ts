@@ -180,6 +180,13 @@ export interface SourceDiagnosticV2 {
   profileSpecificQueriesAttempted?: string[];
   profileSpecificQueriesTimedOut?: number;
   profileSpecificQueriesAcceptedCount?: number;
+  targetedQueryBatchByRoute?: string[];
+  targetedQueriesAttempted?: string[];
+  targetedQueriesAcceptedCount?: number;
+  targetedQueriesRejectedByReason?: Record<string, number>;
+  broadFallbackStartedBeforeTargetedExhaustion?: boolean;
+  underfilledDespiteTargetedQueriesRemaining?: boolean;
+  finalUnderfillTargetedExhaustionReason?: string;
   fallbackStartedOnlyAfterProfileQueriesExhausted?: boolean;
   lockQualityRetryAttempted?: boolean;
   lockQualityRetryQueries?: string[];

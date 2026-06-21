@@ -424,6 +424,48 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const fantasyFamilyTargetedFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    fantasyFamilyTargetedFetchCalls.push(query);
+    const docs = /children fantasy family novel|middle grade magical family|children fantasy friendship|middle grade fantasy mystery|children magical adventure/i.test(query)
+      ? ["Moon Family Magic", "Friendship Spell House", "The Musical Portal", "Kindness Dragon Home", "The Family Quest"].map((title, index) => ({
+        ...fakeDoc(query, index + 610),
+        key: `/works/fantasy-family-targeted-${query.replace(/\s+/g, "-")}-${index}`,
+        title,
+        subject: ["Juvenile fiction", "Fantasy fiction", "Families", "Friendship", "Magic"],
+        description: "A magical family and friendship adventure for children.",
+      }))
+      : ["Alanna", "The School for Good and Evil", "The Misadventures of Max Crumbly", "Journey of Secret Agent", "No Time for Clouds"].map((title, index) => ({
+        ...fakeDoc(query, index + 620),
+        key: `/works/familiar-fallback-${query.replace(/\s+/g, "-")}-${index}`,
+        title,
+        subject: ["Juvenile fiction"],
+      }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Moana", genres: ["fantasy", "family"], themes: ["music", "ocean", "friendship", "playful"], format: "book" },
+        { action: "like", title: "Paddington", genres: ["family"], themes: ["kindness", "warm"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 14_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "fantasy/family/playful targeted batch should reach a full evidence-supported slate");
+    assertEqual(result.rawItems.some((item) => /alanna|school for good and evil|max crumbly|journey of secret agent/i.test(String(item.title || ""))), false, "fantasy/family/playful targeted batch should not return the familiar fallback cluster as its main slate");
+    assertEqual((result.diagnostics.targetedQueriesAttempted || []).some((query) => /fantasy|family|friendship|magical/i.test(query)), true, "fantasy/family/playful route should attempt targeted fantasy-family queries");
+    assertEqual(Boolean(result.diagnostics.broadFallbackStartedBeforeTargetedExhaustion), false, "fantasy/family/playful route should not start broad fallback before targeted exhaustion");
+    console.log(JSON.stringify({ name: "middle grades fantasy family targeted batch avoids familiar fallback cluster", pass: true, rawItems: result.rawItems.length, fetchCalls: fantasyFamilyTargetedFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const middleGradesWeakMetadataFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
@@ -536,6 +578,8 @@ async function main() {
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 12_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "mystery route with two aligned rows should keep searching toward five");
     assertEqual(mysteryContinuationFetchCalls.length >= 2, true, "mystery route should attempt another safe mystery query after underfill");
+    assertEqual((result.diagnostics.targetedQueriesAttempted || []).some((query) => /mystery|detective/i.test(query)), true, "mystery route should continue targeted mystery queries before broad fallback");
+    assertEqual(Boolean(result.rawItems.length < 5 && result.diagnostics.underfilledDespiteTargetedQueriesRemaining), false, "mystery route must not underfill while targeted mystery queries remain");
     console.log(JSON.stringify({ name: "middle grades mystery underfill continues toward five", pass: true, rawItems: result.rawItems.length, fetchCalls: mysteryContinuationFetchCalls }));
   } finally {
     globalThis.fetch = originalFetch;
@@ -582,7 +626,7 @@ async function main() {
     assertEqual(result.diagnostics.evidenceAwareRecoveryAttempted, true, "dragon/fantasy recovery should attempt evidence-aware children-style queries");
     assertEqual(Number(result.diagnostics.evidenceAwareRecoveryAcceptedCount || 0) >= 5, true, "dragon/fantasy evidence-aware recovery should accept evidence-supported rows");
     assertEqual(result.diagnostics.brittleQueryTimedOutThenShortQueryAttempted, true, "timed-out dragon/mythology query should trigger shorter child/children recovery");
-    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_query_only_source_rejected), true, "dragon/fantasy recovery should keep rejecting query-only rows");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_query_only_source_rejected || result.diagnostics.targetedQueriesAcceptedCount >= 5), true, "dragon/fantasy recovery should either reject query-only rows or fill from targeted evidence-rich rows first");
     assertEqual(dragonEvidenceRecoveryFetchCalls.some((query) => /dragon fantasy children|dragon adventure children|children'?s dragon books|mythology adventure children/i.test(query)), true, "dragon/fantasy recovery should use evidence-aware children-style queries");
     console.log(JSON.stringify({ name: "middle grades dragon evidence-aware recovery fills without query-only rows", pass: true, rawItems: result.rawItems.length, fetchCalls: dragonEvidenceRecoveryFetchCalls }));
   } finally {
@@ -677,6 +721,10 @@ async function main() {
     assertEqual(result.diagnostics.evidenceAwareRecoveryAttempted, true, "animal/science recovery should attempt evidence-aware animal/nature queries");
     assertEqual(Number(result.diagnostics.evidenceAwareRecoveryAcceptedCount || 0) >= 5, true, "animal/science recovery should accept evidence-rich animal/nature candidates");
     assertEqual(animalScienceRecoveryFetchCalls.some((query) => /animal|wildlife|nature/i.test(query)), true, "animal/science recovery should use animal/nature evidence-aware query variants");
+    const firstAnimalTargetedIndex = animalScienceRecoveryFetchCalls.findIndex((query) => /animal|wildlife|nature/i.test(query));
+    const firstSchoolDefaultIndex = animalScienceRecoveryFetchCalls.findIndex((query) => /school|funny|humor/i.test(query));
+    assertEqual(firstAnimalTargetedIndex >= 0 && (firstSchoolDefaultIndex === -1 || firstAnimalTargetedIndex < firstSchoolDefaultIndex), true, "animal/nature targeted queries should run before school/default recovery");
+    assertEqual(Boolean(result.rawItems.length < 5 && result.diagnostics.underfilledDespiteTargetedQueriesRemaining), false, "animal/science route must not underfill while targeted queries remain");
     console.log(JSON.stringify({ name: "middle grades animal science evidence-aware recovery preserves plausible candidates", pass: true, rawItems: result.rawItems.length, fetchCalls: animalScienceRecoveryFetchCalls }));
   } finally {
     globalThis.fetch = originalFetch;
@@ -716,7 +764,7 @@ async function main() {
       signals: middleGradesCases[5].signals,
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
-    assertEqual(result.rawItems.length, 5, "middle grades recovery should reach five age-shaped candidates");
+    assertEqual(result.rawItems.length >= 5, true, "middle grades recovery should reach at least five age-shaped candidates");
     assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_recovery_query_attempted || result.diagnostics.profileSpecificQueriesAttempted?.length), true, "middle grades recovery should run profile-specific or age-anchored recovery queries");
     assertEqual(middleGradesRecoveryFetchCalls.includes("friendship fiction"), false, "middle grades recovery should not use broad friendship fiction");
     assertEqual(middleGradesRecoveryFetchCalls.includes("young adult fantasy"), false, "middle grades recovery should not use YA fantasy emergency probe");
@@ -770,6 +818,7 @@ async function main() {
     assertEqual(Boolean(result.diagnostics.finalCountContractStatus), true, "middle grades underfill-safe recovery should expose final count-contract status");
     assertEqual(Boolean(result.diagnostics.underfillSafeRecoveryAttempted), true, "middle grades underfill-safe recovery should expose attempted diagnostics");
     assertEqual(typeof result.diagnostics.underfillSafeRecoveryAcceptedCount === "number", true, "middle grades underfill-safe recovery should expose accepted-count diagnostics");
+    assertEqual(Boolean(result.rawItems.length < 5 && result.diagnostics.underfilledDespiteTargetedQueriesRemaining), false, "middle grades runs returning fewer than five must not leave targeted queries unattempted");
     console.log(JSON.stringify({ name: "middle grades underfill recovery continues to five", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesUnderfillFetchCalls }));
   } finally {
     globalThis.fetch = originalFetch;
