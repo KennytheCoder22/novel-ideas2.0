@@ -428,7 +428,7 @@ async function main() {
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
     middleGradesWeakMetadataFetchCalls.push(query);
-    const docs = ["Signal Station", "Moonbase Map", "Robot Relay", "Asteroid Team", "Orbit Club"].map((title, index) => ({
+    const docs = ["Magic Station", "Quest Map", "Dragon Relay", "Wizard Team", "Hero Club"].map((title, index) => ({
       ...fakeDoc(query, index + 40),
       key: `/works/mg-weak-metadata-${index}`,
       title,
@@ -457,6 +457,90 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const queryOnlyContinuationFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    const query = parsed.searchParams.get("q") || "";
+    queryOnlyContinuationFetchCalls.push(query);
+    const docs = queryOnlyContinuationFetchCalls.length > 1 && /middle grade (realistic fiction|school story|friendship)|funny middle school novel|middle school comedy novel/i.test(query)
+      ? [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 400),
+        key: `/works/query-only-continuation-${query.replace(/\s+/g, "-")}-${index}`,
+        title: ["Friendship School Evidence", "Classroom Community Mystery", "Funny Middle School Team", "Realistic Friendship Club", "School Comedy Crew", "Community Classroom Quest"][index - 1],
+        subject: ["Juvenile fiction", "Friendship", "Schools", "Community life"],
+      }))
+      : [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 380),
+        key: `/works/query-only-reject-${query.replace(/\s+/g, "-")}-${index}`,
+        title: ["Generic Metadata Row", "Plain Catalog Entry", "Unthemed Library Record", "Sparse Work Listing", "Bare Juvenile Record", "No Evidence Entry"][index - 1],
+        subject: ["Juvenile fiction"],
+      }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Classroom Friends", genres: ["realistic fiction"], themes: ["school", "friendship"], format: "book" },
+        { action: "like", title: "Community Club", genres: ["contemporary"], themes: ["community", "friendship"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 12_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "query-only rejection continuation should fill with later document-aligned rows");
+    assertEqual(result.diagnostics.rejectedAllRowsAsQueryOnly, true, "source adapter should diagnose all-query-only rejection");
+    assertEqual(result.diagnostics.queryOnlyRejectionTriggeredContinuation, true, "source adapter should continue after query-only rejection");
+    assertEqual(Array.isArray(result.diagnostics.unattemptedSpecificQueriesAfterQueryOnlyRejection) && result.diagnostics.unattemptedSpecificQueriesAfterQueryOnlyRejection.length > 0, true, "unattempted specific queries should be captured after query-only rejection");
+    assertEqual(Array.isArray(result.diagnostics.continuedAfterQueryOnlyRejectionQueries) && result.diagnostics.continuedAfterQueryOnlyRejectionQueries.some((query) => /middle grade (realistic fiction|school story|friendship)|middle school/i.test(query)), true, "source adapter should attempt route-specific continuation queries after query-only rejection");
+    assertEqual(Number(result.diagnostics.continuedAfterQueryOnlyRejectionAcceptedCount || 0) >= 5, true, "query-only continuation should record accepted route-evidence rows");
+    console.log(JSON.stringify({ name: "middle grades query-only rows continue to route-specific queries", pass: true, rawItems: result.rawItems.length, fetchCalls: queryOnlyContinuationFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const mysteryContinuationFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const parsed = new URL(String(url));
+    const query = parsed.searchParams.get("q") || "";
+    mysteryContinuationFetchCalls.push(query);
+    const count = mysteryContinuationFetchCalls.length === 1 ? 2 : 5;
+    const docs = Array.from({ length: count }, (_, index) => ({
+      ...fakeDoc(query, index + 430),
+      key: `/works/mystery-continuation-${mysteryContinuationFetchCalls.length}-${index}`,
+      title: [
+        "Detective Clue Case",
+        "School Mystery Puzzle",
+        "Secret Map Investigation",
+        "Classroom Detective Club",
+        "Mystery Adventure Team",
+      ][index] || `Clue Trail ${mysteryContinuationFetchCalls.length}-${index}`,
+      subject: ["Juvenile fiction", "Mystery and detective stories", "Clues", "School"],
+    }));
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Puzzle Portal", genres: ["mystery"], themes: ["clue", "investigation"], format: "book" },
+        { action: "like", title: "School Detective", genres: ["mystery"], themes: ["school", "detective"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 12_000 }, { profile });
+    assertEqual(result.rawItems.length >= 5, true, "mystery route with two aligned rows should keep searching toward five");
+    assertEqual(mysteryContinuationFetchCalls.length >= 2, true, "mystery route should attempt another safe mystery query after underfill");
+    console.log(JSON.stringify({ name: "middle grades mystery underfill continues toward five", pass: true, rawItems: result.rawItems.length, fetchCalls: mysteryContinuationFetchCalls }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   const middleGradesRecoveryFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
@@ -471,12 +555,12 @@ async function main() {
         ] }),
       };
     }
-    const docs = ["Pine Hill Quest", "Cafeteria Clues", "Field Day Plan", "Bus Ride Team", "Library Map"].map((title, index) => ({
+    const docs = ["Funny School Quest", "Cafeteria Friendship Clues", "Field Day Comedy Plan", "Bus Ride School Team", "Library Friendship Map"].map((title, index) => ({
       ...fakeDoc(query, index + 20),
-      key: `/works/mg-recovery-${index}`,
+      key: `/works/mg-recovery-${query.replace(/\s+/g, "-")}-${index}`,
       title,
       author_name: [`Recovery Author ${index}`],
-      subject: ["Children's fiction", "Adventure stories", "Schools"],
+      subject: ["Children's fiction", "Adventure stories", "Schools", "Friendship", "Humorous stories"],
       first_publish_year: 2018 + index,
     }));
     return {

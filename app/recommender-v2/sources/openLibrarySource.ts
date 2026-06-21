@@ -1436,6 +1436,58 @@ function middleGradesZeroCandidateFallbackQuery(queryPlans: OpenLibraryQueryPlan
     || "middle grade adventure";
 }
 
+
+function middleGradesQueryOnlyContinuationQueries(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string[] {
+  const routeText = queryPlans
+    .map((plan) => [plan.routingReason, plan.query, plan.originalPlannedQuery, ...(plan.facets || [])].filter(Boolean).join(" "))
+    .join(" ");
+  const plannedSpecific = queryPlans
+    .map((plan) => plan.query)
+    .filter((query) => !attemptedQueries.has(query.toLowerCase()))
+    .filter((query) => /\b(middle grade|middle school|school|friendship|mystery|detective|fantasy|magical|magic|funny)\b/i.test(query));
+  const routeSpecific = /contemporary|school|friendship|realistic/i.test(routeText)
+    ? ["middle grade realistic fiction", "middle grade school story", "middle grade friendship", "funny middle school novel", "middle school comedy novel"]
+    : /fantasy_mystery|mystery|detective/i.test(routeText)
+      ? ["middle grade mystery", "school mystery", "detective fiction", "mystery adventure"]
+      : /fantasy|adventure/i.test(routeText)
+        ? ["middle grade fantasy adventure", "middle grade magical adventure", "middle grade adventure"]
+        : ["middle grade realistic fiction", "middle grade mystery", "middle grade school story", "middle grade fantasy adventure"];
+  return uniqueStrings([...plannedSpecific, ...routeSpecific], 10)
+    .filter((query) => !attemptedQueries.has(query.toLowerCase()));
+}
+
+function middleGradesSourceRouteEvidencePattern(query: string, routingReason = ""): RegExp | undefined {
+  const routeText = String(`${routingReason} ${query}`).toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+  if (/\b(science adventure|science fiction|sci fi|sci-fi|space|dystopian|dystopia)\b/.test(routeText)) return /\b(science|scientist|experiment|space|planet|galaxy|robot|robots?|technology|invention|dystopian|dystopia|sci fi|sci-fi|science fiction|nonfiction)\b/i;
+  if (/\b(robot|ai|artificial intelligence|superhero|superheroes)\b/.test(routeText)) return /\b(robot|robots?|ai|artificial intelligence|technology|invention|superhero|superheroes|powers?)\b/i;
+  if (/\b(animal adventure|animals?|nature|wildlife)\b/.test(routeText)) return /\b(animal|animals|dog|cat|horse|wolf|wolves|wildlife|nature|forest|woods|survival|cozy|community|farm|creature|creatures)\b/i;
+  if (/\b(school adventure|school story|school|classroom|children s school stories)\b/.test(routeText)) return /\b(school|class|classroom|teacher|student|students|friendship|friends?|community|family|comedy|funny|humor|humour)\b/i;
+  if (/\b(friendship|community)\b/.test(routeText)) return /\b(friendship|friends?|community|school|family|team|classroom)\b/i;
+  if (/\b(fantasy mystery|mystery adventure|mystery|detective)\b/.test(routeText)) return /\b(mystery|detective|clue|clues|case|secret|secrets|puzzle|investigate|investigation)\b/i;
+  if (/\b(humor|funny|funny family|fantasy humor)\b/.test(routeText)) return /\b(humor|humour|funny|comedy|comic|joke|laugh|laughs|giggle|silly|school|friendship|friends?|family|quest|adventure|trail)\b/i;
+  if (/\b(fantasy adventure|family fantasy|fantasy|magic|magical)\b/.test(routeText)) return /\b(fantasy|magic|magical|wizard|witch|dragon|quest|kingdom|hero|heroic|adventure)\b/i;
+  if (/\b(contemporary|realistic)\b/.test(routeText)) return /\b(realistic|contemporary|school|classroom|friendship|friends?|family|community)\b/i;
+  return undefined;
+}
+
+function middleGradesSourceDocumentRouteEvidenceFields(doc: any, query: string, routingReason = ""): string[] {
+  const pattern = middleGradesSourceRouteEvidencePattern(query, routingReason);
+  if (!pattern) return [];
+  const rawDescription = typeof doc?.description === "string" ? doc.description : doc?.description?.value;
+  const normalizeRouteEvidenceText = (value: unknown): string => String(value || "").toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+  const fields: Array<[string, string]> = [
+    ["title", normalizeRouteEvidenceText(doc?.title)],
+    ["subtitle", normalizeRouteEvidenceText(doc?.subtitle)],
+    ["description", normalizeRouteEvidenceText(rawDescription)],
+    ["subjects", normalizeRouteEvidenceText([
+      ...(Array.isArray(doc?.subject) ? doc.subject : []),
+      ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+      ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+    ].join(" "))],
+  ];
+  return fields.filter(([, value]) => pattern.test(value)).map(([field]) => field);
+}
+
 function middleGradesUnderfillSafeRecoveryQueries(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string[] {
   const routeText = queryPlans
     .map((plan) => [plan.routingReason, plan.query, plan.originalPlannedQuery, ...(plan.facets || [])].filter(Boolean).join(" "))
@@ -1665,6 +1717,28 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesLockQualityRetryQueries: string[] = [];
     let middleGradesLockQualityRetryAcceptedCount = 0;
     let middleGradesFinalReturnedDespiteLockQualityFailReason: string | undefined;
+    let middleGradesRejectedAllRowsAsQueryOnly = false;
+    let middleGradesQueryOnlyRejectionTriggeredContinuation = false;
+    let middleGradesQueryOnlyFirstRejectionFetchCount: number | undefined;
+    const middleGradesContinuedAfterQueryOnlyRejectionQueries: string[] = [];
+    const middleGradesUnattemptedSpecificQueriesAfterQueryOnlyRejection: string[] = [];
+    let middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount = 0;
+    let middleGradesRecoveryExhaustionReasonDetailed: string | undefined;
+    const middleGradesAttemptedQueries = (): Set<string> => new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()).filter(Boolean));
+    const middleGradesUnattemptedSpecificQueries = (): string[] => ageProfile.key === "middleGrades" ? middleGradesQueryOnlyContinuationQueries(queryPlans, middleGradesAttemptedQueries()) : [];
+    const shouldAcceptMiddleGradesSourceDoc = (doc: any, query: string, queryPlan: OpenLibraryQueryPlan, stage: string): boolean => {
+      if (ageProfile.key !== "middleGrades") return true;
+      if (queryPlan.emergencyFallback || queryPlan.fallbackAlignment === "anti_zero") return true;
+      const evidenceFields = middleGradesSourceDocumentRouteEvidenceFields(doc, query, String(queryPlan.routingReason || ""));
+      if (evidenceFields.length > 0) return true;
+      const title = String(doc?.title || "").trim();
+      if (title) artifactSuppressedTitles.push(title);
+      middleGradesRejectedAllRowsAsQueryOnly = true;
+      if (middleGradesQueryOnlyFirstRejectionFetchCount === undefined) middleGradesQueryOnlyFirstRejectionFetchCount = fetches.filter((fetch) => !fetch.diagnosticOnly).length;
+      dropReasons.middle_grades_query_only_source_rejected = Number(dropReasons.middle_grades_query_only_source_rejected || 0) + 1;
+      dropReasons[`middle_grades_${stage}_query_only_source_rejected`] = Number(dropReasons[`middle_grades_${stage}_query_only_source_rejected`] || 0) + 1;
+      return false;
+    };
     const rememberMiddleGradesAntiZeroFallbackShape = (fallback?: ReturnType<typeof middleGradesSignalShapedAntiZeroFallback>): void => {
       if (!fallback) return;
       middleGradesAntiZeroFallbackShapedQuery = fallback.query;
@@ -1872,6 +1946,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               }
               if (seriesKey) acceptedSeriesKeys.add(seriesKey);
               acceptedDocKeys.add(docKey);
+              if (!shouldAcceptMiddleGradesSourceDoc(doc, fallbackQuery, fallbackPlan, "fallback")) continue;
               rawItems.push(normalizeOpenLibraryDoc(doc, fallbackPlan));
               dropReasons.adult_mixed_first_run_fallback_accepted = Number(dropReasons.adult_mixed_first_run_fallback_accepted || 0) + 1;
               if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
@@ -1931,9 +2006,22 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         }
         if (seriesKey) acceptedSeriesKeys.add(seriesKey);
         acceptedDocKeys.add(docKey);
+        if (!shouldAcceptMiddleGradesSourceDoc(doc, query, queryPlan, "main")) continue;
         rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
+        if (middleGradesRejectedAllRowsAsQueryOnly) {
+          if (!middleGradesContinuedAfterQueryOnlyRejectionQueries.includes(query)) middleGradesContinuedAfterQueryOnlyRejectionQueries.push(query);
+          middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount += 1;
+        }
         const acceptTarget = (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.docLimit;
         if (rawItems.length >= acceptTarget) break;
+      }
+      if (ageProfile.key === "middleGrades" && middleGradesRejectedAllRowsAsQueryOnly && rawItems.length === acceptedBeforeThisQuery) {
+        const remainingSpecificQueries = middleGradesUnattemptedSpecificQueries();
+        if (remainingSpecificQueries.length > 0) {
+          middleGradesQueryOnlyRejectionTriggeredContinuation = true;
+          middleGradesUnattemptedSpecificQueriesAfterQueryOnlyRejection.push(...remainingSpecificQueries);
+          middleGradesContinuedAfterQueryOnlyRejectionQueries.push(...remainingSpecificQueries.slice(0, 4));
+        }
       }
       const cleanDocTarget = (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.minCleanDocs;
       if (middleGradesQueryIsProfileSpecific && rawItems.length > acceptedBeforeThisQuery) {
@@ -2009,7 +2097,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           }
           if (seriesKey) acceptedSeriesKeys.add(seriesKey);
           acceptedDocKeys.add(docKey);
-          rawItems.push(normalizeOpenLibraryDoc(doc, fallbackPlan));
+          if (!shouldAcceptMiddleGradesSourceDoc(doc, fallbackQuery, fallbackPlan, "fallback")) continue;
+              rawItems.push(normalizeOpenLibraryDoc(doc, fallbackPlan));
           dropReasons.adult_fantasy_historical_survival_fallback_accepted = Number(dropReasons.adult_fantasy_historical_survival_fallback_accepted || 0) + 1;
           if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
         }
@@ -2081,6 +2170,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           }
           if (seriesKey) acceptedSeriesKeys.add(seriesKey);
           acceptedDocKeys.add(docKey);
+          if (!shouldAcceptMiddleGradesSourceDoc(doc, recoveryQuery, recoveryPlan, "recovery")) continue;
           rawItems.push(normalizeOpenLibraryDoc(doc, recoveryPlan));
           dropReasons.teen_underfill_recovery_accepted = Number(dropReasons.teen_underfill_recovery_accepted || 0) + 1;
           if (rawItems.length >= recoveryTarget) break;
@@ -2190,7 +2280,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               }
               if (seriesKey) acceptedSeriesKeys.add(seriesKey);
               acceptedDocKeys.add(docKey);
-              rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
+              if (!shouldAcceptMiddleGradesSourceDoc(doc, delayedRetryQuery, delayedRetryPlan, "delayed_retry")) continue;
+            rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
               dropReasons.middle_grades_delayed_final_retry_accepted = Number(dropReasons.middle_grades_delayed_final_retry_accepted || 0) + 1;
               if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
             }
@@ -2270,7 +2361,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           }
           if (seriesKey) acceptedSeriesKeys.add(seriesKey);
           acceptedDocKeys.add(docKey);
+          if (!shouldAcceptMiddleGradesSourceDoc(doc, recoveryQuery, recoveryPlan, "recovery")) continue;
           rawItems.push(normalizeOpenLibraryDoc(doc, recoveryPlan));
+          if (middleGradesRejectedAllRowsAsQueryOnly) {
+            if (!middleGradesContinuedAfterQueryOnlyRejectionQueries.includes(recoveryQuery)) middleGradesContinuedAfterQueryOnlyRejectionQueries.push(recoveryQuery);
+            middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount += 1;
+          }
           dropReasons.middle_grades_recovery_accepted = Number(dropReasons.middle_grades_recovery_accepted || 0) + 1;
           if (rawItems.length >= recoveryTarget) break;
         }
@@ -2348,6 +2444,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             }
             if (seriesKey) acceptedSeriesKeys.add(seriesKey);
             acceptedDocKeys.add(docKey);
+            if (!shouldAcceptMiddleGradesSourceDoc(doc, finalSafeQuery, finalSafePlan, "final_safe_recovery")) continue;
             rawItems.push(normalizeOpenLibraryDoc(doc, finalSafePlan));
             dropReasons.middle_grades_final_safe_recovery_accepted = Number(dropReasons.middle_grades_final_safe_recovery_accepted || 0) + 1;
             if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
@@ -2414,6 +2511,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               }
               if (seriesKey) acceptedSeriesKeys.add(seriesKey);
               acceptedDocKeys.add(docKey);
+              if (!shouldAcceptMiddleGradesSourceDoc(doc, routeAlignedAfterFallbackQuery, routeAlignedAfterFallbackPlan, "post_fallback_route_recovery")) continue;
               rawItems.push(normalizeOpenLibraryDoc(doc, routeAlignedAfterFallbackPlan));
               dropReasons.middle_grades_post_fallback_route_recovery_accepted = Number(dropReasons.middle_grades_post_fallback_route_recovery_accepted || 0) + 1;
               if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
@@ -2488,7 +2586,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           }
           if (seriesKey) acceptedSeriesKeys.add(seriesKey);
           acceptedDocKeys.add(docKey);
+          if (!shouldAcceptMiddleGradesSourceDoc(doc, underfillQuery, underfillPlan, "underfill_safe_recovery")) continue;
           rawItems.push(normalizeOpenLibraryDoc(doc, underfillPlan));
+          if (middleGradesRejectedAllRowsAsQueryOnly) {
+            if (!middleGradesContinuedAfterQueryOnlyRejectionQueries.includes(underfillQuery)) middleGradesContinuedAfterQueryOnlyRejectionQueries.push(underfillQuery);
+            middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount += 1;
+          }
           middleGradesUnderfillSafeRecoveryAcceptedCount += 1;
           dropReasons.middle_grades_underfill_safe_recovery_accepted = Number(dropReasons.middle_grades_underfill_safe_recovery_accepted || 0) + 1;
           if (rawItems.length >= underfillTarget) break;
@@ -2572,6 +2675,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             }
             if (seriesKey) acceptedSeriesKeys.add(seriesKey);
             acceptedDocKeys.add(docKey);
+            if (!shouldAcceptMiddleGradesSourceDoc(doc, retryQuery, retryPlan, "lock_quality_retry")) continue;
             rawItems.push(normalizeOpenLibraryDoc(doc, retryPlan));
             middleGradesLockQualityRetryAcceptedCount += 1;
             middleGradesProfileSpecificQueriesAcceptedCount += 1;
@@ -2583,6 +2687,83 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           middleGradesFinalReturnedDespiteLockQualityFailReason = "lock_quality_retry_produced_no_accepted_rows";
         }
       }
+    }
+
+
+    if (ageProfile.key === "middleGrades" && middleGradesRejectedAllRowsAsQueryOnly && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
+      const continuationTarget = Math.min(ageProfile.docLimit, 5);
+      const continuationQueries = middleGradesUnattemptedSpecificQueries();
+      if (continuationQueries.length > 0) {
+        middleGradesQueryOnlyRejectionTriggeredContinuation = true;
+        middleGradesUnattemptedSpecificQueriesAfterQueryOnlyRejection.push(...continuationQueries);
+        for (const continuationQuery of continuationQueries) {
+          if (rawItems.length >= continuationTarget) break;
+          const remainingBudgetMs = sourceBudgetMs - (Date.now() - Date.parse(startedAt));
+          if (remainingBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS) {
+            middleGradesRecoveryExhaustionReasonDetailed = "insufficient_budget_after_query_only_rejection";
+            break;
+          }
+          if (!middleGradesContinuedAfterQueryOnlyRejectionQueries.includes(continuationQuery)) middleGradesContinuedAfterQueryOnlyRejectionQueries.push(continuationQuery);
+          const continuationPlan: OpenLibraryQueryPlan = {
+            query: continuationQuery,
+            originalPlannedQuery: queries[0] || "",
+            queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+            queryFamily: queryFamilyForOpenLibraryQuery(continuationQuery),
+            facets: queryPlans[0]?.facets || [],
+            routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_query_only_continuation`,
+            routingDominance: queryPlans[0]?.routingDominance,
+            fallbackAlignment: "route_aligned",
+            profileSpecific: middleGradesProfileSpecificQuerySet.has(continuationQuery.toLowerCase()),
+          };
+          const continuationTimeoutMs = Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, remainingBudgetMs));
+          const { docs: continuationDocs, diagnostic } = await fetchOpenLibraryDocs(continuationPlan, ageProfile.docsPerQuery, context.signal, false, continuationTimeoutMs, 1, continuationTimeoutMs);
+          fetches.push(diagnostic);
+          dropReasons.middle_grades_query_only_continuation_attempted = Number(dropReasons.middle_grades_query_only_continuation_attempted || 0) + 1;
+          if (diagnostic.timedOut) {
+            dropReasons.middle_grades_query_only_continuation_timeout = Number(dropReasons.middle_grades_query_only_continuation_timeout || 0) + 1;
+            continue;
+          }
+          if (diagnostic.failedReason) {
+            dropReasons.middle_grades_query_only_continuation_failed = Number(dropReasons.middle_grades_query_only_continuation_failed || 0) + 1;
+            continue;
+          }
+          rawApiResultCount += continuationDocs.length;
+          for (const doc of continuationDocs) {
+            const title = String(doc?.title || "").trim();
+            if (title) rawTitles.push(title);
+            if (!title) continue;
+            recordMiddleGradesAgeShapeDiagnostic(doc, continuationQuery, "middle_grades_query_only_continuation");
+            const quality = shouldKeepOpenLibraryDoc(doc, continuationQuery, context.profile);
+            if (!quality.keep) {
+              const reason = `middle_grades_query_only_continuation_${quality.reason || "quality_filter"}`;
+              dropReasons[reason] = Number(dropReasons[reason] || 0) + 1;
+              if (/artifact|inappropriate|middle_grades_age_shape/.test(reason)) artifactSuppressedTitles.push(title);
+              continue;
+            }
+            const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+            if (acceptedDocKeys.has(docKey)) {
+              dropReasons.middle_grades_query_only_continuation_duplicate_doc = Number(dropReasons.middle_grades_query_only_continuation_duplicate_doc || 0) + 1;
+              continue;
+            }
+            const seriesKey = openLibrarySeriesKey(doc);
+            if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
+              dropReasons.middle_grades_query_only_continuation_series_duplicate = Number(dropReasons.middle_grades_query_only_continuation_series_duplicate || 0) + 1;
+              seriesSuppressedTitles.push(title);
+              continue;
+            }
+            if (!shouldAcceptMiddleGradesSourceDoc(doc, continuationQuery, continuationPlan, "query_only_continuation")) continue;
+            if (seriesKey) acceptedSeriesKeys.add(seriesKey);
+            acceptedDocKeys.add(docKey);
+            rawItems.push(normalizeOpenLibraryDoc(doc, continuationPlan));
+            middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount += 1;
+            dropReasons.middle_grades_query_only_continuation_accepted = Number(dropReasons.middle_grades_query_only_continuation_accepted || 0) + 1;
+            if (rawItems.length >= continuationTarget) break;
+          }
+        }
+      } else {
+        middleGradesRecoveryExhaustionReasonDetailed = "no_unattempted_specific_queries_after_query_only_rejection";
+      }
+      if (!middleGradesRecoveryExhaustionReasonDetailed && rawItems.length < continuationTarget) middleGradesRecoveryExhaustionReasonDetailed = "query_only_continuation_exhausted_before_target";
     }
 
     const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
@@ -2641,6 +2822,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           }
           if (seriesKey) acceptedSeriesKeys.add(seriesKey);
           acceptedDocKeys.add(docKey);
+          if (!shouldAcceptMiddleGradesSourceDoc(doc, recoveryQuery, recoveryPlan, "recovery")) continue;
           rawItems.push(normalizeOpenLibraryDoc(doc, recoveryPlan));
           dropReasons.adult_underfill_recovery_accepted = Number(dropReasons.adult_underfill_recovery_accepted || 0) + 1;
           if (rawItems.length >= recoveryTarget) break;
@@ -2706,6 +2888,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             }
             if (seriesKey) acceptedSeriesKeys.add(seriesKey);
             acceptedDocKeys.add(docKey);
+            if (!shouldAcceptMiddleGradesSourceDoc(doc, delayedRetryQuery, delayedRetryPlan, "delayed_retry")) continue;
             rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
             dropReasons.adult_delayed_final_retry_accepted = Number(dropReasons.adult_delayed_final_retry_accepted || 0) + 1;
             if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
@@ -2777,6 +2960,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             }
             if (seriesKey) acceptedSeriesKeys.add(seriesKey);
             acceptedDocKeys.add(docKey);
+            if (!shouldAcceptMiddleGradesSourceDoc(doc, delayedRetryQuery, delayedRetryPlan, "delayed_retry")) continue;
             rawItems.push(normalizeOpenLibraryDoc(doc, delayedRetryPlan));
             dropReasons.teen_delayed_final_retry_accepted = Number(dropReasons.teen_delayed_final_retry_accepted || 0) + 1;
             if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
@@ -2821,7 +3005,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         }
         if (seriesKey) acceptedSeriesKeys.add(seriesKey);
         acceptedDocKeys.add(docKey);
-        rawItems.push(normalizeOpenLibraryDoc(doc, fallbackPlan));
+        if (!shouldAcceptMiddleGradesSourceDoc(doc, fallbackQuery, fallbackPlan, "fallback")) continue;
+              rawItems.push(normalizeOpenLibraryDoc(doc, fallbackPlan));
         acceptedFallbackDocs += 1;
         dropReasons.horror_survival_underfill_accepted = Number(dropReasons.horror_survival_underfill_accepted || 0) + 1;
         if (rawItems.length >= Math.min(ageProfile.minCleanDocs, 3)) break;
@@ -2882,6 +3067,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             dropReasons.emergency_fallback_no_meaningful_overlap = Number(dropReasons.emergency_fallback_no_meaningful_overlap || 0) + 1;
             continue;
           }
+          if (!shouldAcceptMiddleGradesSourceDoc(doc, probeQuery, probePlan, "emergency_probe")) continue;
           rawItems.push(normalizeOpenLibraryDoc(doc, probePlan));
           acceptedProbeDocs += 1;
           dropReasons.emergency_fallback_accepted = Number(dropReasons.emergency_fallback_accepted || 0) + 1;
@@ -3051,6 +3237,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         lockQualityRetryQueries: middleGradesLockQualityRetryQueries.length ? middleGradesLockQualityRetryQueries : undefined,
         lockQualityRetryAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesLockQualityRetryAcceptedCount : undefined,
         finalReturnedDespiteLockQualityFailReason: middleGradesFinalReturnedDespiteLockQualityFailReason,
+        rejectedAllRowsAsQueryOnly: ageProfile.key === "middleGrades" ? middleGradesRejectedAllRowsAsQueryOnly : undefined,
+        queryOnlyRejectionTriggeredContinuation: ageProfile.key === "middleGrades" ? middleGradesQueryOnlyRejectionTriggeredContinuation : undefined,
+        unattemptedSpecificQueriesAfterQueryOnlyRejection: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesUnattemptedSpecificQueriesAfterQueryOnlyRejection.length ? middleGradesUnattemptedSpecificQueriesAfterQueryOnlyRejection : middleGradesUnattemptedSpecificQueries(), 20) : undefined,
+        continuedAfterQueryOnlyRejectionQueries: middleGradesContinuedAfterQueryOnlyRejectionQueries.length ? uniqueStrings(middleGradesContinuedAfterQueryOnlyRejectionQueries, 20) : undefined,
+        continuedAfterQueryOnlyRejectionAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount : undefined,
+        recoveryExhaustionReasonDetailed: middleGradesRecoveryExhaustionReasonDetailed,
         finalCountContractStatus: middleGradesFinalCountContractStatus,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),

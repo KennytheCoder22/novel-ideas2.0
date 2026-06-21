@@ -185,6 +185,12 @@ export interface SourceDiagnosticV2 {
   lockQualityRetryQueries?: string[];
   lockQualityRetryAcceptedCount?: number;
   finalReturnedDespiteLockQualityFailReason?: string;
+  rejectedAllRowsAsQueryOnly?: boolean;
+  queryOnlyRejectionTriggeredContinuation?: boolean;
+  unattemptedSpecificQueriesAfterQueryOnlyRejection?: string[];
+  continuedAfterQueryOnlyRejectionQueries?: string[];
+  continuedAfterQueryOnlyRejectionAcceptedCount?: number;
+  recoveryExhaustionReasonDetailed?: string;
   finalCountContractStatus?: "full_route_aligned" | "full_mixed_recovery" | "full_fallback_only" | "underfilled_mixed" | "underfilled_fallback_only" | "zero_result_failure";
 }
 
