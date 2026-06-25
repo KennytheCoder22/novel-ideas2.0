@@ -25,7 +25,7 @@ function rootTitle(title: string): string {
 function seriesKey(candidate: ScoredCandidate): string {
   const text = normalized([candidate.title, candidate.subtitle, candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
   if (/\b(hunger games|catching fire|mockingjay)\b/.test(text)) return "hunger games";
-  const known = text.match(/\b(one piece|naruto|throne of glass|divergent|maze runner|twilight|grande ritorno|diadem|chosen)\b/);
+  const known = text.match(/\b(one piece|naruto|throne of glass|divergent|maze runner|twilight|grande ritorno|diadem|chosen|wild robot|ricky ricotta)\b/);
   if (known) return known[1];
   return rootTitle(candidate.title);
 }
@@ -892,16 +892,33 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     .sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
   const weakEvidenceSelectedOverStrongEvidence = selected.some((candidate) => middleGradesRouteAlignmentEvidence(candidate).tier === "weak_evidence") && strongEvidenceRejected.length > 0;
   const selectedRouteAlignedCount = selected.filter(isMiddleGradesRouteAlignedSuccessCandidate).length;
+  const selectedTitleOnlyCount = selected.filter(isMiddleGradesTitleOnlyEvidence).length;
+  const selectedMediumStrongEvidenceCount = selected.filter((candidate) => {
+    const evidence = middleGradesRouteAlignmentEvidence(candidate);
+    return !isMiddleGradesTitleOnlyEvidence(candidate) && middleGradesEvidenceTierRank(evidence.tier) >= middleGradesEvidenceTierRank("medium_evidence");
+  }).length;
+  const weakEvidenceOnlySlate = selected.length > 0 && selected.every((candidate) => {
+    const evidence = middleGradesRouteAlignmentEvidence(candidate);
+    return isMiddleGradesTitleOnlyEvidence(candidate) || evidence.tier === "weak_evidence";
+  });
+  const titleOnlySeriesCounts: Record<string, number> = {};
+  for (const candidate of selected.filter(isMiddleGradesTitleOnlyEvidence)) {
+    const key = seriesKey(candidate);
+    if (key) titleOnlySeriesCounts[key] = Number(titleOnlySeriesCounts[key] || 0) + 1;
+  }
+  const sameSeriesTitleOnlyClusterDetected = Object.values(titleOnlySeriesCounts).some((count) => count >= 2);
   const selectedFallbackCount = selected.filter((candidate) => isMiddleGradesAntiZeroFallbackCandidate(candidate) || (middleGradesRouteAlignmentEvidence(candidate).queryLevel && !middleGradesRouteAlignmentEvidence(candidate).documentLevel)).length;
   const rejectedRouteAlignedCount = rankedCandidates.filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && isMiddleGradesRouteAlignedSuccessCandidate(candidate)).length;
   const finalCountContractStatus = selected.length === 0
     ? "zero_result_failure"
     : selected.length >= Math.min(5, selected.length || 5) && selected.length >= 5
-      ? selectedRouteAlignedCount >= selected.length
-        ? "full_route_aligned"
-        : selectedRouteAlignedCount === 0
-          ? "full_fallback_only"
-          : "full_mixed_recovery"
+      ? selectedMediumStrongEvidenceCount <= 0
+        ? "full_weak_evidence"
+        : selectedRouteAlignedCount >= selected.length && selectedMediumStrongEvidenceCount > 0
+          ? "full_route_aligned"
+          : selectedRouteAlignedCount === 0
+            ? "full_fallback_only"
+            : "full_mixed_recovery"
       : selectedRouteAlignedCount === 0
         ? "underfilled_fallback_only"
         : "underfilled_mixed";
@@ -911,7 +928,10 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const genericAdventureUsedAsLastResortOnly = selectedGenericAdventureCount === 0 || selected.length < 5 || selectedRouteAlignedCount >= 2;
   const lockQualityFailReasons: string[] = [];
   if (selected.length !== 5) lockQualityFailReasons.push("final_items_length_not_five");
-  if (finalCountContractStatus === "underfilled_fallback_only" || finalCountContractStatus === "full_fallback_only") lockQualityFailReasons.push(finalCountContractStatus);
+  if (finalCountContractStatus === "underfilled_fallback_only" || finalCountContractStatus === "full_fallback_only" || finalCountContractStatus === "full_weak_evidence") lockQualityFailReasons.push(finalCountContractStatus);
+  if (weakEvidenceOnlySlate) lockQualityFailReasons.push("weak_evidence_only_slate");
+  if (selectedTitleOnlyCount > 0 && selectedMediumStrongEvidenceCount === 0) lockQualityFailReasons.push("title_only_slate_downgraded_lock_quality");
+  if (sameSeriesTitleOnlyClusterDetected) lockQualityFailReasons.push("same_series_title_only_cluster_detected");
   if (finalCountContractStatus === "full_mixed_recovery" && selectedRouteAlignedCount < 2) lockQualityFailReasons.push("mixed_recovery_has_fewer_than_two_route_aligned_items");
   if (documentRouteAlignmentEvidenceMissingButTrueCount > 0) lockQualityFailReasons.push("document_route_alignment_missing_evidence_fields");
   if (rejectedReasons.genericDefaultSlateDetected && selected.length >= 5) lockQualityFailReasons.push("generic_default_slate_detected_without_true_shortage");
@@ -934,6 +954,11 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.emergencyFallbackOverrideUsedByTitle = emergencyFallbackOverrideUsedByTitle;
   diagnostics.falseRouteAlignedDueToQueryOnlyCount = Object.keys(routeAlignmentDemotedReasonByTitle).length;
   diagnostics.documentRouteAlignmentEvidenceMissingButTrueCount = Math.max(0, documentRouteAlignmentEvidenceMissingButTrueCount);
+  diagnostics.weakEvidenceOnlySlate = weakEvidenceOnlySlate;
+  diagnostics.titleOnlySlateDowngradedLockQuality = selectedTitleOnlyCount > 0 && selectedMediumStrongEvidenceCount === 0;
+  diagnostics.selectedTitleOnlyCount = selectedTitleOnlyCount;
+  diagnostics.selectedMediumStrongEvidenceCount = selectedMediumStrongEvidenceCount;
+  diagnostics.sameSeriesTitleOnlyClusterDetected = sameSeriesTitleOnlyClusterDetected;
   diagnostics.finalCountContractStatus = finalCountContractStatus;
   diagnostics.genericAdventureUsedAsLastResortOnly = genericAdventureUsedAsLastResortOnly;
   diagnostics.lockQualityPass = lockQualityPass;

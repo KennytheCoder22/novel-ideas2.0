@@ -149,6 +149,9 @@ export interface SourceDiagnosticV2 {
   middleGradesDelayedRetrySkippedReason?: string;
   middleGradesDelayedRetryTimeoutMs?: number;
   middleGradesTimeoutBudgetRemainingBeforeRetry?: number;
+  perQueryBudgetReserved?: Record<string, number>;
+  skippedRemainingQueriesDueToBudgetExhaustion?: boolean;
+  plannedSpecificQueriesUnattemptedAtTimeout?: string[];
   middleGradesRouteAlignedSuccessCount?: number;
   middleGradesAntiZeroFallbackSuccessCount?: number;
   middleGradesFallbackOnlySlate?: boolean;

@@ -11,6 +11,8 @@ const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
 const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 9_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_INITIAL_QUERY_TIMEOUT_MS = 7_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_TARGETED_QUERY_CAP_MS = 4_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS = 4;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 6_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 2_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 7_500;
@@ -1794,6 +1796,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesEvidenceAwareRecoveryAttempted = false;
     let middleGradesEvidenceAwareRecoveryAcceptedCount = 0;
     let middleGradesBrittleQueryTimedOutThenShortQueryAttempted = false;
+    const middleGradesPerQueryBudgetReserved: Record<string, number> = {};
+    let middleGradesSkippedRemainingQueriesDueToBudgetExhaustion = false;
+    const middleGradesPlannedSpecificQueriesUnattemptedAtTimeout: string[] = [];
     const middleGradesTargetedQueriesAttempted: string[] = [];
     let middleGradesTargetedQueriesAcceptedCount = 0;
     const middleGradesTargetedQueriesRejectedByReason: Record<string, number> = {};
@@ -1803,6 +1808,21 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesUnattemptedSpecificQueries = (): string[] => ageProfile.key === "middleGrades" ? middleGradesQueryOnlyContinuationQueries(queryPlans, middleGradesAttemptedQueries()) : [];
     const middleGradesUnattemptedEvidenceAwareQueries = (): string[] => ageProfile.key === "middleGrades" ? middleGradesEvidenceAwareRecoveryQueries(queryPlans, context.profile, middleGradesAttemptedQueries()) : [];
     const middleGradesUnattemptedTargetedQueries = (): string[] => ageProfile.key === "middleGrades" ? middleGradesTargetedQueriesForRun.filter((query) => !middleGradesAttemptedQueries().has(query.toLowerCase())) : [];
+    const middleGradesPlannedSpecificQueries = (): string[] => ageProfile.key === "middleGrades" ? uniqueStrings([
+      ...queryPlans.filter((plan) => plan.profileSpecific).map((plan) => plan.query),
+      ...middleGradesTargetedQueriesForRun,
+      ...queryPlans.map((plan) => plan.query),
+    ], 24) : [];
+    const middleGradesUnattemptedPlannedSpecificQueries = (): string[] => {
+      const attempted = middleGradesAttemptedQueries();
+      return middleGradesPlannedSpecificQueries().filter((query) => !attempted.has(query.toLowerCase()));
+    };
+    const rememberMiddleGradesUnattemptedAtTimeout = (): void => {
+      if (ageProfile.key !== "middleGrades") return;
+      for (const query of middleGradesUnattemptedPlannedSpecificQueries()) {
+        if (!middleGradesPlannedSpecificQueriesUnattemptedAtTimeout.includes(query)) middleGradesPlannedSpecificQueriesUnattemptedAtTimeout.push(query);
+      }
+    };
     const shouldAcceptMiddleGradesSourceDoc = (doc: any, query: string, queryPlan: OpenLibraryQueryPlan, stage: string): boolean => {
       if (ageProfile.key !== "middleGrades") return true;
       if (queryPlan.emergencyFallback || queryPlan.fallbackAlignment === "anti_zero") return true;
@@ -1880,11 +1900,19 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         : 0;
       if (ageProfile.key === "middleGrades" && middleGradesTimedOutFetchCount >= 2 && rawItems.length === 0 && middleGradesProfileSpecificAttemptedCount >= Math.min(3, middleGradesProfileSpecificQuerySet.size || 3)) {
         dropReasons.middle_grades_stable_fallback_after_repeated_timeouts = Number(dropReasons.middle_grades_stable_fallback_after_repeated_timeouts || 0) + 1;
+        rememberMiddleGradesUnattemptedAtTimeout();
         break;
       }
       if (ageProfile.key === "middleGrades" && middleGradesMainQueryTimedOut && rawItems.length === 0 && elapsedBeforeQueryMs + MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS + MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS >= sourceBudgetMs) {
-        dropReasons.middle_grades_delayed_final_retry_budget_reserved = Number(dropReasons.middle_grades_delayed_final_retry_budget_reserved || 0) + 1;
-        break;
+        const unattemptedSpecific = middleGradesUnattemptedPlannedSpecificQueries();
+        if (unattemptedSpecific.length > 0 && fetches.filter((fetch) => !fetch.diagnosticOnly).length < MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS) {
+          dropReasons.middle_grades_continue_despite_delayed_retry_reserve_with_specific_queries_remaining = Number(dropReasons.middle_grades_continue_despite_delayed_retry_reserve_with_specific_queries_remaining || 0) + 1;
+        } else {
+          dropReasons.middle_grades_delayed_final_retry_budget_reserved = Number(dropReasons.middle_grades_delayed_final_retry_budget_reserved || 0) + 1;
+          middleGradesSkippedRemainingQueriesDueToBudgetExhaustion = unattemptedSpecific.length > 0;
+          rememberMiddleGradesUnattemptedAtTimeout();
+          break;
+        }
       }
       if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && !teenMainQueryTimedOut && !middleGradesMainQueryTimedOut && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= sourceBudgetMs) {
         dropReasons.main_query_reserved_probe_time = Number(dropReasons.main_query_reserved_probe_time || 0) + 1;
@@ -1937,10 +1965,23 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           ),
         )
         : undefined;
-      const mainFetchTimeoutMs = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? middleGradesInitialTimeoutMs ?? firstAttemptTimeoutMs;
-      const mainProxyClientTimeoutMs = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? middleGradesInitialTimeoutMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
       const middleGradesQueryIsProfileSpecific = ageProfile.key === "middleGrades" && middleGradesProfileSpecificQuerySet.has(query.toLowerCase());
       const middleGradesQueryIsTargeted = ageProfile.key === "middleGrades" && middleGradesTargetedQuerySet.has(query.toLowerCase());
+      const mainFetchTimeoutMsUncapped = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? middleGradesInitialTimeoutMs ?? firstAttemptTimeoutMs;
+      const mainProxyClientTimeoutMsUncapped = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? middleGradesInitialTimeoutMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
+      let mainFetchTimeoutMs = mainFetchTimeoutMsUncapped;
+      let mainProxyClientTimeoutMs = mainProxyClientTimeoutMsUncapped;
+      if (ageProfile.key === "middleGrades" && (middleGradesQueryIsProfileSpecific || middleGradesQueryIsTargeted || queryPlanIndex < MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS)) {
+        const remainingSpecificIncludingCurrent = Math.max(1, middleGradesUnattemptedPlannedSpecificQueries().length || (queryPlans.length - queryPlanIndex));
+        const minimumAttemptsRemaining = Math.max(1, MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS - fetches.filter((fetch) => !fetch.diagnosticOnly).length);
+        const reserveQueries = Math.max(remainingSpecificIncludingCurrent, minimumAttemptsRemaining);
+        const usableBudget = Math.max(750, sourceBudgetMs - elapsedBeforeQueryMs - MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS);
+        const distributedBudget = Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, Math.floor(usableBudget / reserveQueries));
+        const cappedBudget = Math.max(750, Math.min(MIDDLE_GRADES_OPEN_LIBRARY_TARGETED_QUERY_CAP_MS, distributedBudget, mainFetchTimeoutMsUncapped));
+        mainFetchTimeoutMs = cappedBudget;
+        mainProxyClientTimeoutMs = cappedBudget;
+        middleGradesPerQueryBudgetReserved[query] = cappedBudget;
+      }
       if (ageProfile.key === "middleGrades" && !middleGradesQueryIsTargeted && middleGradesUnattemptedTargetedQueries().length > 0 && rawItems.length < Math.min(ageProfile.docLimit, 5)) {
         middleGradesBroadFallbackStartedBeforeTargetedExhaustion = true;
         dropReasons.middle_grades_broad_query_deferred_until_targeted_exhaustion = Number(dropReasons.middle_grades_broad_query_deferred_until_targeted_exhaustion || 0) + 1;
@@ -1977,6 +2018,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
       fetches.push(diagnostic);
       if (diagnostic.timedOut) {
+        if (ageProfile.key === "middleGrades") rememberMiddleGradesUnattemptedAtTimeout();
         if (middleGradesQueryIsProfileSpecific) middleGradesProfileSpecificQueriesTimedOut += 1;
         dropReasons.query_timeout = Number(dropReasons.query_timeout || 0) + 1;
         failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
@@ -3320,7 +3362,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           ? "targeted_queries_exhausted_before_five"
           : "no_targeted_queries_generated_for_profile";
     }
-    const status: SourceResult["status"] = rawItems.length ? "succeeded" : allMainFetchesTimedOut ? "timed_out" : failedReason ? "failed" : "empty";
+    const middleGradesHasUnattemptedSpecificAfterTimeout = ageProfile.key === "middleGrades" && middleGradesPlannedSpecificQueriesUnattemptedAtTimeout.length > 0;
+    const status: SourceResult["status"] = rawItems.length ? "succeeded" : (allMainFetchesTimedOut && !middleGradesHasUnattemptedSpecificAfterTimeout) ? "timed_out" : failedReason ? "failed" : "empty";
     const emptyReason = !rawItems.length && (status === "empty" || status === "failed" || status === "timed_out") ? openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason) : undefined;
     return {
       source: "openLibrary",
@@ -3362,6 +3405,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         middleGradesDelayedRetrySkippedReason: middleGradesDelayedRetrySkippedReason || undefined,
         middleGradesDelayedRetryTimeoutMs,
         middleGradesTimeoutBudgetRemainingBeforeRetry,
+        perQueryBudgetReserved: ageProfile.key === "middleGrades" ? middleGradesPerQueryBudgetReserved : undefined,
+        skippedRemainingQueriesDueToBudgetExhaustion: ageProfile.key === "middleGrades" ? middleGradesSkippedRemainingQueriesDueToBudgetExhaustion : undefined,
+        plannedSpecificQueriesUnattemptedAtTimeout: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesPlannedSpecificQueriesUnattemptedAtTimeout, 20) : undefined,
         middleGradesRouteAlignedSuccessCount,
         middleGradesAntiZeroFallbackSuccessCount,
         middleGradesFallbackOnlySlate,

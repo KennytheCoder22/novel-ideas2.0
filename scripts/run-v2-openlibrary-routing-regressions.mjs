@@ -998,11 +998,42 @@ async function main() {
     assertEqual(result.diagnostics.openLibraryProfileLabel, "middle_grades_openlibrary_profile_pending", "middle grades profile label should remain pending/unlocked");
     assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "middle grades fetch diagnostics should mark configured proxy path");
     assertEqual(result.diagnostics.fetches?.[0]?.proxyRetryWindowEnabled, true, "middle grades proxy fetch should use proxy retry client window");
-    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 7500 && result.diagnostics.fetches?.[0]?.clientTimeoutMs <= 9000, true, "middle grades proxy fetch should use an expanded match-quality resilience window");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs <= 4500, true, "middle grades targeted fetch should reserve source budget for additional planned queries");
+    assertEqual(Boolean(result.diagnostics.perQueryBudgetReserved?.[result.diagnostics.fetches?.[0]?.query]), true, "middle grades diagnostics should expose per-query budget reservation");
     console.log(JSON.stringify({ name: "middle grades proxy path uses age-specific resilience window", pass: true, fetchPath: result.diagnostics.fetches?.[0]?.fetchPath, clientTimeoutMs: result.diagnostics.fetches?.[0]?.clientTimeoutMs, profileLabel: result.diagnostics.openLibraryProfileLabel }));
   } finally {
     if (previousMiddleGradesProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const middleGradesSlowQueryFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesSlowQueryFetchCalls.push(query);
+    if (middleGradesSlowQueryFetchCalls.length <= 2) throw new Error("timeout");
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index),
+        title: `Budget Preserved ${index}`,
+        subject: ["Juvenile fiction", "Adventure stories", "Fantasy fiction"],
+      })) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[0].signals,
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(middleGradesSlowQueryFetchCalls.length >= 3, true, "one slow middle grades query must not consume the whole source budget while specific queries remain");
+    assertEqual(result.status !== "timed_out", true, "middle grades source should not report timed_out after only one or two attempted queries while specifics remain");
+    assertEqual(Boolean(result.diagnostics.perQueryBudgetReserved), true, "middle grades timeout diagnostics should include per-query reserved budget");
+    assertEqual(Array.isArray(result.diagnostics.plannedSpecificQueriesUnattemptedAtTimeout), true, "middle grades timeout diagnostics should expose unattempted planned specifics after timeout");
+    console.log(JSON.stringify({ name: "middle grades slow query preserves budget for planned specifics", pass: true, fetchCalls: middleGradesSlowQueryFetchCalls, status: result.status, perQueryBudgetReserved: result.diagnostics.perQueryBudgetReserved }));
+  } finally {
     globalThis.fetch = originalFetch;
   }
 
@@ -1316,6 +1347,34 @@ async function main() {
   assertEqual(middleGradesWeakTitleOnlyCapResult.selected.some((candidate) => candidate.title === "The Cafeteria Comedy Club"), true, "second richer evidence candidate should enter the slate to diversify evidence sources");
   console.log(JSON.stringify({ name: "middle grades weak title-only cap prefers richer document evidence", pass: true, selected: middleGradesWeakTitleOnlyCapResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesWeakTitleOnlyCapResult.rejectedReasons }));
 
+
+  const middleGradesRobotTitleOnlyLockResult = selectRecommendations([
+    ["The Wild Robot Escapes", "Peter Brown"],
+    ["The Wild Robot", "Peter Brown"],
+    ["Ricky Ricotta's Mighty Robot", "Dav Pilkey"],
+    ["Ricky Ricotta's Mighty Robot vs. the Mutant Mosquitoes", "Dav Pilkey"],
+    ["Ricky Ricotta's Mighty Robot vs. the Mecha-Monkeys", "Dav Pilkey"],
+  ].map(([title, author], index) => fakeScoredCandidate({
+    id: `middle-robot-title-only-${index}`,
+    title,
+    creators: [author],
+    score: 12 - index * 0.1,
+    maturityBand: "preteens",
+    genres: [],
+    themes: [],
+    scoreBreakdown: { genreFacetMatch: 4, positiveTasteMatch: 4, queryRungBonus: 1, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+    diagnostics: { queryText: "middle grade robot fiction", queryFamily: "science fiction", routingReason: "middle_grades_scifi_adventure" },
+    raw: { subject: ["Juvenile fiction"] },
+  })), middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.finalCountContractStatus, "full_weak_evidence", "five title-only robot results cannot produce full_route_aligned");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.lockQualityPass, false, "title-only weak robot slate must not pass lock quality");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.weakEvidenceOnlySlate, true, "all-title-only robot slate should be diagnosed as weak-evidence-only");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.titleOnlySlateDowngradedLockQuality, true, "title-only slate should explicitly downgrade lock quality");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedTitleOnlyCount, 5, "title-only slate diagnostics should count selected title-only candidates");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedMediumStrongEvidenceCount, 0, "title-only slate should have no medium/strong non-title document evidence");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.sameSeriesTitleOnlyClusterDetected, true, "title-only fallback slate with same-series clustering must fail lock quality");
+  console.log(JSON.stringify({ name: "middle grades title-only robot slate fails lock quality", pass: true, selected: middleGradesRobotTitleOnlyLockResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesRobotTitleOnlyLockResult.rejectedReasons }));
+
   const middleGradesLocalHistoryArtifactResult = selectRecommendations([fakeScoredCandidate({
     id: "middle-local-history-artifact",
     title: "A Regional History Compendium",
@@ -1568,7 +1627,7 @@ async function main() {
     assertEqual(result.rawItems.length >= 5, true, "middle grades cascade should preserve budget and recover after initial proxy timeouts");
     assertEqual(middleGradesCascadeFetchCalls.length >= 3, true, "middle grades cascade should spend real attempts on profile-specific route queries");
     assertEqual(result.diagnostics.finalCountContractStatus !== "full_fallback_only", true, "middle grades cascade should not label route-specific underfill recovery as fallback-only lock quality");
-    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 7500, true, "middle grades first proxy fetch should use expanded match-quality window");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs <= 4500, true, "middle grades first proxy fetch should cap per-query budget to preserve route-specific attempts");
     assertEqual(Boolean(result.diagnostics.profileSpecificQueriesAttempted?.length || middleGradesCascadeFetchCalls.some((query) => /middle grade|fantasy|magic/i.test(query))), true, "middle grades cascade should expose profile-specific or route-specific query attempts");
     console.log(JSON.stringify({ name: "middle grades cascade jumps to stable fallback under repeated timeout", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesCascadeFetchCalls, secondTimeoutMs: result.diagnostics.fetches?.[1]?.clientTimeoutMs }));
   } finally {
