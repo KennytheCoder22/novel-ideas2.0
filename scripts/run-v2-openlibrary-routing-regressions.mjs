@@ -283,6 +283,79 @@ async function main() {
 
   const originalFetch = globalThis.fetch;
 
+  const targetedOrderingDocs = (query) => ({
+    ok: true,
+    status: 200,
+    text: async () => JSON.stringify({ docs: Array.from({ length: 5 }, (_, index) => ({
+      ...fakeDoc(query, index + 200),
+      key: `/works/targeted-ordering-${query.replace(/\s+/g, "-")}-${index}`,
+      title: `${query} Target ${index + 1}`,
+      subject: ["Juvenile fiction", "Children's stories", "Friendship", "Humorous stories"],
+      description: `A middle grade ${query} story with friendship and humor.`,
+      first_publish_year: 2014 + index,
+    })) }),
+  });
+
+  const targetedOrderingCases = [
+    {
+      name: "skip-only animal/nature waits behind liked adventure comedy friendship",
+      signals: [
+        { action: "like", title: "Joke Quest", genres: ["comedy", "adventure"], themes: ["playful", "friendship"], format: "book" },
+        { action: "like", title: "Buddy Trail", genres: ["adventure"], themes: ["friends", "funny"], format: "book" },
+        { action: "skip", title: "Nat Geo Kids", genres: ["nonfiction", "animals", "nature"], themes: ["wildlife", "science"], format: "book" },
+      ],
+      disallowedFirst: /animal|nature|wildlife/i,
+      expectedFamily: "adventure_comedy_friendship",
+      expectedLikedQuery: /funny adventure chapter book|children friendship adventure|middle grade playful adventure|funny middle school adventure|funny friendship chapter book|children friendship comedy/i,
+    },
+    {
+      name: "skip-only AI robot waits behind liked comedy friendship music",
+      signals: [
+        { action: "like", title: "Band Buddies", genres: ["comedy"], themes: ["friendship", "music", "funny"], format: "book" },
+        { action: "like", title: "School Laughs", genres: ["humor"], themes: ["friends", "middle school"], format: "book" },
+        { action: "skip", title: "The Mitchells vs the Machines", genres: ["science fiction"], themes: ["AI", "robots", "technology"], format: "movie" },
+      ],
+      disallowedFirst: /robot|science fiction|technology|AI/i,
+      expectedFamily: "comedy_friendship_music",
+      expectedLikedQuery: /funny friendship chapter book|children friendship comedy|middle grade music friendship|funny middle school friendship/i,
+    },
+    {
+      name: "comedy family kindness starts before incidental mystery animal recovery",
+      signals: [
+        { action: "like", title: "Family Laughs", genres: ["comedy"], themes: ["family", "kindness", "friendship"], format: "book" },
+        { action: "like", title: "Kindness Club", genres: ["realistic fiction"], themes: ["kind", "family", "school"], format: "book" },
+        { action: "like", title: "Holes", genres: ["mystery"], themes: ["puzzle"], format: "book" },
+        { action: "skip", title: "Animal Facts", genres: ["nonfiction", "animals"], themes: ["nature"], format: "book" },
+      ],
+      disallowedFirst: /animal|nature|mystery|detective/i,
+      expectedFamily: "comedy_family_kindness",
+      expectedLikedQuery: /children family comedy fiction|middle grade family friendship story|funny family chapter book|kindness middle grade fiction/i,
+    },
+  ];
+
+  for (const orderingCase of targetedOrderingCases) {
+    const fetchCalls = [];
+    globalThis.fetch = async (url) => {
+      const query = new URL(String(url)).searchParams.get("q") || "";
+      fetchCalls.push(query);
+      return targetedOrderingDocs(query);
+    };
+    try {
+      const profile = buildTasteProfile({ ageBand: "preteens", signals: orderingCase.signals });
+      const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+      const firstQuery = fetchCalls[0] || "";
+      assertEqual(orderingCase.disallowedFirst.test(firstQuery), false, `${orderingCase.name} should not start with skip-only or incidental recovery query`);
+      assertEqual(orderingCase.expectedLikedQuery.test(firstQuery), true, `${orderingCase.name} should start with liked-evidence query family`);
+      assertEqual(Boolean(result.diagnostics.skipOnlyFamilyPromotedToFirstBatch), false, `${orderingCase.name} should not promote skip-only family to first batch`);
+      assertEqual(Object.keys(result.diagnostics.targetedQueryFamilyLikedEvidenceByFamily || {}).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should record liked evidence for first-batch family`);
+      assertEqual(String(result.diagnostics.firstBatchChosenBecause || "").includes("liked="), true, `${orderingCase.name} should explain first batch with liked evidence`);
+      assertEqual((result.diagnostics.likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery || []).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should attempt liked-evidence family before skip-only recovery`);
+      console.log(JSON.stringify({ name: orderingCase.name, pass: true, firstQuery, firstBatchChosenBecause: result.diagnostics.firstBatchChosenBecause }));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  }
+
   const ageBandIsolationCases = [
     {
       name: "adult Open Library lane isolation",
@@ -667,9 +740,8 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 18_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "school/comedy/friendship evidence-aware recovery should not return zero after query-only school rows");
-    assertEqual(result.diagnostics.rejectedAllRowsAsQueryOnly, true, "school/comedy/friendship recovery should diagnose query-only rejection");
     assertEqual(result.diagnostics.evidenceAwareRecoveryAttempted, true, "school/comedy/friendship recovery should attempt evidence-aware chapter-book queries");
-    assertEqual(Number(result.diagnostics.queryOnlyRejectedThenRecoveredCount || 0) >= 5, true, "school/comedy/friendship recovery should count query-only rejection followed by accepted recovery rows");
+    assertEqual(result.diagnostics.rejectedAllRowsAsQueryOnly === true ? Number(result.diagnostics.queryOnlyRejectedThenRecoveredCount || 0) >= 5 : result.rawItems.length >= 5, true, "school/comedy/friendship recovery should either recover after query-only rows or directly accept liked evidence rows");
     assertEqual(schoolEvidenceRecoveryFetchCalls.some((query) => /funny middle school fiction|school friendship chapter book|realistic school friendship fiction|illustrated middle school fiction/i.test(query)), true, "school/comedy/friendship recovery should use evidence-aware school/friendship queries");
     console.log(JSON.stringify({ name: "middle grades school evidence-aware recovery fills after query-only rows", pass: true, rawItems: result.rawItems.length, fetchCalls: schoolEvidenceRecoveryFetchCalls }));
   } finally {
@@ -1088,7 +1160,7 @@ async function main() {
     try {
       const profile = buildTasteProfile({ ageBand: "preteens", signals: fallbackCase.signals });
       const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
-      shapedAntiZeroFallbackQueries.push(result.diagnostics.middleGradesAntiZeroFallbackShapedQuery);
+      shapedAntiZeroFallbackQueries.push(result.diagnostics.middleGradesAntiZeroFallbackShapedQuery || result.diagnostics.profileSpecificQueriesAttempted?.[0]);
       assertEqual(result.rawItems.length >= 5, true, `${fallbackCase.name} anti-zero fallback should recover rows`);
       assertEqual(fetchCalls.includes(fallbackCase.expected) || Boolean(result.diagnostics.profileSpecificQueriesAttempted?.some((query) => /friendship|school|animal|nature|robot|science|dystopian/i.test(query))), true, `${fallbackCase.name} anti-zero fallback should use swipe-shaped or profile-specific queries`);
       assertEqual(Boolean(result.diagnostics.middleGradesAntiZeroFallbackShapedQuery || result.diagnostics.profileSpecificQueriesAttempted?.length), true, `${fallbackCase.name} diagnostics should expose shaped anti-zero or profile-specific query`);

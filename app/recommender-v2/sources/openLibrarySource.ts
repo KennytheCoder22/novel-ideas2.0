@@ -1252,41 +1252,138 @@ function middleGradesProfileSpecificQueries(profile: TasteProfile): string[] {
   return uniqueStrings([...targetedBatch, ...candidates.map((candidate) => candidate.query)], 10);
 }
 
-function middleGradesTargetedQueryBatch(profile: TasteProfile): string[] {
-  const positiveText = [...profile.genreFamily, ...profile.themes]
+type MiddleGradesTargetedQueryPlan = {
+  queries: string[];
+  scoreByFamily: Record<string, number>;
+  likedEvidenceByFamily: Record<string, string[]>;
+  skipEvidenceByFamily: Record<string, string[]>;
+  avoidEvidenceByFamily: Record<string, string[]>;
+  firstBatchChosenBecause?: string;
+  skipOnlyFamilyPromotedToFirstBatch: boolean;
+  likedEvidenceQueryFamilies: string[];
+  familyByQuery: Record<string, string>;
+};
+
+function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTargetedQueryPlan {
+  const positiveRows = [...profile.genreFamily, ...profile.themes]
     .filter((row) => Number(row.weight || 0) > 0)
-    .map((row) => cleanOpenLibraryQueryPart(row.value))
-    .join(" ");
-  const avoidText = profile.avoidSignals
+    .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)), evidence: Array.isArray(row.evidence) ? row.evidence.map(String) : [] }))
+    .filter((row) => row.value);
+  const avoidRows = profile.avoidSignals
     .filter((row) => Number(row.weight || 0) < 0)
-    .map((row) => cleanOpenLibraryQueryPart(row.value))
-    .join(" ");
-  const netText = positiveText;
-  const avoidFantasy = /\b(fantasy|magic|magical)\b/i.test(avoidText);
-  const avoidSchool = /\b(school|middle school|classroom)\b/i.test(avoidText);
-  const avoidFunny = /\b(comedy|funny|humou?r|playful|silly)\b/i.test(avoidText);
-  const batches: string[][] = [];
-  if (/\b(animals?|nature|wildlife|forest|wolf|wolves|kindness)\b/i.test(netText)) {
-    batches.push(["children's animal adventure", "children's nature fiction", "middle grade animal story", "children's animal survival", "middle grade animal fantasy"]);
+    .map((row) => ({ value: cleanOpenLibraryQueryPart(row.value), weight: Math.abs(Number(row.weight || 0)), evidence: Array.isArray(row.evidence) ? row.evidence.map(String) : [] }))
+    .filter((row) => row.value);
+  const familyDefinitions = [
+    {
+      family: "comedy_friendship_music",
+      queries: ["funny friendship chapter book", "children friendship comedy", "middle grade music friendship", "funny middle school friendship"],
+      patterns: [/\b(comedy|funny|humou?r|playful|silly|friendship|friends?|music|middle school|school)\b/i],
+    },
+    {
+      family: "comedy_family_kindness",
+      queries: ["children family comedy fiction", "middle grade family friendship story", "funny family chapter book", "kindness middle grade fiction"],
+      patterns: [/\b(comedy|funny|humou?r|family|friendship|friends?|kindness|kind|community|gentle|warm)\b/i],
+    },
+    {
+      family: "adventure_comedy_friendship",
+      queries: ["funny adventure chapter book", "children friendship adventure", "middle grade playful adventure", "funny middle school adventure"],
+      patterns: [/\b(playful|comedy|funny|humou?r|friendship|friends?|middle school)\b/i],
+    },
+    {
+      family: "science_robot",
+      queries: ["children's science fiction adventure", "robot adventure children", "science fiction chapter book", "middle grade robot fiction", "middle grade technology adventure"],
+      patterns: [/\b(ai|artificial intelligence|robots?|robotics|technology|science fiction|sci-fi|sci fi|space|science)\b/i],
+    },
+    {
+      family: "animal_nature",
+      queries: ["children's animal adventure", "children's nature fiction", "middle grade animal story", "children's animal survival", "middle grade animal fantasy"],
+      patterns: [/\b(animals?|nature|wildlife|forest|wolf|wolves)\b/i],
+    },
+    {
+      family: "mystery",
+      queries: ["middle grade mystery series", "children detective mystery", "school mystery children", "funny mystery chapter book", "middle grade treasure mystery"],
+      patterns: [/\b(mystery|detective|clue|treasure|puzzle|investigation)\b/i],
+    },
+    {
+      family: "dragon_mythology",
+      queries: ["middle grade dragon fantasy", "dragon fantasy children", "dragon adventure children", "children's dragon books", "mythology adventure children", "fantasy adventure children"],
+      patterns: [/\b(dragon|mythology|mythological|creature|legend)\b/i],
+    },
+    {
+      family: "fantasy_family_friendship",
+      queries: ["children fantasy family novel", "middle grade magical family", "children fantasy friendship", "middle grade fantasy mystery", "children magical adventure"],
+      patterns: [/\b(fantasy|magic|magical|family|friendship|friends?|music|playful|community|ocean|sea|island)\b/i],
+    },
+    {
+      family: "school_friendship_comedy",
+      queries: ["funny middle school fiction", "illustrated middle school fiction", "school friendship chapter book", "children school comedy", "funny chapter book school"],
+      patterns: [/\b(school|middle school|friendship|friends?|community|comedy|funny|humou?r|graphic novel|illustrated|playful|realistic|contemporary)\b/i],
+    },
+  ];
+  const scoreByFamily: Record<string, number> = {};
+  const likedEvidenceByFamily: Record<string, string[]> = {};
+  const skipEvidenceByFamily: Record<string, string[]> = {};
+  const avoidEvidenceByFamily: Record<string, string[]> = {};
+  const evidenceTitles = (row: { value: string; evidence: string[] }): string[] => row.evidence.length ? row.evidence : [row.value];
+  for (const def of familyDefinitions) {
+    let liked = 0;
+    let skip = 0;
+    let avoid = 0;
+    const likedEvidence: string[] = [];
+    const skipEvidence: string[] = [];
+    const avoidEvidence: string[] = [];
+    for (const row of positiveRows) {
+      if (!def.patterns.some((pattern) => pattern.test(row.value))) continue;
+      const hasLike = row.evidence.some((item) => item.startsWith("like:"));
+      const hasSkip = row.evidence.some((item) => item.startsWith("skip:"));
+      if (hasLike) {
+        liked += row.weight;
+        likedEvidence.push(...evidenceTitles(row).filter((item) => item.startsWith("like:") || !item.includes(":")));
+      }
+      if (hasSkip && !hasLike) {
+        skip += row.weight;
+        skipEvidence.push(...evidenceTitles(row).filter((item) => item.startsWith("skip:") || !item.includes(":")));
+      } else if (hasSkip) {
+        skip += row.weight * 0.25;
+        skipEvidence.push(...evidenceTitles(row).filter((item) => item.startsWith("skip:")));
+      }
+    }
+    for (const row of avoidRows) {
+      if (!def.patterns.some((pattern) => pattern.test(row.value))) continue;
+      avoid += row.weight;
+      avoidEvidence.push(...evidenceTitles(row));
+    }
+    const score = Math.round((liked - avoid + skip * 0.15) * 1000) / 1000;
+    scoreByFamily[def.family] = score;
+    likedEvidenceByFamily[def.family] = uniqueStrings(likedEvidence, 8);
+    skipEvidenceByFamily[def.family] = uniqueStrings(skipEvidence, 8);
+    avoidEvidenceByFamily[def.family] = uniqueStrings(avoidEvidence, 8);
   }
-  if (/\b(ai|artificial intelligence|robots?|robotics|technology|science fiction|sci-fi|sci fi|space|science)\b/i.test(netText)) {
-    batches.push(["children's science fiction adventure", "robot adventure children", "science fiction chapter book", "middle grade robot fiction", "middle grade technology adventure"]);
-  }
-  if (/\b(dragon|mythology|mythological|creature|legend)\b/i.test(netText)) {
-    batches.push(["middle grade dragon fantasy", "dragon fantasy children", "dragon adventure children", "children's dragon books", "mythology adventure children", "fantasy adventure children"]);
-  }
-  if (/\b(mystery|detective|clue|treasure|puzzle|investigation)\b/i.test(netText)) {
-    batches.push(["middle grade mystery series", "children detective mystery", "school mystery children", "funny mystery chapter book", "middle grade treasure mystery"]);
-  }
-  if (!avoidFantasy && /\b(fantasy|magic|magical|family|friendship|music|playful|community|ocean|sea|island)\b/i.test(netText)) {
-    batches.push(["children fantasy family novel", "middle grade magical family", "children fantasy friendship", "middle grade fantasy mystery", "children magical adventure"]);
-  }
-  if (!avoidSchool && !avoidFunny && /\b(school|middle school|friendship|friends?|community|comedy|funny|humou?r|graphic novel|illustrated|playful|realistic|contemporary)\b/i.test(netText)) {
-    batches.push(["funny middle school fiction", "illustrated middle school fiction", "school friendship chapter book", "children school comedy", "funny chapter book school"]);
-  } else if (!avoidSchool && /\b(school|middle school|friendship|friends?|community|realistic|contemporary)\b/i.test(netText)) {
-    batches.push(["illustrated middle school fiction", "school friendship chapter book", "realistic school friendship fiction"]);
-  }
-  return uniqueStrings(batches.flat(), 12);
+  const ranked = familyDefinitions
+    .map((def, index) => ({ ...def, index, score: Number(scoreByFamily[def.family] || 0), likedEvidenceCount: likedEvidenceByFamily[def.family]?.length || 0, skipEvidenceCount: skipEvidenceByFamily[def.family]?.length || 0 }))
+    .filter((def) => def.score > 0)
+    .sort((a, b) => b.score - a.score || b.likedEvidenceCount - a.likedEvidenceCount || a.index - b.index);
+  const likedRanked = ranked.filter((def) => def.likedEvidenceCount > 0);
+  const chosen = likedRanked.length ? likedRanked : ranked;
+  const skipOnlyFamilyPromotedToFirstBatch = chosen.length > 0 && chosen[0].likedEvidenceCount === 0 && chosen[0].skipEvidenceCount > 0;
+  const queries = uniqueStrings(chosen.flatMap((def) => def.queries), 12);
+  const familyByQuery: Record<string, string> = {};
+  for (const def of chosen) for (const query of def.queries) familyByQuery[query] = def.family;
+  return {
+    queries,
+    scoreByFamily,
+    likedEvidenceByFamily,
+    skipEvidenceByFamily,
+    avoidEvidenceByFamily,
+    firstBatchChosenBecause: chosen[0] ? `${chosen[0].family}:score=${chosen[0].score}:liked=${chosen[0].likedEvidenceCount}:skip=${chosen[0].skipEvidenceCount}` : undefined,
+    skipOnlyFamilyPromotedToFirstBatch,
+    likedEvidenceQueryFamilies: likedRanked.map((def) => def.family),
+    familyByQuery,
+  };
+}
+
+function middleGradesTargetedQueryBatch(profile: TasteProfile): string[] {
+  return middleGradesTargetedQueryPlan(profile).queries;
 }
 
 function middleGradesRecoveryQueries(queryPlans: OpenLibraryQueryPlan[]): string[] {
@@ -1620,7 +1717,7 @@ function middleGradesAgeShapeDiagnostic(doc: any, query: string, profile: TasteP
   const subjects = subjectValues.join(" ").toLowerCase();
   const text = `${title} ${subjects}`;
   const hasExplicitMiddleGradesEvidence = /\b(middle grade|juvenile fiction|juvenile literature|children'?s fiction|children fiction|children'?s literature|children'?s stories|preteens?|pre-teens?|school stories?|schools? fiction|students? fiction|classmates? fiction|humorous stories|mystery and detective stories|adventure stories|fantasy fiction, juvenile|science fiction, juvenile)\b/.test(text);
-  const queryIsAgeAnchored = /\b(middle grade|children|children'?s|school story|school mystery|magic school)\b/i.test(query);
+  const queryIsAgeAnchored = /\b(middle grade|children|children'?s|chapter book|school story|school mystery|magic school)\b/i.test(query);
   const genreShapePattern = /\b(fantasy|magic|adventure|mystery|detective|school|students?|humor|humorous|funny|science fiction|sci-fi|space|survival|juvenile)\b/i;
   const hasSubjectGenreShape = genreShapePattern.test(subjects);
   const hasQueryGenreShape = genreShapePattern.test(query);
@@ -1710,7 +1807,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const queryPlans = buildOpenLibraryQueryPlans(plan, context.profile, ageProfile);
     const queries = queryPlans.map((queryPlan) => queryPlan.query);
     const middleGradesProfileSpecificQuerySet = new Set(queryPlans.filter((queryPlan) => queryPlan.profileSpecific).map((queryPlan) => queryPlan.query.toLowerCase()));
-    const middleGradesTargetedQueriesForRun = ageProfile.key === "middleGrades" ? middleGradesTargetedQueryBatch(context.profile) : [];
+    const middleGradesTargetedPlanForRun = ageProfile.key === "middleGrades" ? middleGradesTargetedQueryPlan(context.profile) : undefined;
+    const middleGradesTargetedQueriesForRun = middleGradesTargetedPlanForRun?.queries || [];
     const middleGradesTargetedQuerySet = new Set(middleGradesTargetedQueriesForRun.map((query) => query.toLowerCase()));
     const openLibraryQueryRouting = {
       reason: queryPlans[0]?.routingReason || "unknown",
@@ -3439,6 +3537,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         profileSpecificQueriesTimedOut: ageProfile.key === "middleGrades" ? middleGradesProfileSpecificQueriesTimedOut : undefined,
         profileSpecificQueriesAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesProfileSpecificQueriesAcceptedCount : undefined,
         targetedQueryBatchByRoute: ageProfile.key === "middleGrades" ? middleGradesTargetedQueriesForRun : undefined,
+        targetedQueryFamilyScoreByFamily: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.scoreByFamily : undefined,
+        targetedQueryFamilyLikedEvidenceByFamily: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.likedEvidenceByFamily : undefined,
+        targetedQueryFamilySkipEvidenceByFamily: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.skipEvidenceByFamily : undefined,
+        targetedQueryFamilyAvoidEvidenceByFamily: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.avoidEvidenceByFamily : undefined,
+        firstBatchChosenBecause: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.firstBatchChosenBecause : undefined,
+        skipOnlyFamilyPromotedToFirstBatch: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.skipOnlyFamilyPromotedToFirstBatch : undefined,
+        likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesTargetedQueriesAttempted.map((query) => middleGradesTargetedPlanForRun?.familyByQuery?.[query]).filter((family) => family && middleGradesTargetedPlanForRun?.likedEvidenceQueryFamilies.includes(family)), 12) : undefined,
         targetedQueriesAttempted: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesTargetedQueriesAttempted, 20) : undefined,
         targetedQueriesAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesTargetedQueriesAcceptedCount : undefined,
         targetedQueriesRejectedByReason: ageProfile.key === "middleGrades" ? middleGradesTargetedQueriesRejectedByReason : undefined,

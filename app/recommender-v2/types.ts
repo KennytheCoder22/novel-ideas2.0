@@ -184,6 +184,13 @@ export interface SourceDiagnosticV2 {
   profileSpecificQueriesTimedOut?: number;
   profileSpecificQueriesAcceptedCount?: number;
   targetedQueryBatchByRoute?: string[];
+  targetedQueryFamilyScoreByFamily?: Record<string, number>;
+  targetedQueryFamilyLikedEvidenceByFamily?: Record<string, string[]>;
+  targetedQueryFamilySkipEvidenceByFamily?: Record<string, string[]>;
+  targetedQueryFamilyAvoidEvidenceByFamily?: Record<string, string[]>;
+  firstBatchChosenBecause?: string;
+  skipOnlyFamilyPromotedToFirstBatch?: boolean;
+  likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery?: string[];
   targetedQueriesAttempted?: string[];
   targetedQueriesAcceptedCount?: number;
   targetedQueriesRejectedByReason?: Record<string, number>;
