@@ -736,6 +736,51 @@ function applyMiddleGradesFinalCountRecovery(rankedCandidates: ScoredCandidate[]
     .slice(0, 8);
 }
 
+
+function isMiddleGradesTitleOnlyEvidence(candidate: ScoredCandidate): boolean {
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  if (evidence.tier === "query_only") return false;
+  return evidence.fields.length > 0 && evidence.fields.every((field) => field === "title" || field === "subtitle");
+}
+
+function applyMiddleGradesTitleOnlyEvidenceCap(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens") return;
+  const maxTitleOnly = 3;
+  const selectedTitleOnly = () => selected.filter(isMiddleGradesTitleOnlyEvidence);
+  if (selectedTitleOnly().length <= maxTitleOnly) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
+  const richerEvidencePool = rankedCandidates.filter((candidate) => {
+    if (!isMiddleGradesOpenLibraryCandidate(candidate)) return false;
+    if (selected.includes(candidate)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    const evidence = middleGradesRouteAlignmentEvidence(candidate);
+    return evidence.documentLevel && evidence.tier !== "query_only" && !isMiddleGradesTitleOnlyEvidence(candidate);
+  }).sort((a, b) => {
+    const tierDelta = middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(b).tier) - middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(a).tier);
+    return tierDelta || middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile);
+  });
+  if (!richerEvidencePool.length) return;
+  rejectedReasons.middle_grades_title_only_selected_before_cap = selectedTitleOnly().length;
+  rejectedReasons.middle_grades_richer_document_evidence_replacement_candidates = richerEvidencePool.length;
+  for (const candidate of richerEvidencePool) {
+    if (selectedTitleOnly().length <= maxTitleOnly) break;
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index, adjusted: middleGradesSelectionScore(row, profile) }))
+      .filter(({ row }) => isMiddleGradesTitleOnlyEvidence(row))
+      .sort((a, b) => a.adjusted - b.adjusted)[0]?.index;
+    if (replacementIndex === undefined) break;
+    selected[replacementIndex].rejectedReasons.push("middle_grades_title_only_replaced_by_richer_document_evidence");
+    candidate.rejectedReasons.push("middle_grades_richer_document_evidence_selected_over_title_only");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_title_only_replacements = Number(rejectedReasons.middle_grades_title_only_replacements || 0) + 1;
+  }
+  rejectedReasons.middle_grades_title_only_selected_after_cap = selectedTitleOnly().length;
+}
+
 function applyMiddleGradesRouteAlignmentReplacement(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   if (profile.ageBand !== "preteens") return;
   const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
@@ -1192,6 +1237,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesRouteAlignmentReplacement(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesTitleOnlyEvidenceCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFinalCountRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);

@@ -1279,6 +1279,43 @@ async function main() {
   assertEqual(Boolean(middleGradesEvidenceTierResult.rejectedReasons.weakEvidenceSelectedOverStrongEvidence), false, "weak title-only evidence must not beat strong subject/description evidence");
   console.log(JSON.stringify({ name: "middle grades evidence tiers prefer strong animal science evidence over weak defaults", pass: true, selected: middleGradesEvidenceTierResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesEvidenceTierResult.rejectedReasons }));
 
+
+  const middleGradesWeakTitleOnlyCapResult = selectRecommendations([
+    ...["Joke Alpha", "Joke Beta", "Joke Gamma", "Joke Delta", "Joke Epsilon"].map((title, index) => fakeScoredCandidate({
+      id: `middle-weak-title-cap-${index}`,
+      title,
+      creators: [`Weak Title Author ${index}`],
+      score: 12 - index * 0.1,
+      maturityBand: "preteens",
+      genres: [],
+      themes: [],
+      scoreBreakdown: { genreFacetMatch: 5, positiveTasteMatch: 5, queryRungBonus: 1, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_humor" },
+      raw: { subject: ["Juvenile fiction"] },
+    })),
+    ...[
+      ["Laugh Lab Stories", ["Juvenile fiction", "Humorous stories", "Friendship", "School stories"], "Funny school friendship stories for middle grade readers."],
+      ["The Cafeteria Comedy Club", ["Juvenile fiction", "Humorous stories", "School stories"], "Kids start a comedy club at school."],
+    ].map(([title, subjects, description], index) => fakeScoredCandidate({
+      id: `middle-rich-humor-cap-${index}`,
+      title,
+      creators: [`Rich Humor Author ${index}`],
+      description,
+      score: 5 - index * 0.1,
+      maturityBand: "preteens",
+      genres: ["Humor"],
+      themes: ["Friendship", "School"],
+      scoreBreakdown: { genreFacetMatch: 1, positiveTasteMatch: 1, queryRungBonus: 0, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_humor" },
+      raw: { subject: subjects, description },
+    })),
+  ], middleGradesSelectionProfile, 5);
+  assertEqual(Number(middleGradesWeakTitleOnlyCapResult.rejectedReasons.middle_grades_title_only_replacements || 0), 2, "middle grades weak title-only cap should replace excess title-only matches with richer document evidence");
+  assertEqual(middleGradesWeakTitleOnlyCapResult.selected.filter((candidate) => /^Joke /.test(candidate.title)).length, 3, "middle grades weak title-only cap should leave at most three title-only weak matches when richer evidence exists");
+  assertEqual(middleGradesWeakTitleOnlyCapResult.selected.some((candidate) => candidate.title === "Laugh Lab Stories"), true, "richer subject/description evidence should enter the slate despite lower raw score");
+  assertEqual(middleGradesWeakTitleOnlyCapResult.selected.some((candidate) => candidate.title === "The Cafeteria Comedy Club"), true, "second richer evidence candidate should enter the slate to diversify evidence sources");
+  console.log(JSON.stringify({ name: "middle grades weak title-only cap prefers richer document evidence", pass: true, selected: middleGradesWeakTitleOnlyCapResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesWeakTitleOnlyCapResult.rejectedReasons }));
+
   const middleGradesLocalHistoryArtifactResult = selectRecommendations([fakeScoredCandidate({
     id: "middle-local-history-artifact",
     title: "A Regional History Compendium",
