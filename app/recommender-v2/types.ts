@@ -191,6 +191,12 @@ export interface SourceDiagnosticV2 {
   firstBatchChosenBecause?: string;
   skipOnlyFamilyPromotedToFirstBatch?: boolean;
   likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery?: string[];
+  docsReturnedButAllDropped?: number;
+  allDroppedContinuationQuery?: string[];
+  reliableVariantAttempted?: string[];
+  reliableVariantAcceptedCount?: number;
+  firstBatchSpecificQueryTimedOutCount?: number;
+  firstBatchReliableVariantUsed?: boolean;
   targetedQueriesAttempted?: string[];
   targetedQueriesAcceptedCount?: number;
   targetedQueriesRejectedByReason?: Record<string, number>;

@@ -305,8 +305,8 @@ async function main() {
         { action: "skip", title: "Nat Geo Kids", genres: ["nonfiction", "animals", "nature"], themes: ["wildlife", "science"], format: "book" },
       ],
       disallowedFirst: /animal|nature|wildlife/i,
-      expectedFamily: "adventure_comedy_friendship",
-      expectedLikedQuery: /funny adventure chapter book|children friendship adventure|middle grade playful adventure|funny middle school adventure|funny friendship chapter book|children friendship comedy/i,
+      expectedFamily: "comedy_friendship_music",
+      expectedLikedQuery: /children adventure fiction|funny adventure chapter book|children friendship adventure|middle grade playful adventure|funny middle school adventure|funny friendship chapter book|children friendship comedy|funny children books/i,
     },
     {
       name: "skip-only AI robot waits behind liked comedy friendship music",
@@ -317,7 +317,7 @@ async function main() {
       ],
       disallowedFirst: /robot|science fiction|technology|AI/i,
       expectedFamily: "comedy_friendship_music",
-      expectedLikedQuery: /funny friendship chapter book|children friendship comedy|middle grade music friendship|funny middle school friendship/i,
+      expectedLikedQuery: /funny children books|humorous fiction children|funny friendship chapter book|children friendship comedy|middle grade music friendship|funny middle school friendship/i,
     },
     {
       name: "comedy family kindness starts before incidental mystery animal recovery",
@@ -329,7 +329,7 @@ async function main() {
       ],
       disallowedFirst: /animal|nature|mystery|detective/i,
       expectedFamily: "comedy_family_kindness",
-      expectedLikedQuery: /children family comedy fiction|middle grade family friendship story|funny family chapter book|kindness middle grade fiction/i,
+      expectedLikedQuery: /funny children books|humorous fiction children|children family comedy fiction|middle grade family friendship story|funny family chapter book|kindness middle grade fiction/i,
     },
   ];
 
@@ -354,6 +354,88 @@ async function main() {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  }
+
+
+  const reliableOrderingCases = [
+    {
+      name: "dinosaur science profile tries reliable dinosaur variants before fantasy fallback",
+      signals: [
+        { action: "like", title: "Dinosaur Space Quest", genres: ["science fiction", "adventure"], themes: ["dinosaurs", "mythology", "friendship"], format: "book" },
+        { action: "like", title: "Mythic Dino Crew", genres: ["adventure"], themes: ["dinosaur", "science", "friends"], format: "book" },
+      ],
+      expectedEarly: /dinosaur fiction children|dinosaur adventure children|children'?s science fiction adventure|children adventure fiction|mythology children fiction/i,
+      disallowedBefore: /children fantasy family novel|middle grade magical family/i,
+    },
+    {
+      name: "dog man graphic comedy profile tries reliable graphic variants before school fallback",
+      signals: [
+        { action: "like", title: "Dog Man", genres: ["comedy", "graphic novel"], themes: ["funny", "adventure", "friendship"], format: "book" },
+        { action: "like", title: "Redwall", genres: ["fantasy", "adventure"], themes: ["animals", "friendship"], format: "book" },
+      ],
+      expectedEarly: /graphic novel children|funny graphic novel children|humorous fiction children|funny children books/i,
+      disallowedBefore: /funny middle school fiction|illustrated middle school fiction|school friendship chapter book/i,
+    },
+  ];
+
+  for (const reliableCase of reliableOrderingCases) {
+    const fetchCalls = [];
+    globalThis.fetch = async (url) => {
+      const query = new URL(String(url)).searchParams.get("q") || "";
+      fetchCalls.push(query);
+      return targetedOrderingDocs(query);
+    };
+    try {
+      const profile = buildTasteProfile({ ageBand: "preteens", signals: reliableCase.signals });
+      const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+      const firstExpected = fetchCalls.findIndex((query) => reliableCase.expectedEarly.test(query));
+      const firstDisallowed = fetchCalls.findIndex((query) => reliableCase.disallowedBefore.test(query));
+      assertEqual(firstExpected >= 0, true, `${reliableCase.name} should attempt reliable liked variants`);
+      assertEqual(firstDisallowed === -1 || firstExpected < firstDisallowed, true, `${reliableCase.name} should attempt reliable liked variants before fallback/default queries`);
+      assertEqual((result.diagnostics.reliableVariantAttempted || []).some((query) => reliableCase.expectedEarly.test(query)), true, `${reliableCase.name} should diagnose reliable variant attempts`);
+      assertEqual(Boolean(result.rawItems.length === 0 && result.diagnostics.reliableVariantAttempted?.length), false, `${reliableCase.name} should not return zero after reliable variants are attempted`);
+      console.log(JSON.stringify({ name: reliableCase.name, pass: true, fetchCalls, reliableVariantAttempted: result.diagnostics.reliableVariantAttempted }));
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  }
+
+  const allDroppedContinuationFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    allDroppedContinuationFetchCalls.push(query);
+    const docs = allDroppedContinuationFetchCalls.length === 1
+      ? Array.from({ length: 5 }, (_, index) => ({
+        key: `/works/all-dropped-${index}`,
+        title: `Adult Drift ${index + 1}`,
+        author_name: [`Adult Author ${index}`],
+        subject: ["Adult fiction", "Booker prize", "Literary fiction"],
+        description: "Adult literary fiction that should be dropped for a middle grades run.",
+      }))
+      : Array.from({ length: 5 }, (_, index) => ({
+        ...fakeDoc(query, index + 300),
+        key: `/works/reliable-continuation-${query.replace(/\s+/g, "-")}-${index}`,
+        title: `Reliable Continuation ${index + 1}`,
+        subject: ["Juvenile fiction", "Children's stories", "Humorous stories", "Friendship"],
+        description: `A funny children friendship story from ${query}.`,
+      }));
+    return { ok: true, status: 200, text: async () => JSON.stringify({ docs }) };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Funny Friends", genres: ["comedy"], themes: ["friendship", "funny"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    assertEqual(Number(result.diagnostics.docsReturnedButAllDropped || 0) >= 1, true, "all-dropped query should be diagnosed");
+    assertEqual(Boolean(result.diagnostics.allDroppedContinuationQuery?.length), true, "all-dropped query should record continuation query");
+    assertEqual(result.rawItems.length > 0, true, "middle grades should not return zero while reliable same-family variants remain");
+    assertEqual(Boolean(result.diagnostics.reliableVariantAcceptedCount && result.diagnostics.reliableVariantAcceptedCount > 0), true, "reliable continuation should accept candidates");
+    console.log(JSON.stringify({ name: "middle grades all-dropped query continues to reliable same-family variant", pass: true, fetchCalls: allDroppedContinuationFetchCalls, diagnostics: { docsReturnedButAllDropped: result.diagnostics.docsReturnedButAllDropped, allDroppedContinuationQuery: result.diagnostics.allDroppedContinuationQuery, reliableVariantAcceptedCount: result.diagnostics.reliableVariantAcceptedCount } }));
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 
   const ageBandIsolationCases = [
@@ -501,7 +583,7 @@ async function main() {
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
     fantasyFamilyTargetedFetchCalls.push(query);
-    const docs = /children fantasy family novel|middle grade magical family|children fantasy friendship|middle grade fantasy mystery|children magical adventure/i.test(query)
+    const docs = /children fantasy adventure|children fantasy family novel|middle grade magical family|children fantasy friendship|middle grade fantasy mystery|children magical adventure/i.test(query)
       ? ["Moon Family Magic", "Friendship Spell House", "The Musical Portal", "Kindness Dragon Home", "The Family Quest"].map((title, index) => ({
         ...fakeDoc(query, index + 610),
         key: `/works/fantasy-family-targeted-${query.replace(/\s+/g, "-")}-${index}`,
@@ -840,7 +922,7 @@ async function main() {
     assertEqual(Boolean(result.diagnostics.dropReasons?.middle_grades_recovery_query_attempted || result.diagnostics.profileSpecificQueriesAttempted?.length), true, "middle grades recovery should run profile-specific or age-anchored recovery queries");
     assertEqual(middleGradesRecoveryFetchCalls.includes("friendship fiction"), false, "middle grades recovery should not use broad friendship fiction");
     assertEqual(middleGradesRecoveryFetchCalls.includes("young adult fantasy"), false, "middle grades recovery should not use YA fantasy emergency probe");
-    assertEqual(middleGradesRecoveryFetchCalls.some((query) => /middle grade (friendship|school|adventure)|middle school/i.test(query)), true, "middle grades recovery should use concrete middle-grades queries before broad fallback");
+    assertEqual(middleGradesRecoveryFetchCalls.some((query) => /middle grade (friendship|school|adventure)|middle school|funny children books|humorous fiction children|children adventure fiction/i.test(query)), true, "middle grades recovery should use concrete middle-grades queries before broad fallback");
     console.log(JSON.stringify({ name: "middle grades recovery uses age-anchored safe queries", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesRecoveryFetchCalls }));
   } finally {
     globalThis.fetch = originalFetch;
