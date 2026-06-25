@@ -676,6 +676,25 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
   const wantsSciFiAdventure = hasSciFi && (dominantFamily === "sciFi" || (sciFiDominant && hasAdventure));
   const wantsContemporarySchool = hasContemporary && !wantsFantasyAdventure && !wantsMysteryAdventure && !wantsHistoricalAdventure && !wantsSciFiAdventure && !(hasHumor && humorWeight >= Math.max(1, contemporaryWeight));
   const wantsHumor = hasHumor && !wantsMysteryAdventure && !wantsFantasyAdventure;
+  const preliminaryRoutingReason = wantsFantasyMystery
+    ? "middle_grades_fantasy_mystery"
+    : wantsFantasyHumor
+      ? "middle_grades_fantasy_humor"
+      : wantsFantasySchoolFamily
+        ? "middle_grades_fantasy_school_family"
+        : wantsFantasyAdventure
+          ? "middle_grades_fantasy_adventure"
+          : wantsMysteryAdventure
+            ? "middle_grades_mystery_adventure"
+            : wantsHistoricalAdventure
+              ? "middle_grades_historical_adventure"
+              : wantsSciFiAdventure
+                ? "middle_grades_scifi_adventure"
+                : wantsContemporarySchool
+                  ? "middle_grades_contemporary_school"
+                  : wantsHumor
+                    ? "middle_grades_humor"
+                    : "middle_grades_generic_facets";
   const profileSpecificQueries = middleGradesProfileSpecificQueries(profile);
   const queryCandidates = wantsFantasyMystery
     ? ["middle grade fantasy mystery", "middle grade mystery", "school mystery", "middle grade adventure"]
@@ -707,25 +726,7 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
     ...queryCandidates.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query)),
   ];
   const uniqueQueries = uniqueStrings(preparedQueries.filter(isUsefulOpenLibraryQueryPart), ageProfile.queryLimit);
-  const routingReason = wantsFantasyMystery
-    ? "middle_grades_fantasy_mystery"
-    : wantsFantasyHumor
-      ? "middle_grades_fantasy_humor"
-      : wantsFantasySchoolFamily
-        ? "middle_grades_fantasy_school_family"
-        : wantsFantasyAdventure
-          ? "middle_grades_fantasy_adventure"
-          : wantsMysteryAdventure
-            ? "middle_grades_mystery_adventure"
-            : wantsHistoricalAdventure
-              ? "middle_grades_historical_adventure"
-              : wantsSciFiAdventure
-                ? "middle_grades_scifi_adventure"
-                : wantsContemporarySchool
-                  ? "middle_grades_contemporary_school"
-                  : wantsHumor
-                    ? "middle_grades_humor"
-                    : "middle_grades_generic_facets";
+  const routingReason = preliminaryRoutingReason;
   const routingDominance = { openLibraryPlanner: "middle_grades_profile_candidate", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasyMystery, wantsFantasyHumor, wantsFantasySchoolFamily, wantsFantasyAdventure, wantsMysteryAdventure, wantsHistoricalAdventure, wantsSciFiAdventure, wantsContemporarySchool, wantsHumor };
   return uniqueQueries.map((query, index) => ({
     query,
