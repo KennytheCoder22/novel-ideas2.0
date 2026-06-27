@@ -1896,7 +1896,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
     const ageProfile = openLibraryProfileForAgeBand(context.profile.ageBand);
     const artifactReasonLabels = openLibraryArtifactReasonLabels(ageProfile);
-    const debugMiddleGradesDeepTrace = ageProfile.key === "middleGrades" && Boolean(context.profile.diagnostics?.debugMiddleGradesNoTimeouts || context.profile.diagnostics?.debugMiddleGradesDeepTrace);
+    const debugMiddleGradesDeepTrace = ageProfile.key === "middleGrades" && Boolean(context.profile.diagnostics?.debugMiddleGradesNoTimeouts || context.profile.diagnostics?.debugMiddleGradesDeepTrace || context.profile.diagnostics?.middleGradesDeepDebugActive);
+    const middleGradesDeepDebugActivationSourceRaw = String(context.profile.diagnostics?.middleGradesDeepDebugActivationSource || "");
+    const middleGradesDeepDebugActivationSource = debugMiddleGradesDeepTrace
+      ? middleGradesDeepDebugActivationSourceRaw && middleGradesDeepDebugActivationSourceRaw !== "none" ? middleGradesDeepDebugActivationSourceRaw : "profile"
+      : "none";
     const sourceBudgetMs = ageProfile.key === "middleGrades"
       ? debugMiddleGradesDeepTrace
         ? Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_TOTAL_BUDGET_MS)
@@ -4008,6 +4012,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         recoveryExhaustionReasonDetailed: middleGradesRecoveryExhaustionReasonDetailed,
         debugMiddleGradesDeepTraceEnabled: ageProfile.key === "middleGrades" ? debugMiddleGradesDeepTrace : undefined,
         debugMiddleGradesNoTimeouts: ageProfile.key === "middleGrades" ? debugMiddleGradesDeepTrace : undefined,
+        middleGradesDeepDebugActive: ageProfile.key === "middleGrades" ? debugMiddleGradesDeepTrace : undefined,
+        middleGradesDeepDebugActivationSource: ageProfile.key === "middleGrades" ? middleGradesDeepDebugActivationSource as SourceDiagnosticV2["middleGradesDeepDebugActivationSource"] : undefined,
+        sessionReportHeader: debugMiddleGradesDeepTrace ? "MIDDLE GRADES DEEP DEBUG: ACTIVE" : undefined,
         debugMiddleGradesBudgetMs: debugMiddleGradesDeepTrace ? sourceBudgetMs : undefined,
         debugMiddleGradesPerQueryBudgetMs: debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : undefined,
         debugMiddleGradesPlannedQueries: middleGradesDebugTrace?.plannedQueries,

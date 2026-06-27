@@ -22,6 +22,40 @@ function sortedSignals(map: Map<string, WeightedSignalV2>, positiveOnly = true):
     .slice(0, 12);
 }
 
+function browserDebugFlag(name: string): { active: boolean; source?: "url" | "localStorage" } {
+  const runtime = globalThis as any;
+  try {
+    const search = String(runtime?.location?.search || "");
+    if (search) {
+      const params = new URLSearchParams(search);
+      const value = params.get(name);
+      if (value === "1" || value === "true") return { active: true, source: "url" };
+    }
+  } catch {
+    // Non-browser runtimes do not expose location; ignore.
+  }
+  try {
+    const value = runtime?.localStorage?.getItem?.(name);
+    if (value === "1" || value === "true") return { active: true, source: "localStorage" };
+  } catch {
+    // localStorage may be unavailable or blocked; ignore.
+  }
+  return { active: false };
+}
+
+function middleGradesDeepDebug(session: SwipeSessionV2): { active: boolean; source: "profile" | "url" | "localStorage" | "preset" | "none" } {
+  if (session.ageBand !== "preteens") return { active: false, source: "none" };
+  const diagnostics = session.diagnostics || {};
+  if (diagnostics.debugMiddleGradesDeepTrace || diagnostics.debugMiddleGradesNoTimeouts || session.debugMiddleGradesDeepTrace || session.debugMiddleGradesNoTimeouts) {
+    return { active: true, source: diagnostics.middleGradesDeepDebugActivationSource === "preset" ? "preset" : "profile" };
+  }
+  const urlFlag = browserDebugFlag("debugMiddleGradesDeepTrace");
+  if (urlFlag.active) return { active: true, source: urlFlag.source || "url" };
+  const noTimeoutUrlFlag = browserDebugFlag("debugMiddleGradesNoTimeouts");
+  if (noTimeoutUrlFlag.active) return { active: true, source: noTimeoutUrlFlag.source || "url" };
+  return { active: false, source: "none" };
+}
+
 export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
   const tone = new Map<string, WeightedSignalV2>();
   const pacing = new Map<string, WeightedSignalV2>();
@@ -31,6 +65,7 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
   const formatPreference = new Map<string, WeightedSignalV2>();
   const avoidSignals = new Map<string, WeightedSignalV2>();
   const sourceHints = new Set<SourceIdV2>();
+  const deepDebug = middleGradesDeepDebug(session);
 
   for (const signal of session.signals || []) {
     const direction = signal.action === "like" ? 1 : signal.action === "dislike" ? -1 : 0.25;
@@ -68,6 +103,12 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
       likedCount: session.signals?.filter((s) => s.action === "like").length || 0,
       dislikedCount: session.signals?.filter((s) => s.action === "dislike").length || 0,
       skippedCount: session.signals?.filter((s) => s.action === "skip").length || 0,
+      ...(session.diagnostics || {}),
+      debugMiddleGradesDeepTrace: deepDebug.active,
+      debugMiddleGradesNoTimeouts: deepDebug.active,
+      middleGradesDeepDebugActive: deepDebug.active,
+      middleGradesDeepDebugActivationSource: deepDebug.source,
+      sessionReportHeader: deepDebug.active ? "MIDDLE GRADES DEEP DEBUG: ACTIVE" : undefined,
     },
   };
 }

@@ -28,6 +28,9 @@ export interface SwipeSessionV2 {
   limit?: number;
   enabledSources?: Partial<Record<SourceIdV2, boolean>>;
   requestId?: string;
+  debugMiddleGradesDeepTrace?: boolean;
+  debugMiddleGradesNoTimeouts?: boolean;
+  diagnostics?: Record<string, unknown>;
 }
 
 export interface WeightedSignalV2 {
@@ -260,6 +263,9 @@ export interface SourceDiagnosticV2 {
   recoveryExhaustionReasonDetailed?: string;
   debugMiddleGradesDeepTraceEnabled?: boolean;
   debugMiddleGradesNoTimeouts?: boolean;
+  middleGradesDeepDebugActive?: boolean;
+  middleGradesDeepDebugActivationSource?: "profile" | "url" | "localStorage" | "preset" | "none";
+  sessionReportHeader?: string;
   debugMiddleGradesBudgetMs?: number;
   debugMiddleGradesPerQueryBudgetMs?: number;
   debugMiddleGradesPlannedQueries?: Record<string, unknown>[];
@@ -331,6 +337,14 @@ export interface DiagnosticReportV2 {
   sources: SourceDiagnosticV2[];
   rejectedReasons: Record<string, number>;
   finalSelectionTitles: string[];
+  finalItemsLength?: number;
+  returnedItemsLength?: number;
+  returnedItemsTitles?: string[];
+  returnedItemsStageBoundary?: string;
+  middleGradesReturnedLayerRootCollapseApplied?: boolean;
+  middleGradesReturnedLayerRootCollapsedTitles?: string[];
+  middleGradesReturnedLayerRootCollapseCausedUnderfill?: boolean;
+  sessionReportHeader?: string;
 }
 
 export interface RecommendationResultV2 {

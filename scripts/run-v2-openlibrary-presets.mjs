@@ -127,9 +127,18 @@ function printSummary(preset, result) {
     queries: source?.queries || [],
     sourceStatus: source?.status || "missing",
     raw: source?.rawCount || 0,
+    sessionReportHeader: source?.sessionReportHeader || result.diagnostics.sessionReportHeader,
+    middleGradesDeepDebugActive: source?.middleGradesDeepDebugActive || false,
+    middleGradesDeepDebugActivationSource: source?.middleGradesDeepDebugActivationSource || "none",
+    debugMiddleGradesBudgetMs: source?.debugMiddleGradesBudgetMs,
+    debugMiddleGradesPerQueryBudgetMs: source?.debugMiddleGradesPerQueryBudgetMs,
     normalized: stageCount(result, "normalized", "normalized"),
     scored: stageCount(result, "scored", "scored"),
     selected: result.items.length,
+    finalItemsLength: result.diagnostics.finalItemsLength ?? result.items.length,
+    returnedItemsLength: result.diagnostics.returnedItemsLength ?? result.items.length,
+    returnedItemsTitles: result.diagnostics.returnedItemsTitles || result.items.map((item) => item.title),
+    returnedItemsStageBoundary: result.diagnostics.returnedItemsStageBoundary,
     finalTitles: result.items.map((item) => item.title),
     artifactSuppressedTitles: source?.artifactSuppressedTitles || [],
     topRejectionReasons: topReasons(rejectedReasons),
@@ -146,6 +155,10 @@ function selectedPresets() {
   if (process.argv.includes("--adult-only")) return PRESETS.filter((preset) => preset.ageBand === "adult");
   if (process.argv.includes("--teen-only")) return PRESETS.filter((preset) => preset.ageBand === "teens");
   return PRESETS;
+}
+
+function middleGradesDeepDebugRequested() {
+  return process.argv.includes("--middle-grades-deep-debug") || process.env.MIDDLE_GRADES_DEEP_DEBUG === "1" || process.env.MIDDLE_GRADES_DEEP_DEBUG === "true";
 }
 
 function printOfflineManifest() {
@@ -186,6 +199,13 @@ async function main() {
         limit: 5,
         enabledSources: { mock: false, openLibrary: true },
         signals: preset.signals,
+        diagnostics: preset.ageBand === "preteens" && middleGradesDeepDebugRequested()
+          ? {
+            debugMiddleGradesDeepTrace: true,
+            debugMiddleGradesNoTimeouts: true,
+            middleGradesDeepDebugActivationSource: "preset",
+          }
+          : undefined,
       });
       printSummary(preset, result);
     } catch (error) {

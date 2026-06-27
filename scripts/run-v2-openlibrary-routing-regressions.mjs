@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 const OUT_DIR = ".tmp/v2-openlibrary-routing-regressions";
 const TS_FILES = [
   "app/recommender-v2/tasteProfile.ts",
+  "app/recommender-v2/diagnostics.ts",
   "app/recommender-v2/types.ts",
   "app/recommender-v2/select.ts",
   "app/recommender-v2/sources/openLibrarySource.ts",
@@ -94,6 +95,7 @@ function fakeDoc(query, index) {
 async function main() {
   compileHarnessDependencies();
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
+  const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
   const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/select.js`).href);
   const { buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
   const { openLibraryProfileForAgeBand } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibraryProfiles.js`).href);
@@ -1216,6 +1218,9 @@ async function main() {
     debugProfile.diagnostics.debugMiddleGradesDeepTrace = true;
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 2_000 }, { profile: debugProfile });
     assertEqual(result.diagnostics.debugMiddleGradesDeepTraceEnabled, true, "middle grades deep trace should be explicitly enabled by profile diagnostics");
+    assertEqual(result.diagnostics.middleGradesDeepDebugActive, true, "middle grades deep debug active diagnostic should be true");
+    assertEqual(result.diagnostics.middleGradesDeepDebugActivationSource, "profile", "direct profile debug activation source should be diagnosed");
+    assertEqual(result.diagnostics.sessionReportHeader, "MIDDLE GRADES DEEP DEBUG: ACTIVE", "source report should include obvious deep-debug header");
     assertEqual(result.diagnostics.debugMiddleGradesBudgetMs >= 180000, true, "middle grades debug mode should expand source budget");
     assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 20000, true, "middle grades debug mode should expand per-query timeout");
     assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesPlannedQueries) && result.diagnostics.debugMiddleGradesPlannedQueries.length > 0, true, "deep trace should expose planned query list");
@@ -1229,6 +1234,34 @@ async function main() {
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesDebugProxyBase;
     globalThis.fetch = originalFetch;
   }
+
+  const returnedLayerProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: middleGradesCases[3].signals,
+  });
+  const returnedLayerDiagnostics = {
+    requestId: "returned-layer-root-collapse-regression",
+    startedAt: new Date(0).toISOString(),
+    finishedAt: new Date(0).toISOString(),
+    elapsedMs: 0,
+    stages: [],
+    tasteProfile: returnedLayerProfile,
+    searchPlan: { intents: [], sourcePlans: [], diagnostics: {} },
+    sources: [],
+    rejectedReasons: {},
+    finalSelectionTitles: [],
+  };
+  const returnedLayerResult = buildRecommendationResultV2([
+    fakeScoredCandidate({ title: "The Frog and Toad Collection", maturityBand: "preteens", genres: ["Juvenile fiction"], themes: ["Friendship"] }),
+    fakeScoredCandidate({ title: "Frog and Toad Treasury", maturityBand: "preteens", genres: ["Juvenile fiction"], themes: ["Friendship"] }),
+    fakeScoredCandidate({ title: "Harbor Friendship", maturityBand: "preteens", genres: ["Juvenile fiction"], themes: ["Friendship"] }),
+  ], returnedLayerDiagnostics);
+  assertEqual(returnedLayerResult.items.filter((item) => /frog and toad/i.test(item.title)).length, 1, "returned-items layer should collapse Frog and Toad collection variants");
+  assertEqual(returnedLayerResult.diagnostics.finalItemsLength, 3, "returned-items diagnostics should preserve final selection length before returned-layer collapse");
+  assertEqual(returnedLayerResult.diagnostics.returnedItemsLength, returnedLayerResult.items.length, "returned-items length should agree with returned items");
+  assertEqual(returnedLayerResult.diagnostics.returnedItemsTitles.length, returnedLayerResult.diagnostics.returnedItemsLength, "returned titles count should agree with returned length");
+  assertEqual(returnedLayerResult.diagnostics.middleGradesReturnedLayerRootCollapseApplied, true, "returned-layer collection root collapse should be diagnosed");
+  console.log(JSON.stringify({ name: "middle grades returned-items layer collapses collection roots and aligns counters", pass: true, returnedItemsTitles: returnedLayerResult.diagnostics.returnedItemsTitles, finalItemsLength: returnedLayerResult.diagnostics.finalItemsLength, returnedItemsLength: returnedLayerResult.diagnostics.returnedItemsLength }));
 
 
   const previousMiddleGradesProxyAbortBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;

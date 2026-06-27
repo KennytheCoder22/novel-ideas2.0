@@ -74,6 +74,15 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
 
   const tasteProfile = buildTasteProfile(session);
   stages.push(stageDiagnostic("taste_profile_built", undefined, tasteProfile.diagnostics));
+  const middleGradesDeepDebugActive = tasteProfile.ageBand === "preteens" && Boolean(tasteProfile.diagnostics.middleGradesDeepDebugActive);
+  if (middleGradesDeepDebugActive) {
+    stages.push(stageDiagnostic("middle_grades_deep_debug", undefined, {
+      header: "MIDDLE GRADES DEEP DEBUG: ACTIVE",
+      activationSource: tasteProfile.diagnostics.middleGradesDeepDebugActivationSource || "none",
+      sourceBudgetMs: 180_000,
+      perQueryBudgetMs: 20_000,
+    }));
+  }
 
   const searchPlan = buildSearchPlan(tasteProfile, session.enabledSources);
   stages.push(stageDiagnostic("search_plan_built", { intents: searchPlan.intents.length, sourcePlans: searchPlan.sourcePlans.length }, searchPlan.diagnostics));
@@ -83,7 +92,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     if (!plan.enabled) return skippedResult(plan, plan.skippedReason || "source_disabled");
     if (!adapter) return skippedResult(plan, "adapter_not_implemented");
     const sourceStartedAt = Date.now();
-    const response = await runWithTimeout(plan.timeoutMs, (signal) => adapter.search(plan, { profile: tasteProfile, signal }));
+    const effectiveTimeoutMs = middleGradesDeepDebugActive && plan.source === "openLibrary" ? Math.max(plan.timeoutMs, 180_000) : plan.timeoutMs;
+    const response = await runWithTimeout(effectiveTimeoutMs, (signal) => adapter.search({ ...plan, timeoutMs: effectiveTimeoutMs }, { profile: tasteProfile, signal }));
     const elapsedMs = Date.now() - sourceStartedAt;
     if (response.value) return response.value;
     return failedResult(plan, response.timedOut ? "timed_out" : "failed", response.error || "source_failed", elapsedMs);
