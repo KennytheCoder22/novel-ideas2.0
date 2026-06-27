@@ -1232,11 +1232,21 @@ async function main() {
     assertEqual(result.diagnostics.directFallbackAttemptedAfterProxyAbort, true, "repeated proxy aborts should attempt direct Open Library fallback");
     assertEqual(result.diagnostics.proxyTimedOutThenDirectAttemptedSameQuery, true, "middle grades proxy timeout should immediately try direct for the same query");
     assertEqual(realFetches.some((fetch) => fetch.fetchPath === "direct"), true, "alternate direct fetch path should be recorded after proxy aborts");
+    const proxyAbortFetch = realFetches.find((fetch) => fetch.fetchPath === "proxy" && fetch.timedOut);
+    const directFallbackFetch = realFetches.find((fetch) => fetch.fetchPath === "direct");
+    assertEqual(Boolean(proxyAbortFetch?.abortControllerId), true, "proxy abort diagnostics should expose AbortController creation id");
+    assertEqual(Boolean(directFallbackFetch?.abortControllerId), true, "direct fallback diagnostics should expose AbortController creation id");
+    assertEqual(proxyAbortFetch?.abortControllerId !== directFallbackFetch?.abortControllerId, true, "proxy and direct fallback must not reuse the same AbortController");
+    assertEqual(directFallbackFetch?.abortControllerSharedWithPreviousFetch, false, "direct fallback diagnostic should explicitly report no controller sharing with proxy fetch");
+    assertEqual(Number(proxyAbortFetch?.sourceBudgetRemainingAtFetchStartMs || 0) > 0, true, "proxy fetch diagnostics should include remaining source budget at fetch start");
+    assertEqual(Number(directFallbackFetch?.sourceBudgetRemainingAtFetchStartMs || 0) > 0, true, "direct fallback diagnostics should include remaining source budget at fetch start");
+    assertEqual(Boolean(proxyAbortFetch?.abortOrigin), true, "proxy abort diagnostics should classify abort origin");
+    assertEqual(Boolean(proxyAbortFetch?.abortControllerLifetimeMs !== undefined), true, "proxy abort diagnostics should report controller lifetime");
     assertEqual(result.diagnostics.middleGradesFetchMode === "staggered" || result.diagnostics.middleGradesFetchMode === "parallel", true, "middle grades fetch mode should expose staggered or parallel first-batch behavior");
     assertEqual(Array.isArray(result.diagnostics.firstBatchParallelQueries) && result.diagnostics.firstBatchParallelQueries.length >= 3, true, "first-batch diagnostics should expose planned parallel/staggered queries");
     assertEqual(Array.isArray(result.diagnostics.likedEvidenceFirstBatchFamilies) && result.diagnostics.likedEvidenceFirstBatchFamilies.length > 0, true, "zero/timeout-prone middle grades paths should report liked-evidence first-batch families");
     assertEqual((result.diagnostics.likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery || []).length > 0, true, "zero/timeout-prone middle grades paths should report whether liked-evidence families received viable attempts");
-    console.log(JSON.stringify({ name: "middle grades repeated proxy aborts preserve viable attempts and switch fetch path", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesProxyAbortFetchCalls, diagnostics: { middleGradesFetchMode: result.diagnostics.middleGradesFetchMode, repeatedProxyAbortCount: result.diagnostics.repeatedProxyAbortCount, directFallbackAttemptedAfterProxyAbort: result.diagnostics.directFallbackAttemptedAfterProxyAbort } }));
+    console.log(JSON.stringify({ name: "middle grades repeated proxy aborts preserve viable attempts and switch fetch path", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesProxyAbortFetchCalls, diagnostics: { middleGradesFetchMode: result.diagnostics.middleGradesFetchMode, repeatedProxyAbortCount: result.diagnostics.repeatedProxyAbortCount, directFallbackAttemptedAfterProxyAbort: result.diagnostics.directFallbackAttemptedAfterProxyAbort, proxyAbortControllerId: proxyAbortFetch?.abortControllerId, directAbortControllerId: directFallbackFetch?.abortControllerId, directSharedController: directFallbackFetch?.abortControllerSharedWithPreviousFetch, proxyAbortOrigin: proxyAbortFetch?.abortOrigin } }));
   } finally {
     Date.now = originalMiddleGradesProxyAbortDateNow;
     if (previousMiddleGradesProxyAbortBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;

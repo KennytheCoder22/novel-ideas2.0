@@ -82,6 +82,17 @@ export interface SourceFetchDiagnosticV2 {
   requestStart?: string;
   requestEnd?: string;
   abortReason?: string;
+  abortOrigin?: "local_timeout" | "router_or_parent" | "parent_already_aborted" | "fetch_abort_without_local_signal" | "unknown";
+  abortControllerId?: string;
+  abortControllerCreatedAt?: string;
+  abortControllerAbortedAt?: string;
+  abortControllerLifetimeMs?: number;
+  abortControllerSharedWithPreviousFetch?: boolean;
+  parentSignalPresent?: boolean;
+  parentSignalAbortedAtStart?: boolean;
+  parentSignalAbortedAtEnd?: boolean;
+  timeoutBudgetRemainingAtFetchStartMs?: number;
+  sourceBudgetRemainingAtFetchStartMs?: number;
   responseHeadersReceived?: string;
   bodyStarted?: string;
   bodyCompleted?: string;
