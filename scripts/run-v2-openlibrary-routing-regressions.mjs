@@ -1212,6 +1212,7 @@ async function main() {
     assertEqual(realFetches.every((fetch) => fetch.fetchPath !== "proxy" || Number(fetch.clientTimeoutMs || 0) <= 1_500), true, "middle grades proxy attempts should use short first-pass timeouts");
     assertEqual(Number(result.diagnostics.repeatedProxyAbortCount || 0) >= 2, true, "repeated middle grades proxy aborts should be diagnosed");
     assertEqual(result.diagnostics.directFallbackAttemptedAfterProxyAbort, true, "repeated proxy aborts should attempt direct Open Library fallback");
+    assertEqual(result.diagnostics.proxyTimedOutThenDirectAttemptedSameQuery, true, "middle grades proxy timeout should immediately try direct for the same query");
     assertEqual(realFetches.some((fetch) => fetch.fetchPath === "direct"), true, "alternate direct fetch path should be recorded after proxy aborts");
     assertEqual(result.diagnostics.middleGradesFetchMode === "staggered" || result.diagnostics.middleGradesFetchMode === "parallel", true, "middle grades fetch mode should expose staggered or parallel first-batch behavior");
     assertEqual(Array.isArray(result.diagnostics.firstBatchParallelQueries) && result.diagnostics.firstBatchParallelQueries.length >= 3, true, "first-batch diagnostics should expose planned parallel/staggered queries");
@@ -1222,6 +1223,56 @@ async function main() {
     Date.now = originalMiddleGradesProxyAbortDateNow;
     if (previousMiddleGradesProxyAbortBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesProxyAbortBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousMiddleGradesDirectRejectedBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const middleGradesDirectRejectedFetchCalls = [];
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    const urlText = String(url);
+    const query = new URL(urlText).searchParams.get("q") || "";
+    middleGradesDirectRejectedFetchCalls.push({ url: urlText, query });
+    if (urlText.startsWith("https://proxy.example.test")) {
+      const error = new Error("The operation was aborted due to timeout");
+      error.name = "AbortError";
+      throw error;
+    }
+    const docs = /children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure/i.test(query)
+      ? [1, 2, 3, 4, 5].map((index) => ({
+        ...fakeDoc(query, index + 980),
+        key: `/works/same-family-direct-continuation-${query.replace(/\s+/g, "-")}-${index}`,
+        title: `Same Family Adventure ${index}`,
+        subject: ["Juvenile fiction", "Adventure stories", "Friendship", "Community", "Humorous stories"],
+        description: "A funny friendship and community adventure for children.",
+      }))
+      : [1, 2, 3, 4, 5].map((index) => ({
+        ...fakeDoc(query, index + 970),
+        key: `/works/direct-rejected-${query.replace(/\s+/g, "-")}-${index}`,
+        title: `Sparse Direct Row ${index}`,
+        subject: ["Juvenile fiction"],
+        description: "A sparse catalog row with child evidence but no route evidence.",
+      }));
+    return { ok: true, status: 200, text: async () => JSON.stringify({ docs }) };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Community Quest", genres: ["comedy", "adventure"], themes: ["friendship", "community", "funny"], format: "book" },
+        { action: "like", title: "Band Trail", genres: ["humor"], themes: ["music", "friends", "adventure"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 12_000 }, { profile });
+    assertEqual(result.diagnostics.proxyTimedOutThenDirectAttemptedSameQuery, true, "direct rejected scenario should first try direct after proxy timeout");
+    assertEqual(Number(result.diagnostics.directFetchReturnedRawButAllRejected || 0) > 0, true, "direct raw docs rejected by evidence gate should be diagnosed separately");
+    assertEqual(result.diagnostics.sameFamilyContinuationAfterAllRejected, true, "all-rejected direct docs should trigger same-family continuation");
+    assertEqual((result.diagnostics.sameFamilyContinuationQueriesAttempted || []).some((query) => /children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure/i.test(query)), true, "adventure/comedy/friendship same-family continuations should be attempted");
+    assertEqual(result.rawItems.length > 0, true, "adventure/comedy/friendship profile should not return zero after raw direct docs while same-family continuations remain");
+    console.log(JSON.stringify({ name: "middle grades all-rejected direct docs continue same-family variants", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesDirectRejectedFetchCalls, diagnostics: { directFetchReturnedRawButAllRejected: result.diagnostics.directFetchReturnedRawButAllRejected, sameFamilyContinuationQueriesAttempted: result.diagnostics.sameFamilyContinuationQueriesAttempted } }));
+  } finally {
+    if (previousMiddleGradesDirectRejectedBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesDirectRejectedBase;
     globalThis.fetch = originalFetch;
   }
 

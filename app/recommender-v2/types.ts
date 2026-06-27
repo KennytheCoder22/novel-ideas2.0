@@ -205,6 +205,10 @@ export interface SourceDiagnosticV2 {
   firstBatchParallelAcceptedCount?: number;
   repeatedProxyAbortCount?: number;
   directFallbackAttemptedAfterProxyAbort?: boolean;
+  proxyTimedOutThenDirectAttemptedSameQuery?: boolean;
+  directFetchReturnedRawButAllRejected?: number;
+  sameFamilyContinuationAfterAllRejected?: boolean;
+  sameFamilyContinuationQueriesAttempted?: string[];
   recoverySkippedInsufficientBudget?: boolean;
   minimumViableRecoveryBudgetMs?: number;
   actualRemainingBudgetBeforeRecoveryMs?: number;
@@ -216,6 +220,8 @@ export interface SourceDiagnosticV2 {
   underfilledAtFourDespiteAlignedCandidates?: boolean;
   underfillRecoveryAttemptedAfterFour?: boolean;
   underfillRecoveryAcceptedAfterFour?: number;
+  underfilledWithSameFamilyQueriesRemaining?: boolean;
+  rawRejectedButContinuationSkippedReason?: string;
   finalUnderfillTargetedExhaustionReason?: string;
   fallbackStartedOnlyAfterProfileQueriesExhausted?: boolean;
   lockQualityRetryAttempted?: boolean;
