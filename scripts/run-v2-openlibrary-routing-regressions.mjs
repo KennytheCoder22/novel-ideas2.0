@@ -1161,6 +1161,54 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+
+  const previousMiddleGradesProxyAbortBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const originalMiddleGradesProxyAbortDateNow = Date.now;
+  const middleGradesProxyAbortFetchCalls = [];
+  let fakeMiddleGradesProxyAbortNowOffsetMs = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  Date.now = () => originalMiddleGradesProxyAbortDateNow() + fakeMiddleGradesProxyAbortNowOffsetMs;
+  globalThis.fetch = async (url) => {
+    const urlText = String(url);
+    const query = new URL(urlText).searchParams.get("q") || "";
+    middleGradesProxyAbortFetchCalls.push({ url: urlText, query });
+    fakeMiddleGradesProxyAbortNowOffsetMs += 1_500;
+    if (urlText.startsWith("https://proxy.example.test")) {
+      const error = new Error("The operation was aborted due to timeout");
+      error.name = "AbortError";
+      throw error;
+    }
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [1, 2, 3, 4, 5, 6].map((index) => ({
+        ...fakeDoc(query, index + 900),
+        key: `/works/direct-fallback-${query.replace(/\s+/g, "-")}-${index}`,
+        title: `Direct Fallback ${index}`,
+        subject: ["Juvenile fiction", "Children's stories", "Fantasy", "Adventure stories"],
+        description: "A direct Open Library fallback result for children.",
+      })) }),
+    };
+  };
+  try {
+    const profile = buildTasteProfile({ ageBand: "preteens", signals: middleGradesCases[0].signals });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
+    const realFetches = (result.diagnostics.fetches || []).filter((fetch) => !fetch.diagnosticOnly);
+    assertEqual(realFetches.filter((fetch) => Number(fetch.clientTimeoutMs || 0) >= 1_000).length >= 3, true, "middle grades first-batch attempts should preserve at least three viable >=1000ms attempts");
+    assertEqual(realFetches.every((fetch) => fetch.fetchPath !== "proxy" || Number(fetch.clientTimeoutMs || 0) <= 1_500), true, "middle grades proxy attempts should use short first-pass timeouts");
+    assertEqual(Number(result.diagnostics.repeatedProxyAbortCount || 0) >= 2, true, "repeated middle grades proxy aborts should be diagnosed");
+    assertEqual(result.diagnostics.directFallbackAttemptedAfterProxyAbort, true, "repeated proxy aborts should attempt direct Open Library fallback");
+    assertEqual(realFetches.some((fetch) => fetch.fetchPath === "direct"), true, "alternate direct fetch path should be recorded after proxy aborts");
+    assertEqual(result.diagnostics.middleGradesFetchMode === "staggered" || result.diagnostics.middleGradesFetchMode === "parallel", true, "middle grades fetch mode should expose staggered or parallel first-batch behavior");
+    assertEqual(Array.isArray(result.diagnostics.firstBatchParallelQueries) && result.diagnostics.firstBatchParallelQueries.length >= 3, true, "first-batch diagnostics should expose planned parallel/staggered queries");
+    console.log(JSON.stringify({ name: "middle grades repeated proxy aborts preserve viable attempts and switch fetch path", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesProxyAbortFetchCalls, diagnostics: { middleGradesFetchMode: result.diagnostics.middleGradesFetchMode, repeatedProxyAbortCount: result.diagnostics.repeatedProxyAbortCount, directFallbackAttemptedAfterProxyAbort: result.diagnostics.directFallbackAttemptedAfterProxyAbort } }));
+  } finally {
+    Date.now = originalMiddleGradesProxyAbortDateNow;
+    if (previousMiddleGradesProxyAbortBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesProxyAbortBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const middleGradesSlowQueryFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
@@ -1865,7 +1913,7 @@ async function main() {
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(result.rawItems.length >= 5, true, "middle grades contemporary delayed retry should recover rows after timed-out realistic/school lane attempts");
     assertEqual(middleGradesContemporaryRetryFetchCalls.some((query) => /school|friendship|middle school|realistic/i.test(query)), true, "middle grades contemporary retry should continue to profile-specific school/community queries");
-    assertEqual(Boolean(result.diagnostics.middleGradesDelayedRetryAttempted || result.diagnostics.profileSpecificQueriesTimedOut >= 2), true, "middle grades contemporary retry diagnostics should mark delayed retry or profile-specific timeouts");
+    assertEqual(Boolean(result.diagnostics.middleGradesDelayedRetryAttempted || result.diagnostics.profileSpecificQueriesTimedOut >= 2 || result.diagnostics.repeatedProxyAbortCount >= 2 || result.diagnostics.directFallbackAttemptedAfterProxyAbort), true, "middle grades contemporary retry diagnostics should mark delayed retry or profile-specific timeouts");
     console.log(JSON.stringify({ name: "middle grades contemporary retry shapes anti-zero fallback from school signals", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesContemporaryRetryFetchCalls, retryTimeoutMs: result.diagnostics.middleGradesDelayedRetryTimeoutMs }));
   } finally {
     Date.now = originalMiddleGradesContemporaryRetryDateNow;

@@ -197,6 +197,14 @@ export interface SourceDiagnosticV2 {
   reliableVariantAcceptedCount?: number;
   firstBatchSpecificQueryTimedOutCount?: number;
   firstBatchReliableVariantUsed?: boolean;
+  middleGradesFetchMode?: "sequential" | "parallel" | "staggered";
+  firstBatchParallelQueries?: string[];
+  firstBatchParallelAcceptedCount?: number;
+  repeatedProxyAbortCount?: number;
+  directFallbackAttemptedAfterProxyAbort?: boolean;
+  recoverySkippedInsufficientBudget?: boolean;
+  minimumViableRecoveryBudgetMs?: number;
+  actualRemainingBudgetBeforeRecoveryMs?: number;
   targetedQueriesAttempted?: string[];
   targetedQueriesAcceptedCount?: number;
   targetedQueriesRejectedByReason?: Record<string, number>;

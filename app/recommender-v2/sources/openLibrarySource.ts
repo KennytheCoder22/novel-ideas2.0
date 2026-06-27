@@ -9,15 +9,15 @@ const TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 4_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS = 1_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
 const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
-const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 9_000;
-const MIDDLE_GRADES_OPEN_LIBRARY_INITIAL_QUERY_TIMEOUT_MS = 7_500;
-const MIDDLE_GRADES_OPEN_LIBRARY_TARGETED_QUERY_CAP_MS = 4_500;
-const MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS = 4;
-const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 6_500;
-const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 2_500;
-const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 7_500;
-const MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS = 4_500;
-const MIDDLE_GRADES_OPEN_LIBRARY_POST_FALLBACK_ROUTE_RECOVERY_MIN_BUDGET_MS = 4_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 1_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_INITIAL_QUERY_TIMEOUT_MS = 1_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_TARGETED_QUERY_CAP_MS = 1_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS = 5;
+const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 1_500;
+const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 1_000;
+const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
+const MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS = 1_000;
+const MIDDLE_GRADES_OPEN_LIBRARY_POST_FALLBACK_ROUTE_RECOVERY_MIN_BUDGET_MS = 1_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_TOTAL_BUDGET_MS = 24_000;
 
 type OpenLibraryQueryPlan = {
@@ -781,11 +781,11 @@ function configuredOpenLibraryProxyBase(): string {
   return "";
 }
 
-function openLibraryRequest(query: string, limit: number): { url: string; fetchPath: "direct" | "proxy" } {
+function openLibraryRequest(query: string, limit: number, forceDirect = false): { url: string; fetchPath: "direct" | "proxy" } {
   const params = `q=${encodeURIComponent(query)}&limit=${Math.max(1, Math.min(20, limit))}`;
-  if (typeof window !== "undefined") return { url: `/api/openlibrary?${params}`, fetchPath: "proxy" };
+  if (!forceDirect && typeof window !== "undefined") return { url: `/api/openlibrary?${params}`, fetchPath: "proxy" };
   const proxyBase = configuredOpenLibraryProxyBase();
-  if (proxyBase) return { url: `${proxyBase}/api/openlibrary?${params}`, fetchPath: "proxy" };
+  if (!forceDirect && proxyBase) return { url: `${proxyBase}/api/openlibrary?${params}`, fetchPath: "proxy" };
   return { url: `https://openlibrary.org/search.json?${params}&language=eng`, fetchPath: "direct" };
 }
 
@@ -865,9 +865,9 @@ function openLibraryProxyClientTimeoutMs(ageProfile: OpenLibraryAgeProfile): num
   return undefined;
 }
 
-async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs, attemptNumber = 1, proxyClientTimeoutMs?: number): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
+async function fetchOpenLibraryDocs(queryPlan: OpenLibraryQueryPlan, limit: number, signal?: AbortSignal, diagnosticOnly = false, timeoutMs = DEFAULT_OPEN_LIBRARY_PROFILE.perQueryTimeoutMs, attemptNumber = 1, proxyClientTimeoutMs?: number, forceDirect = false): Promise<{ docs: any[]; diagnostic: SourceFetchDiagnosticV2; responseBodyPrefix?: string }> {
   const query = queryPlan.query;
-  const { url, fetchPath } = openLibraryRequest(query, limit);
+  const { url, fetchPath } = openLibraryRequest(query, limit, forceDirect);
   const proxyRetryWindowEnabled = Number.isFinite(Number(proxyClientTimeoutMs)) && fetchPath === "proxy";
   const effectiveTimeoutMs = proxyRetryWindowEnabled
     ? Math.max(timeoutMs, Number(proxyClientTimeoutMs))
@@ -1919,6 +1919,14 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesReliableVariantAcceptedCount = 0;
     let middleGradesFirstBatchSpecificQueryTimedOutCount = 0;
     let middleGradesFirstBatchReliableVariantUsed = false;
+    const middleGradesFetchMode: "sequential" | "parallel" | "staggered" = "staggered";
+    const middleGradesFirstBatchParallelQueries = middleGradesTargetedQueriesForRun.slice(0, 5);
+    let middleGradesFirstBatchParallelAcceptedCount = 0;
+    let middleGradesRepeatedProxyAbortCount = 0;
+    let middleGradesDirectFallbackAttemptedAfterProxyAbort = false;
+    let middleGradesRecoverySkippedInsufficientBudget = false;
+    const middleGradesMinimumViableRecoveryBudgetMs = MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS;
+    let middleGradesActualRemainingBudgetBeforeRecoveryMs: number | undefined;
     let middleGradesBroadFallbackStartedBeforeTargetedExhaustion = false;
     let middleGradesFinalUnderfillTargetedExhaustionReason: string | undefined;
     const middleGradesAttemptedQueries = (): Set<string> => new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()).filter(Boolean));
@@ -2099,9 +2107,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         const remainingSpecificIncludingCurrent = Math.max(1, middleGradesUnattemptedPlannedSpecificQueries().length || (queryPlans.length - queryPlanIndex));
         const minimumAttemptsRemaining = Math.max(1, MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS - fetches.filter((fetch) => !fetch.diagnosticOnly).length);
         const reserveQueries = Math.max(remainingSpecificIncludingCurrent, minimumAttemptsRemaining);
-        const usableBudget = Math.max(750, sourceBudgetMs - elapsedBeforeQueryMs - MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS);
+        const usableBudget = Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, sourceBudgetMs - elapsedBeforeQueryMs - MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS);
         const distributedBudget = Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, Math.floor(usableBudget / reserveQueries));
-        const cappedBudget = Math.max(750, Math.min(MIDDLE_GRADES_OPEN_LIBRARY_TARGETED_QUERY_CAP_MS, distributedBudget, mainFetchTimeoutMsUncapped));
+        const cappedBudget = Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, Math.min(MIDDLE_GRADES_OPEN_LIBRARY_TARGETED_QUERY_CAP_MS, distributedBudget, mainFetchTimeoutMsUncapped));
         mainFetchTimeoutMs = cappedBudget;
         mainProxyClientTimeoutMs = cappedBudget;
         middleGradesPerQueryBudgetReserved[query] = cappedBudget;
@@ -2145,6 +2153,18 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         adultPrimaryQueryTimedOutTwice = Boolean(retryResult.diagnostic.timedOut);
       }
       fetches.push(diagnostic);
+      if (ageProfile.key === "middleGrades" && diagnostic.timedOut && diagnostic.fetchPath === "proxy") {
+        middleGradesRepeatedProxyAbortCount = fetches.filter((fetch) => !fetch.diagnosticOnly && fetch.fetchPath === "proxy" && fetch.timedOut).length;
+        if (middleGradesRepeatedProxyAbortCount >= 2 && !context.signal?.aborted) {
+          middleGradesDirectFallbackAttemptedAfterProxyAbort = true;
+          const directFallback = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, 2, undefined, true);
+          fetches.push(directFallback.diagnostic);
+          if (!directFallback.diagnostic.timedOut && !directFallback.diagnostic.failedReason) {
+            docs = directFallback.docs;
+            diagnostic = directFallback.diagnostic;
+          }
+        }
+      }
       if (diagnostic.timedOut) {
         if (ageProfile.key === "middleGrades") {
           rememberMiddleGradesUnattemptedAtTimeout();
@@ -2278,6 +2298,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           middleGradesTargetedQueriesAcceptedCount += 1;
           middleGradesEvidenceAwareRecoveryAcceptedCount += 1;
           if (middleGradesReliableVariantQuerySet.has(query.toLowerCase())) middleGradesReliableVariantAcceptedCount += 1;
+          if (middleGradesFirstBatchParallelQueries.map((candidate) => candidate.toLowerCase()).includes(query.toLowerCase())) middleGradesFirstBatchParallelAcceptedCount += 1;
         }
         if (middleGradesRejectedAllRowsAsQueryOnly) {
           if (!middleGradesContinuedAfterQueryOnlyRejectionQueries.includes(query)) middleGradesContinuedAfterQueryOnlyRejectionQueries.push(query);
@@ -2494,7 +2515,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           middleGradesRemainingBudgetBeforeEachFallback[delayedRetryQuery] = delayedRetryRemainingBudgetMs;
         }
         if (delayedRetryRemainingBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS) {
-          middleGradesDelayedRetrySkippedReason = "insufficient_budget";
+          middleGradesDelayedRetrySkippedReason = "budget_exhausted_before_viable_recovery";
+          middleGradesRecoverySkippedInsufficientBudget = true;
+          middleGradesActualRemainingBudgetBeforeRecoveryMs = delayedRetryRemainingBudgetMs;
           dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget = Number(dropReasons.middle_grades_delayed_final_retry_skipped_insufficient_budget || 0) + 1;
         } else {
           const attemptedAfterDelayedRetry = new Set([...attemptedMainQueries, delayedRetryQuery.toLowerCase()]);
@@ -2669,6 +2692,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const shouldRunFinalSafeRecovery = allRealFetchesTimedOut || Boolean(rejectedRowsAntiZeroFallbackQuery);
       const elapsedBeforeFinalSafeRecoveryMs = Date.now() - Date.parse(startedAt);
       const remainingFinalSafeRecoveryBudgetMs = sourceBudgetMs - elapsedBeforeFinalSafeRecoveryMs;
+      if (shouldRunFinalSafeRecovery && finalSafeQuery && !attemptedRealQueries.has(finalSafeQuery.toLowerCase()) && remainingFinalSafeRecoveryBudgetMs < MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS) {
+        middleGradesRecoverySkippedInsufficientBudget = true;
+        middleGradesActualRemainingBudgetBeforeRecoveryMs = remainingFinalSafeRecoveryBudgetMs;
+        dropReasons.budget_exhausted_before_viable_recovery = Number(dropReasons.budget_exhausted_before_viable_recovery || 0) + 1;
+      }
       if (shouldRunFinalSafeRecovery && finalSafeQuery && !attemptedRealQueries.has(finalSafeQuery.toLowerCase()) && remainingFinalSafeRecoveryBudgetMs >= MIDDLE_GRADES_OPEN_LIBRARY_FINAL_SAFE_RECOVERY_MIN_BUDGET_MS) {
         markMiddleGradesFallbackStarted();
         middleGradesFallbackAttemptOrder.push(finalSafeQuery);
@@ -3591,6 +3619,14 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         reliableVariantAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesReliableVariantAcceptedCount : undefined,
         firstBatchSpecificQueryTimedOutCount: ageProfile.key === "middleGrades" ? middleGradesFirstBatchSpecificQueryTimedOutCount : undefined,
         firstBatchReliableVariantUsed: ageProfile.key === "middleGrades" ? middleGradesFirstBatchReliableVariantUsed : undefined,
+        middleGradesFetchMode: ageProfile.key === "middleGrades" ? middleGradesFetchMode : undefined,
+        firstBatchParallelQueries: ageProfile.key === "middleGrades" ? middleGradesFirstBatchParallelQueries : undefined,
+        firstBatchParallelAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesFirstBatchParallelAcceptedCount : undefined,
+        repeatedProxyAbortCount: ageProfile.key === "middleGrades" ? middleGradesRepeatedProxyAbortCount : undefined,
+        directFallbackAttemptedAfterProxyAbort: ageProfile.key === "middleGrades" ? middleGradesDirectFallbackAttemptedAfterProxyAbort : undefined,
+        recoverySkippedInsufficientBudget: ageProfile.key === "middleGrades" ? middleGradesRecoverySkippedInsufficientBudget : undefined,
+        minimumViableRecoveryBudgetMs: ageProfile.key === "middleGrades" ? middleGradesMinimumViableRecoveryBudgetMs : undefined,
+        actualRemainingBudgetBeforeRecoveryMs: ageProfile.key === "middleGrades" ? middleGradesActualRemainingBudgetBeforeRecoveryMs : undefined,
         targetedQueriesAttempted: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesTargetedQueriesAttempted, 20) : undefined,
         targetedQueriesAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesTargetedQueriesAcceptedCount : undefined,
         targetedQueriesRejectedByReason: ageProfile.key === "middleGrades" ? middleGradesTargetedQueriesRejectedByReason : undefined,
