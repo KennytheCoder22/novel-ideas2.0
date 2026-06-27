@@ -305,8 +305,19 @@ async function main() {
         { action: "skip", title: "Nat Geo Kids", genres: ["nonfiction", "animals", "nature"], themes: ["wildlife", "science"], format: "book" },
       ],
       disallowedFirst: /animal|nature|wildlife/i,
-      expectedFamily: "comedy_friendship_music",
-      expectedLikedQuery: /children adventure fiction|funny adventure chapter book|children friendship adventure|middle grade playful adventure|funny middle school adventure|funny friendship chapter book|children friendship comedy|funny children books/i,
+      expectedFamily: "adventure_comedy_friendship",
+      expectedLikedQuery: /funny adventure chapter book|children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure/i,
+    },
+    {
+      name: "skip-only fantasy cannot start before liked comedy adventure community music",
+      signals: [
+        { action: "like", title: "Community Band Quest", genres: ["comedy", "adventure"], themes: ["community", "music", "friendship"], format: "book" },
+        { action: "like", title: "Funny Team Trail", genres: ["humor"], themes: ["playful", "friends", "adventure"], format: "book" },
+        { action: "skip", title: "Magic Portal", genres: ["fantasy"], themes: ["magic", "magical"], format: "book" },
+      ],
+      disallowedFirst: /children fantasy adventure|fantasy|magic|magical/i,
+      expectedFamily: "adventure_comedy_friendship",
+      expectedLikedQuery: /funny adventure chapter book|children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure/i,
     },
     {
       name: "skip-only AI robot waits behind liked comedy friendship music",
@@ -347,6 +358,9 @@ async function main() {
       assertEqual(orderingCase.disallowedFirst.test(firstQuery), false, `${orderingCase.name} should not start with skip-only or incidental recovery query`);
       assertEqual(orderingCase.expectedLikedQuery.test(firstQuery), true, `${orderingCase.name} should start with liked-evidence query family`);
       assertEqual(Boolean(result.diagnostics.skipOnlyFamilyPromotedToFirstBatch), false, `${orderingCase.name} should not promote skip-only family to first batch`);
+      assertEqual(Boolean(result.diagnostics.firstBatchSkipOnlyFamilyBlocked), true, `${orderingCase.name} should diagnose skip-only first-batch blocking when liked evidence exists`);
+      assertEqual(Boolean(result.diagnostics.skippedFantasyPromotedToFirstBatch), false, `${orderingCase.name} should not promote skipped fantasy to first batch`);
+      assertEqual((result.diagnostics.likedEvidenceFirstBatchFamilies || []).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should expose liked-evidence first-batch families`);
       assertEqual(Object.keys(result.diagnostics.targetedQueryFamilyLikedEvidenceByFamily || {}).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should record liked evidence for first-batch family`);
       assertEqual(String(result.diagnostics.firstBatchChosenBecause || "").includes("liked="), true, `${orderingCase.name} should explain first batch with liked evidence`);
       assertEqual((result.diagnostics.likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery || []).includes(orderingCase.expectedFamily), true, `${orderingCase.name} should attempt liked-evidence family before skip-only recovery`);
@@ -1201,6 +1215,8 @@ async function main() {
     assertEqual(realFetches.some((fetch) => fetch.fetchPath === "direct"), true, "alternate direct fetch path should be recorded after proxy aborts");
     assertEqual(result.diagnostics.middleGradesFetchMode === "staggered" || result.diagnostics.middleGradesFetchMode === "parallel", true, "middle grades fetch mode should expose staggered or parallel first-batch behavior");
     assertEqual(Array.isArray(result.diagnostics.firstBatchParallelQueries) && result.diagnostics.firstBatchParallelQueries.length >= 3, true, "first-batch diagnostics should expose planned parallel/staggered queries");
+    assertEqual(Array.isArray(result.diagnostics.likedEvidenceFirstBatchFamilies) && result.diagnostics.likedEvidenceFirstBatchFamilies.length > 0, true, "zero/timeout-prone middle grades paths should report liked-evidence first-batch families");
+    assertEqual((result.diagnostics.likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery || []).length > 0, true, "zero/timeout-prone middle grades paths should report whether liked-evidence families received viable attempts");
     console.log(JSON.stringify({ name: "middle grades repeated proxy aborts preserve viable attempts and switch fetch path", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesProxyAbortFetchCalls, diagnostics: { middleGradesFetchMode: result.diagnostics.middleGradesFetchMode, repeatedProxyAbortCount: result.diagnostics.repeatedProxyAbortCount, directFallbackAttemptedAfterProxyAbort: result.diagnostics.directFallbackAttemptedAfterProxyAbort } }));
   } finally {
     Date.now = originalMiddleGradesProxyAbortDateNow;

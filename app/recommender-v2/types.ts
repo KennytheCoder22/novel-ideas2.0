@@ -190,6 +190,9 @@ export interface SourceDiagnosticV2 {
   targetedQueryFamilyAvoidEvidenceByFamily?: Record<string, string[]>;
   firstBatchChosenBecause?: string;
   skipOnlyFamilyPromotedToFirstBatch?: boolean;
+  firstBatchSkipOnlyFamilyBlocked?: boolean;
+  skippedFantasyPromotedToFirstBatch?: boolean;
+  likedEvidenceFirstBatchFamilies?: string[];
   likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery?: string[];
   docsReturnedButAllDropped?: number;
   allDroppedContinuationQuery?: string[];
@@ -210,6 +213,9 @@ export interface SourceDiagnosticV2 {
   targetedQueriesRejectedByReason?: Record<string, number>;
   broadFallbackStartedBeforeTargetedExhaustion?: boolean;
   underfilledDespiteTargetedQueriesRemaining?: boolean;
+  underfilledAtFourDespiteAlignedCandidates?: boolean;
+  underfillRecoveryAttemptedAfterFour?: boolean;
+  underfillRecoveryAcceptedAfterFour?: number;
   finalUnderfillTargetedExhaustionReason?: string;
   fallbackStartedOnlyAfterProfileQueriesExhausted?: boolean;
   lockQualityRetryAttempted?: boolean;

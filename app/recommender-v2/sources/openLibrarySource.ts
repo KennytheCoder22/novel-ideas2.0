@@ -1287,8 +1287,8 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
     },
     {
       family: "adventure_comedy_friendship",
-      queries: ["children adventure fiction", "funny children books", "funny adventure chapter book", "children friendship adventure", "middle grade playful adventure", "funny middle school adventure"],
-      patterns: [/\b(playful|comedy|funny|humou?r|friendship|friends?|middle school)\b/i],
+      queries: ["funny adventure chapter book", "children friendship adventure", "middle grade music friendship", "children community adventure", "funny middle school adventure", "children adventure fiction"],
+      patterns: [/\b(playful|comedy|funny|humou?r|friendship|friends?|community|music|middle school)\b/i],
     },
     {
       family: "dinosaur_science_adventure",
@@ -1318,7 +1318,7 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
     {
       family: "fantasy_family_friendship",
       queries: ["children fantasy adventure", "children fantasy family novel", "children fantasy friendship", "middle grade magical family", "middle grade fantasy mystery", "children magical adventure"],
-      patterns: [/\b(fantasy|magic|magical|family|friendship|friends?|music|playful|community|ocean|sea|island)\b/i],
+      patterns: [/\b(fantasy|magic|magical|wizard|witch|dragon|portal)\b/i],
     },
     {
       family: "graphic_comedy",
@@ -1336,6 +1336,10 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
   const skipEvidenceByFamily: Record<string, string[]> = {};
   const avoidEvidenceByFamily: Record<string, string[]> = {};
   const evidenceTitles = (row: { value: string; evidence: string[] }): string[] => row.evidence.length ? row.evidence : [row.value];
+  const hasLikedPositiveRow = (pattern: RegExp): boolean => positiveRows.some((row) => {
+    const liked = row.evidence.some((item) => item.startsWith("like:")) || !row.evidence.some((item) => item.startsWith("skip:"));
+    return liked && pattern.test(row.value);
+  });
   for (const def of familyDefinitions) {
     let liked = 0;
     let skip = 0;
@@ -1364,7 +1368,18 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
       avoid += row.weight;
       avoidEvidence.push(...evidenceTitles(row));
     }
-    const score = Math.round((liked - avoid + skip * 0.15) * 1000) / 1000;
+    const distinctiveLikedBoost = def.family === "graphic_comedy" && hasLikedPositiveRow(/\b(graphic novel|graphics?|illustrated|comic|comics|dog man)\b/i)
+      ? 3
+      : def.family === "adventure_comedy_friendship"
+        && hasLikedPositiveRow(/\b(adventure|quest|survival)\b/i)
+        && hasLikedPositiveRow(/\b(comedy|funny|humou?r|playful|friendship|friends?|community|music)\b/i)
+        ? 3
+      : def.family === "fantasy_family_friendship"
+        && hasLikedPositiveRow(/\b(fantasy|magic|magical)\b/i)
+        && hasLikedPositiveRow(/\b(family|friendship|friends?|music|playful|community|ocean|sea|island|kindness)\b/i)
+        ? 3
+      : 0;
+    const score = Math.round((liked + distinctiveLikedBoost - avoid + skip * 0.15) * 1000) / 1000;
     scoreByFamily[def.family] = score;
     likedEvidenceByFamily[def.family] = uniqueStrings(likedEvidence, 8);
     skipEvidenceByFamily[def.family] = uniqueStrings(skipEvidence, 8);
@@ -1380,7 +1395,7 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
   const queries = uniqueStrings(chosen.flatMap((def) => def.queries), 14);
   const familyByQuery: Record<string, string> = {};
   for (const def of chosen) for (const query of def.queries) familyByQuery[query] = def.family;
-  const reliableVariantQueries = uniqueStrings(queries.filter((query) => /\b(funny children books|humorous fiction children|children adventure fiction|children fantasy adventure|dinosaur fiction children|dinosaur adventure children|mythology children fiction|graphic novel children|funny graphic novel children|animal fantasy children|fantasy animals children)\b/i.test(query)), 14);
+  const reliableVariantQueries = uniqueStrings(queries.filter((query) => /\b(funny children books|humorous fiction children|children adventure fiction|children fantasy adventure|dinosaur fiction children|dinosaur adventure children|mythology children fiction|graphic novel children|funny graphic novel children|funny adventure chapter book|children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure|animal fantasy children|fantasy animals children)\b/i.test(query)), 14);
   return {
     queries,
     scoreByFamily,
@@ -1831,6 +1846,15 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesTargetedPlanForRun = ageProfile.key === "middleGrades" ? middleGradesTargetedQueryPlan(context.profile) : undefined;
     const middleGradesTargetedQueriesForRun = middleGradesTargetedPlanForRun?.queries || [];
     const middleGradesTargetedQuerySet = new Set(middleGradesTargetedQueriesForRun.map((query) => query.toLowerCase()));
+    const middleGradesFirstBatchSkipOnlyFamilyBlocked = ageProfile.key === "middleGrades"
+      ? Boolean((middleGradesTargetedPlanForRun?.likedEvidenceQueryFamilies.length || 0) > 0 && !middleGradesTargetedPlanForRun?.skipOnlyFamilyPromotedToFirstBatch)
+      : undefined;
+    const middleGradesSkippedFantasyPromotedToFirstBatch = ageProfile.key === "middleGrades"
+      ? Boolean(middleGradesTargetedPlanForRun?.skipOnlyFamilyPromotedToFirstBatch && /^fantasy/i.test(String(middleGradesTargetedPlanForRun?.firstBatchChosenBecause || "")))
+      : undefined;
+    const middleGradesLikedEvidenceFirstBatchFamilies = ageProfile.key === "middleGrades"
+      ? middleGradesTargetedPlanForRun?.likedEvidenceQueryFamilies || []
+      : [];
     const openLibraryQueryRouting = {
       reason: queryPlans[0]?.routingReason || "unknown",
       ageProfile: ageProfile.key,
@@ -1896,6 +1920,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesUnderfillSafeRecoveryQueriesAttempted: string[] = [];
     let middleGradesUnderfillSafeRecoveryAcceptedCount = 0;
     let middleGradesUnderfillSafeRecoverySkippedReason: string | undefined;
+    let middleGradesUnderfilledAtFourDespiteAlignedCandidates = false;
+    let middleGradesUnderfillRecoveryAttemptedAfterFour = false;
+    let middleGradesUnderfillRecoveryAcceptedAfterFour = 0;
     const middleGradesProfileSpecificQueriesAttempted: string[] = [];
     let middleGradesProfileSpecificQueriesTimedOut = 0;
     let middleGradesProfileSpecificQueriesAcceptedCount = 0;
@@ -2838,10 +2865,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
     if (ageProfile.key === "middleGrades" && rawItems.length < Math.min(ageProfile.docLimit, 5) && !context.signal?.aborted) {
       const underfillTarget = Math.min(ageProfile.docLimit, 5);
+      const startedUnderfillAtFour = rawItems.length === 4;
       const attemptedQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
       const targetedUnderfillQueries = middleGradesTargetedQueriesForRun.filter((query) => !attemptedQueries.has(query.toLowerCase()));
       const evidenceUnderfillQueries = middleGradesEvidenceAwareRecoveryQueries(queryPlans, context.profile, attemptedQueries);
       const safeRecoveryQueries = uniqueStrings([...targetedUnderfillQueries, ...evidenceUnderfillQueries, ...middleGradesUnderfillSafeRecoveryQueries(queryPlans, attemptedQueries)], 16);
+      if (startedUnderfillAtFour && safeRecoveryQueries.length > 0) middleGradesUnderfilledAtFourDespiteAlignedCandidates = true;
       if (!safeRecoveryQueries.length) middleGradesUnderfillSafeRecoverySkippedReason = "no_unattempted_reliable_underfill_query";
       for (const underfillQuery of safeRecoveryQueries) {
         if (rawItems.length >= underfillTarget || context.signal?.aborted) break;
@@ -2851,6 +2880,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           break;
         }
         middleGradesUnderfillSafeRecoveryAttempted = true;
+        if (startedUnderfillAtFour) middleGradesUnderfillRecoveryAttemptedAfterFour = true;
         middleGradesUnderfillSafeRecoveryQueriesAttempted.push(underfillQuery);
         const underfillQueryIsTargeted = middleGradesTargetedQuerySet.has(underfillQuery.toLowerCase());
         if (underfillQueryIsTargeted) {
@@ -2923,6 +2953,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount += 1;
           }
           middleGradesUnderfillSafeRecoveryAcceptedCount += 1;
+          if (startedUnderfillAtFour) middleGradesUnderfillRecoveryAcceptedAfterFour += 1;
           dropReasons.middle_grades_underfill_safe_recovery_accepted = Number(dropReasons.middle_grades_underfill_safe_recovery_accepted || 0) + 1;
           if (rawItems.length >= underfillTarget) break;
         }
@@ -3620,6 +3651,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         targetedQueryFamilyAvoidEvidenceByFamily: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.avoidEvidenceByFamily : undefined,
         firstBatchChosenBecause: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.firstBatchChosenBecause : undefined,
         skipOnlyFamilyPromotedToFirstBatch: ageProfile.key === "middleGrades" ? middleGradesTargetedPlanForRun?.skipOnlyFamilyPromotedToFirstBatch : undefined,
+        firstBatchSkipOnlyFamilyBlocked: middleGradesFirstBatchSkipOnlyFamilyBlocked,
+        skippedFantasyPromotedToFirstBatch: middleGradesSkippedFantasyPromotedToFirstBatch,
+        likedEvidenceFirstBatchFamilies: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesLikedEvidenceFirstBatchFamilies, 12) : undefined,
         likedEvidenceQueryFamiliesAttemptedBeforeSkipOnlyRecovery: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesTargetedQueriesAttempted.map((query) => middleGradesTargetedPlanForRun?.familyByQuery?.[query]).filter((family) => family && middleGradesTargetedPlanForRun?.likedEvidenceQueryFamilies.includes(family)), 12) : undefined,
         docsReturnedButAllDropped: ageProfile.key === "middleGrades" ? middleGradesDocsReturnedButAllDropped : undefined,
         allDroppedContinuationQuery: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesAllDroppedContinuationQuery, 12) : undefined,
@@ -3640,6 +3674,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         targetedQueriesRejectedByReason: ageProfile.key === "middleGrades" ? middleGradesTargetedQueriesRejectedByReason : undefined,
         broadFallbackStartedBeforeTargetedExhaustion: ageProfile.key === "middleGrades" ? middleGradesBroadFallbackStartedBeforeTargetedExhaustion : undefined,
         underfilledDespiteTargetedQueriesRemaining: ageProfile.key === "middleGrades" ? middleGradesUnderfilledDespiteTargetedQueriesRemaining : undefined,
+        underfilledAtFourDespiteAlignedCandidates: ageProfile.key === "middleGrades" ? middleGradesUnderfilledAtFourDespiteAlignedCandidates : undefined,
+        underfillRecoveryAttemptedAfterFour: ageProfile.key === "middleGrades" ? middleGradesUnderfillRecoveryAttemptedAfterFour : undefined,
+        underfillRecoveryAcceptedAfterFour: ageProfile.key === "middleGrades" ? middleGradesUnderfillRecoveryAcceptedAfterFour : undefined,
         finalUnderfillTargetedExhaustionReason: middleGradesFinalUnderfillTargetedExhaustionReason,
         fallbackStartedOnlyAfterProfileQueriesExhausted: ageProfile.key === "middleGrades" ? middleGradesFallbackStartedOnlyAfterProfileQueriesExhausted : undefined,
         lockQualityRetryAttempted: ageProfile.key === "middleGrades" ? middleGradesLockQualityRetryAttempted : undefined,
