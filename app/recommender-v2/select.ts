@@ -30,6 +30,24 @@ function seriesKey(candidate: ScoredCandidate): string {
   return rootTitle(candidate.title);
 }
 
+function collectionRootKey(candidate: ScoredCandidate): string {
+  const title = normalized(candidate.title.split(/[:;(\[]/)[0] || candidate.title);
+  if (!title) return "";
+  const hasCollectionMarker = /\b(complete|collected|collection|collections|collector s|collectors|treasury|storybook|stories|tales|adventures|books?|omnibus|anthology|library|set|boxed|box)\b/.test(title);
+  if (!hasCollectionMarker) return "";
+  const root = title
+    .replace(/\b(the|a|an)\b/g, " ")
+    .replace(/\b(complete|collected|collection|collections|collector s|collectors|treasury|storybook|stories|tales|adventures|books?|chapter|chapters|volume|vol|omnibus|anthology|library|set|boxed|box)\b/g, " ")
+    .replace(/\b\d+\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return root.split(" ").length >= 2 ? root : "";
+}
+
+function finalReturnedRootKey(candidate: ScoredCandidate): string {
+  return collectionRootKey(candidate);
+}
+
 function primaryAuthor(candidate: ScoredCandidate): string {
   return normalized(candidate.creators[0] || "");
 }
@@ -770,6 +788,71 @@ function applyMiddleGradesFinalCountRecovery(rankedCandidates: ScoredCandidate[]
     .slice(0, 8);
 }
 
+function applyMiddleGradesFinalReturnedRootCollapseAndRecovery(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
+  if (profile.ageBand !== "preteens" || selected.length === 0) return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const target = Math.min(5, limit);
+  const beforeCount = selected.length;
+  const seenReturnedRoots = new Set<string>();
+  const collapsedTitles: string[] = [];
+  for (let index = 0; index < selected.length; index += 1) {
+    const candidate = selected[index];
+    const rootKey = finalReturnedRootKey(candidate);
+    if (!rootKey) continue;
+    if (seenReturnedRoots.has(rootKey)) {
+      collapsedTitles.push(candidate.title);
+      candidate.rejectedReasons.push("middle_grades_final_returned_root_collapsed");
+      selected.splice(index, 1);
+      index -= 1;
+      continue;
+    }
+    seenReturnedRoots.add(rootKey);
+  }
+
+  if (collapsedTitles.length > 0) {
+    diagnostics.finalReturnedRootCollapseApplied = true;
+    diagnostics.finalReturnedRootCollapsedTitles = collapsedTitles;
+    rejectedReasons.middle_grades_final_returned_root_collapsed = collapsedTitles.length;
+  }
+  const rootCollapseCausedUnderfill = collapsedTitles.length > 0 && beforeCount >= target && selected.length < target;
+  if (rootCollapseCausedUnderfill) diagnostics.rootCollapseCausedUnderfill = true;
+
+  if (selected.length >= target) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(finalReturnedRootKey).filter(Boolean));
+  const safeRoutePool = rankedCandidates.filter((candidate) => {
+    if (selected.includes(candidate)) return false;
+    if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
+    if (!candidate.title.trim()) return false;
+    if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = finalReturnedRootKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    const eligibility = middleGradesFinalEligibility(candidate);
+    if (!eligibility.allowed) return false;
+    const breakdown = candidate.scoreBreakdown || {};
+    const ageSuitability = Number(breakdown.ageTeenSuitability || breakdown.ageBandSuitability || 0);
+    const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
+    return candidate.score > -8 && ageSuitability > -4 && preciseAvoid > -4;
+  }).sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
+
+  if (rankedCandidates.some((candidate) => candidate.source === "openLibrary") && safeRoutePool.length > 0) {
+    diagnostics.underfillWithRawDocsAndQueriesRemaining = true;
+  }
+  if (rootCollapseCausedUnderfill && safeRoutePool.length > 0) diagnostics.recoveryAfterRootCollapseAttempted = true;
+
+  for (const candidate of safeRoutePool) {
+    if (selected.length >= target) break;
+    const rootKey = finalReturnedRootKey(candidate);
+    if (selectedTitles().has(normalized(candidate.title)) || (rootKey && selectedRoots().has(rootKey))) continue;
+    candidate.rejectedReasons.push(rootCollapseCausedUnderfill ? "middle_grades_recovery_after_root_collapse_accepted" : "middle_grades_underfill_with_raw_docs_recovery_accepted");
+    selected.push(candidate);
+    if (rootCollapseCausedUnderfill) rejectedReasons.recoveryAfterRootCollapseAcceptedCount = Number(rejectedReasons.recoveryAfterRootCollapseAcceptedCount || 0) + 1;
+    rejectedReasons.middle_grades_underfill_with_raw_docs_recovery_accepted = Number(rejectedReasons.middle_grades_underfill_with_raw_docs_recovery_accepted || 0) + 1;
+  }
+}
+
 
 function isMiddleGradesTitleOnlyEvidence(candidate: ScoredCandidate): boolean {
   const evidence = middleGradesRouteAlignmentEvidence(candidate);
@@ -1316,6 +1399,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   applyMiddleGradesRouteAlignmentReplacement(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesTitleOnlyEvidenceCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFinalCountRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
+  applyMiddleGradesFinalReturnedRootCollapseAndRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);

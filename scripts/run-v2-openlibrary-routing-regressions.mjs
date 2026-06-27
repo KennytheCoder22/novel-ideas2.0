@@ -1613,6 +1613,31 @@ async function main() {
   assertEqual(Boolean(middleGradesZeroFinalGuardResult.rejectedReasons.accepted_middle_grades_zero_final_items_guard), true, "middle grades zero-final-items guard should emit diagnostics");
   console.log(JSON.stringify({ name: "middle grades zero-final-items guard preserves safe Open Library docs", pass: true, selected: middleGradesZeroFinalGuardResult.selected.length, rejectedReasons: middleGradesZeroFinalGuardResult.rejectedReasons }));
 
+  const middleGradesFinalRootCollapseCandidates = [
+    fakeScoredCandidate({ id: "frog-toad-collection", title: "The Frog and Toad Collection", creators: ["Collection Author A"], score: 12, maturityBand: "preteens", genres: ["Juvenile fiction", "Friendship", "Animals"], themes: ["Children's stories", "Friendship"], diagnostics: { queryText: "children friendship adventure", queryFamily: "adventure", routingReason: "middle_grades_humor" }, scoreBreakdown: { ageTeenSuitability: 0.5, genreFacetMatch: 1, avoidSignalPenalty: 0 } }),
+    fakeScoredCandidate({ id: "frog-toad-treasury", title: "Frog and Toad Treasury", creators: ["Collection Author B"], score: 11.9, maturityBand: "preteens", genres: ["Juvenile fiction", "Friendship", "Animals"], themes: ["Children's stories", "Friendship"], diagnostics: { queryText: "children friendship adventure", queryFamily: "adventure", routingReason: "middle_grades_humor" }, scoreBreakdown: { ageTeenSuitability: 0.5, genreFacetMatch: 1, avoidSignalPenalty: 0 } }),
+    ...["Harbor Friendship", "Meadow Adventure", "Lantern Club", "Cedar Quest"].map((title, index) => fakeScoredCandidate({
+      id: `middle-final-root-safe-${index}`,
+      title,
+      creators: [`Safe Recovery Author ${index}`],
+      score: 11 - index * 0.1,
+      maturityBand: "preteens",
+      genres: ["Juvenile fiction", "Friendship", "Adventure stories"],
+      themes: ["Children's stories", "Community", "Friendship"],
+      diagnostics: { queryText: "children friendship adventure", queryFamily: "adventure", routingReason: "middle_grades_humor" },
+      scoreBreakdown: { ageTeenSuitability: 0.5, genreFacetMatch: 1, avoidSignalPenalty: 0 },
+    })),
+  ];
+  const middleGradesFinalRootCollapseResult = selectRecommendations(middleGradesFinalRootCollapseCandidates, middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesFinalRootCollapseResult.selected.filter((candidate) => /frog and toad/i.test(candidate.title)).length <= 1, true, "Frog and Toad collection variants cannot both survive final returned-items selection");
+  assertEqual(middleGradesFinalRootCollapseResult.selected.length, 5, "root-collapse underfill should recover with safe route candidates before returning");
+  assertEqual(middleGradesFinalRootCollapseResult.rejectedReasons.finalReturnedRootCollapseApplied, true, "final returned root collapse should be diagnosed");
+  assertEqual((middleGradesFinalRootCollapseResult.rejectedReasons.finalReturnedRootCollapsedTitles || []).some((title) => /frog and toad/i.test(title)), true, "collapsed final returned root titles should be diagnosed");
+  assertEqual(middleGradesFinalRootCollapseResult.rejectedReasons.rootCollapseCausedUnderfill, true, "root collapse causing underfill should be diagnosed");
+  assertEqual(middleGradesFinalRootCollapseResult.rejectedReasons.recoveryAfterRootCollapseAttempted, true, "recovery should run after final root collapse causes underfill");
+  assertEqual(Number(middleGradesFinalRootCollapseResult.rejectedReasons.recoveryAfterRootCollapseAcceptedCount || 0) > 0, true, "recovery after root collapse should accept safe route candidates");
+  assertEqual(Boolean(middleGradesFinalRootCollapseResult.rejectedReasons.underfillWithRawDocsAndQueriesRemaining), true, "raw docs plus usable rows plus underfill should diagnose remaining safe route recovery");
+  console.log(JSON.stringify({ name: "middle grades final returned root collapse recovers underfill", pass: true, selected: middleGradesFinalRootCollapseResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesFinalRootCollapseResult.rejectedReasons }));
 
   const middleGradesQueryOnlyVsAlignedCandidates = [
     ...["Fallback One", "Fallback Two", "Fallback Three", "Fallback Four", "Fallback Five"].map((title, index) => fakeScoredCandidate({
