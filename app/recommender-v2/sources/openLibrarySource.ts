@@ -4014,6 +4014,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         debugMiddleGradesNoTimeouts: ageProfile.key === "middleGrades" ? debugMiddleGradesDeepTrace : undefined,
         middleGradesDeepDebugActive: ageProfile.key === "middleGrades" ? debugMiddleGradesDeepTrace : undefined,
         middleGradesDeepDebugActivationSource: ageProfile.key === "middleGrades" ? middleGradesDeepDebugActivationSource as SourceDiagnosticV2["middleGradesDeepDebugActivationSource"] : undefined,
+        middleGradesDeepDebugRequestedButNotActivated: ageProfile.key === "middleGrades" ? Boolean(context.profile.diagnostics?.middleGradesDeepDebugRequestedButNotActivated || (context.profile.diagnostics?.middleGradesDeepDebugExpected && !debugMiddleGradesDeepTrace)) : undefined,
+        middleGradesDeepDebugActivationFailureReason: ageProfile.key === "middleGrades" && (context.profile.diagnostics?.middleGradesDeepDebugRequestedButNotActivated || (context.profile.diagnostics?.middleGradesDeepDebugExpected && !debugMiddleGradesDeepTrace))
+          ? String(context.profile.diagnostics?.middleGradesDeepDebugActivationFailureReason || "MIDDLE_GRADES_DEEP_DEBUG_REQUESTED_BUT_NOT_ACTIVATED")
+          : undefined,
         sessionReportHeader: debugMiddleGradesDeepTrace ? "MIDDLE GRADES DEEP DEBUG: ACTIVE" : undefined,
         debugMiddleGradesBudgetMs: debugMiddleGradesDeepTrace ? sourceBudgetMs : undefined,
         debugMiddleGradesPerQueryBudgetMs: debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : undefined,

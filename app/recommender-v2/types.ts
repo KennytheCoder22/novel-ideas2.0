@@ -265,6 +265,8 @@ export interface SourceDiagnosticV2 {
   debugMiddleGradesNoTimeouts?: boolean;
   middleGradesDeepDebugActive?: boolean;
   middleGradesDeepDebugActivationSource?: "profile" | "url" | "localStorage" | "preset" | "none";
+  middleGradesDeepDebugRequestedButNotActivated?: boolean;
+  middleGradesDeepDebugActivationFailureReason?: string;
   sessionReportHeader?: string;
   debugMiddleGradesBudgetMs?: number;
   debugMiddleGradesPerQueryBudgetMs?: number;

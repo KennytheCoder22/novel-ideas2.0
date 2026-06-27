@@ -56,6 +56,15 @@ function middleGradesDeepDebug(session: SwipeSessionV2): { active: boolean; sour
   return { active: false, source: "none" };
 }
 
+function middleGradesDeepDebugExpectedButInactive(session: SwipeSessionV2, active: boolean): { requestedButInactive: boolean; reason?: string } {
+  if (!session.diagnostics?.middleGradesDeepDebugExpected || active) return { requestedButInactive: false };
+  if (session.ageBand !== "preteens") return { requestedButInactive: true, reason: "request_was_not_for_middle_grades_age_band" };
+  if (!session.diagnostics.debugMiddleGradesDeepTrace && !session.diagnostics.debugMiddleGradesNoTimeouts && !session.debugMiddleGradesDeepTrace && !session.debugMiddleGradesNoTimeouts) {
+    return { requestedButInactive: true, reason: "expected_flag_set_without_debug_flag" };
+  }
+  return { requestedButInactive: true, reason: "activation_detector_returned_inactive" };
+}
+
 export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
   const tone = new Map<string, WeightedSignalV2>();
   const pacing = new Map<string, WeightedSignalV2>();
@@ -66,6 +75,7 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
   const avoidSignals = new Map<string, WeightedSignalV2>();
   const sourceHints = new Set<SourceIdV2>();
   const deepDebug = middleGradesDeepDebug(session);
+  const deepDebugFailure = middleGradesDeepDebugExpectedButInactive(session, deepDebug.active);
 
   for (const signal of session.signals || []) {
     const direction = signal.action === "like" ? 1 : signal.action === "dislike" ? -1 : 0.25;
@@ -108,6 +118,8 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
       debugMiddleGradesNoTimeouts: deepDebug.active,
       middleGradesDeepDebugActive: deepDebug.active,
       middleGradesDeepDebugActivationSource: deepDebug.source,
+      middleGradesDeepDebugRequestedButNotActivated: deepDebugFailure.requestedButInactive,
+      middleGradesDeepDebugActivationFailureReason: deepDebugFailure.reason,
       sessionReportHeader: deepDebug.active ? "MIDDLE GRADES DEEP DEBUG: ACTIVE" : undefined,
     },
   };

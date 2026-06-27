@@ -161,6 +161,25 @@ function middleGradesDeepDebugRequested() {
   return process.argv.includes("--middle-grades-deep-debug") || process.env.MIDDLE_GRADES_DEEP_DEBUG === "1" || process.env.MIDDLE_GRADES_DEEP_DEBUG === "true";
 }
 
+function middleGradesDebugPresetSignals() {
+  return [
+    { action: "like", title: "Dog Man", genres: ["graphic novel", "humor", "adventure"], themes: ["friendship", "playful"], format: "graphicNovel" },
+    { action: "like", title: "Flora & Ulysses", genres: ["humor", "adventure"], themes: ["friendship", "community"], format: "book" },
+    { action: "like", title: "From the Mixed-Up Files", genres: ["adventure", "mystery"], themes: ["siblings", "independence"], format: "book" },
+    { action: "skip", title: "Generic Fantasy Skip", genres: ["fantasy"], themes: ["magic"], format: "book" },
+  ];
+}
+
+function deepDebugDiagnosticsForPreset(preset) {
+  if (preset.ageBand !== "preteens" || !middleGradesDeepDebugRequested()) return undefined;
+  return {
+    middleGradesDeepDebugExpected: true,
+    debugMiddleGradesDeepTrace: true,
+    debugMiddleGradesNoTimeouts: true,
+    middleGradesDeepDebugActivationSource: "preset",
+  };
+}
+
 function printOfflineManifest() {
   for (const preset of selectedPresets()) {
     console.log(JSON.stringify({ deck: preset.deck, ageBand: preset.ageBand, status: preset.placeholder ? "placeholder" : "manual_live_run_available" }));
@@ -188,26 +207,33 @@ async function main() {
   compileHarnessDependencies();
   const { runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/engine.js`).href);
   for (const preset of selectedPresets()) {
-    if (preset.placeholder) {
+    const shouldRunMiddleGradesPlaceholderForDebug = preset.placeholder && preset.ageBand === "preteens" && middleGradesDeepDebugRequested();
+    if (preset.placeholder && !shouldRunMiddleGradesPlaceholderForDebug) {
       console.log(JSON.stringify({ deck: preset.deck, ageProfile: preset.ageBand, pass: "PLACEHOLDER", note: "profile preset reserved for later MG/K-2 work" }));
       continue;
     }
     try {
+      const diagnostics = deepDebugDiagnosticsForPreset(preset);
       const result = await runRecommenderV2({
         requestId: `v2-openlibrary-preset-${preset.deck.replace(/\s+/g, "-").toLowerCase()}`,
         ageBand: preset.ageBand,
         limit: 5,
         enabledSources: { mock: false, openLibrary: true },
-        signals: preset.signals,
-        diagnostics: preset.ageBand === "preteens" && middleGradesDeepDebugRequested()
-          ? {
-            debugMiddleGradesDeepTrace: true,
-            debugMiddleGradesNoTimeouts: true,
-            middleGradesDeepDebugActivationSource: "preset",
-          }
-          : undefined,
+        signals: shouldRunMiddleGradesPlaceholderForDebug ? middleGradesDebugPresetSignals() : preset.signals,
+        diagnostics,
       });
       printSummary(preset, result);
+      const source = result.diagnostics.sources.find((row) => row.source === "openLibrary");
+      if (diagnostics?.middleGradesDeepDebugExpected && !source?.middleGradesDeepDebugActive) {
+        console.log(JSON.stringify({
+          deck: preset.deck,
+          pass: "FAIL",
+          sessionReportHeader: "MIDDLE GRADES DEEP DEBUG REQUESTED BUT NOT ACTIVATED",
+          middleGradesDeepDebugRequestedButNotActivated: true,
+          middleGradesDeepDebugActivationFailureReason: source?.middleGradesDeepDebugActivationFailureReason || "openlibrary_source_missing_or_inactive",
+        }));
+        process.exitCode = 1;
+      }
     } catch (error) {
       console.log(JSON.stringify({ deck: preset.deck, pass: "FAIL", error: error instanceof Error ? error.message : String(error) }));
       process.exitCode = 1;

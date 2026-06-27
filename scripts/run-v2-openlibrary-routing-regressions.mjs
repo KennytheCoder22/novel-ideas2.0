@@ -1709,6 +1709,21 @@ async function main() {
   assertEqual(Boolean(middleGradesFinalRootCollapseResult.rejectedReasons.underfillWithRawDocsAndQueriesRemaining), true, "raw docs plus usable rows plus underfill should diagnose remaining safe route recovery");
   console.log(JSON.stringify({ name: "middle grades final returned root collapse recovers underfill", pass: true, selected: middleGradesFinalRootCollapseResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesFinalRootCollapseResult.rejectedReasons }));
 
+  const middleGradesPresetDebugProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: middleGradesCases[3].signals,
+    diagnostics: {
+      middleGradesDeepDebugExpected: true,
+      debugMiddleGradesDeepTrace: true,
+      debugMiddleGradesNoTimeouts: true,
+      middleGradesDeepDebugActivationSource: "preset",
+    },
+  });
+  assertEqual(middleGradesPresetDebugProfile.diagnostics.middleGradesDeepDebugActive, true, "preset-requested middle grades deep debug should activate through taste profile");
+  assertEqual(middleGradesPresetDebugProfile.diagnostics.middleGradesDeepDebugActivationSource, "preset", "preset-requested middle grades deep debug should preserve activation source");
+  assertEqual(middleGradesPresetDebugProfile.diagnostics.sessionReportHeader, "MIDDLE GRADES DEEP DEBUG: ACTIVE", "preset-requested deep debug should set report header");
+  console.log(JSON.stringify({ name: "middle grades preset deep-debug request activates taste profile diagnostics", pass: true, activationSource: middleGradesPresetDebugProfile.diagnostics.middleGradesDeepDebugActivationSource }));
+
   const middleGradesQueryOnlyVsAlignedCandidates = [
     ...["Fallback One", "Fallback Two", "Fallback Three", "Fallback Four", "Fallback Five"].map((title, index) => fakeScoredCandidate({
       id: `middle-query-only-${index}`,
