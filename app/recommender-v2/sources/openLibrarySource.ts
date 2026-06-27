@@ -1651,17 +1651,25 @@ function middleGradesSourceDocumentRouteEvidenceFields(doc: any, query: string, 
   if (!pattern) return [];
   const rawDescription = typeof doc?.description === "string" ? doc.description : doc?.description?.value;
   const normalizeRouteEvidenceText = (value: unknown): string => String(value || "").toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+  const subjectText = normalizeRouteEvidenceText([
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+  ].join(" "));
   const fields: Array<[string, string]> = [
     ["title", normalizeRouteEvidenceText(doc?.title)],
     ["subtitle", normalizeRouteEvidenceText(doc?.subtitle)],
     ["description", normalizeRouteEvidenceText(rawDescription)],
-    ["subjects", normalizeRouteEvidenceText([
-      ...(Array.isArray(doc?.subject) ? doc.subject : []),
-      ...(Array.isArray(doc?.subjects) ? doc.subjects : []),
-      ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
-    ].join(" "))],
+    ["subjects", subjectText],
   ];
-  return fields.filter(([, value]) => pattern.test(value)).map(([field]) => field);
+  const matched = fields.filter(([, value]) => pattern.test(value)).map(([field]) => field);
+  const humorRoute = /humor|funny|comedy/i.test(`${query} ${routingReason}`);
+  const titleOnly = matched.length > 0 && matched.every((field) => ["title", "subtitle"].includes(field));
+  const hasPreteenFictionEvidence = /\b(middle grade|juvenile fiction|juvenile literature|children'?s fiction|children fiction|children'?s stories|children'?s literature|school stories?|humorous stories|adventure stories|fantasy fiction, juvenile)\b/i.test(subjectText);
+  const titleText = [fields.find(([field]) => field === "title")?.[1] || "", fields.find(([field]) => field === "subtitle")?.[1] || ""].join(" ");
+  const humorOnlyTitle = /\b(funny|humor|humour|comedy|comic|joke|laugh|giggle)\b/i.test(titleText) && !/\b(adventure|friendship|friends?|community|survival|school|family|quest|team)\b/i.test(titleText);
+  if (humorRoute && titleOnly && humorOnlyTitle && !hasPreteenFictionEvidence) return [];
+  return matched;
 }
 
 function middleGradesUnderfillSafeRecoveryQueries(queryPlans: OpenLibraryQueryPlan[], attemptedQueries = new Set<string>()): string[] {

@@ -229,7 +229,14 @@ export interface SourceDiagnosticV2 {
   continuedAfterQueryOnlyRejectionQueries?: string[];
   continuedAfterQueryOnlyRejectionAcceptedCount?: number;
   recoveryExhaustionReasonDetailed?: string;
-  finalCountContractStatus?: "full_route_aligned" | "full_mixed_recovery" | "full_fallback_only" | "underfilled_mixed" | "underfilled_fallback_only" | "zero_result_failure";
+  humorKeywordOnlyLeakageByTitle?: Record<string, boolean>;
+  humorKeywordOnlyRejectedTitles?: string[];
+  preteenAgeShapeEvidenceByTitle?: Record<string, boolean>;
+  selectedNonHumorAlignmentCount?: number;
+  genericFunnySlateDetected?: boolean;
+  genericFunnySlateLockQualityBlocked?: boolean;
+  adultOrYaHumorLeakageRejectedTitles?: string[];
+  finalCountContractStatus?: "full_route_aligned" | "full_mixed_recovery" | "full_fallback_only" | "full_weak_evidence" | "underfilled_mixed" | "underfilled_fallback_only" | "zero_result_failure";
 }
 
 export interface SourceResult {

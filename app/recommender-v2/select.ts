@@ -239,7 +239,13 @@ function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { query
   const matchedFields = pattern ? docFields.filter(([, value]) => pattern.test(value)) : [];
   const fields = matchedFields.map(([field]) => field);
   const evidenceTextByField = Object.fromEntries(matchedFields.map(([field, value]) => [field, value.slice(0, 180)]));
-  const documentLevel = fields.length > 0;
+  const titleSubtitleText = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  const humorTitleOnlyWithoutAgeEvidence = /humor|funny|comedy/i.test([candidate.diagnostics?.routingReason, candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "))
+    && fields.length > 0
+    && /\b(funny|humor|humour|comedy|comic|joke|laugh|giggle)\b/.test(titleSubtitleText)
+    && !middleGradesNonHumorAlignment(candidate)
+    && !middleGradesFictionAgeEvidence(candidate);
+  const documentLevel = fields.length > 0 && !humorTitleOnlyWithoutAgeEvidence;
   const richFields = fields.filter((field) => ["subjects", "description", "genres", "themes", "characterDynamics"].includes(field));
   const titleFields = fields.filter((field) => ["title", "subtitle"].includes(field));
   const tier: MiddleGradesDocumentEvidenceTier = richFields.length > 0 && (titleFields.length > 0 || richFields.some((field) => ["subjects", "description"].includes(field)))
@@ -255,7 +261,7 @@ function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { query
     fields,
     evidenceTextByField,
     tier,
-    demotedReason: queryLevel && !documentLevel ? "query_level_only_no_document_evidence" : undefined,
+    demotedReason: humorTitleOnlyWithoutAgeEvidence ? "humor_keyword_title_only_without_age_or_doc_evidence" : queryLevel && !documentLevel ? "query_level_only_no_document_evidence" : undefined,
   };
 }
 
@@ -288,9 +294,37 @@ function isMiddleGradesReferenceOrLocalHistoryArtifact(candidate: ScoredCandidat
   return referenceOrLocalHistory && nonfictionLeaning && !middleGradeFiction;
 }
 
+
+function isMiddleGradesHumorRouteCandidate(candidate: ScoredCandidate): boolean {
+  return /humor|funny|comedy/i.test([candidate.diagnostics?.routingReason, candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+}
+
+function middleGradesNonHumorAlignment(candidate: ScoredCandidate): boolean {
+  const text = middleGradesRawText(candidate);
+  return /\b(adventure|friendship|friends?|community|survival|school|family|quest|team)\b/.test(text);
+}
+
+function middleGradesAdultOrYaHumorLeakage(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesHumorRouteCandidate(candidate)) return false;
+  if (middleGradesFictionAgeEvidence(candidate)) return false;
+  const text = middleGradesRawText(candidate);
+  return /\b(young adult|ya fiction|adult fiction|literary fiction|high school|college|suicide|depression|mental hospital|play|drama|classic literature|moliere|satire)\b/.test(text);
+}
+
+function middleGradesHumorKeywordOnlyLeakage(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesHumorRouteCandidate(candidate)) return false;
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  if (evidence.fields.length === 0) return false;
+  const titleText = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  if (!/\b(funny|humor|humour|comedy|comic|joke|laugh|giggle)\b/.test(titleText)) return false;
+  return !middleGradesFictionAgeEvidence(candidate) && !middleGradesNonHumorAlignment(candidate);
+}
+
 function middleGradesFinalEligibility(candidate: ScoredCandidate): { allowed: boolean; evidence: string[]; rejectedReason?: string; emergencyOverride?: boolean } {
   if (!isMiddleGradesOpenLibraryCandidate(candidate)) return { allowed: true, evidence: ["not_middle_grades_openlibrary"] };
   if (isMiddleGradesReferenceOrLocalHistoryArtifact(candidate)) return { allowed: false, evidence: [], rejectedReason: "middle_grades_reference_or_local_history_artifact" };
+  if (middleGradesAdultOrYaHumorLeakage(candidate)) return { allowed: false, evidence: [], rejectedReason: "adult_or_ya_humor_leakage" };
+  if (middleGradesHumorKeywordOnlyLeakage(candidate)) return { allowed: false, evidence: [], rejectedReason: "humor_keyword_only_leakage" };
   const routeEvidence = middleGradesRouteAlignmentEvidence(candidate);
   if (routeEvidence.documentLevel && routeEvidence.fields.length > 0) return { allowed: true, evidence: routeEvidence.fields.map((field) => `document_route:${field}`) };
   if (middleGradesFictionAgeEvidence(candidate) && middleGradesRouteAlignmentEvidence(candidate).fields.length > 0) return { allowed: true, evidence: ["middle_grade_fiction_metadata", ...middleGradesRouteAlignmentEvidence(candidate).fields.map((field) => `document_route:${field}`)] };
@@ -833,6 +867,10 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const emergencyFallbackOverrideUsedByTitle: Record<string, string> = {};
   const routeAlignedCandidateRejectedForFallbackReason: Record<string, string> = {};
   const finalEligibilityRejectedQueryOnlyTitles: string[] = [];
+  const humorKeywordOnlyLeakageByTitle: Record<string, boolean> = {};
+  const humorKeywordOnlyRejectedTitles: string[] = [];
+  const preteenAgeShapeEvidenceByTitle: Record<string, boolean> = {};
+  const adultOrYaHumorLeakageRejectedTitles: string[] = [];
   for (const candidate of rankedCandidates) {
     const routeEvidence = middleGradesRouteAlignmentEvidence(candidate);
     const finalEligibility = middleGradesFinalEligibility(candidate);
@@ -845,6 +883,10 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     documentEvidenceTierByTitle[candidate.title] = routeEvidence.tier;
     documentEvidenceTextByTitle[candidate.title] = routeEvidence.evidenceTextByField;
     finalEligibilityEvidenceByTitle[candidate.title] = finalEligibility.evidence;
+    preteenAgeShapeEvidenceByTitle[candidate.title] = middleGradesFictionAgeEvidence(candidate);
+    humorKeywordOnlyLeakageByTitle[candidate.title] = middleGradesHumorKeywordOnlyLeakage(candidate);
+    if (finalEligibility.rejectedReason === "humor_keyword_only_leakage") humorKeywordOnlyRejectedTitles.push(candidate.title);
+    if (finalEligibility.rejectedReason === "adult_or_ya_humor_leakage") adultOrYaHumorLeakageRejectedTitles.push(candidate.title);
     if (finalEligibility.emergencyOverride && selectedTitles.has(normalized(candidate.title))) emergencyFallbackOverrideUsedByTitle[candidate.title] = "explicit_emergency_fallback_after_better_options_failed";
     if (!finalEligibility.allowed && routeEvidence.queryLevel && !routeEvidence.documentLevel) finalEligibilityRejectedQueryOnlyTitles.push(candidate.title);
     if (routeEvidence.demotedReason) routeAlignmentDemotedReasonByTitle[candidate.title] = routeEvidence.demotedReason;
@@ -907,6 +949,8 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     if (key) titleOnlySeriesCounts[key] = Number(titleOnlySeriesCounts[key] || 0) + 1;
   }
   const sameSeriesTitleOnlyClusterDetected = Object.values(titleOnlySeriesCounts).some((count) => count >= 2);
+  const selectedNonHumorAlignmentCount = selected.filter(middleGradesNonHumorAlignment).length;
+  const genericFunnySlateDetected = selected.length >= 5 && selectedNonHumorAlignmentCount === 0 && selected.every((candidate) => isMiddleGradesHumorRouteCandidate(candidate) || /funny|humor|comedy/i.test(String(candidate.title || "")));
   const selectedFallbackCount = selected.filter((candidate) => isMiddleGradesAntiZeroFallbackCandidate(candidate) || (middleGradesRouteAlignmentEvidence(candidate).queryLevel && !middleGradesRouteAlignmentEvidence(candidate).documentLevel)).length;
   const rejectedRouteAlignedCount = rankedCandidates.filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && isMiddleGradesRouteAlignedSuccessCandidate(candidate)).length;
   const finalCountContractStatus = selected.length === 0
@@ -937,6 +981,7 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   if (rejectedReasons.genericDefaultSlateDetected && selected.length >= 5) lockQualityFailReasons.push("generic_default_slate_detected_without_true_shortage");
   if (!genericAdventureUsedAsLastResortOnly) lockQualityFailReasons.push("generic_adventure_used_before_last_resort");
   if (weakEvidenceSelectedOverStrongEvidence) lockQualityFailReasons.push("weak_evidence_selected_over_strong_evidence");
+  if (genericFunnySlateDetected) lockQualityFailReasons.push("generic_funny_slate_detected_without_non_humor_alignment");
   const lockQualityPass = lockQualityFailReasons.length === 0;
   diagnostics.routeAlignmentScoreByTitle = routeAlignmentScoreByTitle;
   diagnostics.genreFacetMatchScoreByTitle = genreFacetMatchScoreByTitle;
@@ -950,6 +995,10 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.routeAlignmentDemotedReasonByTitle = routeAlignmentDemotedReasonByTitle;
   diagnostics.finalEligibilityEvidenceByTitle = finalEligibilityEvidenceByTitle;
   diagnostics.finalEligibilityRejectedQueryOnlyTitles = finalEligibilityRejectedQueryOnlyTitles;
+  diagnostics.humorKeywordOnlyLeakageByTitle = humorKeywordOnlyLeakageByTitle;
+  diagnostics.humorKeywordOnlyRejectedTitles = humorKeywordOnlyRejectedTitles;
+  diagnostics.preteenAgeShapeEvidenceByTitle = preteenAgeShapeEvidenceByTitle;
+  diagnostics.adultOrYaHumorLeakageRejectedTitles = adultOrYaHumorLeakageRejectedTitles;
   diagnostics.routeAlignedCandidateRejectedForFallbackReason = routeAlignedCandidateRejectedForFallbackReason;
   diagnostics.emergencyFallbackOverrideUsedByTitle = emergencyFallbackOverrideUsedByTitle;
   diagnostics.falseRouteAlignedDueToQueryOnlyCount = Object.keys(routeAlignmentDemotedReasonByTitle).length;
@@ -961,6 +1010,9 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.sameSeriesTitleOnlyClusterDetected = sameSeriesTitleOnlyClusterDetected;
   diagnostics.finalCountContractStatus = finalCountContractStatus;
   diagnostics.genericAdventureUsedAsLastResortOnly = genericAdventureUsedAsLastResortOnly;
+  diagnostics.selectedNonHumorAlignmentCount = selectedNonHumorAlignmentCount;
+  diagnostics.genericFunnySlateDetected = genericFunnySlateDetected;
+  diagnostics.genericFunnySlateLockQualityBlocked = genericFunnySlateDetected;
   diagnostics.lockQualityPass = lockQualityPass;
   diagnostics.lockQualityFailReasons = lockQualityFailReasons;
   diagnostics.strongEvidenceRejectedTitles = strongEvidenceRejected.slice(0, 8).map((candidate) => candidate.title);

@@ -1474,6 +1474,78 @@ async function main() {
   assertEqual(Number(middleGradesQueryOnlyVsAlignedResult.rejectedReasons.documentEvidenceRequiredButMissingCount || 0) >= 5, true, "query-only fallback candidates should be score-capped and counted");
   console.log(JSON.stringify({ name: "middle grades query-only candidates cannot beat document-aligned candidates", pass: true, selected: middleGradesQueryOnlyVsAlignedResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesQueryOnlyVsAlignedResult.rejectedReasons }));
 
+  const middleGradesHumorLeakageResult = selectRecommendations([
+    fakeScoredCandidate({
+      id: "middle-funny-title-only-leakage",
+      title: "The Funny Big Book",
+      creators: ["Leakage Author"],
+      score: 16,
+      maturityBand: "preteens",
+      genres: [],
+      themes: [],
+      scoreBreakdown: { genreFacetMatch: 6, positiveTasteMatch: 6, queryRungBonus: 1, ageTeenSuitability: 0, sourceQualityRelevance: 1 },
+      diagnostics: { queryText: "funny children books", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Humor"], description: "" },
+    }),
+    fakeScoredCandidate({
+      id: "middle-adult-ya-humor-leakage",
+      title: "A Comic Hospital Story",
+      creators: ["Adult Humor Author"],
+      score: 15,
+      maturityBand: "preteens",
+      genres: ["Humor"],
+      themes: [],
+      scoreBreakdown: { genreFacetMatch: 6, positiveTasteMatch: 6, queryRungBonus: 1, ageTeenSuitability: 0, sourceQualityRelevance: 1 },
+      diagnostics: { queryText: "funny children books", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Young adult fiction", "High school", "Depression", "Mental hospital"], description: "A YA comic novel about high school and depression." },
+    }),
+    fakeScoredCandidate({
+      id: "middle-humor-non-humor-aligned",
+      title: "Survival Friendship Club",
+      creators: ["Aligned Humor Author"],
+      score: 5,
+      maturityBand: "preteens",
+      genres: ["Humor", "Adventure"],
+      themes: ["Survival", "Friendship", "Community"],
+      scoreBreakdown: { genreFacetMatch: 2, positiveTasteMatch: 2, queryRungBonus: 0, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "funny adventure chapter book", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Juvenile fiction", "Adventure stories", "Friendship", "Survival", "Humorous stories"], description: "Friends use humor and teamwork to survive a wilderness challenge." },
+    }),
+  ], middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesHumorLeakageResult.selected.some((candidate) => candidate.title === "The Funny Big Book"), false, "funny-title-only leakage without child evidence cannot be selected");
+  assertEqual(middleGradesHumorLeakageResult.rejectedReasons.documentLevelRouteAlignmentByTitle["The Funny Big Book"], false, "funny-title-only leakage cannot count as document-level route alignment");
+  assertEqual(middleGradesHumorLeakageResult.rejectedReasons.routeAlignmentDemotedReasonByTitle["The Funny Big Book"], "humor_keyword_title_only_without_age_or_doc_evidence", "funny-title-only leakage should expose a demotion reason");
+  assertEqual(middleGradesHumorLeakageResult.rejectedReasons.humorKeywordOnlyRejectedTitles.includes("The Funny Big Book"), true, "funny-title-only leakage should be diagnosed as rejected");
+  assertEqual(middleGradesHumorLeakageResult.rejectedReasons.adultOrYaHumorLeakageRejectedTitles.includes("A Comic Hospital Story"), true, "adult/YA humor-looking leakage should be rejected generically");
+  assertEqual(middleGradesHumorLeakageResult.selected.some((candidate) => candidate.title === "Survival Friendship Club"), true, "available non-humor-aligned preteen humor/adventure evidence should survive");
+  assertEqual(Number(middleGradesHumorLeakageResult.rejectedReasons.selectedNonHumorAlignmentCount || 0) >= 1, true, "preteen humor/adventure slate should count non-humor alignment when available");
+  console.log(JSON.stringify({ name: "middle grades humor keyword leakage is rejected without child/document evidence", pass: true, selected: middleGradesHumorLeakageResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesHumorLeakageResult.rejectedReasons }));
+
+  const middleGradesGenericFunnySlateResult = selectRecommendations([
+    "Funny Alpha",
+    "Humor Beta",
+    "Comedy Gamma",
+    "Laugh Delta",
+    "Giggle Epsilon",
+  ].map((title, index) => fakeScoredCandidate({
+    id: `middle-generic-funny-slate-${index}`,
+    title,
+    creators: [`Generic Funny Author ${index}`],
+    score: 12 - index * 0.1,
+    maturityBand: "preteens",
+    genres: ["Humor"],
+    themes: [],
+    scoreBreakdown: { genreFacetMatch: 3, positiveTasteMatch: 3, queryRungBonus: 1, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+    diagnostics: { queryText: "funny children books", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+    raw: { subject: ["Juvenile fiction", "Humorous stories"] },
+  })), middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesGenericFunnySlateResult.selected.length, 5, "generic funny title slate fixture should fill the slate before quality diagnostics");
+  assertEqual(middleGradesGenericFunnySlateResult.rejectedReasons.lockQualityPass, false, "full slate of generic funny-title matches cannot pass lock quality");
+  assertEqual(middleGradesGenericFunnySlateResult.rejectedReasons.genericFunnySlateDetected, true, "generic funny slate should be diagnosed");
+  assertEqual(middleGradesGenericFunnySlateResult.rejectedReasons.genericFunnySlateLockQualityBlocked, true, "generic funny slate should explicitly block lock quality");
+  assertEqual(middleGradesGenericFunnySlateResult.rejectedReasons.selectedNonHumorAlignmentCount, 0, "generic funny slate should have no non-humor alignment signals");
+  console.log(JSON.stringify({ name: "middle grades generic funny slate fails lock quality", pass: true, selected: middleGradesGenericFunnySlateResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesGenericFunnySlateResult.rejectedReasons }));
+
   const middleGradesEvidenceTierResult = selectRecommendations([
     ...["Max School Laugh", "School Magic Title", "Classroom Quest Joke", "Funny Hallway Tale", "Alanna School Adventure"].map((title, index) => fakeScoredCandidate({
       id: `middle-weak-school-${index}`,
@@ -1660,6 +1732,7 @@ async function main() {
       score: 10 - index * 0.1,
       maturityBand: "preteens",
       diagnostics: { queryText: index % 2 === 0 ? "middle grade humor" : "children's funny books", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Juvenile fiction", "Humorous stories"] },
     })),
     ...["Quest One", "Quest Two", "Friendship Trail"].map((title, index) => fakeScoredCandidate({
       id: `middle-humor-aligned-${index}`,
@@ -1668,6 +1741,7 @@ async function main() {
       score: 8 - index * 0.1,
       maturityBand: "preteens",
       diagnostics: { queryText: index === 2 ? "middle grade friendship" : "middle grade adventure", queryFamily: index === 2 ? "friendship" : "adventure", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Juvenile fiction", index === 2 ? "Friendship" : "Adventure stories"] },
     })),
   ];
   const middleGradesFantasyHumorBalanceResult = selectRecommendations(middleGradesFantasyHumorBalanceCandidates, middleGradesFantasyHumorBalanceProfile, 5);
@@ -1685,6 +1759,7 @@ async function main() {
       score: 10 - index * 0.1,
       maturityBand: "preteens",
       diagnostics: { queryText: index % 2 === 0 ? "middle grade humor" : "children's funny books", queryFamily: "humor", routingReason: "middle_grades_humor" },
+      raw: { subject: ["Juvenile fiction", "Humorous stories"] },
     })),
     ...["School Laughs", "Friendship Laughs"].map((title, index) => fakeScoredCandidate({
       id: `middle-humor-cap-alt-${index}`,
@@ -1693,6 +1768,7 @@ async function main() {
       score: 8 - index * 0.1,
       maturityBand: "preteens",
       diagnostics: { queryText: index === 0 ? "middle grade school story" : "middle grade friendship", queryFamily: index === 0 ? "school" : "friendship", routingReason: "middle_grades_humor" },
+      raw: { subject: ["Juvenile fiction", index === 0 ? "School stories" : "Friendship"] },
     })),
   ];
   const middleGradesHumorDefaultCapResult = selectRecommendations(middleGradesHumorDefaultCapCandidates, middleGradesFantasyHumorBalanceProfile, 5);
@@ -1783,6 +1859,7 @@ async function main() {
       score: 6 - index * 0.1,
       maturityBand: "preteens",
       diagnostics: { queryText: index === 0 ? "middle grade humor" : index === 1 ? "middle grade school story" : "middle grade friendship", queryFamily: index === 0 ? "humor" : index === 1 ? "school" : "friendship", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Juvenile fiction", index === 0 ? "Humorous stories" : index === 1 ? "School stories" : "Friendship"] },
     })),
   ];
   const middleGradesAntiZeroFallbackResult = selectRecommendations(middleGradesAntiZeroFallbackCandidates, middleGradesFantasyHumorBalanceProfile, 5);
