@@ -120,6 +120,65 @@ function deckKeyToAgeBandV2(deckKey: DeckKey): AgeBandV2 {
   return "teens";
 }
 
+const MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES = [
+  "debugMiddleGradesDeepTrace",
+  "debugMiddleGradesNoTimeouts",
+  "debugMiddleGradesDeepDebug",
+  "middleGradesDeepDebug",
+];
+
+function isTruthyDebugFlag(value: unknown): boolean {
+  return value === true || value === "1" || String(value || "").toLowerCase() === "true";
+}
+
+function readMiddleGradesDeepDebugRequest(): { active: boolean; source: "url" | "localStorage" | "none" } {
+  const runtime = globalThis as any;
+  try {
+    const search = String(runtime?.location?.search || "");
+    if (search) {
+      const params = new URLSearchParams(search);
+      if (MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES.some((name) => isTruthyDebugFlag(params.get(name)))) {
+        return { active: true, source: "url" };
+      }
+    }
+  } catch {
+    // Non-browser runtimes do not expose location; ignore.
+  }
+  try {
+    if (MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES.some((name) => isTruthyDebugFlag(runtime?.localStorage?.getItem?.(name)))) {
+      return { active: true, source: "localStorage" };
+    }
+  } catch {
+    // localStorage may be unavailable or blocked; ignore.
+  }
+  return { active: false, source: "none" };
+}
+
+function setMiddleGradesDeepDebugLocalStorage(active: boolean): void {
+  const runtime = globalThis as any;
+  try {
+    if (!runtime?.localStorage?.setItem) return;
+    for (const name of MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES) {
+      runtime.localStorage.setItem(name, active ? "true" : "false");
+    }
+  } catch {
+    // localStorage may be unavailable or blocked; ignore.
+  }
+}
+
+function middleGradesDeepDebugDiagnosticsForSession(ageBand: AgeBandV2, uiToggleActive: boolean): Record<string, unknown> | undefined {
+  if (ageBand !== "preteens") return undefined;
+  const browserRequest = readMiddleGradesDeepDebugRequest();
+  const active = uiToggleActive || browserRequest.active;
+  if (!active) return undefined;
+  return {
+    middleGradesDeepDebugExpected: true,
+    debugMiddleGradesDeepTrace: true,
+    debugMiddleGradesNoTimeouts: true,
+    middleGradesDeepDebugActivationSource: uiToggleActive ? "localStorage" : browserRequest.source,
+  };
+}
+
 function formatFromTagsForV2(tags: string[]): SwipeSignalV2["format"] {
   const joined = tags.join(" ").toLowerCase();
   if (/\b(manga|anime)\b/.test(joined)) return joined.includes("anime") ? "anime" : "manga";
@@ -1050,6 +1109,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [v2DebugResult, setV2DebugResult] = useState<RecommendationResultV2 | null>(null);
   const [v2DebugLoading, setV2DebugLoading] = useState(false);
   const [v2DebugError, setV2DebugError] = useState<string>("");
+  const [middleGradesDeepDebugUiEnabled, setMiddleGradesDeepDebugUiEnabled] = useState(() => readMiddleGradesDeepDebugRequest().active);
   const v2UrlTriggeredRef = useRef(false);
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
   const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
@@ -1898,9 +1958,11 @@ function handleLeft() {
       try {
         markPhase("v2_before_engine_call", { engineSelected: engineSelectedForRun });
         const v2Signals = swipeHistoryToV2Signals(Array.isArray((inputWithHistory as any)?.swipeHistory) ? ((inputWithHistory as any).swipeHistory as SwipeHistoryEntry[]) : swipeHistory);
+        const ageBand = deckKeyToAgeBandV2(deckKey);
+        const middleGradesDeepDebugDiagnostics = middleGradesDeepDebugDiagnosticsForSession(ageBand, middleGradesDeepDebugUiEnabled);
         const result = await runRecommenderV2({
           requestId: `normal-ui-v2-${Date.now()}`,
-          ageBand: deckKeyToAgeBandV2(deckKey),
+          ageBand,
           limit: inputWithHistory.limit || 10,
           enabledSources: {
             mock: !sourceEnabled.openLibrary,
@@ -1913,6 +1975,7 @@ function handleLeft() {
           },
           signals: v2Signals,
           deckKey,
+          diagnostics: middleGradesDeepDebugDiagnostics,
         });
         markPhase("v2_after_engine_call", { selected: result.items.length });
         setV2DebugResult(result);
@@ -2298,9 +2361,11 @@ function handleLeft() {
     setV2DebugLoading(true);
     setV2DebugError("");
     try {
+      const ageBand = deckKeyToAgeBandV2(deckKey);
+      const middleGradesDeepDebugDiagnostics = middleGradesDeepDebugDiagnosticsForSession(ageBand, middleGradesDeepDebugUiEnabled);
       const result = await runRecommenderV2({
         requestId: `live-ui-${trigger}-${Date.now()}`,
-        ageBand: deckKeyToAgeBandV2(deckKey),
+        ageBand,
         limit: 5,
         enabledSources: {
           mock: true,
@@ -2313,6 +2378,7 @@ function handleLeft() {
         },
         signals: swipeHistoryToV2Signals(swipeHistory),
         deckKey,
+        diagnostics: middleGradesDeepDebugDiagnostics,
       });
       setV2DebugResult(result);
       console.log("[NovelIdeas][V2] debug result", {
@@ -2397,6 +2463,14 @@ function handleLeft() {
     { id: "test_b", label: "Test B", sequence: ["dislike", "dislike", "like", "skip", "dislike", "like", "skip", "like"] },
     { id: "test_c", label: "Test C", sequence: ["like", "skip", "like", "skip", "dislike", "like", "dislike", "like"] },
   ];
+
+  function toggleMiddleGradesDeepDebug() {
+    setMiddleGradesDeepDebugUiEnabled((prev) => {
+      const next = !prev;
+      setMiddleGradesDeepDebugLocalStorage(next);
+      return next;
+    });
+  }
 
   async function runTestSessionPreset(preset: TestSessionPreset) {
     setPresetTestName(preset.label);
@@ -4375,10 +4449,21 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>{v2DebugLoading ? "V2 Running…" : "Run V2"}</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity
+            style={[styles.v2DebugToggle, middleGradesDeepDebugUiEnabled && styles.middleGradesDeepDebugToggleActive]}
+            onPress={toggleMiddleGradesDeepDebug}
+          >
+            <Text style={styles.debugToggleText}>
+              {middleGradesDeepDebugUiEnabled ? "MG Deep Debug: ON" : "MG Deep Debug: OFF"}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.v2DebugText}>MG deep debug can also be enabled with ?middleGradesDeepDebug=true or localStorage middleGradesDeepDebug=true.</Text>
+
           {(v2DebugResult || v2DebugError) ? (
             <View style={styles.v2DebugPanel}>
               <Text style={styles.v2DebugTitle}>Recommender V2 Debug</Text>
               <Text style={styles.v2DebugText}>status:{v2DebugError ? "error" : "ok"}</Text>
+              {v2DebugResult?.diagnostics.sessionReportHeader ? <Text style={styles.v2DebugText}>{v2DebugResult.diagnostics.sessionReportHeader}</Text> : null}
               <Text style={styles.v2DebugText}>items:{v2DebugResult?.items.map((item) => item.title).join(" | ") || "(none)"}</Text>
               <Text style={styles.v2DebugText}>stages:{v2DebugResult?.diagnostics.stages.map((stage) => stage.stage).join(" → ") || "(none)"}</Text>
               <Text style={styles.v2DebugText}>sources:{v2DebugResult?.diagnostics.sources.map((source) => `${source.source}:${source.status}:${source.rawCount}`).join(" | ") || "(none)"}</Text>
@@ -4657,6 +4742,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
+  },
+  middleGradesDeepDebugToggleActive: {
+    backgroundColor: "#b45309",
+    borderColor: "#fde68a",
+    borderWidth: 1,
   },
   v2DebugPanel: {
     width: 320,

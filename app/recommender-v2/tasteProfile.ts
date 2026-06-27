@@ -22,21 +22,33 @@ function sortedSignals(map: Map<string, WeightedSignalV2>, positiveOnly = true):
     .slice(0, 12);
 }
 
-function browserDebugFlag(name: string): { active: boolean; source?: "url" | "localStorage" } {
+const MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES = [
+  "debugMiddleGradesDeepTrace",
+  "debugMiddleGradesNoTimeouts",
+  "debugMiddleGradesDeepDebug",
+  "middleGradesDeepDebug",
+];
+
+function browserDebugFlag(names: string | string[]): { active: boolean; source?: "url" | "localStorage" } {
+  const flagNames = Array.isArray(names) ? names : [names];
   const runtime = globalThis as any;
   try {
     const search = String(runtime?.location?.search || "");
     if (search) {
       const params = new URLSearchParams(search);
-      const value = params.get(name);
-      if (value === "1" || value === "true") return { active: true, source: "url" };
+      for (const name of flagNames) {
+        const value = params.get(name);
+        if (value === "1" || value === "true") return { active: true, source: "url" };
+      }
     }
   } catch {
     // Non-browser runtimes do not expose location; ignore.
   }
   try {
-    const value = runtime?.localStorage?.getItem?.(name);
-    if (value === "1" || value === "true") return { active: true, source: "localStorage" };
+    for (const name of flagNames) {
+      const value = runtime?.localStorage?.getItem?.(name);
+      if (value === "1" || value === "true") return { active: true, source: "localStorage" };
+    }
   } catch {
     // localStorage may be unavailable or blocked; ignore.
   }
@@ -49,10 +61,8 @@ function middleGradesDeepDebug(session: SwipeSessionV2): { active: boolean; sour
   if (diagnostics.debugMiddleGradesDeepTrace || diagnostics.debugMiddleGradesNoTimeouts || session.debugMiddleGradesDeepTrace || session.debugMiddleGradesNoTimeouts) {
     return { active: true, source: diagnostics.middleGradesDeepDebugActivationSource === "preset" ? "preset" : "profile" };
   }
-  const urlFlag = browserDebugFlag("debugMiddleGradesDeepTrace");
-  if (urlFlag.active) return { active: true, source: urlFlag.source || "url" };
-  const noTimeoutUrlFlag = browserDebugFlag("debugMiddleGradesNoTimeouts");
-  if (noTimeoutUrlFlag.active) return { active: true, source: noTimeoutUrlFlag.source || "url" };
+  const browserFlag = browserDebugFlag(MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES);
+  if (browserFlag.active) return { active: true, source: browserFlag.source || "url" };
   return { active: false, source: "none" };
 }
 

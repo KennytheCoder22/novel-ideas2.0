@@ -1724,6 +1724,31 @@ async function main() {
   assertEqual(middleGradesPresetDebugProfile.diagnostics.sessionReportHeader, "MIDDLE GRADES DEEP DEBUG: ACTIVE", "preset-requested deep debug should set report header");
   console.log(JSON.stringify({ name: "middle grades preset deep-debug request activates taste profile diagnostics", pass: true, activationSource: middleGradesPresetDebugProfile.diagnostics.middleGradesDeepDebugActivationSource }));
 
+  const previousLocationDescriptor = Object.getOwnPropertyDescriptor(globalThis, "location");
+  Object.defineProperty(globalThis, "location", { value: { search: "?middleGradesDeepDebug=true" }, configurable: true });
+  const middleGradesUrlDebugProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: middleGradesCases[3].signals,
+  });
+  assertEqual(middleGradesUrlDebugProfile.diagnostics.middleGradesDeepDebugActive, true, "URL middleGradesDeepDebug flag should activate middle grades deep debug");
+  assertEqual(middleGradesUrlDebugProfile.diagnostics.middleGradesDeepDebugActivationSource, "url", "URL middleGradesDeepDebug flag should report URL activation source");
+  assertEqual(middleGradesUrlDebugProfile.diagnostics.sessionReportHeader, "MIDDLE GRADES DEEP DEBUG: ACTIVE", "URL middleGradesDeepDebug flag should set report header");
+  if (previousLocationDescriptor) Object.defineProperty(globalThis, "location", previousLocationDescriptor);
+  else delete globalThis.location;
+
+  const previousLocalStorageDescriptor = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
+  Object.defineProperty(globalThis, "localStorage", { value: { getItem: (name) => name === "middleGradesDeepDebug" ? "true" : null }, configurable: true });
+  const middleGradesLocalStorageDebugProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: middleGradesCases[3].signals,
+  });
+  assertEqual(middleGradesLocalStorageDebugProfile.diagnostics.middleGradesDeepDebugActive, true, "localStorage middleGradesDeepDebug flag should activate middle grades deep debug");
+  assertEqual(middleGradesLocalStorageDebugProfile.diagnostics.middleGradesDeepDebugActivationSource, "localStorage", "localStorage middleGradesDeepDebug flag should report localStorage activation source");
+  assertEqual(middleGradesLocalStorageDebugProfile.diagnostics.sessionReportHeader, "MIDDLE GRADES DEEP DEBUG: ACTIVE", "localStorage middleGradesDeepDebug flag should set report header");
+  if (previousLocalStorageDescriptor) Object.defineProperty(globalThis, "localStorage", previousLocalStorageDescriptor);
+  else delete globalThis.localStorage;
+  console.log(JSON.stringify({ name: "middle grades URL/localStorage deep-debug flags activate taste profile diagnostics", pass: true }));
+
   const middleGradesQueryOnlyVsAlignedCandidates = [
     ...["Fallback One", "Fallback Two", "Fallback Three", "Fallback Four", "Fallback Five"].map((title, index) => fakeScoredCandidate({
       id: `middle-query-only-${index}`,
