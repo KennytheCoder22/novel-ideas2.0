@@ -1193,6 +1193,43 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousMiddleGradesDebugProxyBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const middleGradesDebugFetchUrls = [];
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    middleGradesDebugFetchUrls.push(String(url));
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6, 7, 8].map((index) => ({
+        ...fakeDoc(query, index),
+        subject: ["Juvenile fiction", "Children's stories", "Friendship", "Adventure stories", "Humorous stories"],
+      })) }),
+    };
+  };
+  try {
+    const debugProfile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: middleGradesCases[3].signals,
+    });
+    debugProfile.diagnostics.debugMiddleGradesDeepTrace = true;
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 2_000 }, { profile: debugProfile });
+    assertEqual(result.diagnostics.debugMiddleGradesDeepTraceEnabled, true, "middle grades deep trace should be explicitly enabled by profile diagnostics");
+    assertEqual(result.diagnostics.debugMiddleGradesBudgetMs >= 180000, true, "middle grades debug mode should expand source budget");
+    assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs >= 20000, true, "middle grades debug mode should expand per-query timeout");
+    assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesPlannedQueries) && result.diagnostics.debugMiddleGradesPlannedQueries.length > 0, true, "deep trace should expose planned query list");
+    assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesFetchTrace) && result.diagnostics.debugMiddleGradesFetchTrace.length > 0, true, "deep trace should expose fetch trace");
+    assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesRawDocTrace) && result.diagnostics.debugMiddleGradesRawDocTrace.length > 0, true, "deep trace should expose raw doc filtering trace");
+    assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesNormalizedCandidateTrace) && result.diagnostics.debugMiddleGradesNormalizedCandidateTrace.length > 0, true, "deep trace should expose normalized candidate trace");
+    assertEqual(Boolean(result.diagnostics.debugMiddleGradesCompactSummary?.best20RawDocsByQuery), true, "deep trace should expose compact summary");
+    console.log(JSON.stringify({ name: "middle grades deep-debug mode expands budgets and emits full trace", pass: true, budget: result.diagnostics.debugMiddleGradesBudgetMs, firstClientTimeout: result.diagnostics.fetches?.[0]?.clientTimeoutMs, traceCounts: { planned: result.diagnostics.debugMiddleGradesPlannedQueries.length, fetch: result.diagnostics.debugMiddleGradesFetchTrace.length, raw: result.diagnostics.debugMiddleGradesRawDocTrace.length, normalized: result.diagnostics.debugMiddleGradesNormalizedCandidateTrace.length } }));
+  } finally {
+    if (previousMiddleGradesDebugProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesDebugProxyBase;
+    globalThis.fetch = originalFetch;
+  }
+
 
   const previousMiddleGradesProxyAbortBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   const originalMiddleGradesProxyAbortDateNow = Date.now;

@@ -258,6 +258,16 @@ export interface SourceDiagnosticV2 {
   continuedAfterQueryOnlyRejectionQueries?: string[];
   continuedAfterQueryOnlyRejectionAcceptedCount?: number;
   recoveryExhaustionReasonDetailed?: string;
+  debugMiddleGradesDeepTraceEnabled?: boolean;
+  debugMiddleGradesNoTimeouts?: boolean;
+  debugMiddleGradesBudgetMs?: number;
+  debugMiddleGradesPerQueryBudgetMs?: number;
+  debugMiddleGradesPlannedQueries?: Record<string, unknown>[];
+  debugMiddleGradesFetchTrace?: Record<string, unknown>[];
+  debugMiddleGradesRawDocTrace?: Record<string, unknown>[];
+  debugMiddleGradesNormalizedCandidateTrace?: Record<string, unknown>[];
+  debugMiddleGradesSelectionTrace?: Record<string, unknown>[];
+  debugMiddleGradesCompactSummary?: Record<string, unknown>;
   humorKeywordOnlyLeakageByTitle?: Record<string, boolean>;
   humorKeywordOnlyRejectedTitles?: string[];
   preteenAgeShapeEvidenceByTitle?: Record<string, boolean>;
