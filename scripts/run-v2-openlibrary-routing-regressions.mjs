@@ -390,6 +390,24 @@ async function main() {
       expectedEarly: /graphic novel children|funny graphic novel children|humorous fiction children|funny children books/i,
       disallowedBefore: /funny middle school fiction|illustrated middle school fiction|school friendship chapter book/i,
     },
+    {
+      name: "fantasy superhero family profile tries superhero family variants before generic funny fallback",
+      signals: [
+        { action: "like", title: "Family Super Squad", genres: ["fantasy"], themes: ["superhero", "family", "adventure", "funny"], format: "book" },
+        { action: "like", title: "Magic Home Heroes", genres: ["fantasy"], themes: ["superhero", "magical", "family", "friendship"], format: "book" },
+      ],
+      expectedEarly: /middle grade superhero adventure|children superhero adventure|children fantasy family adventure|magical family adventure children|funny fantasy family children/i,
+      disallowedBefore: /funny adventure chapter book|children adventure fiction|middle grade adventure$/i,
+    },
+    {
+      name: "fantasy adventure mystery profile tries mystery adventure variants before exhausting fantasy family",
+      signals: [
+        { action: "like", title: "Mystic Clue Quest", genres: ["fantasy", "mystery"], themes: ["adventure", "magic", "detective"], format: "book" },
+        { action: "like", title: "School of Secret Maps", genres: ["adventure"], themes: ["mystery", "friendship", "puzzle"], format: "book" },
+      ],
+      expectedEarly: /children mystery adventure|middle grade mystery adventure|fantasy mystery children|children magical mystery|school mystery children/i,
+      disallowedBefore: /children fantasy family novel|middle grade magical family|children fantasy friendship/i,
+    },
   ];
 
   for (const reliableCase of reliableOrderingCases) {
@@ -597,7 +615,7 @@ async function main() {
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
     fantasyFamilyTargetedFetchCalls.push(query);
-    const docs = /children fantasy adventure|children fantasy family novel|middle grade magical family|children fantasy friendship|middle grade fantasy mystery|children magical adventure/i.test(query)
+    const docs = /middle grade superhero adventure|children superhero adventure|children fantasy family adventure|magical family adventure children|funny fantasy family children|children fantasy adventure|children fantasy family novel|middle grade magical family|children fantasy friendship|middle grade fantasy mystery|children magical adventure/i.test(query)
       ? ["Moon Family Magic", "Friendship Spell House", "The Musical Portal", "Kindness Dragon Home", "The Family Quest"].map((title, index) => ({
         ...fakeDoc(query, index + 610),
         key: `/works/fantasy-family-targeted-${query.replace(/\s+/g, "-")}-${index}`,
@@ -1273,6 +1291,83 @@ async function main() {
   } finally {
     if (previousMiddleGradesDirectRejectedBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesDirectRejectedBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousMiddleGradesRootCollapseBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const middleGradesRootCollapseFetchCalls = [];
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    const urlText = String(url);
+    const query = new URL(urlText).searchParams.get("q") || "";
+    middleGradesRootCollapseFetchCalls.push(query);
+    if (urlText.startsWith("https://proxy.example.test")) {
+      const error = new Error("The operation was aborted due to timeout");
+      error.name = "AbortError";
+      throw error;
+    }
+    const docs = [
+      { key: "/works/frog-toad-collection-a", title: "The Frog and Toad Collection", author_name: ["Arnold Lobel"], subject: ["Juvenile fiction", "Children's stories", "Friendship", "Animals"], description: "Children's friendship animal stories." },
+      { key: "/works/frog-toad-treasury-b", title: "Frog and Toad Treasury", author_name: ["Arnold Lobel"], subject: ["Juvenile fiction", "Children's stories", "Friendship", "Animals"], description: "Children's friendship animal stories." },
+      ...[1, 2, 3, 4].map((index) => ({ ...fakeDoc(query, index + 1100), key: `/works/root-collapse-unique-${index}`, title: `Unique Friendship Animal ${index}`, subject: ["Juvenile fiction", "Children's stories", "Friendship", "Animals"], description: "A children's friendship and animal story." })),
+    ];
+    return { ok: true, status: 200, text: async () => JSON.stringify({ docs }) };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Animal Friends", genres: ["animal fiction"], themes: ["friendship", "kindness"], format: "book" },
+        { action: "like", title: "Forest Pals", genres: ["animals"], themes: ["community", "friendship"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 10_000 }, { profile });
+    const frogAndToadCount = result.rawItems.filter((item) => /frog and toad/i.test(String(item.title || ""))).length;
+    assertEqual(frogAndToadCount <= 1, true, "same-root Frog and Toad collection variants should collapse to one returned recommendation");
+    assertEqual((result.diagnostics.sameRootCollectionCollapsedTitles || []).some((title) => /frog and toad/i.test(title)), true, "same-root collection collapse should be diagnosed without banning titles");
+    assertEqual(Number(result.diagnostics.selectedUniqueRootCount || 0) <= result.rawItems.length, true, "selected unique root count should be reported");
+    console.log(JSON.stringify({ name: "middle grades same-root collection variants collapse before return", pass: true, rawItems: result.rawItems.map((item) => item.title), diagnostics: { sameRootCollectionCollapsedTitles: result.diagnostics.sameRootCollectionCollapsedTitles, selectedUniqueRootCount: result.diagnostics.selectedUniqueRootCount } }));
+  } finally {
+    if (previousMiddleGradesRootCollapseBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesRootCollapseBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousMiddleGradesDirectUnderfillBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const middleGradesDirectUnderfillFetchCalls = [];
+  let middleGradesDirectUnderfillDirectSuccessCount = 0;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    const urlText = String(url);
+    const query = new URL(urlText).searchParams.get("q") || "";
+    middleGradesDirectUnderfillFetchCalls.push(query);
+    if (urlText.startsWith("https://proxy.example.test")) {
+      const error = new Error("The operation was aborted due to timeout");
+      error.name = "AbortError";
+      throw error;
+    }
+    if (!urlText.startsWith("https://proxy.example.test")) middleGradesDirectUnderfillDirectSuccessCount += 1;
+    const docs = middleGradesDirectUnderfillDirectSuccessCount === 1
+      ? [1, 2].map((index) => ({ ...fakeDoc(query, index + 1200), key: `/works/direct-underfill-initial-${index}`, title: ["Direct Usable Cedar", "Direct Usable Maple"][index - 1], subject: ["Juvenile fiction", "Adventure stories", "Friendship"], description: "A children's friendship adventure." }))
+      : [1, 2, 3].map((index) => ({ ...fakeDoc(query, index + 1210), key: `/works/direct-underfill-recovery-${query.replace(/\s+/g, "-")}-${index}`, title: ["Direct Usable Harbor", "Direct Usable Meadow", "Direct Usable Lantern"][index - 1], subject: ["Juvenile fiction", "Adventure stories", "Friendship", "Community"], description: "A children's friendship and community adventure." }));
+    return { ok: true, status: 200, text: async () => JSON.stringify({ docs }) };
+  };
+  try {
+    const profile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Adventure Friends", genres: ["adventure"], themes: ["friendship", "community"], format: "book" },
+        { action: "like", title: "Funny Quest", genres: ["comedy"], themes: ["playful", "friends"], format: "book" },
+      ],
+    });
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 12_000 }, { profile });
+    assertEqual(result.diagnostics.underfilledAfterDirectUsableDocs, true, "direct fetch returning usable but underfilled docs should be diagnosed");
+    assertEqual(result.diagnostics.directUsableDocsButRecoveryContinued, true, "direct usable underfill should continue recovery while same-family variants remain");
+    assertEqual(result.rawItems.length >= 5, true, "middle grades should not return fewer than five while same-family reliable variants remain and budget is viable");
+    console.log(JSON.stringify({ name: "middle grades direct usable underfill continues recovery to five", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesDirectUnderfillFetchCalls, diagnostics: { underfilledAfterDirectUsableDocs: result.diagnostics.underfilledAfterDirectUsableDocs, directUsableDocsButRecoveryContinued: result.diagnostics.directUsableDocsButRecoveryContinued, underfillStopReasonDetailed: result.diagnostics.underfillStopReasonDetailed } }));
+  } finally {
+    if (previousMiddleGradesDirectUnderfillBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesDirectUnderfillBase;
     globalThis.fetch = originalFetch;
   }
 

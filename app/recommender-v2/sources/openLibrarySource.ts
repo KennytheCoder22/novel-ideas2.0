@@ -1123,6 +1123,22 @@ function openLibrarySeriesKey(doc: any): string {
   return hasSeriesMarker || /\b(one piece|naruto|bleach|dragon ball|my hero academia|attack on titan|demon slayer|sailor moon|grande ritorno|diadem|chosen)\b/.test(cleaned) ? cleaned : "";
 }
 
+function openLibraryCollectionRootKey(doc: any): string {
+  const title = String(doc?.title || "").toLowerCase();
+  if (!title) return "";
+  const primaryTitle = title.split(/[:;(\[]/)[0] || title;
+  const normalized = primaryTitle
+    .replace(/\b(the|a|an)\b/g, " ")
+    .replace(/\b(complete|collected|collection|collections|collector'?s|treasury|storybook|stories|tales|adventures|books?|chapter|chapters|volume|vol|omnibus|anthology|library|set|boxed|box)\b/g, " ")
+    .replace(/\b\d+\b/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const hasCollectionMarker = /\b(complete|collected|collection|collections|collector'?s|treasury|storybook|stories|tales|adventures|books?|omnibus|anthology|library|set|boxed|box)\b/i.test(title);
+  if (!normalized || normalized.split(" ").length < 2) return "";
+  return hasCollectionMarker ? normalized : "";
+}
+
 function isTeenInappropriateOpenLibraryDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
   const text = openLibraryDocText(doc).toLowerCase();
@@ -1316,6 +1332,11 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
       patterns: [/\b(dragon|mythology|mythological|creature|legend)\b/i],
     },
     {
+      family: "fantasy_superhero_family",
+      queries: ["middle grade superhero adventure", "children superhero adventure", "children fantasy family adventure", "magical family adventure children", "funny fantasy family children"],
+      patterns: [/\b(superhero|super hero|hero|powers?)\b/i],
+    },
+    {
       family: "fantasy_family_friendship",
       queries: ["children fantasy adventure", "children fantasy family novel", "children fantasy friendship", "middle grade magical family", "middle grade fantasy mystery", "children magical adventure"],
       patterns: [/\b(fantasy|magic|magical|wizard|witch|dragon|portal)\b/i],
@@ -1374,6 +1395,10 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
         && hasLikedPositiveRow(/\b(adventure|quest|survival)\b/i)
         && hasLikedPositiveRow(/\b(comedy|funny|humou?r|playful|friendship|friends?|community|music)\b/i)
         ? 3
+      : def.family === "fantasy_superhero_family"
+        && hasLikedPositiveRow(/\b(superhero|super hero|hero|powers?)\b/i)
+        && hasLikedPositiveRow(/\b(fantasy|magic|magical|family|families|adventure)\b/i)
+        ? 4
       : def.family === "fantasy_family_friendship"
         && hasLikedPositiveRow(/\b(fantasy|magic|magical)\b/i)
         && hasLikedPositiveRow(/\b(family|friendship|friends?|music|playful|community|ocean|sea|island|kindness)\b/i)
@@ -1395,7 +1420,7 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
   const queries = uniqueStrings(chosen.flatMap((def) => def.queries), 14);
   const familyByQuery: Record<string, string> = {};
   for (const def of chosen) for (const query of def.queries) familyByQuery[query] = def.family;
-  const reliableVariantQueries = uniqueStrings(queries.filter((query) => /\b(funny children books|humorous fiction children|children adventure fiction|children fantasy adventure|dinosaur fiction children|dinosaur adventure children|mythology children fiction|graphic novel children|funny graphic novel children|funny adventure chapter book|children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure|children mystery adventure|middle grade mystery adventure|school mystery children|fantasy mystery children|children magical mystery|animal fantasy children|fantasy animals children)\b/i.test(query)), 14);
+  const reliableVariantQueries = uniqueStrings(queries.filter((query) => /\b(funny children books|humorous fiction children|children adventure fiction|children fantasy adventure|dinosaur fiction children|dinosaur adventure children|mythology children fiction|graphic novel children|funny graphic novel children|funny adventure chapter book|children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure|children mystery adventure|middle grade mystery adventure|school mystery children|fantasy mystery children|children magical mystery|middle grade superhero adventure|children superhero adventure|children fantasy family adventure|magical family adventure children|funny fantasy family children|animal fantasy children|fantasy animals children)\b/i.test(query)), 16);
   return {
     queries,
     scoreByFamily,
@@ -1884,9 +1909,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const dropReasons: Record<string, number> = {};
     const fetches: SourceFetchDiagnosticV2[] = [];
     const acceptedSeriesKeys = new Set<string>();
+    const acceptedCollectionRootKeys = new Set<string>();
     const acceptedDocKeys = new Set<string>();
     const artifactSuppressedTitles: string[] = [];
     const seriesSuppressedTitles: string[] = [];
+    const sameRootCollectionCollapsedTitles: string[] = [];
+    const duplicateRootBlockedReturnedTitle: string[] = [];
     let rawApiResultCount = 0;
     let failedReason = "";
     let openLibraryTopUpRan = false;
@@ -1965,6 +1993,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesSameFamilyContinuationQueriesAttempted: string[] = [];
     const middleGradesSameFamilyContinuationQuerySet = new Set<string>();
     let middleGradesRawRejectedButContinuationSkippedReason: string | undefined;
+    let middleGradesUnderfilledAfterDirectUsableDocs = false;
+    let middleGradesDirectUsableDocsButRecoveryContinued = false;
+    let middleGradesUnderfillStopReasonDetailed: string | undefined;
     let middleGradesRecoverySkippedInsufficientBudget = false;
     const middleGradesMinimumViableRecoveryBudgetMs = MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS;
     let middleGradesActualRemainingBudgetBeforeRecoveryMs: number | undefined;
@@ -2004,6 +2035,19 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       dropReasons.middle_grades_query_only_source_rejected = Number(dropReasons.middle_grades_query_only_source_rejected || 0) + 1;
       dropReasons[`middle_grades_${stage}_query_only_source_rejected`] = Number(dropReasons[`middle_grades_${stage}_query_only_source_rejected`] || 0) + 1;
       return false;
+    };
+    const reserveCollectionRoot = (doc: any, title: string, stage: string): boolean => {
+      if (ageProfile.key !== "middleGrades") return true;
+      const rootKey = openLibraryCollectionRootKey(doc);
+      if (!rootKey) return true;
+      if (acceptedCollectionRootKeys.has(rootKey)) {
+        dropReasons[`middle_grades_${stage}_same_root_collection_duplicate`] = Number(dropReasons[`middle_grades_${stage}_same_root_collection_duplicate`] || 0) + 1;
+        sameRootCollectionCollapsedTitles.push(title);
+        duplicateRootBlockedReturnedTitle.push(title);
+        return false;
+      }
+      acceptedCollectionRootKeys.add(rootKey);
+      return true;
     };
     const rememberMiddleGradesAntiZeroFallbackShape = (fallback?: ReturnType<typeof middleGradesSignalShapedAntiZeroFallback>): void => {
       if (!fallback) return;
@@ -2163,6 +2207,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const acceptedBeforeThisQuery = rawItems.length;
       if (middleGradesQueryIsProfileSpecific) middleGradesProfileSpecificQueriesAttempted.push(query);
       if (middleGradesQueryIsTargeted) {
+        if (middleGradesUnderfilledAfterDirectUsableDocs && rawItems.length < Math.min(ageProfile.docLimit, 5)) middleGradesDirectUsableDocsButRecoveryContinued = true;
         if (!middleGradesTargetedQueriesAttempted.includes(query)) middleGradesTargetedQueriesAttempted.push(query);
         if (middleGradesSameFamilyContinuationQuerySet.has(query.toLowerCase()) && !middleGradesSameFamilyContinuationQueriesAttempted.includes(query)) {
           middleGradesSameFamilyContinuationQueriesAttempted.push(query);
@@ -2338,6 +2383,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           if (middleGradesQueryIsTargeted) middleGradesTargetedQueriesRejectedByReason.query_only_or_missing_document_evidence = Number(middleGradesTargetedQueriesRejectedByReason.query_only_or_missing_document_evidence || 0) + 1;
           continue;
         }
+        if (!reserveCollectionRoot(doc, title, "main")) continue;
         rawItems.push(normalizeOpenLibraryDoc(doc, queryPlan));
         if (middleGradesQueryIsTargeted) {
           middleGradesTargetedQueriesAcceptedCount += 1;
@@ -2365,6 +2411,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         } else {
           middleGradesRawRejectedButContinuationSkippedReason = "no_unattempted_same_family_reliable_variant";
         }
+      }
+      if (ageProfile.key === "middleGrades" && diagnostic.fetchPath === "direct" && rawItems.length > acceptedBeforeThisQuery && rawItems.length < Math.min(ageProfile.docLimit, 5)) {
+        middleGradesUnderfilledAfterDirectUsableDocs = true;
       }
       if (ageProfile.key === "middleGrades" && middleGradesRejectedAllRowsAsQueryOnly && rawItems.length === acceptedBeforeThisQuery) {
         const remainingSpecificQueries = middleGradesUnattemptedSpecificQueries();
@@ -2870,6 +2919,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               if (seriesKey) acceptedSeriesKeys.add(seriesKey);
               acceptedDocKeys.add(docKey);
               if (!shouldAcceptMiddleGradesSourceDoc(doc, routeAlignedAfterFallbackQuery, routeAlignedAfterFallbackPlan, "post_fallback_route_recovery")) continue;
+              if (!reserveCollectionRoot(doc, title, "post_fallback_route_recovery")) continue;
               rawItems.push(normalizeOpenLibraryDoc(doc, routeAlignedAfterFallbackPlan));
               dropReasons.middle_grades_post_fallback_route_recovery_accepted = Number(dropReasons.middle_grades_post_fallback_route_recovery_accepted || 0) + 1;
               if (rawItems.length >= Math.min(ageProfile.docLimit, 5)) break;
@@ -2897,6 +2947,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           break;
         }
         middleGradesUnderfillSafeRecoveryAttempted = true;
+        if (middleGradesUnderfilledAfterDirectUsableDocs) middleGradesDirectUsableDocsButRecoveryContinued = true;
         if (startedUnderfillAtFour) middleGradesUnderfillRecoveryAttemptedAfterFour = true;
         middleGradesUnderfillSafeRecoveryQueriesAttempted.push(underfillQuery);
         if (middleGradesSameFamilyContinuationQuerySet.has(underfillQuery.toLowerCase()) && !middleGradesSameFamilyContinuationQueriesAttempted.includes(underfillQuery)) {
@@ -2963,6 +3014,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             if (underfillQueryIsTargeted) middleGradesTargetedQueriesRejectedByReason.query_only_or_missing_document_evidence = Number(middleGradesTargetedQueriesRejectedByReason.query_only_or_missing_document_evidence || 0) + 1;
             continue;
           }
+          if (!reserveCollectionRoot(doc, title, "underfill_safe_recovery")) continue;
           rawItems.push(normalizeOpenLibraryDoc(doc, underfillPlan));
           if (underfillQueryIsTargeted) {
             middleGradesTargetedQueriesAcceptedCount += 1;
@@ -3584,6 +3636,22 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesUnderfilledWithSameFamilyQueriesRemaining = ageProfile.key === "middleGrades"
       && rawItems.length < Math.min(ageProfile.docLimit, 5)
       && Array.from(middleGradesSameFamilyContinuationQuerySet).some((query) => !middleGradesAttemptedQueries().has(query));
+    const selectedUniqueRootCount = ageProfile.key === "middleGrades"
+      ? new Set(rawItems.map((item: any) => openLibraryCollectionRootKey(item) || String(item?.title || "").toLowerCase()).filter(Boolean)).size
+      : undefined;
+    if (ageProfile.key === "middleGrades" && rawItems.length < Math.min(ageProfile.docLimit, 5)) {
+      middleGradesUnderfillStopReasonDetailed = rawApiResultCount === 0
+        ? "no_raw_docs"
+        : rawItems.length === 0 && middleGradesDocsReturnedButAllDropped > 0
+          ? "raw_docs_all_rejected"
+          : sameRootCollectionCollapsedTitles.length > 0
+            ? "usable_docs_but_duplicate_root_collapsed"
+            : middleGradesRecoverySkippedInsufficientBudget || middleGradesUnderfillSafeRecoverySkippedReason === "insufficient_budget"
+              ? "usable_docs_but_budget_exhausted"
+              : middleGradesUnderfillSafeRecoveryAttempted
+                ? "usable_docs_but_underfill_recovery_exhausted"
+                : "underfill_recovery_not_attempted";
+    }
     if (ageProfile.key === "middleGrades" && rawItems.length < Math.min(ageProfile.docLimit, 5) && !middleGradesFinalUnderfillTargetedExhaustionReason) {
       middleGradesFinalUnderfillTargetedExhaustionReason = middleGradesRemainingTargetedQueries.length
         ? "underfilled_with_targeted_queries_remaining"
@@ -3728,6 +3796,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         finalCountContractStatus: middleGradesFinalCountContractStatus,
         artifactSuppressedTitles: uniqueStrings(artifactSuppressedTitles, 20),
         seriesSuppressedTitles: uniqueStrings(seriesSuppressedTitles, 20),
+        sameRootCollectionCollapsedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(sameRootCollectionCollapsedTitles, 20) : undefined,
+        selectedUniqueRootCount,
+        duplicateRootBlockedReturnedTitle: ageProfile.key === "middleGrades" ? uniqueStrings(duplicateRootBlockedReturnedTitle, 20) : undefined,
+        underfilledAfterDirectUsableDocs: ageProfile.key === "middleGrades" ? middleGradesUnderfilledAfterDirectUsableDocs : undefined,
+        directUsableDocsButRecoveryContinued: ageProfile.key === "middleGrades" ? middleGradesDirectUsableDocsButRecoveryContinued : undefined,
+        underfillStopReasonDetailed: middleGradesUnderfillStopReasonDetailed,
         rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year })),
         fetches,
       },

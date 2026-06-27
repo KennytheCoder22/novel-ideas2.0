@@ -144,6 +144,9 @@ export interface SourceDiagnosticV2 {
   rawItemPreview?: Record<string, unknown>[];
   artifactSuppressedTitles?: string[];
   seriesSuppressedTitles?: string[];
+  sameRootCollectionCollapsedTitles?: string[];
+  selectedUniqueRootCount?: number;
+  duplicateRootBlockedReturnedTitle?: string[];
   middleGradesAgeShapeDiagnostics?: Record<string, unknown>;
   middleGradesDelayedRetryAttempted?: boolean;
   middleGradesDelayedRetrySkippedReason?: string;
@@ -222,6 +225,9 @@ export interface SourceDiagnosticV2 {
   underfillRecoveryAcceptedAfterFour?: number;
   underfilledWithSameFamilyQueriesRemaining?: boolean;
   rawRejectedButContinuationSkippedReason?: string;
+  underfilledAfterDirectUsableDocs?: boolean;
+  directUsableDocsButRecoveryContinued?: boolean;
+  underfillStopReasonDetailed?: string;
   finalUnderfillTargetedExhaustionReason?: string;
   fallbackStartedOnlyAfterProfileQueriesExhausted?: boolean;
   lockQualityRetryAttempted?: boolean;
