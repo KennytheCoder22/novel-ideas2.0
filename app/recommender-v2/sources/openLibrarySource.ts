@@ -21,6 +21,7 @@ const MIDDLE_GRADES_OPEN_LIBRARY_POST_FALLBACK_ROUTE_RECOVERY_MIN_BUDGET_MS = 1_
 const MIDDLE_GRADES_OPEN_LIBRARY_TOTAL_BUDGET_MS = 24_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_TOTAL_BUDGET_MS = 180_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS = 20_000;
+const MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT = 60;
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -824,7 +825,7 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
     creators: authors,
     authors,
     author_name: authors,
-    description: undefined,
+    description: typeof doc?.description === "string" ? doc.description : typeof doc?.description?.value === "string" ? doc.description.value : undefined,
     formats: ["book"],
     genres: subjects.slice(0, 12),
     themes: subjects.slice(0, 18),
@@ -2087,6 +2088,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesActualRemainingBudgetBeforeRecoveryMs: number | undefined;
     let middleGradesBroadFallbackStartedBeforeTargetedExhaustion = false;
     let middleGradesFinalUnderfillTargetedExhaustionReason: string | undefined;
+    const middleGradesCandidatePoolLimit = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT : ageProfile.docLimit;
+    let middleGradesOpenLibraryCandidatePoolBeforeEarlyCap = 0;
+    let middleGradesOpenLibraryCandidatePoolAfterEarlyCap = 0;
+    let middleGradesEarlyCandidateCapApplied = false;
+    const middleGradesEarlyCandidateCapSuppressedTitles: string[] = [];
     const middleGradesMediumStrongRawItems = (): any[] => ageProfile.key === "middleGrades"
       ? rawItems.filter((item: any) => middleGradesSourceMediumStrongEvidence(item?.rawOpenLibraryDoc || item, String(item?.queryText || ""), String(item?.routingReason || "")))
       : [];
@@ -2527,7 +2533,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           if (rawItems.length > 0) openLibraryTopUpRan = true;
         }
         const timeoutRecoveryTarget = ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice ? Math.min(ageProfile.docLimit, 5) : 3;
-        if (rawItems.length >= timeoutRecoveryTarget || rawItems.length >= ageProfile.docLimit) break;
+        if (rawItems.length >= timeoutRecoveryTarget || rawItems.length >= middleGradesCandidatePoolLimit) break;
         if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice && rawItems.length > 0) {
           openLibraryTopUpRan = true;
           dropReasons.adult_timeout_recovery_continued_underfilled = Number(dropReasons.adult_timeout_recovery_continued_underfilled || 0) + 1;
@@ -2558,7 +2564,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               if (!middleGradesContinuedAfterQueryOnlyRejectionQueries.includes(query)) middleGradesContinuedAfterQueryOnlyRejectionQueries.push(query);
               middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount += 1;
             }
-            if (rawItems.length >= ageProfile.docLimit) break;
+            if (rawItems.length >= middleGradesCandidatePoolLimit) break;
           }
           continue;
         }
@@ -2639,12 +2645,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         }
       }
       const cleanDocTarget = debugMiddleGradesDeepTrace && ageProfile.key === "middleGrades"
-        ? Math.min(ageProfile.docLimit, 5)
+        ? middleGradesCandidatePoolLimit
         : (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.minCleanDocs;
       if (middleGradesQueryIsProfileSpecific && rawItems.length > acceptedBeforeThisQuery) {
         middleGradesProfileSpecificQueriesAcceptedCount += rawItems.length - acceptedBeforeThisQuery;
       }
-      if (rawItems.length >= cleanDocTarget || rawItems.length >= ageProfile.docLimit) break;
+      if (rawItems.length >= cleanDocTarget || rawItems.length >= middleGradesCandidatePoolLimit) break;
       if (rawItems.length > 0) {
         openLibraryTopUpRan = true;
         if (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) {
@@ -3150,7 +3156,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           middleGradesEvidenceAwareRecoveryAcceptedCount += 1;
           dropReasons.middle_grades_medium_strong_evidence_search_accepted = Number(dropReasons.middle_grades_medium_strong_evidence_search_accepted || 0) + 1;
           if (middleGradesMediumStrongRawItems().length >= middleGradesMediumStrongEvidenceTargetCount) break;
-          if (rawItems.length >= ageProfile.docLimit && middleGradesMediumStrongRawItems().length >= middleGradesMediumStrongEvidenceTargetCount) break;
+          if (rawItems.length >= middleGradesCandidatePoolLimit && middleGradesMediumStrongRawItems().length >= middleGradesMediumStrongEvidenceTargetCount) break;
         }
       }
       if (middleGradesMediumStrongRawItems().length < middleGradesMediumStrongEvidenceTargetCount) {
@@ -3988,6 +3994,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesHasUnattemptedSpecificAfterTimeout = ageProfile.key === "middleGrades" && middleGradesPlannedSpecificQueriesUnattemptedAtTimeout.length > 0;
     const status: SourceResult["status"] = rawItems.length ? "succeeded" : (allMainFetchesTimedOut && !middleGradesHasUnattemptedSpecificAfterTimeout) ? "timed_out" : failedReason ? "failed" : "empty";
     const emptyReason = !rawItems.length && (status === "empty" || status === "failed" || status === "timed_out") ? openLibraryEmptyReason(rawItems, rawApiResultCount, dropReasons, fetches, failedReason) : undefined;
+    middleGradesOpenLibraryCandidatePoolBeforeEarlyCap = ageProfile.key === "middleGrades" ? rawItems.length : 0;
+    middleGradesOpenLibraryCandidatePoolAfterEarlyCap = middleGradesOpenLibraryCandidatePoolBeforeEarlyCap;
     const middleGradesMediumStrongEvidenceAcceptedTitlesForDiagnostics = ageProfile.key === "middleGrades"
       ? uniqueStrings([
         ...middleGradesMediumStrongEvidenceAcceptedTitles,
@@ -4116,6 +4124,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         evidenceAwareRecoveryRemainingQueries: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesUnattemptedEvidenceAwareQueries(), 20) : undefined,
         evidenceAwareRecoveryAttempted: ageProfile.key === "middleGrades" ? middleGradesEvidenceAwareRecoveryAttempted : undefined,
         evidenceAwareRecoveryAcceptedCount: ageProfile.key === "middleGrades" ? middleGradesEvidenceAwareRecoveryAcceptedCount : undefined,
+        openLibraryCandidatePoolBeforeEarlyCap: ageProfile.key === "middleGrades" ? middleGradesOpenLibraryCandidatePoolBeforeEarlyCap : undefined,
+        openLibraryCandidatePoolAfterEarlyCap: ageProfile.key === "middleGrades" ? middleGradesOpenLibraryCandidatePoolAfterEarlyCap : undefined,
+        earlyCandidateCapApplied: ageProfile.key === "middleGrades" ? middleGradesEarlyCandidateCapApplied : undefined,
+        earlyCandidateCapSuppressedTitles: ageProfile.key === "middleGrades" ? middleGradesEarlyCandidateCapSuppressedTitles : undefined,
+        mediumStrongCandidatesSeenAcrossAllQueries: ageProfile.key === "middleGrades" ? middleGradesMediumStrongRawItems().map((item: any) => String(item?.title || "")).filter(Boolean).slice(0, 50) : undefined,
+        weakFallbackCandidatesHeldBack: ageProfile.key === "middleGrades" ? rawItems.filter((item: any) => !middleGradesSourceMediumStrongEvidence(item?.rawOpenLibraryDoc || item, String(item?.queryText || ""), String(item?.routingReason || ""))).map((item: any) => String(item?.title || "")).filter(Boolean).slice(0, 50) : undefined,
         mediumStrongEvidenceTargetCount: ageProfile.key === "middleGrades" ? middleGradesMediumStrongEvidenceTargetCount : undefined,
         mediumStrongEvidenceSearchContinued: ageProfile.key === "middleGrades" ? middleGradesMediumStrongEvidenceSearchContinued : undefined,
         mediumStrongEvidenceQueriesAttempted: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMediumStrongEvidenceQueriesAttempted, 20) : undefined,

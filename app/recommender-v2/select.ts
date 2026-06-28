@@ -1070,6 +1070,8 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const selectedTitles = new Set(selected.map((candidate) => normalized(candidate.title)));
   const routeAlignmentScoreByTitle: Record<string, number> = {};
   const genreFacetMatchScoreByTitle: Record<string, number> = {};
+  const queryTextSignalsRemovedFromTasteMatchByTitle: Record<string, string[]> = {};
+  const documentOnlyTasteMatchByTitle: Record<string, string[]> = {};
   const fallbackPenaltyByTitle: Record<string, number> = {};
   const finalSelectionReasonByTitle: Record<string, string> = {};
   const queryLevelRouteAlignmentByTitle: Record<string, boolean> = {};
@@ -1091,6 +1093,8 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     const finalEligibility = middleGradesFinalEligibility(candidate);
     routeAlignmentScoreByTitle[candidate.title] = middleGradesRouteAlignmentScore(candidate);
     genreFacetMatchScoreByTitle[candidate.title] = Number(candidate.scoreBreakdown?.genreFacetMatch || 0);
+    queryTextSignalsRemovedFromTasteMatchByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.queryTextSignalsRemovedFromTasteMatch) ? candidate.diagnostics.queryTextSignalsRemovedFromTasteMatch.map(String) : [];
+    documentOnlyTasteMatchByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.documentOnlyTasteMatch) ? candidate.diagnostics.documentOnlyTasteMatch.map(String) : [];
     fallbackPenaltyByTitle[candidate.title] = middleGradesFallbackPenalty(candidate);
     queryLevelRouteAlignmentByTitle[candidate.title] = routeEvidence.queryLevel;
     documentLevelRouteAlignmentByTitle[candidate.title] = routeEvidence.documentLevel;
@@ -1214,6 +1218,8 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const lockQualityPass = lockQualityFailReasons.length === 0;
   diagnostics.routeAlignmentScoreByTitle = routeAlignmentScoreByTitle;
   diagnostics.genreFacetMatchScoreByTitle = genreFacetMatchScoreByTitle;
+  diagnostics.queryTextSignalsRemovedFromTasteMatchByTitle = queryTextSignalsRemovedFromTasteMatchByTitle;
+  diagnostics.documentOnlyTasteMatchByTitle = documentOnlyTasteMatchByTitle;
   diagnostics.fallbackPenaltyByTitle = fallbackPenaltyByTitle;
   diagnostics.finalSelectionReasonByTitle = finalSelectionReasonByTitle;
   diagnostics.middleGradesReturnedItemQualityAudit = returnedItemQualityAudit;

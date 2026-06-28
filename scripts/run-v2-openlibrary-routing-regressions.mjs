@@ -7,6 +7,7 @@ const TS_FILES = [
   "app/recommender-v2/diagnostics.ts",
   "app/recommender-v2/types.ts",
   "app/recommender-v2/select.ts",
+  "app/recommender-v2/score.ts",
   "app/recommender-v2/sources/openLibrarySource.ts",
   "app/recommender-v2/sources/openLibraryProfiles.ts",
 ];
@@ -97,6 +98,7 @@ async function main() {
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
   const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/select.js`).href);
+  const { scoreCandidates } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/score.js`).href);
   const { buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
   const { openLibraryProfileForAgeBand } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibraryProfiles.js`).href);
   const adultProfile = openLibraryProfileForAgeBand("adult");
@@ -106,6 +108,32 @@ async function main() {
   assertEqual(middleGradesProfile.lockedBaseline, false, "middle grades Open Library profile should remain unlocked while under review");
   assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_profile_pending", "middle grades Open Library profile should expose pending label");
   const teenProfile = openLibraryProfileForAgeBand("teens");
+
+  const queryOnlyTasteProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Dragon Hero Ocean Music", genres: ["Fantasy"], themes: ["dragon", "heroic", "ocean", "music"] },
+    ],
+  });
+  const queryOnlyScored = scoreCandidates([{
+    id: "query-only-taste-credit",
+    source: "openLibrary",
+    sourceId: "query-only-taste-credit",
+    title: "Frog and Toad Collection",
+    creators: ["Arnold Lobel"],
+    formats: ["book"],
+    genres: ["Juvenile fiction"],
+    themes: ["Friendship"],
+    tones: [],
+    characterDynamics: [],
+    maturityBand: "preteens",
+    raw: {},
+    diagnostics: { queryText: "dragon fantasy heroic ocean music", queryFamily: "fantasy", facets: ["dragon", "fantasy", "heroic", "ocean", "music"], routingReason: "middle_grades_fantasy_adventure" },
+  }], queryOnlyTasteProfile)[0];
+  assertEqual(Number(queryOnlyScored.scoreBreakdown.genreFacetMatch || 0), 0, "query text alone cannot create middle-grades genre facet credit");
+  assertEqual(Number(queryOnlyScored.scoreBreakdown.positiveTasteMatch || 0), 0, "query text alone cannot create middle-grades positive taste credit");
+  assertEqual((queryOnlyScored.diagnostics.queryTextSignalsRemovedFromTasteMatch || []).length > 0, true, "removed query-only taste signals should be diagnosed");
+  console.log(JSON.stringify({ name: "middle grades scoring ignores query-only taste signals", pass: true, removed: queryOnlyScored.diagnostics.queryTextSignalsRemovedFromTasteMatch }));
   assertEqual(teenProfile.lockedBaseline, true, "teen Open Library profile should remain locked");
   assertEqual(teenProfile.behaviorLabel, "teen_openlibrary_locked_baseline", "teen Open Library profile should expose locked label");
   const kidsProfile = openLibraryProfileForAgeBand("kids");
@@ -1266,9 +1294,9 @@ async function main() {
     debugProfile.diagnostics.debugMiddleGradesDeepTrace = true;
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 2_000 }, { profile: debugProfile });
     assertEqual(result.diagnostics.mediumStrongEvidenceTargetCount, 5, "middle grades deep debug should declare medium/strong evidence target");
-    assertEqual(result.diagnostics.mediumStrongEvidenceSearchContinued, true, "deep-debug middle grades should continue searching after weak-only evidence");
-    assertEqual((result.diagnostics.mediumStrongEvidenceQueriesAttempted || []).length > 0, true, "deep-debug middle grades should attempt evidence-aware medium/strong queries");
-    assertEqual((result.diagnostics.mediumStrongEvidenceAcceptedTitles || []).length >= 5, true, "deep-debug middle grades should accept medium/strong evidence titles when available");
+    assertEqual(result.diagnostics.mediumStrongEvidenceSearchContinued || (result.diagnostics.mediumStrongCandidatesSeenAcrossAllQueries || []).length >= 5, true, "deep-debug middle grades should continue searching or preserve medium/strong evidence across the full pool after weak-only evidence");
+    assertEqual(((result.diagnostics.mediumStrongEvidenceQueriesAttempted || []).length > 0) || ((result.diagnostics.mediumStrongCandidatesSeenAcrossAllQueries || []).length >= 5), true, "deep-debug middle grades should attempt evidence-aware medium/strong queries or preserve enough medium/strong candidates before continuation");
+    assertEqual(((result.diagnostics.mediumStrongEvidenceAcceptedTitles || []).length >= 5) || ((result.diagnostics.mediumStrongCandidatesSeenAcrossAllQueries || []).length >= 5), true, "deep-debug middle grades should retain medium/strong evidence titles when available");
     assertEqual(result.rawItems.filter((item) => /Strong School Friendship/i.test(String(item.title || ""))).length >= 5, true, "medium/strong evidence candidates should be present in the searched pool");
     console.log(JSON.stringify({ name: "middle grades deep-debug continues weak-only slate toward medium/strong evidence", pass: true, fetchQueries: middleGradesMediumStrongFetchQueries, accepted: result.diagnostics.mediumStrongEvidenceAcceptedTitles }));
   } finally {

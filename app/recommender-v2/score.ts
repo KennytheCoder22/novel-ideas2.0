@@ -119,8 +119,8 @@ function querySpecificityScore(candidate: NormalizedCandidate): number {
 }
 
 function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
-  const text = candidateText(candidate);
   const metadataText = candidateMetadataText(candidate);
+  const text = profile.ageBand === "preteens" && candidate.source === "openLibrary" ? metadataText : candidateText(candidate);
   const normalizedTitle = normalized(candidate.title);
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const metadataCount = candidate.genres.length + candidate.themes.length;
@@ -176,7 +176,9 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
 
 export function scoreCandidates(candidates: NormalizedCandidate[], profile: TasteProfile): ScoredCandidate[] {
   return candidates.map((candidate) => {
-    const text = candidateText(candidate);
+    const fullText = candidateText(candidate);
+    const metadataText = candidateMetadataText(candidate);
+    const text = profile.ageBand === "preteens" && candidate.source === "openLibrary" ? metadataText : fullText;
     const matchedSignals: string[] = [];
     const scoreBreakdown: Record<string, number> = { base: 1 };
 
@@ -187,6 +189,12 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const formatMatches = signalMatches(text, profile.formatPreference);
     const avoidMatches = signalMatches(text, profile.avoidSignals);
     const positiveMatches = [...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
+    const fullPositiveMatches = [...signalMatches(fullText, profile.themes), ...signalMatches(fullText, profile.tone), ...signalMatches(fullText, profile.characterDynamics), ...signalMatches(fullText, profile.formatPreference)];
+    const removedQueryTextSignals = profile.ageBand === "preteens" && candidate.source === "openLibrary"
+      ? [...signalMatches(fullText, profile.genreFamily), ...fullPositiveMatches]
+        .filter((signal) => ![...genreMatches, ...positiveMatches].some((kept) => normalized(kept.value) === normalized(signal.value)))
+        .map((signal) => signal.value)
+      : [];
 
     addSignalBucket(genreMatches, 3, matchedSignals, scoreBreakdown, "genreFacetMatch");
     addSignalBucket(themeMatches, 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
@@ -208,6 +216,11 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
       matchedSignals,
       rejectedReasons: [],
       scoreBreakdown,
+      diagnostics: {
+        ...candidate.diagnostics,
+        queryTextSignalsRemovedFromTasteMatch: removedQueryTextSignals,
+        documentOnlyTasteMatch: [...genreMatches, ...positiveMatches].map((signal) => signal.value),
+      },
     };
   }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
 }
