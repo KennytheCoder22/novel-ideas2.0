@@ -15565,8 +15565,8 @@ const normalizedCandidatesRaw = [
     }
   }
   const finalReturnedDisabledSourceLeakDetected = finalOutputItems.some((item: any) => !isSourceAllowedForFinalGate(item));
-  const returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
-  const acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
+  let returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
+  let acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
   const returnedLineageIdForDoc = (doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.olid || doc?.workKey || doc?.title || "").trim();
   const returnedLineageTitleForDoc = (doc: any) => String(doc?.title || doc?.rawDoc?.title || doc?.name || "").trim();
   const returnedLineageDocForRow = (row: any) => row?.doc || row?.candidate || row?.rawDoc || row;
@@ -15594,6 +15594,48 @@ const normalizedCandidatesRaw = [
       title: returnedLineageTitleForDoc(matchedDoc),
     };
   };
+  const returnedLineageScoredMatchForDoc = (doc: any) =>
+    returnedLineageFindInArray("scoringUniverse", scoringUniverse as any[], doc) ||
+    returnedLineageFindInArray("rankedDocs", rankedDocs as any[], doc) ||
+    returnedLineageFindInArray("sourceLayerRankedDocs", sourceLayerRankedDocs as any[], doc);
+  const middleGradesOpenLibraryReturnedItemsRequireScoredHandoff =
+    ageBandForIsolation === "pre_teens" &&
+    sourceEnabled.openLibrary &&
+    finalOutputItems.some((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("openlibrary"));
+  const openLibrarySourceFinalBypassRemovedTitles: string[] = [];
+  let openLibrarySourceFinalScoredHandoffApplied = false;
+  let openLibrarySourceEmergencyBypassFailure = false;
+  if (middleGradesOpenLibraryReturnedItemsRequireScoredHandoff) {
+    const scoredHandoffItems = finalOutputItems.filter((item: any) => {
+      const doc = item?.doc || item;
+      const source = String(doc?.source || item?.source || "").toLowerCase();
+      if (!source.includes("openlibrary")) return true;
+      const hasScoredMatch = Boolean(returnedLineageScoredMatchForDoc(doc));
+      if (!hasScoredMatch) {
+        const title = returnedLineageTitleForDoc(doc);
+        if (title) {
+          openLibrarySourceFinalBypassRemovedTitles.push(title);
+          finalReturnDropReasonByTitle[title] = "open_library_source_final_bypassed_scoring";
+        }
+      }
+      return hasScoredMatch;
+    });
+    if (scoredHandoffItems.length > 0 && scoredHandoffItems.length < finalOutputItems.length) {
+      finalOutputItems = scoredHandoffItems;
+      openLibrarySourceFinalScoredHandoffApplied = true;
+      returnedItemsBuiltFrom = `${String(returnedItemsBuiltFrom || "unknown")}_scored_handoff`;
+      finalReturnSourceUsed = `${String(finalReturnSourceUsed || "unknown")}_scored_handoff`;
+    } else if (scoredHandoffItems.length === 0 && finalOutputItems.length > 0) {
+      openLibrarySourceEmergencyBypassFailure = true;
+      returnedItemsBuiltFrom = "open_library_source_emergency_bypass";
+      finalReturnSourceUsed = "open_library_source_emergency_bypass";
+      countContractSatisfied = false;
+      finalCountContractShortfallReason = "open_library_source_final_bypassed_scoring";
+      sourceSkippedReason.push("open_library_source_final_bypassed_scoring_emergency_return");
+    }
+    returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
+    acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
+  }
   const returnedItemsLineage = finalOutputItems.map((item: any, index: number) => {
     const doc = item?.doc || item;
     const title = returnedLineageTitleForDoc(doc);
@@ -15647,6 +15689,8 @@ const normalizedCandidatesRaw = [
   const returnedItemsBypassPath = returnedItemsAuditConsistencyFailure
     ? `${String(finalReturnSourceUsed || returnedItemsBuiltFrom || "unknown_return_source")} -> finalOutputItems -> returnedItemsTitles`
     : "none";
+  const returnedItemsEmergencyBypassLockQualityPass = openLibrarySourceEmergencyBypassFailure ? false : null;
+  const returnedItemsEmergencyBypassCountContractSatisfied = openLibrarySourceEmergencyBypassFailure ? false : null;
   const returnedItemsAuditAttachedToActualReturnPath = true;
   const returnedItemsActualConstructionPath = "finalOutputItems -> returnedItemsTitles";
   const mainScoringPipelineCounts = {
@@ -16045,6 +16089,13 @@ const normalizedCandidatesRaw = [
     returnedItemsBypassSourceArrayUsed,
     returnedItemsBypassedScoring,
     returnedItemsLineage,
+    middleGradesOpenLibraryReturnedItemsRequireScoredHandoff,
+    openLibrarySourceFinalScoredHandoffApplied,
+    openLibrarySourceFinalBypassRemovedTitles,
+    openLibrarySourceEmergencyBypassFailure,
+    lockQualityPass: openLibrarySourceEmergencyBypassFailure ? false : undefined,
+    returnedItemsEmergencyBypassLockQualityPass,
+    returnedItemsEmergencyBypassCountContractSatisfied,
     mainScoringPipelineCounts,
     mainScoringPipelineNormalizedDocsCount: normalizedDocsCount,
     mainScoringPipelineRankedDocsLength: rankedDocsLength,

@@ -101,6 +101,8 @@ async function main() {
   assertEqual(routerSource.includes("returnedItemsAuditConsistencyFailure"), true, "router diagnostics should flag returned-items/scored-universe contradictions");
   assertEqual(routerSource.includes("returnedItemsLineage"), true, "router diagnostics should expose returned-item lineage");
   assertEqual(routerSource.includes("bypassedScoring"), true, "router returned-item lineage should report scoring bypass status");
+  assertEqual(routerSource.includes("openLibrarySourceFinalScoredHandoffApplied"), true, "middle grades Open Library source-final rows should prefer scored handoff");
+  assertEqual(routerSource.includes("open_library_source_emergency_bypass"), true, "middle grades Open Library source-only returns should be explicit emergency bypass failures");
   console.log(JSON.stringify({ name: "router returned-items audit exposes actual return-path lineage", pass: true }));
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
