@@ -358,6 +358,8 @@ export interface DiagnosticReportV2 {
   middleGradesReturnedLayerRootCollapseApplied?: boolean;
   middleGradesReturnedLayerRootCollapsedTitles?: string[];
   middleGradesReturnedLayerRootCollapseCausedUnderfill?: boolean;
+  returnedItemPipelineObjectIds?: string[];
+  returnedItemPipelineScoredObjectIds?: string[];
   sessionReportHeader?: string;
 }
 

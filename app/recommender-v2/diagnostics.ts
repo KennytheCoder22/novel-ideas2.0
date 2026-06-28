@@ -81,6 +81,8 @@ export function buildRecommendationResultV2(items: ScoredCandidate[], diagnostic
     diagnostics.middleGradesReturnedLayerRootCollapseApplied = collapsed.collapsedTitles.length > 0;
     diagnostics.middleGradesReturnedLayerRootCollapsedTitles = collapsed.collapsedTitles;
     diagnostics.middleGradesReturnedLayerRootCollapseCausedUnderfill = collapsed.items.length < items.length && collapsed.items.length < 5;
+    diagnostics.returnedItemPipelineObjectIds = collapsed.items.map((item) => String(item.diagnostics?.pipelineObjectId || "")).filter(Boolean);
+    diagnostics.returnedItemPipelineScoredObjectIds = collapsed.items.map((item) => String(item.diagnostics?.pipelineScoredObjectId || "")).filter(Boolean);
   }
   return {
     engineVersion: "recommender-v2-openlibrary-baseline",
