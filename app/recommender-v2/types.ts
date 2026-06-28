@@ -264,6 +264,8 @@ export interface SourceDiagnosticV2 {
   openLibraryScoringHandoffLimitedToSourceFinal?: boolean;
   openLibraryScoringHandoffSuppressedTitles?: string[];
   openLibraryScoringHandoffSource?: "source_final_5" | "expanded_debug_pool" | "production_pool";
+  middleGradesExpandedPoolHandoffFailed?: boolean;
+  middleGradesExpandedPoolFailureReason?: string;
   mediumStrongEvidenceTargetCount?: number;
   mediumStrongEvidenceSearchContinued?: boolean;
   mediumStrongEvidenceQueriesAttempted?: string[];

@@ -107,6 +107,23 @@ function buildMiddleGradesPipelineAudit(sourceResults: SourceResult[], normalize
   const rawTitles = uniqueTitles(sourceDiagnostics.rawTitles || []);
   const normalizedOpenLibrary = normalized.filter((candidate) => candidate.source === "openLibrary");
   const scoredOpenLibrary = scored.filter((candidate) => candidate.source === "openLibrary");
+  const openLibraryDocsFetchedAcrossAllQueriesCount = Number(sourceDiagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || sourceDiagnostics.rawApiResultCount || 0);
+  const openLibraryDocsEligibleForScoringCount = Number(sourceDiagnostics.openLibraryDocsEligibleForScoringCount || openLibrary.rawItems.length || 0);
+  const openLibraryDocsActuallyHandedToScoringCount = Number(sourceDiagnostics.openLibraryDocsActuallyHandedToScoringCount || openLibrary.rawItems.length || 0);
+  const middleGradesExpandedPoolHandoffFailed = Boolean(
+    sourceDiagnostics.middleGradesDeepDebugActive
+    && openLibraryDocsFetchedAcrossAllQueriesCount > 20
+    && scoredOpenLibrary.length < 10,
+  );
+  const middleGradesExpandedPoolFailureReason = middleGradesExpandedPoolHandoffFailed
+    ? openLibraryDocsActuallyHandedToScoringCount > scoredOpenLibrary.length
+      ? "expanded_pool_discarded_after_source_return_before_or_during_scoring"
+      : sourceDiagnostics.openLibraryScoringHandoffSource === "source_final_5" || sourceDiagnostics.openLibraryScoringHandoffLimitedToSourceFinal
+        ? "source_handoff_limited_to_source_final_5"
+        : openLibraryDocsEligibleForScoringCount < 10
+          ? "fetched_docs_rejected_before_scoring_eligibility"
+          : "expanded_pool_handoff_under_minimum_scoring_count"
+    : undefined;
   const selectedSet = new Set(selected);
   const selectedOpenLibrary = selected.filter((candidate) => candidate.source === "openLibrary");
   const rawRejected = rawDocTrace.filter((row) => row.accepted === false);
@@ -207,6 +224,13 @@ function buildMiddleGradesPipelineAudit(sourceResults: SourceResult[], normalize
     rankedDocsLength: scoredOpenLibrary.length,
     convertedDocsAvailableForScoringCount: normalizedOpenLibrary.length,
     scoredCandidateUniverseCount: scoredOpenLibrary.length,
+    openLibraryDocsFetchedAcrossAllQueriesCount,
+    openLibraryDocsEligibleForScoringCount,
+    openLibraryDocsActuallyHandedToScoringCount,
+    openLibraryScoringHandoffLimitedToSourceFinal: sourceDiagnostics.openLibraryScoringHandoffLimitedToSourceFinal,
+    openLibraryScoringHandoffSource: sourceDiagnostics.openLibraryScoringHandoffSource,
+    middleGradesExpandedPoolHandoffFailed,
+    middleGradesExpandedPoolFailureReason,
     selectedRecommendationCountObservedByAudit: selected.length,
     selectedOpenLibraryRecommendationCountObservedByAudit: selectedOpenLibrary.length,
     selectedRecommendationObjectTrace: selected.map((candidate) => ({

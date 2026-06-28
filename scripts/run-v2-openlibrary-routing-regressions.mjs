@@ -9,6 +9,7 @@ const TS_FILES = [
   "app/recommender-v2/types.ts",
   "app/recommender-v2/select.ts",
   "app/recommender-v2/score.ts",
+  "app/recommender-v2/normalize.ts",
   "app/recommender-v2/sources/openLibrarySource.ts",
   "app/recommender-v2/sources/openLibraryProfiles.ts",
 ];
@@ -117,6 +118,7 @@ async function main() {
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
   const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/select.js`).href);
   const { scoreCandidates } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/score.js`).href);
+  const { normalizeSourceResults } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/normalize.js`).href);
   const { buildOpenLibraryQueryPlansForRegression, openLibrarySourceAdapter } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibrarySource.js`).href);
   const { openLibraryProfileForAgeBand } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/sources/openLibraryProfiles.js`).href);
   const adultProfile = openLibraryProfileForAgeBand("adult");
@@ -1278,7 +1280,11 @@ async function main() {
     assertEqual(Number(result.diagnostics.openLibraryDocsActuallyHandedToScoringCount || 0) > 5, true, "deep-debug handoff should send more than source-final five candidates into scoring");
     assertEqual(result.diagnostics.openLibraryScoringHandoffSource, "expanded_debug_pool", "deep-debug handoff should use the expanded candidate pool");
     assertEqual(result.diagnostics.openLibraryScoringHandoffLimitedToSourceFinal, false, "deep-debug handoff must not be limited to source-final five");
-    console.log(JSON.stringify({ name: "middle grades deep-debug mode expands budgets and emits full trace", pass: true, budget: result.diagnostics.debugMiddleGradesBudgetMs, firstClientTimeout: result.diagnostics.fetches?.[0]?.clientTimeoutMs, traceCounts: { planned: result.diagnostics.debugMiddleGradesPlannedQueries.length, fetch: result.diagnostics.debugMiddleGradesFetchTrace.length, raw: result.diagnostics.debugMiddleGradesRawDocTrace.length, normalized: result.diagnostics.debugMiddleGradesNormalizedCandidateTrace.length }, handoff: { fetched: result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount, eligible: result.diagnostics.openLibraryDocsEligibleForScoringCount, handedToScoring: result.diagnostics.openLibraryDocsActuallyHandedToScoringCount, source: result.diagnostics.openLibraryScoringHandoffSource } }));
+    const normalizedDebugHandoff = normalizeSourceResults([result]);
+    const scoredDebugHandoff = scoreCandidates(normalizedDebugHandoff, debugProfile);
+    assertEqual(normalizedDebugHandoff.filter((candidate) => candidate.source === "openLibrary").length > 5, true, "expanded Open Library handoff should enter V2 normalization with more than five candidates");
+    assertEqual(scoredDebugHandoff.filter((candidate) => candidate.source === "openLibrary").length > 5, true, "expanded Open Library handoff should enter V2 scoring with more than five candidates");
+    console.log(JSON.stringify({ name: "middle grades deep-debug mode expands budgets and emits full trace", pass: true, budget: result.diagnostics.debugMiddleGradesBudgetMs, firstClientTimeout: result.diagnostics.fetches?.[0]?.clientTimeoutMs, traceCounts: { planned: result.diagnostics.debugMiddleGradesPlannedQueries.length, fetch: result.diagnostics.debugMiddleGradesFetchTrace.length, raw: result.diagnostics.debugMiddleGradesRawDocTrace.length, normalized: result.diagnostics.debugMiddleGradesNormalizedCandidateTrace.length }, handoff: { fetched: result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount, eligible: result.diagnostics.openLibraryDocsEligibleForScoringCount, handedToScoring: result.diagnostics.openLibraryDocsActuallyHandedToScoringCount, normalized: normalizedDebugHandoff.length, scored: scoredDebugHandoff.length, source: result.diagnostics.openLibraryScoringHandoffSource } }));
   } finally {
     if (previousMiddleGradesDebugProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesDebugProxyBase;

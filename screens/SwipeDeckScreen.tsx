@@ -1810,6 +1810,8 @@ function handleLeft() {
     const rankedDocsLengthForReport = Number(middleGradesPipelineAudit?.rankedDocsLength ?? scoredCount);
     const convertedDocsAvailableForScoringCountForReport = Number(middleGradesPipelineAudit?.convertedDocsAvailableForScoringCount ?? normalizedCount);
     const scoredCandidateUniverseCountForReport = Number(middleGradesPipelineAudit?.scoredCandidateUniverseCount ?? scoredCount);
+    const middleGradesExpandedPoolHandoffFailedForReport = Boolean(middleGradesPipelineAudit?.middleGradesExpandedPoolHandoffFailed || openLibrarySourceDiagnostics?.middleGradesExpandedPoolHandoffFailed);
+    const middleGradesExpandedPoolFailureReasonForReport = String(middleGradesPipelineAudit?.middleGradesExpandedPoolFailureReason || openLibrarySourceDiagnostics?.middleGradesExpandedPoolFailureReason || "");
     const finalEligibilityCleanCandidateCountForReport = Number(v2Result.items.length || 0);
     const viableCandidateCountBeforeFinalSelectionForReport = Number(scoredCount || 0);
     const finalAcceptedDocsLengthForReport = Number(v2Result.items.length || 0);
@@ -1911,6 +1913,8 @@ function handleLeft() {
       openLibraryScoringHandoffLimitedToSourceFinal: Boolean(openLibrarySourceDiagnostics?.openLibraryScoringHandoffLimitedToSourceFinal),
       openLibraryScoringHandoffSuppressedTitles: openLibrarySourceDiagnostics?.openLibraryScoringHandoffSuppressedTitles || [],
       openLibraryScoringHandoffSource: openLibrarySourceDiagnostics?.openLibraryScoringHandoffSource || "",
+      middleGradesExpandedPoolHandoffFailed: middleGradesExpandedPoolHandoffFailedForReport,
+      middleGradesExpandedPoolFailureReason: middleGradesExpandedPoolFailureReasonForReport,
       openLibraryArtifactSuppressedTitles: openLibrarySourceDiagnostics?.artifactSuppressedTitles || [],
       openLibrarySeriesSuppressedTitles: openLibrarySourceDiagnostics?.seriesSuppressedTitles || [],
       openLibrarySourceStatus: openLibrarySourceDiagnostics?.status || "",
@@ -3723,6 +3727,13 @@ function handleLeft() {
       `teenPostPassInputSource:${String((lastRecommendationResult as any)?.teenPostPassInputSource || "unknown")}`,
       `scoredCandidateUniverseCount:${Number((lastRecommendationResult as any)?.scoredCandidateUniverseCount || 0)}`,
       `convertedDocsAvailableForScoringCount:${Number((lastRecommendationResult as any)?.convertedDocsAvailableForScoringCount || 0)}`,
+      `openLibraryDocsFetchedAcrossAllQueriesCount:${Number((lastRecommendationResult as any)?.openLibraryDocsFetchedAcrossAllQueriesCount || 0)}`,
+      `openLibraryDocsEligibleForScoringCount:${Number((lastRecommendationResult as any)?.openLibraryDocsEligibleForScoringCount || 0)}`,
+      `openLibraryDocsActuallyHandedToScoringCount:${Number((lastRecommendationResult as any)?.openLibraryDocsActuallyHandedToScoringCount || 0)}`,
+      `openLibraryScoringHandoffLimitedToSourceFinal:${Boolean((lastRecommendationResult as any)?.openLibraryScoringHandoffLimitedToSourceFinal)}`,
+      `openLibraryScoringHandoffSource:${String((lastRecommendationResult as any)?.openLibraryScoringHandoffSource || "")}`,
+      `middleGradesExpandedPoolHandoffFailed:${Boolean((lastRecommendationResult as any)?.middleGradesExpandedPoolHandoffFailed)}`,
+      `middleGradesExpandedPoolFailureReason:${String((lastRecommendationResult as any)?.middleGradesExpandedPoolFailureReason || "")}`,
       `gcdStructuralEnrichmentCount:${Number((lastRecommendationResult as any)?.gcdStructuralEnrichmentCount || 0)}`,
       `gcdEnrichmentApplied:${Number((lastRecommendationResult as any)?.gcdStructuralEnrichmentCount || 0) > 0}`,
       `gcdEntryPointLikeCount:${Number((lastRecommendationResult as any)?.gcdEntryPointLikeCount || 0)}`,

@@ -1913,8 +1913,15 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
 
     const ageProfile = openLibraryProfileForAgeBand(context.profile.ageBand);
     const artifactReasonLabels = openLibraryArtifactReasonLabels(ageProfile);
-    const debugMiddleGradesDeepTrace = ageProfile.key === "middleGrades" && Boolean(context.profile.diagnostics?.debugMiddleGradesNoTimeouts || context.profile.diagnostics?.debugMiddleGradesDeepTrace || context.profile.diagnostics?.middleGradesDeepDebugActive);
     const middleGradesDeepDebugActivationSourceRaw = String(context.profile.diagnostics?.middleGradesDeepDebugActivationSource || "");
+    const debugMiddleGradesDeepTrace = ageProfile.key === "middleGrades" && Boolean(
+      context.profile.diagnostics?.debugMiddleGradesNoTimeouts
+      || context.profile.diagnostics?.debugMiddleGradesDeepTrace
+      || context.profile.diagnostics?.middleGradesDeepDebugActive
+      || context.profile.diagnostics?.middleGradesDeepDebugExpected
+      || context.profile.diagnostics?.sessionReportHeader === "MIDDLE GRADES DEEP DEBUG: ACTIVE"
+      || (middleGradesDeepDebugActivationSourceRaw && middleGradesDeepDebugActivationSourceRaw !== "none"),
+    );
     const middleGradesDeepDebugActivationSource = debugMiddleGradesDeepTrace
       ? middleGradesDeepDebugActivationSourceRaw && middleGradesDeepDebugActivationSourceRaw !== "none" ? middleGradesDeepDebugActivationSourceRaw : "profile"
       : "none";
@@ -4049,6 +4056,16 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const openLibraryScoringHandoffLimitedToSourceFinal = ageProfile.key === "middleGrades"
       ? Boolean(debugMiddleGradesDeepTrace && openLibraryScoringHandoffSource === "source_final_5" && rawApiResultCount > openLibraryScoringHandoffItems.length)
       : undefined;
+    const middleGradesExpandedPoolHandoffFailed = ageProfile.key === "middleGrades"
+      ? Boolean(debugMiddleGradesDeepTrace && rawApiResultCount > 20 && openLibraryScoringHandoffItems.length < 10)
+      : undefined;
+    const middleGradesExpandedPoolFailureReason = middleGradesExpandedPoolHandoffFailed
+      ? openLibraryScoringHandoffSource === "source_final_5" || openLibraryScoringHandoffLimitedToSourceFinal
+        ? "source_handoff_limited_to_source_final_5"
+        : openLibraryScoringHandoffEligiblePool.length < 10
+          ? "fetched_docs_rejected_before_scoring_eligibility"
+          : "expanded_pool_handoff_under_minimum_scoring_count"
+      : undefined;
     const statusForHandoff: SourceResult["status"] = openLibraryScoringHandoffItems.length ? "succeeded" : status;
     return {
       source: "openLibrary",
@@ -4084,6 +4101,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         openLibraryScoringHandoffLimitedToSourceFinal,
         openLibraryScoringHandoffSuppressedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(openLibraryScoringHandoffSuppressedTitles, 50) : undefined,
         openLibraryScoringHandoffSource,
+        middleGradesExpandedPoolHandoffFailed,
+        middleGradesExpandedPoolFailureReason,
         openLibraryQueryRouting,
         openLibraryAgeProfile: ageProfile.key,
         openLibraryProfileLabel: ageProfile.behaviorLabel,
