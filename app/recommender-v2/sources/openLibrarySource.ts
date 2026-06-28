@@ -2239,9 +2239,6 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       if (ageProfile.key !== "middleGrades" || !debugMiddleGradesDeepTrace) return;
       const title = String(doc?.title || "").trim();
       if (!title) return;
-      const query = queryPlan.query;
-      const hasRouteEvidence = queryPlan.emergencyFallback || queryPlan.fallbackAlignment === "anti_zero" || middleGradesSourceDocumentRouteEvidenceFields(doc, query, String(queryPlan.routingReason || "")).length > 0;
-      if (!hasRouteEvidence) return;
       const key = String(doc?.key || doc?.cover_edition_key || (Array.isArray(doc?.edition_key) ? doc.edition_key[0] : "") || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
       if (middleGradesExpandedScoringKeys.has(key)) return;
       middleGradesExpandedScoringKeys.add(key);
@@ -4047,20 +4044,16 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       ? openLibraryScoringHandoffEligiblePool.slice(openLibraryScoringHandoffItems.length).map((item: any) => String(item?.title || "")).filter(Boolean)
       : [];
     const openLibraryScoringHandoffSource: SourceDiagnosticV2["openLibraryScoringHandoffSource"] = ageProfile.key === "middleGrades"
-      ? debugMiddleGradesDeepTrace
-        ? openLibraryScoringHandoffEligiblePool.length > rawItems.length || openLibraryScoringHandoffItems.length > Math.min(ageProfile.docLimit, 5)
-          ? "expanded_debug_pool"
-          : "source_final_5"
-        : "production_pool"
+      ? debugMiddleGradesDeepTrace ? "expanded_debug_pool" : "production_pool"
       : undefined;
     const openLibraryScoringHandoffLimitedToSourceFinal = ageProfile.key === "middleGrades"
-      ? Boolean(debugMiddleGradesDeepTrace && openLibraryScoringHandoffSource === "source_final_5" && rawApiResultCount > openLibraryScoringHandoffItems.length)
+      ? Boolean(!debugMiddleGradesDeepTrace && rawApiResultCount > openLibraryScoringHandoffItems.length && openLibraryScoringHandoffItems.length <= Math.min(ageProfile.docLimit, 5))
       : undefined;
     const middleGradesExpandedPoolHandoffFailed = ageProfile.key === "middleGrades"
       ? Boolean(debugMiddleGradesDeepTrace && rawApiResultCount > 20 && openLibraryScoringHandoffItems.length < 10)
       : undefined;
     const middleGradesExpandedPoolFailureReason = middleGradesExpandedPoolHandoffFailed
-      ? openLibraryScoringHandoffSource === "source_final_5" || openLibraryScoringHandoffLimitedToSourceFinal
+      ? openLibraryScoringHandoffLimitedToSourceFinal
         ? "source_handoff_limited_to_source_final_5"
         : openLibraryScoringHandoffEligiblePool.length < 10
           ? "fetched_docs_rejected_before_scoring_eligibility"

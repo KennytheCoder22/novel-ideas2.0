@@ -1252,10 +1252,18 @@ async function main() {
     return {
       ok: true,
       status: 200,
-      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6, 7, 8].map((index) => ({
-        ...fakeDoc(query, index),
-        subject: ["Juvenile fiction", "Children's stories", "Friendship", "Adventure stories", "Humorous stories"],
-      })) }),
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: Array.from({ length: 16 }, (_, offset) => {
+        const index = offset + 1;
+        const doc = fakeDoc(query, index);
+        return index <= 5
+          ? { ...doc, subject: ["Juvenile fiction", "Children's stories", "Friendship", "Adventure stories", "Humorous stories"] }
+          : {
+            ...doc,
+            title: `Debug Generic Candidate ${index}`,
+            subject: ["Juvenile fiction", "Children's stories"],
+            description: "A children story included to verify the expanded deep-debug handoff reaches scoring before source-final evidence narrowing.",
+          };
+      }) }),
     };
   };
   try {
@@ -1276,7 +1284,7 @@ async function main() {
     assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesRawDocTrace) && result.diagnostics.debugMiddleGradesRawDocTrace.length > 0, true, "deep trace should expose raw doc filtering trace");
     assertEqual(Array.isArray(result.diagnostics.debugMiddleGradesNormalizedCandidateTrace) && result.diagnostics.debugMiddleGradesNormalizedCandidateTrace.length > 0, true, "deep trace should expose normalized candidate trace");
     assertEqual(Boolean(result.diagnostics.debugMiddleGradesCompactSummary?.best20RawDocsByQuery), true, "deep trace should expose compact summary");
-    assertEqual(Number(result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) > 20, true, "deep-debug fixture should fetch more than 20 Open Library docs");
+    assertEqual(Number(result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) > 100, true, "deep-debug fixture should match the live failure shape with more than 100 Open Library docs fetched");
     assertEqual(Number(result.diagnostics.openLibraryDocsActuallyHandedToScoringCount || 0) > 5, true, "deep-debug handoff should send more than source-final five candidates into scoring");
     assertEqual(result.diagnostics.openLibraryScoringHandoffSource, "expanded_debug_pool", "deep-debug handoff should use the expanded candidate pool");
     assertEqual(result.diagnostics.openLibraryScoringHandoffLimitedToSourceFinal, false, "deep-debug handoff must not be limited to source-final five");
