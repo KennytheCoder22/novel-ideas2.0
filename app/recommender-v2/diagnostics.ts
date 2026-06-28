@@ -40,6 +40,8 @@ function normalizedTitle(value: string): string {
 
 function returnedCollectionRootKey(title: string): string {
   const clean = normalizedTitle(title.split(/[:;(\[]/)[0] || title);
+  const characterPairRoot = clean.match(/\b([a-z]{3,})\s+and\s+([a-z]{3,})\b/)?.[0] || "";
+  if (characterPairRoot) return characterPairRoot;
   if (!/\b(complete|collected|collection|collections|treasury|storybook|stories|tales|adventures|books?|omnibus|anthology|library|set|boxed|box)\b/.test(clean)) return "";
   const root = clean
     .replace(/\b(the|a|an)\b/g, " ")

@@ -1254,10 +1254,12 @@ async function main() {
   const returnedLayerResult = buildRecommendationResultV2([
     fakeScoredCandidate({ title: "The Frog and Toad Collection", maturityBand: "preteens", genres: ["Juvenile fiction"], themes: ["Friendship"] }),
     fakeScoredCandidate({ title: "Frog and Toad Treasury", maturityBand: "preteens", genres: ["Juvenile fiction"], themes: ["Friendship"] }),
+    fakeScoredCandidate({ title: "Days with Frog and Toad", maturityBand: "preteens", genres: ["Juvenile fiction"], themes: ["Friendship"] }),
+    fakeScoredCandidate({ title: "Frog and Toad Together", maturityBand: "preteens", genres: ["Juvenile fiction"], themes: ["Friendship"] }),
     fakeScoredCandidate({ title: "Harbor Friendship", maturityBand: "preteens", genres: ["Juvenile fiction"], themes: ["Friendship"] }),
   ], returnedLayerDiagnostics);
   assertEqual(returnedLayerResult.items.filter((item) => /frog and toad/i.test(item.title)).length, 1, "returned-items layer should collapse Frog and Toad collection variants");
-  assertEqual(returnedLayerResult.diagnostics.finalItemsLength, 3, "returned-items diagnostics should preserve final selection length before returned-layer collapse");
+  assertEqual(returnedLayerResult.diagnostics.finalItemsLength, 5, "returned-items diagnostics should preserve final selection length before returned-layer collapse");
   assertEqual(returnedLayerResult.diagnostics.returnedItemsLength, returnedLayerResult.items.length, "returned-items length should agree with returned items");
   assertEqual(returnedLayerResult.diagnostics.returnedItemsTitles.length, returnedLayerResult.diagnostics.returnedItemsLength, "returned titles count should agree with returned length");
   assertEqual(returnedLayerResult.diagnostics.middleGradesReturnedLayerRootCollapseApplied, true, "returned-layer collection root collapse should be diagnosed");
@@ -1666,9 +1668,46 @@ async function main() {
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.queryLevelRouteAlignmentByTitle), true, "middle grades selection should expose query-level route alignment by title");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.documentLevelRouteAlignmentByTitle), true, "middle grades selection should expose document-level route alignment by title");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.routeAlignmentEvidenceFieldsByTitle), true, "middle grades selection should expose route alignment evidence fields by title");
+  assertEqual(Array.isArray(middleGradesSelectionResult.rejectedReasons.middleGradesReturnedItemQualityAudit), true, "middle grades selection should audit every returned title");
+  assertEqual(middleGradesSelectionResult.rejectedReasons.middleGradesReturnedItemQualityAudit.length, middleGradesSelectionResult.selected.length, "returned title quality audit should explain every selected middle grades title");
+  assertEqual(Array.isArray(middleGradesSelectionResult.rejectedReasons.middleGradesTopRejectedQualityAudit), true, "middle grades selection should audit top rejected candidates");
   assertEqual(Number(middleGradesSelectionResult.rejectedReasons.falseRouteAlignedDueToQueryOnlyCount || 0) > 0, true, "middle grades selection should demote query-only route alignment");
   assertEqual(middleGradesSelectionResult.rejectedReasons.finalCountContractStatus, "underfilled_fallback_only", "middle grades query-only underfill slate should not masquerade as full fallback success");
   console.log(JSON.stringify({ name: "middle grades selection rejects query-only underfill slate", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
+
+  const middleGradesFallbackPrecedenceCandidates = [
+    ...["One", "Two", "Three", "Four", "Five"].map((seed, index) => fakeScoredCandidate({
+      id: `middle-fallback-precedence-${seed}`,
+      title: `Generic Fallback ${seed}`,
+      score: 20 - index,
+      maturityBand: "preteens",
+      matchedSignals: ["friendship"],
+      scoreBreakdown: { positiveTasteMatch: 1, genreFacetMatch: 1, ageTeenSuitability: 0.5 },
+      diagnostics: { queryText: "middle grade adventure", queryFamily: "generic_adventure", routingReason: "middle_grades_humor", fallbackAlignment: "anti_zero", emergencyFallback: true },
+      raw: { subject: ["Juvenile fiction"] },
+    })),
+    fakeScoredCandidate({
+      id: "middle-stronger-precedence",
+      title: "Friendship Adventure Club",
+      score: 2,
+      maturityBand: "preteens",
+      genres: ["Juvenile fiction", "Adventure stories"],
+      themes: ["Friendship", "Community"],
+      matchedSignals: ["friendship", "adventure"],
+      scoreBreakdown: { positiveTasteMatch: 1.5, genreFacetMatch: 1, ageTeenSuitability: 0.5 },
+      diagnostics: { queryText: "children friendship adventure", queryFamily: "adventure_friendship", routingReason: "middle_grades_humor" },
+      raw: { subject: ["Juvenile fiction", "Friendship", "Adventure stories"] },
+    }),
+  ];
+  const middleGradesFallbackPrecedenceResult = selectRecommendations(middleGradesFallbackPrecedenceCandidates, middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesFallbackPrecedenceResult.selected.some((candidate) => candidate.title === "Friendship Adventure Club"), true, "fallback/default candidates cannot beat stronger document evidence with equal-or-better taste alignment");
+  assertEqual(Boolean(middleGradesFallbackPrecedenceResult.rejectedReasons.middleGradesFallbackDefaultPrecedenceExplanations), true, "fallback precedence should explain why fallback/default survived or was replaced");
+  assertEqual(
+    middleGradesFallbackPrecedenceResult.rejectedReasons.middleGradesReturnedItemQualityAudit.some((row) => row.title === "Friendship Adventure Club" && row.routeEvidenceTier === "strong_evidence"),
+    true,
+    "fallback precedence audit should show the stronger evidence candidate that beat fallback/default rows"
+  );
+  console.log(JSON.stringify({ name: "middle grades fallback defaults cannot beat stronger evidence without explanation", pass: true, selected: middleGradesFallbackPrecedenceResult.selected.map((candidate) => candidate.title), explanations: middleGradesFallbackPrecedenceResult.rejectedReasons.middleGradesFallbackDefaultPrecedenceExplanations }));
 
   const middleGradesZeroFinalGuardResult = selectRecommendations([fakeScoredCandidate({
     id: "middle-zero-final-guard",
