@@ -258,6 +258,12 @@ export interface SourceDiagnosticV2 {
   earlyCandidateCapSuppressedTitles?: string[];
   mediumStrongCandidatesSeenAcrossAllQueries?: string[];
   weakFallbackCandidatesHeldBack?: string[];
+  openLibraryDocsFetchedAcrossAllQueriesCount?: number;
+  openLibraryDocsEligibleForScoringCount?: number;
+  openLibraryDocsActuallyHandedToScoringCount?: number;
+  openLibraryScoringHandoffLimitedToSourceFinal?: boolean;
+  openLibraryScoringHandoffSuppressedTitles?: string[];
+  openLibraryScoringHandoffSource?: "source_final_5" | "expanded_debug_pool" | "production_pool";
   mediumStrongEvidenceTargetCount?: number;
   mediumStrongEvidenceSearchContinued?: boolean;
   mediumStrongEvidenceQueriesAttempted?: string[];

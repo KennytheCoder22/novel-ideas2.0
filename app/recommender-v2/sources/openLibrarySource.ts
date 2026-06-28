@@ -1986,6 +1986,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
     const rawItems: unknown[] = [];
+    const middleGradesExpandedScoringPool: unknown[] = [];
+    const middleGradesExpandedScoringKeys = new Set<string>();
     const rawTitles: string[] = [];
     const dropReasons: Record<string, number> = {};
     const fetches: SourceFetchDiagnosticV2[] = [];
@@ -2226,6 +2228,22 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         textPreview: text.slice(0, 180),
       });
     };
+    const rememberMiddleGradesExpandedScoringCandidate = (doc: any, queryPlan: OpenLibraryQueryPlan, stage: string): void => {
+      if (ageProfile.key !== "middleGrades" || !debugMiddleGradesDeepTrace) return;
+      const title = String(doc?.title || "").trim();
+      if (!title) return;
+      const query = queryPlan.query;
+      const hasRouteEvidence = queryPlan.emergencyFallback || queryPlan.fallbackAlignment === "anti_zero" || middleGradesSourceDocumentRouteEvidenceFields(doc, query, String(queryPlan.routingReason || "")).length > 0;
+      if (!hasRouteEvidence) return;
+      const key = String(doc?.key || doc?.cover_edition_key || (Array.isArray(doc?.edition_key) ? doc.edition_key[0] : "") || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
+      if (middleGradesExpandedScoringKeys.has(key)) return;
+      middleGradesExpandedScoringKeys.add(key);
+      const normalized = normalizeOpenLibraryDoc(doc, queryPlan);
+      (normalized as any).scoringHandoffStage = stage;
+      (normalized as any).scoringHandoffSource = "expanded_debug_pool";
+      middleGradesExpandedScoringPool.push(normalized);
+    };
+
     const traceMiddleGradesNormalizedCandidate = (item: any, sourceDoc: any, queryPlan: OpenLibraryQueryPlan): void => {
       if (!middleGradesDebugTrace) return;
       middleGradesDebugTrace.normalizedCandidateTrace.push({
@@ -2260,6 +2278,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, reason);
         return false;
       }
+      rememberMiddleGradesExpandedScoringCandidate(doc, queryPlan, stage);
       const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
       if (acceptedDocKeys.has(docKey)) {
         dropReasons.duplicate_doc = Number(dropReasons.duplicate_doc || 0) + 1;
@@ -4002,25 +4021,54 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         ...middleGradesMediumStrongRawItems().map((item: any) => String(item?.title || "")).filter(Boolean),
       ], 20)
       : [];
+    const openLibraryScoringHandoffEligiblePool = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace
+      ? (() => {
+        const byKey = new Map<string, unknown>();
+        for (const item of [...middleGradesExpandedScoringPool, ...rawItems] as any[]) {
+          const title = String(item?.title || "").trim();
+          if (!title) continue;
+          const key = String(item?.sourceId || item?.key || item?.workKey || `${title}:${Array.isArray(item?.authors) ? item.authors[0] : ""}`).toLowerCase();
+          if (!byKey.has(key)) byKey.set(key, item);
+        }
+        return Array.from(byKey.values());
+      })()
+      : rawItems;
+    const openLibraryScoringHandoffItems = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace
+      ? openLibraryScoringHandoffEligiblePool.slice(0, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT)
+      : rawItems;
+    const openLibraryScoringHandoffSuppressedTitles = ageProfile.key === "middleGrades"
+      ? openLibraryScoringHandoffEligiblePool.slice(openLibraryScoringHandoffItems.length).map((item: any) => String(item?.title || "")).filter(Boolean)
+      : [];
+    const openLibraryScoringHandoffSource: SourceDiagnosticV2["openLibraryScoringHandoffSource"] = ageProfile.key === "middleGrades"
+      ? debugMiddleGradesDeepTrace
+        ? openLibraryScoringHandoffEligiblePool.length > rawItems.length || openLibraryScoringHandoffItems.length > Math.min(ageProfile.docLimit, 5)
+          ? "expanded_debug_pool"
+          : "source_final_5"
+        : "production_pool"
+      : undefined;
+    const openLibraryScoringHandoffLimitedToSourceFinal = ageProfile.key === "middleGrades"
+      ? Boolean(debugMiddleGradesDeepTrace && openLibraryScoringHandoffSource === "source_final_5" && rawApiResultCount > openLibraryScoringHandoffItems.length)
+      : undefined;
+    const statusForHandoff: SourceResult["status"] = openLibraryScoringHandoffItems.length ? "succeeded" : status;
     return {
       source: "openLibrary",
-      status,
-      rawItems,
+      status: statusForHandoff,
+      rawItems: openLibraryScoringHandoffItems,
       diagnostics: {
         source: "openLibrary",
-        status,
+        status: statusForHandoff,
         planned: true,
         attempted: true,
-        timedOut: status === "timed_out",
+        timedOut: statusForHandoff === "timed_out",
         startedAt,
         finishedAt,
         elapsedMs: Date.parse(finishedAt) - Date.parse(startedAt),
-        rawCount: rawItems.length,
-        normalizedCount: rawItems.length,
+        rawCount: openLibraryScoringHandoffItems.length,
+        normalizedCount: openLibraryScoringHandoffItems.length,
         queries,
         rawTitles: uniqueStrings(rawTitles, 10),
-        firstReturnedTitles: uniqueStrings(rawItems.map((item: any) => item?.title), 5),
-        failedReason: rawItems.length ? undefined : failedReason || undefined,
+        firstReturnedTitles: uniqueStrings(openLibraryScoringHandoffItems.map((item: any) => item?.title), 5),
+        failedReason: openLibraryScoringHandoffItems.length ? undefined : failedReason || undefined,
         emptyReason,
         openLibraryProbeRan: fetches.some((fetch) => fetch.diagnosticOnly),
         rawApiResultCount,
@@ -4029,7 +4077,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         openLibraryTopUpRan,
         openLibraryTopUpTarget: ageProfile.minCleanDocs,
         openLibraryFallbackQueriesExhausted: rawItems.length < ageProfile.minCleanDocs && mainFetches.length >= queryPlans.length,
-        usableRowsAfterFiltering: rawItems.length,
+        usableRowsAfterFiltering: openLibraryScoringHandoffItems.length,
+        openLibraryDocsFetchedAcrossAllQueriesCount: ageProfile.key === "middleGrades" ? rawApiResultCount : undefined,
+        openLibraryDocsEligibleForScoringCount: ageProfile.key === "middleGrades" ? openLibraryScoringHandoffEligiblePool.length : undefined,
+        openLibraryDocsActuallyHandedToScoringCount: ageProfile.key === "middleGrades" ? openLibraryScoringHandoffItems.length : undefined,
+        openLibraryScoringHandoffLimitedToSourceFinal,
+        openLibraryScoringHandoffSuppressedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(openLibraryScoringHandoffSuppressedTitles, 50) : undefined,
+        openLibraryScoringHandoffSource,
         openLibraryQueryRouting,
         openLibraryAgeProfile: ageProfile.key,
         openLibraryProfileLabel: ageProfile.behaviorLabel,
@@ -4171,7 +4225,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         underfilledAfterDirectUsableDocs: ageProfile.key === "middleGrades" ? middleGradesUnderfilledAfterDirectUsableDocs : undefined,
         directUsableDocsButRecoveryContinued: ageProfile.key === "middleGrades" ? middleGradesDirectUsableDocsButRecoveryContinued : undefined,
         underfillStopReasonDetailed: middleGradesUnderfillStopReasonDetailed,
-        rawItemPreview: rawItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year })),
+        rawItemPreview: openLibraryScoringHandoffItems.slice(0, 12).map((item: any) => ({ title: item?.title, authors: item?.authors || item?.author_name || item?.creators, source: item?.source, queryText: item?.queryText, originalPlannedQuery: item?.originalPlannedQuery, simplifiedOpenLibraryQuery: item?.simplifiedOpenLibraryQuery, queryCascadeIndex: item?.queryCascadeIndex, queryFamily: item?.queryFamily, routingReason: item?.routingReason, emergencyFallback: item?.emergencyFallback, fallbackAlignment: item?.fallbackAlignment, facets: item?.facets, first_publish_year: item?.first_publish_year, scoringHandoffSource: item?.scoringHandoffSource, scoringHandoffStage: item?.scoringHandoffStage })),
         fetches,
       },
     };
