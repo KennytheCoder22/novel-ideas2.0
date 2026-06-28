@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
 const OUT_DIR = ".tmp/v2-openlibrary-routing-regressions";
@@ -95,6 +96,12 @@ function fakeDoc(query, index) {
 
 async function main() {
   compileHarnessDependencies();
+  const routerSource = readFileSync("screens/recommenders/recommenderRouter.ts", "utf8");
+  assertEqual(routerSource.includes("returnedItemsAuditAttachedToActualReturnPath"), true, "router diagnostics should attach audit to actual returned-items path");
+  assertEqual(routerSource.includes("returnedItemsAuditConsistencyFailure"), true, "router diagnostics should flag returned-items/scored-universe contradictions");
+  assertEqual(routerSource.includes("returnedItemsLineage"), true, "router diagnostics should expose returned-item lineage");
+  assertEqual(routerSource.includes("bypassedScoring"), true, "router returned-item lineage should report scoring bypass status");
+  console.log(JSON.stringify({ name: "router returned-items audit exposes actual return-path lineage", pass: true }));
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
   const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/select.js`).href);

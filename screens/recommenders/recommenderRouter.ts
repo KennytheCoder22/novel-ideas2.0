@@ -15567,6 +15567,96 @@ const normalizedCandidatesRaw = [
   const finalReturnedDisabledSourceLeakDetected = finalOutputItems.some((item: any) => !isSourceAllowedForFinalGate(item));
   const returnedItemsTitlesAtAuditPoint = finalOutputItems.map((it:any)=>String(it?.doc?.title || it?.title || "").trim()).filter(Boolean);
   const acceptedButNotReturnedTitles = finalItemsTitles.filter((t) => !returnedItemsTitlesAtAuditPoint.some((rt) => normalizeText(rt) === normalizeText(t)));
+  const returnedLineageIdForDoc = (doc: any) => String(doc?.sourceId || doc?.canonicalId || doc?.id || doc?.key || doc?.olid || doc?.workKey || doc?.title || "").trim();
+  const returnedLineageTitleForDoc = (doc: any) => String(doc?.title || doc?.rawDoc?.title || doc?.name || "").trim();
+  const returnedLineageDocForRow = (row: any) => row?.doc || row?.candidate || row?.rawDoc || row;
+  const returnedLineageMatchesDoc = (needle: any, row: any) => {
+    const haystack = returnedLineageDocForRow(row);
+    if (!needle || !haystack) return false;
+    if (needle === haystack || needle === row) return true;
+    const needleId = returnedLineageIdForDoc(needle);
+    const haystackId = returnedLineageIdForDoc(haystack);
+    if (needleId && haystackId && needleId === haystackId) return true;
+    const needleTitle = normalizeText(returnedLineageTitleForDoc(needle));
+    const haystackTitle = normalizeText(returnedLineageTitleForDoc(haystack));
+    return Boolean(needleTitle && haystackTitle && needleTitle === haystackTitle);
+  };
+  const returnedLineageFindInArray = (arrayName: string, rows: any[], doc: any) => {
+    const safeRows = Array.isArray(rows) ? rows : [];
+    const index = safeRows.findIndex((row) => returnedLineageMatchesDoc(doc, row));
+    if (index < 0) return null;
+    const matchedDoc = returnedLineageDocForRow(safeRows[index]);
+    return {
+      arrayName,
+      index,
+      id: returnedLineageIdForDoc(matchedDoc),
+      sameObject: doc === matchedDoc || doc === safeRows[index],
+      title: returnedLineageTitleForDoc(matchedDoc),
+    };
+  };
+  const returnedItemsLineage = finalOutputItems.map((item: any, index: number) => {
+    const doc = item?.doc || item;
+    const title = returnedLineageTitleForDoc(doc);
+    const sourceCandidateMatch =
+      returnedLineageFindInArray("openLibraryCandidates", openLibraryCandidates as any[], doc) ||
+      returnedLineageFindInArray("openLibraryApprovedCandidates", openLibraryApprovedCandidates as any[], doc) ||
+      returnedLineageFindInArray("openLibraryDocsEnriched", openLibraryDocsEnriched as any[], doc);
+    const normalizedMatch =
+      returnedLineageFindInArray("openLibraryCandidates", openLibraryCandidates as any[], doc) ||
+      returnedLineageFindInArray("normalizedCandidates", normalizedCandidates as any[], doc) ||
+      returnedLineageFindInArray("candidateDocs", candidateDocs as any[], doc);
+    const scoredMatch =
+      returnedLineageFindInArray("scoringUniverse", scoringUniverse as any[], doc) ||
+      returnedLineageFindInArray("rankedDocs", rankedDocs as any[], doc) ||
+      returnedLineageFindInArray("sourceLayerRankedDocs", sourceLayerRankedDocs as any[], doc);
+    const finalSelectionMatch =
+      returnedLineageFindInArray("finalRankedDocsBase", finalRankedDocsBase as any[], doc) ||
+      returnedLineageFindInArray("finalRenderDocs", finalRenderDocs as any[], doc) ||
+      returnedLineageFindInArray("finalGateAcceptedItems", finalGateAcceptedItems as any[], doc) ||
+      returnedLineageFindInArray("terminalAssemblyBaseItems", terminalAssemblyBaseItems as any[], doc);
+    const firstObserved =
+      finalSelectionMatch ||
+      scoredMatch ||
+      normalizedMatch ||
+      sourceCandidateMatch ||
+      returnedLineageFindInArray("finalOutputItems", finalOutputItems as any[], doc);
+    return {
+      title,
+      returnedIndex: index,
+      sourceArrayName: firstObserved?.arrayName || "finalOutputItems",
+      sourceCandidateId: sourceCandidateMatch?.id || returnedLineageIdForDoc(doc),
+      normalizedId: normalizedMatch?.id || "",
+      scoredId: scoredMatch?.id || "",
+      finalSelectionId: finalSelectionMatch?.id || "",
+      finalOutputId: returnedLineageIdForDoc(doc),
+      bypassedScoring: !scoredMatch,
+      matchedSourceArrayIndex: sourceCandidateMatch?.index ?? null,
+      matchedNormalizedArrayIndex: normalizedMatch?.index ?? null,
+      matchedScoredArrayIndex: scoredMatch?.index ?? null,
+      matchedFinalSelectionArrayIndex: finalSelectionMatch?.index ?? null,
+      sameObjectAsScoredCandidate: Boolean(scoredMatch?.sameObject),
+      sameObjectAsFinalSelection: Boolean(finalSelectionMatch?.sameObject),
+    };
+  });
+  const returnedItemsBypassedScoring = returnedItemsLineage.some((row: any) => Boolean(row.bypassedScoring));
+  const returnedItemsAuditConsistencyFailure =
+    returnedItemsTitlesAtAuditPoint.length > 0 && Number(scoredCandidateUniverseCount || 0) === 0;
+  const returnedItemsBypassSourceArrayUsed = returnedItemsAuditConsistencyFailure
+    ? Array.from(new Set(returnedItemsLineage.map((row: any) => String(row.sourceArrayName || "")).filter(Boolean))).join("|") || "finalOutputItems"
+    : "none";
+  const returnedItemsBypassPath = returnedItemsAuditConsistencyFailure
+    ? `${String(finalReturnSourceUsed || returnedItemsBuiltFrom || "unknown_return_source")} -> finalOutputItems -> returnedItemsTitles`
+    : "none";
+  const returnedItemsAuditAttachedToActualReturnPath = true;
+  const returnedItemsActualConstructionPath = "finalOutputItems -> returnedItemsTitles";
+  const mainScoringPipelineCounts = {
+    normalizedDocsCount,
+    rankedDocsLength,
+    convertedDocsAvailableForScoringCount,
+    scoredCandidateUniverseCount,
+    finalAcceptedDocsLength,
+    renderedTopRecommendationsLength,
+  };
   pushGlobalPhase("after_final_assembly", {
     stage: "post_final_gates",
     returnedItemsLength: finalOutputItems.length,
@@ -15948,6 +16038,19 @@ const normalizedCandidatesRaw = [
     franchiseCapBlockedTitles,
     recoveryDiversificationAttempts,
     returnedItemsBuiltFrom,
+    returnedItemsAuditAttachedToActualReturnPath,
+    returnedItemsActualConstructionPath,
+    returnedItemsAuditConsistencyFailure,
+    returnedItemsBypassPath,
+    returnedItemsBypassSourceArrayUsed,
+    returnedItemsBypassedScoring,
+    returnedItemsLineage,
+    mainScoringPipelineCounts,
+    mainScoringPipelineNormalizedDocsCount: normalizedDocsCount,
+    mainScoringPipelineRankedDocsLength: rankedDocsLength,
+    mainScoringPipelineConvertedDocsAvailableForScoringCount: convertedDocsAvailableForScoringCount,
+    mainScoringPipelineScoredCandidateUniverseCount: scoredCandidateUniverseCount,
+    returnedItemsMayBypassMainScoringPipeline: returnedItemsBypassedScoring,
     finalGateAcceptedDocsCount,
     terminalAssemblyInputCount,
     terminalAssemblyOutputCount,
