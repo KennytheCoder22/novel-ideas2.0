@@ -97,12 +97,15 @@ function fakeDoc(query, index) {
 async function main() {
   compileHarnessDependencies();
   const routerSource = readFileSync("screens/recommenders/recommenderRouter.ts", "utf8");
+  const swipeDeckSource = readFileSync("screens/SwipeDeckScreen.tsx", "utf8");
   assertEqual(routerSource.includes("returnedItemsAuditAttachedToActualReturnPath"), true, "router diagnostics should attach audit to actual returned-items path");
   assertEqual(routerSource.includes("returnedItemsAuditConsistencyFailure"), true, "router diagnostics should flag returned-items/scored-universe contradictions");
   assertEqual(routerSource.includes("returnedItemsLineage"), true, "router diagnostics should expose returned-item lineage");
   assertEqual(routerSource.includes("bypassedScoring"), true, "router returned-item lineage should report scoring bypass status");
   assertEqual(routerSource.includes("openLibrarySourceFinalScoredHandoffApplied"), true, "middle grades Open Library source-final rows should prefer scored handoff");
   assertEqual(routerSource.includes("open_library_source_emergency_bypass"), true, "middle grades Open Library source-only returns should be explicit emergency bypass failures");
+  assertEqual(swipeDeckSource.includes("v2ReturnedItemsFailClosed"), true, "v2 UI diagnostic wrapper should fail closed on returned items without scored lineage");
+  assertEqual(swipeDeckSource.includes("middle_grades_openlibrary_returned_items_without_scored_lineage"), true, "v2 UI diagnostic wrapper should expose live failure emergency reason");
   console.log(JSON.stringify({ name: "router returned-items audit exposes actual return-path lineage", pass: true }));
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);

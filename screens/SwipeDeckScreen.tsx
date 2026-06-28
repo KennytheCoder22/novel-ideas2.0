@@ -1806,15 +1806,44 @@ function handleLeft() {
     const normalizedCount = diagnostics.stages.find((stage) => stage.stage === "normalized")?.counts?.normalized ?? 0;
     const scoredCount = diagnostics.stages.find((stage) => stage.stage === "scored")?.counts?.scored ?? 0;
     const queries = diagnostics.searchPlan.intents.map((intent) => intent.query);
+    const returnedItemsBeforeV2FailClosed = normalizedItems.map((item) => item.kind === "open_library" ? { doc: item.doc } : { doc: item.book });
+    const returnedItemsTitlesBeforeV2FailClosed = normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean);
+    const middleGradesV2OpenLibraryReturn =
+      inputWithHistory.deckKey === "36" &&
+      normalizedItems.some((item) => item.kind === "open_library");
+    const v2ReturnedItemsFailClosed =
+      middleGradesV2OpenLibraryReturn &&
+      returnedItemsTitlesBeforeV2FailClosed.length > 0 &&
+      scoredCount === 0;
+    const diagnosticReturnedItems = v2ReturnedItemsFailClosed ? [] : returnedItemsBeforeV2FailClosed;
+    const diagnosticReturnedItemsTitles = v2ReturnedItemsFailClosed ? [] : returnedItemsTitlesBeforeV2FailClosed;
+    const v2ReturnedItemsLineage = returnedItemsTitlesBeforeV2FailClosed.map((title, index) => ({
+      title,
+      returnedIndex: index,
+      sourceArrayName: "recommender-v2:normalizedItems",
+      sourceCandidateId: title,
+      normalizedId: v2ReturnedItemsFailClosed ? "" : title,
+      scoredId: scoredCount > 0 ? title : "",
+      finalSelectionId: v2ReturnedItemsFailClosed ? "" : title,
+      bypassedScoring: scoredCount === 0,
+    }));
     return {
       engineSelected: "v2",
       engineActuallyUsed: "v2",
       engineId: "recommender-v2",
       engineLabel: "Recommender V2",
       builtFromQuery: queries.join(" | "),
-      returnedItemsBuiltFrom: "recommender-v2",
-      items: normalizedItems.map((item) => item.kind === "open_library" ? { doc: item.doc } : { doc: item.book }),
-      returnedItemsTitles: normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean),
+      returnedItemsBuiltFrom: v2ReturnedItemsFailClosed ? "open_library_source_emergency_bypass" : "recommender-v2",
+      items: diagnosticReturnedItems,
+      returnedItemsTitles: diagnosticReturnedItemsTitles,
+      returnedItemsLineage: v2ReturnedItemsLineage,
+      returnedItemsAuditConsistencyFailure: v2ReturnedItemsFailClosed,
+      returnedItemsBypassPath: v2ReturnedItemsFailClosed ? "recommender-v2 normalizedItems -> returnedItemsTitles blocked_fail_closed" : "none",
+      openLibrarySourceEmergencyBypassFailure: v2ReturnedItemsFailClosed,
+      openLibrarySourceFinalBypassRemovedTitles: v2ReturnedItemsFailClosed ? returnedItemsTitlesBeforeV2FailClosed : [],
+      emergencyBypassReason: v2ReturnedItemsFailClosed ? "middle_grades_openlibrary_returned_items_without_scored_lineage" : "",
+      countContractSatisfied: v2ReturnedItemsFailClosed ? false : undefined,
+      lockQualityPass: v2ReturnedItemsFailClosed ? false : undefined,
       debugSourceStats: sourceStats,
       debugRawPool: diagnostics.sources.flatMap((source: any) => Array.isArray(source.rawItemPreview) && source.rawItemPreview.length
         ? source.rawItemPreview.map((item: any) => ({
@@ -1889,7 +1918,8 @@ function handleLeft() {
       filteredCount: scoredCount,
       rankedCount: scoredCount,
       scoredCount,
-      finalItemsLength: normalizedItems.length,
+      finalItemsLength: diagnosticReturnedItems.length,
+      returnedItemsLength: diagnosticReturnedItems.length,
       deckKey: inputWithHistory.deckKey,
     };
   }
