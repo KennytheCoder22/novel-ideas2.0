@@ -110,6 +110,8 @@ async function main() {
   assertEqual(swipeDeckSource.includes("final_payload_unscored_openlibrary_items_blocked"), true, "final payload guard should expose the live failure emergency reason");
   assertEqual(swipeDeckSource.includes("debugSourceStats?.openLibrary?.rawFetched"), true, "final payload guard should use Open Library raw/final source counts for live failure shape");
   assertEqual(swipeDeckSource.includes("payload?.scoredCount ?? 0"), false, "final payload guard should not let wrapper scoredCount mask zero scoredCandidateUniverseCount");
+  assertEqual(swipeDeckSource.includes("scoredCandidateUniverseCount: scoredCandidateUniverseCountForReport"), true, "v2 wrapper should export scored candidate universe count from the real scoring pipeline");
+  assertEqual(swipeDeckSource.includes("finalEligibilityCleanCandidateCount: finalEligibilityCleanCandidateCountForReport"), true, "v2 wrapper should export final eligibility count from selected V2 items");
   console.log(JSON.stringify({ name: "router returned-items audit exposes actual return-path lineage", pass: true }));
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);

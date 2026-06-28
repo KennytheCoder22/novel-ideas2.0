@@ -1805,6 +1805,14 @@ function handleLeft() {
     ]));
     const normalizedCount = diagnostics.stages.find((stage) => stage.stage === "normalized")?.counts?.normalized ?? 0;
     const scoredCount = diagnostics.stages.find((stage) => stage.stage === "scored")?.counts?.scored ?? 0;
+    const middleGradesPipelineAudit = diagnostics.stages.find((stage) => stage.stage === "middle_grades_candidate_pool_audit")?.details as any;
+    const normalizedDocsCountForReport = Number(middleGradesPipelineAudit?.normalizedDocsCount ?? normalizedCount);
+    const rankedDocsLengthForReport = Number(middleGradesPipelineAudit?.rankedDocsLength ?? scoredCount);
+    const convertedDocsAvailableForScoringCountForReport = Number(middleGradesPipelineAudit?.convertedDocsAvailableForScoringCount ?? normalizedCount);
+    const scoredCandidateUniverseCountForReport = Number(middleGradesPipelineAudit?.scoredCandidateUniverseCount ?? scoredCount);
+    const finalEligibilityCleanCandidateCountForReport = Number(v2Result.items.length || 0);
+    const viableCandidateCountBeforeFinalSelectionForReport = Number(scoredCount || 0);
+    const finalAcceptedDocsLengthForReport = Number(v2Result.items.length || 0);
     const queries = diagnostics.searchPlan.intents.map((intent) => intent.query);
     const returnedItemsBeforeV2FailClosed = normalizedItems.map((item) => item.kind === "open_library" ? { doc: item.doc } : { doc: item.book });
     const returnedItemsTitlesBeforeV2FailClosed = normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean);
@@ -1914,6 +1922,13 @@ function handleLeft() {
       v2TasteProfile: diagnostics.tasteProfile,
       v2SearchPlan: diagnostics.searchPlan,
       normalizedCount,
+      normalizedDocsCount: normalizedDocsCountForReport,
+      rankedDocsLength: rankedDocsLengthForReport,
+      convertedDocsAvailableForScoringCount: convertedDocsAvailableForScoringCountForReport,
+      scoredCandidateUniverseCount: scoredCandidateUniverseCountForReport,
+      finalEligibilityCleanCandidateCount: finalEligibilityCleanCandidateCountForReport,
+      viableCandidateCountBeforeFinalSelection: viableCandidateCountBeforeFinalSelectionForReport,
+      finalAcceptedDocsLength: finalAcceptedDocsLengthForReport,
       candidateCount: normalizedCount,
       filteredCount: scoredCount,
       rankedCount: scoredCount,
