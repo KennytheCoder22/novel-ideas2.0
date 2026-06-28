@@ -1934,8 +1934,11 @@ function handleLeft() {
     const sourceLooksOpenLibrary =
       Boolean(sourceEnabled?.openLibrary) ||
       Boolean(payload?.sourceFetchAttemptedBySource?.openLibrary) ||
+      Number(payload?.debugSourceStats?.openLibrary?.rawFetched || 0) > 0 ||
+      Number(payload?.debugSourceStats?.openLibrary?.finalSelected || 0) > 0 ||
+      Number(payload?.sourceRawCountBySource?.openLibrary || 0) > 0 ||
       (Array.isArray(payload?.items) && payload.items.some((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("openlibrary")));
-    const scoredUniverseCount = Number(payload?.scoredCandidateUniverseCount ?? payload?.mainScoringPipelineScoredCandidateUniverseCount ?? payload?.scoredCount ?? 0);
+    const scoredUniverseCount = Number(payload?.scoredCandidateUniverseCount ?? payload?.mainScoringPipelineScoredCandidateUniverseCount ?? 0);
     const convertedForScoringCount = Number(payload?.convertedDocsAvailableForScoringCount ?? payload?.mainScoringPipelineConvertedDocsAvailableForScoringCount ?? 0);
     const finalAcceptedCount = Number(payload?.finalAcceptedDocsLength ?? payload?.finalRecommenderAcceptedDocsLength ?? 0);
     const finalEligibilityCleanCount = Number(payload?.finalEligibilityCleanCandidateCount ?? 0);
@@ -1964,7 +1967,7 @@ function handleLeft() {
       items: [],
       returnedItemsBuiltFrom: "open_library_source_emergency_bypass",
       returnedItemsLength: 0,
-      returnedItemsTitles: [],
+      returnedItemsTitles: "",
       finalItemsLength: 0,
       countContractSatisfied: false,
       lockQualityPass: false,
