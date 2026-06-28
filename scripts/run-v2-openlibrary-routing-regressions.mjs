@@ -1235,6 +1235,48 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousMiddleGradesMediumStrongBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  let middleGradesMediumStrongFetchCount = 0;
+  const middleGradesMediumStrongFetchQueries = [];
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    middleGradesMediumStrongFetchCount += 1;
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    middleGradesMediumStrongFetchQueries.push(query);
+    const strong = middleGradesMediumStrongFetchCount > 1;
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: [1, 2, 3, 4, 5, 6, 7, 8].map((index) => ({
+        ...fakeDoc(`${query} ${strong ? "strong" : "weak"}`, index),
+        title: strong ? `${query} Strong School Friendship ${index}` : `${query} Weak Title ${index}`,
+        subject: strong
+          ? ["Juvenile fiction", "School stories", "Friendship", "Humorous stories"]
+          : ["Juvenile fiction"],
+      })) }),
+    };
+  };
+  try {
+    const debugProfile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Funny School Friends", source: "mock", format: "book", genres: ["Comedy", "School"], themes: ["Friendship"] },
+      ],
+    });
+    debugProfile.diagnostics.debugMiddleGradesDeepTrace = true;
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 2_000 }, { profile: debugProfile });
+    assertEqual(result.diagnostics.mediumStrongEvidenceTargetCount, 5, "middle grades deep debug should declare medium/strong evidence target");
+    assertEqual(result.diagnostics.mediumStrongEvidenceSearchContinued, true, "deep-debug middle grades should continue searching after weak-only evidence");
+    assertEqual((result.diagnostics.mediumStrongEvidenceQueriesAttempted || []).length > 0, true, "deep-debug middle grades should attempt evidence-aware medium/strong queries");
+    assertEqual((result.diagnostics.mediumStrongEvidenceAcceptedTitles || []).length >= 5, true, "deep-debug middle grades should accept medium/strong evidence titles when available");
+    assertEqual(result.rawItems.filter((item) => /Strong School Friendship/i.test(String(item.title || ""))).length >= 5, true, "medium/strong evidence candidates should be present in the searched pool");
+    console.log(JSON.stringify({ name: "middle grades deep-debug continues weak-only slate toward medium/strong evidence", pass: true, fetchQueries: middleGradesMediumStrongFetchQueries, accepted: result.diagnostics.mediumStrongEvidenceAcceptedTitles }));
+  } finally {
+    if (previousMiddleGradesMediumStrongBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMiddleGradesMediumStrongBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const returnedLayerProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: middleGradesCases[3].signals,
@@ -1992,8 +2034,26 @@ async function main() {
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.titleOnlySlateDowngradedLockQuality, true, "title-only slate should explicitly downgrade lock quality");
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedTitleOnlyCount, 5, "title-only slate diagnostics should count selected title-only candidates");
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedMediumStrongEvidenceCount, 0, "title-only slate should have no medium/strong non-title document evidence");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedVsRejectedRouteAlignmentSummary.selectedRouteAlignedCount, 0, "weak title/subtitle evidence cannot count as route-aligned success");
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.sameSeriesTitleOnlyClusterDetected, true, "title-only fallback slate with same-series clustering must fail lock quality");
   console.log(JSON.stringify({ name: "middle grades title-only robot slate fails lock quality", pass: true, selected: middleGradesRobotTitleOnlyLockResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesRobotTitleOnlyLockResult.rejectedReasons }));
+
+  const middleGradesFourWeakResult = selectRecommendations(["One", "Two", "Three", "Four"].map((seed, index) => fakeScoredCandidate({
+    id: `middle-four-weak-${seed}`,
+    title: `Weak Adventure ${seed}`,
+    creators: [`Weak Author ${index}`],
+    score: 10 - index,
+    maturityBand: "preteens",
+    genres: [],
+    themes: [],
+    scoreBreakdown: { genreFacetMatch: 2, positiveTasteMatch: 2, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+    diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_humor" },
+    raw: { subject: ["Juvenile fiction"] },
+  })), middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesFourWeakResult.selected.length, 4, "four weak title-only rows should remain underfilled rather than pretending count success");
+  assertEqual(middleGradesFourWeakResult.rejectedReasons.lockQualityPass, false, "returned count of four weak rows must fail lock quality");
+  assertEqual(middleGradesFourWeakResult.rejectedReasons.finalCountContractStatus !== "full_route_aligned", true, "returned count of four weak rows cannot be full route aligned");
+  console.log(JSON.stringify({ name: "middle grades four weak rows remain underfilled failed slate", pass: true, selected: middleGradesFourWeakResult.selected.map((candidate) => candidate.title), status: middleGradesFourWeakResult.rejectedReasons.finalCountContractStatus }));
 
   const middleGradesLocalHistoryArtifactResult = selectRecommendations([fakeScoredCandidate({
     id: "middle-local-history-artifact",

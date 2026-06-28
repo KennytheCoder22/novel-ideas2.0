@@ -288,7 +288,11 @@ function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { query
 function isMiddleGradesRouteAlignedSuccessCandidate(candidate: ScoredCandidate): boolean {
   if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
   if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) return false;
-  return middleGradesRouteAlignmentEvidence(candidate).documentLevel;
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  if (!evidence.documentLevel) return false;
+  if (evidence.tier === "weak_evidence") return false;
+  if (evidence.fields.length > 0 && evidence.fields.every((field) => field === "title" || field === "subtitle")) return false;
+  return true;
 }
 
 
@@ -842,6 +846,37 @@ function applyMiddleGradesFallbackEvidencePrecedence(rankedCandidates: ScoredCan
   diagnostics.middleGradesFallbackDefaultPrecedenceExplanations = explanations;
 }
 
+function applyMiddleGradesMediumStrongEvidencePreference(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens" || selected.length === 0) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map((candidate) => finalReturnedRootKey(candidate) || seriesKey(candidate)).filter(Boolean));
+  const mediumStrongPool = rankedCandidates
+    .filter((candidate) => {
+      if (selected.includes(candidate)) return false;
+      const evidence = middleGradesRouteAlignmentEvidence(candidate);
+      if (middleGradesEvidenceTierRank(evidence.tier) < middleGradesEvidenceTierRank("medium_evidence")) return false;
+      if (isMiddleGradesTitleOnlyEvidence(candidate)) return false;
+      if (rejectReason(candidate, profile)) return false;
+      if (!middleGradesFinalEligibility(candidate).allowed) return false;
+      if (selectedTitles().has(normalized(candidate.title))) return false;
+      const root = finalReturnedRootKey(candidate) || seriesKey(candidate);
+      if (root && selectedRoots().has(root)) return false;
+      return true;
+    })
+    .sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
+  for (const candidate of mediumStrongPool) {
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index, tier: middleGradesRouteAlignmentEvidence(row).tier, adjusted: middleGradesSelectionScore(row, profile) }))
+      .filter(({ row, tier }) => isMiddleGradesTitleOnlyEvidence(row) || tier === "weak_evidence" || isMiddleGradesFallbackOrDefaultCandidate(row))
+      .sort((a, b) => middleGradesEvidenceTierRank(a.tier) - middleGradesEvidenceTierRank(b.tier) || a.adjusted - b.adjusted)[0]?.index;
+    if (replacementIndex === undefined) break;
+    selected[replacementIndex].rejectedReasons.push("middle_grades_weak_evidence_replaced_by_medium_strong_document_evidence");
+    candidate.rejectedReasons.push("middle_grades_medium_strong_document_evidence_selected_over_weak_fallback");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_medium_strong_evidence_replacements = Number(rejectedReasons.middle_grades_medium_strong_evidence_replacements || 0) + 1;
+  }
+}
+
 function applyMiddleGradesFinalCountRecovery(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
   if (profile.ageBand !== "preteens" || selected.length >= Math.min(5, limit)) return;
   const target = Math.min(5, limit);
@@ -1203,6 +1238,11 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.titleOnlySlateDowngradedLockQuality = selectedTitleOnlyCount > 0 && selectedMediumStrongEvidenceCount === 0;
   diagnostics.selectedTitleOnlyCount = selectedTitleOnlyCount;
   diagnostics.selectedMediumStrongEvidenceCount = selectedMediumStrongEvidenceCount;
+  diagnostics.mediumStrongEvidenceTargetCount = 5;
+  diagnostics.weakEvidenceFinalizedBecause = selectedMediumStrongEvidenceCount >= 5
+    ? "medium_strong_evidence_target_satisfied"
+    : "medium_strong_evidence_target_not_met_after_selection_pool_exhausted";
+  diagnostics.weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted = selectedMediumStrongEvidenceCount < 5;
   diagnostics.sameSeriesTitleOnlyClusterDetected = sameSeriesTitleOnlyClusterDetected;
   diagnostics.finalCountContractStatus = finalCountContractStatus;
   diagnostics.genericAdventureUsedAsLastResortOnly = genericAdventureUsedAsLastResortOnly;
@@ -1512,6 +1552,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   applyMiddleGradesRouteAlignmentReplacement(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesTitleOnlyEvidenceCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFallbackEvidencePrecedence(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesMediumStrongEvidencePreference(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFinalCountRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
   applyMiddleGradesFinalReturnedRootCollapseAndRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
 

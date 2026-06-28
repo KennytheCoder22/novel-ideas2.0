@@ -252,6 +252,12 @@ export interface SourceDiagnosticV2 {
   evidenceAwareRecoveryRemainingQueries?: string[];
   evidenceAwareRecoveryAttempted?: boolean;
   evidenceAwareRecoveryAcceptedCount?: number;
+  mediumStrongEvidenceTargetCount?: number;
+  mediumStrongEvidenceSearchContinued?: boolean;
+  mediumStrongEvidenceQueriesAttempted?: string[];
+  mediumStrongEvidenceAcceptedTitles?: string[];
+  weakEvidenceFinalizedBecause?: string;
+  weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted?: boolean;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;
