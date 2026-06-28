@@ -1924,6 +1924,61 @@ function handleLeft() {
     };
   }
 
+  function applyMiddleGradesFinalPayloadGuard(payload: any, inputForGuard: RecommenderInput) {
+    const inputTitles = Array.isArray(payload?.returnedItemsTitles)
+      ? payload.returnedItemsTitles.map((title: any) => String(title || "").trim()).filter(Boolean)
+      : Array.isArray(payload?.items)
+      ? payload.items.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
+      : [];
+    const returnedLength = Number(payload?.returnedItemsLength ?? inputTitles.length ?? 0);
+    const sourceLooksOpenLibrary =
+      Boolean(sourceEnabled?.openLibrary) ||
+      Boolean(payload?.sourceFetchAttemptedBySource?.openLibrary) ||
+      (Array.isArray(payload?.items) && payload.items.some((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("openlibrary")));
+    const scoredUniverseCount = Number(payload?.scoredCandidateUniverseCount ?? payload?.mainScoringPipelineScoredCandidateUniverseCount ?? payload?.scoredCount ?? 0);
+    const convertedForScoringCount = Number(payload?.convertedDocsAvailableForScoringCount ?? payload?.mainScoringPipelineConvertedDocsAvailableForScoringCount ?? 0);
+    const finalAcceptedCount = Number(payload?.finalAcceptedDocsLength ?? payload?.finalRecommenderAcceptedDocsLength ?? 0);
+    const finalEligibilityCleanCount = Number(payload?.finalEligibilityCleanCandidateCount ?? 0);
+    const viableCandidateCount = Number(payload?.viableCandidateCountBeforeFinalSelection ?? 0);
+    const shouldBlock =
+      inputForGuard.deckKey === "36" &&
+      sourceLooksOpenLibrary &&
+      returnedLength > 0 &&
+      scoredUniverseCount === 0 &&
+      convertedForScoringCount === 0 &&
+      finalAcceptedCount === 0 &&
+      finalEligibilityCleanCount === 0 &&
+      viableCandidateCount === 0;
+    if (!shouldBlock) {
+      return {
+        ...(payload || {}),
+        finalPayloadGuardRan: true,
+        finalPayloadGuardBlockedUnscoredOpenLibrary: false,
+        finalPayloadGuardInputReturnedTitles: inputTitles,
+        finalPayloadGuardOutputReturnedTitles: inputTitles,
+        finalPayloadGuardAppliedAfterWrapper: true,
+      };
+    }
+    return {
+      ...(payload || {}),
+      items: [],
+      returnedItemsBuiltFrom: "open_library_source_emergency_bypass",
+      returnedItemsLength: 0,
+      returnedItemsTitles: [],
+      finalItemsLength: 0,
+      countContractSatisfied: false,
+      lockQualityPass: false,
+      openLibrarySourceEmergencyBypassFailure: true,
+      openLibrarySourceFinalBypassRemovedTitles: inputTitles,
+      emergencyBypassReason: "final_payload_unscored_openlibrary_items_blocked",
+      finalPayloadGuardRan: true,
+      finalPayloadGuardBlockedUnscoredOpenLibrary: true,
+      finalPayloadGuardInputReturnedTitles: inputTitles,
+      finalPayloadGuardOutputReturnedTitles: [],
+      finalPayloadGuardAppliedAfterWrapper: true,
+    };
+  }
+
   function selectRecommendationEngine(nextEngine: RecommendationEngineSelection) {
     setSelectedRecommendationEngine(nextEngine);
     setLastEngineActuallyUsed("");
@@ -2011,7 +2066,10 @@ function handleLeft() {
         setV2DebugResult(result);
         setV2DebugError("");
         const normalizedItems = normalizeRecommenderV2Items(result.items);
-        const diagnosticResult = buildV2RecommendationResultForDiagnostics(result, normalizedItems, inputWithHistory);
+        const diagnosticResult = applyMiddleGradesFinalPayloadGuard(
+          buildV2RecommendationResultForDiagnostics(result, normalizedItems, inputWithHistory),
+          inputWithHistory
+        );
         const builtQuery = String(diagnosticResult.builtFromQuery || "");
         setRecQuery(builtQuery);
         setLastKnownBuiltQuery(builtQuery);
@@ -2037,10 +2095,13 @@ function handleLeft() {
         setLastRecommendationTimestamp(new Date().toISOString());
         setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
         setRecommendFunctionReturned(true);
-        if (normalizedItems.length > 0) {
-          rememberRecommendations(input.deckKey, normalizedItems);
+        const guardedNormalizedItems = Array.isArray((diagnosticResult as any).items) && (diagnosticResult as any).items.length === 0
+          ? []
+          : normalizedItems;
+        if (guardedNormalizedItems.length > 0) {
+          rememberRecommendations(input.deckKey, guardedNormalizedItems);
           setRecommendationResultWasPersisted(true);
-          setRecItems(normalizedItems);
+          setRecItems(guardedNormalizedItems);
           setRecError(null);
         } else {
           setRecItems([]);
@@ -2165,7 +2226,7 @@ function handleLeft() {
           setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
         ),
       ]);
-      const recommendationResult: any = resolvedRecommendationResult;
+      const recommendationResult: any = applyMiddleGradesFinalPayloadGuard(resolvedRecommendationResult, input);
       markPhase("actual_router_invocation_resolved");
       const result: any = recommendationResult;
       markPhase("after_getRecommendations_call");

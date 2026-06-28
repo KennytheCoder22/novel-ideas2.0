@@ -106,6 +106,8 @@ async function main() {
   assertEqual(routerSource.includes("open_library_source_emergency_bypass"), true, "middle grades Open Library source-only returns should be explicit emergency bypass failures");
   assertEqual(swipeDeckSource.includes("v2ReturnedItemsFailClosed"), true, "v2 UI diagnostic wrapper should fail closed on returned items without scored lineage");
   assertEqual(swipeDeckSource.includes("middle_grades_openlibrary_returned_items_without_scored_lineage"), true, "v2 UI diagnostic wrapper should expose live failure emergency reason");
+  assertEqual(swipeDeckSource.includes("finalPayloadGuardBlockedUnscoredOpenLibrary"), true, "final payload guard should block live-wrapper-shaped unscored Open Library returns");
+  assertEqual(swipeDeckSource.includes("final_payload_unscored_openlibrary_items_blocked"), true, "final payload guard should expose the live failure emergency reason");
   console.log(JSON.stringify({ name: "router returned-items audit exposes actual return-path lineage", pass: true }));
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
