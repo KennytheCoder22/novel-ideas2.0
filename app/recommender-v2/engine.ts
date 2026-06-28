@@ -5,7 +5,7 @@ import { scoreCandidates } from "./score";
 import { selectRecommendations } from "./select";
 import { sourceAdapters } from "./sources";
 import { buildTasteProfile } from "./tasteProfile";
-import type { RecommendationResultV2, SourcePlan, SourceResult, SourceStatusV2, SwipeSessionV2 } from "./types";
+import type { NormalizedCandidate, RecommendationResultV2, ScoredCandidate, SourceDiagnosticV2, SourcePlan, SourceResult, SourceStatusV2, SwipeSessionV2 } from "./types";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -67,6 +67,141 @@ function failedResult(plan: SourcePlan, status: SourceStatusV2, reason: string, 
   };
 }
 
+function titleOf(value: unknown): string {
+  const row = (value || {}) as Record<string, unknown>;
+  return String(row.title || row.name || "").trim();
+}
+
+function uniqueTitles(values: unknown[], limit = 80): string[] {
+  const seen = new Set<string>();
+  const titles: string[] = [];
+  for (const value of values) {
+    const title = typeof value === "string" ? value.trim() : titleOf(value);
+    const key = title.toLowerCase();
+    if (!title || seen.has(key)) continue;
+    seen.add(key);
+    titles.push(title);
+    if (titles.length >= limit) break;
+  }
+  return titles;
+}
+
+function buildMiddleGradesPipelineAudit(sourceResults: SourceResult[], normalized: NormalizedCandidate[], scored: ScoredCandidate[], selected: ScoredCandidate[]): Record<string, unknown> | undefined {
+  const openLibrary = sourceResults.find((result) => result.source === "openLibrary");
+  if (!openLibrary) return undefined;
+  const sourceDiagnostics = openLibrary.diagnostics as SourceDiagnosticV2;
+  const rawDocTrace = Array.isArray(sourceDiagnostics.debugMiddleGradesRawDocTrace) ? sourceDiagnostics.debugMiddleGradesRawDocTrace as Record<string, unknown>[] : [];
+  const rawTitles = uniqueTitles(sourceDiagnostics.rawTitles || []);
+  const normalizedOpenLibrary = normalized.filter((candidate) => candidate.source === "openLibrary");
+  const scoredOpenLibrary = scored.filter((candidate) => candidate.source === "openLibrary");
+  const selectedSet = new Set(selected);
+  const selectedOpenLibrary = selected.filter((candidate) => candidate.source === "openLibrary");
+  const rawRejected = rawDocTrace.filter((row) => row.accepted === false);
+  const rawDropByTitle = rawRejected.map((row) => ({
+    title: String(row.title || ""),
+    query: row.query,
+    reason: row.rejectionReason || "raw_doc_rejected_before_normalization",
+    stage: row.stage,
+  })).filter((row) => row.title);
+  const scoredRejected = scoredOpenLibrary
+    .filter((candidate) => !selectedSet.has(candidate))
+    .map((candidate) => ({
+      title: candidate.title,
+      reason: candidate.rejectedReasons.length ? candidate.rejectedReasons.join(",") : "not_selected_after_ranking_and_selection",
+      score: candidate.score,
+      scoreBreakdown: candidate.scoreBreakdown,
+      documentOnlyTasteMatch: candidate.diagnostics?.documentOnlyTasteMatch,
+      queryTextSignalsRemovedFromTasteMatch: candidate.diagnostics?.queryTextSignalsRemovedFromTasteMatch,
+    }));
+  const duplicateTitles: string[] = [];
+  const seenNormalized = new Set<string>();
+  for (const candidate of normalizedOpenLibrary) {
+    const key = candidate.title.toLowerCase();
+    if (seenNormalized.has(key)) duplicateTitles.push(candidate.title);
+    else seenNormalized.add(key);
+  }
+  const authorityDrops = rawDropByTitle.filter((row) => /artifact|authority|age_shape|inappropriate|local|reference|study|guide|activity|workbook/i.test(String(row.reason)));
+  const routeLaneDrops = rawDropByTitle.filter((row) => /route|lane|query_only|missing_document|no_route|age_shape/i.test(String(row.reason)));
+  const evidenceDrops = rawDropByTitle.filter((row) => /evidence|weak_doc|title_only|query_only|missing_document/i.test(String(row.reason)));
+  const auditStages = [
+    {
+      stage: "raw_fetch",
+      candidateCount: Number(sourceDiagnostics.rawApiResultCount || rawTitles.length || openLibrary.rawItems.length),
+      titlesEntering: rawTitles,
+      titlesLeaving: rawDropByTitle.map((row) => row.title),
+      droppedCandidates: rawDropByTitle,
+    },
+    {
+      stage: "normalized_documents",
+      candidateCount: normalizedOpenLibrary.length,
+      titlesEntering: uniqueTitles(openLibrary.rawItems),
+      titlesLeaving: rawDropByTitle.map((row) => row.title),
+      droppedCandidates: rawDropByTitle,
+    },
+    {
+      stage: "post_deduplication",
+      candidateCount: seenNormalized.size,
+      titlesEntering: uniqueTitles(normalizedOpenLibrary),
+      titlesLeaving: duplicateTitles,
+      droppedCandidates: duplicateTitles.map((title) => ({ title, reason: "duplicate_normalized_title" })),
+    },
+    {
+      stage: "post_authority_filtering",
+      candidateCount: normalizedOpenLibrary.length,
+      titlesEntering: uniqueTitles(normalizedOpenLibrary),
+      titlesLeaving: authorityDrops.map((row) => row.title),
+      droppedCandidates: authorityDrops,
+    },
+    {
+      stage: "post_route_lane_filtering",
+      candidateCount: normalizedOpenLibrary.length,
+      titlesEntering: uniqueTitles(normalizedOpenLibrary),
+      titlesLeaving: routeLaneDrops.map((row) => row.title),
+      droppedCandidates: routeLaneDrops,
+    },
+    {
+      stage: "post_evidence_filtering",
+      candidateCount: scoredOpenLibrary.length,
+      titlesEntering: uniqueTitles(scoredOpenLibrary),
+      titlesLeaving: evidenceDrops.map((row) => row.title),
+      droppedCandidates: evidenceDrops,
+    },
+    {
+      stage: "post_ranking_eligibility",
+      candidateCount: scoredOpenLibrary.length,
+      titlesEntering: uniqueTitles(scoredOpenLibrary),
+      titlesLeaving: scoredRejected.map((row) => row.title),
+      droppedCandidates: scoredRejected,
+    },
+    {
+      stage: "final_selection",
+      candidateCount: selectedOpenLibrary.length,
+      titlesEntering: uniqueTitles(scoredOpenLibrary),
+      titlesLeaving: scoredRejected.map((row) => row.title),
+      droppedCandidates: scoredRejected,
+    },
+  ];
+  const stageCounts = auditStages.map((stage) => ({ stage: stage.stage, candidateCount: stage.candidateCount }));
+  const largestDrop = stageCounts.slice(1).reduce<{ stage: string; droppedCount: number } | undefined>((largest, stage, index) => {
+    const previous = stageCounts[index]?.candidateCount ?? stage.candidateCount;
+    const droppedCount = Math.max(0, previous - stage.candidateCount);
+    if (!largest || droppedCount > largest.droppedCount) return { stage: stage.stage, droppedCount };
+    return largest;
+  }, undefined);
+  return {
+    verifiedOpenLibraryPoolEnteredScoring: normalizedOpenLibrary.length === openLibrary.rawItems.length && scoredOpenLibrary.length === normalizedOpenLibrary.length,
+    openLibraryRawItemsEnteringNormalization: openLibrary.rawItems.length,
+    openLibraryNormalizedEnteringScoring: normalizedOpenLibrary.length,
+    openLibraryScoredEnteringSelection: scoredOpenLibrary.length,
+    descriptionDerivedEvidenceContributingToScoring: scoredOpenLibrary
+      .filter((candidate) => candidate.description && (Number(candidate.scoreBreakdown.genreFacetMatch || 0) > 0 || Number(candidate.scoreBreakdown.positiveTasteMatch || 0) > 0))
+      .map((candidate) => ({ title: candidate.title, description: candidate.description?.slice(0, 160), scoreBreakdown: candidate.scoreBreakdown, matchedSignals: candidate.matchedSignals }))
+      .slice(0, 30),
+    firstLikelyCollapseStage: largestDrop,
+    stages: auditStages,
+  };
+}
+
 export async function runRecommenderV2(session: SwipeSessionV2): Promise<RecommendationResultV2> {
   const startedAt = nowIso();
   const requestId = session.requestId || `v2-${Date.now()}`;
@@ -111,6 +246,10 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
 
   const { selected, rejectedReasons } = selectRecommendations(scored, tasteProfile, session.limit || 10);
   stages.push(stageDiagnostic("selected", { selected: selected.length }, { rejectedReasons }));
+  if (middleGradesDeepDebugActive) {
+    const audit = buildMiddleGradesPipelineAudit(sourceResults, normalized, scored, selected);
+    if (audit) stages.push(stageDiagnostic("middle_grades_candidate_pool_audit", undefined, audit));
+  }
 
   const finishedAt = nowIso();
   const diagnostics = buildDiagnosticReport({
