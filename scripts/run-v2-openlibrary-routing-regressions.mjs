@@ -1338,6 +1338,56 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+
+  const previousMeaningfulTasteRecoveryBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  const meaningfulTasteRecoveryFetchQueries = [];
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    meaningfulTasteRecoveryFetchQueries.push(query);
+    const recoveryQuery = /funny school friendship|funny family school story|children comedy adventure|middle grade comedy friendship|fantasy adventure friendship children|mythology adventure children|children nonfiction activities|science activities children|superhero friendship children|ocean adventure children/i.test(query);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: Array.from({ length: 12 }, (_unused, offset) => {
+        const index = offset + 1;
+        return {
+          key: `/works/meaningful-${query.replace(/\s+/g, "-")}-${index}`,
+          title: recoveryQuery ? `Funny School Friendship Recovery ${index}` : `Generic Weak Candidate ${meaningfulTasteRecoveryFetchQueries.length}-${index}`,
+          author_name: [`Meaningful Recovery Author ${index}`],
+          subject: recoveryQuery
+            ? ["Juvenile fiction", "School stories", "Friendship", "Humorous stories", "Family"]
+            : ["Juvenile fiction", "Adventure stories"],
+          description: recoveryQuery
+            ? "A funny school friendship story about classmates and family teamwork."
+            : "A broadly paced juvenile fiction entry with no specific liked evidence.",
+          language: ["eng"],
+          first_publish_year: 2015 + index,
+        };
+      }) }),
+    };
+  };
+  try {
+    const debugProfile = buildTasteProfile({
+      ageBand: "preteens",
+      signals: [
+        { action: "like", title: "Funny Family School Friends", source: "mock", format: "book", genres: ["Comedy", "School"], themes: ["Family", "Friendship"] },
+      ],
+    });
+    debugProfile.diagnostics.debugMiddleGradesDeepTrace = true;
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 2_000 }, { profile: debugProfile });
+    assertEqual(Number(result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) > 20, true, "meaningful-taste recovery fixture should fetch a live-shaped large pool");
+    assertEqual(result.diagnostics.meaningfulTasteRecoveryTriggered, true, "deep-debug middle grades should trigger meaningful-taste recovery when the large pool has fewer than five meaningful matches");
+    assertEqual((result.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [])[0] !== "middle grade adventure", true, "meaningful-taste recovery should not start with generic middle grade adventure");
+    assertEqual((result.diagnostics.meaningfulTasteRecoveryAcceptedTitles || []).length >= 1, true, "meaningful-taste recovery should accept document-backed taste matches from targeted queries");
+    assertEqual(Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5 || result.diagnostics.underfilledAfterMeaningfulTasteRecovery === true, true, "meaningful-taste recovery should either reach five meaningful candidates or mark underfill after recovery");
+    console.log(JSON.stringify({ name: "middle grades deep-debug triggers meaningful-taste recovery after strict taste underfill", pass: true, queries: result.diagnostics.meaningfulTasteRecoveryQueriesAttempted, accepted: result.diagnostics.meaningfulTasteRecoveryAcceptedTitles, finalCount: result.diagnostics.meaningfulTasteRecoveryFinalCount }));
+  } finally {
+    if (previousMeaningfulTasteRecoveryBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMeaningfulTasteRecoveryBase;
+    globalThis.fetch = originalFetch;
+  }
+
   const previousMiddleGradesMediumStrongBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   let middleGradesMediumStrongFetchCount = 0;
   const middleGradesMediumStrongFetchQueries = [];

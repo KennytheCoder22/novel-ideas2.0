@@ -272,6 +272,12 @@ export interface SourceDiagnosticV2 {
   mediumStrongEvidenceAcceptedTitles?: string[];
   weakEvidenceFinalizedBecause?: string;
   weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted?: boolean;
+  meaningfulTasteRecoveryTriggered?: boolean;
+  meaningfulTasteRecoveryQueriesAttempted?: string[];
+  meaningfulTasteRecoveryAcceptedTitles?: string[];
+  meaningfulTasteRecoveryRejectedTitlesByReason?: Record<string, string[]>;
+  meaningfulTasteRecoveryFinalCount?: number;
+  underfilledAfterMeaningfulTasteRecovery?: boolean;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

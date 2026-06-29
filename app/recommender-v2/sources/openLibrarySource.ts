@@ -1712,6 +1712,93 @@ function middleGradesEvidenceAwareRecoveryQueries(queryPlans: OpenLibraryQueryPl
   return uniqueStrings(evidenceQueries, 8).filter((query) => !attemptedQueries.has(query.toLowerCase()));
 }
 
+
+function middleGradesMeaningfulTasteRecoveryQueries(profile: TasteProfile, attemptedQueries = new Set<string>()): string[] {
+  const positiveText = [...profile.genreFamily, ...profile.themes]
+    .filter((row) => Number(row.weight || 0) > 0)
+    .map((row) => row.value)
+    .join(" ");
+  const candidates: string[] = [];
+  const addIf = (condition: boolean, queries: string[]): void => {
+    if (condition) candidates.push(...queries);
+  };
+  addIf(/comedy|funny|humou?r|playful/i.test(positiveText) && /family|friendship|friends?|school/i.test(positiveText), [
+    "funny school friendship",
+    "funny family school story",
+    "middle grade comedy friendship",
+  ]);
+  addIf(/comedy|funny|humou?r|playful/i.test(positiveText) && /adventure|quest/i.test(positiveText), [
+    "children comedy adventure",
+    "middle grade comedy friendship",
+  ]);
+  addIf(/fantasy|magic|magical/i.test(positiveText) && /adventure|friendship|friends?/i.test(positiveText), [
+    "fantasy adventure friendship children",
+    "children fantasy friendship adventure",
+  ]);
+  addIf(/fantasy|myth|mythology/i.test(positiveText) && /adventure|quest/i.test(positiveText), [
+    "mythology adventure children",
+    "fantasy adventure friendship children",
+  ]);
+  addIf(/nonfiction|concise|quirky|science|explanation|activities/i.test(positiveText), [
+    "children nonfiction activities",
+    "science activities children",
+  ]);
+  addIf(/superhero|super hero|hero|powers?/i.test(positiveText) && /friendship|friends?|team/i.test(positiveText), [
+    "superhero friendship children",
+  ]);
+  addIf(/ocean|sea|island/i.test(positiveText) && /adventure|fantasy|magic/i.test(positiveText), [
+    "ocean adventure children",
+  ]);
+  if (!candidates.length) {
+    candidates.push(
+      "funny school friendship",
+      "fantasy adventure friendship children",
+      "children comedy adventure",
+      "mythology adventure children",
+      "science activities children",
+    );
+  }
+  return uniqueStrings(candidates, 10).filter((query) => !attemptedQueries.has(query.toLowerCase()));
+}
+
+function middleGradesDocumentBackedTasteSignalsFromSourceDoc(doc: any, profile: TasteProfile): string[] {
+  const rawDescription = typeof doc?.description === "string" ? doc.description : typeof doc?.description?.value === "string" ? doc.description.value : "";
+  const documentText = [
+    String(doc?.title || ""),
+    String(doc?.subtitle || ""),
+    ...(Array.isArray(doc?.subject) ? doc.subject : []),
+    ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+    rawDescription,
+  ].join(" ").toLowerCase();
+  const positiveText = [...profile.genreFamily, ...profile.themes]
+    .filter((row) => Number(row.weight || 0) > 0)
+    .map((row) => row.value)
+    .join(" ").toLowerCase();
+  const signalDefs: Array<[string, RegExp, RegExp]> = [
+    ["comedy", /\b(comedy|funny|humou?r|playful|silly|joke|laugh)\b/i, /\b(comedy|funny|humou?r|playful|silly|joke|laugh)\b/i],
+    ["family", /\b(family|families|parent|parents|sibling|siblings)\b/i, /\b(family|families|parent|parents|sibling|siblings)\b/i],
+    ["friendship", /\b(friendship|friends?|team|classmates?)\b/i, /\b(friendship|friends?|team|classmates?)\b/i],
+    ["school", /\b(school|classroom|class|student|students|teacher)\b/i, /\b(school|classroom|class|student|students|teacher)\b/i],
+    ["fantasy", /\b(fantasy|magic|magical|wizard|witch|dragon|kingdom)\b/i, /\b(fantasy|magic|magical|wizard|witch|dragon|kingdom)\b/i],
+    ["dragon", /\b(dragon|dragons)\b/i, /\b(dragon|dragons)\b/i],
+    ["mythology", /\b(myth|myths|mythology|mythological|legend|gods?)\b/i, /\b(myth|myths|mythology|mythological|legend|gods?)\b/i],
+    ["nonfiction", /\b(nonfiction|science|experiment|activities|activity|explanation|facts?)\b/i, /\b(nonfiction|science|experiment|activities|activity|explanation|facts?)\b/i],
+    ["superhero", /\b(superhero|super hero|hero|powers?)\b/i, /\b(superhero|super hero|hero|powers?)\b/i],
+    ["ocean", /\b(ocean|sea|island|marine)\b/i, /\b(ocean|sea|island|marine)\b/i],
+    ["adventure", /\b(adventure|quest|journey|explor(?:e|ing|ation))\b/i, /\b(adventure|quest|journey|explor(?:e|ing|ation))\b/i],
+  ];
+  return uniqueStrings(signalDefs
+    .filter(([, profilePattern, docPattern]) => profilePattern.test(positiveText) && docPattern.test(documentText))
+    .map(([signal]) => signal), 12);
+}
+
+function middleGradesSourceMeaningfulTasteEligibility(doc: any, profile: TasteProfile): { allowed: boolean; reason?: "zero_doc_backed_taste_match" | "broad_adventure_only_taste_match"; signals: string[] } {
+  const signals = middleGradesDocumentBackedTasteSignalsFromSourceDoc(doc, profile);
+  if (!signals.length) return { allowed: false, reason: "zero_doc_backed_taste_match", signals };
+  if (signals.every((signal) => signal === "adventure")) return { allowed: false, reason: "broad_adventure_only_taste_match", signals };
+  return { allowed: true, signals };
+}
+
 function middleGradesSourceRouteEvidencePattern(query: string, routingReason = ""): RegExp | undefined {
   const routeText = String(`${routingReason} ${query}`).toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
   if (/\b(dragon|mythology|mythological|creature)\b/.test(routeText)) return /\b(dragon|dragons|myth|myths|mythology|mythological|creature|creatures|magic|magical|fantasy|quest|adventure)\b/i;
@@ -2065,6 +2152,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesMediumStrongEvidenceAcceptedTitles: string[] = [];
     let middleGradesWeakEvidenceFinalizedBecause: string | undefined;
     let middleGradesWeakEvidenceReturnedOnlyAfterEvidenceSearchExhausted = false;
+    let middleGradesMeaningfulTasteRecoveryTriggered = false;
+    const middleGradesMeaningfulTasteRecoveryQueriesAttempted: string[] = [];
+    const middleGradesMeaningfulTasteRecoveryAcceptedTitles: string[] = [];
+    const middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason: Record<string, string[]> = {};
+    let middleGradesMeaningfulTasteRecoveryFinalCount = 0;
+    let middleGradesUnderfilledAfterMeaningfulTasteRecovery = false;
     let middleGradesBrittleQueryTimedOutThenShortQueryAttempted = false;
     const middleGradesPerQueryBudgetReserved: Record<string, number> = {};
     let middleGradesSkippedRemainingQueriesDueToBudgetExhaustion = false;
@@ -2105,6 +2198,17 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesMediumStrongRawItems = (): any[] => ageProfile.key === "middleGrades"
       ? rawItems.filter((item: any) => middleGradesSourceMediumStrongEvidence(item?.rawOpenLibraryDoc || item, String(item?.queryText || ""), String(item?.routingReason || "")))
       : [];
+    const middleGradesMeaningfulTasteExpandedPoolItems = (): any[] => {
+      if (ageProfile.key !== "middleGrades") return [];
+      const byKey = new Map<string, any>();
+      for (const item of [...middleGradesExpandedScoringPool, ...rawItems] as any[]) {
+        const title = String(item?.title || "").trim();
+        if (!title) continue;
+        const key = String(item?.sourceId || item?.key || item?.workKey || `${title}:${Array.isArray(item?.authors) ? item.authors[0] : ""}`).toLowerCase();
+        if (!byKey.has(key)) byKey.set(key, item);
+      }
+      return Array.from(byKey.values()).filter((item: any) => middleGradesSourceMeaningfulTasteEligibility(item?.rawOpenLibraryDoc || item, context.profile).allowed);
+    };
     const middleGradesAttemptedQueries = (): Set<string> => new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()).filter(Boolean));
     const middleGradesUnattemptedSpecificQueries = (): string[] => ageProfile.key === "middleGrades" ? middleGradesQueryOnlyContinuationQueries(queryPlans, middleGradesAttemptedQueries()) : [];
     const middleGradesUnattemptedEvidenceAwareQueries = (): string[] => ageProfile.key === "middleGrades" ? middleGradesEvidenceAwareRecoveryQueries(queryPlans, context.profile, middleGradesAttemptedQueries()) : [];
@@ -2263,7 +2367,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         finalScoreComponents: { queryFamily: queryPlan.queryFamily, emergencyFallback: Boolean(queryPlan.emergencyFallback), fallbackAlignment: queryPlan.fallbackAlignment },
       });
     };
-    const acceptMiddleGradesDoc = (doc: any, queryPlan: OpenLibraryQueryPlan, stage: string): boolean => {
+    const acceptMiddleGradesDoc = (doc: any, queryPlan: OpenLibraryQueryPlan, stage: string, requireMeaningfulTaste = false): boolean => {
       const query = queryPlan.query;
       const title = String(doc?.title || "").trim();
       if (title) rawTitles.push(title);
@@ -2281,6 +2385,15 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (artifactReasonLabels.has(reason) || /artifact|inappropriate|middle_grades_age_shape/.test(reason)) artifactSuppressedTitles.push(title);
         traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, reason);
         return false;
+      }
+      if (requireMeaningfulTaste) {
+        const tasteEligibility = middleGradesSourceMeaningfulTasteEligibility(doc, context.profile);
+        if (!tasteEligibility.allowed) {
+          const reason = tasteEligibility.reason || "zero_doc_backed_taste_match";
+          dropReasons[`middle_grades_${stage}_${reason}`] = Number(dropReasons[`middle_grades_${stage}_${reason}`] || 0) + 1;
+          traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, reason);
+          return false;
+        }
       }
       rememberMiddleGradesExpandedScoringCandidate(doc, queryPlan, stage);
       const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
@@ -3567,6 +3680,62 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       if (!middleGradesRecoveryExhaustionReasonDetailed && rawItems.length < continuationTarget) middleGradesRecoveryExhaustionReasonDetailed = "query_only_continuation_exhausted_before_target";
     }
 
+    if (ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace && !context.signal?.aborted) {
+      const meaningfulTarget = Math.min(ageProfile.docLimit, 5);
+      const meaningfulCountBeforeRecovery = middleGradesMeaningfulTasteExpandedPoolItems().length;
+      const expandedPoolCountBeforeRecovery = new Set((([...middleGradesExpandedScoringPool, ...rawItems] as any[])
+        .map((item: any) => String(item?.sourceId || item?.key || item?.workKey || `${String(item?.title || "").trim()}:${Array.isArray(item?.authors) ? item.authors[0] : ""}`).toLowerCase())
+        .filter(Boolean))).size;
+      if (expandedPoolCountBeforeRecovery >= 20 && meaningfulCountBeforeRecovery < meaningfulTarget) {
+        const recoveryQueries = middleGradesMeaningfulTasteRecoveryQueries(context.profile, middleGradesAttemptedQueries());
+        if (recoveryQueries.length > 0) middleGradesMeaningfulTasteRecoveryTriggered = true;
+        for (const recoveryQuery of recoveryQueries) {
+          if (middleGradesMeaningfulTasteExpandedPoolItems().length >= meaningfulTarget) break;
+          if (!middleGradesMeaningfulTasteRecoveryQueriesAttempted.includes(recoveryQuery)) middleGradesMeaningfulTasteRecoveryQueriesAttempted.push(recoveryQuery);
+          const recoveryPlan: OpenLibraryQueryPlan = {
+            query: recoveryQuery,
+            originalPlannedQuery: queries[0] || "",
+            queryCascadeIndex: queryPlans.length + fetches.filter((fetch) => !fetch.diagnosticOnly).length,
+            queryFamily: queryFamilyForOpenLibraryQuery(recoveryQuery),
+            facets: queryPlans[0]?.facets || [],
+            routingReason: `${queryPlans[0]?.routingReason || "middle_grades"}_meaningful_taste_recovery`,
+            routingDominance: queryPlans[0]?.routingDominance,
+            fallbackAlignment: "route_aligned",
+            profileSpecific: true,
+          };
+          const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS, 1, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS);
+          fetches.push(diagnostic);
+          dropReasons.middle_grades_meaningful_taste_recovery_attempted = Number(dropReasons.middle_grades_meaningful_taste_recovery_attempted || 0) + 1;
+          if (diagnostic.timedOut) {
+            dropReasons.middle_grades_meaningful_taste_recovery_timeout = Number(dropReasons.middle_grades_meaningful_taste_recovery_timeout || 0) + 1;
+            continue;
+          }
+          if (diagnostic.failedReason) {
+            dropReasons.middle_grades_meaningful_taste_recovery_failed = Number(dropReasons.middle_grades_meaningful_taste_recovery_failed || 0) + 1;
+            continue;
+          }
+          rawApiResultCount += recoveryDocs.length;
+          for (const doc of recoveryDocs) {
+            const beforeRawCount = rawItems.length;
+            const beforeMeaningfulCount = middleGradesMeaningfulTasteExpandedPoolItems().length;
+            const accepted = acceptMiddleGradesDoc(doc, recoveryPlan, "meaningful_taste_recovery", true);
+            const title = String(doc?.title || "").trim();
+            if (accepted) {
+              if (title) middleGradesMeaningfulTasteRecoveryAcceptedTitles.push(title);
+              dropReasons.middle_grades_meaningful_taste_recovery_accepted = Number(dropReasons.middle_grades_meaningful_taste_recovery_accepted || 0) + 1;
+            } else if (title && rawItems.length === beforeRawCount && middleGradesMeaningfulTasteExpandedPoolItems().length === beforeMeaningfulCount) {
+              const eligibility = middleGradesSourceMeaningfulTasteEligibility(doc, context.profile);
+              const reason = eligibility.reason || "source_filter_or_duplicate";
+              middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason[reason] = uniqueStrings([...(middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason[reason] || []), title], 20);
+            }
+            if (middleGradesMeaningfulTasteExpandedPoolItems().length >= meaningfulTarget) break;
+          }
+        }
+        middleGradesMeaningfulTasteRecoveryFinalCount = middleGradesMeaningfulTasteExpandedPoolItems().length;
+        middleGradesUnderfilledAfterMeaningfulTasteRecovery = middleGradesMeaningfulTasteRecoveryTriggered && middleGradesMeaningfulTasteRecoveryFinalCount < meaningfulTarget;
+      }
+    }
+
     const adultUnderfillRecoveryTarget = Math.min(ageProfile.docLimit, 8);
     if (ageProfile.key === "adult" && rawItems.length > 0 && (rawItems.length < 5 || (!adultPrimaryQueryTimedOutTwice && rawItems.length < adultUnderfillRecoveryTarget)) && !context.signal?.aborted) {
       const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
@@ -4202,6 +4371,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         mediumStrongEvidenceAcceptedTitles: ageProfile.key === "middleGrades" ? middleGradesMediumStrongEvidenceAcceptedTitlesForDiagnostics : undefined,
         weakEvidenceFinalizedBecause: ageProfile.key === "middleGrades" ? middleGradesWeakEvidenceFinalizedBecause : undefined,
         weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted: ageProfile.key === "middleGrades" ? middleGradesWeakEvidenceReturnedOnlyAfterEvidenceSearchExhausted : undefined,
+        meaningfulTasteRecoveryTriggered: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryTriggered : undefined,
+        meaningfulTasteRecoveryQueriesAttempted: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20) : undefined,
+        meaningfulTasteRecoveryAcceptedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryAcceptedTitles, 20) : undefined,
+        meaningfulTasteRecoveryRejectedTitlesByReason: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason : undefined,
+        meaningfulTasteRecoveryFinalCount: ageProfile.key === "middleGrades" ? (middleGradesMeaningfulTasteRecoveryFinalCount || middleGradesMeaningfulTasteExpandedPoolItems().length) : undefined,
+        underfilledAfterMeaningfulTasteRecovery: ageProfile.key === "middleGrades" ? (middleGradesMeaningfulTasteRecoveryTriggered && (middleGradesMeaningfulTasteRecoveryFinalCount || middleGradesMeaningfulTasteExpandedPoolItems().length) < Math.min(ageProfile.docLimit, 5)) : undefined,
         queryOnlyRejectedThenRecoveredCount: ageProfile.key === "middleGrades" && middleGradesRejectedAllRowsAsQueryOnly ? middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount : undefined,
         brittleQueryTimedOutThenShortQueryAttempted: ageProfile.key === "middleGrades" ? middleGradesBrittleQueryTimedOutThenShortQueryAttempted : undefined,
         underfillDespiteUnattemptedEvidenceQueries: ageProfile.key === "middleGrades" ? (rawItems.length < Math.min(ageProfile.docLimit, 5) && middleGradesUnattemptedEvidenceAwareQueries().length > 0) : undefined,
