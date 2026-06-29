@@ -1074,6 +1074,13 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const documentOnlyTasteMatchByTitle: Record<string, string[]> = {};
   const fallbackPenaltyByTitle: Record<string, number> = {};
   const finalSelectionReasonByTitle: Record<string, string> = {};
+  const candidateTasteMatchScoreByTitle: Record<string, number> = {};
+  const candidateTastePenaltyByTitle: Record<string, number> = {};
+  const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
+  const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
+  const finalRankingReasonByTitle: Record<string, string> = {};
+  const middleGradesScoredCandidateAttribution: Array<Record<string, unknown>> = [];
   const queryLevelRouteAlignmentByTitle: Record<string, boolean> = {};
   const documentLevelRouteAlignmentByTitle: Record<string, boolean> = {};
   const routeAlignmentEvidenceFieldsByTitle: Record<string, string[]> = {};
@@ -1091,8 +1098,34 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   for (const candidate of rankedCandidates) {
     const routeEvidence = middleGradesRouteAlignmentEvidence(candidate);
     const finalEligibility = middleGradesFinalEligibility(candidate);
+    const scoreBreakdown = candidate.scoreBreakdown || {};
+    const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
+    const matchedLikedSignals = matchedSignals.filter((signal) => !/^avoidSignalPenalty:/i.test(signal));
+    const matchedDislikedSignals = matchedSignals.filter((signal) => /^avoidSignalPenalty:/i.test(signal));
+    const genreTasteScore = Math.round((
+      Number(scoreBreakdown.genreFacetMatch || 0)
+      + Number(scoreBreakdown.positiveTasteMatch || 0)
+    ) * 1000) / 1000;
+    const penaltyScore = Math.round((
+      Number(scoreBreakdown.avoidSignalPenalty || 0)
+      + Number(scoreBreakdown.broadAvoidSignalPenalty || 0)
+      - middleGradesFallbackPenalty(candidate)
+    ) * 1000) / 1000;
     routeAlignmentScoreByTitle[candidate.title] = middleGradesRouteAlignmentScore(candidate);
     genreFacetMatchScoreByTitle[candidate.title] = Number(candidate.scoreBreakdown?.genreFacetMatch || 0);
+    candidateTasteMatchScoreByTitle[candidate.title] = genreTasteScore;
+    candidateTastePenaltyByTitle[candidate.title] = penaltyScore;
+    candidateMatchedLikedSignalsByTitle[candidate.title] = matchedLikedSignals;
+    candidateMatchedDislikedSignalsByTitle[candidate.title] = matchedDislikedSignals;
+    finalScoreComponentsByTitle[candidate.title] = {
+      ...scoreBreakdown,
+      genreTasteScore,
+      penaltyScore,
+      finalScore: candidate.score,
+      adjustedSelectionScore: middleGradesSelectionScore(candidate, profile),
+      routeAlignmentScore: routeAlignmentScoreByTitle[candidate.title],
+      fallbackPenalty: middleGradesFallbackPenalty(candidate),
+    };
     queryTextSignalsRemovedFromTasteMatchByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.queryTextSignalsRemovedFromTasteMatch) ? candidate.diagnostics.queryTextSignalsRemovedFromTasteMatch.map(String) : [];
     documentOnlyTasteMatchByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.documentOnlyTasteMatch) ? candidate.diagnostics.documentOnlyTasteMatch.map(String) : [];
     fallbackPenaltyByTitle[candidate.title] = middleGradesFallbackPenalty(candidate);
@@ -1125,6 +1158,24 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     } else {
       finalSelectionReasonByTitle[candidate.title] = "rejected_or_deferred_candidate";
     }
+    finalRankingReasonByTitle[candidate.title] = finalSelectionReasonByTitle[candidate.title];
+    middleGradesScoredCandidateAttribution.push({
+      title: candidate.title,
+      sourceQuery: String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || ""),
+      documentEvidenceFields: routeEvidence.fields,
+      documentEvidenceText: routeEvidence.evidenceTextByField,
+      evidenceTier: routeEvidence.tier,
+      matchedLikedSignals,
+      matchedDislikedSignals,
+      genreTasteScore,
+      penaltyScore,
+      finalScore: candidate.score,
+      finalRankingReason: finalRankingReasonByTitle[candidate.title],
+      selected: selectedTitles.has(normalized(candidate.title)),
+      rejectionReason: selectedTitles.has(normalized(candidate.title))
+        ? "selected"
+        : candidate.rejectedReasons.join(",") || finalSelectionReasonByTitle[candidate.title] || "not_selected_after_ranking_and_selection",
+    });
     candidate.diagnostics.routeAlignmentScore = routeAlignmentScoreByTitle[candidate.title];
     candidate.diagnostics.genreFacetMatchScore = genreFacetMatchScoreByTitle[candidate.title];
     candidate.diagnostics.fallbackPenalty = fallbackPenaltyByTitle[candidate.title];
@@ -1218,6 +1269,15 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const lockQualityPass = lockQualityFailReasons.length === 0;
   diagnostics.routeAlignmentScoreByTitle = routeAlignmentScoreByTitle;
   diagnostics.genreFacetMatchScoreByTitle = genreFacetMatchScoreByTitle;
+  diagnostics.candidateTasteMatchScoreByTitle = candidateTasteMatchScoreByTitle;
+  diagnostics.candidateTastePenaltyByTitle = candidateTastePenaltyByTitle;
+  diagnostics.candidateMatchedLikedSignalsByTitle = candidateMatchedLikedSignalsByTitle;
+  diagnostics.candidateMatchedDislikedSignalsByTitle = candidateMatchedDislikedSignalsByTitle;
+  diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
+  diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
+  diagnostics.rankedDocsTitles = rankedCandidates.map((candidate) => candidate.title);
+  diagnostics.finalEligibilityAcceptedTitles = selected.map((candidate) => candidate.title);
+  diagnostics.middleGradesScoredCandidateAttribution = middleGradesScoredCandidateAttribution;
   diagnostics.queryTextSignalsRemovedFromTasteMatchByTitle = queryTextSignalsRemovedFromTasteMatchByTitle;
   diagnostics.documentOnlyTasteMatchByTitle = documentOnlyTasteMatchByTitle;
   diagnostics.fallbackPenaltyByTitle = fallbackPenaltyByTitle;

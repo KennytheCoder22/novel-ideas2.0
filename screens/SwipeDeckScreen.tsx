@@ -1806,6 +1806,7 @@ function handleLeft() {
     const normalizedCount = diagnostics.stages.find((stage) => stage.stage === "normalized")?.counts?.normalized ?? 0;
     const scoredCount = diagnostics.stages.find((stage) => stage.stage === "scored")?.counts?.scored ?? 0;
     const middleGradesPipelineAudit = diagnostics.stages.find((stage) => stage.stage === "middle_grades_candidate_pool_audit")?.details as any;
+    const selectionDiagnostics = (diagnostics.stages.find((stage) => stage.stage === "selected")?.details as any)?.rejectedReasons || {};
     const normalizedDocsCountForReport = Number(middleGradesPipelineAudit?.normalizedDocsCount ?? normalizedCount);
     const rankedDocsLengthForReport = Number(middleGradesPipelineAudit?.rankedDocsLength ?? scoredCount);
     const convertedDocsAvailableForScoringCountForReport = Number(middleGradesPipelineAudit?.convertedDocsAvailableForScoringCount ?? normalizedCount);
@@ -1913,6 +1914,15 @@ function handleLeft() {
       openLibraryScoringHandoffLimitedToSourceFinal: Boolean(openLibrarySourceDiagnostics?.openLibraryScoringHandoffLimitedToSourceFinal),
       openLibraryScoringHandoffSuppressedTitles: openLibrarySourceDiagnostics?.openLibraryScoringHandoffSuppressedTitles || [],
       openLibraryScoringHandoffSource: openLibrarySourceDiagnostics?.openLibraryScoringHandoffSource || "",
+      candidateTasteMatchScoreByTitle: selectionDiagnostics?.candidateTasteMatchScoreByTitle || {},
+      candidateTastePenaltyByTitle: selectionDiagnostics?.candidateTastePenaltyByTitle || {},
+      candidateMatchedLikedSignalsByTitle: selectionDiagnostics?.candidateMatchedLikedSignalsByTitle || {},
+      candidateMatchedDislikedSignalsByTitle: selectionDiagnostics?.candidateMatchedDislikedSignalsByTitle || {},
+      finalScoreComponentsByTitle: selectionDiagnostics?.finalScoreComponentsByTitle || {},
+      finalRankingReasonByTitle: selectionDiagnostics?.finalRankingReasonByTitle || {},
+      rankedDocsTitles: Array.isArray(selectionDiagnostics?.rankedDocsTitles) ? selectionDiagnostics.rankedDocsTitles : [],
+      finalEligibilityAcceptedTitles: Array.isArray(selectionDiagnostics?.finalEligibilityAcceptedTitles) ? selectionDiagnostics.finalEligibilityAcceptedTitles : [],
+      middleGradesScoredCandidateAttribution: Array.isArray(selectionDiagnostics?.middleGradesScoredCandidateAttribution) ? selectionDiagnostics.middleGradesScoredCandidateAttribution : [],
       middleGradesExpandedPoolHandoffFailed: middleGradesExpandedPoolHandoffFailedForReport,
       middleGradesExpandedPoolFailureReason: middleGradesExpandedPoolFailureReasonForReport,
       openLibraryArtifactSuppressedTitles: openLibrarySourceDiagnostics?.artifactSuppressedTitles || [],
