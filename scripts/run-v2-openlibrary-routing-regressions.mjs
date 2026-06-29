@@ -154,6 +154,35 @@ async function main() {
   assertEqual(Number(queryOnlyScored.scoreBreakdown.positiveTasteMatch || 0), 0, "query text alone cannot create middle-grades positive taste credit");
   assertEqual((queryOnlyScored.diagnostics.queryTextSignalsRemovedFromTasteMatch || []).length > 0, true, "removed query-only taste signals should be diagnosed");
   console.log(JSON.stringify({ name: "middle grades scoring ignores query-only taste signals", pass: true, removed: queryOnlyScored.diagnostics.queryTextSignalsRemovedFromTasteMatch }));
+
+  const genericOnlyTasteProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Book Story", genres: ["fiction"], themes: ["story"], format: "book" },
+    ],
+  });
+  const genericOnlyScored = scoreCandidates([{
+    id: "generic-only-taste-credit",
+    source: "openLibrary",
+    sourceId: "generic-only-taste-credit",
+    title: "Generic Container Match",
+    creators: ["Container Author"],
+    formats: ["book"],
+    genres: ["Fiction"],
+    themes: ["Story"],
+    tones: [],
+    characterDynamics: [],
+    maturityBand: "preteens",
+    raw: {},
+    diagnostics: { queryText: "middle grade adventure", queryFamily: "middle grade", facets: ["book", "fiction", "story"], routingReason: "middle_grades_fantasy_adventure" },
+  }], genericOnlyTasteProfile)[0];
+  assertEqual(Number(genericOnlyScored.scoreBreakdown.genreFacetMatch || 0), 0, "generic fiction/container terms cannot create middle-grades genre taste credit");
+  assertEqual(Number(genericOnlyScored.scoreBreakdown.positiveTasteMatch || 0), 0, "generic book/story terms cannot create middle-grades positive taste credit");
+  assertEqual(genericOnlyScored.matchedSignals.some((signal) => signal === "positiveTasteMatch:book" || signal === "positiveTasteMatch:story" || signal === "genreFacetMatch:fiction"), false, "generic container terms must not appear as positive matched signals");
+  assertEqual(Number(genericOnlyScored.scoreBreakdown.genericOnlyTasteMatchPenalty || 0) < 0, true, "generic-only taste matches should receive a diagnostic penalty");
+  const genericOnlySelection = selectRecommendations([genericOnlyScored], genericOnlyTasteProfile, 1);
+  assertEqual(Array.isArray(genericOnlySelection.rejectedReasons.genericOnlyTasteMatchTitles) && genericOnlySelection.rejectedReasons.genericOnlyTasteMatchTitles.includes("Generic Container Match"), true, "generic-only taste match titles should be diagnosed during selection");
+  console.log(JSON.stringify({ name: "middle grades generic container terms do not score as taste evidence", pass: true, removed: genericOnlyScored.diagnostics.genericTasteSignalsRemoved, penalty: genericOnlyScored.scoreBreakdown.genericOnlyTasteMatchPenalty }));
   assertEqual(teenProfile.lockedBaseline, true, "teen Open Library profile should remain locked");
   assertEqual(teenProfile.behaviorLabel, "teen_openlibrary_locked_baseline", "teen Open Library profile should expose locked label");
   const kidsProfile = openLibraryProfileForAgeBand("kids");
@@ -1300,6 +1329,8 @@ async function main() {
     assertEqual(Object.keys(selectedDebugHandoff.rejectedReasons.finalScoreComponentsByTitle || {}).length > 10, true, "expanded Open Library scoring should emit score component attribution for the scored universe");
     assertEqual(Object.keys(selectedDebugHandoff.rejectedReasons.finalRankingReasonByTitle || {}).length > 10, true, "expanded Open Library scoring should emit final selected/rejected ranking reasons for the scored universe");
     assertEqual(Array.isArray(selectedDebugHandoff.rejectedReasons.middleGradesScoredCandidateAttribution) && selectedDebugHandoff.rejectedReasons.middleGradesScoredCandidateAttribution.length >= scoredOpenLibraryDebugCount, true, "expanded Open Library scoring should emit selected/rejected attribution rows for all scored candidates");
+    const expandedPoolPositiveSignals = Object.values(selectedDebugHandoff.rejectedReasons.candidateMatchedLikedSignalsByTitle || {}).flat().map(String);
+    assertEqual(expandedPoolPositiveSignals.some((signal) => /^positiveTasteMatch:(book|children|middle grade|fiction|novel|story|series)$/i.test(signal)), false, "expanded Open Library scoring must not credit generic container terms as positive taste evidence");
     console.log(JSON.stringify({ name: "middle grades deep-debug mode expands budgets and emits full trace", pass: true, budget: result.diagnostics.debugMiddleGradesBudgetMs, firstClientTimeout: result.diagnostics.fetches?.[0]?.clientTimeoutMs, traceCounts: { planned: result.diagnostics.debugMiddleGradesPlannedQueries.length, fetch: result.diagnostics.debugMiddleGradesFetchTrace.length, raw: result.diagnostics.debugMiddleGradesRawDocTrace.length, normalized: result.diagnostics.debugMiddleGradesNormalizedCandidateTrace.length }, handoff: { fetched: result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount, eligible: result.diagnostics.openLibraryDocsEligibleForScoringCount, handedToScoring: result.diagnostics.openLibraryDocsActuallyHandedToScoringCount, normalized: normalizedDebugHandoff.length, scored: scoredDebugHandoff.length, source: result.diagnostics.openLibraryScoringHandoffSource } }));
   } finally {
     if (previousMiddleGradesDebugProxyBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;

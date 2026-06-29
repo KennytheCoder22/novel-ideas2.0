@@ -1081,6 +1081,9 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
   const finalRankingReasonByTitle: Record<string, string> = {};
   const middleGradesScoredCandidateAttribution: Array<Record<string, unknown>> = [];
+  const genericTasteSignalsRemovedByTitle: Record<string, string[]> = {};
+  const documentBackedTasteSignalsByTitle: Record<string, string[]> = {};
+  const genericOnlyTasteMatchTitles: string[] = [];
   const queryLevelRouteAlignmentByTitle: Record<string, boolean> = {};
   const documentLevelRouteAlignmentByTitle: Record<string, boolean> = {};
   const routeAlignmentEvidenceFieldsByTitle: Record<string, string[]> = {};
@@ -1117,6 +1120,9 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     candidateTastePenaltyByTitle[candidate.title] = penaltyScore;
     candidateMatchedLikedSignalsByTitle[candidate.title] = matchedLikedSignals;
     candidateMatchedDislikedSignalsByTitle[candidate.title] = matchedDislikedSignals;
+    genericTasteSignalsRemovedByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.genericTasteSignalsRemoved) ? candidate.diagnostics.genericTasteSignalsRemoved.map(String) : [];
+    documentBackedTasteSignalsByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.documentBackedTasteSignals) ? candidate.diagnostics.documentBackedTasteSignals.map(String) : [];
+    if (candidate.diagnostics?.genericOnlyTasteMatch) genericOnlyTasteMatchTitles.push(candidate.title);
     finalScoreComponentsByTitle[candidate.title] = {
       ...scoreBreakdown,
       genreTasteScore,
@@ -1125,6 +1131,7 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
       adjustedSelectionScore: middleGradesSelectionScore(candidate, profile),
       routeAlignmentScore: routeAlignmentScoreByTitle[candidate.title],
       fallbackPenalty: middleGradesFallbackPenalty(candidate),
+      genericOnlyTasteMatchPenalty: Number(scoreBreakdown.genericOnlyTasteMatchPenalty || 0),
     };
     queryTextSignalsRemovedFromTasteMatchByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.queryTextSignalsRemovedFromTasteMatch) ? candidate.diagnostics.queryTextSignalsRemovedFromTasteMatch.map(String) : [];
     documentOnlyTasteMatchByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.documentOnlyTasteMatch) ? candidate.diagnostics.documentOnlyTasteMatch.map(String) : [];
@@ -1167,6 +1174,9 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
       evidenceTier: routeEvidence.tier,
       matchedLikedSignals,
       matchedDislikedSignals,
+      genericTasteSignalsRemoved: genericTasteSignalsRemovedByTitle[candidate.title],
+      documentBackedTasteSignals: documentBackedTasteSignalsByTitle[candidate.title],
+      genericOnlyTasteMatch: Boolean(candidate.diagnostics?.genericOnlyTasteMatch),
       genreTasteScore,
       penaltyScore,
       finalScore: candidate.score,
@@ -1278,6 +1288,10 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.rankedDocsTitles = rankedCandidates.map((candidate) => candidate.title);
   diagnostics.finalEligibilityAcceptedTitles = selected.map((candidate) => candidate.title);
   diagnostics.middleGradesScoredCandidateAttribution = middleGradesScoredCandidateAttribution;
+  diagnostics.genericTasteSignalsRemovedByTitle = genericTasteSignalsRemovedByTitle;
+  diagnostics.genericOnlyTasteMatchTitles = genericOnlyTasteMatchTitles;
+  diagnostics.documentBackedTasteSignalsByTitle = documentBackedTasteSignalsByTitle;
+  diagnostics.selectedGenericOnlyTasteMatchCount = selected.filter((candidate) => candidate.diagnostics?.genericOnlyTasteMatch).length;
   diagnostics.queryTextSignalsRemovedFromTasteMatchByTitle = queryTextSignalsRemovedFromTasteMatchByTitle;
   diagnostics.documentOnlyTasteMatchByTitle = documentOnlyTasteMatchByTitle;
   diagnostics.fallbackPenaltyByTitle = fallbackPenaltyByTitle;
