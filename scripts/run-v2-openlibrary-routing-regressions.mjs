@@ -1798,13 +1798,14 @@ async function main() {
       creators: ["Shared Middle Author"],
       score: 9.9 - index * 0.1,
       maturityBand: "preteens",
-      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+      diagnostics: { queryText: "middle grade humor", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor", documentBackedTasteSignals: ["comedy"] },
+      scoreBreakdown: { positiveTasteMatch: 1.2 },
     })),
   ];
   const middleGradesSelectionResult = selectRecommendations(middleGradesSelectionCandidates, middleGradesSelectionProfile, 10);
   assertEqual(middleGradesSelectionResult.selected.length < 5, true, "middle grades query-only candidates should not fill the slate without document evidence");
   assertEqual(new Set(middleGradesSelectionResult.selected.map((candidate) => candidate.title)).size, middleGradesSelectionResult.selected.length, "middle grades query-only filtering should keep duplicate titles blocked among survivors");
-  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.duplicate_title), true, "middle grades selection should record duplicate title rejection before safe underfill recovery");
+  assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.duplicate_title || middleGradesSelectionResult.rejectedReasons.zero_doc_backed_taste_match), true, "middle grades selection should reject duplicate or zero-taste query-only rows before safe underfill recovery");
   assertEqual(Number(middleGradesSelectionResult.rejectedReasons.documentEvidenceRequiredButMissingCount || 0) > 0, true, "middle grades selection should emit query-only score cap diagnostics");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.routeAlignmentScoreByTitle), true, "middle grades selection should expose route alignment scores by title");
   assertEqual(Boolean(middleGradesSelectionResult.rejectedReasons.genreFacetMatchScoreByTitle), true, "middle grades selection should expose genre facet match scores by title");
@@ -1817,7 +1818,7 @@ async function main() {
   assertEqual(middleGradesSelectionResult.rejectedReasons.middleGradesReturnedItemQualityAudit.length, middleGradesSelectionResult.selected.length, "returned title quality audit should explain every selected middle grades title");
   assertEqual(Array.isArray(middleGradesSelectionResult.rejectedReasons.middleGradesTopRejectedQualityAudit), true, "middle grades selection should audit top rejected candidates");
   assertEqual(Number(middleGradesSelectionResult.rejectedReasons.falseRouteAlignedDueToQueryOnlyCount || 0) > 0, true, "middle grades selection should demote query-only route alignment");
-  assertEqual(middleGradesSelectionResult.rejectedReasons.finalCountContractStatus, "underfilled_fallback_only", "middle grades query-only underfill slate should not masquerade as full fallback success");
+  assertEqual(middleGradesSelectionResult.rejectedReasons.finalCountContractStatus, "underfilled_fallback_only", "middle grades query-only zero-taste slate should remain underfilled instead of masquerading as full fallback success");
   console.log(JSON.stringify({ name: "middle grades selection rejects query-only underfill slate", pass: true, selected: middleGradesSelectionResult.selected.length, rejectedReasons: middleGradesSelectionResult.rejectedReasons }));
 
   const middleGradesFallbackPrecedenceCandidates = [
@@ -1866,6 +1867,61 @@ async function main() {
   assertEqual(middleGradesZeroFinalGuardResult.selected.length, 1, "middle grades zero-final-items guard should preserve safe Open Library docs");
   assertEqual(Boolean(middleGradesZeroFinalGuardResult.rejectedReasons.accepted_middle_grades_zero_final_items_guard), true, "middle grades zero-final-items guard should emit diagnostics");
   console.log(JSON.stringify({ name: "middle grades zero-final-items guard preserves safe Open Library docs", pass: true, selected: middleGradesZeroFinalGuardResult.selected.length, rejectedReasons: middleGradesZeroFinalGuardResult.rejectedReasons }));
+
+  const middleGradesMeaningfulTasteProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Fantasy Friendship", genres: ["fantasy", "adventure"], themes: ["friendship", "school"], format: "book" },
+    ],
+  });
+  const middleGradesZeroTasteGateResult = selectRecommendations([
+    fakeScoredCandidate({
+      id: "zero-taste-fallback",
+      title: "Zero Taste Fallback",
+      score: 14,
+      maturityBand: "preteens",
+      raw: { subject: ["Juvenile fiction", "Fantasy", "Adventure"] },
+      diagnostics: { queryText: "middle grade fantasy adventure", queryFamily: "fantasy_adventure", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: [] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 0, positiveTasteMatch: 0 },
+    }),
+    fakeScoredCandidate({
+      id: "friendship-school-match",
+      title: "Friendship School Match",
+      score: 8,
+      maturityBand: "preteens",
+      raw: { subject: ["Juvenile fiction", "Friendship", "School stories"] },
+      diagnostics: { queryText: "middle grade friendship school", queryFamily: "friendship_school", routingReason: "middle_grades_contemporary_school", documentBackedTasteSignals: ["friendship", "school"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 0, positiveTasteMatch: 2.4 },
+    }),
+  ], middleGradesMeaningfulTasteProfile, 5);
+  assertEqual(middleGradesZeroTasteGateResult.selected.some((candidate) => candidate.title === "Zero Taste Fallback"), false, "zero-taste Open Library candidates must not become normal Middle Grades selections");
+  assertEqual(middleGradesZeroTasteGateResult.selected.some((candidate) => candidate.title === "Friendship School Match"), true, "document-backed taste candidates should survive over zero-taste fallbacks");
+  assertEqual(Array.isArray(middleGradesZeroTasteGateResult.rejectedReasons.zeroTasteCandidateRejectedTitles) && middleGradesZeroTasteGateResult.rejectedReasons.zeroTasteCandidateRejectedTitles.includes("Zero Taste Fallback"), true, "zero-taste rejected titles should be diagnosed");
+
+  const middleGradesBroadAdventureGateResult = selectRecommendations([
+    fakeScoredCandidate({
+      id: "broad-adventure-only",
+      title: "Broad Adventure Only",
+      score: 13,
+      maturityBand: "preteens",
+      raw: { subject: ["Juvenile fiction", "Adventure stories"] },
+      diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["adventure"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 3, positiveTasteMatch: 0 },
+    }),
+    fakeScoredCandidate({
+      id: "fantasy-friendship-specific",
+      title: "Fantasy Friendship Specific",
+      score: 7,
+      maturityBand: "preteens",
+      raw: { subject: ["Juvenile fiction", "Fantasy", "Friendship"] },
+      diagnostics: { queryText: "middle grade fantasy friendship", queryFamily: "fantasy_friendship", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy", "friendship"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 3, positiveTasteMatch: 1.7 },
+    }),
+  ], middleGradesMeaningfulTasteProfile, 5);
+  assertEqual(middleGradesBroadAdventureGateResult.selected.some((candidate) => candidate.title === "Broad Adventure Only"), false, "broad-adventure-only Open Library candidates must not beat specific document-backed matches");
+  assertEqual(middleGradesBroadAdventureGateResult.selected.some((candidate) => candidate.title === "Fantasy Friendship Specific"), true, "specific document-backed fantasy/friendship matches should survive broad adventure-only candidates");
+  assertEqual(Array.isArray(middleGradesBroadAdventureGateResult.rejectedReasons.broadAdventureOnlyRejectedTitles) && middleGradesBroadAdventureGateResult.rejectedReasons.broadAdventureOnlyRejectedTitles.includes("Broad Adventure Only"), true, "broad-adventure-only rejected titles should be diagnosed");
+  console.log(JSON.stringify({ name: "middle grades final eligibility requires meaningful document-backed taste", pass: true, zeroTasteRejected: middleGradesZeroTasteGateResult.rejectedReasons.zeroTasteCandidateRejectedTitles, broadAdventureRejected: middleGradesBroadAdventureGateResult.rejectedReasons.broadAdventureOnlyRejectedTitles }));
 
   const middleGradesFinalRootCollapseCandidates = [
     fakeScoredCandidate({ id: "frog-toad-collection", title: "The Frog and Toad Collection", creators: ["Collection Author A"], score: 12, maturityBand: "preteens", genres: ["Juvenile fiction", "Friendship", "Animals"], themes: ["Children's stories", "Friendship"], diagnostics: { queryText: "children friendship adventure", queryFamily: "adventure", routingReason: "middle_grades_humor" }, scoreBreakdown: { ageTeenSuitability: 0.5, genreFacetMatch: 1, avoidSignalPenalty: 0 } }),
@@ -2193,7 +2249,8 @@ async function main() {
       creators: [`School Author ${index}`],
       score: index === 0 ? 11 : 5,
       maturityBand: "preteens",
-      diagnostics: { queryText: index === 1 ? "middle grade realistic fiction" : index === 2 ? "middle grade friendship" : "middle grade school story", queryFamily: index === 1 ? "realistic" : index === 2 ? "friendship" : "school", routingReason: "middle_grades_contemporary_school" },
+      diagnostics: { queryText: index === 1 ? "middle grade realistic fiction" : index === 2 ? "middle grade friendship" : "middle grade school story", queryFamily: index === 1 ? "realistic" : index === 2 ? "friendship" : "school", routingReason: "middle_grades_contemporary_school", documentBackedTasteSignals: ["school", "friendship"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, positiveTasteMatch: 2.4 },
       raw: { subject: ["Juvenile fiction", "School", "Friendship", "Family", "Classroom"] },
     })),
   ];
@@ -2212,7 +2269,8 @@ async function main() {
       creators: [`School Default Author ${index}`],
       score: 10 - index * 0.1,
       maturityBand: "preteens",
-      diagnostics: { queryText: "middle grade school story", queryFamily: "school", routingReason: "middle_grades_contemporary_school" },
+      diagnostics: { queryText: "middle grade school story", queryFamily: "school", routingReason: "middle_grades_contemporary_school", documentBackedTasteSignals: ["school"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, positiveTasteMatch: 1.2 },
     })),
     ...["Family Class Project", "Friendship Class Team"].map((title, index) => fakeScoredCandidate({
       id: `middle-contemporary-safer-${index}`,
@@ -2220,7 +2278,8 @@ async function main() {
       creators: [`School Safer Author ${index}`],
       score: 8 - index * 0.1,
       maturityBand: "preteens",
-      diagnostics: { queryText: index === 0 ? "middle grade family story" : "middle grade friendship", queryFamily: index === 0 ? "family" : "friendship", routingReason: "middle_grades_contemporary_school" },
+      diagnostics: { queryText: index === 0 ? "middle grade family story" : "middle grade friendship", queryFamily: index === 0 ? "family" : "friendship", routingReason: "middle_grades_contemporary_school", documentBackedTasteSignals: ["family", "friendship"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, positiveTasteMatch: 2.4 },
     })),
   ];
   const middleGradesContemporaryDefaultCapResult = selectRecommendations(middleGradesContemporaryDefaultCapCandidates, middleGradesContemporarySelectionProfile, 5);
@@ -2240,7 +2299,8 @@ async function main() {
       creators: [`Humor Author ${index}`],
       score: 10 - index * 0.1,
       maturityBand: "preteens",
-      diagnostics: { queryText: index % 2 === 0 ? "middle grade humor" : "children's funny books", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor" },
+      diagnostics: { queryText: index % 2 === 0 ? "middle grade humor" : "children's funny books", queryFamily: "humor", routingReason: "middle_grades_fantasy_humor", documentBackedTasteSignals: ["comedy"] },
+      scoreBreakdown: { positiveTasteMatch: 1.2 },
       raw: { subject: ["Juvenile fiction", "Humorous stories"] },
     })),
     ...["Quest One", "Quest Two", "Friendship Trail"].map((title, index) => fakeScoredCandidate({
@@ -2249,7 +2309,8 @@ async function main() {
       creators: [`Adventure Author ${index}`],
       score: 8 - index * 0.1,
       maturityBand: "preteens",
-      diagnostics: { queryText: index === 2 ? "middle grade friendship" : "middle grade adventure", queryFamily: index === 2 ? "friendship" : "adventure", routingReason: "middle_grades_fantasy_humor" },
+      diagnostics: { queryText: index === 2 ? "middle grade friendship" : "middle grade adventure", queryFamily: index === 2 ? "friendship" : "adventure", routingReason: "middle_grades_fantasy_humor", documentBackedTasteSignals: index === 2 ? ["friendship"] : ["adventure", "fantasy"] },
+      scoreBreakdown: { genreFacetMatch: index === 2 ? 0 : 1.2, positiveTasteMatch: index === 2 ? 1.2 : 0.8 },
       raw: { subject: ["Juvenile fiction", index === 2 ? "Friendship" : "Adventure stories"] },
     })),
   ];
@@ -2267,7 +2328,8 @@ async function main() {
       creators: [`Humor Cap Author ${index}`],
       score: 10 - index * 0.1,
       maturityBand: "preteens",
-      diagnostics: { queryText: index % 2 === 0 ? "middle grade humor" : "children's funny books", queryFamily: "humor", routingReason: "middle_grades_humor" },
+      diagnostics: { queryText: index % 2 === 0 ? "middle grade humor" : "children's funny books", queryFamily: "humor", routingReason: "middle_grades_humor", documentBackedTasteSignals: ["comedy"] },
+      scoreBreakdown: { positiveTasteMatch: 1.2 },
       raw: { subject: ["Juvenile fiction", "Humorous stories"] },
     })),
     ...["School Laughs", "Friendship Laughs"].map((title, index) => fakeScoredCandidate({
@@ -2276,7 +2338,8 @@ async function main() {
       creators: [`Humor Alt Author ${index}`],
       score: 8 - index * 0.1,
       maturityBand: "preteens",
-      diagnostics: { queryText: index === 0 ? "middle grade school story" : "middle grade friendship", queryFamily: index === 0 ? "school" : "friendship", routingReason: "middle_grades_humor" },
+      diagnostics: { queryText: index === 0 ? "middle grade school story" : "middle grade friendship", queryFamily: index === 0 ? "school" : "friendship", routingReason: "middle_grades_humor", documentBackedTasteSignals: index === 0 ? ["school"] : ["friendship"] },
+      scoreBreakdown: { positiveTasteMatch: 1.2 },
       raw: { subject: ["Juvenile fiction", index === 0 ? "School stories" : "Friendship"] },
     })),
   ];
@@ -2301,7 +2364,8 @@ async function main() {
       creators: [`Adventure Humor Alt Author ${index}`],
       score: index === 0 ? 11 : 5,
       maturityBand: "preteens",
-      diagnostics: { queryText: index === 0 ? "middle grade adventure" : "middle grade friendship", queryFamily: index === 0 ? "adventure" : "friendship", routingReason: "middle_grades_fantasy_adventure_age_anchored_recovery" },
+      diagnostics: { queryText: index === 0 ? "middle grade adventure" : "middle grade friendship", queryFamily: index === 0 ? "adventure" : "friendship", routingReason: "middle_grades_fantasy_adventure_age_anchored_recovery", documentBackedTasteSignals: index === 0 ? ["adventure", "fantasy"] : ["friendship"] },
+      scoreBreakdown: { positiveTasteMatch: index === 0 ? 0.8 : 1.2, genreFacetMatch: index === 0 ? 1.2 : 0 },
     })),
   ];
   const middleGradesAdventureHumorDefaultCapResult = selectRecommendations(middleGradesAdventureHumorDefaultCapCandidates, middleGradesFantasyHumorBalanceProfile, 5);
