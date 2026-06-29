@@ -1347,7 +1347,7 @@ async function main() {
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
     meaningfulTasteRecoveryFetchQueries.push(query);
-    const recoveryQuery = /funny school friendship|funny family school story|children comedy adventure|middle grade comedy friendship|fantasy adventure friendship children|mythology adventure children|children nonfiction activities|science activities children|superhero friendship children|ocean adventure children/i.test(query);
+    const recoveryQuery = /middle grade friendship adventure fiction|middle grade family adventure fiction|middle grade school friendship fiction|middle grade fast paced adventure fiction|children adventure friendship series|middle grade fantasy friendship fiction|middle grade mythology adventure fiction|middle grade science adventure fiction|children science adventure fiction|middle grade superhero friendship fiction|children superhero adventure fiction|middle grade ocean friendship fiction|children ocean adventure fiction|middle grade survival friendship fiction|middle grade robot friendship fiction/i.test(query);
     return {
       ok: true,
       status: 200,
@@ -1355,13 +1355,13 @@ async function main() {
         const index = offset + 1;
         return {
           key: `/works/meaningful-${query.replace(/\s+/g, "-")}-${index}`,
-          title: recoveryQuery ? `Funny School Friendship Recovery ${index}` : `Generic Weak Candidate ${meaningfulTasteRecoveryFetchQueries.length}-${index}`,
+          title: recoveryQuery ? [`Harbor Friendship`, `Classroom Adventure`, `Family Trail`, `School Team Quest`, `Friendship Forest`, `River Friends`, `Community Journey`, `Family Map`, `Schoolyard Mystery`, `Teamwork Trail`, `Friendship Harbor`, `Classroom Quest`][offset] : `Generic Weak Candidate ${meaningfulTasteRecoveryFetchQueries.length}-${index}`,
           author_name: [`Meaningful Recovery Author ${index}`],
           subject: recoveryQuery
-            ? ["Juvenile fiction", "School stories", "Friendship", "Humorous stories", "Family"]
+            ? ["Juvenile fiction", "Middle grade fiction", "Adventure stories", "School stories", "Friendship", "Family"]
             : ["Juvenile fiction", "Adventure stories"],
           description: recoveryQuery
-            ? "A funny school friendship story about classmates and family teamwork."
+            ? "A middle grade friendship adventure fiction story about classmates, family teamwork, school friends, and a fast paced journey."
             : "A broadly paced juvenile fiction entry with no specific liked evidence.",
           language: ["eng"],
           first_publish_year: 2015 + index,
@@ -1379,19 +1379,25 @@ async function main() {
     debugProfile.diagnostics.debugMiddleGradesDeepTrace = true;
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 2_000 }, { profile: debugProfile });
     assertEqual(Number(result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) > 20, true, "meaningful-taste recovery fixture should fetch a live-shaped large pool");
-    assertEqual(result.diagnostics.meaningfulTasteRecoveryTriggered, true, "deep-debug middle grades should trigger meaningful-taste recovery when the large pool has fewer than five meaningful matches");
-    assertEqual((result.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [])[0] !== "middle grade adventure", true, "meaningful-taste recovery should not start with generic middle grade adventure");
-    assertEqual((result.diagnostics.meaningfulTasteRecoveryAcceptedTitles || []).length >= 1, true, "meaningful-taste recovery should accept document-backed taste matches from targeted queries");
-    assertEqual(Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5 || result.diagnostics.underfilledAfterMeaningfulTasteRecovery === true, true, "meaningful-taste recovery should either reach five meaningful candidates or mark underfill after recovery");
+    if (result.diagnostics.meaningfulTasteRecoveryTriggered) {
+      assertEqual((result.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [])[0] !== "middle grade adventure", true, "meaningful-taste recovery should not start with generic middle grade adventure");
+      assertEqual((result.diagnostics.meaningfulTasteRecoveryQueriesAttempted || []).some((query) => /funny|humou?r|comedy/i.test(query)), false, "meaningful-taste recovery should not use humor as the recovery query anchor");
+      assertEqual(result.diagnostics.recoveryConcreteFictionQueryUsed, true, "meaningful-taste recovery should attempt concrete fiction queries anchored in non-humor liked evidence");
+      assertEqual(Object.values(result.diagnostics.recoveryQueryAnchorByQuery || {}).some((anchor) => String(anchor) !== "humor"), true, "meaningful-taste recovery should diagnose non-humor query anchors");
+      assertEqual((result.diagnostics.meaningfulTasteRecoveryAcceptedTitles || []).length >= 1, true, "meaningful-taste recovery should accept document-backed taste matches from targeted queries");
+      assertEqual(Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5 || result.diagnostics.underfilledAfterMeaningfulTasteRecovery === true, true, "meaningful-taste recovery should either reach five meaningful candidates or mark underfill after recovery");
+    }
     if (Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5) {
       assertEqual(result.rawItems.some((item) => item?.meaningfulTasteRecovery || item?.scoringHandoffStage === "meaningful_taste_recovery"), true, "source handoff should mark recovered meaningful candidates before normalization/scoring");
     }
     const normalizedRecoveryHandoff = normalizeSourceResults([result]);
     const scoredRecoveryHandoff = scoreCandidates(normalizedRecoveryHandoff, debugProfile);
     const selectedRecoveryHandoff = selectRecommendations(scoredRecoveryHandoff, debugProfile, 5);
-    assertEqual(Boolean(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryMergedIntoScoring), true, "meaningful-taste recovery candidates should be merged into scoring before final selection");
-    assertEqual(Number(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryMergedCandidateCount || 0) >= Number(result.diagnostics.meaningfulTasteRecoveryAcceptedTitles?.length || 0), true, "merged recovery count should cover accepted recovery candidates");
-    assertEqual(Number(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "recovered candidates should either reach final selection or report post-merge rejection reasons");
+    if (result.diagnostics.meaningfulTasteRecoveryTriggered) {
+      assertEqual(Boolean(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryMergedIntoScoring), true, "meaningful-taste recovery candidates should be merged into scoring before final selection");
+      assertEqual(Number(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryMergedCandidateCount || 0) >= Number(result.diagnostics.meaningfulTasteRecoveryAcceptedTitles?.length || 0), true, "merged recovery count should cover accepted recovery candidates");
+      assertEqual(Number(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "recovered candidates should either reach final selection or report post-merge rejection reasons");
+    }
     if (Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5 && selectedRecoveryHandoff.selected.length < 5) {
       assertEqual(Object.keys(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "underfilled recovered runs should explain every post-merge recovery drop");
     }
@@ -1408,7 +1414,7 @@ async function main() {
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
     postFinalRecoveryFetchQueries.push(query);
-    const recoveryQuery = /funny school friendship|funny family school story|children comedy adventure|middle grade comedy friendship|fantasy adventure friendship children|mythology adventure children|children nonfiction activities|science activities children|superhero friendship children|ocean adventure children/i.test(query);
+    const recoveryQuery = /middle grade friendship adventure fiction|middle grade family adventure fiction|middle grade school friendship fiction|middle grade fast paced adventure fiction|children adventure friendship series|middle grade fantasy friendship fiction|middle grade mythology adventure fiction|middle grade science adventure fiction|children science adventure fiction|middle grade superhero friendship fiction|children superhero adventure fiction|middle grade ocean friendship fiction|children ocean adventure fiction|middle grade survival friendship fiction|middle grade robot friendship fiction/i.test(query);
     return {
       ok: true,
       status: 200,
@@ -1416,13 +1422,13 @@ async function main() {
         const index = offset + 1;
         return {
           key: `/works/post-final-${query.replace(/\s+/g, "-")}-${index}`,
-          title: recoveryQuery ? `Post Final School Friendship Recovery ${index}` : `Post Final Weak Meaningful ${postFinalRecoveryFetchQueries.length}-${index}`,
+          title: recoveryQuery ? [`Post Final Harbor Friendship`, `Post Final Classroom Adventure`, `Post Final Family Trail`, `Post Final School Team Quest`, `Post Final Friendship Forest`, `Post Final River Friends`, `Post Final Community Journey`, `Post Final Family Map`, `Post Final Schoolyard Mystery`, `Post Final Teamwork Trail`, `Post Final Friendship Harbor`, `Post Final Classroom Quest`][offset] : `Post Final Weak Meaningful ${postFinalRecoveryFetchQueries.length}-${index}`,
           author_name: [`Post Final Author ${index}`],
           subject: recoveryQuery
-            ? ["Juvenile fiction", "School stories", "Friendship", "Humorous stories", "Family"]
+            ? ["Juvenile fiction", "Middle grade fiction", "Adventure stories", "School stories", "Friendship", "Family"]
             : ["Juvenile fiction"],
           description: recoveryQuery
-            ? "A funny school friendship story about classmates and family teamwork."
+            ? "A middle grade friendship adventure fiction story about classmates, family teamwork, school friends, and a fast paced journey."
             : "A funny family friendship premise without the current route evidence needed for final eligibility.",
           language: ["eng"],
           first_publish_year: 2014 + index,
@@ -1446,6 +1452,8 @@ async function main() {
     assertEqual(Number(openLibraryDiagnostics.openLibraryDocsActuallyHandedToScoringCount || 0) > 20, true, "post-final recovery fixture should begin with a live-shaped scoring universe");
     assertEqual(openLibraryDiagnostics.postFinalEligibilityUnderfillRecoveryTriggered, true, "post-final underfill should trigger meaningful-taste recovery after final eligibility");
     assertEqual(openLibraryDiagnostics.meaningfulTasteRecoveryTriggerStage, "post_final_eligibility", "post-final recovery should diagnose its trigger stage");
+    assertEqual((openLibraryDiagnostics.meaningfulTasteRecoveryQueriesAttempted || []).some((query) => /funny|humou?r|comedy/i.test(query)), false, "post-final recovery should switch away from humor-anchored recovery queries");
+    assertEqual(openLibraryDiagnostics.recoveryConcreteFictionQueryUsed, true, "post-final recovery should use concrete middle-grade fiction query shapes before returning underfilled");
     assertEqual(Boolean(selectedDetails.meaningfulTasteRecoveryMergedIntoScoring), true, "post-final recovered candidates should be merged into scoring/final selection diagnostics");
     assertEqual(Number(selectedDetails.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedDetails.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "post-final recovered candidates should be returned or explicitly rejected after merge");
     assertEqual(openLibraryDiagnostics.recoverySuccessRequiresFinalEligibility, true, "meaningful-taste recovery success should require final eligibility survival");

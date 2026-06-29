@@ -294,6 +294,11 @@ export interface SourceDiagnosticV2 {
   middleGradesRecoveryNextBestSelectableTitles?: string[];
   middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate?: boolean;
   middleGradesRecoveryRelaxedGateNeeded?: string;
+  recoveryQueryAnchorByQuery?: Record<string, string>;
+  recoveryHumorUsedAsAnchorBlocked?: boolean;
+  recoveryConcreteFictionQueryUsed?: boolean;
+  recoveryQueryFamilyAcceptedFinalCount?: Record<string, number>;
+  recoveryQueryFamilyRejectedForLeakageCount?: Record<string, number>;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

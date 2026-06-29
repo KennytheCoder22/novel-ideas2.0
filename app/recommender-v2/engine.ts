@@ -377,6 +377,15 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         const recoverySurvivingFinalCount = selected.length;
         const recoveryDiagnostics = sourceResults[openLibrarySourceIndex]?.diagnostics;
         if (recoveryDiagnostics) {
+          const recoveryAnchorByQuery = (recoveryDiagnostics.recoveryQueryAnchorByQuery || {}) as Record<string, string>;
+          const recoveryAcceptedFinalByAnchor = selected
+            .filter((candidate) => candidate.diagnostics?.meaningfulTasteRecovery || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery")
+            .reduce<Record<string, number>>((acc, candidate) => {
+              const query = String(candidate.diagnostics?.queryText || "");
+              const anchor = recoveryAnchorByQuery[query] || String(candidate.diagnostics?.queryFamily || "unknown");
+              acc[anchor] = Number(acc[anchor] || 0) + 1;
+              return acc;
+            }, {});
           recoveryDiagnostics.meaningfulTasteRecoverySurvivingFinalCount = recoverySurvivingFinalCount;
           recoveryDiagnostics.meaningfulTasteRecoveryContinuedAfterRejectedMerge = recoverySurvivingFinalCount < 5 && Object.keys(recoveryDroppedByReason).length > 0;
           recoveryDiagnostics.meaningfulTasteRecoveryExhaustedQueries = recoverySurvivingFinalCount < 5 ? recoveryResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [] : [];
@@ -389,6 +398,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           recoveryDiagnostics.middleGradesRecoveryNextBestSelectableTitles = ((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryNextBestSelectableTitles || []) as string[];
           recoveryDiagnostics.middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate = Boolean((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate);
           recoveryDiagnostics.middleGradesRecoveryRelaxedGateNeeded = String((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryRelaxedGateNeeded || "none");
+          recoveryDiagnostics.recoveryQueryFamilyAcceptedFinalCount = recoveryAcceptedFinalByAnchor;
         }
       } else {
         openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = recoveryResponse.timedOut ? "post_final_eligibility_recovery_timed_out" : "post_final_eligibility_recovery_failed";

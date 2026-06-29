@@ -1723,42 +1723,66 @@ function middleGradesMeaningfulTasteRecoveryQueries(profile: TasteProfile, attem
     if (condition) candidates.push(...queries);
   };
   addIf(/comedy|funny|humou?r|playful/i.test(positiveText) && /family|friendship|friends?|school/i.test(positiveText), [
-    "funny school friendship",
-    "funny family school story",
-    "middle grade comedy friendship",
+    "middle grade friendship adventure fiction",
+    "middle grade family adventure fiction",
+    "children adventure friendship series",
   ]);
   addIf(/comedy|funny|humou?r|playful/i.test(positiveText) && /adventure|quest/i.test(positiveText), [
-    "children comedy adventure",
-    "middle grade comedy friendship",
+    "middle grade fast paced adventure fiction",
+    "children adventure friendship series",
+    "middle grade family adventure fiction",
   ]);
   addIf(/fantasy|magic|magical/i.test(positiveText) && /adventure|friendship|friends?/i.test(positiveText), [
-    "fantasy adventure friendship children",
-    "children fantasy friendship adventure",
+    "middle grade fantasy friendship fiction",
+    "children adventure friendship series",
   ]);
   addIf(/fantasy|myth|mythology/i.test(positiveText) && /adventure|quest/i.test(positiveText), [
-    "mythology adventure children",
-    "fantasy adventure friendship children",
+    "middle grade fantasy friendship fiction",
+    "middle grade mythology adventure fiction",
   ]);
   addIf(/nonfiction|concise|quirky|science|explanation|activities/i.test(positiveText), [
-    "children nonfiction activities",
-    "science activities children",
+    "middle grade science adventure fiction",
+    "children science adventure fiction",
   ]);
   addIf(/superhero|super hero|hero|powers?/i.test(positiveText) && /friendship|friends?|team/i.test(positiveText), [
-    "superhero friendship children",
+    "middle grade superhero friendship fiction",
+    "children superhero adventure fiction",
   ]);
   addIf(/ocean|sea|island/i.test(positiveText) && /adventure|fantasy|magic/i.test(positiveText), [
-    "ocean adventure children",
+    "middle grade ocean friendship fiction",
+    "children ocean adventure fiction",
+  ]);
+  addIf(/survival|wilderness|forest|island/i.test(positiveText) && /friendship|friends?|adventure/i.test(positiveText), [
+    "middle grade survival friendship fiction",
+  ]);
+  addIf(/robot|robots?|technology|science/i.test(positiveText) && /friendship|friends?|adventure/i.test(positiveText), [
+    "middle grade robot friendship fiction",
   ]);
   if (!candidates.length) {
     candidates.push(
-      "funny school friendship",
-      "fantasy adventure friendship children",
-      "children comedy adventure",
-      "mythology adventure children",
-      "science activities children",
+      "middle grade friendship adventure fiction",
+      "middle grade fantasy friendship fiction",
+      "children adventure friendship series",
+      "middle grade family adventure fiction",
+      "middle grade fast paced adventure fiction",
     );
   }
   return uniqueStrings(candidates, 10).filter((query) => !attemptedQueries.has(query.toLowerCase()));
+}
+
+function middleGradesRecoveryQueryAnchor(query: string): string {
+  const text = query.toLowerCase();
+  if (/\bsuperhero\b/.test(text)) return "superhero";
+  if (/\bocean|sea|island\b/.test(text)) return "ocean";
+  if (/\bsurvival|wilderness\b/.test(text)) return "survival";
+  if (/\brobot|technology\b/.test(text)) return "robot";
+  if (/\bfantasy|magic|mythology\b/.test(text)) return "fantasy";
+  if (/\bfamily\b/.test(text)) return "family";
+  if (/\bschool\b/.test(text)) return "school";
+  if (/\bfriendship|friends?\b/.test(text)) return "friendship";
+  if (/\badventure|fast paced\b/.test(text)) return "adventure";
+  if (/\bcomedy|funny|humou?r\b/.test(text)) return "humor";
+  return "general_fiction";
 }
 
 function middleGradesDocumentBackedTasteSignalsFromSourceDoc(doc: any, profile: TasteProfile): string[] {
@@ -2156,6 +2180,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const middleGradesMeaningfulTasteRecoveryQueriesAttempted: string[] = [];
     const middleGradesMeaningfulTasteRecoveryAcceptedTitles: string[] = [];
     const middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason: Record<string, string[]> = {};
+    const middleGradesRecoveryQueryAnchorByQuery: Record<string, string> = {};
+    let middleGradesRecoveryHumorUsedAsAnchorBlocked = false;
+    let middleGradesRecoveryConcreteFictionQueryUsed = false;
+    const middleGradesRecoveryQueryFamilyRejectedForLeakageCount: Record<string, number> = {};
     let middleGradesMeaningfulTasteRecoveryFinalCount = 0;
     let middleGradesUnderfilledAfterMeaningfulTasteRecovery = false;
     let middleGradesBrittleQueryTimedOutThenShortQueryAttempted = false;
@@ -3705,6 +3733,13 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         for (const recoveryQuery of recoveryQueries) {
           if (!forceMiddleGradesMeaningfulTasteRecovery && middleGradesMeaningfulTasteExpandedPoolItems().length >= meaningfulTarget) break;
           if (!middleGradesMeaningfulTasteRecoveryQueriesAttempted.includes(recoveryQuery)) middleGradesMeaningfulTasteRecoveryQueriesAttempted.push(recoveryQuery);
+          const recoveryAnchor = middleGradesRecoveryQueryAnchor(recoveryQuery);
+          middleGradesRecoveryQueryAnchorByQuery[recoveryQuery] = recoveryAnchor;
+          if (recoveryAnchor === "humor") {
+            middleGradesRecoveryHumorUsedAsAnchorBlocked = true;
+            continue;
+          }
+          if (/\b(middle grade|children)\b/i.test(recoveryQuery) && /\bfiction|series\b/i.test(recoveryQuery)) middleGradesRecoveryConcreteFictionQueryUsed = true;
           const recoveryPlan: OpenLibraryQueryPlan = {
             query: recoveryQuery,
             originalPlannedQuery: queries[0] || "",
@@ -3740,6 +3775,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               const eligibility = middleGradesSourceMeaningfulTasteEligibility(doc, context.profile);
               const reason = eligibility.reason || "source_filter_or_duplicate";
               middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason[reason] = uniqueStrings([...(middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason[reason] || []), title], 20);
+              if (/humor|leakage/i.test(reason)) middleGradesRecoveryQueryFamilyRejectedForLeakageCount[recoveryAnchor] = Number(middleGradesRecoveryQueryFamilyRejectedForLeakageCount[recoveryAnchor] || 0) + 1;
             }
             if (!forceMiddleGradesMeaningfulTasteRecovery && middleGradesMeaningfulTasteExpandedPoolItems().length >= meaningfulTarget) break;
           }
@@ -4410,6 +4446,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         meaningfulTasteRecoveryQueriesAttempted: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20) : undefined,
         meaningfulTasteRecoveryAcceptedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryAcceptedTitles, 20) : undefined,
         meaningfulTasteRecoveryRejectedTitlesByReason: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason : undefined,
+        recoveryQueryAnchorByQuery: ageProfile.key === "middleGrades" ? middleGradesRecoveryQueryAnchorByQuery : undefined,
+        recoveryHumorUsedAsAnchorBlocked: ageProfile.key === "middleGrades" ? middleGradesRecoveryHumorUsedAsAnchorBlocked : undefined,
+        recoveryConcreteFictionQueryUsed: ageProfile.key === "middleGrades" ? middleGradesRecoveryConcreteFictionQueryUsed : undefined,
+        recoveryQueryFamilyRejectedForLeakageCount: ageProfile.key === "middleGrades" ? middleGradesRecoveryQueryFamilyRejectedForLeakageCount : undefined,
         meaningfulTasteRecoveryFinalCount: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics : undefined,
         underfilledAfterMeaningfulTasteRecovery: ageProfile.key === "middleGrades" ? (middleGradesMeaningfulTasteRecoveryTriggered && middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics < Math.min(ageProfile.docLimit, 5)) : undefined,
         recoverySuccessRequiresFinalEligibility: ageProfile.key === "middleGrades" ? true : undefined,
