@@ -305,6 +305,11 @@ export interface SourceDiagnosticV2 {
   recoveryFamiliesSelectedForExecution?: string[];
   recoveryFamilyExecutionOrderReason?: Record<string, string>;
   recoveryFamilyYieldByFamily?: Record<string, number>;
+  recoveryEarlyFinalGateApplied?: boolean;
+  recoveryEarlyFinalGateRejectedByReason?: Record<string, string[]>;
+  recoveryAcceptedLikelyFinalSurvivorTitles?: string[];
+  recoveryAcceptedButPredictedDropTitles?: string[];
+  recoveryFinalSurvivorPredictionMismatch?: boolean;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

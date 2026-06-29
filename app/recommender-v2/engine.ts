@@ -388,6 +388,11 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
               acc[anchor] = Number(acc[anchor] || 0) + 1;
               return acc;
             }, {});
+          const predictedRecoverySurvivors = new Set(((recoveryDiagnostics.recoveryAcceptedLikelyFinalSurvivorTitles || []) as string[]).map((title) => String(title).toLowerCase()));
+          const actualRecoverySurvivors = new Set(selected
+            .filter((candidate) => candidate.diagnostics?.meaningfulTasteRecovery || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery")
+            .map((candidate) => String(candidate.title || "").toLowerCase()));
+          recoveryDiagnostics.recoveryFinalSurvivorPredictionMismatch = predictedRecoverySurvivors.size > 0 && [...predictedRecoverySurvivors].some((title) => !actualRecoverySurvivors.has(title));
           recoveryDiagnostics.meaningfulTasteRecoverySurvivingFinalCount = recoverySurvivingFinalCount;
           recoveryDiagnostics.meaningfulTasteRecoveryContinuedAfterRejectedMerge = recoverySurvivingFinalCount < 5 && Object.keys(recoveryDroppedByReason).length > 0;
           recoveryDiagnostics.meaningfulTasteRecoveryExhaustedQueries = recoverySurvivingFinalCount < 5 ? recoveryResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [] : [];

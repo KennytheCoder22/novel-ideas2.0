@@ -2233,6 +2233,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesRecoveryFamiliesSkippedBySameRunLeakage: Record<string, string> = {};
     let middleGradesRecoveryFamilyExecutionOrderReason: Record<string, string> = {};
     const middleGradesRecoveryFamilyYieldByFamily: Record<string, number> = {};
+    let middleGradesRecoveryEarlyFinalGateApplied = false;
+    const middleGradesRecoveryEarlyFinalGateRejectedByReason: Record<string, string[]> = {};
+    const middleGradesRecoveryAcceptedLikelyFinalSurvivorTitles: string[] = [];
+    const middleGradesRecoveryAcceptedButPredictedDropTitles: string[] = [];
     let middleGradesMeaningfulTasteRecoveryFinalCount = 0;
     let middleGradesUnderfilledAfterMeaningfulTasteRecovery = false;
     let middleGradesBrittleQueryTimedOutThenShortQueryAttempted = false;
@@ -2321,6 +2325,28 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       dropReasons[`middle_grades_${stage}_query_only_source_rejected`] = Number(dropReasons[`middle_grades_${stage}_query_only_source_rejected`] || 0) + 1;
       return false;
     };
+    const rememberRecoveryEarlyFinalGateRejection = (reason: string, title: string): void => {
+      middleGradesRecoveryEarlyFinalGateApplied = true;
+      if (title) {
+        middleGradesRecoveryEarlyFinalGateRejectedByReason[reason] = uniqueStrings([...(middleGradesRecoveryEarlyFinalGateRejectedByReason[reason] || []), title], 20);
+        middleGradesRecoveryAcceptedButPredictedDropTitles.push(title);
+      }
+      dropReasons[`middle_grades_meaningful_taste_recovery_early_${reason}`] = Number(dropReasons[`middle_grades_meaningful_taste_recovery_early_${reason}`] || 0) + 1;
+    };
+    const middleGradesRecoveryLikelyFinalRejectionReason = (doc: any, query: string, queryPlan: OpenLibraryQueryPlan, meaningfulTasteSignals: string[]): string | undefined => {
+      const title = String(doc?.title || "").trim();
+      const titleText = title.toLowerCase();
+      const docText = openLibraryDocText(doc);
+      const routeFields = middleGradesSourceDocumentRouteEvidenceFields(doc, query, String(queryPlan.routingReason || ""));
+      const fictionAgeEvidence = /\b(juvenile fiction|children'?s fiction|middle grade|school stories|friendship|family|adventure stories|fantasy fiction)\b/i.test(docText);
+      const nonHumorEvidence = /\b(adventure|friendship|friends?|family|school|team|quest|magic|magical|fantasy|dragon|science|robot|ocean|survival)\b/i.test(docText);
+      if (/\b(funny|humor|humour|comedy|comic|joke|laugh|giggle)\b/i.test(titleText) && !fictionAgeEvidence && !nonHumorEvidence) return "humor_keyword_only_leakage";
+      if (routeFields.length === 0) return "recovery_query_quality_query_only_cap";
+      if (routeFields.every((field) => field === "title" || field === "subtitle") && meaningfulTasteSignals.length <= 1 && /\b(funny|humor|humour|comedy|comic|joke|laugh|giggle)\b/i.test(titleText)) return "humor_keyword_only_leakage";
+      if (routeFields.every((field) => field === "title" || field === "subtitle") && meaningfulTasteSignals.every((signal) => signal === "adventure")) return "broad_adventure_only_taste_match";
+      return undefined;
+    };
+
     const reserveCollectionRoot = (doc: any, title: string, stage: string): boolean => {
       if (ageProfile.key !== "middleGrades") return true;
       const rootKey = openLibraryCollectionRootKey(doc);
@@ -2474,15 +2500,17 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         if (!tasteEligibility.allowed) {
           const reason = tasteEligibility.reason || "zero_doc_backed_taste_match";
           dropReasons[`middle_grades_${stage}_${reason}`] = Number(dropReasons[`middle_grades_${stage}_${reason}`] || 0) + 1;
+          if (stage === "meaningful_taste_recovery") rememberRecoveryEarlyFinalGateRejection(reason, title);
           traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, reason);
           return false;
         }
         meaningfulTasteSignals = tasteEligibility.signals;
       }
-      rememberMiddleGradesExpandedScoringCandidate(doc, queryPlan, stage, meaningfulTasteSignals);
+      if (stage !== "meaningful_taste_recovery") rememberMiddleGradesExpandedScoringCandidate(doc, queryPlan, stage, meaningfulTasteSignals);
       const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
       if (acceptedDocKeys.has(docKey)) {
         dropReasons.duplicate_doc = Number(dropReasons.duplicate_doc || 0) + 1;
+        if (stage === "meaningful_taste_recovery") rememberRecoveryEarlyFinalGateRejection("duplicate_doc", title);
         traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, "duplicate_doc");
         return false;
       }
@@ -2490,17 +2518,32 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       if (seriesKey && acceptedSeriesKeys.has(seriesKey)) {
         dropReasons.series_duplicate = Number(dropReasons.series_duplicate || 0) + 1;
         seriesSuppressedTitles.push(title);
+        if (stage === "meaningful_taste_recovery") rememberRecoveryEarlyFinalGateRejection("duplicate_root_or_series", title);
         traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, "series_duplicate");
         return false;
       }
       if (!shouldAcceptMiddleGradesSourceDoc(doc, query, queryPlan, stage)) {
         if (middleGradesTargetedQuerySet.has(query.toLowerCase())) middleGradesTargetedQueriesRejectedByReason.query_only_or_missing_document_evidence = Number(middleGradesTargetedQueriesRejectedByReason.query_only_or_missing_document_evidence || 0) + 1;
+        if (stage === "meaningful_taste_recovery") rememberRecoveryEarlyFinalGateRejection("recovery_query_quality_query_only_cap", title);
         traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, "query_only_or_missing_document_evidence");
         return false;
       }
       if (!reserveCollectionRoot(doc, title, stage)) {
+        if (stage === "meaningful_taste_recovery") rememberRecoveryEarlyFinalGateRejection("duplicate_root_or_series", title);
         traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, "same_root_collection_duplicate");
         return false;
+      }
+      if (stage === "meaningful_taste_recovery") {
+        const likelyDropReason = middleGradesRecoveryLikelyFinalRejectionReason(doc, query, queryPlan, meaningfulTasteSignals);
+        if (likelyDropReason) {
+          rememberRecoveryEarlyFinalGateRejection(likelyDropReason, title);
+          traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, likelyDropReason);
+          return false;
+        }
+      }
+      if (stage === "meaningful_taste_recovery") {
+        rememberMiddleGradesExpandedScoringCandidate(doc, queryPlan, stage, meaningfulTasteSignals);
+        middleGradesRecoveryAcceptedLikelyFinalSurvivorTitles.push(title);
       }
       if (seriesKey) acceptedSeriesKeys.add(seriesKey);
       acceptedDocKeys.add(docKey);
@@ -3848,7 +3891,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             if (!forceMiddleGradesMeaningfulTasteRecovery && middleGradesMeaningfulTasteExpandedPoolItems().length >= meaningfulTarget) break;
           }
         }
-        middleGradesMeaningfulTasteRecoveryFinalCount = middleGradesMeaningfulTasteExpandedPoolItems().length;
+        middleGradesMeaningfulTasteRecoveryFinalCount = middleGradesRecoveryAcceptedLikelyFinalSurvivorTitles.length;
         middleGradesUnderfilledAfterMeaningfulTasteRecovery = middleGradesMeaningfulTasteRecoveryTriggered && middleGradesMeaningfulTasteRecoveryFinalCount < meaningfulTarget;
       }
     }
@@ -4524,6 +4567,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         recoveryFamiliesSelectedForExecution: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20) : undefined,
         recoveryFamilyExecutionOrderReason: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamilyExecutionOrderReason : undefined,
         recoveryFamilyYieldByFamily: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamilyYieldByFamily : undefined,
+        recoveryEarlyFinalGateApplied: ageProfile.key === "middleGrades" ? middleGradesRecoveryEarlyFinalGateApplied : undefined,
+        recoveryEarlyFinalGateRejectedByReason: ageProfile.key === "middleGrades" ? middleGradesRecoveryEarlyFinalGateRejectedByReason : undefined,
+        recoveryAcceptedLikelyFinalSurvivorTitles: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesRecoveryAcceptedLikelyFinalSurvivorTitles, 20) : undefined,
+        recoveryAcceptedButPredictedDropTitles: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesRecoveryAcceptedButPredictedDropTitles, 20) : undefined,
+        recoveryFinalSurvivorPredictionMismatch: ageProfile.key === "middleGrades" ? false : undefined,
         meaningfulTasteRecoveryFinalCount: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics : undefined,
         underfilledAfterMeaningfulTasteRecovery: ageProfile.key === "middleGrades" ? (middleGradesMeaningfulTasteRecoveryTriggered && middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics < Math.min(ageProfile.docLimit, 5)) : undefined,
         recoverySuccessRequiresFinalEligibility: ageProfile.key === "middleGrades" ? true : undefined,

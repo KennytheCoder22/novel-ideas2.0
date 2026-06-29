@@ -1420,14 +1420,20 @@ async function main() {
       status: 200,
       text: async () => JSON.stringify({ proxyAttempts: 1, docs: Array.from({ length: 12 }, (_unused, offset) => {
         const index = offset + 1;
+        const badRecoveryTitles = ["My Mr Funny", "Frog and Toad Together", "Henry and Mudge and the Funny Lunch", "National Geographic Kids Funny Fill-In"];
+        const badRecoveryTitle = recoveryQuery ? badRecoveryTitles[offset] : undefined;
         return {
           key: `/works/post-final-${query.replace(/\s+/g, "-")}-${index}`,
-          title: recoveryQuery ? [`Post Final Harbor Friendship`, `Post Final Classroom Adventure`, `Post Final Family Trail`, `Post Final School Team Quest`, `Post Final Friendship Forest`, `Post Final River Friends`, `Post Final Community Journey`, `Post Final Family Map`, `Post Final Schoolyard Mystery`, `Post Final Teamwork Trail`, `Post Final Friendship Harbor`, `Post Final Classroom Quest`][offset] : `Post Final Weak Meaningful ${postFinalRecoveryFetchQueries.length}-${index}`,
+          title: badRecoveryTitle || (recoveryQuery ? [`Post Final Harbor Friendship`, `Post Final Classroom Adventure`, `Post Final Family Trail`, `Post Final School Team Quest`, `Post Final Friendship Forest`, `Post Final River Friends`, `Post Final Community Journey`, `Post Final Family Map`, `Post Final Schoolyard Mystery`, `Post Final Teamwork Trail`, `Post Final Friendship Harbor`, `Post Final Classroom Quest`][offset] : `Post Final Weak Meaningful ${postFinalRecoveryFetchQueries.length}-${index}`),
           author_name: [`Post Final Author ${index}`],
-          subject: recoveryQuery
+          subject: badRecoveryTitle
+            ? ["Humorous stories"]
+            : recoveryQuery
             ? ["Juvenile fiction", "Middle grade fiction", "Adventure stories", "School stories", "Friendship", "Family"]
             : ["Juvenile fiction"],
-          description: recoveryQuery
+          description: badRecoveryTitle
+            ? "A funny fill-in joke style row without independent family, friendship, school, or adventure evidence."
+            : recoveryQuery
             ? "A middle grade friendship adventure fiction story about classmates, family teamwork, school friends, and a fast paced journey."
             : "A funny family friendship premise without the current route evidence needed for final eligibility.",
           language: ["eng"],
@@ -1457,6 +1463,9 @@ async function main() {
     assertEqual(Array.isArray(openLibraryDiagnostics.recoveryFamilyScores) && openLibraryDiagnostics.recoveryFamilyScores.length > 0, true, "post-final recovery should score recovery families before execution");
     assertEqual((openLibraryDiagnostics.recoveryFamiliesSelectedForExecution || []).length > 0, true, "post-final recovery should expose selected recovery family queries");
     assertEqual(Object.keys(openLibraryDiagnostics.recoveryFamilyExecutionOrderReason || {}).length > 0, true, "post-final recovery should explain recovery family execution order");
+    assertEqual(openLibraryDiagnostics.recoveryEarlyFinalGateApplied, true, "post-final recovery should apply early final-gate prediction before counting accepted rows");
+    assertEqual(["My Mr Funny", "Frog and Toad Together", "Henry and Mudge and the Funny Lunch", "National Geographic Kids Funny Fill-In"].some((title) => (openLibraryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles || []).includes(title)), false, "predictably rejected funny/duplicate/query-only recovery rows should not be counted as accepted recovery rows");
+    assertEqual(Object.keys(openLibraryDiagnostics.recoveryEarlyFinalGateRejectedByReason || {}).length > 0, true, "early final-gate recovery rejection reasons should be reported");
     assertEqual(Boolean(selectedDetails.meaningfulTasteRecoveryMergedIntoScoring), true, "post-final recovered candidates should be merged into scoring/final selection diagnostics");
     assertEqual(Number(selectedDetails.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedDetails.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "post-final recovered candidates should be returned or explicitly rejected after merge");
     assertEqual(openLibraryDiagnostics.recoverySuccessRequiresFinalEligibility, true, "meaningful-taste recovery success should require final eligibility survival");
