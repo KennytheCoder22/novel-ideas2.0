@@ -283,6 +283,11 @@ export interface SourceDiagnosticV2 {
   postFinalEligibilityUnderfillRecoveryTriggered?: boolean;
   postFinalEligibilityRecoveryAcceptedTitles?: string[];
   postFinalEligibilityRecoveryRejectedByReason?: Record<string, string[]>;
+  meaningfulTasteRecoverySurvivingFinalCount?: number;
+  meaningfulTasteRecoveryContinuedAfterRejectedMerge?: boolean;
+  meaningfulTasteRecoveryExhaustedQueries?: string[];
+  meaningfulTasteRecoveryRejectedQueryFamilies?: string[];
+  recoverySuccessRequiresFinalEligibility?: boolean;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

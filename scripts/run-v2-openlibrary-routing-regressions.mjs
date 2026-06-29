@@ -1448,6 +1448,13 @@ async function main() {
     assertEqual(openLibraryDiagnostics.meaningfulTasteRecoveryTriggerStage, "post_final_eligibility", "post-final recovery should diagnose its trigger stage");
     assertEqual(Boolean(selectedDetails.meaningfulTasteRecoveryMergedIntoScoring), true, "post-final recovered candidates should be merged into scoring/final selection diagnostics");
     assertEqual(Number(selectedDetails.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedDetails.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "post-final recovered candidates should be returned or explicitly rejected after merge");
+    assertEqual(openLibraryDiagnostics.recoverySuccessRequiresFinalEligibility, true, "meaningful-taste recovery success should require final eligibility survival");
+    assertEqual(Number(openLibraryDiagnostics.meaningfulTasteRecoverySurvivingFinalCount || 0), result.items.length, "surviving recovery final count should reflect actual final selection count");
+    if (result.items.length < 5) {
+      assertEqual(openLibraryDiagnostics.underfilledAfterMeaningfulTasteRecovery, true, "underfilled recovery should remain marked underfilled after final eligibility rejects merged rows");
+      assertEqual(Array.isArray(openLibraryDiagnostics.meaningfulTasteRecoveryExhaustedQueries) && openLibraryDiagnostics.meaningfulTasteRecoveryExhaustedQueries.length > 0, true, "underfilled post-final recovery should expose exhausted recovery queries");
+      assertEqual(Array.isArray(openLibraryDiagnostics.meaningfulTasteRecoveryRejectedQueryFamilies), true, "underfilled post-final recovery should expose rejection families");
+    }
     console.log(JSON.stringify({ name: "middle grades post-final eligibility underfill triggers meaningful-taste recovery", pass: true, triggerStage: openLibraryDiagnostics.meaningfulTasteRecoveryTriggerStage, accepted: openLibraryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles, selected: result.items.map((item) => item.title) }));
   } finally {
     if (previousPostFinalRecoveryBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;

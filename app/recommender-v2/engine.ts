@@ -373,9 +373,22 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
+        const recoveryDroppedByReason = (selection.rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}) as Record<string, string[]>;
+        const recoverySurvivingFinalCount = selected.length;
+        const recoveryDiagnostics = sourceResults[openLibrarySourceIndex]?.diagnostics;
+        if (recoveryDiagnostics) {
+          recoveryDiagnostics.meaningfulTasteRecoverySurvivingFinalCount = recoverySurvivingFinalCount;
+          recoveryDiagnostics.meaningfulTasteRecoveryContinuedAfterRejectedMerge = recoverySurvivingFinalCount < 5 && Object.keys(recoveryDroppedByReason).length > 0;
+          recoveryDiagnostics.meaningfulTasteRecoveryExhaustedQueries = recoverySurvivingFinalCount < 5 ? recoveryResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [] : [];
+          recoveryDiagnostics.meaningfulTasteRecoveryRejectedQueryFamilies = Object.keys(recoveryDroppedByReason);
+          recoveryDiagnostics.recoverySuccessRequiresFinalEligibility = true;
+          recoveryDiagnostics.underfilledAfterMeaningfulTasteRecovery = recoverySurvivingFinalCount < 5;
+        }
       } else {
         openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = recoveryResponse.timedOut ? "post_final_eligibility_recovery_timed_out" : "post_final_eligibility_recovery_failed";
         openLibrarySourceResult.diagnostics.postFinalEligibilityUnderfillRecoveryTriggered = true;
+        openLibrarySourceResult.diagnostics.recoverySuccessRequiresFinalEligibility = true;
+        openLibrarySourceResult.diagnostics.underfilledAfterMeaningfulTasteRecovery = true;
       }
     } else {
       openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = "post_final_eligibility_openlibrary_plan_missing";
