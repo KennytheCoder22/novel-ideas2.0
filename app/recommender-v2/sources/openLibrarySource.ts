@@ -1713,61 +1713,100 @@ function middleGradesEvidenceAwareRecoveryQueries(queryPlans: OpenLibraryQueryPl
 }
 
 
-function middleGradesMeaningfulTasteRecoveryQueries(profile: TasteProfile, attemptedQueries = new Set<string>()): string[] {
-  const positiveText = [...profile.genreFamily, ...profile.themes]
-    .filter((row) => Number(row.weight || 0) > 0)
-    .map((row) => row.value)
-    .join(" ");
-  const candidates: string[] = [];
-  const addIf = (condition: boolean, queries: string[]): void => {
-    if (condition) candidates.push(...queries);
+type MiddleGradesRecoveryFamilyScore = {
+  query: string;
+  family: string;
+  anchors: string[];
+  score: number;
+  reason: string;
+  skippedReason?: string;
+};
+
+function middleGradesMeaningfulTasteRecoveryQueryPlans(
+  profile: TasteProfile,
+  attemptedQueries = new Set<string>(),
+  sameRunLeakageByFamily: Record<string, number> = {},
+): { queries: string[]; scores: MiddleGradesRecoveryFamilyScore[]; skippedByAvoid: Record<string, string>; skippedByLeakage: Record<string, string>; selectedReasons: Record<string, string> } {
+  const likedRows = [...profile.genreFamily, ...profile.themes, ...profile.characterDynamics, ...profile.tone]
+    .filter((row) => Number(row.weight || 0) > 0);
+  const dislikedRows = [...profile.genreFamily, ...profile.themes, ...profile.characterDynamics, ...profile.tone]
+    .filter((row) => Number(row.weight || 0) < 0);
+  const likedText = likedRows.map((row) => row.value).join(" ").toLowerCase();
+  const avoidText = [...profile.avoidSignals, ...dislikedRows].map((row) => row.value).join(" ").toLowerCase();
+  const hasLiked = (pattern: RegExp): boolean => pattern.test(likedText);
+  const hasAvoid = (pattern: RegExp): boolean => pattern.test(avoidText);
+  const familyDefs: Array<{ family: string; query: string; anchors: string[]; leakageRisk?: number; broad?: boolean }> = [
+    { family: "ocean_friendship", query: "middle grade ocean friendship fiction", anchors: ["ocean", "friendship"] },
+    { family: "ocean_adventure", query: "children ocean adventure fiction", anchors: ["ocean", "adventure"] },
+    { family: "family_school", query: "middle grade family school fiction", anchors: ["family", "school"] },
+    { family: "school_friendship", query: "middle grade school friendship fiction", anchors: ["school", "friendship"] },
+    { family: "superhero_family", query: "middle grade superhero family fiction", anchors: ["superhero", "family"] },
+    { family: "superhero_friendship", query: "middle grade superhero friendship fiction", anchors: ["superhero", "friendship"] },
+    { family: "fantasy_family", query: "middle grade fantasy family fiction", anchors: ["fantasy", "family"] },
+    { family: "fantasy_friendship", query: "middle grade fantasy friendship fiction", anchors: ["fantasy", "friendship"] },
+    { family: "dragon_heroic", query: "middle grade dragon heroic fiction", anchors: ["dragon", "heroic"] },
+    { family: "mythology_adventure", query: "middle grade mythology adventure fiction", anchors: ["mythology", "adventure"] },
+    { family: "dystopian_friendship", query: "middle grade dystopian friendship fiction", anchors: ["dystopian", "friendship"] },
+    { family: "science_concise", query: "middle grade science concise nonfiction", anchors: ["science", "concise"] },
+    { family: "science_adventure", query: "middle grade science adventure fiction", anchors: ["science", "adventure"] },
+    { family: "robot_friendship", query: "middle grade robot friendship fiction", anchors: ["robot", "friendship"] },
+    { family: "family_adventure", query: "middle grade family adventure fiction", anchors: ["family", "adventure"] },
+    { family: "friendship_adventure", query: "middle grade friendship adventure fiction", anchors: ["friendship", "adventure"], broad: true },
+    { family: "adventure_friendship_series", query: "children adventure friendship series", anchors: ["adventure", "friendship"], broad: true },
+    { family: "fast_adventure", query: "middle grade fast paced adventure fiction", anchors: ["adventure", "fast paced"], broad: true },
+  ];
+  const anchorPattern = (anchor: string): RegExp => {
+    switch (anchor) {
+      case "superhero": return /\b(superhero|super hero|hero|heroes|powers?)\b/i;
+      case "ocean": return /\b(ocean|sea|island|marine)\b/i;
+      case "fantasy": return /\b(fantasy|magic|magical|wizard|witch|fairy|dragon)\b/i;
+      case "dragon": return /\b(dragon|dragons)\b/i;
+      case "heroic": return /\b(heroic|hero|heroes|quest)\b/i;
+      case "mythology": return /\b(myth|myths|mythology|mythological)\b/i;
+      case "dystopian": return /\b(dystopian|dystopia)\b/i;
+      case "science": return /\b(science|scientist|experiment|nonfiction|technology)\b/i;
+      case "concise": return /\b(concise|short|quick|clear|explanation|nonfiction)\b/i;
+      case "robot": return /\b(robot|robots?|technology|invention)\b/i;
+      case "family": return /\b(family|families|parent|parents|siblings?)\b/i;
+      case "school": return /\b(school|classroom|class|student|teacher)\b/i;
+      case "friendship": return /\b(friendship|friends?|team|classmates?)\b/i;
+      case "adventure": return /\b(adventure|quest|journey|survival|exploration)\b/i;
+      case "fast paced": return /\b(fast paced|exciting|adventure|quest)\b/i;
+      default: return new RegExp(`\\b${anchor.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
+    }
   };
-  addIf(/comedy|funny|humou?r|playful/i.test(positiveText) && /family|friendship|friends?|school/i.test(positiveText), [
-    "middle grade friendship adventure fiction",
-    "middle grade family adventure fiction",
-    "children adventure friendship series",
-  ]);
-  addIf(/comedy|funny|humou?r|playful/i.test(positiveText) && /adventure|quest/i.test(positiveText), [
-    "middle grade fast paced adventure fiction",
-    "children adventure friendship series",
-    "middle grade family adventure fiction",
-  ]);
-  addIf(/fantasy|magic|magical/i.test(positiveText) && /adventure|friendship|friends?/i.test(positiveText), [
-    "middle grade fantasy friendship fiction",
-    "children adventure friendship series",
-  ]);
-  addIf(/fantasy|myth|mythology/i.test(positiveText) && /adventure|quest/i.test(positiveText), [
-    "middle grade fantasy friendship fiction",
-    "middle grade mythology adventure fiction",
-  ]);
-  addIf(/nonfiction|concise|quirky|science|explanation|activities/i.test(positiveText), [
-    "middle grade science adventure fiction",
-    "children science adventure fiction",
-  ]);
-  addIf(/superhero|super hero|hero|powers?/i.test(positiveText) && /friendship|friends?|team/i.test(positiveText), [
-    "middle grade superhero friendship fiction",
-    "children superhero adventure fiction",
-  ]);
-  addIf(/ocean|sea|island/i.test(positiveText) && /adventure|fantasy|magic/i.test(positiveText), [
-    "middle grade ocean friendship fiction",
-    "children ocean adventure fiction",
-  ]);
-  addIf(/survival|wilderness|forest|island/i.test(positiveText) && /friendship|friends?|adventure/i.test(positiveText), [
-    "middle grade survival friendship fiction",
-  ]);
-  addIf(/robot|robots?|technology|science/i.test(positiveText) && /friendship|friends?|adventure/i.test(positiveText), [
-    "middle grade robot friendship fiction",
-  ]);
-  if (!candidates.length) {
-    candidates.push(
-      "middle grade friendship adventure fiction",
-      "middle grade fantasy friendship fiction",
-      "children adventure friendship series",
-      "middle grade family adventure fiction",
-      "middle grade fast paced adventure fiction",
-    );
+  const skippedByAvoid: Record<string, string> = {};
+  const skippedByLeakage: Record<string, string> = {};
+  const selectedReasons: Record<string, string> = {};
+  const scores: MiddleGradesRecoveryFamilyScore[] = familyDefs.map((def) => {
+    const likedSupport = def.anchors.filter((anchor) => hasLiked(anchorPattern(anchor))).length;
+    const avoidOverlap = def.anchors.filter((anchor) => hasAvoid(anchorPattern(anchor))).length;
+    const comedyLeakageActive = sameRunLeakageByFamily.humor || sameRunLeakageByFamily.comedy;
+    let score = likedSupport * 4 + def.anchors.length + (def.query.includes("fiction") ? 1 : 0) - avoidOverlap * 5 - Number(sameRunLeakageByFamily[def.family] || 0) * 4 - (def.leakageRisk || 0) - (def.broad ? 1 : 0);
+    const reasons = [`liked=${likedSupport}`, `avoid=${avoidOverlap}`, `specificity=${def.anchors.length}`, `sameRunRejected=${Number(sameRunLeakageByFamily[def.family] || 0)}`];
+    let skippedReason: string | undefined;
+    if (attemptedQueries.has(def.query.toLowerCase())) skippedReason = "already_attempted";
+    if (!skippedReason && comedyLeakageActive && /comedy|funny|humou?r|playful/i.test(def.query)) skippedReason = "same_run_comedy_leakage";
+    if (!skippedReason && sameRunLeakageByFamily[def.family] >= 2) skippedReason = "same_run_family_leakage_or_query_only";
+    if (!skippedReason && def.family === "friendship_adventure" && hasAvoid(/\b(friendship|friends?)\b/i) && likedSupport < 2) skippedReason = "friendship_avoid_without_second_positive_anchor";
+    if (!skippedReason && /fantasy|adventure/.test(def.family) && hasAvoid(/\b(fantasy|magic|magical|adventure|quest)\b/i) && likedSupport < 2) skippedReason = "fantasy_or_adventure_avoid_requires_second_positive_anchor";
+    if (!skippedReason && likedSupport === 0) score -= 6;
+    return { query: def.query, family: def.family, anchors: def.anchors, score, reason: reasons.join(";"), skippedReason };
+  });
+  for (const row of scores) {
+    if (row.skippedReason?.includes("avoid")) skippedByAvoid[row.family] = row.skippedReason;
+    else if (row.skippedReason?.includes("leakage") || row.skippedReason?.includes("query_only")) skippedByLeakage[row.family] = row.skippedReason;
   }
-  return uniqueStrings(candidates, 10).filter((query) => !attemptedQueries.has(query.toLowerCase()));
+  const selected = scores
+    .filter((row) => !row.skippedReason)
+    .sort((a, b) => b.score - a.score || b.anchors.length - a.anchors.length || a.query.localeCompare(b.query))
+    .slice(0, 10);
+  for (const [index, row] of selected.entries()) selectedReasons[row.family] = `rank=${index + 1};${row.reason};score=${row.score}`;
+  return { queries: selected.map((row) => row.query), scores, skippedByAvoid, skippedByLeakage, selectedReasons };
+}
+
+function middleGradesMeaningfulTasteRecoveryQueries(profile: TasteProfile, attemptedQueries = new Set<string>()): string[] {
+  return middleGradesMeaningfulTasteRecoveryQueryPlans(profile, attemptedQueries).queries;
 }
 
 function middleGradesRecoveryQueryAnchor(query: string): string {
@@ -2189,6 +2228,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesRecoveryHumorUsedAsAnchorBlocked = false;
     let middleGradesRecoveryConcreteFictionQueryUsed = false;
     const middleGradesRecoveryQueryFamilyRejectedForLeakageCount: Record<string, number> = {};
+    let middleGradesRecoveryFamilyScores: MiddleGradesRecoveryFamilyScore[] = [];
+    let middleGradesRecoveryFamiliesSkippedByAvoidEvidence: Record<string, string> = {};
+    let middleGradesRecoveryFamiliesSkippedBySameRunLeakage: Record<string, string> = {};
+    let middleGradesRecoveryFamilyExecutionOrderReason: Record<string, string> = {};
+    const middleGradesRecoveryFamilyYieldByFamily: Record<string, number> = {};
     let middleGradesMeaningfulTasteRecoveryFinalCount = 0;
     let middleGradesUnderfilledAfterMeaningfulTasteRecovery = false;
     let middleGradesBrittleQueryTimedOutThenShortQueryAttempted = false;
@@ -3733,7 +3777,25 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         .map((item: any) => String(item?.sourceId || item?.key || item?.workKey || `${String(item?.title || "").trim()}:${Array.isArray(item?.authors) ? item.authors[0] : ""}`).toLowerCase())
         .filter(Boolean))).size;
       if (forceMiddleGradesMeaningfulTasteRecovery || (expandedPoolCountBeforeRecovery >= 20 && meaningfulCountBeforeRecovery < meaningfulTarget)) {
-        const recoveryQueries = middleGradesMeaningfulTasteRecoveryQueries(context.profile, middleGradesAttemptedQueries());
+        const priorRecoveryDiagnostics = ((context.profile.diagnostics as Record<string, any>)?.priorMiddleGradesRecoverySourceDiagnostics || {}) as Record<string, any>;
+        const priorSelectionRejectedReasons = ((context.profile.diagnostics as Record<string, any>)?.priorMiddleGradesRecoveryRejectedReasons || {}) as Record<string, any>;
+        const sameRunRecoveryFamilyFailures: Record<string, number> = {
+          ...((priorRecoveryDiagnostics.recoveryQueryFamilyRejectedForLeakageCount || {}) as Record<string, number>),
+          ...middleGradesRecoveryQueryFamilyRejectedForLeakageCount,
+        };
+        if (Array.isArray(priorSelectionRejectedReasons.humorKeywordOnlyRejectedTitles) && priorSelectionRejectedReasons.humorKeywordOnlyRejectedTitles.length) sameRunRecoveryFamilyFailures.humor = Number(sameRunRecoveryFamilyFailures.humor || 0) + priorSelectionRejectedReasons.humorKeywordOnlyRejectedTitles.length;
+        if (Array.isArray(priorSelectionRejectedReasons.adultOrYaHumorLeakageRejectedTitles) && priorSelectionRejectedReasons.adultOrYaHumorLeakageRejectedTitles.length) sameRunRecoveryFamilyFailures.humor = Number(sameRunRecoveryFamilyFailures.humor || 0) + priorSelectionRejectedReasons.adultOrYaHumorLeakageRejectedTitles.length;
+        if (Array.isArray(priorSelectionRejectedReasons.finalEligibilityRejectedQueryOnlyTitles) && priorSelectionRejectedReasons.finalEligibilityRejectedQueryOnlyTitles.length) {
+          sameRunRecoveryFamilyFailures.friendship_adventure = Number(sameRunRecoveryFamilyFailures.friendship_adventure || 0) + 1;
+          sameRunRecoveryFamilyFailures.adventure_friendship_series = Number(sameRunRecoveryFamilyFailures.adventure_friendship_series || 0) + 1;
+          sameRunRecoveryFamilyFailures.fast_adventure = Number(sameRunRecoveryFamilyFailures.fast_adventure || 0) + 1;
+        }
+        const recoveryQueryPlan = middleGradesMeaningfulTasteRecoveryQueryPlans(context.profile, middleGradesAttemptedQueries(), sameRunRecoveryFamilyFailures);
+        const recoveryQueries = recoveryQueryPlan.queries;
+        middleGradesRecoveryFamilyScores = recoveryQueryPlan.scores;
+        middleGradesRecoveryFamiliesSkippedByAvoidEvidence = recoveryQueryPlan.skippedByAvoid;
+        middleGradesRecoveryFamiliesSkippedBySameRunLeakage = recoveryQueryPlan.skippedByLeakage;
+        middleGradesRecoveryFamilyExecutionOrderReason = recoveryQueryPlan.selectedReasons;
         if (recoveryQueries.length > 0) middleGradesMeaningfulTasteRecoveryTriggered = true;
         for (const recoveryQuery of recoveryQueries) {
           if (!forceMiddleGradesMeaningfulTasteRecovery && middleGradesMeaningfulTasteExpandedPoolItems().length >= meaningfulTarget) break;
@@ -3775,6 +3837,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             const title = String(doc?.title || "").trim();
             if (accepted) {
               if (title) middleGradesMeaningfulTasteRecoveryAcceptedTitles.push(title);
+              middleGradesRecoveryFamilyYieldByFamily[recoveryAnchor] = Number(middleGradesRecoveryFamilyYieldByFamily[recoveryAnchor] || 0) + 1;
               dropReasons.middle_grades_meaningful_taste_recovery_accepted = Number(dropReasons.middle_grades_meaningful_taste_recovery_accepted || 0) + 1;
             } else if (title && rawItems.length === beforeRawCount && middleGradesMeaningfulTasteExpandedPoolItems().length === beforeMeaningfulCount) {
               const eligibility = middleGradesSourceMeaningfulTasteEligibility(doc, context.profile);
@@ -4455,6 +4518,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         recoveryHumorUsedAsAnchorBlocked: ageProfile.key === "middleGrades" ? middleGradesRecoveryHumorUsedAsAnchorBlocked : undefined,
         recoveryConcreteFictionQueryUsed: ageProfile.key === "middleGrades" ? middleGradesRecoveryConcreteFictionQueryUsed : undefined,
         recoveryQueryFamilyRejectedForLeakageCount: ageProfile.key === "middleGrades" ? middleGradesRecoveryQueryFamilyRejectedForLeakageCount : undefined,
+        recoveryFamilyScores: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamilyScores : undefined,
+        recoveryFamiliesSkippedByAvoidEvidence: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamiliesSkippedByAvoidEvidence : undefined,
+        recoveryFamiliesSkippedBySameRunLeakage: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamiliesSkippedBySameRunLeakage : undefined,
+        recoveryFamiliesSelectedForExecution: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20) : undefined,
+        recoveryFamilyExecutionOrderReason: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamilyExecutionOrderReason : undefined,
+        recoveryFamilyYieldByFamily: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamilyYieldByFamily : undefined,
         meaningfulTasteRecoveryFinalCount: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics : undefined,
         underfilledAfterMeaningfulTasteRecovery: ageProfile.key === "middleGrades" ? (middleGradesMeaningfulTasteRecoveryTriggered && middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics < Math.min(ageProfile.docLimit, 5)) : undefined,
         recoverySuccessRequiresFinalEligibility: ageProfile.key === "middleGrades" ? true : undefined,

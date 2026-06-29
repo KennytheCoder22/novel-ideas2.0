@@ -338,6 +338,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         diagnostics: {
           ...tasteProfile.diagnostics,
           forceMiddleGradesMeaningfulTasteRecovery: true,
+          priorMiddleGradesRecoveryRejectedReasons: selection.rejectedReasons,
+          priorMiddleGradesRecoverySourceDiagnostics: openLibrarySourceResult.diagnostics,
         },
       };
       const recoveryTimeoutMs = Math.max(openLibraryPlan.timeoutMs, 180_000);

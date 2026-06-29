@@ -299,6 +299,12 @@ export interface SourceDiagnosticV2 {
   recoveryConcreteFictionQueryUsed?: boolean;
   recoveryQueryFamilyAcceptedFinalCount?: Record<string, number>;
   recoveryQueryFamilyRejectedForLeakageCount?: Record<string, number>;
+  recoveryFamilyScores?: Array<{ query: string; family: string; anchors: string[]; score: number; reason: string; skippedReason?: string }>;
+  recoveryFamiliesSkippedByAvoidEvidence?: Record<string, string>;
+  recoveryFamiliesSkippedBySameRunLeakage?: Record<string, string>;
+  recoveryFamiliesSelectedForExecution?: string[];
+  recoveryFamilyExecutionOrderReason?: Record<string, string>;
+  recoveryFamilyYieldByFamily?: Record<string, number>;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

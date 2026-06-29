@@ -1347,7 +1347,7 @@ async function main() {
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
     meaningfulTasteRecoveryFetchQueries.push(query);
-    const recoveryQuery = /middle grade friendship adventure fiction|middle grade family adventure fiction|middle grade school friendship fiction|middle grade fast paced adventure fiction|children adventure friendship series|middle grade fantasy friendship fiction|middle grade mythology adventure fiction|middle grade science adventure fiction|children science adventure fiction|middle grade superhero friendship fiction|children superhero adventure fiction|middle grade ocean friendship fiction|children ocean adventure fiction|middle grade survival friendship fiction|middle grade robot friendship fiction/i.test(query);
+    const recoveryQuery = /middle grade friendship adventure fiction|middle grade family adventure fiction|middle grade family school fiction|middle grade school friendship fiction|middle grade fast paced adventure fiction|children adventure friendship series|middle grade fantasy friendship fiction|middle grade fantasy family fiction|middle grade mythology adventure fiction|middle grade dragon heroic fiction|middle grade dystopian friendship fiction|middle grade science concise nonfiction|middle grade science adventure fiction|children science adventure fiction|middle grade superhero friendship fiction|middle grade superhero family fiction|children superhero adventure fiction|middle grade ocean friendship fiction|children ocean adventure fiction|middle grade survival friendship fiction|middle grade robot friendship fiction/i.test(query);
     return {
       ok: true,
       status: 200,
@@ -1414,7 +1414,7 @@ async function main() {
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
     postFinalRecoveryFetchQueries.push(query);
-    const recoveryQuery = /middle grade friendship adventure fiction|middle grade family adventure fiction|middle grade school friendship fiction|middle grade fast paced adventure fiction|children adventure friendship series|middle grade fantasy friendship fiction|middle grade mythology adventure fiction|middle grade science adventure fiction|children science adventure fiction|middle grade superhero friendship fiction|children superhero adventure fiction|middle grade ocean friendship fiction|children ocean adventure fiction|middle grade survival friendship fiction|middle grade robot friendship fiction/i.test(query);
+    const recoveryQuery = /middle grade friendship adventure fiction|middle grade family adventure fiction|middle grade family school fiction|middle grade school friendship fiction|middle grade fast paced adventure fiction|children adventure friendship series|middle grade fantasy friendship fiction|middle grade fantasy family fiction|middle grade mythology adventure fiction|middle grade dragon heroic fiction|middle grade dystopian friendship fiction|middle grade science concise nonfiction|middle grade science adventure fiction|children science adventure fiction|middle grade superhero friendship fiction|middle grade superhero family fiction|children superhero adventure fiction|middle grade ocean friendship fiction|children ocean adventure fiction|middle grade survival friendship fiction|middle grade robot friendship fiction/i.test(query);
     return {
       ok: true,
       status: 200,
@@ -1454,6 +1454,9 @@ async function main() {
     assertEqual(openLibraryDiagnostics.meaningfulTasteRecoveryTriggerStage, "post_final_eligibility", "post-final recovery should diagnose its trigger stage");
     assertEqual((openLibraryDiagnostics.meaningfulTasteRecoveryQueriesAttempted || []).some((query) => /funny|humou?r|comedy/i.test(query)), false, "post-final recovery should switch away from humor-anchored recovery queries");
     assertEqual(openLibraryDiagnostics.recoveryConcreteFictionQueryUsed, true, "post-final recovery should use concrete middle-grade fiction query shapes before returning underfilled");
+    assertEqual(Array.isArray(openLibraryDiagnostics.recoveryFamilyScores) && openLibraryDiagnostics.recoveryFamilyScores.length > 0, true, "post-final recovery should score recovery families before execution");
+    assertEqual((openLibraryDiagnostics.recoveryFamiliesSelectedForExecution || []).length > 0, true, "post-final recovery should expose selected recovery family queries");
+    assertEqual(Object.keys(openLibraryDiagnostics.recoveryFamilyExecutionOrderReason || {}).length > 0, true, "post-final recovery should explain recovery family execution order");
     assertEqual(Boolean(selectedDetails.meaningfulTasteRecoveryMergedIntoScoring), true, "post-final recovered candidates should be merged into scoring/final selection diagnostics");
     assertEqual(Number(selectedDetails.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedDetails.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "post-final recovered candidates should be returned or explicitly rejected after merge");
     assertEqual(openLibraryDiagnostics.recoverySuccessRequiresFinalEligibility, true, "meaningful-taste recovery success should require final eligibility survival");
