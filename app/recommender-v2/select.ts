@@ -1301,6 +1301,20 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     .map((candidate) => candidate.title);
   const underfilledBecauseOnlyWeakOrZeroTaste = selected.length < 5 && (zeroTasteCandidateRejectedTitles.length > 0 || broadAdventureOnlyRejectedTitles.length > 0);
   const emergencyFallbackUsedForZeroTasteFill = selected.some((candidate) => candidate.rejectedReasons.includes("accepted_middle_grades_zero_final_items_guard") && !middleGradesMeaningfulTasteEligibility(candidate).allowed);
+  const meaningfulTasteRecoveryCandidates = rankedCandidates.filter((candidate) => candidate.diagnostics?.meaningfulTasteRecovery || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery");
+  const meaningfulTasteRecoverySelectedTitles = selected
+    .filter((candidate) => candidate.diagnostics?.meaningfulTasteRecovery || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery")
+    .map((candidate) => candidate.title);
+  const meaningfulTasteRecoveryDroppedAfterMergeByReason = meaningfulTasteRecoveryCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
+    .reduce<Record<string, string[]>>((acc, candidate) => {
+      const reason = candidate.rejectedReasons.find((entry) => entry !== "selected") || rejectReason(candidate, profile) || "ranked_below_final_selection";
+      acc[reason] = [...(acc[reason] || []), candidate.title];
+      return acc;
+    }, {});
+  const meaningfulTasteRecoveryAcceptedButNotReturnedTitles = meaningfulTasteRecoveryCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
+    .map((candidate) => candidate.title);
   const finalCountContractStatus = selected.length === 0
     ? "zero_result_failure"
     : selected.length >= Math.min(5, selected.length || 5) && selected.length >= 5
@@ -1353,6 +1367,11 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.meaningfulTasteEligibleTitles = meaningfulTasteEligibleTitles;
   diagnostics.underfilledBecauseOnlyWeakOrZeroTaste = underfilledBecauseOnlyWeakOrZeroTaste;
   diagnostics.emergencyFallbackUsedForZeroTasteFill = emergencyFallbackUsedForZeroTasteFill;
+  diagnostics.meaningfulTasteRecoveryMergedIntoScoring = meaningfulTasteRecoveryCandidates.length > 0;
+  diagnostics.meaningfulTasteRecoveryMergedCandidateCount = meaningfulTasteRecoveryCandidates.length;
+  diagnostics.meaningfulTasteRecoveryDroppedAfterMergeByReason = meaningfulTasteRecoveryDroppedAfterMergeByReason;
+  diagnostics.meaningfulTasteRecoveryAcceptedButNotReturnedTitles = meaningfulTasteRecoveryAcceptedButNotReturnedTitles;
+  diagnostics.meaningfulTasteRecoveryFinalSelectionCount = meaningfulTasteRecoverySelectedTitles.length;
   diagnostics.queryTextSignalsRemovedFromTasteMatchByTitle = queryTextSignalsRemovedFromTasteMatchByTitle;
   diagnostics.documentOnlyTasteMatchByTitle = documentOnlyTasteMatchByTitle;
   diagnostics.fallbackPenaltyByTitle = fallbackPenaltyByTitle;

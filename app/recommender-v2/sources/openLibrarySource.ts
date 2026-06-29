@@ -2339,7 +2339,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         textPreview: text.slice(0, 180),
       });
     };
-    const rememberMiddleGradesExpandedScoringCandidate = (doc: any, queryPlan: OpenLibraryQueryPlan, stage: string): void => {
+    const rememberMiddleGradesExpandedScoringCandidate = (doc: any, queryPlan: OpenLibraryQueryPlan, stage: string, meaningfulTasteSignals: string[] = []): void => {
       if (ageProfile.key !== "middleGrades" || !debugMiddleGradesDeepTrace) return;
       const title = String(doc?.title || "").trim();
       if (!title) return;
@@ -2349,6 +2349,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const normalized = normalizeOpenLibraryDoc(doc, queryPlan);
       (normalized as any).scoringHandoffStage = stage;
       (normalized as any).scoringHandoffSource = "expanded_debug_pool";
+      if (stage === "meaningful_taste_recovery") (normalized as any).meaningfulTasteRecovery = true;
+      if (meaningfulTasteSignals.length) {
+        (normalized as any).meaningfulTasteRecoveryDocumentSignals = meaningfulTasteSignals;
+        (normalized as any).themes = uniqueStrings([...(Array.isArray((normalized as any).themes) ? (normalized as any).themes : []), ...meaningfulTasteSignals], 24);
+      }
       middleGradesExpandedScoringPool.push(normalized);
     };
 
@@ -2386,6 +2391,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, reason);
         return false;
       }
+      let meaningfulTasteSignals: string[] = [];
       if (requireMeaningfulTaste) {
         const tasteEligibility = middleGradesSourceMeaningfulTasteEligibility(doc, context.profile);
         if (!tasteEligibility.allowed) {
@@ -2394,8 +2400,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           traceMiddleGradesRawDoc(doc, query, queryPlan, stage, false, reason);
           return false;
         }
+        meaningfulTasteSignals = tasteEligibility.signals;
       }
-      rememberMiddleGradesExpandedScoringCandidate(doc, queryPlan, stage);
+      rememberMiddleGradesExpandedScoringCandidate(doc, queryPlan, stage, meaningfulTasteSignals);
       const docKey = String(doc?.key || doc?.cover_edition_key || doc?.edition_key?.[0] || `${title}:${Array.isArray(doc?.author_name) ? doc.author_name[0] : ""}`).toLowerCase();
       if (acceptedDocKeys.has(docKey)) {
         dropReasons.duplicate_doc = Number(dropReasons.duplicate_doc || 0) + 1;
@@ -2421,6 +2428,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       if (seriesKey) acceptedSeriesKeys.add(seriesKey);
       acceptedDocKeys.add(docKey);
       const normalized = normalizeOpenLibraryDoc(doc, queryPlan);
+      if (stage === "meaningful_taste_recovery") (normalized as any).meaningfulTasteRecovery = true;
+      if (meaningfulTasteSignals.length) {
+        (normalized as any).meaningfulTasteRecoveryDocumentSignals = meaningfulTasteSignals;
+        (normalized as any).themes = uniqueStrings([...(Array.isArray((normalized as any).themes) ? (normalized as any).themes : []), ...meaningfulTasteSignals], 24);
+      }
       rawItems.push(normalized);
       traceMiddleGradesRawDoc(doc, query, queryPlan, stage, true, "accepted");
       traceMiddleGradesNormalizedCandidate(normalized, doc, queryPlan);
@@ -4203,7 +4215,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           const key = String(item?.sourceId || item?.key || item?.workKey || `${title}:${Array.isArray(item?.authors) ? item.authors[0] : ""}`).toLowerCase();
           if (!byKey.has(key)) byKey.set(key, item);
         }
-        return Array.from(byKey.values());
+        const pooled = Array.from(byKey.values());
+        const recoveryItems = pooled.filter((item: any) => item?.meaningfulTasteRecovery || item?.scoringHandoffStage === "meaningful_taste_recovery");
+        const nonRecoveryItems = pooled.filter((item: any) => !recoveryItems.includes(item));
+        return [...recoveryItems, ...nonRecoveryItems];
       })()
       : rawItems;
     const openLibraryScoringHandoffItems = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace

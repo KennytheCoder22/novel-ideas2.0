@@ -1381,7 +1381,16 @@ async function main() {
     assertEqual((result.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [])[0] !== "middle grade adventure", true, "meaningful-taste recovery should not start with generic middle grade adventure");
     assertEqual((result.diagnostics.meaningfulTasteRecoveryAcceptedTitles || []).length >= 1, true, "meaningful-taste recovery should accept document-backed taste matches from targeted queries");
     assertEqual(Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5 || result.diagnostics.underfilledAfterMeaningfulTasteRecovery === true, true, "meaningful-taste recovery should either reach five meaningful candidates or mark underfill after recovery");
-    console.log(JSON.stringify({ name: "middle grades deep-debug triggers meaningful-taste recovery after strict taste underfill", pass: true, queries: result.diagnostics.meaningfulTasteRecoveryQueriesAttempted, accepted: result.diagnostics.meaningfulTasteRecoveryAcceptedTitles, finalCount: result.diagnostics.meaningfulTasteRecoveryFinalCount }));
+    const normalizedRecoveryHandoff = normalizeSourceResults([result]);
+    const scoredRecoveryHandoff = scoreCandidates(normalizedRecoveryHandoff, debugProfile);
+    const selectedRecoveryHandoff = selectRecommendations(scoredRecoveryHandoff, debugProfile, 5);
+    assertEqual(Boolean(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryMergedIntoScoring), true, "meaningful-taste recovery candidates should be merged into scoring before final selection");
+    assertEqual(Number(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryMergedCandidateCount || 0) >= Number(result.diagnostics.meaningfulTasteRecoveryAcceptedTitles?.length || 0), true, "merged recovery count should cover accepted recovery candidates");
+    assertEqual(Number(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "recovered candidates should either reach final selection or report post-merge rejection reasons");
+    if (Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5 && selectedRecoveryHandoff.selected.length < 5) {
+      assertEqual(Object.keys(selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "underfilled recovered runs should explain every post-merge recovery drop");
+    }
+    console.log(JSON.stringify({ name: "middle grades deep-debug triggers meaningful-taste recovery after strict taste underfill", pass: true, queries: result.diagnostics.meaningfulTasteRecoveryQueriesAttempted, accepted: result.diagnostics.meaningfulTasteRecoveryAcceptedTitles, finalCount: result.diagnostics.meaningfulTasteRecoveryFinalCount, selected: selectedRecoveryHandoff.selected.map((candidate) => candidate.title), droppedAfterMerge: selectedRecoveryHandoff.rejectedReasons.meaningfulTasteRecoveryDroppedAfterMergeByReason }));
   } finally {
     if (previousMeaningfulTasteRecoveryBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMeaningfulTasteRecoveryBase;
