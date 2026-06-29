@@ -1381,6 +1381,9 @@ async function main() {
     assertEqual((result.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [])[0] !== "middle grade adventure", true, "meaningful-taste recovery should not start with generic middle grade adventure");
     assertEqual((result.diagnostics.meaningfulTasteRecoveryAcceptedTitles || []).length >= 1, true, "meaningful-taste recovery should accept document-backed taste matches from targeted queries");
     assertEqual(Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5 || result.diagnostics.underfilledAfterMeaningfulTasteRecovery === true, true, "meaningful-taste recovery should either reach five meaningful candidates or mark underfill after recovery");
+    if (Number(result.diagnostics.meaningfulTasteRecoveryFinalCount || 0) >= 5) {
+      assertEqual(result.rawItems.some((item) => item?.meaningfulTasteRecovery || item?.scoringHandoffStage === "meaningful_taste_recovery"), true, "source handoff should mark recovered meaningful candidates before normalization/scoring");
+    }
     const normalizedRecoveryHandoff = normalizeSourceResults([result]);
     const scoredRecoveryHandoff = scoreCandidates(normalizedRecoveryHandoff, debugProfile);
     const selectedRecoveryHandoff = selectRecommendations(scoredRecoveryHandoff, debugProfile, 5);

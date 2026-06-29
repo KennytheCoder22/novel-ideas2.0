@@ -4215,7 +4215,18 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           const key = String(item?.sourceId || item?.key || item?.workKey || `${title}:${Array.isArray(item?.authors) ? item.authors[0] : ""}`).toLowerCase();
           if (!byKey.has(key)) byKey.set(key, item);
         }
-        const pooled = Array.from(byKey.values());
+        const pooled = Array.from(byKey.values()).map((item: any) => {
+          if (!middleGradesMeaningfulTasteRecoveryTriggered) return item;
+          const eligibility = middleGradesSourceMeaningfulTasteEligibility(item?.rawOpenLibraryDoc || item, context.profile);
+          if (!eligibility.allowed) return item;
+          item.meaningfulTasteRecovery = true;
+          item.scoringHandoffStage = item.scoringHandoffStage || "meaningful_taste_recovery";
+          if (eligibility.signals.length) {
+            item.meaningfulTasteRecoveryDocumentSignals = uniqueStrings([...(Array.isArray(item.meaningfulTasteRecoveryDocumentSignals) ? item.meaningfulTasteRecoveryDocumentSignals : []), ...eligibility.signals], 24);
+            item.themes = uniqueStrings([...(Array.isArray(item.themes) ? item.themes : []), ...eligibility.signals], 24);
+          }
+          return item;
+        });
         const recoveryItems = pooled.filter((item: any) => item?.meaningfulTasteRecovery || item?.scoringHandoffStage === "meaningful_taste_recovery");
         const nonRecoveryItems = pooled.filter((item: any) => !recoveryItems.includes(item));
         return [...recoveryItems, ...nonRecoveryItems];
@@ -4227,6 +4238,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const openLibraryScoringHandoffSuppressedTitles = ageProfile.key === "middleGrades"
       ? openLibraryScoringHandoffEligiblePool.slice(openLibraryScoringHandoffItems.length).map((item: any) => String(item?.title || "")).filter(Boolean)
       : [];
+    const middleGradesMeaningfulTasteRecoveryItemsInHandoff = ageProfile.key === "middleGrades" && middleGradesMeaningfulTasteRecoveryTriggered
+      ? openLibraryScoringHandoffItems.filter((item: any) => item?.meaningfulTasteRecovery || item?.scoringHandoffStage === "meaningful_taste_recovery")
+      : [];
+    const middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics = ageProfile.key === "middleGrades" && middleGradesMeaningfulTasteRecoveryTriggered
+      ? Math.max(middleGradesMeaningfulTasteRecoveryFinalCount || 0, middleGradesMeaningfulTasteRecoveryItemsInHandoff.length)
+      : 0;
     const openLibraryScoringHandoffSource: SourceDiagnosticV2["openLibraryScoringHandoffSource"] = ageProfile.key === "middleGrades"
       ? debugMiddleGradesDeepTrace ? "expanded_debug_pool" : "production_pool"
       : undefined;
@@ -4390,8 +4407,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         meaningfulTasteRecoveryQueriesAttempted: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20) : undefined,
         meaningfulTasteRecoveryAcceptedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryAcceptedTitles, 20) : undefined,
         meaningfulTasteRecoveryRejectedTitlesByReason: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason : undefined,
-        meaningfulTasteRecoveryFinalCount: ageProfile.key === "middleGrades" ? (middleGradesMeaningfulTasteRecoveryFinalCount || middleGradesMeaningfulTasteExpandedPoolItems().length) : undefined,
-        underfilledAfterMeaningfulTasteRecovery: ageProfile.key === "middleGrades" ? (middleGradesMeaningfulTasteRecoveryTriggered && (middleGradesMeaningfulTasteRecoveryFinalCount || middleGradesMeaningfulTasteExpandedPoolItems().length) < Math.min(ageProfile.docLimit, 5)) : undefined,
+        meaningfulTasteRecoveryFinalCount: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics : undefined,
+        underfilledAfterMeaningfulTasteRecovery: ageProfile.key === "middleGrades" ? (middleGradesMeaningfulTasteRecoveryTriggered && middleGradesMeaningfulTasteRecoveryFinalCountForDiagnostics < Math.min(ageProfile.docLimit, 5)) : undefined,
         queryOnlyRejectedThenRecoveredCount: ageProfile.key === "middleGrades" && middleGradesRejectedAllRowsAsQueryOnly ? middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount : undefined,
         brittleQueryTimedOutThenShortQueryAttempted: ageProfile.key === "middleGrades" ? middleGradesBrittleQueryTimedOutThenShortQueryAttempted : undefined,
         underfillDespiteUnattemptedEvidenceQueries: ageProfile.key === "middleGrades" ? (rawItems.length < Math.min(ageProfile.docLimit, 5) && middleGradesUnattemptedEvidenceAwareQueries().length > 0) : undefined,
