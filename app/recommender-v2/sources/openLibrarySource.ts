@@ -3692,13 +3692,14 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       if (!middleGradesRecoveryExhaustionReasonDetailed && rawItems.length < continuationTarget) middleGradesRecoveryExhaustionReasonDetailed = "query_only_continuation_exhausted_before_target";
     }
 
+    const forceMiddleGradesMeaningfulTasteRecovery = ageProfile.key === "middleGrades" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesMeaningfulTasteRecovery);
     if (ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace && !context.signal?.aborted) {
       const meaningfulTarget = Math.min(ageProfile.docLimit, 5);
       const meaningfulCountBeforeRecovery = middleGradesMeaningfulTasteExpandedPoolItems().length;
       const expandedPoolCountBeforeRecovery = new Set((([...middleGradesExpandedScoringPool, ...rawItems] as any[])
         .map((item: any) => String(item?.sourceId || item?.key || item?.workKey || `${String(item?.title || "").trim()}:${Array.isArray(item?.authors) ? item.authors[0] : ""}`).toLowerCase())
         .filter(Boolean))).size;
-      if (expandedPoolCountBeforeRecovery >= 20 && meaningfulCountBeforeRecovery < meaningfulTarget) {
+      if (forceMiddleGradesMeaningfulTasteRecovery || (expandedPoolCountBeforeRecovery >= 20 && meaningfulCountBeforeRecovery < meaningfulTarget)) {
         const recoveryQueries = middleGradesMeaningfulTasteRecoveryQueries(context.profile, middleGradesAttemptedQueries());
         if (recoveryQueries.length > 0) middleGradesMeaningfulTasteRecoveryTriggered = true;
         for (const recoveryQuery of recoveryQueries) {
@@ -4404,6 +4405,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         weakEvidenceFinalizedBecause: ageProfile.key === "middleGrades" ? middleGradesWeakEvidenceFinalizedBecause : undefined,
         weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted: ageProfile.key === "middleGrades" ? middleGradesWeakEvidenceReturnedOnlyAfterEvidenceSearchExhausted : undefined,
         meaningfulTasteRecoveryTriggered: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryTriggered : undefined,
+        meaningfulTasteRecoveryTriggerStage: ageProfile.key === "middleGrades" && middleGradesMeaningfulTasteRecoveryTriggered ? (forceMiddleGradesMeaningfulTasteRecovery ? "post_final_eligibility" : "source") : undefined,
+        meaningfulTasteRecoverySkippedReason: ageProfile.key === "middleGrades" && !middleGradesMeaningfulTasteRecoveryTriggered ? "trigger_conditions_not_met" : undefined,
         meaningfulTasteRecoveryQueriesAttempted: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20) : undefined,
         meaningfulTasteRecoveryAcceptedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(middleGradesMeaningfulTasteRecoveryAcceptedTitles, 20) : undefined,
         meaningfulTasteRecoveryRejectedTitlesByReason: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason : undefined,

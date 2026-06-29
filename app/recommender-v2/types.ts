@@ -273,11 +273,16 @@ export interface SourceDiagnosticV2 {
   weakEvidenceFinalizedBecause?: string;
   weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted?: boolean;
   meaningfulTasteRecoveryTriggered?: boolean;
+  meaningfulTasteRecoveryTriggerStage?: "source" | "post_final_eligibility";
+  meaningfulTasteRecoverySkippedReason?: string;
   meaningfulTasteRecoveryQueriesAttempted?: string[];
   meaningfulTasteRecoveryAcceptedTitles?: string[];
   meaningfulTasteRecoveryRejectedTitlesByReason?: Record<string, string[]>;
   meaningfulTasteRecoveryFinalCount?: number;
   underfilledAfterMeaningfulTasteRecovery?: boolean;
+  postFinalEligibilityUnderfillRecoveryTriggered?: boolean;
+  postFinalEligibilityRecoveryAcceptedTitles?: string[];
+  postFinalEligibilityRecoveryRejectedByReason?: Record<string, string[]>;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

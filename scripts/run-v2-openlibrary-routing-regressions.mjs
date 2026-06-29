@@ -7,6 +7,7 @@ const TS_FILES = [
   "app/recommender-v2/tasteProfile.ts",
   "app/recommender-v2/diagnostics.ts",
   "app/recommender-v2/types.ts",
+  "app/recommender-v2/engine.ts",
   "app/recommender-v2/select.ts",
   "app/recommender-v2/score.ts",
   "app/recommender-v2/normalize.ts",
@@ -115,6 +116,7 @@ async function main() {
   assertEqual(swipeDeckSource.includes("finalEligibilityCleanCandidateCount: finalEligibilityCleanCandidateCountForReport"), true, "v2 wrapper should export final eligibility count from selected V2 items");
   console.log(JSON.stringify({ name: "router returned-items audit exposes actual return-path lineage", pass: true }));
   const { buildTasteProfile } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/tasteProfile.js`).href);
+  const { runRecommenderV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/engine.js`).href);
   const { buildRecommendationResultV2 } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/diagnostics.js`).href);
   const { selectRecommendations } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/select.js`).href);
   const { scoreCandidates } = await import(pathToFileURL(`${process.cwd()}/${OUT_DIR}/score.js`).href);
@@ -1397,6 +1399,59 @@ async function main() {
   } finally {
     if (previousMeaningfulTasteRecoveryBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousMeaningfulTasteRecoveryBase;
+    globalThis.fetch = originalFetch;
+  }
+
+  const previousPostFinalRecoveryBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  const postFinalRecoveryFetchQueries = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    postFinalRecoveryFetchQueries.push(query);
+    const recoveryQuery = /funny school friendship|funny family school story|children comedy adventure|middle grade comedy friendship|fantasy adventure friendship children|mythology adventure children|children nonfiction activities|science activities children|superhero friendship children|ocean adventure children/i.test(query);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: Array.from({ length: 12 }, (_unused, offset) => {
+        const index = offset + 1;
+        return {
+          key: `/works/post-final-${query.replace(/\s+/g, "-")}-${index}`,
+          title: recoveryQuery ? `Post Final School Friendship Recovery ${index}` : `Post Final Weak Meaningful ${postFinalRecoveryFetchQueries.length}-${index}`,
+          author_name: [`Post Final Author ${index}`],
+          subject: recoveryQuery
+            ? ["Juvenile fiction", "School stories", "Friendship", "Humorous stories", "Family"]
+            : ["Juvenile fiction"],
+          description: recoveryQuery
+            ? "A funny school friendship story about classmates and family teamwork."
+            : "A funny family friendship premise without the current route evidence needed for final eligibility.",
+          language: ["eng"],
+          first_publish_year: 2014 + index,
+        };
+      }) }),
+    };
+  };
+  try {
+    const result = await runRecommenderV2({
+      requestId: "post-final-eligibility-recovery-regression",
+      ageBand: "preteens",
+      limit: 1,
+      enabledSources: { openLibrary: true },
+      debugMiddleGradesDeepTrace: true,
+      signals: [
+        { action: "like", title: "Funny Family School Friends", source: "mock", format: "book", genres: ["Comedy", "School"], themes: ["Family", "Friendship"] },
+      ],
+    });
+    const openLibraryDiagnostics = result.diagnostics.sources.find((source) => source.source === "openLibrary") || {};
+    const selectedDetails = result.diagnostics.stages.find((stage) => stage.stage === "selected")?.details?.rejectedReasons || {};
+    assertEqual(Number(openLibraryDiagnostics.openLibraryDocsActuallyHandedToScoringCount || 0) > 20, true, "post-final recovery fixture should begin with a live-shaped scoring universe");
+    assertEqual(openLibraryDiagnostics.postFinalEligibilityUnderfillRecoveryTriggered, true, "post-final underfill should trigger meaningful-taste recovery after final eligibility");
+    assertEqual(openLibraryDiagnostics.meaningfulTasteRecoveryTriggerStage, "post_final_eligibility", "post-final recovery should diagnose its trigger stage");
+    assertEqual(Boolean(selectedDetails.meaningfulTasteRecoveryMergedIntoScoring), true, "post-final recovered candidates should be merged into scoring/final selection diagnostics");
+    assertEqual(Number(selectedDetails.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedDetails.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "post-final recovered candidates should be returned or explicitly rejected after merge");
+    console.log(JSON.stringify({ name: "middle grades post-final eligibility underfill triggers meaningful-taste recovery", pass: true, triggerStage: openLibraryDiagnostics.meaningfulTasteRecoveryTriggerStage, accepted: openLibraryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles, selected: result.items.map((item) => item.title) }));
+  } finally {
+    if (previousPostFinalRecoveryBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousPostFinalRecoveryBase;
     globalThis.fetch = originalFetch;
   }
 

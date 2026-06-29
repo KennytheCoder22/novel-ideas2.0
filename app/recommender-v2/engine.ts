@@ -99,6 +99,24 @@ function markPipelineObjects(candidates: Array<NormalizedCandidate | ScoredCandi
   });
 }
 
+function sourceItemKey(item: unknown): string {
+  const row = (item || {}) as Record<string, unknown>;
+  const title = String(row.title || "").trim().toLowerCase();
+  return String(row.sourceId || row.key || row.workKey || `${title}:${Array.isArray(row.authors) ? row.authors[0] : ""}`).toLowerCase();
+}
+
+function mergeSourceItems(primary: unknown[], recovery: unknown[]): unknown[] {
+  const byKey = new Map<string, unknown>();
+  for (const item of [...primary, ...recovery]) {
+    const key = sourceItemKey(item);
+    if (!key) continue;
+    const existing = byKey.get(key) as Record<string, unknown> | undefined;
+    const row = item as Record<string, unknown>;
+    if (!existing || (row.meaningfulTasteRecovery && !existing.meaningfulTasteRecovery)) byKey.set(key, item);
+  }
+  return Array.from(byKey.values());
+}
+
 function buildMiddleGradesPipelineAudit(sourceResults: SourceResult[], normalized: NormalizedCandidate[], scored: ScoredCandidate[], selected: ScoredCandidate[]): Record<string, unknown> | undefined {
   const openLibrary = sourceResults.find((result) => result.source === "openLibrary");
   if (!openLibrary) return undefined;
@@ -281,7 +299,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   const searchPlan = buildSearchPlan(tasteProfile, session.enabledSources);
   stages.push(stageDiagnostic("search_plan_built", { intents: searchPlan.intents.length, sourcePlans: searchPlan.sourcePlans.length }, searchPlan.diagnostics));
 
-  const sourceResults = await Promise.all(searchPlan.sourcePlans.map(async (plan) => {
+  let sourceResults = await Promise.all(searchPlan.sourcePlans.map(async (plan) => {
     const adapter = sourceAdapters[plan.source];
     if (!plan.enabled) return skippedResult(plan, plan.skippedReason || "source_disabled");
     if (!adapter) return skippedResult(plan, "adapter_not_implemented");
@@ -297,15 +315,81 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     raw: sourceResults.reduce((sum, result) => sum + result.rawItems.length, 0),
   }));
 
-  const normalized = normalizeSourceResults(sourceResults);
+  let normalized = normalizeSourceResults(sourceResults);
+  let scored = scoreCandidates(normalized, tasteProfile);
+  let selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
+  let selected = selection.selected;
+  let rejectedReasons = selection.rejectedReasons;
+
+  const openLibrarySourceIndex = sourceResults.findIndex((result) => result.source === "openLibrary");
+  const openLibrarySourceResult = openLibrarySourceIndex >= 0 ? sourceResults[openLibrarySourceIndex] : undefined;
+  const scoredOpenLibraryCount = scored.filter((candidate) => candidate.source === "openLibrary").length;
+  const shouldRunPostFinalEligibilityRecovery = middleGradesDeepDebugActive
+    && tasteProfile.ageBand === "preteens"
+    && Boolean(openLibrarySourceResult?.rawItems.length)
+    && scoredOpenLibraryCount > 20
+    && selected.length < 5;
+  if (shouldRunPostFinalEligibilityRecovery && openLibrarySourceResult) {
+    const openLibraryPlan = searchPlan.sourcePlans.find((plan) => plan.source === "openLibrary");
+    const adapter = openLibraryPlan ? sourceAdapters[openLibraryPlan.source] : undefined;
+    if (openLibraryPlan && adapter) {
+      const recoveryProfile = {
+        ...tasteProfile,
+        diagnostics: {
+          ...tasteProfile.diagnostics,
+          forceMiddleGradesMeaningfulTasteRecovery: true,
+        },
+      };
+      const recoveryTimeoutMs = Math.max(openLibraryPlan.timeoutMs, 180_000);
+      const recoveryResponse = await runWithTimeout(recoveryTimeoutMs, (signal) => adapter.search({ ...openLibraryPlan, timeoutMs: recoveryTimeoutMs }, { profile: recoveryProfile, signal }));
+      if (recoveryResponse.value) {
+        const recoveryResult = recoveryResponse.value;
+        const recoveryAcceptedTitles = recoveryResult.rawItems
+          .filter((item: any) => item?.meaningfulTasteRecovery || item?.scoringHandoffStage === "meaningful_taste_recovery")
+          .map((item: any) => String(item?.title || ""))
+          .filter(Boolean);
+        const mergedRawItems = mergeSourceItems(openLibrarySourceResult.rawItems, recoveryResult.rawItems);
+        sourceResults = sourceResults.map((result, index) => index === openLibrarySourceIndex
+          ? {
+            ...recoveryResult,
+            rawItems: mergedRawItems,
+            diagnostics: {
+              ...openLibrarySourceResult.diagnostics,
+              ...recoveryResult.diagnostics,
+              rawCount: mergedRawItems.length,
+              normalizedCount: mergedRawItems.length,
+              usableRowsAfterFiltering: mergedRawItems.length,
+              meaningfulTasteRecoveryTriggered: true,
+              meaningfulTasteRecoveryTriggerStage: "post_final_eligibility",
+              meaningfulTasteRecoverySkippedReason: undefined,
+              postFinalEligibilityUnderfillRecoveryTriggered: true,
+              postFinalEligibilityRecoveryAcceptedTitles: recoveryAcceptedTitles,
+              postFinalEligibilityRecoveryRejectedByReason: recoveryResult.diagnostics.meaningfulTasteRecoveryRejectedTitlesByReason || {},
+            },
+          }
+          : result);
+        normalized = normalizeSourceResults(sourceResults);
+        scored = scoreCandidates(normalized, tasteProfile);
+        selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
+        selected = selection.selected;
+        rejectedReasons = selection.rejectedReasons;
+      } else {
+        openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = recoveryResponse.timedOut ? "post_final_eligibility_recovery_timed_out" : "post_final_eligibility_recovery_failed";
+        openLibrarySourceResult.diagnostics.postFinalEligibilityUnderfillRecoveryTriggered = true;
+      }
+    } else {
+      openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = "post_final_eligibility_openlibrary_plan_missing";
+    }
+  } else if (middleGradesDeepDebugActive && tasteProfile.ageBand === "preteens" && openLibrarySourceResult) {
+    openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason || "post_final_eligibility_not_underfilled";
+  }
+
   markPipelineObjects(normalized, "normalized", requestId);
   stages.push(stageDiagnostic("normalized", { normalized: normalized.length }));
 
-  const scored = scoreCandidates(normalized, tasteProfile);
   markPipelineObjects(scored, "scored", requestId);
   stages.push(stageDiagnostic("scored", { scored: scored.length }));
 
-  const { selected, rejectedReasons } = selectRecommendations(scored, tasteProfile, session.limit || 10);
   markPipelineObjects(selected, "selected", requestId);
   stages.push(stageDiagnostic("selected", { selected: selected.length }, { rejectedReasons }));
   if (middleGradesDeepDebugActive) {
