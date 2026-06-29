@@ -1825,11 +1825,16 @@ function middleGradesSourceMeaningfulTasteEligibility(doc: any, profile: TastePr
 
 function middleGradesSourceRouteEvidencePattern(query: string, routingReason = ""): RegExp | undefined {
   const routeText = String(`${routingReason} ${query}`).toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
+  const sourceQueryText = String(query).toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
   if (/\b(dragon|mythology|mythological|creature)\b/.test(routeText)) return /\b(dragon|dragons|myth|myths|mythology|mythological|creature|creatures|magic|magical|fantasy|quest|adventure)\b/i;
   if (/\b(science adventure|science fiction|sci fi|sci-fi|space|dystopian|dystopia)\b/.test(routeText)) return /\b(science|scientist|experiment|space|planet|galaxy|robot|robots?|technology|invention|dystopian|dystopia|sci fi|sci-fi|science fiction|nonfiction|animals?|nature|wildlife|wolf|wolves)\b/i;
   if (/\b(robot|ai|artificial intelligence|superhero|superheroes)\b/.test(routeText)) return /\b(robot|robots?|ai|artificial intelligence|technology|invention|superhero|superheroes|powers?)\b/i;
   if (/\b(animal adventure|animals?|nature|wildlife)\b/.test(routeText)) return /\b(animal|animals|dog|cat|horse|wolf|wolves|wildlife|nature|forest|woods|survival|cozy|community|farm|creature|creatures)\b/i;
   if (/\b(school adventure|school story|school|classroom|children s school stories)\b/.test(routeText)) return /\b(school|class|classroom|teacher|student|students|friendship|friends?|community|family|comedy|funny|humor|humour)\b/i;
+  if (/\b(superhero|super hero)\b/.test(sourceQueryText) && /\b(friendship|friends?|adventure)\b/.test(sourceQueryText)) return /\b(superhero|super hero|heroes|hero|powers?|friendship|friends?|team|adventure|quest)\b/i;
+  if (/\b(ocean|sea|island)\b/.test(sourceQueryText) && /\b(friendship|friends?|adventure|fantasy)\b/.test(sourceQueryText)) return /\b(ocean|sea|island|marine|friendship|friends?|adventure|quest|fantasy|magic|magical)\b/i;
+  if (/\b(science|robot|technology)\b/.test(sourceQueryText) && /\b(adventure|friendship|fiction)\b/.test(sourceQueryText)) return /\b(science|scientist|experiment|robot|robots?|technology|invention|friendship|friends?|adventure|quest)\b/i;
+  if (/\b(fantasy|magic|magical|mythology)\b/.test(sourceQueryText) && /\b(friendship|friends?|adventure|family)\b/.test(sourceQueryText)) return /\b(fantasy|magic|magical|wizard|witch|fairy|fairies|dragon|quest|kingdom|hero|heroic|myth|myths|mythology|adventure|friendship|friends?|family|school)\b/i;
   if (/\b(friendship|community)\b/.test(routeText)) return /\b(friendship|friends?|community|school|family|team|classroom)\b/i;
   if (/\b(fantasy mystery|mystery adventure|mystery|detective)\b/.test(routeText)) return /\b(mystery|detective|clue|clues|case|secret|secrets|puzzle|investigate|investigation)\b/i;
   if (/\b(humor|funny|funny family|fantasy humor)\b/.test(routeText)) return /\b(humor|humour|funny|comedy|comic|joke|laugh|laughs|giggle|silly|school|friendship|friends?|family|quest|adventure|trail)\b/i;
