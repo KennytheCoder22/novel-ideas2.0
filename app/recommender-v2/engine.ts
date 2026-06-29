@@ -383,12 +383,24 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           recoveryDiagnostics.meaningfulTasteRecoveryRejectedQueryFamilies = Object.keys(recoveryDroppedByReason);
           recoveryDiagnostics.recoverySuccessRequiresFinalEligibility = true;
           recoveryDiagnostics.underfilledAfterMeaningfulTasteRecovery = recoverySurvivingFinalCount < 5;
+          recoveryDiagnostics.middleGradesRecoveryFinalShortfallReason = String((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryFinalShortfallReason || (recoverySurvivingFinalCount < 5 ? "recovery_final_selection_underfilled" : "none"));
+          recoveryDiagnostics.middleGradesRecoveryRejectedReasonCounts = ((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryRejectedReasonCounts || {}) as Record<string, number>;
+          recoveryDiagnostics.middleGradesRecoveryBestRejectedTitlesByReason = ((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryBestRejectedTitlesByReason || {}) as Record<string, string[]>;
+          recoveryDiagnostics.middleGradesRecoveryNextBestSelectableTitles = ((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryNextBestSelectableTitles || []) as string[];
+          recoveryDiagnostics.middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate = Boolean((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate);
+          recoveryDiagnostics.middleGradesRecoveryRelaxedGateNeeded = String((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryRelaxedGateNeeded || "none");
         }
       } else {
         openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = recoveryResponse.timedOut ? "post_final_eligibility_recovery_timed_out" : "post_final_eligibility_recovery_failed";
         openLibrarySourceResult.diagnostics.postFinalEligibilityUnderfillRecoveryTriggered = true;
         openLibrarySourceResult.diagnostics.recoverySuccessRequiresFinalEligibility = true;
         openLibrarySourceResult.diagnostics.underfilledAfterMeaningfulTasteRecovery = true;
+        openLibrarySourceResult.diagnostics.middleGradesRecoveryFinalShortfallReason = recoveryResponse.timedOut ? "recovery_query_quality_timed_out" : "recovery_query_quality_failed";
+        openLibrarySourceResult.diagnostics.middleGradesRecoveryRejectedReasonCounts = {};
+        openLibrarySourceResult.diagnostics.middleGradesRecoveryBestRejectedTitlesByReason = {};
+        openLibrarySourceResult.diagnostics.middleGradesRecoveryNextBestSelectableTitles = [];
+        openLibrarySourceResult.diagnostics.middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate = false;
+        openLibrarySourceResult.diagnostics.middleGradesRecoveryRelaxedGateNeeded = "none";
       }
     } else {
       openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = "post_final_eligibility_openlibrary_plan_missing";

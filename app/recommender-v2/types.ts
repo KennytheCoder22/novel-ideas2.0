@@ -288,6 +288,12 @@ export interface SourceDiagnosticV2 {
   meaningfulTasteRecoveryExhaustedQueries?: string[];
   meaningfulTasteRecoveryRejectedQueryFamilies?: string[];
   recoverySuccessRequiresFinalEligibility?: boolean;
+  middleGradesRecoveryFinalShortfallReason?: string;
+  middleGradesRecoveryRejectedReasonCounts?: Record<string, number>;
+  middleGradesRecoveryBestRejectedTitlesByReason?: Record<string, string[]>;
+  middleGradesRecoveryNextBestSelectableTitles?: string[];
+  middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate?: boolean;
+  middleGradesRecoveryRelaxedGateNeeded?: string;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

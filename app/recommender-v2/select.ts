@@ -1315,6 +1315,49 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const meaningfulTasteRecoveryAcceptedButNotReturnedTitles = meaningfulTasteRecoveryCandidates
     .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
     .map((candidate) => candidate.title);
+  const selectedRootKeysForRecovery = new Set(selected.map((candidate) => finalReturnedRootKey(candidate) || seriesKey(candidate)).filter(Boolean));
+  const recoveryShortfallGateReason = (candidate: ScoredCandidate): string => {
+    if (selectedTitles.has(normalized(candidate.title))) return "selected";
+    const joinedRejected = candidate.rejectedReasons.join(",");
+    if (/query_only_score_cap|query_only/i.test(joinedRejected)) return "recovery_query_quality_query_only_cap";
+    if (/humor_keyword_only_leakage|adult_or_ya_humor_leakage/i.test(joinedRejected)) return "humor_or_leakage_rejection";
+    if (/duplicate|same_root|same_series|root_collapsed/i.test(joinedRejected)) return "duplicate_root_suppression";
+    const finalEligibility = middleGradesFinalEligibility(candidate);
+    if (!finalEligibility.allowed) {
+      if (/query_only|missing.*document|evidence/i.test(String(finalEligibility.rejectedReason || ""))) return "missing_document_evidence";
+      if (/humor|leakage/i.test(String(finalEligibility.rejectedReason || ""))) return "humor_or_leakage_rejection";
+      return `final_eligibility_${finalEligibility.rejectedReason || "rejected"}`;
+    }
+    const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
+    if (!tasteEligibility.allowed) return "missing_document_backed_taste_evidence";
+    if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_scoring";
+    const rootKey = finalReturnedRootKey(candidate) || seriesKey(candidate);
+    if (rootKey && selectedRootKeysForRecovery.has(rootKey)) return "duplicate_root_suppression";
+    return "ranked_below_final_selection";
+  };
+  const recoveryRejectedRows = meaningfulTasteRecoveryCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
+    .map((candidate) => ({ candidate, reason: recoveryShortfallGateReason(candidate) }))
+    .sort((a, b) => middleGradesSelectionScore(b.candidate, profile) - middleGradesSelectionScore(a.candidate, profile));
+  const middleGradesRecoveryRejectedReasonCounts = recoveryRejectedRows.reduce<Record<string, number>>((acc, row) => {
+    acc[row.reason] = Number(acc[row.reason] || 0) + 1;
+    return acc;
+  }, {});
+  const middleGradesRecoveryBestRejectedTitlesByReason = recoveryRejectedRows.reduce<Record<string, string[]>>((acc, row) => {
+    acc[row.reason] = [...(acc[row.reason] || []), row.candidate.title].slice(0, 5);
+    return acc;
+  }, {});
+  const middleGradesRecoveryNextBestSelectableTitles = recoveryRejectedRows
+    .filter((row) => row.reason === "ranked_below_final_selection")
+    .slice(0, Math.max(0, 5 - selected.length))
+    .map((row) => row.candidate.title);
+  const recoveryTopRejectedReason = Object.entries(middleGradesRecoveryRejectedReasonCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  const middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate = selected.length < 5 && selected.length + recoveryRejectedRows.length >= 5;
+  const middleGradesRecoveryFinalShortfallReason = selected.length >= 5
+    ? "none"
+    : recoveryTopRejectedReason || (meaningfulTasteRecoveryCandidates.length ? "recovery_candidates_ranked_below_or_unavailable" : "no_recovery_candidates_merged");
+  const middleGradesRecoveryRelaxedGateNeeded = middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate ? middleGradesRecoveryFinalShortfallReason : "none";
   const finalCountContractStatus = selected.length === 0
     ? "zero_result_failure"
     : selected.length >= Math.min(5, selected.length || 5) && selected.length >= 5
@@ -1372,6 +1415,12 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.meaningfulTasteRecoveryDroppedAfterMergeByReason = meaningfulTasteRecoveryDroppedAfterMergeByReason;
   diagnostics.meaningfulTasteRecoveryAcceptedButNotReturnedTitles = meaningfulTasteRecoveryAcceptedButNotReturnedTitles;
   diagnostics.meaningfulTasteRecoveryFinalSelectionCount = meaningfulTasteRecoverySelectedTitles.length;
+  diagnostics.middleGradesRecoveryFinalShortfallReason = middleGradesRecoveryFinalShortfallReason;
+  diagnostics.middleGradesRecoveryRejectedReasonCounts = middleGradesRecoveryRejectedReasonCounts;
+  diagnostics.middleGradesRecoveryBestRejectedTitlesByReason = middleGradesRecoveryBestRejectedTitlesByReason;
+  diagnostics.middleGradesRecoveryNextBestSelectableTitles = middleGradesRecoveryNextBestSelectableTitles;
+  diagnostics.middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate = middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate;
+  diagnostics.middleGradesRecoveryRelaxedGateNeeded = middleGradesRecoveryRelaxedGateNeeded;
   diagnostics.queryTextSignalsRemovedFromTasteMatchByTitle = queryTextSignalsRemovedFromTasteMatchByTitle;
   diagnostics.documentOnlyTasteMatchByTitle = documentOnlyTasteMatchByTitle;
   diagnostics.fallbackPenaltyByTitle = fallbackPenaltyByTitle;

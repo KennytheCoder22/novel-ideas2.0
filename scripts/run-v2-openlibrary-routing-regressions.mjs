@@ -1454,6 +1454,9 @@ async function main() {
       assertEqual(openLibraryDiagnostics.underfilledAfterMeaningfulTasteRecovery, true, "underfilled recovery should remain marked underfilled after final eligibility rejects merged rows");
       assertEqual(Array.isArray(openLibraryDiagnostics.meaningfulTasteRecoveryExhaustedQueries) && openLibraryDiagnostics.meaningfulTasteRecoveryExhaustedQueries.length > 0, true, "underfilled post-final recovery should expose exhausted recovery queries");
       assertEqual(Array.isArray(openLibraryDiagnostics.meaningfulTasteRecoveryRejectedQueryFamilies), true, "underfilled post-final recovery should expose rejection families");
+      assertEqual(Boolean(openLibraryDiagnostics.middleGradesRecoveryFinalShortfallReason), true, "underfilled recovery should report a final shortfall reason");
+      assertEqual(Object.keys(openLibraryDiagnostics.middleGradesRecoveryRejectedReasonCounts || {}).length > 0, true, "underfilled recovery should count rejected recovery gates");
+      assertEqual(Object.keys(openLibraryDiagnostics.middleGradesRecoveryBestRejectedTitlesByReason || {}).length > 0, true, "underfilled recovery should list best rejected titles by gate");
     }
     console.log(JSON.stringify({ name: "middle grades post-final eligibility underfill triggers meaningful-taste recovery", pass: true, triggerStage: openLibraryDiagnostics.meaningfulTasteRecoveryTriggerStage, accepted: openLibraryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles, selected: result.items.map((item) => item.title) }));
   } finally {
