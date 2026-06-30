@@ -448,6 +448,86 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason = openLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason || "post_final_eligibility_not_underfilled";
   }
 
+
+  const currentOpenLibrarySourceResult = openLibrarySourceIndex >= 0 ? sourceResults[openLibrarySourceIndex] : undefined;
+  const shouldRunCleanCandidateShortfallExpansion = middleGradesDeepDebugActive
+    && tasteProfile.ageBand === "preteens"
+    && Boolean(currentOpenLibrarySourceResult?.rawItems.length)
+    && scored.filter((candidate) => candidate.source === "openLibrary").length > 20
+    && selected.length < 5;
+  if (shouldRunCleanCandidateShortfallExpansion && currentOpenLibrarySourceResult) {
+    const openLibraryPlan = searchPlan.sourcePlans.find((plan) => plan.source === "openLibrary");
+    const adapter = openLibraryPlan ? sourceAdapters[openLibraryPlan.source] : undefined;
+    if (openLibraryPlan && adapter) {
+      currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = true;
+      const expansionProfile = {
+        ...tasteProfile,
+        diagnostics: {
+          ...tasteProfile.diagnostics,
+          forceMiddleGradesMeaningfulTasteRecovery: true,
+          forceMiddleGradesCleanCandidateShortfallExpansion: true,
+          priorMiddleGradesRecoveryRejectedReasons: selection.rejectedReasons,
+          priorMiddleGradesRecoverySourceDiagnostics: currentOpenLibrarySourceResult.diagnostics,
+        },
+      };
+      const expansionTimeoutMs = Math.max(openLibraryPlan.timeoutMs, 180_000);
+      const expansionResponse = await runWithTimeout(expansionTimeoutMs, (signal) => adapter.search({ ...openLibraryPlan, timeoutMs: expansionTimeoutMs }, { profile: expansionProfile, signal }));
+      if (expansionResponse.value) {
+        const expansionResult = expansionResponse.value;
+        const expansionRawItems = expansionResult.rawItems || [];
+        const expansionKeys = new Set(expansionRawItems.map((item) => sourceItemKey(item)));
+        const mergedRawItems = mergeSourceItems(currentOpenLibrarySourceResult.rawItems, expansionRawItems);
+        sourceResults = sourceResults.map((result, index) => index === openLibrarySourceIndex
+          ? {
+            ...expansionResult,
+            rawItems: mergedRawItems,
+            diagnostics: {
+              ...currentOpenLibrarySourceResult.diagnostics,
+              ...expansionResult.diagnostics,
+              rawCount: mergedRawItems.length,
+              normalizedCount: mergedRawItems.length,
+              usableRowsAfterFiltering: mergedRawItems.length,
+              cleanCandidateShortfallExpansionTriggered: true,
+              expansionFetchAttempted: expansionResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted || expansionResult.diagnostics.expansionFetchAttempted || [],
+              expansionConvertedCount: expansionRawItems.length,
+            },
+          }
+          : result);
+        normalized = normalizeSourceResults(sourceResults);
+        scored = scoreCandidates(normalized, tasteProfile);
+        selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
+        selected = selection.selected;
+        rejectedReasons = selection.rejectedReasons;
+        const expansionSelectedTitles = selected
+          .filter((candidate) => expansionKeys.has(sourceItemKey(candidate)))
+          .map((candidate) => candidate.title);
+        const cleanEligibleExpansionTitles = scored
+          .filter((candidate) => expansionKeys.has(sourceItemKey(candidate)))
+          .filter((candidate) => !candidate.rejectedReasons.includes("zero_doc_backed_taste_match") && !candidate.rejectedReasons.includes("broad_adventure_only_taste_match") && !candidate.rejectedReasons.includes("humor_keyword_only_leakage") && !candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied"))
+          .map((candidate) => candidate.title);
+        const expansionDiagnostics = sourceResults[openLibrarySourceIndex]?.diagnostics;
+        if (expansionDiagnostics) {
+          expansionDiagnostics.cleanCandidateShortfallExpansionTriggered = true;
+          expansionDiagnostics.expansionFetchAttempted = expansionDiagnostics.expansionFetchAttempted || expansionDiagnostics.meaningfulTasteRecoveryQueriesAttempted || [];
+          expansionDiagnostics.expansionConvertedCount = expansionRawItems.length;
+          expansionDiagnostics.expansionCleanEligibleCount = cleanEligibleExpansionTitles.length;
+          expansionDiagnostics.expansionSelectedTitles = expansionSelectedTitles;
+          expansionDiagnostics.underfilledAfterMeaningfulTasteRecovery = selected.length < 5;
+          expansionDiagnostics.middleGradesRecoveryFinalShortfallReason = selected.length < 5
+            ? String((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryFinalShortfallReason || "clean_candidate_shortfall_expansion_underfilled")
+            : "none";
+        }
+      } else {
+        currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = true;
+        currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = [];
+        currentOpenLibrarySourceResult.diagnostics.expansionConvertedCount = 0;
+        currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
+        currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
+        currentOpenLibrarySourceResult.diagnostics.middleGradesRecoveryFinalShortfallReason = expansionResponse.timedOut ? "clean_candidate_shortfall_expansion_timed_out" : "clean_candidate_shortfall_expansion_failed";
+      }
+    }
+  }
+
   markPipelineObjects(normalized, "normalized", requestId);
   stages.push(stageDiagnostic("normalized", { normalized: normalized.length }));
 

@@ -1741,7 +1741,17 @@ function middleGradesMeaningfulTasteRecoveryQueryPlans(
   const avoidText = [...profile.avoidSignals, ...dislikedRows].map((row) => row.value).join(" ").toLowerCase();
   const hasLiked = (pattern: RegExp): boolean => pattern.test(likedText);
   const hasAvoid = (pattern: RegExp): boolean => pattern.test(avoidText);
-  const familyDefs: Array<{ family: string; query: string; anchors: string[]; leakageRisk?: number; broad?: boolean }> = [
+  const cleanShortfallExpansion = Boolean((profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesCleanCandidateShortfallExpansion);
+  const familyDefs: Array<{ family: string; query: string; anchors: string[]; leakageRisk?: number; broad?: boolean }> = cleanShortfallExpansion ? [
+    { family: "robot_adventure", query: "middle grade robot adventure", anchors: ["robot", "adventure"] },
+    { family: "science_fiction_adventure", query: "middle grade science fiction adventure", anchors: ["science", "adventure"] },
+    { family: "ocean_adventure", query: "children ocean adventure", anchors: ["ocean", "adventure"] },
+    { family: "survival_adventure", query: "middle grade survival adventure", anchors: ["survival", "adventure"] },
+    { family: "family_adventure", query: "middle grade family adventure", anchors: ["family", "adventure"] },
+    { family: "superhero_adventure", query: "middle grade superhero adventure", anchors: ["superhero", "adventure"] },
+    { family: "school_mystery", query: "middle grade school mystery", anchors: ["school", "mystery"] },
+    { family: "fantasy_quest", query: "middle grade fantasy quest", anchors: ["fantasy", "adventure"] },
+  ] : [
     { family: "ocean_friendship", query: "middle grade ocean friendship fiction", anchors: ["ocean", "friendship"] },
     { family: "ocean_adventure", query: "children ocean adventure fiction", anchors: ["ocean", "adventure"] },
     { family: "family_school", query: "middle grade family school fiction", anchors: ["family", "school"] },
@@ -1770,13 +1780,15 @@ function middleGradesMeaningfulTasteRecoveryQueryPlans(
       case "heroic": return /\b(heroic|hero|heroes|quest)\b/i;
       case "mythology": return /\b(myth|myths|mythology|mythological)\b/i;
       case "dystopian": return /\b(dystopian|dystopia)\b/i;
-      case "science": return /\b(science|scientist|experiment|nonfiction|technology)\b/i;
+      case "science": return /\b(science|scientist|experiment|nonfiction|technology|science fiction|sci fi|sci-fi)\b/i;
       case "concise": return /\b(concise|short|quick|clear|explanation|nonfiction)\b/i;
       case "robot": return /\b(robot|robots?|technology|invention)\b/i;
       case "family": return /\b(family|families|parent|parents|siblings?)\b/i;
       case "school": return /\b(school|classroom|class|student|teacher)\b/i;
       case "friendship": return /\b(friendship|friends?|team|classmates?)\b/i;
       case "adventure": return /\b(adventure|quest|journey|survival|exploration)\b/i;
+      case "mystery": return /\b(mystery|detective|clue|case|secret|investigation)\b/i;
+      case "survival": return /\b(survival|survive|wilderness|wild|forest|stranded)\b/i;
       case "fast paced": return /\b(fast paced|exciting|adventure|quest)\b/i;
       default: return new RegExp(`\\b${anchor.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}\\b`, "i");
     }
@@ -3819,6 +3831,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
     const forceMiddleGradesMeaningfulTasteRecovery = ageProfile.key === "middleGrades" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesMeaningfulTasteRecovery);
+    const forceMiddleGradesCleanCandidateShortfallExpansion = ageProfile.key === "middleGrades" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesCleanCandidateShortfallExpansion);
     if (ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace && !context.signal?.aborted) {
       const meaningfulTarget = Math.min(ageProfile.docLimit, 5);
       const meaningfulCountBeforeRecovery = middleGradesMeaningfulTasteExpandedPoolItems().length;
@@ -4557,6 +4570,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         mediumStrongEvidenceAcceptedTitles: ageProfile.key === "middleGrades" ? middleGradesMediumStrongEvidenceAcceptedTitlesForDiagnostics : undefined,
         weakEvidenceFinalizedBecause: ageProfile.key === "middleGrades" ? middleGradesWeakEvidenceFinalizedBecause : undefined,
         weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted: ageProfile.key === "middleGrades" ? middleGradesWeakEvidenceReturnedOnlyAfterEvidenceSearchExhausted : undefined,
+        cleanCandidateShortfallExpansionTriggered: ageProfile.key === "middleGrades" ? forceMiddleGradesCleanCandidateShortfallExpansion : undefined,
+        expansionFetchAttempted: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20) : undefined,
+        expansionConvertedCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? middleGradesMeaningfulTasteRecoveryAcceptedTitles.length : undefined,
+        expansionCleanEligibleCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? middleGradesRecoveryAcceptedLikelyFinalSurvivorTitles.length : undefined,
+        expansionSelectedTitles: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? uniqueStrings(middleGradesRecoveryAcceptedLikelyFinalSurvivorTitles, 20) : undefined,
         meaningfulTasteRecoveryTriggered: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryTriggered : undefined,
         meaningfulTasteRecoveryTriggerStage: ageProfile.key === "middleGrades" && middleGradesMeaningfulTasteRecoveryTriggered ? (forceMiddleGradesMeaningfulTasteRecovery ? "post_final_eligibility" : "source") : undefined,
         meaningfulTasteRecoverySkippedReason: ageProfile.key === "middleGrades" && !middleGradesMeaningfulTasteRecoveryTriggered ? "trigger_conditions_not_met" : undefined,
