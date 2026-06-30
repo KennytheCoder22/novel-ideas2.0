@@ -326,6 +326,10 @@ export interface SourceDiagnosticV2 {
   finalEligibilityGateApplied?: boolean;
   expansionCandidatesAcceptedFinal?: string[];
   expansionSelectedTitles?: string[];
+  cleanExpansionFallbackQueriesSuppressed?: string[];
+  cleanExpansionProfileSpecificQueriesOnly?: boolean;
+  cleanExpansionQueryFamilyYield?: Record<string, number>;
+  cleanExpansionStoppedAfterProfileFamiliesExhausted?: boolean;
   expansionCandidatesRejectedByReason?: Record<string, string[]>;
   expansionSelectedRejectedByReason?: Record<string, string[]>;
   expansionLockQualityPass?: boolean;

@@ -1610,6 +1610,8 @@ async function main() {
     assertEqual(openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered, true, "live-shaped underfilled Middle Grades run should trigger clean-candidate expansion even without deep debug");
     assertEqual(openLibraryDiagnostics.expansionFetchAttempted, true, "live-shaped clean-candidate expansion should attempt fetches");
     assertEqual(Array.isArray(openLibraryDiagnostics.expansionAttemptedQueries) && openLibraryDiagnostics.expansionAttemptedQueries.length > 0, true, "live-shaped clean-candidate expansion should list attempted queries");
+    assertEqual((openLibraryDiagnostics.expansionAttemptedQueries || []).some((query) => /funny|humou?r|comedy|middle grade adventure$|middle grade friendship$|community/i.test(query)), false, "clean expansion must not attempt humor or generic fallback queries");
+    assertEqual(openLibraryDiagnostics.cleanExpansionProfileSpecificQueriesOnly, true, "clean expansion should report profile-specific queries only");
     assertEqual(Array.isArray(openLibraryDiagnostics.expansionFetchResultsByQuery) && openLibraryDiagnostics.expansionFetchResultsByQuery.some((row) => Number(row.rawCount || 0) > 0), true, "live-shaped clean-candidate expansion should report per-query raw counts");
     assertEqual(Number(openLibraryDiagnostics.expansionRawCount || 0) > 0, true, "live-shaped clean-candidate expansion should report actual fetched raw docs");
     assertEqual(Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0, true, "live-shaped clean-candidate expansion should convert rows");

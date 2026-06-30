@@ -1808,6 +1808,7 @@ function middleGradesMeaningfulTasteRecoveryQueryPlans(
     if (!skippedReason && sameRunLeakageByFamily[def.family] >= 2) skippedReason = "same_run_family_leakage_or_query_only";
     if (!skippedReason && def.family === "friendship_adventure" && hasAvoid(/\b(friendship|friends?)\b/i) && likedSupport < 2) skippedReason = "friendship_avoid_without_second_positive_anchor";
     if (!skippedReason && /fantasy|adventure/.test(def.family) && hasAvoid(/\b(fantasy|magic|magical|adventure|quest)\b/i) && likedSupport < 2) skippedReason = "fantasy_or_adventure_avoid_requires_second_positive_anchor";
+    if (!skippedReason && cleanShortfallExpansion && likedSupport === 0) skippedReason = "no_liked_evidence_support_for_clean_expansion";
     if (!skippedReason && likedSupport === 0) score -= 6;
     return { query: def.query, family: def.family, anchors: def.anchors, score, reason: reasons.join(";"), skippedReason };
   });
@@ -2103,7 +2104,25 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         ? Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_TOTAL_BUDGET_MS)
         : Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_TOTAL_BUDGET_MS)
       : plan.timeoutMs;
-    const queryPlans = buildOpenLibraryQueryPlans(plan, context.profile, ageProfile);
+    const forceMiddleGradesCleanCandidateShortfallExpansion = ageProfile.key === "middleGrades" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesCleanCandidateShortfallExpansion);
+    const baseQueryPlans = buildOpenLibraryQueryPlans(plan, context.profile, ageProfile);
+    const cleanExpansionQueryPlan = forceMiddleGradesCleanCandidateShortfallExpansion
+      ? middleGradesMeaningfulTasteRecoveryQueryPlans(context.profile, new Set<string>(), {})
+      : undefined;
+    const cleanExpansionQueries = cleanExpansionQueryPlan?.queries || [];
+    const queryPlans = forceMiddleGradesCleanCandidateShortfallExpansion
+      ? cleanExpansionQueries.map((query, index): OpenLibraryQueryPlan => ({
+        query,
+        originalPlannedQuery: baseQueryPlans[0]?.originalPlannedQuery || baseQueryPlans[0]?.query || query,
+        queryCascadeIndex: index,
+        queryFamily: queryFamilyForOpenLibraryQuery(query),
+        facets: baseQueryPlans[0]?.facets || [],
+        routingReason: "middle_grades_clean_candidate_shortfall_expansion",
+        routingDominance: baseQueryPlans[0]?.routingDominance,
+        fallbackAlignment: "route_aligned",
+        profileSpecific: true,
+      }))
+      : baseQueryPlans;
     const queries = queryPlans.map((queryPlan) => queryPlan.query);
     const middleGradesProfileSpecificQuerySet = new Set(queryPlans.filter((queryPlan) => queryPlan.profileSpecific).map((queryPlan) => queryPlan.query.toLowerCase()));
     const middleGradesTargetedPlanForRun = ageProfile.key === "middleGrades" ? middleGradesTargetedQueryPlan(context.profile) : undefined;
@@ -3831,7 +3850,6 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     }
 
     const forceMiddleGradesMeaningfulTasteRecovery = ageProfile.key === "middleGrades" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesMeaningfulTasteRecovery);
-    const forceMiddleGradesCleanCandidateShortfallExpansion = ageProfile.key === "middleGrades" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesCleanCandidateShortfallExpansion);
     if (ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace && !context.signal?.aborted) {
       const meaningfulTarget = Math.min(ageProfile.docLimit, 5);
       const meaningfulCountBeforeRecovery = middleGradesMeaningfulTasteExpandedPoolItems().length;
@@ -4591,6 +4609,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         finalEligibilityGateApplied: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? false : undefined,
         expansionCandidatesAcceptedFinal: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? [] : undefined,
         expansionSelectedTitles: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? [] : undefined,
+        cleanExpansionFallbackQueriesSuppressed: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? uniqueStrings(baseQueryPlans.map((queryPlan) => queryPlan.query).filter((query) => /funny|humou?r|comedy|middle grade adventure$|middle grade friendship$|community/i.test(query)), 20) : undefined,
+        cleanExpansionProfileSpecificQueriesOnly: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? queries.every((query) => !/funny|humou?r|comedy|middle grade adventure$|middle grade friendship$|community/i.test(query)) : undefined,
+        cleanExpansionQueryFamilyYield: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? middleGradesRecoveryFamilyYieldByFamily : undefined,
+        cleanExpansionStoppedAfterProfileFamiliesExhausted: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? middleGradesUnderfilledAfterMeaningfulTasteRecovery : undefined,
         meaningfulTasteRecoveryTriggered: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryTriggered : undefined,
         meaningfulTasteRecoveryTriggerStage: ageProfile.key === "middleGrades" && middleGradesMeaningfulTasteRecoveryTriggered ? (forceMiddleGradesMeaningfulTasteRecovery ? "post_final_eligibility" : "source") : undefined,
         meaningfulTasteRecoverySkippedReason: ageProfile.key === "middleGrades" && !middleGradesMeaningfulTasteRecoveryTriggered ? "trigger_conditions_not_met" : undefined,
@@ -4599,7 +4621,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         meaningfulTasteRecoveryRejectedTitlesByReason: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryRejectedTitlesByReason : undefined,
         recoveryQueryAnchorByQuery: ageProfile.key === "middleGrades" ? middleGradesRecoveryQueryAnchorByQuery : undefined,
         recoveryHumorUsedAsAnchorBlocked: ageProfile.key === "middleGrades" ? middleGradesRecoveryHumorUsedAsAnchorBlocked : undefined,
-        recoveryConcreteFictionQueryUsed: ageProfile.key === "middleGrades" ? middleGradesRecoveryConcreteFictionQueryUsed : undefined,
+        recoveryConcreteFictionQueryUsed: ageProfile.key === "middleGrades" ? (middleGradesRecoveryConcreteFictionQueryUsed || (forceMiddleGradesCleanCandidateShortfallExpansion && queries.some((query) => /\b(middle grade|children)\b/i.test(query)))) : undefined,
         recoveryQueryFamilyRejectedForLeakageCount: ageProfile.key === "middleGrades" ? middleGradesRecoveryQueryFamilyRejectedForLeakageCount : undefined,
         recoveryFamilyScores: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamilyScores : undefined,
         recoveryFamiliesSkippedByAvoidEvidence: ageProfile.key === "middleGrades" ? middleGradesRecoveryFamiliesSkippedByAvoidEvidence : undefined,

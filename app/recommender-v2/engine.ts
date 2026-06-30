@@ -591,10 +591,17 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
               rawCount: mergedRawItems.length,
               normalizedCount: mergedRawItems.length,
               usableRowsAfterFiltering: mergedRawItems.length,
+              openLibraryDocsActuallyHandedToScoringCount: Math.max(
+                Number(currentOpenLibrarySourceResult.diagnostics.openLibraryDocsActuallyHandedToScoringCount || 0),
+                Number(expansionResult.diagnostics.openLibraryDocsActuallyHandedToScoringCount || 0),
+              ),
+              openLibraryDocsFetchedAcrossAllQueriesCount: Number(currentOpenLibrarySourceResult.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0)
+                + Number(expansionResult.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0),
               cleanCandidateShortfallExpansionTriggered: true,
               expansionNotTriggeredReason: undefined,
               expansionFetchAttempted: true,
               expansionAttemptedQueries,
+              recoveryConcreteFictionQueryUsed: expansionAttemptedQueries.some((query) => /\b(middle grade|children)\b/i.test(query)) || Boolean(currentOpenLibrarySourceResult.diagnostics.recoveryConcreteFictionQueryUsed),
               expansionFetchResultsByQuery,
               expansionRawCount,
               expansionConvertedCount: expansionRawItems.length,
