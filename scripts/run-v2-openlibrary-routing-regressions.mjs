@@ -1542,9 +1542,11 @@ async function main() {
     assertEqual(openLibraryDiagnostics.recoverySuccessRequiresFinalEligibility, true, "meaningful-taste recovery success should require final eligibility survival");
     assertEqual(Number(openLibraryDiagnostics.meaningfulTasteRecoverySurvivingFinalCount || 0), result.items.length, "surviving recovery final count should reflect actual final selection count");
     assertEqual(openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered, true, "clean-candidate shortfall expansion should trigger after post-final eligibility remains underfilled");
-    assertEqual((openLibraryDiagnostics.expansionFetchAttempted || []).some((query) => /middle grade robot adventure|middle grade science fiction adventure|children ocean adventure|middle grade survival adventure|middle grade family adventure|middle grade superhero adventure|middle grade school mystery|middle grade fantasy quest/i.test(query)), true, "clean-candidate expansion should attempt non-humor concrete query shapes");
+    assertEqual(openLibraryDiagnostics.expansionFetchAttempted, true, "clean-candidate expansion should attempt an expansion fetch");
+    assertEqual((openLibraryDiagnostics.meaningfulTasteRecoveryQueriesAttempted || []).some((query) => /middle grade robot adventure|middle grade science fiction adventure|children ocean adventure|middle grade survival adventure|middle grade family adventure|middle grade superhero adventure|middle grade school mystery|middle grade fantasy quest/i.test(query)), true, "clean-candidate expansion should attempt non-humor concrete query shapes");
     assertEqual(Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0, true, "clean-candidate expansion should merge converted rows into scoring");
-    assertEqual(Array.isArray(openLibraryDiagnostics.expansionSelectedTitles), true, "clean-candidate expansion should report selected titles after scoring/selection");
+    assertEqual(Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 0, true, "clean-candidate expansion candidates should enter scoring");
+    assertEqual(Array.isArray(openLibraryDiagnostics.expansionSelectedTitles) || Object.keys(openLibraryDiagnostics.expansionCandidatesRejectedByReason || {}).length > 0, true, "clean-candidate expansion should report selected titles or explicit rejection reasons after scoring/selection");
     if (result.items.length < 5) {
       assertEqual(openLibraryDiagnostics.underfilledAfterMeaningfulTasteRecovery, true, "underfilled recovery should remain marked underfilled after final eligibility rejects merged rows");
       assertEqual(Array.isArray(openLibraryDiagnostics.meaningfulTasteRecoveryExhaustedQueries) && openLibraryDiagnostics.meaningfulTasteRecoveryExhaustedQueries.length > 0, true, "underfilled post-final recovery should expose exhausted recovery queries");
@@ -1559,6 +1561,58 @@ async function main() {
     else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousPostFinalRecoveryBase;
     globalThis.fetch = originalFetch;
   }
+
+
+
+  const previousLiveExpansionBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  const liveExpansionFetchQueries = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    liveExpansionFetchQueries.push(query);
+    const expansionQuery = /middle grade robot adventure|middle grade science fiction adventure|children ocean adventure|middle grade survival adventure|middle grade family adventure|middle grade superhero adventure|middle grade school mystery|middle grade fantasy quest/i.test(query);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: Array.from({ length: 6 }, (_unused, offset) => ({
+        key: `/works/live-expansion-${query.replace(/\s+/g, "-")}-${offset + 1}`,
+        title: expansionQuery ? [`Robot River Quest`, `Science Survival Team`, `Ocean Family Adventure`, `Superhero School Mystery`, `Fantasy Quest Club`, `Family Robot Trail`][offset] : `Live Weak Fallback ${offset + 1}`,
+        author_name: [`Live Expansion Author ${offset + 1}`],
+        subject: expansionQuery
+          ? ["Juvenile fiction", "Robots -- Fiction", "Adventure stories", "Family -- Fiction", "School stories"]
+          : ["Juvenile fiction"],
+        description: expansionQuery
+          ? "A middle grade robot adventure about family, school friends, survival, and a science mystery quest."
+          : "A generic juvenile row without independent robot, science, family, school, or adventure evidence.",
+        language: ["eng"],
+        first_publish_year: 2018 + offset,
+      })) }),
+    };
+  };
+  try {
+    const result = await runRecommenderV2({
+      requestId: "live-shaped-clean-expansion-regression",
+      ageBand: "preteens",
+      limit: 5,
+      enabledSources: { openLibrary: true },
+      signals: [
+        { action: "like", title: "Robot Science Family Adventure", source: "mock", format: "book", genres: ["Science"], themes: ["Robot", "Family", "School", "Adventure"] },
+      ],
+    });
+    const openLibraryDiagnostics = result.diagnostics.sources.find((source) => source.source === "openLibrary") || {};
+    assertEqual(openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered, true, "live-shaped underfilled Middle Grades run should trigger clean-candidate expansion even without deep debug");
+    assertEqual(openLibraryDiagnostics.expansionFetchAttempted, true, "live-shaped clean-candidate expansion should attempt fetches");
+    assertEqual(Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0, true, "live-shaped clean-candidate expansion should convert rows");
+    assertEqual(Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 0, true, "live-shaped clean-candidate expansion should enter scoring");
+    assertEqual((openLibraryDiagnostics.expansionSelectedTitles || []).length > 0 || Object.keys(openLibraryDiagnostics.expansionCandidatesRejectedByReason || {}).length > 0, true, "live-shaped clean-candidate expansion should select rows or explain rejections");
+    assertEqual(liveExpansionFetchQueries.some((query) => /middle grade robot adventure|middle grade science fiction adventure|middle grade family adventure|middle grade school mystery/i.test(query)), true, "live-shaped expansion should use concrete non-humor query shapes");
+    console.log(JSON.stringify({ name: "middle grades live-shaped underfill triggers clean-candidate expansion", pass: true, expansionQueries: liveExpansionFetchQueries.filter((query) => /middle grade robot adventure|middle grade science fiction adventure|children ocean adventure|middle grade survival adventure|middle grade family adventure|middle grade superhero adventure|middle grade school mystery|middle grade fantasy quest/i.test(query)), selected: result.items.map((item) => item.title) }));
+  } finally {
+    if (previousLiveExpansionBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousLiveExpansionBase;
+    globalThis.fetch = originalFetch;
+  }
+
 
   const previousMiddleGradesMediumStrongBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   let middleGradesMediumStrongFetchCount = 0;

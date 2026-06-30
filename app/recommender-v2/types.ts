@@ -311,10 +311,13 @@ export interface SourceDiagnosticV2 {
   recoveryAcceptedButPredictedDropTitles?: string[];
   recoveryFinalSurvivorPredictionMismatch?: boolean;
   cleanCandidateShortfallExpansionTriggered?: boolean;
-  expansionFetchAttempted?: string[];
+  expansionNotTriggeredReason?: string;
+  expansionFetchAttempted?: boolean;
   expansionConvertedCount?: number;
+  expansionCandidatesEnteredScoringCount?: number;
   expansionCleanEligibleCount?: number;
   expansionSelectedTitles?: string[];
+  expansionCandidatesRejectedByReason?: Record<string, string[]>;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

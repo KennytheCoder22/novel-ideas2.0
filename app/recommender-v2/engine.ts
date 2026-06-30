@@ -450,11 +450,16 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
 
 
   const currentOpenLibrarySourceResult = openLibrarySourceIndex >= 0 ? sourceResults[openLibrarySourceIndex] : undefined;
-  const shouldRunCleanCandidateShortfallExpansion = middleGradesDeepDebugActive
-    && tasteProfile.ageBand === "preteens"
-    && Boolean(currentOpenLibrarySourceResult?.rawItems.length)
-    && scored.filter((candidate) => candidate.source === "openLibrary").length > 20
-    && selected.length < 5;
+  const currentSelectionDiagnostics = selection.rejectedReasons as Record<string, unknown>;
+  const reportedCleanCandidateCount = Number(currentSelectionDiagnostics.finalEligibilityCleanCandidateCount);
+  const finalEligibilityCleanCandidateCount = Number.isFinite(reportedCleanCandidateCount)
+    ? reportedCleanCandidateCount
+    : selected.length;
+  const middleGradesCleanCandidateUnderfilled = finalEligibilityCleanCandidateCount < 5
+    || currentSelectionDiagnostics.lockQualityPass === false;
+  const shouldRunCleanCandidateShortfallExpansion = tasteProfile.ageBand === "preteens"
+    && Boolean(currentOpenLibrarySourceResult)
+    && middleGradesCleanCandidateUnderfilled;
   if (shouldRunCleanCandidateShortfallExpansion && currentOpenLibrarySourceResult) {
     const openLibraryPlan = searchPlan.sourcePlans.find((plan) => plan.source === "openLibrary");
     const adapter = openLibraryPlan ? sourceAdapters[openLibraryPlan.source] : undefined;
@@ -466,6 +471,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           ...tasteProfile.diagnostics,
           forceMiddleGradesMeaningfulTasteRecovery: true,
           forceMiddleGradesCleanCandidateShortfallExpansion: true,
+          debugMiddleGradesDeepTrace: true,
+          middleGradesDeepDebugActive: true,
           priorMiddleGradesRecoveryRejectedReasons: selection.rejectedReasons,
           priorMiddleGradesRecoverySourceDiagnostics: currentOpenLibrarySourceResult.diagnostics,
         },
@@ -488,7 +495,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
               normalizedCount: mergedRawItems.length,
               usableRowsAfterFiltering: mergedRawItems.length,
               cleanCandidateShortfallExpansionTriggered: true,
-              expansionFetchAttempted: expansionResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted || expansionResult.diagnostics.expansionFetchAttempted || [],
+              expansionNotTriggeredReason: undefined,
+              expansionFetchAttempted: true,
               expansionConvertedCount: expansionRawItems.length,
             },
           }
@@ -501,17 +509,27 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         const expansionSelectedTitles = selected
           .filter((candidate) => expansionKeys.has(sourceItemKey(candidate)))
           .map((candidate) => candidate.title);
-        const cleanEligibleExpansionTitles = scored
-          .filter((candidate) => expansionKeys.has(sourceItemKey(candidate)))
+        const expansionScoredCandidates = scored.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)));
+        const cleanEligibleExpansionTitles = expansionScoredCandidates
           .filter((candidate) => !candidate.rejectedReasons.includes("zero_doc_backed_taste_match") && !candidate.rejectedReasons.includes("broad_adventure_only_taste_match") && !candidate.rejectedReasons.includes("humor_keyword_only_leakage") && !candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied"))
           .map((candidate) => candidate.title);
+        const expansionCandidatesRejectedByReason = expansionScoredCandidates
+          .filter((candidate) => !expansionSelectedTitles.includes(candidate.title))
+          .reduce<Record<string, string[]>>((acc, candidate) => {
+            const reason = candidate.rejectedReasons.find(Boolean) || "ranked_below_final_selection";
+            acc[reason] = [...(acc[reason] || []), candidate.title];
+            return acc;
+          }, {});
         const expansionDiagnostics = sourceResults[openLibrarySourceIndex]?.diagnostics;
         if (expansionDiagnostics) {
           expansionDiagnostics.cleanCandidateShortfallExpansionTriggered = true;
-          expansionDiagnostics.expansionFetchAttempted = expansionDiagnostics.expansionFetchAttempted || expansionDiagnostics.meaningfulTasteRecoveryQueriesAttempted || [];
+          expansionDiagnostics.expansionNotTriggeredReason = undefined;
+          expansionDiagnostics.expansionFetchAttempted = true;
           expansionDiagnostics.expansionConvertedCount = expansionRawItems.length;
+          expansionDiagnostics.expansionCandidatesEnteredScoringCount = expansionScoredCandidates.length;
           expansionDiagnostics.expansionCleanEligibleCount = cleanEligibleExpansionTitles.length;
           expansionDiagnostics.expansionSelectedTitles = expansionSelectedTitles;
+          expansionDiagnostics.expansionCandidatesRejectedByReason = expansionCandidatesRejectedByReason;
           expansionDiagnostics.underfilledAfterMeaningfulTasteRecovery = selected.length < 5;
           expansionDiagnostics.middleGradesRecoveryFinalShortfallReason = selected.length < 5
             ? String((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryFinalShortfallReason || "clean_candidate_shortfall_expansion_underfilled")
@@ -519,13 +537,27 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         }
       } else {
         currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = true;
-        currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = [];
+        currentOpenLibrarySourceResult.diagnostics.expansionNotTriggeredReason = undefined;
+        currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = true;
         currentOpenLibrarySourceResult.diagnostics.expansionConvertedCount = 0;
+        currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
         currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
         currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
+        currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
         currentOpenLibrarySourceResult.diagnostics.middleGradesRecoveryFinalShortfallReason = expansionResponse.timedOut ? "clean_candidate_shortfall_expansion_timed_out" : "clean_candidate_shortfall_expansion_failed";
       }
     }
+  } else if (tasteProfile.ageBand === "preteens" && currentOpenLibrarySourceResult) {
+    currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = false;
+    currentOpenLibrarySourceResult.diagnostics.expansionNotTriggeredReason = middleGradesCleanCandidateUnderfilled
+      ? "openlibrary_source_unavailable"
+      : "final_eligibility_not_underfilled";
+    currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = false;
+    currentOpenLibrarySourceResult.diagnostics.expansionConvertedCount = 0;
+    currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
+    currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
+    currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
+    currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
   }
 
   markPipelineObjects(normalized, "normalized", requestId);

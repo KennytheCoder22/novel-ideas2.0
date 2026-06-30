@@ -1395,6 +1395,18 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const selectedNonHumorAlignmentCount = selected.filter(middleGradesNonHumorAlignment).length;
   const genericFunnySlateDetected = selected.length >= 5 && selectedNonHumorAlignmentCount === 0 && selected.every((candidate) => isMiddleGradesHumorRouteCandidate(candidate) || /funny|humor|comedy/i.test(String(candidate.title || "")));
   const selectedFallbackCount = selected.filter((candidate) => isMiddleGradesAntiZeroFallbackCandidate(candidate) || (middleGradesRouteAlignmentEvidence(candidate).queryLevel && !middleGradesRouteAlignmentEvidence(candidate).documentLevel)).length;
+  const finalEligibilityCleanCandidateCount = selected.filter((candidate) => {
+    const finalEligibility = middleGradesFinalEligibility(candidate);
+    const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
+    const routeEvidence = middleGradesRouteAlignmentEvidence(candidate);
+    return finalEligibility.allowed
+      && tasteEligibility.allowed
+      && middleGradesEvidenceTierRank(routeEvidence.tier) >= middleGradesEvidenceTierRank("medium_evidence")
+      && candidate.score > 0
+      && !isMiddleGradesAntiZeroFallbackCandidate(candidate)
+      && !(routeEvidence.queryLevel && !routeEvidence.documentLevel)
+      && !isMiddleGradesTitleOnlyEvidence(candidate);
+  }).length;
   const rejectedRouteAlignedCount = rankedCandidates.filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && isMiddleGradesRouteAlignedSuccessCandidate(candidate)).length;
   const zeroTasteRejectedCandidates = rankedCandidates
     .filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && candidate.rejectedReasons.includes("zero_doc_backed_taste_match"));
@@ -1510,6 +1522,7 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
   diagnostics.rankedDocsTitles = rankedCandidates.map((candidate) => candidate.title);
   diagnostics.finalEligibilityAcceptedTitles = selected.map((candidate) => candidate.title);
+  diagnostics.finalEligibilityCleanCandidateCount = finalEligibilityCleanCandidateCount;
   diagnostics.middleGradesScoredCandidateAttribution = middleGradesScoredCandidateAttribution;
   diagnostics.genericTasteSignalsRemovedByTitle = genericTasteSignalsRemovedByTitle;
   diagnostics.genericOnlyTasteMatchTitles = genericOnlyTasteMatchTitles;
