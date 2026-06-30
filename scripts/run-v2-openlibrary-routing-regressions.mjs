@@ -1673,6 +1673,8 @@ async function main() {
     assertEqual(openLibraryDiagnostics.expansionLockQualityPass, false, "expansion cannot pass lock quality with a repeated magic-title cluster");
     assertEqual((openLibraryDiagnostics.expansionLockQualityFailReasons || []).some((reason) => /repeated_title_token_cluster|weak_cluster/i.test(reason)), true, "weak cluster expansion should report repeated-token or weak-cluster failure");
     assertEqual((openLibraryDiagnostics.expansionWeakClusterSelectedTitles || []).length > 0, true, "weak cluster expansion should list weak selected titles");
+    const weakClusterMeaningfulTitles = ((result.diagnostics.stages.find((stage) => stage.stage === "selected")?.details?.rejectedReasons || {}).meaningfulTasteEligibleTitles || []);
+    assertEqual((openLibraryDiagnostics.expansionWeakClusterSelectedTitles || []).some((title) => weakClusterMeaningfulTitles.includes(title)), false, "weak repeated-token expansion titles should not appear in meaningfulTasteEligibleTitles");
     assertEqual((openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length, 0, "weak cluster expansion should not count any rows as final-accepted expansion candidates");
     assertEqual(Number(openLibraryDiagnostics.expansionCleanEligibleCount || 0), 0, "weak cluster expansion should not count lock-quality-failed rows as clean eligible");
     assertEqual((openLibraryDiagnostics.expansionSelectedTitles || []).length, 0, "weak cluster expansionSelectedTitles should be empty when final-accepted expansion candidates are empty");

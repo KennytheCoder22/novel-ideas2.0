@@ -1395,6 +1395,11 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const selectedNonHumorAlignmentCount = selected.filter(middleGradesNonHumorAlignment).length;
   const genericFunnySlateDetected = selected.length >= 5 && selectedNonHumorAlignmentCount === 0 && selected.every((candidate) => isMiddleGradesHumorRouteCandidate(candidate) || /funny|humor|comedy/i.test(String(candidate.title || "")));
   const selectedFallbackCount = selected.filter((candidate) => isMiddleGradesAntiZeroFallbackCandidate(candidate) || (middleGradesRouteAlignmentEvidence(candidate).queryLevel && !middleGradesRouteAlignmentEvidence(candidate).documentLevel)).length;
+  const hasRepeatedClusterTitleToken = (candidate: ScoredCandidate): boolean => Boolean(
+    repeatedTitleTokenClusterDetected
+      && repeatedTitleTokenClusterToken
+      && normalized(candidate.title).split(" ").includes(repeatedTitleTokenClusterToken)
+  );
   const isCleanFinalEligibleCandidate = (candidate: ScoredCandidate): boolean => {
     const finalEligibility = middleGradesFinalEligibility(candidate);
     const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
@@ -1407,6 +1412,7 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
       && !candidate.rejectedReasons.includes("humor_keyword_only_leakage")
       && !candidate.rejectedReasons.includes("broad_adventure_only_taste_match")
       && !candidate.rejectedReasons.includes("non_positive_score")
+      && !hasRepeatedClusterTitleToken(candidate)
       && !isMiddleGradesAntiZeroFallbackCandidate(candidate)
       && !(routeEvidence.queryLevel && !routeEvidence.documentLevel)
       && !isMiddleGradesTitleOnlyEvidence(candidate);
@@ -1425,7 +1431,7 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     .filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && candidate.rejectedReasons.includes("broad_adventure_only_taste_match"))
     .map((candidate) => candidate.title);
   const meaningfulTasteEligibleTitles = rankedCandidates
-    .filter((candidate) => middleGradesMeaningfulTasteEligibility(candidate).allowed)
+    .filter(isCleanFinalEligibleCandidate)
     .map((candidate) => candidate.title);
   const underfilledBecauseOnlyWeakOrZeroTaste = selected.length < 5 && (zeroTasteCandidateRejectedTitles.length > 0 || broadAdventureOnlyRejectedTitles.length > 0);
   const emergencyFallbackUsedForZeroTasteFill = selected.some((candidate) => candidate.rejectedReasons.includes("accepted_middle_grades_zero_final_items_guard") && !middleGradesMeaningfulTasteEligibility(candidate).allowed);
