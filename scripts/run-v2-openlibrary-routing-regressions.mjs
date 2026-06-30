@@ -2076,6 +2076,21 @@ async function main() {
   assertEqual(middleGradesZeroTasteGateResult.selected.some((candidate) => candidate.title === "Friendship School Match"), true, "document-backed taste candidates should survive over zero-taste fallbacks");
   assertEqual(Array.isArray(middleGradesZeroTasteGateResult.rejectedReasons.zeroTasteCandidateRejectedTitles) && middleGradesZeroTasteGateResult.rejectedReasons.zeroTasteCandidateRejectedTitles.includes("Zero Taste Fallback"), true, "zero-taste rejected titles should be diagnosed");
 
+  const middleGradesMagicTitleClusterResult = selectRecommendations(Array.from({ length: 5 }, (_, index) => fakeScoredCandidate({
+    id: `magic-title-only-${index}`,
+    title: [`My Rainbow Magic`, `A Snicker of Magic`, `A Tale of Magic`, `Magic Kingdom For Sale`, `The Magic Faraway Tree`][index],
+    score: 12 - index * 0.1,
+    maturityBand: "preteens",
+    genres: [],
+    themes: [],
+    raw: { subject: ["Juvenile fiction"] },
+    diagnostics: { queryText: "middle grade fantasy friendship fiction", queryFamily: "fantasy_friendship", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy"] },
+    scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 2, positiveTasteMatch: 0.5 },
+  })), middleGradesMeaningfulTasteProfile, 5);
+  assertEqual(middleGradesMagicTitleClusterResult.selected.length < 5, true, "title-token-only magic clusters must not fill a Middle Grades slate");
+  assertEqual((middleGradesMagicTitleClusterResult.rejectedReasons.titleOnlyEvidenceFinalEligibleTitles || []).length, 0, "title-only route evidence must not be final eligible");
+  assertEqual(Object.values(middleGradesMagicTitleClusterResult.rejectedReasons.finalEligibilityEvidenceFieldCountByTitle || {}).every((count) => Number(count) <= 1), true, "title-only cluster regression should expose one-field evidence counts");
+
   const middleGradesBroadAdventureGateResult = selectRecommendations([
     fakeScoredCandidate({
       id: "broad-adventure-only",
@@ -2340,8 +2355,8 @@ async function main() {
       raw: { subject: subjects, description },
     })),
   ], middleGradesSelectionProfile, 5);
-  assertEqual(Number(middleGradesWeakTitleOnlyCapResult.rejectedReasons.middle_grades_title_only_replacements || 0), 2, "middle grades weak title-only cap should replace excess title-only matches with richer document evidence");
-  assertEqual(middleGradesWeakTitleOnlyCapResult.selected.filter((candidate) => /^Joke /.test(candidate.title)).length, 3, "middle grades weak title-only cap should leave at most three title-only weak matches when richer evidence exists");
+  assertEqual((middleGradesWeakTitleOnlyCapResult.rejectedReasons.titleOnlyEvidenceFinalEligibleTitles || []).length, 0, "middle grades final eligibility should not allow title-only humor matches");
+  assertEqual(middleGradesWeakTitleOnlyCapResult.selected.filter((candidate) => /^Joke /.test(candidate.title)).length, 0, "middle grades title-only weak matches should not survive final eligibility when richer evidence exists");
   assertEqual(middleGradesWeakTitleOnlyCapResult.selected.some((candidate) => candidate.title === "Laugh Lab Stories"), true, "richer subject/description evidence should enter the slate despite lower raw score");
   assertEqual(middleGradesWeakTitleOnlyCapResult.selected.some((candidate) => candidate.title === "The Cafeteria Comedy Club"), true, "second richer evidence candidate should enter the slate to diversify evidence sources");
   console.log(JSON.stringify({ name: "middle grades weak title-only cap prefers richer document evidence", pass: true, selected: middleGradesWeakTitleOnlyCapResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesWeakTitleOnlyCapResult.rejectedReasons }));
@@ -2365,14 +2380,14 @@ async function main() {
     diagnostics: { queryText: "middle grade robot fiction", queryFamily: "science fiction", routingReason: "middle_grades_scifi_adventure" },
     raw: { subject: ["Juvenile fiction"] },
   })), middleGradesSelectionProfile, 5);
-  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.finalCountContractStatus, "full_weak_evidence", "five title-only robot results cannot produce full_route_aligned");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.finalCountContractStatus, "zero_result_failure", "five title-only robot results cannot produce a final slate");
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.lockQualityPass, false, "title-only weak robot slate must not pass lock quality");
-  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.weakEvidenceOnlySlate, true, "all-title-only robot slate should be diagnosed as weak-evidence-only");
-  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.titleOnlySlateDowngradedLockQuality, true, "title-only slate should explicitly downgrade lock quality");
-  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedTitleOnlyCount, 5, "title-only slate diagnostics should count selected title-only candidates");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.weakEvidenceOnlySlate, false, "title-only weak robot rows should be rejected before forming a weak slate");
+  assertEqual((middleGradesRobotTitleOnlyLockResult.rejectedReasons.titleOnlyEvidenceFinalEligibleTitles || []).length, 0, "title-only slate rows should not be final eligible");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedTitleOnlyCount, 0, "title-only slate diagnostics should not count rejected title-only candidates as selected");
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedMediumStrongEvidenceCount, 0, "title-only slate should have no medium/strong non-title document evidence");
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedVsRejectedRouteAlignmentSummary.selectedRouteAlignedCount, 0, "weak title/subtitle evidence cannot count as route-aligned success");
-  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.sameSeriesTitleOnlyClusterDetected, true, "title-only fallback slate with same-series clustering must fail lock quality");
+  assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.sameSeriesTitleOnlyClusterDetected, false, "rejected title-only rows should not be counted as a selected same-series cluster");
   console.log(JSON.stringify({ name: "middle grades title-only robot slate fails lock quality", pass: true, selected: middleGradesRobotTitleOnlyLockResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesRobotTitleOnlyLockResult.rejectedReasons }));
 
   const middleGradesFourWeakResult = selectRecommendations(["One", "Two", "Three", "Four"].map((seed, index) => fakeScoredCandidate({
@@ -2387,7 +2402,7 @@ async function main() {
     diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_humor" },
     raw: { subject: ["Juvenile fiction"] },
   })), middleGradesSelectionProfile, 5);
-  assertEqual(middleGradesFourWeakResult.selected.length, 4, "four weak title-only rows should remain underfilled rather than pretending count success");
+  assertEqual(middleGradesFourWeakResult.selected.length, 0, "four weak title-only rows should be rejected rather than pretending count success");
   assertEqual(middleGradesFourWeakResult.rejectedReasons.lockQualityPass, false, "returned count of four weak rows must fail lock quality");
   assertEqual(middleGradesFourWeakResult.rejectedReasons.finalCountContractStatus !== "full_route_aligned", true, "returned count of four weak rows cannot be full route aligned");
   console.log(JSON.stringify({ name: "middle grades four weak rows remain underfilled failed slate", pass: true, selected: middleGradesFourWeakResult.selected.map((candidate) => candidate.title), status: middleGradesFourWeakResult.rejectedReasons.finalCountContractStatus }));
@@ -2449,6 +2464,7 @@ async function main() {
       maturityBand: "preteens",
       diagnostics: { queryText: "middle grade school story", queryFamily: "school", routingReason: "middle_grades_contemporary_school", documentBackedTasteSignals: ["school"] },
       scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, positiveTasteMatch: 1.2 },
+      raw: { subject: ["Juvenile fiction", "School", "Classroom"] },
     })),
     ...["Family Class Project", "Friendship Class Team"].map((title, index) => fakeScoredCandidate({
       id: `middle-contemporary-safer-${index}`,
@@ -2458,6 +2474,7 @@ async function main() {
       maturityBand: "preteens",
       diagnostics: { queryText: index === 0 ? "middle grade family story" : "middle grade friendship", queryFamily: index === 0 ? "family" : "friendship", routingReason: "middle_grades_contemporary_school", documentBackedTasteSignals: ["family", "friendship"] },
       scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, positiveTasteMatch: 2.4 },
+      raw: { subject: ["Juvenile fiction", "School", "Family", "Friendship", "Classroom"] },
     })),
   ];
   const middleGradesContemporaryDefaultCapResult = selectRecommendations(middleGradesContemporaryDefaultCapCandidates, middleGradesContemporarySelectionProfile, 5);
@@ -2494,9 +2511,9 @@ async function main() {
   ];
   const middleGradesFantasyHumorBalanceResult = selectRecommendations(middleGradesFantasyHumorBalanceCandidates, middleGradesFantasyHumorBalanceProfile, 5);
   const middleGradesFantasyHumorAlignedSelected = middleGradesFantasyHumorBalanceResult.selected.filter((candidate) => /\b(adventure|friendship)\b/i.test(String(candidate.diagnostics?.queryText || ""))).length;
-  assertEqual(middleGradesFantasyHumorBalanceResult.selected.length, 5, "middle grades fantasy humor balance should keep the requested slate size");
+  assertEqual(middleGradesFantasyHumorBalanceResult.selected.length, 3, "middle grades fantasy humor balance should underfill rather than admit title-only humor defaults");
   assertEqual(middleGradesFantasyHumorAlignedSelected >= 2, true, "middle grades fantasy humor balance should include more than one aligned non-humor candidate");
-  assertEqual(Boolean(middleGradesFantasyHumorBalanceResult.rejectedReasons.middle_grades_fantasy_humor_aligned_balance_accepted || middleGradesFantasyHumorBalanceResult.rejectedReasons.middle_grades_humor_default_query_family_cap_accepted), true, "middle grades fantasy humor balance should emit aligned/default-cap diagnostics");
+  assertEqual((middleGradesFantasyHumorBalanceResult.rejectedReasons.titleOnlyEvidenceFinalEligibleTitles || []).length, 0, "middle grades fantasy humor balance should not treat title-only humor defaults as final eligible");
   console.log(JSON.stringify({ name: "middle grades fantasy humor selection balances aligned candidates", pass: true, selected: middleGradesFantasyHumorBalanceResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesFantasyHumorBalanceResult.rejectedReasons }));
 
   const middleGradesHumorDefaultCapCandidates = [
@@ -2524,7 +2541,7 @@ async function main() {
   const middleGradesHumorDefaultCapResult = selectRecommendations(middleGradesHumorDefaultCapCandidates, middleGradesFantasyHumorBalanceProfile, 5);
   const middleGradesHumorDefaultSelected = middleGradesHumorDefaultCapResult.selected.filter((candidate) => /\b(humor|funny)\b/i.test(String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || ""))).length;
   assertEqual(middleGradesHumorDefaultSelected <= 3, true, "middle grades humor selection should cap humor/default query-family candidates when safe alternatives exist");
-  assertEqual(Boolean(middleGradesHumorDefaultCapResult.rejectedReasons.middle_grades_humor_default_query_family_cap_accepted), true, "middle grades humor default cap should emit replacement diagnostics");
+  assertEqual((middleGradesHumorDefaultCapResult.rejectedReasons.titleOnlyEvidenceFinalEligibleTitles || []).length, 0, "middle grades humor defaults should not be final eligible on title-only evidence");
   console.log(JSON.stringify({ name: "middle grades humor selection caps default query family", pass: true, selected: middleGradesHumorDefaultCapResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesHumorDefaultCapResult.rejectedReasons }));
 
   const middleGradesAdventureHumorDefaultCapCandidates = [
@@ -2544,6 +2561,7 @@ async function main() {
       maturityBand: "preteens",
       diagnostics: { queryText: index === 0 ? "middle grade adventure" : "middle grade friendship", queryFamily: index === 0 ? "adventure" : "friendship", routingReason: "middle_grades_fantasy_adventure_age_anchored_recovery", documentBackedTasteSignals: index === 0 ? ["adventure", "fantasy"] : ["friendship"] },
       scoreBreakdown: { positiveTasteMatch: index === 0 ? 0.8 : 1.2, genreFacetMatch: index === 0 ? 1.2 : 0 },
+      raw: { subject: ["Juvenile fiction", index === 0 ? "Adventure stories" : "Friendship"] },
     })),
   ];
   const middleGradesAdventureHumorDefaultCapResult = selectRecommendations(middleGradesAdventureHumorDefaultCapCandidates, middleGradesFantasyHumorBalanceProfile, 5);
@@ -2551,7 +2569,7 @@ async function main() {
   assertEqual(middleGradesAdventureHumorDefaultSelected <= 3, true, "middle grades adventure-humor selection should cap default humor candidates when two safe alternatives exist");
   const middleGradesAdventureHumorAlignedSelected = middleGradesAdventureHumorDefaultCapResult.selected.filter((candidate) => /\b(adventure|friendship)\b/i.test(String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || ""))).length;
   assertEqual(middleGradesAdventureHumorAlignedSelected >= 2, true, "middle grades adventure-humor selection should use the full ranked pool for aligned replacements");
-  assertEqual(Boolean(middleGradesAdventureHumorDefaultCapResult.rejectedReasons.middle_grades_humor_default_query_family_cap_accepted), true, "middle grades adventure-humor default cap should emit replacement diagnostics");
+  assertEqual((middleGradesAdventureHumorDefaultCapResult.rejectedReasons.titleOnlyEvidenceFinalEligibleTitles || []).length, 0, "middle grades adventure-humor defaults should not be final eligible on title-only evidence");
   console.log(JSON.stringify({ name: "middle grades adventure-humor selection caps default query family", pass: true, selected: middleGradesAdventureHumorDefaultCapResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesAdventureHumorDefaultCapResult.rejectedReasons }));
 
   const middleGradesFantasyHumorEnforceCandidates = [
@@ -2562,6 +2580,7 @@ async function main() {
       score: 10,
       maturityBand: "preteens",
       diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Juvenile fiction", "Adventure stories", "Fantasy"] },
     }),
     ...["School One", "School Two", "School Three", "School Four"].map((title, index) => fakeScoredCandidate({
       id: `middle-humor-enforce-school-${index}`,
@@ -2570,6 +2589,7 @@ async function main() {
       score: 9.9 - index * 0.1,
       maturityBand: "preteens",
       diagnostics: { queryText: "middle grade school story", queryFamily: "school", routingReason: "middle_grades_contemporary_school" },
+      raw: { subject: ["Juvenile fiction", "School stories"] },
     })),
     fakeScoredCandidate({
       id: "middle-humor-enforce-aligned-2",
@@ -2578,6 +2598,7 @@ async function main() {
       score: 8,
       maturityBand: "preteens",
       diagnostics: { queryText: "middle grade friendship", queryFamily: "friendship", routingReason: "middle_grades_fantasy_humor" },
+      raw: { subject: ["Juvenile fiction", "Friendship"] },
     }),
     fakeScoredCandidate({
       id: "middle-humor-enforce-default",
@@ -2616,9 +2637,9 @@ async function main() {
   const middleGradesAntiZeroFallbackResult = selectRecommendations(middleGradesAntiZeroFallbackCandidates, middleGradesFantasyHumorBalanceProfile, 5);
   const antiZeroSelected = middleGradesAntiZeroFallbackResult.selected.filter((candidate) => candidate.diagnostics?.fallbackAlignment === "anti_zero" || candidate.diagnostics?.emergencyFallback).length;
   const alignedSurvivorSelected = middleGradesAntiZeroFallbackResult.selected.filter((candidate) => /Survivor/.test(candidate.title)).length;
-  assertEqual(alignedSurvivorSelected >= 3, true, "middle grades anti-zero fallback should not displace surviving humor/school/friendship candidates");
-  assertEqual(antiZeroSelected <= 2, true, "middle grades anti-zero fallback should only fill true shortages after aligned candidates are exhausted");
-  assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.middle_grades_anti_zero_fallback_replacements), true, "middle grades anti-zero fallback gate should emit replacement diagnostics");
+  assertEqual(alignedSurvivorSelected >= 2, true, "middle grades anti-zero fallback should preserve surviving non-title-only school/friendship candidates");
+  assertEqual(antiZeroSelected <= 3, true, "middle grades anti-zero fallback should only fill true shortages after aligned candidates are exhausted");
+  assertEqual((middleGradesAntiZeroFallbackResult.rejectedReasons.titleOnlyEvidenceFinalEligibleTitles || []).length, 0, "middle grades anti-zero fallback gate should not accept title-only evidence as final eligible");
   assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.middle_grades_route_aligned_success), true, "middle grades anti-zero fallback gate should emit route-aligned success diagnostics");
   assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.topRejectedRouteAlignedCandidates), true, "middle grades anti-zero fallback diagnostics should include top rejected route-aligned candidates");
   assertEqual(Boolean(middleGradesAntiZeroFallbackResult.rejectedReasons.selectedVsRejectedRouteAlignmentSummary), true, "middle grades anti-zero fallback diagnostics should compare selected and rejected route alignment");
