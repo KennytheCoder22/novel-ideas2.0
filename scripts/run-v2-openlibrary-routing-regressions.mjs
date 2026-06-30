@@ -186,6 +186,46 @@ async function main() {
   assertEqual((documentEvidenceSelection.rejectedReasons.zeroTasteCandidateRejectedTitles || []).includes("The Dragon Family Quest"), false, "document-backed Open Library evidence should avoid zero_doc_backed_taste_match rejection");
   console.log(JSON.stringify({ name: "middle grades document-backed evidence uses raw subjects and first sentence", pass: true, signals: documentEvidenceScored.diagnostics.documentBackedTasteSignals }));
 
+
+  const metadataAliasEvidenceProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Robot Magic Friends", genres: ["fantasy", "science"], themes: ["robot", "friendship", "survival"] },
+    ],
+  });
+  const metadataAliasNormalized = normalizeSourceResults([{
+    source: "openLibrary",
+    status: "fulfilled",
+    rawItems: [{
+      id: "openlibrary-magic-alias-evidence",
+      title: "The Hidden Door",
+      creators: ["Alias Author"],
+      formats: ["book"],
+      subject: ["Juvenile fiction", "Magic -- Fiction", "Friendship -- Fiction"],
+      first_sentence: ["Friends discover an enchanted school door."],
+      queryText: "middle grade fantasy friendship fiction",
+      queryFamily: "fantasy_friendship",
+      routingReason: "middle_grades_fantasy_adventure",
+    }, {
+      id: "openlibrary-robot-alias-evidence",
+      title: "Wilderness Machine",
+      creators: ["Alias Author"],
+      formats: ["book"],
+      subject: ["Juvenile fiction", "Robots -- Fiction", "Survival -- Fiction", "Animals -- Fiction"],
+      first_sentence: ["A robot survives with animals in the wilderness."],
+      queryText: "middle grade science adventure fiction",
+      queryFamily: "science_adventure",
+      routingReason: "middle_grades_scifi_adventure",
+    }],
+    diagnostics: {},
+  }]);
+  const metadataAliasScored = scoreCandidates(metadataAliasNormalized, metadataAliasEvidenceProfile);
+  assertEqual((metadataAliasScored.find((candidate) => candidate.title === "The Hidden Door")?.diagnostics.documentBackedTasteSignals || []).includes("fantasy"), true, "magic/fantasy metadata aliases should count as document-backed fantasy evidence");
+  assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Wilderness Machine")?.diagnostics.documentBackedTasteSignals || []).includes("robot"), true, "robot metadata aliases should count as document-backed robot evidence");
+  const metadataAliasSelection = selectRecommendations(metadataAliasScored, metadataAliasEvidenceProfile, 2);
+  assertEqual(metadataAliasSelection.selected.length, 2, "metadata-backed alias evidence should survive Middle Grades final eligibility without title-token clustering");
+  console.log(JSON.stringify({ name: "middle grades metadata aliases count as document-backed evidence", pass: true, signalsByTitle: Object.fromEntries(metadataAliasScored.map((candidate) => [candidate.title, candidate.diagnostics.documentBackedTasteSignals])) }));
+
   const genericOnlyTasteProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: [
