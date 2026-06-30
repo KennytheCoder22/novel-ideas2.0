@@ -1577,19 +1577,29 @@ async function main() {
     return {
       ok: true,
       status: 200,
-      text: async () => JSON.stringify({ proxyAttempts: 1, docs: Array.from({ length: 6 }, (_unused, offset) => ({
-        key: `/works/live-expansion-${query.replace(/\s+/g, "-")}-${offset + 1}`,
-        title: expansionQuery ? [`Robot River Quest`, `Science Survival Team`, `Ocean Family Adventure`, `Superhero School Mystery`, `Fantasy Quest Club`, `Family Robot Trail`][offset] : `Live Weak Fallback ${offset + 1}`,
-        author_name: [`Live Expansion Author ${offset + 1}`],
-        subject: expansionQuery
-          ? ["Juvenile fiction", "Robots -- Fiction", "Adventure stories", "Family -- Fiction", "School stories"]
-          : ["Juvenile fiction"],
-        description: expansionQuery
-          ? "A middle grade robot adventure about family, school friends, survival, and a science mystery quest."
-          : "A generic juvenile row without independent robot, science, family, school, or adventure evidence.",
-        language: ["eng"],
-        first_publish_year: 2018 + offset,
-      })) }),
+      text: async () => {
+        const baseExpansionTitles = [
+          `Robot River Quest`,
+          `Science Survival Team`,
+          `Ocean Family Adventure`,
+          `Superhero School Mystery`,
+          `Fantasy Quest Club`,
+          `Family Robot Trail`,
+        ];
+        return JSON.stringify({ proxyAttempts: 1, docs: Array.from({ length: 30 }, (_unused, offset) => ({
+          key: `/works/live-expansion-${query.replace(/\s+/g, "-")}-${offset + 1}`,
+          title: expansionQuery ? `${baseExpansionTitles[offset % baseExpansionTitles.length]} ${["Alpha", "Beta", "Gamma", "Delta", "Echo"][Math.floor(offset / baseExpansionTitles.length)]}` : `Live Weak Fallback ${offset + 1}`,
+          author_name: [`Live Expansion Author ${offset + 1}`],
+          subject: expansionQuery
+            ? ["Juvenile fiction", "Robots -- Fiction", "Adventure stories", "Family -- Fiction", "School stories"]
+            : ["Juvenile fiction"],
+          description: expansionQuery
+            ? "A middle grade robot adventure about family, school friends, survival, and a science mystery quest."
+            : "A generic juvenile row without independent robot, science, family, school, or adventure evidence.",
+          language: ["eng"],
+          first_publish_year: 2018 + offset,
+        })) });
+      },
     };
   };
   try {
@@ -1618,6 +1628,11 @@ async function main() {
     assertEqual(Number(openLibraryDiagnostics.expansionMergedCandidateCount || 0) > 0, true, "live-shaped clean-candidate expansion should merge converted rows into scoring");
     assertEqual((openLibraryDiagnostics.expansionMergedTitles || []).length > 0, true, "live-shaped clean-candidate expansion should list merged titles");
     assertEqual(Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 0, true, "live-shaped clean-candidate expansion should enter scoring");
+    assertEqual(Number(openLibraryDiagnostics.expansionPreCapCandidateCount || 0) >= Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0), true, "clean expansion should report its pre-cap scoring candidate pool");
+    assertEqual(String(openLibraryDiagnostics.expansionCapReason || "none") !== "source_handoff_limited_to_source_final_5", true, "clean expansion must not be controlled by the old source-final-5 cap");
+    if (Number(openLibraryDiagnostics.expansionRawCount || 0) >= 200) {
+      assertEqual(Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 5, true, "clean expansion that fetches 200+ docs must hand a broad pool, not only five rows, into scoring");
+    }
     assertEqual(openLibraryDiagnostics.finalEligibilityGateApplied, true, "live-shaped clean-candidate expansion should apply the final eligibility gate");
     assertEqual(Number(openLibraryDiagnostics.expansionCleanEligibleCount || 0), (openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length, "live-shaped expansion clean eligibility should count only final-accepted expansion candidates");
     assertEqual((openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length === 0 ? (openLibraryDiagnostics.expansionSelectedTitles || []).length === 0 : true, true, "live-shaped expansionSelectedTitles must be empty when expansionCandidatesAcceptedFinal is empty");

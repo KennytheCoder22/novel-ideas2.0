@@ -564,10 +564,13 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
       if (expansionResponse.value) {
         const expansionResult = expansionResponse.value;
         const expansionRawItems = expansionResult.rawItems || [];
-        const expansionAttemptedQueries = Array.from(new Set([
+        const expansionAttemptedQueriesAllFetches = Array.from(new Set([
           ...((Array.isArray(expansionResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted) ? expansionResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted : []) as string[]),
           ...((Array.isArray(expansionResult.diagnostics.fetches) ? expansionResult.diagnostics.fetches : []).map((fetch) => String(fetch.query || "")).filter(Boolean)),
         ]));
+        const expansionAttemptedQueries = Array.isArray(expansionResult.diagnostics.queries) && expansionResult.diagnostics.cleanCandidateShortfallExpansionTriggered
+          ? (expansionResult.diagnostics.queries as string[])
+          : expansionAttemptedQueriesAllFetches;
         const expansionFetchResultsByQuery = expansionFetchRows(expansionResult.diagnostics);
         const expansionRawCount = expansionFetchResultsByQuery.reduce((sum, row) => sum + Number(row.rawCount || 0), 0);
         const expansionKeys = new Set(expansionRawItems.map((item) => sourceItemKey(item)));
@@ -581,6 +584,10 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           : expansionMergedTitles.length === 0
             ? "all_expansion_rows_duplicate_existing_source_items"
             : undefined;
+        const expansionPreCapCandidateCount = Number(expansionResult.diagnostics.expansionPreCapCandidateCount || expansionRawItems.length);
+        const expansionPostCapCandidateCount = Number(expansionResult.diagnostics.expansionPostCapCandidateCount || expansionRawItems.length);
+        const expansionCapApplied = Boolean(expansionResult.diagnostics.expansionCapApplied ?? (expansionPostCapCandidateCount < expansionPreCapCandidateCount));
+        const expansionCapReason = String(expansionResult.diagnostics.expansionCapReason || (expansionCapApplied ? "candidate_pool_limit" : "none"));
         sourceResults = sourceResults.map((result, index) => index === openLibrarySourceIndex
           ? {
             ...expansionResult,
@@ -605,8 +612,30 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
               expansionFetchResultsByQuery,
               expansionRawCount,
               expansionConvertedCount: expansionRawItems.length,
+              expansionPreCapCandidateCount,
+              expansionPostCapCandidateCount,
+              expansionCapApplied,
+              expansionCapReason,
+              expansionDroppedBeforeScoringByReason: expansionResult.diagnostics.expansionDroppedBeforeScoringByReason,
+              expansionDroppedBeforeScoringTitles: expansionResult.diagnostics.expansionDroppedBeforeScoringTitles,
               expansionMergedTitles,
               expansionMergeSkippedReason,
+              meaningfulTasteRecoveryTriggered: currentOpenLibrarySourceResult.diagnostics.meaningfulTasteRecoveryTriggered,
+              meaningfulTasteRecoveryTriggerStage: currentOpenLibrarySourceResult.diagnostics.meaningfulTasteRecoveryTriggerStage,
+              meaningfulTasteRecoverySkippedReason: currentOpenLibrarySourceResult.diagnostics.meaningfulTasteRecoverySkippedReason,
+              meaningfulTasteRecoveryQueriesAttempted: currentOpenLibrarySourceResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted,
+              meaningfulTasteRecoveryAcceptedTitles: currentOpenLibrarySourceResult.diagnostics.meaningfulTasteRecoveryAcceptedTitles,
+              recoveryFamilyScores: currentOpenLibrarySourceResult.diagnostics.recoveryFamilyScores,
+              recoveryFamiliesSkippedByAvoidEvidence: currentOpenLibrarySourceResult.diagnostics.recoveryFamiliesSkippedByAvoidEvidence,
+              recoveryFamiliesSkippedBySameRunLeakage: currentOpenLibrarySourceResult.diagnostics.recoveryFamiliesSkippedBySameRunLeakage,
+              recoveryFamiliesSelectedForExecution: currentOpenLibrarySourceResult.diagnostics.recoveryFamiliesSelectedForExecution,
+              recoveryFamilyExecutionOrderReason: currentOpenLibrarySourceResult.diagnostics.recoveryFamilyExecutionOrderReason,
+              recoveryFamilyYieldByFamily: currentOpenLibrarySourceResult.diagnostics.recoveryFamilyYieldByFamily,
+              recoveryEarlyFinalGateApplied: currentOpenLibrarySourceResult.diagnostics.recoveryEarlyFinalGateApplied,
+              recoveryEarlyFinalGateRejectedByReason: currentOpenLibrarySourceResult.diagnostics.recoveryEarlyFinalGateRejectedByReason,
+              recoveryAcceptedLikelyFinalSurvivorTitles: currentOpenLibrarySourceResult.diagnostics.recoveryAcceptedLikelyFinalSurvivorTitles,
+              recoveryAcceptedButPredictedDropTitles: currentOpenLibrarySourceResult.diagnostics.recoveryAcceptedButPredictedDropTitles,
+              recoveryFinalSurvivorPredictionMismatch: currentOpenLibrarySourceResult.diagnostics.recoveryFinalSurvivorPredictionMismatch,
             },
           }
           : result);
@@ -685,6 +714,12 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           expansionDiagnostics.expansionConvertedCount = expansionRawItems.length;
           expansionDiagnostics.expansionMergedCandidateCount = expansionScoredCandidates.length;
           expansionDiagnostics.expansionMergedTitles = expansionMergedTitles;
+          expansionDiagnostics.expansionPreCapCandidateCount = expansionPreCapCandidateCount;
+          expansionDiagnostics.expansionPostCapCandidateCount = expansionPostCapCandidateCount;
+          expansionDiagnostics.expansionCapApplied = expansionCapApplied;
+          expansionDiagnostics.expansionCapReason = expansionCapReason;
+          expansionDiagnostics.expansionDroppedBeforeScoringByReason = expansionResult.diagnostics.expansionDroppedBeforeScoringByReason || {};
+          expansionDiagnostics.expansionDroppedBeforeScoringTitles = expansionResult.diagnostics.expansionDroppedBeforeScoringTitles || {};
           expansionDiagnostics.expansionFetchFailureReason = expansionFetchFailureReason;
           expansionDiagnostics.expansionMergeSkippedReason = expansionMergeSkippedReason || (expansionScoredCandidates.length === 0 && expansionRawItems.length > 0 ? "merged_rows_missing_from_scoring_after_normalization" : undefined);
           expansionDiagnostics.expansionCandidatesEnteredScoringCount = expansionScoredCandidates.length;

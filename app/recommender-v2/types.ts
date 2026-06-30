@@ -322,6 +322,12 @@ export interface SourceDiagnosticV2 {
   expansionFetchFailureReason?: string;
   expansionMergeSkippedReason?: string;
   expansionCandidatesEnteredScoringCount?: number;
+  expansionPreCapCandidateCount?: number;
+  expansionPostCapCandidateCount?: number;
+  expansionCapApplied?: boolean;
+  expansionCapReason?: string;
+  expansionDroppedBeforeScoringByReason?: Record<string, number>;
+  expansionDroppedBeforeScoringTitles?: Record<string, string[]>;
   expansionCleanEligibleCount?: number;
   finalEligibilityGateApplied?: boolean;
   expansionCandidatesAcceptedFinal?: string[];
