@@ -644,9 +644,6 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           ];
         }
         const expansionScoredCandidates = scored.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)));
-        const cleanEligibleExpansionTitles = expansionScoredCandidates
-          .filter((candidate) => !candidate.rejectedReasons.includes("zero_doc_backed_taste_match") && !candidate.rejectedReasons.includes("broad_adventure_only_taste_match") && !candidate.rejectedReasons.includes("humor_keyword_only_leakage") && !candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied"))
-          .map((candidate) => candidate.title);
         const expansionCandidatesRejectedByReason = expansionScoredCandidates
           .filter((candidate) => !expansionSelectedTitles.includes(candidate.title))
           .reduce<Record<string, string[]>>((acc, candidate) => {
@@ -684,7 +681,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           expansionDiagnostics.expansionFetchFailureReason = expansionFetchFailureReason;
           expansionDiagnostics.expansionMergeSkippedReason = expansionMergeSkippedReason || (expansionScoredCandidates.length === 0 && expansionRawItems.length > 0 ? "merged_rows_missing_from_scoring_after_normalization" : undefined);
           expansionDiagnostics.expansionCandidatesEnteredScoringCount = expansionScoredCandidates.length;
-          expansionDiagnostics.expansionCleanEligibleCount = cleanEligibleExpansionTitles.length;
+          expansionDiagnostics.expansionCleanEligibleCount = expansionCandidatesAcceptedFinal.length;
           expansionDiagnostics.finalEligibilityGateApplied = true;
           expansionDiagnostics.expansionCandidatesAcceptedFinal = expansionCandidatesAcceptedFinal;
           expansionDiagnostics.expansionSelectedTitles = expansionSelectedTitles;

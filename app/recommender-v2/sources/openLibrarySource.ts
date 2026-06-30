@@ -4587,7 +4587,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         expansionFetchFailureReason: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion && middleGradesMeaningfulTasteRecoveryQueriesAttempted.length > 0 && middleGradesMeaningfulTasteRecoveryAcceptedTitles.length === 0 ? "expansion_source_filters_converted_zero_rows" : undefined,
         expansionMergeSkippedReason: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion && middleGradesMeaningfulTasteRecoveryAcceptedTitles.length === 0 ? "no_expansion_rows_to_merge" : undefined,
         expansionCandidatesEnteredScoringCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? middleGradesRecoveryAcceptedLikelyFinalSurvivorTitles.length : undefined,
-        expansionCleanEligibleCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? middleGradesRecoveryAcceptedLikelyFinalSurvivorTitles.length : undefined,
+        expansionCleanEligibleCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? 0 : undefined,
         finalEligibilityGateApplied: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? false : undefined,
         expansionCandidatesAcceptedFinal: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? [] : undefined,
         expansionSelectedTitles: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? [] : undefined,

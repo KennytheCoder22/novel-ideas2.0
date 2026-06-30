@@ -1547,6 +1547,7 @@ async function main() {
     assertEqual(Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0, true, "clean-candidate expansion should merge converted rows into scoring");
     assertEqual(Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 0, true, "clean-candidate expansion candidates should enter scoring");
     assertEqual(openLibraryDiagnostics.finalEligibilityGateApplied, true, "clean-candidate expansion should run the final eligibility gate after merging rows");
+    assertEqual(Number(openLibraryDiagnostics.expansionCleanEligibleCount || 0), (openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length, "expansion clean eligibility should count only final-accepted expansion candidates");
     assertEqual((openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length === 0 ? (openLibraryDiagnostics.expansionSelectedTitles || []).length === 0 : true, true, "expansionSelectedTitles must be empty when no expansion candidate passes final eligibility");
     assertEqual((openLibraryDiagnostics.expansionSelectedTitles || []).length > 0 || Object.keys(openLibraryDiagnostics.expansionCandidatesRejectedByReason || {}).length > 0, true, "clean-candidate expansion should report final-accepted selected titles or explicit rejection reasons after scoring/selection");
     if (result.items.length < 5) {
@@ -1616,6 +1617,7 @@ async function main() {
     assertEqual((openLibraryDiagnostics.expansionMergedTitles || []).length > 0, true, "live-shaped clean-candidate expansion should list merged titles");
     assertEqual(Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 0, true, "live-shaped clean-candidate expansion should enter scoring");
     assertEqual(openLibraryDiagnostics.finalEligibilityGateApplied, true, "live-shaped clean-candidate expansion should apply the final eligibility gate");
+    assertEqual(Number(openLibraryDiagnostics.expansionCleanEligibleCount || 0), (openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length, "live-shaped expansion clean eligibility should count only final-accepted expansion candidates");
     assertEqual((openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length === 0 ? (openLibraryDiagnostics.expansionSelectedTitles || []).length === 0 : true, true, "live-shaped expansionSelectedTitles must be empty when expansionCandidatesAcceptedFinal is empty");
     assertEqual((openLibraryDiagnostics.expansionSelectedTitles || []).length > 0 || Object.keys(openLibraryDiagnostics.expansionCandidatesRejectedByReason || {}).length > 0, true, "live-shaped clean-candidate expansion should select final-accepted rows or explain rejections");
     assertEqual(!(openLibraryDiagnostics.expansionFetchAttempted && Number(openLibraryDiagnostics.expansionRawCount || 0) === 0 && Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0) || Boolean(openLibraryDiagnostics.expansionFetchFailureReason), true, "expansion cannot report zero raw docs and positive converted rows without a failure reason");
@@ -1672,6 +1674,7 @@ async function main() {
     assertEqual((openLibraryDiagnostics.expansionLockQualityFailReasons || []).some((reason) => /repeated_title_token_cluster|weak_cluster/i.test(reason)), true, "weak cluster expansion should report repeated-token or weak-cluster failure");
     assertEqual((openLibraryDiagnostics.expansionWeakClusterSelectedTitles || []).length > 0, true, "weak cluster expansion should list weak selected titles");
     assertEqual((openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length, 0, "weak cluster expansion should not count any rows as final-accepted expansion candidates");
+    assertEqual(Number(openLibraryDiagnostics.expansionCleanEligibleCount || 0), 0, "weak cluster expansion should not count lock-quality-failed rows as clean eligible");
     assertEqual((openLibraryDiagnostics.expansionSelectedTitles || []).length, 0, "weak cluster expansionSelectedTitles should be empty when final-accepted expansion candidates are empty");
     assertEqual(Object.keys(openLibraryDiagnostics.expansionSelectedRejectedByReason || {}).length > 0, true, "weak cluster expansion should report selected expansion rows rejected by lock quality");
     assertEqual(result.items.length < 5, true, "weak cluster expansion should return underfilled rather than a false five-item success");
