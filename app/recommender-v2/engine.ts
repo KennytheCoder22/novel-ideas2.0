@@ -346,10 +346,10 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
       const recoveryResponse = await runWithTimeout(recoveryTimeoutMs, (signal) => adapter.search({ ...openLibraryPlan, timeoutMs: recoveryTimeoutMs }, { profile: recoveryProfile, signal }));
       if (recoveryResponse.value) {
         const recoveryResult = recoveryResponse.value;
-        const recoveryAcceptedTitles = recoveryResult.rawItems
-          .filter((item: any) => item?.meaningfulTasteRecovery || item?.scoringHandoffStage === "meaningful_taste_recovery")
-          .map((item: any) => String(item?.title || ""))
-          .filter(Boolean);
+        // Do not count raw recovery rows as accepted here; the exact final-selection
+        // predicate runs after merge/scoring below, and only those selected recovery
+        // rows are promoted into accepted recovery diagnostics.
+        const recoveryAcceptedTitles: string[] = [];
         const mergedRawItems = mergeSourceItems(openLibrarySourceResult.rawItems, recoveryResult.rawItems);
         sourceResults = sourceResults.map((result, index) => index === openLibrarySourceIndex
           ? {
@@ -388,11 +388,33 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
               acc[anchor] = Number(acc[anchor] || 0) + 1;
               return acc;
             }, {});
-          const predictedRecoverySurvivors = new Set(((recoveryDiagnostics.recoveryAcceptedLikelyFinalSurvivorTitles || []) as string[]).map((title) => String(title).toLowerCase()));
-          const actualRecoverySurvivors = new Set(selected
+          const actualRecoverySelectedTitles = selected
             .filter((candidate) => candidate.diagnostics?.meaningfulTasteRecovery || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery")
-            .map((candidate) => String(candidate.title || "").toLowerCase()));
-          recoveryDiagnostics.recoveryFinalSurvivorPredictionMismatch = predictedRecoverySurvivors.size > 0 && [...predictedRecoverySurvivors].some((title) => !actualRecoverySurvivors.has(title));
+            .map((candidate) => String(candidate.title || ""))
+            .filter(Boolean);
+          const predictedRecoverySurvivors = new Set(((recoveryDiagnostics.recoveryAcceptedLikelyFinalSurvivorTitles || []) as string[]).map((title) => String(title).toLowerCase()));
+          const actualRecoverySurvivors = new Set(actualRecoverySelectedTitles.map((title) => title.toLowerCase()));
+          const droppedRecoveryTitles = Object.values(recoveryDroppedByReason).flat().map((title) => String(title || "")).filter(Boolean);
+          const droppedRecoveryTitleSet = new Set(droppedRecoveryTitles.map((title) => title.toLowerCase()));
+          const predictedDrops = [...predictedRecoverySurvivors].filter((title) => !actualRecoverySurvivors.has(title));
+          recoveryDiagnostics.recoveryFinalSurvivorPredictionMismatch = predictedDrops.length > 0;
+          recoveryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles = actualRecoverySelectedTitles;
+          recoveryDiagnostics.meaningfulTasteRecoveryAcceptedTitles = actualRecoverySelectedTitles;
+          recoveryDiagnostics.meaningfulTasteRecoveryFinalCount = actualRecoverySelectedTitles.length;
+          recoveryDiagnostics.recoveryAcceptedLikelyFinalSurvivorTitles = actualRecoverySelectedTitles;
+          recoveryDiagnostics.recoveryAcceptedButPredictedDropTitles = Array.from(new Set([...
+            (((recoveryDiagnostics.recoveryAcceptedButPredictedDropTitles || []) as string[]).map((title) => String(title || "")).filter(Boolean)),
+            ...droppedRecoveryTitles,
+          ]));
+          recoveryDiagnostics.recoveryEarlyFinalGateRejectedByReason = {
+            ...((recoveryDiagnostics.recoveryEarlyFinalGateRejectedByReason || {}) as Record<string, string[]>),
+            ...recoveryDroppedByReason,
+          };
+          recoveryDiagnostics.postFinalEligibilityRecoveryRejectedByReason = {
+            ...((recoveryDiagnostics.postFinalEligibilityRecoveryRejectedByReason || {}) as Record<string, string[]>),
+            ...recoveryDroppedByReason,
+          };
+          if (actualRecoverySelectedTitles.some((title) => droppedRecoveryTitleSet.has(title.toLowerCase()))) recoveryDiagnostics.recoveryFinalSurvivorPredictionMismatch = true;
           recoveryDiagnostics.meaningfulTasteRecoverySurvivingFinalCount = recoverySurvivingFinalCount;
           recoveryDiagnostics.meaningfulTasteRecoveryContinuedAfterRejectedMerge = recoverySurvivingFinalCount < 5 && Object.keys(recoveryDroppedByReason).length > 0;
           recoveryDiagnostics.meaningfulTasteRecoveryExhaustedQueries = recoverySurvivingFinalCount < 5 ? recoveryResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted || [] : [];

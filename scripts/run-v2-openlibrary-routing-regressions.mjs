@@ -1466,6 +1466,8 @@ async function main() {
     assertEqual(openLibraryDiagnostics.recoveryEarlyFinalGateApplied, true, "post-final recovery should apply early final-gate prediction before counting accepted rows");
     assertEqual(["My Mr Funny", "Frog and Toad Together", "Henry and Mudge and the Funny Lunch", "National Geographic Kids Funny Fill-In"].some((title) => (openLibraryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles || []).includes(title)), false, "predictably rejected funny/duplicate/query-only recovery rows should not be counted as accepted recovery rows");
     assertEqual(Object.keys(openLibraryDiagnostics.recoveryEarlyFinalGateRejectedByReason || {}).length > 0, true, "early final-gate recovery rejection reasons should be reported");
+    const droppedAfterMergeTitles = Object.values(selectedDetails.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).flat();
+    assertEqual((openLibraryDiagnostics.postFinalEligibilityRecoveryAcceptedTitles || []).some((title) => droppedAfterMergeTitles.includes(title)), false, "post-final accepted recovery titles should not overlap exact post-merge dropped titles");
     assertEqual(Boolean(selectedDetails.meaningfulTasteRecoveryMergedIntoScoring), true, "post-final recovered candidates should be merged into scoring/final selection diagnostics");
     assertEqual(Number(selectedDetails.meaningfulTasteRecoveryFinalSelectionCount || 0) > 0 || Object.keys(selectedDetails.meaningfulTasteRecoveryDroppedAfterMergeByReason || {}).length > 0, true, "post-final recovered candidates should be returned or explicitly rejected after merge");
     assertEqual(openLibraryDiagnostics.recoverySuccessRequiresFinalEligibility, true, "meaningful-taste recovery success should require final eligibility survival");
