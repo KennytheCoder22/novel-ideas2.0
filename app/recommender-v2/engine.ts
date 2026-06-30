@@ -177,6 +177,28 @@ function expansionWeakClusterTitles(selected: ScoredCandidate[], anchorsByTitle:
   }).map((candidate) => candidate.title);
 }
 
+function expansionFetchRows(diagnostics: SourceDiagnosticV2): Array<{ query: string; status: string; rawCount: number; error?: string }> {
+  const attempted = new Set((Array.isArray(diagnostics.meaningfulTasteRecoveryQueriesAttempted) ? diagnostics.meaningfulTasteRecoveryQueriesAttempted : [])
+    .map(String)
+    .filter(Boolean));
+  const fetches = Array.isArray(diagnostics.fetches) ? diagnostics.fetches : [];
+  for (const fetch of fetches) {
+    const query = String(fetch.query || "");
+    if (query) attempted.add(query);
+  }
+  return Array.from(attempted).map((query) => {
+    const matching = fetches.filter((fetch) => String(fetch.query || "") === query);
+    const rawCount = matching.reduce((sum, fetch) => sum + Number(fetch.docsReturned || 0), 0);
+    const failed = matching.find((fetch) => fetch.failedReason || fetch.timedOut);
+    return {
+      query,
+      status: failed ? (failed.timedOut ? "timed_out" : "error") : rawCount > 0 ? "ok" : "empty",
+      rawCount,
+      error: failed?.failedReason,
+    };
+  });
+}
+
 function buildMiddleGradesPipelineAudit(sourceResults: SourceResult[], normalized: NormalizedCandidate[], scored: ScoredCandidate[], selected: ScoredCandidate[]): Record<string, unknown> | undefined {
   const openLibrary = sourceResults.find((result) => result.source === "openLibrary");
   if (!openLibrary) return undefined;
@@ -542,8 +564,23 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
       if (expansionResponse.value) {
         const expansionResult = expansionResponse.value;
         const expansionRawItems = expansionResult.rawItems || [];
+        const expansionAttemptedQueries = Array.from(new Set([
+          ...((Array.isArray(expansionResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted) ? expansionResult.diagnostics.meaningfulTasteRecoveryQueriesAttempted : []) as string[]),
+          ...((Array.isArray(expansionResult.diagnostics.fetches) ? expansionResult.diagnostics.fetches : []).map((fetch) => String(fetch.query || "")).filter(Boolean)),
+        ]));
+        const expansionFetchResultsByQuery = expansionFetchRows(expansionResult.diagnostics);
+        const expansionRawCount = expansionFetchResultsByQuery.reduce((sum, row) => sum + Number(row.rawCount || 0), 0);
         const expansionKeys = new Set(expansionRawItems.map((item) => sourceItemKey(item)));
         const mergedRawItems = mergeSourceItems(currentOpenLibrarySourceResult.rawItems, expansionRawItems);
+        const expansionMergedTitles = expansionRawItems
+          .filter((item) => mergedRawItems.some((merged) => sourceItemKey(merged) === sourceItemKey(item)))
+          .map((item) => titleOf(item))
+          .filter(Boolean);
+        const expansionMergeSkippedReason = expansionRawItems.length === 0
+          ? "no_expansion_rows_returned_from_source"
+          : expansionMergedTitles.length === 0
+            ? "all_expansion_rows_duplicate_existing_source_items"
+            : undefined;
         sourceResults = sourceResults.map((result, index) => index === openLibrarySourceIndex
           ? {
             ...expansionResult,
@@ -557,7 +594,12 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
               cleanCandidateShortfallExpansionTriggered: true,
               expansionNotTriggeredReason: undefined,
               expansionFetchAttempted: true,
+              expansionAttemptedQueries,
+              expansionFetchResultsByQuery,
+              expansionRawCount,
               expansionConvertedCount: expansionRawItems.length,
+              expansionMergedTitles,
+              expansionMergeSkippedReason,
             },
           }
           : result);
@@ -601,16 +643,40 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
             acc[reason] = [...(acc[reason] || []), candidate.title];
             return acc;
           }, {});
+        const expansionSelectedRejectedByReason = expansionSelectedCandidates
+          .filter((candidate) => !selected.some((row) => row.title === candidate.title))
+          .reduce<Record<string, string[]>>((acc, candidate) => {
+            const reason = expansionWeakClusterSelectedTitles.includes(candidate.title)
+              ? "expansion_lock_quality_weak_cluster"
+              : candidate.rejectedReasons.find(Boolean) || "expansion_lock_quality_removed";
+            acc[reason] = [...(acc[reason] || []), candidate.title];
+            return acc;
+          }, {});
+        const expansionFetchFailureReason = expansionRawCount === 0
+          ? "expansion_fetches_returned_zero_raw_docs"
+          : expansionRawItems.length === 0
+            ? "expansion_source_filters_converted_zero_rows"
+            : expansionScoredCandidates.length === 0
+              ? "expansion_merged_rows_did_not_enter_scoring"
+              : undefined;
         const expansionDiagnostics = sourceResults[openLibrarySourceIndex]?.diagnostics;
         if (expansionDiagnostics) {
           expansionDiagnostics.cleanCandidateShortfallExpansionTriggered = true;
           expansionDiagnostics.expansionNotTriggeredReason = undefined;
           expansionDiagnostics.expansionFetchAttempted = true;
+          expansionDiagnostics.expansionAttemptedQueries = expansionAttemptedQueries;
+          expansionDiagnostics.expansionFetchResultsByQuery = expansionFetchResultsByQuery;
+          expansionDiagnostics.expansionRawCount = expansionRawCount;
           expansionDiagnostics.expansionConvertedCount = expansionRawItems.length;
+          expansionDiagnostics.expansionMergedCandidateCount = expansionScoredCandidates.length;
+          expansionDiagnostics.expansionMergedTitles = expansionMergedTitles;
+          expansionDiagnostics.expansionFetchFailureReason = expansionFetchFailureReason;
+          expansionDiagnostics.expansionMergeSkippedReason = expansionMergeSkippedReason || (expansionScoredCandidates.length === 0 && expansionRawItems.length > 0 ? "merged_rows_missing_from_scoring_after_normalization" : undefined);
           expansionDiagnostics.expansionCandidatesEnteredScoringCount = expansionScoredCandidates.length;
           expansionDiagnostics.expansionCleanEligibleCount = cleanEligibleExpansionTitles.length;
           expansionDiagnostics.expansionSelectedTitles = expansionSelectedTitles;
           expansionDiagnostics.expansionCandidatesRejectedByReason = expansionCandidatesRejectedByReason;
+          expansionDiagnostics.expansionSelectedRejectedByReason = expansionSelectedRejectedByReason;
           expansionDiagnostics.expansionLockQualityPass = expansionLockQualityPass;
           expansionDiagnostics.expansionLockQualityFailReasons = expansionLockQualityFailReasons;
           expansionDiagnostics.expansionSelectedEvidenceAnchorsByTitle = expansionSelectedEvidenceAnchorsByTitle;
@@ -626,22 +692,38 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = true;
         currentOpenLibrarySourceResult.diagnostics.expansionNotTriggeredReason = undefined;
         currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = true;
+        currentOpenLibrarySourceResult.diagnostics.expansionAttemptedQueries = [];
+        currentOpenLibrarySourceResult.diagnostics.expansionFetchResultsByQuery = [];
+        currentOpenLibrarySourceResult.diagnostics.expansionRawCount = 0;
         currentOpenLibrarySourceResult.diagnostics.expansionConvertedCount = 0;
+        currentOpenLibrarySourceResult.diagnostics.expansionMergedCandidateCount = 0;
+        currentOpenLibrarySourceResult.diagnostics.expansionMergedTitles = [];
+        currentOpenLibrarySourceResult.diagnostics.expansionFetchFailureReason = expansionResponse.timedOut ? "clean_candidate_shortfall_expansion_timed_out" : "clean_candidate_shortfall_expansion_failed";
+        currentOpenLibrarySourceResult.diagnostics.expansionMergeSkippedReason = "expansion_fetch_failed_before_merge";
         currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
         currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
         currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
         currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
+        currentOpenLibrarySourceResult.diagnostics.expansionSelectedRejectedByReason = {};
         currentOpenLibrarySourceResult.diagnostics.middleGradesRecoveryFinalShortfallReason = expansionResponse.timedOut ? "clean_candidate_shortfall_expansion_timed_out" : "clean_candidate_shortfall_expansion_failed";
       }
     } else {
       currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = false;
       currentOpenLibrarySourceResult.diagnostics.expansionNotTriggeredReason = "missing_openlibrary_expansion_plan_or_adapter";
       currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = false;
+      currentOpenLibrarySourceResult.diagnostics.expansionAttemptedQueries = [];
+      currentOpenLibrarySourceResult.diagnostics.expansionFetchResultsByQuery = [];
+      currentOpenLibrarySourceResult.diagnostics.expansionRawCount = 0;
       currentOpenLibrarySourceResult.diagnostics.expansionConvertedCount = 0;
+      currentOpenLibrarySourceResult.diagnostics.expansionMergedCandidateCount = 0;
+      currentOpenLibrarySourceResult.diagnostics.expansionMergedTitles = [];
+      currentOpenLibrarySourceResult.diagnostics.expansionFetchFailureReason = undefined;
+      currentOpenLibrarySourceResult.diagnostics.expansionMergeSkippedReason = "missing_openlibrary_expansion_plan_or_adapter";
       currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
       currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
       currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
       currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
+      currentOpenLibrarySourceResult.diagnostics.expansionSelectedRejectedByReason = {};
     }
   } else if (tasteProfile.ageBand === "preteens" && currentOpenLibrarySourceResult) {
     currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = false;
@@ -649,11 +731,19 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
       ? "openlibrary_source_unavailable"
       : "final_eligibility_not_underfilled";
     currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = false;
+    currentOpenLibrarySourceResult.diagnostics.expansionAttemptedQueries = [];
+    currentOpenLibrarySourceResult.diagnostics.expansionFetchResultsByQuery = [];
+    currentOpenLibrarySourceResult.diagnostics.expansionRawCount = 0;
     currentOpenLibrarySourceResult.diagnostics.expansionConvertedCount = 0;
+    currentOpenLibrarySourceResult.diagnostics.expansionMergedCandidateCount = 0;
+    currentOpenLibrarySourceResult.diagnostics.expansionMergedTitles = [];
+    currentOpenLibrarySourceResult.diagnostics.expansionFetchFailureReason = undefined;
+    currentOpenLibrarySourceResult.diagnostics.expansionMergeSkippedReason = "expansion_not_triggered";
     currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
     currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
     currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
     currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
+    currentOpenLibrarySourceResult.diagnostics.expansionSelectedRejectedByReason = {};
   }
 
   markPipelineObjects(normalized, "normalized", requestId);

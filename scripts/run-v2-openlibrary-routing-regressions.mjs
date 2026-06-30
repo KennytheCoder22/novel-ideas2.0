@@ -1606,9 +1606,15 @@ async function main() {
     assertEqual(cleanCandidateCount >= 5 || openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered === true || validExpansionBlockReason, true, "Middle Grades OpenLibrary clean underfill must trigger expansion or report a valid blocking reason");
     assertEqual(openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered, true, "live-shaped underfilled Middle Grades run should trigger clean-candidate expansion even without deep debug");
     assertEqual(openLibraryDiagnostics.expansionFetchAttempted, true, "live-shaped clean-candidate expansion should attempt fetches");
+    assertEqual(Array.isArray(openLibraryDiagnostics.expansionAttemptedQueries) && openLibraryDiagnostics.expansionAttemptedQueries.length > 0, true, "live-shaped clean-candidate expansion should list attempted queries");
+    assertEqual(Array.isArray(openLibraryDiagnostics.expansionFetchResultsByQuery) && openLibraryDiagnostics.expansionFetchResultsByQuery.some((row) => Number(row.rawCount || 0) > 0), true, "live-shaped clean-candidate expansion should report per-query raw counts");
+    assertEqual(Number(openLibraryDiagnostics.expansionRawCount || 0) > 0, true, "live-shaped clean-candidate expansion should report actual fetched raw docs");
     assertEqual(Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0, true, "live-shaped clean-candidate expansion should convert rows");
+    assertEqual(Number(openLibraryDiagnostics.expansionMergedCandidateCount || 0) > 0, true, "live-shaped clean-candidate expansion should merge converted rows into scoring");
+    assertEqual((openLibraryDiagnostics.expansionMergedTitles || []).length > 0, true, "live-shaped clean-candidate expansion should list merged titles");
     assertEqual(Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 0, true, "live-shaped clean-candidate expansion should enter scoring");
     assertEqual((openLibraryDiagnostics.expansionSelectedTitles || []).length > 0 || Object.keys(openLibraryDiagnostics.expansionCandidatesRejectedByReason || {}).length > 0, true, "live-shaped clean-candidate expansion should select rows or explain rejections");
+    assertEqual(!(openLibraryDiagnostics.expansionFetchAttempted && Number(openLibraryDiagnostics.expansionRawCount || 0) === 0 && Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0) || Boolean(openLibraryDiagnostics.expansionFetchFailureReason), true, "expansion cannot report zero raw docs and positive converted rows without a failure reason");
     assertEqual(liveExpansionFetchQueries.some((query) => /middle grade robot adventure|middle grade science fiction adventure|middle grade family adventure|middle grade school mystery/i.test(query)), true, "live-shaped expansion should use concrete non-humor query shapes");
     console.log(JSON.stringify({ name: "middle grades live-shaped underfill triggers clean-candidate expansion", pass: true, expansionQueries: liveExpansionFetchQueries.filter((query) => /middle grade robot adventure|middle grade science fiction adventure|children ocean adventure|middle grade survival adventure|middle grade family adventure|middle grade superhero adventure|middle grade school mystery|middle grade fantasy quest/i.test(query)), selected: result.items.map((item) => item.title) }));
   } finally {
@@ -1655,9 +1661,13 @@ async function main() {
     });
     const openLibraryDiagnostics = result.diagnostics.sources.find((source) => source.source === "openLibrary") || {};
     assertEqual(openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered, true, "weak-cluster expansion regression should trigger clean-candidate expansion");
+    assertEqual(Array.isArray(openLibraryDiagnostics.expansionFetchResultsByQuery) && openLibraryDiagnostics.expansionFetchResultsByQuery.length > 0, true, "weak-cluster expansion should report fetch results by query");
+    assertEqual(Number(openLibraryDiagnostics.expansionRawCount || 0) > 0, true, "weak-cluster expansion should report raw fetch count");
+    assertEqual(Number(openLibraryDiagnostics.expansionMergedCandidateCount || 0) > 0, true, "weak-cluster expansion should merge candidates before lock-quality rejection");
     assertEqual(openLibraryDiagnostics.expansionLockQualityPass, false, "expansion cannot pass lock quality with a repeated magic-title cluster");
     assertEqual((openLibraryDiagnostics.expansionLockQualityFailReasons || []).some((reason) => /repeated_title_token_cluster|weak_cluster/i.test(reason)), true, "weak cluster expansion should report repeated-token or weak-cluster failure");
     assertEqual((openLibraryDiagnostics.expansionWeakClusterSelectedTitles || []).length > 0, true, "weak cluster expansion should list weak selected titles");
+    assertEqual(Object.keys(openLibraryDiagnostics.expansionSelectedRejectedByReason || {}).length > 0, true, "weak cluster expansion should report selected expansion rows rejected by lock quality");
     assertEqual(result.items.length < 5, true, "weak cluster expansion should return underfilled rather than a false five-item success");
     console.log(JSON.stringify({ name: "middle grades expansion weak cluster fails lock quality", pass: true, lockReasons: openLibraryDiagnostics.expansionLockQualityFailReasons, weakClusterTitles: openLibraryDiagnostics.expansionWeakClusterSelectedTitles, returned: result.items.map((item) => item.title) }));
   } finally {
