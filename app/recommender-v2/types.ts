@@ -318,6 +318,12 @@ export interface SourceDiagnosticV2 {
   expansionCleanEligibleCount?: number;
   expansionSelectedTitles?: string[];
   expansionCandidatesRejectedByReason?: Record<string, string[]>;
+  expansionLockQualityPass?: boolean;
+  expansionLockQualityFailReasons?: string[];
+  expansionSelectedEvidenceAnchorsByTitle?: Record<string, string[]>;
+  expansionDistinctEvidenceAnchorCount?: number;
+  expansionWeakClusterSelectedTitles?: string[];
+  expansionContinuedAfterWeakCluster?: boolean;
   queryOnlyRejectedThenRecoveredCount?: number;
   brittleQueryTimedOutThenShortQueryAttempted?: boolean;
   underfillDespiteUnattemptedEvidenceQueries?: boolean;

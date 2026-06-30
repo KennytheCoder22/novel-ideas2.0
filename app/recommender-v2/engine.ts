@@ -117,6 +117,66 @@ function mergeSourceItems(primary: unknown[], recovery: unknown[]): unknown[] {
   return Array.from(byKey.values());
 }
 
+function normalizedTokenText(value: unknown): string {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function expansionEvidenceAnchors(candidate: ScoredCandidate): string[] {
+  const buckets = [
+    candidate.genres,
+    candidate.themes,
+    candidate.diagnostics?.documentBackedTasteSignals,
+    candidate.diagnostics?.documentOnlyTasteMatch,
+    candidate.diagnostics?.routeAlignmentEvidenceFields,
+  ].flatMap((value) => Array.isArray(value) ? value : []);
+  const text = normalizedTokenText([
+    ...buckets.map(String),
+    candidate.description,
+    JSON.stringify(candidate.raw || {}),
+  ].join(" "));
+  const anchors = [
+    ["robot", /\brobots?\b|\bandroids?\b|\bautomatons?\b/],
+    ["science", /\bscience\b|\bscientists?\b|\btechnology\b|\bengineering\b|\bexperiments?\b/],
+    ["ocean", /\bocean\b|\bsea\b|\bmarine\b|\bunderwater\b|\bcoastal\b/],
+    ["survival", /\bsurvival\b|\bsurvive\b|\bwilderness\b|\brescue\b/],
+    ["family", /\bfamily\b|\bsiblings?\b|\bparents?\b/],
+    ["superhero", /\bsuperhero(?:es)?\b|\bsuper\s*heroes\b|\bheroes\b|\bheroic\b/],
+    ["school", /\bschool\b|\bclassroom\b|\bstudents?\b/],
+    ["mystery", /\bmystery\b|\bdetective\b|\bclues?\b|\bsecrets?\b/],
+    ["fantasy", /\bfantasy\b|\bmagic(?:al)?\b|\bquest\b|\bdragon\b/],
+    ["friendship", /\bfriendship\b|\bfriends?\b/],
+    ["adventure", /\badventure\b|\bquest\b|\bjourney\b/],
+  ];
+  return anchors.filter(([, pattern]) => (pattern as RegExp).test(text)).map(([anchor]) => anchor as string);
+}
+
+function repeatedExpansionTitleToken(selected: ScoredCandidate[]): string {
+  const counts: Record<string, number> = {};
+  for (const candidate of selected) {
+    const tokens = new Set(normalizedTokenText(candidate.title).split(" ").filter((token) => /^(magic|magical|funny|humor|humour|adventure|friendship|friends?|witch|school)$/.test(token)));
+    for (const token of tokens) counts[token] = Number(counts[token] || 0) + 1;
+  }
+  return Object.entries(counts).sort((a, b) => b[1] - a[1]).find(([, count]) => count >= Math.min(3, selected.length))?.[0] || "";
+}
+
+function expansionWeakClusterTitles(selected: ScoredCandidate[], anchorsByTitle: Record<string, string[]>): string[] {
+  const repeatedToken = repeatedExpansionTitleToken(selected);
+  return selected.filter((candidate) => {
+    const titleText = normalizedTokenText(candidate.title);
+    const anchors = anchorsByTitle[candidate.title] || [];
+    const fallbackish = /fallback|query_only|selected_fallback|default_or_weak/i.test(String(candidate.diagnostics?.finalSelectionReason || candidate.diagnostics?.fallbackDefaultStatus || ""));
+    const characterPairRoot = /\b[a-z]{3,}\s+and\s+[a-z]{3,}\b/.test(titleText);
+    const repeatedTokenMember = Boolean(repeatedToken && new RegExp(`\\b${repeatedToken}\\b`).test(titleText));
+    return repeatedTokenMember || (fallbackish && anchors.length < 3) || (characterPairRoot && anchors.length < 3);
+  }).map((candidate) => candidate.title);
+}
+
 function buildMiddleGradesPipelineAudit(sourceResults: SourceResult[], normalized: NormalizedCandidate[], scored: ScoredCandidate[], selected: ScoredCandidate[]): Record<string, unknown> | undefined {
   const openLibrary = sourceResults.find((result) => result.source === "openLibrary");
   if (!openLibrary) return undefined;
@@ -509,6 +569,27 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         const expansionSelectedTitles = selected
           .filter((candidate) => expansionKeys.has(sourceItemKey(candidate)))
           .map((candidate) => candidate.title);
+        const expansionSelectedCandidates = selected.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)));
+        const expansionSelectedEvidenceAnchorsByTitle = Object.fromEntries(selected.map((candidate) => [candidate.title, expansionEvidenceAnchors(candidate)]));
+        const expansionDistinctEvidenceAnchorCount = new Set(Object.values(expansionSelectedEvidenceAnchorsByTitle).flat()).size;
+        const repeatedExpansionToken = repeatedExpansionTitleToken(selected);
+        const expansionWeakClusterSelectedTitles = expansionWeakClusterTitles(expansionSelectedCandidates, expansionSelectedEvidenceAnchorsByTitle);
+        const expansionLockQualityFailReasons: string[] = [];
+        if (selected.length < 5) expansionLockQualityFailReasons.push("final_items_length_not_five");
+        if (repeatedExpansionToken) expansionLockQualityFailReasons.push(`repeated_title_token_cluster:${repeatedExpansionToken}`);
+        if (expansionDistinctEvidenceAnchorCount < 3) expansionLockQualityFailReasons.push("fewer_than_three_distinct_evidence_anchors");
+        if (expansionWeakClusterSelectedTitles.length > 0) expansionLockQualityFailReasons.push("weak_cluster_survivors_selected");
+        const expansionLockQualityPass = expansionLockQualityFailReasons.length === 0;
+        if (!expansionLockQualityPass && selected.length >= 5 && expansionSelectedCandidates.length > 0) {
+          const dropTitles = new Set(expansionWeakClusterSelectedTitles.length ? expansionWeakClusterSelectedTitles : expansionSelectedTitles);
+          selected = selected.filter((candidate) => !dropTitles.has(candidate.title));
+          rejectedReasons.expansion_lock_quality_removed_weak_cluster_titles = dropTitles.size;
+          (rejectedReasons as Record<string, unknown>).lockQualityPass = false;
+          (rejectedReasons as Record<string, unknown>).lockQualityFailReasons = [
+            ...((((rejectedReasons as Record<string, unknown>).lockQualityFailReasons as string[] | undefined) || [])),
+            ...expansionLockQualityFailReasons,
+          ];
+        }
         const expansionScoredCandidates = scored.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)));
         const cleanEligibleExpansionTitles = expansionScoredCandidates
           .filter((candidate) => !candidate.rejectedReasons.includes("zero_doc_backed_taste_match") && !candidate.rejectedReasons.includes("broad_adventure_only_taste_match") && !candidate.rejectedReasons.includes("humor_keyword_only_leakage") && !candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied"))
@@ -530,6 +611,12 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           expansionDiagnostics.expansionCleanEligibleCount = cleanEligibleExpansionTitles.length;
           expansionDiagnostics.expansionSelectedTitles = expansionSelectedTitles;
           expansionDiagnostics.expansionCandidatesRejectedByReason = expansionCandidatesRejectedByReason;
+          expansionDiagnostics.expansionLockQualityPass = expansionLockQualityPass;
+          expansionDiagnostics.expansionLockQualityFailReasons = expansionLockQualityFailReasons;
+          expansionDiagnostics.expansionSelectedEvidenceAnchorsByTitle = expansionSelectedEvidenceAnchorsByTitle;
+          expansionDiagnostics.expansionDistinctEvidenceAnchorCount = expansionDistinctEvidenceAnchorCount;
+          expansionDiagnostics.expansionWeakClusterSelectedTitles = expansionWeakClusterSelectedTitles;
+          expansionDiagnostics.expansionContinuedAfterWeakCluster = !expansionLockQualityPass && expansionWeakClusterSelectedTitles.length > 0;
           expansionDiagnostics.underfilledAfterMeaningfulTasteRecovery = selected.length < 5;
           expansionDiagnostics.middleGradesRecoveryFinalShortfallReason = selected.length < 5
             ? String((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryFinalShortfallReason || "clean_candidate_shortfall_expansion_underfilled")

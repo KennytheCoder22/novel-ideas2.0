@@ -1617,6 +1617,55 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const previousWeakClusterExpansionBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+  process.env.OPEN_LIBRARY_PROXY_BASE_URL = "https://proxy.example.test";
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    const expansionQuery = /middle grade robot adventure|middle grade science fiction adventure|children ocean adventure|middle grade survival adventure|middle grade family adventure|middle grade superhero adventure|middle grade school mystery|middle grade fantasy quest/i.test(query);
+    const titles = expansionQuery
+      ? ["My Rainbow Magic", "A Snicker of Magic", "A Tale of Magic...", "Magic Kingdom For Sale/Sold!", "The Magic Faraway Tree", "Magic Friends Club"]
+      : ["Weak Cluster Fallback 1", "Weak Cluster Fallback 2", "Weak Cluster Fallback 3", "Weak Cluster Fallback 4", "Weak Cluster Fallback 5", "Weak Cluster Fallback 6"];
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ proxyAttempts: 1, docs: titles.map((title, offset) => ({
+        key: `/works/weak-cluster-expansion-${query.replace(/\s+/g, "-")}-${offset + 1}`,
+        title,
+        author_name: [`Weak Cluster Author ${offset + 1}`],
+        subject: expansionQuery
+          ? ["Juvenile fiction", "Magic -- Fiction", "Friendship -- Fiction", "Family -- Fiction"]
+          : ["Juvenile fiction"],
+        description: expansionQuery
+          ? "A magical middle grade fantasy adventure about family and friendship."
+          : "A generic juvenile row without independent evidence.",
+        language: ["eng"],
+        first_publish_year: 2018 + offset,
+      })) }),
+    };
+  };
+  try {
+    const result = await runRecommenderV2({
+      requestId: "weak-cluster-expansion-lock-regression",
+      ageBand: "preteens",
+      limit: 5,
+      enabledSources: { openLibrary: true },
+      signals: [
+        { action: "like", title: "Robot Science Family Adventure", source: "mock", format: "book", genres: ["Science"], themes: ["Robot", "Family", "School", "Adventure"] },
+      ],
+    });
+    const openLibraryDiagnostics = result.diagnostics.sources.find((source) => source.source === "openLibrary") || {};
+    assertEqual(openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered, true, "weak-cluster expansion regression should trigger clean-candidate expansion");
+    assertEqual(openLibraryDiagnostics.expansionLockQualityPass, false, "expansion cannot pass lock quality with a repeated magic-title cluster");
+    assertEqual((openLibraryDiagnostics.expansionLockQualityFailReasons || []).some((reason) => /repeated_title_token_cluster|weak_cluster/i.test(reason)), true, "weak cluster expansion should report repeated-token or weak-cluster failure");
+    assertEqual((openLibraryDiagnostics.expansionWeakClusterSelectedTitles || []).length > 0, true, "weak cluster expansion should list weak selected titles");
+    assertEqual(result.items.length < 5, true, "weak cluster expansion should return underfilled rather than a false five-item success");
+    console.log(JSON.stringify({ name: "middle grades expansion weak cluster fails lock quality", pass: true, lockReasons: openLibraryDiagnostics.expansionLockQualityFailReasons, weakClusterTitles: openLibraryDiagnostics.expansionWeakClusterSelectedTitles, returned: result.items.map((item) => item.title) }));
+  } finally {
+    if (previousWeakClusterExpansionBase === undefined) delete process.env.OPEN_LIBRARY_PROXY_BASE_URL;
+    else process.env.OPEN_LIBRARY_PROXY_BASE_URL = previousWeakClusterExpansionBase;
+    globalThis.fetch = originalFetch;
+  }
+
 
   const previousMiddleGradesMediumStrongBase = process.env.OPEN_LIBRARY_PROXY_BASE_URL;
   let middleGradesMediumStrongFetchCount = 0;
