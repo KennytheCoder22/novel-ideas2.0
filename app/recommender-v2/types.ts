@@ -323,6 +323,8 @@ export interface SourceDiagnosticV2 {
   expansionMergeSkippedReason?: string;
   expansionCandidatesEnteredScoringCount?: number;
   expansionCleanEligibleCount?: number;
+  finalEligibilityGateApplied?: boolean;
+  expansionCandidatesAcceptedFinal?: string[];
   expansionSelectedTitles?: string[];
   expansionCandidatesRejectedByReason?: Record<string, string[]>;
   expansionSelectedRejectedByReason?: Record<string, string[]>;

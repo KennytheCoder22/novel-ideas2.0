@@ -608,28 +608,39 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         selection = selectRecommendations(scored, tasteProfile, session.limit || 10);
         selected = selection.selected;
         rejectedReasons = selection.rejectedReasons;
-        const expansionSelectedTitles = selected
-          .filter((candidate) => expansionKeys.has(sourceItemKey(candidate)))
-          .map((candidate) => candidate.title);
-        const expansionSelectedCandidates = selected.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)));
+        const preGateExpansionSelectedCandidates = selected.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)));
+        const preGateExpansionSelectedTitles = preGateExpansionSelectedCandidates.map((candidate) => candidate.title);
         const expansionSelectedEvidenceAnchorsByTitle = Object.fromEntries(selected.map((candidate) => [candidate.title, expansionEvidenceAnchors(candidate)]));
         const expansionDistinctEvidenceAnchorCount = new Set(Object.values(expansionSelectedEvidenceAnchorsByTitle).flat()).size;
         const repeatedExpansionToken = repeatedExpansionTitleToken(selected);
-        const expansionWeakClusterSelectedTitles = expansionWeakClusterTitles(expansionSelectedCandidates, expansionSelectedEvidenceAnchorsByTitle);
+        const expansionWeakClusterSelectedTitles = expansionWeakClusterTitles(preGateExpansionSelectedCandidates, expansionSelectedEvidenceAnchorsByTitle);
         const expansionLockQualityFailReasons: string[] = [];
         if (selected.length < 5) expansionLockQualityFailReasons.push("final_items_length_not_five");
         if (repeatedExpansionToken) expansionLockQualityFailReasons.push(`repeated_title_token_cluster:${repeatedExpansionToken}`);
         if (expansionDistinctEvidenceAnchorCount < 3) expansionLockQualityFailReasons.push("fewer_than_three_distinct_evidence_anchors");
         if (expansionWeakClusterSelectedTitles.length > 0) expansionLockQualityFailReasons.push("weak_cluster_survivors_selected");
         const expansionLockQualityPass = expansionLockQualityFailReasons.length === 0;
-        if (!expansionLockQualityPass && selected.length >= 5 && expansionSelectedCandidates.length > 0) {
-          const dropTitles = new Set(expansionWeakClusterSelectedTitles.length ? expansionWeakClusterSelectedTitles : expansionSelectedTitles);
+        if (!expansionLockQualityPass && preGateExpansionSelectedCandidates.length > 0) {
+          const dropTitles = new Set(preGateExpansionSelectedTitles);
           selected = selected.filter((candidate) => !dropTitles.has(candidate.title));
-          rejectedReasons.expansion_lock_quality_removed_weak_cluster_titles = dropTitles.size;
+          rejectedReasons.expansion_lock_quality_removed_weak_cluster_titles = expansionWeakClusterSelectedTitles.length;
+          rejectedReasons.expansion_lock_quality_removed_selected_expansion_titles = dropTitles.size;
           (rejectedReasons as Record<string, unknown>).lockQualityPass = false;
           (rejectedReasons as Record<string, unknown>).lockQualityFailReasons = [
             ...((((rejectedReasons as Record<string, unknown>).lockQualityFailReasons as string[] | undefined) || [])),
             ...expansionLockQualityFailReasons,
+          ];
+        }
+        const expansionAcceptedFinalCandidates = expansionLockQualityPass
+          ? selected.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)))
+          : [];
+        const expansionCandidatesAcceptedFinal = expansionAcceptedFinalCandidates.map((candidate) => candidate.title);
+        const expansionSelectedTitles = expansionCandidatesAcceptedFinal;
+        if (expansionCandidatesAcceptedFinal.length === 0 && preGateExpansionSelectedCandidates.length > 0) {
+          (rejectedReasons as Record<string, unknown>).lockQualityPass = false;
+          (rejectedReasons as Record<string, unknown>).lockQualityFailReasons = [
+            ...((((rejectedReasons as Record<string, unknown>).lockQualityFailReasons as string[] | undefined) || [])),
+            "expansion_selected_titles_failed_final_acceptance",
           ];
         }
         const expansionScoredCandidates = scored.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)));
@@ -643,7 +654,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
             acc[reason] = [...(acc[reason] || []), candidate.title];
             return acc;
           }, {});
-        const expansionSelectedRejectedByReason = expansionSelectedCandidates
+        const expansionSelectedRejectedByReason = preGateExpansionSelectedCandidates
           .filter((candidate) => !selected.some((row) => row.title === candidate.title))
           .reduce<Record<string, string[]>>((acc, candidate) => {
             const reason = expansionWeakClusterSelectedTitles.includes(candidate.title)
@@ -674,6 +685,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           expansionDiagnostics.expansionMergeSkippedReason = expansionMergeSkippedReason || (expansionScoredCandidates.length === 0 && expansionRawItems.length > 0 ? "merged_rows_missing_from_scoring_after_normalization" : undefined);
           expansionDiagnostics.expansionCandidatesEnteredScoringCount = expansionScoredCandidates.length;
           expansionDiagnostics.expansionCleanEligibleCount = cleanEligibleExpansionTitles.length;
+          expansionDiagnostics.finalEligibilityGateApplied = true;
+          expansionDiagnostics.expansionCandidatesAcceptedFinal = expansionCandidatesAcceptedFinal;
           expansionDiagnostics.expansionSelectedTitles = expansionSelectedTitles;
           expansionDiagnostics.expansionCandidatesRejectedByReason = expansionCandidatesRejectedByReason;
           expansionDiagnostics.expansionSelectedRejectedByReason = expansionSelectedRejectedByReason;
@@ -702,6 +715,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         currentOpenLibrarySourceResult.diagnostics.expansionMergeSkippedReason = "expansion_fetch_failed_before_merge";
         currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
         currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
+        currentOpenLibrarySourceResult.diagnostics.finalEligibilityGateApplied = false;
+        currentOpenLibrarySourceResult.diagnostics.expansionCandidatesAcceptedFinal = [];
         currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
         currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
         currentOpenLibrarySourceResult.diagnostics.expansionSelectedRejectedByReason = {};
@@ -721,6 +736,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
       currentOpenLibrarySourceResult.diagnostics.expansionMergeSkippedReason = "missing_openlibrary_expansion_plan_or_adapter";
       currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
       currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
+      currentOpenLibrarySourceResult.diagnostics.finalEligibilityGateApplied = false;
+      currentOpenLibrarySourceResult.diagnostics.expansionCandidatesAcceptedFinal = [];
       currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
       currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
       currentOpenLibrarySourceResult.diagnostics.expansionSelectedRejectedByReason = {};
@@ -741,6 +758,8 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
     currentOpenLibrarySourceResult.diagnostics.expansionMergeSkippedReason = "expansion_not_triggered";
     currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
     currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
+    currentOpenLibrarySourceResult.diagnostics.finalEligibilityGateApplied = false;
+    currentOpenLibrarySourceResult.diagnostics.expansionCandidatesAcceptedFinal = [];
     currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
     currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
     currentOpenLibrarySourceResult.diagnostics.expansionSelectedRejectedByReason = {};

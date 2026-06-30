@@ -1954,6 +1954,8 @@ function handleLeft() {
       expansionMergeSkippedReason: openLibrarySourceDiagnostics?.expansionMergeSkippedReason || "",
       expansionCandidatesEnteredScoringCount: Number(openLibrarySourceDiagnostics?.expansionCandidatesEnteredScoringCount || 0),
       expansionCleanEligibleCount: Number(openLibrarySourceDiagnostics?.expansionCleanEligibleCount || 0),
+      finalEligibilityGateApplied: Boolean(openLibrarySourceDiagnostics?.finalEligibilityGateApplied),
+      expansionCandidatesAcceptedFinal: Array.isArray(openLibrarySourceDiagnostics?.expansionCandidatesAcceptedFinal) ? openLibrarySourceDiagnostics.expansionCandidatesAcceptedFinal : [],
       expansionSelectedTitles: Array.isArray(openLibrarySourceDiagnostics?.expansionSelectedTitles) ? openLibrarySourceDiagnostics.expansionSelectedTitles : [],
       expansionCandidatesRejectedByReason: openLibrarySourceDiagnostics?.expansionCandidatesRejectedByReason || {},
       expansionSelectedRejectedByReason: openLibrarySourceDiagnostics?.expansionSelectedRejectedByReason || {},
