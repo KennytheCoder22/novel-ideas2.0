@@ -546,6 +546,15 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
         currentOpenLibrarySourceResult.diagnostics.middleGradesRecoveryFinalShortfallReason = expansionResponse.timedOut ? "clean_candidate_shortfall_expansion_timed_out" : "clean_candidate_shortfall_expansion_failed";
       }
+    } else {
+      currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = false;
+      currentOpenLibrarySourceResult.diagnostics.expansionNotTriggeredReason = "missing_openlibrary_expansion_plan_or_adapter";
+      currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = false;
+      currentOpenLibrarySourceResult.diagnostics.expansionConvertedCount = 0;
+      currentOpenLibrarySourceResult.diagnostics.expansionCandidatesEnteredScoringCount = 0;
+      currentOpenLibrarySourceResult.diagnostics.expansionCleanEligibleCount = 0;
+      currentOpenLibrarySourceResult.diagnostics.expansionSelectedTitles = [];
+      currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
     }
   } else if (tasteProfile.ageBand === "preteens" && currentOpenLibrarySourceResult) {
     currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = false;

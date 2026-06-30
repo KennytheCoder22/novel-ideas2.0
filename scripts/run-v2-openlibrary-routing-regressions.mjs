@@ -1600,6 +1600,10 @@ async function main() {
       ],
     });
     const openLibraryDiagnostics = result.diagnostics.sources.find((source) => source.source === "openLibrary") || {};
+    const selectedDiagnostics = result.diagnostics.stages.find((stage) => stage.stage === "selected")?.details?.rejectedReasons || {};
+    const cleanCandidateCount = Number(selectedDiagnostics.finalEligibilityCleanCandidateCount || 0);
+    const validExpansionBlockReason = /missing_openlibrary_expansion_plan_or_adapter|openlibrary_source_unavailable|final_eligibility_not_underfilled/i.test(String(openLibraryDiagnostics.expansionNotTriggeredReason || ""));
+    assertEqual(cleanCandidateCount >= 5 || openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered === true || validExpansionBlockReason, true, "Middle Grades OpenLibrary clean underfill must trigger expansion or report a valid blocking reason");
     assertEqual(openLibraryDiagnostics.cleanCandidateShortfallExpansionTriggered, true, "live-shaped underfilled Middle Grades run should trigger clean-candidate expansion even without deep debug");
     assertEqual(openLibraryDiagnostics.expansionFetchAttempted, true, "live-shaped clean-candidate expansion should attempt fetches");
     assertEqual(Number(openLibraryDiagnostics.expansionConvertedCount || 0) > 0, true, "live-shaped clean-candidate expansion should convert rows");
@@ -2487,6 +2491,32 @@ async function main() {
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.selectedVsRejectedRouteAlignmentSummary.selectedRouteAlignedCount, 0, "weak title/subtitle evidence cannot count as route-aligned success");
   assertEqual(middleGradesRobotTitleOnlyLockResult.rejectedReasons.sameSeriesTitleOnlyClusterDetected, false, "rejected title-only rows should not be counted as a selected same-series cluster");
   console.log(JSON.stringify({ name: "middle grades title-only robot slate fails lock quality", pass: true, selected: middleGradesRobotTitleOnlyLockResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesRobotTitleOnlyLockResult.rejectedReasons }));
+
+  const middleGradesMagicClusterLockResult = selectRecommendations([
+    "My Rainbow Magic",
+    "A Snicker of Magic",
+    "A Tale of Magic...",
+    "Magic Kingdom For Sale/Sold!",
+    "The Magic Faraway Tree",
+  ].map((title, index) => fakeScoredCandidate({
+    id: `middle-magic-cluster-${index}`,
+    title,
+    creators: [`Magic Cluster Author ${index}`],
+    description: "A magical middle grade fantasy adventure with family, friendship, and school evidence.",
+    score: 12 - index * 0.1,
+    maturityBand: "preteens",
+    genres: ["Fantasy"],
+    themes: ["Magic", "Friendship", "Family"],
+    scoreBreakdown: { genreFacetMatch: 3, positiveTasteMatch: 3, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+    diagnostics: { queryText: "middle grade fantasy quest", queryFamily: "fantasy", routingReason: "middle_grades_fantasy_adventure" },
+    raw: { subject: ["Juvenile fiction", "Magic -- Fiction", "Friendship -- Fiction", "Family -- Fiction"] },
+  })), middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesMagicClusterLockResult.selected.length, 5, "magic cluster fixture should still form a count-complete slate before lock-quality checks");
+  assertEqual(middleGradesMagicClusterLockResult.rejectedReasons.repeatedTitleTokenClusterDetected, true, "magic title-token cluster should be detected");
+  assertEqual(middleGradesMagicClusterLockResult.rejectedReasons.repeatedTitleTokenClusterToken, "magic", "magic title-token cluster should report the repeated token");
+  assertEqual(middleGradesMagicClusterLockResult.rejectedReasons.lockQualityPass, false, "magic title-token cluster cannot pass lock quality");
+  assertEqual((middleGradesMagicClusterLockResult.rejectedReasons.lockQualityFailReasons || []).includes("repeated_title_token_cluster_detected"), true, "magic title-token cluster should add a lock-quality failure reason");
+  console.log(JSON.stringify({ name: "middle grades repeated magic title-token cluster fails lock quality", pass: true, selected: middleGradesMagicClusterLockResult.selected.map((candidate) => candidate.title), lockReasons: middleGradesMagicClusterLockResult.rejectedReasons.lockQualityFailReasons }));
 
   const middleGradesFourWeakResult = selectRecommendations(["One", "Two", "Three", "Four"].map((seed, index) => fakeScoredCandidate({
     id: `middle-four-weak-${seed}`,

@@ -1813,7 +1813,7 @@ function handleLeft() {
     const scoredCandidateUniverseCountForReport = Number(middleGradesPipelineAudit?.scoredCandidateUniverseCount ?? scoredCount);
     const middleGradesExpandedPoolHandoffFailedForReport = Boolean(middleGradesPipelineAudit?.middleGradesExpandedPoolHandoffFailed || openLibrarySourceDiagnostics?.middleGradesExpandedPoolHandoffFailed);
     const middleGradesExpandedPoolFailureReasonForReport = String(middleGradesPipelineAudit?.middleGradesExpandedPoolFailureReason || openLibrarySourceDiagnostics?.middleGradesExpandedPoolFailureReason || "");
-    const finalEligibilityCleanCandidateCountForReport = Number(v2Result.items.length || 0);
+    const finalEligibilityCleanCandidateCountForReport = Number(selectionDiagnostics?.finalEligibilityCleanCandidateCount ?? v2Result.items.length ?? 0);
     const viableCandidateCountBeforeFinalSelectionForReport = Number(scoredCount || 0);
     const finalAcceptedDocsLengthForReport = Number(v2Result.items.length || 0);
     const queries = diagnostics.searchPlan.intents.map((intent) => intent.query);
@@ -1941,6 +1941,14 @@ function handleLeft() {
       meaningfulTasteRecoveryRejectedTitlesByReason: openLibrarySourceDiagnostics?.meaningfulTasteRecoveryRejectedTitlesByReason || {},
       meaningfulTasteRecoveryFinalCount: Number(openLibrarySourceDiagnostics?.meaningfulTasteRecoveryFinalCount || 0),
       underfilledAfterMeaningfulTasteRecovery: Boolean(openLibrarySourceDiagnostics?.underfilledAfterMeaningfulTasteRecovery),
+      cleanCandidateShortfallExpansionTriggered: Boolean(openLibrarySourceDiagnostics?.cleanCandidateShortfallExpansionTriggered),
+      expansionNotTriggeredReason: openLibrarySourceDiagnostics?.expansionNotTriggeredReason || "",
+      expansionFetchAttempted: Boolean(openLibrarySourceDiagnostics?.expansionFetchAttempted),
+      expansionConvertedCount: Number(openLibrarySourceDiagnostics?.expansionConvertedCount || 0),
+      expansionCandidatesEnteredScoringCount: Number(openLibrarySourceDiagnostics?.expansionCandidatesEnteredScoringCount || 0),
+      expansionCleanEligibleCount: Number(openLibrarySourceDiagnostics?.expansionCleanEligibleCount || 0),
+      expansionSelectedTitles: Array.isArray(openLibrarySourceDiagnostics?.expansionSelectedTitles) ? openLibrarySourceDiagnostics.expansionSelectedTitles : [],
+      expansionCandidatesRejectedByReason: openLibrarySourceDiagnostics?.expansionCandidatesRejectedByReason || {},
       meaningfulTasteRecoveryMergedIntoScoring: Boolean(selectionDiagnostics?.meaningfulTasteRecoveryMergedIntoScoring),
       meaningfulTasteRecoveryMergedCandidateCount: Number(selectionDiagnostics?.meaningfulTasteRecoveryMergedCandidateCount || 0),
       meaningfulTasteRecoveryDroppedAfterMergeByReason: selectionDiagnostics?.meaningfulTasteRecoveryDroppedAfterMergeByReason || {},
