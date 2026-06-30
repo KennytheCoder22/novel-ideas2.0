@@ -157,6 +157,35 @@ async function main() {
   assertEqual((queryOnlyScored.diagnostics.queryTextSignalsRemovedFromTasteMatch || []).length > 0, true, "removed query-only taste signals should be diagnosed");
   console.log(JSON.stringify({ name: "middle grades scoring ignores query-only taste signals", pass: true, removed: queryOnlyScored.diagnostics.queryTextSignalsRemovedFromTasteMatch }));
 
+  const documentEvidenceProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Dragon Hero Family", genres: ["fantasy"], themes: ["dragon", "family", "heroic"] },
+    ],
+  });
+  const documentEvidenceNormalized = normalizeSourceResults([{
+    source: "openLibrary",
+    status: "fulfilled",
+    rawItems: [{
+      id: "openlibrary-doc-evidence",
+      title: "The Dragon Family Quest",
+      creators: ["Evidence Author"],
+      formats: ["book"],
+      subject: ["Juvenile fiction -- Dragons", "Families -- Fiction", "Fantasy fiction"],
+      first_sentence: ["A heroic dragon and a family begin a magical quest together."],
+      queryText: "middle grade dragon family fiction",
+      queryFamily: "dragon_family",
+      routingReason: "middle_grades_fantasy_adventure",
+    }],
+    diagnostics: {},
+  }]);
+  const documentEvidenceScored = scoreCandidates(documentEvidenceNormalized, documentEvidenceProfile)[0];
+  assertEqual((documentEvidenceScored.diagnostics.documentBackedTasteSignals || []).includes("dragon"), true, "raw Open Library subjects/first_sentence should count as document-backed dragon evidence");
+  assertEqual(Number(documentEvidenceScored.scoreBreakdown.positiveTasteMatch || 0) > 0 || Number(documentEvidenceScored.scoreBreakdown.genreFacetMatch || 0) > 0, true, "document-backed Open Library evidence should raise taste score without using query text");
+  const documentEvidenceSelection = selectRecommendations([documentEvidenceScored], documentEvidenceProfile, 1);
+  assertEqual((documentEvidenceSelection.rejectedReasons.zeroTasteCandidateRejectedTitles || []).includes("The Dragon Family Quest"), false, "document-backed Open Library evidence should avoid zero_doc_backed_taste_match rejection");
+  console.log(JSON.stringify({ name: "middle grades document-backed evidence uses raw subjects and first sentence", pass: true, signals: documentEvidenceScored.diagnostics.documentBackedTasteSignals }));
+
   const genericOnlyTasteProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: [

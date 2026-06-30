@@ -22,10 +22,22 @@ function normalized(value: unknown): string {
 }
 
 function candidateMetadataText(candidate: NormalizedCandidate): string {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const rawDescription = typeof raw.description === "string"
+    ? raw.description
+    : typeof (raw.description as { value?: unknown } | undefined)?.value === "string"
+      ? String((raw.description as { value: string }).value)
+      : "";
+  const firstSentence = Array.isArray(raw.first_sentence) ? raw.first_sentence.map(String).join(" ") : typeof raw.first_sentence === "string" ? raw.first_sentence : "";
+  const rawSubjects = [raw.subject, raw.subjects, raw.subject_facet]
+    .flatMap((value) => Array.isArray(value) ? value.map(String) : typeof value === "string" ? [value] : []);
   return [
     candidate.title,
     candidate.subtitle,
     candidate.description,
+    rawDescription,
+    firstSentence,
+    ...rawSubjects,
     ...candidate.creators,
     ...candidate.genres,
     ...candidate.themes,
@@ -43,10 +55,31 @@ function hasStrongGenreMetadata(text: string): boolean {
   return /\b(dystopian|dystopia|science fiction|horror|thriller|mystery|historical fiction|fantasy|paranormal|survival|adventure)\b/.test(text);
 }
 
+function signalPresentInText(text: string, value: string): boolean {
+  if (!value) return false;
+  if (text.includes(value)) return true;
+  const variants: Record<string, RegExp> = {
+    family: /\b(family|families|parents?|siblings?)\b/,
+    friendship: /\b(friendship|friends?|classmates?)\b/,
+    friends: /\b(friendship|friends?|classmates?)\b/,
+    heroic: /\b(heroic|heroes|hero|heroine)\b/,
+    hero: /\b(heroic|heroes|hero|heroine)\b/,
+    mythology: /\b(mythology|mythological|myths?|legends?)\b/,
+    myth: /\b(mythology|mythological|myths?|legends?)\b/,
+    dragon: /\b(dragons?|dragonriders?)\b/,
+    school: /\b(school|classroom|classmates?|students?|teachers?)\b/,
+    superhero: /\b(superheroes?|super hero|powers?)\b/,
+    ocean: /\b(ocean|sea|marine|island)\b/,
+    science: /\b(science|scientist|scientists|experiments?|technology|inventions?)\b/,
+    robot: /\b(robots?|androids?)\b/,
+  };
+  return Boolean(variants[value]?.test(text));
+}
+
 function signalMatches(text: string, signals: WeightedSignalV2[]): WeightedSignalV2[] {
   return signals.filter((signal) => {
     const value = normalized(signal.value);
-    return Boolean(value && text.includes(value));
+    return signalPresentInText(text, value);
   });
 }
 

@@ -816,6 +816,9 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
   ]);
   const firstPublishYear = Number.isFinite(Number(doc?.first_publish_year)) ? Number(doc.first_publish_year) : undefined;
   const sourceUrl = key ? `https://openlibrary.org${key.startsWith("/") ? key : `/${key}`}` : undefined;
+  const rawDescription = typeof doc?.description === "string" ? doc.description : typeof doc?.description?.value === "string" ? doc.description.value : "";
+  const firstSentence = Array.isArray(doc?.first_sentence) ? doc.first_sentence.map(String).filter(Boolean) : typeof doc?.first_sentence === "string" ? [doc.first_sentence] : [];
+  const description = rawDescription || firstSentence.join(" ") || undefined;
   return {
     id: key || `openlibrary:${title.toLowerCase()}`,
     sourceId: key || undefined,
@@ -825,7 +828,10 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
     creators: authors,
     authors,
     author_name: authors,
-    description: typeof doc?.description === "string" ? doc.description : typeof doc?.description?.value === "string" ? doc.description.value : undefined,
+    description,
+    first_sentence: firstSentence,
+    subject: subjects,
+    subject_facet: subjects,
     formats: ["book"],
     genres: subjects.slice(0, 12),
     themes: subjects.slice(0, 18),
