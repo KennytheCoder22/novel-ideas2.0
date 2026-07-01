@@ -3042,21 +3042,10 @@ function handleLeft() {
     return Array.isArray(value) ? value.slice(0, limit) : [];
   }
 
-  function limitRecord(value: unknown, limit = 40): Record<string, unknown> {
-    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-    return Object.fromEntries(Object.entries(value as Record<string, unknown>).slice(0, limit));
-  }
-
   function compactCodexString(value: unknown, maxLength: number): string {
     if (value == null) return "";
     const text = Array.isArray(value) ? value.filter(Boolean).join(" | ") : String(value);
     return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
-  }
-
-  function compactCodexObject(value: unknown, maxLength: number): unknown {
-    if (value == null) return value;
-    const text = JSON.stringify(value);
-    return text.length > maxLength ? { truncated: true, preview: text.slice(0, maxLength) } : value;
   }
 
   function buildCodexDiagnosticsUploadText(result: RecommendationResultV2 | null, errorMessage = "") {
@@ -3065,113 +3054,75 @@ function handleLeft() {
     const selectedStage = (diagnostics?.stages || []).find((stage: any) => stage.stage === "selected") as any;
     const selection = selectedStage?.details?.rejectedReasons || {};
     const expansionEvidenceAudit = openLibraryDiagnostics?.expansionFinalEligibilityEvidenceAuditByTitle || {};
-    const compactExpansionEvidence = Object.entries(expansionEvidenceAudit).slice(0, 18).map(([title, row]: [string, any]) => ({
-      title,
-      score: row?.score,
-      sourceQuery: row?.sourceQuery,
-      matchedRouteFamily: row?.matchedRouteFamily,
-      rawSubjects: limitArray(row?.rawSubjects, 8),
-      firstSentence: compactCodexString(row?.rawFirstSentence, 260),
-      description: compactCodexString(row?.rawDescription, 360),
-      docSignals: limitArray(row?.documentBackedTasteSignals, 8),
-      routeEvidenceFields: limitArray(row?.routeEvidenceFields, 8),
-      hasFictionAgeEvidence: row?.hasFictionAgeEvidence,
-      missingEvidenceFieldOrFailedPredicate: row?.missingEvidenceFieldOrFailedPredicate,
-      queryOnlyCapExplanation: row?.queryOnlyCapExplanation,
-      rejectedReasons: limitArray(row?.rejectedReasons, 8),
-    }));
-    const payload = {
-      reportType: "codex_mg_ol_min_v2",
-      generatedAt: new Date().toISOString(),
-      deck: { deckKey, deckLabel: deck.deckLabel, ageBand: deckKeyToAgeBandV2(deckKey) },
-      swipes: { right: rightSwipes, left: leftSwipes, down: downSwipes, total: swipeHistory.length },
-      signals: swipeHistoryToV2Signals(swipeHistory),
-      engine: {
-        selected: selectedRecommendationEngine,
-        lastUsed: lastEngineActuallyUsed || "",
-        status: errorMessage ? "error" : result ? "ok" : "not_run",
-        error: errorMessage || v2DebugError || "",
-        requestId: diagnostics?.requestId || "",
-      },
-      returned: limitArray(result?.items, 8).map((item: any) => ({
-        title: item?.title,
-        score: item?.score,
-        source: item?.source,
-        query: item?.diagnostics?.queryText,
-        family: item?.diagnostics?.queryFamily,
-      })),
-      tasteProfile: compactCodexObject(diagnostics?.tasteProfile || {}, 1800),
-      openLibrary: {
-        rawCount: openLibraryDiagnostics?.rawCount,
-        normalizedCount: openLibraryDiagnostics?.normalizedCount,
-        queries: limitArray(openLibraryDiagnostics?.queries, 14),
-        handoff: {
-          fetched: openLibraryDiagnostics?.openLibraryDocsFetchedAcrossAllQueriesCount,
-          eligibleForScoring: openLibraryDiagnostics?.openLibraryDocsEligibleForScoringCount,
-          handedToScoring: openLibraryDiagnostics?.openLibraryDocsActuallyHandedToScoringCount,
-          source: openLibraryDiagnostics?.openLibraryScoringHandoffSource,
-          limitedToSourceFinal: openLibraryDiagnostics?.openLibraryScoringHandoffLimitedToSourceFinal,
-        },
-        expansion: {
-          triggered: openLibraryDiagnostics?.cleanCandidateShortfallExpansionTriggered,
-          notTriggeredReason: openLibraryDiagnostics?.expansionNotTriggeredReason,
-          fetchAttempted: openLibraryDiagnostics?.expansionFetchAttempted,
-          attemptedQueries: limitArray(openLibraryDiagnostics?.expansionAttemptedQueries, 14),
-          fetchResultsByQuery: limitArray(openLibraryDiagnostics?.expansionFetchResultsByQuery, 14),
-          rawCount: openLibraryDiagnostics?.expansionRawCount,
-          convertedCount: openLibraryDiagnostics?.expansionConvertedCount,
-          mergedCandidateCount: openLibraryDiagnostics?.expansionMergedCandidateCount,
-          enteredScoringCount: openLibraryDiagnostics?.expansionCandidatesEnteredScoringCount,
-          cleanEligibleCount: openLibraryDiagnostics?.expansionCleanEligibleCount,
-          acceptedFinal: limitArray(openLibraryDiagnostics?.expansionCandidatesAcceptedFinal, 12),
-          selectedTitles: limitArray(openLibraryDiagnostics?.expansionSelectedTitles, 12),
-          rejectedByReason: limitRecord(openLibraryDiagnostics?.expansionCandidatesRejectedByReason, 12),
-          lockQualityPass: openLibraryDiagnostics?.expansionLockQualityPass,
-          lockQualityFailReasons: limitArray(openLibraryDiagnostics?.expansionLockQualityFailReasons, 8),
-          evidenceAudit: compactExpansionEvidence,
-        },
-        recovery: {
-          meaningfulTasteRecoveryTriggered: openLibraryDiagnostics?.meaningfulTasteRecoveryTriggered,
-          attemptedQueries: limitArray(openLibraryDiagnostics?.meaningfulTasteRecoveryQueriesAttempted, 12),
-          acceptedTitles: limitArray(openLibraryDiagnostics?.meaningfulTasteRecoveryAcceptedTitles, 12),
-          postFinalAcceptedTitles: limitArray(openLibraryDiagnostics?.postFinalEligibilityRecoveryAcceptedTitles, 12),
-        },
-      },
-      selection: {
-        finalTitles: limitArray(diagnostics?.finalSelectionTitles, 8),
-        finalEligibilityCleanCandidateCount: selection?.finalEligibilityCleanCandidateCount,
-        finalEligibilityAcceptedTitles: limitArray(selection?.finalEligibilityAcceptedTitles, 12),
-        meaningfulTasteEligibleTitles: limitArray(selection?.meaningfulTasteEligibleTitles, 12),
-        zeroTasteRejected: limitArray(selection?.zeroTasteCandidateRejectedTitles, 12),
-        broadAdventureOnlyRejected: limitArray(selection?.broadAdventureOnlyRejectedTitles, 12),
-        queryTextSignalsRemovedByTitle: limitRecord(selection?.queryTextSignalsRemovedFromTasteMatchByTitle, 12),
-        docBackedSignalsByTitle: limitRecord(selection?.documentBackedTasteSignalsByTitle, 12),
-        topRejectedQualityAudit: limitArray(selection?.middleGradesTopRejectedQualityAudit, 12).map((row: any) => compactCodexObject(row, 900)),
-        lockQualityPass: selection?.lockQualityPass,
-        lockQualityFailReasons: limitArray(selection?.lockQualityFailReasons, 8),
-      },
-    };
-    const compactReport = JSON.stringify(payload);
-    if (compactReport.length <= 45_000) return compactReport;
-    return JSON.stringify({
-      ...payload,
-      tasteProfile: compactCodexObject(diagnostics?.tasteProfile || {}, 900),
-      openLibrary: {
-        ...payload.openLibrary,
-        queries: limitArray(openLibraryDiagnostics?.queries, 8),
-        expansion: {
-          ...payload.openLibrary.expansion,
-          attemptedQueries: limitArray(openLibraryDiagnostics?.expansionAttemptedQueries, 8),
-          fetchResultsByQuery: limitArray(openLibraryDiagnostics?.expansionFetchResultsByQuery, 8),
-          evidenceAudit: compactExpansionEvidence.slice(0, 8),
-        },
-      },
-      selection: {
-        ...payload.selection,
-        topRejectedQualityAudit: limitArray(selection?.middleGradesTopRejectedQualityAudit, 6).map((row: any) => compactCodexObject(row, 500)),
-      },
-      truncationNote: "Codex diagnostics exceeded 45KB, so this payload was auto-trimmed.",
+    const signals = swipeHistoryToV2Signals(swipeHistory);
+    const reasonCounts = new Map<string, number>();
+    Object.values(openLibraryDiagnostics?.expansionCandidatesRejectedByReason || {}).forEach((reason: any) => {
+      const key = String(Array.isArray(reason) ? reason[0] : reason || "unknown");
+      reasonCounts.set(key, (reasonCounts.get(key) || 0) + 1);
     });
+    Object.values(expansionEvidenceAudit).forEach((row: any) => {
+      limitArray(row?.rejectedReasons, 6).forEach((reason) => {
+        const key = String(reason || "unknown");
+        reasonCounts.set(key, (reasonCounts.get(key) || 0) + 1);
+      });
+    });
+    const topReasons = [...reasonCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const evidenceRows = Object.entries(expansionEvidenceAudit).slice(0, 8).map(([title, row]: [string, any]) => [
+      `- ${title}`,
+      `  score=${row?.score ?? "?"}; query=${row?.sourceQuery || "?"}; family=${row?.matchedRouteFamily || "?"}`,
+      `  reasons=${limitArray(row?.rejectedReasons, 4).join(",") || row?.missingEvidenceFieldOrFailedPredicate || "?"}`,
+      `  subjects=${limitArray(row?.rawSubjects, 5).join(" | ") || "(none)"}`,
+      `  docSignals=${limitArray(row?.documentBackedTasteSignals, 5).join(",") || "(none)"}`,
+      `  support=${limitArray(row?.routeEvidenceFields, 5).join(",") || "(none)"}; fictionAge=${String(row?.hasFictionAgeEvidence)}`,
+      row?.queryOnlyCapExplanation ? `  queryOnly=${compactCodexString(row.queryOnlyCapExplanation, 180)}` : "",
+      row?.rawFirstSentence ? `  first=${compactCodexString(row.rawFirstSentence, 180)}` : "",
+      row?.rawDescription ? `  desc=${compactCodexString(row.rawDescription, 220)}` : "",
+    ].filter(Boolean).join("\n"));
+    const topRejectedRows = limitArray(selection?.middleGradesTopRejectedQualityAudit, 5).map((row: any) => [
+      `- ${row?.title || "Untitled"}`,
+      `  reason=${row?.finalEligibilityRejectedReason || row?.rejectionReason || "?"}; score=${row?.score ?? "?"}; query=${row?.sourceQuery || "?"}`,
+      `  tier=${row?.routeEvidenceTier || "?"}; fields=${limitArray(row?.documentEvidenceFields, 5).join(",") || "(none)"}`,
+      `  taste=${limitArray(row?.tasteSignalsMatched, 5).join(",") || "(none)"}`,
+    ].join("\n"));
+    const lines = [
+      "CODEX_MG_OL_BRIEF_V3",
+      `generatedAt: ${new Date().toISOString()}`,
+      `deck: ${deckKey} / ${deck.deckLabel} / ${deckKeyToAgeBandV2(deckKey)}`,
+      `status: ${errorMessage ? `error ${errorMessage}` : result ? "ok" : "not_run"}`,
+      `requestId: ${diagnostics?.requestId || "(none)"}`,
+      `swipes: right=${rightSwipes} left=${leftSwipes} down=${downSwipes} total=${swipeHistory.length}`,
+      `signals: ${compactCodexString(JSON.stringify(signals), 900)}`,
+      `returned: ${limitArray(result?.items, 8).map((item: any) => item?.title).filter(Boolean).join(" | ") || "(none)"}`,
+      "",
+      "OPEN_LIBRARY_COUNTS",
+      `raw=${openLibraryDiagnostics?.rawCount ?? "?"}; normalized=${openLibraryDiagnostics?.normalizedCount ?? "?"}; fetched=${openLibraryDiagnostics?.openLibraryDocsFetchedAcrossAllQueriesCount ?? "?"}; handedToScoring=${openLibraryDiagnostics?.openLibraryDocsActuallyHandedToScoringCount ?? "?"}; handoffSource=${openLibraryDiagnostics?.openLibraryScoringHandoffSource || "?"}`,
+      `queries=${limitArray(openLibraryDiagnostics?.queries, 10).join(" | ") || "(none)"}`,
+      "",
+      "EXPANSION_SUMMARY",
+      `triggered=${String(openLibraryDiagnostics?.cleanCandidateShortfallExpansionTriggered)}; fetchAttempted=${String(openLibraryDiagnostics?.expansionFetchAttempted)}; raw=${openLibraryDiagnostics?.expansionRawCount ?? "?"}; converted=${openLibraryDiagnostics?.expansionConvertedCount ?? "?"}; merged=${openLibraryDiagnostics?.expansionMergedCandidateCount ?? "?"}; enteredScoring=${openLibraryDiagnostics?.expansionCandidatesEnteredScoringCount ?? "?"}; cleanEligible=${openLibraryDiagnostics?.expansionCleanEligibleCount ?? "?"}`,
+      `acceptedFinal=${limitArray(openLibraryDiagnostics?.expansionCandidatesAcceptedFinal, 8).join(" | ") || "(none)"}`,
+      `selected=${limitArray(openLibraryDiagnostics?.expansionSelectedTitles, 8).join(" | ") || "(none)"}`,
+      `attemptedQueries=${limitArray(openLibraryDiagnostics?.expansionAttemptedQueries, 8).join(" | ") || "(none)"}`,
+      `topRejectReasons=${topReasons.map(([reason, count]) => `${reason}:${count}`).join(" | ") || "(none)"}`,
+      `lockQuality=${String(openLibraryDiagnostics?.expansionLockQualityPass)} ${limitArray(openLibraryDiagnostics?.expansionLockQualityFailReasons, 5).join(",")}`,
+      "",
+      "SELECTION_SUMMARY",
+      `finalClean=${selection?.finalEligibilityCleanCandidateCount ?? "?"}; finalAccepted=${limitArray(selection?.finalEligibilityAcceptedTitles, 8).join(" | ") || "(none)"}`,
+      `meaningfulTaste=${limitArray(selection?.meaningfulTasteEligibleTitles, 8).join(" | ") || "(none)"}`,
+      `zeroTasteRejected=${limitArray(selection?.zeroTasteCandidateRejectedTitles, 8).join(" | ") || "(none)"}`,
+      `broadAdventureRejected=${limitArray(selection?.broadAdventureOnlyRejectedTitles, 8).join(" | ") || "(none)"}`,
+      `lockQuality=${String(selection?.lockQualityPass)} ${limitArray(selection?.lockQualityFailReasons, 5).join(",")}`,
+      "",
+      "EXPANSION_EVIDENCE_ROWS",
+      evidenceRows.join("\n") || "(none)",
+      "",
+      "TOP_SELECTION_REJECTS",
+      topRejectedRows.join("\n") || "(none)",
+    ];
+    const report = lines.join("\n");
+    return report.length > 12_000
+      ? `${report.slice(0, 12_000)}\n\n[TRUNCATED_TO_12KB: enough summary retained for Codex next-step debugging]`
+      : report;
   }
 
   async function handleCopyCodexDiagnostics() {
