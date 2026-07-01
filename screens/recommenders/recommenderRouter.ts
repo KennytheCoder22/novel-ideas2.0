@@ -6599,6 +6599,7 @@ export async function getRecommendations(
   let narrativeExpansionViableCount = 0;
   let narrativeExpansionAcceptedTitles: string[] = [];
   let finalUnderfillAfterNarrativeExpansion = false;
+  let expansionMergedButNotScoredReason = "none";
   let narrativeExpansionCandidatesEnteredScoringCount = 0;
   const narrativeExpansionCandidatesDroppedBeforeScoringByReason: Record<string, number> = {};
   let narrativeExpansionCandidatesSurvivedScoringCount = 0;
@@ -9355,8 +9356,8 @@ const normalizedCandidatesRaw = [
         diagnostics: { ...(doc?.diagnostics || {}), isExpansionCandidate: true, narrativeExpansionCandidate: true },
       }));
       finalRenderDocs = dedupeDocs([...finalRenderDocs, ...narrativeExpansionMergedDocs]).slice(0, 60);
-      if (acceptedNarrativeDocs.length > 0 && expansionCandidatesEnteredScoringCount === 0) {
-        expansionMergedButNotScoredReason = "narrative_expansion_docs_merged_but_not_scored";
+      if (acceptedNarrativeDocs.length > 0) {
+        expansionMergedButNotScoredReason = "narrative_expansion_docs_merged_pending_scoring";
       }
     } catch (e: any) {
       narrativeExpansionReason = `fetch_error:${String(e?.message || e)}`;
@@ -9369,6 +9370,11 @@ const normalizedCandidatesRaw = [
   let expansionCandidatesSurvivedFiltersCount = 0;
   const expansionCandidatesRejectedByReason: Record<string, number> = {};
   const expansionCandidatesAcceptedFinal: string[] = [];
+  const expansionScoredScoreByTitle: Record<string, number> = {};
+  const expansionFinalEligibilityRejectionStageByTitle: Record<string, string> = {};
+  const expansionFinalEligibilityRejectionReasonByTitle: Record<string, string> = {};
+  const expansionWouldPassIfQueryOnlyCapIgnored: string[] = [];
+  const expansionRouteFictionSupportedButRejectedTitles: string[] = [];
   const candidateDiversityFloorTarget = includeComicVine ? 30 : 20;
   const postTopUpFinalItemsLength = finalRenderDocs.length;
   const recoveryFinalItemsLength = finalRenderDocs.length;
@@ -9423,7 +9429,11 @@ const normalizedCandidatesRaw = [
     if (matchingSeed && saturationPenalty > 0) seedSaturationPenaltyApplied[matchingSeed] = (seedSaturationPenaltyApplied[matchingSeed] || 0) + saturationPenalty;
     const docRoot = parentFranchiseRootForDoc(doc);
     const isExpansionDoc = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate || expansionTitleSetForScoring.has(normalizeText(String(doc?.title || ""))));
-    if (isExpansionDoc) expansionCandidatesEnteredScoringCount += 1;
+    if (isExpansionDoc) {
+      expansionCandidatesEnteredScoringCount += 1;
+      const expansionTitle = String(doc?.title || "").trim();
+      if (expansionTitle) expansionScoredScoreByTitle[expansionTitle] = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+    }
     const expansionDiversityBonus = isExpansionDoc && preferredExpansionRoots.has(docRoot) && finalRenderDocs.length < 8 ? 14 : 0;
     const incumbentPenalty = finalRenderDocs.length < 8 && ["something-is-killing-the-children", "ms-marvel"].includes(docRoot) ? 24 : 0;
     const docScore = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0) - saturationPenalty + expansionDiversityBonus - incumbentPenalty;
@@ -9488,6 +9498,39 @@ const normalizedCandidatesRaw = [
     if (antiCollapseSelected.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
   }
   if (antiCollapseSelected.length >= 8) finalRenderDocs = antiCollapseSelected;
+  else if (includeComicVine && expansionCandidatesEnteredScoringCount > 10) {
+    const cleanExpansionBase = antiCollapseSelected.length > 0 ? antiCollapseSelected : finalRenderDocs;
+    const selectedTitles = new Set(cleanExpansionBase.map((doc: any) => normalizeText(String(doc?.title || ""))).filter(Boolean));
+    const cleanExpansionAdds: any[] = [];
+    for (const doc of ([...scoringUniverse] as any[]).sort((a: any, b: any) => Number(b?.score ?? b?.diagnostics?.finalScore ?? 0) - Number(a?.score ?? a?.diagnostics?.finalScore ?? 0))) {
+      const title = String(doc?.title || "").trim();
+      const nt = normalizeText(title);
+      if (!title || !nt || selectedTitles.has(nt)) continue;
+      const isExpansionDoc = Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate || expansionTitleSetForScoring.has(nt));
+      if (!isExpansionDoc) continue;
+      const score = Number(doc?.score ?? doc?.diagnostics?.finalScore ?? 0);
+      if (score < 0) continue;
+      const hardBlock = isHardBlockedRelaxationCandidate(doc, finalRenderDocs);
+      if (hardBlock) {
+        expansionFinalEligibilityRejectionStageByTitle[title] = "pre_final_clean_expansion_hard_block";
+        expansionFinalEligibilityRejectionReasonByTitle[title] = hardBlock;
+        continue;
+      }
+      const root = parentFranchiseRootForDoc(doc);
+      const text = normalizeText(`${title} ${String(doc?.description || "")} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`);
+      const routeFamilySupported = Boolean(root) || preferredExpansionRoots.has(root) || profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
+      const fictionSupported = /\b(graphic novel|comic|comics|manga|fiction|story|saga|fantasy|adventure|superhero|horror|thriller|science fiction|coming of age)\b/.test(text);
+      if (!routeFamilySupported || !fictionSupported) {
+        expansionFinalEligibilityRejectionStageByTitle[title] = "pre_final_clean_expansion_evidence";
+        expansionFinalEligibilityRejectionReasonByTitle[title] = !routeFamilySupported ? "missing_route_family_evidence" : "missing_fiction_evidence";
+        continue;
+      }
+      cleanExpansionAdds.push(doc);
+      selectedTitles.add(nt);
+      if (cleanExpansionBase.length + cleanExpansionAdds.length >= Math.min(Math.max(finalLimit, 8), 10)) break;
+    }
+    finalRenderDocs = cleanExpansionAdds.length > 0 ? dedupeDocs([...cleanExpansionBase, ...cleanExpansionAdds]) : antiCollapseSelected;
+  }
   else finalRenderDocs = antiCollapseSelected;
   for (const doc of finalRenderDocs) {
     if (expansionTitleSetForScoring.has(normalizeText(String(doc?.title || "")))) expansionCandidatesAcceptedFinal.push(String(doc?.title || ""));
@@ -9586,7 +9629,7 @@ const normalizedCandidatesRaw = [
     acc[k] = (acc[k] || 0) + 1;
     return acc;
   }, {});
-  if (Object.values(familyCounts).some((n) => n >= 3)) qualityRecoveryReasons.push("franchise_overfill");
+  if (Object.values(familyCounts).some((n: any) => Number(n) >= 3)) qualityRecoveryReasons.push("franchise_overfill");
   if (finalRenderDocs.some((d: any) => /\b(all her monsters|omega|clockworks|mecca conclusion|silk road|boss rush|after the flood|the road to war|the ratio part|one night only|election day)\b/i.test(String(d?.title || "")) && finalRenderDocs.some((x: any) => parentFranchiseRootForDoc(x) === parentFranchiseRootForDoc(d) && /\b(volume one|volume 1|book one|book 1)\b/i.test(String(x?.title || ""))))) qualityRecoveryReasons.push("side_arc_with_core_entry");
   if (scoredCandidateUniverseCount < candidateDiversityFloorTarget) {
     qualityRecoveryReasons.push("candidate_diversity_floor_not_met");
@@ -9668,6 +9711,10 @@ const normalizedCandidatesRaw = [
   const registerFinalEligibilityReject = (reason: string, title: string) => {
     if (!finalEligibilityRejectedTitlesByReason[reason]) finalEligibilityRejectedTitlesByReason[reason] = [];
     if (title && finalEligibilityRejectedTitlesByReason[reason].length < 40) finalEligibilityRejectedTitlesByReason[reason].push(title);
+    if (title && expansionFinalEligibilityCandidateTitleSet.has(normalizeText(title))) {
+      expansionFinalEligibilityRejectionStageByTitle[title] = "final_eligibility_filter";
+      expansionFinalEligibilityRejectionReasonByTitle[title] = reason;
+    }
     if (title && narrativeExpansionAcceptedTitleSet.has(normalizeText(title))) {
       narrativeExpansionCandidatesRejectedByFinalEligibilityReason[reason] = Number(narrativeExpansionCandidatesRejectedByFinalEligibilityReason[reason] || 0) + 1;
     }
@@ -9692,7 +9739,6 @@ const normalizedCandidatesRaw = [
   const finalReturnedWithoutTasteEvidenceTitles: string[] = [];
   let finalUnderfillBecauseNoTasteEvidence = false;
   let underfillReason: "transport_failure" | "query_literalism" | "semantic_gate_rejected_all" | "insufficient_candidate_metadata" | "taste_conflict" | "comicvine_fallback_only" | "none" = "none";
-  let expansionMergedButNotScoredReason = "none";
   const terminalRejectReasonByTitle: Record<string, string> = {};
   const markTerminalReject = (title: string, reason: string) => {
     const key = normalizeText(String(title || ""));
@@ -9785,6 +9831,10 @@ const normalizedCandidatesRaw = [
   }
   const teenMaturityHardBlockRe = /\b(explicit sexual|sexually explicit|pornographic|porn|erotica|adult only|adults only|18\+|nc-17|x-rated|rape|sexual assault|incest|gore porn|extreme gore)\b/i;
   const finalRenderCandidateDocsBeforeGate = Array.isArray(finalRenderDocs) ? finalRenderDocs.slice() : [];
+  const expansionFinalEligibilityCandidateTitleSet = new Set(finalRenderCandidateDocsBeforeGate
+    .filter((doc: any) => Boolean((doc as any)?.isExpansionCandidate || (doc?.diagnostics as any)?.isExpansionCandidate || expansionTitleSetForScoring.has(normalizeText(String(doc?.title || "")))))
+    .map((doc: any) => normalizeText(String(doc?.title || "")))
+    .filter(Boolean));
   const finalRenderCandidateTitlesBeforeGate = finalRenderCandidateDocsBeforeGate.map((doc: any) => String(doc?.title || "").trim()).filter(Boolean);
   preSourceSpecificGateTitles.push(...finalRenderCandidateTitlesBeforeGate);
   finalRenderDocs = finalRenderDocs.filter((doc: any) => {
@@ -10039,6 +10089,9 @@ const normalizedCandidatesRaw = [
     }
     if (parodyMetaTitle && !hasComedyParodyAffinity) { registerFinalEligibilityReject("parody_meta_without_profile_affinity", title); return false; }
     if (isComicVineCandidate && queryTermOnlyEvidence && titleOnlyTasteSignals.length > 0) {
+      if (expansionFinalEligibilityCandidateTitleSet.has(normalizeText(title)) && rawScoreForGate >= 0 && (seedRootMatch || expansionRootMatch || Boolean(root) || queryFamilyAliasMatch) && narrativeFictionConfidence >= 2) {
+        expansionWouldPassIfQueryOnlyCapIgnored.push(title);
+      }
       registerFinalEligibilityReject("title_token_only_without_narrative_support", title);
       return false;
     }
@@ -10158,7 +10211,17 @@ const normalizedCandidatesRaw = [
       if (!finalEligibilityRejectReasonsByTitle[nt].includes(reason)) finalEligibilityRejectReasonsByTitle[nt].push(reason);
     }
   }
-  for (const doc of finalRenderCandidateDocsBeforeGate) {
+  for (const doc of finalRenderCandidateDocsBeforeGate as any[]) {
+    const title = String(doc?.title || "").trim();
+    if (!title || !expansionFinalEligibilityCandidateTitleSet.has(normalizeText(title)) || finalAcceptedTitleSet.has(normalizeText(title))) continue;
+    const root = parentFranchiseRootForDoc(doc);
+    const text = normalizeText(`${title} ${String(doc?.description || "")} ${String(doc?.parentVolumeName || "")} ${String(doc?.queryText || "")}`);
+    const routeFamilySupported = Boolean(root) || preferredExpansionRoots.has(root) || profileSelectedEntitySeeds.some((seed) => text.includes(normalizeText(seed)));
+    const fictionSupported = /\b(graphic novel|comic|comics|manga|fiction|story|saga|fantasy|adventure|superhero|horror|thriller|science fiction|coming of age)\b/.test(text);
+    if (routeFamilySupported && fictionSupported) expansionRouteFictionSupportedButRejectedTitles.push(title);
+  }
+
+  for (const doc of finalRenderCandidateDocsBeforeGate as any[]) {
     const title = String(doc?.title || "").trim();
     const nt = normalizeText(title);
     if (!title || !nt) continue;
@@ -10437,7 +10500,7 @@ const normalizedCandidatesRaw = [
   ) {
     const seenExpanded = new Set(eligibleWithFitScore.map((row: any) => normalizeText(String(row?.doc?.title || ""))).filter(Boolean));
     const expandedPoolPreTerminal = dedupeDocs([...(narrativeExpansionMergedDocs || []), ...(viableCandidates || []), ...(scoredCanonicalDocs || [])] as any[]);
-    for (const doc of expandedPoolPreTerminal) {
+    for (const doc of expandedPoolPreTerminal as any[]) {
       const title = String(doc?.title || "").trim();
       const nt = normalizeText(title);
       if (!title || !nt || seenExpanded.has(nt)) continue;
@@ -15722,6 +15785,11 @@ const normalizedCandidatesRaw = [
     expansionCandidatesSurvivedFiltersCount,
     expansionCandidatesRejectedByReason,
     expansionCandidatesAcceptedFinal,
+    expansionScoredScoreByTitle,
+    expansionFinalEligibilityRejectionStageByTitle,
+    expansionFinalEligibilityRejectionReasonByTitle,
+    expansionWouldPassIfQueryOnlyCapIgnored: Array.from(new Set(expansionWouldPassIfQueryOnlyCapIgnored)),
+    expansionRouteFictionSupportedButRejectedTitles: Array.from(new Set(expansionRouteFictionSupportedButRejectedTitles)),
     expansionQueryRootMismatchRejectedTitles,
     expansionFalsePositiveRejectedTitles,
     expansionLocaleRejectedTitles,
