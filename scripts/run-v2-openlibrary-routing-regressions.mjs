@@ -191,7 +191,7 @@ async function main() {
     ageBand: "preteens",
     signals: [
       { action: "like", title: "Robot Magic Friends", genres: ["fantasy", "science"], themes: ["robot", "friendship", "survival"] },
-      { action: "like", title: "Mystery Science Hero Family", genres: ["science fiction adventure"], themes: ["mystery adventure", "superhero adventure", "family adventure", "school mystery"] },
+      { action: "like", title: "Mystery Science Hero Family", genres: ["science fiction adventure"], themes: ["mystery adventure", "superhero adventure", "family adventure", "school mystery", "ocean adventure", "survival adventure"] },
     ],
   });
   const metadataAliasNormalized = normalizeSourceResults([{
@@ -247,6 +247,26 @@ async function main() {
       queryText: "middle grade school mystery",
       queryFamily: "school_mystery",
       routingReason: "middle_grades_fantasy_mystery",
+    }, {
+      id: "openlibrary-compound-ocean-evidence",
+      title: "Harbor Rescue",
+      creators: ["Alias Author"],
+      formats: ["book"],
+      subject: ["Juvenile fiction", "Ocean -- Fiction", "Adventure stories"],
+      first_sentence: ["A middle grade island crew begins an ocean rescue quest."],
+      queryText: "children ocean adventure",
+      queryFamily: "ocean_adventure",
+      routingReason: "middle_grades_fantasy_adventure",
+    }, {
+      id: "openlibrary-compound-survival-evidence",
+      title: "Forest Signal",
+      creators: ["Alias Author"],
+      formats: ["book"],
+      subject: ["Juvenile fiction", "Survival -- Fiction", "Wilderness -- Fiction"],
+      first_sentence: ["A stranded class survives a forest adventure together."],
+      queryText: "middle grade survival adventure",
+      queryFamily: "survival_adventure",
+      routingReason: "middle_grades_scifi_adventure",
     }],
     diagnostics: {},
   }]);
@@ -256,6 +276,10 @@ async function main() {
   assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Starlight Rescue")?.diagnostics.documentBackedTasteSignals || []).includes("science fiction adventure"), true, "compound science-fiction adventure metadata should count as document-backed evidence");
   assertEqual((metadataAliasScored.find((candidate) => candidate.title === "The Neighborhood Cape")?.diagnostics.documentBackedTasteSignals || []).includes("superhero adventure"), true, "compound superhero adventure metadata should count as document-backed evidence");
   assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Locker 13")?.diagnostics.documentBackedTasteSignals || []).includes("school mystery"), true, "compound school mystery metadata should count as document-backed evidence");
+  assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Harbor Rescue")?.diagnostics.documentBackedTasteSignals || []).includes("ocean adventure"), true, "compound ocean adventure metadata should count as document-backed evidence");
+  assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Forest Signal")?.diagnostics.documentBackedTasteSignals || []).includes("survival adventure"), true, "compound survival adventure metadata should count as document-backed evidence");
+  const oceanSurvivalSelection = selectRecommendations(metadataAliasScored.filter((candidate) => ["Harbor Rescue", "Forest Signal"].includes(candidate.title)), metadataAliasEvidenceProfile, 2);
+  assertEqual(oceanSurvivalSelection.selected.length, 2, "ocean/survival adventure metadata should survive Middle Grades final eligibility");
   const metadataAliasSelection = selectRecommendations(metadataAliasScored, metadataAliasEvidenceProfile, 5);
   assertEqual(metadataAliasSelection.selected.length, 5, "metadata-backed alias evidence should survive Middle Grades final eligibility without title-token clustering");
   console.log(JSON.stringify({ name: "middle grades metadata aliases count as document-backed evidence", pass: true, signalsByTitle: Object.fromEntries(metadataAliasScored.map((candidate) => [candidate.title, candidate.diagnostics.documentBackedTasteSignals])) }));

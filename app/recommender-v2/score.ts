@@ -64,11 +64,15 @@ function signalPresentInText(text: string, value: string): boolean {
   const hasScienceFiction = /\b(science fiction|sci fi|sci-fi|space|robot|robots?|robotics|androids?|technology|inventions?|laboratory|lab|experiment|experiments?|scientist|scientists)\b/.test(text);
   const hasSuperhero = /\b(superheroes?|super hero|superpowered|super-powered|powers?|cape|masked hero|masked heroes)\b/.test(text);
   const hasSchool = /\b(school|classroom|classmates?|students?|teachers?|middle school)\b/.test(text);
+  const hasOcean = /\b(ocean|sea|marine|island|underwater|coast|beach)\b/.test(text);
+  const hasSurvival = /\b(survival|survive|survives|wilderness|wild|forest|island|stranded)\b/.test(text);
   if (/\b(family adventure|adventure family)\b/.test(value)) return hasFamily && hasAdventure;
   if (/\b(mystery adventure|adventure mystery)\b/.test(value)) return hasMystery && hasAdventure;
   if (/\b(science fiction adventure|science adventure|sci fi adventure|sci-fi adventure|robot adventure)\b/.test(value)) return hasScienceFiction && hasAdventure;
   if (/\b(superhero adventure|super hero adventure)\b/.test(value)) return hasSuperhero && hasAdventure;
   if (/\b(school mystery|mystery school)\b/.test(value)) return hasSchool && hasMystery;
+  if (/\b(ocean adventure|adventure ocean|sea adventure|island adventure)\b/.test(value)) return hasOcean && hasAdventure;
+  if (/\b(survival adventure|adventure survival)\b/.test(value)) return hasSurvival && hasAdventure;
   const variants: Record<string, RegExp> = {
     adventure: /\b(adventures?|quest|quests|journeys?|explor(?:e|es|ing|ation)|survival|expedition)\b/,
     comedy: /\b(comedy|comic|humou?r|funny|jokes?|laughs?|giggles?|silly|playful)\b/,
