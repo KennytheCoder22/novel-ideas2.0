@@ -3038,6 +3038,179 @@ function handleLeft() {
     }).join("\n");
   }
 
+  function limitArray<T>(value: T[] | undefined, limit: number): T[] {
+    return Array.isArray(value) ? value.slice(0, limit) : [];
+  }
+
+  function limitRecord(value: unknown, limit = 40): Record<string, unknown> {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).slice(0, limit));
+  }
+
+  function buildCodexDiagnosticsPayload(result: RecommendationResultV2 | null, errorMessage = "") {
+    const diagnostics = result?.diagnostics || null;
+    const openLibraryDiagnostics = (diagnostics?.sources || []).find((source: any) => source.source === "openLibrary") as any;
+    const selectedStage = (diagnostics?.stages || []).find((stage: any) => stage.stage === "selected") as any;
+    const selection = selectedStage?.details?.rejectedReasons || {};
+    const expansionEvidenceAudit = openLibraryDiagnostics?.expansionFinalEligibilityEvidenceAuditByTitle || {};
+    const compactFetches = limitArray(openLibraryDiagnostics?.fetches, 24).map((fetch: any) => ({
+      query: fetch?.query,
+      status: fetch?.status,
+      fetchPath: fetch?.fetchPath,
+      timedOut: Boolean(fetch?.timedOut),
+      httpStatus: fetch?.httpStatus,
+      rawCount: fetch?.rawCount,
+      docsReturned: fetch?.docsReturned,
+      firstReturnedTitles: limitArray(fetch?.firstReturnedTitles, 8),
+      failedReason: fetch?.failedReason,
+      responseShape: fetch?.responseShape,
+      queryFamily: fetch?.queryFamily,
+    }));
+    const compactExpansionAudit = Object.fromEntries(Object.entries(expansionEvidenceAudit).slice(0, 45).map(([title, row]: [string, any]) => [title, {
+      score: row?.score,
+      sourceQuery: row?.sourceQuery,
+      matchedRouteFamily: row?.matchedRouteFamily,
+      rawSubjects: limitArray(row?.rawSubjects, 18),
+      rawFirstSentence: limitArray(row?.rawFirstSentence, 3),
+      rawDescription: row?.rawDescription ? String(row.rawDescription).slice(0, 900) : "",
+      routeEvidenceFields: row?.routeEvidenceFields || [],
+      documentBackedTasteSignals: row?.documentBackedTasteSignals || [],
+      hasFictionAgeEvidence: row?.hasFictionAgeEvidence,
+      missingEvidenceFieldOrFailedPredicate: row?.missingEvidenceFieldOrFailedPredicate,
+      queryOnlyCapExplanation: row?.queryOnlyCapExplanation,
+      rejectedReasons: row?.rejectedReasons || [],
+    }]));
+    return {
+      reportType: "codex_middle_grades_openlibrary_diagnostics_v1",
+      generatedAt: new Date().toISOString(),
+      deck: { deckKey, deckLabel: deck.deckLabel, ageBand: deckKeyToAgeBandV2(deckKey) },
+      engine: {
+        selected: selectedRecommendationEngine,
+        lastUsed: lastEngineActuallyUsed || "",
+        v2Status: errorMessage ? "error" : result ? "ok" : "not_run",
+        v2Error: errorMessage || v2DebugError || "",
+        engineVersion: result?.engineVersion || "",
+        requestId: diagnostics?.requestId || "",
+      },
+      sourceEnabled,
+      swipeSummary: { rightSwipes, leftSwipes, downSwipes, total: swipeHistory.length },
+      swipeSignals: swipeHistoryToV2Signals(swipeHistory),
+      returnedItems: limitArray(result?.items, 10).map((item: any) => ({
+        title: item?.title,
+        source: item?.source,
+        score: item?.score,
+        creators: item?.creators,
+        queryText: item?.diagnostics?.queryText,
+        queryFamily: item?.diagnostics?.queryFamily,
+      })),
+      tasteProfile: diagnostics?.tasteProfile || {},
+      searchPlanQueries: limitArray((diagnostics?.searchPlan?.intents || []).map((intent: any) => intent.query), 30),
+      stageCounts: (diagnostics?.stages || []).map((stage: any) => ({ stage: stage.stage, counts: stage.counts || {} })),
+      openLibrary: {
+        status: openLibraryDiagnostics?.status,
+        rawCount: openLibraryDiagnostics?.rawCount,
+        normalizedCount: openLibraryDiagnostics?.normalizedCount,
+        queries: limitArray(openLibraryDiagnostics?.queries, 30),
+        rawTitles: limitArray(openLibraryDiagnostics?.rawTitles, 60),
+        firstReturnedTitles: limitArray(openLibraryDiagnostics?.firstReturnedTitles, 30),
+        dropReasons: openLibraryDiagnostics?.dropReasons || {},
+        handoff: {
+          fetchedAcrossAllQueries: openLibraryDiagnostics?.openLibraryDocsFetchedAcrossAllQueriesCount,
+          eligibleForScoring: openLibraryDiagnostics?.openLibraryDocsEligibleForScoringCount,
+          handedToScoring: openLibraryDiagnostics?.openLibraryDocsActuallyHandedToScoringCount,
+          handoffSource: openLibraryDiagnostics?.openLibraryScoringHandoffSource,
+          limitedToSourceFinal: openLibraryDiagnostics?.openLibraryScoringHandoffLimitedToSourceFinal,
+        },
+        recovery: {
+          meaningfulTasteRecoveryTriggered: openLibraryDiagnostics?.meaningfulTasteRecoveryTriggered,
+          triggerStage: openLibraryDiagnostics?.meaningfulTasteRecoveryTriggerStage,
+          attemptedQueries: limitArray(openLibraryDiagnostics?.meaningfulTasteRecoveryQueriesAttempted, 30),
+          acceptedTitles: limitArray(openLibraryDiagnostics?.meaningfulTasteRecoveryAcceptedTitles, 30),
+          rejectedTitlesByReason: limitRecord(openLibraryDiagnostics?.meaningfulTasteRecoveryRejectedTitlesByReason, 20),
+          postFinalAcceptedTitles: limitArray(openLibraryDiagnostics?.postFinalEligibilityRecoveryAcceptedTitles, 30),
+          postFinalRejectedByReason: limitRecord(openLibraryDiagnostics?.postFinalEligibilityRecoveryRejectedByReason, 20),
+        },
+        expansion: {
+          triggered: openLibraryDiagnostics?.cleanCandidateShortfallExpansionTriggered,
+          notTriggeredReason: openLibraryDiagnostics?.expansionNotTriggeredReason,
+          fetchAttempted: openLibraryDiagnostics?.expansionFetchAttempted,
+          attemptedQueries: limitArray(openLibraryDiagnostics?.expansionAttemptedQueries, 30),
+          fetchResultsByQuery: limitArray(openLibraryDiagnostics?.expansionFetchResultsByQuery, 30),
+          rawCount: openLibraryDiagnostics?.expansionRawCount,
+          convertedCount: openLibraryDiagnostics?.expansionConvertedCount,
+          mergedCandidateCount: openLibraryDiagnostics?.expansionMergedCandidateCount,
+          enteredScoringCount: openLibraryDiagnostics?.expansionCandidatesEnteredScoringCount,
+          cleanEligibleCount: openLibraryDiagnostics?.expansionCleanEligibleCount,
+          candidatesAcceptedFinal: limitArray(openLibraryDiagnostics?.expansionCandidatesAcceptedFinal, 30),
+          selectedTitles: limitArray(openLibraryDiagnostics?.expansionSelectedTitles, 30),
+          rejectedByReason: limitRecord(openLibraryDiagnostics?.expansionCandidatesRejectedByReason, 30),
+          lockQualityPass: openLibraryDiagnostics?.expansionLockQualityPass,
+          lockQualityFailReasons: openLibraryDiagnostics?.expansionLockQualityFailReasons || [],
+          finalEligibilityEvidenceAuditByTitle: compactExpansionAudit,
+        },
+        fetches: compactFetches,
+        rawDocTrace: limitArray(openLibraryDiagnostics?.debugMiddleGradesRawDocTrace, 35),
+        normalizedCandidateTrace: limitArray(openLibraryDiagnostics?.debugMiddleGradesNormalizedCandidateTrace, 35),
+      },
+      selection: {
+        finalSelectionTitles: diagnostics?.finalSelectionTitles || [],
+        finalEligibilityAcceptedTitles: limitArray(selection?.finalEligibilityAcceptedTitles, 40),
+        finalEligibilityCleanCandidateCount: selection?.finalEligibilityCleanCandidateCount,
+        rankedDocsTitles: limitArray(selection?.rankedDocsTitles, 60),
+        finalRankingReasonByTitle: limitRecord(selection?.finalRankingReasonByTitle, 60),
+        finalScoreComponentsByTitle: limitRecord(selection?.finalScoreComponentsByTitle, 40),
+        candidateMatchedLikedSignalsByTitle: limitRecord(selection?.candidateMatchedLikedSignalsByTitle, 40),
+        documentBackedTasteSignalsByTitle: limitRecord(selection?.documentBackedTasteSignalsByTitle, 40),
+        queryTextSignalsRemovedFromTasteMatchByTitle: limitRecord(selection?.queryTextSignalsRemovedFromTasteMatchByTitle, 40),
+        zeroTasteCandidateRejectedTitles: limitArray(selection?.zeroTasteCandidateRejectedTitles, 40),
+        broadAdventureOnlyRejectedTitles: limitArray(selection?.broadAdventureOnlyRejectedTitles, 40),
+        meaningfulTasteEligibleTitles: limitArray(selection?.meaningfulTasteEligibleTitles, 40),
+        topRejectedQualityAudit: limitArray(selection?.middleGradesTopRejectedQualityAudit, 35),
+        scoredCandidateAttribution: limitArray(selection?.middleGradesScoredCandidateAttribution, 50),
+        lockQualityPass: selection?.lockQualityPass,
+        lockQualityFailReasons: selection?.lockQualityFailReasons || [],
+      },
+    };
+  }
+
+  async function handleCopyCodexDiagnostics() {
+    setV2DebugLoading(true);
+    setV2DebugError("");
+    try {
+      const ageBand = deckKeyToAgeBandV2(deckKey);
+      const middleGradesDeepDebugDiagnostics = middleGradesDeepDebugDiagnosticsForSession(ageBand, middleGradesDeepDebugUiEnabled);
+      const result = await runRecommenderV2({
+        requestId: `codex-diagnostics-${Date.now()}`,
+        ageBand,
+        limit: 5,
+        enabledSources: {
+          mock: true,
+          googleBooks: sourceEnabled.googleBooks,
+          openLibrary: sourceEnabled.openLibrary,
+          localLibrary: sourceEnabled.localLibrary,
+          kitsu: sourceEnabled.kitsu,
+          comicVine: sourceEnabled.comicVine,
+          nyt: sourceEnabled.nyt,
+        },
+        signals: swipeHistoryToV2Signals(swipeHistory),
+        deckKey,
+        diagnostics: middleGradesDeepDebugDiagnostics,
+      });
+      setV2DebugResult(result);
+      const report = JSON.stringify(buildCodexDiagnosticsPayload(result), null, 2);
+      await Clipboard.setStringAsync(report);
+      Alert.alert("Copied", `Codex diagnostics copied (${Math.round(report.length / 1024)} KB). Paste this into Codex.`);
+    } catch (err: any) {
+      const message = String(err?.message || err || "codex_diagnostics_failed");
+      setV2DebugError(message);
+      const report = JSON.stringify(buildCodexDiagnosticsPayload(null, message), null, 2);
+      await Clipboard.setStringAsync(report);
+      Alert.alert("Copied with error", "Codex diagnostics copied with the run error included.");
+    } finally {
+      setV2DebugLoading(false);
+    }
+  }
+
   async function handleCopyDiagnostics() {
     const expectedFingerprint = EXPECTED_ROUTER_FINGERPRINT;
     const runtimeFingerprint = lastDebugRouterVersion || "";
@@ -4687,6 +4860,10 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.codexDiagnosticsToggle} onPress={() => void handleCopyCodexDiagnostics()}>
+            <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Running…" : "Codex Diagnostics"}</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.v2DebugToggle} onPress={() => void runRecommenderV2DebugFromCurrentSession("button")}>
             <Text style={styles.debugToggleText}>{v2DebugLoading ? "V2 Running…" : "Run V2"}</Text>
           </TouchableOpacity>
@@ -4905,6 +5082,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
+  },
+  codexDiagnosticsToggle: {
+    minWidth: 148,
+    alignItems: "center",
+    backgroundColor: "#4338ca",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#c7d2fe",
   },
   copyToggle: {
     minWidth: 112,
