@@ -22,6 +22,20 @@ const MIDDLE_GRADES_OPEN_LIBRARY_TOTAL_BUDGET_MS = 24_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_TOTAL_BUDGET_MS = 180_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS = 20_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT = 60;
+const OPEN_LIBRARY_SEARCH_FIELDS = [
+  "key",
+  "title",
+  "subtitle",
+  "author_name",
+  "first_publish_year",
+  "cover_i",
+  "edition_key",
+  "subject",
+  "subject_key",
+  "subject_facet",
+  "first_sentence",
+  "description",
+].join(",");
 
 type OpenLibraryQueryPlan = {
   query: string;
@@ -793,7 +807,7 @@ function configuredOpenLibraryProxyBase(): string {
 }
 
 function openLibraryRequest(query: string, limit: number, forceDirect = false): { url: string; fetchPath: "direct" | "proxy" } {
-  const params = `q=${encodeURIComponent(query)}&limit=${Math.max(1, Math.min(20, limit))}`;
+  const params = `q=${encodeURIComponent(query)}&limit=${Math.max(1, Math.min(20, limit))}&fields=${encodeURIComponent(OPEN_LIBRARY_SEARCH_FIELDS)}`;
   if (!forceDirect && typeof window !== "undefined") return { url: `/api/openlibrary?${params}`, fetchPath: "proxy" };
   const proxyBase = configuredOpenLibraryProxyBase();
   if (!forceDirect && proxyBase) return { url: `${proxyBase}/api/openlibrary?${params}`, fetchPath: "proxy" };
