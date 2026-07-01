@@ -1638,6 +1638,7 @@ async function main() {
     }
     assertEqual(Object.keys(openLibraryDiagnostics.expansionScoredScoreByTitle || {}).length > 0, true, "clean expansion should report scored expansion candidates by title");
     assertEqual(Object.keys(openLibraryDiagnostics.expansionFinalEligibilityRejectionStage || {}).length > 0, true, "clean expansion should report final-eligibility rejection stage by title");
+    assertEqual(Object.keys(openLibraryDiagnostics.expansionFinalEligibilityEvidenceAuditByTitle || {}).length > 0, true, "clean expansion should report exact evidence audit fields by title");
     assertEqual(Number(openLibraryDiagnostics.expansionPreCapCandidateCount || 0) >= Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0), true, "clean expansion should report its pre-cap scoring candidate pool");
     assertEqual(String(openLibraryDiagnostics.expansionCapReason || "none") !== "source_handoff_limited_to_source_final_5", true, "clean expansion must not be controlled by the old source-final-5 cap");
     if (Number(openLibraryDiagnostics.expansionRawCount || 0) >= 200) {

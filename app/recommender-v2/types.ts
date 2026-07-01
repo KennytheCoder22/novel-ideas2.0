@@ -334,6 +334,15 @@ export interface SourceDiagnosticV2 {
   expansionWouldPassIfQueryOnlyCapIgnoredTitles?: string[];
   expansionRouteFictionSupportButRejectedTitles?: string[];
   expansionCandidatesSurvivedFiltersCount?: number;
+  expansionFinalEligibilityEvidenceAuditByTitle?: Record<string, {
+    score: number;
+    sourceQuery?: string;
+    routeEvidenceFields?: string[];
+    documentBackedTasteSignals?: string[];
+    hasFictionAgeEvidence?: boolean;
+    missingEvidenceFieldOrFailedPredicate?: string;
+    rejectedReasons?: string[];
+  }>;
   expansionCleanEligibleCount?: number;
   finalEligibilityGateApplied?: boolean;
   expansionCandidatesAcceptedFinal?: string[];

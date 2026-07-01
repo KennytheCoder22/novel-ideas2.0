@@ -370,6 +370,16 @@ function middleGradesFinalEligibility(candidate: ScoredCandidate): { allowed: bo
   const hasIndependentSupport = supportedFields.length > 0 || routeEvidence.fields.length >= 2 && !middleGradesTitleOnlyRouteEvidence(candidate);
   if (routeEvidence.documentLevel && routeEvidence.fields.length > 0 && hasIndependentSupport) return { allowed: true, evidence: routeEvidence.fields.map((field) => `document_route:${field}`) };
   if (middleGradesFictionAgeEvidence(candidate) && hasIndependentSupport) return { allowed: true, evidence: ["middle_grade_fiction_metadata", ...routeEvidence.fields.map((field) => `document_route:${field}`)] };
+  if (isMiddleGradesCleanExpansionCandidate(candidate)
+    && !candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")
+    && middleGradesFictionAgeEvidence(candidate)
+    && middleGradesDocumentBackedTasteSignals(candidate).some((signal) => signal !== "adventure")
+    && candidate.score >= 0) {
+    return {
+      allowed: true,
+      evidence: ["clean_expansion_document_backed_taste_signal", "middle_grade_fiction_metadata", ...middleGradesDocumentBackedTasteSignals(candidate).map((signal) => `document_taste:${signal}`)],
+    };
+  }
   if (middleGradesTitleOnlyRouteEvidence(candidate)) return { allowed: false, evidence: routeEvidence.fields.map((field) => `document_route:${field}`), rejectedReason: "title_only_route_evidence_missing_support" };
   if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) return { allowed: true, evidence: ["explicit_emergency_fallback"], emergencyOverride: true };
   if (routeEvidence.queryLevel && !routeEvidence.documentLevel) return { allowed: false, evidence: [], rejectedReason: "middle_grades_query_only_missing_document_evidence" };
@@ -904,7 +914,8 @@ function middleGradesCleanExpansionRouteFictionSupport(candidate: ScoredCandidat
   const finalEligibility = middleGradesFinalEligibility(candidate);
   if (!finalEligibility.allowed) return false;
   if (!middleGradesFictionAgeEvidence(candidate)) return false;
-  if (middleGradesSupportedRouteEvidenceFields(candidate).length === 0) return false;
+  const backedTasteSignals = middleGradesDocumentBackedTasteSignals(candidate).filter((signal) => signal !== "adventure");
+  if (middleGradesSupportedRouteEvidenceFields(candidate).length === 0 && backedTasteSignals.length === 0) return false;
   if (candidate.score < 0) return false;
   if (candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")) return false;
   if (candidate.rejectedReasons.includes("humor_keyword_only_leakage")) return false;

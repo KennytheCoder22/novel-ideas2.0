@@ -720,6 +720,36 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           .filter((candidate) => candidate.score >= 0)
           .filter((candidate) => !candidate.rejectedReasons.some((reason) => /artifact|adult_or_ya|humor_keyword|duplicate|non_positive|query_only_score_cap/.test(reason)))
           .length;
+        const expansionFinalEligibilityEvidenceAuditByTitle = Object.fromEntries(expansionScoredCandidates.map((candidate) => {
+          const rawText = normalizedTokenText(JSON.stringify(candidate.raw || {}));
+          const routeEvidenceFields = Array.isArray(candidate.diagnostics?.routeAlignmentEvidenceFields)
+            ? candidate.diagnostics.routeAlignmentEvidenceFields.map(String)
+            : [];
+          const documentBackedTasteSignals = Array.from(new Set([
+            ...(Array.isArray(candidate.diagnostics?.documentBackedTasteSignals) ? candidate.diagnostics.documentBackedTasteSignals.map(String) : []),
+            ...(Array.isArray(candidate.diagnostics?.documentOnlyTasteMatch) ? candidate.diagnostics.documentOnlyTasteMatch.map(String) : []),
+          ]));
+          const hasFictionAgeEvidence = /\b(middle grade|middle school|juvenile|children'?s|chapter book|ages?\s*(?:8|9|10|11|12)|grades?\s*(?:3|4|5|6|7))\b/.test(rawText)
+            && /\b(fiction|novel|story|chapter book|adventure|fantasy|mystery|humor|humour|comedy)\b/.test(rawText);
+          const missingEvidenceFieldOrFailedPredicate = routeEvidenceFields.filter((field) => !["title", "subtitle"].includes(field)).length === 0
+            ? documentBackedTasteSignals.length === 0
+              ? "missing_non_title_route_evidence_and_document_backed_taste_signal"
+              : "missing_non_title_route_evidence"
+            : !hasFictionAgeEvidence
+              ? "missing_middle_grade_fiction_age_metadata"
+              : candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")
+                ? "query_only_score_cap_applied"
+                : expansionCandidatePrimaryRejectionReason(candidate);
+          return [candidate.title, {
+            score: Math.round(candidate.score * 1000) / 1000,
+            sourceQuery: String(candidate.diagnostics?.queryText || ""),
+            routeEvidenceFields,
+            documentBackedTasteSignals,
+            hasFictionAgeEvidence,
+            missingEvidenceFieldOrFailedPredicate,
+            rejectedReasons: candidate.rejectedReasons,
+          }];
+        }));
         const expansionCandidatesRejectedByReason = expansionScoredCandidates
           .filter((candidate) => !expansionSelectedTitles.includes(candidate.title))
           .reduce<Record<string, string[]>>((acc, candidate) => {
@@ -766,6 +796,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           expansionDiagnostics.expansionWouldPassIfQueryOnlyCapIgnoredTitles = expansionWouldPassIfQueryOnlyCapIgnoredTitles;
           expansionDiagnostics.expansionRouteFictionSupportButRejectedTitles = expansionRouteFictionSupportButRejectedTitles;
           expansionDiagnostics.expansionCandidatesSurvivedFiltersCount = expansionCandidatesSurvivedFiltersCount;
+          expansionDiagnostics.expansionFinalEligibilityEvidenceAuditByTitle = expansionFinalEligibilityEvidenceAuditByTitle;
           expansionDiagnostics.expansionFetchFailureReason = expansionFetchFailureReason;
           expansionDiagnostics.expansionMergeSkippedReason = expansionMergeSkippedReason || (expansionScoredCandidates.length === 0 && expansionRawItems.length > 0 ? "merged_rows_missing_from_scoring_after_normalization" : undefined);
           expansionDiagnostics.expansionCandidatesEnteredScoringCount = expansionScoredCandidates.length;
