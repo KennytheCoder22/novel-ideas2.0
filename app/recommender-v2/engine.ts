@@ -840,6 +840,7 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           expansionDiagnostics.expansionDistinctEvidenceAnchorCount = expansionDistinctEvidenceAnchorCount;
           expansionDiagnostics.expansionWeakClusterSelectedTitles = expansionWeakClusterSelectedTitles;
           expansionDiagnostics.expansionContinuedAfterWeakCluster = !expansionLockQualityPass && expansionWeakClusterSelectedTitles.length > 0;
+          expansionDiagnostics.meaningfulTasteRecoverySurvivingFinalCount = selected.length;
           expansionDiagnostics.underfilledAfterMeaningfulTasteRecovery = selected.length < 5;
           expansionDiagnostics.middleGradesRecoveryFinalShortfallReason = selected.length < 5
             ? String((selection.rejectedReasons as Record<string, unknown>).middleGradesRecoveryFinalShortfallReason || "clean_candidate_shortfall_expansion_underfilled")
