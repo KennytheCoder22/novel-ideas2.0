@@ -882,6 +882,7 @@ function isMiddleGradesExplicitEmergencyFallback(candidate: ScoredCandidate): bo
 function middleGradesMeaningfulTasteEligibility(candidate: ScoredCandidate, allowExplicitEmergency = false): { allowed: boolean; reason?: "zero_doc_backed_taste_match" | "broad_adventure_only_taste_match" } {
   if (candidate.source !== "openLibrary") return { allowed: true };
   if (allowExplicitEmergency && isMiddleGradesExplicitEmergencyFallback(candidate)) return { allowed: true };
+  if (middleGradesCleanExpansionRouteFictionSupport(candidate)) return { allowed: true };
   const hasDocumentBackedTasteDiagnostics = Array.isArray(candidate.diagnostics?.documentBackedTasteSignals) || Array.isArray(candidate.diagnostics?.documentOnlyTasteMatch);
   if (!hasDocumentBackedTasteDiagnostics) return { allowed: true };
   const breakdown = candidate.scoreBreakdown || {};
@@ -890,6 +891,25 @@ function middleGradesMeaningfulTasteEligibility(candidate: ScoredCandidate, allo
   const backedSignals = middleGradesDocumentBackedTasteSignals(candidate);
   if (backedSignals.length > 0 && backedSignals.every((signal) => signal === "adventure")) return { allowed: false, reason: "broad_adventure_only_taste_match" };
   return { allowed: true };
+}
+
+function isMiddleGradesCleanExpansionCandidate(candidate: ScoredCandidate): boolean {
+  return Boolean(candidate.diagnostics?.cleanCandidateShortfallExpansion)
+    || candidate.diagnostics?.scoringHandoffStage === "clean_candidate_shortfall_expansion"
+    || candidate.diagnostics?.scoringHandoffSource === "clean_candidate_shortfall_expansion";
+}
+
+function middleGradesCleanExpansionRouteFictionSupport(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesCleanExpansionCandidate(candidate)) return false;
+  const finalEligibility = middleGradesFinalEligibility(candidate);
+  if (!finalEligibility.allowed) return false;
+  if (!middleGradesFictionAgeEvidence(candidate)) return false;
+  if (middleGradesSupportedRouteEvidenceFields(candidate).length === 0) return false;
+  if (candidate.score < 0) return false;
+  if (candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")) return false;
+  if (candidate.rejectedReasons.includes("humor_keyword_only_leakage")) return false;
+  if (candidate.rejectedReasons.includes("non_positive_score")) return false;
+  return true;
 }
 
 function applyMiddleGradesMeaningfulTasteFinalGate(selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
@@ -1404,10 +1424,11 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     const finalEligibility = middleGradesFinalEligibility(candidate);
     const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
     const routeEvidence = middleGradesRouteAlignmentEvidence(candidate);
+    const cleanExpansionRouteFictionSupport = middleGradesCleanExpansionRouteFictionSupport(candidate);
     return finalEligibility.allowed
-      && tasteEligibility.allowed
+      && (tasteEligibility.allowed || cleanExpansionRouteFictionSupport)
       && middleGradesEvidenceTierRank(routeEvidence.tier) >= middleGradesEvidenceTierRank("medium_evidence")
-      && candidate.score > 0
+      && (cleanExpansionRouteFictionSupport ? candidate.score >= 0 : candidate.score > 0)
       && !candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")
       && !candidate.rejectedReasons.includes("humor_keyword_only_leakage")
       && !candidate.rejectedReasons.includes("broad_adventure_only_taste_match")

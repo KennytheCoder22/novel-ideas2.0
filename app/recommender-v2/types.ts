@@ -328,6 +328,12 @@ export interface SourceDiagnosticV2 {
   expansionCapReason?: string;
   expansionDroppedBeforeScoringByReason?: Record<string, number>;
   expansionDroppedBeforeScoringTitles?: Record<string, string[]>;
+  expansionScoredScoreByTitle?: Record<string, number>;
+  expansionFinalEligibilityRejectionStage?: Record<string, string>;
+  expansionFinalEligibilityRejectionReasonByTitle?: Record<string, string>;
+  expansionWouldPassIfQueryOnlyCapIgnoredTitles?: string[];
+  expansionRouteFictionSupportButRejectedTitles?: string[];
+  expansionCandidatesSurvivedFiltersCount?: number;
   expansionCleanEligibleCount?: number;
   finalEligibilityGateApplied?: boolean;
   expansionCandidatesAcceptedFinal?: string[];

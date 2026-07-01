@@ -1628,6 +1628,16 @@ async function main() {
     assertEqual(Number(openLibraryDiagnostics.expansionMergedCandidateCount || 0) > 0, true, "live-shaped clean-candidate expansion should merge converted rows into scoring");
     assertEqual((openLibraryDiagnostics.expansionMergedTitles || []).length > 0, true, "live-shaped clean-candidate expansion should list merged titles");
     assertEqual(Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 0, true, "live-shaped clean-candidate expansion should enter scoring");
+    if (Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0) > 10) {
+      assertEqual(
+        (openLibraryDiagnostics.expansionCandidatesAcceptedFinal || []).length > 0
+          || Object.keys(openLibraryDiagnostics.expansionFinalEligibilityRejectionReasonByTitle || {}).length >= Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0),
+        true,
+        "clean expansion with a broad scored pool must accept a final candidate or explain every final-eligibility rejection",
+      );
+    }
+    assertEqual(Object.keys(openLibraryDiagnostics.expansionScoredScoreByTitle || {}).length > 0, true, "clean expansion should report scored expansion candidates by title");
+    assertEqual(Object.keys(openLibraryDiagnostics.expansionFinalEligibilityRejectionStage || {}).length > 0, true, "clean expansion should report final-eligibility rejection stage by title");
     assertEqual(Number(openLibraryDiagnostics.expansionPreCapCandidateCount || 0) >= Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0), true, "clean expansion should report its pre-cap scoring candidate pool");
     assertEqual(String(openLibraryDiagnostics.expansionCapReason || "none") !== "source_handoff_limited_to_source_final_5", true, "clean expansion must not be controlled by the old source-final-5 cap");
     if (Number(openLibraryDiagnostics.expansionRawCount || 0) >= 200) {

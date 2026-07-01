@@ -680,10 +680,50 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           ];
         }
         const expansionScoredCandidates = scored.filter((candidate) => expansionKeys.has(sourceItemKey(candidate)));
+        const expansionScoredScoreByTitle = Object.fromEntries(expansionScoredCandidates.map((candidate) => [candidate.title, Math.round(candidate.score * 1000) / 1000]));
+        const expansionCandidatePrimaryRejectionReason = (candidate: ScoredCandidate): string => {
+          const reasons = candidate.rejectedReasons.filter((reason) => reason && reason !== "selected");
+          if (reasons.includes("middle_grades_query_only_score_cap_applied")) return "middle_grades_query_only_score_cap_applied";
+          if (reasons.includes("zero_doc_backed_taste_match")) return "zero_doc_backed_taste_match";
+          if (reasons.includes("title_only_route_evidence_missing_support")) return "title_only_route_evidence_missing_support";
+          if (reasons.includes("middle_grades_missing_route_or_fiction_evidence")) return "middle_grades_missing_route_or_fiction_evidence";
+          if (reasons.includes("non_positive_score")) return "non_positive_score";
+          return reasons[0] || (expansionSelectedTitles.includes(candidate.title) ? "accepted_final" : "ranked_below_final_selection");
+        };
+        const expansionFinalEligibilityRejectionReasonByTitle = Object.fromEntries(
+          expansionScoredCandidates
+            .filter((candidate) => !expansionSelectedTitles.includes(candidate.title))
+            .map((candidate) => [candidate.title, expansionCandidatePrimaryRejectionReason(candidate)]),
+        );
+        const expansionFinalEligibilityRejectionStage = Object.fromEntries(
+          expansionScoredCandidates.map((candidate) => {
+            const reason = expansionCandidatePrimaryRejectionReason(candidate);
+            const stage = expansionSelectedTitles.includes(candidate.title)
+              ? "accepted_final"
+              : /query_only_score_cap|zero_doc_backed|title_only|missing_route_or_fiction/.test(reason)
+                ? "final_eligibility"
+                : /non_positive|humor|artifact|duplicate/.test(reason)
+                  ? "safety_or_quality_filter"
+                  : "ranking_or_lock_quality";
+            return [candidate.title, stage];
+          }),
+        );
+        const expansionWouldPassIfQueryOnlyCapIgnoredTitles = expansionScoredCandidates
+          .filter((candidate) => candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied") && expansionEvidenceAnchors(candidate).length >= 2 && candidate.score >= 0)
+          .map((candidate) => candidate.title);
+        const expansionRouteFictionSupportButRejectedTitles = expansionScoredCandidates
+          .filter((candidate) => !expansionSelectedTitles.includes(candidate.title))
+          .filter((candidate) => expansionEvidenceAnchors(candidate).length >= 2 && candidate.score >= 0)
+          .filter((candidate) => !candidate.rejectedReasons.some((reason) => /artifact|adult_or_ya|humor_keyword|duplicate|non_positive/.test(reason)))
+          .map((candidate) => candidate.title);
+        const expansionCandidatesSurvivedFiltersCount = expansionScoredCandidates
+          .filter((candidate) => candidate.score >= 0)
+          .filter((candidate) => !candidate.rejectedReasons.some((reason) => /artifact|adult_or_ya|humor_keyword|duplicate|non_positive|query_only_score_cap/.test(reason)))
+          .length;
         const expansionCandidatesRejectedByReason = expansionScoredCandidates
           .filter((candidate) => !expansionSelectedTitles.includes(candidate.title))
           .reduce<Record<string, string[]>>((acc, candidate) => {
-            const reason = candidate.rejectedReasons.find(Boolean) || "ranked_below_final_selection";
+            const reason = expansionCandidatePrimaryRejectionReason(candidate);
             acc[reason] = [...(acc[reason] || []), candidate.title];
             return acc;
           }, {});
@@ -720,6 +760,12 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           expansionDiagnostics.expansionCapReason = expansionCapReason;
           expansionDiagnostics.expansionDroppedBeforeScoringByReason = expansionResult.diagnostics.expansionDroppedBeforeScoringByReason || {};
           expansionDiagnostics.expansionDroppedBeforeScoringTitles = expansionResult.diagnostics.expansionDroppedBeforeScoringTitles || {};
+          expansionDiagnostics.expansionScoredScoreByTitle = expansionScoredScoreByTitle;
+          expansionDiagnostics.expansionFinalEligibilityRejectionStage = expansionFinalEligibilityRejectionStage;
+          expansionDiagnostics.expansionFinalEligibilityRejectionReasonByTitle = expansionFinalEligibilityRejectionReasonByTitle;
+          expansionDiagnostics.expansionWouldPassIfQueryOnlyCapIgnoredTitles = expansionWouldPassIfQueryOnlyCapIgnoredTitles;
+          expansionDiagnostics.expansionRouteFictionSupportButRejectedTitles = expansionRouteFictionSupportButRejectedTitles;
+          expansionDiagnostics.expansionCandidatesSurvivedFiltersCount = expansionCandidatesSurvivedFiltersCount;
           expansionDiagnostics.expansionFetchFailureReason = expansionFetchFailureReason;
           expansionDiagnostics.expansionMergeSkippedReason = expansionMergeSkippedReason || (expansionScoredCandidates.length === 0 && expansionRawItems.length > 0 ? "merged_rows_missing_from_scoring_after_normalization" : undefined);
           expansionDiagnostics.expansionCandidatesEnteredScoringCount = expansionScoredCandidates.length;
