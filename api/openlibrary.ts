@@ -3,6 +3,20 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 const OPEN_LIBRARY_PROXY_TIMEOUT_MS = 5_500;
 const OPEN_LIBRARY_PROXY_RETRY_DELAY_MS = 250;
 const OPEN_LIBRARY_PROXY_MAX_ATTEMPTS = 3;
+const DEFAULT_OPEN_LIBRARY_FIELDS = [
+  "key",
+  "title",
+  "subtitle",
+  "author_name",
+  "first_publish_year",
+  "cover_i",
+  "edition_key",
+  "subject",
+  "subject_key",
+  "subject_facet",
+  "first_sentence",
+  "description",
+].join(",");
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -67,6 +81,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const q = (req.query.q as string || "").trim();
     const limit = Math.max(1, Math.min(160, Number(req.query.limit || 40)));
+    const fields = String(req.query.fields || DEFAULT_OPEN_LIBRARY_FIELDS).trim();
 
     if (!q) {
       return res.status(400).json({ error: "Missing query (q)" });
@@ -76,6 +91,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       `https://openlibrary.org/search.json` +
       `?q=${encodeURIComponent(q)}` +
       `&limit=${limit}` +
+      `&fields=${encodeURIComponent(fields)}` +
       `&language=eng`;
 
     const upstream = await fetchOpenLibraryWithRetries(url);

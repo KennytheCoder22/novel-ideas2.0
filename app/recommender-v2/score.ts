@@ -22,10 +22,22 @@ function normalized(value: unknown): string {
 }
 
 function candidateMetadataText(candidate: NormalizedCandidate): string {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const rawDescription = typeof raw.description === "string"
+    ? raw.description
+    : typeof (raw.description as { value?: unknown } | undefined)?.value === "string"
+      ? String((raw.description as { value: string }).value)
+      : "";
+  const firstSentence = Array.isArray(raw.first_sentence) ? raw.first_sentence.map(String).join(" ") : typeof raw.first_sentence === "string" ? raw.first_sentence : "";
+  const rawSubjects = [raw.subject, raw.subjects, raw.subject_facet, raw.subject_key]
+    .flatMap((value) => Array.isArray(value) ? value.map(String) : typeof value === "string" ? [value] : []);
   return [
     candidate.title,
     candidate.subtitle,
     candidate.description,
+    rawDescription,
+    firstSentence,
+    ...rawSubjects,
     ...candidate.creators,
     ...candidate.genres,
     ...candidate.themes,
@@ -43,14 +55,71 @@ function hasStrongGenreMetadata(text: string): boolean {
   return /\b(dystopian|dystopia|science fiction|horror|thriller|mystery|historical fiction|fantasy|paranormal|survival|adventure)\b/.test(text);
 }
 
+function signalPresentInText(text: string, value: string): boolean {
+  if (!value) return false;
+  if (text.includes(value)) return true;
+  const hasAdventure = /\b(adventures?|quest|quests|journeys?|explor(?:e|es|ing|ation)|survival|expedition)\b/.test(text);
+  const hasFamily = /\b(family|families|parents?|siblings?|mother|father|grandparents?|cousins?|home)\b/.test(text);
+  const hasMystery = /\b(mystery|mysteries|detective|clue|clues|case|cases|secret|secrets|puzzle|puzzles|investigat(?:e|es|ion|ions))\b/.test(text);
+  const hasScienceFiction = /\b(science fiction|sci fi|sci-fi|space|robot|robots?|robotics|androids?|technology|inventions?|laboratory|lab|experiment|experiments?|scientist|scientists)\b/.test(text);
+  const hasSuperhero = /\b(superheroes?|super hero|superpowered|super-powered|powers?|cape|masked hero|masked heroes)\b/.test(text);
+  const hasSchool = /\b(school|classroom|classmates?|students?|teachers?|middle school)\b/.test(text);
+  const hasOcean = /\b(ocean|sea|marine|island|underwater|coast|beach)\b/.test(text);
+  const hasSurvival = /\b(survival|survive|survives|wilderness|wild|forest|island|stranded)\b/.test(text);
+  if (/\b(family adventure|adventure family)\b/.test(value)) return hasFamily && hasAdventure;
+  if (/\b(mystery adventure|adventure mystery)\b/.test(value)) return hasMystery && hasAdventure;
+  if (/\b(science fiction adventure|science adventure|sci fi adventure|sci-fi adventure|robot adventure)\b/.test(value)) return hasScienceFiction && hasAdventure;
+  if (/\b(superhero adventure|super hero adventure)\b/.test(value)) return hasSuperhero && hasAdventure;
+  if (/\b(school mystery|mystery school)\b/.test(value)) return hasSchool && hasMystery;
+  if (/\b(ocean adventure|adventure ocean|sea adventure|island adventure)\b/.test(value)) return hasOcean && hasAdventure;
+  if (/\b(survival adventure|adventure survival)\b/.test(value)) return hasSurvival && hasAdventure;
+  const variants: Record<string, RegExp> = {
+    adventure: /\b(adventures?|quest|quests|journeys?|explor(?:e|es|ing|ation)|survival|expedition)\b/,
+    comedy: /\b(comedy|comic|humou?r|funny|jokes?|laughs?|giggles?|silly|playful)\b/,
+    funny: /\b(comedy|comic|humou?r|funny|jokes?|laughs?|giggles?|silly|playful)\b/,
+    playful: /\b(playful|silly|funny|humou?r|comic|comedy|laughs?|giggles?|quirky|weird)\b/,
+    weird: /\b(weird|quirky|strange|unusual|odd|offbeat|playful|silly)\b/,
+    family: /\b(family|families|parents?|siblings?|mother|father|grandparents?|cousins?|home)\b/,
+    friendship: /\b(friendship|friends?|classmates?|team|companions?|allies)\b/,
+    friends: /\b(friendship|friends?|classmates?|team|companions?|allies)\b/,
+    heroic: /\b(heroic|heroes|hero|heroine|champions?|brave|courage)\b/,
+    hero: /\b(heroic|heroes|hero|heroine|champions?|brave|courage)\b/,
+    fantasy: /\b(fantasy|magic|magical|wizard|witch|witches|fairy|fairies|dragon|dragons|kingdom|spell|spells|enchanted|enchantment)\b/,
+    magic: /\b(fantasy|magic|magical|wizard|witch|witches|fairy|fairies|spell|spells|enchanted|enchantment)\b/,
+    mythology: /\b(mythology|mythological|myths?|legends?|gods?|goddesses|demigods?)\b/,
+    myth: /\b(mythology|mythological|myths?|legends?|gods?|goddesses|demigods?)\b/,
+    dragon: /\b(dragons?|dragonriders?)\b/,
+    school: /\b(school|classroom|classmates?|students?|teachers?|public school|middle school)\b/,
+    superhero: /\b(superheroes?|super hero|superpowered|super-powered|powers?|cape|masked hero|masked heroes)\b/,
+    mystery: /\b(mystery|mysteries|detective|clue|clues|case|cases|secret|secrets|puzzle|puzzles|investigat(?:e|es|ion|ions))\b/,
+    ocean: /\b(ocean|sea|marine|island|underwater|coast|beach)\b/,
+    "science fiction": /\b(science fiction|sci fi|sci-fi|space|robot|robots?|robotics|androids?|technology|inventions?|laboratory|lab|experiment|experiments?|scientist|scientists)\b/,
+    "sci fi": /\b(science fiction|sci fi|sci-fi|space|robot|robots?|robotics|androids?|technology|inventions?|laboratory|lab|experiment|experiments?|scientist|scientists)\b/,
+    science: /\b(science|scientist|scientists|experiments?|technology|inventions?|robots?|robotics|engineering|laboratory|lab)\b/,
+    nonfiction: /\b(nonfiction|non fiction|facts?|science|experiments?|activities|guide|history|biography)\b/,
+    concise: /\b(short|brief|concise|quick|guide|facts?|introduction|summary)\b/,
+    robot: /\b(robots?|robotics|androids?|automatons?|artificial intelligence|ai)\b/,
+    survival: /\b(survival|survive|survives|wilderness|wild|forest|island|stranded)\b/,
+    animal: /\b(animals?|wildlife|creatures?|dog|cat|squirrel|squirrels|wolf|wolves|horse|horses)\b/,
+    animals: /\b(animals?|wildlife|creatures?|dog|cat|squirrel|squirrels|wolf|wolves|horse|horses)\b/,
+    community: /\b(community|neighbors?|neighbourhood|neighborhood|town|village|team|club)\b/,
+  };
+  return Boolean(variants[value]?.test(text));
+}
+
 function signalMatches(text: string, signals: WeightedSignalV2[]): WeightedSignalV2[] {
   return signals.filter((signal) => {
     const value = normalized(signal.value);
-    return Boolean(value && text.includes(value));
+    return signalPresentInText(text, value);
   });
 }
 
 const BROAD_AVOID_SIGNAL = /^(book|books|novel|novels|fiction|story|stories|teen|teens|young adult|ya|series|fantasy|dystopia|dystopian|adventure|romance|drama|comedy|mystery)$/i;
+const MIDDLE_GRADES_GENERIC_TASTE_SIGNAL = /^(book|books|preteens? book|preteens? books|children|childrens?|children s|children'?s|middle grade|middle grades|fiction|novel|novels|story|stories|series)$/i;
+
+function isMiddleGradesGenericTasteSignal(signal: WeightedSignalV2): boolean {
+  return MIDDLE_GRADES_GENERIC_TASTE_SIGNAL.test(normalized(signal.value));
+}
 
 function addAvoidSignalBucket(matches: WeightedSignalV2[], matched: string[], breakdown: Record<string, number>): void {
   let broadPenalty = 0;
@@ -119,8 +188,8 @@ function querySpecificityScore(candidate: NormalizedCandidate): number {
 }
 
 function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
-  const text = candidateText(candidate);
   const metadataText = candidateMetadataText(candidate);
+  const text = profile.ageBand === "preteens" && candidate.source === "openLibrary" ? metadataText : candidateText(candidate);
   const normalizedTitle = normalized(candidate.title);
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const metadataCount = candidate.genres.length + candidate.themes.length;
@@ -176,17 +245,40 @@ function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: Ta
 
 export function scoreCandidates(candidates: NormalizedCandidate[], profile: TasteProfile): ScoredCandidate[] {
   return candidates.map((candidate) => {
-    const text = candidateText(candidate);
+    const fullText = candidateText(candidate);
+    const metadataText = candidateMetadataText(candidate);
+    const text = profile.ageBand === "preteens" && candidate.source === "openLibrary" ? metadataText : fullText;
     const matchedSignals: string[] = [];
     const scoreBreakdown: Record<string, number> = { base: 1 };
 
-    const genreMatches = signalMatches(text, profile.genreFamily);
-    const themeMatches = signalMatches(text, profile.themes);
-    const toneMatches = signalMatches(text, profile.tone);
-    const characterMatches = signalMatches(text, profile.characterDynamics);
-    const formatMatches = signalMatches(text, profile.formatPreference);
+    const middleGradesOpenLibrary = profile.ageBand === "preteens" && candidate.source === "openLibrary";
+    const rawGenreMatches = signalMatches(text, profile.genreFamily);
+    const rawThemeMatches = signalMatches(text, profile.themes);
+    const rawToneMatches = signalMatches(text, profile.tone);
+    const rawCharacterMatches = signalMatches(text, profile.characterDynamics);
+    const rawFormatMatches = signalMatches(text, profile.formatPreference);
+    const filterGenericMatches = (matches: WeightedSignalV2[]) => middleGradesOpenLibrary ? matches.filter((signal) => !isMiddleGradesGenericTasteSignal(signal)) : matches;
+    const removedGenericTasteSignals = middleGradesOpenLibrary
+      ? [...rawGenreMatches, ...rawThemeMatches, ...rawToneMatches, ...rawCharacterMatches, ...rawFormatMatches]
+        .filter(isMiddleGradesGenericTasteSignal)
+        .map((signal) => signal.value)
+      : [];
+    const genreMatches = filterGenericMatches(rawGenreMatches);
+    const themeMatches = filterGenericMatches(rawThemeMatches);
+    const toneMatches = filterGenericMatches(rawToneMatches);
+    const characterMatches = filterGenericMatches(rawCharacterMatches);
+    const formatMatches = filterGenericMatches(rawFormatMatches);
     const avoidMatches = signalMatches(text, profile.avoidSignals);
     const positiveMatches = [...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
+    const fullPositiveMatches = [...signalMatches(fullText, profile.themes), ...signalMatches(fullText, profile.tone), ...signalMatches(fullText, profile.characterDynamics), ...signalMatches(fullText, profile.formatPreference)];
+    const rawTasteMatchCount = rawGenreMatches.length + rawThemeMatches.length + rawToneMatches.length + rawCharacterMatches.length + rawFormatMatches.length;
+    const genericOnlyTasteMatch = middleGradesOpenLibrary && rawTasteMatchCount > 0 && genreMatches.length + positiveMatches.length === 0;
+    const removedQueryTextSignals = middleGradesOpenLibrary
+      ? [...signalMatches(fullText, profile.genreFamily), ...fullPositiveMatches]
+        .filter((signal) => ![...genreMatches, ...positiveMatches].some((kept) => normalized(kept.value) === normalized(signal.value)))
+        .filter((signal) => !isMiddleGradesGenericTasteSignal(signal))
+        .map((signal) => signal.value)
+      : [];
 
     addSignalBucket(genreMatches, 3, matchedSignals, scoreBreakdown, "genreFacetMatch");
     addSignalBucket(themeMatches, 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
@@ -200,6 +292,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     scoreBreakdown.ageBandSuitability = suitabilityScore;
     scoreBreakdown.sourceQualityRelevance = sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches);
     scoreBreakdown.queryRungBonus = queryRungBonus(candidate);
+    if (genericOnlyTasteMatch) scoreBreakdown.genericOnlyTasteMatchPenalty = -0.9;
 
     const score = Object.entries(scoreBreakdown).reduce((sum, [key, value]) => sum + (key === "ageBandSuitability" ? 0 : Number(value || 0)), 0);
     return {
@@ -208,6 +301,14 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
       matchedSignals,
       rejectedReasons: [],
       scoreBreakdown,
+      diagnostics: {
+        ...candidate.diagnostics,
+        queryTextSignalsRemovedFromTasteMatch: removedQueryTextSignals,
+        documentOnlyTasteMatch: [...genreMatches, ...positiveMatches].map((signal) => signal.value),
+        genericTasteSignalsRemoved: Array.from(new Set(removedGenericTasteSignals)),
+        genericOnlyTasteMatch,
+        documentBackedTasteSignals: [...genreMatches, ...positiveMatches].map((signal) => signal.value),
+      },
     };
   }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
 }

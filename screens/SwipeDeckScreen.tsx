@@ -120,6 +120,65 @@ function deckKeyToAgeBandV2(deckKey: DeckKey): AgeBandV2 {
   return "teens";
 }
 
+const MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES = [
+  "debugMiddleGradesDeepTrace",
+  "debugMiddleGradesNoTimeouts",
+  "debugMiddleGradesDeepDebug",
+  "middleGradesDeepDebug",
+];
+
+function isTruthyDebugFlag(value: unknown): boolean {
+  return value === true || value === "1" || String(value || "").toLowerCase() === "true";
+}
+
+function readMiddleGradesDeepDebugRequest(): { active: boolean; source: "url" | "localStorage" | "none" } {
+  const runtime = globalThis as any;
+  try {
+    const search = String(runtime?.location?.search || "");
+    if (search) {
+      const params = new URLSearchParams(search);
+      if (MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES.some((name) => isTruthyDebugFlag(params.get(name)))) {
+        return { active: true, source: "url" };
+      }
+    }
+  } catch {
+    // Non-browser runtimes do not expose location; ignore.
+  }
+  try {
+    if (MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES.some((name) => isTruthyDebugFlag(runtime?.localStorage?.getItem?.(name)))) {
+      return { active: true, source: "localStorage" };
+    }
+  } catch {
+    // localStorage may be unavailable or blocked; ignore.
+  }
+  return { active: false, source: "none" };
+}
+
+function setMiddleGradesDeepDebugLocalStorage(active: boolean): void {
+  const runtime = globalThis as any;
+  try {
+    if (!runtime?.localStorage?.setItem) return;
+    for (const name of MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES) {
+      runtime.localStorage.setItem(name, active ? "true" : "false");
+    }
+  } catch {
+    // localStorage may be unavailable or blocked; ignore.
+  }
+}
+
+function middleGradesDeepDebugDiagnosticsForSession(ageBand: AgeBandV2, uiToggleActive: boolean): Record<string, unknown> | undefined {
+  if (ageBand !== "preteens") return undefined;
+  const browserRequest = readMiddleGradesDeepDebugRequest();
+  const active = uiToggleActive || browserRequest.active;
+  if (!active) return undefined;
+  return {
+    middleGradesDeepDebugExpected: true,
+    debugMiddleGradesDeepTrace: true,
+    debugMiddleGradesNoTimeouts: true,
+    middleGradesDeepDebugActivationSource: uiToggleActive ? "localStorage" : browserRequest.source,
+  };
+}
+
 function formatFromTagsForV2(tags: string[]): SwipeSignalV2["format"] {
   const joined = tags.join(" ").toLowerCase();
   if (/\b(manga|anime)\b/.test(joined)) return joined.includes("anime") ? "anime" : "manga";
@@ -1050,6 +1109,7 @@ export default function SwipeDeckScreen(props: Props) {
   const [v2DebugResult, setV2DebugResult] = useState<RecommendationResultV2 | null>(null);
   const [v2DebugLoading, setV2DebugLoading] = useState(false);
   const [v2DebugError, setV2DebugError] = useState<string>("");
+  const [middleGradesDeepDebugUiEnabled, setMiddleGradesDeepDebugUiEnabled] = useState(() => readMiddleGradesDeepDebugRequest().active);
   const v2UrlTriggeredRef = useRef(false);
   const [lastSourceCounts, setLastSourceCounts] = useState<Record<string, { rawFetched: number; postFilterCandidates: number; finalSelected: number }> | null>(null);
   const [lastCandidatePool, setLastCandidatePool] = useState<any[]>([]);
@@ -1745,16 +1805,56 @@ function handleLeft() {
     ]));
     const normalizedCount = diagnostics.stages.find((stage) => stage.stage === "normalized")?.counts?.normalized ?? 0;
     const scoredCount = diagnostics.stages.find((stage) => stage.stage === "scored")?.counts?.scored ?? 0;
+    const middleGradesPipelineAudit = diagnostics.stages.find((stage) => stage.stage === "middle_grades_candidate_pool_audit")?.details as any;
+    const selectionDiagnostics = (diagnostics.stages.find((stage) => stage.stage === "selected")?.details as any)?.rejectedReasons || {};
+    const normalizedDocsCountForReport = Number(middleGradesPipelineAudit?.normalizedDocsCount ?? normalizedCount);
+    const rankedDocsLengthForReport = Number(middleGradesPipelineAudit?.rankedDocsLength ?? scoredCount);
+    const convertedDocsAvailableForScoringCountForReport = Number(middleGradesPipelineAudit?.convertedDocsAvailableForScoringCount ?? normalizedCount);
+    const scoredCandidateUniverseCountForReport = Number(middleGradesPipelineAudit?.scoredCandidateUniverseCount ?? scoredCount);
+    const middleGradesExpandedPoolHandoffFailedForReport = Boolean(middleGradesPipelineAudit?.middleGradesExpandedPoolHandoffFailed || openLibrarySourceDiagnostics?.middleGradesExpandedPoolHandoffFailed);
+    const middleGradesExpandedPoolFailureReasonForReport = String(middleGradesPipelineAudit?.middleGradesExpandedPoolFailureReason || openLibrarySourceDiagnostics?.middleGradesExpandedPoolFailureReason || "");
+    const finalEligibilityCleanCandidateCountForReport = Number(selectionDiagnostics?.finalEligibilityCleanCandidateCount ?? v2Result.items.length ?? 0);
+    const viableCandidateCountBeforeFinalSelectionForReport = Number(scoredCount || 0);
+    const finalAcceptedDocsLengthForReport = Number(v2Result.items.length || 0);
     const queries = diagnostics.searchPlan.intents.map((intent) => intent.query);
+    const returnedItemsBeforeV2FailClosed = normalizedItems.map((item) => item.kind === "open_library" ? { doc: item.doc } : { doc: item.book });
+    const returnedItemsTitlesBeforeV2FailClosed = normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean);
+    const middleGradesV2OpenLibraryReturn =
+      inputWithHistory.deckKey === "36" &&
+      normalizedItems.some((item) => item.kind === "open_library");
+    const v2ReturnedItemsFailClosed =
+      middleGradesV2OpenLibraryReturn &&
+      returnedItemsTitlesBeforeV2FailClosed.length > 0 &&
+      scoredCount === 0;
+    const diagnosticReturnedItems = v2ReturnedItemsFailClosed ? [] : returnedItemsBeforeV2FailClosed;
+    const diagnosticReturnedItemsTitles = v2ReturnedItemsFailClosed ? [] : returnedItemsTitlesBeforeV2FailClosed;
+    const v2ReturnedItemsLineage = returnedItemsTitlesBeforeV2FailClosed.map((title, index) => ({
+      title,
+      returnedIndex: index,
+      sourceArrayName: "recommender-v2:normalizedItems",
+      sourceCandidateId: title,
+      normalizedId: v2ReturnedItemsFailClosed ? "" : title,
+      scoredId: scoredCount > 0 ? title : "",
+      finalSelectionId: v2ReturnedItemsFailClosed ? "" : title,
+      bypassedScoring: scoredCount === 0,
+    }));
     return {
       engineSelected: "v2",
       engineActuallyUsed: "v2",
       engineId: "recommender-v2",
       engineLabel: "Recommender V2",
       builtFromQuery: queries.join(" | "),
-      returnedItemsBuiltFrom: "recommender-v2",
-      items: normalizedItems.map((item) => item.kind === "open_library" ? { doc: item.doc } : { doc: item.book }),
-      returnedItemsTitles: normalizedItems.map((item) => item.kind === "open_library" ? item.doc.title : item.book.title).filter(Boolean),
+      returnedItemsBuiltFrom: v2ReturnedItemsFailClosed ? "open_library_source_emergency_bypass" : "recommender-v2",
+      items: diagnosticReturnedItems,
+      returnedItemsTitles: diagnosticReturnedItemsTitles,
+      returnedItemsLineage: v2ReturnedItemsLineage,
+      returnedItemsAuditConsistencyFailure: v2ReturnedItemsFailClosed,
+      returnedItemsBypassPath: v2ReturnedItemsFailClosed ? "recommender-v2 normalizedItems -> returnedItemsTitles blocked_fail_closed" : "none",
+      openLibrarySourceEmergencyBypassFailure: v2ReturnedItemsFailClosed,
+      openLibrarySourceFinalBypassRemovedTitles: v2ReturnedItemsFailClosed ? returnedItemsTitlesBeforeV2FailClosed : [],
+      emergencyBypassReason: v2ReturnedItemsFailClosed ? "middle_grades_openlibrary_returned_items_without_scored_lineage" : "",
+      countContractSatisfied: v2ReturnedItemsFailClosed ? false : undefined,
+      lockQualityPass: v2ReturnedItemsFailClosed ? false : undefined,
       debugSourceStats: sourceStats,
       debugRawPool: diagnostics.sources.flatMap((source: any) => Array.isArray(source.rawItemPreview) && source.rawItemPreview.length
         ? source.rawItemPreview.map((item: any) => ({
@@ -1808,6 +1908,88 @@ function handleLeft() {
       openLibraryTopUpTarget: Number(openLibrarySourceDiagnostics?.openLibraryTopUpTarget || 0),
       openLibraryFallbackQueriesExhausted: Boolean(openLibrarySourceDiagnostics?.openLibraryFallbackQueriesExhausted),
       openLibraryUsableRowsAfterFiltering: Number(openLibrarySourceDiagnostics?.usableRowsAfterFiltering || 0),
+      openLibraryDocsFetchedAcrossAllQueriesCount: Number(openLibrarySourceDiagnostics?.openLibraryDocsFetchedAcrossAllQueriesCount || 0),
+      openLibraryDocsEligibleForScoringCount: Number(openLibrarySourceDiagnostics?.openLibraryDocsEligibleForScoringCount || 0),
+      openLibraryDocsActuallyHandedToScoringCount: Number(openLibrarySourceDiagnostics?.openLibraryDocsActuallyHandedToScoringCount || 0),
+      openLibraryScoringHandoffLimitedToSourceFinal: Boolean(openLibrarySourceDiagnostics?.openLibraryScoringHandoffLimitedToSourceFinal),
+      openLibraryScoringHandoffSuppressedTitles: openLibrarySourceDiagnostics?.openLibraryScoringHandoffSuppressedTitles || [],
+      openLibraryScoringHandoffSource: openLibrarySourceDiagnostics?.openLibraryScoringHandoffSource || "",
+      meaningfulTasteRecoveryTriggered: Boolean(openLibrarySourceDiagnostics?.meaningfulTasteRecoveryTriggered),
+      meaningfulTasteRecoveryTriggerStage: openLibrarySourceDiagnostics?.meaningfulTasteRecoveryTriggerStage || "",
+      meaningfulTasteRecoverySkippedReason: openLibrarySourceDiagnostics?.meaningfulTasteRecoverySkippedReason || "",
+      postFinalEligibilityUnderfillRecoveryTriggered: Boolean(openLibrarySourceDiagnostics?.postFinalEligibilityUnderfillRecoveryTriggered),
+      postFinalEligibilityRecoveryAcceptedTitles: Array.isArray(openLibrarySourceDiagnostics?.postFinalEligibilityRecoveryAcceptedTitles) ? openLibrarySourceDiagnostics.postFinalEligibilityRecoveryAcceptedTitles : [],
+      postFinalEligibilityRecoveryRejectedByReason: openLibrarySourceDiagnostics?.postFinalEligibilityRecoveryRejectedByReason || {},
+      meaningfulTasteRecoverySurvivingFinalCount: Number(openLibrarySourceDiagnostics?.meaningfulTasteRecoverySurvivingFinalCount || 0),
+      meaningfulTasteRecoveryContinuedAfterRejectedMerge: Boolean(openLibrarySourceDiagnostics?.meaningfulTasteRecoveryContinuedAfterRejectedMerge),
+      meaningfulTasteRecoveryExhaustedQueries: Array.isArray(openLibrarySourceDiagnostics?.meaningfulTasteRecoveryExhaustedQueries) ? openLibrarySourceDiagnostics.meaningfulTasteRecoveryExhaustedQueries : [],
+      meaningfulTasteRecoveryRejectedQueryFamilies: Array.isArray(openLibrarySourceDiagnostics?.meaningfulTasteRecoveryRejectedQueryFamilies) ? openLibrarySourceDiagnostics.meaningfulTasteRecoveryRejectedQueryFamilies : [],
+      recoverySuccessRequiresFinalEligibility: Boolean(openLibrarySourceDiagnostics?.recoverySuccessRequiresFinalEligibility),
+      middleGradesRecoveryFinalShortfallReason: openLibrarySourceDiagnostics?.middleGradesRecoveryFinalShortfallReason || "",
+      middleGradesRecoveryRejectedReasonCounts: openLibrarySourceDiagnostics?.middleGradesRecoveryRejectedReasonCounts || {},
+      middleGradesRecoveryBestRejectedTitlesByReason: openLibrarySourceDiagnostics?.middleGradesRecoveryBestRejectedTitlesByReason || {},
+      middleGradesRecoveryNextBestSelectableTitles: Array.isArray(openLibrarySourceDiagnostics?.middleGradesRecoveryNextBestSelectableTitles) ? openLibrarySourceDiagnostics.middleGradesRecoveryNextBestSelectableTitles : [],
+      middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate: Boolean(openLibrarySourceDiagnostics?.middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate),
+      middleGradesRecoveryRelaxedGateNeeded: openLibrarySourceDiagnostics?.middleGradesRecoveryRelaxedGateNeeded || "",
+      recoveryQueryAnchorByQuery: openLibrarySourceDiagnostics?.recoveryQueryAnchorByQuery || {},
+      recoveryHumorUsedAsAnchorBlocked: Boolean(openLibrarySourceDiagnostics?.recoveryHumorUsedAsAnchorBlocked),
+      recoveryConcreteFictionQueryUsed: Boolean(openLibrarySourceDiagnostics?.recoveryConcreteFictionQueryUsed),
+      recoveryQueryFamilyAcceptedFinalCount: openLibrarySourceDiagnostics?.recoveryQueryFamilyAcceptedFinalCount || {},
+      recoveryQueryFamilyRejectedForLeakageCount: openLibrarySourceDiagnostics?.recoveryQueryFamilyRejectedForLeakageCount || {},
+      meaningfulTasteRecoveryQueriesAttempted: Array.isArray(openLibrarySourceDiagnostics?.meaningfulTasteRecoveryQueriesAttempted) ? openLibrarySourceDiagnostics.meaningfulTasteRecoveryQueriesAttempted : [],
+      meaningfulTasteRecoveryAcceptedTitles: Array.isArray(openLibrarySourceDiagnostics?.meaningfulTasteRecoveryAcceptedTitles) ? openLibrarySourceDiagnostics.meaningfulTasteRecoveryAcceptedTitles : [],
+      meaningfulTasteRecoveryRejectedTitlesByReason: openLibrarySourceDiagnostics?.meaningfulTasteRecoveryRejectedTitlesByReason || {},
+      meaningfulTasteRecoveryFinalCount: Number(openLibrarySourceDiagnostics?.meaningfulTasteRecoveryFinalCount || 0),
+      underfilledAfterMeaningfulTasteRecovery: Boolean(openLibrarySourceDiagnostics?.underfilledAfterMeaningfulTasteRecovery),
+      cleanCandidateShortfallExpansionTriggered: Boolean(openLibrarySourceDiagnostics?.cleanCandidateShortfallExpansionTriggered),
+      expansionNotTriggeredReason: openLibrarySourceDiagnostics?.expansionNotTriggeredReason || "",
+      expansionFetchAttempted: Boolean(openLibrarySourceDiagnostics?.expansionFetchAttempted),
+      expansionAttemptedQueries: Array.isArray(openLibrarySourceDiagnostics?.expansionAttemptedQueries) ? openLibrarySourceDiagnostics.expansionAttemptedQueries : [],
+      expansionFetchResultsByQuery: Array.isArray(openLibrarySourceDiagnostics?.expansionFetchResultsByQuery) ? openLibrarySourceDiagnostics.expansionFetchResultsByQuery : [],
+      expansionRawCount: Number(openLibrarySourceDiagnostics?.expansionRawCount || 0),
+      expansionConvertedCount: Number(openLibrarySourceDiagnostics?.expansionConvertedCount || 0),
+      expansionMergedCandidateCount: Number(openLibrarySourceDiagnostics?.expansionMergedCandidateCount || 0),
+      expansionMergedTitles: Array.isArray(openLibrarySourceDiagnostics?.expansionMergedTitles) ? openLibrarySourceDiagnostics.expansionMergedTitles : [],
+      expansionFetchFailureReason: openLibrarySourceDiagnostics?.expansionFetchFailureReason || "",
+      expansionMergeSkippedReason: openLibrarySourceDiagnostics?.expansionMergeSkippedReason || "",
+      expansionCandidatesEnteredScoringCount: Number(openLibrarySourceDiagnostics?.expansionCandidatesEnteredScoringCount || 0),
+      expansionCleanEligibleCount: Number(openLibrarySourceDiagnostics?.expansionCleanEligibleCount || 0),
+      finalEligibilityGateApplied: Boolean(openLibrarySourceDiagnostics?.finalEligibilityGateApplied),
+      expansionCandidatesAcceptedFinal: Array.isArray(openLibrarySourceDiagnostics?.expansionCandidatesAcceptedFinal) ? openLibrarySourceDiagnostics.expansionCandidatesAcceptedFinal : [],
+      expansionSelectedTitles: Array.isArray(openLibrarySourceDiagnostics?.expansionSelectedTitles) ? openLibrarySourceDiagnostics.expansionSelectedTitles : [],
+      expansionCandidatesRejectedByReason: openLibrarySourceDiagnostics?.expansionCandidatesRejectedByReason || {},
+      expansionSelectedRejectedByReason: openLibrarySourceDiagnostics?.expansionSelectedRejectedByReason || {},
+      expansionLockQualityPass: Boolean(openLibrarySourceDiagnostics?.expansionLockQualityPass),
+      expansionLockQualityFailReasons: Array.isArray(openLibrarySourceDiagnostics?.expansionLockQualityFailReasons) ? openLibrarySourceDiagnostics.expansionLockQualityFailReasons : [],
+      expansionSelectedEvidenceAnchorsByTitle: openLibrarySourceDiagnostics?.expansionSelectedEvidenceAnchorsByTitle || {},
+      expansionDistinctEvidenceAnchorCount: Number(openLibrarySourceDiagnostics?.expansionDistinctEvidenceAnchorCount || 0),
+      expansionWeakClusterSelectedTitles: Array.isArray(openLibrarySourceDiagnostics?.expansionWeakClusterSelectedTitles) ? openLibrarySourceDiagnostics.expansionWeakClusterSelectedTitles : [],
+      expansionContinuedAfterWeakCluster: Boolean(openLibrarySourceDiagnostics?.expansionContinuedAfterWeakCluster),
+      meaningfulTasteRecoveryMergedIntoScoring: Boolean(selectionDiagnostics?.meaningfulTasteRecoveryMergedIntoScoring),
+      meaningfulTasteRecoveryMergedCandidateCount: Number(selectionDiagnostics?.meaningfulTasteRecoveryMergedCandidateCount || 0),
+      meaningfulTasteRecoveryDroppedAfterMergeByReason: selectionDiagnostics?.meaningfulTasteRecoveryDroppedAfterMergeByReason || {},
+      meaningfulTasteRecoveryAcceptedButNotReturnedTitles: Array.isArray(selectionDiagnostics?.meaningfulTasteRecoveryAcceptedButNotReturnedTitles) ? selectionDiagnostics.meaningfulTasteRecoveryAcceptedButNotReturnedTitles : [],
+      meaningfulTasteRecoveryFinalSelectionCount: Number(selectionDiagnostics?.meaningfulTasteRecoveryFinalSelectionCount || 0),
+      candidateTasteMatchScoreByTitle: selectionDiagnostics?.candidateTasteMatchScoreByTitle || {},
+      candidateTastePenaltyByTitle: selectionDiagnostics?.candidateTastePenaltyByTitle || {},
+      candidateMatchedLikedSignalsByTitle: selectionDiagnostics?.candidateMatchedLikedSignalsByTitle || {},
+      candidateMatchedDislikedSignalsByTitle: selectionDiagnostics?.candidateMatchedDislikedSignalsByTitle || {},
+      finalScoreComponentsByTitle: selectionDiagnostics?.finalScoreComponentsByTitle || {},
+      finalRankingReasonByTitle: selectionDiagnostics?.finalRankingReasonByTitle || {},
+      rankedDocsTitles: Array.isArray(selectionDiagnostics?.rankedDocsTitles) ? selectionDiagnostics.rankedDocsTitles : [],
+      finalEligibilityAcceptedTitles: Array.isArray(selectionDiagnostics?.finalEligibilityAcceptedTitles) ? selectionDiagnostics.finalEligibilityAcceptedTitles : [],
+      middleGradesScoredCandidateAttribution: Array.isArray(selectionDiagnostics?.middleGradesScoredCandidateAttribution) ? selectionDiagnostics.middleGradesScoredCandidateAttribution : [],
+      genericTasteSignalsRemovedByTitle: selectionDiagnostics?.genericTasteSignalsRemovedByTitle || {},
+      genericOnlyTasteMatchTitles: Array.isArray(selectionDiagnostics?.genericOnlyTasteMatchTitles) ? selectionDiagnostics.genericOnlyTasteMatchTitles : [],
+      documentBackedTasteSignalsByTitle: selectionDiagnostics?.documentBackedTasteSignalsByTitle || {},
+      selectedGenericOnlyTasteMatchCount: Number(selectionDiagnostics?.selectedGenericOnlyTasteMatchCount || 0),
+      zeroTasteCandidateRejectedTitles: Array.isArray(selectionDiagnostics?.zeroTasteCandidateRejectedTitles) ? selectionDiagnostics.zeroTasteCandidateRejectedTitles : [],
+      broadAdventureOnlyRejectedTitles: Array.isArray(selectionDiagnostics?.broadAdventureOnlyRejectedTitles) ? selectionDiagnostics.broadAdventureOnlyRejectedTitles : [],
+      meaningfulTasteEligibleTitles: Array.isArray(selectionDiagnostics?.meaningfulTasteEligibleTitles) ? selectionDiagnostics.meaningfulTasteEligibleTitles : [],
+      underfilledBecauseOnlyWeakOrZeroTaste: Boolean(selectionDiagnostics?.underfilledBecauseOnlyWeakOrZeroTaste),
+      emergencyFallbackUsedForZeroTasteFill: Boolean(selectionDiagnostics?.emergencyFallbackUsedForZeroTasteFill),
+      middleGradesExpandedPoolHandoffFailed: middleGradesExpandedPoolHandoffFailedForReport,
+      middleGradesExpandedPoolFailureReason: middleGradesExpandedPoolFailureReasonForReport,
       openLibraryArtifactSuppressedTitles: openLibrarySourceDiagnostics?.artifactSuppressedTitles || [],
       openLibrarySeriesSuppressedTitles: openLibrarySourceDiagnostics?.seriesSuppressedTitles || [],
       openLibrarySourceStatus: openLibrarySourceDiagnostics?.status || "",
@@ -1825,12 +2007,78 @@ function handleLeft() {
       v2TasteProfile: diagnostics.tasteProfile,
       v2SearchPlan: diagnostics.searchPlan,
       normalizedCount,
+      normalizedDocsCount: normalizedDocsCountForReport,
+      rankedDocsLength: rankedDocsLengthForReport,
+      convertedDocsAvailableForScoringCount: convertedDocsAvailableForScoringCountForReport,
+      scoredCandidateUniverseCount: scoredCandidateUniverseCountForReport,
+      finalEligibilityCleanCandidateCount: finalEligibilityCleanCandidateCountForReport,
+      viableCandidateCountBeforeFinalSelection: viableCandidateCountBeforeFinalSelectionForReport,
+      finalAcceptedDocsLength: finalAcceptedDocsLengthForReport,
       candidateCount: normalizedCount,
       filteredCount: scoredCount,
       rankedCount: scoredCount,
       scoredCount,
-      finalItemsLength: normalizedItems.length,
+      finalItemsLength: diagnosticReturnedItems.length,
+      returnedItemsLength: diagnosticReturnedItems.length,
       deckKey: inputWithHistory.deckKey,
+    };
+  }
+
+  function applyMiddleGradesFinalPayloadGuard(payload: any, inputForGuard: RecommenderInput) {
+    const inputTitles = Array.isArray(payload?.returnedItemsTitles)
+      ? payload.returnedItemsTitles.map((title: any) => String(title || "").trim()).filter(Boolean)
+      : Array.isArray(payload?.items)
+      ? payload.items.map((item: any) => String(item?.doc?.title || item?.title || "").trim()).filter(Boolean)
+      : [];
+    const returnedLength = Number(payload?.returnedItemsLength ?? inputTitles.length ?? 0);
+    const sourceLooksOpenLibrary =
+      Boolean(sourceEnabled?.openLibrary) ||
+      Boolean(payload?.sourceFetchAttemptedBySource?.openLibrary) ||
+      Number(payload?.debugSourceStats?.openLibrary?.rawFetched || 0) > 0 ||
+      Number(payload?.debugSourceStats?.openLibrary?.finalSelected || 0) > 0 ||
+      Number(payload?.sourceRawCountBySource?.openLibrary || 0) > 0 ||
+      (Array.isArray(payload?.items) && payload.items.some((item: any) => String(item?.doc?.source || item?.source || "").toLowerCase().includes("openlibrary")));
+    const scoredUniverseCount = Number(payload?.scoredCandidateUniverseCount ?? payload?.mainScoringPipelineScoredCandidateUniverseCount ?? 0);
+    const convertedForScoringCount = Number(payload?.convertedDocsAvailableForScoringCount ?? payload?.mainScoringPipelineConvertedDocsAvailableForScoringCount ?? 0);
+    const finalAcceptedCount = Number(payload?.finalAcceptedDocsLength ?? payload?.finalRecommenderAcceptedDocsLength ?? 0);
+    const finalEligibilityCleanCount = Number(payload?.finalEligibilityCleanCandidateCount ?? 0);
+    const viableCandidateCount = Number(payload?.viableCandidateCountBeforeFinalSelection ?? 0);
+    const shouldBlock =
+      inputForGuard.deckKey === "36" &&
+      sourceLooksOpenLibrary &&
+      returnedLength > 0 &&
+      scoredUniverseCount === 0 &&
+      convertedForScoringCount === 0 &&
+      finalAcceptedCount === 0 &&
+      finalEligibilityCleanCount === 0 &&
+      viableCandidateCount === 0;
+    if (!shouldBlock) {
+      return {
+        ...(payload || {}),
+        finalPayloadGuardRan: true,
+        finalPayloadGuardBlockedUnscoredOpenLibrary: false,
+        finalPayloadGuardInputReturnedTitles: inputTitles,
+        finalPayloadGuardOutputReturnedTitles: inputTitles,
+        finalPayloadGuardAppliedAfterWrapper: true,
+      };
+    }
+    return {
+      ...(payload || {}),
+      items: [],
+      returnedItemsBuiltFrom: "open_library_source_emergency_bypass",
+      returnedItemsLength: 0,
+      returnedItemsTitles: "",
+      finalItemsLength: 0,
+      countContractSatisfied: false,
+      lockQualityPass: false,
+      openLibrarySourceEmergencyBypassFailure: true,
+      openLibrarySourceFinalBypassRemovedTitles: inputTitles,
+      emergencyBypassReason: "final_payload_unscored_openlibrary_items_blocked",
+      finalPayloadGuardRan: true,
+      finalPayloadGuardBlockedUnscoredOpenLibrary: true,
+      finalPayloadGuardInputReturnedTitles: inputTitles,
+      finalPayloadGuardOutputReturnedTitles: [],
+      finalPayloadGuardAppliedAfterWrapper: true,
     };
   }
 
@@ -1898,9 +2146,11 @@ function handleLeft() {
       try {
         markPhase("v2_before_engine_call", { engineSelected: engineSelectedForRun });
         const v2Signals = swipeHistoryToV2Signals(Array.isArray((inputWithHistory as any)?.swipeHistory) ? ((inputWithHistory as any).swipeHistory as SwipeHistoryEntry[]) : swipeHistory);
+        const ageBand = deckKeyToAgeBandV2(deckKey);
+        const middleGradesDeepDebugDiagnostics = middleGradesDeepDebugDiagnosticsForSession(ageBand, middleGradesDeepDebugUiEnabled);
         const result = await runRecommenderV2({
           requestId: `normal-ui-v2-${Date.now()}`,
-          ageBand: deckKeyToAgeBandV2(deckKey),
+          ageBand,
           limit: inputWithHistory.limit || 10,
           enabledSources: {
             mock: !sourceEnabled.openLibrary,
@@ -1913,12 +2163,16 @@ function handleLeft() {
           },
           signals: v2Signals,
           deckKey,
+          diagnostics: middleGradesDeepDebugDiagnostics,
         });
         markPhase("v2_after_engine_call", { selected: result.items.length });
         setV2DebugResult(result);
         setV2DebugError("");
         const normalizedItems = normalizeRecommenderV2Items(result.items);
-        const diagnosticResult = buildV2RecommendationResultForDiagnostics(result, normalizedItems, inputWithHistory);
+        const diagnosticResult = applyMiddleGradesFinalPayloadGuard(
+          buildV2RecommendationResultForDiagnostics(result, normalizedItems, inputWithHistory),
+          inputWithHistory
+        );
         const builtQuery = String(diagnosticResult.builtFromQuery || "");
         setRecQuery(builtQuery);
         setLastKnownBuiltQuery(builtQuery);
@@ -1944,10 +2198,13 @@ function handleLeft() {
         setLastRecommendationTimestamp(new Date().toISOString());
         setLastRecommendationSwipeSummary(`Right:${rightSwipes} • Left:${leftSwipes} • Skip:${downSwipes} • Decisions:${decisionSwipes} • 20Q:${resolvedTwentyQCount}/${twentyQObjectives.length}`);
         setRecommendFunctionReturned(true);
-        if (normalizedItems.length > 0) {
-          rememberRecommendations(input.deckKey, normalizedItems);
+        const guardedNormalizedItems = Array.isArray((diagnosticResult as any).items) && (diagnosticResult as any).items.length === 0
+          ? []
+          : normalizedItems;
+        if (guardedNormalizedItems.length > 0) {
+          rememberRecommendations(input.deckKey, guardedNormalizedItems);
           setRecommendationResultWasPersisted(true);
-          setRecItems(normalizedItems);
+          setRecItems(guardedNormalizedItems);
           setRecError(null);
         } else {
           setRecItems([]);
@@ -2072,7 +2329,7 @@ function handleLeft() {
           setTimeout(() => reject(new Error(`recommendation_timeout:${recommendationTimeoutMs}`)), recommendationTimeoutMs)
         ),
       ]);
-      const recommendationResult: any = resolvedRecommendationResult;
+      const recommendationResult: any = applyMiddleGradesFinalPayloadGuard(resolvedRecommendationResult, input);
       markPhase("actual_router_invocation_resolved");
       const result: any = recommendationResult;
       markPhase("after_getRecommendations_call");
@@ -2298,9 +2555,11 @@ function handleLeft() {
     setV2DebugLoading(true);
     setV2DebugError("");
     try {
+      const ageBand = deckKeyToAgeBandV2(deckKey);
+      const middleGradesDeepDebugDiagnostics = middleGradesDeepDebugDiagnosticsForSession(ageBand, middleGradesDeepDebugUiEnabled);
       const result = await runRecommenderV2({
         requestId: `live-ui-${trigger}-${Date.now()}`,
-        ageBand: deckKeyToAgeBandV2(deckKey),
+        ageBand,
         limit: 5,
         enabledSources: {
           mock: true,
@@ -2313,6 +2572,7 @@ function handleLeft() {
         },
         signals: swipeHistoryToV2Signals(swipeHistory),
         deckKey,
+        diagnostics: middleGradesDeepDebugDiagnostics,
       });
       setV2DebugResult(result);
       console.log("[NovelIdeas][V2] debug result", {
@@ -2397,6 +2657,14 @@ function handleLeft() {
     { id: "test_b", label: "Test B", sequence: ["dislike", "dislike", "like", "skip", "dislike", "like", "skip", "like"] },
     { id: "test_c", label: "Test C", sequence: ["like", "skip", "like", "skip", "dislike", "like", "dislike", "like"] },
   ];
+
+  function toggleMiddleGradesDeepDebug() {
+    setMiddleGradesDeepDebugUiEnabled((prev) => {
+      const next = !prev;
+      setMiddleGradesDeepDebugLocalStorage(next);
+      return next;
+    });
+  }
 
   async function runTestSessionPreset(preset: TestSessionPreset) {
     setPresetTestName(preset.label);
@@ -2768,6 +3036,131 @@ function handleLeft() {
 
       return [`${index + 1}. ${row?.title || "Untitled"} — ${row?.author || "Unknown author"}`, ...bits.map((bit) => `   ${bit}`)].join("\n");
     }).join("\n");
+  }
+
+  function limitArray<T>(value: T[] | undefined, limit: number): T[] {
+    return Array.isArray(value) ? value.slice(0, limit) : [];
+  }
+
+  function compactCodexString(value: unknown, maxLength: number): string {
+    if (value == null) return "";
+    const text = Array.isArray(value) ? value.filter(Boolean).join(" | ") : String(value);
+    return text.length > maxLength ? `${text.slice(0, maxLength)}…` : text;
+  }
+
+  function buildCodexDiagnosticsUploadText(result: RecommendationResultV2 | null, errorMessage = "") {
+    const diagnostics = result?.diagnostics || null;
+    const openLibraryDiagnostics = (diagnostics?.sources || []).find((source: any) => source.source === "openLibrary") as any;
+    const selectedStage = (diagnostics?.stages || []).find((stage: any) => stage.stage === "selected") as any;
+    const selection = selectedStage?.details?.rejectedReasons || {};
+    const expansionEvidenceAudit = openLibraryDiagnostics?.expansionFinalEligibilityEvidenceAuditByTitle || {};
+    const signals = swipeHistoryToV2Signals(swipeHistory);
+    const reasonCounts = new Map<string, number>();
+    Object.values(openLibraryDiagnostics?.expansionCandidatesRejectedByReason || {}).forEach((reason: any) => {
+      const key = String(Array.isArray(reason) ? reason[0] : reason || "unknown");
+      reasonCounts.set(key, (reasonCounts.get(key) || 0) + 1);
+    });
+    Object.values(expansionEvidenceAudit).forEach((row: any) => {
+      limitArray(row?.rejectedReasons, 6).forEach((reason) => {
+        const key = String(reason || "unknown");
+        reasonCounts.set(key, (reasonCounts.get(key) || 0) + 1);
+      });
+    });
+    const topReasons = [...reasonCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const evidenceRows = Object.entries(expansionEvidenceAudit).slice(0, 8).map(([title, row]: [string, any]) => [
+      `- ${title}`,
+      `  score=${row?.score ?? "?"}; query=${row?.sourceQuery || "?"}; family=${row?.matchedRouteFamily || "?"}`,
+      `  reasons=${limitArray(row?.rejectedReasons, 4).join(",") || row?.missingEvidenceFieldOrFailedPredicate || "?"}`,
+      `  subjects=${limitArray(row?.rawSubjects, 5).join(" | ") || "(none)"}`,
+      `  docSignals=${limitArray(row?.documentBackedTasteSignals, 5).join(",") || "(none)"}`,
+      `  support=${limitArray(row?.routeEvidenceFields, 5).join(",") || "(none)"}; fictionAge=${String(row?.hasFictionAgeEvidence)}`,
+      row?.queryOnlyCapExplanation ? `  queryOnly=${compactCodexString(row.queryOnlyCapExplanation, 180)}` : "",
+      row?.rawFirstSentence ? `  first=${compactCodexString(row.rawFirstSentence, 180)}` : "",
+      row?.rawDescription ? `  desc=${compactCodexString(row.rawDescription, 220)}` : "",
+    ].filter(Boolean).join("\n"));
+    const topRejectedRows = limitArray(selection?.middleGradesTopRejectedQualityAudit, 5).map((row: any) => [
+      `- ${row?.title || "Untitled"}`,
+      `  reason=${row?.finalEligibilityRejectedReason || row?.rejectionReason || "?"}; score=${row?.score ?? "?"}; query=${row?.sourceQuery || "?"}`,
+      `  tier=${row?.routeEvidenceTier || "?"}; fields=${limitArray(row?.documentEvidenceFields, 5).join(",") || "(none)"}`,
+      `  taste=${limitArray(row?.tasteSignalsMatched, 5).join(",") || "(none)"}`,
+    ].join("\n"));
+    const lines = [
+      "CODEX_MG_OL_BRIEF_V3",
+      `generatedAt: ${new Date().toISOString()}`,
+      `deck: ${deckKey} / ${deck.deckLabel} / ${deckKeyToAgeBandV2(deckKey)}`,
+      `status: ${errorMessage ? `error ${errorMessage}` : result ? "ok" : "not_run"}`,
+      `requestId: ${diagnostics?.requestId || "(none)"}`,
+      `swipes: right=${rightSwipes} left=${leftSwipes} down=${downSwipes} total=${swipeHistory.length}`,
+      `signals: ${compactCodexString(JSON.stringify(signals), 900)}`,
+      `returned: ${limitArray(result?.items, 8).map((item: any) => item?.title).filter(Boolean).join(" | ") || "(none)"}`,
+      "",
+      "OPEN_LIBRARY_COUNTS",
+      `raw=${openLibraryDiagnostics?.rawCount ?? "?"}; normalized=${openLibraryDiagnostics?.normalizedCount ?? "?"}; fetched=${openLibraryDiagnostics?.openLibraryDocsFetchedAcrossAllQueriesCount ?? "?"}; handedToScoring=${openLibraryDiagnostics?.openLibraryDocsActuallyHandedToScoringCount ?? "?"}; handoffSource=${openLibraryDiagnostics?.openLibraryScoringHandoffSource || "?"}`,
+      `queries=${limitArray(openLibraryDiagnostics?.queries, 10).join(" | ") || "(none)"}`,
+      "",
+      "EXPANSION_SUMMARY",
+      `triggered=${String(openLibraryDiagnostics?.cleanCandidateShortfallExpansionTriggered)}; fetchAttempted=${String(openLibraryDiagnostics?.expansionFetchAttempted)}; raw=${openLibraryDiagnostics?.expansionRawCount ?? "?"}; converted=${openLibraryDiagnostics?.expansionConvertedCount ?? "?"}; merged=${openLibraryDiagnostics?.expansionMergedCandidateCount ?? "?"}; enteredScoring=${openLibraryDiagnostics?.expansionCandidatesEnteredScoringCount ?? "?"}; cleanEligible=${openLibraryDiagnostics?.expansionCleanEligibleCount ?? "?"}`,
+      `acceptedFinal=${limitArray(openLibraryDiagnostics?.expansionCandidatesAcceptedFinal, 8).join(" | ") || "(none)"}`,
+      `selected=${limitArray(openLibraryDiagnostics?.expansionSelectedTitles, 8).join(" | ") || "(none)"}`,
+      `attemptedQueries=${limitArray(openLibraryDiagnostics?.expansionAttemptedQueries, 8).join(" | ") || "(none)"}`,
+      `topRejectReasons=${topReasons.map(([reason, count]) => `${reason}:${count}`).join(" | ") || "(none)"}`,
+      `lockQuality=${String(openLibraryDiagnostics?.expansionLockQualityPass)} ${limitArray(openLibraryDiagnostics?.expansionLockQualityFailReasons, 5).join(",")}`,
+      "",
+      "SELECTION_SUMMARY",
+      `finalClean=${selection?.finalEligibilityCleanCandidateCount ?? "?"}; finalAccepted=${limitArray(selection?.finalEligibilityAcceptedTitles, 8).join(" | ") || "(none)"}`,
+      `meaningfulTaste=${limitArray(selection?.meaningfulTasteEligibleTitles, 8).join(" | ") || "(none)"}`,
+      `zeroTasteRejected=${limitArray(selection?.zeroTasteCandidateRejectedTitles, 8).join(" | ") || "(none)"}`,
+      `broadAdventureRejected=${limitArray(selection?.broadAdventureOnlyRejectedTitles, 8).join(" | ") || "(none)"}`,
+      `lockQuality=${String(selection?.lockQualityPass)} ${limitArray(selection?.lockQualityFailReasons, 5).join(",")}`,
+      "",
+      "EXPANSION_EVIDENCE_ROWS",
+      evidenceRows.join("\n") || "(none)",
+      "",
+      "TOP_SELECTION_REJECTS",
+      topRejectedRows.join("\n") || "(none)",
+    ];
+    const report = lines.join("\n");
+    return report.length > 12_000
+      ? `${report.slice(0, 12_000)}\n\n[TRUNCATED_TO_12KB: enough summary retained for Codex next-step debugging]`
+      : report;
+  }
+
+  async function handleCopyCodexDiagnostics() {
+    setV2DebugLoading(true);
+    setV2DebugError("");
+    try {
+      const ageBand = deckKeyToAgeBandV2(deckKey);
+      const middleGradesDeepDebugDiagnostics = middleGradesDeepDebugDiagnosticsForSession(ageBand, middleGradesDeepDebugUiEnabled);
+      const result = await runRecommenderV2({
+        requestId: `codex-diagnostics-${Date.now()}`,
+        ageBand,
+        limit: 5,
+        enabledSources: {
+          mock: true,
+          googleBooks: sourceEnabled.googleBooks,
+          openLibrary: sourceEnabled.openLibrary,
+          localLibrary: sourceEnabled.localLibrary,
+          kitsu: sourceEnabled.kitsu,
+          comicVine: sourceEnabled.comicVine,
+          nyt: sourceEnabled.nyt,
+        },
+        signals: swipeHistoryToV2Signals(swipeHistory),
+        deckKey,
+        diagnostics: middleGradesDeepDebugDiagnostics,
+      });
+      setV2DebugResult(result);
+      const report = buildCodexDiagnosticsUploadText(result);
+      await Clipboard.setStringAsync(report);
+      Alert.alert("Copied", `Compact Codex diagnostics copied (${Math.round(report.length / 1024)} KB). Paste this directly into Codex.`);
+    } catch (err: any) {
+      const message = String(err?.message || err || "codex_diagnostics_failed");
+      setV2DebugError(message);
+      const report = buildCodexDiagnosticsUploadText(null, message);
+      await Clipboard.setStringAsync(report);
+      Alert.alert("Copied with error", "Codex diagnostics copied with the run error included.");
+    } finally {
+      setV2DebugLoading(false);
+    }
   }
 
   async function handleCopyDiagnostics() {
@@ -3534,6 +3927,45 @@ function handleLeft() {
       `teenPostPassInputSource:${String((lastRecommendationResult as any)?.teenPostPassInputSource || "unknown")}`,
       `scoredCandidateUniverseCount:${Number((lastRecommendationResult as any)?.scoredCandidateUniverseCount || 0)}`,
       `convertedDocsAvailableForScoringCount:${Number((lastRecommendationResult as any)?.convertedDocsAvailableForScoringCount || 0)}`,
+      `openLibraryDocsFetchedAcrossAllQueriesCount:${Number((lastRecommendationResult as any)?.openLibraryDocsFetchedAcrossAllQueriesCount || 0)}`,
+      `openLibraryDocsEligibleForScoringCount:${Number((lastRecommendationResult as any)?.openLibraryDocsEligibleForScoringCount || 0)}`,
+      `openLibraryDocsActuallyHandedToScoringCount:${Number((lastRecommendationResult as any)?.openLibraryDocsActuallyHandedToScoringCount || 0)}`,
+      `openLibraryScoringHandoffLimitedToSourceFinal:${Boolean((lastRecommendationResult as any)?.openLibraryScoringHandoffLimitedToSourceFinal)}`,
+      `openLibraryScoringHandoffSource:${String((lastRecommendationResult as any)?.openLibraryScoringHandoffSource || "")}`,
+      `meaningfulTasteRecoveryTriggered:${Boolean((lastRecommendationResult as any)?.meaningfulTasteRecoveryTriggered)}`,
+      `meaningfulTasteRecoveryTriggerStage:${String((lastRecommendationResult as any)?.meaningfulTasteRecoveryTriggerStage || "")}`,
+      `meaningfulTasteRecoverySkippedReason:${String((lastRecommendationResult as any)?.meaningfulTasteRecoverySkippedReason || "")}`,
+      `postFinalEligibilityUnderfillRecoveryTriggered:${Boolean((lastRecommendationResult as any)?.postFinalEligibilityUnderfillRecoveryTriggered)}`,
+      `postFinalEligibilityRecoveryAcceptedTitles:${Array.isArray((lastRecommendationResult as any)?.postFinalEligibilityRecoveryAcceptedTitles) && (lastRecommendationResult as any).postFinalEligibilityRecoveryAcceptedTitles.length ? (lastRecommendationResult as any).postFinalEligibilityRecoveryAcceptedTitles.join(" | ") : "(none)"}`,
+      `postFinalEligibilityRecoveryRejectedByReason:${JSON.stringify((lastRecommendationResult as any)?.postFinalEligibilityRecoveryRejectedByReason || {})}`,
+      `meaningfulTasteRecoverySurvivingFinalCount:${Number((lastRecommendationResult as any)?.meaningfulTasteRecoverySurvivingFinalCount || 0)}`,
+      `meaningfulTasteRecoveryContinuedAfterRejectedMerge:${Boolean((lastRecommendationResult as any)?.meaningfulTasteRecoveryContinuedAfterRejectedMerge)}`,
+      `meaningfulTasteRecoveryExhaustedQueries:${Array.isArray((lastRecommendationResult as any)?.meaningfulTasteRecoveryExhaustedQueries) && (lastRecommendationResult as any).meaningfulTasteRecoveryExhaustedQueries.length ? (lastRecommendationResult as any).meaningfulTasteRecoveryExhaustedQueries.join(" | ") : "(none)"}`,
+      `meaningfulTasteRecoveryRejectedQueryFamilies:${Array.isArray((lastRecommendationResult as any)?.meaningfulTasteRecoveryRejectedQueryFamilies) && (lastRecommendationResult as any).meaningfulTasteRecoveryRejectedQueryFamilies.length ? (lastRecommendationResult as any).meaningfulTasteRecoveryRejectedQueryFamilies.join(" | ") : "(none)"}`,
+      `recoverySuccessRequiresFinalEligibility:${Boolean((lastRecommendationResult as any)?.recoverySuccessRequiresFinalEligibility)}`,
+      `middleGradesRecoveryFinalShortfallReason:${String((lastRecommendationResult as any)?.middleGradesRecoveryFinalShortfallReason || "")}`,
+      `middleGradesRecoveryRejectedReasonCounts:${JSON.stringify((lastRecommendationResult as any)?.middleGradesRecoveryRejectedReasonCounts || {})}`,
+      `middleGradesRecoveryBestRejectedTitlesByReason:${JSON.stringify((lastRecommendationResult as any)?.middleGradesRecoveryBestRejectedTitlesByReason || {})}`,
+      `middleGradesRecoveryNextBestSelectableTitles:${Array.isArray((lastRecommendationResult as any)?.middleGradesRecoveryNextBestSelectableTitles) && (lastRecommendationResult as any).middleGradesRecoveryNextBestSelectableTitles.length ? (lastRecommendationResult as any).middleGradesRecoveryNextBestSelectableTitles.join(" | ") : "(none)"}`,
+      `middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate:${Boolean((lastRecommendationResult as any)?.middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate)}`,
+      `middleGradesRecoveryRelaxedGateNeeded:${String((lastRecommendationResult as any)?.middleGradesRecoveryRelaxedGateNeeded || "")}`,
+      `recoveryQueryAnchorByQuery:${JSON.stringify((lastRecommendationResult as any)?.recoveryQueryAnchorByQuery || {})}`,
+      `recoveryHumorUsedAsAnchorBlocked:${Boolean((lastRecommendationResult as any)?.recoveryHumorUsedAsAnchorBlocked)}`,
+      `recoveryConcreteFictionQueryUsed:${Boolean((lastRecommendationResult as any)?.recoveryConcreteFictionQueryUsed)}`,
+      `recoveryQueryFamilyAcceptedFinalCount:${JSON.stringify((lastRecommendationResult as any)?.recoveryQueryFamilyAcceptedFinalCount || {})}`,
+      `recoveryQueryFamilyRejectedForLeakageCount:${JSON.stringify((lastRecommendationResult as any)?.recoveryQueryFamilyRejectedForLeakageCount || {})}`,
+      `meaningfulTasteRecoveryQueriesAttempted:${Array.isArray((lastRecommendationResult as any)?.meaningfulTasteRecoveryQueriesAttempted) && (lastRecommendationResult as any).meaningfulTasteRecoveryQueriesAttempted.length ? (lastRecommendationResult as any).meaningfulTasteRecoveryQueriesAttempted.join(" | ") : "(none)"}`,
+      `meaningfulTasteRecoveryAcceptedTitles:${Array.isArray((lastRecommendationResult as any)?.meaningfulTasteRecoveryAcceptedTitles) && (lastRecommendationResult as any).meaningfulTasteRecoveryAcceptedTitles.length ? (lastRecommendationResult as any).meaningfulTasteRecoveryAcceptedTitles.join(" | ") : "(none)"}`,
+      `meaningfulTasteRecoveryRejectedTitlesByReason:${JSON.stringify((lastRecommendationResult as any)?.meaningfulTasteRecoveryRejectedTitlesByReason || {})}`,
+      `meaningfulTasteRecoveryFinalCount:${Number((lastRecommendationResult as any)?.meaningfulTasteRecoveryFinalCount || 0)}`,
+      `underfilledAfterMeaningfulTasteRecovery:${Boolean((lastRecommendationResult as any)?.underfilledAfterMeaningfulTasteRecovery)}`,
+      `meaningfulTasteRecoveryMergedIntoScoring:${Boolean((lastRecommendationResult as any)?.meaningfulTasteRecoveryMergedIntoScoring)}`,
+      `meaningfulTasteRecoveryMergedCandidateCount:${Number((lastRecommendationResult as any)?.meaningfulTasteRecoveryMergedCandidateCount || 0)}`,
+      `meaningfulTasteRecoveryDroppedAfterMergeByReason:${JSON.stringify((lastRecommendationResult as any)?.meaningfulTasteRecoveryDroppedAfterMergeByReason || {})}`,
+      `meaningfulTasteRecoveryAcceptedButNotReturnedTitles:${Array.isArray((lastRecommendationResult as any)?.meaningfulTasteRecoveryAcceptedButNotReturnedTitles) && (lastRecommendationResult as any).meaningfulTasteRecoveryAcceptedButNotReturnedTitles.length ? (lastRecommendationResult as any).meaningfulTasteRecoveryAcceptedButNotReturnedTitles.join(" | ") : "(none)"}`,
+      `meaningfulTasteRecoveryFinalSelectionCount:${Number((lastRecommendationResult as any)?.meaningfulTasteRecoveryFinalSelectionCount || 0)}`,
+      `middleGradesExpandedPoolHandoffFailed:${Boolean((lastRecommendationResult as any)?.middleGradesExpandedPoolHandoffFailed)}`,
+      `middleGradesExpandedPoolFailureReason:${String((lastRecommendationResult as any)?.middleGradesExpandedPoolFailureReason || "")}`,
       `gcdStructuralEnrichmentCount:${Number((lastRecommendationResult as any)?.gcdStructuralEnrichmentCount || 0)}`,
       `gcdEnrichmentApplied:${Number((lastRecommendationResult as any)?.gcdStructuralEnrichmentCount || 0) > 0}`,
       `gcdEntryPointLikeCount:${Number((lastRecommendationResult as any)?.gcdEntryPointLikeCount || 0)}`,
@@ -3599,6 +4031,15 @@ function handleLeft() {
       `candidateTastePenaltyByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateTastePenaltyByTitle || {})}`,
       `candidateMatchedLikedSignalsByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateMatchedLikedSignalsByTitle || {})}`,
       `candidateMatchedDislikedSignalsByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateMatchedDislikedSignalsByTitle || {})}`,
+      `genericTasteSignalsRemovedByTitle:${JSON.stringify((lastRecommendationResult as any)?.genericTasteSignalsRemovedByTitle || {})}`,
+      `genericOnlyTasteMatchTitles:${Array.isArray((lastRecommendationResult as any)?.genericOnlyTasteMatchTitles) && (lastRecommendationResult as any).genericOnlyTasteMatchTitles.length ? (lastRecommendationResult as any).genericOnlyTasteMatchTitles.join(" | ") : "(none)"}`,
+      `documentBackedTasteSignalsByTitle:${JSON.stringify((lastRecommendationResult as any)?.documentBackedTasteSignalsByTitle || {})}`,
+      `selectedGenericOnlyTasteMatchCount:${Number((lastRecommendationResult as any)?.selectedGenericOnlyTasteMatchCount || 0)}`,
+      `zeroTasteCandidateRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.zeroTasteCandidateRejectedTitles) && (lastRecommendationResult as any).zeroTasteCandidateRejectedTitles.length ? (lastRecommendationResult as any).zeroTasteCandidateRejectedTitles.join(" | ") : "(none)"}`,
+      `broadAdventureOnlyRejectedTitles:${Array.isArray((lastRecommendationResult as any)?.broadAdventureOnlyRejectedTitles) && (lastRecommendationResult as any).broadAdventureOnlyRejectedTitles.length ? (lastRecommendationResult as any).broadAdventureOnlyRejectedTitles.join(" | ") : "(none)"}`,
+      `meaningfulTasteEligibleTitles:${Array.isArray((lastRecommendationResult as any)?.meaningfulTasteEligibleTitles) && (lastRecommendationResult as any).meaningfulTasteEligibleTitles.length ? (lastRecommendationResult as any).meaningfulTasteEligibleTitles.join(" | ") : "(none)"}`,
+      `underfilledBecauseOnlyWeakOrZeroTaste:${Boolean((lastRecommendationResult as any)?.underfilledBecauseOnlyWeakOrZeroTaste)}`,
+      `emergencyFallbackUsedForZeroTasteFill:${Boolean((lastRecommendationResult as any)?.emergencyFallbackUsedForZeroTasteFill)}`,
       `candidateWeightedTasteScoreByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateWeightedTasteScoreByTitle || {})}`,
       `candidateDislikePenaltyByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateDislikePenaltyByTitle || {})}`,
       `candidateSkipPenaltyByTitle:${JSON.stringify((lastRecommendationResult as any)?.candidateSkipPenaltyByTitle || {})}`,
@@ -4371,14 +4812,29 @@ function handleLeft() {
             <Text style={styles.debugToggleText}>Diagnostics</Text>
           </TouchableOpacity>
 
+          <TouchableOpacity style={styles.codexDiagnosticsToggle} onPress={() => void handleCopyCodexDiagnostics()}>
+            <Text style={styles.debugToggleText}>{v2DebugLoading ? "Codex Running…" : "Codex Diagnostics"}</Text>
+          </TouchableOpacity>
+
           <TouchableOpacity style={styles.v2DebugToggle} onPress={() => void runRecommenderV2DebugFromCurrentSession("button")}>
             <Text style={styles.debugToggleText}>{v2DebugLoading ? "V2 Running…" : "Run V2"}</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.v2DebugToggle, middleGradesDeepDebugUiEnabled && styles.middleGradesDeepDebugToggleActive]}
+            onPress={toggleMiddleGradesDeepDebug}
+          >
+            <Text style={styles.debugToggleText}>
+              {middleGradesDeepDebugUiEnabled ? "MG Deep Debug: ON" : "MG Deep Debug: OFF"}
+            </Text>
+          </TouchableOpacity>
+          <Text style={styles.v2DebugText}>MG deep debug can also be enabled with ?middleGradesDeepDebug=true or localStorage middleGradesDeepDebug=true.</Text>
 
           {(v2DebugResult || v2DebugError) ? (
             <View style={styles.v2DebugPanel}>
               <Text style={styles.v2DebugTitle}>Recommender V2 Debug</Text>
               <Text style={styles.v2DebugText}>status:{v2DebugError ? "error" : "ok"}</Text>
+              {v2DebugResult?.diagnostics.sessionReportHeader ? <Text style={styles.v2DebugText}>{v2DebugResult.diagnostics.sessionReportHeader}</Text> : null}
               <Text style={styles.v2DebugText}>items:{v2DebugResult?.items.map((item) => item.title).join(" | ") || "(none)"}</Text>
               <Text style={styles.v2DebugText}>stages:{v2DebugResult?.diagnostics.stages.map((stage) => stage.stage).join(" → ") || "(none)"}</Text>
               <Text style={styles.v2DebugText}>sources:{v2DebugResult?.diagnostics.sources.map((source) => `${source.source}:${source.status}:${source.rawCount}`).join(" | ") || "(none)"}</Text>
@@ -4579,6 +5035,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 999,
   },
+  codexDiagnosticsToggle: {
+    minWidth: 148,
+    alignItems: "center",
+    backgroundColor: "#4338ca",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "#c7d2fe",
+  },
   copyToggle: {
     minWidth: 112,
     alignItems: "center",
@@ -4657,6 +5123,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 999,
+  },
+  middleGradesDeepDebugToggleActive: {
+    backgroundColor: "#b45309",
+    borderColor: "#fde68a",
+    borderWidth: 1,
   },
   v2DebugPanel: {
     width: 320,

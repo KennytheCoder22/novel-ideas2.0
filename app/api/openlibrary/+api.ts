@@ -1,6 +1,20 @@
 const OPEN_LIBRARY_PROXY_TIMEOUT_MS = 5_500;
 const OPEN_LIBRARY_PROXY_RETRY_DELAY_MS = 250;
 const OPEN_LIBRARY_PROXY_MAX_ATTEMPTS = 3;
+const DEFAULT_OPEN_LIBRARY_FIELDS = [
+  "key",
+  "title",
+  "subtitle",
+  "author_name",
+  "first_publish_year",
+  "cover_i",
+  "edition_key",
+  "subject",
+  "subject_key",
+  "subject_facet",
+  "first_sentence",
+  "description",
+].join(",");
 
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -67,6 +81,7 @@ export async function GET(request: Request) {
 
     const q = (searchParams.get("q") || "").trim();
     const limit = Math.max(1, Math.min(160, Number(searchParams.get("limit") || 40)));
+    const fields = (searchParams.get("fields") || DEFAULT_OPEN_LIBRARY_FIELDS).trim();
 
     if (!q) {
       return Response.json({ error: "Missing query (q)" }, { status: 400 });
@@ -76,6 +91,7 @@ export async function GET(request: Request) {
       `https://openlibrary.org/search.json` +
       `?q=${encodeURIComponent(q)}` +
       `&limit=${limit}` +
+      `&fields=${encodeURIComponent(fields)}` +
       `&language=eng`;
 
     const upstream = await fetchOpenLibraryWithRetries(url);

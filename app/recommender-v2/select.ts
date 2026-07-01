@@ -25,9 +25,29 @@ function rootTitle(title: string): string {
 function seriesKey(candidate: ScoredCandidate): string {
   const text = normalized([candidate.title, candidate.subtitle, candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
   if (/\b(hunger games|catching fire|mockingjay)\b/.test(text)) return "hunger games";
-  const known = text.match(/\b(one piece|naruto|throne of glass|divergent|maze runner|twilight|grande ritorno|diadem|chosen)\b/);
+  const known = text.match(/\b(one piece|naruto|throne of glass|divergent|maze runner|twilight|grande ritorno|diadem|chosen|wild robot|ricky ricotta)\b/);
   if (known) return known[1];
   return rootTitle(candidate.title);
+}
+
+function collectionRootKey(candidate: ScoredCandidate): string {
+  const title = normalized(candidate.title.split(/[:;(\[]/)[0] || candidate.title);
+  if (!title) return "";
+  const characterPairRoot = title.match(/\b([a-z]{3,})\s+and\s+([a-z]{3,})\b/)?.[0] || "";
+  if (characterPairRoot) return characterPairRoot;
+  const hasCollectionMarker = /\b(complete|collected|collection|collections|collector s|collectors|treasury|storybook|stories|tales|adventures|books?|omnibus|anthology|library|set|boxed|box)\b/.test(title);
+  if (!hasCollectionMarker) return "";
+  const root = title
+    .replace(/\b(the|a|an)\b/g, " ")
+    .replace(/\b(complete|collected|collection|collections|collector s|collectors|treasury|storybook|stories|tales|adventures|books?|chapter|chapters|volume|vol|omnibus|anthology|library|set|boxed|box)\b/g, " ")
+    .replace(/\b\d+\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return root.split(" ").length >= 2 ? root : "";
+}
+
+function finalReturnedRootKey(candidate: ScoredCandidate): string {
+  return collectionRootKey(candidate);
 }
 
 function primaryAuthor(candidate: ScoredCandidate): string {
@@ -186,6 +206,7 @@ function middleGradesRawText(candidate: ScoredCandidate): string {
     Array.isArray(raw?.subject) ? raw.subject.join(" ") : raw?.subject,
     Array.isArray(raw?.subjects) ? raw.subjects.join(" ") : raw?.subjects,
     Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet,
+    Array.isArray(raw?.subject_key) ? raw.subject_key.join(" ") : raw?.subject_key,
     rawDescription,
   ].filter(Boolean).join(" "));
 }
@@ -198,10 +219,18 @@ function middleGradesRouteEvidencePattern(candidate: ScoredCandidate): RegExp | 
   const queryText = middleGradesQueryText(candidate);
   const routeKey = middleGradesRouteKey(candidate);
   const routeText = `${routeKey} ${queryText}`;
+  const sourceQueryText = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+  const canUseRecoveryEvidencePattern = !candidate.diagnostics?.emergencyFallback && candidate.diagnostics?.fallbackAlignment !== "anti_zero";
   if (/\b(science adventure|science fiction|sci fi|sci-fi|space|dystopian|dystopia)\b/.test(routeText)) return /\b(science|scientist|experiment|space|planet|galaxy|robot|robots?|technology|invention|dystopian|dystopia|sci fi|sci-fi|science fiction|nonfiction|animals?|nature|wildlife|wolf|wolves)\b/;
   if (/\b(robot|ai|artificial intelligence|superhero|superheroes)\b/.test(routeText)) return /\b(robot|robots?|ai|artificial intelligence|technology|invention|superhero|superheroes|powers?)\b/;
   if (/\b(animal adventure|animals?|nature|wildlife)\b/.test(routeText)) return /\b(animal|animals|dog|cat|horse|wolf|wolves|wildlife|nature|forest|woods|survival|cozy|community|farm|creature|creatures)\b/;
   if (/\b(school adventure|school story|school|classroom|children s school stories)\b/.test(routeText)) return /\b(school|class|classroom|teacher|student|students|friendship|friends?|community|family|comedy|funny|humor|humour)\b/;
+  if (canUseRecoveryEvidencePattern && /\b(superhero|super hero)\b/.test(sourceQueryText) && /\b(friendship|friends?|adventure)\b/.test(sourceQueryText)) return /\b(superhero|super hero|heroes|hero|powers?|friendship|friends?|team|adventure|quest)\b/;
+  if (canUseRecoveryEvidencePattern && /\bfamily\b/.test(sourceQueryText) && /\badventure\b/.test(sourceQueryText)) return /\b(family|families|parents?|siblings?|home|superhero|super hero|heroes|hero|powers?|adventure|quest|journey|wild)\b/;
+  if (canUseRecoveryEvidencePattern && /\b(ocean|sea|island)\b/.test(sourceQueryText) && /\b(friendship|friends?|adventure|fantasy)\b/.test(sourceQueryText)) return /\b(ocean|sea|island|marine|friendship|friends?|adventure|quest|fantasy|magic|magical)\b/;
+  if (canUseRecoveryEvidencePattern && /\b(survival|survive|wilderness|forest|stranded)\b/.test(sourceQueryText) && /\b(adventure|friendship|fiction)\b/.test(sourceQueryText)) return /\b(survival|survive|survives|wilderness|wild|forest|island|stranded|adventure|quest|team|friendship|friends?)\b/;
+  if (canUseRecoveryEvidencePattern && /\b(science|robot|technology)\b/.test(sourceQueryText) && /\b(adventure|friendship|fiction)\b/.test(sourceQueryText)) return /\b(science|scientist|experiment|robot|robots?|technology|invention|friendship|friends?|adventure|quest)\b/;
+  if (canUseRecoveryEvidencePattern && /\b(fantasy|magic|magical|mythology)\b/.test(sourceQueryText) && /\b(friendship|friends?|adventure|family)\b/.test(sourceQueryText)) return /\b(fantasy|magic|magical|wizard|witch|fairy|fairies|dragon|quest|kingdom|hero|heroic|myth|myths|mythology|adventure|friendship|friends?|family|school)\b/;
   if (/\b(friendship|community)\b/.test(routeText)) return /\b(friendship|friends?|community|school|family|team|classroom)\b/;
   if (/\b(fantasy mystery|mystery adventure|mystery|detective)\b/.test(routeText)) return /\b(mystery|detective|clue|clues|case|secret|secrets|puzzle|investigate|investigation)\b/;
   if (/\b(humor|funny|funny family|fantasy humor)\b/.test(routeText)) return /\b(humor|humour|funny|comedy|comic|joke|laugh|laughs|giggle|silly|school|friendship|friends?|family|quest|adventure|trail)\b/;
@@ -233,13 +262,19 @@ function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { query
     ["themes", normalized((candidate.themes || []).join(" "))],
     ["tones", normalized((candidate.tones || []).join(" "))],
     ["characterDynamics", normalized((candidate.characterDynamics || []).join(" "))],
-    ["subjects", normalized([Array.isArray(raw?.subject) ? raw.subject.join(" ") : raw?.subject, Array.isArray(raw?.subjects) ? raw.subjects.join(" ") : raw?.subjects, Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet].filter(Boolean).join(" "))],
+    ["subjects", normalized([Array.isArray(raw?.subject) ? raw.subject.join(" ") : raw?.subject, Array.isArray(raw?.subjects) ? raw.subjects.join(" ") : raw?.subjects, Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet, Array.isArray(raw?.subject_key) ? raw.subject_key.join(" ") : raw?.subject_key].filter(Boolean).join(" "))],
   ];
   const queryLevel = pattern ? pattern.test(queryText) : false;
   const matchedFields = pattern ? docFields.filter(([, value]) => pattern.test(value)) : [];
   const fields = matchedFields.map(([field]) => field);
   const evidenceTextByField = Object.fromEntries(matchedFields.map(([field, value]) => [field, value.slice(0, 180)]));
-  const documentLevel = fields.length > 0;
+  const titleSubtitleText = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  const humorTitleOnlyWithoutAgeEvidence = /humor|funny|comedy/i.test([candidate.diagnostics?.routingReason, candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "))
+    && fields.length > 0
+    && /\b(funny|humor|humour|comedy|comic|joke|laugh|giggle)\b/.test(titleSubtitleText)
+    && !middleGradesNonHumorAlignment(candidate)
+    && !middleGradesFictionAgeEvidence(candidate);
+  const documentLevel = fields.length > 0 && !humorTitleOnlyWithoutAgeEvidence;
   const richFields = fields.filter((field) => ["subjects", "description", "genres", "themes", "characterDynamics"].includes(field));
   const titleFields = fields.filter((field) => ["title", "subtitle"].includes(field));
   const tier: MiddleGradesDocumentEvidenceTier = richFields.length > 0 && (titleFields.length > 0 || richFields.some((field) => ["subjects", "description"].includes(field)))
@@ -255,14 +290,18 @@ function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { query
     fields,
     evidenceTextByField,
     tier,
-    demotedReason: queryLevel && !documentLevel ? "query_level_only_no_document_evidence" : undefined,
+    demotedReason: humorTitleOnlyWithoutAgeEvidence ? "humor_keyword_title_only_without_age_or_doc_evidence" : queryLevel && !documentLevel ? "query_level_only_no_document_evidence" : undefined,
   };
 }
 
 function isMiddleGradesRouteAlignedSuccessCandidate(candidate: ScoredCandidate): boolean {
   if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
   if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) return false;
-  return middleGradesRouteAlignmentEvidence(candidate).documentLevel;
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  if (!evidence.documentLevel) return false;
+  if (evidence.tier === "weak_evidence") return false;
+  if (evidence.fields.length > 0 && evidence.fields.every((field) => field === "title" || field === "subtitle")) return false;
+  return true;
 }
 
 
@@ -288,12 +327,63 @@ function isMiddleGradesReferenceOrLocalHistoryArtifact(candidate: ScoredCandidat
   return referenceOrLocalHistory && nonfictionLeaning && !middleGradeFiction;
 }
 
+
+function isMiddleGradesHumorRouteCandidate(candidate: ScoredCandidate): boolean {
+  return /humor|funny|comedy/i.test([candidate.diagnostics?.routingReason, candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+}
+
+function middleGradesNonHumorAlignment(candidate: ScoredCandidate): boolean {
+  const text = middleGradesRawText(candidate);
+  return /\b(adventure|friendship|friends?|community|survival|school|family|quest|team)\b/.test(text);
+}
+
+function middleGradesAdultOrYaHumorLeakage(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesHumorRouteCandidate(candidate)) return false;
+  if (middleGradesFictionAgeEvidence(candidate)) return false;
+  const text = middleGradesRawText(candidate);
+  return /\b(young adult|ya fiction|adult fiction|literary fiction|high school|college|suicide|depression|mental hospital|play|drama|classic literature|moliere|satire)\b/.test(text);
+}
+
+function middleGradesHumorKeywordOnlyLeakage(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesHumorRouteCandidate(candidate)) return false;
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  if (evidence.fields.length === 0) return false;
+  const titleText = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  if (!/\b(funny|humor|humour|comedy|comic|joke|laugh|giggle)\b/.test(titleText)) return false;
+  return !middleGradesFictionAgeEvidence(candidate) && !middleGradesNonHumorAlignment(candidate);
+}
+
+function middleGradesTitleOnlyRouteEvidence(candidate: ScoredCandidate): boolean {
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  return evidence.fields.length > 0 && evidence.fields.every((field) => field === "title" || field === "subtitle");
+}
+
+function middleGradesSupportedRouteEvidenceFields(candidate: ScoredCandidate): string[] {
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  return evidence.fields.filter((field) => !["title", "subtitle"].includes(field));
+}
+
 function middleGradesFinalEligibility(candidate: ScoredCandidate): { allowed: boolean; evidence: string[]; rejectedReason?: string; emergencyOverride?: boolean } {
   if (!isMiddleGradesOpenLibraryCandidate(candidate)) return { allowed: true, evidence: ["not_middle_grades_openlibrary"] };
   if (isMiddleGradesReferenceOrLocalHistoryArtifact(candidate)) return { allowed: false, evidence: [], rejectedReason: "middle_grades_reference_or_local_history_artifact" };
+  if (middleGradesAdultOrYaHumorLeakage(candidate)) return { allowed: false, evidence: [], rejectedReason: "adult_or_ya_humor_leakage" };
+  if (middleGradesHumorKeywordOnlyLeakage(candidate)) return { allowed: false, evidence: [], rejectedReason: "humor_keyword_only_leakage" };
   const routeEvidence = middleGradesRouteAlignmentEvidence(candidate);
-  if (routeEvidence.documentLevel && routeEvidence.fields.length > 0) return { allowed: true, evidence: routeEvidence.fields.map((field) => `document_route:${field}`) };
-  if (middleGradesFictionAgeEvidence(candidate) && middleGradesRouteAlignmentEvidence(candidate).fields.length > 0) return { allowed: true, evidence: ["middle_grade_fiction_metadata", ...middleGradesRouteAlignmentEvidence(candidate).fields.map((field) => `document_route:${field}`)] };
+  const supportedFields = middleGradesSupportedRouteEvidenceFields(candidate);
+  const hasIndependentSupport = supportedFields.length > 0 || routeEvidence.fields.length >= 2 && !middleGradesTitleOnlyRouteEvidence(candidate);
+  if (routeEvidence.documentLevel && routeEvidence.fields.length > 0 && hasIndependentSupport) return { allowed: true, evidence: routeEvidence.fields.map((field) => `document_route:${field}`) };
+  if (middleGradesFictionAgeEvidence(candidate) && hasIndependentSupport) return { allowed: true, evidence: ["middle_grade_fiction_metadata", ...routeEvidence.fields.map((field) => `document_route:${field}`)] };
+  if (isMiddleGradesCleanExpansionCandidate(candidate)
+    && !candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")
+    && middleGradesFictionAgeEvidence(candidate)
+    && middleGradesDocumentBackedTasteSignals(candidate).some((signal) => signal !== "adventure")
+    && candidate.score >= 0) {
+    return {
+      allowed: true,
+      evidence: ["clean_expansion_document_backed_taste_signal", "middle_grade_fiction_metadata", ...middleGradesDocumentBackedTasteSignals(candidate).map((signal) => `document_taste:${signal}`)],
+    };
+  }
+  if (middleGradesTitleOnlyRouteEvidence(candidate)) return { allowed: false, evidence: routeEvidence.fields.map((field) => `document_route:${field}`), rejectedReason: "title_only_route_evidence_missing_support" };
   if (isMiddleGradesAntiZeroFallbackCandidate(candidate)) return { allowed: true, evidence: ["explicit_emergency_fallback"], emergencyOverride: true };
   if (routeEvidence.queryLevel && !routeEvidence.documentLevel) return { allowed: false, evidence: [], rejectedReason: "middle_grades_query_only_missing_document_evidence" };
   return { allowed: false, evidence: [], rejectedReason: "middle_grades_missing_route_or_fiction_evidence" };
@@ -693,6 +783,272 @@ function middleGradesSelectionScore(candidate: ScoredCandidate, profile: TastePr
   return candidate.score + (middleGradesRouteAlignmentScore(candidate) * 1.2) - (middleGradesFallbackPenalty(candidate) * 1.4);
 }
 
+function middleGradesTasteAlignment(candidate: ScoredCandidate): number {
+  const breakdown = candidate.scoreBreakdown || {};
+  const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.length : 0;
+  return Math.round((
+    Number(breakdown.positiveTasteMatch || 0)
+    + Number(breakdown.genreFacetMatch || 0)
+    + Number(breakdown.themeMatch || 0)
+    + Number(breakdown.toneMatch || 0)
+    + matchedSignals * 0.25
+  ) * 1000) / 1000;
+}
+
+function isMiddleGradesFallbackOrDefaultCandidate(candidate: ScoredCandidate): boolean {
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  return isMiddleGradesAntiZeroFallbackCandidate(candidate)
+    || (evidence.queryLevel && !evidence.documentLevel)
+    || middleGradesFallbackPenalty(candidate) > 0
+    || isMiddleGradesHumorDefaultQueryFamily(candidate)
+    || isMiddleGradesContemporarySchoolDefaultCandidate(candidate);
+}
+
+function middleGradesDocumentBackedTasteSignals(candidate: ScoredCandidate): string[] {
+  const signals = Array.isArray(candidate.diagnostics?.documentBackedTasteSignals)
+    ? candidate.diagnostics.documentBackedTasteSignals.map(String)
+    : Array.isArray(candidate.diagnostics?.documentOnlyTasteMatch)
+      ? candidate.diagnostics.documentOnlyTasteMatch.map(String)
+      : [];
+  return signals.map(normalized).filter(Boolean);
+}
+
+function asStringList(value: unknown): string[] {
+  return Array.isArray(value) ? value.map((item) => String(item || "").trim()).filter(Boolean) : typeof value === "string" && value.trim() ? [value.trim()] : [];
+}
+
+function rawOpenLibraryDescription(raw: Record<string, unknown>): string {
+  const description = typeof raw.description === "string"
+    ? raw.description
+    : typeof (raw.description as { value?: unknown } | undefined)?.value === "string"
+      ? String((raw.description as { value: string }).value)
+      : "";
+  return description || asStringList(raw.first_sentence).join(" ");
+}
+
+function profilePositiveSignals(profile: TasteProfile): string[] {
+  return [...profile.genreFamily, ...profile.themes, ...profile.tone, ...profile.characterDynamics, ...profile.formatPreference]
+    .filter((signal) => Number(signal.weight || 0) > 0)
+    .map((signal) => String(signal.value || ""))
+    .filter(Boolean);
+}
+
+function middleGradesZeroTasteEvidenceAudit(candidate: ScoredCandidate, profile: TasteProfile): Record<string, unknown> {
+  const raw = (candidate.raw || {}) as Record<string, unknown>;
+  const rawSubjects = Array.from(new Set([
+    ...asStringList(raw.subject),
+    ...asStringList(raw.subjects),
+    ...asStringList(raw.subject_facet),
+    ...asStringList(raw.subject_key),
+  ]));
+  const rawDescription = rawOpenLibraryDescription(raw);
+  const normalizedDocumentText = normalized([
+    candidate.title,
+    candidate.subtitle,
+    candidate.description,
+    rawDescription,
+    ...rawSubjects,
+    ...asStringList(candidate.genres),
+    ...asStringList(candidate.themes),
+    ...asStringList(candidate.tones),
+    ...asStringList(candidate.characterDynamics),
+  ].join(" "));
+  const queryText = normalized([candidate.diagnostics?.queryText, candidate.diagnostics?.queryFamily].filter(Boolean).join(" "));
+  const positiveSignals = profilePositiveSignals(profile);
+  const matchedLikedSignalsBeforeEvidenceGate = positiveSignals.filter((signal) => {
+    const value = normalized(signal);
+    return Boolean(value && (normalizedDocumentText.includes(value) || queryText.includes(value)));
+  });
+  const documentBackedSignals = new Set(middleGradesDocumentBackedTasteSignals(candidate));
+  const signalEvidenceFailures = matchedLikedSignalsBeforeEvidenceGate.reduce<Record<string, string>>((acc, signal) => {
+    const value = normalized(signal);
+    if (!value) return acc;
+    if (documentBackedSignals.has(value)) return acc;
+    if (queryText.includes(value) && !normalizedDocumentText.includes(value)) acc[signal] = "matched_only_query_or_family_text_not_document_metadata";
+    else if (!normalizedDocumentText.includes(value)) acc[signal] = "missing_from_title_description_subjects_genres_themes";
+    else acc[signal] = "present_in_document_text_but_not_credited_by_document_backed_signal_extraction";
+    return acc;
+  }, {});
+  return {
+    title: candidate.title,
+    sourceQuery: String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || ""),
+    rawSubjects,
+    rawFirstSentenceOrDescription: rawDescription,
+    normalizedGenres: asStringList(candidate.genres),
+    normalizedThemes: asStringList(candidate.themes),
+    normalizedTags: [...asStringList(candidate.tones), ...asStringList(candidate.characterDynamics), ...asStringList(candidate.formats)],
+    matchedLikedSignalsBeforeEvidenceGate,
+    documentBackedTasteSignals: Array.from(documentBackedSignals),
+    signalEvidenceFailures,
+    missingEvidenceFieldOrFailedPredicate: Object.keys(signalEvidenceFailures).length > 0
+      ? "matched_signals_failed_document_backed_credit"
+      : rawSubjects.length === 0 && !rawDescription
+        ? "missing_subjects_and_description"
+        : "no_profile_liked_signal_present_in_document_metadata",
+    rejectedReasons: candidate.rejectedReasons,
+  };
+}
+
+function isMiddleGradesExplicitEmergencyFallback(candidate: ScoredCandidate): boolean {
+  return Boolean(candidate.diagnostics?.emergencyFallback) || candidate.rejectedReasons.includes("accepted_middle_grades_zero_final_items_guard") || candidate.rejectedReasons.includes("emergency_fallback_zero_taste_fill");
+}
+
+function middleGradesMeaningfulTasteEligibility(candidate: ScoredCandidate, allowExplicitEmergency = false): { allowed: boolean; reason?: "zero_doc_backed_taste_match" | "broad_adventure_only_taste_match" } {
+  if (candidate.source !== "openLibrary") return { allowed: true };
+  if (allowExplicitEmergency && isMiddleGradesExplicitEmergencyFallback(candidate)) return { allowed: true };
+  if (middleGradesCleanExpansionRouteFictionSupport(candidate)) return { allowed: true };
+  const hasDocumentBackedTasteDiagnostics = Array.isArray(candidate.diagnostics?.documentBackedTasteSignals) || Array.isArray(candidate.diagnostics?.documentOnlyTasteMatch);
+  if (!hasDocumentBackedTasteDiagnostics) return { allowed: true };
+  const breakdown = candidate.scoreBreakdown || {};
+  const tasteScore = Number(breakdown.genreFacetMatch || 0) + Number(breakdown.positiveTasteMatch || 0);
+  if (tasteScore <= 0) return { allowed: false, reason: "zero_doc_backed_taste_match" };
+  const backedSignals = middleGradesDocumentBackedTasteSignals(candidate);
+  if (backedSignals.length > 0 && backedSignals.every((signal) => signal === "adventure")) return { allowed: false, reason: "broad_adventure_only_taste_match" };
+  return { allowed: true };
+}
+
+function isMiddleGradesCleanExpansionCandidate(candidate: ScoredCandidate): boolean {
+  return Boolean(candidate.diagnostics?.cleanCandidateShortfallExpansion)
+    || candidate.diagnostics?.scoringHandoffStage === "clean_candidate_shortfall_expansion"
+    || candidate.diagnostics?.scoringHandoffSource === "clean_candidate_shortfall_expansion";
+}
+
+function middleGradesCleanExpansionRouteFictionSupport(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesCleanExpansionCandidate(candidate)) return false;
+  const finalEligibility = middleGradesFinalEligibility(candidate);
+  if (!finalEligibility.allowed) return false;
+  if (!middleGradesFictionAgeEvidence(candidate)) return false;
+  const backedTasteSignals = middleGradesDocumentBackedTasteSignals(candidate).filter((signal) => signal !== "adventure");
+  if (middleGradesSupportedRouteEvidenceFields(candidate).length === 0 && backedTasteSignals.length === 0) return false;
+  if (candidate.score < 0) return false;
+  if (candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")) return false;
+  if (candidate.rejectedReasons.includes("humor_keyword_only_leakage")) return false;
+  if (candidate.rejectedReasons.includes("non_positive_score")) return false;
+  return true;
+}
+
+function applyMiddleGradesMeaningfulTasteFinalGate(selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens") return;
+  for (let index = selected.length - 1; index >= 0; index -= 1) {
+    const candidate = selected[index];
+    const eligibility = middleGradesMeaningfulTasteEligibility(candidate);
+    if (eligibility.allowed) continue;
+    if (isMiddleGradesExplicitEmergencyFallback(candidate)) {
+      if (!candidate.rejectedReasons.includes("emergency_fallback_zero_taste_fill")) candidate.rejectedReasons.push("emergency_fallback_zero_taste_fill");
+      rejectedReasons.emergency_fallback_zero_taste_fill = Number(rejectedReasons.emergency_fallback_zero_taste_fill || 0) + 1;
+      continue;
+    }
+    selected.splice(index, 1);
+    candidate.rejectedReasons.push(eligibility.reason || "middle_grades_missing_meaningful_taste_evidence");
+    rejectedReasons[eligibility.reason || "middle_grades_missing_meaningful_taste_evidence"] = Number(rejectedReasons[eligibility.reason || "middle_grades_missing_meaningful_taste_evidence"] || 0) + 1;
+  }
+}
+
+function middleGradesQualityAuditRow(candidate: ScoredCandidate, selected: Set<ScoredCandidate>, selectedRoots: Set<string>, profile: TasteProfile, rejectionReason?: string): Record<string, unknown> {
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  const eligibility = middleGradesFinalEligibility(candidate);
+  const root = finalReturnedRootKey(candidate) || seriesKey(candidate);
+  return {
+    title: candidate.title,
+    sourceQuery: String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || ""),
+    routeEvidenceTier: evidence.tier,
+    documentEvidenceFields: evidence.fields,
+    tasteSignalsMatched: candidate.matchedSignals || [],
+    tasteAlignmentScore: middleGradesTasteAlignment(candidate),
+    score: candidate.score,
+    adjustedSelectionScore: middleGradesSelectionScore(candidate, profile),
+    scoreComponents: candidate.scoreBreakdown || {},
+    fallbackDefaultStatus: isMiddleGradesFallbackOrDefaultCandidate(candidate)
+      ? (isMiddleGradesAntiZeroFallbackCandidate(candidate) ? "fallback" : "default_or_weak_evidence")
+      : "route_aligned",
+    sameRootCollectionRoot: root,
+    finalEligibilityAllowed: eligibility.allowed,
+    finalEligibilityEvidence: eligibility.evidence,
+    finalEligibilityRejectedReason: eligibility.rejectedReason,
+    selected: selected.has(candidate),
+    rejectionReason: rejectionReason || candidate.rejectedReasons.join(",") || (selected.has(candidate) ? "selected" : "not_selected_after_ranking_and_diversity"),
+    wouldImproveSlateDiversity: !root || !selectedRoots.has(root),
+  };
+}
+
+function applyMiddleGradesFallbackEvidencePrecedence(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens" || selected.length === 0) return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const selectedSet = () => new Set(selected);
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map((candidate) => finalReturnedRootKey(candidate) || seriesKey(candidate)).filter(Boolean));
+  const explanations: Record<string, string> = {};
+  for (let index = 0; index < selected.length; index += 1) {
+    const fallback = selected[index];
+    if (!isMiddleGradesFallbackOrDefaultCandidate(fallback)) continue;
+    const fallbackTierRank = middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(fallback).tier);
+    const fallbackTaste = middleGradesTasteAlignment(fallback);
+    const stronger = rankedCandidates.find((candidate) => {
+      if (selectedSet().has(candidate)) return false;
+      if (!isMiddleGradesOpenLibraryCandidate(candidate)) return false;
+      if (!candidate.title.trim()) return false;
+      if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand) return false;
+      if (rejectReason(candidate, profile)) return false;
+      const eligibility = middleGradesFinalEligibility(candidate);
+      if (!eligibility.allowed) return false;
+      const evidence = middleGradesRouteAlignmentEvidence(candidate);
+      if (middleGradesEvidenceTierRank(evidence.tier) <= fallbackTierRank) return false;
+      if (middleGradesTasteAlignment(candidate) + 0.001 < fallbackTaste) return false;
+      if (selectedTitles().has(normalized(candidate.title))) {
+        explanations[fallback.title] = `stronger_evidence_candidate_${candidate.title}_blocked_by_duplicate_title`;
+        return false;
+      }
+      const root = finalReturnedRootKey(candidate) || seriesKey(candidate);
+      if (root && selectedRoots().has(root)) {
+        explanations[fallback.title] = `stronger_evidence_candidate_${candidate.title}_blocked_by_duplicate_root_${root}`;
+        return false;
+      }
+      return true;
+    });
+    if (!stronger) {
+      explanations[fallback.title] ||= "no_stronger_document_evidence_candidate_with_equal_or_better_taste_alignment_survived_safety_diversity_gates";
+      continue;
+    }
+    fallback.rejectedReasons.push("middle_grades_fallback_default_replaced_by_stronger_document_evidence");
+    stronger.rejectedReasons.push("middle_grades_stronger_document_evidence_selected_over_fallback_default");
+    selected[index] = stronger;
+    explanations[fallback.title] = `replaced_by_${stronger.title}_stronger_document_evidence_equal_or_better_taste`;
+    rejectedReasons.middle_grades_fallback_default_replaced_by_stronger_document_evidence = Number(rejectedReasons.middle_grades_fallback_default_replaced_by_stronger_document_evidence || 0) + 1;
+  }
+  diagnostics.middleGradesFallbackDefaultPrecedenceExplanations = explanations;
+}
+
+function applyMiddleGradesMediumStrongEvidencePreference(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens" || selected.length === 0) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map((candidate) => finalReturnedRootKey(candidate) || seriesKey(candidate)).filter(Boolean));
+  const mediumStrongPool = rankedCandidates
+    .filter((candidate) => {
+      if (selected.includes(candidate)) return false;
+      const evidence = middleGradesRouteAlignmentEvidence(candidate);
+      if (middleGradesEvidenceTierRank(evidence.tier) < middleGradesEvidenceTierRank("medium_evidence")) return false;
+      if (isMiddleGradesTitleOnlyEvidence(candidate)) return false;
+      if (rejectReason(candidate, profile)) return false;
+      if (!middleGradesFinalEligibility(candidate).allowed) return false;
+      if (selectedTitles().has(normalized(candidate.title))) return false;
+      const root = finalReturnedRootKey(candidate) || seriesKey(candidate);
+      if (root && selectedRoots().has(root)) return false;
+      return true;
+    })
+    .sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
+  for (const candidate of mediumStrongPool) {
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index, tier: middleGradesRouteAlignmentEvidence(row).tier, adjusted: middleGradesSelectionScore(row, profile) }))
+      .filter(({ row, tier }) => isMiddleGradesTitleOnlyEvidence(row) || tier === "weak_evidence" || isMiddleGradesFallbackOrDefaultCandidate(row))
+      .sort((a, b) => middleGradesEvidenceTierRank(a.tier) - middleGradesEvidenceTierRank(b.tier) || a.adjusted - b.adjusted)[0]?.index;
+    if (replacementIndex === undefined) break;
+    selected[replacementIndex].rejectedReasons.push("middle_grades_weak_evidence_replaced_by_medium_strong_document_evidence");
+    candidate.rejectedReasons.push("middle_grades_medium_strong_document_evidence_selected_over_weak_fallback");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_medium_strong_evidence_replacements = Number(rejectedReasons.middle_grades_medium_strong_evidence_replacements || 0) + 1;
+  }
+}
+
 function applyMiddleGradesFinalCountRecovery(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
   if (profile.ageBand !== "preteens" || selected.length >= Math.min(5, limit)) return;
   const target = Math.min(5, limit);
@@ -736,6 +1092,116 @@ function applyMiddleGradesFinalCountRecovery(rankedCandidates: ScoredCandidate[]
     .slice(0, 8);
 }
 
+function applyMiddleGradesFinalReturnedRootCollapseAndRecovery(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
+  if (profile.ageBand !== "preteens" || selected.length === 0) return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const target = Math.min(5, limit);
+  const beforeCount = selected.length;
+  const seenReturnedRoots = new Set<string>();
+  const collapsedTitles: string[] = [];
+  for (let index = 0; index < selected.length; index += 1) {
+    const candidate = selected[index];
+    const rootKey = finalReturnedRootKey(candidate);
+    if (!rootKey) continue;
+    if (seenReturnedRoots.has(rootKey)) {
+      collapsedTitles.push(candidate.title);
+      candidate.rejectedReasons.push("middle_grades_final_returned_root_collapsed");
+      selected.splice(index, 1);
+      index -= 1;
+      continue;
+    }
+    seenReturnedRoots.add(rootKey);
+  }
+
+  if (collapsedTitles.length > 0) {
+    diagnostics.finalReturnedRootCollapseApplied = true;
+    diagnostics.finalReturnedRootCollapsedTitles = collapsedTitles;
+    rejectedReasons.middle_grades_final_returned_root_collapsed = collapsedTitles.length;
+  }
+  const rootCollapseCausedUnderfill = collapsedTitles.length > 0 && beforeCount >= target && selected.length < target;
+  if (rootCollapseCausedUnderfill) diagnostics.rootCollapseCausedUnderfill = true;
+
+  if (selected.length >= target) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(finalReturnedRootKey).filter(Boolean));
+  const safeRoutePool = rankedCandidates.filter((candidate) => {
+    if (selected.includes(candidate)) return false;
+    if (candidate.source !== "openLibrary" || !/middle_grades_/i.test(String(candidate.diagnostics?.routingReason || ""))) return false;
+    if (!candidate.title.trim()) return false;
+    if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = finalReturnedRootKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    const eligibility = middleGradesFinalEligibility(candidate);
+    if (!eligibility.allowed) return false;
+    const breakdown = candidate.scoreBreakdown || {};
+    const ageSuitability = Number(breakdown.ageTeenSuitability || breakdown.ageBandSuitability || 0);
+    const preciseAvoid = Number(breakdown.avoidSignalPenalty || 0);
+    return candidate.score > -8 && ageSuitability > -4 && preciseAvoid > -4;
+  }).sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
+
+  if (rankedCandidates.some((candidate) => candidate.source === "openLibrary") && safeRoutePool.length > 0) {
+    diagnostics.underfillWithRawDocsAndQueriesRemaining = true;
+  }
+  if (rootCollapseCausedUnderfill && safeRoutePool.length > 0) diagnostics.recoveryAfterRootCollapseAttempted = true;
+
+  for (const candidate of safeRoutePool) {
+    if (selected.length >= target) break;
+    const rootKey = finalReturnedRootKey(candidate);
+    if (selectedTitles().has(normalized(candidate.title)) || (rootKey && selectedRoots().has(rootKey))) continue;
+    candidate.rejectedReasons.push(rootCollapseCausedUnderfill ? "middle_grades_recovery_after_root_collapse_accepted" : "middle_grades_underfill_with_raw_docs_recovery_accepted");
+    selected.push(candidate);
+    if (rootCollapseCausedUnderfill) rejectedReasons.recoveryAfterRootCollapseAcceptedCount = Number(rejectedReasons.recoveryAfterRootCollapseAcceptedCount || 0) + 1;
+    rejectedReasons.middle_grades_underfill_with_raw_docs_recovery_accepted = Number(rejectedReasons.middle_grades_underfill_with_raw_docs_recovery_accepted || 0) + 1;
+  }
+}
+
+
+function isMiddleGradesTitleOnlyEvidence(candidate: ScoredCandidate): boolean {
+  const evidence = middleGradesRouteAlignmentEvidence(candidate);
+  if (evidence.tier === "query_only") return false;
+  return evidence.fields.length > 0 && evidence.fields.every((field) => field === "title" || field === "subtitle");
+}
+
+function applyMiddleGradesTitleOnlyEvidenceCap(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens") return;
+  const maxTitleOnly = 3;
+  const selectedTitleOnly = () => selected.filter(isMiddleGradesTitleOnlyEvidence);
+  if (selectedTitleOnly().length <= maxTitleOnly) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const selectedRoots = () => new Set(selected.map(seriesKey).filter(Boolean));
+  const richerEvidencePool = rankedCandidates.filter((candidate) => {
+    if (!isMiddleGradesOpenLibraryCandidate(candidate)) return false;
+    if (selected.includes(candidate)) return false;
+    if (rejectReason(candidate, profile)) return false;
+    if (selectedTitles().has(normalized(candidate.title))) return false;
+    const rootKey = seriesKey(candidate);
+    if (rootKey && selectedRoots().has(rootKey)) return false;
+    const evidence = middleGradesRouteAlignmentEvidence(candidate);
+    return evidence.documentLevel && evidence.tier !== "query_only" && !isMiddleGradesTitleOnlyEvidence(candidate);
+  }).sort((a, b) => {
+    const tierDelta = middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(b).tier) - middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(a).tier);
+    return tierDelta || middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile);
+  });
+  if (!richerEvidencePool.length) return;
+  rejectedReasons.middle_grades_title_only_selected_before_cap = selectedTitleOnly().length;
+  rejectedReasons.middle_grades_richer_document_evidence_replacement_candidates = richerEvidencePool.length;
+  for (const candidate of richerEvidencePool) {
+    if (selectedTitleOnly().length <= maxTitleOnly) break;
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index, adjusted: middleGradesSelectionScore(row, profile) }))
+      .filter(({ row }) => isMiddleGradesTitleOnlyEvidence(row))
+      .sort((a, b) => a.adjusted - b.adjusted)[0]?.index;
+    if (replacementIndex === undefined) break;
+    selected[replacementIndex].rejectedReasons.push("middle_grades_title_only_replaced_by_richer_document_evidence");
+    candidate.rejectedReasons.push("middle_grades_richer_document_evidence_selected_over_title_only");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.middle_grades_title_only_replacements = Number(rejectedReasons.middle_grades_title_only_replacements || 0) + 1;
+  }
+  rejectedReasons.middle_grades_title_only_selected_after_cap = selectedTitleOnly().length;
+}
+
 function applyMiddleGradesRouteAlignmentReplacement(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
   if (profile.ageBand !== "preteens") return;
   const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
@@ -776,8 +1242,20 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const selectedTitles = new Set(selected.map((candidate) => normalized(candidate.title)));
   const routeAlignmentScoreByTitle: Record<string, number> = {};
   const genreFacetMatchScoreByTitle: Record<string, number> = {};
+  const queryTextSignalsRemovedFromTasteMatchByTitle: Record<string, string[]> = {};
+  const documentOnlyTasteMatchByTitle: Record<string, string[]> = {};
   const fallbackPenaltyByTitle: Record<string, number> = {};
   const finalSelectionReasonByTitle: Record<string, string> = {};
+  const candidateTasteMatchScoreByTitle: Record<string, number> = {};
+  const candidateTastePenaltyByTitle: Record<string, number> = {};
+  const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
+  const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
+  const finalRankingReasonByTitle: Record<string, string> = {};
+  const middleGradesScoredCandidateAttribution: Array<Record<string, unknown>> = [];
+  const genericTasteSignalsRemovedByTitle: Record<string, string[]> = {};
+  const documentBackedTasteSignalsByTitle: Record<string, string[]> = {};
+  const genericOnlyTasteMatchTitles: string[] = [];
   const queryLevelRouteAlignmentByTitle: Record<string, boolean> = {};
   const documentLevelRouteAlignmentByTitle: Record<string, boolean> = {};
   const routeAlignmentEvidenceFieldsByTitle: Record<string, string[]> = {};
@@ -785,14 +1263,51 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const documentEvidenceTextByTitle: Record<string, Record<string, string>> = {};
   const routeAlignmentDemotedReasonByTitle: Record<string, string> = {};
   const finalEligibilityEvidenceByTitle: Record<string, string[]> = {};
+  const finalEligibilityEvidenceFieldCountByTitle: Record<string, number> = {};
   const emergencyFallbackOverrideUsedByTitle: Record<string, string> = {};
   const routeAlignedCandidateRejectedForFallbackReason: Record<string, string> = {};
   const finalEligibilityRejectedQueryOnlyTitles: string[] = [];
+  const humorKeywordOnlyLeakageByTitle: Record<string, boolean> = {};
+  const humorKeywordOnlyRejectedTitles: string[] = [];
+  const preteenAgeShapeEvidenceByTitle: Record<string, boolean> = {};
+  const adultOrYaHumorLeakageRejectedTitles: string[] = [];
   for (const candidate of rankedCandidates) {
     const routeEvidence = middleGradesRouteAlignmentEvidence(candidate);
     const finalEligibility = middleGradesFinalEligibility(candidate);
+    const scoreBreakdown = candidate.scoreBreakdown || {};
+    const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
+    const matchedLikedSignals = matchedSignals.filter((signal) => !/^avoidSignalPenalty:/i.test(signal));
+    const matchedDislikedSignals = matchedSignals.filter((signal) => /^avoidSignalPenalty:/i.test(signal));
+    const genreTasteScore = Math.round((
+      Number(scoreBreakdown.genreFacetMatch || 0)
+      + Number(scoreBreakdown.positiveTasteMatch || 0)
+    ) * 1000) / 1000;
+    const penaltyScore = Math.round((
+      Number(scoreBreakdown.avoidSignalPenalty || 0)
+      + Number(scoreBreakdown.broadAvoidSignalPenalty || 0)
+      - middleGradesFallbackPenalty(candidate)
+    ) * 1000) / 1000;
     routeAlignmentScoreByTitle[candidate.title] = middleGradesRouteAlignmentScore(candidate);
     genreFacetMatchScoreByTitle[candidate.title] = Number(candidate.scoreBreakdown?.genreFacetMatch || 0);
+    candidateTasteMatchScoreByTitle[candidate.title] = genreTasteScore;
+    candidateTastePenaltyByTitle[candidate.title] = penaltyScore;
+    candidateMatchedLikedSignalsByTitle[candidate.title] = matchedLikedSignals;
+    candidateMatchedDislikedSignalsByTitle[candidate.title] = matchedDislikedSignals;
+    genericTasteSignalsRemovedByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.genericTasteSignalsRemoved) ? candidate.diagnostics.genericTasteSignalsRemoved.map(String) : [];
+    documentBackedTasteSignalsByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.documentBackedTasteSignals) ? candidate.diagnostics.documentBackedTasteSignals.map(String) : [];
+    if (candidate.diagnostics?.genericOnlyTasteMatch) genericOnlyTasteMatchTitles.push(candidate.title);
+    finalScoreComponentsByTitle[candidate.title] = {
+      ...scoreBreakdown,
+      genreTasteScore,
+      penaltyScore,
+      finalScore: candidate.score,
+      adjustedSelectionScore: middleGradesSelectionScore(candidate, profile),
+      routeAlignmentScore: routeAlignmentScoreByTitle[candidate.title],
+      fallbackPenalty: middleGradesFallbackPenalty(candidate),
+      genericOnlyTasteMatchPenalty: Number(scoreBreakdown.genericOnlyTasteMatchPenalty || 0),
+    };
+    queryTextSignalsRemovedFromTasteMatchByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.queryTextSignalsRemovedFromTasteMatch) ? candidate.diagnostics.queryTextSignalsRemovedFromTasteMatch.map(String) : [];
+    documentOnlyTasteMatchByTitle[candidate.title] = Array.isArray(candidate.diagnostics?.documentOnlyTasteMatch) ? candidate.diagnostics.documentOnlyTasteMatch.map(String) : [];
     fallbackPenaltyByTitle[candidate.title] = middleGradesFallbackPenalty(candidate);
     queryLevelRouteAlignmentByTitle[candidate.title] = routeEvidence.queryLevel;
     documentLevelRouteAlignmentByTitle[candidate.title] = routeEvidence.documentLevel;
@@ -800,6 +1315,11 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     documentEvidenceTierByTitle[candidate.title] = routeEvidence.tier;
     documentEvidenceTextByTitle[candidate.title] = routeEvidence.evidenceTextByField;
     finalEligibilityEvidenceByTitle[candidate.title] = finalEligibility.evidence;
+    finalEligibilityEvidenceFieldCountByTitle[candidate.title] = routeEvidence.fields.length;
+    preteenAgeShapeEvidenceByTitle[candidate.title] = middleGradesFictionAgeEvidence(candidate);
+    humorKeywordOnlyLeakageByTitle[candidate.title] = middleGradesHumorKeywordOnlyLeakage(candidate);
+    if (finalEligibility.rejectedReason === "humor_keyword_only_leakage") humorKeywordOnlyRejectedTitles.push(candidate.title);
+    if (finalEligibility.rejectedReason === "adult_or_ya_humor_leakage") adultOrYaHumorLeakageRejectedTitles.push(candidate.title);
     if (finalEligibility.emergencyOverride && selectedTitles.has(normalized(candidate.title))) emergencyFallbackOverrideUsedByTitle[candidate.title] = "explicit_emergency_fallback_after_better_options_failed";
     if (!finalEligibility.allowed && routeEvidence.queryLevel && !routeEvidence.documentLevel) finalEligibilityRejectedQueryOnlyTitles.push(candidate.title);
     if (routeEvidence.demotedReason) routeAlignmentDemotedReasonByTitle[candidate.title] = routeEvidence.demotedReason;
@@ -819,6 +1339,27 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     } else {
       finalSelectionReasonByTitle[candidate.title] = "rejected_or_deferred_candidate";
     }
+    finalRankingReasonByTitle[candidate.title] = finalSelectionReasonByTitle[candidate.title];
+    middleGradesScoredCandidateAttribution.push({
+      title: candidate.title,
+      sourceQuery: String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || ""),
+      documentEvidenceFields: routeEvidence.fields,
+      documentEvidenceText: routeEvidence.evidenceTextByField,
+      evidenceTier: routeEvidence.tier,
+      matchedLikedSignals,
+      matchedDislikedSignals,
+      genericTasteSignalsRemoved: genericTasteSignalsRemovedByTitle[candidate.title],
+      documentBackedTasteSignals: documentBackedTasteSignalsByTitle[candidate.title],
+      genericOnlyTasteMatch: Boolean(candidate.diagnostics?.genericOnlyTasteMatch),
+      genreTasteScore,
+      penaltyScore,
+      finalScore: candidate.score,
+      finalRankingReason: finalRankingReasonByTitle[candidate.title],
+      selected: selectedTitles.has(normalized(candidate.title)),
+      rejectionReason: selectedTitles.has(normalized(candidate.title))
+        ? "selected"
+        : candidate.rejectedReasons.join(",") || finalSelectionReasonByTitle[candidate.title] || "not_selected_after_ranking_and_selection",
+    });
     candidate.diagnostics.routeAlignmentScore = routeAlignmentScoreByTitle[candidate.title];
     candidate.diagnostics.genreFacetMatchScore = genreFacetMatchScoreByTitle[candidate.title];
     candidate.diagnostics.fallbackPenalty = fallbackPenaltyByTitle[candidate.title];
@@ -842,21 +1383,161 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
     .sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile))
     .slice(0, 8)
     .map((candidate) => candidate.title);
+  const selectedSetForAudit = new Set(selected);
+  const selectedRootsForAudit = new Set(selected.map((candidate) => finalReturnedRootKey(candidate) || seriesKey(candidate)).filter(Boolean));
+  const returnedItemQualityAudit = selected.map((candidate) => middleGradesQualityAuditRow(candidate, selectedSetForAudit, selectedRootsForAudit, profile, "selected"));
+  const topRejectedQualityAudit = rankedCandidates
+    .filter((candidate) => !selectedSetForAudit.has(candidate))
+    .map((candidate) => ({
+      candidate,
+      evidenceRank: middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(candidate).tier),
+      tasteAlignment: middleGradesTasteAlignment(candidate),
+      adjustedScore: middleGradesSelectionScore(candidate, profile),
+    }))
+    .sort((a, b) => b.evidenceRank - a.evidenceRank || b.tasteAlignment - a.tasteAlignment || b.adjustedScore - a.adjustedScore)
+    .slice(0, 20)
+    .map(({ candidate }) => middleGradesQualityAuditRow(candidate, selectedSetForAudit, selectedRootsForAudit, profile));
   const strongEvidenceRejected = rankedCandidates
     .filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && middleGradesRouteAlignmentEvidence(candidate).tier === "strong_evidence")
     .sort((a, b) => middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile));
   const weakEvidenceSelectedOverStrongEvidence = selected.some((candidate) => middleGradesRouteAlignmentEvidence(candidate).tier === "weak_evidence") && strongEvidenceRejected.length > 0;
   const selectedRouteAlignedCount = selected.filter(isMiddleGradesRouteAlignedSuccessCandidate).length;
+  const selectedTitleOnlyCount = selected.filter(isMiddleGradesTitleOnlyEvidence).length;
+  const selectedMediumStrongEvidenceCount = selected.filter((candidate) => {
+    const evidence = middleGradesRouteAlignmentEvidence(candidate);
+    return !isMiddleGradesTitleOnlyEvidence(candidate) && middleGradesEvidenceTierRank(evidence.tier) >= middleGradesEvidenceTierRank("medium_evidence");
+  }).length;
+  const weakEvidenceOnlySlate = selected.length > 0 && selected.every((candidate) => {
+    const evidence = middleGradesRouteAlignmentEvidence(candidate);
+    return isMiddleGradesTitleOnlyEvidence(candidate) || evidence.tier === "weak_evidence";
+  });
+  const titleOnlySeriesCounts: Record<string, number> = {};
+  for (const candidate of selected.filter(isMiddleGradesTitleOnlyEvidence)) {
+    const key = seriesKey(candidate);
+    if (key) titleOnlySeriesCounts[key] = Number(titleOnlySeriesCounts[key] || 0) + 1;
+  }
+  const sameSeriesTitleOnlyClusterDetected = Object.values(titleOnlySeriesCounts).some((count) => count >= 2);
+  const titleOnlyEvidenceFinalEligibleTitles = selected
+    .filter((candidate) => middleGradesTitleOnlyRouteEvidence(candidate) && middleGradesFinalEligibility(candidate).allowed)
+    .map((candidate) => candidate.title);
+  const repeatedTitleTokenCounts = selected.reduce<Record<string, number>>((acc, candidate) => {
+    const titleTokens = new Set(normalized(candidate.title).split(" ").filter((token) => /^(magic|magical|funny|humor|humour|adventure|friendship|friends?)$/.test(token)));
+    for (const token of titleTokens) acc[token] = Number(acc[token] || 0) + 1;
+    return acc;
+  }, {});
+  const repeatedTitleTokenClusterToken = Object.entries(repeatedTitleTokenCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
+  const repeatedTitleTokenClusterDetected = Boolean(repeatedTitleTokenClusterToken && Number(repeatedTitleTokenCounts[repeatedTitleTokenClusterToken] || 0) >= Math.min(3, selected.length));
+  const selectedNonHumorAlignmentCount = selected.filter(middleGradesNonHumorAlignment).length;
+  const genericFunnySlateDetected = selected.length >= 5 && selectedNonHumorAlignmentCount === 0 && selected.every((candidate) => isMiddleGradesHumorRouteCandidate(candidate) || /funny|humor|comedy/i.test(String(candidate.title || "")));
   const selectedFallbackCount = selected.filter((candidate) => isMiddleGradesAntiZeroFallbackCandidate(candidate) || (middleGradesRouteAlignmentEvidence(candidate).queryLevel && !middleGradesRouteAlignmentEvidence(candidate).documentLevel)).length;
+  const hasRepeatedClusterTitleToken = (candidate: ScoredCandidate): boolean => Boolean(
+    repeatedTitleTokenClusterDetected
+      && repeatedTitleTokenClusterToken
+      && normalized(candidate.title).split(" ").includes(repeatedTitleTokenClusterToken)
+  );
+  const isCleanFinalEligibleCandidate = (candidate: ScoredCandidate): boolean => {
+    const finalEligibility = middleGradesFinalEligibility(candidate);
+    const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
+    const routeEvidence = middleGradesRouteAlignmentEvidence(candidate);
+    const cleanExpansionRouteFictionSupport = middleGradesCleanExpansionRouteFictionSupport(candidate);
+    return finalEligibility.allowed
+      && (tasteEligibility.allowed || cleanExpansionRouteFictionSupport)
+      && middleGradesEvidenceTierRank(routeEvidence.tier) >= middleGradesEvidenceTierRank("medium_evidence")
+      && (cleanExpansionRouteFictionSupport ? candidate.score >= 0 : candidate.score > 0)
+      && !candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")
+      && !candidate.rejectedReasons.includes("humor_keyword_only_leakage")
+      && !candidate.rejectedReasons.includes("broad_adventure_only_taste_match")
+      && !candidate.rejectedReasons.includes("non_positive_score")
+      && !hasRepeatedClusterTitleToken(candidate)
+      && !isMiddleGradesAntiZeroFallbackCandidate(candidate)
+      && !(routeEvidence.queryLevel && !routeEvidence.documentLevel)
+      && !isMiddleGradesTitleOnlyEvidence(candidate);
+  };
+  const finalEligibilityAcceptedTitles = selected.filter(isCleanFinalEligibleCandidate).map((candidate) => candidate.title);
+  const finalEligibilityCleanCandidateCount = finalEligibilityAcceptedTitles.length;
   const rejectedRouteAlignedCount = rankedCandidates.filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && isMiddleGradesRouteAlignedSuccessCandidate(candidate)).length;
+  const zeroTasteRejectedCandidates = rankedCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && candidate.rejectedReasons.includes("zero_doc_backed_taste_match"));
+  const zeroTasteCandidateRejectedTitles = zeroTasteRejectedCandidates
+    .map((candidate) => candidate.title);
+  const middleGradesTopZeroDocBackedTasteAudit = zeroTasteRejectedCandidates
+    .slice(0, 20)
+    .map((candidate) => middleGradesZeroTasteEvidenceAudit(candidate, profile));
+  const broadAdventureOnlyRejectedTitles = rankedCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)) && candidate.rejectedReasons.includes("broad_adventure_only_taste_match"))
+    .map((candidate) => candidate.title);
+  const meaningfulTasteEligibleTitles = rankedCandidates
+    .filter(isCleanFinalEligibleCandidate)
+    .map((candidate) => candidate.title);
+  const underfilledBecauseOnlyWeakOrZeroTaste = selected.length < 5 && (zeroTasteCandidateRejectedTitles.length > 0 || broadAdventureOnlyRejectedTitles.length > 0);
+  const emergencyFallbackUsedForZeroTasteFill = selected.some((candidate) => candidate.rejectedReasons.includes("accepted_middle_grades_zero_final_items_guard") && !middleGradesMeaningfulTasteEligibility(candidate).allowed);
+  const meaningfulTasteRecoveryCandidates = rankedCandidates.filter((candidate) => candidate.diagnostics?.meaningfulTasteRecovery || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery");
+  const meaningfulTasteRecoverySelectedTitles = selected
+    .filter((candidate) => candidate.diagnostics?.meaningfulTasteRecovery || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery")
+    .map((candidate) => candidate.title);
+  const meaningfulTasteRecoveryDroppedAfterMergeByReason = meaningfulTasteRecoveryCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
+    .reduce<Record<string, string[]>>((acc, candidate) => {
+      const reason = candidate.rejectedReasons.find((entry) => entry !== "selected") || rejectReason(candidate, profile) || "ranked_below_final_selection";
+      acc[reason] = [...(acc[reason] || []), candidate.title];
+      return acc;
+    }, {});
+  const meaningfulTasteRecoveryAcceptedButNotReturnedTitles = meaningfulTasteRecoveryCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
+    .map((candidate) => candidate.title);
+  const selectedRootKeysForRecovery = new Set(selected.map((candidate) => finalReturnedRootKey(candidate) || seriesKey(candidate)).filter(Boolean));
+  const recoveryShortfallGateReason = (candidate: ScoredCandidate): string => {
+    if (selectedTitles.has(normalized(candidate.title))) return "selected";
+    const joinedRejected = candidate.rejectedReasons.join(",");
+    if (/query_only_score_cap|query_only/i.test(joinedRejected)) return "recovery_query_quality_query_only_cap";
+    if (/humor_keyword_only_leakage|adult_or_ya_humor_leakage/i.test(joinedRejected)) return "humor_or_leakage_rejection";
+    if (/duplicate|same_root|same_series|root_collapsed/i.test(joinedRejected)) return "duplicate_root_suppression";
+    const finalEligibility = middleGradesFinalEligibility(candidate);
+    if (!finalEligibility.allowed) {
+      if (/query_only|missing.*document|evidence/i.test(String(finalEligibility.rejectedReason || ""))) return "missing_document_evidence";
+      if (/humor|leakage/i.test(String(finalEligibility.rejectedReason || ""))) return "humor_or_leakage_rejection";
+      return `final_eligibility_${finalEligibility.rejectedReason || "rejected"}`;
+    }
+    const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
+    if (!tasteEligibility.allowed) return "missing_document_backed_taste_evidence";
+    if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_scoring";
+    const rootKey = finalReturnedRootKey(candidate) || seriesKey(candidate);
+    if (rootKey && selectedRootKeysForRecovery.has(rootKey)) return "duplicate_root_suppression";
+    return "ranked_below_final_selection";
+  };
+  const recoveryRejectedRows = meaningfulTasteRecoveryCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
+    .map((candidate) => ({ candidate, reason: recoveryShortfallGateReason(candidate) }))
+    .sort((a, b) => middleGradesSelectionScore(b.candidate, profile) - middleGradesSelectionScore(a.candidate, profile));
+  const middleGradesRecoveryRejectedReasonCounts = recoveryRejectedRows.reduce<Record<string, number>>((acc, row) => {
+    acc[row.reason] = Number(acc[row.reason] || 0) + 1;
+    return acc;
+  }, {});
+  const middleGradesRecoveryBestRejectedTitlesByReason = recoveryRejectedRows.reduce<Record<string, string[]>>((acc, row) => {
+    acc[row.reason] = [...(acc[row.reason] || []), row.candidate.title].slice(0, 5);
+    return acc;
+  }, {});
+  const middleGradesRecoveryNextBestSelectableTitles = recoveryRejectedRows
+    .filter((row) => row.reason === "ranked_below_final_selection")
+    .slice(0, Math.max(0, 5 - selected.length))
+    .map((row) => row.candidate.title);
+  const recoveryTopRejectedReason = Object.entries(middleGradesRecoveryRejectedReasonCounts)
+    .sort((a, b) => b[1] - a[1])[0]?.[0];
+  const middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate = selected.length < 5 && selected.length + recoveryRejectedRows.length >= 5;
+  const middleGradesRecoveryFinalShortfallReason = selected.length >= 5
+    ? "none"
+    : recoveryTopRejectedReason || (meaningfulTasteRecoveryCandidates.length ? "recovery_candidates_ranked_below_or_unavailable" : "no_recovery_candidates_merged");
+  const middleGradesRecoveryRelaxedGateNeeded = middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate ? middleGradesRecoveryFinalShortfallReason : "none";
   const finalCountContractStatus = selected.length === 0
     ? "zero_result_failure"
     : selected.length >= Math.min(5, selected.length || 5) && selected.length >= 5
-      ? selectedRouteAlignedCount >= selected.length
-        ? "full_route_aligned"
-        : selectedRouteAlignedCount === 0
-          ? "full_fallback_only"
-          : "full_mixed_recovery"
+      ? selectedMediumStrongEvidenceCount <= 0
+        ? "full_weak_evidence"
+        : selectedRouteAlignedCount >= selected.length && selectedMediumStrongEvidenceCount > 0
+          ? "full_route_aligned"
+          : selectedRouteAlignedCount === 0
+            ? "full_fallback_only"
+            : "full_mixed_recovery"
       : selectedRouteAlignedCount === 0
         ? "underfilled_fallback_only"
         : "underfilled_mixed";
@@ -866,17 +1547,59 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const genericAdventureUsedAsLastResortOnly = selectedGenericAdventureCount === 0 || selected.length < 5 || selectedRouteAlignedCount >= 2;
   const lockQualityFailReasons: string[] = [];
   if (selected.length !== 5) lockQualityFailReasons.push("final_items_length_not_five");
-  if (finalCountContractStatus === "underfilled_fallback_only" || finalCountContractStatus === "full_fallback_only") lockQualityFailReasons.push(finalCountContractStatus);
+  if (finalCountContractStatus === "underfilled_fallback_only" || finalCountContractStatus === "full_fallback_only" || finalCountContractStatus === "full_weak_evidence") lockQualityFailReasons.push(finalCountContractStatus);
+  if (weakEvidenceOnlySlate) lockQualityFailReasons.push("weak_evidence_only_slate");
+  if (selectedTitleOnlyCount > 0 && selectedMediumStrongEvidenceCount === 0) lockQualityFailReasons.push("title_only_slate_downgraded_lock_quality");
+  if (underfilledBecauseOnlyWeakOrZeroTaste) lockQualityFailReasons.push("underfilled_because_only_weak_or_zero_taste");
+  if (emergencyFallbackUsedForZeroTasteFill) lockQualityFailReasons.push("emergency_fallback_used_for_zero_taste_fill");
+  if (sameSeriesTitleOnlyClusterDetected) lockQualityFailReasons.push("same_series_title_only_cluster_detected");
+  if (repeatedTitleTokenClusterDetected) lockQualityFailReasons.push("repeated_title_token_cluster_detected");
   if (finalCountContractStatus === "full_mixed_recovery" && selectedRouteAlignedCount < 2) lockQualityFailReasons.push("mixed_recovery_has_fewer_than_two_route_aligned_items");
   if (documentRouteAlignmentEvidenceMissingButTrueCount > 0) lockQualityFailReasons.push("document_route_alignment_missing_evidence_fields");
   if (rejectedReasons.genericDefaultSlateDetected && selected.length >= 5) lockQualityFailReasons.push("generic_default_slate_detected_without_true_shortage");
   if (!genericAdventureUsedAsLastResortOnly) lockQualityFailReasons.push("generic_adventure_used_before_last_resort");
   if (weakEvidenceSelectedOverStrongEvidence) lockQualityFailReasons.push("weak_evidence_selected_over_strong_evidence");
+  if (genericFunnySlateDetected) lockQualityFailReasons.push("generic_funny_slate_detected_without_non_humor_alignment");
   const lockQualityPass = lockQualityFailReasons.length === 0;
   diagnostics.routeAlignmentScoreByTitle = routeAlignmentScoreByTitle;
   diagnostics.genreFacetMatchScoreByTitle = genreFacetMatchScoreByTitle;
+  diagnostics.candidateTasteMatchScoreByTitle = candidateTasteMatchScoreByTitle;
+  diagnostics.candidateTastePenaltyByTitle = candidateTastePenaltyByTitle;
+  diagnostics.candidateMatchedLikedSignalsByTitle = candidateMatchedLikedSignalsByTitle;
+  diagnostics.candidateMatchedDislikedSignalsByTitle = candidateMatchedDislikedSignalsByTitle;
+  diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
+  diagnostics.finalRankingReasonByTitle = finalRankingReasonByTitle;
+  diagnostics.rankedDocsTitles = rankedCandidates.map((candidate) => candidate.title);
+  diagnostics.finalEligibilityAcceptedTitles = finalEligibilityAcceptedTitles;
+  diagnostics.finalEligibilityCleanCandidateCount = finalEligibilityCleanCandidateCount;
+  diagnostics.middleGradesScoredCandidateAttribution = middleGradesScoredCandidateAttribution;
+  diagnostics.genericTasteSignalsRemovedByTitle = genericTasteSignalsRemovedByTitle;
+  diagnostics.genericOnlyTasteMatchTitles = genericOnlyTasteMatchTitles;
+  diagnostics.documentBackedTasteSignalsByTitle = documentBackedTasteSignalsByTitle;
+  diagnostics.selectedGenericOnlyTasteMatchCount = selected.filter((candidate) => candidate.diagnostics?.genericOnlyTasteMatch).length;
+  diagnostics.zeroTasteCandidateRejectedTitles = zeroTasteCandidateRejectedTitles;
+  diagnostics.middleGradesTopZeroDocBackedTasteAudit = middleGradesTopZeroDocBackedTasteAudit;
+  diagnostics.broadAdventureOnlyRejectedTitles = broadAdventureOnlyRejectedTitles;
+  diagnostics.meaningfulTasteEligibleTitles = meaningfulTasteEligibleTitles;
+  diagnostics.underfilledBecauseOnlyWeakOrZeroTaste = underfilledBecauseOnlyWeakOrZeroTaste;
+  diagnostics.emergencyFallbackUsedForZeroTasteFill = emergencyFallbackUsedForZeroTasteFill;
+  diagnostics.meaningfulTasteRecoveryMergedIntoScoring = meaningfulTasteRecoveryCandidates.length > 0;
+  diagnostics.meaningfulTasteRecoveryMergedCandidateCount = meaningfulTasteRecoveryCandidates.length;
+  diagnostics.meaningfulTasteRecoveryDroppedAfterMergeByReason = meaningfulTasteRecoveryDroppedAfterMergeByReason;
+  diagnostics.meaningfulTasteRecoveryAcceptedButNotReturnedTitles = meaningfulTasteRecoveryAcceptedButNotReturnedTitles;
+  diagnostics.meaningfulTasteRecoveryFinalSelectionCount = meaningfulTasteRecoverySelectedTitles.length;
+  diagnostics.middleGradesRecoveryFinalShortfallReason = middleGradesRecoveryFinalShortfallReason;
+  diagnostics.middleGradesRecoveryRejectedReasonCounts = middleGradesRecoveryRejectedReasonCounts;
+  diagnostics.middleGradesRecoveryBestRejectedTitlesByReason = middleGradesRecoveryBestRejectedTitlesByReason;
+  diagnostics.middleGradesRecoveryNextBestSelectableTitles = middleGradesRecoveryNextBestSelectableTitles;
+  diagnostics.middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate = middleGradesRecoveryCouldHaveReachedFiveIfRelaxedGate;
+  diagnostics.middleGradesRecoveryRelaxedGateNeeded = middleGradesRecoveryRelaxedGateNeeded;
+  diagnostics.queryTextSignalsRemovedFromTasteMatchByTitle = queryTextSignalsRemovedFromTasteMatchByTitle;
+  diagnostics.documentOnlyTasteMatchByTitle = documentOnlyTasteMatchByTitle;
   diagnostics.fallbackPenaltyByTitle = fallbackPenaltyByTitle;
   diagnostics.finalSelectionReasonByTitle = finalSelectionReasonByTitle;
+  diagnostics.middleGradesReturnedItemQualityAudit = returnedItemQualityAudit;
+  diagnostics.middleGradesTopRejectedQualityAudit = topRejectedQualityAudit;
   diagnostics.queryLevelRouteAlignmentByTitle = queryLevelRouteAlignmentByTitle;
   diagnostics.documentLevelRouteAlignmentByTitle = documentLevelRouteAlignmentByTitle;
   diagnostics.routeAlignmentEvidenceFieldsByTitle = routeAlignmentEvidenceFieldsByTitle;
@@ -884,13 +1607,34 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   diagnostics.documentEvidenceTextByTitle = documentEvidenceTextByTitle;
   diagnostics.routeAlignmentDemotedReasonByTitle = routeAlignmentDemotedReasonByTitle;
   diagnostics.finalEligibilityEvidenceByTitle = finalEligibilityEvidenceByTitle;
+  diagnostics.finalEligibilityEvidenceFieldCountByTitle = finalEligibilityEvidenceFieldCountByTitle;
+  diagnostics.titleOnlyEvidenceFinalEligibleTitles = titleOnlyEvidenceFinalEligibleTitles;
+  diagnostics.repeatedTitleTokenClusterDetected = repeatedTitleTokenClusterDetected;
+  diagnostics.repeatedTitleTokenClusterToken = repeatedTitleTokenClusterToken || undefined;
   diagnostics.finalEligibilityRejectedQueryOnlyTitles = finalEligibilityRejectedQueryOnlyTitles;
+  diagnostics.humorKeywordOnlyLeakageByTitle = humorKeywordOnlyLeakageByTitle;
+  diagnostics.humorKeywordOnlyRejectedTitles = humorKeywordOnlyRejectedTitles;
+  diagnostics.preteenAgeShapeEvidenceByTitle = preteenAgeShapeEvidenceByTitle;
+  diagnostics.adultOrYaHumorLeakageRejectedTitles = adultOrYaHumorLeakageRejectedTitles;
   diagnostics.routeAlignedCandidateRejectedForFallbackReason = routeAlignedCandidateRejectedForFallbackReason;
   diagnostics.emergencyFallbackOverrideUsedByTitle = emergencyFallbackOverrideUsedByTitle;
   diagnostics.falseRouteAlignedDueToQueryOnlyCount = Object.keys(routeAlignmentDemotedReasonByTitle).length;
   diagnostics.documentRouteAlignmentEvidenceMissingButTrueCount = Math.max(0, documentRouteAlignmentEvidenceMissingButTrueCount);
+  diagnostics.weakEvidenceOnlySlate = weakEvidenceOnlySlate;
+  diagnostics.titleOnlySlateDowngradedLockQuality = selectedTitleOnlyCount > 0 && selectedMediumStrongEvidenceCount === 0;
+  diagnostics.selectedTitleOnlyCount = selectedTitleOnlyCount;
+  diagnostics.selectedMediumStrongEvidenceCount = selectedMediumStrongEvidenceCount;
+  diagnostics.mediumStrongEvidenceTargetCount = 5;
+  diagnostics.weakEvidenceFinalizedBecause = selectedMediumStrongEvidenceCount >= 5
+    ? "medium_strong_evidence_target_satisfied"
+    : "medium_strong_evidence_target_not_met_after_selection_pool_exhausted";
+  diagnostics.weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted = selectedMediumStrongEvidenceCount < 5;
+  diagnostics.sameSeriesTitleOnlyClusterDetected = sameSeriesTitleOnlyClusterDetected;
   diagnostics.finalCountContractStatus = finalCountContractStatus;
   diagnostics.genericAdventureUsedAsLastResortOnly = genericAdventureUsedAsLastResortOnly;
+  diagnostics.selectedNonHumorAlignmentCount = selectedNonHumorAlignmentCount;
+  diagnostics.genericFunnySlateDetected = genericFunnySlateDetected;
+  diagnostics.genericFunnySlateLockQualityBlocked = genericFunnySlateDetected;
   diagnostics.lockQualityPass = lockQualityPass;
   diagnostics.lockQualityFailReasons = lockQualityFailReasons;
   diagnostics.strongEvidenceRejectedTitles = strongEvidenceRejected.slice(0, 8).map((candidate) => candidate.title);
@@ -915,6 +1659,8 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
   if (profile.ageBand === "preteens") {
     const eligibility = middleGradesFinalEligibility(candidate);
     if (!eligibility.allowed) return eligibility.rejectedReason || "middle_grades_final_eligibility_missing_evidence";
+    const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
+    if (!tasteEligibility.allowed) return tasteEligibility.reason || "middle_grades_missing_meaningful_taste_evidence";
   }
   if (candidate.score <= 0 && !isContemporaryLowScoreAcceptable(candidate, profile)) return "non_positive_score";
   if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand && profile.ageBand !== "adult") return "maturity_band_mismatch";
@@ -1192,7 +1938,12 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   applyMiddleGradesHumorDefaultCap(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesRouteAlignmentReplacement(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesTitleOnlyEvidenceCap(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesFallbackEvidencePrecedence(rankedCandidates, selected, rejectedReasons, profile);
+  applyMiddleGradesMediumStrongEvidencePreference(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFinalCountRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
+  applyMiddleGradesFinalReturnedRootCollapseAndRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
+  applyMiddleGradesMeaningfulTasteFinalGate(selected, rejectedReasons, profile);
 
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
