@@ -58,6 +58,17 @@ function hasStrongGenreMetadata(text: string): boolean {
 function signalPresentInText(text: string, value: string): boolean {
   if (!value) return false;
   if (text.includes(value)) return true;
+  const hasAdventure = /\b(adventures?|quest|quests|journeys?|explor(?:e|es|ing|ation)|survival|expedition)\b/.test(text);
+  const hasFamily = /\b(family|families|parents?|siblings?|mother|father|grandparents?|cousins?|home)\b/.test(text);
+  const hasMystery = /\b(mystery|mysteries|detective|clue|clues|case|cases|secret|secrets|puzzle|puzzles|investigat(?:e|es|ion|ions))\b/.test(text);
+  const hasScienceFiction = /\b(science fiction|sci fi|sci-fi|space|robot|robots?|robotics|androids?|technology|inventions?|laboratory|lab|experiment|experiments?|scientist|scientists)\b/.test(text);
+  const hasSuperhero = /\b(superheroes?|super hero|superpowered|super-powered|powers?|cape|masked hero|masked heroes)\b/.test(text);
+  const hasSchool = /\b(school|classroom|classmates?|students?|teachers?|middle school)\b/.test(text);
+  if (/\b(family adventure|adventure family)\b/.test(value)) return hasFamily && hasAdventure;
+  if (/\b(mystery adventure|adventure mystery)\b/.test(value)) return hasMystery && hasAdventure;
+  if (/\b(science fiction adventure|science adventure|sci fi adventure|sci-fi adventure|robot adventure)\b/.test(value)) return hasScienceFiction && hasAdventure;
+  if (/\b(superhero adventure|super hero adventure)\b/.test(value)) return hasSuperhero && hasAdventure;
+  if (/\b(school mystery|mystery school)\b/.test(value)) return hasSchool && hasMystery;
   const variants: Record<string, RegExp> = {
     adventure: /\b(adventures?|quest|quests|journeys?|explor(?:e|es|ing|ation)|survival|expedition)\b/,
     comedy: /\b(comedy|comic|humou?r|funny|jokes?|laughs?|giggles?|silly|playful)\b/,
@@ -75,8 +86,11 @@ function signalPresentInText(text: string, value: string): boolean {
     myth: /\b(mythology|mythological|myths?|legends?|gods?|goddesses|demigods?)\b/,
     dragon: /\b(dragons?|dragonriders?)\b/,
     school: /\b(school|classroom|classmates?|students?|teachers?|public school|middle school)\b/,
-    superhero: /\b(superheroes?|super hero|powers?|cape|masked hero)\b/,
+    superhero: /\b(superheroes?|super hero|superpowered|super-powered|powers?|cape|masked hero|masked heroes)\b/,
+    mystery: /\b(mystery|mysteries|detective|clue|clues|case|cases|secret|secrets|puzzle|puzzles|investigat(?:e|es|ion|ions))\b/,
     ocean: /\b(ocean|sea|marine|island|underwater|coast|beach)\b/,
+    "science fiction": /\b(science fiction|sci fi|sci-fi|space|robot|robots?|robotics|androids?|technology|inventions?|laboratory|lab|experiment|experiments?|scientist|scientists)\b/,
+    "sci fi": /\b(science fiction|sci fi|sci-fi|space|robot|robots?|robotics|androids?|technology|inventions?|laboratory|lab|experiment|experiments?|scientist|scientists)\b/,
     science: /\b(science|scientist|scientists|experiments?|technology|inventions?|robots?|robotics|engineering|laboratory|lab)\b/,
     nonfiction: /\b(nonfiction|non fiction|facts?|science|experiments?|activities|guide|history|biography)\b/,
     concise: /\b(short|brief|concise|quick|guide|facts?|introduction|summary)\b/,

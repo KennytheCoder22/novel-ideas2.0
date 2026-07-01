@@ -191,6 +191,7 @@ async function main() {
     ageBand: "preteens",
     signals: [
       { action: "like", title: "Robot Magic Friends", genres: ["fantasy", "science"], themes: ["robot", "friendship", "survival"] },
+      { action: "like", title: "Mystery Science Hero Family", genres: ["science fiction adventure"], themes: ["mystery adventure", "superhero adventure", "family adventure", "school mystery"] },
     ],
   });
   const metadataAliasNormalized = normalizeSourceResults([{
@@ -216,14 +217,47 @@ async function main() {
       queryText: "middle grade science adventure fiction",
       queryFamily: "science_adventure",
       routingReason: "middle_grades_scifi_adventure",
+    }, {
+      id: "openlibrary-compound-scifi-evidence",
+      title: "Starlight Rescue",
+      creators: ["Alias Author"],
+      formats: ["book"],
+      subject: ["Juvenile fiction", "Science fiction", "Space adventures"],
+      first_sentence: ["A middle grade crew solves a puzzle during a space rescue adventure."],
+      queryText: "middle grade science fiction adventure",
+      queryFamily: "science_fiction_adventure",
+      routingReason: "middle_grades_scifi_adventure",
+    }, {
+      id: "openlibrary-compound-superhero-evidence",
+      title: "The Neighborhood Cape",
+      creators: ["Alias Author"],
+      formats: ["book"],
+      subject: ["Juvenile fiction", "Superheroes -- Fiction", "Families -- Fiction"],
+      first_sentence: ["A family team begins a school adventure with a masked hero."],
+      queryText: "middle grade superhero adventure",
+      queryFamily: "superhero_adventure",
+      routingReason: "middle_grades_fantasy_adventure",
+    }, {
+      id: "openlibrary-compound-mystery-evidence",
+      title: "Locker 13",
+      creators: ["Alias Author"],
+      formats: ["book"],
+      subject: ["Juvenile fiction", "Schools -- Fiction", "Mystery and detective stories"],
+      first_sentence: ["Classmates investigate clues in a school mystery."],
+      queryText: "middle grade school mystery",
+      queryFamily: "school_mystery",
+      routingReason: "middle_grades_fantasy_mystery",
     }],
     diagnostics: {},
   }]);
   const metadataAliasScored = scoreCandidates(metadataAliasNormalized, metadataAliasEvidenceProfile);
   assertEqual((metadataAliasScored.find((candidate) => candidate.title === "The Hidden Door")?.diagnostics.documentBackedTasteSignals || []).includes("fantasy"), true, "magic/fantasy metadata aliases should count as document-backed fantasy evidence");
   assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Wilderness Machine")?.diagnostics.documentBackedTasteSignals || []).includes("robot"), true, "robot metadata aliases should count as document-backed robot evidence");
-  const metadataAliasSelection = selectRecommendations(metadataAliasScored, metadataAliasEvidenceProfile, 2);
-  assertEqual(metadataAliasSelection.selected.length, 2, "metadata-backed alias evidence should survive Middle Grades final eligibility without title-token clustering");
+  assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Starlight Rescue")?.diagnostics.documentBackedTasteSignals || []).includes("science fiction adventure"), true, "compound science-fiction adventure metadata should count as document-backed evidence");
+  assertEqual((metadataAliasScored.find((candidate) => candidate.title === "The Neighborhood Cape")?.diagnostics.documentBackedTasteSignals || []).includes("superhero adventure"), true, "compound superhero adventure metadata should count as document-backed evidence");
+  assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Locker 13")?.diagnostics.documentBackedTasteSignals || []).includes("school mystery"), true, "compound school mystery metadata should count as document-backed evidence");
+  const metadataAliasSelection = selectRecommendations(metadataAliasScored, metadataAliasEvidenceProfile, 5);
+  assertEqual(metadataAliasSelection.selected.length, 5, "metadata-backed alias evidence should survive Middle Grades final eligibility without title-token clustering");
   console.log(JSON.stringify({ name: "middle grades metadata aliases count as document-backed evidence", pass: true, signalsByTitle: Object.fromEntries(metadataAliasScored.map((candidate) => [candidate.title, candidate.diagnostics.documentBackedTasteSignals])) }));
 
   const genericOnlyTasteProfile = buildTasteProfile({
