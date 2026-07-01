@@ -29,7 +29,7 @@ function candidateMetadataText(candidate: NormalizedCandidate): string {
       ? String((raw.description as { value: string }).value)
       : "";
   const firstSentence = Array.isArray(raw.first_sentence) ? raw.first_sentence.map(String).join(" ") : typeof raw.first_sentence === "string" ? raw.first_sentence : "";
-  const rawSubjects = [raw.subject, raw.subjects, raw.subject_facet]
+  const rawSubjects = [raw.subject, raw.subjects, raw.subject_facet, raw.subject_key]
     .flatMap((value) => Array.isArray(value) ? value.map(String) : typeof value === "string" ? [value] : []);
   return [
     candidate.title,

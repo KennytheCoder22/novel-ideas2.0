@@ -206,6 +206,7 @@ function middleGradesRawText(candidate: ScoredCandidate): string {
     Array.isArray(raw?.subject) ? raw.subject.join(" ") : raw?.subject,
     Array.isArray(raw?.subjects) ? raw.subjects.join(" ") : raw?.subjects,
     Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet,
+    Array.isArray(raw?.subject_key) ? raw.subject_key.join(" ") : raw?.subject_key,
     rawDescription,
   ].filter(Boolean).join(" "));
 }
@@ -260,7 +261,7 @@ function middleGradesRouteAlignmentEvidence(candidate: ScoredCandidate): { query
     ["themes", normalized((candidate.themes || []).join(" "))],
     ["tones", normalized((candidate.tones || []).join(" "))],
     ["characterDynamics", normalized((candidate.characterDynamics || []).join(" "))],
-    ["subjects", normalized([Array.isArray(raw?.subject) ? raw.subject.join(" ") : raw?.subject, Array.isArray(raw?.subjects) ? raw.subjects.join(" ") : raw?.subjects, Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet].filter(Boolean).join(" "))],
+    ["subjects", normalized([Array.isArray(raw?.subject) ? raw.subject.join(" ") : raw?.subject, Array.isArray(raw?.subjects) ? raw.subjects.join(" ") : raw?.subjects, Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet, Array.isArray(raw?.subject_key) ? raw.subject_key.join(" ") : raw?.subject_key].filter(Boolean).join(" "))],
   ];
   const queryLevel = pattern ? pattern.test(queryText) : false;
   const matchedFields = pattern ? docFields.filter(([, value]) => pattern.test(value)) : [];
@@ -837,6 +838,7 @@ function middleGradesZeroTasteEvidenceAudit(candidate: ScoredCandidate, profile:
     ...asStringList(raw.subject),
     ...asStringList(raw.subjects),
     ...asStringList(raw.subject_facet),
+    ...asStringList(raw.subject_key),
   ]));
   const rawDescription = rawOpenLibraryDescription(raw);
   const normalizedDocumentText = normalized([

@@ -721,6 +721,22 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
           .filter((candidate) => !candidate.rejectedReasons.some((reason) => /artifact|adult_or_ya|humor_keyword|duplicate|non_positive|query_only_score_cap/.test(reason)))
           .length;
         const expansionFinalEligibilityEvidenceAuditByTitle = Object.fromEntries(expansionScoredCandidates.map((candidate) => {
+          const raw = (candidate.raw || {}) as Record<string, unknown>;
+          const rawList = (value: unknown): string[] => Array.isArray(value) ? value.map(String).filter(Boolean) : typeof value === "string" && value.trim() ? [value.trim()] : [];
+          const rawDescription = typeof raw.description === "string"
+            ? raw.description
+            : typeof (raw.description as { value?: unknown } | undefined)?.value === "string"
+              ? String((raw.description as { value: string }).value)
+              : typeof raw.summary === "string"
+                ? raw.summary
+                : "";
+          const rawFirstSentence = rawList(raw.first_sentence);
+          const rawSubjects = Array.from(new Set([
+            ...rawList(raw.subject),
+            ...rawList(raw.subjects),
+            ...rawList(raw.subject_facet),
+            ...rawList(raw.subject_key),
+          ]));
           const rawText = normalizedTokenText(JSON.stringify(candidate.raw || {}));
           const routeEvidenceFields = Array.isArray(candidate.diagnostics?.routeAlignmentEvidenceFields)
             ? candidate.diagnostics.routeAlignmentEvidenceFields.map(String)
@@ -740,13 +756,25 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
               : candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")
                 ? "query_only_score_cap_applied"
                 : expansionCandidatePrimaryRejectionReason(candidate);
+          const queryOnlyCapExplanation = candidate.rejectedReasons.includes("middle_grades_query_only_score_cap_applied")
+            ? routeEvidenceFields.length === 0
+              ? "source_query_matched_route_family_but_no_openlibrary_subject_description_or_first_sentence_route_evidence_matched"
+              : documentBackedTasteSignals.length === 0
+                ? "route_evidence_found_but_no_profile_taste_signal_matched_openlibrary_metadata"
+                : "route_or_taste_metadata_was_present_but_final_query_only_cap_remained_applied"
+            : undefined;
           return [candidate.title, {
             score: Math.round(candidate.score * 1000) / 1000,
             sourceQuery: String(candidate.diagnostics?.queryText || ""),
+            matchedRouteFamily: String(candidate.diagnostics?.queryFamily || candidate.diagnostics?.routingReason || ""),
+            rawSubjects,
+            rawFirstSentence,
+            rawDescription,
             routeEvidenceFields,
             documentBackedTasteSignals,
             hasFictionAgeEvidence,
             missingEvidenceFieldOrFailedPredicate,
+            queryOnlyCapExplanation,
             rejectedReasons: candidate.rejectedReasons,
           }];
         }));

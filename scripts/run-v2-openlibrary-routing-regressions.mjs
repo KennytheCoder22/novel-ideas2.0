@@ -267,6 +267,16 @@ async function main() {
       queryText: "middle grade survival adventure",
       queryFamily: "survival_adventure",
       routingReason: "middle_grades_scifi_adventure",
+    }, {
+      id: "openlibrary-subject-key-evidence",
+      title: "Keyed Space Case",
+      creators: ["Alias Author"],
+      formats: ["book"],
+      subject_key: ["juvenile_fiction", "science_fiction", "space_adventures"],
+      first_sentence: ["A middle grade team follows clues through a space adventure."],
+      queryText: "middle grade science fiction adventure",
+      queryFamily: "science_fiction_adventure",
+      routingReason: "middle_grades_scifi_adventure",
     }],
     diagnostics: {},
   }]);
@@ -278,6 +288,7 @@ async function main() {
   assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Locker 13")?.diagnostics.documentBackedTasteSignals || []).includes("school mystery"), true, "compound school mystery metadata should count as document-backed evidence");
   assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Harbor Rescue")?.diagnostics.documentBackedTasteSignals || []).includes("ocean adventure"), true, "compound ocean adventure metadata should count as document-backed evidence");
   assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Forest Signal")?.diagnostics.documentBackedTasteSignals || []).includes("survival adventure"), true, "compound survival adventure metadata should count as document-backed evidence");
+  assertEqual((metadataAliasScored.find((candidate) => candidate.title === "Keyed Space Case")?.diagnostics.documentBackedTasteSignals || []).includes("science fiction adventure"), true, "OpenLibrary subject_key metadata should count as document-backed evidence");
   const oceanSurvivalSelection = selectRecommendations(metadataAliasScored.filter((candidate) => ["Harbor Rescue", "Forest Signal"].includes(candidate.title)), metadataAliasEvidenceProfile, 2);
   assertEqual(oceanSurvivalSelection.selected.length, 2, "ocean/survival adventure metadata should survive Middle Grades final eligibility");
   const metadataAliasSelection = selectRecommendations(metadataAliasScored, metadataAliasEvidenceProfile, 5);
@@ -1697,6 +1708,7 @@ async function main() {
     assertEqual(Object.keys(openLibraryDiagnostics.expansionScoredScoreByTitle || {}).length > 0, true, "clean expansion should report scored expansion candidates by title");
     assertEqual(Object.keys(openLibraryDiagnostics.expansionFinalEligibilityRejectionStage || {}).length > 0, true, "clean expansion should report final-eligibility rejection stage by title");
     assertEqual(Object.keys(openLibraryDiagnostics.expansionFinalEligibilityEvidenceAuditByTitle || {}).length > 0, true, "clean expansion should report exact evidence audit fields by title");
+    assertEqual(Object.values(openLibraryDiagnostics.expansionFinalEligibilityEvidenceAuditByTitle || {}).some((row) => Array.isArray(row.rawSubjects) && row.rawSubjects.length > 0 && Boolean(row.matchedRouteFamily)), true, "clean expansion evidence audit should include raw OpenLibrary subjects and matched route family");
     assertEqual(Number(openLibraryDiagnostics.expansionPreCapCandidateCount || 0) >= Number(openLibraryDiagnostics.expansionCandidatesEnteredScoringCount || 0), true, "clean expansion should report its pre-cap scoring candidate pool");
     assertEqual(String(openLibraryDiagnostics.expansionCapReason || "none") !== "source_handoff_limited_to_source_final_5", true, "clean expansion must not be controlled by the old source-final-5 cap");
     if (Number(openLibraryDiagnostics.expansionRawCount || 0) >= 200) {

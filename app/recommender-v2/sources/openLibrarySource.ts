@@ -813,6 +813,7 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
   const subjects = uniqueStrings([
     ...(Array.isArray(doc?.subject) ? doc.subject : []),
     ...(Array.isArray(doc?.subject_facet) ? doc.subject_facet : []),
+    ...(Array.isArray(doc?.subject_key) ? doc.subject_key : []),
   ]);
   const firstPublishYear = Number.isFinite(Number(doc?.first_publish_year)) ? Number(doc.first_publish_year) : undefined;
   const sourceUrl = key ? `https://openlibrary.org${key.startsWith("/") ? key : `/${key}`}` : undefined;
@@ -832,6 +833,7 @@ function normalizeOpenLibraryDoc(doc: any, queryPlan: OpenLibraryQueryPlan) {
     first_sentence: firstSentence,
     subject: subjects,
     subject_facet: subjects,
+    subject_key: Array.isArray(doc?.subject_key) ? doc.subject_key : undefined,
     formats: ["book"],
     genres: subjects.slice(0, 12),
     themes: subjects.slice(0, 18),

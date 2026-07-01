@@ -337,10 +337,15 @@ export interface SourceDiagnosticV2 {
   expansionFinalEligibilityEvidenceAuditByTitle?: Record<string, {
     score: number;
     sourceQuery?: string;
+    matchedRouteFamily?: string;
+    rawSubjects?: string[];
+    rawFirstSentence?: string[];
+    rawDescription?: string;
     routeEvidenceFields?: string[];
     documentBackedTasteSignals?: string[];
     hasFictionAgeEvidence?: boolean;
     missingEvidenceFieldOrFailedPredicate?: string;
+    queryOnlyCapExplanation?: string;
     rejectedReasons?: string[];
   }>;
   expansionCleanEligibleCount?: number;
