@@ -767,6 +767,41 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
   }));
 }
 
+function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
+  const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: `${ageProfile.key}-open-library-fallback`, priority: 0, rationale: [] }];
+  const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ageProfile.diagnosticProbeQuery));
+  const positiveText = [
+    ...profile.genreFamily,
+    ...profile.themes,
+    ...profile.tone,
+    ...profile.characterDynamics,
+  ].filter((row) => Number(row.weight || 0) > 0).map((row) => String(row.value || "").toLowerCase()).join(" ");
+  const avoidText = (profile.avoidSignals || []).map((row) => String(row.value || "").toLowerCase()).join(" ");
+  const queries: string[] = [];
+  const add = (query: string) => {
+    const clean = finalOpenLibraryQueryDedupe(query);
+    if (isUsefulOpenLibraryQueryPart(clean)) queries.push(clean);
+  };
+  if (/feelings?|kindness|calm|gentle|empathy|emotional|warm/.test(positiveText)) add("picture books feelings kindness");
+  if (/friendship|friends?|growing up|growing_up|lessons?|school/.test(positiveText)) add("early reader friends");
+  if (/calm|gentle|bedtime|kindness|feelings?/.test(positiveText)) add("picture books calm friendship");
+  if (/humou?r|funny|comedy|playful|silly/.test(positiveText)) add("funny picture books");
+  if (/adventure|wonder|fantasy|magic|animals?/.test(positiveText) && !/mystery|scary|frightening/.test(avoidText)) add("children picture book adventure");
+  if (/growing up|growing_up|family|friendship|lessons?/.test(positiveText)) add("beginning reader growing up");
+  add(ageProfile.diagnosticProbeQuery);
+  const uniqueQueries = uniqueStrings(queries, ageProfile.queryLimit);
+  return uniqueQueries.map((query, index) => ({
+    query,
+    originalPlannedQuery,
+    queryCascadeIndex: index,
+    queryFamily: queryFamilyForOpenLibraryQuery(query),
+    facets: uniqueStrings((plannedIntents[index]?.facets || []).map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+    routingReason: "k2_openlibrary_picture_early_reader",
+    routingDominance: { openLibraryPlanner: "k2_profile_candidate", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline },
+    profileSpecific: index < uniqueQueries.length - 1,
+  }));
+}
+
 function buildGenericOpenLibraryQueryPlans(plan: SourcePlan, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
   const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: `${ageProfile.key}-open-library-fallback`, priority: 0, rationale: [] }];
   const rawQueries = plannedIntents.flatMap((intent) => [intent.query, ...(intent.facets || [])]);
@@ -790,6 +825,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, age
   if (ageProfile.key === "teen") return buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile);
   if (ageProfile.key === "adult") return buildAdultOpenLibraryQueryPlans(plan, profile, ageProfile);
   if (ageProfile.key === "middleGrades") return buildMiddleGradesOpenLibraryQueryPlans(plan, profile, ageProfile);
+  if (ageProfile.key === "k2") return buildKidsOpenLibraryQueryPlans(plan, profile, ageProfile);
   return buildGenericOpenLibraryQueryPlans(plan, ageProfile);
 }
 
@@ -2063,6 +2099,19 @@ function isTooYoungTeenOpenLibraryDoc(doc: any, profile: TasteProfile): boolean 
   return /\b(rainbow magic|sophie the sapphire fairy|cinderella'?s magic adventure|rainbow fairies|jewel fairies|fairy books?|easy readers?|beginner books?)\b/.test(text);
 }
 
+function hasKidsAgeShapeEvidence(doc: any, query: string, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "kids") return true;
+  const text = openLibraryDocText(doc).toLowerCase();
+  const queryText = String(query || "").toLowerCase();
+  const hasKidsEvidence = /\b(picture books?|juvenile fiction|juvenile literature|children'?s stories|children'?s books?|easy readers?|early readers?|beginning readers?|beginner books?|read-aloud|read aloud|ages?\s*(?:4|5|6|7|8)|grades?\s*(?:k|1|2)|kindergarten|preschool)\b/.test(text);
+  const queryIsKidsAnchored = /\b(picture books?|early reader|easy reader|beginning reader|children)\b/.test(queryText);
+  const hasKidFriendlyShape = /\b(friendship|friends?|feelings?|kindness|calm|gentle|growing up|family|school|animals?|adventure|humou?r|funny|bedtime|empathy)\b/.test(text);
+  const adultOrReferenceShape = /\b(adult|history of|politics|sociology|psychology|nineteen eighty-four|animal farm|dystopian|signed|cloth|literary criticism|reference|bibliograph|manual|handbook|university|college)\b/.test(text);
+  if (hasKidsEvidence && !/\b(nineteen eighty-four|animal farm|adult)\b/.test(text)) return true;
+  if (queryIsKidsAnchored && hasKidFriendlyShape && !adultOrReferenceShape) return true;
+  return false;
+}
+
 function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile): { keep: boolean; reason?: string } {
   if (!isEnglishOpenLibraryDoc(doc)) return { keep: false, reason: "non_english" };
   if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) return { keep: false, reason: "missing_author" };
@@ -2083,6 +2132,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
   if (!hasMiddleGradesAgeShapeEvidence(doc, query, profile)) return { keep: false, reason: "middle_grades_age_shape_mismatch" };
+  if (!hasKidsAgeShapeEvidence(doc, query, profile)) return { keep: false, reason: "k2_age_shape_mismatch" };
   return { keep: true };
 }
 

@@ -42,6 +42,10 @@ const MIDDLE_GRADES_ARTIFACT_REASON_LABELS = [
   "middle_grades_age_shape_mismatch",
 ];
 
+const K2_ARTIFACT_REASON_LABELS = [
+  "k2_age_shape_mismatch",
+];
+
 const BASE_OPEN_LIBRARY_PROFILE = {
   queryLimit: 4,
   docLimit: 10,
@@ -90,7 +94,7 @@ export const OPEN_LIBRARY_AGE_PROFILES: Record<AgeBandV2, OpenLibraryAgeProfile>
     ageBand: "kids",
     behaviorLabel: "k2_openlibrary_profile_pending",
     diagnosticProbeQuery: "easy reader",
-    ageSpecificArtifactReasonLabels: [],
+    ageSpecificArtifactReasonLabels: K2_ARTIFACT_REASON_LABELS,
   },
 };
 

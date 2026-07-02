@@ -704,6 +704,21 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const kidsComfortProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Mister Rogers’ Neighborhood", genres: ["Feelings / Kindness / Calm", "feelings", "kindness", "calm"], tags: ["children", "k2", "tv", "feelings", "kindness", "calm", "series"], format: "book" },
+      { action: "like", title: "Franklin", genres: ["Friendship / Growing Up / Lessons", "growing_up"], themes: ["friendship"], tags: ["children", "k2", "tv", "friendship", "growing_up", "series"], format: "book" },
+      { action: "dislike", title: "Paw Patrol", genres: ["Helping / Teamwork / Courage"], themes: ["kindness", "teamwork", "courage"], tones: ["uplifting"], tags: ["children", "k2", "tv", "kindness", "teamwork", "courage", "uplifting", "heroic"], format: "book" },
+    ],
+  });
+  const kidsComfortPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsComfortProfile, kidsProfile);
+  assertEqual(kidsComfortPlans[0]?.routingReason, "k2_openlibrary_picture_early_reader", "kids comfort profile should use K-2 picture/early-reader routing");
+  assertEqual(kidsComfortPlans.some((plan) => /picture.*feelings.*kindness/i.test(plan.query)), true, "kids comfort profile should search picture-book feelings/kindness shapes");
+  assertEqual(kidsComfortPlans.some((plan) => /early reader.*friends/i.test(plan.query)), true, "kids comfort profile should search early-reader friends shapes");
+  assertEqual(kidsComfortPlans.some((plan) => /animals mystery|mystery$/i.test(plan.query)), false, "kids comfort profile should not let skip-only animal mystery drive the first K-2 plan");
+  console.log(JSON.stringify({ name: "kids comfort profile uses picture-book and early-reader queries", pass: true, queries: kidsComfortPlans.map((plan) => plan.query) }));
+
   const ageBandIsolationCases = [
     {
       name: "adult Open Library lane isolation",
@@ -747,7 +762,7 @@ async function main() {
         { action: "like", title: "Read Aloud", genres: ["humor"], themes: ["friendship"], format: "book" },
       ],
       expectedAgeProfile: "k2",
-      expectedPlanner: "generic_pending_profile",
+      expectedPlanner: "k2_profile_candidate",
       subjects: ["Juvenile fiction", "Children's stories", "Easy readers", "Animals"],
       titlePrefix: "Kids Lane",
     },
@@ -799,6 +814,32 @@ async function main() {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  }
+
+  const kidsAgeShapeFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    kidsAgeShapeFetchCalls.push(query);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [
+        { ...fakeDoc(query, 1), key: "/works/k2-history-detroit", title: "The history of Detroit and Michigan", author_name: ["Adult Historian"], subject: ["History", "Michigan", "Detroit", "Reference"], first_publish_year: 1912 },
+        { ...fakeDoc(query, 2), key: "/works/k2-social-animal", title: "The social animal", author_name: ["Adult Sociologist"], subject: ["Psychology", "Sociology", "Adult"], first_publish_year: 1998 },
+        { ...fakeDoc(query, 3), key: "/works/k2-animal-farm", title: "Animal Farm / Nineteen Eighty-Four", author_name: ["George Orwell"], subject: ["Dystopian", "Political fiction", "Adult"], first_publish_year: 1945 },
+        { ...fakeDoc(query, 4), key: "/works/k2-kindness-reader", title: "Kindness at the Park", author_name: ["K2 Author"], subject: ["Juvenile fiction", "Picture books", "Kindness", "Friendship", "Feelings"], first_publish_year: 2020 },
+      ] }),
+    };
+  };
+  try {
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile: kidsComfortProfile });
+    const returnedTitles = result.rawItems.map((item) => String(item.title || ""));
+    assertEqual(returnedTitles.includes("Kindness at the Park"), true, "kids age-shape should keep child-centered picture-book evidence");
+    assertEqual(returnedTitles.some((title) => /history of Detroit|social animal|Animal Farm/i.test(title)), false, "kids age-shape should reject adult/history/social/literary artifacts");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.k2_age_shape_mismatch), true, "kids age-shape rejections should be diagnosed");
+    console.log(JSON.stringify({ name: "kids age-shape rejects adult artifacts and keeps picture books", pass: true, fetchCalls: kidsAgeShapeFetchCalls, returnedTitles, dropReasons: result.diagnostics.dropReasons }));
+  } finally {
+    globalThis.fetch = originalFetch;
   }
 
   const middleGradesAgeShapeFetchCalls = [];
