@@ -798,7 +798,10 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     if (/helping|kindness|caring/.test(likedText) && /teamwork|courage|brave|heroic|heroes?|rescue|community/.test(likedText)) add("helping teamwork picture books");
     if (/courage|brave|heroic|heroes?|rescue/.test(likedText)) add("brave rescue picture books");
     if (/pooh|bear/.test(likedText)) add("gentle bear picture books");
-    if (/animals?/.test(likedText) && !/humou?r|funny|silly|playful/.test(likedText)) add("animal friendship picture books");
+    if (/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText)) add("folklore animal picture books");
+    if (/winter|snow|cozy|calm|nature|woodland|forest|puffin/.test(likedText) && /animals?/.test(likedText)) add("woodland animal picture books");
+    if (/calm|nature|puffin/.test(likedText)) add("calm nature picture books");
+    if (/animals?/.test(likedText) && !/humou?r|funny|silly|playful/.test(likedText)) add("woodland animal picture books");
     if (/mischief|humou?r|funny|silly/.test(likedText)) add("funny mischief picture books");
     if (/mischief|trouble|naughty|david/.test(likedText)) add("mischief picture books");
     if (/big feelings?|feelings?|simple/.test(likedText)) add("big feelings picture books");
@@ -823,7 +826,10 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   if (!forceSemanticExpansion && /helping|kindness|caring/.test(likedText) && /teamwork|courage|brave|heroic|heroes?|rescue|community/.test(likedText)) add("helping teamwork picture books");
   if (!forceSemanticExpansion && /courage|brave|heroic|heroes?|rescue/.test(likedText)) add("brave rescue picture books");
   if (!forceSemanticExpansion && /pooh|bear/.test(likedText)) add("gentle bear picture books");
-  if (!forceSemanticExpansion && /animals?/.test(likedText) && !/humou?r|funny|silly|playful/.test(likedText)) add("animal friendship picture books");
+  if (!forceSemanticExpansion && /folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText)) add("folklore animal picture books");
+  if (!forceSemanticExpansion && /winter|snow|cozy|calm|nature|woodland|forest|puffin/.test(likedText) && /animals?/.test(likedText)) add("woodland animal picture books");
+  if (!forceSemanticExpansion && /calm|nature|puffin/.test(likedText)) add("calm nature picture books");
+  if (!forceSemanticExpansion && /animals?/.test(likedText) && !/humou?r|funny|silly|playful/.test(likedText)) add("woodland animal picture books");
   if (!forceSemanticExpansion && /imagination|creative|creativity|curious|curiosity|drawing|art/.test(likedText)) add("imagination picture books");
   if (!forceSemanticExpansion && /learning|songs?|music|school|letters|numbers/.test(likedText)) add("learning picture books");
   if (!forceSemanticExpansion && /fantasy|magic|imagination|wonder/.test(likedText)) add("fantasy picture books");

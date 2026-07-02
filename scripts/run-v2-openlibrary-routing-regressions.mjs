@@ -808,6 +808,20 @@ async function main() {
   assertEqual(kidsReadingProblemPlans.slice(0, 3).some((plan) => /mischievous monkey picture/i.test(plan.query)), false, "kids reading/problem-solving profile should not activate monkey/mischief queries without monkey evidence");
   console.log(JSON.stringify({ name: "kids reading problem solving profile avoids bear-only convergence", pass: true, queries: kidsReadingProblemPlans.map((plan) => plan.query) }));
 
+  const kidsFolkloreNatureProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "The Mitten", genres: ["animals", "folklore", "juvenile fiction"], tags: ["book", "younger", "fox", "animals", "folklore", "winter", "repetition", "cozy", "classic", "picture book", "children", "k2", "juvenile fiction"], format: "book" },
+      { action: "like", title: "Puffin Rock", genres: ["Friendship / Nature / Calm", "animals"], tones: ["calm"], themes: ["friendship", "nature"], tags: ["children", "k2", "tv", "animals", "friendship", "nature", "calm"], format: "book" },
+      { action: "dislike", title: "Untitled Goose Game", genres: ["Comedy / Puzzle"], tags: ["game", "children", "k2", "comedy"], format: "book" },
+    ],
+  });
+  const kidsFolkloreNaturePlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsFolkloreNatureProfile, kidsProfile);
+  assertEqual(kidsFolkloreNaturePlans[0]?.query, "folklore animal picture", "kids animal folklore/nature profile should lead with narrative animal folklore rather than bare animal picture");
+  assertEqual(kidsFolkloreNaturePlans.some((plan) => /woodland animal picture|calm nature picture/i.test(plan.query)), true, "kids animal folklore/nature profile should include woodland/calm nature retrieval families");
+  assertEqual(kidsFolkloreNaturePlans.some((plan) => /^animal picture$/i.test(plan.query)), false, "kids animal folklore/nature profile should avoid bare animal picture queries that retrieve atlases and puzzles");
+  console.log(JSON.stringify({ name: "kids folklore nature profile avoids bare animal picture artifacts", pass: true, queries: kidsFolkloreNaturePlans.map((plan) => plan.query) }));
+
   const kidsMischiefImaginationProfile = buildTasteProfile({
     ageBand: "kids",
     signals: [
