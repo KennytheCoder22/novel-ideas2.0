@@ -1055,6 +1055,52 @@ async function main() {
   assertEqual(Number(kidsGenericTokenScored.scoreBreakdown.genericOnlyTasteMatchPenalty || 0) < 0, true, "kids scoring should penalize generic-only taste matches");
   console.log(JSON.stringify({ name: "kids scoring demotes generic animal picture tokens", pass: true, removed: kidsGenericTokenScored.diagnostics.genericTasteSignalsRemoved, penalty: kidsGenericTokenScored.scoreBreakdown.genericOnlyTasteMatchPenalty }));
 
+  const kidsNarrativeScoringProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "The Monster at the End of This Book", genres: ["humor", "juvenile fiction"], tags: ["humor", "interactive", "fourth wall", "silly", "fear", "picture book", "children", "k2"], format: "book" },
+      { action: "like", title: "Sesame Street", genres: ["Learning / Friendship / Songs", "learning"], themes: ["friendship"], tags: ["children", "k2", "learning", "friendship", "series"], format: "book" },
+    ],
+  });
+  const kidsNarrativeScores = scoreCandidates([
+    {
+      id: "facet-only",
+      source: "openLibrary",
+      title: "Facet Only Funny Friendship",
+      creators: ["Facet Author"],
+      description: "",
+      formats: ["book"],
+      genres: ["Humor", "Juvenile fiction"],
+      themes: ["Friendship", "Learning"],
+      tones: [],
+      characterDynamics: [],
+      maturityBand: "kids",
+      raw: { subject: ["Humor", "Friendship", "Learning", "Juvenile fiction"] },
+      diagnostics: { queryText: "funny picture", queryFamily: "k2" },
+    },
+    {
+      id: "narrative-supported",
+      source: "openLibrary",
+      title: "Silly Monster Story",
+      creators: ["Story Author"],
+      description: "A silly interactive picture book story about a nervous monster who makes readers laugh and face fear with friends.",
+      formats: ["book"],
+      genres: ["Picture books", "Juvenile fiction"],
+      themes: ["Friendship"],
+      tones: ["Silly"],
+      characterDynamics: [],
+      maturityBand: "kids",
+      raw: { subject: ["Picture books", "Juvenile fiction", "Monsters", "Friendship"], first_sentence: ["The monster begs the reader not to turn the page."], description: "A silly interactive story about a monster who makes readers laugh." },
+      diagnostics: { queryText: "funny picture", queryFamily: "k2" },
+    },
+  ], kidsNarrativeScoringProfile);
+  const facetOnlyScore = kidsNarrativeScores.find((candidate) => candidate.id === "facet-only");
+  const narrativeScore = kidsNarrativeScores.find((candidate) => candidate.id === "narrative-supported");
+  assertEqual(Number(narrativeScore.scoreBreakdown.narrativeSemanticEvidence || 0) > Number(facetOnlyScore.scoreBreakdown.narrativeSemanticEvidence || 0), true, "kids scoring should award stronger evidence to description/first-sentence narrative support than facet-only overlap");
+  assertEqual(Number(facetOnlyScore.scoreBreakdown.genreFacetMatch || 0) < 3, true, "kids scoring should dampen broad genre facet overlap");
+  assertEqual(narrativeScore.score > facetOnlyScore.score, true, "kids narrative semantic evidence should outrank facet-only metadata overlap");
+  console.log(JSON.stringify({ name: "kids scoring lets narrative evidence outrank facet-only metadata", pass: true, facetOnly: facetOnlyScore.scoreBreakdown, narrative: narrativeScore.scoreBreakdown }));
+
   const middleGradesInfoGateResult = selectRecommendations([
     fakeScoredCandidate({
       title: "Middle Grade Animal Atlas",
