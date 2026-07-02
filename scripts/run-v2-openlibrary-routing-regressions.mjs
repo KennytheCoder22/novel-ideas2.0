@@ -794,6 +794,20 @@ async function main() {
   assertEqual(kidsAnimalMischiefPlans.slice(0, 3).some((plan) => /helping picture|learning picture|science fiction picture|science easy reader/i.test(plan.query)), false, "kids animal/mischief profile should not let single theme words or disliked science drive primary queries");
   console.log(JSON.stringify({ name: "kids animal mischief profile avoids single-word primary queries", pass: true, queries: kidsAnimalMischiefPlans.map((plan) => plan.query) }));
 
+  const kidsReadingProblemProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Super Why!", genres: ["Reading / Adventures / Problem-Solving", "adventure", "problem_solving"], tags: ["children", "k2", "tv", "adventure", "problem_solving", "series"], format: "book" },
+      { action: "like", title: "Corduroy", genres: ["friendship", "juvenile fiction"], tags: ["book", "neutral", "bear", "friendship", "kindness", "belonging", "gentle", "toy comes alive", "picture book", "children", "k2", "juvenile fiction"], format: "book" },
+      { action: "dislike", title: "Lil Gator Game", genres: ["Adventure / Cozy"], themes: ["imagination"], tags: ["children", "k2", "game", "adventure", "cozy", "imagination"], format: "book" },
+    ],
+  });
+  const kidsReadingProblemPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsReadingProblemProfile, kidsProfile);
+  assertEqual(kidsReadingProblemPlans[0]?.query, "reading problem solving picture", "kids reading/problem-solving profile should lead with reading/problem-solving, not bear/friendship fallback");
+  assertEqual(kidsReadingProblemPlans.some((plan) => /problem solving early reader|reading adventure picture/i.test(plan.query)), true, "kids reading/problem-solving profile should include literacy/problem-solving query families");
+  assertEqual(kidsReadingProblemPlans.slice(0, 3).some((plan) => /mischievous monkey picture/i.test(plan.query)), false, "kids reading/problem-solving profile should not activate monkey/mischief queries without monkey evidence");
+  console.log(JSON.stringify({ name: "kids reading problem solving profile avoids bear-only convergence", pass: true, queries: kidsReadingProblemPlans.map((plan) => plan.query) }));
+
   const kidsMischiefImaginationProfile = buildTasteProfile({
     ageBand: "kids",
     signals: [
