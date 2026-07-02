@@ -789,11 +789,13 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   };
   const forceSemanticExpansion = Boolean((profile.diagnostics as Record<string, unknown>)?.forceKidsCleanCandidateShortfallExpansion);
   if (forceSemanticExpansion) {
-    if (/teamwork|helping|courage|brave|heroic|heroes?|rescue|kindness|uplifting/.test(likedText)) add("teamwork picture books");
-    if (/helping|kindness|community|caring/.test(likedText)) add("helping picture books");
-    if (/courage|brave|heroic|heroes?|rescue/.test(likedText)) add("brave picture books");
-    if (/pooh|bear/.test(likedText)) add("bear picture books");
-    if (/animals?/.test(likedText)) add("animal picture books");
+    if (/animals?|monkeys?|dogs?|playful|silly/.test(likedText) && /mischief|humou?r|funny|silly|playful|community/.test(likedText)) add("funny animal picture books");
+    if (/monkeys?|mischief|repetition|call and response/.test(likedText)) add("mischievous monkey picture books");
+    if (/teamwork|helping|courage|brave|heroic|heroes?|rescue|kindness|uplifting/.test(likedText)) add("teamwork helping picture books");
+    if (/helping|kindness|caring/.test(likedText) && /teamwork|courage|brave|heroic|heroes?|rescue|community/.test(likedText)) add("helping teamwork picture books");
+    if (/courage|brave|heroic|heroes?|rescue/.test(likedText)) add("brave rescue picture books");
+    if (/pooh|bear/.test(likedText)) add("gentle bear picture books");
+    if (/animals?/.test(likedText) && !/humou?r|funny|silly|playful/.test(likedText)) add("animal friendship picture books");
     if (/mischief|humou?r|funny|silly/.test(likedText)) add("funny mischief picture books");
     if (/mischief|trouble|naughty|david/.test(likedText)) add("mischief picture books");
     if (/big feelings?|feelings?|simple/.test(likedText)) add("big feelings picture books");
@@ -809,11 +811,13 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
       add("imaginative picture books");
       add("early reader stories");
     }
-  } else if (/teamwork|helping|courage|brave|heroic|heroes?|rescue|kindness|uplifting/.test(likedText)) add("teamwork picture books");
-  if (!forceSemanticExpansion && /helping|kindness|community|caring/.test(likedText)) add("helping picture books");
-  if (!forceSemanticExpansion && /courage|brave|heroic|heroes?|rescue/.test(likedText)) add("brave picture books");
-  if (!forceSemanticExpansion && /pooh|bear/.test(likedText)) add("bear picture books");
-  if (!forceSemanticExpansion && /animals?/.test(likedText)) add("animal picture books");
+  } else if (/animals?|monkeys?|dogs?|playful|silly/.test(likedText) && /mischief|humou?r|funny|silly|playful|community/.test(likedText)) add("funny animal picture books");
+  if (!forceSemanticExpansion && /monkeys?|mischief|repetition|call and response/.test(likedText)) add("mischievous monkey picture books");
+  if (!forceSemanticExpansion && /teamwork|helping|courage|brave|heroic|heroes?|rescue|kindness|uplifting/.test(likedText)) add("teamwork helping picture books");
+  if (!forceSemanticExpansion && /helping|kindness|caring/.test(likedText) && /teamwork|courage|brave|heroic|heroes?|rescue|community/.test(likedText)) add("helping teamwork picture books");
+  if (!forceSemanticExpansion && /courage|brave|heroic|heroes?|rescue/.test(likedText)) add("brave rescue picture books");
+  if (!forceSemanticExpansion && /pooh|bear/.test(likedText)) add("gentle bear picture books");
+  if (!forceSemanticExpansion && /animals?/.test(likedText) && !/humou?r|funny|silly|playful/.test(likedText)) add("animal friendship picture books");
   if (!forceSemanticExpansion && /imagination|creative|creativity|curious|curiosity|drawing|art/.test(likedText)) add("imagination picture books");
   if (!forceSemanticExpansion && /learning|songs?|music|school|letters|numbers/.test(likedText)) add("learning picture books");
   if (!forceSemanticExpansion && /fantasy|magic|imagination|wonder/.test(likedText)) add("fantasy picture books");

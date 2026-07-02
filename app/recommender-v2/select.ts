@@ -1716,10 +1716,39 @@ function kidsDistinctiveTasteSignals(candidate: ScoredCandidate): string[] {
     .filter((signal) => signal && !/^(book|books|story|stories|children|juvenile fiction|picture|picture book|picture books|friendship|friends|fantasy|adventure|early reader|reader)$/.test(signal));
 }
 
+function kidsNonTitleDocumentText(candidate: ScoredCandidate): string {
+  const raw = candidate.raw as any;
+  const rawDescription = typeof raw?.description === "string" ? raw.description : raw?.description?.value;
+  const firstSentence = Array.isArray(raw?.first_sentence) ? raw.first_sentence.join(" ") : raw?.first_sentence;
+  return normalized([
+    candidate.subtitle,
+    candidate.description,
+    (candidate.genres || []).join(" "),
+    (candidate.themes || []).join(" "),
+    (candidate.tones || []).join(" "),
+    (candidate.characterDynamics || []).join(" "),
+    Array.isArray(raw?.subject) ? raw.subject.join(" ") : raw?.subject,
+    Array.isArray(raw?.subjects) ? raw.subjects.join(" ") : raw?.subjects,
+    Array.isArray(raw?.subject_facet) ? raw.subject_facet.join(" ") : raw?.subject_facet,
+    rawDescription,
+    firstSentence,
+  ].filter(Boolean).join(" "));
+}
+
+function kidsHasStoryAgeShape(candidate: ScoredCandidate): boolean {
+  const text = kidsNonTitleDocumentText(candidate);
+  return /\b(picture books?|juvenile fiction|juvenile literature|children s stories|children s books?|easy readers?|early readers?|beginning readers?|beginner books?|read aloud|read alouds?|ages? [4-8]|grades? (?:k|1|2)|kindergarten|preschool)\b/.test(text);
+}
+
+function kidsDistinctiveSignalsSupportedByDocument(candidate: ScoredCandidate): string[] {
+  const text = kidsNonTitleDocumentText(candidate);
+  return kidsDistinctiveTasteSignals(candidate).filter((signal) => text.includes(signal));
+}
+
 function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   if (candidate.score <= 0 || isKidsSuspiciousSelectionCandidate(candidate) || kidsTasteScore(candidate) <= 0) return false;
-  if (kidsDistinctiveTasteSignals(candidate).length > 0) return true;
-  return /k2_clean_candidate_shortfall_semantic_expansion/i.test(String(candidate.diagnostics?.routingReason || ""));
+  if (!kidsHasStoryAgeShape(candidate)) return false;
+  return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0;
 }
 
 function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
@@ -1792,6 +1821,8 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
       ...candidate.scoreBreakdown,
       tasteScore,
       distinctiveTasteSignalCount: kidsDistinctiveTasteSignals(candidate).length,
+      documentSupportedDistinctiveTasteSignalCount: kidsDistinctiveSignalsSupportedByDocument(candidate).length,
+      storyAgeShape: kidsHasStoryAgeShape(candidate) ? 1 : 0,
       cleanFinalEligible: isKidsCleanFinalCandidate(candidate) ? 1 : 0,
       finalScore: candidate.score,
     };
@@ -1838,6 +1869,7 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (profile.ageBand === "kids" && isKidsSuspiciousSelectionCandidate(candidate)) return "k2_suspicious_title_artifact";
+  if (profile.ageBand === "kids" && !isKidsCleanFinalCandidate(candidate)) return "k2_missing_story_picture_reader_relevance";
   if (profile.ageBand === "preteens") {
     const eligibility = middleGradesFinalEligibility(candidate);
     if (!eligibility.allowed) return eligibility.rejectedReason || "middle_grades_final_eligibility_missing_evidence";

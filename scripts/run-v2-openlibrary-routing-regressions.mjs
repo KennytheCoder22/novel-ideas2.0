@@ -775,10 +775,24 @@ async function main() {
     ],
   });
   const kidsHelpingHeroicPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsHelpingHeroicProfile, kidsProfile);
-  assertEqual(kidsHelpingHeroicPlans[0]?.query, "teamwork picture", "kids helping/heroic profile should lead with teamwork, not recycled imagination/friends queries");
-  assertEqual(kidsHelpingHeroicPlans.some((plan) => /helping picture|brave picture/i.test(plan.query)), true, "kids helping/heroic profile should include helping/bravery semantic queries");
+  assertEqual(kidsHelpingHeroicPlans[0]?.query, "teamwork helping picture", "kids helping/heroic profile should lead with a combined teamwork/helping query, not recycled imagination/friends queries");
+  assertEqual(kidsHelpingHeroicPlans.some((plan) => /helping teamwork picture|brave rescue picture/i.test(plan.query)), true, "kids helping/heroic profile should include helping/bravery semantic queries");
   assertEqual(kidsHelpingHeroicPlans.slice(0, 3).some((plan) => /imagination picture|science fiction picture|early reader friends/i.test(plan.query)), false, "kids helping/heroic profile should not lead with unrelated recycled query families");
   console.log(JSON.stringify({ name: "kids helping heroic profile personalizes away from recycled friends pool", pass: true, queries: kidsHelpingHeroicPlans.map((plan) => plan.query) }));
+
+  const kidsAnimalMischiefProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Caps for Sale", genres: ["humor", "juvenile fiction"], tags: ["book", "younger", "monkey", "humor", "repetition", "mischief", "monkeys", "call and response", "picture book", "children", "k2", "juvenile fiction"], format: "book" },
+      { action: "like", title: "Go, Dog. Go!", genres: ["Animals / Community / Fun", "animals"], tones: ["playful"], themes: ["community"], tags: ["children", "k2", "tv", "animals", "community", "playful", "silly"], format: "book" },
+      { action: "dislike", title: "Ada Twist, Scientist", genres: ["science"], tags: ["book", "older", "science", "curious", "stem", "questions", "persistent", "picture book", "children", "k2"], format: "book" },
+    ],
+  });
+  const kidsAnimalMischiefPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsAnimalMischiefProfile, kidsProfile);
+  assertEqual(kidsAnimalMischiefPlans[0]?.query, "funny animal picture", "kids animal/mischief profile should lead with a combined animal humor query, not a single theme word");
+  assertEqual(kidsAnimalMischiefPlans.some((plan) => /mischievous monkey picture/i.test(plan.query)), true, "kids animal/mischief profile should include monkey/mischief semantic queries");
+  assertEqual(kidsAnimalMischiefPlans.slice(0, 3).some((plan) => /helping picture|learning picture|science fiction picture|science easy reader/i.test(plan.query)), false, "kids animal/mischief profile should not let single theme words or disliked science drive primary queries");
+  console.log(JSON.stringify({ name: "kids animal mischief profile avoids single-word primary queries", pass: true, queries: kidsAnimalMischiefPlans.map((plan) => plan.query) }));
 
   const kidsMischiefImaginationProfile = buildTasteProfile({
     ageBand: "kids",
@@ -984,12 +998,12 @@ async function main() {
       score: 8,
       scoreBreakdown: { genreFacetMatch: 1, positiveTasteMatch: 3, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
       matchedSignals: ["positiveTasteMatch:teamwork", "positiveTasteMatch:courage", "positiveTasteMatch:kindness"],
-      diagnostics: { queryText: "teamwork picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+      diagnostics: { queryText: "teamwork helping picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
     }),
   ], kidsHelpingHeroicProfile, 5);
-  assertEqual(kidsCleanTopUpResult.selected.some((candidate) => candidate.title === "Teamwork Rescue Picture Book"), true, "kids clean final top-up should replace broad recycled friendship candidates with distinctive taste matches");
-  assertEqual(Number(kidsCleanTopUpResult.rejectedReasons.k2_clean_final_top_up_replacements || 0) > 0, true, "kids clean final top-up should diagnose broad-candidate replacement");
-  console.log(JSON.stringify({ name: "kids clean final top-up replaces broad recycled candidates", pass: true, selected: kidsCleanTopUpResult.selected.map((candidate) => candidate.title), replacements: kidsCleanTopUpResult.rejectedReasons.k2_clean_final_top_up_replacements }));
+  assertEqual(kidsCleanTopUpResult.selected.some((candidate) => candidate.title === "Teamwork Rescue Picture Book"), true, "kids clean final gate should keep distinctive taste matches while rejecting broad recycled friendship candidates");
+  assertEqual(Number(kidsCleanTopUpResult.rejectedReasons.k2_missing_story_picture_reader_relevance || 0) > 0, true, "kids final gate should reject broad/title-only recycled candidates before final slate");
+  console.log(JSON.stringify({ name: "kids clean final gate rejects broad recycled candidates", pass: true, selected: kidsCleanTopUpResult.selected.map((candidate) => candidate.title), rejectedBroad: kidsCleanTopUpResult.rejectedReasons.k2_missing_story_picture_reader_relevance }));
 
   const middleGradesAgeShapeFetchCalls = [];
   globalThis.fetch = async (url) => {
