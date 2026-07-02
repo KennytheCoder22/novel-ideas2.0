@@ -1586,6 +1586,7 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   const genericAdventureUsedAsLastResortOnly = selectedGenericAdventureCount === 0 || selected.length < 5 || selectedRouteAlignedCount >= 2;
   const lockQualityFailReasons: string[] = [];
   if (selected.length !== 5) lockQualityFailReasons.push("final_items_length_not_five");
+  if (selected.length >= 5 && finalEligibilityCleanCandidateCount < 5 && meaningfulTasteRecoveryCandidates.length === 0) lockQualityFailReasons.push("final_clean_items_less_than_five");
   if (finalCountContractStatus === "underfilled_fallback_only" || finalCountContractStatus === "full_fallback_only" || finalCountContractStatus === "full_weak_evidence") lockQualityFailReasons.push(finalCountContractStatus);
   if (weakEvidenceOnlySlate) lockQualityFailReasons.push("weak_evidence_only_slate");
   if (selectedTitleOnlyCount > 0 && selectedMediumStrongEvidenceCount === 0) lockQualityFailReasons.push("title_only_slate_downgraded_lock_quality");
