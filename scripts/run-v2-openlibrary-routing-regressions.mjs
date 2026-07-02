@@ -2263,6 +2263,39 @@ async function main() {
   assertEqual(middleGradesStrongFallbackPreservationResult.selected.some((candidate) => candidate.rejectedReasons.includes("middle_grades_weak_evidence_replaced_by_medium_strong_document_evidence")), false, "strong document-backed candidates should not receive weak-evidence replacement reasons");
   console.log(JSON.stringify({ name: "middle grades medium/strong preference preserves strong document-backed generic-query winners", pass: true, selected: middleGradesStrongFallbackPreservationResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesStrongFallbackPreservationResult.rejectedReasons }));
 
+  const cleanTasteCandidate = (title, score, query = "middle grade survival adventure", expansion = false) => fakeScoredCandidate({
+    id: title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    title,
+    score,
+    maturityBand: "preteens",
+    description: "A fantasy survival adventure about friends on a dangerous quest.",
+    raw: { subject: ["Juvenile fiction", "Fantasy", "Survival", "Adventure stories", "Friendship"] },
+    diagnostics: { queryText: query, queryFamily: "adventure", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["survival", "adventure", "fantasy", "friendship"], ...(expansion ? { cleanCandidateShortfallExpansion: true, scoringHandoffStage: "clean_candidate_shortfall_expansion" } : {}) },
+    scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 2, positiveTasteMatch: 2.5 },
+  });
+  const middleGradesCleanTopUpResult = selectRecommendations([
+    cleanTasteCandidate("Clean Taste One", 25),
+    cleanTasteCandidate("Clean Taste Two", 24),
+    cleanTasteCandidate("Clean Taste Three", 23),
+    cleanTasteCandidate("Clean Taste Four", 22),
+    fakeScoredCandidate({
+      id: "non-clean-editorial-fallback",
+      source: "mockEditorial",
+      title: "Non Clean Editorial Fallback",
+      score: 21,
+      maturityBand: "preteens",
+      genres: ["Adventure"],
+      diagnostics: { queryText: "editorial fallback", queryFamily: "fallback", routingReason: "editorial" },
+      scoreBreakdown: { sourceQualityRelevance: 1, ageTeenSuitability: 1, genreFacetMatch: 0, positiveTasteMatch: 0 },
+    }),
+    cleanTasteCandidate("Clean Taste Five", 20, "middle grade fantasy quest", true),
+  ], middleGradesStrongFallbackPreservationProfile, 5);
+  assertEqual(middleGradesCleanTopUpResult.selected.length, 5, "middle grades clean top-up should preserve a five-item slate");
+  assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Non Clean Editorial Fallback"), false, "non-clean selected rows should be replaced when a clean taste-matched candidate is available");
+  assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Clean Taste Five"), true, "next-best clean taste-matched candidate should top up the final slate");
+  assertEqual(middleGradesCleanTopUpResult.rejectedReasons.finalEligibilityCleanCandidateCount, 5, "lock-quality diagnostics should report five clean final candidates after top-up");
+  console.log(JSON.stringify({ name: "middle grades clean final top-up reaches five taste-matched recommendations", pass: true, selected: middleGradesCleanTopUpResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesCleanTopUpResult.rejectedReasons }));
+
   const middleGradesSelectionProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: [
