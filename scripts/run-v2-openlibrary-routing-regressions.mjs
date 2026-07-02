@@ -343,6 +343,8 @@ async function main() {
   const kidsProfile = openLibraryProfileForAgeBand("kids");
   assertEqual(kidsProfile.lockedBaseline, false, "kids Open Library profile should remain pending");
   assertEqual(kidsProfile.behaviorLabel, "k2_openlibrary_profile_pending", "kids Open Library profile should expose pending label");
+  assertEqual(kidsProfile.docLimit >= 20, true, "kids Open Library profile should maintain a broad source pool before final ranking");
+  assertEqual(kidsProfile.minCleanDocs >= 15, true, "kids Open Library profile should keep fetching beyond a tiny five-book pool");
 
   const cases = [
     {
@@ -749,6 +751,20 @@ async function main() {
   assertEqual(JSON.stringify(kidsCozyScifiPlans.slice(0, 4).map((plan) => plan.query)) === JSON.stringify(kidsComfortPlans.slice(0, 4).map((plan) => plan.query)), false, "different kids swipe profiles should produce different leading K-2 query families");
   console.log(JSON.stringify({ name: "kids cozy sci-fi profile avoids static K-2 query families", pass: true, queries: kidsCozyScifiPlans.map((plan) => plan.query) }));
 
+  const kidsLearningImaginationProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Sesame Street", genres: ["Learning / Friendship / Songs", "learning"], themes: ["friendship"], tags: ["children", "k2", "tv", "learning", "friendship", "series"], format: "book" },
+      { action: "like", title: "Harold and the Purple Crayon", genres: ["fantasy", "juvenile fiction"], tags: ["book", "neutral", "fantasy", "imagination", "creative", "gentle adventure", "curious", "picture book", "children", "k2", "juvenile fiction"], format: "book" },
+      { action: "dislike", title: "Frog and Toad Are Friends", genres: ["friendship"], tags: ["book", "older", "friendship", "gentle", "episodic", "warm", "everyday", "early reader", "children", "k2"], format: "book" },
+    ],
+  });
+  const kidsLearningImaginationPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsLearningImaginationProfile, kidsProfile);
+  assertEqual(kidsLearningImaginationPlans[0]?.query, "imagination picture", "kids learning/imagination profile should lead with imagination rather than repetitive friendship readers");
+  assertEqual(kidsLearningImaginationPlans.some((plan) => /learning picture|fantasy picture/i.test(plan.query)), true, "kids learning/imagination profile should include learning and fantasy picture-book queries");
+  assertEqual(kidsLearningImaginationPlans.slice(0, 3).some((plan) => /early reader friends|picture friends kindness/i.test(plan.query)), false, "kids learning/imagination profile should not let friendship fallbacks dominate the first K-2 queries");
+  console.log(JSON.stringify({ name: "kids learning imagination profile personalizes away from repetitive friends pool", pass: true, queries: kidsLearningImaginationPlans.map((plan) => plan.query) }));
+
   const ageBandIsolationCases = [
     {
       name: "adult Open Library lane isolation",
@@ -859,7 +875,8 @@ async function main() {
         { ...fakeDoc(query, 3), key: "/works/k2-animal-farm", title: "Animal Farm / Nineteen Eighty-Four", author_name: ["George Orwell"], subject: ["Dystopian", "Political fiction", "Adult"], first_publish_year: 1945 },
         { ...fakeDoc(query, 4), key: "/works/k2-lantern-archive", title: "The Lantern Archive", author_name: ["Archive Author"], subject: ["Fiction", "Archive", "Reference"], first_publish_year: 2004 },
         { ...fakeDoc(query, 5), key: "/works/k2-generic-friends", title: "Friends", author_name: ["Generic Author"], subject: ["Fiction", "Friendship"], first_publish_year: 2005 },
-        { ...fakeDoc(query, 6), key: "/works/k2-kindness-reader", title: "Kindness at the Park", author_name: ["K2 Author"], subject: ["Juvenile fiction", "Picture books", "Kindness", "Friendship", "Feelings"], first_publish_year: 2020 },
+        { ...fakeDoc(query, 6), key: "/works/k2-old-cove", title: "The treasure of Cozy Cove, or, The voyage of the Kipper", author_name: ["Old Adventure Author"], subject: ["Fiction", "Adventure"], first_publish_year: 1925 },
+        { ...fakeDoc(query, 7), key: "/works/k2-kindness-reader", title: "Kindness at the Park", author_name: ["K2 Author"], subject: ["Juvenile fiction", "Picture books", "Kindness", "Friendship", "Feelings"], first_publish_year: 2020 },
       ] }),
     };
   };
@@ -867,7 +884,7 @@ async function main() {
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile: kidsComfortProfile });
     const returnedTitles = result.rawItems.map((item) => String(item.title || ""));
     assertEqual(returnedTitles.includes("Kindness at the Park"), true, "kids age-shape should keep child-centered picture-book evidence");
-    assertEqual(returnedTitles.some((title) => /history of Detroit|social animal|Animal Farm|Lantern Archive|^Friends$/i.test(title)), false, "kids age-shape should reject adult/history/social/literary artifacts and generic no-age titles");
+    assertEqual(returnedTitles.some((title) => /history of Detroit|social animal|Animal Farm|Lantern Archive|^Friends$|Cozy Cove/i.test(title)), false, "kids age-shape should reject adult/history/social/literary artifacts and generic no-age titles");
     assertEqual(Boolean(result.diagnostics.dropReasons?.k2_age_shape_mismatch), true, "kids age-shape rejections should be diagnosed");
     assertEqual(Number(result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) > 0, true, "kids Open Library diagnostics should expose fetched document counts");
     assertEqual(Number(result.diagnostics.openLibraryDocsActuallyHandedToScoringCount || 0) > 0, true, "kids Open Library diagnostics should expose handed-to-scoring counts");

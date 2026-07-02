@@ -787,6 +787,9 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const addFallback = (query: string) => {
     if (queries.length < 5) add(query);
   };
+  if (/imagination|creative|creativity|curious|curiosity|drawing|art/.test(likedText)) add("imagination picture books");
+  if (/learning|songs?|music|school|letters|numbers/.test(likedText)) add("learning picture books");
+  if (/fantasy|magic|imagination|wonder/.test(likedText)) add("fantasy picture books");
   if (/cozy|gentle|calm/.test(likedText) && /adventure|wonder|magic/.test(likedText)) add("cozy adventure picture books");
   if (/science|curiosity|experiment|space|robots?|robotics|science_fiction|sci fi|animation/.test(likedText)) add("science fiction picture books");
   if (/science|curiosity|experiment|space|robots?|robotics|science_fiction|sci fi/.test(likedText)) add("science easy reader");
@@ -2122,10 +2125,13 @@ function hasKidsAgeShapeEvidence(doc: any, query: string, profile: TasteProfile)
   const queryText = String(query || "").toLowerCase();
   const hasKidsEvidence = /\b(picture books?|juvenile fiction|juvenile literature|children'?s stories|children'?s books?|easy readers?|early readers?|beginning readers?|beginner books?|read-aloud|read aloud|ages?\s*(?:4|5|6|7|8)|grades?\s*(?:k|1|2)|kindergarten|preschool)\b/.test(text);
   const queryIsKidsAnchored = /\b(picture books?|early reader|easy reader|beginning reader|children)\b/.test(queryText);
-  const hasKidFriendlyShape = /\b(friendship|friends?|feelings?|kindness|calm|gentle|cozy|growing up|family|school|animals?|adventure|humou?r|funny|bedtime|empathy|science|curiosity|robots?|space|imagination|creativity|fairy tale|clever)\b/.test(text);
+  const hasKidFriendlyShape = /\b(friendship|friends?|feelings?|kindness|calm|gentle|cozy|growing up|family|school|animals?|adventure|humou?r|funny|bedtime|empathy|science|curiosity|curious|robots?|space|imagination|creative|creativity|fantasy|magic|learning|songs?|music|drawing|art|fairy tale|clever)\b/.test(text);
   const adultOrReferenceShape = /\b(adult|history of|politics|sociology|psychology|nineteen eighty-four|animal farm|dystopian|signed|cloth|archive|archives|literary criticism|reference|bibliograph|manual|handbook|university|college)\b/.test(text);
-  const genericNoAgeTitle = /^(?:the )?(?:friends|lantern archive|the lantern archive)$/i.test(String(doc?.title || "").trim());
-  if (!hasKidsEvidence && genericNoAgeTitle) return false;
+  const titleText = String(doc?.title || "").trim().toLowerCase();
+  const genericNoAgeTitle = /^(?:the )?(?:friends|lantern archive|the lantern archive)$/i.test(titleText);
+  const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
+  const oldGenericAdventureTitle = firstPublishYear > 0 && firstPublishYear < 1980 && /\b(treasure|voyage|cove|ship|sail|island|adventure)\b/.test(titleText);
+  if (!hasKidsEvidence && (genericNoAgeTitle || oldGenericAdventureTitle)) return false;
   if (hasKidsEvidence && !/\b(nineteen eighty-four|animal farm|adult)\b/.test(text)) return true;
   if (queryIsKidsAnchored && hasKidFriendlyShape && !adultOrReferenceShape) return true;
   return false;
