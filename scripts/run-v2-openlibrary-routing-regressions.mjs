@@ -765,6 +765,23 @@ async function main() {
   assertEqual(kidsLearningImaginationPlans.slice(0, 3).some((plan) => /early reader friends|picture friends kindness/i.test(plan.query)), false, "kids learning/imagination profile should not let friendship fallbacks dominate the first K-2 queries");
   console.log(JSON.stringify({ name: "kids learning imagination profile personalizes away from repetitive friends pool", pass: true, queries: kidsLearningImaginationPlans.map((plan) => plan.query) }));
 
+  const kidsMischiefImaginationProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "No, David!", genres: ["humor", "juvenile fiction"], tags: ["book", "younger", "humor", "mischief", "family", "big feelings", "simple", "picture book", "children", "k2", "juvenile fiction"], format: "book" },
+      { action: "like", title: "Not a Box", genres: ["Imagination", "juvenile fiction"], tags: ["children", "k2", "picture_book", "juvenile fiction"], format: "book" },
+      { action: "dislike", title: "Paddington 2", genres: ["Family / Comedy", "comedy"], themes: ["family"], tags: ["children", "k2", "movie", "family", "comedy"], format: "book" },
+    ],
+  });
+  const kidsMischiefExpansionPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, {
+    ...kidsMischiefImaginationProfile,
+    diagnostics: { ...kidsMischiefImaginationProfile.diagnostics, forceKidsCleanCandidateShortfallExpansion: true },
+  }, kidsProfile);
+  assertEqual(kidsMischiefExpansionPlans[0]?.routingReason, "k2_clean_candidate_shortfall_semantic_expansion", "kids clean shortfall expansion should use semantic K-2 expansion routing");
+  assertEqual(kidsMischiefExpansionPlans.some((plan) => /mischief|big feelings|simple funny|imaginative|pretend play/i.test(plan.query)), true, "kids clean shortfall expansion should use taste-derived semantic queries");
+  assertEqual(kidsMischiefExpansionPlans.some((plan) => /picture friends kindness|gentle picture|picture calm|easy reader$/i.test(plan.query)), false, "kids clean shortfall expansion should avoid generic picture-book/friends fallback queries");
+  console.log(JSON.stringify({ name: "kids clean shortfall expansion uses semantic taste queries", pass: true, queries: kidsMischiefExpansionPlans.map((plan) => plan.query) }));
+
   const ageBandIsolationCases = [
     {
       name: "adult Open Library lane isolation",
