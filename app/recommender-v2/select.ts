@@ -948,6 +948,7 @@ function isMiddleGradesCleanFinalCandidate(candidate: ScoredCandidate): boolean 
 function applyMiddleGradesCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
   if (profile.ageBand !== "preteens" || selected.length === 0) return;
   if (rankedCandidates.some((candidate) => candidate.diagnostics?.meaningfulTasteRecovery || candidate.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery")) return;
+  if (!rankedCandidates.some(isMiddleGradesCleanExpansionCandidate)) return;
   const target = Math.min(5, limit);
   if (target <= 0) return;
   const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
@@ -956,7 +957,6 @@ function applyMiddleGradesCleanFinalTopUp(rankedCandidates: ScoredCandidate[], s
   const cleanPool = rankedCandidates
     .filter((candidate) => {
       if (selected.includes(candidate)) return false;
-      if (!isMiddleGradesCleanExpansionCandidate(candidate)) return false;
       if (!isMiddleGradesCleanFinalCandidate(candidate)) return false;
       if (candidate.maturityBand && String(candidate.maturityBand) !== profile.maturityBand) return false;
       if (rejectReason(candidate, profile)) return false;

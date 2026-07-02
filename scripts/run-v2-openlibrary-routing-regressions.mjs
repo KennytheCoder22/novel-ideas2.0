@@ -2303,11 +2303,13 @@ async function main() {
       diagnostics: { queryText: "editorial fallback", queryFamily: "fallback", routingReason: "editorial" },
       scoreBreakdown: { sourceQualityRelevance: 1, ageTeenSuitability: 1, genreFacetMatch: 0, positiveTasteMatch: 0 },
     }),
-    cleanTasteCandidate("Clean Taste Five", 20, "middle grade fantasy quest", true),
+    cleanTasteCandidate("Clean Taste Five", 20, "middle grade fantasy quest"),
+    cleanTasteCandidate("Expansion Probe", 1, "middle grade fantasy quest", true),
   ], middleGradesStrongFallbackPreservationProfile, 5);
   assertEqual(middleGradesCleanTopUpResult.selected.length, 5, "middle grades clean top-up should preserve a five-item slate");
   assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Non Clean Editorial Fallback"), false, "non-clean selected rows should be replaced when a clean taste-matched candidate is available");
-  assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Clean Taste Five"), true, "next-best clean taste-matched candidate should top up the final slate");
+  assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Clean Taste Five"), true, "next-best clean taste-matched candidate should top up the final slate after expansion opens the clean-pool retry");
+  assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Expansion Probe"), false, "clean top-up should use the best clean candidate rather than requiring the replacement itself to come from expansion");
   assertEqual(middleGradesCleanTopUpResult.rejectedReasons.finalEligibilityCleanCandidateCount, 5, "lock-quality diagnostics should report five clean final candidates after top-up");
   console.log(JSON.stringify({ name: "middle grades clean final top-up reaches five taste-matched recommendations", pass: true, selected: middleGradesCleanTopUpResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesCleanTopUpResult.rejectedReasons }));
 
