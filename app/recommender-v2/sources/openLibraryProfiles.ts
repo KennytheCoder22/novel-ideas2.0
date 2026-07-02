@@ -77,11 +77,12 @@ export const OPEN_LIBRARY_AGE_PROFILES: Record<AgeBandV2, OpenLibraryAgeProfile>
     ...BASE_OPEN_LIBRARY_PROFILE,
     key: "middleGrades",
     ageBand: "preteens",
-    behaviorLabel: "middle_grades_openlibrary_profile_pending",
+    behaviorLabel: "middle_grades_openlibrary_locked_baseline",
     queryLimit: 14,
     perQueryTimeoutMs: 7_500,
     diagnosticProbeQuery: "middle grade fantasy",
     ageSpecificArtifactReasonLabels: MIDDLE_GRADES_ARTIFACT_REASON_LABELS,
+    lockedBaseline: true,
   },
   kids: {
     ...BASE_OPEN_LIBRARY_PROFILE,

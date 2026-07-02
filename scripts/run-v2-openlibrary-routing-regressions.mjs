@@ -127,8 +127,8 @@ async function main() {
   assertEqual(adultProfile.lockedBaseline, true, "adult Open Library profile should be locked");
   assertEqual(adultProfile.behaviorLabel, "adult_openlibrary_locked_baseline", "adult Open Library profile should expose locked label");
   const middleGradesProfile = openLibraryProfileForAgeBand("preteens");
-  assertEqual(middleGradesProfile.lockedBaseline, false, "middle grades Open Library profile should remain unlocked while under review");
-  assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_profile_pending", "middle grades Open Library profile should expose pending label");
+  assertEqual(middleGradesProfile.lockedBaseline, true, "middle grades Open Library profile should now be locked");
+  assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_locked_baseline", "middle grades Open Library profile should expose locked label");
   const teenProfile = openLibraryProfileForAgeBand("teens");
 
   const queryOnlyTasteProfile = buildTasteProfile({
@@ -493,7 +493,7 @@ async function main() {
     const profile = buildTasteProfile({ ageBand: "preteens", signals: testCase.signals });
     const summary = summarizePlans(buildOpenLibraryQueryPlansForRegression(sourcePlan, profile, middleGradesProfile));
     assertEqual(summary.dominance.openLibraryPlanner, "middle_grades_profile_candidate", `${testCase.name} should use middle grades candidate planner`);
-    assertEqual(summary.dominance.lockedBaseline, false, `${testCase.name} should remain unlocked`);
+    assertEqual(summary.dominance.lockedBaseline, true, `${testCase.name} should use locked middle grades baseline`);
     assertEqual(summary.reason, testCase.expectedReason, `${testCase.name} routing reason`);
     for (const expectedQuery of testCase.expectedQueries) {
       assertEqual(summary.queries.includes(expectedQuery), true, `${testCase.name} should retain ${expectedQuery}`);
@@ -1415,7 +1415,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(middleGradesProxyFetchUrls[0].startsWith("https://proxy.example.test/api/openlibrary?"), true, "configured proxy base should route middle grades Open Library fetches through proxy");
-    assertEqual(result.diagnostics.openLibraryProfileLabel, "middle_grades_openlibrary_profile_pending", "middle grades profile label should remain pending/unlocked");
+    assertEqual(result.diagnostics.openLibraryProfileLabel, "middle_grades_openlibrary_locked_baseline", "middle grades profile label should be locked");
     assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "middle grades fetch diagnostics should mark configured proxy path");
     assertEqual(result.diagnostics.fetches?.[0]?.proxyRetryWindowEnabled, true, "middle grades proxy fetch should use proxy retry client window");
     assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs <= 4500, true, "middle grades targeted fetch should reserve source budget for additional planned queries");
