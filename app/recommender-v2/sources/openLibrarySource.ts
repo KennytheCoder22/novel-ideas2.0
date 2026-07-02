@@ -784,10 +784,14 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   };
   if (/feelings?|kindness|calm|gentle|empathy|emotional|warm/.test(positiveText)) add("picture books feelings kindness");
   if (/friendship|friends?|growing up|growing_up|lessons?|school/.test(positiveText)) add("early reader friends");
+  if (/friendship|friends?|belonging|kindness/.test(positiveText)) add("picture book friends kindness");
+  if (/calm|gentle|cozy|bedtime|kindness|feelings?/.test(positiveText)) add("gentle picture books");
   if (/calm|gentle|bedtime|kindness|feelings?/.test(positiveText)) add("picture books calm friendship");
+  if (/bear|bears|toy|toys/.test(positiveText)) add("bear friendship picture book");
   if (/humou?r|funny|comedy|playful|silly/.test(positiveText)) add("funny picture books");
   if (/adventure|wonder|fantasy|magic|animals?/.test(positiveText) && !/mystery|scary|frightening/.test(avoidText)) add("children picture book adventure");
   if (/growing up|growing_up|family|friendship|lessons?/.test(positiveText)) add("beginning reader growing up");
+  add("easy reader friendship");
   add(ageProfile.diagnosticProbeQuery);
   const uniqueQueries = uniqueStrings(queries, ageProfile.queryLimit);
   return uniqueQueries.map((query, index) => ({
@@ -4581,9 +4585,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         openLibraryTopUpTarget: ageProfile.minCleanDocs,
         openLibraryFallbackQueriesExhausted: rawItems.length < ageProfile.minCleanDocs && mainFetches.length >= queryPlans.length,
         usableRowsAfterFiltering: openLibraryScoringHandoffItems.length,
-        openLibraryDocsFetchedAcrossAllQueriesCount: ageProfile.key === "middleGrades" ? rawApiResultCount : undefined,
-        openLibraryDocsEligibleForScoringCount: ageProfile.key === "middleGrades" ? openLibraryScoringHandoffEligiblePool.length : undefined,
-        openLibraryDocsActuallyHandedToScoringCount: ageProfile.key === "middleGrades" ? openLibraryScoringHandoffItems.length : undefined,
+        openLibraryDocsFetchedAcrossAllQueriesCount: rawApiResultCount,
+        openLibraryDocsEligibleForScoringCount: openLibraryScoringHandoffEligiblePool.length,
+        openLibraryDocsActuallyHandedToScoringCount: openLibraryScoringHandoffItems.length,
         openLibraryScoringHandoffLimitedToSourceFinal,
         openLibraryScoringHandoffSuppressedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(openLibraryScoringHandoffSuppressedTitles, 50) : undefined,
         openLibraryScoringHandoffSource,

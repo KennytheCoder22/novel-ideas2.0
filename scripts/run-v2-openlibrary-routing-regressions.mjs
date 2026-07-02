@@ -837,7 +837,9 @@ async function main() {
     assertEqual(returnedTitles.includes("Kindness at the Park"), true, "kids age-shape should keep child-centered picture-book evidence");
     assertEqual(returnedTitles.some((title) => /history of Detroit|social animal|Animal Farm/i.test(title)), false, "kids age-shape should reject adult/history/social/literary artifacts");
     assertEqual(Boolean(result.diagnostics.dropReasons?.k2_age_shape_mismatch), true, "kids age-shape rejections should be diagnosed");
-    console.log(JSON.stringify({ name: "kids age-shape rejects adult artifacts and keeps picture books", pass: true, fetchCalls: kidsAgeShapeFetchCalls, returnedTitles, dropReasons: result.diagnostics.dropReasons }));
+    assertEqual(Number(result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) > 0, true, "kids Open Library diagnostics should expose fetched document counts");
+    assertEqual(Number(result.diagnostics.openLibraryDocsActuallyHandedToScoringCount || 0) > 0, true, "kids Open Library diagnostics should expose handed-to-scoring counts");
+    console.log(JSON.stringify({ name: "kids age-shape rejects adult artifacts and keeps picture books", pass: true, fetchCalls: kidsAgeShapeFetchCalls, returnedTitles, dropReasons: result.diagnostics.dropReasons, handoff: { fetched: result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount, handedToScoring: result.diagnostics.openLibraryDocsActuallyHandedToScoringCount } }));
   } finally {
     globalThis.fetch = originalFetch;
   }
