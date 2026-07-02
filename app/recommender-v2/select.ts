@@ -1708,6 +1708,47 @@ function kidsTasteScore(candidate: ScoredCandidate): number {
   ) * 1000) / 1000;
 }
 
+function kidsDistinctiveTasteSignals(candidate: ScoredCandidate): string[] {
+  const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
+  return matchedSignals
+    .filter((signal) => !/^avoidSignalPenalty:/i.test(signal))
+    .map((signal) => normalized(signal.replace(/^[^:]+:/, "")))
+    .filter((signal) => signal && !/^(book|books|story|stories|children|juvenile fiction|picture|picture book|picture books|friendship|friends|fantasy|adventure|early reader|reader)$/.test(signal));
+}
+
+function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
+  if (candidate.score <= 0 || isKidsSuspiciousSelectionCandidate(candidate) || kidsTasteScore(candidate) <= 0) return false;
+  if (kidsDistinctiveTasteSignals(candidate).length > 0) return true;
+  return /k2_clean_candidate_shortfall_semantic_expansion/i.test(String(candidate.diagnostics?.routingReason || ""));
+}
+
+function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
+  if (profile.ageBand !== "kids") return;
+  const target = Math.min(5, limit);
+  if (target <= 0) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const cleanPool = rankedCandidates
+    .filter((candidate) => !selected.includes(candidate))
+    .filter(isKidsCleanFinalCandidate)
+    .filter((candidate) => !rejectReason(candidate, profile))
+    .filter((candidate) => !selectedTitles().has(normalized(candidate.title)))
+    .sort((a, b) => kidsDistinctiveTasteSignals(b).length - kidsDistinctiveTasteSignals(a).length || kidsTasteScore(b) - kidsTasteScore(a) || b.score - a.score);
+  for (const candidate of cleanPool) {
+    const cleanCount = selected.filter(isKidsCleanFinalCandidate).length;
+    if (cleanCount >= target) break;
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index, clean: isKidsCleanFinalCandidate(row), taste: kidsTasteScore(row), distinctive: kidsDistinctiveTasteSignals(row).length }))
+      .filter(({ clean }) => !clean)
+      .sort((a, b) => a.distinctive - b.distinctive || a.taste - b.taste || a.row.score - b.row.score)[0]?.index;
+    if (replacementIndex === undefined) break;
+    const replaced = selected[replacementIndex];
+    replaced.rejectedReasons.push("k2_clean_final_top_up_replaced_broad_candidate");
+    candidate.rejectedReasons.push("k2_clean_final_top_up_selected_distinctive_candidate");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.k2_clean_final_top_up_replacements = Number(rejectedReasons.k2_clean_final_top_up_replacements || 0) + 1;
+  }
+}
+
 function kidsQualityAuditRow(candidate: ScoredCandidate, selectedTitles: Set<string>, label = "candidate"): Record<string, unknown> {
   const breakdown = candidate.scoreBreakdown || {};
   const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
@@ -1750,6 +1791,8 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
     finalScoreComponentsByTitle[candidate.title] = {
       ...candidate.scoreBreakdown,
       tasteScore,
+      distinctiveTasteSignalCount: kidsDistinctiveTasteSignals(candidate).length,
+      cleanFinalEligible: isKidsCleanFinalCandidate(candidate) ? 1 : 0,
       finalScore: candidate.score,
     };
     finalSelectionReasonByTitle[candidate.title] = selectedTitles.has(normalized(candidate.title))
@@ -1763,7 +1806,7 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
     .filter((candidate) => kidsTasteScore(candidate) > 0 || (Array.isArray(candidate.matchedSignals) && candidate.matchedSignals.some((signal) => !/^avoidSignalPenalty:/i.test(String(signal)))))
     .map((candidate) => candidate.title);
   const finalEligibilityAcceptedTitles = selected
-    .filter((candidate) => candidate.score > 0 && kidsTasteScore(candidate) > 0 && !isKidsSuspiciousSelectionCandidate(candidate))
+    .filter(isKidsCleanFinalCandidate)
     .map((candidate) => candidate.title);
   const selectedSuspiciousTitles = selected.filter(isKidsSuspiciousSelectionCandidate).map((candidate) => candidate.title);
   const lockQualityFailReasons: string[] = [];
@@ -2084,6 +2127,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   applyMiddleGradesFinalReturnedRootCollapseAndRecovery(rankedCandidates, selected, rejectedReasons, profile, limit);
   applyMiddleGradesMeaningfulTasteFinalGate(selected, rejectedReasons, profile);
   applyMiddleGradesCleanFinalTopUp(rankedCandidates, selected, rejectedReasons, profile, limit);
+  applyKidsCleanFinalTopUp(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);

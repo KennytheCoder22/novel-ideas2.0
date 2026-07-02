@@ -77,6 +77,7 @@ function fakeScoredCandidate(overrides = {}) {
     genres: overrides.genres || ["Fantasy"],
     themes: overrides.themes || ["Romance"],
     score: overrides.score ?? 8,
+    matchedSignals: overrides.matchedSignals || [],
     scoreBreakdown: overrides.scoreBreakdown || { sourceQualityRelevance: 2, ageTeenSuitability: 1 },
     diagnostics: overrides.diagnostics || { queryText: "young adult contemporary fantasy", queryFamily: "fantasy_romance", routingReason: "dominant_contemporary_romance_fantasy" },
     rejectedReasons: [],
@@ -765,6 +766,20 @@ async function main() {
   assertEqual(kidsLearningImaginationPlans.slice(0, 3).some((plan) => /early reader friends|picture friends kindness/i.test(plan.query)), false, "kids learning/imagination profile should not let friendship fallbacks dominate the first K-2 queries");
   console.log(JSON.stringify({ name: "kids learning imagination profile personalizes away from repetitive friends pool", pass: true, queries: kidsLearningImaginationPlans.map((plan) => plan.query) }));
 
+  const kidsHelpingHeroicProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Winnie the Pooh (2011)", genres: ["Illustrated / Family", "animation"], themes: ["family"], tags: ["children", "k2", "movie", "animation", "family"], format: "book" },
+      { action: "like", title: "Paw Patrol", genres: ["Helping / Teamwork / Courage"], tones: ["uplifting"], themes: ["kindness", "teamwork", "courage"], tags: ["children", "k2", "tv", "kindness", "teamwork", "courage", "uplifting", "heroic"], format: "book" },
+      { action: "dislike", title: "The Day the Crayons Quit", genres: ["humor", "middle grade fiction"], tones: ["quirky"], tags: ["book", "older", "humor", "creative", "personified objects", "school", "quirky", "children", "k2"], format: "book" },
+    ],
+  });
+  const kidsHelpingHeroicPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsHelpingHeroicProfile, kidsProfile);
+  assertEqual(kidsHelpingHeroicPlans[0]?.query, "teamwork picture", "kids helping/heroic profile should lead with teamwork, not recycled imagination/friends queries");
+  assertEqual(kidsHelpingHeroicPlans.some((plan) => /helping picture|brave picture/i.test(plan.query)), true, "kids helping/heroic profile should include helping/bravery semantic queries");
+  assertEqual(kidsHelpingHeroicPlans.slice(0, 3).some((plan) => /imagination picture|science fiction picture|early reader friends/i.test(plan.query)), false, "kids helping/heroic profile should not lead with unrelated recycled query families");
+  console.log(JSON.stringify({ name: "kids helping heroic profile personalizes away from recycled friends pool", pass: true, queries: kidsHelpingHeroicPlans.map((plan) => plan.query) }));
+
   const kidsMischiefImaginationProfile = buildTasteProfile({
     ageBand: "kids",
     signals: [
@@ -949,6 +964,32 @@ async function main() {
   assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.k2_suspicious_title_artifact, 1, "kids selection should diagnose suspicious generic title artifacts");
   assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, false, "kids diagnostics should fail lock quality when suspicious/no-taste titles cause underfill");
   console.log(JSON.stringify({ name: "kids selection restores scoring diagnostics and quality audit", pass: true, diagnostics: { finalClean: kidsSelectionDiagnosticsResult.rejectedReasons.finalEligibilityCleanCandidateCount, meaningfulTaste: kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles, lockQualityPass: kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, suspiciousArtifactRejects: kidsSelectionDiagnosticsResult.rejectedReasons.k2_suspicious_title_artifact } }));
+
+  const kidsCleanTopUpResult = selectRecommendations([
+    ...["Frog and Toad Together", "Thomas and Friends", "George and Martha", "Who Will Be My Friends?", "Harold's A B C"].map((title, index) => fakeScoredCandidate({
+      title,
+      maturityBand: "kids",
+      genres: ["Juvenile fiction"],
+      themes: ["Friendship"],
+      score: 10 - index * 0.1,
+      scoreBreakdown: { genreFacetMatch: 1, positiveTasteMatch: 1, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:friendship"],
+      diagnostics: { queryText: "early reader friends", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+    })),
+    fakeScoredCandidate({
+      title: "Teamwork Rescue Picture Book",
+      maturityBand: "kids",
+      genres: ["Picture books"],
+      themes: ["Teamwork", "Courage", "Kindness"],
+      score: 8,
+      scoreBreakdown: { genreFacetMatch: 1, positiveTasteMatch: 3, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:teamwork", "positiveTasteMatch:courage", "positiveTasteMatch:kindness"],
+      diagnostics: { queryText: "teamwork picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+    }),
+  ], kidsHelpingHeroicProfile, 5);
+  assertEqual(kidsCleanTopUpResult.selected.some((candidate) => candidate.title === "Teamwork Rescue Picture Book"), true, "kids clean final top-up should replace broad recycled friendship candidates with distinctive taste matches");
+  assertEqual(Number(kidsCleanTopUpResult.rejectedReasons.k2_clean_final_top_up_replacements || 0) > 0, true, "kids clean final top-up should diagnose broad-candidate replacement");
+  console.log(JSON.stringify({ name: "kids clean final top-up replaces broad recycled candidates", pass: true, selected: kidsCleanTopUpResult.selected.map((candidate) => candidate.title), replacements: kidsCleanTopUpResult.rejectedReasons.k2_clean_final_top_up_replacements }));
 
   const middleGradesAgeShapeFetchCalls = [];
   globalThis.fetch = async (url) => {
