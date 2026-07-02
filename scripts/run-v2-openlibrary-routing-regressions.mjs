@@ -127,8 +127,8 @@ async function main() {
   assertEqual(adultProfile.lockedBaseline, true, "adult Open Library profile should be locked");
   assertEqual(adultProfile.behaviorLabel, "adult_openlibrary_locked_baseline", "adult Open Library profile should expose locked label");
   const middleGradesProfile = openLibraryProfileForAgeBand("preteens");
-  assertEqual(middleGradesProfile.lockedBaseline, false, "middle grades Open Library profile should remain unlocked while under review");
-  assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_profile_pending", "middle grades Open Library profile should expose pending label");
+  assertEqual(middleGradesProfile.lockedBaseline, true, "middle grades Open Library profile should now be locked");
+  assertEqual(middleGradesProfile.behaviorLabel, "middle_grades_openlibrary_locked_baseline", "middle grades Open Library profile should expose locked label");
   const teenProfile = openLibraryProfileForAgeBand("teens");
 
   const queryOnlyTasteProfile = buildTasteProfile({
@@ -323,6 +323,21 @@ async function main() {
   const genericOnlySelection = selectRecommendations([genericOnlyScored], genericOnlyTasteProfile, 1);
   assertEqual(Array.isArray(genericOnlySelection.rejectedReasons.genericOnlyTasteMatchTitles) && genericOnlySelection.rejectedReasons.genericOnlyTasteMatchTitles.includes("Generic Container Match"), true, "generic-only taste match titles should be diagnosed during selection");
   console.log(JSON.stringify({ name: "middle grades generic container terms do not score as taste evidence", pass: true, removed: genericOnlyScored.diagnostics.genericTasteSignalsRemoved, penalty: genericOnlyScored.scoreBreakdown.genericOnlyTasteMatchPenalty }));
+
+  const middleGradesSharedDislikeProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Diary of a Wimpy Kid", tags: ["comedy", "school", "friendship", "coming of age", "illustrated", "series"], format: "book" },
+      { action: "like", title: "Subway Surfers", tags: ["game", "fast-paced", "playful", "runaway", "chase"], format: "book" },
+      { action: "dislike", title: "Rocket League", tags: ["game", "friendship", "fast-paced", "vehicles", "playful"], genres: ["Friendship / Vehicles"], format: "book" },
+    ],
+  });
+  const sharedAvoidValues = middleGradesSharedDislikeProfile.avoidSignals.map((signal) => signal.value);
+  assertEqual(sharedAvoidValues.includes("friendship"), false, "middle grades dislikes should not avoid friendship when likes also contain friendship");
+  assertEqual(sharedAvoidValues.includes("playful"), false, "middle grades dislikes should not avoid playful when likes also contain playful");
+  assertEqual(sharedAvoidValues.includes("fast-paced"), false, "middle grades dislikes should not avoid shared pacing signals");
+  assertEqual(sharedAvoidValues.includes("vehicles"), true, "middle grades dislikes should keep distinctive avoid evidence such as vehicles");
+  console.log(JSON.stringify({ name: "middle grades dislikes preserve shared positive taste signals", pass: true, avoidSignals: sharedAvoidValues }));
   assertEqual(teenProfile.lockedBaseline, true, "teen Open Library profile should remain locked");
   assertEqual(teenProfile.behaviorLabel, "teen_openlibrary_locked_baseline", "teen Open Library profile should expose locked label");
   const kidsProfile = openLibraryProfileForAgeBand("kids");
@@ -478,7 +493,7 @@ async function main() {
     const profile = buildTasteProfile({ ageBand: "preteens", signals: testCase.signals });
     const summary = summarizePlans(buildOpenLibraryQueryPlansForRegression(sourcePlan, profile, middleGradesProfile));
     assertEqual(summary.dominance.openLibraryPlanner, "middle_grades_profile_candidate", `${testCase.name} should use middle grades candidate planner`);
-    assertEqual(summary.dominance.lockedBaseline, false, `${testCase.name} should remain unlocked`);
+    assertEqual(summary.dominance.lockedBaseline, true, `${testCase.name} should use locked middle grades baseline`);
     assertEqual(summary.reason, testCase.expectedReason, `${testCase.name} routing reason`);
     for (const expectedQuery of testCase.expectedQueries) {
       assertEqual(summary.queries.includes(expectedQuery), true, `${testCase.name} should retain ${expectedQuery}`);
@@ -689,6 +704,51 @@ async function main() {
     globalThis.fetch = originalFetch;
   }
 
+  const kidsComfortProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Mister Rogers’ Neighborhood", genres: ["Feelings / Kindness / Calm", "feelings", "kindness", "calm"], tags: ["children", "k2", "tv", "feelings", "kindness", "calm", "series"], format: "book" },
+      { action: "like", title: "Franklin", genres: ["Friendship / Growing Up / Lessons", "growing_up"], themes: ["friendship"], tags: ["children", "k2", "tv", "friendship", "growing_up", "series"], format: "book" },
+      { action: "dislike", title: "Paw Patrol", genres: ["Helping / Teamwork / Courage"], themes: ["kindness", "teamwork", "courage"], tones: ["uplifting"], tags: ["children", "k2", "tv", "kindness", "teamwork", "courage", "uplifting", "heroic"], format: "book" },
+    ],
+  });
+  const kidsComfortPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsComfortProfile, kidsProfile);
+  assertEqual(kidsComfortPlans[0]?.routingReason, "k2_openlibrary_picture_early_reader", "kids comfort profile should use K-2 picture/early-reader routing");
+  assertEqual(kidsComfortPlans.some((plan) => /picture.*feelings.*kindness/i.test(plan.query)), true, "kids comfort profile should search picture-book feelings/kindness shapes");
+  assertEqual(kidsComfortPlans.some((plan) => /early reader.*friends/i.test(plan.query)), true, "kids comfort profile should search early-reader friends shapes");
+  assertEqual(kidsComfortPlans.some((plan) => /animals mystery|mystery$/i.test(plan.query)), false, "kids comfort profile should not let skip-only animal mystery drive the first K-2 plan");
+  console.log(JSON.stringify({ name: "kids comfort profile uses picture-book and early-reader queries", pass: true, queries: kidsComfortPlans.map((plan) => plan.query) }));
+
+  const kidsScienceHumorProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "StoryBots", genres: ["Science / Curiosity / Humor", "science_fiction", "humor"], tags: ["children", "k2", "tv", "science_fiction", "humor", "series"], format: "book" },
+      { action: "like", title: "The True Story of the 3 Little Pigs", genres: ["humor", "middle grade fiction"], tags: ["book", "older", "humor", "unreliable narrator", "twist", "fairy tale", "clever", "picture book", "children", "k2"], format: "book" },
+      { action: "dislike", title: "Chicka Chicka Boom Boom", genres: ["Alphabet / Rhyming"], tags: ["book", "younger", "alphabet", "rhythm", "letters", "playful", "repetition"], format: "book" },
+    ],
+  });
+  const kidsScienceHumorPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsScienceHumorProfile, kidsProfile);
+  assertEqual(kidsScienceHumorPlans.some((plan) => /science.*picture|science.*easy reader/i.test(plan.query)), true, "kids science/humor profile should search science picture-book or easy-reader shapes");
+  assertEqual(kidsScienceHumorPlans.some((plan) => /fractured.*fairy|funny.*fairy|clever.*picture/i.test(plan.query)), true, "kids clever fairy-tale humor profile should search fractured/funny picture-book shapes");
+  assertEqual(kidsScienceHumorPlans.some((plan) => /alphabet|rhym/i.test(plan.query)), false, "kids disliked alphabet/rhyming signals should not drive K-2 query plans");
+  console.log(JSON.stringify({ name: "kids science humor profile expands K-2 query pool", pass: true, queries: kidsScienceHumorPlans.map((plan) => plan.query) }));
+
+  const kidsCozyScifiProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Disney Dreamlight Valley", genres: ["Cozy / Adventure", "adventure"], tags: ["game", "children", "k2", "cozy", "adventure"], format: "book" },
+      { action: "like", title: "WALL·E", genres: ["Illustrated / Sci-Fi", "animation", "science_fiction"], tags: ["children", "k2", "movie", "animation", "science_fiction"], format: "book" },
+      { action: "dislike", title: "Scribblenauts Unlimited", genres: ["Puzzle / Creativity"], tags: ["game", "children", "k2"], format: "book" },
+      { action: "skip", title: "I Want My Hat Back", genres: ["Dry Humor"], tags: ["book", "older", "humor", "picture book"], format: "book" },
+    ],
+  });
+  const kidsCozyScifiPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsCozyScifiProfile, kidsProfile);
+  assertEqual(kidsCozyScifiPlans[0]?.query, "cozy adventure picture", "kids cozy sci-fi profile should start with liked cozy adventure instead of static friends/kindness queries");
+  assertEqual(kidsCozyScifiPlans.some((plan) => /science fiction picture|science easy reader|robot picture/i.test(plan.query)), true, "kids cozy sci-fi profile should include sci-fi/robot picture-book or reader queries");
+  assertEqual(kidsCozyScifiPlans.slice(0, 4).some((plan) => /feelings kindness|early reader friends|picture friends kindness/i.test(plan.query)), false, "kids cozy sci-fi profile should not lead with unrelated static comfort/friends queries");
+  assertEqual(JSON.stringify(kidsCozyScifiPlans.slice(0, 4).map((plan) => plan.query)) === JSON.stringify(kidsComfortPlans.slice(0, 4).map((plan) => plan.query)), false, "different kids swipe profiles should produce different leading K-2 query families");
+  console.log(JSON.stringify({ name: "kids cozy sci-fi profile avoids static K-2 query families", pass: true, queries: kidsCozyScifiPlans.map((plan) => plan.query) }));
+
   const ageBandIsolationCases = [
     {
       name: "adult Open Library lane isolation",
@@ -732,7 +792,7 @@ async function main() {
         { action: "like", title: "Read Aloud", genres: ["humor"], themes: ["friendship"], format: "book" },
       ],
       expectedAgeProfile: "k2",
-      expectedPlanner: "generic_pending_profile",
+      expectedPlanner: "k2_profile_candidate",
       subjects: ["Juvenile fiction", "Children's stories", "Easy readers", "Animals"],
       titlePrefix: "Kids Lane",
     },
@@ -785,6 +845,76 @@ async function main() {
       globalThis.fetch = originalFetch;
     }
   }
+
+  const kidsAgeShapeFetchCalls = [];
+  globalThis.fetch = async (url) => {
+    const query = new URL(String(url)).searchParams.get("q") || "";
+    kidsAgeShapeFetchCalls.push(query);
+    return {
+      ok: true,
+      status: 200,
+      text: async () => JSON.stringify({ docs: [
+        { ...fakeDoc(query, 1), key: "/works/k2-history-detroit", title: "The history of Detroit and Michigan", author_name: ["Adult Historian"], subject: ["History", "Michigan", "Detroit", "Reference"], first_publish_year: 1912 },
+        { ...fakeDoc(query, 2), key: "/works/k2-social-animal", title: "The social animal", author_name: ["Adult Sociologist"], subject: ["Psychology", "Sociology", "Adult"], first_publish_year: 1998 },
+        { ...fakeDoc(query, 3), key: "/works/k2-animal-farm", title: "Animal Farm / Nineteen Eighty-Four", author_name: ["George Orwell"], subject: ["Dystopian", "Political fiction", "Adult"], first_publish_year: 1945 },
+        { ...fakeDoc(query, 4), key: "/works/k2-lantern-archive", title: "The Lantern Archive", author_name: ["Archive Author"], subject: ["Fiction", "Archive", "Reference"], first_publish_year: 2004 },
+        { ...fakeDoc(query, 5), key: "/works/k2-generic-friends", title: "Friends", author_name: ["Generic Author"], subject: ["Fiction", "Friendship"], first_publish_year: 2005 },
+        { ...fakeDoc(query, 6), key: "/works/k2-kindness-reader", title: "Kindness at the Park", author_name: ["K2 Author"], subject: ["Juvenile fiction", "Picture books", "Kindness", "Friendship", "Feelings"], first_publish_year: 2020 },
+      ] }),
+    };
+  };
+  try {
+    const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile: kidsComfortProfile });
+    const returnedTitles = result.rawItems.map((item) => String(item.title || ""));
+    assertEqual(returnedTitles.includes("Kindness at the Park"), true, "kids age-shape should keep child-centered picture-book evidence");
+    assertEqual(returnedTitles.some((title) => /history of Detroit|social animal|Animal Farm|Lantern Archive|^Friends$/i.test(title)), false, "kids age-shape should reject adult/history/social/literary artifacts and generic no-age titles");
+    assertEqual(Boolean(result.diagnostics.dropReasons?.k2_age_shape_mismatch), true, "kids age-shape rejections should be diagnosed");
+    assertEqual(Number(result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) > 0, true, "kids Open Library diagnostics should expose fetched document counts");
+    assertEqual(Number(result.diagnostics.openLibraryDocsActuallyHandedToScoringCount || 0) > 0, true, "kids Open Library diagnostics should expose handed-to-scoring counts");
+    console.log(JSON.stringify({ name: "kids age-shape rejects adult artifacts and keeps picture books", pass: true, fetchCalls: kidsAgeShapeFetchCalls, returnedTitles, dropReasons: result.diagnostics.dropReasons, handoff: { fetched: result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount, handedToScoring: result.diagnostics.openLibraryDocsActuallyHandedToScoringCount } }));
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  const kidsSelectionDiagnosticsResult = selectRecommendations([
+    fakeScoredCandidate({
+      title: "Funny Science Readers",
+      maturityBand: "kids",
+      genres: ["Juvenile fiction"],
+      themes: ["Science", "Humor"],
+      score: 10,
+      scoreBreakdown: { genreFacetMatch: 2, positiveTasteMatch: 2, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:science", "positiveTasteMatch:humor"],
+      diagnostics: { queryText: "funny science picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+    }),
+    fakeScoredCandidate({
+      title: "Clever Pig Tales",
+      maturityBand: "kids",
+      genres: ["Picture books"],
+      themes: ["Fairy tale", "Humor"],
+      score: 9,
+      scoreBreakdown: { genreFacetMatch: 1.5, positiveTasteMatch: 2, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:fairy tale", "positiveTasteMatch:humor"],
+      diagnostics: { queryText: "funny fairy tale picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+    }),
+    fakeScoredCandidate({
+      title: "The Lantern Archive",
+      maturityBand: "kids",
+      genres: ["Fiction"],
+      themes: ["Friendship"],
+      score: 8,
+      scoreBreakdown: { genreFacetMatch: 0, positiveTasteMatch: 0, sourceQualityRelevance: 0, ageKidsSuitability: 0 },
+      matchedSignals: [],
+      diagnostics: { queryText: "early reader friends", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+    }),
+  ], kidsScienceHumorProfile, 3);
+  assertEqual(Array.isArray(kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles), true, "kids selection diagnostics should expose meaningful taste titles");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles.includes("Funny Science Readers"), true, "kids selection diagnostics should list taste-matched candidates");
+  assertEqual(Array.isArray(kidsSelectionDiagnosticsResult.rejectedReasons.kidsReturnedItemQualityAudit), true, "kids selection diagnostics should expose returned item quality audit rows");
+  assertEqual(kidsSelectionDiagnosticsResult.selected.some((candidate) => candidate.title === "The Lantern Archive"), false, "kids selection should reject suspicious generic selected titles before final slate");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.k2_suspicious_title_artifact, 1, "kids selection should diagnose suspicious generic title artifacts");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, false, "kids diagnostics should fail lock quality when suspicious/no-taste titles cause underfill");
+  console.log(JSON.stringify({ name: "kids selection restores scoring diagnostics and quality audit", pass: true, diagnostics: { finalClean: kidsSelectionDiagnosticsResult.rejectedReasons.finalEligibilityCleanCandidateCount, meaningfulTaste: kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles, lockQualityPass: kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, suspiciousArtifactRejects: kidsSelectionDiagnosticsResult.rejectedReasons.k2_suspicious_title_artifact } }));
 
   const middleGradesAgeShapeFetchCalls = [];
   globalThis.fetch = async (url) => {
@@ -1400,7 +1530,7 @@ async function main() {
     });
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile });
     assertEqual(middleGradesProxyFetchUrls[0].startsWith("https://proxy.example.test/api/openlibrary?"), true, "configured proxy base should route middle grades Open Library fetches through proxy");
-    assertEqual(result.diagnostics.openLibraryProfileLabel, "middle_grades_openlibrary_profile_pending", "middle grades profile label should remain pending/unlocked");
+    assertEqual(result.diagnostics.openLibraryProfileLabel, "middle_grades_openlibrary_locked_baseline", "middle grades profile label should be locked");
     assertEqual(result.diagnostics.fetches?.[0]?.fetchPath, "proxy", "middle grades fetch diagnostics should mark configured proxy path");
     assertEqual(result.diagnostics.fetches?.[0]?.proxyRetryWindowEnabled, true, "middle grades proxy fetch should use proxy retry client window");
     assertEqual(result.diagnostics.fetches?.[0]?.clientTimeoutMs <= 4500, true, "middle grades targeted fetch should reserve source budget for additional planned queries");
@@ -2230,6 +2360,73 @@ async function main() {
   assertEqual(Boolean(teenSelectionResult.rejectedReasons.duplicate_title), true, "teen selection should record duplicate title rejection before safe underfill recovery");
   assertEqual(Boolean(teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_relaxed_diversity || teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_safe_candidate_accepted), true, "teen selection should emit teen-only Open Library underfill diagnostics");
   console.log(JSON.stringify({ name: "teen selection relaxes Open Library diversity underfill to five", pass: true, selected: teenSelectionResult.selected.length, rejectedReasons: teenSelectionResult.rejectedReasons }));
+
+  const middleGradesStrongFallbackPreservationProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Fantasy Quest", genres: ["fantasy", "adventure"], themes: ["friendship"], format: "book" },
+    ],
+  });
+  const middleGradesStrongFallbackPreservationResult = selectRecommendations([
+    fakeScoredCandidate({
+      id: "high-scoring-strong-generic-query",
+      title: "High Scoring Strong Generic Query",
+      score: 20,
+      maturityBand: "preteens",
+      description: "A funny fantasy adventure about friends on a quest.",
+      raw: { subject: ["Juvenile fiction", "Fantasy", "Adventure stories", "Friendship"] },
+      diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy", "adventure", "friendship"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 0, positiveTasteMatch: 2.5 },
+    }),
+    fakeScoredCandidate({
+      id: "lower-scoring-strong-evidence",
+      title: "Lower Scoring Strong Evidence",
+      score: 10,
+      maturityBand: "preteens",
+      description: "A fantasy adventure quest with friends.",
+      raw: { subject: ["Juvenile fiction", "Fantasy", "Adventure stories", "Friendship"] },
+      diagnostics: { queryText: "middle grade fantasy quest", queryFamily: "fantasy", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy", "adventure", "friendship"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 2, positiveTasteMatch: 2.5 },
+    }),
+  ], middleGradesStrongFallbackPreservationProfile, 1);
+  assertEqual(middleGradesStrongFallbackPreservationResult.selected[0]?.title, "High Scoring Strong Generic Query", "medium/strong evidence preference must not replace strong document-backed candidates solely because a generic query penalty is present");
+  assertEqual(middleGradesStrongFallbackPreservationResult.selected.some((candidate) => candidate.rejectedReasons.includes("middle_grades_weak_evidence_replaced_by_medium_strong_document_evidence")), false, "strong document-backed candidates should not receive weak-evidence replacement reasons");
+  console.log(JSON.stringify({ name: "middle grades medium/strong preference preserves strong document-backed generic-query winners", pass: true, selected: middleGradesStrongFallbackPreservationResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesStrongFallbackPreservationResult.rejectedReasons }));
+
+  const cleanTasteCandidate = (title, score, query = "middle grade survival adventure", expansion = false) => fakeScoredCandidate({
+    id: title.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+    title,
+    score,
+    maturityBand: "preteens",
+    description: "A fantasy survival adventure about friends on a dangerous quest.",
+    raw: { subject: ["Juvenile fiction", "Fantasy", "Survival", "Adventure stories", "Friendship"] },
+    diagnostics: { queryText: query, queryFamily: "adventure", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["survival", "adventure", "fantasy", "friendship"], ...(expansion ? { cleanCandidateShortfallExpansion: true, scoringHandoffStage: "clean_candidate_shortfall_expansion" } : {}) },
+    scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 2, positiveTasteMatch: 2.5 },
+  });
+  const middleGradesCleanTopUpResult = selectRecommendations([
+    cleanTasteCandidate("Clean Taste One", 25),
+    cleanTasteCandidate("Clean Taste Two", 24),
+    cleanTasteCandidate("Clean Taste Three", 23),
+    cleanTasteCandidate("Clean Taste Four", 22),
+    fakeScoredCandidate({
+      id: "non-clean-editorial-fallback",
+      source: "mockEditorial",
+      title: "Non Clean Editorial Fallback",
+      score: 21,
+      maturityBand: "preteens",
+      genres: ["Adventure"],
+      diagnostics: { queryText: "editorial fallback", queryFamily: "fallback", routingReason: "editorial" },
+      scoreBreakdown: { sourceQualityRelevance: 1, ageTeenSuitability: 1, genreFacetMatch: 0, positiveTasteMatch: 0 },
+    }),
+    cleanTasteCandidate("Clean Taste Five", 20, "middle grade fantasy quest"),
+    cleanTasteCandidate("Expansion Probe", 1, "middle grade fantasy quest", true),
+  ], middleGradesStrongFallbackPreservationProfile, 5);
+  assertEqual(middleGradesCleanTopUpResult.selected.length, 5, "middle grades clean top-up should preserve a five-item slate");
+  assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Non Clean Editorial Fallback"), false, "non-clean selected rows should be replaced when a clean taste-matched candidate is available");
+  assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Clean Taste Five"), true, "next-best clean taste-matched candidate should top up the final slate after expansion opens the clean-pool retry");
+  assertEqual(middleGradesCleanTopUpResult.selected.some((candidate) => candidate.title === "Expansion Probe"), false, "clean top-up should use the best clean candidate rather than requiring the replacement itself to come from expansion");
+  assertEqual(middleGradesCleanTopUpResult.rejectedReasons.finalEligibilityCleanCandidateCount, 5, "lock-quality diagnostics should report five clean final candidates after top-up");
+  console.log(JSON.stringify({ name: "middle grades clean final top-up reaches five taste-matched recommendations", pass: true, selected: middleGradesCleanTopUpResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesCleanTopUpResult.rejectedReasons }));
 
   const middleGradesSelectionProfile = buildTasteProfile({
     ageBand: "preteens",

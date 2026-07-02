@@ -42,6 +42,10 @@ const MIDDLE_GRADES_ARTIFACT_REASON_LABELS = [
   "middle_grades_age_shape_mismatch",
 ];
 
+const K2_ARTIFACT_REASON_LABELS = [
+  "k2_age_shape_mismatch",
+];
+
 const BASE_OPEN_LIBRARY_PROFILE = {
   queryLimit: 4,
   docLimit: 10,
@@ -77,19 +81,23 @@ export const OPEN_LIBRARY_AGE_PROFILES: Record<AgeBandV2, OpenLibraryAgeProfile>
     ...BASE_OPEN_LIBRARY_PROFILE,
     key: "middleGrades",
     ageBand: "preteens",
-    behaviorLabel: "middle_grades_openlibrary_profile_pending",
+    behaviorLabel: "middle_grades_openlibrary_locked_baseline",
     queryLimit: 14,
     perQueryTimeoutMs: 7_500,
     diagnosticProbeQuery: "middle grade fantasy",
     ageSpecificArtifactReasonLabels: MIDDLE_GRADES_ARTIFACT_REASON_LABELS,
+    lockedBaseline: true,
   },
   kids: {
     ...BASE_OPEN_LIBRARY_PROFILE,
     key: "k2",
     ageBand: "kids",
     behaviorLabel: "k2_openlibrary_profile_pending",
+    queryLimit: 10,
+    docsPerQuery: 10,
+    minCleanDocs: 8,
     diagnosticProbeQuery: "easy reader",
-    ageSpecificArtifactReasonLabels: [],
+    ageSpecificArtifactReasonLabels: K2_ARTIFACT_REASON_LABELS,
   },
 };
 
