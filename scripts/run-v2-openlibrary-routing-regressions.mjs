@@ -323,6 +323,21 @@ async function main() {
   const genericOnlySelection = selectRecommendations([genericOnlyScored], genericOnlyTasteProfile, 1);
   assertEqual(Array.isArray(genericOnlySelection.rejectedReasons.genericOnlyTasteMatchTitles) && genericOnlySelection.rejectedReasons.genericOnlyTasteMatchTitles.includes("Generic Container Match"), true, "generic-only taste match titles should be diagnosed during selection");
   console.log(JSON.stringify({ name: "middle grades generic container terms do not score as taste evidence", pass: true, removed: genericOnlyScored.diagnostics.genericTasteSignalsRemoved, penalty: genericOnlyScored.scoreBreakdown.genericOnlyTasteMatchPenalty }));
+
+  const middleGradesSharedDislikeProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Diary of a Wimpy Kid", tags: ["comedy", "school", "friendship", "coming of age", "illustrated", "series"], format: "book" },
+      { action: "like", title: "Subway Surfers", tags: ["game", "fast-paced", "playful", "runaway", "chase"], format: "book" },
+      { action: "dislike", title: "Rocket League", tags: ["game", "friendship", "fast-paced", "vehicles", "playful"], genres: ["Friendship / Vehicles"], format: "book" },
+    ],
+  });
+  const sharedAvoidValues = middleGradesSharedDislikeProfile.avoidSignals.map((signal) => signal.value);
+  assertEqual(sharedAvoidValues.includes("friendship"), false, "middle grades dislikes should not avoid friendship when likes also contain friendship");
+  assertEqual(sharedAvoidValues.includes("playful"), false, "middle grades dislikes should not avoid playful when likes also contain playful");
+  assertEqual(sharedAvoidValues.includes("fast-paced"), false, "middle grades dislikes should not avoid shared pacing signals");
+  assertEqual(sharedAvoidValues.includes("vehicles"), true, "middle grades dislikes should keep distinctive avoid evidence such as vehicles");
+  console.log(JSON.stringify({ name: "middle grades dislikes preserve shared positive taste signals", pass: true, avoidSignals: sharedAvoidValues }));
   assertEqual(teenProfile.lockedBaseline, true, "teen Open Library profile should remain locked");
   assertEqual(teenProfile.behaviorLabel, "teen_openlibrary_locked_baseline", "teen Open Library profile should expose locked label");
   const kidsProfile = openLibraryProfileForAgeBand("kids");

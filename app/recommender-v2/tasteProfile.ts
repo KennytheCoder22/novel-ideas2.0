@@ -22,6 +22,24 @@ function sortedSignals(map: Map<string, WeightedSignalV2>, positiveOnly = true):
     .slice(0, 12);
 }
 
+
+const MIDDLE_GRADES_SHARED_AVOID_SIGNAL = /^(book|books|novel|novels|fiction|story|stories|series|children|childrens?|middle grade|middle grades|adventure|fantasy|friendship|friends|playful|fast-paced|fast paced|comedy|funny|school|family|coming of age|game|games)$/i;
+
+function hasPositiveSignal(value: string, maps: Map<string, WeightedSignalV2>[]): boolean {
+  const normalized = normalizeSignal(value);
+  return maps.some((map) => (map.get(normalized)?.weight || 0) > 0);
+}
+
+function middleGradesAvoidSignals(avoidSignals: Map<string, WeightedSignalV2>, positiveMaps: Map<string, WeightedSignalV2>[]): WeightedSignalV2[] {
+  return sortedSignals(avoidSignals, false).filter((signal) => {
+    const value = normalizeSignal(signal.value);
+    if (!value) return false;
+    if (hasPositiveSignal(value, positiveMaps)) return false;
+    if (MIDDLE_GRADES_SHARED_AVOID_SIGNAL.test(value)) return false;
+    return true;
+  });
+}
+
 const MIDDLE_GRADES_DEEP_DEBUG_FLAG_NAMES = [
   "debugMiddleGradesDeepTrace",
   "debugMiddleGradesNoTimeouts",
@@ -116,7 +134,9 @@ export function buildTasteProfile(session: SwipeSessionV2): TasteProfile {
     characterDynamics: sortedSignals(characterDynamics),
     formatPreference: sortedSignals(formatPreference),
     maturityBand: session.ageBand,
-    avoidSignals: sortedSignals(avoidSignals, false),
+    avoidSignals: session.ageBand === "preteens"
+      ? middleGradesAvoidSignals(avoidSignals, [tone, pacing, genreFamily, themes, characterDynamics, formatPreference])
+      : sortedSignals(avoidSignals, false),
     sourceHints: [...sourceHints],
     diagnostics: {
       inputSignalCount: session.signals?.length || 0,
