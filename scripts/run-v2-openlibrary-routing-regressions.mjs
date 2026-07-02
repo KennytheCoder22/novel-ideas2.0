@@ -733,6 +733,22 @@ async function main() {
   assertEqual(kidsScienceHumorPlans.some((plan) => /alphabet|rhym/i.test(plan.query)), false, "kids disliked alphabet/rhyming signals should not drive K-2 query plans");
   console.log(JSON.stringify({ name: "kids science humor profile expands K-2 query pool", pass: true, queries: kidsScienceHumorPlans.map((plan) => plan.query) }));
 
+  const kidsCozyScifiProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Disney Dreamlight Valley", genres: ["Cozy / Adventure", "adventure"], tags: ["game", "children", "k2", "cozy", "adventure"], format: "book" },
+      { action: "like", title: "WALL·E", genres: ["Illustrated / Sci-Fi", "animation", "science_fiction"], tags: ["children", "k2", "movie", "animation", "science_fiction"], format: "book" },
+      { action: "dislike", title: "Scribblenauts Unlimited", genres: ["Puzzle / Creativity"], tags: ["game", "children", "k2"], format: "book" },
+      { action: "skip", title: "I Want My Hat Back", genres: ["Dry Humor"], tags: ["book", "older", "humor", "picture book"], format: "book" },
+    ],
+  });
+  const kidsCozyScifiPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsCozyScifiProfile, kidsProfile);
+  assertEqual(kidsCozyScifiPlans[0]?.query, "cozy adventure picture", "kids cozy sci-fi profile should start with liked cozy adventure instead of static friends/kindness queries");
+  assertEqual(kidsCozyScifiPlans.some((plan) => /science fiction picture|science easy reader|robot picture/i.test(plan.query)), true, "kids cozy sci-fi profile should include sci-fi/robot picture-book or reader queries");
+  assertEqual(kidsCozyScifiPlans.slice(0, 4).some((plan) => /feelings kindness|early reader friends|picture friends kindness/i.test(plan.query)), false, "kids cozy sci-fi profile should not lead with unrelated static comfort/friends queries");
+  assertEqual(JSON.stringify(kidsCozyScifiPlans.slice(0, 4).map((plan) => plan.query)) === JSON.stringify(kidsComfortPlans.slice(0, 4).map((plan) => plan.query)), false, "different kids swipe profiles should produce different leading K-2 query families");
+  console.log(JSON.stringify({ name: "kids cozy sci-fi profile avoids static K-2 query families", pass: true, queries: kidsCozyScifiPlans.map((plan) => plan.query) }));
+
   const ageBandIsolationCases = [
     {
       name: "adult Open Library lane isolation",
@@ -895,9 +911,10 @@ async function main() {
   assertEqual(Array.isArray(kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles), true, "kids selection diagnostics should expose meaningful taste titles");
   assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles.includes("Funny Science Readers"), true, "kids selection diagnostics should list taste-matched candidates");
   assertEqual(Array.isArray(kidsSelectionDiagnosticsResult.rejectedReasons.kidsReturnedItemQualityAudit), true, "kids selection diagnostics should expose returned item quality audit rows");
-  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, false, "kids diagnostics should fail lock quality when suspicious/no-taste titles are selected");
-  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.kidsSuspiciousSelectedTitles.includes("The Lantern Archive"), true, "kids diagnostics should flag suspicious generic selected titles");
-  console.log(JSON.stringify({ name: "kids selection restores scoring diagnostics and quality audit", pass: true, diagnostics: { finalClean: kidsSelectionDiagnosticsResult.rejectedReasons.finalEligibilityCleanCandidateCount, meaningfulTaste: kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles, lockQualityPass: kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, suspicious: kidsSelectionDiagnosticsResult.rejectedReasons.kidsSuspiciousSelectedTitles } }));
+  assertEqual(kidsSelectionDiagnosticsResult.selected.some((candidate) => candidate.title === "The Lantern Archive"), false, "kids selection should reject suspicious generic selected titles before final slate");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.k2_suspicious_title_artifact, 1, "kids selection should diagnose suspicious generic title artifacts");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, false, "kids diagnostics should fail lock quality when suspicious/no-taste titles cause underfill");
+  console.log(JSON.stringify({ name: "kids selection restores scoring diagnostics and quality audit", pass: true, diagnostics: { finalClean: kidsSelectionDiagnosticsResult.rejectedReasons.finalEligibilityCleanCandidateCount, meaningfulTaste: kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles, lockQualityPass: kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, suspiciousArtifactRejects: kidsSelectionDiagnosticsResult.rejectedReasons.k2_suspicious_title_artifact } }));
 
   const middleGradesAgeShapeFetchCalls = [];
   globalThis.fetch = async (url) => {

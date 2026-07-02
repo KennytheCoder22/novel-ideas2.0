@@ -770,34 +770,42 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
 function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
   const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: `${ageProfile.key}-open-library-fallback`, priority: 0, rationale: [] }];
   const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ageProfile.diagnosticProbeQuery));
-  const positiveText = [
+  const positiveRows = [
     ...profile.genreFamily,
     ...profile.themes,
     ...profile.tone,
     ...profile.characterDynamics,
-  ].filter((row) => Number(row.weight || 0) > 0).map((row) => String(row.value || "").toLowerCase()).join(" ");
+  ].filter((row) => Number(row.weight || 0) > 0);
+  const likedRows = positiveRows.filter((row) => Array.isArray(row.evidence) && row.evidence.some((item) => String(item || "").startsWith("like:")));
+  const likedText = (likedRows.length ? likedRows : positiveRows).map((row) => String(row.value || "").toLowerCase()).join(" ");
   const avoidText = (profile.avoidSignals || []).map((row) => String(row.value || "").toLowerCase()).join(" ");
   const queries: string[] = [];
   const add = (query: string) => {
     const clean = finalOpenLibraryQueryDedupe(query);
     if (isUsefulOpenLibraryQueryPart(clean)) queries.push(clean);
   };
-  if (/feelings?|kindness|calm|gentle|empathy|emotional|warm/.test(positiveText)) add("picture books feelings kindness");
-  if (/friendship|friends?|growing up|growing_up|lessons?|school/.test(positiveText)) add("early reader friends");
-  if (/friendship|friends?|belonging|kindness/.test(positiveText)) add("picture book friends kindness");
-  if (/calm|gentle|cozy|bedtime|kindness|feelings?/.test(positiveText)) add("gentle picture books");
-  if (/calm|gentle|bedtime|kindness|feelings?/.test(positiveText)) add("picture books calm friendship");
-  if (/bear|bears|toy|toys/.test(positiveText)) add("bear friendship picture book");
-  if (/humou?r|funny|comedy|playful|silly/.test(positiveText)) add("funny picture books");
-  if (/science|curiosity|experiment|space|robots?|science_fiction/.test(positiveText)) add("funny science picture books");
-  if (/science|curiosity|experiment|space|robots?|science_fiction/.test(positiveText)) add("science easy reader");
-  if (/fairy tale|fairytale|clever|twist|unreliable narrator|pigs?/.test(positiveText)) add("fractured fairy tales picture books");
-  if (/fairy tale|fairytale|clever|twist|unreliable narrator|pigs?/.test(positiveText)) add("funny fairy tale picture book");
-  if (/clever|twist|wonder|curiosity/.test(positiveText)) add("clever picture books");
-  if (/adventure|wonder|fantasy|magic|animals?/.test(positiveText) && !/mystery|scary|frightening/.test(avoidText)) add("children picture book adventure");
-  if (/growing up|growing_up|family|friendship|lessons?/.test(positiveText)) add("beginning reader growing up");
-  add("easy reader friendship");
-  add(ageProfile.diagnosticProbeQuery);
+  const addFallback = (query: string) => {
+    if (queries.length < 5) add(query);
+  };
+  if (/cozy|gentle|calm/.test(likedText) && /adventure|wonder|magic/.test(likedText)) add("cozy adventure picture books");
+  if (/science|curiosity|experiment|space|robots?|robotics|science_fiction|sci fi|animation/.test(likedText)) add("science fiction picture books");
+  if (/science|curiosity|experiment|space|robots?|robotics|science_fiction|sci fi/.test(likedText)) add("science easy reader");
+  if (/robots?|robotics|wall e|space/.test(likedText)) add("robot picture books");
+  if (/feelings?|kindness|empathy|emotional|warm/.test(likedText)) add("picture books feelings kindness");
+  if (/friendship|friends?|growing up|growing_up|lessons?|school/.test(likedText)) add("early reader friends");
+  if (/friendship|friends?|belonging|kindness/.test(likedText)) add("picture book friends kindness");
+  if (/calm|gentle|cozy|bedtime|kindness|feelings?/.test(likedText)) add("gentle picture books");
+  if (/calm|gentle|bedtime|kindness|feelings?/.test(likedText)) add("picture books calm friendship");
+  if (/bear|bears|toy|toys/.test(likedText)) add("bear friendship picture book");
+  if (/humou?r|funny|comedy|playful|silly/.test(likedText)) add("funny picture books");
+  if (/science|curiosity|experiment|space|robots?|science_fiction/.test(likedText) && /humou?r|funny|comedy|playful|silly/.test(likedText)) add("funny science picture books");
+  if (/fairy tale|fairytale|clever|twist|unreliable narrator|pigs?/.test(likedText)) add("fractured fairy tales picture books");
+  if (/fairy tale|fairytale|clever|twist|unreliable narrator|pigs?/.test(likedText) && /humou?r|funny|comedy|playful|silly/.test(likedText)) add("funny fairy tale picture book");
+  if (/clever|twist|wonder|curiosity/.test(likedText)) add("clever picture books");
+  if (/adventure|wonder|fantasy|magic|animals?/.test(likedText) && !/mystery|scary|frightening/.test(avoidText)) add("children picture book adventure");
+  if (/growing up|growing_up|family|friendship|lessons?/.test(likedText)) add("beginning reader growing up");
+  addFallback("easy reader");
+  addFallback(ageProfile.diagnosticProbeQuery);
   const uniqueQueries = uniqueStrings(queries, ageProfile.queryLimit);
   return uniqueQueries.map((query, index) => ({
     query,
@@ -806,7 +814,7 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     queryFamily: queryFamilyForOpenLibraryQuery(query),
     facets: uniqueStrings((plannedIntents[index]?.facets || []).map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
     routingReason: "k2_openlibrary_picture_early_reader",
-    routingDominance: { openLibraryPlanner: "k2_profile_candidate", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline },
+    routingDominance: { openLibraryPlanner: "k2_profile_candidate", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, likedSignalsUsedForQueries: uniqueStrings(likedRows.map((row) => row.value), 8).join("|") },
     profileSpecific: index < uniqueQueries.length - 1,
   }));
 }
@@ -2114,7 +2122,7 @@ function hasKidsAgeShapeEvidence(doc: any, query: string, profile: TasteProfile)
   const queryText = String(query || "").toLowerCase();
   const hasKidsEvidence = /\b(picture books?|juvenile fiction|juvenile literature|children'?s stories|children'?s books?|easy readers?|early readers?|beginning readers?|beginner books?|read-aloud|read aloud|ages?\s*(?:4|5|6|7|8)|grades?\s*(?:k|1|2)|kindergarten|preschool)\b/.test(text);
   const queryIsKidsAnchored = /\b(picture books?|early reader|easy reader|beginning reader|children)\b/.test(queryText);
-  const hasKidFriendlyShape = /\b(friendship|friends?|feelings?|kindness|calm|gentle|growing up|family|school|animals?|adventure|humou?r|funny|bedtime|empathy)\b/.test(text);
+  const hasKidFriendlyShape = /\b(friendship|friends?|feelings?|kindness|calm|gentle|cozy|growing up|family|school|animals?|adventure|humou?r|funny|bedtime|empathy|science|curiosity|robots?|space|imagination|creativity|fairy tale|clever)\b/.test(text);
   const adultOrReferenceShape = /\b(adult|history of|politics|sociology|psychology|nineteen eighty-four|animal farm|dystopian|signed|cloth|archive|archives|literary criticism|reference|bibliograph|manual|handbook|university|college)\b/.test(text);
   const genericNoAgeTitle = /^(?:the )?(?:friends|lantern archive|the lantern archive)$/i.test(String(doc?.title || "").trim());
   if (!hasKidsEvidence && genericNoAgeTitle) return false;

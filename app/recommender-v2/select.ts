@@ -1694,6 +1694,10 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   if (selectedFallbackCount > 0 && rejectedRouteAlignedCount > 0) rejectedReasons.middle_grades_fallback_survived_with_route_aligned_available = selectedFallbackCount;
 }
 
+function isKidsSuspiciousSelectionCandidate(candidate: ScoredCandidate): boolean {
+  return /^(?:the )?(?:friends|lantern archive)$/i.test(String(candidate.title || "").trim());
+}
+
 function kidsTasteScore(candidate: ScoredCandidate): number {
   const breakdown = candidate.scoreBreakdown || {};
   return Math.round((
@@ -1735,8 +1739,6 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
   const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
   const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
   const finalSelectionReasonByTitle: Record<string, string> = {};
-  const kidsSuspiciousTitle = (candidate: ScoredCandidate): boolean => /^(?:the )?(?:friends|lantern archive)$/i.test(String(candidate.title || "").trim());
-
   for (const candidate of rankedCandidates) {
     const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
     const likedSignals = matchedSignals.filter((signal) => !/^avoidSignalPenalty:/i.test(signal));
@@ -1761,9 +1763,9 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
     .filter((candidate) => kidsTasteScore(candidate) > 0 || (Array.isArray(candidate.matchedSignals) && candidate.matchedSignals.some((signal) => !/^avoidSignalPenalty:/i.test(String(signal)))))
     .map((candidate) => candidate.title);
   const finalEligibilityAcceptedTitles = selected
-    .filter((candidate) => candidate.score > 0 && kidsTasteScore(candidate) > 0 && !kidsSuspiciousTitle(candidate))
+    .filter((candidate) => candidate.score > 0 && kidsTasteScore(candidate) > 0 && !isKidsSuspiciousSelectionCandidate(candidate))
     .map((candidate) => candidate.title);
-  const selectedSuspiciousTitles = selected.filter(kidsSuspiciousTitle).map((candidate) => candidate.title);
+  const selectedSuspiciousTitles = selected.filter(isKidsSuspiciousSelectionCandidate).map((candidate) => candidate.title);
   const lockQualityFailReasons: string[] = [];
   if (selected.length < 5) lockQualityFailReasons.push("final_items_length_less_than_five");
   if (finalEligibilityAcceptedTitles.length < Math.min(5, selected.length || 5)) lockQualityFailReasons.push("k2_clean_items_less_than_five");
@@ -1792,6 +1794,7 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
 
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
+  if (profile.ageBand === "kids" && isKidsSuspiciousSelectionCandidate(candidate)) return "k2_suspicious_title_artifact";
   if (profile.ageBand === "preteens") {
     const eligibility = middleGradesFinalEligibility(candidate);
     if (!eligibility.allowed) return eligibility.rejectedReason || "middle_grades_final_eligibility_missing_evidence";
