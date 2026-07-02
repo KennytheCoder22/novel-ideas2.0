@@ -1101,6 +1101,43 @@ async function main() {
   assertEqual(narrativeScore.score > facetOnlyScore.score, true, "kids narrative semantic evidence should outrank facet-only metadata overlap");
   console.log(JSON.stringify({ name: "kids scoring lets narrative evidence outrank facet-only metadata", pass: true, facetOnly: facetOnlyScore.scoreBreakdown, narrative: narrativeScore.scoreBreakdown }));
 
+  const kidsCoverageProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Llama Llama Red Pajama", genres: ["bedtime", "juvenile fiction"], tags: ["bedtime", "reassurance", "feelings", "rhyming", "cozy", "picture book", "children", "k2"], format: "book" },
+      { action: "like", title: "Octonauts", genres: ["Animals / Science / Teamwork", "science_fiction"], tones: ["adventurous"], themes: ["teamwork"], tags: ["children", "k2", "animals", "science_fiction", "teamwork", "adventurous"], format: "book" },
+    ],
+  });
+  const kidsCoverageResult = selectRecommendations([
+    ...["Funny One", "Funny Two", "Funny Three", "Funny Four", "Funny Five"].map((title, index) => fakeScoredCandidate({
+      title,
+      maturityBand: "kids",
+      genres: ["Picture books", "Juvenile fiction"],
+      themes: ["Humor"],
+      description: "A funny picture book story full of silly jokes and comic scenes.",
+      score: 12 - index * 0.2,
+      scoreBreakdown: { positiveTasteMatch: 2, narrativeSemanticEvidence: 2, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:humor"],
+      diagnostics: { queryText: "funny picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+      raw: { subject: ["Picture books", "Juvenile fiction", "Humor"], description: "A funny picture book story full of silly jokes and comic scenes." },
+    })),
+    fakeScoredCandidate({
+      title: "Teamwork Science Sea Story",
+      maturityBand: "kids",
+      genres: ["Picture books", "Juvenile fiction"],
+      themes: ["Teamwork", "Science fiction"],
+      description: "A science fiction picture book story about ocean explorers using teamwork on an adventurous rescue.",
+      score: 8.5,
+      scoreBreakdown: { positiveTasteMatch: 2, narrativeSemanticEvidence: 4, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:teamwork", "positiveTasteMatch:science fiction", "positiveTasteMatch:adventurous"],
+      diagnostics: { queryText: "science easy reader", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+      raw: { subject: ["Picture books", "Juvenile fiction", "Teamwork", "Science fiction"], description: "A science fiction picture book story about ocean explorers using teamwork on an adventurous rescue." },
+    }),
+  ], kidsCoverageProfile, 5);
+  assertEqual(kidsCoverageResult.selected.some((candidate) => candidate.title === "Teamwork Science Sea Story"), true, "kids profile coverage pass should replace redundant dominant-facet picks with a lower-ranked candidate covering missing strong signals");
+  assertEqual(Number(kidsCoverageResult.rejectedReasons.k2_profile_coverage_replacements || 0) > 0, true, "kids profile coverage pass should diagnose replacements");
+  console.log(JSON.stringify({ name: "kids profile coverage diversifies dominant facet slates", pass: true, selected: kidsCoverageResult.selected.map((candidate) => candidate.title), replacements: kidsCoverageResult.rejectedReasons.k2_profile_coverage_replacements }));
+
   const middleGradesInfoGateResult = selectRecommendations([
     fakeScoredCandidate({
       title: "Middle Grade Animal Atlas",

@@ -1809,6 +1809,67 @@ function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected:
   }
 }
 
+
+function kidsProfileCoverageSignals(profile: TasteProfile): string[] {
+  const generic = /^(book|books|story|stories|children|juvenile fiction|picture|picture book|picture books|friendship|friends|fantasy|adventure|animal|animals|early reader|reader|k2)$/;
+  return [...profile.genreFamily, ...profile.themes, ...profile.tone, ...profile.characterDynamics, ...profile.formatPreference]
+    .filter((signal) => Number(signal.weight || 0) > 0)
+    .filter((signal) => Array.isArray(signal.evidence) && signal.evidence.some((item) => String(item || "").startsWith("like:")))
+    .map((signal) => normalized(signal.value))
+    .filter((signal) => signal && !generic.test(signal));
+}
+
+function kidsCandidateCoverageSignals(candidate: ScoredCandidate, profile: TasteProfile): string[] {
+  const text = kidsNonTitleDocumentText(candidate);
+  return Array.from(new Set(kidsProfileCoverageSignals(profile).filter((signal) => text.includes(signal)))).slice(0, 12);
+}
+
+function applyKidsProfileCoverageDiversification(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
+  if (profile.ageBand !== "kids" || selected.length < Math.min(3, limit)) return;
+  const targetSignals = kidsProfileCoverageSignals(profile);
+  if (targetSignals.length < 2) return;
+  const selectedTitles = () => new Set(selected.map((candidate) => normalized(candidate.title)));
+  const coverageCounts = () => {
+    const counts = new Map<string, number>();
+    for (const candidate of selected) {
+      for (const signal of kidsCandidateCoverageSignals(candidate, profile)) counts.set(signal, (counts.get(signal) || 0) + 1);
+    }
+    return counts;
+  };
+  let replacements = 0;
+  while (replacements < 2) {
+    const counts = coverageCounts();
+    const missingSignals = targetSignals.filter((signal) => !counts.has(signal));
+    if (!missingSignals.length) break;
+    const replacement = rankedCandidates
+      .filter((candidate) => !selected.includes(candidate))
+      .filter(isKidsCleanFinalCandidate)
+      .filter((candidate) => !rejectReason(candidate, profile))
+      .filter((candidate) => !selectedTitles().has(normalized(candidate.title)))
+      .map((candidate) => ({ candidate, coveredMissing: kidsCandidateCoverageSignals(candidate, profile).filter((signal) => missingSignals.includes(signal)) }))
+      .filter(({ coveredMissing }) => coveredMissing.length > 0)
+      .sort((a, b) => b.coveredMissing.length - a.coveredMissing.length || b.candidate.score - a.candidate.score)[0];
+    if (!replacement) break;
+    const replaceIndex = selected
+      .map((candidate, index) => {
+        const covered = kidsCandidateCoverageSignals(candidate, profile);
+        const redundant = covered.length === 0 || covered.every((signal) => (counts.get(signal) || 0) > 1);
+        return { candidate, index, covered, redundant };
+      })
+      .filter(({ redundant }) => redundant)
+      .sort((a, b) => a.covered.length - b.covered.length || a.candidate.score - b.candidate.score)[0]?.index;
+    if (replaceIndex === undefined) break;
+    const replaced = selected[replaceIndex];
+    if (replacement.candidate.score < replaced.score - 5) break;
+    replaced.rejectedReasons.push("k2_profile_coverage_replaced_redundant_facet_candidate");
+    replacement.candidate.rejectedReasons.push(`k2_profile_coverage_selected:${replacement.coveredMissing.join("|")}`);
+    selected[replaceIndex] = replacement.candidate;
+    rejectedReasons.k2_profile_coverage_replacements = Number(rejectedReasons.k2_profile_coverage_replacements || 0) + 1;
+    rejectedReasons.k2_profile_coverage_added_signals = Number(rejectedReasons.k2_profile_coverage_added_signals || 0) + replacement.coveredMissing.length;
+    replacements += 1;
+  }
+}
+
 function kidsQualityAuditRow(candidate: ScoredCandidate, selectedTitles: Set<string>, label = "candidate"): Record<string, unknown> {
   const breakdown = candidate.scoreBreakdown || {};
   const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
@@ -1855,6 +1916,7 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
       documentSupportedDistinctiveTasteSignalCount: kidsDistinctiveSignalsSupportedByDocument(candidate).length,
       storyAgeShape: kidsHasStoryAgeShape(candidate) ? 1 : 0,
       nonNarrativeInformationalArtifact: kidsNonNarrativeInformationalArtifact(candidate) ? 1 : 0,
+      profileCoverageSignalCount: kidsCandidateCoverageSignals(candidate, profile).length,
       cleanFinalEligible: isKidsCleanFinalCandidate(candidate) ? 1 : 0,
       finalScore: candidate.score,
     };
@@ -1886,6 +1948,8 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
   diagnostics.candidateMatchedDislikedSignalsByTitle = candidateMatchedDislikedSignalsByTitle;
   diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
   diagnostics.finalSelectionReasonByTitle = finalSelectionReasonByTitle;
+  diagnostics.kidsProfileCoverageSignals = kidsProfileCoverageSignals(profile);
+  diagnostics.kidsSelectedProfileCoverageByTitle = Object.fromEntries(selected.map((candidate) => [candidate.title, kidsCandidateCoverageSignals(candidate, profile)]));
   diagnostics.kidsReturnedItemQualityAudit = selected.map((candidate) => kidsQualityAuditRow(candidate, selectedTitles, "selected"));
   diagnostics.kidsTopRejectedQualityAudit = rankedCandidates
     .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
@@ -2194,6 +2258,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   applyMiddleGradesMeaningfulTasteFinalGate(selected, rejectedReasons, profile);
   applyMiddleGradesCleanFinalTopUp(rankedCandidates, selected, rejectedReasons, profile, limit);
   applyKidsCleanFinalTopUp(rankedCandidates, selected, rejectedReasons, profile, limit);
+  applyKidsProfileCoverageDiversification(rankedCandidates, selected, rejectedReasons, profile, limit);
 
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
