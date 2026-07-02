@@ -139,6 +139,12 @@ function addAvoidSignalBucket(matches: WeightedSignalV2[], matched: string[], br
   if (precisePenalty) breakdown.avoidSignalPenalty = Number(breakdown.avoidSignalPenalty || 0) + precisePenalty;
 }
 
+
+function isKidsGenericTasteSignal(signal: WeightedSignalV2): boolean {
+  const value = normalized(signal.value);
+  return /^(?:animal|animals|picture|pictures|picture book|picture books|children|childrens|book|books|story|stories|juvenile fiction|juvenile literature|fiction|adventure)$/.test(value);
+}
+
 function addSignalBucket(matches: WeightedSignalV2[], multiplier: number, matched: string[], breakdown: Record<string, number>, bucket: string): void {
   for (const signal of matches) {
     const magnitude = Math.abs(signal.weight) * Math.abs(multiplier);
@@ -247,20 +253,25 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
   return candidates.map((candidate) => {
     const fullText = candidateText(candidate);
     const metadataText = candidateMetadataText(candidate);
-    const text = profile.ageBand === "preteens" && candidate.source === "openLibrary" ? metadataText : fullText;
+    const text = (profile.ageBand === "preteens" || profile.ageBand === "kids") && candidate.source === "openLibrary" ? metadataText : fullText;
     const matchedSignals: string[] = [];
     const scoreBreakdown: Record<string, number> = { base: 1 };
 
     const middleGradesOpenLibrary = profile.ageBand === "preteens" && candidate.source === "openLibrary";
+    const kidsOpenLibrary = profile.ageBand === "kids" && candidate.source === "openLibrary";
     const rawGenreMatches = signalMatches(text, profile.genreFamily);
     const rawThemeMatches = signalMatches(text, profile.themes);
     const rawToneMatches = signalMatches(text, profile.tone);
     const rawCharacterMatches = signalMatches(text, profile.characterDynamics);
     const rawFormatMatches = signalMatches(text, profile.formatPreference);
-    const filterGenericMatches = (matches: WeightedSignalV2[]) => middleGradesOpenLibrary ? matches.filter((signal) => !isMiddleGradesGenericTasteSignal(signal)) : matches;
-    const removedGenericTasteSignals = middleGradesOpenLibrary
+    const filterGenericMatches = (matches: WeightedSignalV2[]) => middleGradesOpenLibrary
+      ? matches.filter((signal) => !isMiddleGradesGenericTasteSignal(signal))
+      : kidsOpenLibrary
+        ? matches.filter((signal) => !isKidsGenericTasteSignal(signal))
+        : matches;
+    const removedGenericTasteSignals = middleGradesOpenLibrary || kidsOpenLibrary
       ? [...rawGenreMatches, ...rawThemeMatches, ...rawToneMatches, ...rawCharacterMatches, ...rawFormatMatches]
-        .filter(isMiddleGradesGenericTasteSignal)
+        .filter((signal) => middleGradesOpenLibrary ? isMiddleGradesGenericTasteSignal(signal) : isKidsGenericTasteSignal(signal))
         .map((signal) => signal.value)
       : [];
     const genreMatches = filterGenericMatches(rawGenreMatches);
@@ -272,11 +283,11 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const positiveMatches = [...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
     const fullPositiveMatches = [...signalMatches(fullText, profile.themes), ...signalMatches(fullText, profile.tone), ...signalMatches(fullText, profile.characterDynamics), ...signalMatches(fullText, profile.formatPreference)];
     const rawTasteMatchCount = rawGenreMatches.length + rawThemeMatches.length + rawToneMatches.length + rawCharacterMatches.length + rawFormatMatches.length;
-    const genericOnlyTasteMatch = middleGradesOpenLibrary && rawTasteMatchCount > 0 && genreMatches.length + positiveMatches.length === 0;
-    const removedQueryTextSignals = middleGradesOpenLibrary
+    const genericOnlyTasteMatch = (middleGradesOpenLibrary || kidsOpenLibrary) && rawTasteMatchCount > 0 && genreMatches.length + positiveMatches.length === 0;
+    const removedQueryTextSignals = middleGradesOpenLibrary || kidsOpenLibrary
       ? [...signalMatches(fullText, profile.genreFamily), ...fullPositiveMatches]
         .filter((signal) => ![...genreMatches, ...positiveMatches].some((kept) => normalized(kept.value) === normalized(signal.value)))
-        .filter((signal) => !isMiddleGradesGenericTasteSignal(signal))
+        .filter((signal) => middleGradesOpenLibrary ? !isMiddleGradesGenericTasteSignal(signal) : !isKidsGenericTasteSignal(signal))
         .map((signal) => signal.value)
       : [];
 
@@ -292,7 +303,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     scoreBreakdown.ageBandSuitability = suitabilityScore;
     scoreBreakdown.sourceQualityRelevance = sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches);
     scoreBreakdown.queryRungBonus = queryRungBonus(candidate);
-    if (genericOnlyTasteMatch) scoreBreakdown.genericOnlyTasteMatchPenalty = -0.9;
+    if (genericOnlyTasteMatch) scoreBreakdown.genericOnlyTasteMatchPenalty = kidsOpenLibrary ? -1.25 : -0.9;
 
     const score = Object.entries(scoreBreakdown).reduce((sum, [key, value]) => sum + (key === "ageBandSuitability" ? 0 : Number(value || 0)), 0);
     return {

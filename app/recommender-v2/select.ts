@@ -1713,7 +1713,7 @@ function kidsDistinctiveTasteSignals(candidate: ScoredCandidate): string[] {
   return matchedSignals
     .filter((signal) => !/^avoidSignalPenalty:/i.test(signal))
     .map((signal) => normalized(signal.replace(/^[^:]+:/, "")))
-    .filter((signal) => signal && !/^(book|books|story|stories|children|juvenile fiction|picture|picture book|picture books|friendship|friends|fantasy|adventure|early reader|reader)$/.test(signal));
+    .filter((signal) => signal && !/^(book|books|story|stories|children|juvenile fiction|picture|picture book|picture books|friendship|friends|fantasy|adventure|animal|animals|early reader|reader)$/.test(signal));
 }
 
 function kidsNonTitleDocumentText(candidate: ScoredCandidate): string {
@@ -1745,8 +1745,39 @@ function kidsDistinctiveSignalsSupportedByDocument(candidate: ScoredCandidate): 
   return kidsDistinctiveTasteSignals(candidate).filter((signal) => text.includes(signal));
 }
 
+
+function profileExplicitlyRequestsNonfictionReference(profile: TasteProfile): boolean {
+  const values = [
+    ...profile.genreFamily,
+    ...profile.themes,
+    ...profile.tone,
+    ...profile.characterDynamics,
+    ...profile.formatPreference,
+  ].filter((signal) => Number(signal.weight || 0) > 0)
+    .filter((signal) => Array.isArray(signal.evidence) && signal.evidence.some((item) => String(item || "").startsWith("like:")))
+    .map((signal) => normalized(signal.value))
+    .join(" ");
+  return /\b(nonfiction|non fiction|reference|atlas|encyclopedia|dictionary|activity|activities|puzzle|puzzles|coloring|colouring|word book|identification guide|field guide|guidebook|facts?)\b/.test(values);
+}
+
+function kidsNonNarrativeInformationalArtifact(candidate: ScoredCandidate): boolean {
+  const text = normalized([candidate.title, candidate.subtitle, kidsNonTitleDocumentText(candidate), candidate.diagnostics?.queryText].filter(Boolean).join(" "));
+  const informational = /\b(atlas|atlases|picture dictionary|dictionary|encyclopedia|reference|field guide|identification guide|guide to|guidebook|handbook|manual|activity book|activities|puzzles?|coloring|colouring|workbook|worksheet|word book|wordbook|concept book|first words|look and find|search and find|i spy|spot the|facts?|nonfiction|non fiction|informational)\b/.test(text);
+  const narrative = /\b(story|stories|tale|tales|fiction|novel|chapter book|early reader|easy reader|picture book|read aloud|adventure|journey|friendship|friends?|character|characters)\b/.test(text);
+  return informational && !narrative;
+}
+
+function middleGradesNonNarrativeInformationalArtifact(candidate: ScoredCandidate): boolean {
+  if (!isMiddleGradesOpenLibraryCandidate(candidate)) return false;
+  const text = middleGradesRawText(candidate);
+  const informational = /\b(atlas|atlases|picture dictionary|dictionary|encyclopedia|reference|field guide|identification guide|guide to|guidebook|handbook|manual|activity book|activities|puzzles?|coloring|colouring|workbook|worksheet|word book|wordbook|look and find|search and find|i spy|facts?|nonfiction|non fiction|informational)\b/.test(text);
+  const narrative = middleGradesFictionAgeEvidence(candidate) || /\b(story|stories|tale|tales|fiction|novel|chapter book|adventure|mystery|fantasy|quest|friendship|friends?|school story)\b/.test(text);
+  return informational && !narrative;
+}
+
 function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   if (candidate.score <= 0 || isKidsSuspiciousSelectionCandidate(candidate) || kidsTasteScore(candidate) <= 0) return false;
+  if (kidsNonNarrativeInformationalArtifact(candidate)) return false;
   if (!kidsHasStoryAgeShape(candidate)) return false;
   return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0;
 }
@@ -1823,6 +1854,7 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
       distinctiveTasteSignalCount: kidsDistinctiveTasteSignals(candidate).length,
       documentSupportedDistinctiveTasteSignalCount: kidsDistinctiveSignalsSupportedByDocument(candidate).length,
       storyAgeShape: kidsHasStoryAgeShape(candidate) ? 1 : 0,
+      nonNarrativeInformationalArtifact: kidsNonNarrativeInformationalArtifact(candidate) ? 1 : 0,
       cleanFinalEligible: isKidsCleanFinalCandidate(candidate) ? 1 : 0,
       finalScore: candidate.score,
     };
@@ -1869,10 +1901,12 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (profile.ageBand === "kids" && isKidsSuspiciousSelectionCandidate(candidate)) return "k2_suspicious_title_artifact";
+  if (profile.ageBand === "kids" && kidsNonNarrativeInformationalArtifact(candidate) && !profileExplicitlyRequestsNonfictionReference(profile)) return "k2_non_narrative_informational_artifact";
   if (profile.ageBand === "kids" && !isKidsCleanFinalCandidate(candidate)) return "k2_missing_story_picture_reader_relevance";
   if (profile.ageBand === "preteens") {
     const eligibility = middleGradesFinalEligibility(candidate);
     if (!eligibility.allowed) return eligibility.rejectedReason || "middle_grades_final_eligibility_missing_evidence";
+    if (middleGradesNonNarrativeInformationalArtifact(candidate) && !profileExplicitlyRequestsNonfictionReference(profile)) return "middle_grades_non_narrative_informational_artifact";
     const tasteEligibility = middleGradesMeaningfulTasteEligibility(candidate, true);
     if (!tasteEligibility.allowed) return tasteEligibility.reason || "middle_grades_missing_meaningful_taste_evidence";
   }

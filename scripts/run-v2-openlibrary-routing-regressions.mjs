@@ -1005,6 +1005,73 @@ async function main() {
   assertEqual(Number(kidsCleanTopUpResult.rejectedReasons.k2_missing_story_picture_reader_relevance || 0) > 0, true, "kids final gate should reject broad/title-only recycled candidates before final slate");
   console.log(JSON.stringify({ name: "kids clean final gate rejects broad recycled candidates", pass: true, selected: kidsCleanTopUpResult.selected.map((candidate) => candidate.title), rejectedBroad: kidsCleanTopUpResult.rejectedReasons.k2_missing_story_picture_reader_relevance }));
 
+  const kidsInformationalGateResult = selectRecommendations([
+    fakeScoredCandidate({
+      title: "Animal Picture Atlas",
+      maturityBand: "kids",
+      genres: ["Picture dictionaries", "Juvenile nonfiction"],
+      themes: ["Animals"],
+      description: "A reference atlas and picture dictionary of animal facts for browsing.",
+      score: 12,
+      scoreBreakdown: { genreFacetMatch: 3, positiveTasteMatch: 1, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["genreFacetMatch:animals", "positiveTasteMatch:picture"],
+      diagnostics: { queryText: "animal picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+      raw: { subject: ["Picture dictionaries", "Juvenile nonfiction", "Animals", "Reference"], description: "A reference atlas and picture dictionary of animal facts." },
+    }),
+    fakeScoredCandidate({
+      title: "Playful Animal Story",
+      maturityBand: "kids",
+      genres: ["Picture books", "Juvenile fiction"],
+      themes: ["Playful", "Community"],
+      description: "A playful picture book story about animals helping their neighborhood community.",
+      score: 8,
+      scoreBreakdown: { positiveTasteMatch: 2, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:playful", "positiveTasteMatch:community"],
+      diagnostics: { queryText: "animal picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+      raw: { subject: ["Picture books", "Juvenile fiction", "Animals", "Community"], description: "A playful picture book story about animals helping their neighborhood community." },
+    }),
+  ], kidsAnimalMischiefProfile, 5);
+  assertEqual(kidsInformationalGateResult.selected.some((candidate) => candidate.title === "Animal Picture Atlas"), false, "kids final gate should exclude nonfiction/reference picture atlases despite animal/picture query overlap");
+  assertEqual(kidsInformationalGateResult.selected.some((candidate) => candidate.title === "Playful Animal Story"), true, "kids final gate should keep narrative picture-book matches with document-supported taste signals");
+  assertEqual(Number(kidsInformationalGateResult.rejectedReasons.k2_non_narrative_informational_artifact || 0) > 0, true, "kids final gate should diagnose non-narrative informational artifacts");
+  console.log(JSON.stringify({ name: "kids final gate excludes animal picture reference artifacts", pass: true, selected: kidsInformationalGateResult.selected.map((candidate) => candidate.title), rejectedInfo: kidsInformationalGateResult.rejectedReasons.k2_non_narrative_informational_artifact }));
+
+  const kidsGenericTokenScored = scoreCandidates([{
+    id: "animal-atlas-score",
+    source: "openLibrary",
+    title: "Animal Picture Atlas",
+    creators: ["Reference Author"],
+    description: "A picture atlas of animal facts.",
+    formats: ["book"],
+    genres: ["Picture dictionaries", "Juvenile nonfiction"],
+    themes: ["Animals"],
+    tones: [],
+    characterDynamics: [],
+    maturityBand: "kids",
+    raw: { subject: ["Animals", "Picture dictionaries", "Juvenile nonfiction"], description: "A picture atlas of animal facts." },
+    diagnostics: { queryText: "animal picture", queryFamily: "k2" },
+  }], kidsAnimalMischiefProfile)[0];
+  assertEqual((kidsGenericTokenScored.diagnostics.genericTasteSignalsRemoved || []).includes("animals"), true, "kids scoring should remove generic animal query tokens from taste evidence");
+  assertEqual(Number(kidsGenericTokenScored.scoreBreakdown.genericOnlyTasteMatchPenalty || 0) < 0, true, "kids scoring should penalize generic-only taste matches");
+  console.log(JSON.stringify({ name: "kids scoring demotes generic animal picture tokens", pass: true, removed: kidsGenericTokenScored.diagnostics.genericTasteSignalsRemoved, penalty: kidsGenericTokenScored.scoreBreakdown.genericOnlyTasteMatchPenalty }));
+
+  const middleGradesInfoGateResult = selectRecommendations([
+    fakeScoredCandidate({
+      title: "Middle Grade Animal Atlas",
+      maturityBand: "preteens",
+      genres: ["Juvenile nonfiction", "Reference"],
+      themes: ["Animals"],
+      description: "An atlas and identification guide to animal facts.",
+      score: 12,
+      scoreBreakdown: { genreFacetMatch: 3, sourceQualityRelevance: 2, ageTeenSuitability: 1 },
+      matchedSignals: ["genreFacetMatch:animals"],
+      diagnostics: { queryText: "middle grade animal adventure", queryFamily: "adventure", routingReason: "middle_grades_science_adventure" },
+      raw: { subject: ["Juvenile nonfiction", "Reference", "Atlas", "Animal identification"], description: "An atlas and identification guide to animal facts." },
+    }),
+  ], buildTasteProfile({ ageBand: "preteens", signals: [{ action: "like", title: "Animal Adventure", genres: ["Animals / Adventure"], tags: ["animals", "adventure"], format: "book" }] }), 5);
+  assertEqual(Number(middleGradesInfoGateResult.rejectedReasons.middle_grades_non_narrative_informational_artifact || 0) > 0, true, "middle grades Open Library final gate should reject non-narrative informational artifacts");
+  console.log(JSON.stringify({ name: "middle grades final gate excludes informational reference artifacts", pass: true, rejectedInfo: middleGradesInfoGateResult.rejectedReasons.middle_grades_non_narrative_informational_artifact }));
+
   const middleGradesAgeShapeFetchCalls = [];
   globalThis.fetch = async (url) => {
     const query = new URL(String(url)).searchParams.get("q") || "";
