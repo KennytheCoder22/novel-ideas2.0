@@ -789,6 +789,10 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   };
   const forceSemanticExpansion = Boolean((profile.diagnostics as Record<string, unknown>)?.forceKidsCleanCandidateShortfallExpansion);
   if (forceSemanticExpansion) {
+    if (/cozy|calm/.test(likedText) && /adventure|wonder|magic|explor/.test(likedText)) add("cozy adventure picture books");
+    if (/cozy|life sim|calm/.test(likedText) && !(/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText))) add("cozy everyday picture books");
+    if (/cozy|calm/.test(likedText) && /adventure|wonder|magic|explor/.test(likedText)) add("gentle adventure picture books");
+    if (/cozy|life sim/.test(likedText) && !(/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText))) add("cozy animal village picture books");
     if (/reading|literacy|letters?|words?|problem[_ ]solving|problem solving|puzzles?|solve|super why/.test(likedText)) add("reading problem solving picture books");
     if (/problem[_ ]solving|problem solving|puzzles?|solve/.test(likedText)) add("problem solving early reader books");
     if (/reading|literacy|letters?|words?|stories/.test(likedText) && /adventure|problem[_ ]solving|problem solving|series/.test(likedText)) add("reading adventure picture books");
@@ -817,7 +821,11 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
       add("imaginative picture books");
       add("early reader stories");
     }
-  } else if (/reading|literacy|letters?|words?|problem[_ ]solving|problem solving|puzzles?|solve|super why/.test(likedText)) add("reading problem solving picture books");
+  } else if (/cozy|calm/.test(likedText) && /adventure|wonder|magic|explor/.test(likedText)) add("cozy adventure picture books");
+  if (!forceSemanticExpansion && /cozy|life sim|calm/.test(likedText) && !(/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText))) add("cozy everyday picture books");
+  if (!forceSemanticExpansion && /cozy|calm/.test(likedText) && /adventure|wonder|magic|explor/.test(likedText)) add("gentle adventure picture books");
+  if (!forceSemanticExpansion && /cozy|life sim/.test(likedText) && !(/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText))) add("cozy animal village picture books");
+  if (!forceSemanticExpansion && /reading|literacy|letters?|words?|problem[_ ]solving|problem solving|puzzles?|solve|super why/.test(likedText)) add("reading problem solving picture books");
   if (!forceSemanticExpansion && /problem[_ ]solving|problem solving|puzzles?|solve/.test(likedText)) add("problem solving early reader books");
   if (!forceSemanticExpansion && /reading|literacy|letters?|words?|stories/.test(likedText) && /adventure|problem[_ ]solving|problem solving|series/.test(likedText)) add("reading adventure picture books");
   if (!forceSemanticExpansion && /animals?|monkeys?|dogs?|playful|silly/.test(likedText) && /mischief|humou?r|funny|silly|playful|community/.test(likedText)) add("funny animal picture books");

@@ -752,6 +752,20 @@ async function main() {
   assertEqual(JSON.stringify(kidsCozyScifiPlans.slice(0, 4).map((plan) => plan.query)) === JSON.stringify(kidsComfortPlans.slice(0, 4).map((plan) => plan.query)), false, "different kids swipe profiles should produce different leading K-2 query families");
   console.log(JSON.stringify({ name: "kids cozy sci-fi profile avoids static K-2 query families", pass: true, queries: kidsCozyScifiPlans.map((plan) => plan.query) }));
 
+  const kidsCozyLifeSimProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "Animal Crossing: New Horizons", genres: ["Cozy / Life Sim"], tags: ["game", "children", "k2", "cozy"], format: "book" },
+      { action: "like", title: "Disney Dreamlight Valley", genres: ["Cozy / Adventure", "adventure"], tags: ["game", "children", "k2", "cozy", "adventure"], format: "book" },
+      { action: "dislike", title: "The Secret Life of Pets", genres: ["Illustrated / Comedy", "animation", "comedy"], tags: ["children", "k2", "movie", "animation", "comedy"], format: "book" },
+    ],
+  });
+  const kidsCozyLifeSimPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsCozyLifeSimProfile, kidsProfile);
+  assertEqual(kidsCozyLifeSimPlans[0]?.query, "cozy adventure picture", "kids cozy/life-sim profile should lead with cozy adventure, not funny fallback queries");
+  assertEqual(kidsCozyLifeSimPlans.some((plan) => /cozy everyday picture|gentle adventure picture|cozy animal village picture/i.test(plan.query)), true, "kids cozy/life-sim profile should include everyday/gentle/cozy village query families");
+  assertEqual(kidsCozyLifeSimPlans.slice(0, 4).some((plan) => /funny mischief|simple funny|funny picture/i.test(plan.query)), false, "kids cozy/life-sim profile should not let disliked comedy drive primary queries");
+  console.log(JSON.stringify({ name: "kids cozy life-sim profile avoids funny fallback convergence", pass: true, queries: kidsCozyLifeSimPlans.map((plan) => plan.query) }));
+
   const kidsLearningImaginationProfile = buildTasteProfile({
     ageBand: "kids",
     signals: [
