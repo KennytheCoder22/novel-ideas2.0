@@ -1039,7 +1039,9 @@ function applyMiddleGradesMediumStrongEvidencePreference(rankedCandidates: Score
   for (const candidate of mediumStrongPool) {
     const replacementIndex = selected
       .map((row, index) => ({ row, index, tier: middleGradesRouteAlignmentEvidence(row).tier, adjusted: middleGradesSelectionScore(row, profile) }))
-      .filter(({ row, tier }) => isMiddleGradesTitleOnlyEvidence(row) || tier === "weak_evidence" || isMiddleGradesFallbackOrDefaultCandidate(row))
+      .filter(({ row, tier }) => isMiddleGradesTitleOnlyEvidence(row)
+        || tier === "weak_evidence"
+        || (middleGradesEvidenceTierRank(tier) < middleGradesEvidenceTierRank("medium_evidence") && isMiddleGradesFallbackOrDefaultCandidate(row)))
       .sort((a, b) => middleGradesEvidenceTierRank(a.tier) - middleGradesEvidenceTierRank(b.tier) || a.adjusted - b.adjusted)[0]?.index;
     if (replacementIndex === undefined) break;
     selected[replacementIndex].rejectedReasons.push("middle_grades_weak_evidence_replaced_by_medium_strong_document_evidence");

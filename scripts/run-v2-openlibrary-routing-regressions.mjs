@@ -2231,6 +2231,38 @@ async function main() {
   assertEqual(Boolean(teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_relaxed_diversity || teenSelectionResult.rejectedReasons.teen_openlibrary_underfill_safe_candidate_accepted), true, "teen selection should emit teen-only Open Library underfill diagnostics");
   console.log(JSON.stringify({ name: "teen selection relaxes Open Library diversity underfill to five", pass: true, selected: teenSelectionResult.selected.length, rejectedReasons: teenSelectionResult.rejectedReasons }));
 
+  const middleGradesStrongFallbackPreservationProfile = buildTasteProfile({
+    ageBand: "preteens",
+    signals: [
+      { action: "like", title: "Fantasy Quest", genres: ["fantasy", "adventure"], themes: ["friendship"], format: "book" },
+    ],
+  });
+  const middleGradesStrongFallbackPreservationResult = selectRecommendations([
+    fakeScoredCandidate({
+      id: "high-scoring-strong-generic-query",
+      title: "High Scoring Strong Generic Query",
+      score: 20,
+      maturityBand: "preteens",
+      description: "A funny fantasy adventure about friends on a quest.",
+      raw: { subject: ["Juvenile fiction", "Fantasy", "Adventure stories", "Friendship"] },
+      diagnostics: { queryText: "middle grade adventure", queryFamily: "adventure", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy", "adventure", "friendship"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 0, positiveTasteMatch: 2.5 },
+    }),
+    fakeScoredCandidate({
+      id: "lower-scoring-strong-evidence",
+      title: "Lower Scoring Strong Evidence",
+      score: 10,
+      maturityBand: "preteens",
+      description: "A fantasy adventure quest with friends.",
+      raw: { subject: ["Juvenile fiction", "Fantasy", "Adventure stories", "Friendship"] },
+      diagnostics: { queryText: "middle grade fantasy quest", queryFamily: "fantasy", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy", "adventure", "friendship"] },
+      scoreBreakdown: { sourceQualityRelevance: 2, ageTeenSuitability: 1, genreFacetMatch: 2, positiveTasteMatch: 2.5 },
+    }),
+  ], middleGradesStrongFallbackPreservationProfile, 1);
+  assertEqual(middleGradesStrongFallbackPreservationResult.selected[0]?.title, "High Scoring Strong Generic Query", "medium/strong evidence preference must not replace strong document-backed candidates solely because a generic query penalty is present");
+  assertEqual(middleGradesStrongFallbackPreservationResult.selected.some((candidate) => candidate.rejectedReasons.includes("middle_grades_weak_evidence_replaced_by_medium_strong_document_evidence")), false, "strong document-backed candidates should not receive weak-evidence replacement reasons");
+  console.log(JSON.stringify({ name: "middle grades medium/strong preference preserves strong document-backed generic-query winners", pass: true, selected: middleGradesStrongFallbackPreservationResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesStrongFallbackPreservationResult.rejectedReasons }));
+
   const middleGradesSelectionProfile = buildTasteProfile({
     ageBand: "preteens",
     signals: [
