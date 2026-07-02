@@ -789,6 +789,11 @@ function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   if (/calm|gentle|bedtime|kindness|feelings?/.test(positiveText)) add("picture books calm friendship");
   if (/bear|bears|toy|toys/.test(positiveText)) add("bear friendship picture book");
   if (/humou?r|funny|comedy|playful|silly/.test(positiveText)) add("funny picture books");
+  if (/science|curiosity|experiment|space|robots?|science_fiction/.test(positiveText)) add("funny science picture books");
+  if (/science|curiosity|experiment|space|robots?|science_fiction/.test(positiveText)) add("science easy reader");
+  if (/fairy tale|fairytale|clever|twist|unreliable narrator|pigs?/.test(positiveText)) add("fractured fairy tales picture books");
+  if (/fairy tale|fairytale|clever|twist|unreliable narrator|pigs?/.test(positiveText)) add("funny fairy tale picture book");
+  if (/clever|twist|wonder|curiosity/.test(positiveText)) add("clever picture books");
   if (/adventure|wonder|fantasy|magic|animals?/.test(positiveText) && !/mystery|scary|frightening/.test(avoidText)) add("children picture book adventure");
   if (/growing up|growing_up|family|friendship|lessons?/.test(positiveText)) add("beginning reader growing up");
   add("easy reader friendship");
@@ -2110,7 +2115,9 @@ function hasKidsAgeShapeEvidence(doc: any, query: string, profile: TasteProfile)
   const hasKidsEvidence = /\b(picture books?|juvenile fiction|juvenile literature|children'?s stories|children'?s books?|easy readers?|early readers?|beginning readers?|beginner books?|read-aloud|read aloud|ages?\s*(?:4|5|6|7|8)|grades?\s*(?:k|1|2)|kindergarten|preschool)\b/.test(text);
   const queryIsKidsAnchored = /\b(picture books?|early reader|easy reader|beginning reader|children)\b/.test(queryText);
   const hasKidFriendlyShape = /\b(friendship|friends?|feelings?|kindness|calm|gentle|growing up|family|school|animals?|adventure|humou?r|funny|bedtime|empathy)\b/.test(text);
-  const adultOrReferenceShape = /\b(adult|history of|politics|sociology|psychology|nineteen eighty-four|animal farm|dystopian|signed|cloth|literary criticism|reference|bibliograph|manual|handbook|university|college)\b/.test(text);
+  const adultOrReferenceShape = /\b(adult|history of|politics|sociology|psychology|nineteen eighty-four|animal farm|dystopian|signed|cloth|archive|archives|literary criticism|reference|bibliograph|manual|handbook|university|college)\b/.test(text);
+  const genericNoAgeTitle = /^(?:the )?(?:friends|lantern archive|the lantern archive)$/i.test(String(doc?.title || "").trim());
+  if (!hasKidsEvidence && genericNoAgeTitle) return false;
   if (hasKidsEvidence && !/\b(nineteen eighty-four|animal farm|adult)\b/.test(text)) return true;
   if (queryIsKidsAnchored && hasKidFriendlyShape && !adultOrReferenceShape) return true;
   return false;

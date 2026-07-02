@@ -719,6 +719,20 @@ async function main() {
   assertEqual(kidsComfortPlans.some((plan) => /animals mystery|mystery$/i.test(plan.query)), false, "kids comfort profile should not let skip-only animal mystery drive the first K-2 plan");
   console.log(JSON.stringify({ name: "kids comfort profile uses picture-book and early-reader queries", pass: true, queries: kidsComfortPlans.map((plan) => plan.query) }));
 
+  const kidsScienceHumorProfile = buildTasteProfile({
+    ageBand: "kids",
+    signals: [
+      { action: "like", title: "StoryBots", genres: ["Science / Curiosity / Humor", "science_fiction", "humor"], tags: ["children", "k2", "tv", "science_fiction", "humor", "series"], format: "book" },
+      { action: "like", title: "The True Story of the 3 Little Pigs", genres: ["humor", "middle grade fiction"], tags: ["book", "older", "humor", "unreliable narrator", "twist", "fairy tale", "clever", "picture book", "children", "k2"], format: "book" },
+      { action: "dislike", title: "Chicka Chicka Boom Boom", genres: ["Alphabet / Rhyming"], tags: ["book", "younger", "alphabet", "rhythm", "letters", "playful", "repetition"], format: "book" },
+    ],
+  });
+  const kidsScienceHumorPlans = buildOpenLibraryQueryPlansForRegression(sourcePlan, kidsScienceHumorProfile, kidsProfile);
+  assertEqual(kidsScienceHumorPlans.some((plan) => /science.*picture|science.*easy reader/i.test(plan.query)), true, "kids science/humor profile should search science picture-book or easy-reader shapes");
+  assertEqual(kidsScienceHumorPlans.some((plan) => /fractured.*fairy|funny.*fairy|clever.*picture/i.test(plan.query)), true, "kids clever fairy-tale humor profile should search fractured/funny picture-book shapes");
+  assertEqual(kidsScienceHumorPlans.some((plan) => /alphabet|rhym/i.test(plan.query)), false, "kids disliked alphabet/rhyming signals should not drive K-2 query plans");
+  console.log(JSON.stringify({ name: "kids science humor profile expands K-2 query pool", pass: true, queries: kidsScienceHumorPlans.map((plan) => plan.query) }));
+
   const ageBandIsolationCases = [
     {
       name: "adult Open Library lane isolation",
@@ -827,7 +841,9 @@ async function main() {
         { ...fakeDoc(query, 1), key: "/works/k2-history-detroit", title: "The history of Detroit and Michigan", author_name: ["Adult Historian"], subject: ["History", "Michigan", "Detroit", "Reference"], first_publish_year: 1912 },
         { ...fakeDoc(query, 2), key: "/works/k2-social-animal", title: "The social animal", author_name: ["Adult Sociologist"], subject: ["Psychology", "Sociology", "Adult"], first_publish_year: 1998 },
         { ...fakeDoc(query, 3), key: "/works/k2-animal-farm", title: "Animal Farm / Nineteen Eighty-Four", author_name: ["George Orwell"], subject: ["Dystopian", "Political fiction", "Adult"], first_publish_year: 1945 },
-        { ...fakeDoc(query, 4), key: "/works/k2-kindness-reader", title: "Kindness at the Park", author_name: ["K2 Author"], subject: ["Juvenile fiction", "Picture books", "Kindness", "Friendship", "Feelings"], first_publish_year: 2020 },
+        { ...fakeDoc(query, 4), key: "/works/k2-lantern-archive", title: "The Lantern Archive", author_name: ["Archive Author"], subject: ["Fiction", "Archive", "Reference"], first_publish_year: 2004 },
+        { ...fakeDoc(query, 5), key: "/works/k2-generic-friends", title: "Friends", author_name: ["Generic Author"], subject: ["Fiction", "Friendship"], first_publish_year: 2005 },
+        { ...fakeDoc(query, 6), key: "/works/k2-kindness-reader", title: "Kindness at the Park", author_name: ["K2 Author"], subject: ["Juvenile fiction", "Picture books", "Kindness", "Friendship", "Feelings"], first_publish_year: 2020 },
       ] }),
     };
   };
@@ -835,7 +851,7 @@ async function main() {
     const result = await openLibrarySourceAdapter.search({ ...sourcePlan, timeoutMs: 8_000 }, { profile: kidsComfortProfile });
     const returnedTitles = result.rawItems.map((item) => String(item.title || ""));
     assertEqual(returnedTitles.includes("Kindness at the Park"), true, "kids age-shape should keep child-centered picture-book evidence");
-    assertEqual(returnedTitles.some((title) => /history of Detroit|social animal|Animal Farm/i.test(title)), false, "kids age-shape should reject adult/history/social/literary artifacts");
+    assertEqual(returnedTitles.some((title) => /history of Detroit|social animal|Animal Farm|Lantern Archive|^Friends$/i.test(title)), false, "kids age-shape should reject adult/history/social/literary artifacts and generic no-age titles");
     assertEqual(Boolean(result.diagnostics.dropReasons?.k2_age_shape_mismatch), true, "kids age-shape rejections should be diagnosed");
     assertEqual(Number(result.diagnostics.openLibraryDocsFetchedAcrossAllQueriesCount || 0) > 0, true, "kids Open Library diagnostics should expose fetched document counts");
     assertEqual(Number(result.diagnostics.openLibraryDocsActuallyHandedToScoringCount || 0) > 0, true, "kids Open Library diagnostics should expose handed-to-scoring counts");
@@ -843,6 +859,45 @@ async function main() {
   } finally {
     globalThis.fetch = originalFetch;
   }
+
+  const kidsSelectionDiagnosticsResult = selectRecommendations([
+    fakeScoredCandidate({
+      title: "Funny Science Readers",
+      maturityBand: "kids",
+      genres: ["Juvenile fiction"],
+      themes: ["Science", "Humor"],
+      score: 10,
+      scoreBreakdown: { genreFacetMatch: 2, positiveTasteMatch: 2, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:science", "positiveTasteMatch:humor"],
+      diagnostics: { queryText: "funny science picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+    }),
+    fakeScoredCandidate({
+      title: "Clever Pig Tales",
+      maturityBand: "kids",
+      genres: ["Picture books"],
+      themes: ["Fairy tale", "Humor"],
+      score: 9,
+      scoreBreakdown: { genreFacetMatch: 1.5, positiveTasteMatch: 2, sourceQualityRelevance: 2, ageKidsSuitability: 1 },
+      matchedSignals: ["positiveTasteMatch:fairy tale", "positiveTasteMatch:humor"],
+      diagnostics: { queryText: "funny fairy tale picture", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+    }),
+    fakeScoredCandidate({
+      title: "The Lantern Archive",
+      maturityBand: "kids",
+      genres: ["Fiction"],
+      themes: ["Friendship"],
+      score: 8,
+      scoreBreakdown: { genreFacetMatch: 0, positiveTasteMatch: 0, sourceQualityRelevance: 0, ageKidsSuitability: 0 },
+      matchedSignals: [],
+      diagnostics: { queryText: "early reader friends", queryFamily: "k2", routingReason: "k2_openlibrary_picture_early_reader" },
+    }),
+  ], kidsScienceHumorProfile, 3);
+  assertEqual(Array.isArray(kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles), true, "kids selection diagnostics should expose meaningful taste titles");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles.includes("Funny Science Readers"), true, "kids selection diagnostics should list taste-matched candidates");
+  assertEqual(Array.isArray(kidsSelectionDiagnosticsResult.rejectedReasons.kidsReturnedItemQualityAudit), true, "kids selection diagnostics should expose returned item quality audit rows");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, false, "kids diagnostics should fail lock quality when suspicious/no-taste titles are selected");
+  assertEqual(kidsSelectionDiagnosticsResult.rejectedReasons.kidsSuspiciousSelectedTitles.includes("The Lantern Archive"), true, "kids diagnostics should flag suspicious generic selected titles");
+  console.log(JSON.stringify({ name: "kids selection restores scoring diagnostics and quality audit", pass: true, diagnostics: { finalClean: kidsSelectionDiagnosticsResult.rejectedReasons.finalEligibilityCleanCandidateCount, meaningfulTaste: kidsSelectionDiagnosticsResult.rejectedReasons.meaningfulTasteEligibleTitles, lockQualityPass: kidsSelectionDiagnosticsResult.rejectedReasons.lockQualityPass, suspicious: kidsSelectionDiagnosticsResult.rejectedReasons.kidsSuspiciousSelectedTitles } }));
 
   const middleGradesAgeShapeFetchCalls = [];
   globalThis.fetch = async (url) => {

@@ -1694,6 +1694,102 @@ function addMiddleGradesSelectionObservability(rankedCandidates: ScoredCandidate
   if (selectedFallbackCount > 0 && rejectedRouteAlignedCount > 0) rejectedReasons.middle_grades_fallback_survived_with_route_aligned_available = selectedFallbackCount;
 }
 
+function kidsTasteScore(candidate: ScoredCandidate): number {
+  const breakdown = candidate.scoreBreakdown || {};
+  return Math.round((
+    Number(breakdown.genreFacetMatch || 0)
+    + Number(breakdown.positiveTasteMatch || 0)
+    + Number(breakdown.toneMatch || 0)
+    + Number(breakdown.themeMatch || 0)
+  ) * 1000) / 1000;
+}
+
+function kidsQualityAuditRow(candidate: ScoredCandidate, selectedTitles: Set<string>, label = "candidate"): Record<string, unknown> {
+  const breakdown = candidate.scoreBreakdown || {};
+  const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
+  return {
+    title: candidate.title,
+    source: candidate.source,
+    query: String(candidate.diagnostics?.queryText || candidate.diagnostics?.queryFamily || ""),
+    routingReason: String(candidate.diagnostics?.routingReason || ""),
+    selected: selectedTitles.has(normalized(candidate.title)),
+    label,
+    score: candidate.score,
+    tasteScore: kidsTasteScore(candidate),
+    sourceQualityRelevance: Number(breakdown.sourceQualityRelevance || 0),
+    ageSuitability: Number(breakdown.ageKidsSuitability || breakdown.ageSuitability || 0),
+    positiveMatches: matchedSignals.filter((signal) => !/^avoidSignalPenalty:/i.test(signal)),
+    avoidMatches: matchedSignals.filter((signal) => /^avoidSignalPenalty:/i.test(signal)),
+    rejectedReason: selectedTitles.has(normalized(candidate.title))
+      ? "selected"
+      : candidate.rejectedReasons.join(",") || "ranked_below_final_selection",
+  };
+}
+
+function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "kids") return;
+  const diagnostics = rejectedReasons as Record<string, unknown>;
+  const selectedTitles = new Set(selected.map((candidate) => normalized(candidate.title)));
+  const candidateTasteMatchScoreByTitle: Record<string, number> = {};
+  const candidateMatchedLikedSignalsByTitle: Record<string, string[]> = {};
+  const candidateMatchedDislikedSignalsByTitle: Record<string, string[]> = {};
+  const finalScoreComponentsByTitle: Record<string, Record<string, number>> = {};
+  const finalSelectionReasonByTitle: Record<string, string> = {};
+  const kidsSuspiciousTitle = (candidate: ScoredCandidate): boolean => /^(?:the )?(?:friends|lantern archive)$/i.test(String(candidate.title || "").trim());
+
+  for (const candidate of rankedCandidates) {
+    const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
+    const likedSignals = matchedSignals.filter((signal) => !/^avoidSignalPenalty:/i.test(signal));
+    const dislikedSignals = matchedSignals.filter((signal) => /^avoidSignalPenalty:/i.test(signal));
+    const tasteScore = kidsTasteScore(candidate);
+    candidateTasteMatchScoreByTitle[candidate.title] = tasteScore;
+    candidateMatchedLikedSignalsByTitle[candidate.title] = likedSignals;
+    candidateMatchedDislikedSignalsByTitle[candidate.title] = dislikedSignals;
+    finalScoreComponentsByTitle[candidate.title] = {
+      ...candidate.scoreBreakdown,
+      tasteScore,
+      finalScore: candidate.score,
+    };
+    finalSelectionReasonByTitle[candidate.title] = selectedTitles.has(normalized(candidate.title))
+      ? "selected_kids_ranked_candidate"
+      : candidate.rejectedReasons.join(",") || "ranked_below_final_selection";
+    candidate.diagnostics.finalSelectionReason = finalSelectionReasonByTitle[candidate.title];
+    candidate.diagnostics.kidsTasteScore = tasteScore;
+  }
+
+  const meaningfulTasteEligibleTitles = rankedCandidates
+    .filter((candidate) => kidsTasteScore(candidate) > 0 || (Array.isArray(candidate.matchedSignals) && candidate.matchedSignals.some((signal) => !/^avoidSignalPenalty:/i.test(String(signal)))))
+    .map((candidate) => candidate.title);
+  const finalEligibilityAcceptedTitles = selected
+    .filter((candidate) => candidate.score > 0 && kidsTasteScore(candidate) > 0 && !kidsSuspiciousTitle(candidate))
+    .map((candidate) => candidate.title);
+  const selectedSuspiciousTitles = selected.filter(kidsSuspiciousTitle).map((candidate) => candidate.title);
+  const lockQualityFailReasons: string[] = [];
+  if (selected.length < 5) lockQualityFailReasons.push("final_items_length_less_than_five");
+  if (finalEligibilityAcceptedTitles.length < Math.min(5, selected.length || 5)) lockQualityFailReasons.push("k2_clean_items_less_than_five");
+  if (selectedSuspiciousTitles.length > 0) lockQualityFailReasons.push("k2_suspicious_title_selected");
+
+  diagnostics.rankedDocsTitles = rankedCandidates.map((candidate) => candidate.title);
+  diagnostics.finalEligibilityAcceptedTitles = finalEligibilityAcceptedTitles;
+  diagnostics.finalEligibilityCleanCandidateCount = finalEligibilityAcceptedTitles.length;
+  diagnostics.meaningfulTasteEligibleTitles = meaningfulTasteEligibleTitles;
+  diagnostics.candidateTasteMatchScoreByTitle = candidateTasteMatchScoreByTitle;
+  diagnostics.candidateMatchedLikedSignalsByTitle = candidateMatchedLikedSignalsByTitle;
+  diagnostics.candidateMatchedDislikedSignalsByTitle = candidateMatchedDislikedSignalsByTitle;
+  diagnostics.finalScoreComponentsByTitle = finalScoreComponentsByTitle;
+  diagnostics.finalSelectionReasonByTitle = finalSelectionReasonByTitle;
+  diagnostics.kidsReturnedItemQualityAudit = selected.map((candidate) => kidsQualityAuditRow(candidate, selectedTitles, "selected"));
+  diagnostics.kidsTopRejectedQualityAudit = rankedCandidates
+    .filter((candidate) => !selectedTitles.has(normalized(candidate.title)))
+    .sort((a, b) => kidsTasteScore(b) - kidsTasteScore(a) || b.score - a.score)
+    .slice(0, 12)
+    .map((candidate) => kidsQualityAuditRow(candidate, selectedTitles));
+  diagnostics.kidsSuspiciousSelectedTitles = selectedSuspiciousTitles;
+  diagnostics.kidsLockQualityFailReasons = lockQualityFailReasons;
+  diagnostics.lockQualityPass = lockQualityFailReasons.length === 0;
+  diagnostics.lockQualityFailReasons = lockQualityFailReasons;
+}
+
 function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string | null {
   if (!candidate.title.trim()) return "missing_title";
   if (profile.ageBand === "preteens") {
@@ -1988,6 +2084,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
 
   addMiddleGradesSlateDiagnostics(selected, rejectedReasons, profile);
   addMiddleGradesSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
+  addKidsSelectionObservability(rankedCandidates, selected, rejectedReasons, profile);
   addAdultFamilyDiagnostics(rankedCandidates, selected, rejectedReasons, profile);
 
   return { selected, rejectedReasons };
