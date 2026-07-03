@@ -21,7 +21,8 @@ function normalized(value: unknown): string {
   return String(value || "").toLowerCase().replace(/[^a-z0-9\s-]/g, " ").replace(/\s+/g, " ").trim();
 }
 
-function candidateMetadataText(candidate: NormalizedCandidate): string {
+
+function rawTextParts(candidate: NormalizedCandidate): { description: string; firstSentence: string; subjects: string } {
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const rawDescription = typeof raw.description === "string"
     ? raw.description
@@ -31,6 +32,37 @@ function candidateMetadataText(candidate: NormalizedCandidate): string {
   const firstSentence = Array.isArray(raw.first_sentence) ? raw.first_sentence.map(String).join(" ") : typeof raw.first_sentence === "string" ? raw.first_sentence : "";
   const rawSubjects = [raw.subject, raw.subjects, raw.subject_facet, raw.subject_key]
     .flatMap((value) => Array.isArray(value) ? value.map(String) : typeof value === "string" ? [value] : []);
+  return {
+    description: [candidate.description, rawDescription].filter(Boolean).join(" ").toLowerCase(),
+    firstSentence: firstSentence.toLowerCase(),
+    subjects: rawSubjects.join(" ").toLowerCase(),
+  };
+}
+
+function kidsNarrativeSemanticEvidence(candidate: NormalizedCandidate, matches: WeightedSignalV2[]): { score: number; signals: string[] } {
+  const parts = rawTextParts(candidate);
+  const narrativeText = [parts.description, parts.firstSentence].join(" ");
+  const subjectsText = parts.subjects;
+  const signals = new Set<string>();
+  let score = 0;
+  for (const signal of matches) {
+    const value = normalized(signal.value);
+    if (!value || isKidsGenericTasteSignal(signal)) continue;
+    if (signalPresentInText(narrativeText, value)) {
+      signals.add(signal.value);
+      score += 1.5;
+    } else if (signalPresentInText(subjectsText, value)) {
+      signals.add(signal.value);
+      score += 0.2;
+    }
+  }
+  if (/\b(story|stories|tale|tales|adventure|journey|friendship|friends?|silly|funny|laugh|imagin|wonder|character|characters|monster|magic|school|family|community)\b/.test(narrativeText)) score += 0.8;
+  return { score: Math.min(5.5, Math.round(score * 1000) / 1000), signals: [...signals] };
+}
+
+function candidateMetadataText(candidate: NormalizedCandidate): string {
+  const { description: rawDescription, firstSentence, subjects } = rawTextParts(candidate);
+  const rawSubjects = subjects ? [subjects] : [];
   return [
     candidate.title,
     candidate.subtitle,
@@ -137,6 +169,12 @@ function addAvoidSignalBucket(matches: WeightedSignalV2[], matched: string[], br
   }
   if (broadPenalty) breakdown.broadAvoidSignalPenalty = Number(breakdown.broadAvoidSignalPenalty || 0) + Math.max(-1.6, broadPenalty);
   if (precisePenalty) breakdown.avoidSignalPenalty = Number(breakdown.avoidSignalPenalty || 0) + precisePenalty;
+}
+
+
+function isKidsGenericTasteSignal(signal: WeightedSignalV2): boolean {
+  const value = normalized(signal.value);
+  return /^(?:animal|animals|picture|pictures|picture book|picture books|children|childrens|book|books|story|stories|juvenile fiction|juvenile literature|fiction|adventure)$/.test(value);
 }
 
 function addSignalBucket(matches: WeightedSignalV2[], multiplier: number, matched: string[], breakdown: Record<string, number>, bucket: string): void {
@@ -247,20 +285,25 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
   return candidates.map((candidate) => {
     const fullText = candidateText(candidate);
     const metadataText = candidateMetadataText(candidate);
-    const text = profile.ageBand === "preteens" && candidate.source === "openLibrary" ? metadataText : fullText;
+    const text = (profile.ageBand === "preteens" || profile.ageBand === "kids") && candidate.source === "openLibrary" ? metadataText : fullText;
     const matchedSignals: string[] = [];
     const scoreBreakdown: Record<string, number> = { base: 1 };
 
     const middleGradesOpenLibrary = profile.ageBand === "preteens" && candidate.source === "openLibrary";
+    const kidsOpenLibrary = profile.ageBand === "kids" && candidate.source === "openLibrary";
     const rawGenreMatches = signalMatches(text, profile.genreFamily);
     const rawThemeMatches = signalMatches(text, profile.themes);
     const rawToneMatches = signalMatches(text, profile.tone);
     const rawCharacterMatches = signalMatches(text, profile.characterDynamics);
     const rawFormatMatches = signalMatches(text, profile.formatPreference);
-    const filterGenericMatches = (matches: WeightedSignalV2[]) => middleGradesOpenLibrary ? matches.filter((signal) => !isMiddleGradesGenericTasteSignal(signal)) : matches;
-    const removedGenericTasteSignals = middleGradesOpenLibrary
+    const filterGenericMatches = (matches: WeightedSignalV2[]) => middleGradesOpenLibrary
+      ? matches.filter((signal) => !isMiddleGradesGenericTasteSignal(signal))
+      : kidsOpenLibrary
+        ? matches.filter((signal) => !isKidsGenericTasteSignal(signal))
+        : matches;
+    const removedGenericTasteSignals = middleGradesOpenLibrary || kidsOpenLibrary
       ? [...rawGenreMatches, ...rawThemeMatches, ...rawToneMatches, ...rawCharacterMatches, ...rawFormatMatches]
-        .filter(isMiddleGradesGenericTasteSignal)
+        .filter((signal) => middleGradesOpenLibrary ? isMiddleGradesGenericTasteSignal(signal) : isKidsGenericTasteSignal(signal))
         .map((signal) => signal.value)
       : [];
     const genreMatches = filterGenericMatches(rawGenreMatches);
@@ -272,19 +315,22 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const positiveMatches = [...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
     const fullPositiveMatches = [...signalMatches(fullText, profile.themes), ...signalMatches(fullText, profile.tone), ...signalMatches(fullText, profile.characterDynamics), ...signalMatches(fullText, profile.formatPreference)];
     const rawTasteMatchCount = rawGenreMatches.length + rawThemeMatches.length + rawToneMatches.length + rawCharacterMatches.length + rawFormatMatches.length;
-    const genericOnlyTasteMatch = middleGradesOpenLibrary && rawTasteMatchCount > 0 && genreMatches.length + positiveMatches.length === 0;
-    const removedQueryTextSignals = middleGradesOpenLibrary
+    const genericOnlyTasteMatch = (middleGradesOpenLibrary || kidsOpenLibrary) && rawTasteMatchCount > 0 && genreMatches.length + positiveMatches.length === 0;
+    const removedQueryTextSignals = middleGradesOpenLibrary || kidsOpenLibrary
       ? [...signalMatches(fullText, profile.genreFamily), ...fullPositiveMatches]
         .filter((signal) => ![...genreMatches, ...positiveMatches].some((kept) => normalized(kept.value) === normalized(signal.value)))
-        .filter((signal) => !isMiddleGradesGenericTasteSignal(signal))
+        .filter((signal) => middleGradesOpenLibrary ? !isMiddleGradesGenericTasteSignal(signal) : !isKidsGenericTasteSignal(signal))
         .map((signal) => signal.value)
       : [];
 
-    addSignalBucket(genreMatches, 3, matchedSignals, scoreBreakdown, "genreFacetMatch");
-    addSignalBucket(themeMatches, 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
-    addSignalBucket(toneMatches, 1.2, matchedSignals, scoreBreakdown, "positiveTasteMatch");
-    addSignalBucket(characterMatches, 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
-    addSignalBucket(formatMatches, 0.8, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    const allPositiveMatches = [...genreMatches, ...themeMatches, ...toneMatches, ...characterMatches, ...formatMatches];
+    const kidsNarrativeEvidence = kidsOpenLibrary ? kidsNarrativeSemanticEvidence(candidate, allPositiveMatches) : { score: 0, signals: [] };
+    addSignalBucket(genreMatches, kidsOpenLibrary ? 0.7 : 3, matchedSignals, scoreBreakdown, "genreFacetMatch");
+    addSignalBucket(themeMatches, kidsOpenLibrary ? 0.45 : 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    addSignalBucket(toneMatches, kidsOpenLibrary ? 0.4 : 1.2, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    addSignalBucket(characterMatches, kidsOpenLibrary ? 0.8 : 1.7, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    addSignalBucket(formatMatches, kidsOpenLibrary ? 0.25 : 0.8, matchedSignals, scoreBreakdown, "positiveTasteMatch");
+    if (kidsNarrativeEvidence.score > 0) scoreBreakdown.narrativeSemanticEvidence = kidsNarrativeEvidence.score;
     addAvoidSignalBucket(avoidMatches, matchedSignals, scoreBreakdown);
 
     const suitabilityScore = ageSuitabilityScore(candidate, profile);
@@ -292,7 +338,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     scoreBreakdown.ageBandSuitability = suitabilityScore;
     scoreBreakdown.sourceQualityRelevance = sourceQualityRelevanceScore(candidate, profile, genreMatches, positiveMatches);
     scoreBreakdown.queryRungBonus = queryRungBonus(candidate);
-    if (genericOnlyTasteMatch) scoreBreakdown.genericOnlyTasteMatchPenalty = -0.9;
+    if (genericOnlyTasteMatch) scoreBreakdown.genericOnlyTasteMatchPenalty = kidsOpenLibrary ? -1.25 : -0.9;
 
     const score = Object.entries(scoreBreakdown).reduce((sum, [key, value]) => sum + (key === "ageBandSuitability" ? 0 : Number(value || 0)), 0);
     return {
@@ -308,6 +354,7 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
         genericTasteSignalsRemoved: Array.from(new Set(removedGenericTasteSignals)),
         genericOnlyTasteMatch,
         documentBackedTasteSignals: [...genreMatches, ...positiveMatches].map((signal) => signal.value),
+        narrativeSemanticSignals: kidsNarrativeEvidence.signals,
       },
     };
   }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));

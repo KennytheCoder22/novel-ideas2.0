@@ -537,11 +537,12 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
   const finalEligibilityCleanCandidateCount = Number.isFinite(reportedCleanCandidateCount)
     ? reportedCleanCandidateCount
     : selected.length;
-  const middleGradesCleanCandidateUnderfilled = finalEligibilityCleanCandidateCount < 5
+  const cleanCandidateUnderfilled = finalEligibilityCleanCandidateCount < 5
     || currentSelectionDiagnostics.lockQualityPass === false;
-  const shouldRunCleanCandidateShortfallExpansion = tasteProfile.ageBand === "preteens"
+  const cleanShortfallExpansionSupported = tasteProfile.ageBand === "preteens" || tasteProfile.ageBand === "kids";
+  const shouldRunCleanCandidateShortfallExpansion = cleanShortfallExpansionSupported
     && Boolean(currentOpenLibrarySourceResult)
-    && middleGradesCleanCandidateUnderfilled;
+    && cleanCandidateUnderfilled;
   if (shouldRunCleanCandidateShortfallExpansion && currentOpenLibrarySourceResult) {
     const openLibraryPlan = searchPlan.sourcePlans.find((plan) => plan.source === "openLibrary");
     const adapter = openLibraryPlan ? sourceAdapters[openLibraryPlan.source] : undefined;
@@ -551,10 +552,11 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
         ...tasteProfile,
         diagnostics: {
           ...tasteProfile.diagnostics,
-          forceMiddleGradesMeaningfulTasteRecovery: true,
-          forceMiddleGradesCleanCandidateShortfallExpansion: true,
-          debugMiddleGradesDeepTrace: true,
-          middleGradesDeepDebugActive: true,
+          forceMiddleGradesMeaningfulTasteRecovery: tasteProfile.ageBand === "preteens",
+          forceMiddleGradesCleanCandidateShortfallExpansion: tasteProfile.ageBand === "preteens",
+          forceKidsCleanCandidateShortfallExpansion: tasteProfile.ageBand === "kids",
+          debugMiddleGradesDeepTrace: tasteProfile.ageBand === "preteens",
+          middleGradesDeepDebugActive: tasteProfile.ageBand === "preteens",
           priorMiddleGradesRecoveryRejectedReasons: selection.rejectedReasons,
           priorMiddleGradesRecoverySourceDiagnostics: currentOpenLibrarySourceResult.diagnostics,
         },
@@ -887,9 +889,9 @@ export async function runRecommenderV2(session: SwipeSessionV2): Promise<Recomme
       currentOpenLibrarySourceResult.diagnostics.expansionCandidatesRejectedByReason = {};
       currentOpenLibrarySourceResult.diagnostics.expansionSelectedRejectedByReason = {};
     }
-  } else if (tasteProfile.ageBand === "preteens" && currentOpenLibrarySourceResult) {
+  } else if ((tasteProfile.ageBand === "preteens" || tasteProfile.ageBand === "kids") && currentOpenLibrarySourceResult) {
     currentOpenLibrarySourceResult.diagnostics.cleanCandidateShortfallExpansionTriggered = false;
-    currentOpenLibrarySourceResult.diagnostics.expansionNotTriggeredReason = middleGradesCleanCandidateUnderfilled
+    currentOpenLibrarySourceResult.diagnostics.expansionNotTriggeredReason = cleanCandidateUnderfilled
       ? "openlibrary_source_unavailable"
       : "final_eligibility_not_underfilled";
     currentOpenLibrarySourceResult.diagnostics.expansionFetchAttempted = false;

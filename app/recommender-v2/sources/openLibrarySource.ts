@@ -767,6 +767,114 @@ function buildMiddleGradesOpenLibraryQueryPlans(plan: SourcePlan, profile: Taste
   }));
 }
 
+function buildKidsOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
+  const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: `${ageProfile.key}-open-library-fallback`, priority: 0, rationale: [] }];
+  const originalPlannedQuery = finalOpenLibraryQueryDedupe(String(plannedIntents[0]?.query || ageProfile.diagnosticProbeQuery));
+  const positiveRows = [
+    ...profile.genreFamily,
+    ...profile.themes,
+    ...profile.tone,
+    ...profile.characterDynamics,
+  ].filter((row) => Number(row.weight || 0) > 0);
+  const likedRows = positiveRows.filter((row) => Array.isArray(row.evidence) && row.evidence.some((item) => String(item || "").startsWith("like:")));
+  const likedText = (likedRows.length ? likedRows : positiveRows).map((row) => String(row.value || "").toLowerCase()).join(" ");
+  const avoidText = (profile.avoidSignals || []).map((row) => String(row.value || "").toLowerCase()).join(" ");
+  const queries: string[] = [];
+  const add = (query: string) => {
+    const clean = finalOpenLibraryQueryDedupe(query);
+    if (isUsefulOpenLibraryQueryPart(clean)) queries.push(clean);
+  };
+  const addFallback = (query: string) => {
+    if (queries.length < 5) add(query);
+  };
+  const forceSemanticExpansion = Boolean((profile.diagnostics as Record<string, unknown>)?.forceKidsCleanCandidateShortfallExpansion);
+  if (forceSemanticExpansion) {
+    if (/cozy|calm/.test(likedText) && /adventure|wonder|magic|explor/.test(likedText)) add("cozy adventure picture books");
+    if (/cozy|life sim|calm/.test(likedText) && !(/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText))) add("cozy everyday picture books");
+    if (/cozy|calm/.test(likedText) && /adventure|wonder|magic|explor/.test(likedText)) add("gentle adventure picture books");
+    if (/cozy|life sim/.test(likedText) && !(/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText))) add("cozy animal village picture books");
+    if (/reading|literacy|letters?|words?|problem[_ ]solving|problem solving|puzzles?|solve|super why/.test(likedText)) add("reading problem solving picture books");
+    if (/problem[_ ]solving|problem solving|puzzles?|solve/.test(likedText)) add("problem solving early reader books");
+    if (/reading|literacy|letters?|words?|stories/.test(likedText) && /adventure|problem[_ ]solving|problem solving|series/.test(likedText)) add("reading adventure picture books");
+    if (/animals?|monkeys?|dogs?|playful|silly/.test(likedText) && /mischief|humou?r|funny|silly|playful|community/.test(likedText)) add("funny animal picture books");
+    if (/monkeys?/.test(likedText) && /mischief|repetition|call and response/.test(likedText)) add("mischievous monkey picture books");
+    if (/teamwork|helping|courage|brave|heroic|heroes?|rescue|kindness|uplifting/.test(likedText)) add("teamwork helping picture books");
+    if (/helping|kindness|caring/.test(likedText) && /teamwork|courage|brave|heroic|heroes?|rescue|community/.test(likedText)) add("helping teamwork picture books");
+    if (/courage|brave|heroic|heroes?|rescue/.test(likedText)) add("brave rescue picture books");
+    if (/pooh|bear/.test(likedText)) add("gentle bear picture books");
+    if (/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText)) add("folklore animal picture books");
+    if (/winter|snow|cozy|calm|nature|woodland|forest|puffin/.test(likedText) && /animals?/.test(likedText)) add("woodland animal picture books");
+    if (/calm|nature|puffin/.test(likedText)) add("calm nature picture books");
+    if (/animals?/.test(likedText) && !/humou?r|funny|silly|playful/.test(likedText)) add("woodland animal picture books");
+    if (/mischief|humou?r|funny|silly/.test(likedText)) add("funny mischief picture books");
+    if (/mischief|trouble|naughty|david/.test(likedText)) add("mischief picture books");
+    if (/big feelings?|feelings?|simple/.test(likedText)) add("big feelings picture books");
+    if (/simple|humou?r|funny|silly/.test(likedText)) add("simple funny picture books");
+    if (/imagination|creative|creativity|pretend|box|curious|curiosity/.test(likedText)) add("imaginative picture books");
+    if (/imagination|pretend|creative|box/.test(likedText)) add("pretend play picture books");
+    if (/learning|songs?|music|school|letters|numbers/.test(likedText)) add("learning picture books");
+    if (/songs?|music/.test(likedText)) add("sing along picture books");
+    if (/fantasy|magic|wonder|adventure/.test(likedText)) add("imaginative adventure picture books");
+    if (/science|curiosity|experiment|space|robots?|robotics|science_fiction|sci fi|animation/.test(likedText)) add("science story picture books");
+    if (/robots?|robotics|wall e|space/.test(likedText)) add("robot picture books");
+    if (!queries.length) {
+      add("imaginative picture books");
+      add("early reader stories");
+    }
+  } else if (/cozy|calm/.test(likedText) && /adventure|wonder|magic|explor/.test(likedText)) add("cozy adventure picture books");
+  if (!forceSemanticExpansion && /cozy|life sim|calm/.test(likedText) && !(/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText))) add("cozy everyday picture books");
+  if (!forceSemanticExpansion && /cozy|calm/.test(likedText) && /adventure|wonder|magic|explor/.test(likedText)) add("gentle adventure picture books");
+  if (!forceSemanticExpansion && /cozy|life sim/.test(likedText) && !(/folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText))) add("cozy animal village picture books");
+  if (!forceSemanticExpansion && /reading|literacy|letters?|words?|problem[_ ]solving|problem solving|puzzles?|solve|super why/.test(likedText)) add("reading problem solving picture books");
+  if (!forceSemanticExpansion && /problem[_ ]solving|problem solving|puzzles?|solve/.test(likedText)) add("problem solving early reader books");
+  if (!forceSemanticExpansion && /reading|literacy|letters?|words?|stories/.test(likedText) && /adventure|problem[_ ]solving|problem solving|series/.test(likedText)) add("reading adventure picture books");
+  if (!forceSemanticExpansion && /animals?|monkeys?|dogs?|playful|silly/.test(likedText) && /mischief|humou?r|funny|silly|playful|community/.test(likedText)) add("funny animal picture books");
+  if (!forceSemanticExpansion && /monkeys?/.test(likedText) && /mischief|repetition|call and response/.test(likedText)) add("mischievous monkey picture books");
+  if (!forceSemanticExpansion && /teamwork|helping|courage|brave|heroic|heroes?|rescue|kindness|uplifting/.test(likedText)) add("teamwork helping picture books");
+  if (!forceSemanticExpansion && /helping|kindness|caring/.test(likedText) && /teamwork|courage|brave|heroic|heroes?|rescue|community/.test(likedText)) add("helping teamwork picture books");
+  if (!forceSemanticExpansion && /courage|brave|heroic|heroes?|rescue/.test(likedText)) add("brave rescue picture books");
+  if (!forceSemanticExpansion && /pooh|bear/.test(likedText)) add("gentle bear picture books");
+  if (!forceSemanticExpansion && /folklore|folk tale|folktale|classic|winter|mitten/.test(likedText) && /animals?/.test(likedText)) add("folklore animal picture books");
+  if (!forceSemanticExpansion && /winter|snow|cozy|calm|nature|woodland|forest|puffin/.test(likedText) && /animals?/.test(likedText)) add("woodland animal picture books");
+  if (!forceSemanticExpansion && /calm|nature|puffin/.test(likedText)) add("calm nature picture books");
+  if (!forceSemanticExpansion && /animals?/.test(likedText) && !/humou?r|funny|silly|playful/.test(likedText)) add("woodland animal picture books");
+  if (!forceSemanticExpansion && /imagination|creative|creativity|curious|curiosity|drawing|art/.test(likedText)) add("imagination picture books");
+  if (!forceSemanticExpansion && /learning|songs?|music|school|letters|numbers/.test(likedText)) add("learning picture books");
+  if (!forceSemanticExpansion && /fantasy|magic|imagination|wonder/.test(likedText)) add("fantasy picture books");
+  if (!forceSemanticExpansion && /cozy|gentle|calm/.test(likedText) && /adventure|wonder|magic/.test(likedText)) add("cozy adventure picture books");
+  if (!forceSemanticExpansion && /science|curiosity|experiment|space|robots?|robotics|science_fiction|sci fi|animation/.test(likedText)) add("science fiction picture books");
+  if (!forceSemanticExpansion && /science|curiosity|experiment|space|robots?|robotics|science_fiction|sci fi/.test(likedText)) add("science easy reader");
+  if (!forceSemanticExpansion && /robots?|robotics|wall e|space/.test(likedText)) add("robot picture books");
+  if (!forceSemanticExpansion && /feelings?|kindness|empathy|emotional|warm/.test(likedText)) add("picture books feelings kindness");
+  if (!forceSemanticExpansion && /friendship|friends?|growing up|growing_up|lessons?|school/.test(likedText)) add("early reader friends");
+  if (!forceSemanticExpansion && /friendship|friends?|belonging|kindness/.test(likedText)) add("picture book friends kindness");
+  if (!forceSemanticExpansion && /calm|gentle|cozy|bedtime|kindness|feelings?/.test(likedText)) add("gentle picture books");
+  if (!forceSemanticExpansion && /calm|gentle|bedtime|kindness|feelings?/.test(likedText)) add("picture books calm friendship");
+  if (!forceSemanticExpansion && /bear|bears|toy|toys/.test(likedText)) add("bear friendship picture book");
+  if (!forceSemanticExpansion && /humou?r|funny|comedy|playful|silly/.test(likedText)) add("funny picture books");
+  if (!forceSemanticExpansion && /science|curiosity|experiment|space|robots?|science_fiction/.test(likedText) && /humou?r|funny|comedy|playful|silly/.test(likedText)) add("funny science picture books");
+  if (!forceSemanticExpansion && /fairy tale|fairytale|clever|twist|unreliable narrator|pigs?/.test(likedText)) add("fractured fairy tales picture books");
+  if (!forceSemanticExpansion && /fairy tale|fairytale|clever|twist|unreliable narrator|pigs?/.test(likedText) && /humou?r|funny|comedy|playful|silly/.test(likedText)) add("funny fairy tale picture book");
+  if (!forceSemanticExpansion && /clever|twist|wonder|curiosity/.test(likedText)) add("clever picture books");
+  if (!forceSemanticExpansion && /adventure|wonder|fantasy|magic|animals?/.test(likedText) && !/mystery|scary|frightening/.test(avoidText)) add("children picture book adventure");
+  if (!forceSemanticExpansion && /growing up|growing_up|family|friendship|lessons?/.test(likedText)) add("beginning reader growing up");
+  if (!forceSemanticExpansion) {
+    addFallback("easy reader");
+    addFallback(ageProfile.diagnosticProbeQuery);
+  }
+  const uniqueQueries = uniqueStrings(queries, ageProfile.queryLimit);
+  return uniqueQueries.map((query, index) => ({
+    query,
+    originalPlannedQuery,
+    queryCascadeIndex: index,
+    queryFamily: queryFamilyForOpenLibraryQuery(query),
+    facets: uniqueStrings((plannedIntents[index]?.facets || []).map(cleanOpenLibraryQueryPart).filter(isUsefulOpenLibraryQueryPart), 6),
+    routingReason: forceSemanticExpansion ? "k2_clean_candidate_shortfall_semantic_expansion" : "k2_openlibrary_picture_early_reader",
+    routingDominance: { openLibraryPlanner: "k2_profile_candidate", ageProfile: ageProfile.key, behaviorLabel: ageProfile.behaviorLabel, lockedBaseline: ageProfile.lockedBaseline, likedSignalsUsedForQueries: uniqueStrings(likedRows.map((row) => row.value), 8).join("|"), semanticExpansion: forceSemanticExpansion },
+    profileSpecific: index < uniqueQueries.length - 1,
+  }));
+}
+
 function buildGenericOpenLibraryQueryPlans(plan: SourcePlan, ageProfile: OpenLibraryAgeProfile): OpenLibraryQueryPlan[] {
   const plannedIntents = plan.intents.length ? plan.intents : [{ query: ageProfile.diagnosticProbeQuery, facets: [], id: `${ageProfile.key}-open-library-fallback`, priority: 0, rationale: [] }];
   const rawQueries = plannedIntents.flatMap((intent) => [intent.query, ...(intent.facets || [])]);
@@ -790,6 +898,7 @@ function buildOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile, age
   if (ageProfile.key === "teen") return buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile);
   if (ageProfile.key === "adult") return buildAdultOpenLibraryQueryPlans(plan, profile, ageProfile);
   if (ageProfile.key === "middleGrades") return buildMiddleGradesOpenLibraryQueryPlans(plan, profile, ageProfile);
+  if (ageProfile.key === "k2") return buildKidsOpenLibraryQueryPlans(plan, profile, ageProfile);
   return buildGenericOpenLibraryQueryPlans(plan, ageProfile);
 }
 
@@ -2063,6 +2172,24 @@ function isTooYoungTeenOpenLibraryDoc(doc: any, profile: TasteProfile): boolean 
   return /\b(rainbow magic|sophie the sapphire fairy|cinderella'?s magic adventure|rainbow fairies|jewel fairies|fairy books?|easy readers?|beginner books?)\b/.test(text);
 }
 
+function hasKidsAgeShapeEvidence(doc: any, query: string, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "kids") return true;
+  const text = openLibraryDocText(doc).toLowerCase();
+  const queryText = String(query || "").toLowerCase();
+  const hasKidsEvidence = /\b(picture books?|juvenile fiction|juvenile literature|children'?s stories|children'?s books?|easy readers?|early readers?|beginning readers?|beginner books?|read-aloud|read aloud|ages?\s*(?:4|5|6|7|8)|grades?\s*(?:k|1|2)|kindergarten|preschool)\b/.test(text);
+  const queryIsKidsAnchored = /\b(picture books?|early reader|easy reader|beginning reader|children)\b/.test(queryText);
+  const hasKidFriendlyShape = /\b(friendship|friends?|feelings?|kindness|calm|gentle|cozy|growing up|family|school|animals?|adventure|humou?r|funny|bedtime|empathy|science|curiosity|curious|robots?|space|imagination|creative|creativity|fantasy|magic|learning|songs?|music|drawing|art|fairy tale|clever)\b/.test(text);
+  const adultOrReferenceShape = /\b(adult|history of|politics|sociology|psychology|nineteen eighty-four|animal farm|dystopian|signed|cloth|archive|archives|literary criticism|reference|bibliograph|manual|handbook|university|college)\b/.test(text);
+  const titleText = String(doc?.title || "").trim().toLowerCase();
+  const genericNoAgeTitle = /^(?:the )?(?:friends|lantern archive|the lantern archive)$/i.test(titleText);
+  const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
+  const oldGenericAdventureTitle = firstPublishYear > 0 && firstPublishYear < 1980 && /\b(treasure|voyage|cove|ship|sail|island|adventure)\b/.test(titleText);
+  if (!hasKidsEvidence && (genericNoAgeTitle || oldGenericAdventureTitle)) return false;
+  if (hasKidsEvidence && !/\b(nineteen eighty-four|animal farm|adult)\b/.test(text)) return true;
+  if (queryIsKidsAnchored && hasKidFriendlyShape && !adultOrReferenceShape) return true;
+  return false;
+}
+
 function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile): { keep: boolean; reason?: string } {
   if (!isEnglishOpenLibraryDoc(doc)) return { keep: false, reason: "non_english" };
   if (!Array.isArray(doc?.author_name) || doc.author_name.length === 0) return { keep: false, reason: "missing_author" };
@@ -2083,6 +2210,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
   if (!hasMiddleGradesAgeShapeEvidence(doc, query, profile)) return { keep: false, reason: "middle_grades_age_shape_mismatch" };
+  if (!hasKidsAgeShapeEvidence(doc, query, profile)) return { keep: false, reason: "k2_age_shape_mismatch" };
   return { keep: true };
 }
 
@@ -2122,6 +2250,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         : Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_TOTAL_BUDGET_MS)
       : plan.timeoutMs;
     const forceMiddleGradesCleanCandidateShortfallExpansion = ageProfile.key === "middleGrades" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesCleanCandidateShortfallExpansion);
+    const forceKidsCleanCandidateShortfallExpansion = ageProfile.key === "k2" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceKidsCleanCandidateShortfallExpansion);
+    const cleanCandidateShortfallExpansionActive = forceMiddleGradesCleanCandidateShortfallExpansion || forceKidsCleanCandidateShortfallExpansion;
     const baseQueryPlans = buildOpenLibraryQueryPlans(plan, context.profile, ageProfile);
     const cleanExpansionQueryPlan = forceMiddleGradesCleanCandidateShortfallExpansion
       ? middleGradesMeaningfulTasteRecoveryQueryPlans(context.profile, new Set<string>(), {})
@@ -4499,7 +4629,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           : "production_pool_candidate_limit"
         : "none"
       : undefined;
-    const cleanExpansionAttemptedQueries = forceMiddleGradesCleanCandidateShortfallExpansion
+    const cleanExpansionAttemptedQueries = cleanCandidateShortfallExpansionActive
       ? uniqueStrings(queries, 20)
       : uniqueStrings(middleGradesMeaningfulTasteRecoveryQueriesAttempted, 20);
     const statusForHandoff: SourceResult["status"] = openLibraryScoringHandoffItems.length ? "succeeded" : status;
@@ -4531,9 +4661,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         openLibraryTopUpTarget: ageProfile.minCleanDocs,
         openLibraryFallbackQueriesExhausted: rawItems.length < ageProfile.minCleanDocs && mainFetches.length >= queryPlans.length,
         usableRowsAfterFiltering: openLibraryScoringHandoffItems.length,
-        openLibraryDocsFetchedAcrossAllQueriesCount: ageProfile.key === "middleGrades" ? rawApiResultCount : undefined,
-        openLibraryDocsEligibleForScoringCount: ageProfile.key === "middleGrades" ? openLibraryScoringHandoffEligiblePool.length : undefined,
-        openLibraryDocsActuallyHandedToScoringCount: ageProfile.key === "middleGrades" ? openLibraryScoringHandoffItems.length : undefined,
+        openLibraryDocsFetchedAcrossAllQueriesCount: rawApiResultCount,
+        openLibraryDocsEligibleForScoringCount: openLibraryScoringHandoffEligiblePool.length,
+        openLibraryDocsActuallyHandedToScoringCount: openLibraryScoringHandoffItems.length,
         openLibraryScoringHandoffLimitedToSourceFinal,
         openLibraryScoringHandoffSuppressedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(openLibraryScoringHandoffSuppressedTitles, 50) : undefined,
         openLibraryScoringHandoffSource,
@@ -4645,20 +4775,20 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         mediumStrongEvidenceAcceptedTitles: ageProfile.key === "middleGrades" ? middleGradesMediumStrongEvidenceAcceptedTitlesForDiagnostics : undefined,
         weakEvidenceFinalizedBecause: ageProfile.key === "middleGrades" ? middleGradesWeakEvidenceFinalizedBecause : undefined,
         weakEvidenceReturnedOnlyAfterEvidenceSearchExhausted: ageProfile.key === "middleGrades" ? middleGradesWeakEvidenceReturnedOnlyAfterEvidenceSearchExhausted : undefined,
-        cleanCandidateShortfallExpansionTriggered: ageProfile.key === "middleGrades" ? forceMiddleGradesCleanCandidateShortfallExpansion : undefined,
-        expansionNotTriggeredReason: ageProfile.key === "middleGrades" && !forceMiddleGradesCleanCandidateShortfallExpansion ? "not_requested" : undefined,
-        expansionFetchAttempted: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? fetches.some((fetch) => !fetch.diagnosticOnly) : undefined,
-        expansionAttemptedQueries: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? cleanExpansionAttemptedQueries : undefined,
-        expansionFetchResultsByQuery: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? cleanExpansionAttemptedQueries.map((query) => {
+        cleanCandidateShortfallExpansionTriggered: cleanCandidateShortfallExpansionActive || undefined,
+        expansionNotTriggeredReason: (ageProfile.key === "middleGrades" || ageProfile.key === "k2") && !cleanCandidateShortfallExpansionActive ? "not_requested" : undefined,
+        expansionFetchAttempted: cleanCandidateShortfallExpansionActive ? fetches.some((fetch) => !fetch.diagnosticOnly) : undefined,
+        expansionAttemptedQueries: cleanCandidateShortfallExpansionActive ? cleanExpansionAttemptedQueries : undefined,
+        expansionFetchResultsByQuery: cleanCandidateShortfallExpansionActive ? cleanExpansionAttemptedQueries.map((query) => {
           const matchingFetches = fetches.filter((fetch) => fetch.query === query);
           const rawCount = matchingFetches.reduce((sum, fetch) => sum + Number(fetch.docsReturned || 0), 0);
           const failed = matchingFetches.find((fetch) => fetch.failedReason || fetch.timedOut);
           return { query, status: failed ? (failed.timedOut ? "timed_out" : "error") : rawCount > 0 ? "ok" : "empty", rawCount, error: failed?.failedReason };
         }) : undefined,
-        expansionRawCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? cleanExpansionAttemptedQueries.reduce((sum, query) => sum + fetches.filter((fetch) => fetch.query === query).reduce((inner, fetch) => inner + Number(fetch.docsReturned || 0), 0), 0) : undefined,
-        expansionConvertedCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? rawItems.length : undefined,
-        expansionMergedCandidateCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? openLibraryScoringHandoffItems.length : undefined,
-        expansionMergedTitles: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? uniqueStrings(openLibraryScoringHandoffItems.map((item: any) => item?.title), 20) : undefined,
+        expansionRawCount: cleanCandidateShortfallExpansionActive ? cleanExpansionAttemptedQueries.reduce((sum, query) => sum + fetches.filter((fetch) => fetch.query === query).reduce((inner, fetch) => inner + Number(fetch.docsReturned || 0), 0), 0) : undefined,
+        expansionConvertedCount: cleanCandidateShortfallExpansionActive ? rawItems.length : undefined,
+        expansionMergedCandidateCount: cleanCandidateShortfallExpansionActive ? openLibraryScoringHandoffItems.length : undefined,
+        expansionMergedTitles: cleanCandidateShortfallExpansionActive ? uniqueStrings(openLibraryScoringHandoffItems.map((item: any) => item?.title), 20) : undefined,
         expansionFetchFailureReason: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion && middleGradesMeaningfulTasteRecoveryQueriesAttempted.length > 0 && rawItems.length === 0 ? "expansion_source_filters_converted_zero_rows" : undefined,
         expansionMergeSkippedReason: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion && rawItems.length === 0 ? "no_expansion_rows_to_merge" : undefined,
         expansionCandidatesEnteredScoringCount: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? openLibraryScoringHandoffItems.length : undefined,
