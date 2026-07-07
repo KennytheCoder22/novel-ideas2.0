@@ -841,10 +841,16 @@ function middleGradesRepresentativePenalty(candidate: ScoredCandidate): number {
   if (!isMiddleGradesOpenLibraryCandidate(candidate)) return 0;
   const text = middleGradesRepresentativeText(candidate);
   const titleText = normalized(candidate.title);
+  const rawTitle = String(candidate.title || "");
   let penalty = 0;
   if (/\b(companion|guide|guidebook|handbook|manual|confidential|insider|insider s|field guide|survival guide|encyclopedia|facts?|activity|workbook|journal|atlas|almanac|behind the scenes|making of|sampler|preview)\b/.test(text)) penalty += 6;
   if (/\b(complete|collected|collection|collections|treasury|storybook|stories|tales|adventures|omnibus|anthology|library|set|boxed|box)\b/.test(titleText)) penalty += 3;
   if (/\b(movie tie in|tie in|official tie in|video game|game guide)\b/.test(text)) penalty += 1.5;
+  const trailingTitleNumber = Number(titleText.match(/\b(\d{1,2})\s*$/)?.[1] || 0);
+  if (/#\s*(?:[3-9]|\d{2,})\b/.test(rawTitle)
+    || /\b(book|volume|vol)\s*(?:[3-9]|\d{2,})\b/.test(text)
+    || trailingTitleNumber >= 3) penalty += 3;
+  if (/\b(nightfall|lodestar|neverseen)\b/.test(titleText) && /\b(shannon messenger|keeper|lost cities)\b/.test(text)) penalty += 3;
   if (/\b(book|volume|vol)\s*(1|one)\b/.test(text) || /\bfirst\b[a-z0-9 ]{0,60}\b(series|novel|book|installment)\b/.test(text)) penalty -= 1.5;
   if (isMiddleGradesCanonicalFranchiseTitle(candidate)) penalty -= 2;
   return Math.round(penalty * 1000) / 1000;
@@ -855,6 +861,9 @@ function middleGradesFranchiseKey(candidate: ScoredCandidate): string {
   const text = middleGradesRepresentativeText(candidate);
   const author = primaryAuthor(candidate);
   if (/\b(rick riordan|percy jackson|camp half blood|half blood|trials of apollo|hidden oracle|heroes of olympus|olympus|greek gods|apollo)\b/.test(`${author} ${text}`)) return "rick_riordan_mythology";
+  if (/\bdork diaries\b/.test(text)) return "dork_diaries";
+  if (/\bdiary of an 8 bit warrior|8 bit warrior\b/.test(text)) return "diary_of_an_8_bit_warrior";
+  if (/\b(keeper of the lost cities|keeper lost cities|lost cities|neverseen|nightfall|lodestar)\b/.test(text)) return "keeper_of_the_lost_cities";
   if (/\bwild robot\b/.test(text)) return "wild robot";
   if (/\bnevermoor|morrigan crow\b/.test(text)) return "nevermoor";
   if (/\bmasterminds\b/.test(text)) return "masterminds";
@@ -894,10 +903,15 @@ function middleGradesWouldConflictAfterRepresentativeSwap(candidate: ScoredCandi
   });
 }
 
-function applyMiddleGradesFranchiseRepresentativePreference(selected: ScoredCandidate[], deferred: DeferredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
-  if (profile.ageBand !== "preteens" || selected.length === 0 || deferred.length === 0) return;
-  const candidates = deferred
-    .map((row) => row.candidate)
+function applyMiddleGradesFranchiseRepresentativePreference(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], deferred: DeferredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens" || selected.length === 0) return;
+  const seenCandidates = new Set<ScoredCandidate>();
+  const candidates = [...deferred.map((row) => row.candidate), ...rankedCandidates]
+    .filter((candidate) => {
+      if (seenCandidates.has(candidate)) return false;
+      seenCandidates.add(candidate);
+      return true;
+    })
     .filter((candidate) => isMiddleGradesOpenLibraryCandidate(candidate))
     .filter((candidate) => !selected.includes(candidate))
     .filter((candidate) => !rejectReason(candidate, profile))
@@ -2366,7 +2380,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
-  applyMiddleGradesFranchiseRepresentativePreference(selected, deferred, rejectedReasons, profile);
+  applyMiddleGradesFranchiseRepresentativePreference(rankedCandidates, selected, deferred, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesContemporarySchoolAlignment(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates, selected, rejectedReasons, profile, limit);
