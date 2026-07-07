@@ -2250,6 +2250,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         ? Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_TOTAL_BUDGET_MS)
         : Math.max(plan.timeoutMs, MIDDLE_GRADES_OPEN_LIBRARY_TOTAL_BUDGET_MS)
       : plan.timeoutMs;
+    const middleGradesActualNetworkTimeoutMs = (remainingBudgetMs?: number): number => {
+      const budgetMs = Number.isFinite(Number(remainingBudgetMs))
+        ? Number(remainingBudgetMs)
+        : sourceBudgetMs - (Date.now() - Date.parse(startedAt));
+      return Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(1, Math.floor(budgetMs)));
+    };
     const forceMiddleGradesCleanCandidateShortfallExpansion = ageProfile.key === "middleGrades" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceMiddleGradesCleanCandidateShortfallExpansion);
     const forceKidsCleanCandidateShortfallExpansion = ageProfile.key === "k2" && Boolean((context.profile.diagnostics as Record<string, unknown>)?.forceKidsCleanCandidateShortfallExpansion);
     const cleanCandidateShortfallExpansionActive = forceMiddleGradesCleanCandidateShortfallExpansion || forceKidsCleanCandidateShortfallExpansion;
@@ -2858,8 +2864,11 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       const middleGradesQueryIsTargeted = ageProfile.key === "middleGrades" && middleGradesTargetedQuerySet.has(query.toLowerCase());
       const mainFetchTimeoutMsUncapped = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? middleGradesInitialTimeoutMs ?? firstAttemptTimeoutMs;
       const mainProxyClientTimeoutMsUncapped = middleGradesDistributedTimeoutMs ?? teenDistributedSpecificTimeoutMs ?? middleGradesTimeoutCascadeRemainingMs ?? teenTimeoutCascadeRemainingMs ?? middleGradesInitialTimeoutMs ?? openLibraryProxyClientTimeoutMs(ageProfile);
-      let mainFetchTimeoutMs = debugMiddleGradesDeepTrace && ageProfile.key === "middleGrades" ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : mainFetchTimeoutMsUncapped;
-      let mainProxyClientTimeoutMs = debugMiddleGradesDeepTrace && ageProfile.key === "middleGrades" ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : mainProxyClientTimeoutMsUncapped;
+      const middleGradesDebugNetworkTimeoutMs = debugMiddleGradesDeepTrace && ageProfile.key === "middleGrades"
+        ? middleGradesActualNetworkTimeoutMs(sourceBudgetMs - elapsedBeforeQueryMs)
+        : undefined;
+      let mainFetchTimeoutMs = middleGradesDebugNetworkTimeoutMs ?? mainFetchTimeoutMsUncapped;
+      let mainProxyClientTimeoutMs = middleGradesDebugNetworkTimeoutMs ?? mainProxyClientTimeoutMsUncapped;
       if (ageProfile.key === "middleGrades" && !debugMiddleGradesDeepTrace && (middleGradesQueryIsProfileSpecific || middleGradesQueryIsTargeted || queryPlanIndex < MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS)) {
         const remainingSpecificIncludingCurrent = Math.max(1, middleGradesUnattemptedPlannedSpecificQueries().length || (queryPlans.length - queryPlanIndex));
         const minimumAttemptsRemaining = Math.max(1, MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS - fetches.filter((fetch) => !fetch.diagnosticOnly).length);
@@ -2922,7 +2931,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           middleGradesDirectFallbackAttemptedAfterProxyAbort = true;
           middleGradesProxyTimedOutThenDirectAttemptedSameQuery = true;
           const directFallbackRemainingBudgetMs = Math.max(0, sourceBudgetMs - (Date.now() - Date.parse(startedAt)));
-          const directFallbackTimeoutMs = debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, directFallbackRemainingBudgetMs || MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS);
+          const directFallbackTimeoutMs = debugMiddleGradesDeepTrace ? middleGradesActualNetworkTimeoutMs(directFallbackRemainingBudgetMs) : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, directFallbackRemainingBudgetMs || MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS);
           const directFallback = await fetchOpenLibraryDocs(queryPlan, ageProfile.docsPerQuery, context.signal, false, directFallbackTimeoutMs, 2, undefined, true, directFallbackRemainingBudgetMs);
           directFallback.diagnostic.abortControllerSharedWithPreviousFetch = directFallback.diagnostic.abortControllerId === diagnostic.abortControllerId;
           fetches.push(directFallback.diagnostic);
@@ -3333,7 +3342,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS,
             delayedRetryRemainingBudgetMs - reserveFinalSafeRecoveryBudgetMs,
           );
-          const delayedRetryTimeoutMs = debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, delayedRetryBudgetAfterReserveMs);
+          const delayedRetryTimeoutMs = debugMiddleGradesDeepTrace ? middleGradesActualNetworkTimeoutMs(delayedRetryBudgetAfterReserveMs) : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, delayedRetryBudgetAfterReserveMs);
           middleGradesDelayedRetryAttempted = true;
           middleGradesDelayedRetryTimeoutMs = delayedRetryTimeoutMs;
           const { docs: delayedRetryDocs, diagnostic } = await fetchOpenLibraryDocs(delayedRetryPlan, ageProfile.docsPerQuery, context.signal, false, delayedRetryTimeoutMs, 3, delayedRetryTimeoutMs);
@@ -3410,7 +3419,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           dropReasons.middle_grades_underfill_recovery_source_budget_exhausted = Number(dropReasons.middle_grades_underfill_recovery_source_budget_exhausted || 0) + 1;
           break;
         }
-        const recoveryTimeoutMs = debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, recoveryUsableBudgetMs));
+        const recoveryTimeoutMs = debugMiddleGradesDeepTrace ? middleGradesActualNetworkTimeoutMs(recoveryUsableBudgetMs) : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, recoveryUsableBudgetMs));
         const recoveryPlan: OpenLibraryQueryPlan = {
           query: recoveryQuery,
           originalPlannedQuery: queries[0] || "",
@@ -3499,7 +3508,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         markMiddleGradesFallbackStarted();
         middleGradesFallbackAttemptOrder.push(finalSafeQuery);
         middleGradesRemainingBudgetBeforeEachFallback[finalSafeQuery] = remainingFinalSafeRecoveryBudgetMs;
-        const finalSafeTimeoutMs = debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingFinalSafeRecoveryBudgetMs);
+        const finalSafeTimeoutMs = debugMiddleGradesDeepTrace ? middleGradesActualNetworkTimeoutMs(remainingFinalSafeRecoveryBudgetMs) : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingFinalSafeRecoveryBudgetMs);
         const finalSafePlan: OpenLibraryQueryPlan = {
           query: finalSafeQuery,
           originalPlannedQuery: queries[0] || "",
@@ -3582,7 +3591,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           fallbackAlignment: "route_aligned",
           profileSpecific: true,
         };
-        const { docs: evidenceDocs, diagnostic } = await fetchOpenLibraryDocs(evidencePlan, ageProfile.docsPerQuery, context.signal, false, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS, 1, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS);
+        const evidenceTimeoutMs = middleGradesActualNetworkTimeoutMs();
+        const { docs: evidenceDocs, diagnostic } = await fetchOpenLibraryDocs(evidencePlan, ageProfile.docsPerQuery, context.signal, false, evidenceTimeoutMs, 1, evidenceTimeoutMs);
         fetches.push(diagnostic);
         dropReasons.middle_grades_medium_strong_evidence_search_attempted = Number(dropReasons.middle_grades_medium_strong_evidence_search_attempted || 0) + 1;
         if (diagnostic.timedOut) {
@@ -3654,7 +3664,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           middleGradesRouteAlignedRecoverySkippedReason = "insufficient_budget_after_fallback";
         } else {
           middleGradesRouteAlignedRecoveryAttemptedAfterFallback = true;
-          const routeAlignedAfterFallbackTimeoutMs = debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingRouteAlignedAfterFallbackBudgetMs);
+          const routeAlignedAfterFallbackTimeoutMs = debugMiddleGradesDeepTrace ? middleGradesActualNetworkTimeoutMs(remainingRouteAlignedAfterFallbackBudgetMs) : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingRouteAlignedAfterFallbackBudgetMs);
           const routeAlignedAfterFallbackPlan: OpenLibraryQueryPlan = {
             query: routeAlignedAfterFallbackQuery,
             originalPlannedQuery: queries[0] || "",
@@ -3740,7 +3750,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           if (!middleGradesEvidenceAwareRecoveryQueriesAttempted.includes(underfillQuery)) middleGradesEvidenceAwareRecoveryQueriesAttempted.push(underfillQuery);
           middleGradesEvidenceAwareRecoveryAttempted = true;
         }
-        const underfillTimeoutMs = debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingUnderfillBudgetMs);
+        const underfillTimeoutMs = debugMiddleGradesDeepTrace ? middleGradesActualNetworkTimeoutMs(remainingUnderfillBudgetMs) : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingUnderfillBudgetMs);
         const underfillQueryIsLastResortGeneric = /^middle grade adventure$/i.test(underfillQuery);
         const underfillPlan: OpenLibraryQueryPlan = {
           query: underfillQuery,
@@ -3857,7 +3867,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             fallbackAlignment: "route_aligned",
             profileSpecific: true,
           };
-          const retryTimeoutMs = debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingRetryBudgetMs);
+          const retryTimeoutMs = debugMiddleGradesDeepTrace ? middleGradesActualNetworkTimeoutMs(remainingRetryBudgetMs) : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, remainingRetryBudgetMs);
           const { docs: retryDocs, diagnostic } = await fetchOpenLibraryDocs(retryPlan, ageProfile.docsPerQuery, context.signal, false, retryTimeoutMs, 1, retryTimeoutMs);
           fetches.push(diagnostic);
           dropReasons.middle_grades_lock_quality_retry_attempted = Number(dropReasons.middle_grades_lock_quality_retry_attempted || 0) + 1;
@@ -3958,7 +3968,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             fallbackAlignment: "route_aligned",
             profileSpecific: middleGradesProfileSpecificQuerySet.has(continuationQuery.toLowerCase()),
           };
-          const continuationTimeoutMs = debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, remainingBudgetMs));
+          const continuationTimeoutMs = debugMiddleGradesDeepTrace ? middleGradesActualNetworkTimeoutMs(remainingBudgetMs) : Math.min(MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, Math.max(MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS, remainingBudgetMs));
           const { docs: continuationDocs, diagnostic } = await fetchOpenLibraryDocs(continuationPlan, ageProfile.docsPerQuery, context.signal, false, continuationTimeoutMs, 1, continuationTimeoutMs);
           fetches.push(diagnostic);
           dropReasons.middle_grades_query_only_continuation_attempted = Number(dropReasons.middle_grades_query_only_continuation_attempted || 0) + 1;
@@ -4067,7 +4077,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
             fallbackAlignment: "route_aligned",
             profileSpecific: true,
           };
-          const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS, 1, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_PER_QUERY_BUDGET_MS);
+          const recoveryTimeoutMs = middleGradesActualNetworkTimeoutMs();
+          const { docs: recoveryDocs, diagnostic } = await fetchOpenLibraryDocs(recoveryPlan, ageProfile.docsPerQuery, context.signal, false, recoveryTimeoutMs, 1, recoveryTimeoutMs);
           fetches.push(diagnostic);
           dropReasons.middle_grades_meaningful_taste_recovery_attempted = Number(dropReasons.middle_grades_meaningful_taste_recovery_attempted || 0) + 1;
           if (diagnostic.timedOut) {
