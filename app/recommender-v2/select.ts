@@ -795,6 +795,25 @@ function middleGradesTasteAlignment(candidate: ScoredCandidate): number {
   ) * 1000) / 1000;
 }
 
+function compareForInitialSelection(a: ScoredCandidate, b: ScoredCandidate, profile: TasteProfile): number {
+  if (profile.ageBand !== "preteens") return b.score - a.score;
+  if (a.diagnostics?.meaningfulTasteRecovery || b.diagnostics?.meaningfulTasteRecovery
+    || a.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery"
+    || b.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery") {
+    return b.score - a.score;
+  }
+  if (isMiddleGradesContemporarySchoolCandidate(a) || isMiddleGradesContemporarySchoolCandidate(b)
+    || isMiddleGradesFantasyHumorCandidate(a) || isMiddleGradesFantasyHumorCandidate(b)
+    || isMiddleGradesHumorDefaultQueryFamily(a) || isMiddleGradesHumorDefaultQueryFamily(b)) {
+    return b.score - a.score;
+  }
+  return middleGradesSelectionScore(b, profile) - middleGradesSelectionScore(a, profile)
+    || middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(b).tier) - middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(a).tier)
+    || middleGradesTasteAlignment(b) - middleGradesTasteAlignment(a)
+    || b.score - a.score
+    || a.title.localeCompare(b.title);
+}
+
 function isMiddleGradesFallbackOrDefaultCandidate(candidate: ScoredCandidate): boolean {
   const evidence = middleGradesRouteAlignmentEvidence(candidate);
   return isMiddleGradesAntiZeroFallbackCandidate(candidate)
@@ -2022,7 +2041,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const seenRecurringOpenLibraryClusters = new Set<string>();
 
   applyMiddleGradesQueryOnlyScoreCaps(candidates, profile, rejectedReasons);
-  const rankedCandidates = [...candidates].sort((a, b) => b.score - a.score);
+  const rankedCandidates = [...candidates].sort((a, b) => compareForInitialSelection(a, b, profile));
 
   for (const candidate of rankedCandidates) {
     const reason = rejectReason(candidate, profile);
@@ -2239,7 +2258,8 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
   const meaningfulQualityCount = selected.filter((candidate) => {
     const breakdown = candidate.scoreBreakdown || {};
     const avoidTotal = Number(breakdown.avoidSignalPenalty || 0) + Number(breakdown.broadAvoidSignalPenalty || 0);
-    return candidate.score >= 5 && Number(breakdown.sourceQualityRelevance || 0) >= 1.5 && Number(breakdown.ageTeenSuitability || 0) >= 0.35 && avoidTotal > -1.2;
+    const ageSuitabilityFloor = profile.ageBand === "preteens" ? 0.25 : 0.35;
+    return candidate.score >= 5 && Number(breakdown.sourceQualityRelevance || 0) >= 1.5 && Number(breakdown.ageTeenSuitability || 0) >= ageSuitabilityFloor && avoidTotal > -1.2;
   }).length;
   if (openLibraryOnlySlate && selected.length > 5 && meaningfulQualityCount < 6) {
     const removed = selected.splice(5);
