@@ -1878,6 +1878,8 @@ function kidsTasteScore(candidate: ScoredCandidate): number {
   ) * 1000) / 1000;
 }
 
+const KIDS_QUERY_ANCHORED_MIN_TASTE_SCORE = 1;
+
 function kidsDistinctiveTasteSignals(candidate: ScoredCandidate): string[] {
   const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
   return matchedSignals
@@ -1960,7 +1962,8 @@ function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   if (kidsNonNarrativeInformationalArtifact(candidate)) return false;
   const queryAnchored = kidsQueryAnchoredStoryCandidate(candidate);
   if (!kidsHasStoryAgeShape(candidate) && !queryAnchored) return false;
-  return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0 || queryAnchored;
+  return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0
+    || (queryAnchored && tasteScore >= KIDS_QUERY_ANCHORED_MIN_TASTE_SCORE);
 }
 
 function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
