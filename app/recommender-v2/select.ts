@@ -1955,11 +1955,12 @@ function middleGradesNonNarrativeInformationalArtifact(candidate: ScoredCandidat
 }
 
 function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
-  if (candidate.score <= 0 || isKidsSuspiciousSelectionCandidate(candidate) || kidsTasteScore(candidate) <= 0) return false;
+  const tasteScore = kidsTasteScore(candidate);
+  if (candidate.score <= 0 || isKidsSuspiciousSelectionCandidate(candidate) || tasteScore <= 0) return false;
   if (kidsNonNarrativeInformationalArtifact(candidate)) return false;
   const queryAnchored = kidsQueryAnchoredStoryCandidate(candidate);
   if (!kidsHasStoryAgeShape(candidate) && !queryAnchored) return false;
-  return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0 || (queryAnchored && kidsTasteScore(candidate) >= 2);
+  return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0 || queryAnchored;
 }
 
 function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
