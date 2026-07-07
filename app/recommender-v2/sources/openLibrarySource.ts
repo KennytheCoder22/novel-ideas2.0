@@ -1830,7 +1830,7 @@ function middleGradesEvidenceAwareRecoveryQueries(queryPlans: OpenLibraryQueryPl
       : /dragon|myth|mythology|creature|fantasy|magic|magical/i.test(signalText)
         ? ["dragon fantasy children", "dragon adventure children", "children's dragon books", "mythology adventure children", "fantasy adventure children"]
       : /music|performing arts|band|song/i.test(signalText) && /friendship|friends?|comedy|funny|humou?r/i.test(signalText)
-        ? ["middle grade music friendship fiction", "children music friendship story", "performing arts children fiction", "middle grade music story", "children friendship music fiction"]
+        ? ["middle grade music friendship fiction", "children music friendship story", "performing arts children fiction", "middle grade school music friendship", "middle grade performing arts friendship fiction"]
       : /community|cozy|neighborhood/i.test(signalText) && /friendship|friends?/i.test(signalText)
         ? ["middle grade school friendship fiction", "middle grade friendship school novel", "middle grade family friendship story", "children school friendship fiction", "middle grade friendship adventure fiction"]
       : /school|friendship|friends?|community|comedy|funny|humou?r|realistic|contemporary/i.test(signalText)
@@ -1870,9 +1870,9 @@ function middleGradesMeaningfulTasteRecoveryQueryPlans(
   const familyDefs: Array<{ family: string; query: string; anchors: string[]; leakageRisk?: number; broad?: boolean }> = cleanShortfallExpansion ? [
     { family: "robot_adventure", query: "middle grade robot adventure", anchors: ["robot", "adventure"] },
     { family: "science_fiction_adventure", query: "middle grade science fiction adventure", anchors: ["science", "adventure"] },
-    { family: "ocean_adventure", query: "children ocean adventure", anchors: ["ocean", "adventure"] },
+    { family: "ocean_adventure", query: "children ocean adventure", anchors: ["ocean", "adventure"], broad: true },
     { family: "survival_adventure", query: "middle grade survival adventure", anchors: ["survival", "adventure"] },
-    { family: "family_adventure", query: "middle grade family adventure", anchors: ["family", "adventure"] },
+    { family: "family_adventure", query: "middle grade family adventure", anchors: ["family", "adventure"], broad: true },
     { family: "superhero_adventure", query: "middle grade superhero adventure", anchors: ["superhero", "adventure"] },
     { family: "school_mystery", query: "middle grade school mystery", anchors: ["school", "mystery"] },
     { family: "fantasy_quest", query: "middle grade fantasy quest", anchors: ["fantasy", "adventure"] },
