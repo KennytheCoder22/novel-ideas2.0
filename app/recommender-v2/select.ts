@@ -1,5 +1,7 @@
 import type { ScoredCandidate, TasteProfile } from "./types";
 
+type DeferredCandidate = { candidate: ScoredCandidate; reason: string };
+
 function normalized(value: unknown): string {
   return String(value || "")
     .normalize("NFD")
@@ -812,6 +814,129 @@ function compareForInitialSelection(a: ScoredCandidate, b: ScoredCandidate, prof
     || middleGradesTasteAlignment(b) - middleGradesTasteAlignment(a)
     || b.score - a.score
     || a.title.localeCompare(b.title);
+}
+
+function middleGradesRepresentativeText(candidate: ScoredCandidate): string {
+  return normalized([
+    candidate.title,
+    candidate.subtitle,
+    candidate.description,
+    (candidate.creators || []).join(" "),
+    candidate.diagnostics?.queryText,
+    candidate.diagnostics?.queryFamily,
+    candidate.diagnostics?.routingReason,
+    middleGradesRawText(candidate),
+  ].filter(Boolean).join(" "));
+}
+
+function isMiddleGradesCanonicalFranchiseTitle(candidate: ScoredCandidate): boolean {
+  const title = normalized(candidate.title);
+  return /^the hidden oracle$/.test(title)
+    || /^the wild robot$/.test(title)
+    || /^nevermoor$/.test(title)
+    || /^masterminds$/.test(title);
+}
+
+function middleGradesRepresentativePenalty(candidate: ScoredCandidate): number {
+  if (!isMiddleGradesOpenLibraryCandidate(candidate)) return 0;
+  const text = middleGradesRepresentativeText(candidate);
+  const titleText = normalized(candidate.title);
+  let penalty = 0;
+  if (/\b(companion|guide|guidebook|handbook|manual|confidential|insider|insider s|field guide|survival guide|encyclopedia|facts?|activity|workbook|journal|atlas|almanac|behind the scenes|making of|sampler|preview)\b/.test(text)) penalty += 6;
+  if (/\b(complete|collected|collection|collections|treasury|storybook|stories|tales|adventures|omnibus|anthology|library|set|boxed|box)\b/.test(titleText)) penalty += 3;
+  if (/\b(movie tie in|tie in|official tie in|video game|game guide)\b/.test(text)) penalty += 1.5;
+  if (/\b(book|volume|vol)\s*(1|one)\b/.test(text) || /\bfirst\b[a-z0-9 ]{0,60}\b(series|novel|book|installment)\b/.test(text)) penalty -= 1.5;
+  if (isMiddleGradesCanonicalFranchiseTitle(candidate)) penalty -= 2;
+  return Math.round(penalty * 1000) / 1000;
+}
+
+function middleGradesFranchiseKey(candidate: ScoredCandidate): string {
+  if (!isMiddleGradesOpenLibraryCandidate(candidate)) return "";
+  const text = middleGradesRepresentativeText(candidate);
+  const author = primaryAuthor(candidate);
+  if (/\b(rick riordan|percy jackson|camp half blood|half blood|trials of apollo|hidden oracle|heroes of olympus|olympus|greek gods|apollo)\b/.test(`${author} ${text}`)) return "rick_riordan_mythology";
+  if (/\bwild robot\b/.test(text)) return "wild robot";
+  if (/\bnevermoor|morrigan crow\b/.test(text)) return "nevermoor";
+  if (/\bmasterminds\b/.test(text)) return "masterminds";
+  if (/\bminecraft\b/.test(text)) return "minecraft";
+  return "";
+}
+
+function middleGradesRepresentativeSelectionScore(candidate: ScoredCandidate, profile: TasteProfile): number {
+  const tierRank = middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(candidate).tier);
+  return Math.round((
+    middleGradesSelectionScore(candidate, profile)
+    + tierRank * 0.8
+    + middleGradesTasteAlignment(candidate) * 0.15
+    - middleGradesRepresentativePenalty(candidate)
+  ) * 1000) / 1000;
+}
+
+function middleGradesSameRepresentativeCluster(a: ScoredCandidate, b: ScoredCandidate): boolean {
+  const authorA = primaryAuthor(a);
+  const authorB = primaryAuthor(b);
+  const franchiseA = middleGradesFranchiseKey(a);
+  const franchiseB = middleGradesFranchiseKey(b);
+  return Boolean((franchiseA && franchiseA === franchiseB) || (authorA && authorA === authorB));
+}
+
+function middleGradesWouldConflictAfterRepresentativeSwap(candidate: ScoredCandidate, selected: ScoredCandidate[], replacementIndex: number): boolean {
+  const titleKey = normalized(candidate.title);
+  const rootKey = finalReturnedRootKey(candidate) || seriesKey(candidate);
+  const franchiseKey = middleGradesFranchiseKey(candidate);
+  return selected.some((other, index) => {
+    if (index === replacementIndex) return false;
+    if (normalized(other.title) === titleKey) return true;
+    const otherRootKey = finalReturnedRootKey(other) || seriesKey(other);
+    if (rootKey && otherRootKey && rootKey === otherRootKey) return true;
+    const otherFranchiseKey = middleGradesFranchiseKey(other);
+    return Boolean(franchiseKey && otherFranchiseKey && franchiseKey === otherFranchiseKey);
+  });
+}
+
+function applyMiddleGradesFranchiseRepresentativePreference(selected: ScoredCandidate[], deferred: DeferredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile): void {
+  if (profile.ageBand !== "preteens" || selected.length === 0 || deferred.length === 0) return;
+  const candidates = deferred
+    .map((row) => row.candidate)
+    .filter((candidate) => isMiddleGradesOpenLibraryCandidate(candidate))
+    .filter((candidate) => !selected.includes(candidate))
+    .filter((candidate) => !rejectReason(candidate, profile))
+    .filter((candidate) => middleGradesFinalEligibility(candidate).allowed)
+    .sort((a, b) => middleGradesRepresentativeSelectionScore(b, profile) - middleGradesRepresentativeSelectionScore(a, profile));
+
+  for (const candidate of candidates) {
+    const candidatePenalty = middleGradesRepresentativePenalty(candidate);
+    const candidateScore = middleGradesRepresentativeSelectionScore(candidate, profile);
+    const candidateTierRank = middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(candidate).tier);
+    const replacement = selected
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => isMiddleGradesOpenLibraryCandidate(row))
+      .filter(({ row }) => middleGradesSameRepresentativeCluster(candidate, row))
+      .filter(({ index }) => !middleGradesWouldConflictAfterRepresentativeSwap(candidate, selected, index))
+      .map(({ row, index }) => ({
+        row,
+        index,
+        selectedPenalty: middleGradesRepresentativePenalty(row),
+        selectedScore: middleGradesRepresentativeSelectionScore(row, profile),
+        selectedTierRank: middleGradesEvidenceTierRank(middleGradesRouteAlignmentEvidence(row).tier),
+      }))
+      .filter(({ row, selectedPenalty, selectedScore, selectedTierRank }) => {
+        const representativeUpgrade = selectedPenalty >= candidatePenalty + 2.5;
+        const canonicalUpgrade = isMiddleGradesCanonicalFranchiseTitle(candidate) && candidatePenalty < selectedPenalty;
+        const scoreUpgrade = candidateScore >= selectedScore + 0.25;
+        const evidenceCompatible = candidateTierRank >= selectedTierRank || candidateScore >= selectedScore + 1.5;
+        return (scoreUpgrade || representativeUpgrade || canonicalUpgrade)
+          && evidenceCompatible
+          && candidate.score >= row.score - 8;
+      })
+      .sort((a, b) => b.selectedPenalty - a.selectedPenalty || a.selectedScore - b.selectedScore)[0];
+
+    if (!replacement) continue;
+    recordRejected(replacement.row, rejectedReasons, "middle_grades_replaced_by_stronger_franchise_representative");
+    candidate.rejectedReasons.push("middle_grades_stronger_franchise_representative_selected");
+    selected[replacement.index] = candidate;
+    rejectedReasons.middle_grades_franchise_representative_replacements = Number(rejectedReasons.middle_grades_franchise_representative_replacements || 0) + 1;
+  }
 }
 
 function isMiddleGradesFallbackOrDefaultCandidate(candidate: ScoredCandidate): boolean {
@@ -1987,6 +2112,7 @@ function rejectReason(candidate: ScoredCandidate, profile: TasteProfile): string
   if (profile.ageBand === "kids" && kidsNonNarrativeInformationalArtifact(candidate) && !profileExplicitlyRequestsNonfictionReference(profile)) return "k2_non_narrative_informational_artifact";
   if (profile.ageBand === "kids" && !isKidsCleanFinalCandidate(candidate)) return "k2_missing_story_picture_reader_relevance";
   if (profile.ageBand === "preteens") {
+    if (candidate.rejectedReasons.includes("middle_grades_replaced_by_stronger_franchise_representative")) return "middle_grades_replaced_by_stronger_franchise_representative";
     const eligibility = middleGradesFinalEligibility(candidate);
     if (!eligibility.allowed) return eligibility.rejectedReason || "middle_grades_final_eligibility_missing_evidence";
     if (middleGradesNonNarrativeInformationalArtifact(candidate) && !profileExplicitlyRequestsNonfictionReference(profile)) return "middle_grades_non_narrative_informational_artifact";
@@ -2032,7 +2158,7 @@ function recordRejected(candidate: ScoredCandidate, rejectedReasons: Record<stri
 export function selectRecommendations(candidates: ScoredCandidate[], profile: TasteProfile, limit = 10): { selected: ScoredCandidate[]; rejectedReasons: Record<string, number> } {
   const rejectedReasons: Record<string, number> = {};
   const selected: ScoredCandidate[] = [];
-  const deferred: { candidate: ScoredCandidate; reason: string }[] = [];
+  const deferred: DeferredCandidate[] = [];
   const lowScoreRescue: ScoredCandidate[] = [];
   const adultWeakOpenLibraryCandidates: ScoredCandidate[] = [];
   const seenTitles = new Set<string>();
@@ -2240,6 +2366,7 @@ export function selectRecommendations(candidates: ScoredCandidate[], profile: Ta
     }
   }
 
+  applyMiddleGradesFranchiseRepresentativePreference(selected, deferred, rejectedReasons, profile);
   applyMiddleGradesAntiZeroFallbackGate(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesContemporarySchoolAlignment(rankedCandidates, selected, rejectedReasons, profile);
   applyMiddleGradesFantasyHumorAlignedBalance(rankedCandidates, selected, rejectedReasons, profile, limit);

@@ -1467,7 +1467,7 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
     },
     {
       family: "adventure_comedy_friendship",
-      queries: ["funny adventure chapter book", "children friendship adventure", "middle grade music friendship", "children community adventure", "children community friendship story", "middle grade friendship community", "cozy children fiction", "funny middle school adventure", "middle grade adventure friendship", "funny adventure children", "funny school adventure", "children adventure fiction"],
+      queries: ["funny adventure chapter book", "children friendship adventure", "middle grade music friendship", "middle grade friendship adventure fiction", "middle grade friendship school novel", "funny middle school adventure", "middle grade adventure friendship", "funny adventure children", "funny school adventure", "middle grade adventure chapter book", "middle grade school friendship fiction"],
       patterns: [/\b(playful|comedy|funny|humou?r|friendship|friends?|community|music|middle school)\b/i],
     },
     {
@@ -1584,7 +1584,7 @@ function middleGradesTargetedQueryPlan(profile: TasteProfile): MiddleGradesTarge
   const queries = uniqueStrings(chosen.flatMap((def) => def.queries), 14);
   const familyByQuery: Record<string, string> = {};
   for (const def of chosen) for (const query of def.queries) familyByQuery[query] = def.family;
-  const reliableVariantQueries = uniqueStrings(queries.filter((query) => /\b(funny children books|humorous fiction children|children adventure fiction|children fantasy adventure|dinosaur fiction children|dinosaur adventure children|mythology children fiction|graphic novel children|funny graphic novel children|funny adventure chapter book|children friendship adventure|middle grade music friendship|middle grade music friendship fiction|children music friendship story|performing arts children fiction|children community adventure|children community friendship story|middle grade friendship community|cozy children fiction|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure|middle grade school friendship fiction|children school friendship fiction|funny school story children|children mystery adventure|middle grade mystery adventure|school mystery children|fantasy mystery children|children magical mystery|middle grade superhero adventure|children superhero adventure|children fantasy family adventure|magical family adventure children|funny fantasy family children|animal fantasy children|fantasy animals children)\b/i.test(query)), 20);
+  const reliableVariantQueries = uniqueStrings(queries.filter((query) => /\b(funny children books|humorous fiction children|children adventure fiction|children fantasy adventure|dinosaur fiction children|dinosaur adventure children|mythology children fiction|graphic novel children|funny graphic novel children|funny adventure chapter book|children friendship adventure|middle grade music friendship|middle grade friendship adventure fiction|middle grade friendship school novel|middle grade adventure chapter book|middle grade music friendship fiction|children music friendship story|performing arts children fiction|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure|middle grade school friendship fiction|children school friendship fiction|funny school story children|children mystery adventure|middle grade mystery adventure|school mystery children|fantasy mystery children|children magical mystery|middle grade superhero adventure|children superhero adventure|children fantasy family adventure|magical family adventure children|funny fantasy family children|animal fantasy children|fantasy animals children)\b/i.test(query)), 20);
   return {
     queries,
     scoreByFamily,
@@ -1832,7 +1832,7 @@ function middleGradesEvidenceAwareRecoveryQueries(queryPlans: OpenLibraryQueryPl
       : /music|performing arts|band|song/i.test(signalText) && /friendship|friends?|comedy|funny|humou?r/i.test(signalText)
         ? ["middle grade music friendship fiction", "children music friendship story", "performing arts children fiction", "middle grade music story", "children friendship music fiction"]
       : /community|cozy|neighborhood/i.test(signalText) && /friendship|friends?/i.test(signalText)
-        ? ["children community friendship story", "middle grade friendship community", "cozy children fiction", "children friendship community fiction", "middle grade cozy friendship"]
+        ? ["middle grade school friendship fiction", "middle grade friendship school novel", "middle grade family friendship story", "children school friendship fiction", "middle grade friendship adventure fiction"]
       : /school|friendship|friends?|community|comedy|funny|humou?r|realistic|contemporary/i.test(signalText)
       ? ["middle grade school friendship fiction", "children school friendship fiction", "funny school story children", "funny middle school fiction", "school friendship chapter book", "realistic school friendship fiction", "illustrated middle school fiction"]
       : /science|space|robot|technology|sci-fi|sci fi|science fiction/i.test(signalText)
@@ -1931,6 +1931,7 @@ function middleGradesMeaningfulTasteRecoveryQueryPlans(
     if (attemptedQueries.has(def.query.toLowerCase())) skippedReason = "already_attempted";
     if (!skippedReason && comedyLeakageActive && /comedy|funny|humou?r|playful/i.test(def.query)) skippedReason = "same_run_comedy_leakage";
     if (!skippedReason && sameRunLeakageByFamily[def.family] >= 2) skippedReason = "same_run_family_leakage_or_query_only";
+    if (!skippedReason && def.broad && likedSupport < 2) skippedReason = "broad_recovery_requires_two_liked_anchors";
     if (!skippedReason && def.family === "friendship_adventure" && hasAvoid(/\b(friendship|friends?)\b/i) && likedSupport < 2) skippedReason = "friendship_avoid_without_second_positive_anchor";
     if (!skippedReason && /fantasy|adventure/.test(def.family) && hasAvoid(/\b(fantasy|magic|magical|adventure|quest)\b/i) && likedSupport < 2) skippedReason = "fantasy_or_adventure_avoid_requires_second_positive_anchor";
     if (!skippedReason && cleanShortfallExpansion && likedSupport === 0) skippedReason = "no_liked_evidence_support_for_clean_expansion";
@@ -4802,8 +4803,8 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         finalEligibilityGateApplied: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? false : undefined,
         expansionCandidatesAcceptedFinal: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? [] : undefined,
         expansionSelectedTitles: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? [] : undefined,
-        cleanExpansionFallbackQueriesSuppressed: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? uniqueStrings(baseQueryPlans.map((queryPlan) => queryPlan.query).filter((query) => /funny|humou?r|comedy|middle grade adventure$|middle grade friendship$|community/i.test(query)), 20) : undefined,
-        cleanExpansionProfileSpecificQueriesOnly: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? queries.every((query) => !/funny|humou?r|comedy|middle grade adventure$|middle grade friendship$|community/i.test(query)) : undefined,
+        cleanExpansionFallbackQueriesSuppressed: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? uniqueStrings(baseQueryPlans.map((queryPlan) => queryPlan.query).filter((query) => /funny|humou?r|comedy|middle grade adventure$|middle grade friendship$|community|cozy/i.test(query)), 20) : undefined,
+        cleanExpansionProfileSpecificQueriesOnly: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? queries.every((query) => !/funny|humou?r|comedy|middle grade adventure$|middle grade friendship$|community|cozy/i.test(query)) : undefined,
         cleanExpansionQueryFamilyYield: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? middleGradesRecoveryFamilyYieldByFamily : undefined,
         cleanExpansionStoppedAfterProfileFamiliesExhausted: ageProfile.key === "middleGrades" && forceMiddleGradesCleanCandidateShortfallExpansion ? middleGradesUnderfilledAfterMeaningfulTasteRecovery : undefined,
         meaningfulTasteRecoveryTriggered: ageProfile.key === "middleGrades" ? middleGradesMeaningfulTasteRecoveryTriggered : undefined,

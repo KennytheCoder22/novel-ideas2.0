@@ -543,7 +543,7 @@ async function main() {
       ],
       disallowedFirst: /animal|nature|wildlife/i,
       expectedFamily: "adventure_comedy_friendship",
-      expectedLikedQuery: /funny adventure chapter book|children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure/i,
+      expectedLikedQuery: /funny adventure chapter book|children friendship adventure|middle grade music friendship|middle grade school friendship fiction|middle grade friendship adventure fiction|middle grade friendship school novel|funny middle school adventure/i,
     },
     {
       name: "skip-only fantasy cannot start before liked comedy adventure community music",
@@ -554,7 +554,7 @@ async function main() {
       ],
       disallowedFirst: /children fantasy adventure|fantasy|magic|magical/i,
       expectedFamily: "adventure_comedy_friendship",
-      expectedLikedQuery: /funny adventure chapter book|children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure/i,
+      expectedLikedQuery: /funny adventure chapter book|children friendship adventure|middle grade music friendship|middle grade school friendship fiction|middle grade friendship adventure fiction|middle grade friendship school novel|funny middle school adventure/i,
     },
     {
       name: "skip-only AI robot waits behind liked comedy friendship music",
@@ -2342,7 +2342,7 @@ async function main() {
       error.name = "AbortError";
       throw error;
     }
-    const docs = /children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure/i.test(query)
+    const docs = /children friendship adventure|middle grade music friendship|middle grade school friendship fiction|middle grade friendship adventure fiction|middle grade friendship school novel|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure|middle grade adventure chapter book/i.test(query)
       ? [1, 2, 3, 4, 5].map((index) => ({
         ...fakeDoc(query, index + 980),
         key: `/works/same-family-direct-continuation-${query.replace(/\s+/g, "-")}-${index}`,
@@ -2371,7 +2371,7 @@ async function main() {
     assertEqual(result.diagnostics.proxyTimedOutThenDirectAttemptedSameQuery, true, "direct rejected scenario should first try direct after proxy timeout");
     assertEqual(Number(result.diagnostics.directFetchReturnedRawButAllRejected || 0) > 0, true, "direct raw docs rejected by evidence gate should be diagnosed separately");
     assertEqual(result.diagnostics.sameFamilyContinuationAfterAllRejected, true, "all-rejected direct docs should trigger same-family continuation");
-    assertEqual((result.diagnostics.sameFamilyContinuationQueriesAttempted || []).some((query) => /children friendship adventure|middle grade music friendship|children community adventure|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure/i.test(query)), true, "adventure/comedy/friendship same-family continuations should be attempted");
+    assertEqual((result.diagnostics.sameFamilyContinuationQueriesAttempted || []).some((query) => /children friendship adventure|middle grade music friendship|middle grade school friendship fiction|middle grade friendship adventure fiction|middle grade friendship school novel|funny middle school adventure|middle grade adventure friendship|funny adventure children|funny school adventure|middle grade adventure chapter book/i.test(query)), true, "adventure/comedy/friendship same-family continuations should be attempted");
     assertEqual(result.rawItems.length > 0, true, "adventure/comedy/friendship profile should not return zero after raw direct docs while same-family continuations remain");
     console.log(JSON.stringify({ name: "middle grades all-rejected direct docs continue same-family variants", pass: true, rawItems: result.rawItems.length, fetchCalls: middleGradesDirectRejectedFetchCalls, diagnostics: { directFetchReturnedRawButAllRejected: result.diagnostics.directFetchReturnedRawButAllRejected, sameFamilyContinuationQueriesAttempted: result.diagnostics.sameFamilyContinuationQueriesAttempted } }));
   } finally {
@@ -3071,6 +3071,55 @@ async function main() {
   assertEqual(Object.values(middleGradesEvidenceTierResult.rejectedReasons.documentEvidenceTierByTitle || {}).includes("strong_evidence"), true, "selection diagnostics should expose strong evidence tiers");
   assertEqual(Boolean(middleGradesEvidenceTierResult.rejectedReasons.weakEvidenceSelectedOverStrongEvidence), false, "weak title-only evidence must not beat strong subject/description evidence");
   console.log(JSON.stringify({ name: "middle grades evidence tiers prefer strong animal science evidence over weak defaults", pass: true, selected: middleGradesEvidenceTierResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesEvidenceTierResult.rejectedReasons }));
+
+  const middleGradesFranchiseRepresentativeResult = selectRecommendations([
+    fakeScoredCandidate({
+      id: "middle-riordan-companion",
+      title: "Camp Half-Blood Confidential",
+      creators: ["Rick Riordan"],
+      description: "A companion guide and insider's guide to Camp Half-Blood with Greek mythology notes.",
+      score: 18,
+      maturityBand: "preteens",
+      genres: ["Fantasy"],
+      themes: ["Greek Mythology", "Adventure"],
+      matchedSignals: ["fantasy", "mythology", "adventure"],
+      scoreBreakdown: { genreFacetMatch: 4, positiveTasteMatch: 4, queryRungBonus: 1, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "middle grade fantasy quest", queryFamily: "fantasy_quest", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy", "mythology", "adventure"] },
+      raw: { subject: ["Juvenile fiction", "Greek Mythology", "Greek Gods", "Fantasy fiction"], description: "A companion guide and insider's guide to Camp Half-Blood." },
+    }),
+    fakeScoredCandidate({
+      id: "middle-riordan-hidden-oracle",
+      title: "The Hidden Oracle",
+      creators: ["Rick Riordan"],
+      description: "The first book in The Trials of Apollo follows Apollo as a mortal teenager in a fantasy adventure with Greek gods.",
+      score: 12,
+      maturityBand: "preteens",
+      genres: ["Fantasy"],
+      themes: ["Greek Mythology", "Adventure"],
+      matchedSignals: ["fantasy", "mythology", "adventure"],
+      scoreBreakdown: { genreFacetMatch: 2, positiveTasteMatch: 2, queryRungBonus: 0.2, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "middle grade fantasy quest", queryFamily: "fantasy_quest", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy", "mythology", "adventure"] },
+      raw: { subject: ["Juvenile fiction", "Greek Mythology", "Greek Gods", "Fantasy fiction", "Adventure stories"], description: "The first book in The Trials of Apollo fantasy adventure series." },
+    }),
+    ...["Nevermoor", "The Wild Robot", "Masterminds", "Dragon Trail"].map((title, index) => fakeScoredCandidate({
+      id: `middle-franchise-filler-${index}`,
+      title,
+      creators: [`Franchise Filler Author ${index}`],
+      description: "A middle grade fantasy adventure with friendship and clear juvenile fiction evidence.",
+      score: 11 - index * 0.2,
+      maturityBand: "preteens",
+      genres: ["Fantasy"],
+      themes: ["Adventure", "Friendship"],
+      scoreBreakdown: { genreFacetMatch: 2, positiveTasteMatch: 2, ageTeenSuitability: 1, sourceQualityRelevance: 2 },
+      diagnostics: { queryText: "middle grade fantasy quest", queryFamily: "fantasy_quest", routingReason: "middle_grades_fantasy_adventure", documentBackedTasteSignals: ["fantasy", "adventure"] },
+      raw: { subject: ["Juvenile fiction", "Fantasy fiction", "Adventure stories", "Friendship"], description: "A middle grade fantasy adventure." },
+    })),
+  ], middleGradesSelectionProfile, 5);
+  assertEqual(middleGradesFranchiseRepresentativeResult.selected.some((candidate) => candidate.title === "The Hidden Oracle"), true, "strong canonical Riordan representative should replace weaker companion title");
+  assertEqual(middleGradesFranchiseRepresentativeResult.selected.some((candidate) => candidate.title === "Camp Half-Blood Confidential"), false, "companion Riordan title should not occupy the sole Riordan slot over the stronger book");
+  assertEqual(middleGradesFranchiseRepresentativeResult.selected.length, 5, "franchise representative swap must preserve recommendation count");
+  assertEqual(Boolean(middleGradesFranchiseRepresentativeResult.rejectedReasons.middle_grades_franchise_representative_replacements), true, "franchise representative swap should emit diagnostics");
+  console.log(JSON.stringify({ name: "middle grades franchise representative swap prefers canonical book over companion", pass: true, selected: middleGradesFranchiseRepresentativeResult.selected.map((candidate) => candidate.title), rejectedReasons: middleGradesFranchiseRepresentativeResult.rejectedReasons }));
 
 
   const middleGradesWeakTitleOnlyCapResult = selectRecommendations([
