@@ -1915,6 +1915,15 @@ function kidsDistinctiveSignalsSupportedByDocument(candidate: ScoredCandidate): 
   return kidsDistinctiveTasteSignals(candidate).filter((signal) => text.includes(signal));
 }
 
+function kidsQueryAnchoredStoryCandidate(candidate: ScoredCandidate): boolean {
+  const routeText = normalized([
+    candidate.diagnostics?.queryText,
+    candidate.diagnostics?.queryFamily,
+    candidate.diagnostics?.routingReason,
+  ].filter(Boolean).join(" "));
+  return /\b(picture|picture books?|early readers?|easy readers?|beginning readers?|children picture|k2 openlibrary picture early reader|k2 clean candidate shortfall semantic expansion)\b/.test(routeText);
+}
+
 
 function profileExplicitlyRequestsNonfictionReference(profile: TasteProfile): boolean {
   const values = [
@@ -1948,8 +1957,9 @@ function middleGradesNonNarrativeInformationalArtifact(candidate: ScoredCandidat
 function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   if (candidate.score <= 0 || isKidsSuspiciousSelectionCandidate(candidate) || kidsTasteScore(candidate) <= 0) return false;
   if (kidsNonNarrativeInformationalArtifact(candidate)) return false;
-  if (!kidsHasStoryAgeShape(candidate)) return false;
-  return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0;
+  const queryAnchored = kidsQueryAnchoredStoryCandidate(candidate);
+  if (!kidsHasStoryAgeShape(candidate) && !queryAnchored) return false;
+  return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0 || (queryAnchored && kidsTasteScore(candidate) >= 2);
 }
 
 function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
