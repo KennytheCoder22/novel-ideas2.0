@@ -10,10 +10,12 @@ const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS = 1_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
 const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 1_500;
+const K2_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_INITIAL_QUERY_TIMEOUT_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TARGETED_QUERY_CAP_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_MIN_PLANNED_QUERY_ATTEMPTS = 5;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CIRCUIT_BREAKER_LIMIT = 3;
+const K2_OPEN_LIBRARY_TIMEOUT_CIRCUIT_BREAKER_LIMIT = 3;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_CAP_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_TIMEOUT_CASCADE_QUERY_FLOOR_MS = 1_000;
 const MIDDLE_GRADES_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
@@ -1005,6 +1007,7 @@ function openLibraryProxyClientTimeoutMs(ageProfile: OpenLibraryAgeProfile): num
   if (ageProfile.key === "adult") return ADULT_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
   if (ageProfile.key === "teen") return TEEN_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
   if (ageProfile.key === "middleGrades") return MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
+  if (ageProfile.key === "k2") return K2_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS;
   return undefined;
 }
 
@@ -2466,6 +2469,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let middleGradesBroadFallbackStartedBeforeTargetedExhaustion = false;
     let middleGradesFinalUnderfillTargetedExhaustionReason: string | undefined;
     let middleGradesTimeoutCircuitBreakerStage: string | undefined;
+    let k2TimeoutCircuitBreakerStage: string | undefined;
     const middleGradesCandidatePoolLimit = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT : ageProfile.docLimit;
     let middleGradesOpenLibraryCandidatePoolBeforeEarlyCap = 0;
     let middleGradesOpenLibraryCandidatePoolAfterEarlyCap = 0;
@@ -2508,6 +2512,29 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         dropReasons.middle_grades_timeout_circuit_breaker_open = Number(dropReasons.middle_grades_timeout_circuit_breaker_open || 0) + 1;
       }
       if (!middleGradesRecoveryExhaustionReasonDetailed) middleGradesRecoveryExhaustionReasonDetailed = `timeout_circuit_breaker:${stage}`;
+      return true;
+    };
+    const k2TimeoutLikeFetch = (fetch: SourceFetchDiagnosticV2): boolean => Boolean(
+      fetch.timedOut
+      || /timeout|openlibrary_http_502/i.test(String(fetch.failedReason || "")),
+    );
+    const k2ConsecutiveTimeoutLikeFetchCount = (): number => {
+      if (ageProfile.key !== "k2") return 0;
+      let count = 0;
+      const realFetches = fetches.filter((fetch) => !fetch.diagnosticOnly);
+      for (let index = realFetches.length - 1; index >= 0; index -= 1) {
+        if (!k2TimeoutLikeFetch(realFetches[index])) break;
+        count += 1;
+      }
+      return count;
+    };
+    const k2TimeoutCircuitOpen = (stage: string): boolean => {
+      if (ageProfile.key !== "k2") return false;
+      if (k2ConsecutiveTimeoutLikeFetchCount() < K2_OPEN_LIBRARY_TIMEOUT_CIRCUIT_BREAKER_LIMIT) return false;
+      if (!k2TimeoutCircuitBreakerStage) {
+        k2TimeoutCircuitBreakerStage = stage;
+        dropReasons.k2_timeout_circuit_breaker_open = Number(dropReasons.k2_timeout_circuit_breaker_open || 0) + 1;
+      }
       return true;
     };
     const middleGradesUnattemptedSpecificQueries = (): string[] => ageProfile.key === "middleGrades" ? middleGradesQueryOnlyContinuationQueries(queryPlans, middleGradesAttemptedQueries()) : [];
@@ -2831,6 +2858,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           break;
         }
       }
+      if (ageProfile.key === "k2" && k2TimeoutCircuitOpen("main_query")) break;
       if (!rawItems.length && fetches.length > 0 && !(ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) && !teenMainQueryTimedOut && !middleGradesMainQueryTimedOut && (!debugMiddleGradesDeepTrace || ageProfile.key !== "middleGrades") && elapsedBeforeQueryMs + ageProfile.perQueryTimeoutMs + reserveProbeTimeMs >= sourceBudgetMs) {
         if (ageProfile.key === "middleGrades" && middleGradesUnattemptedReliableVariantQueries().length > 0) {
           dropReasons.middle_grades_continue_despite_reliable_variants_remaining = Number(dropReasons.middle_grades_continue_despite_reliable_variants_remaining || 0) + 1;
@@ -2911,6 +2939,10 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         dropReasons.middle_grades_broad_query_deferred_until_targeted_exhaustion = Number(dropReasons.middle_grades_broad_query_deferred_until_targeted_exhaustion || 0) + 1;
         continue;
       }
+      if (ageProfile.key === "k2") {
+        mainFetchTimeoutMs = Math.min(K2_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, mainFetchTimeoutMs);
+        mainProxyClientTimeoutMs = Math.min(K2_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS, mainProxyClientTimeoutMs ?? K2_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS);
+      }
       const acceptedBeforeThisQuery = rawItems.length;
       if (middleGradesQueryIsProfileSpecific) middleGradesProfileSpecificQueriesAttempted.push(query);
       if (middleGradesQueryIsTargeted) {
@@ -2977,6 +3009,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
         dropReasons.query_timeout = Number(dropReasons.query_timeout || 0) + 1;
         failedReason = diagnostic.failedReason || "openlibrary_fetch_timed_out";
         if (ageProfile.key === "middleGrades" && middleGradesTimeoutCircuitOpen("main_query")) break;
+        if (ageProfile.key === "k2" && k2TimeoutCircuitOpen("main_query")) break;
         if (retryAttempted && !retrySucceeded && firstRunFetchTimeout && isAdultMixedHistoricalMysteryRomanceProfile(context.profile) && !context.signal?.aborted) {
           const attemptedMainQueries = new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()));
           for (const fallbackQuery of ["mystery thriller", "crime fiction", "historical mystery", "romantic suspense"].filter((query) => !attemptedMainQueries.has(query.toLowerCase()))) {
@@ -3056,6 +3089,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
       if (diagnostic.failedReason) {
         failedReason = diagnostic.failedReason;
+        if (ageProfile.key === "k2" && k2TimeoutCircuitOpen("main_query")) break;
         break;
       }
 
