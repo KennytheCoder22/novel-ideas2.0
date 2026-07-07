@@ -834,7 +834,8 @@ function isMiddleGradesCanonicalFranchiseTitle(candidate: ScoredCandidate): bool
   return /^the hidden oracle$/.test(title)
     || /^the wild robot$/.test(title)
     || /^nevermoor$/.test(title)
-    || /^masterminds$/.test(title);
+    || /^masterminds$/.test(title)
+    || /^keeper of the lost cities$/.test(title);
 }
 
 function middleGradesRepresentativePenalty(candidate: ScoredCandidate): number {
@@ -881,6 +882,16 @@ function middleGradesRepresentativeSelectionScore(candidate: ScoredCandidate, pr
   ) * 1000) / 1000;
 }
 
+function compareMiddleGradesRepresentativeCandidates(a: ScoredCandidate, b: ScoredCandidate, profile: TasteProfile): number {
+  const franchiseA = middleGradesFranchiseKey(a);
+  const franchiseB = middleGradesFranchiseKey(b);
+  if (franchiseA && franchiseA === franchiseB) {
+    const canonicalDelta = Number(isMiddleGradesCanonicalFranchiseTitle(b)) - Number(isMiddleGradesCanonicalFranchiseTitle(a));
+    if (canonicalDelta) return canonicalDelta;
+  }
+  return middleGradesRepresentativeSelectionScore(b, profile) - middleGradesRepresentativeSelectionScore(a, profile);
+}
+
 function middleGradesSameRepresentativeCluster(a: ScoredCandidate, b: ScoredCandidate): boolean {
   const authorA = primaryAuthor(a);
   const authorB = primaryAuthor(b);
@@ -893,13 +904,14 @@ function middleGradesWouldConflictAfterRepresentativeSwap(candidate: ScoredCandi
   const titleKey = normalized(candidate.title);
   const rootKey = finalReturnedRootKey(candidate) || seriesKey(candidate);
   const franchiseKey = middleGradesFranchiseKey(candidate);
+  const replacementFranchiseKey = selected[replacementIndex] ? middleGradesFranchiseKey(selected[replacementIndex]) : "";
   return selected.some((other, index) => {
     if (index === replacementIndex) return false;
     if (normalized(other.title) === titleKey) return true;
     const otherRootKey = finalReturnedRootKey(other) || seriesKey(other);
     if (rootKey && otherRootKey && rootKey === otherRootKey) return true;
     const otherFranchiseKey = middleGradesFranchiseKey(other);
-    return Boolean(franchiseKey && otherFranchiseKey && franchiseKey === otherFranchiseKey);
+    return Boolean(franchiseKey && otherFranchiseKey && franchiseKey === otherFranchiseKey && franchiseKey !== replacementFranchiseKey);
   });
 }
 
@@ -916,7 +928,7 @@ function applyMiddleGradesFranchiseRepresentativePreference(rankedCandidates: Sc
     .filter((candidate) => !selected.includes(candidate))
     .filter((candidate) => !rejectReason(candidate, profile))
     .filter((candidate) => middleGradesFinalEligibility(candidate).allowed)
-    .sort((a, b) => middleGradesRepresentativeSelectionScore(b, profile) - middleGradesRepresentativeSelectionScore(a, profile));
+    .sort((a, b) => compareMiddleGradesRepresentativeCandidates(a, b, profile));
 
   for (const candidate of candidates) {
     const candidatePenalty = middleGradesRepresentativePenalty(candidate);
