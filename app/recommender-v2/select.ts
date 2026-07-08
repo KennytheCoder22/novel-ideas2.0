@@ -798,6 +798,9 @@ function middleGradesTasteAlignment(candidate: ScoredCandidate): number {
 }
 
 function compareForInitialSelection(a: ScoredCandidate, b: ScoredCandidate, profile: TasteProfile): number {
+  if (profile.ageBand === "kids") {
+    return compareKidsFinalSelectionCandidates(a, b, profile);
+  }
   if (profile.ageBand !== "preteens") return b.score - a.score;
   if (a.diagnostics?.meaningfulTasteRecovery || b.diagnostics?.meaningfulTasteRecovery
     || a.diagnostics?.scoringHandoffStage === "meaningful_taste_recovery"
@@ -1952,7 +1955,40 @@ function kidsOlderClassicLeakage(candidate: ScoredCandidate): boolean {
 
 function kidsPreferredK2FallbackTitle(candidate: ScoredCandidate): boolean {
   const title = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
-  return /\b(mr funny|beekle|harold(?: s)?|arthur(?: s| writes| adventure)|george and martha|frog and toad|be kind|guess how much i love you|do unto otters)\b/.test(title);
+  return /\b(mr funny|beekle|harold(?: s)?|arthur(?: s| writes| adventure)|franklin|little bear|henry and mudge|george and martha|frog and toad|be kind|guess how much i love you|do unto otters)\b/.test(title);
+}
+
+function kidsWeakOrderingPenalty(candidate: ScoredCandidate): number {
+  const text = normalized([candidate.title, candidate.subtitle, kidsNonTitleDocumentText(candidate)].filter(Boolean).join(" "));
+  let penalty = 0;
+  if (/\b(bible|biblical|jesus|moses|noah|christian|prayer|religion|saints?)\b/.test(text)) penalty += 4;
+  if (/\b(folklore|folk tale|folktale|mythology|myths?|legend|legends)\b/.test(text)) penalty += 2;
+  if (/\b(spider man|spiderman|superman|batman|star wars|pokemon|marvel|disney)\b/.test(text)) penalty += 2;
+  if (kidsTasteScore(candidate) < 0.75 && kidsDistinctiveSignalsSupportedByDocument(candidate).length === 0 && !kidsPreferredK2FallbackTitle(candidate)) penalty += 2;
+  return penalty;
+}
+
+function kidsFinalSelectionScore(candidate: ScoredCandidate, profile: TasteProfile): number {
+  const breakdown = candidate.scoreBreakdown || {};
+  const documentBackedTasteCount = kidsDistinctiveSignalsSupportedByDocument(candidate).length;
+  const profileCoverageCount = kidsCandidateCoverageSignals(candidate, profile).length;
+  return (kidsPreferredK2FallbackTitle(candidate) ? 6 : 0)
+    + documentBackedTasteCount * 3
+    + profileCoverageCount * 2
+    + (kidsHasStrongStoryReaderEvidence(candidate) ? 2 : 0)
+    + (kidsHasStoryAgeShape(candidate) ? 1 : 0)
+    + Math.max(0, kidsTasteScore(candidate))
+    + Math.max(0, Number(breakdown.sourceQualityRelevance || 0)) * 0.5
+    + candidate.score * 0.05
+    - kidsWeakOrderingPenalty(candidate);
+}
+
+function compareKidsFinalSelectionCandidates(a: ScoredCandidate, b: ScoredCandidate, profile: TasteProfile): number {
+  return kidsFinalSelectionScore(b, profile) - kidsFinalSelectionScore(a, profile)
+    || kidsDistinctiveSignalsSupportedByDocument(b).length - kidsDistinctiveSignalsSupportedByDocument(a).length
+    || kidsTasteScore(b) - kidsTasteScore(a)
+    || b.score - a.score
+    || a.title.localeCompare(b.title);
 }
 
 function kidsQueryAnchoredStoryCandidate(candidate: ScoredCandidate): boolean {
@@ -2027,7 +2063,7 @@ function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected:
     .filter(isKidsCleanFinalCandidate)
     .filter((candidate) => !rejectReason(candidate, profile))
     .filter((candidate) => !selectedTitles().has(normalized(candidate.title)))
-    .sort((a, b) => Number(kidsPreferredK2FallbackTitle(b)) - Number(kidsPreferredK2FallbackTitle(a)) || kidsDistinctiveTasteSignals(b).length - kidsDistinctiveTasteSignals(a).length || kidsTasteScore(b) - kidsTasteScore(a) || b.score - a.score);
+    .sort((a, b) => compareKidsFinalSelectionCandidates(a, b, profile));
   for (const candidate of cleanPool) {
     const cleanCount = selected.filter(isKidsCleanFinalCandidate).length;
     if (cleanCount >= target) break;
@@ -2049,6 +2085,22 @@ function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected:
     candidate.rejectedReasons.push("k2_clean_final_top_up_selected_distinctive_candidate");
     selected[replacementIndex] = candidate;
     rejectedReasons.k2_clean_final_top_up_replacements = Number(rejectedReasons.k2_clean_final_top_up_replacements || 0) + 1;
+  }
+  for (const candidate of cleanPool) {
+    if (selected.includes(candidate)) continue;
+    const titleKey = normalized(candidate.title);
+    if (selectedTitles().has(titleKey)) continue;
+    const candidateScore = kidsFinalSelectionScore(candidate, profile);
+    const replacementIndex = selected
+      .map((row, index) => ({ row, index, clean: isKidsCleanFinalCandidate(row), orderScore: kidsFinalSelectionScore(row, profile) }))
+      .filter(({ clean, orderScore }) => clean && candidateScore > orderScore + 0.75)
+      .sort((a, b) => a.orderScore - b.orderScore || a.row.score - b.row.score)[0]?.index;
+    if (replacementIndex === undefined) continue;
+    const replaced = selected[replacementIndex];
+    replaced.rejectedReasons.push("k2_clean_final_replaced_by_stronger_ordered_candidate");
+    candidate.rejectedReasons.push("k2_clean_final_selected_by_ordering_preference");
+    selected[replacementIndex] = candidate;
+    rejectedReasons.k2_clean_final_ordering_replacements = Number(rejectedReasons.k2_clean_final_ordering_replacements || 0) + 1;
   }
 }
 
