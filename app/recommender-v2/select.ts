@@ -1963,7 +1963,10 @@ function kidsWeakOrderingPenalty(candidate: ScoredCandidate): number {
   let penalty = 0;
   if (/\b(bible|biblical|jesus|moses|noah|christian|prayer|religion|saints?)\b/.test(text)) penalty += 4;
   if (/\b(folklore|folk tale|folktale|mythology|myths?|legend|legends)\b/.test(text)) penalty += 2;
-  if (/\b(spider man|spiderman|superman|batman|star wars|pokemon|marvel|disney)\b/.test(text)) penalty += 2;
+  if (/\b(christmasaurus|mr mischief|madeleine|fawn|animal talent fairy|fairies|spider man|spiderman|superman|batman|star wars|pokemon|marvel|disney)\b/.test(text)) penalty += 3;
+  if (/\bwho will be my friends\b/.test(text)) penalty += 3;
+  if (kidsWeakFallbackTitleShape(candidate) && !kidsPreferredK2FallbackTitle(candidate)) penalty += 2;
+  if (!kidsHasStrongStoryReaderEvidence(candidate) && !kidsDistinctiveSignalsSupportedByDocument(candidate).length && !kidsPreferredK2FallbackTitle(candidate)) penalty += 1.5;
   if (kidsTasteScore(candidate) < 0.75 && kidsDistinctiveSignalsSupportedByDocument(candidate).length === 0 && !kidsPreferredK2FallbackTitle(candidate)) penalty += 2;
   return penalty;
 }
@@ -1977,6 +1980,7 @@ function kidsFinalSelectionScore(candidate: ScoredCandidate, profile: TasteProfi
     + profileCoverageCount * 2
     + (kidsHasStrongStoryReaderEvidence(candidate) ? 2 : 0)
     + (kidsHasStoryAgeShape(candidate) ? 1 : 0)
+    + (kidsQueryAnchoredStoryCandidate(candidate) ? 0.75 : 0)
     + Math.max(0, kidsTasteScore(candidate))
     + Math.max(0, Number(breakdown.sourceQualityRelevance || 0)) * 0.5
     + candidate.score * 0.05
