@@ -1996,7 +1996,7 @@ function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   const documentBackedTaste = kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0;
   if (kidsWeakFallbackTitleShape(candidate) && !kidsHasStrongStoryReaderEvidence(candidate) && !documentBackedTaste) return false;
   return documentBackedTaste
-    || (queryAnchored && storyAgeShape)
+    || storyAgeShape
     || (queryAnchored && tasteScore >= KIDS_QUERY_ONLY_MIN_TASTE_SCORE);
 }
 
