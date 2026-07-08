@@ -2233,14 +2233,16 @@ function addKidsSelectionObservability(rankedCandidates: ScoredCandidate[], sele
     .filter(isKidsCleanFinalCandidate)
     .map((candidate) => candidate.title);
   const selectedSuspiciousTitles = selected.filter(isKidsSuspiciousSelectionCandidate).map((candidate) => candidate.title);
+  const cleanUnderfilledSlate = selected.length > 0 && finalEligibilityAcceptedTitles.length === selected.length;
   const lockQualityFailReasons: string[] = [];
-  if (selected.length < 5) lockQualityFailReasons.push("final_items_length_less_than_five");
+  if (selected.length < 5 && !cleanUnderfilledSlate) lockQualityFailReasons.push("final_items_length_less_than_five");
   if (finalEligibilityAcceptedTitles.length < Math.min(5, selected.length || 5)) lockQualityFailReasons.push("k2_clean_items_less_than_five");
   if (selectedSuspiciousTitles.length > 0) lockQualityFailReasons.push("k2_suspicious_title_selected");
 
   diagnostics.rankedDocsTitles = rankedCandidates.map((candidate) => candidate.title);
   diagnostics.finalEligibilityAcceptedTitles = finalEligibilityAcceptedTitles;
   diagnostics.finalEligibilityCleanCandidateCount = finalEligibilityAcceptedTitles.length;
+  diagnostics.k2CleanUnderfilledSlatePreserved = cleanUnderfilledSlate;
   diagnostics.meaningfulTasteEligibleTitles = meaningfulTasteEligibleTitles;
   diagnostics.candidateTasteMatchScoreByTitle = candidateTasteMatchScoreByTitle;
   diagnostics.candidateMatchedLikedSignalsByTitle = candidateMatchedLikedSignalsByTitle;
