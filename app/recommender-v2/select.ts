@@ -1914,7 +1914,7 @@ function kidsHasStoryAgeShape(candidate: ScoredCandidate): boolean {
 
 function kidsHasStrongStoryReaderEvidence(candidate: ScoredCandidate): boolean {
   const text = normalized([candidate.title, candidate.subtitle, kidsNonTitleDocumentText(candidate)].filter(Boolean).join(" "));
-  return /\b(picture books?|children s stories|easy readers?|early readers?|beginning readers?|beginner books?|read aloud|read alouds?|ages? [4-8]|grades? (?:k|1|2)|kindergarten|preschool)\b/.test(text);
+  return /\b(picture books?|easy readers?|early readers?|beginning readers?|beginner books?|read aloud|read alouds?|ages? [4-8]|grades? (?:k|1|2)|kindergarten|preschool|level [12]|scholastic reader|i can read|step into reading)\b/.test(text);
 }
 
 function kidsDistinctiveSignalsSupportedByDocument(candidate: ScoredCandidate): string[] {
@@ -1924,6 +1924,7 @@ function kidsDistinctiveSignalsSupportedByDocument(candidate: ScoredCandidate): 
 
 function kidsWeakFallbackTitleShape(candidate: ScoredCandidate): boolean {
   const title = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  if (/\b(frog and toad|george and martha)\b/.test(title)) return false;
   return /^(?:the )?friends?$/.test(title)
     || /\b(?:are friends|two great friends|friend for life|friendship)\b/.test(title);
 }
@@ -1946,6 +1947,11 @@ function kidsObviousNonK2CleanLeakage(candidate: ScoredCandidate): boolean {
   return nonStoryPictureArtifact && !narrativeEvidence;
 }
 
+function kidsOlderClassicLeakage(candidate: ScoredCandidate): boolean {
+  const text = normalized([candidate.title, candidate.subtitle, kidsNonTitleDocumentText(candidate)].filter(Boolean).join(" "));
+  return /\b(chitty chitty bang bang|alice(?: s)? (?:adventures in )?wonderland|alice in wonderland|twice told tales)\b/.test(text);
+}
+
 function kidsQueryAnchoredStoryCandidate(candidate: ScoredCandidate): boolean {
   const routeText = normalized([
     candidate.diagnostics?.queryText,
@@ -1953,6 +1959,13 @@ function kidsQueryAnchoredStoryCandidate(candidate: ScoredCandidate): boolean {
     candidate.diagnostics?.routingReason,
   ].filter(Boolean).join(" "));
   return /\b(picture|picture books?|early readers?|easy readers?|beginning readers?|children picture|k2 openlibrary picture early reader|k2 clean candidate shortfall semantic expansion)\b/.test(routeText);
+}
+
+function kidsHighConfidenceK2Narrative(candidate: ScoredCandidate, queryAnchored: boolean, documentBackedTaste: boolean): boolean {
+  if (!kidsHasStoryAgeShape(candidate)) return false;
+  if (kidsHasStrongStoryReaderEvidence(candidate)) return true;
+  if (kidsOlderClassicLeakage(candidate) && !documentBackedTaste) return false;
+  return queryAnchored;
 }
 
 
@@ -1996,8 +2009,8 @@ function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   const documentBackedTaste = kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0;
   if (kidsWeakFallbackTitleShape(candidate) && !kidsHasStrongStoryReaderEvidence(candidate) && !documentBackedTaste) return false;
   return documentBackedTaste
-    || storyAgeShape
-    || (queryAnchored && tasteScore >= KIDS_QUERY_ONLY_MIN_TASTE_SCORE);
+    || kidsHighConfidenceK2Narrative(candidate, queryAnchored, documentBackedTaste)
+    || (queryAnchored && !kidsOlderClassicLeakage(candidate) && tasteScore >= KIDS_QUERY_ONLY_MIN_TASTE_SCORE);
 }
 
 function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
