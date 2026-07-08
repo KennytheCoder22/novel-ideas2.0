@@ -1912,9 +1912,22 @@ function kidsHasStoryAgeShape(candidate: ScoredCandidate): boolean {
   return /\b(picture books?|juvenile fiction|juvenile literature|children s stories|children s books?|easy readers?|early readers?|beginning readers?|beginner books?|read aloud|read alouds?|ages? [4-8]|grades? (?:k|1|2)|kindergarten|preschool)\b/.test(text);
 }
 
+function kidsHasStrongStoryReaderEvidence(candidate: ScoredCandidate): boolean {
+  const text = normalized([candidate.title, candidate.subtitle, kidsNonTitleDocumentText(candidate)].filter(Boolean).join(" "));
+  return /\b(picture books?|children s stories|easy readers?|early readers?|beginning readers?|beginner books?|read aloud|read alouds?|ages? [4-8]|grades? (?:k|1|2)|kindergarten|preschool)\b/.test(text);
+}
+
 function kidsDistinctiveSignalsSupportedByDocument(candidate: ScoredCandidate): string[] {
   const text = kidsNonTitleDocumentText(candidate);
   return kidsDistinctiveTasteSignals(candidate).filter((signal) => text.includes(signal));
+}
+
+function kidsWeakFallbackTitleShape(candidate: ScoredCandidate): boolean {
+  const rawTitle = [candidate.title, candidate.subtitle].filter(Boolean).join(" ");
+  const title = normalized(rawTitle);
+  return /\b(friends?|friendship)\b/.test(title)
+    || /\//.test(rawTitle)
+    || /\b(part of \d+ book set|book set|boxed set|box set|collection|treasury|anthology|omnibus|complete|collected|bind up|bindup)\b/.test(title);
 }
 
 function kidsQueryAnchoredStoryCandidate(candidate: ScoredCandidate): boolean {
@@ -1963,7 +1976,9 @@ function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   const queryAnchored = kidsQueryAnchoredStoryCandidate(candidate);
   const storyAgeShape = kidsHasStoryAgeShape(candidate);
   if (!storyAgeShape && !queryAnchored) return false;
-  return kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0
+  const documentBackedTaste = kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0;
+  if (kidsWeakFallbackTitleShape(candidate) && !kidsHasStrongStoryReaderEvidence(candidate) && !documentBackedTaste) return false;
+  return documentBackedTaste
     || (queryAnchored && storyAgeShape)
     || (queryAnchored && tasteScore >= KIDS_QUERY_ONLY_MIN_TASTE_SCORE);
 }
