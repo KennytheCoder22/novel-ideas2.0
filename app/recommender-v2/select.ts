@@ -1923,11 +1923,27 @@ function kidsDistinctiveSignalsSupportedByDocument(candidate: ScoredCandidate): 
 }
 
 function kidsWeakFallbackTitleShape(candidate: ScoredCandidate): boolean {
+  const title = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  return /^(?:the )?friends?$/.test(title)
+    || /\b(?:are friends|two great friends|friend for life|friendship)\b/.test(title);
+}
+
+function kidsCollectionArtifactTitleShape(candidate: ScoredCandidate): boolean {
   const rawTitle = [candidate.title, candidate.subtitle].filter(Boolean).join(" ");
   const title = normalized(rawTitle);
-  return /\b(friends?|friendship)\b/.test(title)
-    || /\//.test(rawTitle)
+  return /\//.test(rawTitle)
     || /\b(part of \d+ book set|book set|boxed set|box set|collection|treasury|anthology|omnibus|complete|collected|bind up|bindup)\b/.test(title);
+}
+
+function kidsObviousNonK2CleanLeakage(candidate: ScoredCandidate): boolean {
+  const text = normalized([candidate.title, candidate.subtitle, kidsNonTitleDocumentText(candidate)].filter(Boolean).join(" "));
+  if (/\bwatership down\b/.test(text)) return true;
+  if (kidsCollectionArtifactTitleShape(candidate)) return true;
+  if (/\b(adult coloring|adult colouring|for adults|adult picture book|young adult|teen|teens|ya)\b/.test(text)) return true;
+  if (/\b(coloring|colouring|workbook|worksheet|activity book|activities|puzzles?|picture dictionary|dictionary|encyclopedia|reference|field guide|identification guide|guidebook|handbook|manual|first words|look and find|search and find|i spy|spot the)\b/.test(text)) return true;
+  const nonStoryPictureArtifact = /\b(draw|drawing|how to draw|scenery|scenic|landscapes?|photographs?|photo book|poster book)\b/.test(text);
+  const narrativeEvidence = /\b(story|stories|tale|tales|fiction|character|characters|read aloud|children s stories|juvenile fiction)\b/.test(text);
+  return nonStoryPictureArtifact && !narrativeEvidence;
 }
 
 function kidsQueryAnchoredStoryCandidate(candidate: ScoredCandidate): boolean {
@@ -1973,6 +1989,7 @@ function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   const tasteScore = kidsTasteScore(candidate);
   if (candidate.score <= 0 || isKidsSuspiciousSelectionCandidate(candidate) || tasteScore <= 0) return false;
   if (kidsNonNarrativeInformationalArtifact(candidate)) return false;
+  if (kidsObviousNonK2CleanLeakage(candidate)) return false;
   const queryAnchored = kidsQueryAnchoredStoryCandidate(candidate);
   const storyAgeShape = kidsHasStoryAgeShape(candidate);
   if (!storyAgeShape && !queryAnchored) return false;
