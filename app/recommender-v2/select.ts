@@ -2014,6 +2014,14 @@ function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected:
   for (const candidate of cleanPool) {
     const cleanCount = selected.filter(isKidsCleanFinalCandidate).length;
     if (cleanCount >= target) break;
+    const titleKey = normalized(candidate.title);
+    if (selectedTitles().has(titleKey)) continue;
+    if (selected.length < target) {
+      candidate.rejectedReasons.push("k2_clean_final_top_up_appended_safe_candidate");
+      selected.push(candidate);
+      rejectedReasons.k2_clean_final_top_up_appended = Number(rejectedReasons.k2_clean_final_top_up_appended || 0) + 1;
+      continue;
+    }
     const replacementIndex = selected
       .map((row, index) => ({ row, index, clean: isKidsCleanFinalCandidate(row), taste: kidsTasteScore(row), distinctive: kidsDistinctiveTasteSignals(row).length }))
       .filter(({ clean }) => !clean)
