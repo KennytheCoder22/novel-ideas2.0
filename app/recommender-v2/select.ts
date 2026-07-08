@@ -1964,8 +1964,9 @@ function kidsWeakOrderingPenalty(candidate: ScoredCandidate): number {
   if (/\b(bible|biblical|jesus|moses|noah|christian|prayer|religion|saints?)\b/.test(text)) penalty += 4;
   if (/\b(folklore|folk tale|folktale|mythology|myths?|legend|legends)\b/.test(text)) penalty += 2;
   if (/\b(christmasaurus|mr mischief|madeleine|fawn|animal talent fairy|fairies|spider man|spiderman|superman|batman|star wars|pokemon|marvel|disney)\b/.test(text)) penalty += 3;
-  if (/\bwho will be my friends\b/.test(text)) penalty += 3;
-  if (kidsWeakFallbackTitleShape(candidate) && !kidsPreferredK2FallbackTitle(candidate)) penalty += 2;
+  if (/\b(hbj|reading program|basal reader|leveled reader|guided reading|phonics|skills?|practice|intervention|assessment)\b/.test(text)) penalty += 3;
+  if (/\b(who will be my friends|brave firefighters|firefighters?|police officers?|community helpers?)\b/.test(text)) penalty += 4;
+  if (kidsWeakFallbackTitleShape(candidate) && !kidsPreferredK2FallbackTitle(candidate)) penalty += 3;
   if (!kidsHasStrongStoryReaderEvidence(candidate) && !kidsDistinctiveSignalsSupportedByDocument(candidate).length && !kidsPreferredK2FallbackTitle(candidate)) penalty += 1.5;
   if (kidsTasteScore(candidate) < 0.75 && kidsDistinctiveSignalsSupportedByDocument(candidate).length === 0 && !kidsPreferredK2FallbackTitle(candidate)) penalty += 2;
   return penalty;
