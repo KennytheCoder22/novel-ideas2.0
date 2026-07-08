@@ -1878,8 +1878,6 @@ function kidsTasteScore(candidate: ScoredCandidate): number {
   ) * 1000) / 1000;
 }
 
-const KIDS_QUERY_ONLY_MIN_TASTE_SCORE = 1;
-
 function kidsDistinctiveTasteSignals(candidate: ScoredCandidate): string[] {
   const matchedSignals = Array.isArray(candidate.matchedSignals) ? candidate.matchedSignals.map(String) : [];
   return matchedSignals
@@ -1952,6 +1950,11 @@ function kidsOlderClassicLeakage(candidate: ScoredCandidate): boolean {
   return /\b(chitty chitty bang bang|alice(?: s)? (?:adventures in )?wonderland|alice in wonderland|twice told tales)\b/.test(text);
 }
 
+function kidsPreferredK2FallbackTitle(candidate: ScoredCandidate): boolean {
+  const title = normalized([candidate.title, candidate.subtitle].filter(Boolean).join(" "));
+  return /\b(mr funny|beekle|harold(?: s)?|arthur(?: s| writes| adventure)|george and martha|frog and toad|be kind|guess how much i love you|do unto otters)\b/.test(title);
+}
+
 function kidsQueryAnchoredStoryCandidate(candidate: ScoredCandidate): boolean {
   const routeText = normalized([
     candidate.diagnostics?.queryText,
@@ -2007,10 +2010,11 @@ function isKidsCleanFinalCandidate(candidate: ScoredCandidate): boolean {
   const storyAgeShape = kidsHasStoryAgeShape(candidate);
   if (!storyAgeShape && !queryAnchored) return false;
   const documentBackedTaste = kidsDistinctiveSignalsSupportedByDocument(candidate).length > 0;
+  if (kidsOlderClassicLeakage(candidate) && !kidsHasStrongStoryReaderEvidence(candidate)) return false;
   if (kidsWeakFallbackTitleShape(candidate) && !kidsHasStrongStoryReaderEvidence(candidate) && !documentBackedTaste) return false;
   return documentBackedTaste
     || kidsHighConfidenceK2Narrative(candidate, queryAnchored, documentBackedTaste)
-    || (queryAnchored && !kidsOlderClassicLeakage(candidate) && tasteScore >= KIDS_QUERY_ONLY_MIN_TASTE_SCORE);
+    || (queryAnchored && !kidsOlderClassicLeakage(candidate) && !kidsWeakFallbackTitleShape(candidate) && tasteScore > 0);
 }
 
 function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected: ScoredCandidate[], rejectedReasons: Record<string, number>, profile: TasteProfile, limit: number): void {
@@ -2023,7 +2027,7 @@ function applyKidsCleanFinalTopUp(rankedCandidates: ScoredCandidate[], selected:
     .filter(isKidsCleanFinalCandidate)
     .filter((candidate) => !rejectReason(candidate, profile))
     .filter((candidate) => !selectedTitles().has(normalized(candidate.title)))
-    .sort((a, b) => kidsDistinctiveTasteSignals(b).length - kidsDistinctiveTasteSignals(a).length || kidsTasteScore(b) - kidsTasteScore(a) || b.score - a.score);
+    .sort((a, b) => Number(kidsPreferredK2FallbackTitle(b)) - Number(kidsPreferredK2FallbackTitle(a)) || kidsDistinctiveTasteSignals(b).length - kidsDistinctiveTasteSignals(a).length || kidsTasteScore(b) - kidsTasteScore(a) || b.score - a.score);
   for (const candidate of cleanPool) {
     const cleanCount = selected.filter(isKidsCleanFinalCandidate).length;
     if (cleanCount >= target) break;
