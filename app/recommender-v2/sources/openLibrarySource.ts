@@ -1252,6 +1252,23 @@ function hasStrongTeenFictionMetadataEvidence(doc: any): boolean {
   return teenEvidence && fictionEvidence && workMetadataCount >= 3 && !ADULT_LOW_TEEN_FIT_HINT.test(text);
 }
 
+function hasExplicitTeenOpenLibraryEvidence(doc: any): boolean {
+  const text = openLibraryDocText(doc).toLowerCase();
+  return /\b(young adult|ya fiction|juvenile fiction|juvenile literature|teen|teens|adolescent|high school|coming of age)\b/.test(text);
+}
+
+function isTeenBroadQueryClassicDriftDoc(doc: any, query: string, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  const normalizedQuery = cleanOpenLibraryQueryPart(query);
+  if (!/^(historical adventure|science fiction adventure|alternate history fiction|paranormal mystery|psychological mystery)$/.test(normalizedQuery)) return false;
+  if (hasExplicitTeenOpenLibraryEvidence(doc)) return false;
+  const text = openLibraryDocText(doc).toLowerCase();
+  const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
+  const classicOrAdultShape = /\b(classic literature|classic fiction|adult fiction|literary fiction|pulp|short stories|anthology|collected|complete|omnibus)\b/.test(text);
+  const broadGenreShape = /\b(science fiction|sci-fi|space|planet|adventure|historical|alternate history|paranormal|psychological|mystery|thriller|fiction|novel)\b/.test(text);
+  return classicOrAdultShape || (firstPublishYear > 0 && firstPublishYear < 1990 && broadGenreShape);
+}
+
 function isWeakTeenFitOddTitleDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
   const title = String(doc?.title || "").trim().toLowerCase();
@@ -2213,6 +2230,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isWeakTeenFitOddTitleDoc(doc, profile)) return { keep: false, reason: "weak_odd_title_teen_fit" };
   if (isTeenInappropriateOpenLibraryDoc(doc, profile)) return { keep: false, reason: "teen_inappropriate_content" };
   if (isTooYoungTeenOpenLibraryDoc(doc, profile)) return { keep: false, reason: "too_young_for_teen_artifact" };
+  if (isTeenBroadQueryClassicDriftDoc(doc, query, profile)) return { keep: false, reason: "teen_broad_query_classic_drift" };
   if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
   if (!hasMiddleGradesAgeShapeEvidence(doc, query, profile)) return { keep: false, reason: "middle_grades_age_shape_mismatch" };
