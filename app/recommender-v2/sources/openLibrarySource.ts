@@ -1269,6 +1269,18 @@ function isTeenBroadQueryClassicDriftDoc(doc: any, query: string, profile: Taste
   return classicOrAdultShape || (firstPublishYear > 0 && firstPublishYear < 1990 && broadGenreShape);
 }
 
+function isTeenClassicOrAdultDriftDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  if (hasExplicitTeenOpenLibraryEvidence(doc)) return false;
+  const title = String(doc?.title || "").trim().toLowerCase();
+  const text = openLibraryDocText(doc).toLowerCase();
+  const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
+  const knownClassicTitleDrift = /\b(anne of green gables|ozma of oz)\b/.test(title);
+  const knownAdultTitleDrift = /\b(the\s+)?housemaid\b/.test(title) && /\b(thriller|suspense|mystery|psychological|domestic|murder|adult fiction|fiction)\b/.test(text);
+  const oldClassicShape = firstPublishYear > 0 && firstPublishYear < 1950 && /\b(classic literature|classic fiction|children'?s classics|children'?s literature|fairy tales?|public domain|l\.?\s*frank\s*baum|lucy maud montgomery|l\.?\s*m\.?\s*montgomery)\b/.test(text);
+  return knownClassicTitleDrift || knownAdultTitleDrift || oldClassicShape;
+}
+
 function isWeakTeenFitOddTitleDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
   const title = String(doc?.title || "").trim().toLowerCase();
@@ -2231,6 +2243,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isTeenInappropriateOpenLibraryDoc(doc, profile)) return { keep: false, reason: "teen_inappropriate_content" };
   if (isTooYoungTeenOpenLibraryDoc(doc, profile)) return { keep: false, reason: "too_young_for_teen_artifact" };
   if (isTeenBroadQueryClassicDriftDoc(doc, query, profile)) return { keep: false, reason: "teen_broad_query_classic_drift" };
+  if (isTeenClassicOrAdultDriftDoc(doc, profile)) return { keep: false, reason: "teen_classic_or_adult_drift" };
   if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
   if (!hasMiddleGradesAgeShapeEvidence(doc, query, profile)) return { keep: false, reason: "middle_grades_age_shape_mismatch" };
