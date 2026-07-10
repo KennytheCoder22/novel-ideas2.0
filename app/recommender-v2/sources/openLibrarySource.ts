@@ -477,11 +477,31 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   ]
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
-  const comparableFamilyPrefix = comparableLikedFamilies.length >= 2 && comparableLikedFamilies[1].weight >= comparableLikedFamilies[0].weight * 0.75
-    ? comparableLikedFamilies.slice(0, 2).map((row) => row.query)
-    : [];
-  const queryCandidatesWithFamilyPrefix = comparableFamilyPrefix.length >= 2
-    ? [...comparableFamilyPrefix, ...queryCandidates]
+  const branchFamilyCoverage = new Set<string>();
+  for (const query of queryCandidates) {
+    const normalizedQuery = String(query || "").toLowerCase();
+    if (/\b(horror|paranormal|supernatural)\b/.test(normalizedQuery)) branchFamilyCoverage.add("horror");
+    if (/\b(science fiction|sci-fi|speculative|space|dystopia|dystopian)\b/.test(normalizedQuery)) branchFamilyCoverage.add("speculative");
+    if (/\b(fantasy|magic|magical)\b/.test(normalizedQuery)) branchFamilyCoverage.add("fantasy");
+    if (/\b(mystery|thriller|suspense|detective|heist|caper|thie(?:f|ves))\b/.test(normalizedQuery)) branchFamilyCoverage.add("mystery");
+    if (/\b(contemporary|realistic|coming of age|drama)\b/.test(normalizedQuery)) branchFamilyCoverage.add("contemporary");
+    if (/\b(romance|romantic)\b/.test(normalizedQuery)) branchFamilyCoverage.add("romance");
+    if (/\b(action|adventure|survival)\b/.test(normalizedQuery)) branchFamilyCoverage.add("adventure");
+  }
+  const strongestLikedFamilyWeight = Number(comparableLikedFamilies[0]?.weight || 0);
+  const familyPrefixQueries: string[] = [];
+  const familyPrefixCoverage = new Set<string>();
+  for (const [index, row] of comparableLikedFamilies.entries()) {
+    if (familyPrefixQueries.length >= 3) break;
+    const isStrongestFamily = index === 0;
+    const isComparableFamily = strongestLikedFamilyWeight > 0 && row.weight >= strongestLikedFamilyWeight * 0.75;
+    if (!isStrongestFamily && !isComparableFamily) continue;
+    if (branchFamilyCoverage.has(row.family) || familyPrefixCoverage.has(row.family)) continue;
+    familyPrefixCoverage.add(row.family);
+    familyPrefixQueries.push(row.query);
+  }
+  const queryCandidatesWithFamilyPrefix = familyPrefixQueries.length
+    ? [...familyPrefixQueries, ...queryCandidates]
     : queryCandidates;
 
   const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|science fiction dystopian|action adventure|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|psychological mystery|teen mystery thriller|realistic mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror|survival horror|psychological thriller|historical adventure|teen adventure|alternate history fiction)$/;
