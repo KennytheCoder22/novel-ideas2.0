@@ -279,11 +279,14 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const survivalWeight = nonSkipSignalWeight(signalRows, /\b(survival)\b/);
   const hasNonSkipSciFi = hasNonSkipSignal(signalRows, /\b(science fiction|sci-fi|speculative|space)\b/);
   const likedFantasyWeight = likedSignalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/);
-  const likedContemporaryWeight = likedSignalWeight(signalRows, /\b(contemporary|realistic|coming of age)\b/);
+  const likedContemporaryWeight = likedSignalWeight(signalRows, /\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/);
   const likedMysteryWeight = likedSignalWeight(signalRows, /\b(mystery|thriller|suspense)\b/);
   const likedHorrorWeight = likedSignalWeight(signalRows, /\b(horror)\b/);
   const likedThrillerWeight = likedSignalWeight(signalRows, /\b(thriller|suspense)\b/);
   const likedRomanceWeight = likedSignalWeight(signalRows, /\b(romance|romantic)\b/);
+  const likedHistoricalWeight = likedSignalWeight(signalRows, /\b(historical|history|period)\b/);
+  const likedSportsWeight = likedSignalWeight(signalRows, /\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/);
+  const likedSuperheroWeight = likedSignalWeight(signalRows, /\b(superheroes?|super heroes?|marvel|dc comics)\b/);
   const likedHeistWeight = likedSignalWeight(signalRows, /\b(heist|caper|thief|thieves|sandbox)\b/);
   const likedSpeculativeWeight = likedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/);
   const likedAdventureWeight = likedSignalWeight(signalRows, /\b(action|adventure)\b/);
@@ -470,9 +473,10 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     { family: "horror", weight: likedHorrorSurvivalThrillerWeight, query: "young adult horror" },
     { family: "speculative", weight: likedSpeculativeWeight, query: hasDystopian || /\b(dystopia|dystopian)\b/.test(profileText) ? "young adult dystopian fiction" : "science fiction adventure" },
     { family: "fantasy", weight: likedFantasyWeight, query: likedMysteryWeight > 0 ? "fantasy mystery" : "young adult fantasy" },
-    { family: "mystery", weight: likedMysteryWeight, query: likedAdventureWeight > 0 ? "mystery adventure" : "young adult mystery" },
-    { family: "contemporary", weight: likedContemporaryWeight + likedDramaWeight, query: "young adult contemporary" },
-    { family: "romance", weight: likedRomanceWeight, query: likedFantasyWeight > 0 ? "young adult romance fantasy" : "young adult contemporary" },
+    { family: "mystery", weight: likedMysteryWeight + likedSuperheroWeight, query: likedSuperheroWeight > 0 && likedMysteryWeight > 0 ? "superhero mystery" : likedAdventureWeight > 0 ? "mystery adventure" : "teen mystery thriller" },
+    { family: "contemporary", weight: likedContemporaryWeight + likedDramaWeight, query: /\bcoming[-\s]of[-\s]age\b/.test(profileText) ? "coming of age novel" : "young adult contemporary" },
+    { family: "romance", weight: likedRomanceWeight + (likedRomanceWeight > 0 ? likedHistoricalWeight : 0), query: likedHistoricalWeight > 0 ? "young adult historical romance" : "young adult romance" },
+    { family: "sports", weight: likedSportsWeight, query: "young adult sports fiction" },
     { family: "adventure", weight: likedAdventureWeight + likedSurvivalWeight, query: "teen adventure" },
   ]
     .filter((row) => row.weight > 0)
@@ -504,7 +508,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     ? [...familyPrefixQueries, ...queryCandidates]
     : queryCandidates;
 
-  const preservedKnownGoodQueries = /^(young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|science fiction dystopian|action adventure|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|psychological mystery|teen mystery thriller|realistic mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror|survival horror|psychological thriller|historical adventure|teen adventure|alternate history fiction)$/;
+  const preservedKnownGoodQueries = /^(young adult historical romance|young adult romance|young adult sports fiction|superhero mystery|young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|science fiction dystopian|action adventure|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|psychological mystery|teen mystery thriller|realistic mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror|survival horror|psychological thriller|historical adventure|teen adventure|alternate history fiction)$/;
   const preparedQueries = queryCandidatesWithFamilyPrefix.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const usefulQueries = preparedQueries.filter(isUsefulOpenLibraryQueryPart);
   const orderedQueries = [
