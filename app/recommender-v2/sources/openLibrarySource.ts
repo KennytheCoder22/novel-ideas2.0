@@ -1289,6 +1289,11 @@ function isTeenAcademicVideoGameCriticismArtifactDoc(doc: any, profile: TastePro
   return /\b(survival horror video games?|video game studies|game studies|games?\s+(?:studies|criticism|analysis)|immersion narrative|gender crisis)\b/.test(text);
 }
 
+function isTeenWritingGuideArtifactDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  return WRITING_GUIDE_CRITICISM_ARTIFACT_HINT.test(openLibraryDocText(doc));
+}
+
 function isAdultProfileArtifactDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "adult") return false;
   const text = openLibraryDocText(doc).toLowerCase();
@@ -1351,13 +1356,27 @@ function hasExplicitTeenOpenLibraryEvidence(doc: any): boolean {
 function isTeenBroadQueryClassicDriftDoc(doc: any, query: string, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
   const normalizedQuery = cleanOpenLibraryQueryPart(query);
-  if (!/^(historical adventure|science fiction adventure|alternate history fiction|paranormal mystery|psychological mystery)$/.test(normalizedQuery)) return false;
+  if (!/^(historical adventure|science fiction adventure|alternate history fiction|paranormal mystery|psychological mystery|action adventure|fantasy adventure|magical adventure|fantasy survival|teen adventure|survival fiction|dystopian survival|young adult contemporary|teen realistic fiction|coming of age novel|young adult romance|young adult historical romance|young adult romance fantasy|realistic mystery|mystery adventure)$/.test(normalizedQuery)) return false;
   if (hasExplicitTeenOpenLibraryEvidence(doc)) return false;
   const text = openLibraryDocText(doc).toLowerCase();
   const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
-  const classicOrAdultShape = /\b(classic literature|classic fiction|adult fiction|literary fiction|pulp|short stories|anthology|collected|complete|omnibus)\b/.test(text);
+  const classicOrAdultShape = /\b(classic literature|classic fiction|adult fiction|literary fiction|general fiction|pulp|men'?s adventure|military fiction|short stories|anthology|collected|complete|omnibus)\b/.test(text);
+  const olderClassicOrAdultShape = firstPublishYear > 0 && firstPublishYear < 1980 && /\b(public domain|classic|classics|literary|pulp|men'?s adventure|adult fiction|short stories|anthology|collected|complete|omnibus)\b/.test(text);
   const broadGenreShape = /\b(science fiction|sci-fi|space|planet|adventure|historical|alternate history|paranormal|psychological|mystery|thriller|fiction|novel)\b/.test(text);
-  return classicOrAdultShape || (firstPublishYear > 0 && firstPublishYear < 1990 && broadGenreShape);
+  return classicOrAdultShape || (olderClassicOrAdultShape && broadGenreShape);
+}
+
+function isTeenCollectedClassicPackageDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  if (hasExplicitTeenOpenLibraryEvidence(doc)) return false;
+  const title = String(doc?.title || "").toLowerCase();
+  const text = openLibraryDocText(doc).toLowerCase();
+  const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
+  const packageShape = /\b(novels|stories|tales|works|adventures)\s*\([^)]*(?:\/|;| and )[^)]*\)/.test(title)
+    || /\b(complete|collected|selected|library of|omnibus|anthology)\b/.test(title);
+  const classicMarker = firstPublishYear > 0 && firstPublishYear < 1980
+    || /\b(mark twain|huckleberry finn|tom sawyer|robin hood|james joyce|portrait of the artist|l\.?\s*frank\s*baum)\b/.test(text);
+  return packageShape && classicMarker;
 }
 
 function isTeenClassicOrAdultDriftDoc(doc: any, profile: TasteProfile): boolean {
@@ -1368,9 +1387,11 @@ function isTeenClassicOrAdultDriftDoc(doc: any, profile: TasteProfile): boolean 
   const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
   const exactTitle = title.replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
   const knownClassicTitleDrift = /\b(anne of green gables|ozma of oz|red planet)\b/.test(title) || exactTitle === "youth";
-  const knownAdultTitleDrift = (/\b(the\s+)?housemaid\b/.test(title) && /\b(thriller|suspense|mystery|psychological|domestic|murder|adult fiction|fiction)\b/.test(text)) || /\bcryptonomicon\b/.test(title);
+  const knownAdultTitleDrift = (/\b(the\s+)?housemaid\b/.test(title) && /\b(thriller|suspense|mystery|psychological|domestic|murder|adult fiction|fiction)\b/.test(text))
+    || /\b(cryptonomicon|casca|a portrait of the artist as a young man|piece of heaven|road to heaven)\b/.test(title);
+  const knownClassicAdventureDrift = /\brobin hood\b/.test(title);
   const oldClassicShape = firstPublishYear > 0 && firstPublishYear < 1950 && /\b(classic literature|classic fiction|children'?s classics|children'?s literature|fairy tales?|public domain|l\.?\s*frank\s*baum|lucy maud montgomery|l\.?\s*m\.?\s*montgomery)\b/.test(text);
-  return knownClassicTitleDrift || knownAdultTitleDrift || oldClassicShape;
+  return knownClassicTitleDrift || knownAdultTitleDrift || knownClassicAdventureDrift || oldClassicShape;
 }
 
 function isWeakTeenFitOddTitleDoc(doc: any, profile: TasteProfile): boolean {
@@ -2356,6 +2377,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isKeywordStuffedMarketingArtifactDoc(doc)) return { keep: false, reason: "keyword_stuffed_marketing_artifact" };
   if (isMediaStudyArtifactDoc(doc)) return { keep: false, reason: "media_study_artifact" };
   if (isTeenAcademicVideoGameCriticismArtifactDoc(doc, profile)) return { keep: false, reason: "media_study_artifact" };
+  if (isTeenWritingGuideArtifactDoc(doc, profile)) return { keep: false, reason: "teen_writing_guide_artifact" };
   if (isAdultProfileArtifactDoc(doc, profile)) return { keep: false, reason: "adult_profile_artifact" };
   if (isProgrammingGuideArtifactDoc(doc)) return { keep: false, reason: "programming_guide_artifact" };
   if (isSurvivalGuideArtifactDoc(doc)) return { keep: false, reason: "survival_guide_artifact" };
@@ -2367,6 +2389,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isTooYoungTeenOpenLibraryDoc(doc, profile)) return { keep: false, reason: "too_young_for_teen_artifact" };
   if (isTeenBroadQueryClassicDriftDoc(doc, query, profile)) return { keep: false, reason: "teen_broad_query_classic_drift" };
   if (isTeenClassicOrAdultDriftDoc(doc, profile)) return { keep: false, reason: "teen_classic_or_adult_drift" };
+  if (isTeenCollectedClassicPackageDoc(doc, profile)) return { keep: false, reason: "teen_collected_classic_package" };
   if (isOmnibusBundleDriftOpenLibraryDoc(doc, query, profile)) return { keep: false, reason: "adult_literary_content" };
   if (!isTeenCompatibleOpenLibraryDoc(doc, profile)) return { keep: false, reason: "not_teen_compatible_publication_year" };
   if (!hasMiddleGradesAgeShapeEvidence(doc, query, profile)) return { keep: false, reason: "middle_grades_age_shape_mismatch" };
