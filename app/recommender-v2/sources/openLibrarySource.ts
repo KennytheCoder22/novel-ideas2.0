@@ -39,6 +39,7 @@ const OPEN_LIBRARY_SEARCH_FIELDS = [
   "subject_facet",
   "first_sentence",
   "description",
+  "publisher",
 ].join(",");
 
 type OpenLibraryQueryPlan = {
@@ -114,6 +115,9 @@ const MEDIA_STUDY_ARTIFACT_HINT = /\b(introspective realist crime film|interplay
 const SCHOLARLY_CATALOG_ARTIFACT_HINT = /\b(corpus of ancient near eastern seals|catalog(?:ue)? of (?:ancient|near eastern|seals|collections)|museum collections?|archaeological catalog(?:ue)?|numismatic catalog(?:ue)?|inscriptions? catalog(?:ue)?)\b/i;
 const ADULT_ROMANCE_DRIFT_HINT = /\b(king of flesh and bone|married to a pirate|flesh and bone|dark romance|dark romantasy|pirate romance|monster romance|alien romance|captive bride|reverse harem|why choose|possessive alpha|mafia romance)\b/i;
 const WRITING_GUIDE_CRITICISM_ARTIFACT_HINT = /\b(writing guides?|how to write|writer'?s? guide|craft of writing|horror criticism|horror genre history|genre history|literary criticism|critical history|guide to writing|teaching horror|study guide)\b/i;
+const TEEN_ACADEMIC_PUBLISHER_HINT = /\b(fortress academic|lexington books|rowman\s*&\s*littlefield|peter lang|lang gmbh|internationaler verlag der wissenschaften|university press)\b/i;
+const TEEN_ACADEMIC_YA_CRITICISM_HINT = /\b(readings in|studies in|critical stud(?:y|ies)|criticism|analysis of|an analysis of|scholarship|dissertation|thesis|posthumanist|theoretical|cultural stud(?:y|ies)|monograph)\b/i;
+const TEEN_ACADEMIC_YA_OBJECT_HINT = /\b(young adult literature|young adult fiction|adolescent literature|children'?s literature|dystopian young adult fiction|literature for young adults|ya literature)\b/i;
 const ADULT_NOTES_CRITICISM_NONFICTION_ARTIFACT_HINT = /\b(crime and punishment notes|the poet and the murderer|mystery in the mainstream|wizardry and wild romance|study notes?|cliffs?notes|sparknotes|book notes?|notes on|study aids?|study guides?|teacher'?s? guides?|reader'?s? guides?|companions? to|critical companions?|criticism|critical essays?|essays on|literary history|bibliograph(?:y|ies)|true crime nonfiction|true crime|nonfiction)\b/i;
 const ADULT_LOW_TEEN_FIT_HINT = /\b(my secret garden|sexual fantasies|women\s+sexual fantasies|erotic|erotica|adult romance|new adult|college romance|college athletes?|seduction|sensual|dark lover|demoness|vixen|bret easton ellis|the informers|icebreaker|midnight fantasies|blaze|harlequin|silhouette desire|temptation|passion)\b/i;
 
@@ -1255,6 +1259,19 @@ function openLibraryDocText(doc: any): string {
   ].join(" ");
 }
 
+function openLibraryAcademicDocText(doc: any): string {
+  const description = typeof doc?.description === "string"
+    ? doc.description
+    : typeof doc?.description?.value === "string" ? doc.description.value : "";
+  const firstSentence = Array.isArray(doc?.first_sentence) ? doc.first_sentence.join(" ") : String(doc?.first_sentence || "");
+  return [
+    openLibraryDocText(doc),
+    description,
+    firstSentence,
+    ...(Array.isArray(doc?.publisher) ? doc.publisher : []),
+  ].join(" ");
+}
+
 function isOpenLibraryArtifactDoc(doc: any, query: string): boolean {
   if (ARTIFACT_QUERY_HINT.test(query)) return false;
   return ARTIFACT_TITLE_HINT.test(openLibraryDocText(doc));
@@ -1292,6 +1309,16 @@ function isTeenAcademicVideoGameCriticismArtifactDoc(doc: any, profile: TastePro
 function isTeenWritingGuideArtifactDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
   return WRITING_GUIDE_CRITICISM_ARTIFACT_HINT.test(openLibraryDocText(doc));
+}
+
+function isTeenAcademicCriticismArtifactDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  const text = openLibraryAcademicDocText(doc).toLowerCase();
+  const hasAcademicPublisher = TEEN_ACADEMIC_PUBLISHER_HINT.test(text);
+  const hasAcademicCriticismShape = TEEN_ACADEMIC_YA_CRITICISM_HINT.test(text);
+  const isAboutYaLiterature = TEEN_ACADEMIC_YA_OBJECT_HINT.test(text);
+  if (isAboutYaLiterature && (hasAcademicCriticismShape || hasAcademicPublisher)) return true;
+  return hasAcademicPublisher && hasAcademicCriticismShape && !hasStrongTeenFictionMetadataEvidence(doc);
 }
 
 function isAdultProfileArtifactDoc(doc: any, profile: TasteProfile): boolean {
@@ -2377,6 +2404,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isKeywordStuffedMarketingArtifactDoc(doc)) return { keep: false, reason: "keyword_stuffed_marketing_artifact" };
   if (isMediaStudyArtifactDoc(doc)) return { keep: false, reason: "media_study_artifact" };
   if (isTeenAcademicVideoGameCriticismArtifactDoc(doc, profile)) return { keep: false, reason: "media_study_artifact" };
+  if (isTeenAcademicCriticismArtifactDoc(doc, profile)) return { keep: false, reason: "teen_academic_criticism_artifact" };
   if (isTeenWritingGuideArtifactDoc(doc, profile)) return { keep: false, reason: "teen_writing_guide_artifact" };
   if (isAdultProfileArtifactDoc(doc, profile)) return { keep: false, reason: "adult_profile_artifact" };
   if (isProgrammingGuideArtifactDoc(doc)) return { keep: false, reason: "programming_guide_artifact" };
