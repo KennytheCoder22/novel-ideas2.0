@@ -281,7 +281,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const likedFantasyWeight = likedSignalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/);
   const likedContemporaryWeight = likedSignalWeight(signalRows, /\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/);
   const likedMysteryWeight = likedSignalWeight(signalRows, /\b(mystery|thriller|suspense)\b/);
-  const likedHorrorWeight = likedSignalWeight(signalRows, /\b(horror)\b/);
+  const likedHorrorFamilyWeight = likedSignalWeight(signalRows, /\b(horror|paranormal|supernatural)\b/);
   const likedThrillerWeight = likedSignalWeight(signalRows, /\b(thriller|suspense)\b/);
   const likedRomanceWeight = likedSignalWeight(signalRows, /\b(romance|romantic)\b/);
   const likedHistoricalWeight = likedSignalWeight(signalRows, /\b(historical|history|period)\b/);
@@ -297,7 +297,9 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const speculativeAdventureDramaWeight = dystopianWeight + adventureWeight + dramaWeight + survivalWeight;
   const mysteryHeistWeight = mysteryWeight + heistWeight;
   const fantasyAdventureSurvivalWeight = fantasyWeight + adventureWeight + survivalWeight;
-  const likedHorrorSurvivalThrillerWeight = likedHorrorWeight + likedSurvivalWeight + likedThrillerWeight;
+  const likedHorrorSurvivalThrillerWeight = likedHorrorFamilyWeight > 0
+    ? likedHorrorFamilyWeight + likedSurvivalWeight + likedThrillerWeight
+    : 0;
   const likedSpeculativeAdventureDramaWeight = likedSpeculativeWeight + likedAdventureWeight + likedDramaWeight + likedSurvivalWeight;
   const likedMysteryHeistWeight = likedMysteryWeight + likedHeistWeight;
   const likedFantasyAdventureSurvivalWeight = likedFantasyWeight + likedAdventureWeight + likedSurvivalWeight;
@@ -470,14 +472,22 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
         ? genreSpecificQueries
         : genericQueries;
   const comparableLikedFamilies = [
-    { family: "horror", weight: likedHorrorSurvivalThrillerWeight, query: "young adult horror" },
+    { family: "horror", weight: likedHorrorFamilyWeight, query: "young adult horror" },
     { family: "speculative", weight: likedSpeculativeWeight, query: hasDystopian || /\b(dystopia|dystopian)\b/.test(profileText) ? "young adult dystopian fiction" : "science fiction adventure" },
     { family: "fantasy", weight: likedFantasyWeight, query: likedMysteryWeight > 0 ? "fantasy mystery" : "young adult fantasy" },
     { family: "mystery", weight: likedMysteryWeight + likedSuperheroWeight, query: likedSuperheroWeight > 0 && likedMysteryWeight > 0 ? "superhero mystery" : likedAdventureWeight > 0 ? "mystery adventure" : "teen mystery thriller" },
     { family: "contemporary", weight: likedContemporaryWeight + likedDramaWeight, query: /\bcoming[-\s]of[-\s]age\b/.test(profileText) ? "coming of age novel" : "young adult contemporary" },
     { family: "romance", weight: likedRomanceWeight + (likedRomanceWeight > 0 ? likedHistoricalWeight : 0), query: likedHistoricalWeight > 0 ? "young adult historical romance" : "young adult romance" },
     { family: "sports", weight: likedSportsWeight, query: "young adult sports fiction" },
-    { family: "adventure", weight: likedAdventureWeight + likedSurvivalWeight, query: "teen adventure" },
+    {
+      family: "adventure",
+      weight: likedAdventureWeight + likedSurvivalWeight,
+      query: likedSurvivalWeight > likedAdventureWeight
+        ? hasDystopian || /\b(dystopia|dystopian)\b/.test(profileText)
+          ? "dystopian survival"
+          : "survival fiction"
+        : "teen adventure",
+    },
   ]
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
