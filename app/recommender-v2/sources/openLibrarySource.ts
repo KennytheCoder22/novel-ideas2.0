@@ -274,8 +274,15 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const heistWeight = nonSkipSignalWeight(signalRows, /\b(heist|caper|thief|thieves|sandbox)\b/);
   const historicalWeight = nonSkipSignalWeight(signalRows, /\b(historical|history)\b/);
   const dystopianWeight = nonSkipSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative)\b/);
+  const adventureWeight = nonSkipSignalWeight(signalRows, /\b(action|adventure)\b/);
+  const dramaWeight = nonSkipSignalWeight(signalRows, /\b(drama)\b/);
   const survivalWeight = nonSkipSignalWeight(signalRows, /\b(survival)\b/);
   const hasNonSkipSciFi = hasNonSkipSignal(signalRows, /\b(science fiction|sci-fi|speculative|space)\b/);
+  const hasSpeculativeEvidence = hasSpeculative || dystopianWeight > 0 || hasNonSkipSciFi || /\b(science fiction|sci-fi|speculative|space|dystopia|dystopian)\b/.test(profileText);
+  const hasAdventureDramaSurvivalEvidence = hasAdventure || hasDrama || adventureWeight > 0 || dramaWeight > 0 || survivalWeight > 0 || /\b(action|adventure|drama|survival)\b/.test(profileText);
+  const speculativeAdventureDramaWeight = dystopianWeight + adventureWeight + dramaWeight + survivalWeight;
+  const mysteryHeistWeight = mysteryWeight + heistWeight;
+  const fantasyAdventureSurvivalWeight = fantasyWeight + adventureWeight + survivalWeight;
   const dominanceScores = { fantasy: fantasyWeight, contemporary: contemporaryWeight, mystery: mysteryWeight, actionComedy: actionComedyWeight, romance: romanceWeight, heist: heistWeight, historical: historicalWeight, dystopian: dystopianWeight, survival: survivalWeight };
   const sortedDominance = Object.entries(dominanceScores).sort((a, b) => b[1] - a[1]);
   const dominantFamily = sortedDominance[0]?.[0] || "generic";
@@ -294,8 +301,9 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const wantsFantasySchoolActionDystopian = !wantsHorrorSurvivalPsychological && !wantsHistoricalSciFiAdventure && hasFantasy && !hasParanormal && hasSchool && fantasyWeight + actionComedyWeight + dystopianWeight >= Math.max(contemporaryWeight, mysteryWeight, historicalWeight);
   const wantsPsychologicalMysteryDrama = !wantsHorrorSurvivalPsychological && hasMystery && (hasPsychological || hasDrama || hasClearContemporarySignal) && mysteryWeight + contemporaryWeight >= Math.max(fantasyWeight, dystopianWeight, historicalWeight) * 0.8;
   const wantsContemporaryRomanceFantasy = hasFantasy && !wantsFantasySchoolActionDystopian && !hasSpeculative && !hasAction && !hasComedy && !hasParanormal && !hasHorror && (contemporaryWeight > 0 || romanceWeight > 0 || hasDrama) && fantasyWeight + contemporaryWeight + romanceWeight >= Math.max(mysteryWeight, dystopianWeight, historicalWeight);
-  const wantsMysteryHeist = hasMystery && hasHeist && dystopianWeight <= Math.max(1, mysteryWeight + heistWeight) * 1.5;
+  const wantsMysteryHeist = hasMystery && hasHeist && mysteryHeistWeight >= fantasyAdventureSurvivalWeight * 0.85 && dystopianWeight <= Math.max(1, mysteryHeistWeight) * 1.5;
   const wantsDystopianHistoricalThriller = hasDystopian && !wantsMysteryHeist && (hasThriller || hasHistorical) && dystopianWeight > 0 && dystopianWeight + mysteryWeight + historicalWeight >= Math.max(contemporaryWeight, fantasyWeight) * 1.15;
+  const wantsSpeculativeAdventureDrama = !wantsHorrorSurvivalPsychological && !wantsHistoricalSciFiAdventure && !wantsDystopianHistoricalThriller && hasSpeculativeEvidence && hasAdventureDramaSurvivalEvidence && speculativeAdventureDramaWeight >= Math.max(1, fantasyWeight * 0.5, mysteryWeight * 0.75);
   const wantsFantasyAdventureSurvival = hasFantasy && hasAdventure && !hasParanormal && (fantasyWeight + actionComedyWeight + survivalWeight >= Math.max(mysteryWeight, contemporaryWeight, dystopianWeight));
   const wantsParanormalHorrorRomance = hasParanormal && (hasHorror || hasRomance || romanceWeight > 0) && fantasyWeight + mysteryWeight + romanceWeight >= contemporaryWeight;
   const wantsHorrorThrillerFantasy = hasHorror && hasThriller && hasFantasy && (fantasyWeight + mysteryWeight >= Math.max(contemporaryWeight, dystopianWeight, historicalWeight) * 1.1);
@@ -343,6 +351,14 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
           "mystery adventure",
           "young adult thriller",
         ]
+      : wantsSpeculativeAdventureDrama
+        ? [
+            hasDystopian || /\b(dystopia|dystopian)\b/.test(profileText) ? "young adult dystopian fiction" : "science fiction adventure",
+            "science fiction adventure",
+            survivalWeight > 0 ? "dystopian survival" : "",
+            adventureWeight > 0 || hasAdventure ? "teen adventure" : "",
+            dramaWeight > 0 || hasDrama ? "young adult contemporary" : "",
+          ]
       : wantsFantasyAdventureSurvival
         ? [
             "young adult fantasy",
@@ -428,7 +444,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     combineOpenLibraryQueryParts(genreTerms[1] || "", genreTerms[2]),
     genreTerms[0] || fallbackTerms[0] || ageProfile.diagnosticProbeQuery,
   ];
-  const queryCandidates = wantsHorrorSurvivalPsychological || wantsHistoricalSciFiAdventure || wantsFantasySchoolActionDystopian || wantsPsychologicalMysteryDrama || wantsContemporaryRomanceFantasy || wantsMysteryHeist || wantsFantasyAdventureSurvival || wantsParanormalHorrorRomance || wantsDystopianHistoricalThriller
+  const queryCandidates = wantsHorrorSurvivalPsychological || wantsHistoricalSciFiAdventure || wantsFantasySchoolActionDystopian || wantsPsychologicalMysteryDrama || wantsContemporaryRomanceFantasy || wantsMysteryHeist || wantsSpeculativeAdventureDrama || wantsFantasyAdventureSurvival || wantsParanormalHorrorRomance || wantsDystopianHistoricalThriller
     ? genreSpecificQueries
     : wantsContemporaryDrama
       ? [...contemporaryQueries, ...genreSpecificQueries]
@@ -458,6 +474,8 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
         ? "dominant_contemporary_romance_fantasy"
         : wantsMysteryHeist
       ? "dominant_mystery_heist"
+      : wantsSpeculativeAdventureDrama
+        ? "dominant_speculative_adventure_drama"
       : wantsFantasyAdventureSurvival
         ? "dominant_fantasy_adventure_survival"
         : wantsParanormalHorrorRomance
@@ -479,7 +497,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
                       : broadFallbackUsed
                         ? "no_specific_mixed_facets_broad_fallback"
                         : "generic_facets";
-  const routingDominance = { openLibraryPlanner: "teen_locked_baseline", ageProfile: ageProfile.key, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasy, wantsSurvival, wantsHistorical, wantsHorrorSurvivalPsychological, wantsHistoricalSciFiAdventure, wantsFantasySchoolActionDystopian, wantsPsychologicalMysteryDrama, wantsContemporaryRomanceFantasy, wantsMysteryHeist, hasNonSkipSciFi, wantsFantasyAdventureSurvival, wantsParanormalHorrorRomance, wantsDystopianHistoricalThriller, wantsHorrorThrillerFantasy, wantsContemporaryDrama, wantsActionComedyMystery };
+  const routingDominance = { openLibraryPlanner: "teen_locked_baseline", ageProfile: ageProfile.key, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasy, wantsSurvival, wantsHistorical, wantsHorrorSurvivalPsychological, wantsHistoricalSciFiAdventure, wantsFantasySchoolActionDystopian, wantsPsychologicalMysteryDrama, wantsContemporaryRomanceFantasy, wantsMysteryHeist, hasNonSkipSciFi, wantsSpeculativeAdventureDrama, wantsFantasyAdventureSurvival, wantsParanormalHorrorRomance, wantsDystopianHistoricalThriller, wantsHorrorThrillerFantasy, wantsContemporaryDrama, wantsActionComedyMystery };
   return uniqueQueries.map((query, index) => ({
     query,
     originalPlannedQuery,
