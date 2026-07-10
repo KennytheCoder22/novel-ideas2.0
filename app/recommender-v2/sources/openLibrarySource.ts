@@ -1216,6 +1216,12 @@ function isMediaStudyArtifactDoc(doc: any): boolean {
   return MEDIA_STUDY_ARTIFACT_HINT.test(openLibraryDocText(doc));
 }
 
+function isTeenAcademicVideoGameCriticismArtifactDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  const text = openLibraryDocText(doc).toLowerCase();
+  return /\b(survival horror video games?|video game studies|game studies|games?\s+(?:studies|criticism|analysis)|immersion narrative|gender crisis)\b/.test(text);
+}
+
 function isAdultProfileArtifactDoc(doc: any, profile: TasteProfile): boolean {
   if (profile.ageBand !== "adult") return false;
   const text = openLibraryDocText(doc).toLowerCase();
@@ -1293,8 +1299,9 @@ function isTeenClassicOrAdultDriftDoc(doc: any, profile: TasteProfile): boolean 
   const title = String(doc?.title || "").trim().toLowerCase();
   const text = openLibraryDocText(doc).toLowerCase();
   const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
-  const knownClassicTitleDrift = /\b(anne of green gables|ozma of oz)\b/.test(title);
-  const knownAdultTitleDrift = /\b(the\s+)?housemaid\b/.test(title) && /\b(thriller|suspense|mystery|psychological|domestic|murder|adult fiction|fiction)\b/.test(text);
+  const exactTitle = title.replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+  const knownClassicTitleDrift = /\b(anne of green gables|ozma of oz|red planet)\b/.test(title) || exactTitle === "youth";
+  const knownAdultTitleDrift = (/\b(the\s+)?housemaid\b/.test(title) && /\b(thriller|suspense|mystery|psychological|domestic|murder|adult fiction|fiction)\b/.test(text)) || /\bcryptonomicon\b/.test(title);
   const oldClassicShape = firstPublishYear > 0 && firstPublishYear < 1950 && /\b(classic literature|classic fiction|children'?s classics|children'?s literature|fairy tales?|public domain|l\.?\s*frank\s*baum|lucy maud montgomery|l\.?\s*m\.?\s*montgomery)\b/.test(text);
   return knownClassicTitleDrift || knownAdultTitleDrift || oldClassicShape;
 }
@@ -2251,6 +2258,7 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isLiteraryAnalysisArtifactDoc(doc, query)) return { keep: false, reason: "literary_analysis_artifact" };
   if (isKeywordStuffedMarketingArtifactDoc(doc)) return { keep: false, reason: "keyword_stuffed_marketing_artifact" };
   if (isMediaStudyArtifactDoc(doc)) return { keep: false, reason: "media_study_artifact" };
+  if (isTeenAcademicVideoGameCriticismArtifactDoc(doc, profile)) return { keep: false, reason: "media_study_artifact" };
   if (isAdultProfileArtifactDoc(doc, profile)) return { keep: false, reason: "adult_profile_artifact" };
   if (isProgrammingGuideArtifactDoc(doc)) return { keep: false, reason: "programming_guide_artifact" };
   if (isSurvivalGuideArtifactDoc(doc)) return { keep: false, reason: "survival_guide_artifact" };
@@ -4534,7 +4542,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
               : ageProfile.diagnosticProbeQuery)
         : ageProfile.key === "middleGrades"
           ? queries.some((query) => /\b(science fiction|sci-fi|space|dystopian|dystopia)\b/i.test(query)) ? "middle grade adventure" : queries.some((query) => /\b(humor|funny|school|friendship|contemporary|realistic)\b/i.test(query)) ? middleGradesZeroCandidateFallbackQuery(queryPlans, new Set(fetches.filter((fetch) => !fetch.diagnosticOnly).map((fetch) => String(fetch.query || "").toLowerCase()))) : queries.some((query) => /\b(mystery|detective|suspense)\b/i.test(query)) ? "middle grade adventure" : "middle grade adventure"
-          : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
+          : ageProfile.key === "teen" && queries.some((query) => /\bcoming of age\b/i.test(query)) ? "coming of age novel"
+            : ageProfile.key === "teen" && queries.some((query) => /\b(romance|contemporary|realistic|drama)\b/i.test(query)) ? "young adult contemporary"
+              : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
       const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
       const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1);
       fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (probeDocs.length ? "emergency_fallback_probe_returned_docs" : undefined) });
@@ -4746,7 +4756,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       : rawItems;
     const openLibraryScoringHandoffItems = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace
       ? openLibraryScoringHandoffEligiblePool.slice(0, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT)
-      : rawItems;
+      : ageProfile.key === "teen"
+        ? rawItems.slice(0, Math.min(ageProfile.docLimit, 5))
+        : rawItems;
     const openLibraryScoringHandoffSuppressedTitles = ageProfile.key === "middleGrades"
       ? openLibraryScoringHandoffEligiblePool.slice(openLibraryScoringHandoffItems.length).map((item: any) => String(item?.title || "")).filter(Boolean)
       : [];
