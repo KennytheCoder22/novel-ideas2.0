@@ -481,8 +481,10 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   ]
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
+  const preservedKnownGoodQueries = /^(young adult historical romance|young adult romance|young adult sports fiction|superhero mystery|young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|science fiction dystopian|action adventure|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|psychological mystery|teen mystery thriller|realistic mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror|survival horror|psychological thriller|historical adventure|teen adventure|alternate history fiction)$/;
   const branchFamilyCoverage = new Set<string>();
   for (const query of queryCandidates) {
+    if (!preservedKnownGoodQueries.test(String(query || ""))) continue;
     const normalizedQuery = String(query || "").toLowerCase();
     if (/\b(horror|paranormal|supernatural)\b/.test(normalizedQuery)) branchFamilyCoverage.add("horror");
     if (/\b(science fiction|sci-fi|speculative|space|dystopia|dystopian)\b/.test(normalizedQuery)) branchFamilyCoverage.add("speculative");
@@ -508,7 +510,6 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     ? [...familyPrefixQueries, ...queryCandidates]
     : queryCandidates;
 
-  const preservedKnownGoodQueries = /^(young adult historical romance|young adult romance|young adult sports fiction|superhero mystery|young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|science fiction dystopian|action adventure|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|psychological mystery|teen mystery thriller|realistic mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror|survival horror|psychological thriller|historical adventure|teen adventure|alternate history fiction)$/;
   const preparedQueries = queryCandidatesWithFamilyPrefix.map((query) => preservedKnownGoodQueries.test(query) ? query : finalOpenLibraryQueryDedupe(query));
   const usefulQueries = preparedQueries.filter(isUsefulOpenLibraryQueryPart);
   const orderedQueries = [
@@ -4631,9 +4632,19 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           : ageProfile.key === "teen" && queries.some((query) => /\bcoming of age\b/i.test(query)) ? "coming of age novel"
             : ageProfile.key === "teen" && queries.some((query) => /\b(romance|contemporary|realistic|drama)\b/i.test(query)) ? "young adult contemporary"
               : queries.some((query) => /\bdystopian|dystopia\b/i.test(query)) ? "young adult dystopian" : queries.some((query) => /\bhorror|paranormal\b/i.test(query)) ? "young adult horror" : queries.some((query) => /\b(mystery|thriller|suspense)\b/i.test(query)) ? "young adult mystery" : queries.some((query) => /\byoung adult fantasy\b/i.test(query)) ? ageProfile.diagnosticProbeQuery : "young adult fantasy";
-      const probePlan: OpenLibraryQueryPlan = { query: probeQuery, originalPlannedQuery: queries[0] || "", queryCascadeIndex: queryPlans.length, queryFamily: "emergency_fallback", facets: [], emergencyFallback: true, routingReason: "diagnostic_probe_emergency_fallback" };
-      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, true, ageProfile.probeTimeoutMs, 1);
-      fetches.push({ ...diagnostic, diagnosticOnly: true, failedReason: diagnostic.failedReason || (probeDocs.length ? "emergency_fallback_probe_returned_docs" : undefined) });
+      const teenSourceFallback = ageProfile.key === "teen";
+      const probePlan: OpenLibraryQueryPlan = {
+        query: probeQuery,
+        originalPlannedQuery: queries[0] || "",
+        queryCascadeIndex: queryPlans.length,
+        queryFamily: "emergency_fallback",
+        facets: [],
+        emergencyFallback: true,
+        fallbackAlignment: teenSourceFallback ? "anti_zero" : undefined,
+        routingReason: teenSourceFallback ? "teen_emergency_source_fallback" : "diagnostic_probe_emergency_fallback",
+      };
+      const { docs: probeDocs, diagnostic } = await fetchOpenLibraryDocs(probePlan, ageProfile.docsPerQuery, context.signal, !teenSourceFallback, ageProfile.probeTimeoutMs, 1);
+      fetches.push({ ...diagnostic, diagnosticOnly: !teenSourceFallback, failedReason: diagnostic.failedReason || (probeDocs.length ? "emergency_fallback_probe_returned_docs" : undefined) });
       if (diagnostic.timedOut && !failedReason) failedReason = diagnostic.failedReason || "openlibrary_probe_timed_out";
       if (probeDocs.length) {
         dropReasons.emergency_fallback_probe_docs = Number(dropReasons.emergency_fallback_probe_docs || 0) + probeDocs.length;
