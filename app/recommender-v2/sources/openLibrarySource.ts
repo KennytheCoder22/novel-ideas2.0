@@ -10,6 +10,7 @@ const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_CAP_MS = 1_500;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CASCADE_SPECIFIC_QUERY_FLOOR_MS = 500;
 const TEEN_OPEN_LIBRARY_DELAYED_RETRY_MIN_BUDGET_MS = 1_000;
 const TEEN_OPEN_LIBRARY_TIMEOUT_CIRCUIT_BREAKER_LIMIT = 3;
+const TEEN_OPEN_LIBRARY_SOURCE_CANDIDATE_POOL_LIMIT = 10;
 const MIDDLE_GRADES_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 1_500;
 const K2_OPEN_LIBRARY_PROXY_CLIENT_TIMEOUT_MS = 1_500;
 const MIDDLE_GRADES_OPEN_LIBRARY_INITIAL_QUERY_TIMEOUT_MS = 1_500;
@@ -509,13 +510,13 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     if (/\b(action|adventure|survival)\b/.test(normalizedQuery)) branchFamilyCoverage.add("adventure");
   }
   const strongestLikedFamilyWeight = Number(comparableLikedFamilies[0]?.weight || 0);
+  const comparableLikedFamilyRows = strongestLikedFamilyWeight > 0
+    ? comparableLikedFamilies.filter((row, index) => index === 0 || row.weight >= strongestLikedFamilyWeight * 0.75)
+    : [];
   const familyPrefixQueries: string[] = [];
   const familyPrefixCoverage = new Set<string>();
-  for (const [index, row] of comparableLikedFamilies.entries()) {
+  for (const row of comparableLikedFamilyRows) {
     if (familyPrefixQueries.length >= 3) break;
-    const isStrongestFamily = index === 0;
-    const isComparableFamily = strongestLikedFamilyWeight > 0 && row.weight >= strongestLikedFamilyWeight * 0.75;
-    if (!isStrongestFamily && !isComparableFamily) continue;
     if (branchFamilyCoverage.has(row.family) || familyPrefixCoverage.has(row.family)) continue;
     familyPrefixCoverage.add(row.family);
     familyPrefixQueries.push(row.query);
@@ -568,7 +569,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
                       : broadFallbackUsed
                         ? "no_specific_mixed_facets_broad_fallback"
                         : "generic_facets";
-  const routingDominance = { openLibraryPlanner: "teen_locked_baseline", ageProfile: ageProfile.key, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, wantsFantasy, wantsSurvival, wantsHistorical, wantsHorrorSurvivalPsychological, wantsHistoricalSciFiAdventure, wantsFantasySchoolActionDystopian, wantsPsychologicalMysteryDrama, wantsContemporaryRomanceFantasy, wantsMysteryHeist, hasNonSkipSciFi, wantsSpeculativeAdventureDrama, wantsFantasyAdventureSurvival, wantsParanormalHorrorRomance, wantsDystopianHistoricalThriller, wantsHorrorThrillerFantasy, wantsContemporaryDrama, wantsActionComedyMystery };
+  const routingDominance = { openLibraryPlanner: "teen_locked_baseline", ageProfile: ageProfile.key, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, comparableLikedFamilyCount: comparableLikedFamilyRows.length, comparableLikedFamilySummary: comparableLikedFamilyRows.map((row) => `${row.family}:${row.weight}`).join("|"), wantsFantasy, wantsSurvival, wantsHistorical, wantsHorrorSurvivalPsychological, wantsHistoricalSciFiAdventure, wantsFantasySchoolActionDystopian, wantsPsychologicalMysteryDrama, wantsContemporaryRomanceFantasy, wantsMysteryHeist, hasNonSkipSciFi, wantsSpeculativeAdventureDrama, wantsFantasyAdventureSurvival, wantsParanormalHorrorRomance, wantsDystopianHistoricalThriller, wantsHorrorThrillerFantasy, wantsContemporaryDrama, wantsActionComedyMystery };
   return uniqueQueries.map((query, index) => ({
     query,
     originalPlannedQuery,
@@ -1470,7 +1471,18 @@ function teenOpenLibraryHandoffFranchiseKey(item: any): string {
   return openLibrarySeriesKey(doc);
 }
 
-function diverseTeenOpenLibraryHandoff(items: unknown[], limit: number): unknown[] {
+function teenOpenLibraryHandoffQueryFamilyKey(item: any): string {
+  const queryFamily = String(item?.queryFamily || "").trim();
+  if (queryFamily && queryFamily !== "open_library_broad") return queryFamily;
+  return cleanOpenLibraryQueryPart(String(item?.queryText || item?.simplifiedOpenLibraryQuery || queryFamily || ""));
+}
+
+function teenOpenLibraryHasComparableLikedFamilies(queryPlans: OpenLibraryQueryPlan[]): boolean {
+  const count = Number(queryPlans[0]?.routingDominance?.comparableLikedFamilyCount || 0);
+  return Number.isFinite(count) && count >= 2;
+}
+
+function diverseTeenOpenLibraryHandoff(items: unknown[], limit: number, balanceQueryFamilies = false): unknown[] {
   const selected: unknown[] = [];
   const deferred: unknown[] = [];
   const seenFranchises = new Set<string>();
@@ -1487,6 +1499,29 @@ function diverseTeenOpenLibraryHandoff(items: unknown[], limit: number): unknown
   for (const item of deferred) {
     if (selected.length >= limit) break;
     selected.push(item);
+  }
+  if (balanceQueryFamilies && selected.length >= Math.min(limit, 2)) {
+    const selectedItems = new Set<unknown>(selected);
+    const selectedFamilies = new Set(selected.map((item) => teenOpenLibraryHandoffQueryFamilyKey(item)).filter(Boolean));
+    if (selectedFamilies.size < 2) {
+      for (const candidate of items) {
+        if (selectedItems.has(candidate)) continue;
+        const candidateFamily = teenOpenLibraryHandoffQueryFamilyKey(candidate);
+        if (!candidateFamily || selectedFamilies.has(candidateFamily)) continue;
+        const candidateFranchise = teenOpenLibraryHandoffFranchiseKey(candidate);
+        for (let index = selected.length - 1; index >= 0; index -= 1) {
+          const remainingFranchises = new Set<string>();
+          for (let selectedIndex = 0; selectedIndex < selected.length; selectedIndex += 1) {
+            if (selectedIndex === index) continue;
+            const franchiseKey = teenOpenLibraryHandoffFranchiseKey(selected[selectedIndex]);
+            if (franchiseKey) remainingFranchises.add(franchiseKey);
+          }
+          if (candidateFranchise && remainingFranchises.has(candidateFranchise)) continue;
+          selected[index] = candidate;
+          return selected;
+        }
+      }
+    }
   }
   return selected;
 }
@@ -2677,7 +2712,12 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     let teenTimeoutCircuitBreakerStage: string | undefined;
     let middleGradesTimeoutCircuitBreakerStage: string | undefined;
     let k2TimeoutCircuitBreakerStage: string | undefined;
-    const middleGradesCandidatePoolLimit = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT : ageProfile.docLimit;
+    const teenFamilyBalancedHandoffActive = ageProfile.key === "teen" && teenOpenLibraryHasComparableLikedFamilies(queryPlans);
+    const middleGradesCandidatePoolLimit = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace
+      ? MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT
+      : teenFamilyBalancedHandoffActive
+        ? TEEN_OPEN_LIBRARY_SOURCE_CANDIDATE_POOL_LIMIT
+        : ageProfile.docLimit;
     let middleGradesOpenLibraryCandidatePoolBeforeEarlyCap = 0;
     let middleGradesOpenLibraryCandidatePoolAfterEarlyCap = 0;
     let middleGradesEarlyCandidateCapApplied = false;
@@ -3393,7 +3433,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
           if (!middleGradesContinuedAfterQueryOnlyRejectionQueries.includes(query)) middleGradesContinuedAfterQueryOnlyRejectionQueries.push(query);
           middleGradesContinuedAfterQueryOnlyRejectionAcceptedCount += 1;
         }
-        const acceptTarget = (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.docLimit;
+        const acceptTarget = ageProfile.key === "teen" && teenFamilyBalancedHandoffActive && !teenMainQueryTimedOut
+          ? middleGradesCandidatePoolLimit
+          : (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.docLimit;
         if (rawItems.length >= acceptTarget) break;
       }
       if (ageProfile.key === "middleGrades" && docs.length > 0 && rawItems.length === acceptedBeforeThisQuery) {
@@ -3423,7 +3465,9 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
       }
       const cleanDocTarget = debugMiddleGradesDeepTrace && ageProfile.key === "middleGrades"
         ? middleGradesCandidatePoolLimit
-        : (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.minCleanDocs;
+        : ageProfile.key === "teen" && teenFamilyBalancedHandoffActive && !teenMainQueryTimedOut
+          ? middleGradesCandidatePoolLimit
+          : (ageProfile.key === "adult" && adultPrimaryQueryTimedOutTwice) || teenMainQueryTimedOut ? Math.min(ageProfile.docLimit, 5) : ageProfile.minCleanDocs;
       if (middleGradesQueryIsProfileSpecific && rawItems.length > acceptedBeforeThisQuery) {
         middleGradesProfileSpecificQueriesAcceptedCount += rawItems.length - acceptedBeforeThisQuery;
       }
@@ -4915,7 +4959,7 @@ export const openLibrarySourceAdapter: SourceAdapterV2 = {
     const openLibraryScoringHandoffItems = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace
       ? openLibraryScoringHandoffEligiblePool.slice(0, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT)
       : ageProfile.key === "teen"
-        ? diverseTeenOpenLibraryHandoff(rawItems, Math.min(ageProfile.docLimit, 5))
+        ? diverseTeenOpenLibraryHandoff(rawItems, Math.min(ageProfile.docLimit, 5), teenFamilyBalancedHandoffActive)
         : rawItems;
     const openLibraryScoringHandoffSuppressedTitles = ageProfile.key === "middleGrades"
       ? openLibraryScoringHandoffEligiblePool.slice(openLibraryScoringHandoffItems.length).map((item: any) => String(item?.title || "")).filter(Boolean)
