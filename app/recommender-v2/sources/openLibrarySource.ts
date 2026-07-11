@@ -204,6 +204,7 @@ function teenOpenLibrarySourceFamilyForQuery(query: string): string {
   if (/\b(young adult dystopian|dystopian|science fiction|sci-fi|speculative|space)\b/.test(normalized)) return "speculative";
   if (/\b(young adult horror|survival horror|horror thriller)\b/.test(normalized)) return "horror";
   if (/\b(coming of age|young adult contemporary|teen realistic|contemporary fantasy)\b/.test(normalized)) return "contemporary";
+  if (/\b(historical drama|teen historical|historical fiction)\b/.test(normalized)) return "historical";
   if (/\b(young adult romance|historical romance|romance fantasy)\b/.test(normalized)) return "romance";
   if (/\bsports?\b/.test(normalized)) return "sports";
   if (/\b(fantasy|magic|magical|paranormal|supernatural)\b/.test(normalized)) return "fantasy";
@@ -319,6 +320,13 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const likedSpeculativeWeight = likedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/);
   const likedAdventureWeight = likedSignalWeight(signalRows, /\b(action|adventure)\b/);
   const likedDramaWeight = likedSignalWeight(signalRows, /\b(drama)\b/);
+  const likedHistoricalDramaWeight = signalRows.reduce((max, row) => {
+    const value = String(row.value || "").toLowerCase();
+    if (!/\b(historical|history|period)\b/.test(value) || !/\bdrama\b/.test(value)) return max;
+    const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+    if (!evidence.some((item) => String(item || "").startsWith("like:"))) return max;
+    return Math.max(max, Math.abs(Number(row.weight || 0)));
+  }, 0);
   const likedSurvivalWeight = likedSignalWeight(signalRows, /\b(survival)\b/);
   const hasSpeculativeEvidence = hasSpeculative || dystopianWeight > 0 || hasNonSkipSciFi || /\b(science fiction|sci-fi|speculative|space|dystopia|dystopian)\b/.test(profileText);
   const hasAdventureDramaSurvivalEvidence = hasAdventure || hasDrama || adventureWeight > 0 || dramaWeight > 0 || survivalWeight > 0 || /\b(action|adventure|drama|survival)\b/.test(profileText);
@@ -506,8 +514,9 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     { family: "speculative", weight: likedSpeculativeWeight, query: hasDystopian || /\b(dystopia|dystopian)\b/.test(profileText) ? "young adult dystopian fiction" : "science fiction adventure" },
     { family: "fantasy", weight: likedFantasyWeight, query: likedMysteryWeight > 0 && likedParanormalWeight > 0 ? "paranormal mystery" : likedMysteryWeight > 0 ? "fantasy mystery" : "young adult fantasy" },
     { family: "mystery", weight: likedMysteryWeight + likedSuperheroWeight, query: likedSuperheroWeight > 0 && likedMysteryWeight > 0 ? "superhero mystery" : likedAdventureWeight > 0 ? "mystery adventure" : "teen mystery thriller" },
-    { family: "contemporary", weight: likedContemporaryWeight + likedDramaWeight, query: /\bcoming[-\s]of[-\s]age\b/.test(profileText) ? "coming of age novel" : "young adult contemporary" },
-    { family: "romance", weight: likedRomanceWeight + (likedRomanceWeight > 0 ? likedHistoricalWeight : 0), query: likedHistoricalWeight > 0 ? "young adult historical romance" : "young adult romance" },
+    { family: "contemporary", weight: likedContemporaryWeight, query: /\bcoming[-\s]of[-\s]age\b/.test(profileText) ? "coming of age novel" : "young adult contemporary" },
+    { family: "romance", weight: likedRomanceWeight, query: "young adult romance" },
+    { family: "historical", weight: likedHistoricalWeight, query: likedHistoricalDramaWeight > 0 ? "historical drama novel" : "teen historical fiction" },
     { family: "sports", weight: likedSportsWeight, query: "young adult sports fiction" },
     {
       family: "adventure",
@@ -527,8 +536,9 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     { family: "speculative", weight: maxLikedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },
     { family: "fantasy", weight: maxLikedSignalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/) },
     { family: "mystery", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(mystery|thriller|suspense|crime|detective)\b/), maxLikedSignalWeight(signalRows, /\b(superheroes?|super heroes?|marvel|dc comics)\b/)) },
-    { family: "contemporary", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/), maxLikedSignalWeight(signalRows, /\b(drama)\b/)) },
-    { family: "romance", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(romance|romantic)\b/), maxLikedSignalWeight(signalRows, /\b(historical|history|period)\b/)) },
+    { family: "contemporary", weight: maxLikedSignalWeight(signalRows, /\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/) },
+    { family: "romance", weight: maxLikedSignalWeight(signalRows, /\b(romance|romantic)\b/) },
+    { family: "historical", weight: maxLikedSignalWeight(signalRows, /\b(historical|history|period)\b/) },
     { family: "sports", weight: maxLikedSignalWeight(signalRows, /\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/) },
     { family: "adventure", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(action|adventure)\b/), maxLikedSignalWeight(signalRows, /\b(survival)\b/)) },
     { family: "comedy", weight: maxLikedSignalWeight(signalRows, /\b(comedy|humor)\b/) },
