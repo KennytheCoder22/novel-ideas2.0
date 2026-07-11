@@ -1500,9 +1500,17 @@ function teenOpenLibraryHandoffFranchiseKey(item: any): string {
 }
 
 function teenOpenLibraryHandoffQueryFamilyKey(item: any): string {
+  const query = cleanOpenLibraryQueryPart(String(item?.queryText || item?.simplifiedOpenLibraryQuery || ""));
+  if (/\b(teen adventure|action adventure|survival fiction|dystopian survival|fantasy survival)\b/.test(query)) return "adventure";
+  if (/\b(young adult dystopian|dystopian|science fiction|sci-fi|speculative|space)\b/.test(query)) return "speculative";
+  if (/\b(young adult horror|survival horror|horror thriller)\b/.test(query)) return "horror";
+  if (/\b(coming of age|young adult contemporary|teen realistic|contemporary fantasy)\b/.test(query)) return "contemporary";
+  if (/\b(young adult romance|historical romance|romance fantasy)\b/.test(query)) return "romance";
+  if (/\bsports?\b/.test(query)) return "sports";
+  if (/\b(fantasy|magic|magical|paranormal|supernatural)\b/.test(query)) return "fantasy";
   const queryFamily = String(item?.queryFamily || "").trim();
   if (queryFamily && queryFamily !== "open_library_broad") return queryFamily;
-  return cleanOpenLibraryQueryPart(String(item?.queryText || item?.simplifiedOpenLibraryQuery || queryFamily || ""));
+  return query || queryFamily;
 }
 
 function teenOpenLibraryHasComparableLikedFamilies(queryPlans: OpenLibraryQueryPlan[]): boolean {
