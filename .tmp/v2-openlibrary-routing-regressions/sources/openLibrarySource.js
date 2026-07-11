@@ -5451,10 +5451,13 @@ exports.openLibrarySourceAdapter = {
                 return [...recoveryItems, ...nonRecoveryItems];
             })()
             : rawItems;
+        const teenScoringHandoffLimit = ageProfile.key === "teen"
+            ? Math.min(ageProfile.docLimit, TEEN_OPEN_LIBRARY_SOURCE_CANDIDATE_POOL_LIMIT)
+            : undefined;
         const openLibraryScoringHandoffItems = ageProfile.key === "middleGrades" && debugMiddleGradesDeepTrace
             ? openLibraryScoringHandoffEligiblePool.slice(0, MIDDLE_GRADES_OPEN_LIBRARY_DEBUG_CANDIDATE_POOL_LIMIT)
             : ageProfile.key === "teen"
-                ? diverseTeenOpenLibraryHandoff(rawItems, Math.min(ageProfile.docLimit, 5), teenFamilyBalancedHandoffActive)
+                ? diverseTeenOpenLibraryHandoff(rawItems, teenScoringHandoffLimit || Math.min(ageProfile.docLimit, 5), teenFamilyBalancedHandoffActive)
                 : rawItems;
         const openLibraryScoringHandoffSuppressedTitles = ageProfile.key === "middleGrades"
             ? openLibraryScoringHandoffEligiblePool.slice(openLibraryScoringHandoffItems.length).map((item) => String(item?.title || "")).filter(Boolean)
@@ -5467,10 +5470,14 @@ exports.openLibrarySourceAdapter = {
             : 0;
         const openLibraryScoringHandoffSource = ageProfile.key === "middleGrades"
             ? debugMiddleGradesDeepTrace ? "expanded_debug_pool" : "production_pool"
-            : undefined;
+            : ageProfile.key === "teen"
+                ? "teen_diverse_eligible_pool"
+                : undefined;
         const openLibraryScoringHandoffLimitedToSourceFinal = ageProfile.key === "middleGrades"
             ? Boolean(!debugMiddleGradesDeepTrace && rawApiResultCount > openLibraryScoringHandoffItems.length && openLibraryScoringHandoffItems.length <= Math.min(ageProfile.docLimit, 5))
-            : undefined;
+            : ageProfile.key === "teen"
+                ? false
+                : undefined;
         const middleGradesExpandedPoolHandoffFailed = ageProfile.key === "middleGrades"
             ? Boolean(debugMiddleGradesDeepTrace && rawApiResultCount > 20 && openLibraryScoringHandoffItems.length < 10)
             : undefined;
@@ -5533,6 +5540,11 @@ exports.openLibrarySourceAdapter = {
                 openLibraryDocsEligibleForScoringCount: openLibraryScoringHandoffEligiblePool.length,
                 openLibraryDocsActuallyHandedToScoringCount: openLibraryScoringHandoffItems.length,
                 openLibraryScoringHandoffLimitedToSourceFinal,
+                ...(ageProfile.key === "teen" ? {
+                    teenOpenLibraryDocsEligibleBeforeHandoffCount: openLibraryScoringHandoffEligiblePool.length,
+                    teenOpenLibraryScoringHandoffLimit: teenScoringHandoffLimit,
+                    teenOpenLibraryScoringHandoffReason: "diverse_eligible_pool_handoff_to_scoring",
+                } : {}),
                 openLibraryScoringHandoffSuppressedTitles: ageProfile.key === "middleGrades" ? uniqueStrings(openLibraryScoringHandoffSuppressedTitles, 50) : undefined,
                 openLibraryScoringHandoffSource,
                 middleGradesExpandedPoolHandoffFailed,
