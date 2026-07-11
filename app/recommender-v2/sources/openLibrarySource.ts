@@ -308,7 +308,8 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const likedFantasyWeight = likedSignalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/);
   const likedContemporaryWeight = likedSignalWeight(signalRows, /\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/);
   const likedMysteryWeight = likedSignalWeight(signalRows, /\b(mystery|thriller|suspense)\b/);
-  const likedHorrorFamilyWeight = likedSignalWeight(signalRows, /\b(horror|paranormal|supernatural)\b/);
+  const likedHorrorFamilyWeight = likedSignalWeight(signalRows, /\bhorror\b/);
+  const likedParanormalWeight = likedSignalWeight(signalRows, /\b(paranormal|supernatural)\b/);
   const likedThrillerWeight = likedSignalWeight(signalRows, /\b(thriller|suspense)\b/);
   const likedRomanceWeight = likedSignalWeight(signalRows, /\b(romance|romantic)\b/);
   const likedHistoricalWeight = likedSignalWeight(signalRows, /\b(historical|history|period)\b/);
@@ -501,7 +502,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const comparableLikedFamilies = [
     { family: "horror", weight: likedHorrorFamilyWeight, query: "young adult horror" },
     { family: "speculative", weight: likedSpeculativeWeight, query: hasDystopian || /\b(dystopia|dystopian)\b/.test(profileText) ? "young adult dystopian fiction" : "science fiction adventure" },
-    { family: "fantasy", weight: likedFantasyWeight, query: likedMysteryWeight > 0 ? "fantasy mystery" : "young adult fantasy" },
+    { family: "fantasy", weight: likedFantasyWeight, query: likedMysteryWeight > 0 && likedParanormalWeight > 0 ? "paranormal mystery" : likedMysteryWeight > 0 ? "fantasy mystery" : "young adult fantasy" },
     { family: "mystery", weight: likedMysteryWeight + likedSuperheroWeight, query: likedSuperheroWeight > 0 && likedMysteryWeight > 0 ? "superhero mystery" : likedAdventureWeight > 0 ? "mystery adventure" : "teen mystery thriller" },
     { family: "contemporary", weight: likedContemporaryWeight + likedDramaWeight, query: /\bcoming[-\s]of[-\s]age\b/.test(profileText) ? "coming of age novel" : "young adult contemporary" },
     { family: "romance", weight: likedRomanceWeight + (likedRomanceWeight > 0 ? likedHistoricalWeight : 0), query: likedHistoricalWeight > 0 ? "young adult historical romance" : "young adult romance" },
@@ -520,7 +521,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     .sort((a, b) => b.weight - a.weight);
   const teenPrefixQueryByFamily = new Map(comparableLikedFamilies.map((row) => [row.family, row.query]));
   const balancedAccumulationFamilies = [
-    { family: "horror", weight: maxLikedSignalWeight(signalRows, /\b(horror|paranormal|supernatural)\b/) },
+    { family: "horror", weight: maxLikedSignalWeight(signalRows, /\bhorror\b/) },
     { family: "speculative", weight: maxLikedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },
     { family: "fantasy", weight: maxLikedSignalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/) },
     { family: "mystery", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(mystery|thriller|suspense|crime|detective)\b/), maxLikedSignalWeight(signalRows, /\b(superheroes?|super heroes?|marvel|dc comics)\b/)) },
@@ -1416,6 +1417,10 @@ function hasExplicitTeenOpenLibraryEvidence(doc: any): boolean {
   return /\b(young adult|ya fiction|juvenile fiction|juvenile literature|teen|teens|adolescent|high school|coming of age)\b/.test(text);
 }
 
+function hasSpecificTeenYoungAdultEvidence(doc: any): boolean {
+  return /\b(young adult|ya fiction|teen|teens|adolescent|high school)\b/i.test(openLibraryAcademicDocText(doc));
+}
+
 function isTeenBroadQueryClassicDriftDoc(doc: any, query: string, profile: TasteProfile): boolean {
   if (profile.ageBand !== "teens") return false;
   const normalizedQuery = cleanOpenLibraryQueryPart(query);
@@ -1427,6 +1432,24 @@ function isTeenBroadQueryClassicDriftDoc(doc: any, query: string, profile: Taste
   const olderClassicOrAdultShape = firstPublishYear > 0 && firstPublishYear < 1980 && /\b(public domain|classic|classics|literary|pulp|men'?s adventure|adult fiction|short stories|anthology|collected|complete|omnibus)\b/.test(text);
   const broadGenreShape = /\b(science fiction|sci-fi|space|planet|adventure|historical|alternate history|paranormal|psychological|mystery|thriller|fiction|novel)\b/.test(text);
   return classicOrAdultShape || (olderClassicOrAdultShape && broadGenreShape);
+}
+
+function isTeenBroadScienceFictionClassicDriftDoc(doc: any, query: string, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  const normalizedQuery = cleanOpenLibraryQueryPart(query);
+  if (!/^(science fiction adventure|space adventure|dystopian survival|teen adventure)$/.test(normalizedQuery)) return false;
+  if (hasSpecificTeenYoungAdultEvidence(doc)) return false;
+  const text = openLibraryAcademicDocText(doc).toLowerCase();
+  const firstPublishYear = Number(doc?.first_publish_year || doc?.firstPublishYear || 0);
+  return firstPublishYear > 0 && firstPublishYear < 1980
+    && /\b(science fiction|sci-fi|space colonies|life on other planets|american science fiction|fiction,\s*science fiction,\s*general|fiction,\s*general|vintage sci-fi classics|golden age)\b/.test(text);
+}
+
+function isTeenElementaryDriftDoc(doc: any, profile: TasteProfile): boolean {
+  if (profile.ageBand !== "teens") return false;
+  if (hasSpecificTeenYoungAdultEvidence(doc)) return false;
+  const text = openLibraryAcademicDocText(doc).toLowerCase();
+  return /\b(children'?s fiction|children'?s stories|children'?s books|picture books?|easy readers?|early readers?|beginning readers?|books for young readers|care bears?|rainbow magic|fairy books?)\b/.test(text);
 }
 
 function isTeenCollectedClassicPackageDoc(doc: any, profile: TasteProfile): boolean {
@@ -2492,7 +2515,9 @@ function shouldKeepOpenLibraryDoc(doc: any, query: string, profile: TasteProfile
   if (isAuthorNameTitleDriftDoc(doc)) return { keep: false, reason: "author_name_title_drift" };
   if (isWeakTeenFitOddTitleDoc(doc, profile)) return { keep: false, reason: "weak_odd_title_teen_fit" };
   if (isTeenInappropriateOpenLibraryDoc(doc, profile)) return { keep: false, reason: "teen_inappropriate_content" };
+  if (isTeenElementaryDriftDoc(doc, profile)) return { keep: false, reason: "too_young_for_teen_artifact" };
   if (isTooYoungTeenOpenLibraryDoc(doc, profile)) return { keep: false, reason: "too_young_for_teen_artifact" };
+  if (isTeenBroadScienceFictionClassicDriftDoc(doc, query, profile)) return { keep: false, reason: "teen_broad_scifi_classic_drift" };
   if (isTeenBroadQueryClassicDriftDoc(doc, query, profile)) return { keep: false, reason: "teen_broad_query_classic_drift" };
   if (isTeenClassicOrAdultDriftDoc(doc, profile)) return { keep: false, reason: "teen_classic_or_adult_drift" };
   if (isTeenCollectedClassicPackageDoc(doc, profile)) return { keep: false, reason: "teen_collected_classic_package" };
