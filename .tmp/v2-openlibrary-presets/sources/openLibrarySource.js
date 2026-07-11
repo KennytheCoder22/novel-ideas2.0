@@ -529,19 +529,37 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
         .filter((row) => row.weight > 0)
         .sort((a, b) => b.weight - a.weight);
     const teenPrefixQueryByFamily = new Map(comparableLikedFamilies.map((row) => [row.family, row.query]));
+    const independentLikedFamilyWeight = (pattern) => {
+        const weightByLikedItem = new Map();
+        for (const row of signalRows) {
+            const value = String(row.value || "").toLowerCase();
+            if (!pattern.test(value))
+                continue;
+            const evidence = Array.isArray(row.evidence)
+                ? row.evidence
+                : [];
+            for (const item of evidence) {
+                const key = String(item || "").toLowerCase();
+                if (!key.startsWith("like:"))
+                    continue;
+                weightByLikedItem.set(key, Math.max(weightByLikedItem.get(key) || 0, Math.abs(Number(row.weight || 0))));
+            }
+        }
+        return [...weightByLikedItem.values()].reduce((sum, weight) => sum + weight, 0);
+    };
     const balancedAccumulationFamilies = [
-        { family: "horror", weight: maxLikedSignalWeight(signalRows, /\bhorror\b/) },
-        { family: "speculative", weight: maxLikedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },
-        { family: "fantasy", weight: maxLikedSignalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/) },
-        { family: "mystery", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(mystery|thriller|suspense|crime|detective)\b/), maxLikedSignalWeight(signalRows, /\b(superheroes?|super heroes?|marvel|dc comics)\b/)) },
-        { family: "contemporary", weight: maxLikedSignalWeight(signalRows, /\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/) },
-        { family: "romance", weight: maxLikedSignalWeight(signalRows, /\b(romance|romantic)\b/) },
-        { family: "historical", weight: maxLikedSignalWeight(signalRows, /\b(historical|history|period)\b/) },
-        { family: "sports", weight: maxLikedSignalWeight(signalRows, /\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/) },
-        { family: "adventure", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(action|adventure)\b/), maxLikedSignalWeight(signalRows, /\b(survival)\b/)) },
-        { family: "comedy", weight: maxLikedSignalWeight(signalRows, /\b(comedy|humor)\b/) },
-        { family: "graphic", weight: maxLikedSignalWeight(signalRows, /\b(graphic novel|manga|comic)\b/) },
-        { family: "heist", weight: maxLikedSignalWeight(signalRows, /\b(heist|caper|thief|thieves|sandbox)\b/) },
+        { family: "horror", weight: independentLikedFamilyWeight(/\bhorror\b/) },
+        { family: "speculative", weight: independentLikedFamilyWeight(/\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },
+        { family: "fantasy", weight: independentLikedFamilyWeight(/\b(fantasy|paranormal|supernatural)\b/) },
+        { family: "mystery", weight: Math.max(independentLikedFamilyWeight(/\b(mystery|thriller|suspense|crime|detective)\b/), independentLikedFamilyWeight(/\b(superheroes?|super heroes?|marvel|dc comics)\b/)) },
+        { family: "contemporary", weight: independentLikedFamilyWeight(/\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/) },
+        { family: "romance", weight: independentLikedFamilyWeight(/\b(romance|romantic)\b/) },
+        { family: "historical", weight: independentLikedFamilyWeight(/\b(historical|history|period)\b/) },
+        { family: "sports", weight: independentLikedFamilyWeight(/\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/) },
+        { family: "adventure", weight: Math.max(independentLikedFamilyWeight(/\b(action|adventure)\b/), independentLikedFamilyWeight(/\b(survival)\b/)) },
+        { family: "comedy", weight: independentLikedFamilyWeight(/\b(comedy|humor)\b/) },
+        { family: "graphic", weight: independentLikedFamilyWeight(/\b(graphic novel|manga|comic)\b/) },
+        { family: "heist", weight: independentLikedFamilyWeight(/\b(heist|caper|thief|thieves|sandbox)\b/) },
     ]
         .filter((row) => row.weight > 0)
         .sort((a, b) => b.weight - a.weight);
