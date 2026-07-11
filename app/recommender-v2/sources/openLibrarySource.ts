@@ -216,6 +216,15 @@ function likedSignalWeight(rows: { value: string; weight: number; evidence?: str
   }, 0);
 }
 
+function maxLikedSignalWeight(rows: { value: string; weight: number; evidence?: string[] }[], pattern: RegExp): number {
+  return rows.reduce((max, row) => {
+    if (!pattern.test(String(row.value || "").toLowerCase())) return max;
+    const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+    const hasLike = evidence.some((item) => String(item || "").startsWith("like:"));
+    return hasLike ? Math.max(max, Math.abs(Number(row.weight || 0))) : max;
+  }, 0);
+}
+
 function hasNonSkipSignal(rows: { value: string; weight: number; evidence?: string[] }[], pattern: RegExp): boolean {
   return rows.some((row) => pattern.test(String(row.value || "").toLowerCase()) && !(Array.isArray(row.evidence) && row.evidence.length > 0 && row.evidence.every((item) => String(item || "").startsWith("skip:"))));
 }
@@ -496,6 +505,25 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   ]
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
+  const balancedAccumulationFamilies = [
+    { family: "horror", weight: maxLikedSignalWeight(signalRows, /\b(horror|paranormal|supernatural)\b/) },
+    { family: "speculative", weight: maxLikedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },
+    { family: "fantasy", weight: maxLikedSignalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/) },
+    { family: "mystery", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(mystery|thriller|suspense|crime|detective)\b/), maxLikedSignalWeight(signalRows, /\b(superheroes?|super heroes?|marvel|dc comics)\b/)) },
+    { family: "contemporary", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/), maxLikedSignalWeight(signalRows, /\b(drama)\b/)) },
+    { family: "romance", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(romance|romantic)\b/), maxLikedSignalWeight(signalRows, /\b(historical|history|period)\b/)) },
+    { family: "sports", weight: maxLikedSignalWeight(signalRows, /\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/) },
+    { family: "adventure", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(action|adventure)\b/), maxLikedSignalWeight(signalRows, /\b(survival)\b/)) },
+    { family: "comedy", weight: maxLikedSignalWeight(signalRows, /\b(comedy|humor)\b/) },
+    { family: "graphic", weight: maxLikedSignalWeight(signalRows, /\b(graphic novel|manga|comic)\b/) },
+    { family: "heist", weight: maxLikedSignalWeight(signalRows, /\b(heist|caper|thief|thieves|sandbox)\b/) },
+  ]
+    .filter((row) => row.weight > 0)
+    .sort((a, b) => b.weight - a.weight);
+  const strongestBalancedAccumulationFamilyWeight = Number(balancedAccumulationFamilies[0]?.weight || 0);
+  const balancedAccumulationFamilyRows = strongestBalancedAccumulationFamilyWeight > 0
+    ? balancedAccumulationFamilies.filter((row, index) => index === 0 || row.weight >= strongestBalancedAccumulationFamilyWeight * 0.75)
+    : [];
   const preservedKnownGoodQueries = /^(young adult historical romance|young adult romance|young adult sports fiction|superhero mystery|young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|science fiction dystopian|action adventure|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|psychological mystery|teen mystery thriller|realistic mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror|survival horror|psychological thriller|historical adventure|teen adventure|alternate history fiction)$/;
   const branchFamilyCoverage = new Set<string>();
   for (const query of queryCandidates) {
@@ -569,7 +597,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
                       : broadFallbackUsed
                         ? "no_specific_mixed_facets_broad_fallback"
                         : "generic_facets";
-  const routingDominance = { openLibraryPlanner: "teen_locked_baseline", ageProfile: ageProfile.key, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, comparableLikedFamilyCount: comparableLikedFamilyRows.length, comparableLikedFamilySummary: comparableLikedFamilyRows.map((row) => `${row.family}:${row.weight}`).join("|"), wantsFantasy, wantsSurvival, wantsHistorical, wantsHorrorSurvivalPsychological, wantsHistoricalSciFiAdventure, wantsFantasySchoolActionDystopian, wantsPsychologicalMysteryDrama, wantsContemporaryRomanceFantasy, wantsMysteryHeist, hasNonSkipSciFi, wantsSpeculativeAdventureDrama, wantsFantasyAdventureSurvival, wantsParanormalHorrorRomance, wantsDystopianHistoricalThriller, wantsHorrorThrillerFantasy, wantsContemporaryDrama, wantsActionComedyMystery };
+  const routingDominance = { openLibraryPlanner: "teen_locked_baseline", ageProfile: ageProfile.key, lockedBaseline: ageProfile.lockedBaseline, dominantFamily, dominantWeight, runnerUpWeight, dominanceRatio, comparableLikedFamilyCount: balancedAccumulationFamilyRows.length, comparableLikedFamilySummary: balancedAccumulationFamilyRows.map((row) => `${row.family}:${row.weight}`).join("|"), wantsFantasy, wantsSurvival, wantsHistorical, wantsHorrorSurvivalPsychological, wantsHistoricalSciFiAdventure, wantsFantasySchoolActionDystopian, wantsPsychologicalMysteryDrama, wantsContemporaryRomanceFantasy, wantsMysteryHeist, hasNonSkipSciFi, wantsSpeculativeAdventureDrama, wantsFantasyAdventureSurvival, wantsParanormalHorrorRomance, wantsDystopianHistoricalThriller, wantsHorrorThrillerFantasy, wantsContemporaryDrama, wantsActionComedyMystery };
   return uniqueQueries.map((query, index) => ({
     query,
     originalPlannedQuery,
