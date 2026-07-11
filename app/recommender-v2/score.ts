@@ -227,7 +227,9 @@ function querySpecificityScore(candidate: NormalizedCandidate): number {
 
 function sourceQualityRelevanceScore(candidate: NormalizedCandidate, profile: TasteProfile, genreMatches: WeightedSignalV2[], positiveMatches: WeightedSignalV2[]): number {
   const metadataText = candidateMetadataText(candidate);
-  const text = profile.ageBand === "preteens" && candidate.source === "openLibrary" ? metadataText : candidateText(candidate);
+  const openLibraryMetadataOnlyEvidence = candidate.source === "openLibrary"
+    && (profile.ageBand === "preteens" || profile.ageBand === "teens");
+  const text = openLibraryMetadataOnlyEvidence ? metadataText : candidateText(candidate);
   const normalizedTitle = normalized(candidate.title);
   const raw = (candidate.raw || {}) as Record<string, unknown>;
   const metadataCount = candidate.genres.length + candidate.themes.length;
@@ -285,12 +287,14 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
   return candidates.map((candidate) => {
     const fullText = candidateText(candidate);
     const metadataText = candidateMetadataText(candidate);
-    const text = (profile.ageBand === "preteens" || profile.ageBand === "kids") && candidate.source === "openLibrary" ? metadataText : fullText;
     const matchedSignals: string[] = [];
     const scoreBreakdown: Record<string, number> = { base: 1 };
 
     const middleGradesOpenLibrary = profile.ageBand === "preteens" && candidate.source === "openLibrary";
     const kidsOpenLibrary = profile.ageBand === "kids" && candidate.source === "openLibrary";
+    const teenOpenLibrary = profile.ageBand === "teens" && candidate.source === "openLibrary";
+    const openLibraryMetadataOnlyEvidence = middleGradesOpenLibrary || kidsOpenLibrary || teenOpenLibrary;
+    const text = openLibraryMetadataOnlyEvidence ? metadataText : fullText;
     const rawGenreMatches = signalMatches(text, profile.genreFamily);
     const rawThemeMatches = signalMatches(text, profile.themes);
     const rawToneMatches = signalMatches(text, profile.tone);
@@ -316,10 +320,14 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     const fullPositiveMatches = [...signalMatches(fullText, profile.themes), ...signalMatches(fullText, profile.tone), ...signalMatches(fullText, profile.characterDynamics), ...signalMatches(fullText, profile.formatPreference)];
     const rawTasteMatchCount = rawGenreMatches.length + rawThemeMatches.length + rawToneMatches.length + rawCharacterMatches.length + rawFormatMatches.length;
     const genericOnlyTasteMatch = (middleGradesOpenLibrary || kidsOpenLibrary) && rawTasteMatchCount > 0 && genreMatches.length + positiveMatches.length === 0;
-    const removedQueryTextSignals = middleGradesOpenLibrary || kidsOpenLibrary
+    const removedQueryTextSignals = openLibraryMetadataOnlyEvidence
       ? [...signalMatches(fullText, profile.genreFamily), ...fullPositiveMatches]
         .filter((signal) => ![...genreMatches, ...positiveMatches].some((kept) => normalized(kept.value) === normalized(signal.value)))
-        .filter((signal) => middleGradesOpenLibrary ? !isMiddleGradesGenericTasteSignal(signal) : !isKidsGenericTasteSignal(signal))
+        .filter((signal) => middleGradesOpenLibrary
+          ? !isMiddleGradesGenericTasteSignal(signal)
+          : kidsOpenLibrary
+            ? !isKidsGenericTasteSignal(signal)
+            : true)
         .map((signal) => signal.value)
       : [];
 
@@ -341,6 +349,9 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
     if (genericOnlyTasteMatch) scoreBreakdown.genericOnlyTasteMatchPenalty = kidsOpenLibrary ? -1.25 : -0.9;
 
     const score = Object.entries(scoreBreakdown).reduce((sum, [key, value]) => sum + (key === "ageBandSuitability" ? 0 : Number(value || 0)), 0);
+    const metadataBackedMatchedLikedSignals = [...genreMatches, ...positiveMatches].map((signal) => signal.value);
+    const metadataBackedMatchedDislikedSignals = avoidMatches.map((signal) => signal.value);
+    const positiveTasteScore = Number(scoreBreakdown.genreFacetMatch || 0) + Number(scoreBreakdown.positiveTasteMatch || 0);
     return {
       ...candidate,
       score,
@@ -350,11 +361,20 @@ export function scoreCandidates(candidates: NormalizedCandidate[], profile: Tast
       diagnostics: {
         ...candidate.diagnostics,
         queryTextSignalsRemovedFromTasteMatch: removedQueryTextSignals,
-        documentOnlyTasteMatch: [...genreMatches, ...positiveMatches].map((signal) => signal.value),
+        documentOnlyTasteMatch: metadataBackedMatchedLikedSignals,
         genericTasteSignalsRemoved: Array.from(new Set(removedGenericTasteSignals)),
         genericOnlyTasteMatch,
-        documentBackedTasteSignals: [...genreMatches, ...positiveMatches].map((signal) => signal.value),
+        documentBackedTasteSignals: metadataBackedMatchedLikedSignals,
         narrativeSemanticSignals: kidsNarrativeEvidence.signals,
+        metadataBackedMatchedLikedSignals,
+        metadataBackedMatchedDislikedSignals,
+        positiveTasteScore,
+        sourceQualityScore: Number(scoreBreakdown.sourceQualityRelevance || 0),
+        queryRungBonus: Number(scoreBreakdown.queryRungBonus || 0),
+        totalScore: score,
+        finalRankingReason: teenOpenLibrary ? "teen_openlibrary_ranked_by_metadata_only_document_evidence" : undefined,
+        teenOpenLibraryMetadataOnlyEvidence: teenOpenLibrary || undefined,
+        teenOpenLibraryExcludedRetrievalEvidence: teenOpenLibrary ? ["diagnostics.queryText", "diagnostics.queryFamily", "diagnostics.facets"] : undefined,
       },
     };
   }).sort((a, b) => b.score - a.score || a.title.localeCompare(b.title));
