@@ -198,6 +198,19 @@ function queryFamilyForOpenLibraryQuery(query: string): string {
   return "open_library_broad";
 }
 
+function teenOpenLibrarySourceFamilyForQuery(query: string): string {
+  const normalized = cleanOpenLibraryQueryPart(query);
+  if (/\b(teen adventure|action adventure|survival fiction|dystopian survival|fantasy survival)\b/.test(normalized)) return "adventure";
+  if (/\b(young adult dystopian|dystopian|science fiction|sci-fi|speculative|space)\b/.test(normalized)) return "speculative";
+  if (/\b(young adult horror|survival horror|horror thriller)\b/.test(normalized)) return "horror";
+  if (/\b(coming of age|young adult contemporary|teen realistic|contemporary fantasy)\b/.test(normalized)) return "contemporary";
+  if (/\b(young adult romance|historical romance|romance fantasy)\b/.test(normalized)) return "romance";
+  if (/\bsports?\b/.test(normalized)) return "sports";
+  if (/\b(fantasy|magic|magical|paranormal|supernatural)\b/.test(normalized)) return "fantasy";
+  const queryFamily = queryFamilyForOpenLibraryQuery(normalized);
+  return queryFamily === "open_library_broad" ? "" : queryFamily;
+}
+
 function nonSkipSignalWeight(rows: { value: string; weight: number; evidence?: string[] }[], pattern: RegExp): number {
   return rows.reduce((sum, row) => {
     if (!pattern.test(String(row.value || "").toLowerCase())) return sum;
@@ -505,6 +518,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   ]
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
+  const teenPrefixQueryByFamily = new Map(comparableLikedFamilies.map((row) => [row.family, row.query]));
   const balancedAccumulationFamilies = [
     { family: "horror", weight: maxLikedSignalWeight(signalRows, /\b(horror|paranormal|supernatural)\b/) },
     { family: "speculative", weight: maxLikedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },
@@ -524,26 +538,19 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const balancedAccumulationFamilyRows = strongestBalancedAccumulationFamilyWeight > 0
     ? balancedAccumulationFamilies.filter((row, index) => index === 0 || row.weight >= strongestBalancedAccumulationFamilyWeight * 0.75)
     : [];
+  const balancedPrefixFamilyRows = balancedAccumulationFamilyRows
+    .map((row) => ({ ...row, query: teenPrefixQueryByFamily.get(row.family) || "" }))
+    .filter((row) => row.query);
   const preservedKnownGoodQueries = /^(young adult historical romance|young adult romance|young adult sports fiction|superhero mystery|young adult contemporary drama|teen realistic fiction|young adult contemporary|coming of age novel|young adult fantasy|science fiction dystopian|action adventure|young adult contemporary fantasy|contemporary fantasy teen|coming of age fantasy|young adult romance fantasy|young adult dystopian|young adult dystopian fiction|teen dystopian|dystopian thriller|historical thriller|dystopian survival|dystopian adventure|fantasy adventure|fantasy school|science fiction adventure|space adventure|fantasy survival|magical adventure|paranormal romance|young adult paranormal|supernatural romance|mystery novel|teen mystery|heist novel|young adult thriller|young adult mystery|psychological mystery|teen mystery thriller|realistic mystery|mystery thriller|teen detective fiction|humorous mystery|suspense mystery|paranormal mystery|fantasy mystery|supernatural mystery|dark fantasy|horror thriller|dystopian fiction|dystopian novel|survival fiction|historical drama novel|teen historical fiction|young adult horror|survival horror|psychological thriller|historical adventure|teen adventure|alternate history fiction)$/;
   const branchFamilyCoverage = new Set<string>();
   for (const query of queryCandidates) {
     if (!preservedKnownGoodQueries.test(String(query || ""))) continue;
-    const normalizedQuery = String(query || "").toLowerCase();
-    if (/\b(horror|paranormal|supernatural)\b/.test(normalizedQuery)) branchFamilyCoverage.add("horror");
-    if (/\b(science fiction|sci-fi|speculative|space|dystopia|dystopian)\b/.test(normalizedQuery)) branchFamilyCoverage.add("speculative");
-    if (/\b(fantasy|magic|magical)\b/.test(normalizedQuery)) branchFamilyCoverage.add("fantasy");
-    if (/\b(mystery|thriller|suspense|detective|heist|caper|thie(?:f|ves))\b/.test(normalizedQuery)) branchFamilyCoverage.add("mystery");
-    if (/\b(contemporary|realistic|coming of age|drama)\b/.test(normalizedQuery)) branchFamilyCoverage.add("contemporary");
-    if (/\b(romance|romantic)\b/.test(normalizedQuery)) branchFamilyCoverage.add("romance");
-    if (/\b(action|adventure|survival)\b/.test(normalizedQuery)) branchFamilyCoverage.add("adventure");
+    const sourceFamily = teenOpenLibrarySourceFamilyForQuery(String(query || ""));
+    if (sourceFamily) branchFamilyCoverage.add(sourceFamily);
   }
-  const strongestLikedFamilyWeight = Number(comparableLikedFamilies[0]?.weight || 0);
-  const comparableLikedFamilyRows = strongestLikedFamilyWeight > 0
-    ? comparableLikedFamilies.filter((row, index) => index === 0 || row.weight >= strongestLikedFamilyWeight * 0.75)
-    : [];
   const familyPrefixQueries: string[] = [];
   const familyPrefixCoverage = new Set<string>();
-  for (const row of comparableLikedFamilyRows) {
+  for (const row of balancedPrefixFamilyRows) {
     if (familyPrefixQueries.length >= 3) break;
     if (branchFamilyCoverage.has(row.family) || familyPrefixCoverage.has(row.family)) continue;
     familyPrefixCoverage.add(row.family);
