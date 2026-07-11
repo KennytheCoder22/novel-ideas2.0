@@ -396,6 +396,39 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
   const wantsParanormalHorrorRomance = hasParanormal && likedRomanceWeight > 0 && fantasyWeight + mysteryWeight + likedRomanceWeight >= contemporaryWeight;
   const wantsHorrorThrillerFantasy = hasHorror && hasThriller && hasFantasy && (fantasyWeight + mysteryWeight >= Math.max(contemporaryWeight, dystopianWeight, historicalWeight) * 1.1);
   const wantsActionComedyMystery = hasMystery && (hasAction || hasComedy) && !wantsFantasyAdventureSurvival && !wantsMysteryHeist && (mysteryWeight + actionComedyWeight >= Math.max(fantasyWeight, dystopianWeight, contemporaryWeight));
+  const independentLikedFamilyWeight = (pattern: RegExp): number => {
+    const weightByLikedItem = new Map<string, number>();
+
+    for (const row of signalRows) {
+      const value = String(row.value || "").toLowerCase();
+      if (!pattern.test(value)) continue;
+
+      const evidence = Array.isArray(row.evidence)
+        ? row.evidence
+        : [];
+
+      for (const item of evidence) {
+        const key = String(item || "").toLowerCase();
+        if (!key.startsWith("like:")) continue;
+
+        weightByLikedItem.set(
+          key,
+          Math.max(
+            weightByLikedItem.get(key) || 0,
+            Math.abs(Number(row.weight || 0))
+          )
+        );
+      }
+    }
+
+    return [...weightByLikedItem.values()].reduce(
+      (sum, weight) => sum + weight,
+      0
+    );
+  };
+  const independentLikedDystopianWeight = independentLikedFamilyWeight(/\b(dystopia|dystopian)\b/);
+  const independentLikedBroadFantasyWeight = independentLikedFamilyWeight(/\b(fantasy|magic|magical|paranormal|supernatural)\b/);
+  const dystopianDominantWithinFantasy = independentLikedDystopianWeight >= 2 || (independentLikedDystopianWeight > 0 && independentLikedDystopianWeight >= independentLikedBroadFantasyWeight * 0.75);
   const genreSpecificQueries = wantsHorrorSurvivalPsychological
     ? [
         "young adult horror",
@@ -494,10 +527,10 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
       : wantsContemporaryDrama
         ? []
         : [
-          hasDystopian ? "young adult dystopian fiction" : "",
-          hasDystopian ? "teen dystopian" : "",
-          hasDystopian ? "dystopian survival" : "",
-          hasDystopian ? "dystopian adventure" : "",
+          dystopianDominantWithinFantasy ? "young adult dystopian fiction" : "",
+          dystopianDominantWithinFantasy ? "teen dystopian" : "",
+          dystopianDominantWithinFantasy ? "dystopian survival" : "",
+          dystopianDominantWithinFantasy ? "dystopian adventure" : "",
           hasDystopian && hasMystery ? "dystopian mystery" : "",
           wantsSurvival ? "survival fiction" : "",
           wantsHistorical && hasDrama ? "historical drama novel" : "",
@@ -508,7 +541,7 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
           hasHorror || hasParanormal || hasDarkFantasy ? "dark fantasy" : "",
           hasSciFi && hasThriller ? "sci-fi thriller" : "",
           hasAction && hasComedy && hasAdventure ? "action comedy adventure" : "",
-          wantsFantasy && hasFantasy && hasDystopian ? "fantasy dystopian" : "",
+          !dystopianDominantWithinFantasy && wantsFantasy && hasFantasy && independentLikedDystopianWeight > 0 ? "fantasy dystopian" : "",
           hasDystopian ? "dystopian fiction" : "",
           hasDystopian ? "dystopian novel" : "",
           hasHorror ? "young adult horror" : "",
@@ -561,36 +594,6 @@ function buildTeenOpenLibraryQueryPlans(plan: SourcePlan, profile: TasteProfile,
     .filter((row) => row.weight > 0)
     .sort((a, b) => b.weight - a.weight);
   const teenPrefixQueryByFamily = new Map(comparableLikedFamilies.map((row) => [row.family, row.query]));
-  const independentLikedFamilyWeight = (pattern: RegExp): number => {
-    const weightByLikedItem = new Map<string, number>();
-
-    for (const row of signalRows) {
-      const value = String(row.value || "").toLowerCase();
-      if (!pattern.test(value)) continue;
-
-      const evidence = Array.isArray(row.evidence)
-        ? row.evidence
-        : [];
-
-      for (const item of evidence) {
-        const key = String(item || "").toLowerCase();
-        if (!key.startsWith("like:")) continue;
-
-        weightByLikedItem.set(
-          key,
-          Math.max(
-            weightByLikedItem.get(key) || 0,
-            Math.abs(Number(row.weight || 0))
-          )
-        );
-      }
-    }
-
-    return [...weightByLikedItem.values()].reduce(
-      (sum, weight) => sum + weight,
-      0
-    );
-  };
   const balancedAccumulationFamilies = [
     { family: "horror", weight: independentLikedFamilyWeight(/\bhorror\b/) },
     { family: "speculative", weight: independentLikedFamilyWeight(/\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },

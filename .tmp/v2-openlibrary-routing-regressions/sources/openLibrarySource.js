@@ -294,6 +294,19 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
     const likedSpeculativeWeight = likedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/);
     const likedAdventureWeight = likedSignalWeight(signalRows, /\b(action|adventure)\b/);
     const likedDramaWeight = likedSignalWeight(signalRows, /\b(drama)\b/);
+    const likedFantasySchoolWeight = signalRows.reduce((max, row) => {
+        const value = String(row.value || "").toLowerCase();
+        if (!/\b(fantasy|magic|magical)\b/.test(value))
+            return max;
+        if (!/\b(school|academy|campus|boarding school|magic school|magical school)\b/.test(value))
+            return max;
+        const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+        if (!evidence.some((item) => String(item || "").startsWith("like:")))
+            return max;
+        return Math.max(max, Math.abs(Number(row.weight || 0)));
+    }, 0);
+    const likedDystopianWeight = likedSignalWeight(signalRows, /\b(dystopia|dystopian)\b/);
+    const likedActionComedyWeight = likedSignalWeight(signalRows, /\b(action|adventure|comedy|humor)\b/);
     const likedHistoricalDramaWeight = signalRows.reduce((max, row) => {
         const value = String(row.value || "").toLowerCase();
         if (!/\b(historical|history|period)\b/.test(value) || !/\bdrama\b/.test(value))
@@ -315,8 +328,17 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
     const likedSpeculativeAdventureDramaWeight = likedSpeculativeWeight + likedAdventureWeight + likedDramaWeight + likedSurvivalWeight;
     const likedMysteryHeistWeight = likedMysteryWeight + likedHeistWeight;
     const likedFantasyAdventureSurvivalWeight = likedFantasyWeight + likedAdventureWeight + likedSurvivalWeight;
-    const likedContemporaryRomanceDramaWeight = likedContemporaryWeight + likedRomanceWeight + likedDramaWeight;
-    const hasLikedContemporaryRomanceDrama = likedContemporaryRomanceDramaWeight > 0;
+    const likedFantasyAdventureRows = signalRows.filter((row) => {
+        const value = String(row.value || "").toLowerCase();
+        const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+        return evidence.some((item) => String(item || "").startsWith("like:"))
+            && /\b(fantasy|magic|magical)\b/.test(value)
+            && /\b(action|adventure|quest|survival)\b/.test(value);
+    });
+    const likedFantasyAdventureWeight = likedFantasyAdventureRows.reduce((sum, row) => sum + Math.abs(Number(row.weight || 0)), 0);
+    const strongestOtherLikedFamilyWeight = Math.max(likedMysteryWeight, likedHistoricalWeight, likedContemporaryWeight, likedRomanceWeight, likedHorrorFamilyWeight, likedSportsWeight, likedSpeculativeWeight);
+    const likedContemporaryRomanceWeight = likedContemporaryWeight + likedRomanceWeight;
+    const hasLikedContemporaryRomance = likedContemporaryRomanceWeight > 0;
     const dominanceScores = { fantasy: fantasyWeight, contemporary: contemporaryWeight, mystery: mysteryWeight, actionComedy: actionComedyWeight, romance: romanceWeight, heist: heistWeight, historical: historicalWeight, dystopian: dystopianWeight, survival: survivalWeight };
     const sortedDominance = Object.entries(dominanceScores).sort((a, b) => b[1] - a[1]);
     const dominantFamily = sortedDominance[0]?.[0] || "generic";
@@ -332,16 +354,37 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
     const wantsHistorical = hasHistorical && historicalWeight > 0 && dominantFamily === "historical" && dominanceRatio >= 1.2;
     const wantsHorrorSurvivalPsychological = hasHorror && likedHorrorSurvivalThrillerWeight > 0 && (survivalWeight > 0 || /\bsurvival\b/.test(profileText)) && (hasMystery || hasPsychological || hasThriller) && mysteryWeight + survivalWeight + fantasyWeight >= Math.max(contemporaryWeight, dystopianWeight, historicalWeight);
     const wantsHistoricalSciFiAdventure = !wantsHorrorSurvivalPsychological && hasHistorical && hasAdventure && hasSciFi && historicalWeight + dystopianWeight + actionComedyWeight >= Math.max(contemporaryWeight, mysteryWeight, romanceWeight);
-    const wantsFantasySchoolActionDystopian = !wantsHorrorSurvivalPsychological && !wantsHistoricalSciFiAdventure && hasFantasy && !hasParanormal && hasSchool && fantasyWeight + actionComedyWeight + dystopianWeight >= Math.max(contemporaryWeight, mysteryWeight, historicalWeight);
+    const wantsFantasySchoolActionDystopian = !wantsHorrorSurvivalPsychological && !wantsHistoricalSciFiAdventure && hasFantasy && !hasParanormal && likedFantasySchoolWeight > 0 && likedFantasySchoolWeight + likedActionComedyWeight + likedDystopianWeight >= Math.max(contemporaryWeight, mysteryWeight, historicalWeight);
     const wantsPsychologicalMysteryDrama = !wantsHorrorSurvivalPsychological && hasMystery && (hasPsychological || hasDrama || hasClearContemporarySignal) && mysteryWeight + contemporaryWeight >= Math.max(fantasyWeight, dystopianWeight, historicalWeight) * 0.8;
-    const wantsContemporaryRomanceFantasy = hasFantasy && likedFantasyWeight > 0 && hasLikedContemporaryRomanceDrama && !wantsFantasySchoolActionDystopian && !hasSpeculative && !hasAction && !hasComedy && !hasParanormal && !hasHorror && fantasyWeight + likedContemporaryRomanceDramaWeight >= Math.max(mysteryWeight, dystopianWeight, historicalWeight);
+    const wantsContemporaryRomanceFantasy = hasFantasy && likedFantasyWeight > 0 && hasLikedContemporaryRomance && !wantsFantasySchoolActionDystopian && !hasSpeculative && !hasAction && !hasComedy && !hasParanormal && !hasHorror && fantasyWeight + likedContemporaryRomanceWeight >= Math.max(mysteryWeight, dystopianWeight, historicalWeight);
     const wantsMysteryHeist = hasMystery && hasHeist && likedMysteryWeight > 0 && likedHeistWeight > 0 && likedMysteryHeistWeight >= likedFantasyAdventureSurvivalWeight * 0.85 && mysteryHeistWeight >= fantasyAdventureSurvivalWeight * 0.85 && dystopianWeight <= Math.max(1, mysteryHeistWeight) * 1.5;
     const wantsDystopianHistoricalThriller = hasDystopian && !wantsMysteryHeist && (hasThriller || hasHistorical) && dystopianWeight > 0 && dystopianWeight + mysteryWeight + historicalWeight >= Math.max(contemporaryWeight, fantasyWeight) * 1.15;
     const wantsSpeculativeAdventureDrama = !wantsHorrorSurvivalPsychological && !wantsHistoricalSciFiAdventure && !wantsDystopianHistoricalThriller && likedSpeculativeWeight > 0 && hasSpeculativeEvidence && hasAdventureDramaSurvivalEvidence && likedSpeculativeAdventureDramaWeight >= Math.max(1, likedFantasyWeight * 0.5, likedMysteryWeight * 0.75) && speculativeAdventureDramaWeight >= Math.max(1, fantasyWeight * 0.5, mysteryWeight * 0.75);
-    const wantsFantasyAdventureSurvival = hasFantasy && hasAdventure && !hasParanormal && (fantasyWeight + actionComedyWeight + survivalWeight >= Math.max(mysteryWeight, contemporaryWeight, dystopianWeight));
-    const wantsParanormalHorrorRomance = hasParanormal && (hasHorror || hasRomance || romanceWeight > 0) && fantasyWeight + mysteryWeight + romanceWeight >= contemporaryWeight;
+    const wantsFantasyAdventureSurvival = hasFantasy && hasAdventure && !hasParanormal && likedFantasyAdventureWeight > 0 && (likedSurvivalWeight > 0 || likedFantasyAdventureRows.length >= 2 || likedFantasyAdventureWeight > strongestOtherLikedFamilyWeight) && (fantasyWeight + actionComedyWeight + survivalWeight >= Math.max(mysteryWeight, contemporaryWeight, dystopianWeight));
+    const wantsParanormalHorrorRomance = hasParanormal && likedRomanceWeight > 0 && fantasyWeight + mysteryWeight + likedRomanceWeight >= contemporaryWeight;
     const wantsHorrorThrillerFantasy = hasHorror && hasThriller && hasFantasy && (fantasyWeight + mysteryWeight >= Math.max(contemporaryWeight, dystopianWeight, historicalWeight) * 1.1);
     const wantsActionComedyMystery = hasMystery && (hasAction || hasComedy) && !wantsFantasyAdventureSurvival && !wantsMysteryHeist && (mysteryWeight + actionComedyWeight >= Math.max(fantasyWeight, dystopianWeight, contemporaryWeight));
+    const independentLikedFamilyWeight = (pattern) => {
+        const weightByLikedItem = new Map();
+        for (const row of signalRows) {
+            const value = String(row.value || "").toLowerCase();
+            if (!pattern.test(value))
+                continue;
+            const evidence = Array.isArray(row.evidence)
+                ? row.evidence
+                : [];
+            for (const item of evidence) {
+                const key = String(item || "").toLowerCase();
+                if (!key.startsWith("like:"))
+                    continue;
+                weightByLikedItem.set(key, Math.max(weightByLikedItem.get(key) || 0, Math.abs(Number(row.weight || 0))));
+            }
+        }
+        return [...weightByLikedItem.values()].reduce((sum, weight) => sum + weight, 0);
+    };
+    const independentLikedDystopianWeight = independentLikedFamilyWeight(/\b(dystopia|dystopian)\b/);
+    const independentLikedBroadFantasyWeight = independentLikedFamilyWeight(/\b(fantasy|magic|magical|paranormal|supernatural)\b/);
+    const dystopianDominantWithinFantasy = independentLikedDystopianWeight >= 2 || (independentLikedDystopianWeight > 0 && independentLikedDystopianWeight >= independentLikedBroadFantasyWeight * 0.75);
     const genreSpecificQueries = wantsHorrorSurvivalPsychological
         ? [
             "young adult horror",
@@ -440,10 +483,10 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
                                                     : wantsContemporaryDrama
                                                         ? []
                                                         : [
-                                                            hasDystopian ? "young adult dystopian fiction" : "",
-                                                            hasDystopian ? "teen dystopian" : "",
-                                                            hasDystopian ? "dystopian survival" : "",
-                                                            hasDystopian ? "dystopian adventure" : "",
+                                                            dystopianDominantWithinFantasy ? "young adult dystopian fiction" : "",
+                                                            dystopianDominantWithinFantasy ? "teen dystopian" : "",
+                                                            dystopianDominantWithinFantasy ? "dystopian survival" : "",
+                                                            dystopianDominantWithinFantasy ? "dystopian adventure" : "",
                                                             hasDystopian && hasMystery ? "dystopian mystery" : "",
                                                             wantsSurvival ? "survival fiction" : "",
                                                             wantsHistorical && hasDrama ? "historical drama novel" : "",
@@ -454,7 +497,7 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
                                                             hasHorror || hasParanormal || hasDarkFantasy ? "dark fantasy" : "",
                                                             hasSciFi && hasThriller ? "sci-fi thriller" : "",
                                                             hasAction && hasComedy && hasAdventure ? "action comedy adventure" : "",
-                                                            wantsFantasy && hasFantasy && hasDystopian ? "fantasy dystopian" : "",
+                                                            !dystopianDominantWithinFantasy && wantsFantasy && hasFantasy && independentLikedDystopianWeight > 0 ? "fantasy dystopian" : "",
                                                             hasDystopian ? "dystopian fiction" : "",
                                                             hasDystopian ? "dystopian novel" : "",
                                                             hasHorror ? "young adult horror" : "",
@@ -508,18 +551,18 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
         .sort((a, b) => b.weight - a.weight);
     const teenPrefixQueryByFamily = new Map(comparableLikedFamilies.map((row) => [row.family, row.query]));
     const balancedAccumulationFamilies = [
-        { family: "horror", weight: maxLikedSignalWeight(signalRows, /\bhorror\b/) },
-        { family: "speculative", weight: maxLikedSignalWeight(signalRows, /\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },
-        { family: "fantasy", weight: maxLikedSignalWeight(signalRows, /\b(fantasy|paranormal|supernatural)\b/) },
-        { family: "mystery", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(mystery|thriller|suspense|crime|detective)\b/), maxLikedSignalWeight(signalRows, /\b(superheroes?|super heroes?|marvel|dc comics)\b/)) },
-        { family: "contemporary", weight: maxLikedSignalWeight(signalRows, /\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/) },
-        { family: "romance", weight: maxLikedSignalWeight(signalRows, /\b(romance|romantic)\b/) },
-        { family: "historical", weight: maxLikedSignalWeight(signalRows, /\b(historical|history|period)\b/) },
-        { family: "sports", weight: maxLikedSignalWeight(signalRows, /\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/) },
-        { family: "adventure", weight: Math.max(maxLikedSignalWeight(signalRows, /\b(action|adventure)\b/), maxLikedSignalWeight(signalRows, /\b(survival)\b/)) },
-        { family: "comedy", weight: maxLikedSignalWeight(signalRows, /\b(comedy|humor)\b/) },
-        { family: "graphic", weight: maxLikedSignalWeight(signalRows, /\b(graphic novel|manga|comic)\b/) },
-        { family: "heist", weight: maxLikedSignalWeight(signalRows, /\b(heist|caper|thief|thieves|sandbox)\b/) },
+        { family: "horror", weight: independentLikedFamilyWeight(/\bhorror\b/) },
+        { family: "speculative", weight: independentLikedFamilyWeight(/\b(dystopia|dystopian|science fiction|sci-fi|speculative|space)\b/) },
+        { family: "fantasy", weight: independentLikedFamilyWeight(/\b(fantasy|paranormal|supernatural)\b/) },
+        { family: "mystery", weight: Math.max(independentLikedFamilyWeight(/\b(mystery|thriller|suspense|crime|detective)\b/), independentLikedFamilyWeight(/\b(superheroes?|super heroes?|marvel|dc comics)\b/)) },
+        { family: "contemporary", weight: independentLikedFamilyWeight(/\b(contemporary|realistic|realism|coming[-\s]of[-\s]age)\b/) },
+        { family: "romance", weight: independentLikedFamilyWeight(/\b(romance|romantic)\b/) },
+        { family: "historical", weight: independentLikedFamilyWeight(/\b(historical|history|period)\b/) },
+        { family: "sports", weight: independentLikedFamilyWeight(/\b(sports?|basketball|soccer|football|baseball|volleyball|track|athletic|athlete|competition)\b/) },
+        { family: "adventure", weight: Math.max(independentLikedFamilyWeight(/\b(action|adventure)\b/), independentLikedFamilyWeight(/\b(survival)\b/)) },
+        { family: "comedy", weight: independentLikedFamilyWeight(/\b(comedy|humor)\b/) },
+        { family: "graphic", weight: independentLikedFamilyWeight(/\b(graphic novel|manga|comic)\b/) },
+        { family: "heist", weight: independentLikedFamilyWeight(/\b(heist|caper|thief|thieves|sandbox)\b/) },
     ]
         .filter((row) => row.weight > 0)
         .sort((a, b) => b.weight - a.weight);
