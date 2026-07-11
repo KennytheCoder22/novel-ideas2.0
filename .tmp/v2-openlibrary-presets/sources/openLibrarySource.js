@@ -328,6 +328,15 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
     const likedSpeculativeAdventureDramaWeight = likedSpeculativeWeight + likedAdventureWeight + likedDramaWeight + likedSurvivalWeight;
     const likedMysteryHeistWeight = likedMysteryWeight + likedHeistWeight;
     const likedFantasyAdventureSurvivalWeight = likedFantasyWeight + likedAdventureWeight + likedSurvivalWeight;
+    const likedFantasyAdventureRows = signalRows.filter((row) => {
+        const value = String(row.value || "").toLowerCase();
+        const evidence = Array.isArray(row.evidence) ? row.evidence : [];
+        return evidence.some((item) => String(item || "").startsWith("like:"))
+            && /\b(fantasy|magic|magical)\b/.test(value)
+            && /\b(action|adventure|quest|survival)\b/.test(value);
+    });
+    const likedFantasyAdventureWeight = likedFantasyAdventureRows.reduce((sum, row) => sum + Math.abs(Number(row.weight || 0)), 0);
+    const strongestOtherLikedFamilyWeight = Math.max(likedMysteryWeight, likedHistoricalWeight, likedContemporaryWeight, likedRomanceWeight, likedHorrorFamilyWeight, likedSportsWeight, likedSpeculativeWeight);
     const likedContemporaryRomanceWeight = likedContemporaryWeight + likedRomanceWeight;
     const hasLikedContemporaryRomance = likedContemporaryRomanceWeight > 0;
     const dominanceScores = { fantasy: fantasyWeight, contemporary: contemporaryWeight, mystery: mysteryWeight, actionComedy: actionComedyWeight, romance: romanceWeight, heist: heistWeight, historical: historicalWeight, dystopian: dystopianWeight, survival: survivalWeight };
@@ -351,7 +360,7 @@ function buildTeenOpenLibraryQueryPlans(plan, profile, ageProfile) {
     const wantsMysteryHeist = hasMystery && hasHeist && likedMysteryWeight > 0 && likedHeistWeight > 0 && likedMysteryHeistWeight >= likedFantasyAdventureSurvivalWeight * 0.85 && mysteryHeistWeight >= fantasyAdventureSurvivalWeight * 0.85 && dystopianWeight <= Math.max(1, mysteryHeistWeight) * 1.5;
     const wantsDystopianHistoricalThriller = hasDystopian && !wantsMysteryHeist && (hasThriller || hasHistorical) && dystopianWeight > 0 && dystopianWeight + mysteryWeight + historicalWeight >= Math.max(contemporaryWeight, fantasyWeight) * 1.15;
     const wantsSpeculativeAdventureDrama = !wantsHorrorSurvivalPsychological && !wantsHistoricalSciFiAdventure && !wantsDystopianHistoricalThriller && likedSpeculativeWeight > 0 && hasSpeculativeEvidence && hasAdventureDramaSurvivalEvidence && likedSpeculativeAdventureDramaWeight >= Math.max(1, likedFantasyWeight * 0.5, likedMysteryWeight * 0.75) && speculativeAdventureDramaWeight >= Math.max(1, fantasyWeight * 0.5, mysteryWeight * 0.75);
-    const wantsFantasyAdventureSurvival = hasFantasy && hasAdventure && !hasParanormal && (fantasyWeight + actionComedyWeight + survivalWeight >= Math.max(mysteryWeight, contemporaryWeight, dystopianWeight));
+    const wantsFantasyAdventureSurvival = hasFantasy && hasAdventure && !hasParanormal && likedFantasyAdventureWeight > 0 && (likedSurvivalWeight > 0 || likedFantasyAdventureRows.length >= 2 || likedFantasyAdventureWeight > strongestOtherLikedFamilyWeight) && (fantasyWeight + actionComedyWeight + survivalWeight >= Math.max(mysteryWeight, contemporaryWeight, dystopianWeight));
     const wantsParanormalHorrorRomance = hasParanormal && likedRomanceWeight > 0 && fantasyWeight + mysteryWeight + likedRomanceWeight >= contemporaryWeight;
     const wantsHorrorThrillerFantasy = hasHorror && hasThriller && hasFantasy && (fantasyWeight + mysteryWeight >= Math.max(contemporaryWeight, dystopianWeight, historicalWeight) * 1.1);
     const wantsActionComedyMystery = hasMystery && (hasAction || hasComedy) && !wantsFantasyAdventureSurvival && !wantsMysteryHeist && (mysteryWeight + actionComedyWeight >= Math.max(fantasyWeight, dystopianWeight, contemporaryWeight));
